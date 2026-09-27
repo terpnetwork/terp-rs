@@ -134,3 +134,39 @@ pub fn compute_msg_bind(
     h.update(msg_hash);
     h.finalize().into()
 }
+
+/// Compare circuit instance[3] to [`compute_msg_bind`].
+///
+/// Accepts raw SHA-256 or the BN254 field reduction of that digest
+/// (big-endian integer mod r, 32-byte little-endian limb).
+pub fn msg_bind_matches(instance32: &[u8], expected: &[u8; 32]) -> bool {
+    if instance32 == expected.as_slice() {
+        return true;
+    }
+    if instance32.len() != 32 {
+        return false;
+    }
+    const R_BE: [u8; 32] = [
+        0x30, 0x64, 0x4e, 0x72, 0xe1, 0x31, 0xa0, 0x29, 0xb8, 0x50, 0x45, 0xb6,
+        0x81, 0x81, 0x58, 0x5d, 0x28, 0x33, 0xe8, 0x48, 0x79, 0xb9, 0x70, 0x91,
+        0x43, 0xe1, 0xf5, 0x93, 0xf0, 0x00, 0x00, 0x01,
+    ];
+    let mut n = [0u8; 32];
+    n.copy_from_slice(expected);
+    while n.as_slice() >= R_BE.as_slice() {
+        let mut borrow = 0i16;
+        for i in (0..32).rev() {
+            let d = n[i] as i16 - R_BE[i] as i16 - borrow;
+            if d < 0 {
+                n[i] = (d + 256) as u8;
+                borrow = 1;
+            } else {
+                n[i] = d as u8;
+                borrow = 0;
+            }
+        }
+    }
+    let mut le = n;
+    le.reverse();
+    instance32 == le.as_slice()
+}

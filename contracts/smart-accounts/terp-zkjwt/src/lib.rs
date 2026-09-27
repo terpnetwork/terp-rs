@@ -41,10 +41,10 @@ pub use verify::{circuit_ids, default_verifier, DefaultZkJwtVerifier, ZkJwtVerif
 pub use verify::HostZkJwtVerifier;
 
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 use crate::state::{Config as Cfg, CLAIMS, CONFIG, ISSUERS, NULLIFIERS};
@@ -191,12 +191,146 @@ fn only_admin(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     Ok(())
 }
 
+/// Bind context for sudo `AuthenticationRequest` (msg_bind). Execute path has none.
+struct MsgBindCtx<'a> {
+    chain_id: &'a str,
+    account: &'a str,
+    authenticator_id: &'a str,
+    msg_index: u64,
+    sign_mode_direct: &'a [u8],
+}
+
+fn authenticate_payload(
+    deps: DepsMut,
+    env: Env,
+    payload: ZkJwtAuthPayload,
+    account: Option<&Addr>,
+    bind: Option<MsgBindCtx<'_>>,
+) -> Result<Response, ContractError> {
+    let issuer = ISSUERS
+        .may_load(deps.storage, &payload.issuer)?
+        .ok_or_else(|| ContractError::UnknownIssuer {
+            issuer: payload.issuer.clone(),
+        })?;
+
+    default_verifier().verify(deps.as_ref(), &issuer, &payload)?;
+
+    let (nf, claim_bytes, codec_attr): (Vec<u8>, Vec<u8>, &str) =
+        if crate::circom_codec::is_circom_host_instances(payload.public_inputs.as_slice()) {
+            let claim = crate::circom_codec::decode_host_instances_bytes(
+                payload.public_inputs.as_slice(),
+            )?;
+            if payload.claim_commitment.as_slice() != claim.claim_commitment.as_slice() {
+                return Err(ContractError::InvalidProof {
+                    reason: "claim_commitment does not match circom accountSalt".into(),
+                });
+            }
+            if issuer.inclusion_set_root.is_some() {
+                return Err(ContractError::InvalidProof {
+                    reason: "inclusion_set_root issuer incompatible with circom-jwt-v1 PI"
+                        .into(),
+                });
+            }
+            (
+                claim.nullifier.to_vec(),
+                claim.claim_commitment.to_vec(),
+                crate::circom_codec::CIRCOM_JWT_CODEC_V1,
+            )
+        } else {
+            let inst = crate::instances::parse_public_instances(&payload.public_inputs)?;
+
+            if let Some(registered_root) = &issuer.inclusion_set_root {
+                if registered_root.len() != 32 {
+                    return Err(ContractError::InvalidProof {
+                        reason: "issuer inclusion_set_root must be 32 bytes".into(),
+                    });
+                }
+                let Some(pi_root) = inst.inclusion_set_root else {
+                    return Err(ContractError::InvalidProof {
+                        reason:
+                            "public_inputs missing inclusion_set_root [64..96); issuer requires root"
+                                .into(),
+                    });
+                };
+                if pi_root != registered_root.as_slice() {
+                    return Err(ContractError::InvalidProof {
+                        reason:
+                            "inclusion_set_root mismatch (public instance != IssuerConfig root)"
+                                .into(),
+                    });
+                }
+            }
+
+            if let (Some(mb), Some(b)) = (inst.msg_bind, bind) {
+                let expected = crate::instances::compute_msg_bind(
+                    b.chain_id,
+                    b.account,
+                    b.authenticator_id,
+                    b.msg_index,
+                    b.sign_mode_direct,
+                );
+                if !crate::instances::msg_bind_matches(mb, &expected) {
+                    return Err(ContractError::InvalidProof {
+                        reason: "msg_bind mismatch (public instance != host compute_msg_bind)"
+                            .into(),
+                    });
+                }
+            }
+
+            (
+                inst.nullifier.to_vec(),
+                inst.claim_commitment.to_vec(),
+                "policy-v1",
+            )
+        };
+
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.require_registered_claim {
+        match CLAIMS.may_load(deps.storage, payload.claim_commitment.as_slice())? {
+            Some(owner) if account.map(|a| owner == *a).unwrap_or(false) => {}
+            Some(_) => {
+                return Err(ContractError::InvalidProof {
+                    reason: "claim_commitment registered to different account".into(),
+                });
+            }
+            None => return Err(ContractError::UnregisteredClaim {}),
+        }
+    }
+    let _ = claim_bytes;
+
+    if NULLIFIERS.has(deps.storage, &nf) {
+        return Err(ContractError::NullifierReplay {});
+    }
+    NULLIFIERS.save(deps.storage, &nf, &env.block.height)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "zkjwt_authenticate")
+        .add_attribute("issuer", payload.issuer)
+        .add_attribute("circuit_id", payload.circuit_id)
+        .add_attribute("codec", codec_attr)
+        .add_attribute(
+            "verify",
+            if cfg!(feature = "zk-host") {
+                "proof_instance_verify"
+            } else {
+                "structural"
+            },
+        )
+        .add_attribute(
+            "zkid",
+            issuer
+                .zkid
+                .map(|z| z.to_string())
+                .unwrap_or_else(|| "none".into()),
+        ))
+}
+
 #[derive(Debug, Clone)]
 pub struct ZkJwtAuthStructs {}
 
 pub struct ZkJwtAuthenticator;
 
-impl BtsgAccountTrait for ZkJwtAuthenticator {
+impl TerpAccountTrait for ZkJwtAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -251,130 +385,19 @@ impl BtsgAccountTrait for ZkJwtAuthenticator {
                 reason: format!("payload decode: {e}"),
             }
         })?;
-
-        let issuer = ISSUERS
-            .may_load(deps.storage, &payload.issuer)?
-            .ok_or_else(|| ContractError::UnknownIssuer {
-                issuer: payload.issuer.clone(),
-            })?;
-
-        // 1) Cryptographic / structural verify (host gets full PI / proof as sent)
-        default_verifier().verify(deps.as_ref(), &issuer, &payload)?;
-
-        // Policy view: circom Fr vector vs legacy nullifier||claim layout
-        let (nf, claim_bytes, codec_attr): (Vec<u8>, Vec<u8>, &str) =
-            if crate::circom_codec::is_circom_host_instances(payload.public_inputs.as_slice()) {
-                let claim = crate::circom_codec::decode_host_instances_bytes(
-                    payload.public_inputs.as_slice(),
-                )?;
-                if payload.claim_commitment.as_slice() != claim.claim_commitment.as_slice() {
-                    return Err(ContractError::InvalidProof {
-                        reason: "claim_commitment does not match circom accountSalt".into(),
-                    });
-                }
-                // Stock circom has no inclusion root / msg_bind slots (D3).
-                if issuer.inclusion_set_root.is_some() {
-                    return Err(ContractError::InvalidProof {
-                        reason: "inclusion_set_root issuer incompatible with circom-jwt-v1 PI"
-                            .into(),
-                    });
-                }
-                (
-                    claim.nullifier.to_vec(),
-                    claim.claim_commitment.to_vec(),
-                    crate::circom_codec::CIRCOM_JWT_CODEC_V1,
-                )
-            } else {
-                let inst = crate::instances::parse_public_instances(&payload.public_inputs)?;
-
-                // 1a) Inclusion set root (legacy policy PI only)
-                if let Some(registered_root) = &issuer.inclusion_set_root {
-                    if registered_root.len() != 32 {
-                        return Err(ContractError::InvalidProof {
-                            reason: "issuer inclusion_set_root must be 32 bytes".into(),
-                        });
-                    }
-                    let Some(pi_root) = inst.inclusion_set_root else {
-                        return Err(ContractError::InvalidProof {
-                            reason:
-                                "public_inputs missing inclusion_set_root [64..96); issuer requires root"
-                                    .into(),
-                        });
-                    };
-                    if pi_root != registered_root.as_slice() {
-                        return Err(ContractError::InvalidProof {
-                            reason:
-                                "inclusion_set_root mismatch (public instance != IssuerConfig root)"
-                                    .into(),
-                        });
-                    }
-                }
-
-                // 1b) msg_bind when present on legacy layout
-                if let Some(mb) = inst.msg_bind {
-                    let expected = crate::instances::compute_msg_bind(
-                        &req.tx_data.chain_id,
-                        req.account.as_str(),
-                        &req.authenticator_id,
-                        req.msg_index,
-                        req.sign_mode_tx_data.sign_mode_direct.as_slice(),
-                    );
-                    if mb != expected.as_slice() {
-                        return Err(ContractError::InvalidProof {
-                            reason: "msg_bind mismatch (public instance != host compute_msg_bind)"
-                                .into(),
-                        });
-                    }
-                }
-
-                (
-                    inst.nullifier.to_vec(),
-                    inst.claim_commitment.to_vec(),
-                    "policy-v1",
-                )
-            };
-
-        // 2) Claim ↔ account binding
-        let cfg = CONFIG.load(deps.storage)?;
-        if cfg.require_registered_claim {
-            match CLAIMS.may_load(deps.storage, payload.claim_commitment.as_slice())? {
-                Some(owner) if owner == req.account => {}
-                Some(_) => {
-                    return Err(ContractError::InvalidProof {
-                        reason: "claim_commitment registered to different account".into(),
-                    });
-                }
-                None => return Err(ContractError::UnregisteredClaim {}),
-            }
-        }
-        let _ = claim_bytes; // bound above via payload.claim_commitment alignment
-
-        // 3) Nullifier from circuit public (codec or policy prefix), spend on Authenticate
-        if NULLIFIERS.has(deps.storage, &nf) {
-            return Err(ContractError::NullifierReplay {});
-        }
-        NULLIFIERS.save(deps.storage, &nf, &env.block.height)?;
-
-        Ok(Response::new()
-            .add_attribute("action", "zkjwt_authenticate")
-            .add_attribute("issuer", payload.issuer)
-            .add_attribute("circuit_id", payload.circuit_id)
-            .add_attribute("codec", codec_attr)
-            .add_attribute(
-                "verify",
-                if cfg!(feature = "zk-host") {
-                    "proof_instance_verify"
-                } else {
-                    "structural"
-                },
-            )
-            .add_attribute(
-                "zkid",
-                issuer
-                    .zkid
-                    .map(|z| z.to_string())
-                    .unwrap_or_else(|| "none".into()),
-            ))
+        authenticate_payload(
+            deps,
+            env,
+            payload,
+            Some(&req.account),
+            Some(MsgBindCtx {
+                chain_id: &req.tx_data.chain_id,
+                account: req.account.as_str(),
+                authenticator_id: &req.authenticator_id,
+                msg_index: req.msg_index,
+                sign_mode_direct: req.sign_mode_tx_data.sign_mode_direct.as_slice(),
+            }),
+        )
     }
 
     fn on_auth_track(

@@ -57,7 +57,7 @@ pub enum ExecuteMsg {
         issuer: String,
         inclusion_set_root: Binary,
     },
-    /// Link a claim commitment to the caller for later Authenticate binding.
+    /// Link a claim commitment to the caller for later sudo Authenticate binding.
     RegisterClaim {
         claim_commitment: Binary,
         issuer: String,

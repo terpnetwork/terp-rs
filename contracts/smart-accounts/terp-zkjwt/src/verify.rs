@@ -25,6 +25,9 @@ pub mod circuit_ids {
     pub const JWT_MEMBERSHIP: &str = "zkjwt.membership.v1";
     pub const JWT_EMAIL_DOMAIN: &str = "zkjwt.email_domain.v1";
     pub const JWT_PROFILE_LINK: &str = "zkjwt.profile_link.v1";
+    pub const JWT_PASSKEY_P256: &str = "zkjwt.passkey.p256.v1";
+    /// Start-hash Flock (BLAKE3 of public instances). Demo authenticator until Axiom store works.
+    pub const JWT_PASSKEY_FLOCK: &str = "zkjwt.passkey.flock.v1";
 }
 
 pub trait ZkJwtVerifier {
@@ -95,7 +98,9 @@ fn check_envelope(issuer: &IssuerConfig, payload: &ZkJwtAuthPayload) -> Result<(
     match payload.circuit_id.as_str() {
         circuit_ids::JWT_MEMBERSHIP
         | circuit_ids::JWT_EMAIL_DOMAIN
-        | circuit_ids::JWT_PROFILE_LINK => {}
+        | circuit_ids::JWT_PROFILE_LINK
+        | circuit_ids::JWT_PASSKEY_P256
+        | circuit_ids::JWT_PASSKEY_FLOCK => {}
         other => {
             return Err(ContractError::InvalidProof {
                 reason: format!("unknown circuit_id: {other}"),
