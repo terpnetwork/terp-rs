@@ -28,7 +28,7 @@ fn wasm_modules() -> Vec<WasmModule> {
 
     vec![WasmModule {
         name: "norick_wasm",
-        crate_path: Some(terp_rs.join("crates/zk/norick-wasm")),
+        crate_path: Some(terp_rs.join("crates/wasm-bindgen/norick-wasm")),
         page: "no-rick.html",
     }]
 }

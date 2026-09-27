@@ -170,6 +170,10 @@ impl<C: SubprocessConfig> SubprocessSidecar<C> {
         }
     }
 
+    pub fn config(&self) -> &C {
+        &self.config
+    }
+
     /// Tail the subprocess stderr until we see a "listening" pattern or timeout.
     /// Returns the collected stderr text (for troubleshooting).
     async fn wait_for_listening(

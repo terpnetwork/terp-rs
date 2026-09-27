@@ -47,6 +47,7 @@ pub struct MinioIpfsConfig {
 
 impl Default for MinioIpfsConfig {
     fn default() -> Self {
+        // LOCAL DUMMY ONLY — MinIO docker-dev defaults, not a production identity.
         Self {
             root_user: "minioadmin".into(),
             root_password: "minioadmin".into(),
@@ -102,6 +103,7 @@ impl MinioIpfsSuite {
             validator_process: false,
             health_endpoint: Some("/minio/health/live".into()),
             ready_timeout_secs: 30,
+            volumes: vec![],
         }
     }
 

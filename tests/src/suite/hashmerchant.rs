@@ -19,11 +19,11 @@ use tracing::info;
 use hash_market::config::{ClientConfig, Config, ProviderConfig};
 use hash_market::ve::ProviderStatus;
 
+use crate::suite::SidecarBinaryResolver;
 use crate::suite::sidecar::{
     EndpointMap, HealthStatus, SidecarId, SidecarRegistry, SubprocessConfig, SubprocessSidecar,
     TerpSidecar,
 };
-use crate::suite::SidecarBinaryResolver;
 
 // ---------------------------------------------------------------------------
 // MerchantSuiteConfig — thin wrapper around canonical Config
@@ -214,6 +214,41 @@ impl HashMerchantSuite {
         }
     }
 
+    /// Merkle/BUD host + embedded  (no VE). Local production sidecar.
+    pub fn mint_host_onboard(
+        chain_id: &str,
+        bind: &str,
+        dao: impl Into<String>,
+        runtime_key: impl Into<String>,
+    ) -> Self {
+        let dao = dao.into();
+        let runtime_key = runtime_key.into();
+        let config = Config {
+            bind: bind.into(),
+            chain_id: chain_id.to_string(),
+            signing_key: None,
+            data_dir: None,
+            ve_enabled: false,
+            providers: vec![],
+            oracle: None,
+            cors_allow_origin: None,
+            distribution: None,
+            notes_auth: None,
+            cashu_mesh: None,
+            onboard: Some(hash_market::config::OnboardConfig {
+                enabled: true,
+                dao: Some(dao),
+                runtime_key: Some(runtime_key),
+                chain_id: Some(chain_id.to_string()),
+                register_limit: None,
+                mint_limit: None,
+                broadcast: false,
+            }),
+            privval: None,
+        };
+        Self::new("hashmerchant-mint", config)
+    }
+
     /// Add a hash-market-client that polls an Ethereum node.
     pub fn with_client(mut self, client_config: ClientConfig) -> Self {
         self.client = Some(SubprocessSidecar::new(
@@ -238,8 +273,9 @@ impl HashMerchantSuite {
         let config = Config {
             bind: "127.0.0.1:9090".into(),
             chain_id: chain_id.to_string(),
-            signing_key,
+            signing_key: Some(signing_key),
             data_dir: None,
+            ve_enabled: true,
             providers: vec![ProviderConfig {
                 name: "local-test".into(),
                 chain_uid: "terp-test".into(),
@@ -247,9 +283,30 @@ impl HashMerchantSuite {
                 mode: "http_poll".into(),
                 address: "http://127.0.0.1:8545".into(),
                 interval_secs: 12,
+                kind: None,
+                market_id: None,
+                weight: None,
+                static_root: None,
+                static_height: None,
+                static_block_time: None,
             }],
+            oracle: None,
+            cors_allow_origin: None,
+            distribution: None,
+            notes_auth: None,
+            cashu_mesh: None,
+            onboard: None,
+            privval: None,
         };
         Self::new("hashmerchant", config)
+    }
+
+    /// Same plane methods as in-process tests (`HashMerchantClient`).
+    pub fn http_client(&self) -> Result<crate::suite::HashMerchantClient> {
+        let url = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        Ok(crate::suite::HashMerchantClient::from_url(url))
     }
 
     /// The server's HTTP URL (e.g. "http://127.0.0.1:9090")
@@ -287,6 +344,66 @@ impl HashMerchantSuite {
     }
 
     /// Feed a provider's data directly by calling the internal gRPC endpoint.
+
+    /// Enable embedded `/onboard/*` on the sidecar (no second onboard-runtime).
+    /// Rebuild `MerchantSuiteConfig` so TOML includes `[onboard]`.
+    pub fn with_onboard_roles(
+        self,
+        dao: impl Into<String>,
+        runtime_key: impl Into<String>,
+    ) -> Self {
+        let mut cfg = self.server_config_clone();
+        cfg.inner.onboard = Some(hash_market::config::OnboardConfig {
+            enabled: true,
+            dao: Some(dao.into()),
+            runtime_key: Some(runtime_key.into()),
+            chain_id: Some(cfg.inner.chain_id.clone()),
+            register_limit: None,
+            mint_limit: None,
+            broadcast: false,
+        });
+        let mut s = Self::with_config(self.id.clone(), cfg);
+        s.client = self.client;
+        s
+    }
+
+    fn server_config_clone(&self) -> MerchantSuiteConfig {
+        self.server.config().clone()
+    }
+
+    /// `GET /onboard/status` — grant plane, not merchant `/health`.
+    pub async fn onboard_status(&self) -> Result<serde_json::Value> {
+        let base = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        let url = format!("{}/onboard/status", base.trim_end_matches('/'));
+        let resp = reqwest::get(&url).await?;
+        let v = resp.json().await.context("onboard status json")?;
+        Ok(v)
+    }
+
+    pub async fn request_register_grant(&self, address: &str) -> Result<serde_json::Value> {
+        self.onboard_grant("register-grant", address).await
+    }
+
+    pub async fn request_mint_grant(&self, address: &str) -> Result<serde_json::Value> {
+        self.onboard_grant("mint-grant", address).await
+    }
+
+    async fn onboard_grant(&self, which: &str, address: &str) -> Result<serde_json::Value> {
+        let base = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        let url = format!("{}/onboard/v1/{}", base.trim_end_matches('/'), which);
+        let resp = reqwest::Client::new()
+            .post(&url)
+            .json(&serde_json::json!({ "address": address }))
+            .send()
+            .await?;
+        let v = resp.json().await.context("onboard grant json")?;
+        Ok(v)
+    }
+
     pub async fn feed_provider(&self, _provider: &str, _root: &[u8], _height: u64) -> Result<()> {
         // In practice this calls the hashmarket internal gRPC endpoint.
         // For now, a no-op — the actual gRPC client lives in terp_rs proto.
@@ -528,7 +645,7 @@ impl MerkleServerSuite {
             .context("no private key available — use with_new_keypair()")?;
         let sk_bytes = hex::decode(sk_hex)?;
         let sk = k256::SecretKey::from_slice(&sk_bytes)?;
-        use k256::ecdsa::{signature::Signer, SigningKey};
+        use k256::ecdsa::{SigningKey, signature::Signer};
         let signing_key = SigningKey::from(sk);
         let signature: k256::ecdsa::Signature = signing_key.sign(message);
         Ok(hex::encode(signature.to_bytes()))
@@ -654,28 +771,28 @@ mod test {
     use hash_market::{
         client::ve::VoteExtensionHandler,
         custody::local::LocalSecp256k1,
-        server::{router as build_router, AppState},
+        server::{AppState, router as build_router},
     };
     use sha2::{Digest, Sha256};
 
     /// Start the hash-market server in-process on a random port.
     /// Returns (base_url, data_dir, shutdown_guard).
     /// The shutdown_guard triggers graceful shutdown when dropped.
-    async fn start_test_server(
-    ) -> anyhow::Result<(String, tempfile::TempDir, tokio::sync::oneshot::Sender<()>)> {
+    async fn start_test_server()
+    -> anyhow::Result<(String, tempfile::TempDir, tokio::sync::oneshot::Sender<()>)> {
         // Initialize tracing for diagnostics
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .with_env_filter("axum=trace,hash_market=debug")
             .with_test_writer()
-            .try_init()
-            .expect("tracing ");
+            .try_init();
         let data_dir = tempfile::TempDir::new()?;
         let custody = LocalSecp256k1::generate();
         let ve_handler = VoteExtensionHandler::new(Box::new(custody));
         let state = Arc::new(AppState::new(
-            ve_handler,
+            Some(ve_handler),
             "test-chain".into(),
             data_dir.path().to_path_buf(),
+            true,
         )?);
         let app = build_router(state);
 
@@ -1022,10 +1139,12 @@ mod test {
         assert_eq!(get_resp.status(), 200);
         let tree: serde_json::Value = get_resp.json().await.unwrap();
         assert_eq!(tree["root"], input["merkle_root"]);
-        assert!(tree["members"]
-            .as_object()
-            .unwrap()
-            .contains_key(&"terp1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string()));
+        assert!(
+            tree["members"]
+                .as_object()
+                .unwrap()
+                .contains_key(&"terp1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string())
+        );
         assert!(tree["created_at"].as_u64().unwrap() > 0);
         assert!(tree["updated_at"].as_u64().unwrap() > 0);
     }

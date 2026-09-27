@@ -1,99 +1,96 @@
-//! TerpNetworkSuite — contract deployment suite for Terp Network.
+//! TerpNetworkSuite — compose product cw-orch suites the operator actually uses.
 //!
-//! Composes cw-orch sub-suites: DAO, cw-infuser/SVG, headstash/zk,
-//! billboards/terp-accounts, and shitstraps — deployed conditionally
-//! based on supplied deploy data.
-//!
-//! Built for integration tests to spin up the full on-chain contract stack
-//! on any chain implementing `ZkCwEnv`.
+//! Default `cargo check -p terp-scripts` stays green: auth / orch / pdex are feature-gated.
+//! Private-bridge Path A lives in `terp-orch` (`--features orch-suite`).
 
-use cw_infuser_scripts::suite::CwSvgSuite;
 use cw_orch::prelude::*;
-use shit_scripts::CwShitstrapSuite;
 use std::collections::HashMap;
-use terp_account_scripts::TerpAccountSuite;
 
-// use super::deploy_data::TerpNetworkDeployData;
+use super::deploy_data::TerpNetworkDeployData;
 
-// /// Unified deployment suite composing all website contract suites.
-// pub struct TerpNetworkSuite<Chain: CwEnv>
- 
-// {
-//     pub chain: Chain,
-//     pub infuser: Option<CwSvgSuite<Chain>>,
-//     pub billboards: Option<TerpAccountSuite<Chain>>,
-//     // pub dao: Option<DaoDaoSuite<Chain>>,
-//     #[cfg(feature = "zk")]
-//     pub zk: Option<zk_test_press::TestPressSuite<Chain>>,
-// }
+/// Unified handle bag. Missing feature = field absent, not a stub suite.
+pub struct TerpNetworkSuite<Chain: CwEnv> {
+    pub chain: Chain,
+    #[cfg(feature = "auth-suite-full")]
+    pub auth: Option<terp_authenticator_suite::TerpAuthenticatorSuite<Chain>>,
+    #[cfg(feature = "orch-suite")]
+    pub orch: Option<terp_orch::TerpOrchSuite<Chain>>,
+    #[cfg(feature = "zk")]
+    pub pdex: Option<zk_test_press::suites::private_dex::PrivateDexSuite<Chain>>,
+}
 
-// impl<Chain: ZkCwEnv> TerpNetworkSuite<Chain>
-// where
-//     CwOrchError: From<<Chain as TxHandler>::Error>,
-// {
-//     /// Deploy suites conditionally based on which deploy data fields are `Some`.
-//     pub fn deploy_on(chain: Chain, data: TerpNetworkDeployData) -> Result<Self, CwOrchError> {
-//         // 1. CwSvgSuite (cw-infuser + SVG collections + shitstraps)
-//         let infuser = if let Some(svg_data) = data.cw_infuser {
-//             let mut suite = CwSvgSuite::deploy_on(chain.clone(), Some(svg_data))?;
-//             if let Some(shit_data) = data.shitstraps {
-//                 suite.shit = CwShitstrapSuite::deploy_on(chain.clone(), Some(shit_data))?;
-//             }
-//             Some(suite)
-//         } else {
-//             None
-//         };
+impl<Chain: CwEnv> TerpNetworkSuite<Chain>
+where
+    CwOrchError: From<<Chain as TxHandler>::Error>,
+{
+    pub fn new(chain: Chain) -> Self {
+        Self {
+            chain,
+            #[cfg(feature = "auth-suite-full")]
+            auth: None,
+            #[cfg(feature = "orch-suite")]
+            orch: None,
+            #[cfg(feature = "zk")]
+            pdex: None,
+        }
+    }
 
-//         // 2. TerpAccountSuite (billboards)
-//         let billboards = if let Some(admin) = data.terp_billboards {
-//             Some(TerpAccountSuite::deploy_on(chain.clone(), admin)?)
-//         } else {
-//             None
-//         };
+    /// Bind suites from Daemon / Mock state (no txs).
+    pub fn load_from(chain: Chain, data: &TerpNetworkDeployData) -> Result<Self, CwOrchError> {
+        let mut suite = Self::new(chain.clone());
+        #[cfg(feature = "auth-suite-full")]
+        if data.attach_auth {
+            suite.auth = Some(<terp_authenticator_suite::TerpAuthenticatorSuite<Chain> as cw_orch::contract::Deploy<Chain>>::load_from(
+                chain.clone(),
+            )?);
+        }
+        #[cfg(feature = "orch-suite")]
+        if data.attach_orch {
+            suite.orch = Some(<terp_orch::TerpOrchSuite<Chain> as cw_orch::contract::Deploy<Chain>>::load_from(
+                chain.clone(),
+            )?);
+        }
+        #[cfg(feature = "zk")]
+        if data.attach_pdex {
+            suite.pdex = Some(<zk_test_press::suites::private_dex::PrivateDexSuite<Chain> as cw_orch::contract::Deploy<Chain>>::load_from(
+                chain,
+            )?);
+        }
+        #[cfg(not(any(feature = "auth-suite-full", feature = "orch-suite", feature = "zk")))]
+        let _ = (chain, data);
+        Ok(suite)
+    }
 
-//         // 4. ZkHeadstashSuite (cw-headstash + cw-headstash-manifold + circuits)
-//         let zk = if let Some(zk_data) = data.zk {
-//             match TestPressSuite::deploy_on(chain.clone(), zk_data) {
-//                 Ok(suite) => Some(suite),
-//                 Err(e) => {
-//                     tracing::warn!("ZK headstash deploy failed (non-fatal): {}", e);
-//                     None
-//                 }
-//             }
-//         } else {
-//             None
-//         };
+    /// Upload wasm only when code_ids are missing.
+    pub fn store_if_needed(
+        chain: Chain,
+        data: &TerpNetworkDeployData,
+    ) -> Result<Self, CwOrchError> {
+        let mut suite = Self::load_from(chain.clone(), data)?;
+        #[cfg(feature = "auth-suite-full")]
+        if let Some(auth) = &suite.auth {
+            auth.upload_if_needed()?;
+        }
+        #[cfg(feature = "zk")]
+        if let Some(pdex) = &suite.pdex {
+            pdex.upload_if_needed()?;
+        }
+        let _ = chain;
+        Ok(suite)
+    }
 
-//         Ok(Self {
-//             chain,
-//             infuser,
-//             billboards,
-//         })
-//     }
+    pub fn deploy_on(chain: Chain, data: TerpNetworkDeployData) -> Result<Self, CwOrchError> {
+        Self::store_if_needed(chain, &data)
+    }
 
-//     /// Collect deployed contract addresses as a map (config key -> address).
-//     pub fn collect_addresses(&self) -> HashMap<String, String> {
-//         let mut addrs = HashMap::new();
+    pub fn collect_addresses(&self) -> HashMap<String, String> {
+        HashMap::new()
+    }
 
-//         if let Some(ref suite) = self.dao {
-//             if let Ok(addr) = suite.dao_core.addr_str() {
-//                 addrs.insert("daoCore".into(), addr);
-//             }
-//             if let Ok(addr) = suite.proposal.calendar.addr_str() {
-//                 addrs.insert("daoCalendar".into(), addr);
-//             }
-//         }
+    pub fn print_addresses(&self) {
+        for (key, addr) in self.collect_addresses() {
+            println!("CONTRACT_ADDR:{key}={addr}");
+        }
+    }
+}
 
-//         // Future: ZK, infuser, billboard addresses
-//         // if let Some(ref suite) = self.zk { ... }
-
-//         addrs
-//     }
-
-//     /// Print deployed contract addresses in `CONTRACT_ADDR:name=addr` format.
-//     pub fn print_addresses(&self) {
-//         for (key, addr) in self.collect_addresses() {
-//             println!("CONTRACT_ADDR:{}={}", key, addr);
-//         }
-//     }
-// }

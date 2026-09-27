@@ -1,7 +1,10 @@
+#![cfg(feature = "crosslink-e2e")]
 //! Integration test for the crosslink IBC light client end-to-end flow.
 //!
 //! Uses cw-orch CrosslinkLightClient interface for upload/instantiate/queries.
-//! The Terp chain is managed via ict-rs Docker; no zebrad binary is involved.
+//! The Terp chain is managed via ict-rs Docker.
+//! Synthetic Ed25519 (`SigningKey::from([i;32])`) is state-machine only.
+//! Live zakurad TFL → 08-wasm is `zakura_crosslink_live_lc.rs` (feature zakura-live).
 //!
 //! Test runtime design
 //! -------------------
