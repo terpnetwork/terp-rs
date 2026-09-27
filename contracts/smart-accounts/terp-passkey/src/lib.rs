@@ -1,4 +1,4 @@
-//! Passkey authenticator — full `TerpAccountTrait` / `BtsgAccountTrait` workflow.
+//! Passkey authenticator — full `TerpAccountTrait` / `TerpAccountTrait` workflow.
 //!
 //! Authenticate expects a JSON [`PasskeyAuthPayload`] in `signature`. Cryptographic
 //! WebAuthn verification can plug into [`verify_passkey_payload`]; the default
@@ -15,7 +15,7 @@ use cosmwasm_std::{
     Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 use crate::state::PasskeyRegistration as Reg;
@@ -136,7 +136,7 @@ fn verify_passkey_payload(reg: &Reg, payload: &PasskeyAuthPayload) -> Result<(),
     Ok(())
 }
 
-impl BtsgAccountTrait for PasskeyAuthenticator {
+impl TerpAccountTrait for PasskeyAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;

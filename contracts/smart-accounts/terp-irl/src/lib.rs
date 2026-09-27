@@ -1,7 +1,7 @@
 //! IRL / witness authenticator — trait-complete scaffold.
 //!
 //! Historical epoch/witness crypto remains future work. This module implements
-//! the full `BtsgAccountTrait` workflow with structural witness checks so the
+//! the full `TerpAccountTrait` workflow with structural witness checks so the
 //! suite and x/smart-account routing can be exercised end-to-end.
 
 mod error;
@@ -14,7 +14,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-irl";
@@ -93,7 +93,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     IrlAuthenticator::process_sudo_auth(deps, env, &msg)
 }
 
-impl BtsgAccountTrait for IrlAuthenticator {
+impl TerpAccountTrait for IrlAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;

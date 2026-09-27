@@ -2,7 +2,7 @@ use crate::{
     claims::{fetch_witness_for_claim, Proof},
     state::{Config, Epoch, Witness, CONFIG, EPOCHS},
 };
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{from_json, Addr, Event, Response, Uint128};
 use serde::{Deserialize, Serialize};
@@ -22,9 +22,9 @@ use cw2::set_contract_version;
 const CONTRACT_NAME: &str = "crates.io:terp-zktls";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountZkTls {}
-pub type BtsgAccountZkTslAuthStuct = Proof;
-pub type SudoMsg = <BtsgAccountZkTls as BtsgAccountTrait>::SudoMsg;
+pub struct TerpAccountZkTls {}
+pub type TerpAccountZkTslAuthStuct = Proof;
+pub type SudoMsg = <TerpAccountZkTls as TerpAccountTrait>::SudoMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -102,10 +102,10 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    BtsgAccountZkTls::process_sudo_auth(deps, env, &msg)
+    TerpAccountZkTls::process_sudo_auth(deps, env, &msg)
 }
 
-impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
+impl terp_account::traits::default::TerpAccountTrait for TerpAccountZkTls {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -113,7 +113,7 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
 
     type ContractError = ContractError;
 
-    type AuthMethodStructs = BtsgAccountZkTslAuthStuct;
+    type AuthMethodStructs = TerpAccountZkTslAuthStuct;
     type AuthProcessResult = Result<Response, ContractError>;
 
     fn extended_authenticate(

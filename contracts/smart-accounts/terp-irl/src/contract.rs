@@ -8,8 +8,8 @@ use crate::state::{
     Config, Epoch, Witness, CONFIG, EPOCHS, FANTOKEN_INFO, MINTED_AMOUNTS, WAVS_SMART_ACCOUNT,
     ZKTLS_ENABLED,
 };
-use crate::BtsgAccountIrl;
-use terp_account::traits::default::BtsgAccountTrait;
+use crate::TerpAccountIrl;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::{
     AuthenticationRequest, ConfirmExecutionRequest, OnAuthenticatorAddedRequest,
     OnAuthenticatorRemovedRequest, TrackRequest,
@@ -273,7 +273,7 @@ fn query_epoch_id(deps: Deps, id: u128) -> StdResult<GetEpochResponse> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: crate::SudoMsg) -> Result<Response, ContractError> {
     match ZKTLS_ENABLED.load(deps.storage)? {
-        true => BtsgAccountIrl::process_sudo_auth(deps, env, &msg),
+        true => TerpAccountIrl::process_sudo_auth(deps, env, &msg),
         false => Ok(Response::new()),
     }
 }

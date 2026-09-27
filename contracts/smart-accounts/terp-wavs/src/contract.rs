@@ -1,4 +1,4 @@
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
@@ -6,7 +6,7 @@ use cw2::set_contract_version;
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{BlsMetadata, WAVS_PUBKEY},
-    BtsgAccountWavs, ContractError,
+    TerpAccountWavs, ContractError,
 };
 
 use cosmwasm_std::entry_point;
@@ -65,9 +65,9 @@ pub fn execute(
 pub fn sudo(
     deps: DepsMut,
     env: Env,
-    msg: <BtsgAccountWavs as BtsgAccountTrait>::SudoMsg,
+    msg: <TerpAccountWavs as TerpAccountTrait>::SudoMsg,
 ) -> Result<Response, ContractError> {
-    BtsgAccountWavs::process_sudo_auth(deps, env, &msg)
+    TerpAccountWavs::process_sudo_auth(deps, env, &msg)
 }
 
 // TODO: implement entrypoint as required type into btsgaccuont trait

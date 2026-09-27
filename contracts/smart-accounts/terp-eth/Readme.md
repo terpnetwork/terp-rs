@@ -4,11 +4,11 @@ authentication for eth based signatures of off-chain actions.
 
  eth personal signatures : <https://eips.ethereum.org/EIPS/eip-191>
 
-# Ethereum Personal Signature Authenticator for BTSG Accounts
+# Ethereum Personal Signature Authenticator for Terp Accounts
 
 ## Overview
 
-This module implements an **Ethereum Personal Signature Authenticator** for the [BTSG Account Trait](https://github.com/terp-auth/docs) and [x/smart-account module](https://github.com/terpnetwork/terp-core/blob/main/x/smart-account/README.md). It enables authentication of Cosmos transactions using **EVM-compatible personal signatures** (EIP-191 style), allowing Ethereum wallets (e.g., MetaMask, Ledger) to sign Cosmos txs without native Cosmos key management. This bridges EVM and Cosmos ecosystems for seamless cross-chain UX.
+This module implements an **Ethereum Personal Signature Authenticator** for the [Terp Account Trait](https://github.com/terp-auth/docs) and [x/smart-account module](https://github.com/terpnetwork/terp-core/blob/main/x/smart-account/README.md). It enables authentication of Cosmos transactions using **EVM-compatible personal signatures** (EIP-191 style), allowing Ethereum wallets (e.g., MetaMask, Ledger) to sign Cosmos txs without native Cosmos key management. This bridges EVM and Cosmos ecosystems for seamless cross-chain UX.
 
 ### Key Features
 - **EIP-191 Signing**: Signs the tx data with the Ethereum personal message prefix (`\x19Ethereum Signed Message:\n<len>` + msg), hashed via Keccak256, then ECDSA secp256k1.
@@ -43,8 +43,8 @@ Import via `use crate::msg::*;` or equivalent.
 ### Auth Structs
 | Struct | Description | Fields |
 |--------|-------------|--------|
-| `BtsgAccountEthStructs` | Placeholder for extensions (e.g., chain ID). | N/A |
-| `BtsgAccountEth` | Main trait impl. | N/A |
+| `TerpAccountEthStructs` | Placeholder for extensions (e.g., chain ID). | N/A |
+| `TerpAccountEth` | Main trait impl. | N/A |
 
 ### Eth Types (from `saa`)
 - **`EthPersonalSign`**: Signing structure.
@@ -58,7 +58,7 @@ Import via `use crate::msg::*;` or equivalent.
 
 ## Trait Implementation Details
 
-`BtsgAccountEth` implements `BtsgAccountTrait`. Key methods:
+`TerpAccountEth` implements `TerpAccountTrait`. Key methods:
 
 ### Associated Types
 | Type | Value |
@@ -68,7 +68,7 @@ Import via `use crate::msg::*;` or equivalent.
 | `QueryMsg` | `QueryMsg` |
 | `SudoMsg` | `terp_auth::AuthSudoMsg` |
 | `ContractError` | `ContractError` |
-| `AuthMethodStructs` | `BtsgAccountEthStructs` |
+| `AuthMethodStructs` | `TerpAccountEthStructs` |
 | `AuthProcessResult` | `Result<Response, ContractError>` |
 
 ### Core Methods
@@ -258,4 +258,4 @@ impl Verifiable for EthPersonalSign {
 - **Tests**: `cw-multi-test` with `MockApi` for `secp256k1_recover_pubkey`. Generate sigs with example.
 - **Limitations**: No chain ID replay protection (extend hash); EVM-only (secp256k1).
 
-For `saa` details, see crate. Contribute to BTSG!
+For `saa` details, see crate. Contribute to Terp!

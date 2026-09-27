@@ -29,7 +29,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-recovery";
@@ -305,7 +305,7 @@ fn verify_approval(
     }
 }
 
-impl BtsgAccountTrait for RecoveryAuthenticator {
+impl TerpAccountTrait for RecoveryAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;

@@ -1,6 +1,6 @@
 use crate::state::{Epoch, Witness};
-use crate::BtsgAccountIrl;
-use terp_account::traits::default::BtsgAccountTrait;
+use crate::TerpAccountIrl;
+use terp_account::traits::default::TerpAccountTrait;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 

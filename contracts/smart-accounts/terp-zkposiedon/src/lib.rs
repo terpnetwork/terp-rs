@@ -3,7 +3,7 @@
 //!
 //! Note: package directory keeps the historical `terp-zkposiedon` spelling.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult};
 use cw2::set_contract_version;
 use terp_auth::AuthSudoMsg;
@@ -23,7 +23,7 @@ pub enum QueryMsg {}
 
 pub type SudoMsg = AuthSudoMsg;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -34,7 +34,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "zkposeidon_instantiate"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     _deps: DepsMut,
     _env: Env,
@@ -44,12 +44,12 @@ pub fn execute(
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Err(StdError::msg("no queries"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(_deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, StdError> {
     let action = match msg {
         AuthSudoMsg::OnAuthAdded(_) => "zkposeidon_on_auth_added",

@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
 use sha3::{Digest, Keccak256};
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-eth";
@@ -133,7 +133,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     EthAuthenticator::process_sudo_auth(deps, env, &msg)
 }
 
-impl BtsgAccountTrait for EthAuthenticator {
+impl TerpAccountTrait for EthAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;

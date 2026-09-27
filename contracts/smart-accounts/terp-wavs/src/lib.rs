@@ -10,17 +10,17 @@ pub use crate::error::ContractError;
 use crate::state::WAVS_PUBKEY;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountWavsAuthStruct {}
+pub struct TerpAccountWavsAuthStruct {}
 
 #[derive(Debug, Clone, Serialize, Default, Deserialize)]
-pub struct BtsgAccountWavs {}
-impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountWavs {
+pub struct TerpAccountWavs {}
+impl terp_account::traits::default::TerpAccountTrait for TerpAccountWavs {
     type InstantiateMsg = crate::msg::InstantiateMsg;
     type ExecuteMsg = crate::msg::ExecuteMsg;
     type QueryMsg = crate::msg::QueryMsg;
     type SudoMsg = terp_auth::AuthSudoMsg;
     type ContractError = crate::error::ContractError;
-    type AuthMethodStructs = BtsgAccountWavsAuthStruct;
+    type AuthMethodStructs = TerpAccountWavsAuthStruct;
     type AuthProcessResult = Result<Response, ContractError>;
 
     fn process_sudo_auth(

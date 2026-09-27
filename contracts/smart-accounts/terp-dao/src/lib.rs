@@ -6,7 +6,7 @@ pub mod state;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::DAO;
 
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -19,9 +19,9 @@ const CONTRACT_NAME: &str = "crates.io:terp-irl";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountDaoStructs {}
+pub struct TerpAccountDaoStructs {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountDao {}
+pub struct TerpAccountDao {}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -60,18 +60,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn sudo(
     deps: DepsMut,
     env: Env,
-    req: <BtsgAccountDao as BtsgAccountTrait>::SudoMsg,
+    req: <TerpAccountDao as TerpAccountTrait>::SudoMsg,
 ) -> Result<Response, ContractError> {
-    BtsgAccountDao::process_sudo_auth(deps, env, &req)
+    TerpAccountDao::process_sudo_auth(deps, env, &req)
 }
 
-impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountDao {
+impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     type InstantiateMsg = crate::msg::InstantiateMsg;
     type ExecuteMsg = crate::msg::ExecuteMsg;
     type QueryMsg = crate::msg::QueryMsg;
     type SudoMsg = terp_auth::AuthSudoMsg;
     type ContractError = crate::error::ContractError;
-    type AuthMethodStructs = BtsgAccountDaoStructs;
+    type AuthMethodStructs = TerpAccountDaoStructs;
     type AuthProcessResult = Result<Response, ContractError>;
 
     fn process_sudo_auth(

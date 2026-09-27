@@ -7,7 +7,7 @@
 
 ## Overview
 
-This module implements a **Passkey Authenticator** for the [BTSG Account Trait](https://github.com/terp-auth/docs) and [x/smart-account module](https://github.com/terpnetwork/terp-core/blob/main/x/smart-account/README.md). It enables passwordless, phishing-resistant authentication using **WebAuthn/FIDO2 passkeys** (e.g., device-bound keys like Touch ID or YubiKeys) in CosmWasm contracts. Passkeys provide cryptographic credentials that can be verified on-chain without revealing secrets.
+This module implements a **Passkey Authenticator** for the [Terp Account Trait](https://github.com/terp-auth/docs) and [x/smart-account module](https://github.com/terpnetwork/terp-core/blob/main/x/smart-account/README.md). It enables passwordless, phishing-resistant authentication using **WebAuthn/FIDO2 passkeys** (e.g., device-bound keys like Touch ID or YubiKeys) in CosmWasm contracts. Passkeys provide cryptographic credentials that can be verified on-chain without revealing secrets.
 
 ### Key Features
 
@@ -48,8 +48,8 @@ Import via `use crate::msg::*;` or equivalent.
 
 | Struct | Description | Fields |
 |--------|-------------|--------|
-| `BtsgAccountPasskeysAuthStruct` | Placeholder for custom auth extensions (unused; extend for params). | N/A |
-| `BtsgAccountPasskey` | Main impl struct for trait. | N/A |
+| `TerpAccountPasskeysAuthStruct` | Placeholder for custom auth extensions (unused; extend for params). | N/A |
+| `TerpAccountPasskey` | Main impl struct for trait. | N/A |
 
 ### Passkey Types (from `saa`)
 
@@ -71,7 +71,7 @@ Import via `use crate::msg::*;` or equivalent.
 
 ## Trait Implementation Details
 
-The `BtsgAccountPasskey` implements `BtsgAccountTrait`. Key methods:
+The `TerpAccountPasskey` implements `TerpAccountTrait`. Key methods:
 
 ### Associated Types
 
@@ -82,7 +82,7 @@ The `BtsgAccountPasskey` implements `BtsgAccountTrait`. Key methods:
 | `QueryMsg` | `QueryMsg` |
 | `SudoMsg` | `terp_auth::AuthSudoMsg` (routes to hooks) |
 | `ContractError` | `crate::error::ContractError` (e.g., `Unauthorized`) |
-| `AuthMethodStructs` | `BtsgAccountPasskeysAuthStruct` |
+| `AuthMethodStructs` | `TerpAccountPasskeysAuthStruct` |
 | `AuthProcessResult` | `Result<Response, ContractError>` |
 
 ### Core Methods
@@ -231,6 +231,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - **Tests**: Use `cw-multi-test`; mock `Deps` with `MockApi` for `secp256r1_verify`. Generate creds with `webauthn-rs`.
 - **Gas**: Sig verify ~20k gas; optimize by storing pubkeys.
 
-For full `saa` docs, see crate. Contribute to BTSG!
+For full `saa` docs, see crate. Contribute to Terp!
 
 ## Demo: 2-Step Auth - Bluetooth + FaceID
