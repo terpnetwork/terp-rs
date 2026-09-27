@@ -1,0 +1,43 @@
+# Terp Hermes: 08-wasm wrapping ICS-07 Tendermint (`--wasm-checksum`).
+#
+# Source: https://github.com/terpnetwork/hermes  branch feat/08-wasm
+# (Informal romac/wasm-client / PR #3943, forked for Terp customization).
+#
+#   ./scripts/ibc-ops/build_hermes.sh
+#   HERMES_IMAGE_REPO=terpnetwork/hermes HERMES_IMAGE_VERSION=08-wasm \
+#     TERP_IMAGE_VERSION=v6.3.0-dev \
+#     cargo run -p ict-rs --example hasher_ibc_bench --features docker,testing,terp
+ARG RUST_IMAGE=rust:1.81-bookworm
+FROM ${RUST_IMAGE} AS build-env
+
+ARG HERMES_REPO=https://github.com/terpnetwork/hermes.git
+ARG HERMES_REF=feat/08-wasm
+ARG PROTOC_VERSION=28.3
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates git clang libssl-dev pkg-config unzip wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then ARCH=x86_64; \
+    elif [ "$ARCH" = "aarch64" ]; then ARCH=aarch_64; \
+    else echo "Unsupported architecture: $ARCH"; exit 1; fi && \
+    wget -q "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${ARCH}.zip" -O /tmp/protoc.zip && \
+    unzip -q /tmp/protoc.zip -d /usr/local && \
+    rm /tmp/protoc.zip
+
+RUN git clone --depth 1 --branch "${HERMES_REF}" "${HERMES_REPO}" /src
+WORKDIR /src
+RUN cargo build --release --bin hermes
+
+FROM debian:bookworm-slim
+ARG UID=2000
+ARG GID=2000
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates libssl3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g ${GID} hermes \
+    && useradd -l -m hermes -s /bin/bash -u ${UID} -g ${GID}
+COPY --from=build-env /src/target/release/hermes /usr/bin/hermes
+USER hermes:hermes
+WORKDIR /home/hermes
+ENTRYPOINT ["/usr/bin/hermes"]

@@ -1,0 +1,42 @@
+{
+  "propose": {
+    "msg": {
+      "propose": {
+        "description": "One hundred thousand TERP from this treasury onto each bonded validator.",
+        "msgs": [
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMWc4MHA0c3V6cno0dnFzdnMzemEweXFocWNwaGx2bmp5N3NuZm53GhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          },
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMWZhazhxZWQzenU4NmQ4aGxta2RzZWU5aDJ4dHV0YXdscW02NjBqGhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          },
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMTI2amR5Yzc0cDcwYWh6cmYzd3Zha2E3aG1la2U4ZzJudHltNzBwGhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          },
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMWRteXU3amR1N3BnemdzeHVjbmF2NnNhbmZrOHM3amZzdzB5NjBhGhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          },
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMW16bnMyZnA0dXJlbHF4eWp4eWplbGVmMzRqOWV5bnU4ZmZkOXZ0GhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          }
+        ],
+        "title": "Delegate 100,000 TERP to every bonded validator"
+      }
+    }
+  }
+}

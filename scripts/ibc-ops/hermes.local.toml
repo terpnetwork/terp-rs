@@ -1,0 +1,211 @@
+# Local Hermes template. Do not rsync onto groot2.
+# Do not overwrite production ~/.hermes on groot2.
+#
+# Hermes 1.13.1 EventSourceMode::Pull has interval + max_retries only.
+# url + batch_delay belong to Push. Wasm-capable 240u-* uses pull (no url).
+# Hermes 1.8.2+ requires [rest]/[telemetry] host + port even when disabled.
+
+[global]
+log_level = 'info'
+
+[mode.clients]
+enabled = true
+refresh = true
+misbehaviour = true
+
+[mode.connections]
+enabled = true
+
+[mode.channels]
+enabled = true
+
+[mode.packets]
+enabled = true
+clear_interval = 10
+clear_on_start = true
+tx_confirmation = false
+
+[rest]
+enabled = false
+host = '127.0.0.1'
+port = 3000
+
+[telemetry]
+enabled = false
+host = '127.0.0.1'
+port = 3001
+
+[[chains]]
+id = '240u-1'
+type = 'CosmosSdk'
+rpc_addr = 'http://127.0.0.1:26657'
+grpc_addr = 'http://127.0.0.1:9090'
+account_prefix = 'terp'
+key_name = 'relayer'
+store_prefix = 'ibc'
+default_gas = 200000
+max_gas = 10000000
+gas_multiplier = 1.2
+max_msg_num = 30
+max_tx_size = 2097152
+clock_drift = '5s'
+max_block_time = '10s'
+trusting_period = '112h'
+memo_prefix = 'terp-local'
+
+[chains.event_source]
+mode = 'pull'
+interval = '500ms'
+max_retries = 4
+
+[chains.gas_price]
+price = 0.025
+denom = 'uterp'
+
+[chains.trust_threshold]
+numerator = '1'
+denominator = '3'
+
+[[chains]]
+id = '240u-2'
+type = 'CosmosSdk'
+rpc_addr = 'http://127.0.0.1:26667'
+grpc_addr = 'http://127.0.0.1:9091'
+account_prefix = 'terp'
+key_name = 'relayer'
+store_prefix = 'ibc'
+default_gas = 200000
+max_gas = 10000000
+gas_multiplier = 1.2
+max_msg_num = 30
+max_tx_size = 2097152
+clock_drift = '5s'
+max_block_time = '10s'
+trusting_period = '112h'
+memo_prefix = 'terp-local-b'
+
+[chains.event_source]
+mode = 'pull'
+interval = '500ms'
+max_retries = 4
+
+[chains.gas_price]
+price = 0.025
+denom = 'uterp'
+
+[chains.trust_threshold]
+numerator = '1'
+denominator = '3'
+
+# ---------------------------------------------------------------------------
+# Commented counterparty templates. Placeholder RPCs. Not loaded by default.
+# Classic 07-tendermint packets would use push WS; wasm-capable stays pull.
+# Fill after quoting `hermes config validate` on a local desk — never groot2.
+# ---------------------------------------------------------------------------
+
+# [[chains]]
+# id = 'juno-1'
+# type = 'CosmosSdk'
+# rpc_addr = 'https://juno-rpc.polkachu.com'
+# grpc_addr = 'http://juno-grpc.polkachu.com:12690'
+# account_prefix = 'juno'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# default_gas = 200000
+# max_gas = 10000000
+# gas_multiplier = 1.2
+# clock_drift = '5s'
+# max_block_time = '10s'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '1s'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.075
+# denom = 'ujuno'
+
+# [[chains]]
+# id = 'osmosis-1'
+# type = 'CosmosSdk'
+# rpc_addr = 'https://rpc.osmosis.zone'
+# grpc_addr = 'https://osmosis.lavenderfive.com:443'
+# account_prefix = 'osmo'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '1s'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.0025
+# denom = 'uosmo'
+
+# [[chains]]
+# id = 'akashnet-2'
+# type = 'CosmosSdk'
+# rpc_addr = 'https://akash-rpc.polkachu.com'
+# grpc_addr = 'https://akash.lavenderfive.com:443'
+# account_prefix = 'akash'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '1s'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.025
+# denom = 'uakt'
+
+# [[chains]]
+# id = 'bitsong-2b'
+# type = 'CosmosSdk'
+# rpc_addr = 'https://rpc.explorebitsong.com'
+# grpc_addr = 'http://bitsong-grpc.polkachu.com:16090'
+# account_prefix = 'bitsong'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '1s'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.025
+# denom = 'ubtsg'
+
+# [[chains]]
+# id = '120u-1'
+# type = 'CosmosSdk'
+# rpc_addr = 'http://127.0.0.1:26657'
+# grpc_addr = 'https://testnet-grpc.terp.network'
+# account_prefix = 'terp'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '500ms'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.05
+# denom = 'uterp'
+
+# [[chains]]
+# id = 'morocco-1'
+# type = 'CosmosSdk'
+# rpc_addr = 'http://127.0.0.1:26657'
+# grpc_addr = 'http://127.0.0.1:9090'
+# account_prefix = 'terp'
+# key_name = 'relayer'
+# store_prefix = 'ibc'
+# trusting_period = '112h'
+# [chains.event_source]
+# mode = 'pull'
+# interval = '500ms'
+# max_retries = 4
+# [chains.gas_price]
+# price = 0.05
+# denom = 'uthiol'

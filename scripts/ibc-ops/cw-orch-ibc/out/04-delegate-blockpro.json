@@ -1,0 +1,18 @@
+{
+  "propose": {
+    "msg": {
+      "propose": {
+        "description": "Stake 100,000 TERP with BlockPro (terpvaloper1gr67fce5ymhyz93qe0flqlgv2p424a48hccllk).",
+        "msgs": [
+          {
+            "any": {
+              "type_url": "/cosmos.staking.v1beta1.MsgDelegate",
+              "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSMnRlcnB2YWxvcGVyMWdyNjdmY2U1eW1oeXo5M3FlMGZscWxndjJwNDI0YTQ4aGNjbGxrGhUKBXV0ZXJwEgwxMDAwMDAwMDAwMDA="
+            }
+          }
+        ],
+        "title": "Delegate 100,000 TERP to BlockPro"
+      }
+    }
+  }
+}

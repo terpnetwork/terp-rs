@@ -1,0 +1,89 @@
+# Ecosystem combination CI — ict-rs as the runtime engine (one spawn, many crates).
+# Offline job always. Live job queries one LCD (DAO + grant presets) in parallel.
+# Product crates keep their own focused tests; this workflow is compositions only.
+# ict-rs bins: scripts/ci/ict-rs-bins.env (GitHub pin + MinIO tarball, not groot-only).
+name: terp-rs combo
+
+on:
+  push:
+    paths:
+      - "crates/**"
+      - "tools/**"
+      - "scripts/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/combo.yml"
+  pull_request:
+    paths:
+      - "crates/**"
+      - "tools/**"
+      - "scripts/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/combo.yml"
+  workflow_dispatch:
+    inputs:
+      live_lcd:
+        description: "Run live LCD DAO combo (120u-1)"
+        type: boolean
+        default: true
+
+jobs:
+  offline:
+    name: combo offline (scripts + runtime)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+      - name: Combination suite
+        env:
+          ICT_RS_COMMIT: d50f79543ac335396c69f06ee60fc6cbb818ba83
+          ICT_RS_BINS_URL: https://minio.terp.network/releases/ict-rs/commits/d50f79543ac335396c69f06ee60fc6cbb818ba83/ict-ci-linux-x86_64.tar.gz
+        run: bash scripts/ci/ci-combo.sh
+
+  live-lcd:
+    name: combo live LCD (DAO infra)
+    runs-on: ubuntu-latest
+    # Public 120u-1 already has dao-core / proposal / passkey codes uploaded.
+    # This is the attach path; full ict-rs Docker spawn is ICT_SPAWN=1 on a lab runner.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+      - name: Offline + live LCD
+        env:
+          ICT_LCD: ${{ vars.ICT_LCD || 'https://testnet-api.terp.network' }}
+          ICT_CHAIN: ${{ vars.ICT_CHAIN || '120u-1' }}
+          ICT_RS_COMMIT: d50f79543ac335396c69f06ee60fc6cbb818ba83
+          ICT_RS_BINS_URL: https://minio.terp.network/releases/ict-rs/commits/d50f79543ac335396c69f06ee60fc6cbb818ba83/ict-ci-linux-x86_64.tar.gz
+          # Full Docker spawn is lab-only (ICT_SPAWN=1 after fetch-ict-rs-bins.sh).
+          ICT_SPAWN: ${{ vars.ICT_SPAWN || '' }}
+        run: bash scripts/ci/ci-combo.sh --live
+
+  ict-mock:
+    name: ict-rs mock examples (prebuilt pin)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned ict-ci
+        run: bash scripts/ci/fetch-ict-rs-bins.sh /tmp/ict-rs-bins
+      - name: Run mock group
+        env:
+          ICT_CI_BIN_DIR: /tmp/ict-rs-bins/examples
+        run: |
+          set -euo pipefail
+          if /tmp/ict-rs-bins/ict-ci list mock >/dev/null 2>&1; then
+            /tmp/ict-rs-bins/ict-ci run-group mock
+          else
+            echo "pinned ict-ci has no run-group mock (rebuild/publish tarball after ict-ci expansion)" >&2
+            exit 1
+          fi

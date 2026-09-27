@@ -1,0 +1,21 @@
+{
+  "propose": {
+    "msg": {
+      "propose": {
+        "description": "After a vote passes, this module waits seven days so chain governance can veto. We do not need that. Voting already runs thirty-two hours. Turn the veto off.\n\nPassing rules stay the same: majority, 20% quorum, 32-hour window.\n\nThis does not change proposals 3 and 4. They already carry the lock.",
+        "msgs": [
+          {
+            "wasm": {
+              "execute": {
+                "contract_addr": "terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g",
+                "funds": [],
+                "msg": "eyJ1cGRhdGVfY29uZmlnIjp7InRocmVzaG9sZCI6eyJ0aHJlc2hvbGRfcXVvcnVtIjp7InRocmVzaG9sZCI6eyJtYWpvcml0eSI6e319LCJxdW9ydW0iOnsicGVyY2VudCI6IjAuMiJ9fX0sIm1heF92b3RpbmdfcGVyaW9kIjp7InRpbWUiOjExNTIwMH0sIm1pbl92b3RpbmdfcGVyaW9kIjpudWxsLCJvbmx5X21lbWJlcnNfZXhlY3V0ZSI6ZmFsc2UsImFsbG93X3Jldm90aW5nIjpmYWxzZSwiZGFvIjoidGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3IiwiY2xvc2VfcHJvcG9zYWxfb25fZXhlY3V0aW9uX2ZhaWx1cmUiOnRydWUsInZldG8iOm51bGx9fQ=="
+              }
+            }
+          }
+        ],
+        "title": "Drop the seven-day execution lock"
+      }
+    }
+  }
+}

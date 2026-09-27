@@ -1,0 +1,32 @@
+{
+  "propose": {
+    "msg": {
+      "propose": {
+        "description": "'Say Fuck It And Begin'. A forward deployment subdao for Terp Network Foundation, deploying and interacting with Terp Network's ecosystem in a minimally constrained structure. Allows us to curate data points, and reflect for improving the stewardship and collaborative support of growth.\n\nThis DAO stays admin. Seed 1,000,000 uterp and 1,000,000 uthiol. One member.",
+        "msgs": [
+          {
+            "wasm": {
+              "instantiate": {
+                "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+                "code_id": 23,
+                "funds": [
+                  {
+                    "amount": "1000000",
+                    "denom": "uterp"
+                  },
+                  {
+                    "amount": "1000000",
+                    "denom": "uthiol"
+                  }
+                ],
+                "label": "FIAB-SUBDAO",
+                "msg": "eyJhZG1pbiI6InRlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydyIsIm5hbWUiOiJGSUFCLVNVQkRBTyIsImRlc2NyaXB0aW9uIjoiJ1NheSBGdWNrIEl0IEFuZCBCZWdpbicuIEEgZm9yd2FyZCBkZXBsb3ltZW50IHN1YmRhbyBmb3IgVGVycCBOZXR3b3JrIEZvdW5kYXRpb24sIGRlcGxveWluZyBhbmQgaW50ZXJhY3Rpbmcgd2l0aCBUZXJwIE5ldHdvcmsncyBlY29zeXN0ZW0gaW4gYSBtaW5pbWFsbHkgY29uc3RyYWluZWQgc3RydWN0dXJlLiBBbGxvd3MgdXMgdG8gY3VyYXRlIGRhdGEgcG9pbnRzLCBhbmQgcmVmbGVjdCBmb3IgaW1wcm92aW5nIHRoZSBzdGV3YXJkc2hpcCBhbmQgY29sbGFib3JhdGl2ZSBzdXBwb3J0IG9mIGdyb3d0aC4iLCJpbWFnZV91cmwiOm51bGwsImF1dG9tYXRpY2FsbHlfYWRkX2N3MjBzIjp0cnVlLCJhdXRvbWF0aWNhbGx5X2FkZF9jdzcyMXMiOnRydWUsInZvdGluZ19tb2R1bGVfaW5zdGFudGlhdGVfaW5mbyI6eyJjb2RlX2lkIjo1NiwibXNnIjoiZXlKbmNtOTFjRjlqYjI1MGNtRmpkQ0k2ZXlKdVpYY2lPbnNpWTNjMFgyZHliM1Z3WDJOdlpHVmZhV1FpT2pZeExDSmpkelJmWjNKdmRYQmZjMkZzZENJNmJuVnNiQ3dpYVc1cGRHbGhiRjl0WlcxaVpYSnpJanBiZXlKaFpHUnlJam9pZEdWeWNERm1ZWHAyZW5RMmNHUndiVFJzWnpaME56Tm9NR28wWkhONWRXTTRkR1I0ZDNKc2QzRTVhaUlzSW5kbGFXZG9kQ0k2TVgxZGZYMTkiLCJhZG1pbiI6eyJjb3JlX21vZHVsZSI6e319LCJmdW5kcyI6bnVsbCwibGFiZWwiOiJmaWFiLXZvdGluZy1jdzQiLCJzYWx0IjpudWxsfSwicHJvcG9zYWxfbW9kdWxlc19pbnN0YW50aWF0ZV9pbmZvIjpbeyJjb2RlX2lkIjoyNCwibXNnIjoiZXlKMGFISmxjMmh2YkdRaU9uc2lZV0p6YjJ4MWRHVmZZMjkxYm5RaU9uc2lkR2h5WlhOb2IyeGtJam9pTVNKOWZTd2liV0Y0WDNadmRHbHVaMTl3WlhKcGIyUWlPbnNpZEdsdFpTSTZPRFkwTURCOUxDSnRhVzVmZG05MGFXNW5YM0JsY21sdlpDSTZiblZzYkN3aWIyNXNlVjl0WlcxaVpYSnpYMlY0WldOMWRHVWlPblJ5ZFdVc0ltRnNiRzkzWDNKbGRtOTBhVzVuSWpwbVlXeHpaU3dpY0hKbFgzQnliM0J2YzJWZmFXNW1ieUk2ZXlKaGJubHZibVZmYldGNVgzQnliM0J2YzJVaU9udDlmU3dpWTJ4dmMyVmZjSEp2Y0c5ellXeGZiMjVmWlhobFkzVjBhVzl1WDJaaGFXeDFjbVVpT25SeWRXVXNJblpsZEc4aU9tNTFiR3dzSW1SbGJHVm5ZWFJwYjI1ZmJXOWtkV3hsSWpwdWRXeHNmUT09IiwiYWRtaW4iOnsiY29yZV9tb2R1bGUiOnt9fSwiZnVuZHMiOm51bGwsImxhYmVsIjoiZmlhYi1wcm9wb3NhbC1zaW5nbGUiLCJzYWx0IjpudWxsfV0sImluaXRpYWxfaXRlbXMiOm51bGwsImluaXRpYWxfYWN0aW9ucyI6bnVsbCwiZGFvX3VyaSI6bnVsbH0="
+              }
+            }
+          }
+        ],
+        "title": "Say fuck it and begin"
+      }
+    }
+  }
+}
