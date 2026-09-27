@@ -1,0 +1,36 @@
+[package]
+name = "zkjwt-wasm"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.86"
+description = "Browser Halo2 prover for terp-zkjwt passkey P-256 (ECDSA in-circuit)"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "bench_zkjwt"
+path = "src/bin/bench_zkjwt.rs"
+
+[dependencies]
+wasm-bindgen = "=0.2.106"
+serde_json = "1"
+ff = "0.13"
+group = "0.13"
+rand = "0.8"
+getrandom = { version = "0.2", features = ["js"] }
+sha2 = "0.10"
+num-bigint = "0.4"
+hex = "0.4"
+halo2-base = { path = "../../../../zcash/halo2-lib/halo2-base", default-features = false, features = ["halo2-axiom"] }
+halo2-ecc = { path = "../../../../zcash/halo2-lib/halo2-ecc", default-features = false, features = ["halo2-axiom"] }
+
+[dev-dependencies]
+p256 = { version = "0.13", features = ["ecdsa"] }
+ecdsa = "0.16"
+
+[profile.release]
+opt-level = "s"
+lto = true
