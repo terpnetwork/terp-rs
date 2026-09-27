@@ -6,4 +6,4 @@
 | `residual-registry/` | terp-residual-registry | Residual / royalty registry |
 | **`private-dex/`** | **private-dex** | Private swap **SettleSwap** (was headstash `cw-private-dex`) |
 
-Product docs: `../../docs/private-bridge/`.
+Product docs: https://docs.terp.network/research/private-dex (canonical) — lab notes `../../docs/private-bridge/`.
