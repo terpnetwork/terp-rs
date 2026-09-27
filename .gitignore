@@ -1,6 +1,9 @@
 target
 /schema
-/artifacts
+/_plans/
+# Per-crate wasm dumps (canonical store is crates/terp-rs/artifacts/)
+contracts/**/artifacts/
+crates/**/artifacts/
 # Text file backups
 **/*.rs.bk
 # macOS
@@ -32,13 +35,29 @@ dep-graph.svg
 REPORT.md
 terp-api
 reviews
-*.env*
+.env
+.env.*
+*.env
+!.env.example
+!scripts/ci/ict-rs-bins.env
+# signing material
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.mnemonic
 # --- v0.0.2-dev hygiene ---
 .grok/
 node_modules/
-scripts/act/runs/
-scripts/act/runs/*_tmp/
-scripts/act/runs/*_ext_tmp/
+# Raw per-job act logs are local scratch. The curated reports that sit beside
+# them (latest-*.md, baseline-*.md/.tsv, verify-*.md) are tracked on purpose.
+scripts/ci/runs/*_tmp/
+scripts/ci/runs/*_ext_tmp/
+scripts/ci/runs/*.log
+scripts/ci/runs/*.meta
 **/*.bak
 **/*.bak-*
 **/matrix-heal-report.json
