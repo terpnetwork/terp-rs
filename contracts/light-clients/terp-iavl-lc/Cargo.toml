@@ -1,0 +1,18 @@
+[package]
+name = "terp-iavl-lc"
+version = "0.1.0"
+edition = { workspace = true }
+repository = { workspace = true }
+description = "BLAKE3/SHA-256 IAVL membership verification for Terp 08-wasm clients"
+
+[features]
+default = []
+# DIY IAVL hasher + wrong-alg cross-check (benches / lab ConfirmIcs23 extras).
+bench = []
+
+[dependencies]
+blake3 = "1.5"
+ics23 = { path = "../../../../ics23/rust", default-features = false }
+prost = { version = "0.14", default-features = false, features = ["derive"] }
+sha2 = { workspace = true }
+thiserror = { workspace = true }

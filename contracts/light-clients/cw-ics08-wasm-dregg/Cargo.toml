@@ -1,0 +1,33 @@
+[package]
+name = "cw-ics08-wasm-dregg"
+description = "ICS-08 CosmWasm light client for dregg federation settlement wrap (B2) — dual-use core for terp-dregg authenticator"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["mock-verify"]
+# Continuity + structural checks only; NOT cryptographic settlement.
+mock-verify = []
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["std", "cosmwasm_3_0"] }
+cosmwasm-schema = { workspace = true }
+cw2 = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+hex = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

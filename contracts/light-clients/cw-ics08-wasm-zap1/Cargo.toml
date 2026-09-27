@@ -1,0 +1,28 @@
+[package]
+name = "cw-ics08-wasm-zap1"
+version = "0.1.0"
+edition = "2021"
+description = "IBC v2 08-wasm light client for ZAP1 Merkle + packet attestation (not Crosslink headers)"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+overflow-checks = true
+
+[dependencies]
+cosmwasm-std = "1.5"
+cw-storage-plus = "1.2"
+hex = "0.4"
+schemars = "0.8"
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+thiserror = "2.0"
+zap1-verify = "0.2.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cw-orch = "0.24"
