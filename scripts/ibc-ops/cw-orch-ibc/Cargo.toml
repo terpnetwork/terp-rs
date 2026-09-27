@@ -10,26 +10,26 @@ anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-cosmwasm-std = { path = "../../../crates/cosmwasm/packages/std", features = ["staking", "stargate", "cosmwasm_2_2"] }
-cw-utils = { path = "../../../crates/cw-minus/packages/cw-utils" }
-cw4 = { path = "../../../crates/cw-plus/packages/cw4" }
-dao-interface = { path = "../../../crates/dao-contracts/packages/dao-interface" }
-dao-proposal-single = { path = "../../../crates/dao-contracts/contracts/proposal/dao-proposal-single" }
-dao-voting = { path = "../../../crates/dao-contracts/packages/dao-voting" }
-dao-voting-cw4 = { path = "../../../crates/dao-contracts/contracts/voting/dao-voting-cw4" }
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std", features = ["staking", "stargate", "cosmwasm_2_2"] }
+cw-utils = { path = "../../../../cw-minus/packages/cw-utils" }
+cw4 = { path = "../../../../cw-plus/packages/cw4" }
+dao-interface = { path = "../../../../dao-contracts/packages/dao-interface" }
+dao-proposal-single = { path = "../../../../dao-contracts/contracts/proposal/dao-proposal-single" }
+dao-voting = { path = "../../../../dao-contracts/packages/dao-voting" }
+dao-voting-cw4 = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw4" }
 
 [dev-dependencies]
-cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../crates/cw-multi-test-fork" }
-cw-utils = { path = "../../../crates/cw-minus/packages/cw-utils" }
-cw4 = { path = "../../../crates/cw-plus/packages/cw4" }
-cw4-group = { path = "../../../crates/cw-plus/contracts/cw4-group" }
-dao-dao-core = { path = "../../../crates/dao-contracts/contracts/dao-dao-core" }
-dao-voting-cw4 = { path = "../../../crates/dao-contracts/contracts/voting/dao-voting-cw4" }
-dao-pre-propose-single = { path = "../../../crates/dao-contracts/contracts/pre-propose/dao-pre-propose-single" }
+cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork" }
+cw-utils = { path = "../../../../cw-minus/packages/cw-utils" }
+cw4 = { path = "../../../../cw-plus/packages/cw4" }
+cw4-group = { path = "../../../../cw-plus/contracts/cw4-group" }
+dao-dao-core = { path = "../../../../dao-contracts/contracts/dao-dao-core" }
+dao-voting-cw4 = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw4" }
+dao-pre-propose-single = { path = "../../../../dao-contracts/contracts/pre-propose/dao-pre-propose-single" }
 
 [[bin]]
 name = "foundation_delegate"
 path = "src/bin/foundation_delegate.rs"
 
 [patch.crates-io]
-cosmwasm-std = { path = "../../../crates/cosmwasm/packages/std" }
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std" }

@@ -46,7 +46,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = "0.4.43"
 wasm-bindgen-rayon = { version = "1.3" } # Update to higher version cause playwright test in chtomium fail
 zk-cosmwasm = { workspace = true }
-zk-headstash = { path = "../../../headstash/circuit", features = ["rpc"] }
+zk-headstash = { path = "../../../../headstash/circuits/halo2", features = ["rpc"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.43"

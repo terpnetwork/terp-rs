@@ -45,7 +45,7 @@ terp-authenticator-suite = { path = "../terp-authenticator-suite", optional = tr
 ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch", optional = true, default-features = false }
 ict-rs = { path = "../../../../ict-rs/ict-rs", optional = true, default-features = false, features = ["docker", "terp", "testing"] }
 cw-headstash = { path = "../../../../headstash/contracts/cw-headstash", optional = true, default-features = false, features = ["interface", "library", "zk-api"] }
-zk-headstash = { path = "../../../../headstash/circuit", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
+zk-headstash = { path = "../../../../headstash/circuits/halo2", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
 rand = { version = "0.8", optional = true, features = ["std"] }
 
 [dev-dependencies]
