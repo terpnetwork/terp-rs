@@ -52,7 +52,7 @@
 // // ---------------------------------------------------------------------------
 // // Constants
 // // ---------------------------------------------------------------------------
-// const TEST_MNEMONIC: &str = "insane foam pony state ethics latin marriage fame book cliff crime joke elite catch deposit rent window sun repair weapon shuffle rose fossil bean";
+// Daemon seed: std::env::var("ICT_TEST_MNEMONIC") or "TEST_MNEMONIC" only — never a source literal.
 // const TEST_NAME: &str = "e2e-full";
 // const IMAGE_REPO: &str = "terpnetwork/terp-core";
 // const IMAGE_TAG: &str = "v5.2.0-zk-localterp";
@@ -171,7 +171,7 @@
 
 //     for id in [TERP_LOCAL_CHAIN_ID, TERP_LOCAL_CHAIN_ID_B] {
 //         let c = ic.get_chain(id).expect("chain exists");
-//         c.build_wallet("shitter", TEST_MNEMONIC).await?;
+//         c.build_wallet("shitter", &std::env::var("ICT_TEST_MNEMONIC")?).await?;
 //         let shit = c.key_address("shitter").await?;
 //         let fund = 10_000_000_000u128;
 //         c.send_funds(
@@ -199,12 +199,12 @@
 
 //     //     let da = DaemonBuilder::new(info_a)
 //     //         .handle(&handle)
-//     //         .mnemonic(TEST_MNEMONIC)
+//     //         .mnemonic(&std::env::var("ICT_TEST_MNEMONIC")?)
 //     //         .build()?;
 
 //     //     let db = DaemonBuilder::new(info_b)
 //     //         .handle(&handle)
-//     //         .mnemonic(TEST_MNEMONIC)
+//     //         .mnemonic(&std::env::var("ICT_TEST_MNEMONIC")?)
 //     //         .state(da.state())
 //     //         .build()?;
 

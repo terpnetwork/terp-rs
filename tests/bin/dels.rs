@@ -58,7 +58,7 @@ use terp_rs::{Message, Name, cosmos::staking::v1::MsgCancelUnbondingDelegation};
 use tokio::runtime::Runtime;
 
 pub const TOTAL_OBLIGATED_VALIDATORS: usize = 33;
-pub const TOTAL_OBLIGATED_DELEGATED_BTSG: Uint128 = Uint128::new(9_999_980_000_000u128);
+pub const TOTAL_OBLIGATED_DELEGATED_Terp: Uint128 = Uint128::new(9_999_980_000_000u128);
 pub const NEW_DELS_FILE: &str = "./src/bin/data/new-delegations.csv";
 pub const RAW_MSG_JSON: &str = "delegation_messages.json";
 
@@ -1504,10 +1504,10 @@ mod tests {
 
         // Both should match the expected value
         assert_eq!(aad.delegations.len(), TOTAL_OBLIGATED_VALIDATORS);
-        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_BTSG.u128());
+        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_Terp.u128());
         assert_eq!(
             obligated_delegation_sum.u128(),
-            TOTAL_OBLIGATED_DELEGATED_BTSG.u128()
+            TOTAL_OBLIGATED_DELEGATED_Terp.u128()
         );
 
         Ok(())
@@ -1809,7 +1809,7 @@ mod tests {
 //         total_redel += uint_amnt;
 //     }
 //     println!(
-//         "Total to redelegate: {} BTSG. Count: {}",
+//         "Total to redelegate: {} Terp. Count: {}",
 //         Decimal::from_atomics(total_redel, 6)?,
 //         redelegation_msgs.len()
 //     );
@@ -1824,7 +1824,7 @@ mod tests {
 //         .sum::<Uint128>();
 //     if !total_undel.is_zero() {
 //         println!(
-//             "Total to undelegate: {} BTSG",
+//             "Total to undelegate: {} Terp",
 //             Decimal::from_atomics(total_undel, 6)?
 //         );
 //     }
@@ -1928,7 +1928,7 @@ mod tests {
 //             .entry(del.operator_addr.clone())
 //             .or_default() += amount;
 //     }
-//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_BTSG);
+//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_Terp);
 //     // First pass: Process validators that need additional delegations
 //     for target_del in obligated_delegations {
 //         let target_validator = &target_del.operator_addr;

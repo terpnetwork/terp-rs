@@ -21,7 +21,9 @@
 //!
 //! #[tokio::test]
 //! async fn test_contract_with_nostr() {
-//!     let env = NostrTestEnv::start("my-test", "test mnemonic ...")
+//!     // Mnemonic from env (`ICT_TEST_MNEMONIC` / `TEST_MNEMONIC`) — never a source literal.
+//!     let mnemonic = std::env::var("ICT_TEST_MNEMONIC").expect("ICT_TEST_MNEMONIC");
+//!     let env = NostrTestEnv::start("my-test", &mnemonic)
 //!         .await
 //!         .expect("Failed to start test env");
 //!
@@ -459,10 +461,13 @@ mod tests {
 
         // Create the env through start_with_runtime — this will fail on Daemon build
         // but the relayer container was already started successfully.
+        // Daemon path requires a caller-supplied mnemonic; this unit test expects
+        // gRPC/Daemon build to fail on MockRuntime. Empty seed is intentional (not a BIP-39).
+        let mnemonic = std::env::var("ICT_TEST_MNEMONIC").unwrap_or_default();
         let result = NostrTestEnv::start_with_runtime(
             "mock-test",
             chain_info.clone(),
-            "test mnemonic twelve words here for testing only",
+            &mnemonic,
             Arc::new(MockRuntime::new()),
         )
         .await;
