@@ -19,6 +19,10 @@ pub struct InstantiateMsg {
     /// Optional protocol fee in basis points (100 = 1%). Taken on settle.
     #[serde(default)]
     pub protocol_fee_bps: Option<u64>,
+    /// Governance flag: allow a relayer to auto-execute `Purchase` from Nostr ingress.
+    /// **Default false** — parse-intent only. The contract never submits txs itself.
+    #[serde(default)]
+    pub auto_execute_ingress: bool,
 }
 
 fn default_min_buffer_blocks() -> u64 {
@@ -52,6 +56,9 @@ pub enum ExecuteMsg {
     /// Buyer or admin only: cancel while Reserved; refund + release reservation.
     /// Seller cannot cancel (prevents grief during buffer escrow).
     Cancel { order_id: u64 },
+    /// Admin only: flip ingress auto-execute policy. Default remains off.
+    /// Does not cause the contract to pull Nostr events.
+    SetAutoExecuteIngress { enabled: bool },
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +122,7 @@ pub struct ConfigResponse {
     pub accepted_denom: String,
     pub protocol_fee_bps: Option<u64>,
     pub next_order_id: u64,
+    pub auto_execute_ingress: bool,
 }
 
 #[cw_serde]

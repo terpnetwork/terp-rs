@@ -11,7 +11,7 @@ Nostr-mirrored marketplace inventory (NIP-15) with **buffer-escrow** purchases a
 | Settle | Only at/after `settle_after`; pays seller (optional protocol fee to admin); decrements stock |
 | Cancel | **Buyer or admin only** while `Reserved` (seller cannot grief-cancel). After settle/cancel: fails |
 | Hashmerchant sudo | Stores last foreign root by `(chain_uid, algo)`. **Does not mint supply** |
-| Nostr | **Egress** (chain→NIP-15 notes) + **ingress-intent** parse only (Nostr→suggested purchase; no auto-execute) |
+| Nostr | **Egress** (chain→NIP-15 notes) + **ingress-intent** parse. Auto-execute is **off** unless admin sets `auto_execute_ingress` |
 
 ## Messages
 
@@ -35,6 +35,7 @@ Nostr-mirrored marketplace inventory (NIP-15) with **buffer-escrow** purchases a
 | `Purchase { sku, qty }` + funds | buyer | Funds ≥ `unit_price * qty` in `accepted_denom` |
 | `Settle { order_id }` | anyone | Height ≥ `settle_after` |
 | `Cancel { order_id }` | **buyer/admin only** | Only while `Reserved`; seller unauthorized |
+| `SetAutoExecuteIngress { enabled }` | **admin only** | Governance flag for relayer auto-`Purchase`. Default **false**. Contract does not pull Nostr. |
 
 ### Query
 
@@ -121,7 +122,7 @@ Artifact: `artifacts/marketplace_mirror.wasm`
 | Chain → relay | `tools/hash-market/src/client/nostr/marketplace_egress.rs` | NIP-15 product / purchase-confirmation notes after chain events |
 | Relay → intent | `tools/hash-market/src/client/nostr/marketplace_ingress.rs` | Parse order-shaped Nostr JSON → `PurchaseIntent` for demo/relayer |
 
-**Ingress does not auto-execute** chain `Purchase`. Relayer / operator must submit funds + `ExecuteMsg::Purchase` separately.
+**Ingress auto-execute is off by default** (`auto_execute_ingress: false`). Relayer / operator must submit funds + `ExecuteMsg::Purchase` unless admin flips the flag **and** the hash-market ingress policy is `On`. The contract never executes from a Nostr event by itself.
 
 List product body → content plane:
 

@@ -42,6 +42,7 @@ fn setup_with_buffer(deps: &mut TestDeps, min_buffer_blocks: u64) {
             min_buffer_blocks,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: None,
+            auto_execute_ingress: false,
         },
     )
     .unwrap();
@@ -78,6 +79,7 @@ fn instantiate_defaults_buffer_7() {
     assert_eq!(cfg.min_buffer_blocks, 7);
     assert_eq!(cfg.accepted_denom, DENOM);
     assert_eq!(cfg.next_order_id, 1);
+    assert!(!cfg.auto_execute_ingress, "ingress auto-execute defaults off");
 }
 
 #[test]
@@ -564,6 +566,7 @@ fn invalid_buffer_rejected() {
             min_buffer_blocks: 3,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: None,
+            auto_execute_ingress: false,
         },
     )
     .unwrap_err();
@@ -586,6 +589,7 @@ fn settle_with_protocol_fee() {
             min_buffer_blocks: 5,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: Some(1000), // 10%
+            auto_execute_ingress: false,
         },
     )
     .unwrap();
@@ -663,4 +667,33 @@ fn list_orders_query() {
     .unwrap();
     let list: OrdersResponse = cosmwasm_std::from_json(bin).unwrap();
     assert_eq!(list.orders.len(), 3);
+}
+
+#[test]
+fn admin_sets_auto_execute_ingress_non_admin_denied() {
+    let mut deps = mock_dependencies();
+    setup(&mut deps);
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&buyer_addr(), &[]),
+        ExecuteMsg::SetAutoExecuteIngress { enabled: true },
+    )
+    .unwrap_err();
+    match err {
+        ContractError::Unauthorized {} => {}
+        other => panic!("expected Unauthorized, got {other:?}"),
+    }
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin_addr(), &[]),
+        ExecuteMsg::SetAutoExecuteIngress { enabled: true },
+    )
+    .unwrap();
+    let bin = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
+    let cfg: ConfigResponse = cosmwasm_std::from_json(bin).unwrap();
+    assert!(cfg.auto_execute_ingress);
 }

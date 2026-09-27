@@ -1,0 +1,22 @@
+[workspace]
+
+[package]
+name = "trusted-builder-sbt"
+version = "0.1.0"
+edition = "2021"
+description = "Soul-bound trusted-builder NFT: manifesto signature attested via hashmerchant VE"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std", features = ["ibc2"] }
+cosmwasm-schema = { path = "../../../../cosmwasm/packages/schema" }
+cw-storage-plus = { path = "../../../../cw-storage-plus" }
+schemars = "0.8"
+serde = { version = "1", default-features = false, features = ["derive"] }
+thiserror = "1"

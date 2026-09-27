@@ -44,6 +44,7 @@ pub fn instantiate(
             min_buffer_blocks: msg.min_buffer_blocks,
             accepted_denom: msg.accepted_denom.clone(),
             protocol_fee_bps: msg.protocol_fee_bps,
+            auto_execute_ingress: msg.auto_execute_ingress,
         },
     )?;
     NEXT_ORDER_ID.save(deps.storage, &1u64)?;
@@ -52,7 +53,11 @@ pub fn instantiate(
         .add_attribute("action", "instantiate")
         .add_attribute("path", "marketplace-mirror")
         .add_attribute("min_buffer_blocks", msg.min_buffer_blocks.to_string())
-        .add_attribute("accepted_denom", msg.accepted_denom))
+        .add_attribute("accepted_denom", msg.accepted_denom)
+        .add_attribute(
+            "auto_execute_ingress",
+            msg.auto_execute_ingress.to_string(),
+        ))
 }
 
 // ---------------------------------------------------------------------------
@@ -117,6 +122,9 @@ pub fn execute(
         ExecuteMsg::Purchase { sku, qty } => execute_purchase(deps, env, info, sku, qty),
         ExecuteMsg::Settle { order_id } => execute_settle(deps, env, order_id),
         ExecuteMsg::Cancel { order_id } => execute_cancel(deps, info, order_id),
+        ExecuteMsg::SetAutoExecuteIngress { enabled } => {
+            execute_set_auto_execute_ingress(deps, info, enabled)
+        }
     }
 }
 
@@ -402,6 +410,22 @@ fn execute_cancel(
         .add_attribute("status", OrderStatus::Cancelled.as_str()))
 }
 
+fn execute_set_auto_execute_ingress(
+    deps: DepsMut,
+    info: MessageInfo,
+    enabled: bool,
+) -> Result<Response, ContractError> {
+    let mut cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+    cfg.auto_execute_ingress = enabled;
+    CONFIG.save(deps.storage, &cfg)?;
+    Ok(Response::new()
+        .add_attribute("action", "set_auto_execute_ingress")
+        .add_attribute("auto_execute_ingress", enabled.to_string()))
+}
+
 // ---------------------------------------------------------------------------
 // Query
 // ---------------------------------------------------------------------------
@@ -418,6 +442,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 accepted_denom: cfg.accepted_denom,
                 protocol_fee_bps: cfg.protocol_fee_bps,
                 next_order_id: next,
+                auto_execute_ingress: cfg.auto_execute_ingress,
             })
         }
         QueryMsg::Product { sku } => {
