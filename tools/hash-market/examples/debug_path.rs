@@ -10,7 +10,7 @@ async fn main() {
     std::fs::create_dir_all(&dir).expect("create dir");
     let custody = LocalSecp256k1::generate();
     let ve_handler = VoteExtensionHandler::new(Box::new(custody));
-    let state = Arc::new(AppState::new(ve_handler, "debug".into(), dir).unwrap());
+    let state = Arc::new(AppState::new(Some(ve_handler), "debug".into(), dir, true).unwrap());
     let app = build_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9877").await.unwrap();
     println!("LISTENING ON 9877");
