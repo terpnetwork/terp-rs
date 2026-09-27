@@ -21,6 +21,9 @@ nip44 = [
 ]
 cw = ["dep:cosmwasm-std", "dep:cw721"]
 full = ["cw", "nip01", "nip15", "nip52", "nip77"]
+# Opt-in Cashu NUT sketches. `nut02` remains a documented stub (no keyset crypto).
+nuts = ["nut02"]
+nut02 = []
 
 [dependencies]
 axum = { version = "0.7", default-features = false, features = ["json"] }
