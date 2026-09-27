@@ -3,6 +3,9 @@ name = "norick-wasm"
 version = "0.1.0"
 edition = "2021"
 
+# Isolated from terp-rs workspace resolver (halo2 / pasta vs cosmos pins).
+[workspace]
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 
@@ -17,7 +20,7 @@ ff = "0.13"
 group = "0.13"
 rand = "0.8"
 getrandom = { version = "0.2", features = ["js"] }
-halo2_proofs = { path = "../../../zcash/halo2/halo2_proofs", package = "halo2_proofs", default-features = false }
+halo2_proofs = { path = "../../../../zcash/halo2/halo2_proofs", package = "halo2_proofs", default-features = false }
 
 [profile.release]
 opt-level = "s"

@@ -2,9 +2,9 @@ use ff::PrimeField;
 use group::ff::Field;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    plonk::{self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector},
+    plonk::{self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector, SingleVerifier},
     poly::Rotation,
-    transcript::Blake2bWrite,
+    transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
 use rand::rngs::OsRng;
@@ -228,6 +228,75 @@ fn to_cosmwasm_instance(forbidden: &str) -> Vec<u8> {
 }
 
 // ---------------------------------------------------------------------------
+// Host prove / verify (also used by WASM exports)
+// ---------------------------------------------------------------------------
+
+const K: u32 = 10;
+
+fn setup_keys() -> Result<
+    (
+        halo2_proofs::poly::commitment::Params<vesta::Affine>,
+        plonk::ProvingKey<vesta::Affine>,
+    ),
+    String,
+> {
+    let params = halo2_proofs::poly::commitment::Params::new(K);
+    let empty_circuit: NoRickCircuit<pallas::Base> = Default::default();
+    let vk = plonk::keygen_vk(&params, &empty_circuit).map_err(|e| format!("keygen_vk: {e}"))?;
+    let pk = plonk::keygen_pk(&params, vk, &empty_circuit).map_err(|e| format!("keygen_pk: {e}"))?;
+    Ok((params, pk))
+}
+
+fn circuit_from_secret(secret_word: &str) -> NoRickCircuit<pallas::Base> {
+    let mut bytes = secret_word.as_bytes().to_vec();
+    bytes.resize(20, 0);
+    let priv_input: Vec<Value<pallas::Base>> = bytes
+        .iter()
+        .map(|&b| Value::known(pallas::Base::from(b as u64)))
+        .collect();
+    NoRickCircuit { priv_input }
+}
+
+/// Host-equivalent of the WASM guest: prove `secret_word` does not contain `forbidden`.
+pub fn prove_no_rick(secret_word: &str, forbidden: &str) -> Result<Vec<u8>, String> {
+    let circuit = circuit_from_secret(secret_word);
+    let (params, pk) = setup_keys()?;
+    let instance = to_halo2_instance(forbidden);
+    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
+
+    let mut transcript = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(vec![]);
+    plonk::create_proof(
+        &params,
+        &pk,
+        &[circuit],
+        &[&instance_refs],
+        OsRng,
+        &mut transcript,
+    )
+    .map_err(|e| format!("create_proof: {e}"))?;
+    Ok(transcript.finalize())
+}
+
+/// Host-equivalent verify for a proof produced by [`prove_no_rick`] / WASM `generate_proof`.
+pub fn verify_no_rick(proof: &[u8], forbidden: &str) -> Result<bool, String> {
+    let (params, pk) = setup_keys()?;
+    let instance = to_halo2_instance(forbidden);
+    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
+    let strategy = SingleVerifier::new(&params);
+    let mut transcript = Blake2bRead::<_, vesta::Affine, Challenge255<_>>::init(proof);
+    match plonk::verify_proof(
+        &params,
+        pk.get_vk(),
+        strategy,
+        &[&instance_refs],
+        &mut transcript,
+    ) {
+        Ok(()) => Ok(true),
+        Err(_) => Ok(false),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // WASM exports
 // ---------------------------------------------------------------------------
 
@@ -242,44 +311,7 @@ pub fn encode_instances(forbidden: &str) -> Vec<u8> {
 /// Returns base64-encoded proof bytes.
 #[wasm_bindgen]
 pub fn generate_proof(secret_word: &str, forbidden: &str) -> Result<String, JsValue> {
-    // Pad/truncate secret to 20 bytes
-    let mut bytes = secret_word.as_bytes().to_vec();
-    bytes.resize(20, 0);
-
-    let priv_input: Vec<Value<pallas::Base>> = bytes
-        .iter()
-        .map(|&b| Value::known(pallas::Base::from(b as u64)))
-        .collect();
-
-    let circuit = NoRickCircuit { priv_input };
-
-    // Build proving key (keygen uses default/unknown witnesses)
-    let params = halo2_proofs::poly::commitment::Params::new(10);
-    let empty_circuit: NoRickCircuit<pallas::Base> = Default::default();
-    let vk = plonk::keygen_vk(&params, &empty_circuit)
-        .map_err(|e| JsValue::from_str(&format!("keygen_vk: {}", e)))?;
-    let pk = plonk::keygen_pk(&params, vk, &empty_circuit)
-        .map_err(|e| JsValue::from_str(&format!("keygen_pk: {}", e)))?;
-
-    // Instance: the forbidden word as a field element
-    let instance = to_halo2_instance(forbidden);
-    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
-
-    // Create proof
-    let mut transcript = Blake2bWrite::<_, vesta::Affine, _>::init(vec![]);
-    plonk::create_proof(
-        &params,
-        &pk,
-        &[circuit],
-        &[&instance_refs],
-        OsRng,
-        &mut transcript,
-    )
-    .map_err(|e| JsValue::from_str(&format!("create_proof: {}", e)))?;
-
-    let proof_bytes = transcript.finalize();
-
-    // Base64 encode
+    let proof_bytes = prove_no_rick(secret_word, forbidden).map_err(|e| JsValue::from_str(&e))?;
     Ok(b64_encode(&proof_bytes))
 }
 
@@ -330,6 +362,39 @@ fn b64_encode(data: &[u8]) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod host_e2e {
+    use super::*;
+
+    #[test]
+    fn prove_verify_accepts_clean_secret() {
+        let proof = prove_no_rick("hello world........", "rick").expect("prove");
+        assert!(!proof.is_empty());
+        assert!(verify_no_rick(&proof, "rick").expect("verify"));
+    }
+
+    #[test]
+    fn encode_workflow_matches_guest_export() {
+        let instances = encode_instances("rick");
+        assert_eq!(instances.len(), 32);
+        let proof_b64 = generate_proof("safe phrase........", "rick").expect("guest wrapper");
+        assert!(!proof_b64.is_empty());
+        let msg = encode_proof_msg(1, "rick", &proof_b64);
+        let v: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        assert_eq!(v["proove"]["forbidden"], "rick");
+        assert_eq!(v["proove"]["proof"], proof_b64);
+    }
+
+    #[test]
+    fn verify_rejects_tampered_proof() {
+        let mut proof = prove_no_rick("clean................", "rick").expect("prove");
+        if let Some(b) = proof.last_mut() {
+            *b ^= 0xff;
+        }
+        assert!(!verify_no_rick(&proof, "rick").expect("verify tampered"));
+    }
 }
 
 fn hex_encode(bytes: &[u8]) -> String {
