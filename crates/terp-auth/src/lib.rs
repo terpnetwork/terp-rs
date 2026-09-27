@@ -12,7 +12,7 @@ use cosmwasm_std::{DepsMut, Env};
 
 pub trait AuthMethodStructTrait {}
 
-/// # TerpAccountTrait (historically BtsgAccountTrait)
+/// # TerpAccountTrait (historically TerpAccountTrait)
 ///
 /// Core trait for CosmWasm-based authenticators in the x/smart-account module.
 /// Enables custom on-chain verification of transactions while integrating with
@@ -82,6 +82,3 @@ pub trait TerpAccountTrait {
     /// Generic hook for chain-specific events (e.g., epoch triggers). Optional; return Ok(()) if unused.
     fn on_hooks(deps: DepsMut, env: Env) -> Self::AuthProcessResult;
 }
-
-/// Legacy alias — many contracts still name this `BtsgAccountTrait`.
-pub use TerpAccountTrait as BtsgAccountTrait;

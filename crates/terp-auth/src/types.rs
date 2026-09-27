@@ -1,8 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, Coin};
 
-use crate::cw_serde_struct_allow_unknown_fields;
-
 #[cw_serde]
 pub struct AccountAuthenticator {
     /// ID uniquely identifies the authenticator instance.
@@ -114,7 +112,10 @@ pub struct CosmwasmAuthenticatorInitData {
 /// `AuthenticateRequest` is `Box`-ed due to large size difference between other variants
 #[cw_serde]
 pub enum AuthSudoMsg {
+    /// Osmosis CosmwasmAuthenticator JSON: on_authenticator_added
+    #[serde(rename = "on_authenticator_added")]
     OnAuthAdded(OnAuthenticatorAddedRequest),
+    #[serde(rename = "on_authenticator_removed")]
     OnAuthRemoved(OnAuthenticatorRemovedRequest),
     Authenticate(Box<AuthenticationRequest>),
     Track(TrackRequest),

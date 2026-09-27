@@ -38,6 +38,7 @@ impl ZcashSpendPackageV0 {
         value: u128,
         asset_id: &[u8],
     ) -> Result<()> {
+        // SILENT ERROR
         let _ = (nullifier, owner_binding, value, asset_id);
         Ok(())
     }
