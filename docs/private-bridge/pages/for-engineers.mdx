@@ -1,0 +1,57 @@
+---
+title: Private Bridge for engineers
+description: "Mint gate, observation trust, note shape, and repository homes for the Private Bridge research product."
+---
+
+# Private Bridge for engineers
+
+Private Bridge composes deposit intent, Bitcoin observation, light-client tip and burn membership, headstash bridge mint, optional private DEX settle, and Zcash-bound egress. **Headstash** is a CosmWasm contract surface — CosmWasm is the WebAssembly smart-contract runtime on Cosmos chains — that mints and burns private notes for airdrop-style claims and bridge ingress.
+
+## Path
+
+```text
+DepositIntent (dest + bounds + expiry + domain bind)
+  → fresh P2WPKH deposit address + watch
+  → observation hint (index reporter or lab synthetic)
+  → client re-verify (fail closed on production-shaped modes)
+  → light-client tip + burn membership
+  → BridgeMintNote → SeamNoteOut private note
+  → optional SettleSwap (oracle bound_only)
+  → BridgeEgressBurn → Zcash pay to sealed dest
+```
+
+**P2WPKH** is a standard Bitcoin SegWit address type used for the one-time deposit QR.
+
+## Mint gate
+
+- Tip and confirmation policy bind the foreign height used for membership.
+- Bridge-burn membership under the attested burn root authorizes mint. Ordinary spent-set membership alone does not.
+- Conservation keeps minted value equal to proven burn value; the light client does not invent amounts.
+- Destination commitment / owner binding on the note must match the sealed intent.
+- Once-per-nullifier (or once-per-claim) rejects double mint.
+- Asset ids resolve through a frozen registry. Intent domain bind (`terp-cashapp-intent-v0` family — a versioned label for this Bitcoin-QR funding path, including wallets such as Cash App) is separate from asset-map digests.
+- Oracle and attestation paths supply bounds or coordination hints only. They are not mint authorities.
+
+Pure seam checks live in `crates/terp-seams` (`bridge` and `dex` modules). CosmWasm mint and egress sit next to headstash (`BridgeMintNote` / egress burn). Private settle is `contracts/revenue/private-dex`.
+
+## Observation trust
+
+| Actor | Role |
+|-------|------|
+| UI | Opens watch after client proof; Server-Sent Events (SSE) or poll for coordination |
+| Reporter / index | Posts deposit observations from Esplora or Electrum (Bitcoin HTTP/RPC index APIs) or lab synthetic |
+| Client re-verify | Required authority on production-shaped modes |
+
+Lab topology does not require a full local Bitcoin node (`bitcoind`) or Fulcrum (an Electrum server). Synthetic observation supports labeled lab and continuous-integration runs without a full Bitcoin stack.
+
+## Note shape
+
+Bridge mint emits the shared intermediate note schema (`SeamNoteOutV0`): asset id, value, owner binding, commitment public form, ingress nullifier lineage, and provenance pin. **SeamNoteOut** is the versioned note record shape shared across bridge mint, claims, and private DEX spends so ingress notes sit in the same commitment set as later spends.
+
+## Egress class
+
+Product egress after a Zcash-denominated note is **Terp private burn, then Zcash-side mint or pay to the sealed destination**. Paying out without that Terp burn statement is outside this path.
+
+## Related public page
+
+Swap math, hub demo pools, and settle failure bounds: [Private DEX](/research/private-dex).

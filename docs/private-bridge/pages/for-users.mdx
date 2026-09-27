@@ -1,0 +1,62 @@
+---
+title: Private Bridge for users
+description: "Lock a Zcash destination, fund a fresh Bitcoin QR from any bc1-capable wallet, and read what success looks like under lab labels."
+---
+
+# Private Bridge for users
+
+Depositor path: **Zcash destination first**, Bitcoin QR second, then status through mint.
+
+## Before any send
+
+1. Open the **operator-hosted UI for this research deploy** — for example the Private Corridor / Private Bridge surface in a lab [DAO DAO](https://daodao.zone) module, or a Terp lab app the operator points you at. There is **no public app-store listing** for Private Bridge as a consumer product.
+2. Paste a Zcash unified or transparent address, or use a local demo destination when the operator enables one.
+3. Confirm the destination binding the UI shows. Display strings are hints; the sealed binding is what mint must match.
+4. Set minimum Zcash out and optional max slippage for the Bitcoin–Zcash market.
+5. Generate the deposit wallet. Back up the mnemonic if you may need unused deposit funds later. The bridge never holds a Cash App (or other wallet) password.
+6. Create the sealed intent and funding QR. Keep the **intent id**.
+
+Changing destination or rate policy after funding requires a **new** intent. The old deposit cannot redirect.
+
+## Fund the QR
+
+Scan or paste the Bitcoin URI into **any wallet that can send to a `bc1` address**. **Cash App** is the default example because it is a common phone wallet: ordinary send, no private API to Terp. Funding is a normal Bitcoin payment to a one-time **P2WPKH** address (standard SegWit receive). Cash App can freeze or reverse its own rail independently of Terp.
+
+Lab profiles may offer a faucet or “publish observed” control instead of a real send. Those stay under a lab banner.
+
+## Wait for observe → check → mint
+
+| Banner | Meaning |
+|--------|---------|
+| Lab mode — not production | Synthetic observe and mock mint policy allowed. Success is lab-controlled. |
+| Local / test network | Real local-chain mint and test Bitcoin may run. Still not mainnet settlement. |
+| Production-shaped | Client re-check of the deposit fails closed on failure. Ask the operator whether rails are mainnet or still test. |
+
+Status moves through deposit seen, client re-check, mint, optional private swap, then receipt. On failure, the UI stops as failure — it does not continue as success.
+
+## What success looks like
+
+Keep this receipt set when mint succeeds:
+
+| Item | Why |
+|------|-----|
+| **Intent id** | Ties the sealed destination and QR together for support |
+| **Bitcoin txid** | Proves the fund; used for re-check and support |
+| **“Note minted” (or equivalent) on the receipt** | Confirms a Terp private note exists under your binding |
+
+Optional later: swap receipt and, if egress is enabled, Zcash payout tx for the sealed address only.
+
+## What arrives on Terp
+
+A successful mint yields a private note owned under the sealed binding. An optional [Private DEX](/research/private-dex) swap can convert toward a Zcash-denominated note under the same binding. Egress, when enabled, pays only that destination after a Terp burn.
+
+## What the product refuses
+
+| Situation | Outcome |
+|-----------|---------|
+| Open or swap to a different destination than the intent | Reject |
+| Price below floor or slip exceeded | Reject |
+| Intent expired | Reject |
+| Second mint for the same deposit / intent | Reject |
+| Required price mid missing or stale | Reject |
+| Deposit re-check fails on a production-shaped mode | Fail closed |
