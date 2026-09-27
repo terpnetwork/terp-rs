@@ -22,4 +22,4 @@ verify_after_switch = false
 
 # When multiple local packages share a name, prefer paths that do NOT match these prefixes.
 [policy.deprioritize_path_prefixes]
-prefixes = ["vancw/", "masp/vendor/", "build/"]
+prefixes = ["masp/vendor/", "build/"]

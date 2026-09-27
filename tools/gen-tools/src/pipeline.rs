@@ -4,6 +4,7 @@ use crate::config::{parse_steps, GenerationContext};
 use crate::go_gen::GoGenGenerator;
 use crate::rust_gen::RustGenGenerator;
 use crate::openapi::OpenApiGenerator;
+use crate::vocs_docs::VocsDocsGenerator;
 use crate::placeholders::{IndexerGenerator, MermaidGenerator, TzEpisodesGenerator};
 use crate::proto_gen::ProtoGenGenerator;
 use crate::python_gen::PythonGenGenerator;
@@ -41,6 +42,7 @@ impl Pipeline {
             Box::new(TrailmarkGenerator),
             Box::new(ReadmeApiGenerator),
             Box::new(OpenApiGenerator),
+            Box::new(VocsDocsGenerator),
             // TensorZero — opt-in (not in default step set)
             Box::new(TensorZeroGenerator::new()),
             // Placeholders — explicitly opt-in only (not in default step set)

@@ -91,7 +91,6 @@ ZK is a profile overlay on the same machinery (`zk_*` keys in the matrix).
    `cw-controllers`, …): `dep.py verify` reports `DUAL-IDENTITY` if the same
    package name resolves from two sources (path + git, or two git branches).
 
-Heal algorithm: index all packages under monorepo root → rewrite broken/absolute locals → prefer non-`vancw/` forks.
 
 ## Branch labels
 
@@ -179,3 +178,34 @@ _devops/matrix-heal-report.json
 - Do not run experimental `cargo run -- deps baseline` against a dirty tree without validate
 - Do not reintroduce absolute matrix paths
 - Do not treat Rust deps CLI as the operator surface until it gains full parity + verify
+
+## Native-build path deps (Go c-shared, etc.)
+
+Some matrix crates compile **native** libraries in `build.rs` (e.g. `osmosis-test-tube` →
+`libosmosistesttube` via Go `-buildmode=c-shared`).
+
+When gen-tools switches consumers to **path** deps:
+
+1. Default `cargo check` / unit tests **must not** require those natives.
+2. Consumers feature-gate the dep:
+
+```toml
+[features]
+test-tube = ["dep:osmosis-test-tube"]
+
+[dependencies]
+osmosis-test-tube = { workspace = true, optional = true }
+```
+
+```rust
+#[cfg(all(not(target_arch = "wasm32"), feature = "test-tube"))]
+pub mod test_tube;
+```
+
+3. Matrix fields:
+   - `native_tools = ["go"]` — host tools required for a full native build
+   - `consumer_optional_feature = true` — hard non-optional consumers fail validate
+
+4. Full integration: `cargo test -p dao-testing --features test-tube` with Go on `PATH`.
+
+gen-tools **must not** enable `default = ["test-tube"]` when healing/switching.

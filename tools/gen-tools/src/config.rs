@@ -659,7 +659,7 @@ fn inspect_contract(
 pub fn parse_steps(steps: &str) -> (Vec<String>, Vec<String>) {
     if steps == "default" {
         let defaults = vec![
-"schema", "ts-codegen", "ts-bundles", "proto", "python", "zod", "go", "rust", "readme", "openapi", "tensorzero",
+"schema", "ts-codegen", "ts-bundles", "proto", "python", "zod", "go", "rust", "readme", "openapi", "vocs-docs", "tensorzero",
         ];
         return (defaults.iter().map(|s| s.to_string()).collect(), Vec::new());
     }

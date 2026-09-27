@@ -89,6 +89,7 @@ deps-config:
 # Strict matrix integrity (exit 1 on errors) — run in CI
 deps-validate:
     {{dep}} validate -v
+    python3 _scripts/check_native_optional_consumers.py
 
 # Heal matrix local/zk_local paths (package-name checked, relative only)
 deps-heal:

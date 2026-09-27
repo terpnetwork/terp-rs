@@ -60,7 +60,7 @@ def load_dep_config() -> dict:
             "strict_package_names": True,
             "verify_after_switch": False,
             "deprioritize_path_prefixes": {
-                "prefixes": ["vancw/", "masp/vendor/", "build/"],
+                "prefixes": ["masp/vendor/", "build/"],
             },
         },
     }
@@ -1779,7 +1779,7 @@ def _package_name_at(local_path: str) -> Optional[str]:
 def _deprioritized(path: str) -> bool:
     prefixes = (
         DEP_POLICY.get("deprioritize_path_prefixes", {}) or {}
-    ).get("prefixes", ["vancw/", "masp/vendor/", "build/"])
+    ).get("prefixes", ["masp/vendor/", "build/"])
     return any(path.startswith(p) or f"/{p}" in f"/{path}" for p in prefixes)
 
 

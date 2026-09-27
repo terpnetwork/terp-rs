@@ -18,6 +18,7 @@ pub mod rust_gen;
 pub mod trailmark;
 pub mod readme_api;
 pub mod openapi;
+pub mod vocs_docs;
 pub mod placeholders;
 pub mod resolver;
 pub mod llm;
