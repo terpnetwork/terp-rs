@@ -1,14 +1,12 @@
 [workspace]
 resolver = "2"
+# Nested cargo projects with their own [workspace] tables.
+exclude = ["tools/hash-market"]
 members = [
     "crates/terp-auth",
     "crates/terp-account",
     "crates/crosslink/light-client",
-    "crates/private_dex_seams",
-    "crates/compose_seams",
-    "crates/bridge_auth_seams",
-    "crates/seam_note_out",
-    "crates/cashapp_zec_corridor",
+    "crates/terp-seams",
     "contracts/revenue/private-dex",
     "crates/nips",
     "crates/sdk",
@@ -16,7 +14,16 @@ members = [
     "tests",
     "tools/gen-tools",
     "contracts/light-clients/cw-ics08-wasm-crosslink",
-    "contracts/smart-accounts/terp-authenticator-suite",
+    "contracts/light-clients/cw-ics08-wasm-dregg",
+    "contracts/light-clients/cw-ics08-wasm-zap1",
+    "contracts/light-clients/cw-ics08-wasm-terp",
+    "contracts/light-clients/terp-iavl-lc",
+    "contracts/ibc/polytone-any-proxy",
+    "tests/suite/terp-authenticator-suite",
+    "tests/suite/terp-orch",
+    "tests/suite/ipa-params",
+    "contracts/zk/cw-zk-verify-demo",
+    "contracts/smart-accounts/terp-dregg",
     "contracts/smart-accounts/terp-zkjwt",
     "contracts/smart-accounts/terp-zkposiedon",
     "contracts/smart-accounts/terp-vsck",
@@ -26,6 +33,7 @@ members = [
     "contracts/smart-accounts/terp-ed25519",
     "contracts/smart-accounts/terp-eth",
     "contracts/smart-accounts/terp-irl",
+    "contracts/smart-accounts/terp-frost",
     "contracts/smart-accounts/terp-zkpallas",
 ]
 
@@ -79,6 +87,11 @@ terp-recovery = { path = "contracts/smart-accounts/terp-recovery" }
 terp-recovery-poseidon-demo = { path = "contracts/smart-accounts/terp-recovery-poseidon-demo" }
 terp-ed25519 = { path = "contracts/smart-accounts/terp-ed25519" }
 terp-eth = { path = "contracts/smart-accounts/terp-eth" }
+terp-dregg = { path = "contracts/smart-accounts/terp-dregg" }
+cw-ics08-wasm-dregg = { path = "contracts/light-clients/cw-ics08-wasm-dregg" }
+cw-ics08-wasm-zap1 = { path = "contracts/light-clients/cw-ics08-wasm-zap1" }
+terp-iavl-lc = { path = "contracts/light-clients/terp-iavl-lc" }
+terp-seams = { path = "crates/terp-seams" }
 terp-irl = { path = "contracts/smart-accounts/terp-irl" }
 terp-zkpallas = { path = "contracts/smart-accounts/terp-zkpallas" }
 cw-private-dex = { path = "contracts/revenue/private-dex" }
