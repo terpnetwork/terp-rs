@@ -373,6 +373,19 @@ def cmd_git_status(args):
             print(f"  - {b}")
 
 
+def cmd_html(args):
+    dep_html = _load_script("dep_html")
+    if args.serve:
+        dep_html.serve(output=args.output, port=args.port, host=args.host)
+        return
+    path = dep_html.write_report(
+        output=args.output,
+        include_git=not args.skip_git,
+        include_graph=not args.skip_graph,
+    )
+    print(f"wrote {path}  ({path.stat().st_size} bytes, self-contained)")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Stable dependency control plane",
@@ -443,6 +456,18 @@ def main():
     p.add_argument("--repo", action="append", help="Monorepo-relative path; repeatable")
     p.add_argument("--all", action="store_true", help="Include clean repositories")
     p.set_defaults(func=cmd_git_status)
+
+    p = sub.add_parser(
+        "html",
+        help="Render the dependency status report as one self-contained HTML file",
+    )
+    p.add_argument("--output", help="Output path (default: <monorepo>/_devops/dep-status.html)")
+    p.add_argument("--serve", action="store_true", help="Serve on loopback instead of writing only")
+    p.add_argument("--port", type=int, default=8787)
+    p.add_argument("--host", default="127.0.0.1", help="Loopback only; anything else is refused")
+    p.add_argument("--skip-git", action="store_true", help="Omit the per-repository git state walk")
+    p.add_argument("--skip-graph", action="store_true", help="Omit the dependency edge scan (faster)")
+    p.set_defaults(func=cmd_html)
 
     args = parser.parse_args()
     args.func(args)

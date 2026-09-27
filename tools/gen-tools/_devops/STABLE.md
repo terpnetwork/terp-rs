@@ -14,6 +14,7 @@ Locked-in workflow for local ↔ remote crate swapping across the monorepo.
 | CLI | `_scripts/dep.py` | **Stable entrypoint** |
 | Engine | `_scripts/dep-switch.py` + `dep_common.py` | Implementation |
 | Probes | `_scripts/dep_probe.py` | Read-only. `branch-check`, `git-status`, write preflight |
+| Report | `_scripts/dep_html.py` | Self-contained HTML. `dep.py html [--serve]` |
 
 **Monorepo root** defaults to `terp-core/crates` (resolved from config).  
 Override with `TERP_DEP_ROOT` / `DEP_MONOREPO_ROOT` if needed.
@@ -56,6 +57,10 @@ just deps-branch-check
 
 # What is in flight, and what blocks a write path (read-only git plumbing)
 just deps-git-status
+
+# Same findings as one self-contained HTML file (no CDN, works from file://)
+just deps-html
+just deps-serve
 
 # If validate fails (absolute paths / wrong package dirs):
 just deps-heal            # rewrite locals; package-name checked

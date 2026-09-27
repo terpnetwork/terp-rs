@@ -108,6 +108,15 @@ deps-git-status:
 # Tests for the read-only probes
 deps-test:
     python3 _scripts/test_dep_probe.py
+    python3 _scripts/test_dep_html.py
+
+# Self-contained HTML status report (one file, no CDN, works from file://)
+deps-html:
+    {{dep}} html
+
+# Serve the report on loopback
+deps-serve port="8787":
+    {{dep}} html --serve --port {{port}}
 
 # Heal matrix local/zk_local paths (package-name checked, relative only)
 deps-heal:
