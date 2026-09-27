@@ -11,7 +11,8 @@
 set dotenv-load := false
 
 contract_dir := justfile_directory()
-artifacts_dir := contract_dir / "artifacts"
+# Canonical wasm store (never crate-local artifacts/)
+artifacts_dir := contract_dir / "../../.." / "artifacts"
 
 # Build wasmd-safe wasm using optimizer image as the *toolchain* (rustc 1.86).
 # Note: stock `bob` only builds packages under contracts/; this crate is a
@@ -42,10 +43,10 @@ wasm:
     esac
     echo "==> build toolchain image: ${IMG}"
     mkdir -p "{{artifacts_dir}}"
-    rm -f "{{artifacts_dir}}"/*.wasm
     docker run --rm \
       --entrypoint /bin/ash \
       -v "{{contract_dir}}":/code \
+      -v "{{artifacts_dir}}":/artifacts_out \
       -w /code \
       --mount type=volume,source=marketplace_mirror_cache,target=/target \
       --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
@@ -54,9 +55,8 @@ wasm:
       -c 'set -e
           rustup show
           cargo build --release --target wasm32-unknown-unknown --lib
-          mkdir -p /code/artifacts
-          cp -f /target/wasm32-unknown-unknown/release/marketplace_mirror.wasm /code/artifacts/
-          ls -la /code/artifacts/marketplace_mirror.wasm
+          cp -f /target/wasm32-unknown-unknown/release/marketplace_mirror.wasm /artifacts_out/
+          ls -la /artifacts_out/marketplace_mirror.wasm
          '
     just _post_process_wasm
     just _verify_no_bulk_memory
