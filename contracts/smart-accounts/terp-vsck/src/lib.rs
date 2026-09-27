@@ -22,6 +22,8 @@ mod error;
 mod msg;
 mod state;
 pub mod verify;
+#[cfg(test)]
+mod sudo_matrix;
 
 pub use error::ContractError;
 pub use msg::*;
@@ -31,7 +33,7 @@ use cosmwasm_std::{
     to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 use crate::state::{Config, Session, CONFIG, NULLIFIERS, SESSIONS};
@@ -161,7 +163,7 @@ pub struct VsckAuthStructs {}
 
 pub struct VsckAuthenticator;
 
-impl BtsgAccountTrait for VsckAuthenticator {
+impl TerpAccountTrait for VsckAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
