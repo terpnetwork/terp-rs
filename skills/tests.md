@@ -53,7 +53,7 @@ See `docs/ci.md`. Agents should prefer the same recipes CI runs:
 
 GitHub: workflows `ci-core.yml` (every PR), `ci-extended.yml` (paths/labels), `ci-heavy.yml` (dispatch / weekly / label `ci-heavy`).
 
-Local act (Hermes profile `ci-act-tester`): CWD `/Users/returniflost/abstract/terp-core/crates/terp-rs` · brief `docs/superpowers/prompts/ci-act-tester.md` · scripts `scripts/act/` · host first `just ci-core`.
+Local act (Hermes profile `ci-act-tester`): CWD `/Users/returniflost/abstract/terp-core/crates/terp-rs` · brief `docs/superpowers/prompts/ci-act-tester.md` · scripts `scripts/ci/` · host first `just ci-core`.
 
 ## Commands
 
