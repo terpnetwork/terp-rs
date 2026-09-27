@@ -1,119 +1,124 @@
 # Workspace status
 
-Snapshot of whether `crates/terp-rs` builds and tests, and what stands between
-it and a green `just ci-core`. Recorded rather than fixed — every item below is
-a finding, not a plan.
+Whether `crates/terp-rs` builds and tests, and what stands between it and a
+green `just ci-core`.
 
-Re-check the path graph at any time:
+Re-check at any time:
 
 ```sh
 scripts/ci/check-manifest-paths.sh .   # 0 = every path dep resolves
+cargo metadata --no-deps               # 0 = the workspace loads
 just --list                             # recipes exist and parse
 ```
 
 ## Headline
 
-**The root cargo workspace does not load.** `cargo metadata`, `check`, `build`,
-`test` and `run` all fail identically, for every member, including packages
-that have nothing to do with the missing crate:
+**The root workspace loads, and one third-party crate blocks a full compile.**
+
+`cargo metadata`, `check`, `build`, `test` and `run` all work. Every path
+dependency resolves: 172 of 172.
+
+What does not compile is `frost-rerandomized 2.2.0`, a published crates.io
+dependency, and nothing in this repository is the cause:
 
 ```
-failed to load manifest for workspace member .../tests
-Caused by: failed to read `.../crates/headstash/circuit/Cargo.toml`
-No such file or directory
+error[E0614]: type `u16` cannot be dereferenced
+  --> ~/.cargo/registry/.../frost-rerandomized-2.2.0/src/lib.rs:84:13
+   |
+84 |             *self.min_signers(),
+   |             ^^^^^^^^^^^^^^^^^^^ can't be dereferenced
 ```
 
-This is a manifest-load failure, not a compile error. Nothing in the root
-workspace can be built or tested until it is resolved, so no statement about
-whether the Rust compiles is available yet. Treat every crate under
-`crates/`, `contracts/`, `tests/` and `proto/` as **unverified**, not as
-passing or failing.
+That crate declares `frost-core = "2.2.0"`, and it does resolve `frost-core
+2.2.0`, but the call site expects a `&u16` accessor that `frost-core 2.2.0`'s
+`#[derive(Getters)]` on `KeyPackage` does not produce. `frost-core 3.0.0`
+replaced it with a hand-written `fn min_signers(&self) -> u16` returning by
+value, which is the signature the error reports.
 
-## Cause: a rename in the sibling `crates/headstash` repo
+Consequence: `cargo check --workspace --tests` fails, so CI tier 2 and tier 3 —
+`just ci-extended` and `just ci-heavy` — cannot run. Tiers 0 and 1 work for
+every package not in the `frost-ed25519` subgraph.
 
-`crates/headstash` moved its circuit crates:
+The `frost-ed25519 2.2` requirement appears in four manifests across two repos:
 
-| Was | Is now |
-|-----|--------|
-| `circuit/` | `circuits/halo2/` |
-| `claim-flock/` | `circuits/claim-flock/` |
-
-`crates/headstash/Cargo.toml` still lists `"circuit"` and `"claim-flock"` as
-workspace members, so **that repo's own workspace is broken too**:
-
-```
-$ cargo metadata --no-deps   # in crates/headstash
-failed to load manifest for workspace member .../headstash/circuit
-```
-
-The fix is not in this repository. `crates/headstash` needs its members list
-updated to `circuits/claim-flock` and `circuits/halo2`; once that lands, the
-two path deps below resolve and the root workspace loads again.
-
-## Broken path dependencies
-
-`scripts/ci/check-manifest-paths.sh` finds 18 unresolvable `path =` entries out
-of 171 checked. Grouped by what each one blocks:
-
-### 1. Blocks the root workspace (2)
-
-| Manifest | Points at |
+| Manifest | Requirement |
 |---|---|
-| `tests/suite/terp-orch/Cargo.toml:48` | `../../../../headstash/circuit` |
-| `crates/wasm-bindgen/snap-n-pull-rs/Cargo.toml:49` | `../../../headstash/circuit` |
+| `tools/hash-market/Cargo.toml:116` | `2.2`, optional, behind the `frost` feature |
+| `tests/Cargo.toml:111` | `2.2` |
+| `crates/frost_escrow/Cargo.toml:15` | `2.1`, optional, not a workspace member |
+| `crates/kms-shard/Cargo.toml:19` (outside this repo) | `2.2` |
 
-Both are the optional `zk-headstash` dep. `tests/suite/terp-orch` reaches it
-through the `headstash` feature, and `tests/` reaches `terp-orch` through
-`tests/Cargo.toml`, so an unresolvable optional dep still fails the load.
+Moving to the 3.x line aligns with `frost-core 3.0.0` and `osst`, which is
+already on 3.x. That is a cryptographic dependency major bump across two repos,
+so it is a decision, not a fix, and it has not been made here.
 
-### 2. Blocks `scripts/ibc-ops/cw-orch-ibc` only (15)
+Note also that `cargo check -p terp-scripts --lib` fails separately in
+`zakura-halo2-proofs` with two `E0599`s. That configuration excludes
+dev-dependencies and so resolves a different feature set from
+`--workspace --tests`, which does not hit it. Worth understanding before
+trusting a single-package `--lib` check as representative.
 
-Every monorepo-relative path in this nested project is off by one level. It
-lives at `scripts/ibc-ops/cw-orch-ibc/`, so reaching the terp-core siblings
-needs four `../`, not three:
+## What is verified
 
-| Declared | Should be |
-|---|---|
-| `../../../crates/cosmwasm/packages/std` | `../../../../cosmwasm/packages/std` |
-| `../../../crates/cw-minus/packages/cw-utils` | `../../../../cw-minus/packages/cw-utils` |
-| `../../../crates/cw-plus/packages/cw4` | `../../../../cw-plus/packages/cw4` |
-| `../../../crates/dao-contracts/...` | `../../../../dao-contracts/...` |
-| `../../../crates/cw-multi-test-fork` | `../../../../cw-multi-test-fork` |
-
-`cosmwasm-std` appears twice (`[dependencies]` and `[dev-dependencies]`). This
-is its own `[workspace]`, so it does not affect the root workspace — it just
-cannot be built.
-
-### 3. Blocks `tools/gen-tools/gen-api` only (1)
-
-`tools/gen-tools/gen-api/Cargo.toml:12` declares
-`gen-tools = { path = "../../tools/gen-tools" }`, which resolves to
-`tools/tools/gen-tools`. From that directory the correct path is
-`../..`. This is a stray `tools/` segment, not a depth problem.
-
-## What does build
-
-Nested projects own their own `[workspace]`, so they are unaffected by the
-root failure. Verified on this snapshot:
-
-| Project | Command | Result |
+| Scope | Command | Result |
 |---|---|---|
+| Manifest graph | `check-manifest-paths.sh` | 172 of 172 resolve |
+| Workspace load | `cargo metadata --no-deps` | exit 0 |
+| `terp-frost` | `cargo check -p terp-frost --all-targets` | clean, warnings only |
+| `terp-frost` tests | `cargo test -p terp-frost` | **13 passed, 0 failed** |
 | `tools/onboard-authz` | `cargo check --all-targets` | clean, warnings only |
-| `contracts/hash-merchant/marketplace-mirror` | `cargo check --all-targets` | clean, no warnings |
+| `marketplace-mirror` | `cargo check --all-targets` | clean, no warnings |
+| Whole workspace | `cargo check --workspace --tests` | 1 error, in `frost-rerandomized` |
+
+`terp-frost`'s 13 include the cases that matter for the Schnorr work: 2-of-3
+authorizes while one share does not, a rotation switches the authorizing key
+while a pending one does not, an opaque `group_vk` fails auth and still rotates,
+`OnAuthRemoved` does not clear `group_vk`, and `simulate` does not write.
 
 Nested projects not yet verified, because they are large or need nightly:
 
 | Project | Note |
 |---|---|
-| `tools/hash-market` | largest; excluded from the root workspace on purpose |
+| `tools/hash-market` | excluded from the root workspace on purpose; in the `frost` subgraph, so blocked by the above |
 | `crates/wasm-bindgen/zkjwt-wasm` | needs nightly (`generic_const_exprs`) |
 | `crates/wasm-bindgen/norick-wasm` | stable |
 | `contracts/hash-merchant/trusted-builder-sbt` | own workspace |
 
+## The path-dependency fixes
+
+All four classes were directory moves whose relative paths did not follow. The
+`terp-rs` side is committed; the `crates/headstash` side is in that repo's
+working tree, uncommitted, and must be committed together with the `circuits/`
+move it belongs to or headstash will not load from a fresh clone.
+
+| Class | Was | Now |
+|---|---|---|
+| headstash circuit move | `headstash/circuit` | `headstash/circuits/halo2` |
+| `snap-n-pull-rs` depth | `../../../headstash/...` | `../../../../headstash/...` |
+| `cw-orch-ibc` depth | `../../../crates/X` | `../../../../X` (15 entries) |
+| `gen-api` stray segment | `../../tools/gen-tools` | `../..` |
+
+## The KMS handoff is not committed
+
+`reviews/KMS-PRODUCT-HANDOFF-2026-09-27.md` is the cold-start artifact for the
+threshold-KMS effort, and it is **not in git**. `reviews` has been in
+`.gitignore` since before this branch, and 0 of the 16 handoffs in that
+directory have ever been committed.
+
+This now matters more than it did, because
+`crates/cw-orchestrator/docs/src/integrations/kms-signer.md` — which *is*
+tracked, in another repo — points at that untracked path. The reference 404s for
+anyone who clones.
+
+Left as-is deliberately, per the repo's existing convention. Making it durable
+is a one-line change once someone decides between force-adding the single file,
+un-ignoring the directory, or relocating it next to its stated source of truth
+in `cw-orchestrator/docs/src/integrations/`.
+
 ## Protos are ahead of the generated Rust
 
-`proto/terp` and `proto/osmosis` are vendored from terp-core and now match it
-byte for byte (`just check-protos` is green). `crates/sdk/src/gen/` does **not**
+`proto/terp` and `proto/osmosis` are vendored from terp-core and match it byte
+for byte (`just check-protos` is green). `crates/sdk/src/gen/` does **not**
 match them. Running `just proto-gen` today would change the SDK's public types.
 
 Deltas, `proto/` versus `crates/sdk/src/gen/`:
@@ -125,10 +130,10 @@ Deltas, `proto/` versus `crates/sdk/src/gen/`:
 - `terp.drip.v1.Query` gains a pagination import.
 - `terp.smartaccount.v1beta1` `tx.proto` gains a `gogoproto` import.
 
-`just proto-gen` cannot run: `proto` is a root-workspace member, and the root
-workspace does not load. The protos themselves are verified independently —
-`protoc` compiles every vendored file with only unused-import warnings — so the
-inputs are sound and only the generator is blocked.
+`just proto-gen` can now run, since the workspace loads. The protos themselves
+verify independently — `protoc` compiles every vendored file with only
+unused-import warnings, and all five terp packages are in the descriptor set —
+so the inputs are sound.
 
 `proto/src/main.rs` also post-processes generated files by stripping derives
 from a hardcoded list of type names. That list predates the oracle types above,
@@ -137,13 +142,13 @@ derives rather than a clean diff.
 
 ## Scripts and recipes
 
-`scripts/act/` was renamed to `scripts/ci/`. The rename is now complete: the
-`RUNS_DIR` in `scripts/ci/lib.sh`, the `combo` recipes, the two
+The `scripts/act/` to `scripts/ci/` rename is complete: `RUNS_DIR` in
+`scripts/ci/lib.sh`, the `combo` recipes, the two
 `bash scripts/ci/ci-combo.sh` jobs in `.github/workflows/combo.yml`, the
-`.gitignore` run-log rules, and the `scripts/act/` references in
-`docs/ci/`, `docs/superpowers/prompts/ci-act-tester.md` and
-`skills/tests.md` all point at the new path, and `ci-combo.sh` / `act-run.sh`
-now resolve their repo root correctly from two levels down.
+`.gitignore` run-log rules, and the `scripts/act/` references in `docs/ci/`,
+`docs/superpowers/prompts/ci-act-tester.md` and `skills/tests.md` all point at
+the new path, and `ci-combo.sh` / `act-run.sh` resolve their repo root correctly
+from two levels down.
 
 One stale reference is deliberate: `scripts/ci/runs/baseline-wallclock-*.md`
 still names `scripts/act/runs/`. Those are dated measurement records of a run
@@ -159,17 +164,14 @@ Found by reading, not by a gate. None of these break a build.
 - `crates/frost_escrow/src/lib.rs` is a compile-only stub. `FrostLabCommittee::dkg`
   returns 32 zero bytes, and `validate_matches_burn` / `verify_spend_encoded`
   return `Ok(())` unconditionally — the second with a literal
-  `// SILENT ERROR` comment. This is pre-existing at `v0.0.2-dev`; the only
-  change on this branch is that comment being added. The crate is not a
-  workspace member, so nothing in the root graph links it. Worth deciding
+  `// SILENT ERROR` comment. It is not a workspace member. Worth deciding
   whether a fails-open verifier should exist at all.
 - `contracts/smart-accounts/terp-dao/Cargo.toml` uses
   `version = { workspace = true }` but `terp-dao` is not in the root `members`
-  list, so it cannot build on its own. `terp-wavs` and `terp-zktls` share this.
+  list, so it cannot build standalone. `terp-wavs` and `terp-zktls` share this.
 - `contracts/smart-accounts/terp-zktls/src/lib.rs` still uses a bare
   `#[entry_point]` on one export while its siblings are
-  `#[cfg_attr(not(feature = "library"), entry_point)]`. Part of an incomplete
-  sweep.
+  `#[cfg_attr(not(feature = "library"), entry_point)]`.
 - `crates/crosslink/light-client/README.md` still documents a `sigverify`
   feature that `Cargo.toml` no longer declares.
 - `contracts/smart-accounts/terp-eth/Readme.md` documents an
@@ -177,8 +179,7 @@ Found by reading, not by a gate. None of these break a build.
   and `recover_eth_address()` inline, with no `saa` dependency.
 - `contracts/revenue/README.md` names the private-dex package `private-dex`, but
   `contracts/revenue/private-dex/Cargo.toml` calls it `cw-private-dex`, and that
-  crate's own README says `cd crates/headstash` for its build commands. All
-  three disagree.
+  crate's own README says `cd crates/headstash` for its build commands.
 - Three docs still point at the deleted TypeScript snap
   (`tools/snap-n-pull-js/`): `tools/hash-market/docs/headstash.md`,
   `tools/hash-market/docs/architecture.md`, `tools/hash-market/docs/index.mdx`.
@@ -193,13 +194,16 @@ Found by reading, not by a gate. None of these break a build.
   `agents/connect-private-swap-design-prep-2026-07-22/PROMPT-NOTE-SWAP-SPEND.md`.
 - The root `README.md` workspace tree still lists `docs/superpowers/`, which no
   longer exists, and omits `contracts/` and `tests/suite/`.
-- `tests/README.md` architecture tree omits `tests/e2e/` and `tests/suite/`.
-  The authoritative doc for the latter is `tests/suite/README.md`.
+- `tests/README.md` architecture tree omits `tests/e2e/` and `tests/suite/`,
+  and its feature table says `default = docker, nostr` where `tests/Cargo.toml`
+  says `["docker", "nostr", "hash-market"]`. The manifest is right.
 - `tools/onboard-authz/MOVED.md` says the crate "now lives in
   `crates/cw-infuser/tools/onboard-authz`". That path does not exist here, and
   the crate is still referenced by `tools/hash-market/Cargo.toml`,
-  `scripts/ci/ci-combo.sh` and the root justfile. Read the file as a pointer
-  stub, not as a completed move.
+  `scripts/ci/ci-combo.sh` and the root justfile. Read it as a pointer stub.
+- `crates/terp-seams/src/dex/note/../README.md` and ~14 other docs still point
+  at `docs/plans/spectrum/fixtures/private_dex_seams` for the seam math SSOT;
+  the source of truth is now `crates/terp-seams`.
 
 ## Untracked binary
 
@@ -210,3 +214,7 @@ canonical store (`contracts/light-clients/README.md` says the same). Gitignore
 does not apply to already-tracked files, so the old copy is still committed. It
 should be `git rm --cached` in a follow-up. The canonical `artifacts/` at the
 repo root, and `crates/wasm-bindgen/zkjwt-wasm/pkg/`, are tracked on purpose.
+
+`delegation_messages.json` has the same problem in reverse: it was deleted as a
+committed build artifact, `tests/bin/dels.rs` still names it in `RAW_MSG_JSON`,
+and there is no ignore rule, so the next run recreates it untracked.
