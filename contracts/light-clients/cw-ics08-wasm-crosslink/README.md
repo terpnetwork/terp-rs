@@ -47,7 +47,7 @@ See `crates/crosslink/light-client/src/membership.rs`.
 
 ### Misbehavior Handling
 
-Misbehavior is currently stubbed and always returns `false` (no misbehaviour detected).
+Misbehaviour is same-BFT-height disagreement on the BFT hash or PoW finalization candidate. Incomplete evidence fails closed.
 
 Future detection will cover **equivocation**: two valid but conflicting fat pointers (different finalization candidates) at the same BFT height signed by a sufficient quorum of the finalizer set. Upon detection, the client is frozen. Recovery requires a governance proposal.
 

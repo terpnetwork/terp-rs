@@ -80,13 +80,27 @@ pub fn verify_header(
 /// Returns [`CrosslinkIBCError`] if the header cannot be checked.
 pub fn check_for_misbehaviour(
     client_state: &ClientState,
-    _consensus_state: &ConsensusState,
-    _header: &CrosslinkHeader,
+    consensus_state: &ConsensusState,
+    header: &CrosslinkHeader,
 ) -> Result<bool, CrosslinkIBCError> {
     if client_state.is_frozen {
         return Ok(true);
     }
-    Ok(false)
+    if header.bft_block.headers.is_empty() {
+        return Err(CrosslinkIBCError::HeaderVerificationFailed(
+            "misbehaviour check requires a PoW finalization candidate".into(),
+        ));
+    }
+    if header.bft_block.height != client_state.latest_bft_height
+        && header.bft_block.height != consensus_state.bft_height
+    {
+        return Ok(false);
+    }
+    let candidate = header.finalization_candidate();
+    let conflicts = header.block_hash() != client_state.latest_bft_block_hash
+        || candidate.hash != client_state.latest_finalized_pow_hash
+        || candidate.hash != consensus_state.pow_anchor_hash;
+    Ok(conflicts)
 }
 
 #[cfg(test)]
@@ -211,5 +225,60 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("confirmation depth"));
+    }
+
+    #[test]
+    fn check_for_misbehaviour_same_height_conflict() {
+        let client_state = ClientState::new(
+            PROTOTYPE_PARAMETERS.clone(),
+            Blake3Hash([0u8; 32]),
+            1,
+            10,
+            [0x11; 32],
+            vec![],
+        );
+        let consensus_state = ConsensusState::v1(1, 10, [0x11; 32], 0, [0u8; 32]);
+        let header = CrosslinkHeader {
+            trusted_bft_height: 1,
+            bft_block: BftBlock {
+                version: 1,
+                height: 1,
+                previous_block_fat_ptr: FatPointerToBftBlock2::null(),
+                finalization_candidate_height: 10,
+                headers: vec![PowHeader {
+                    hash: [0x22; 32],
+                    timestamp: 1,
+                    height: 10,
+                    commitment_bytes: [0u8; 32],
+                }],
+            },
+            fat_pointer: FatPointerToBftBlock2::null(),
+        };
+        assert!(check_for_misbehaviour(&client_state, &consensus_state, &header).unwrap());
+    }
+
+    #[test]
+    fn check_for_misbehaviour_empty_headers_fail_closed() {
+        let client_state = ClientState::new(
+            PROTOTYPE_PARAMETERS.clone(),
+            Blake3Hash([0u8; 32]),
+            1,
+            10,
+            [0x11; 32],
+            vec![],
+        );
+        let consensus_state = ConsensusState::v1(1, 10, [0x11; 32], 0, [0u8; 32]);
+        let header = CrosslinkHeader {
+            trusted_bft_height: 1,
+            bft_block: BftBlock {
+                version: 1,
+                height: 1,
+                previous_block_fat_ptr: FatPointerToBftBlock2::null(),
+                finalization_candidate_height: 10,
+                headers: vec![],
+            },
+            fat_pointer: FatPointerToBftBlock2::null(),
+        };
+        assert!(check_for_misbehaviour(&client_state, &consensus_state, &header).is_err());
     }
 }

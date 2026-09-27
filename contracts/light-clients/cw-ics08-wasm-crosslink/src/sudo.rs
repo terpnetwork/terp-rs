@@ -122,9 +122,9 @@ pub fn update_state(
 
 /// Handle misbehaviour.
 ///
-/// Freezes the client on misbehaviour evidence. In the current
-/// implementation, misbehaviour detection is a stub — this handler
-/// accepts any valid misbehaviour message and freezes the client.
+/// Freezes the client only when the submitted header conflicts with stored
+/// state at the same BFT height (or the client is already frozen). Incomplete
+/// evidence fails closed.
 ///
 /// # Errors
 ///
@@ -133,10 +133,19 @@ pub fn misbehaviour(
     deps: DepsMut<CrosslinkCustomQuery>,
     msg: MisbehaviourMsg,
 ) -> Result<Vec<u8>, ContractError> {
-    let _header: CrosslinkHeader =
+    let header: CrosslinkHeader =
         CrosslinkHeader::zcash_deserialize(std::io::Cursor::new(&msg.client_message))?;
 
     let client_state = state::get_crosslink_client_state(deps.as_ref().storage)?;
+    let consensus_state = state::get_crosslink_consensus_state(
+        deps.as_ref().storage,
+        client_state.latest_bft_height,
+    )?;
+    let found = verify::check_for_misbehaviour(&client_state, &consensus_state, &header)
+        .map_err(ContractError::VerifyClientMessageFailed)?;
+    if !found {
+        return Err(ContractError::InvalidClientMessage);
+    }
 
     // Freeze the client
     let mut frozen_client = client_state;

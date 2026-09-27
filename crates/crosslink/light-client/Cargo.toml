@@ -6,6 +6,8 @@ repository = { workspace = true }
 description = "Core light client verification primitives for Zcash Crosslink TFL"
 
 [features]
+# Optional invariance tests against a local zebra-crosslink checkout.
+zebra-crosslink-compare = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }

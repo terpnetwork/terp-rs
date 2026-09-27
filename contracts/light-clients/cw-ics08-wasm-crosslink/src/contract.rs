@@ -73,7 +73,7 @@ pub fn execute(
     _info: MessageInfo,
     _msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    Err(ContractError::InvalidClientMessage)
 }
 
 /// The query entry point for the CosmWasm contract.

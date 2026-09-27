@@ -671,17 +671,38 @@ mod tests {
         let mut our_buf = Vec::new();
         our_block.zcash_serialize(&mut our_buf).unwrap();
 
-        // Zebra serialized bytes
-        let mut zebra_buf = Vec::new();
-        // TODO: Once we can construct equivalent zebra types with PowHeader headers,
-        // uncomment and assert equality:
-        // zebra_block.zcash_serialize(&mut zebra_buf).unwrap();
-        // assert_eq!(our_buf, zebra_buf);
-
-        // For now: assert that our serialized format is deterministic
+        // Zebra `BftBlock.headers` is `Vec<zebra_chain::block::Header>`, not
+        // slim [`PowHeader`]. Equivalent zebra construction is tracked by
+        // `zebra_pow_header_construct_unresolved` (ignored until a fixture exists).
         let mut our_buf2 = Vec::new();
         our_block.zcash_serialize(&mut our_buf2).unwrap();
         assert_eq!(our_buf, our_buf2, "our serialization is deterministic");
+    }
+
+    /// Slim [`PowHeader`] wire is 76 bytes (hash + timestamp + height + commitment).
+    /// This is intentionally not `zebra_chain::block::Header`.
+    #[test]
+    fn pow_header_slim_wire_is_not_zebra_header() {
+        let hdr = PowHeader {
+            hash: [0xdd; 32],
+            timestamp: 1_600_000_000,
+            height: 50,
+            commitment_bytes: [0u8; 32],
+        };
+        let mut buf = Vec::new();
+        hdr.zcash_serialize(&mut buf).unwrap();
+        assert_eq!(buf.len(), 32 + 8 + 4 + 32);
+    }
+
+    /// Failing tracker: zebra-crosslink is not a required dep, so we cannot
+    /// yet construct a zebra `Header` and assert byte-equality with [`PowHeader`].
+    #[test]
+    #[ignore = "zebra PowHeader construct: zebra-crosslink Header ≠ slim PowHeader; enable when a shared fixture exists"]
+    fn zebra_pow_header_construct_unresolved() {
+        panic!(
+            "construct zebra_chain::block::Header with known bytes and assert \
+             BftBlock ZcashSerialize matches zebra-crosslink"
+        );
     }
 
     /// Test that internal serde JSON roundtrip works for crosslink types.
