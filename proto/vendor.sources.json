@@ -1,0 +1,38 @@
+{
+  "generated_by": "scripts/gen/proto/vendor-terp-protos.sh",
+  "source_repo": "terp-core",
+  "source_ref": "feat/6.3.0-dev",
+  "source_commit": "3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba",
+  "source_proto_dirty": false,
+  "files": {
+    "terp/drip/v1/genesis.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "6e5a61ed0a3e8a81fc7c0608d9a228bbed8a34f7108285b5b1abff9a1d11c2c0" },
+    "terp/drip/v1/query.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "c7e3fc540be4aff02d94b1dbbcb51742de32bd9092ab89d1e8a4db2dfe8a0ab7" },
+    "terp/drip/v1/tx.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "2d75d475e7b1370f0537496f7574531462ac1c48360d3464081a1861024f9584" },
+    "terp/feeshare/v1/feeshare.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "d2c78491c6e3b835d290f6352b45ad1a4a532b1a7c63b43e6b468b9f79b4339d" },
+    "terp/feeshare/v1/genesis.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "ecba8598411b581657820dc5d586fd33fb84b8fad694dd6ad59aefe7378af836" },
+    "terp/feeshare/v1/query.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "5392d09c984dd5fed1d402e98193a5a163d73aa42b338a75a47d258f1eab134c" },
+    "terp/feeshare/v1/tx.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "e74a7cbd800443c7b5d0d377e2a1d700343684dadc14dd4ffefa162ef60d2ca1" },
+    "terp/hashmerchant/v1/genesis.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "87ca42522b8e515da44eaf867005a58851b537140faac7577065ac22f0081a0f" },
+    "terp/hashmerchant/v1/query.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "e7c570c664f9205af43c742408539c1678adbe0d8f67c939acf480f0a2139887" },
+    "terp/hashmerchant/v1/tx.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "b7d4085aa3e673be4a55ae87ec2adf54335537fac6deff72f3b092b37afef8cb" },
+    "terp/hashmerchant/v1/types.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "6465acbf9674144f47ab83e1e46af9f4b1063ed2c983b05e1d35eb152a0b90ea" },
+    "terp/smartaccount/v1beta1/genesis.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "7644e0c5afb6208e3669c1a9fd27e02d331bc4ebacaefdc20f8cc3c664a559f3" },
+    "terp/smartaccount/v1beta1/models.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "09443c5a95362ae65d9c1b4ed3ddc007eadfb36f1be19184880e14739be31862" },
+    "terp/smartaccount/v1beta1/params.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "53527dddd44587f950bab9fbf24daf23c9831dfa7cae6550f43d39558a600ea4" },
+    "terp/smartaccount/v1beta1/query.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "b4d87946e05dfc7a405c98d34faf9d207609f1e60e8ce76760f4ce70a3e640b0" },
+    "terp/smartaccount/v1beta1/tx.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "25e013d4d1695e5327f962c76784eaa78bb3417e23212faffb5f8bcc37194277" },
+    "osmosis/tokenfactory/v1beta1/authorityMetadata.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "739885439fc5903ae6a2c6847e9eda70ab009d23a3f8cc81f05282b8369aed4d" },
+    "osmosis/tokenfactory/v1beta1/genesis.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "71dbefbca074169b8d506c1ded782a54a81af46ebb726555ab1e08e1b98306da" },
+    "osmosis/tokenfactory/v1beta1/params.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "71e7b658cdfd2c3e7b921c2276b0454edf64480e970ae65cb3089e3137159fbe" },
+    "osmosis/tokenfactory/v1beta1/query.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "888c9fae8e10ad9f3ef4fd376c8d991d451226a34c329f7c745304144a15a27d" },
+    "osmosis/tokenfactory/v1beta1/tx.proto": { "src": "terp-core@3931f8bd817a5fa3a5cecc2b199eb3c9a54c59ba", "sha256": "7dccaa02d42cae09a6abeeb4dfad2315bb20bf95f4f5bc9fec180300b3762068" },
+    "terp/clock/v1/genesis.proto": { "src": "pinned:tsh-upgrade-terp-core", "sha256": "74ae6ea88c2672e6c83f384282e6557f12d3cfc5bfa6a91a9a221136f8f65c20" },
+    "terp/clock/v1/query.proto": { "src": "pinned:tsh-upgrade-terp-core", "sha256": "11b7f00e550e2f497d2d6bbaad2862218c7cb7b5e374c4f0991d476d4f8e2ec9" },
+    "terp/clock/v1/tx.proto": { "src": "pinned:tsh-upgrade-terp-core", "sha256": "b883ec695fb9eed23ed737f89a583121cd2cec11ae7a31c872309e5f15f1e850" }
+  },
+  "notes": [
+    "protos are vendored verbatim; edit them in terp-core, not here",
+    "terp/clock is pinned from tests/tsh/upgrade/terp-core: terp-core dropped x/clock upstream but crates/sdk/src/gen/terp.clock.v1.rs still needs it",
+    "buf.lock is copied from terp-core so BSR deps track the chain"
+  ]
+}

@@ -3,6 +3,7 @@ package terp.smartaccount.v1beta1;
 
 import "cosmos/msg/v1/msg.proto";
 import "amino/amino.proto";
+import "gogoproto/gogo.proto";
 
 option go_package = "github.com/terpnetwork/terp-core/x/smart-account/types";
 
