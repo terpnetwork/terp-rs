@@ -1,16 +1,23 @@
-//! FROST group-vk rotate contract.
+//! FROST group-vk contract: rotation on execute, Schnorr authorization on sudo.
 //!
 //! `MsgExecuteContract { rotate_frost_pubkey }` is always **Ok + write**
 //! (pending or fail). t-of-n matching shares apply `group_vk`.
-//! There is **no** `sudo` / Authenticate entry — CosmwasmAuthenticatorV1
-//! discards writes and is forbidden for inbox and rotate.
+//! `sudo` `Authenticate` only reads the applied `group_vk`. It does not write,
+//! because `x/smart-account` discards writes made from Authenticate, and a
+//! rotate has to land.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+mod auth;
+mod error;
+
+pub use auth::{FROST_SIG_LEN, encode_group_vk, encode_signature};
+pub use error::ContractError;
+
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
 };
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 use sha2::{Digest, Sha256};
 
 const CONTRACT_NAME: &str = "crates.io:terp-frost";
@@ -19,7 +26,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Bind prefix — must match onboard-authz `itl_frost_rotate::HKDF_INFO`.
 pub const HKDF_INFO: &[u8] = b"itl-frost-rotate-v1";
 
-const CONFIG: Item<Config> = Item::new("config");
+pub(crate) const CONFIG: Item<Config> = Item::new("config");
 const PROPOSAL: Item<RotateProposal> = Item::new("proposal");
 const LOG: Item<Vec<RotateEvent>> = Item::new("log");
 
@@ -121,7 +128,7 @@ pub struct RotateEvent {
     pub reason: Option<String>,
 }
 
-pub fn vk_commit(group_vk: &str) -> String {
+pub(crate) fn vk_commit(group_vk: &str) -> String {
     let mut h = Sha256::new();
     h.update(HKDF_INFO);
     h.update(group_vk.as_bytes());
@@ -217,7 +224,15 @@ pub fn execute(
             next_seats,
             next_t,
             next_n,
-        } => invoke(deps, info, new_vk_commit, hkdf_commit, next_seats, next_t, next_n),
+        } => invoke(
+            deps,
+            info,
+            new_vk_commit,
+            hkdf_commit,
+            next_seats,
+            next_t,
+            next_n,
+        ),
         ExecuteMsg::AddRotateShare {
             new_vk,
             hkdf_commit,
@@ -260,7 +275,12 @@ fn invoke(
 ) -> StdResult<Response> {
     let cfg = CONFIG.load(deps.storage)?;
     if info.sender.as_str() != cfg.owner {
-        append_log(deps.branch(), info.sender.as_str(), "fail", Some("not_owner"))?;
+        append_log(
+            deps.branch(),
+            info.sender.as_str(),
+            "fail",
+            Some("not_owner"),
+        )?;
         return Ok(ok_write(
             "rotate_frost_pubkey",
             "fail",
@@ -269,7 +289,12 @@ fn invoke(
         ));
     }
     if new_vk_commit.trim().is_empty() {
-        append_log(deps.branch(), cfg.owner.as_str(), "fail", Some("empty_commit"))?;
+        append_log(
+            deps.branch(),
+            cfg.owner.as_str(),
+            "fail",
+            Some("empty_commit"),
+        )?;
         return Ok(ok_write(
             "rotate_frost_pubkey",
             "fail",
@@ -279,7 +304,12 @@ fn invoke(
     }
     if let Some(p) = PROPOSAL.may_load(deps.storage)? {
         if p.status == "pending" {
-            append_log(deps.branch(), cfg.owner.as_str(), "fail", Some("already_pending"))?;
+            append_log(
+                deps.branch(),
+                cfg.owner.as_str(),
+                "fail",
+                Some("already_pending"),
+            )?;
             return Ok(ok_write(
                 "rotate_frost_pubkey",
                 "fail",
@@ -332,13 +362,10 @@ fn invoke(
         },
     )?;
     append_log(deps.branch(), cfg.owner.as_str(), "invoke", None)?;
-    Ok(ok_write(
-        "rotate_frost_pubkey",
-        "pending",
-        cfg.owner.as_str(),
-        None,
+    Ok(
+        ok_write("rotate_frost_pubkey", "pending", cfg.owner.as_str(), None)
+            .add_attribute("new_vk_commit", new_vk_commit),
     )
-    .add_attribute("new_vk_commit", new_vk_commit))
 }
 
 fn add_share(
@@ -351,7 +378,12 @@ fn add_share(
 ) -> StdResult<Response> {
     let mut cfg = CONFIG.load(deps.storage)?;
     if info.sender.as_str() != cfg.owner {
-        append_log(deps.branch(), info.sender.as_str(), "fail", Some("not_owner"))?;
+        append_log(
+            deps.branch(),
+            info.sender.as_str(),
+            "fail",
+            Some("not_owner"),
+        )?;
         return Ok(ok_write(
             "rotate_frost_pubkey",
             "fail",
@@ -444,17 +476,12 @@ fn add_share(
         CONFIG.save(deps.storage, &cfg)?;
         PROPOSAL.save(deps.storage, &p)?;
         append_log(deps.branch(), &admin, "apply", None)?;
-        return Ok(ok_write(
-            "rotate_frost_pubkey",
-            "applied",
-            &admin,
-            None,
-        )
-        .add_attribute("group_vk", cfg.group_vk)
-        .add_attribute("old_vk", old)
-        .add_attribute("share_count", share_n.to_string())
-        .add_attribute("n", cfg.n.to_string())
-        .add_attribute("t", cfg.t.to_string()));
+        return Ok(ok_write("rotate_frost_pubkey", "applied", &admin, None)
+            .add_attribute("group_vk", cfg.group_vk)
+            .add_attribute("old_vk", old)
+            .add_attribute("share_count", share_n.to_string())
+            .add_attribute("n", cfg.n.to_string())
+            .add_attribute("t", cfg.t.to_string()));
     }
     PROPOSAL.save(deps.storage, &p)?;
     Ok(ok_write("rotate_frost_pubkey", "pending", &admin, None)
@@ -493,6 +520,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(
+    deps: DepsMut,
+    env: Env,
+    msg: terp_auth::AuthSudoMsg,
+) -> Result<Response, ContractError> {
+    auth::process_sudo(deps, env, &msg)
+}
+
 fn pending_of(deps: Deps) -> StdResult<PendingResponse> {
     match PROPOSAL.may_load(deps.storage)? {
         Some(p) => Ok(PendingResponse {
@@ -516,7 +552,7 @@ fn pending_of(deps: Deps) -> StdResult<PendingResponse> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, Coin};
+    use cosmwasm_std::{Coin, from_json};
 
     type TestDeps = cosmwasm_std::OwnedDeps<
         cosmwasm_std::testing::MockStorage,

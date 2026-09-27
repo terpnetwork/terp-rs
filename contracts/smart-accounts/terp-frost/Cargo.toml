@@ -1,6 +1,6 @@
 [package]
 name = "terp-frost"
-description = "FROST group-vk rotate contract: Execute rotate_frost_pubkey always Ok+write; never Authenticate sudo"
+description = "FROST group-vk contract: execute rotates the key; sudo Authenticate verifies a Schnorr signature and does not write"
 version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
@@ -24,3 +24,10 @@ cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }
+terp-auth = { workspace = true }
+terp-account = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+osst = { path = "../../../../zeratul/crates/osst", default-features = false, features = ["secp256k1"] }
+
+[dev-dependencies]
+rand = "0.8"
