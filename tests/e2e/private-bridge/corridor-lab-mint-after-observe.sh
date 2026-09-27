@@ -125,9 +125,9 @@ fi
 
 put_auto "$INTENT" "bridging" "BridgeMintNote: cw-headstash mock_verify (pure L0 + optional L1 Mock)"
 
-echo "== pure cashapp_zec_corridor + harness W0–W7 Simulated =="
+echo "== pure terp-seams corridor + harness W0–W7 Simulated =="
 (
-  cd "$REPO_ROOT/crates/terp-rs/docs/private-bridge/fixtures/cashapp_zec_corridor" && cargo test --quiet
+  cd "$REPO_ROOT/crates/terp-rs" && cargo test -p terp-seams --lib corridor --quiet
 )
 (
   cd "$REPO_ROOT/crates/headstash" && \
