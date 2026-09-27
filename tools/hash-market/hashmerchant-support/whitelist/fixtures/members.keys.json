@@ -1,0 +1,9 @@
+{
+  "version": "loyalty-members/v1",
+  "note": "Key-only members for bootstrap dry-run / lab key creation. Same schema as members.json; addresses filled by accounts/bootstrap.sh.",
+  "members": [
+    { "name": "alice", "key": "demo-alice" },
+    { "name": "bob", "key": "demo-bob" },
+    { "name": "carol", "key": "demo-carol" }
+  ]
+}

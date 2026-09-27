@@ -1,5 +1,8 @@
 # Related handoffs
 
+- **FROST privval sidecar (docs curate + trailmark/mermaid):** `reviews/HANDOFF-FROST-SIDECAR-DOCS-2026-09-03.md` · public draft `docs/frost-privval.md`
+- **FROST privval sidecar (e2e sound/unsound):** `reviews/HANDOFF-FROST-SIDECAR-E2E-2026-09-03.md` · `scripts/e2e-frost-privval.sh`
+
 - Module multi-source oracle: `x/hashmerchant/spec/10_multi_source_oracle.md`
 - ICT L3 bootstrap e2e: `docs/bootstrap/hashmerchant-ict-bootstrap-e2e-handoff.md`
 - **B4/B5 full hash-market + product e2e ladder:** `docs/bootstrap/hashmerchant-b4-b5-full-runtime-and-product-e2e.md`

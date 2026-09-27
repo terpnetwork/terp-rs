@@ -39,6 +39,14 @@ ve_enabled = false
 # terpd: HASHMERCHANT_SIDECAR_URL=http://127.0.0.1:9090
 # (root /vote-extension alias; also available under /ve/vote-extension)
 #
+# Opt-in public-leaf PIR (NOT default). Rebuild with `--features pir`.
+# Does not replace NIP-BUD/blossom or Nostr. Does not broadcast.
+# [pir]
+# enabled = true
+# hs_id = "community-notes"
+# notes_json = "../../../../crates/headstash/artifacts/community-notes/notes.json"
+# merkle_json = "../../../../crates/headstash/artifacts/community-notes/merkle_output.json"
+#
 # ── Connect-style multi-source price bounds (opt-in elevated) ─────────────
 # Many sources → off-chain median → one mid per market_id (role=bound_only).
 # API: GET /oracle/bounds?market_id=ETH/USD
@@ -114,3 +122,14 @@ ve_enabled = false
 # public_mint_list = true
 # # registry_contract = "terp1…"
 # # chain_rpc = "http://127.0.0.1:26657"
+
+# ── Onboard feegrant (embedded — no onboard-runtime process) ──────────────
+# Canonical URLs: GET /onboard/status  POST /onboard/v1/register-grant|/onboard/v1/mint-grant
+# Env ONBOARD_DAO / ONBOARD_RUNTIME override. Server refuses placeholder DAO_ADDR.
+#
+# [onboard]
+# enabled = true
+# dao = "terp1..."
+# runtime_key = "terp1..."
+# # chain_id defaults to top-level chain_id
+# broadcast = false

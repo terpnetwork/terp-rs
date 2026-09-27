@@ -1,0 +1,22 @@
+{
+  "version": "loyalty-members/v1",
+  "note": "Demo members only — addresses are placeholders for offline tree tests",
+  "members": [
+    {
+      "name": "alice",
+      "address": "terp1alice000000000000000000000000000001"
+    },
+    {
+      "name": "bob",
+      "address": "terp1bob000000000000000000000000000000002"
+    },
+    {
+      "name": "carol",
+      "address": "terp1carol000000000000000000000000000003"
+    },
+    {
+      "name": "dave",
+      "address": "terp1dave00000000000000000000000000000004"
+    }
+  ]
+}

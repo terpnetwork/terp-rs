@@ -27,6 +27,7 @@ WORKDIR /build
 COPY Cargo.toml Cargo.lock /build/
 COPY tools/hash-market/Cargo.toml tools/hash-market/Cargo.lock /build/tools/hash-market/
 COPY tools/hash-market/src /build/tools/hash-market/src/
+COPY tools/onboard-authz /build/tools/onboard-authz/
 COPY crates/nips/Cargo.toml /build/crates/nips/
 COPY crates/nips/src /build/crates/nips/src/
 

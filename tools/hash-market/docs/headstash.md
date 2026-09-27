@@ -88,7 +88,7 @@ Wallet proof backups are always auth-gated and never dual-indexed as public `/co
 Client CLI (ops):
 
 ```bash
-cargo run -p seam_note_out --features cli --bin headstash-notes -- \
+cargo run -p terp-seams --features cli --bin headstash-notes -- \
   recover --base http://127.0.0.1:9090 --hs-id season-1 \
   --addr cm.… --owner-key <64hex> --auth-bearer "$NOTES_BEARER_TOKEN"
 ```
