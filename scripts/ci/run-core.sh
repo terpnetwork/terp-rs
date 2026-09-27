@@ -3,8 +3,8 @@
 # Prefer: just act-host-core  (authoritative) + just act-wire (YAML list).
 #
 # Usage:
-#   ./scripts/act/run-core.sh
-#   ACT_PULL=1 ACT_JOB_TIMEOUT=1200 ./scripts/act/run-core.sh
+#   ./scripts/ci/run-core.sh
+#   ACT_PULL=1 ACT_JOB_TIMEOUT=1200 ./scripts/ci/run-core.sh
 #   just act-core
 set -euo pipefail
 # shellcheck source=lib.sh
@@ -86,7 +86,7 @@ STATUS_FILE="${RUNS_DIR}/latest-status.md"
   echo ""
   echo "## Teardown"
   echo ""
-  echo "Containers/volumes cleaned after each job and on EXIT (\`scripts/act/teardown.sh\`)."
+  echo "Containers/volumes cleaned after each job and on EXIT (\`scripts/ci/teardown.sh\`)."
   echo ""
   echo "## Friction"
   echo ""

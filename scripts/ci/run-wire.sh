@@ -3,7 +3,7 @@
 # Does NOT compile the Rust workspace (saves Docker Desktop from RWLayer crashes).
 #
 # Usage:
-#   ./scripts/act/run-wire.sh
+#   ./scripts/ci/run-wire.sh
 #   just act-wire
 set -euo pipefail
 # shellcheck source=lib.sh

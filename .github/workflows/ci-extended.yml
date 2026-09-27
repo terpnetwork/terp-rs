@@ -41,7 +41,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # Repo root on GHA is terp-rs; local act sets GITHUB_WORKSPACE via scripts/act.
+  # Repo root on GHA is terp-rs; local act sets GITHUB_WORKSPACE via scripts/ci.
 
 jobs:
   # Skip draft PRs unless labeled ci-extended (saves minutes).

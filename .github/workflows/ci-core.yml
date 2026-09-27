@@ -24,7 +24,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   # Checkout root IS the terp-rs repo on GitHub (permissionlessweb/terp-rs).
-  # Local act sets GITHUB_WORKSPACE to this crate via scripts/act (monorepo bind).
+  # Local act sets GITHUB_WORKSPACE to this crate via scripts/ci (monorepo bind).
 
 jobs:
   # ── Agent IBC offline plane (terp-scripts) — MUST stay serial ──────────

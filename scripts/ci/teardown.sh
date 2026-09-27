@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Force-clean nektos/act leftovers (containers + volumes). Safe to run anytime.
 # Usage:
-#   ./scripts/act/teardown.sh
+#   ./scripts/ci/teardown.sh
 #   just act-teardown
 set -euo pipefail
 # shellcheck source=lib.sh

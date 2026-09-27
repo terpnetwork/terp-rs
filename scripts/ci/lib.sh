@@ -2,13 +2,13 @@
 # Shared helpers for local CI exercise (host just + nektos act).
 # shellcheck disable=SC2034
 
-# Resolve paths: this file lives at <crate>/scripts/act/lib.sh
+# Resolve paths: this file lives at <crate>/scripts/ci/lib.sh
 _ACT_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CRATE_ROOT="$(cd "${_ACT_LIB_DIR}/../.." && pwd)"
 # monorepo: .../terp-core  (parent of crates/)
 MONOREPO_ROOT="$(cd "${CRATE_ROOT}/../.." && pwd)"
 
-RUNS_DIR="${CRATE_ROOT}/scripts/act/runs"
+RUNS_DIR="${CRATE_ROOT}/scripts/ci/runs"
 export CRATE_ROOT MONOREPO_ROOT RUNS_DIR
 
 # Tunables (env override)

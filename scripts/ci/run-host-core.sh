@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Host-native Tier 0 gate — primary CI exercise (fast, no act/Docker lag).
-# Usage: ./scripts/act/run-host-core.sh  |  just ci-core  |  just act-host-core
+# Usage: ./scripts/ci/run-host-core.sh  |  just ci-core  |  just act-host-core
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib.sh"

@@ -1,0 +1,9 @@
+# Expected example bins inside the pinned ict-ci tarball.
+# Keep in lockstep with ict-rs/ict-rs/src/bin/ict-ci.rs MOCK_SUITES + DOCKER_SUITES.
+basic_cosmos
+integration_test
+ibc_hooks
+pfm
+ibc_transfer
+polytone
+state_sync

@@ -20,7 +20,7 @@ cd /Users/returniflost/abstract/terp-core/crates/terp-rs
 
 # Recommended daily loop
 just act-teardown          # clear lagging containers/volumes
-just act-host-core         # timed just ci-core → scripts/act/runs/latest-host-core.md
+just act-host-core         # timed just ci-core → scripts/ci/runs/latest-host-core.md
 just act-wire              # list jobs in ci-*.yml; always tears down
 
 # Optional full act (after Docker restart if needed)
@@ -36,12 +36,12 @@ just ci-extended
 Full act runners install `trap EXIT INT TERM → act_teardown`. Also run explicitly:
 
 ```sh
-./scripts/act/teardown.sh
+./scripts/ci/teardown.sh
 # or
 just act-teardown
 ```
 
-Removes containers matching act labels/names and volumes matching `act|nektos`, then prunes old `scripts/act/runs/*_tmp` (keeps last `ACT_RUNS_KEEP=5`).
+Removes containers matching act labels/names and volumes matching `act|nektos`, then prunes old `scripts/ci/runs/*_tmp` (keeps last `ACT_RUNS_KEEP=5`).
 
 ## Env knobs
 
