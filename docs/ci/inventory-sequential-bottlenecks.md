@@ -15,8 +15,8 @@
 |-------|-------------------------------------|------|
 | terp-rs workflows | `crates/terp-rs/.github/workflows/ci-*.yml` | Authoritative Rust PR gates (standalone repo root on GHA) |
 | Local just parity | `crates/terp-rs/justfile` (`ci-core`, `ci-extended`, `ci-heavy`) | Same commands CI runs |
-| Local act | `crates/terp-rs/scripts/act/` | YAML fidelity + optional full act; host is merge-authoritative |
-| Docs | `crates/terp-rs/docs/ci.md`, `scripts/act/README.md` | Tier model |
+| Local act | `crates/terp-rs/scripts/ci/` | YAML fidelity + optional full act; host is merge-authoritative |
+| Docs | `crates/terp-rs/docs/ci.md`, `scripts/ci/README.md` | Tier model |
 | Go chain CI | `.github/workflows/*` at monorepo root (this worktree) | Docker image + interchaintest matrix |
 
 `Cargo.toml` path deps (`../cosmwasm`, …) mean **local act must bind monorepo root**; GHA checkout of `permissionlessweb/terp-rs` is crate-root-only.
@@ -163,7 +163,7 @@ Compile-all is one giant graph — parallelized by cargo internally; splitting i
 
 ### B8 — act full runs
 
-Not a GHA bottleneck; local Docker Desktop RWLayer issues. Cap rustc jobs at 2. **Do not** use full act as parallelization benchmark; use host timings (`scripts/act/runs/latest-host-core.md`: **56s** PASS for `just ci-core` on 2026-07-21, warm-ish cache).
+Not a GHA bottleneck; local Docker Desktop RWLayer issues. Cap rustc jobs at 2. **Do not** use full act as parallelization benchmark; use host timings (`scripts/ci/runs/latest-host-core.md`: **56s** PASS for `just ci-core` on 2026-07-21, warm-ish cache).
 
 ---
 
@@ -204,7 +204,7 @@ Not a GHA bottleneck; local Docker Desktop RWLayer issues. Cap rustc jobs at 2. 
 
 | Signal | Value | Source |
 |--------|-------|--------|
-| Host `just ci-core` | **56s**, PASS | `scripts/act/runs/latest-host-core.md` (2026-07-21, commit `8f52a7f`) |
+| Host `just ci-core` | **56s**, PASS | `scripts/ci/runs/latest-host-core.md` (2026-07-21, commit `8f52a7f`) |
 | GHA Core / Extended listing | Recent PR runs ~7–10m wall (aggregate; job detail API 404 without full access) | `gh run list` on `permissionlessweb/terp-rs` |
 | Heavy | Budget 90–120m timeouts | Workflow YAML |
 
@@ -236,7 +236,7 @@ Record machine, cargo cache warm/cold, Rust 1.86.
 | Multihop scenario matrix | `ci-heavy.yml` + harness test filters |
 | Docs | `crates/terp-rs/docs/ci.md` |
 | Go image pipeline | monorepo `.github/workflows/interchaintest-E2E.yml` (already matrixed) |
-| Act env if matrix under act | `scripts/act/lib.sh` (`CARGO_BUILD_JOBS`) |
+| Act env if matrix under act | `scripts/ci/lib.sh` (`CARGO_BUILD_JOBS`) |
 
 Related tasks: full monorepo workflow scan → `t_2eef0062`; packing design → `t_f37b435d`; baseline → `t_9212e352`.
 

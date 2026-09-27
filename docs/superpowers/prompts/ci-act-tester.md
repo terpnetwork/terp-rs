@@ -20,8 +20,8 @@
 | **Just recipes** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/justfile` |
 | **Workflows** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/.github/workflows/` |
 | **Public IBC artifacts** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/public/` |
-| **Act scripts (you own)** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/scripts/act/` |
-| **Act run logs (you write)** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/scripts/act/runs/` |
+| **Act scripts (you own)** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/scripts/ci/` |
+| **Act run logs (you write)** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/scripts/ci/runs/` |
 | **This prompt** | `/Users/returniflost/abstract/terp-core/crates/terp-rs/docs/superpowers/prompts/ci-act-tester.md` |
 
 ### Workflow files (tier map)
@@ -44,8 +44,8 @@
 ## Mission
 
 1. **Reduce friction** of “does our automation actually run?” using **host `just ci-core`** first, then **`act`** for workflow YAML fidelity.
-2. Land **runnable scripts** under `scripts/act/` with documented flags, image pins, and known act quirks.
-3. Produce a **status report** (markdown + optional JSON RunReport-style) under `scripts/act/runs/` that humans/agents can paste into chat.
+2. Land **runnable scripts** under `scripts/ci/` with documented flags, image pins, and known act quirks.
+3. Produce a **status report** (markdown + optional JSON RunReport-style) under `scripts/ci/runs/` that humans/agents can paste into chat.
 4. **Do not** require mainnet, `MAIN_MNEMONIC`, or Docker harness for Core success. Heavy stays optional.
 
 ---
@@ -59,15 +59,15 @@ From CWD `/Users/returniflost/abstract/terp-core/crates/terp-rs`:
 just ci-core
 
 # B. Act Core job (or documented blocker with exact error + workaround)
-./scripts/act/run-core.sh
+./scripts/ci/run-core.sh
 # or: just act-core
 
 # C. Artifacts
-test -f scripts/act/README.md
-test -f scripts/act/runs/latest-status.md
+test -f scripts/ci/README.md
+test -f scripts/ci/runs/latest-status.md
 ```
 
-`scripts/act/runs/latest-status.md` must include:
+`scripts/ci/runs/latest-status.md` must include:
 
 - date / commit SHA (`git rev-parse --short HEAD`)
 - host: `just ci-core` → pass/fail + duration
@@ -83,14 +83,14 @@ test -f scripts/act/runs/latest-status.md
 
 | Path | Purpose |
 |------|---------|
-| `scripts/act/README.md` | How to run act locally; prerequisites (`act`, Docker, just) |
-| `scripts/act/run-core.sh` | Idempotent Core workflow/job runner |
-| `scripts/act/run-extended.sh` | Extended (job-selected; path filters flaky under act) |
-| `scripts/act/run-heavy.sh` | Optional; usually document “use host `just ci-heavy`” |
-| `scripts/act/.actrc` or `scripts/act/actrc.example` | Image pins / flags (`-P`, `--container-architecture`) |
-| `scripts/act/runs/*.md` | Status reports |
+| `scripts/ci/README.md` | How to run act locally; prerequisites (`act`, Docker, just) |
+| `scripts/ci/run-core.sh` | Idempotent Core workflow/job runner |
+| `scripts/ci/run-extended.sh` | Extended (job-selected; path filters flaky under act) |
+| `scripts/ci/run-heavy.sh` | Optional; usually document “use host `just ci-heavy`” |
+| `scripts/ci/.actrc` or `scripts/ci/actrc.example` | Image pins / flags (`-P`, `--container-architecture`) |
+| `scripts/ci/runs/*.md` | Status reports |
 | `justfile` | Add `act-core`, `act-extended` recipes only (call scripts) |
-| `docs/ci.md` | Short “Local act” section linking to `scripts/act/README.md` |
+| `docs/ci.md` | Short “Local act” section linking to `scripts/ci/README.md` |
 | `tests/agent/COMMANDS.md` | One block: local act entry |
 
 **Do not edit without explicit ask:**

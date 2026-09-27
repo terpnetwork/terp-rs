@@ -54,7 +54,7 @@ just act-teardown
 | `act-teardown` | Containers + volumes + prune run logs |
 | `act-exercise` | Daily optimized loop |
 
-Details: `scripts/act/README.md`. Hermes profile: `ci-act-tester`.
+Details: `scripts/ci/README.md`. Hermes profile: `ci-act-tester`.
 
 ## Dense parallel packing
 

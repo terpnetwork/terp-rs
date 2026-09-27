@@ -29,7 +29,7 @@ dropping coverage or introducing shared-state flakes.
 3. Balance by **package class / expected compile weight** (auth+sdk vs
    light-client+nips; crypto vs recovery vs suite+IBC client), not pure
    alphabetical splits.
-4. When historical durations exist (`scripts/act/runs/*`), rebalance so max pack
+4. When historical durations exist (`scripts/ci/runs/*`), rebalance so max pack
    ≈ median; until then use class weights from inventory.
 5. Same packages still run overall — packing is **partition**, not skip.
 
@@ -66,7 +66,7 @@ List at any time: `just ci-dense-list` or `./scripts/ci/dense-packs.sh list`.
 | `CI_DENSE_MODE=matrix` | Run packs one-by-one (or parallel if below set) |
 | `CI_DENSE_PARALLEL=1` | Host only: run matrix packs in parallel with **isolated** `CARGO_TARGET_DIR=target/dense-<pack>` (avoids shared-target races; more disk) |
 | `CI_DENSE_PACK=<name>` | Run a single pack (GHA matrix cell) |
-| `CARGO_BUILD_JOBS` | rustc job cap; act defaults to **2** (`scripts/act/lib.sh`) |
+| `CARGO_BUILD_JOBS` | rustc job cap; act defaults to **2** (`scripts/ci/lib.sh`) |
 
 No new global locks. Do **not** enable `CI_DENSE_PARALLEL=1` against a shared
 `target/` without isolated dirs — cargo file locks help but concurrent graphs
