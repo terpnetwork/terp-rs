@@ -7,7 +7,10 @@
 //! - `server` — validator sidecar HTTP endpoints
 //! - `client` — hashmerchant client implementations (includes nostr)
 //! - `nostr` — Nostr relay integration (NIP-77, NIP-87)
-//! - `blossom` — BUD protocol server (requires server)
+//! - `blossom` — BUD protocol server (requires server). Default note-serve path (NIP-BUD).
+//! - `pir` — opt-in public-leaf XOR PIR (`notes.json` + merkle path). Not default; not a second server; does not replace Nostr or blossom.
+//! - `onboard` — DAO feegrant plane nested at `/onboard` (on with `server`; not a second process)
+//! - frost inbox nested at `/itl/frost/*` on 127.0.0.1 (not FilePV)
 #[cfg(test)]
 pub mod tests;
 
@@ -18,17 +21,25 @@ pub mod config;
 /// BUD sha256 + optional IPFS dual-index, webhooks (oline-compatible). Off by default.
 pub mod content;
 pub mod fields;
+#[cfg(feature = "onboard")]
+pub mod frost;
 pub mod hash;
 pub mod msg;
-/// Trivial XOR PIR for auth-gated note/key fetch (snap metadata privacy).
-pub mod pir;
+#[cfg(feature = "onboard")]
+pub mod onboard;
+#[cfg(feature = "onboard")]
+pub mod onboard_authz;
 /// Multi-source price **bounds** (Tacit cUSD-like). Does not mint balances.
 /// See `docs/oracle-connect-bounds.md`. Always compiled (pure types + aggregate).
 ///
 /// Stable Connect-style surface: re-exported below for library consumers.
 pub mod oracle;
+/// XOR PIR kernel (always) plus feature-`pir` public-leaf ingest.
+/// The `/notes/{hs_id}/pir` route is a no-op 404 unless `--features pir`.
+pub mod pir;
 pub mod server;
 pub mod store;
+pub mod trusted_builder;
 
 // ── Stable oracle library re-exports (Connect-style bounds) ─────────────────
 pub use oracle::{
@@ -78,4 +89,3 @@ pub use content::{
     is_nip52_event_kind, parse_cid, resolve_local, resolve_url, CidKind, OffchainBind,
     OffchainCalendarMeta, ParsedCid, KIND_DATE_BASED, KIND_TIME_BASED,
 };
- 

@@ -1,3 +1,5 @@
+[workspace]
+
 [package]
 name = "hash-market"
 version = "0.1.0"
@@ -19,9 +21,20 @@ name = "hash-market-client"
 path = "src/bin/client.rs"
 required-features = ["client"]
 
+[[bin]]
+name = "prepare-authz"
+path = "src/bin/prepare-authz.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "onboard-local-workflow"
+path = "src/bin/local-workflow.rs"
+required-features = ["onboard"]
+
 [features]
 # Default: Nostr + Blossom/BUD + Merkle trees (NFT whitelist host).
 # Vote extensions are OFF by default — enable with --features ve for validator sidecar.
+# `pir` is NOT default: public-leaf XOR PIR is opt-in and does not replace NIP-BUD or Nostr.
 default = ["nostr", "blossom"]
 custody  = [ "k256", "ed25519-dalek", "rand_core", "async-trait", "tokio", ]
 # ABCI++ vote extension sidecar (optional; not required for mint/whitelist hosting)
@@ -30,7 +43,9 @@ eth      = [ "reqwest" ]
 pallas   = [ "tiny-keccak"]
 transport = [ "tokio/rt", "tokio/sync", "tokio/net", "tokio/io-util", "tokio/time", "tokio/signal", "tokio/macros"]
 # HTTP server core: BUD blobs + merkle trees + headstash (no VE dependency)
-server   = ["transport", "custody", "axum", "tower", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "reqwest"]
+# Onboard feegrant plane is part of the merchant server (not a second process).
+onboard  = ["dep:terp-onboard-authz"]
+server   = ["transport", "custody", "axum", "tower", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "reqwest", "onboard"]
 client   = ["eth", "pallas", "reqwest", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "async-trait"]
 nostr    = ["client", "custody", "tokio/full", "tokio-tungstenite", "futures-util", "sha2", "async-trait"]
 blossom  = ["server", "clap"]
@@ -38,9 +53,18 @@ commonware = ["server"]
 # msg module uses sha2 for transport_merkle_root — always compiled in lib.rs
 msg = ["sha2"]
 # Convenience: full validator sidecar = server + ve + blossom + nostr
-full-sidecar = ["server", "ve", "blossom", "nostr", "client"]
+full-sidecar = ["server", "ve", "blossom", "nostr", "client", "privval"]
+# FROST coordinator in this sidecar (kms-shard). Noise XX for privval.
+frost = ["custody", "dep:kms-shard", "dep:frost-ed25519"]
+noise = ["transport", "dep:snow"]
+privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
+# Public-leaf XOR PIR over community notes.json (merkle path + blob).
+# Build: cargo build -p hash-market --features pir
+# Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
+pir = ["server", "dep:ff", "dep:pasta_curves", "dep:halo2_gadgets"]
 
 [dependencies]
+terp-onboard-authz = { path = "../onboard-authz", optional = true }
 anyhow = "1"
 anybuf = { version = "0.5" }
 hex = "0.4"
@@ -86,4 +110,14 @@ tokio-tungstenite = { version = "0.24", features = ["native-tls"], optional = tr
 futures-util = { version = "0.3", optional = true, default-features = false, features = ["sink", "std"] }
 cw721-nips = { path = "../../crates/nips" }
 
+
 blake3 = "1"
+kms-shard = { path = "../../../kms-shard", optional = true }
+frost-ed25519 = { version = "2.2", optional = true, default-features = false, features = ["std", "serialization"] }
+snow = { version = "0.9", optional = true }
+prost = { version = "0.13", optional = true }
+prost-types = { version = "0.13", optional = true }
+# Poseidon-v1 distro CRH (feature `pir` only). Path crates stay in their own workspace.
+ff = { version = "0.14", optional = true }
+pasta_curves = { package = "zakura-pasta-curves", path = "../../../../crates/zakura-common/crates/pasta_curves", default-features = false, features = ["default"], optional = true }
+halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../../crates/zakura-common/crates/halo2_gadgets", default-features = false, optional = true }

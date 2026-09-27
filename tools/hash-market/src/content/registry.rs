@@ -139,9 +139,11 @@ impl ContentRegistry {
         if let Some(mut existing) = self.get(&incoming.sha256)? {
             // merge origins
             for o in incoming.origins.drain(..) {
-                if !existing.origins.iter().any(|e| {
-                    e.kind == o.kind && e.bucket == o.bucket && e.key == o.key
-                }) {
+                if !existing
+                    .origins
+                    .iter()
+                    .any(|e| e.kind == o.kind && e.bucket == o.bucket && e.key == o.key)
+                {
                     existing.origins.push(o);
                 }
             }

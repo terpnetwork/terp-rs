@@ -57,11 +57,7 @@ impl IpfsClient {
     /// Best-effort fetch via gateway (for resolve proxy).
     pub async fn cat_gateway(&self, cid: &str) -> Result<Vec<u8>> {
         let url = if self.gateway_public.starts_with("http") {
-            format!(
-                "{}/{}",
-                self.gateway_public.trim_end_matches('/'),
-                cid
-            )
+            format!("{}/{}", self.gateway_public.trim_end_matches('/'), cid)
         } else {
             // relative gateway — use API cat instead
             let api = format!("{}/api/v0/cat?arg={cid}", self.api_base);

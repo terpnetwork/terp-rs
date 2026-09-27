@@ -221,7 +221,14 @@ pub fn aggregate_bounds(
     let decimals = fresh.iter().map(|o| o.decimals).max().unwrap_or(0);
     let mut prices: Vec<(f64, f64, &str, u64)> = fresh
         .iter()
-        .map(|o| (o.as_f64(), o.weight.max(0.0), o.source.as_str(), o.observed_at))
+        .map(|o| {
+            (
+                o.as_f64(),
+                o.weight.max(0.0),
+                o.source.as_str(),
+                o.observed_at,
+            )
+        })
         .collect();
 
     let value = match policy.method {
@@ -257,14 +264,8 @@ pub fn aggregate_bounds(
             let s: f64 = slice.iter().map(|p| p.0).sum();
             s / slice.len() as f64
         }
-        AggregationMethod::Min => prices
-            .iter()
-            .map(|p| p.0)
-            .fold(f64::INFINITY, f64::min),
-        AggregationMethod::Max => prices
-            .iter()
-            .map(|p| p.0)
-            .fold(f64::NEG_INFINITY, f64::max),
+        AggregationMethod::Min => prices.iter().map(|p| p.0).fold(f64::INFINITY, f64::min),
+        AggregationMethod::Max => prices.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max),
     };
 
     let scale = 10f64.powi(decimals as i32);
@@ -430,7 +431,10 @@ pub fn parse_decimal_str(s: &str, decimals: u32) -> Option<i128> {
         return None;
     }
     let neg = s.starts_with('-');
-    let s = s.strip_prefix('+').or_else(|| s.strip_prefix('-')).unwrap_or(s);
+    let s = s
+        .strip_prefix('+')
+        .or_else(|| s.strip_prefix('-'))
+        .unwrap_or(s);
     let (whole, frac) = match s.split_once('.') {
         Some((w, f)) => (w, f),
         None => (s, ""),
@@ -567,11 +571,7 @@ impl From<&OracleBound> for OracleBoundsResponse {
         let price = if b.decimals == 0 {
             whole.to_string()
         } else {
-            format!(
-                "{whole}.{:0width$}",
-                frac,
-                width = b.decimals as usize
-            )
+            format!("{whole}.{:0width$}", frac, width = b.decimals as usize)
         };
         Self {
             market_id: b.market_id.clone(),
@@ -687,15 +687,8 @@ mod tests {
 
     #[test]
     fn parse_ticker_json_shapes() {
-        let a = parse_ticker_json(
-            r#"{"price":"100.50"}"#,
-            "binance",
-            "ETH/USD",
-            1.0,
-            2,
-            999,
-        )
-        .unwrap();
+        let a =
+            parse_ticker_json(r#"{"price":"100.50"}"#, "binance", "ETH/USD", 1.0, 2, 999).unwrap();
         assert_eq!(a.mantissa, 10050);
         assert_eq!(a.market_id, "ETH/USD");
         assert_eq!(a.observed_at, 999);
@@ -713,15 +706,8 @@ mod tests {
         assert_eq!(b.mantissa, 50000);
         assert_eq!(b.observed_at, 42);
 
-        let c = parse_ticker_json(
-            r#"{"data":{"price":"1.5"}}"#,
-            "okx",
-            "USDT/USD",
-            1.0,
-            2,
-            1,
-        )
-        .unwrap();
+        let c =
+            parse_ticker_json(r#"{"data":{"price":"1.5"}}"#, "okx", "USDT/USD", 1.0, 2, 1).unwrap();
         assert_eq!(c.mantissa, 150);
     }
 

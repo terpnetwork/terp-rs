@@ -31,8 +31,8 @@ use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::sync::RwLock;
 use std::sync::Arc;
+use std::sync::RwLock;
 use std::{
     fs,
     time::{SystemTime, UNIX_EPOCH},
@@ -118,7 +118,8 @@ impl ContentIndex {
                 }
             }
         }
-        self.synced.store(true, std::sync::atomic::Ordering::Release);
+        self.synced
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 
     /// Get entry by hash.
@@ -180,6 +181,11 @@ impl HeadstashStore {
 
     fn keys_dir(&self) -> PathBuf {
         self.data_dir.join("keys")
+    }
+
+    /// Data directory root (`notes/`, `pir/`, `headstash/`).
+    pub fn base_dir(&self) -> &Path {
+        &self.data_dir
     }
 
     // ── Headstash records ────────────────────────────────────────────
@@ -458,12 +464,14 @@ impl CashuMeshStore {
             .as_object()
             .ok_or_else(|| anyhow::anyhow!("mint descriptor must be a JSON object"))?
             .clone();
-        obj.insert("mint_id".into(), serde_json::Value::String(mint_id.to_string()));
+        obj.insert(
+            "mint_id".into(),
+            serde_json::Value::String(mint_id.to_string()),
+        );
         if !obj.contains_key("nuts") || obj.get("nuts").map(|v| v.is_null()).unwrap_or(true) {
             obj.insert("nuts".into(), serde_json::json!({}));
         }
-        if !obj.contains_key("metadata")
-            || obj.get("metadata").map(|v| v.is_null()).unwrap_or(true)
+        if !obj.contains_key("metadata") || obj.get("metadata").map(|v| v.is_null()).unwrap_or(true)
         {
             obj.insert("metadata".into(), serde_json::json!({}));
         }
@@ -570,7 +578,7 @@ impl CashuMeshStore {
 
 /// Validate an ID to prevent path traversal.
 /// Charset: `[A-Za-z0-9._-]{1,200}`, no `..` (shared with notes + cashu mesh).
-fn validate_id(id: &str) -> Result<()> {
+pub(crate) fn validate_id(id: &str) -> Result<()> {
     anyhow::ensure!(!id.is_empty(), "ID must not be empty");
     anyhow::ensure!(id.len() <= 200, "ID too long");
     anyhow::ensure!(
@@ -602,12 +610,12 @@ fn validate_opaque_envelope(data: &serde_json::Value) -> Result<()> {
 }
 
 fn validate_mint_descriptor(path_id: &str, desc: &MintDescriptor) -> Result<()> {
-    anyhow::ensure!(!desc.url.trim().is_empty(), "mint descriptor requires non-empty url");
+    anyhow::ensure!(
+        !desc.url.trim().is_empty(),
+        "mint descriptor requires non-empty url"
+    );
     if !desc.mint_id.is_empty() && desc.mint_id != path_id {
-        bail!(
-            "mint_id mismatch: path={path_id} body={}",
-            desc.mint_id
-        );
+        bail!("mint_id mismatch: path={path_id} body={}", desc.mint_id);
     }
     if let Some(ref sha) = desc.content_sha256 {
         if !sha.is_empty() {
@@ -822,7 +830,11 @@ mod headstash_note_tests {
             .set_note(hs, "terp1abcdefghijklmnopqrstuvwxyz", &sample_envelope())
             .unwrap();
         store
-            .set_note(hs, "0xabcdef0123456789abcdef0123456789abcdef01", &sample_envelope())
+            .set_note(
+                hs,
+                "0xabcdef0123456789abcdef0123456789abcdef01",
+                &sample_envelope(),
+            )
             .unwrap();
         store
             .set_note(hs, "pk.aabbccdd", &sample_envelope())
@@ -843,7 +855,11 @@ mod headstash_note_tests {
             .set_note(hs, addr, &envelope_with_ct("first-ciphertext-value"))
             .unwrap();
         store
-            .set_note(hs, addr, &envelope_with_ct("second-ciphertext-value-longer"))
+            .set_note(
+                hs,
+                addr,
+                &envelope_with_ct("second-ciphertext-value-longer"),
+            )
             .unwrap();
         let got = store.get_note(hs, addr).unwrap().expect("present");
         assert_eq!(got["ciphertext"], "second-ciphertext-value-longer");
@@ -917,7 +933,11 @@ mod headstash_note_tests {
         let raw_aa = std::fs::read(dir.join("notes").join(hs).join("cm.aa.json")).unwrap();
         let raw_mm = std::fs::read(dir.join("notes").join(hs).join("cm.mm.json")).unwrap();
         let raw_zz = std::fs::read(dir.join("notes").join(hs).join("cm.zz.json")).unwrap();
-        assert_ne!(raw_aa.len(), raw_zz.len(), "fixture should differ in raw size");
+        assert_ne!(
+            raw_aa.len(),
+            raw_zz.len(),
+            "fixture should differ in raw size"
+        );
         assert_eq!(
             pad_len,
             raw_aa.len().max(raw_mm.len()).max(raw_zz.len()),
@@ -1011,7 +1031,9 @@ mod cashu_mesh_store_tests {
         let dir = tmp_dir("mint-rt");
         let store = CashuMeshStore::new(&dir).unwrap();
         let id = "a1b2c3d4e5f6";
-        store.set_mint(id, sample_mint(id, "https://mint.example")).unwrap();
+        store
+            .set_mint(id, sample_mint(id, "https://mint.example"))
+            .unwrap();
         let got = store.get_mint(id).unwrap().expect("stored");
         assert_eq!(got.mint_id, id);
         assert_eq!(got.url, "https://mint.example");
@@ -1019,7 +1041,11 @@ mod cashu_mesh_store_tests {
         assert_eq!(got.status, MintStatus::Active);
         assert_eq!(got.source.as_deref(), Some("manual"));
         assert!(got.updated_at > 0);
-        assert!(dir.join("cashu").join("mints").join(format!("{id}.json")).is_file());
+        assert!(dir
+            .join("cashu")
+            .join("mints")
+            .join(format!("{id}.json"))
+            .is_file());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1055,7 +1081,10 @@ mod cashu_mesh_store_tests {
         let got = store.get_wallet_item(wid, iid).unwrap().expect("stored");
         assert_eq!(got["ciphertext"], "deadbeef-ct");
         assert_eq!(got["cleartext_layout"], "CASHU-TOKEN-BACKUP-V0");
-        assert_eq!(store.list_wallet_item_keys(wid).unwrap(), vec![iid.to_string()]);
+        assert_eq!(
+            store.list_wallet_item_keys(wid).unwrap(),
+            vec![iid.to_string()]
+        );
         // Path shape; not under notes/ or content/
         assert!(dir
             .join("cashu")
@@ -1309,10 +1338,7 @@ impl BlobStore for TreeStore {
         fs::read(path).ok()
     }
 
-    fn put(
-        &self,
-        content: Vec<u8>,
-    ) -> std::prelude::v1::Result<BlobDescriptor, BlobStoreError> {
+    fn put(&self, content: Vec<u8>) -> std::prelude::v1::Result<BlobDescriptor, BlobStoreError> {
         let hash: [u8; 32] = Sha256::digest(&content).into();
         let uploaded = now_secs();
         let size = content.len() as u64;
@@ -1341,10 +1367,7 @@ impl BlobStore for TreeStore {
         Ok(descriptor)
     }
 
-    fn delete(
-        &self,
-        hash: &[u8; 32],
-    ) -> std::prelude::v1::Result<(), BlobStoreError> {
+    fn delete(&self, hash: &[u8; 32]) -> std::prelude::v1::Result<(), BlobStoreError> {
         let path = self.dir.join("f").join(hex::encode(hash));
         if path.exists() {
             fs::remove_file(&path).map_err(|e| BlobStoreError::Other(e.to_string()))?;

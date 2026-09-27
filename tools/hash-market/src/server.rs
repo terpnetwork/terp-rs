@@ -15,16 +15,15 @@
 //! This matches the BUD-02/BUD-06 spec while keeping a single canonical store.
 
 use axum::body::Body;
-use axum::http::Response;
+use axum::http::{header, HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
 use axum::{
     extract::{Path, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
+    middleware::{self, Next},
     response::IntoResponse,
     routing::{delete, get, post},
     Json, Router,
 };
 use cw721_nips::buds::{self, BlossomState};
-#[cfg(feature = "ve")]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -82,6 +81,11 @@ pub struct AppState {
     pub oracle_policy: AggregationPolicy,
     /// Optional BUD+IPFS dual-index distribution (None when disabled).
     pub distribution: Option<Arc<crate::content::DistributionRuntime>>,
+    /// Soulbound trusted-builder claims (manifesto signatures).
+    pub trusted_builder: RwLock<HashMap<String, crate::trusted_builder::TrustedBuilderClaim>>,
+    /// Embedded onboard feegrant (None = do not nest `/onboard`).
+    #[cfg(feature = "onboard")]
+    pub onboard: Option<Arc<crate::onboard_authz::OnboardRuntime>>,
 }
 
 impl AppState {
@@ -166,6 +170,9 @@ impl AppState {
             },
             oracle_policy,
             distribution,
+            trusted_builder: RwLock::new(HashMap::new()),
+            #[cfg(feature = "onboard")]
+            onboard: None,
         })
     }
 
@@ -173,6 +180,29 @@ impl AppState {
     pub fn set_cashu_mesh_policy(&mut self, enabled: bool, public_mint_list: bool) {
         self.cashu_mesh_enabled = enabled;
         self.cashu_public_mint_list = public_mint_list;
+    }
+
+    /// Embed onboard feegrant (call before `Arc` + `router`).
+    #[cfg(feature = "onboard")]
+    pub fn set_onboard(&mut self, rt: Arc<crate::onboard_authz::OnboardRuntime>) {
+        self.onboard = Some(rt);
+    }
+
+    /// Embed grant plane (roles must be live terp1). Used by the orch suite.
+    #[cfg(feature = "onboard")]
+    pub fn enable_onboard_roles(
+        &mut self,
+        dao: impl Into<String>,
+        runtime_key: impl Into<String>,
+        chain_id: impl Into<String>,
+    ) {
+        let mut rt = crate::onboard_authz::OnboardRuntime::from_env();
+        rt.service_name = "hash-market-onboard".into();
+        rt.roles.dao = dao.into();
+        rt.roles.runtime_key = runtime_key.into();
+        rt.roles.chain_id = chain_id.into();
+        rt.broadcast = false;
+        self.onboard = Some(Arc::new(rt));
     }
 
     /// Replace blossom/notes [`AuthVerifier`] (call before wrapping in `Arc` for the router).
@@ -223,14 +253,18 @@ impl AppState {
 /// /trees         GET           — list tree IDs
 /// /headstash/{id} GET, POST    — headstash registration
 /// /notes/{hs_id}/{addr} GET, PUT, POST — private encrypted notes (auth; not public /content)
-/// /notes/{hs_id} GET           — list note keys for PIR
-/// /notes/{hs_id}/pir POST      — XOR PIR fetch (auth)
+/// /notes/{hs_id} GET           — list encrypted-note keys (lab GET-by-addr setup)
+/// /notes/{hs_id}/pir-index GET — public-leaf PIR key order (feature `pir`; else 404)
+/// /notes/{hs_id}/pir POST      — XOR PIR over public leaf blobs (feature `pir`; else 404)
 /// /cashu/mints/{id} GET, PUT, POST, DELETE — canonical mint discovery cache
 /// /cashu/mints GET             — list mints (?status=; public when cashu_public_mint_list)
 /// /cashu/wallets/{wid}/{iid}   — encrypted Cashu wallet backup (auth; never public /content)
 /// /cashu/wallets/{wid} GET     — list wallet item keys (auth)
 /// /ve/*                        — VE routes only when ve_enabled + feature ve
 /// /vote-extension              — root alias of /ve/vote-extension (terpd + L3)
+/// /onboard/status              — embedded feegrant (not root /status)
+/// /onboard/v1/register-grant   — POST {address}
+/// /onboard/v1/mint-grant       — POST {address}
 /// ```
 /// Shared blossom/tree/oracle routes. When `ve_health_alias`, register `/ve/health`
 /// before `with_state` (mint host). When VE is on, nest owns `/ve/*` instead.
@@ -244,16 +278,18 @@ fn blossom_routes(state: Arc<AppState>, ve_health_alias: bool) -> Router {
         .route("/blobs/:hash", get(blob_get).delete(blob_delete))
         .route("/blobs", get(blob_list).post(blob_upload))
         .route("/upload", post(blob_upload))
-        .route("/trees/:id", get(tree_get).post(tree_save).delete(tree_delete))
         .route(
-            "/trees/:id/members/:addr",
-            get(tree_member_proof),
+            "/trees/:id",
+            get(tree_get).post(tree_save).delete(tree_delete),
         )
+        .route("/trees/:id/members/:addr", get(tree_member_proof))
         .route("/trees", get(tree_list))
         .route("/headstash/:id", get(headstash_get).post(headstash_save))
         // Private notes: HeadstashStore only (auth-gated). Not dual-index /content.
-        // Register /pir before /:addr so "pir" is not captured as an address.
+        // Register /pir and /pir-index before /:addr so those segments are not addresses.
+        // PIR payload is feature-gated; blossom/NIP-BUD routes stay either way.
         .route("/notes/:hs_id/pir", post(note_pir))
+        .route("/notes/:hs_id/pir-index", get(note_pir_index))
         .route("/notes/:hs_id", get(note_list))
         .route(
             "/notes/:hs_id/:addr",
@@ -299,13 +335,61 @@ pub fn router(state: Arc<AppState>) -> Router {
         // Nested under /ve/* (historical) + root aliases for terpd / mock parity:
         // GET {sidecar_url}/vote-extension with sidecar_url = http://host:9090
         // Do not also register /ve/health on the parent — nest owns that path.
-        return blossom_routes(state.clone(), false)
+        let mut r = blossom_routes(state.clone(), false)
             .nest("/ve", ve_server::router(state.clone()))
-            .merge(ve_server::root_aliases(state));
+            .nest(
+                "/trusted-builder",
+                crate::trusted_builder::router(state.clone()),
+            )
+            .merge(ve_server::root_aliases(state.clone()));
+        #[cfg(feature = "onboard")]
+        if let Some(rt) = state.onboard.clone() {
+            r = r.nest("/onboard", crate::onboard::router(rt));
+        }
+        return with_cors(r);
     }
 
     // Mint host (or ve feature off): /ve/health aliases unified health for operators/e2e
-    blossom_routes(state, true)
+    let mut r = blossom_routes(state.clone(), true).nest(
+        "/trusted-builder",
+        crate::trusted_builder::router(state.clone()),
+    );
+    #[cfg(feature = "onboard")]
+    if let Some(rt) = state.onboard.clone() {
+        r = r.nest("/onboard", crate::onboard::router(rt));
+    }
+    with_cors(r)
+}
+
+fn with_cors(r: Router) -> Router {
+    r.layer(middleware::from_fn(cors_mw))
+}
+
+async fn cors_mw(req: Request<Body>, next: Next) -> Response<Body> {
+    let origin = "*".to_string();
+    if req.method() == Method::OPTIONS {
+        let mut res = Response::new(axum::body::Body::empty());
+        *res.status_mut() = StatusCode::NO_CONTENT;
+        put_cors(res.headers_mut(), &origin);
+        return res;
+    }
+    let mut res = next.run(req).await;
+    put_cors(res.headers_mut(), &origin);
+    res
+}
+
+fn put_cors(h: &mut axum::http::HeaderMap, origin: &str) {
+    if let Ok(v) = HeaderValue::from_str(origin) {
+        h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, v);
+    }
+    h.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        HeaderValue::from_static("GET, POST, OPTIONS"),
+    );
+    h.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        HeaderValue::from_static("content-type"),
+    );
 }
 
 // ── Health ───────────────────────────────────────────────────────────────────
@@ -358,6 +442,15 @@ async fn unified_health(State(state): State<Arc<AppState>>) -> Json<serde_json::
         serde_json::json!({ "bounds_enabled": false })
     };
 
+    #[cfg(feature = "onboard")]
+    let onboard_status = if state.onboard.is_some() {
+        serde_json::json!({ "enabled": true, "prefix": "/onboard" })
+    } else {
+        serde_json::json!({ "enabled": false })
+    };
+    #[cfg(not(feature = "onboard"))]
+    let onboard_status = serde_json::json!({ "enabled": false });
+
     Json(serde_json::json!({
         "status": "ok",
         "mode": if state.ve_enabled { "validator-sidecar" } else { "merkle-bud-host" },
@@ -365,6 +458,7 @@ async fn unified_health(State(state): State<Arc<AppState>>) -> Json<serde_json::
         "oracle": oracle_status,
         "blossom": blossom_status,
         "distribution": distribution_status,
+        "onboard": onboard_status,
         "trees": trees,
     }))
 }
@@ -384,7 +478,10 @@ async fn oracle_bounds_get(
     State(state): State<Arc<AppState>>,
     axum::extract::Query(q): axum::extract::Query<OracleBoundsQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let store = state.oracle_store.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let store = state
+        .oracle_store
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
     if let Some(mid) = q.market_id.as_deref().filter(|s| !s.is_empty()) {
         let bound = store.get_bound(mid).ok_or(StatusCode::NOT_FOUND)?;
@@ -396,7 +493,9 @@ async fn oracle_bounds_get(
         .iter()
         .map(OracleBoundsResponse::from)
         .collect();
-    Ok(Json(serde_json::json!({ "bounds": all, "role": "bound_only" })))
+    Ok(Json(
+        serde_json::json!({ "bounds": all, "role": "bound_only" }),
+    ))
 }
 
 /// GET /oracle/ticks?market_id=ETH/USD — raw attributed sources (debug / operators).
@@ -404,7 +503,10 @@ async fn oracle_ticks_get(
     State(state): State<Arc<AppState>>,
     axum::extract::Query(q): axum::extract::Query<OracleBoundsQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let store = state.oracle_store.as_ref().ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let store = state
+        .oracle_store
+        .as_ref()
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
     let ticks = store.list_ticks(q.market_id.as_deref().filter(|s| !s.is_empty()));
     Ok(Json(serde_json::json!({ "ticks": ticks })))
 }
@@ -518,14 +620,10 @@ async fn blob_upload(
 
     // Delegates to TreeStore via BlossomState
     let raw = bytes.to_vec();
-    let descriptor = state
-        .blossom
-        .store
-        .put(raw.clone())
-        .map_err(|e| match e {
-            cw721_nips::buds::BlobStoreError::AlreadyExists => StatusCode::CONFLICT,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        })?;
+    let descriptor = state.blossom.store.put(raw.clone()).map_err(|e| match e {
+        cw721_nips::buds::BlobStoreError::AlreadyExists => StatusCode::CONFLICT,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    })?;
 
     let sha_hex = hex::encode(&descriptor.sha256);
     let mut content_meta = serde_json::json!({});
@@ -741,9 +839,7 @@ async fn content_register(
     Json(body): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let dist = state.distribution.as_ref().ok_or(StatusCode::NOT_FOUND)?;
-    let auth = headers
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok());
+    let auth = headers.get("Authorization").and_then(|v| v.to_str().ok());
     let x_minio = headers
         .get("x-minio-webhook-auth")
         .and_then(|v| v.to_str().ok());
@@ -808,9 +904,7 @@ async fn webhook_s3_ingest(
     Json(body): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let dist = state.distribution.as_ref().ok_or(StatusCode::NOT_FOUND)?;
-    let auth = headers
-        .get("Authorization")
-        .and_then(|v| v.to_str().ok());
+    let auth = headers.get("Authorization").and_then(|v| v.to_str().ok());
     let x_minio = headers
         .get("x-minio-webhook-auth")
         .or_else(|| headers.get("X-Minio-Webhook-Auth"))
@@ -930,7 +1024,9 @@ async fn webhook_s3_ingest(
                 registered += 1;
             }
         }
-        return Ok(Json(serde_json::json!({ "ok": true, "registered": registered })));
+        return Ok(Json(
+            serde_json::json!({ "ok": true, "registered": registered }),
+        ));
     }
 
     Err(StatusCode::BAD_REQUEST)
@@ -1180,63 +1276,104 @@ async fn note_list(
         .verify(&headers)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-    let keys = state
-        .headstash_store
-        .list_note_keys(&hs_id)
-        .map_err(|e| {
-            tracing::warn!(%hs_id, error = %e, "list_note_keys failed");
-            StatusCode::BAD_REQUEST
-        })?;
+    let keys = state.headstash_store.list_note_keys(&hs_id).map_err(|e| {
+        tracing::warn!(%hs_id, error = %e, "list_note_keys failed");
+        StatusCode::BAD_REQUEST
+    })?;
     Ok(Json(serde_json::json!({ "keys": keys })))
 }
 
-/// POST /notes/{hs_id}/pir — XOR PIR over note blobs (authenticated).
+/// GET /notes/{hs_id}/pir-index — public leaf order for the XOR selector.
 ///
-/// Body: `{ "selector": [0, 1, 0, ...] }` with length == key count.
-async fn note_pir(
+/// 404 unless the binary is built with `--features pir` and notes were ingested.
+/// This is not GET /notes/{hs_id}/{addr}.
+async fn note_pir_index(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(hs_id): Path<String>,
-    Json(body): Json<serde_json::Value>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<Json<serde_json::Value>, StatusCode> {
     state
         .blossom
         .auth
         .verify(&headers)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-    let selector_vals = body
-        .get("selector")
-        .and_then(|v| v.as_array())
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    let selector: Vec<u8> = selector_vals
-        .iter()
-        .map(|v| {
-            if v.as_u64() == Some(1) || v.as_bool() == Some(true) {
-                1u8
-            } else {
-                0u8
-            }
-        })
-        .collect();
+    #[cfg(not(feature = "pir"))]
+    {
+        let _ = (state, hs_id);
+        return Err(StatusCode::NOT_FOUND);
+    }
 
-    let (_keys, blobs) = state
-        .headstash_store
-        .get_note_blobs(&hs_id)
-        .map_err(|e| {
-            tracing::warn!(%hs_id, error = %e, "get_note_blobs failed");
+    #[cfg(feature = "pir")]
+    {
+        let index = crate::pir::load_pir_index(state.headstash_store.as_ref(), &hs_id)
+            .map_err(|e| {
+                tracing::warn!(%hs_id, error = %e, "load_pir_index failed");
+                StatusCode::BAD_REQUEST
+            })?
+            .ok_or(StatusCode::NOT_FOUND)?;
+        Ok(Json(serde_json::to_value(index).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?))
+    }
+}
+
+/// POST /notes/{hs_id}/pir — XOR over ingested public leaf blobs (authenticated).
+///
+/// Body: `{ "selector": [0, 1, 0, ...] }` with length == public index count.
+/// Decoded blob is `{leaf, path, fdi, nd, v, recp, epk_x, epk_y, ...}`.
+/// Does not call GET-by-addr and does not read `notes/{hs_id}/{addr}.json`.
+/// Without feature `pir`, returns 404 and leaves NIP-BUD / encrypted notes alone.
+async fn note_pir(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Path(hs_id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    state
+        .blossom
+        .auth
+        .verify(&headers)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+    #[cfg(not(feature = "pir"))]
+    {
+        let _ = (state, hs_id, body);
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    #[cfg(feature = "pir")]
+    {
+        let selector_vals = body
+            .get("selector")
+            .and_then(|v| v.as_array())
+            .ok_or(StatusCode::BAD_REQUEST)?;
+        let selector: Vec<u8> = selector_vals
+            .iter()
+            .map(|v| {
+                if v.as_u64() == Some(1) || v.as_bool() == Some(true) {
+                    1u8
+                } else {
+                    0u8
+                }
+            })
+            .collect();
+
+        let (_keys, blobs) = crate::pir::load_pir_blobs(state.headstash_store.as_ref(), &hs_id)
+            .map_err(|e| {
+                tracing::warn!(%hs_id, error = %e, "load_pir_blobs failed");
+                StatusCode::BAD_REQUEST
+            })?
+            .ok_or(StatusCode::NOT_FOUND)?;
+
+        let blob_refs: Vec<&[u8]> = blobs.iter().map(|b| b.as_slice()).collect();
+        let result = crate::pir::xor_pir(&blob_refs, &selector).map_err(|e| {
+            tracing::warn!(%hs_id, error = %e, "note pir failed");
             StatusCode::BAD_REQUEST
         })?;
 
-    let blob_refs: Vec<&[u8]> = blobs.iter().map(|b| b.as_slice()).collect();
-    let result = crate::pir::xor_pir(&blob_refs, &selector).map_err(|e| {
-        tracing::warn!(%hs_id, error = %e, "note pir failed");
-        StatusCode::BAD_REQUEST
-    })?;
-
-    Ok(Json(serde_json::json!({
-        "result": hex::encode(result)
-    })))
+        Ok(Json(serde_json::json!({
+            "result": hex::encode(result)
+        })))
+    }
 }
 
 // ── Cashu mesh handlers (canonical mint cache + encrypted wallet stash) ─────
@@ -1303,13 +1440,10 @@ async fn cashu_mint_delete(
         .verify(&headers)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-    let removed = state
-        .cashu_mesh
-        .delete_mint(&mint_id)
-        .map_err(|e| {
-            tracing::warn!(%mint_id, error = %e, "delete_mint failed");
-            StatusCode::BAD_REQUEST
-        })?;
+    let removed = state.cashu_mesh.delete_mint(&mint_id).map_err(|e| {
+        tracing::warn!(%mint_id, error = %e, "delete_mint failed");
+        StatusCode::BAD_REQUEST
+    })?;
     if removed {
         Ok(StatusCode::NO_CONTENT)
     } else {

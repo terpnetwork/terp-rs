@@ -21,7 +21,8 @@ pub use marketplace_egress::{
     KIND_SET_STALL,
 };
 pub use marketplace_ingress::{
-    parse_purchase_intent, parse_purchase_intent_value, IngressError, PurchaseIntent,
+    authorize_auto_execute, parse_purchase_intent, parse_purchase_intent_value, IngressError,
+    IngressExecutePolicy, PurchaseIntent,
 };
 
 use crate::msg::HashRoot;

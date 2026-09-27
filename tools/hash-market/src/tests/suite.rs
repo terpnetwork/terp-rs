@@ -19,12 +19,12 @@
 //! cargo test -p hash-market --lib tests::suite
 //! ```
 
+use crate::config::ProviderConfig;
 use crate::hash::{build as build_tree, verify as verify_tree};
 use crate::msg::VoteExtensionHashData;
 use crate::oracle::{
     aggregate_bounds, AggregationMethod, AggregationPolicy, AttributedPrice, ProviderKind,
 };
-use crate::config::ProviderConfig;
 
 // ── Capability matrix ───────────────────────────────────────────────────────
 
@@ -176,8 +176,8 @@ impl HashMarketHarness {
             min_sources: 2,
             max_age_secs: 60,
         };
-        let bound = aggregate_bounds(market, &observations, &policy, self.now)
-            .expect("aggregate bounds");
+        let bound =
+            aggregate_bounds(market, &observations, &policy, self.now).expect("aggregate bounds");
 
         assert_eq!(bound.role, "bound_only", "oracles never mint");
         assert_eq!(bound.n_sources, 3);

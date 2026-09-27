@@ -57,10 +57,7 @@ impl RootIdStore {
 
     /// Number of known root IDs for a chain.
     pub fn count(&self, chain_uid: &str) -> usize {
-        self.chains
-            .get(chain_uid)
-            .map(|s| s.len())
-            .unwrap_or(0)
+        self.chains.get(chain_uid).map(|s| s.len()).unwrap_or(0)
     }
 
     /// Insert many IDs at once (batch insert from negentropy response).

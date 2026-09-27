@@ -1,4 +1,3 @@
-
 use crate::client::nostr::{
     ClientResult, HashMerchantPayload, HashMerchantRelayInfo, NegentropyFilter,
 };

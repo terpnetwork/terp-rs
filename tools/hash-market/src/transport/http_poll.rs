@@ -56,10 +56,7 @@ async fn fetch_data(url: &str) -> anyhow::Result<Option<VoteExtensionHashData>> 
     stream.read_to_end(&mut buf).await?;
 
     // Find the body after \r\n\r\n
-    let body_start = buf
-        .windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .map(|p| p + 4);
+    let body_start = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|p| p + 4);
 
     match body_start {
         Some(start) if start < buf.len() => {

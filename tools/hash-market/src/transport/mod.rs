@@ -3,8 +3,15 @@
 //! Each transport mode runs in its own task and pushes `VoteExtensionHashData`
 //! messages through an mpsc channel.
 
+#[cfg(feature = "privval")]
+pub mod cmt_privval;
 pub mod grpc;
 pub mod http_poll;
+#[cfg(feature = "noise")]
+pub mod noise;
+#[cfg(feature = "privval")]
+pub mod privval;
+pub mod session;
 pub mod static_lab;
 pub mod websocket;
 
@@ -17,10 +24,7 @@ pub enum TransportMode {
     /// gRPC listener (CometBFT ABCI sidecar pattern)
     Grpc { listen_addr: String },
     /// HTTP polling against a remote endpoint
-    HttpPoll {
-        url: String,
-        interval_secs: u64,
-    },
+    HttpPoll { url: String, interval_secs: u64 },
     /// WebSocket subscription
     WebSocket { url: String },
     /// Lab/e2e only: re-emit a fixed VoteExtensionHashData (no external feeder).
@@ -33,9 +37,7 @@ pub enum TransportMode {
 /// Start a transport listener, returning a receiver for incoming hash data.
 ///
 /// The transport runs in a background tokio task.
-pub fn start(
-    mode: TransportMode,
-) -> mpsc::Receiver<VoteExtensionHashData> {
+pub fn start(mode: TransportMode) -> mpsc::Receiver<VoteExtensionHashData> {
     let (tx, rx) = mpsc::channel(256);
 
     match mode {

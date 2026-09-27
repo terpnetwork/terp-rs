@@ -19,16 +19,14 @@ pub use auth::{
     check_ingest_auth, resolve_service_jwt_secret, sign_service_jwt, verify_service_jwt,
     IngestAuthMode, ServiceJwtClaims, DEFAULT_AUD as DIST_JWT_AUD, ROLE_CONTENT_INGEST,
 };
+#[cfg(any(feature = "server", feature = "client"))]
+pub use calendar::resolve_http;
 pub use calendar::{
     bind_listing_body, bind_offchain_body, bind_offchain_event, is_nip52_event_kind, is_nip52_kind,
     resolve_local, resolve_url, resolve_url_parsed, OffchainBind, OffchainCalendarMeta,
     KIND_CALENDAR, KIND_DATE_BASED, KIND_TIME_BASED,
 };
-#[cfg(any(feature = "server", feature = "client"))]
-pub use calendar::resolve_http;
-pub use cid::{
-    content_path, encode_for_chain, parse_cid, CidKind, ParsedCid,
-};
+pub use cid::{content_path, encode_for_chain, parse_cid, CidKind, ParsedCid};
 pub use ipfs::IpfsClient;
 pub use registry::{ContentOrigin, ContentRecord, ContentRegistry};
 pub use webhook::{ContentAvailableEvent, WebhookFanout};

@@ -131,10 +131,7 @@ impl HashMerchantClient for MinioIpfsClient {
 
         // Dual-index register on content plane (no blob body required)
         if let Some(base) = &self.durable.distribution_url {
-            let url = format!(
-                "{}/content/register",
-                base.trim_end_matches('/')
-            );
+            let url = format!("{}/content/register", base.trim_end_matches('/'));
             let body = serde_json::json!({
                 "sha256": sha_hex,
                 "size": bytes.len(),
@@ -157,10 +154,7 @@ impl HashMerchantClient for MinioIpfsClient {
                     eprintln!("[hashmerchant] dual-index register ok sha256={sha_hex}");
                 }
                 Ok(resp) => {
-                    eprintln!(
-                        "[hashmerchant] dual-index register HTTP {}",
-                        resp.status()
-                    );
+                    eprintln!("[hashmerchant] dual-index register HTTP {}", resp.status());
                 }
                 Err(e) => {
                     eprintln!("[hashmerchant] dual-index register failed: {e}");

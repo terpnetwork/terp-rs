@@ -66,9 +66,9 @@ async fn main() -> anyhow::Result<()> {
             providers = config.providers.len(),
             "VE custody initialized"
         );
-        Some(hash_market::client::ve::VoteExtensionHandler::new(Box::new(
-            custody,
-        )))
+        Some(hash_market::client::ve::VoteExtensionHandler::new(
+            Box::new(custody),
+        ))
     } else {
         tracing::info!("vote extensions disabled — merkle/BUD host mode");
         None
@@ -76,6 +76,90 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(not(feature = "ve"))]
     tracing::info!("vote extensions not compiled — merkle/BUD host mode");
+
+    #[cfg(feature = "privval")]
+    if let Some(pv) = config.privval.clone() {
+        if pv.enabled {
+            use hash_market::custody::frost::FrostCoordinator;
+            use hash_market::transport::session::{Cleartext, SessionCrypto};
+            use std::path::Path;
+            use std::sync::Arc;
+            let t = pv.frost_t.max(1);
+            let coord = if let (Some(g), true) = (pv.group.as_ref(), !pv.shares.is_empty()) {
+                let pairs: Vec<(u16, &Path)> = pv
+                    .shares
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| ((i as u16) + 1, Path::new(p.as_str())))
+                    .collect();
+                FrostCoordinator::load(t, Path::new(g), &pairs)?
+            } else {
+                anyhow::bail!("privval.enabled needs frost group + shares (or disable)");
+            };
+            tracing::info!(
+                pubkey = hex::encode(coord.pubkey_bytes()),
+                crypto = pv.crypto.as_str(),
+                addr = pv.addr.as_str(),
+                "privval FROST coordinator in hash-market sidecar"
+            );
+            let coord = Arc::new(coord);
+            {
+                let refill = coord.clone();
+                tokio::spawn(async move {
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                        if let Err(e) = refill.refill() {
+                            tracing::warn!(%e, "frost presig refill");
+                        }
+                    }
+                });
+            }
+            let signer: Arc<dyn hash_market::custody::consensus::ConsensusSigner> = coord;
+            let addr = pv.addr.clone();
+            let crypto_kind = pv.crypto.clone();
+            let codec = if pv.codec.is_empty() {
+                "json".into()
+            } else {
+                pv.codec.clone()
+            };
+            let hrs = {
+                let p = pv
+                    .state_file
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/privval-hrs.json", data_dir.display()));
+                Arc::new(tokio::sync::Mutex::new(
+                    hash_market::custody::hrs::HrsLock::load(Path::new(&p))?,
+                ))
+            };
+            tokio::spawn(async move {
+                loop {
+                    let crypto: Box<dyn SessionCrypto> = if crypto_kind == "cleartext" {
+                        Box::new(Cleartext)
+                    } else {
+                        match hash_market::transport::noise::NoiseXx::generate() {
+                            Ok(n) => Box::new(n),
+                            Err(e) => {
+                                tracing::error!(%e, "noise identity");
+                                break;
+                            }
+                        }
+                    };
+                    if let Err(e) = hash_market::transport::privval::serve_once(
+                        crypto.as_ref(),
+                        &addr,
+                        signer.clone(),
+                        &codec,
+                        Some(hrs.clone()),
+                    )
+                    .await
+                    {
+                        tracing::warn!(%e, "privval session ended");
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+            });
+        }
+    }
 
     let oracle_policy = config
         .oracle
@@ -139,6 +223,110 @@ async fn main() -> anyhow::Result<()> {
             enabled,
             public_mint_list = public_list,
             "cashu mesh policy (canonical mint registry cache + wallet stash)"
+        );
+    }
+
+    if config.wants_onboard() {
+        let oc = config.onboard.clone().unwrap_or_default();
+        let mut rt = hash_market::onboard_authz::OnboardRuntime::from_env();
+        rt.service_name = "hash-market-onboard".into();
+        // Env (Akash) wins. Toml only fills empty so /onboard/status agrees with process env.
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.dao) {
+            if let Some(dao) = oc
+                .dao
+                .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
+            {
+                rt.roles.dao = dao;
+            }
+        }
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.runtime_key) {
+            if let Some(rk) = oc
+                .runtime_key
+                .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
+            {
+                rt.roles.runtime_key = rk;
+            }
+        }
+        if let Some(c) = oc.chain_id.filter(|s| !s.is_empty()) {
+            rt.roles.chain_id = c;
+        } else if rt.roles.chain_id == "120u-1" || rt.roles.chain_id.is_empty() {
+            rt.roles.chain_id = config.chain_id.clone();
+        }
+        if let Some(l) = oc.register_limit {
+            rt.register_limit = l;
+        }
+        if let Some(l) = oc.mint_limit {
+            rt.mint_limit = l;
+        }
+        let want = oc.broadcast || std::env::var("ONBOARD_BROADCAST").ok().as_deref() == Some("1");
+        let terpd = std::process::Command::new("terpd")
+            .arg("version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        rt.broadcast = want && terpd;
+        if want && !terpd {
+            tracing::warn!("ONBOARD_BROADCAST ignored — image has no terpd; leaving broadcast=0");
+        }
+        rt.require_live_roles().map_err(anyhow::Error::msg)?;
+        tracing::info!(
+            prefix = "/onboard",
+            chain = %rt.roles.chain_id,
+            dao = %rt.roles.dao,
+            "embedded onboard-authz (not a second process)"
+        );
+        state.set_onboard(std::sync::Arc::new(rt));
+    }
+
+    // FROST inbox: HashMerchant adapter (not FilePV). Loopback only.
+    {
+        if std::env::var("ITL_FROST_PERSIST_DIR").is_err() {
+            let dir = format!("{}/itl-frost", config.data_dir.as_deref().unwrap_or("data"));
+            std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
+        }
+        let frost_bind =
+            terp_onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
+        let inbox =
+            terp_onboard_authz::frost_http::shared_inbox_from_env().map_err(anyhow::Error::msg)?;
+        tracing::info!(
+            bind = %frost_bind,
+            persist = terp_onboard_authz::itl_frost::persist_required().is_ok(),
+            "embedded frost inbox (127.0.0.1; not FilePV)"
+        );
+        let frost_app = hash_market::frost::router(inbox);
+        tokio::spawn(async move {
+            match tokio::net::TcpListener::bind(&frost_bind).await {
+                Ok(listener) => {
+                    if let Err(e) = axum::serve(listener, frost_app).await {
+                        tracing::error!(%e, "frost inbox serve");
+                    }
+                }
+                Err(e) => tracing::error!(%e, bind = %frost_bind, "frost inbox bind"),
+            }
+        });
+    }
+
+    #[cfg(feature = "pir")]
+    if config.wants_pir_ingest() {
+        let p = config.pir.clone().expect("wants_pir_ingest");
+        let report = hash_market::pir::ingest_community_notes(
+            state.headstash_store.as_ref(),
+            &p.hs_id,
+            std::path::Path::new(&p.notes_json),
+            std::path::Path::new(&p.merkle_json),
+        )?;
+        tracing::info!(
+            hs_id = %report.hs_id,
+            count = report.count,
+            root = %report.root,
+            skipped = report.skipped_existing,
+            "pir ingest: public leaf blobs + merkle path (blossom/NIP-BUD unchanged; no broadcast; nostr not replaced)"
+        );
+    }
+    #[cfg(not(feature = "pir"))]
+    if config.wants_pir_ingest() {
+        tracing::warn!(
+            "config [pir] enabled but binary lacks `--features pir`; NIP-BUD/blossom remains the note path"
         );
     }
 

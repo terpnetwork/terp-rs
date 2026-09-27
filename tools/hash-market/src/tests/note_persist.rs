@@ -92,7 +92,11 @@ fn note_persist_private_notes_not_under_content_index() {
     store
         .set_note("hs-priv", "cm.priv01", &opaque_envelope("secret-body"))
         .unwrap();
-    assert!(dir.join("notes").join("hs-priv").join("cm.priv01.json").is_file());
+    assert!(dir
+        .join("notes")
+        .join("hs-priv")
+        .join("cm.priv01.json")
+        .is_file());
     // No content-plane spill
     assert!(!dir.join("content").exists());
     assert!(!dir.join("blobs").exists() || store.list_note_keys("hs-priv").unwrap().len() == 1);
@@ -222,6 +226,62 @@ mod l1_http {
             .await
             .unwrap();
         assert_eq!(put.status(), StatusCode::UNAUTHORIZED);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Default build keeps encrypted notes and does not serve the public-leaf PIR route.
+    #[cfg(not(feature = "pir"))]
+    #[tokio::test]
+    async fn pir_feature_off_is_404_and_note_put_still_works() {
+        let dir = tmp_dir("pir-off");
+        let (app, dir) = app_with_auth(dir);
+        let hs = "community-notes";
+
+        let pir = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/notes/{hs}/pir"))
+                    .header("content-type", "application/json")
+                    .header("authorization", "Bearer test-token")
+                    .body(Body::from(r#"{"selector":[1]}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(pir.status(), StatusCode::NOT_FOUND);
+
+        let index = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/notes/{hs}/pir-index"))
+                    .header("authorization", "Bearer test-token")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(index.status(), StatusCode::NOT_FOUND);
+
+        let put = app
+            .oneshot(
+                Request::builder()
+                    .method("PUT")
+                    .uri(format!("/notes/{hs}/cm.aabb"))
+                    .header("content-type", "application/json")
+                    .header("authorization", "Bearer test-token")
+                    .body(Body::from(
+                        serde_json::to_vec(&opaque_envelope("still-bud-notes")).unwrap(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(put.status(), StatusCode::CREATED);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

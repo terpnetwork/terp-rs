@@ -43,6 +43,17 @@ pub fn xor_pir(blobs: &[&[u8]], selector: &[u8]) -> anyhow::Result<Vec<u8>> {
     Ok(result)
 }
 
+/// Poseidon-v1 auth paths + genesis `notes.json` ingest. Not compiled into the default blossom host.
+#[cfg(feature = "pir")]
+mod poseidon;
+#[cfg(feature = "pir")]
+mod ingest;
+#[cfg(feature = "pir")]
+pub use ingest::{
+    ingest_community_notes, load_pir_blobs, load_pir_index, PirIndex, PirIngestReport,
+    PublicLeafBlob,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

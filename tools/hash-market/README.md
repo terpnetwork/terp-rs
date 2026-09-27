@@ -11,11 +11,13 @@ A modular, feature-gated server that acts as a validator sidecar (producing and 
 | Feature | Flag | Description | Binaries |
 |---|---|---|---|
 | **Server** | `server` | Axum HTTP server core with routing, middleware, tower services | `hash-market-server` |
+| **Onboard** | `onboard` | DAO feegrant plane at `/onboard/*` (included with `server`; not a second process) | `hash-market-server`, `prepare-authz` |
 | **Vote Extension** | `ve` | ABCI++ ExtendVote / VerifyVote extension signing + verification | `hash-market-server` |
 | **Blossom (BUD)** | `blossom` | BUD-02/06/07 blob storage protocol (auth, payment, hash-addressed blobs) | `hash-market-server` |
 | **Client** | `client` | ETH proof polling, hash data collection, HTTP client to sidecar | `hash-market-client` |
 | **Nostr** | `nostr` | NIP-77 relay integration, NEG-ENTROPY, root discovery via relays | `hash-market-relay` |
 | **Custody** | `custody` | secp256k1 / ed25519 key management and signing backend | — (lib) |
+| **FROST / Noise privval** | `privval` | FROST-Ed25519 coordinator + Noise XX in this sidecar (not a second kms ELF) | `hash-market-server` |
 | **Transport** | `transport` | gRPC / HTTP poll / WebSocket data ingestion modes | `hash-market-server` |
 | **ETH** | `eth` | `eth_getProof` client for EVM chain state extraction | `hash-market-client` |
 | **Pallas** | `pallas` | Keccak → Pallas field element transform (Verkle-ready) | `hash-market-client` |
@@ -59,6 +61,8 @@ Frontend: `websites/terp.network/lib/merkle-server.js` + `config.services.merkle
 ```bash
 cargo build -p hash-market --features full-sidecar --release
 # config: ve_enabled = true, signing_key, [[providers]]
+# FROST privval: [privval] enabled=true, frost shares + group (see reviews/HANDOFF-FROST-SIDECAR-DOCS-2026-09-03.md)
+# Exercise: ./scripts/e2e-frost-privval.sh
 ```
 
 ---

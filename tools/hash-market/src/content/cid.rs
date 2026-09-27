@@ -156,7 +156,10 @@ mod tests {
     fn prefixes() {
         let h = "ab".repeat(32);
         assert_eq!(parse_cid(&format!("bud:{h}")).unwrap().value, h);
-        assert_eq!(parse_cid(&format!("sha256:{h}")).unwrap().kind, CidKind::BudSha256);
+        assert_eq!(
+            parse_cid(&format!("sha256:{h}")).unwrap().kind,
+            CidKind::BudSha256
+        );
         let p = parse_cid("ipfs:bafybeigdyrzt").unwrap();
         assert_eq!(p.kind, CidKind::Ipfs);
         assert!(encode_for_chain(CidKind::Ipfs, "bafybeigdyrzt")

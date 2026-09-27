@@ -1,10 +1,12 @@
-
-// TODOTODOTODO: REPLACE WITH NIP /BUD AUTH SPECS (VARIOS POSSIBLE DEGREES OF AUTH AND GRNULARTITY)
-//! Secp256k1 / ECDSA signature verification for write endpoints.
-//!     - adr-32 msgs must include sign
+//! Write-auth for hash-market HTTP — **BUD-01 + NIP-42-style secp headers**.
 //!
-//! The server verifies that write requests carry a valid ECDSA signature
-//! produced by the holder of the configured admin private key.
+//! Preferred path: [`crate::middleware::notes_auth`] implementing
+//! [`cw721-nips::buds::AuthVerifier`] (`noop` / `bearer` / `secp` / `bearer_or_secp`).
+//! Use [`write_auth_from_notes`] to build that verifier from [`NotesAuthConfig`].
+//!
+//! This module also keeps [`AuthKey`]: compact ECDSA over
+//! `{METHOD}\n{PATH}\n{TIMESTAMP}\n{sha256hex(body)}` for operator writes
+//! (ADR-32-shaped messages still must include a signature).
 //!
 //! ## Canonical message
 //!
@@ -21,10 +23,18 @@
 //!
 //! 64-byte compact secp256k1 ECDSA (r ‖ s), hex-encoded.
 
+use crate::config::NotesAuthConfig;
 use anyhow::Result;
+use cw721_nips::buds::AuthVerifier;
 use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// BUD-01 / NIP notes auth for private writes (preferred over raw [`AuthKey`]).
+pub fn write_auth_from_notes(cfg: NotesAuthConfig) -> Arc<dyn AuthVerifier> {
+    cfg.into_verifier()
+}
 
 pub struct AuthKey {
     vk: VerifyingKey,

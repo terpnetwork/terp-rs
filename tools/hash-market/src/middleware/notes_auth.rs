@@ -10,7 +10,9 @@
 //! uses `verify_prehash` (client already hashed).
 
 use crate::config::NotesAuthConfig;
-use cw721_nips::buds::{AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier, NoopAuthVerifier};
+use cw721_nips::buds::{
+    AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier, NoopAuthVerifier,
+};
 use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;

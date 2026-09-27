@@ -183,7 +183,9 @@ pub fn check_ingest_auth(
             return false;
         };
         let candidates = [format!("Bearer {expected}"), expected.to_string()];
-        candidates.iter().any(|c| constant_time_eq(c.as_bytes(), token.as_bytes()))
+        candidates
+            .iter()
+            .any(|c| constant_time_eq(c.as_bytes(), token.as_bytes()))
             || x_minio.is_some_and(|x| constant_time_eq(x.as_bytes(), expected.as_bytes()))
     };
 
