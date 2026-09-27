@@ -13,6 +13,7 @@ Locked-in workflow for local ↔ remote crate swapping across the monorepo.
 | Flake | `terp-core/crates/flake.nix` | Toolchain + bootstrap apps |
 | CLI | `_scripts/dep.py` | **Stable entrypoint** |
 | Engine | `_scripts/dep-switch.py` + `dep_common.py` | Implementation |
+| Probes | `_scripts/dep_probe.py` | Read-only. `branch-check`, `git-status`, write preflight |
 
 **Monorepo root** defaults to `terp-core/crates` (resolved from config).  
 Override with `TERP_DEP_ROOT` / `DEP_MONOREPO_ROOT` if needed.
@@ -49,6 +50,12 @@ just deps-config          # or: python3 _scripts/dep.py config
 
 # Matrix must be clean before switches
 just deps-validate
+
+# Every matrix branch must exist on its remote (read-only, exit 1 otherwise)
+just deps-branch-check
+
+# What is in flight, and what blocks a write path (read-only git plumbing)
+just deps-git-status
 
 # If validate fails (absolute paths / wrong package dirs):
 just deps-heal            # rewrite locals; package-name checked

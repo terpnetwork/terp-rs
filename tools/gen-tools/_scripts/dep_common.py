@@ -1548,67 +1548,39 @@ def _mode_git_keys(mode: str = None) -> list:
 
 
 def validate_matrix_branches(matrix: dict, mode: str = None) -> list:
-    """Check that git and zk_git branches in the matrix exist on their remotes.
-    Groups by URL to minimize network calls (one git ls-remote per URL).
-    If mode is specified, only checks branches relevant to that mode.
-    Returns list of warning strings for missing branches."""
-    import subprocess
+    """Check that the git/zk_git branches the matrix resolves to exist on their remotes.
 
-    git_keys = _mode_git_keys(mode)
+    Delegates to dep_probe so exactly one ls-remote implementation exists.
+    Resolution follows resolve_git_source, so matrix-wide defaults such as
+    [defaults] zk_git_branch are included: a crate with no explicit zk_git
+    table still resolves to a branch, and that branch must exist. The previous
+    implementation only inspected explicitly declared tables, so a crate
+    inheriting a nonexistent default branch passed unnoticed.
 
-    # Collect all (url, branch, key, field) tuples
-    checks = []
-    for key, info in sorted(matrix.items()):
-        for gk in git_keys:
-            gi = info.get(gk)
-            if gi and isinstance(gi, dict):
-                url = gi.get("url")
-                branch = gi.get("branch")
-                if url and branch:
-                    checks.append((url, branch, key, gk))
+    mode restricts the check the way the write path resolves; None checks both.
+    Returns list of warning strings.
+    """
+    # Imported here, not at module scope: dep_probe imports this module.
+    import dep_probe
 
-    # Group by URL → { url: set((branch, key, field)) }
-    url_groups = {}
-    for url, branch, key, field in checks:
-        url_groups.setdefault(url, set()).add((branch, key, field))
+    resolved_mode = mode if mode in ("git", "zk_git") else "all"
+    findings = dep_probe.check_branches_on_remote(
+        matrix, load_defaults(), mode=resolved_mode
+    )
 
     warnings = []
-    for url in sorted(url_groups):
-        entries = url_groups[url]
-        # Collect unique branches needed from this URL
-        needed_branches = {branch for branch, _, _ in entries}
-        try:
-            r = subprocess.run(
-                ["git", "ls-remote", "--heads", url],
-                capture_output=True, text=True, timeout=30,
-            )
-            if r.returncode != 0:
+    for f in findings:
+        if f.state == "missing":
+            for key in f.keys:
                 warnings.append(
-                    f"[WARN] git ls-remote failed for {url}: {r.stderr.strip()}"
+                    f"[WARN] matrix '{key}': branch '{f.branch}' not found on "
+                    f"{f.url} ({f.detail})"
                 )
-                continue
-
-            # Parse refs/heads/<branch> from output
-            remote_branches = set()
-            for line in r.stdout.strip().split("\n"):
-                if not line:
-                    continue
-                parts = line.split("\t")
-                if len(parts) == 2 and parts[1].startswith("refs/heads/"):
-                    remote_branches.add(parts[1][len("refs/heads/"):])
-
-            # Check each needed branch
-            for branch, key, field in sorted(entries):
-                if branch not in remote_branches:
-                    warnings.append(
-                        f"[WARN] matrix '{key}': {field} branch '{branch}' "
-                        f"not found on {url}"
-                    )
-        except subprocess.TimeoutExpired:
-            warnings.append(f"[WARN] git ls-remote timed out for {url}")
-        except Exception as e:
-            warnings.append(f"[WARN] git ls-remote error for {url}: {e}")
-
+        elif f.state in ("unreachable", "auth", "invalid-url"):
+            warnings.append(
+                f"[WARN] git ls-remote could not confirm {f.url} ({f.state}): "
+                f"branch '{f.branch}' unchecked"
+            )
     return warnings
 
 

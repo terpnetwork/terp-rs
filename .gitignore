@@ -29,6 +29,7 @@ crates/zk/headstash/
 __pycache__
 .claude
 .dep-mode
+.branch-cache.json
 dep-scrape.json
 dep-graph.dot
 dep-graph.svg

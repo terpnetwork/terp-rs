@@ -11,7 +11,9 @@ Usage:
     python3 _scripts/dep.py status
     python3 _scripts/dep.py switch <mode> [options]
     python3 _scripts/dep.py verify [--mode MODE] [--workspace PATH]
-    python3 _scripts/dep.py ensure-branches <mode>
+    python3 _scripts/dep.py ensure-branches <mode> [--force]
+    python3 _scripts/dep.py branch-check [--mode MODE] [--refresh] [--all]
+    python3 _scripts/dep.py git-status [--repo PATH] [--all]
 """
 
 from __future__ import annotations
@@ -54,6 +56,8 @@ from dep_common import (
     verify_mode_resolution,
     write_healed_matrix,
 )
+
+import dep_probe
 
 
 def cmd_config(_args):
@@ -299,9 +303,74 @@ def cmd_status(args):
 
 
 def cmd_ensure_branches(args):
+    # Gated: creating a remote branch to satisfy a matrix entry publishes a
+    # ref under a name that nothing consumes when the matrix itself is wrong.
+    # Refuse unless the matrix's branches are confirmed present, or the
+    # operator overrides explicitly.
+    if not args.force:
+        matrix = load_matrix()
+        defaults = load_defaults()
+        findings = dep_probe.check_branches_on_remote(matrix, defaults, mode="all")
+        missing = [f for f in findings if f.state == "missing"]
+        if missing:
+            print("REFUSING ensure-branches: the matrix names branches the remote does not publish.")
+            print()
+            for f in missing:
+                for line in f.format():
+                    print(line)
+            print()
+            print("ensure-branches would publish these names from whatever HEAD is pointed at,")
+            print("which is how a wrong matrix entry becomes permanent. Fix the matrix first.")
+            print("Run 'branch-check' for the full report, or pass --force to override.")
+            sys.exit(1)
     dep_switch = _load_script("dep-switch")
     ns = argparse.Namespace(mode=args.mode, dry_run=args.dry_run, base=args.base)
     dep_switch.cmd_ensure_branches(ns)
+
+
+def cmd_branch_check(args):
+    matrix = load_matrix()
+    defaults = load_defaults()
+    findings = dep_probe.check_branches_on_remote(
+        matrix, defaults, mode=args.mode, refresh=args.refresh
+    )
+    counts = dep_probe.summarize_branches(findings)
+    print(f"Branch check  matrix_crates={len(matrix)}  url_branch_pairs={len(findings)}")
+    print("  " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    print()
+    for f in findings:
+        if not args.all and f.ok:
+            continue
+        for line in f.format():
+            print(line)
+    missing = [f for f in findings if f.state == "missing"]
+    if missing:
+        print()
+        print(f"{len(missing)} matrix (url, branch) pair(s) name a branch the remote does not publish.")
+        print("The matrix is the source of truth. Correct the matrix; do not create the branch.")
+        sys.exit(1)
+
+
+def cmd_git_status(args):
+    states = dep_probe.probe_git_state(repos=args.repo)
+    summary = dep_probe.summarize_repos(states)
+    print(
+        f"Git state  repos={summary['repos']}  dirty={summary['dirty']}  "
+        f"outgoing={summary['outgoing']}  detached={summary['detached']}  "
+        f"prunable={summary['prunable']}  errored={summary['errored']}"
+    )
+    print()
+    for state in states:
+        if not args.all and not (state.dirty or state.outgoing or state.detached or state.prunable or state.error):
+            continue
+        for line in state.format():
+            print(line)
+    blockers = dep_probe.preflight_for_write(states, targets=None)
+    if blockers and not args.all:
+        print()
+        print("WRITE PREFLIGHT — these repositories block any Cargo-file write path:")
+        for b in blockers:
+            print(f"  - {b}")
 
 
 def main():
@@ -355,7 +424,25 @@ def main():
     p.add_argument("mode", choices=["git", "zk_git", "all"])
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--base", default=None)
+    p.add_argument("--force", action="store_true", help="Create branches even if the matrix names unpublished ones")
     p.set_defaults(func=cmd_ensure_branches)
+
+    p = sub.add_parser(
+        "branch-check",
+        help="Verify every matrix git url/branch exists on the remote (read-only)",
+    )
+    p.add_argument("--mode", choices=["git", "zk_git", "all"], default="all")
+    p.add_argument("--refresh", action="store_true", help="Ignore the cache and re-query remotes")
+    p.add_argument("--all", action="store_true", help="Show present branches too, not only problems")
+    p.set_defaults(func=cmd_branch_check)
+
+    p = sub.add_parser(
+        "git-status",
+        help="Per-repository dirty/outgoing/worktree state and write preflight (read-only)",
+    )
+    p.add_argument("--repo", action="append", help="Monorepo-relative path; repeatable")
+    p.add_argument("--all", action="store_true", help="Include clean repositories")
+    p.set_defaults(func=cmd_git_status)
 
     args = parser.parse_args()
     args.func(args)

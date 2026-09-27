@@ -91,6 +91,24 @@ deps-validate:
     {{dep}} validate -v
     python3 _scripts/check_native_optional_consumers.py
 
+# Verify every matrix git url/branch is actually published on its remote.
+# Read-only (git ls-remote). Exit 1 when the matrix names an unpublished branch.
+deps-branch-check:
+    {{dep}} branch-check
+
+# Same, ignoring the cached remote heads
+deps-branch-check-refresh:
+    {{dep}} branch-check --refresh
+
+# Per-repository dirty/outgoing/detached/worktree state plus the write preflight.
+# Read-only git plumbing. This is what a write path must consult first.
+deps-git-status:
+    {{dep}} git-status
+
+# Tests for the read-only probes
+deps-test:
+    python3 _scripts/test_dep_probe.py
+
 # Heal matrix local/zk_local paths (package-name checked, relative only)
 deps-heal:
     {{dep}} heal -v
@@ -101,6 +119,7 @@ deps-heal-dry-run:
 # Show current dependency status
 deps-status:
     {{dep}} status
+
 
 # Switch forked deps (fail-closed if matrix dirty)
 # modes: stable|local|git|zk_local|zk_git|dev|zk_dev
