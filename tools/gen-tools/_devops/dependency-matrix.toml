@@ -210,7 +210,11 @@ zk_local = "cosmwasm/packages/core"
 
 [crates.cosmwasm-core.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-core.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-crypto]
 description = "Crypto bindings for CosmWasm contracts"
@@ -220,7 +224,11 @@ zk_local = "cosmwasm/packages/crypto"
 
 [crates.cosmwasm-crypto.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-crypto.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-derive]
 description = "Auto-generated code for CosmWasm contract development, shipped as part of cosmwasm-std"
@@ -230,7 +238,11 @@ zk_local = "cosmwasm/packages/derive"
 
 [crates.cosmwasm-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-derive.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-schema]
 description = "Dev-dependency for CosmWasm contracts to generate JSON Schema files"
@@ -255,7 +267,11 @@ consumers = [
 
 [crates.cosmwasm-schema.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-schema.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-schema-derive]
 description = "Derive macros for cosmwasm-schema"
@@ -266,7 +282,11 @@ patch_only = true
 
 [crates.cosmwasm-schema-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-schema-derive.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-std]
 description = "Standard library for Wasm-based smart contracts on Cosmos blockchains"
@@ -297,7 +317,11 @@ consumers = [
 
 [crates.cosmwasm-std.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-std.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-vm]
 description = "VM bindings to run CosmWasm contracts"
@@ -308,7 +332,11 @@ consumers = ["clone-cw-multi-test"]
 
 [crates.cosmwasm-vm.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cosmwasm-vm.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cosmwasm-vm.features]
 "." = ["ibc2", "iterator", "staking", "stargate"]
@@ -682,7 +710,11 @@ consumers = ["osmosis-rust"]
 
 [crates.cw-schema.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cw-schema.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cw-schema-derive]
 description = "Derive macros for cw-schema"
@@ -693,7 +725,11 @@ patch_only = true
 
 [crates.cw-schema-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.cw-schema-derive.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.cw-storage-plus]
 description = "Enhanced storage engines for CosmWasm smart contracts"
@@ -1859,7 +1895,11 @@ zk_local = "cosmwasm/packages/zk"
 
 [crates.zk-cosmwasm.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
-branch = "v3.1.0-zk.0"
+branch = "mvp"
+
+[crates.zk-cosmwasm.zk_git]
+url = "https://github.com/permissionlessweb/cosmwasm"
+branch = "mvp"
 
 [crates.zk-headstash]
 description = "ZK headstash circuit - secp256k1 key pairing, genesis merkle inclusion, nullifier integrity, note commitment"
