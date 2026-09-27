@@ -1,0 +1,44 @@
+[package]
+name = "terp-onboard-authz"
+version = "0.1.0"
+edition = "2021"
+description = "DAO authz + scoped feegrant library and runtime for ephemeral wallet onboarding"
+license = "Apache-2.0"
+publish = false
+
+# Standalone workspace so combo CI / act --bind / GHA checkout do not
+# load the terp-rs monorepo members (those path-dep ../cosmwasm etc.).
+[workspace]
+
+[lib]
+name = "terp_onboard_authz"
+path = "src/lib.rs"
+
+[[bin]]
+name = "onboard-runtime"
+path = "src/bin/onboard-runtime.rs"
+
+[[bin]]
+name = "frost-inbox"
+path = "src/bin/frost-inbox.rs"
+
+[[bin]]
+name = "prepare-authz"
+path = "src/bin/prepare-authz.rs"
+
+[[bin]]
+name = "local-workflow"
+path = "src/bin/local-workflow.rs"
+
+[[bin]]
+name = "itl-consume-verify"
+path = "src/bin/itl-consume-verify.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+ff = "0.13"
+pasta_curves = "0.5"
+halo2_proofs = { version = "0.3", default-features = false }
+rand = "0.8"

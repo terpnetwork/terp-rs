@@ -1,0 +1,43 @@
+{
+  "source": "websites/dao-dao-ui/packages/utils/constants/terp-state.json",
+  "chains": {
+    "120u-1": {
+      "code_ids": {
+        "abstract:abstract_account": 55,
+        "dao:dao_dao_core": 31,
+        "dao:dao_proposal_single": 40,
+        "dao:lab-core": 31,
+        "hash-merchant:marketplace_mirror": 74,
+        "headstash:cw_headstash": 71,
+        "headstash:cw_norick": 72,
+        "loyalty:loyalty_verifier": 75,
+        "nft:cw721_base": 78,
+        "terp-ed25519": 6,
+        "terp-passkey": 4,
+        "terp-recovery": 5,
+        "terp-zkjwt": 9,
+        "terp-zkposiedon": 10
+      },
+      "default": {
+        "abstract:account-monarchy": "terp1w70c0x7pwa3f49khksewz6k7n4wfwedfrh62rmfkv96d8vrruh6q5jr4cg",
+        "dao:lab-core": "terp1rkdtlrftnqrtka62yfq9re44mak4qy5jw8h0wrarglm9njjumhwq9kj79k",
+        "terp-passkey": "terp1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqzsxmgf",
+        "terp-zkjwt": "terp1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jses3yvm",
+        "terp-recovery": "terp1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgs48kpqr",
+        "headstash:cw_norick": ""
+      }
+    },
+    "morocco-1": {
+      "code_ids": {
+        "cw-svg-minter": 72,
+        "cw721_svg": 83,
+        "dao_dao_core": 23,
+        "dao_proposal_single": 24
+      },
+      "default": {
+        "cw-svg-minter": "terp188jpppxtfpf0vvt5gypdj52hk2xuswwcn38auczzxv20fcxz3kss9fhlru",
+        "cw721_svg": "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt"
+      }
+    }
+  }
+}
