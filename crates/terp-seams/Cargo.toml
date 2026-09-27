@@ -1,17 +1,21 @@
 [package]
-name = "seam_note_out"
+name = "terp-seams"
 version = "0.1.0"
 edition = "2021"
-description = "Pure structural SEAM-NOTE-OUT (SeamNoteOutV0) + encrypt envelope + SEAM-N1..N6 tests"
+description = "Unified L0 seams: private DEX, bridge mint, Cash App→ZEC corridor, compose glue, domain tags"
 publish = false
 
+[lib]
+path = "src/lib.rs"
+
 [features]
-default = []
-## Thin blocking HTTP for HeadstashStore notes (reqwest).
+default = ["dex", "bridge", "corridor", "compose"]
+dex = []
+bridge = []
+corridor = []
+compose = ["dex", "bridge"]
 http = ["dep:reqwest"]
-## Snap secp256k1 auth header signing (wallet/CLI).
 auth = ["dep:k256"]
-## Full ops CLI: live notes_base + blossom/snap auth + recover.
 cli = ["http", "auth", "dep:clap"]
 
 [[bin]]
@@ -29,6 +33,3 @@ serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"], optional = true }
 k256 = { version = "0.13", features = ["ecdsa", "sha256"], optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
-
-[lib]
-path = "src/lib.rs"

@@ -8,10 +8,17 @@
 //! - SEAM-NOTE-OUT-aligned SwapActionV0 structural types (v1 single-leg)
 //! - ROUND2: SEAM sketch → SwapAction compose + AssetMap registry view
 //! - Option D pure egress: `egress` module (`EGRESS_NF_LABEL`, validate/apply burn)
+//! - SEAM-NOTE-OUT + persist: [`note`] (was crate `seam_note_out`)
 
 #![deny(unsafe_code)]
 
+pub use crate::domain::{
+    ABSTRACT_LEAF_LABEL, CM_ABSTRACT_LEAF_V0, CM_ORCHARD_CMX, CM_TACIT_KECCAK_LEAF, CM_UNSPECIFIED,
+    POOL_NF_LABEL, PRICE_SCALE,
+};
+
 mod egress;
+pub mod note;
 
 pub use egress::{
     apply_egress_burn, build_egress_burn_from_settle, egress_nullifier, hex32,
@@ -74,9 +81,7 @@ pub struct OracleBoundParams {
     pub require_oracle: bool,
 }
 
-/// Price fixed-point scale: mid and implied prices are `amount_in * PRICE_SCALE / amount_out`
-/// in asset_in per asset_out units (or vice-versa consistently).
-pub const PRICE_SCALE: u128 = 1_000_000_000_000_000_000; // 1e18
+
 
 /// Normative error codes (SPEC §2.4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,7 +123,11 @@ pub struct SwapPublic {
     pub now_height: u64,
 }
 
-/// Host-side nullifier set + optional note tree leaf counter (stubs).
+/// Host-side nullifier set + optional note tree leaf counter.
+///
+/// **L0 / demo only — not a product spend set.** This is an in-memory `HashSet`
+/// with no Merkle membership, no circuit bind, and no chain persistence. Callers
+/// must not treat a successful `apply_swap` here as a live settle.
 #[derive(Clone, Debug, Default)]
 pub struct SeamState {
     pub nullifiers: HashSet<u64>,
@@ -388,8 +397,7 @@ pub fn apply_swap(
 // §4 (egress → spend). Pool-spend nullifiers are **derived**, never equal to
 // ingress `nullifier_lineage` (claim nf / bridge burn ν).
 
-/// Terp-canonical 32-byte asset id (SEAM-NOTE-OUT width).
-pub type AssetId32 = [u8; 32];
+pub use crate::domain::AssetId32;
 
 /// Merkle root / commitment fingerprint (32-byte public form).
 pub type Cm32 = [u8; 32];
@@ -501,11 +509,6 @@ pub enum SwapActionError {
 
 pub type SwapActionResult<T> = Result<T, SwapActionError>;
 
-/// Domain tag for abstract harness leaves (SEAM-NOTE-OUT `cm_encoding = 0x03`).
-pub const ABSTRACT_LEAF_LABEL: &[u8] = b"terp-seam-leaf-v0";
-
-/// Domain tag for synthetic pool-spend nullifiers (not Orchard DeriveNullifier).
-pub const POOL_NF_LABEL: &[u8] = b"pool-nf-v0";
 
 /// Demo asset bytes for hub / B / C (deterministic **test helpers only**).
 ///
@@ -606,16 +609,11 @@ impl AssetRegistryView for AssetMap {
 // SEAM-NOTE-OUT → SwapActionV0 pure compose (ROUND2-SWAP)
 // ---------------------------------------------------------------------------
 
-/// SEAM-NOTE-OUT cm_encoding codes (mirrored; see SEAM-NOTE-OUT §1.2).
-pub const CM_ORCHARD_CMX: u8 = 0x01;
-pub const CM_TACIT_KECCAK_LEAF: u8 = 0x02;
-pub const CM_ABSTRACT_LEAF_V0: u8 = 0x03;
-pub const CM_UNSPECIFIED: u8 = 0x00;
 
 /// SEAM-shaped note sketch consumed by DEX pure compose.
 ///
 /// Field roles match SEAM-NOTE-OUT §1.1 / §4.2 (spend subset). Full
-/// `SeamNoteOutV0` serialization lives in `seam_note_out`; this sketch is the
+/// `SeamNoteOutV0` serialization lives in `note`; this sketch is the
 /// D-side structural view so private_dex_seams stays dependency-light.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SeamNoteSketch {

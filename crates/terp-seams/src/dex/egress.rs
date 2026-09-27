@@ -12,17 +12,17 @@ use std::collections::HashSet;
 
 use sha2::{Digest, Sha256};
 
-use crate::{synthetic_pool_spend_nf, AssetId32, Cm32, PoolNullifier32, ABSTRACT_LEAF_LABEL};
+use crate::dex::{synthetic_pool_spend_nf, AssetId32, Cm32, PoolNullifier32, ABSTRACT_LEAF_LABEL};
 
 // ---------------------------------------------------------------------------
 // Domain labels
 // ---------------------------------------------------------------------------
 
 /// Domain for egress-spend nullifiers (≠ pool-nf-v0, ≠ deposit-nu-v0, ≠ bridge ingress).
-pub const EGRESS_NF_LABEL: &[u8] = b"egress-nf-v0";
+pub use crate::domain::EGRESS_NF_LABEL;
 
 /// Deposit / ingress one-shot domain (PROMPT-COMMON; for inequality tests only).
-pub const DEPOSIT_NU_LABEL: &[u8] = b"terp-btc-deposit-nu-v0";
+pub use crate::domain::DEPOSIT_NU_LABEL;
 
 // ---------------------------------------------------------------------------
 // Types (normative)
@@ -94,6 +94,8 @@ pub struct ZecEgressReceiptV0 {
 }
 
 /// Host-side egress nullifier set + optional leaf / burned-cm stubs.
+///
+/// **L0 / demo only.** Not a product spent-set or on-chain registry.
 #[derive(Clone, Debug, Default)]
 pub struct EgressSeamState {
     pub nullifiers: HashSet<[u8; 32]>,
@@ -406,7 +408,7 @@ pub fn lab_receipt_after_burn(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{asset_id_hub, abstract_leaf_cm, POOL_NF_LABEL};
+    use crate::dex::{asset_id_hub, abstract_leaf_cm, POOL_NF_LABEL};
 
     fn arr32(fill: u8) -> [u8; 32] {
         [fill; 32]

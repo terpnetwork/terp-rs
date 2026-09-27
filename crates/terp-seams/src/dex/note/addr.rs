@@ -7,10 +7,10 @@
 //! - **bridge cm** — `cm.` + lowercase hex of 32-byte commitment
 //! - **bridge pk** — `pk.` + lowercase hex of diversifier/pk_d bytes
 
-use crate::NotePersistError;
+use super::NotePersistError;
 
 /// Max length accepted by hash-market note path segments.
-pub const NOTE_ID_MAX_LEN: usize = 200;
+pub use crate::domain::NOTE_ID_MAX_LEN;
 
 /// Validate `hs_id` or `addr` path segment: `[a-zA-Z0-9_.-]{1,200}`.
 pub fn validate_id(id: &str) -> Result<(), NotePersistError> {

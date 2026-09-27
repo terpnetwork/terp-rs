@@ -7,7 +7,7 @@
 //!
 //! Feature `auth` enables snap signing (`k256`). Bearer helpers are always available.
 
-use crate::NotePersistError;
+use super::NotePersistError;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Build `Authorization: Bearer …` header pair.

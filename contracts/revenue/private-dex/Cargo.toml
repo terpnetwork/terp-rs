@@ -2,7 +2,7 @@
 name = "cw-private-dex"
 version = { workspace = true }
 edition = { workspace = true }
-description = "Private DEX settle contract: mirrors private_dex_seams apply_swap_action with proof_instance_verify"
+description = "Private DEX settle contract: mirrors terp_seams::dex apply_swap_action with proof_instance_verify"
 license = "Apache-2.0"
 readme = "README.md"
 

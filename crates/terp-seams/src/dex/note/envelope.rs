@@ -29,13 +29,13 @@ use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::{validate_id, NotePersistError, SeamNoteOutV0, SEAM_NOTE_OUT_V0_LEN};
+use super::{validate_id, NotePersistError, SeamNoteOutV0, SEAM_NOTE_OUT_V0_LEN};
 
 /// AEAD scheme identifier written into every envelope.
-pub const SCHEME_XCHACHA20POLY1305: &str = "xchacha20poly1305";
+pub use crate::domain::SCHEME_XCHACHA20POLY1305;
 
 /// Cleartext layout tag for V0 fixed 382B serialization.
-pub const CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0: &str = "SEAM-NOTE-OUT-V0";
+pub use crate::domain::CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0;
 
 /// Opaque note blob stored by HeadstashStore (JSON fields).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -196,8 +196,8 @@ pub struct NotePersistPlan {
 /// Build encrypt plan for a note without contacting the server.
 ///
 /// `hs_id` — contract bech32 or season slug.  
-/// `addr` — already-formed path segment (use [`crate::note_addr_claim`] /
-/// [`crate::note_addr_cm`] / [`crate::note_addr_pk`]).
+/// `addr` — already-formed path segment (use [`super::note_addr_claim`] /
+/// [`super::note_addr_cm`] / [`super::note_addr_pk`]).
 pub fn persist_plan_from_seam_note(
     note: &SeamNoteOutV0,
     key: &[u8; 32],
@@ -229,7 +229,7 @@ pub fn persist_plan_from_seam_note_opts(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::dex::note::{
         from_bridge_mint, from_headstash_instance, note_addr_claim, note_addr_cm, BridgeMintPublic,
         HeadstashInstanceBytes, CM_TACIT_KECCAK_LEAF, SEAM_NOTE_OUT_V0_LEN,
     };

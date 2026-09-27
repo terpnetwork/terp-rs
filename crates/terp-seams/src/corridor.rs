@@ -16,26 +16,10 @@ use std::collections::HashSet;
 
 use sha2::{Digest, Sha256};
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-/// Domain tag for intent `domain_bind` (SPEC §3.1).
-pub const INTENT_DOMAIN_TAG: &[u8] = b"terp-cashapp-intent-v0";
-
-/// Default corridor id string (demo).
-pub const CORRIDOR_ID_CASHAPP_BTC_ZEC_V0: &str = "cashapp-btc-zec-v0";
-
-/// Domain tag for simulated burn / deposit ids.
-pub const SIM_BURN_DOMAIN_TAG: &[u8] = b"terp-cashapp-sim-burn-v0";
-
-/// BPS denominator.
-pub const BPS_DEN: u128 = 10_000;
-
-/// Price fixed-point scale for mid × amount floors (1e18, aligns with private_dex_seams).
-pub const PRICE_SCALE: u128 = 1_000_000_000_000_000_000;
-
-pub type Hash32 = [u8; 32];
+pub use crate::domain::{
+    BPS_DEN, CORRIDOR_ID_CASHAPP_BTC_ZEC_V0, CORRIDOR_TAG_DOMAIN, Hash32, INTENT_DOMAIN_TAG,
+    PRICE_SCALE, SIM_BURN_DOMAIN_TAG,
+};
 
 // =============================================================================
 // Errors
@@ -678,7 +662,7 @@ fn is_zero_hash(h: &Hash32) -> bool {
 /// Convenience: tag string → 32B hash (asset registry demo ids).
 pub fn hash_tag(tag: &str) -> Hash32 {
     let mut hasher = Sha256::new();
-    hasher.update(b"terp-corridor-tag-v0");
+    hasher.update(CORRIDOR_TAG_DOMAIN);
     hasher.update(tag.as_bytes());
     let dig = hasher.finalize();
     let mut out = [0u8; 32];

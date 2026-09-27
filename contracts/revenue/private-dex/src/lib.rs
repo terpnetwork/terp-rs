@@ -1,7 +1,7 @@
 //! # cw-private-dex
 //!
 //! Private swap **settle** contract. Host seam math mirrors pure
-//! `private_dex_seams`; contract wiring mirrors `crates/dex` (astroport-core
+//! `terp_seams::dex`; contract wiring mirrors `crates/dex` (astroport-core
 //! fork) pair swap / simulation / pause patterns, extended with
 //! `proof_instance_verify` for private note spends.
 //!

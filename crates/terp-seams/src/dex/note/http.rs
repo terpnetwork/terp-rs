@@ -3,13 +3,13 @@
 //! Feature: `http` (reqwest + rustls). Does **not** implement a second blob
 //! store — only auth-gated `/notes/{hs_id}/...` against hash-market.
 
-use crate::{validate_id, NoteEnvelope, NotePersistError};
+use super::{validate_id, NoteEnvelope, NotePersistError};
 
 /// PUT envelope JSON to hash-market HeadstashStore notes route.
 ///
 /// - `base_url` — e.g. `http://127.0.0.1:8080` (no trailing slash required)
 /// - `hs_id` / `addr` — path segments; validated with [`validate_id`]
-/// - `envelope` — already encrypted (see [`crate::encrypt_note_out`])
+/// - `envelope` — already encrypted (see [`super::encrypt_note_out`])
 /// - `headers` — blossom (or other) auth headers as `(name, value)` pairs
 ///
 /// Success: HTTP 2xx. Body is the envelope JSON.

@@ -12,6 +12,15 @@ Rust client library for Terp Network. Includes IBC asset derivation, CosmWasm co
 | **Scripts** | **`terp-scripts`** (`tests/`) | orchestration + bins + pure IBC lib |
 | **Harness** | `ict-rs` (sibling) | Docker multi-chain framework |
 
+## Seams + ZAP1 (system of record)
+
+**Private DEX / bridge / corridor math:** only **`terp-seams`** (`crates/terp-seams`). Features: `dex`, `bridge`, `corridor`, `compose` (all default). There is no `private_dex_seams` crate. `crates/dex` is Juno/Astroport, not this product.
+
+**ZAP1 08-wasm light client:** `contracts/light-clients/cw-ics08-wasm-zap1`.  
+**ZAP1 PIR attestation module (not ICS-08):** `private-inference-rent/cw-zap1-ibcv2`.  
+**Verify lib:** crates.io `zap1-verify` 0.2.1.  
+**IAVL membership lib:** `contracts/light-clients/terp-iavl-lc` (used by `cw-ics08-wasm-terp`).
+
 Agents: always load **`tests/agent/COMMANDS.md`** first.
 
 ---

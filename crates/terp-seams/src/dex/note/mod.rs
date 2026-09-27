@@ -1,5 +1,7 @@
 //! Pure structural implementation of SEAM-NOTE-OUT (`SeamNoteOutV0`).
 //!
+//! Lives in **`crate::dex::note`** (one seams crate).
+//!
 //! Spec: `docs/plans/spectrum/SEAM-NOTE-OUT.md`
 //! Tests: SEAM-N1 … SEAM-N6 (no Halo2 / MockProver).
 //!
@@ -15,6 +17,13 @@
 
 #![deny(unsafe_code)]
 
+pub use crate::domain::{
+    CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, CM_ABSTRACT_LEAF_V0, CM_ORCHARD_CMX, CM_TACIT_KECCAK_LEAF,
+    CM_UNSPECIFIED, DOMAIN_TAG_NOTE_OUT, NF_BRIDGE_BURN, NF_HEADSTASH_CLAIM, NF_POOL_SPEND,
+    NF_UNSPECIFIED, NOTE_ID_MAX_LEN, ORIGIN_BRIDGE_MINT, ORIGIN_HEADSTASH, SCHEME_XCHACHA20POLY1305,
+    SEAM_NOTE_OUT_V0_LEN, VERSION_V0,
+};
+
 mod addr;
 mod auth;
 mod envelope;
@@ -22,7 +31,7 @@ mod envelope;
 #[cfg(feature = "http")]
 mod http;
 
-pub use addr::{note_addr_claim, note_addr_cm, note_addr_pk, validate_id, NOTE_ID_MAX_LEN};
+pub use addr::{note_addr_claim, note_addr_cm, note_addr_pk, validate_id};
 pub use auth::{
     auth_headers_from_env, bearer_auth_headers, merge_auth_headers, now_timestamp_secs,
     snap_auth_message,
@@ -32,7 +41,7 @@ pub use auth::snap_secp_auth_headers;
 pub use envelope::{
     ciphertext_sha256_hex, decrypt_note_out, encrypt_note_out, encrypt_note_out_opts,
     persist_plan_from_seam_note, persist_plan_from_seam_note_opts, EncryptNoteOpts, NoteEnvelope,
-    NotePersistPlan, CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, SCHEME_XCHACHA20POLY1305,
+    NotePersistPlan,
 };
 
 #[cfg(feature = "http")]
@@ -68,24 +77,11 @@ pub enum NotePersistError {
 // Constants
 // ---------------------------------------------------------------------------
 
-pub const SEAM_NOTE_OUT_V0_LEN: usize = 382;
-pub const VERSION_V0: u8 = 0;
 
 /// ASCII `terp-note-out-v0` + NUL pad to 16.
-pub const DOMAIN_TAG_NOTE_OUT: [u8; 16] = *b"terp-note-out-v0";
 
-pub const ORIGIN_HEADSTASH: u8 = 0x01;
-pub const ORIGIN_BRIDGE_MINT: u8 = 0x02;
 
-pub const CM_ORCHARD_CMX: u8 = 0x01;
-pub const CM_TACIT_KECCAK_LEAF: u8 = 0x02;
-pub const CM_ABSTRACT_LEAF_V0: u8 = 0x03;
-pub const CM_UNSPECIFIED: u8 = 0x00;
 
-pub const NF_HEADSTASH_CLAIM: u8 = 0x01;
-pub const NF_BRIDGE_BURN: u8 = 0x02;
-pub const NF_POOL_SPEND: u8 = 0x03;
-pub const NF_UNSPECIFIED: u8 = 0x00;
 
 // ---------------------------------------------------------------------------
 // Types

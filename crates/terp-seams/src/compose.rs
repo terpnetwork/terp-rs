@@ -1,9 +1,9 @@
 //! Cross-crate pure L0 compose glue (Round 2–3 COMPOSE + G2 product path).
 //!
 //! Pipeline (no halo2 / no cosmwasm):
-//! 1. [`authorize_bridge_mint`](bridge_auth_seams::authorize_bridge_mint) hinge
+//! 1. [`authorize_bridge_mint`](crate::bridge::authorize_bridge_mint) hinge
 //! 2. Full [`SeamNoteOutV0`] with **rcm present** (`rcm_flag=1`) so
-//!    [`is_dex_consumable`](seam_note_out::is_dex_consumable)
+//!    [`is_dex_consumable`](crate::dex::note::is_dex_consumable)
 //! 3. Optional structural [`SwapActionV0`] sketch (no prove)
 //! 4. **G2 product builders:** [`MintSpendEvidence`] → [`seam_note_out_to_swap_action`]
 //!    / [`mint_evidence_to_swap_action`] (no synthetic `NoteIn`)
@@ -24,21 +24,21 @@
 
 use std::collections::HashMap;
 
-use bridge_auth_seams::{
+use crate::bridge::{
     authorize_bridge_mint, terp_asset_id_from_tacit, AssetRegistry, BridgeMintClaim,
     BridgeMintError, MintedSet, NoteOutSketch, ReflectionSnapshot,
 };
-use private_dex_seams::{
+use crate::dex::{
     build_swap_action_from_seam_notes, AssetRegistryView as DexAssetRegistryView, SeamNoteSketch,
 };
-use seam_note_out::{
+use crate::dex::note::{
     is_dex_consumable, validate_seam_note_out_v0, SeamError, CM_ABSTRACT_LEAF_V0,
     DOMAIN_TAG_NOTE_OUT, VERSION_V0,
 };
 
 // Single import+re-export surface for product path consumers (C1–C4 + apply).
 // These names are also used by compose APIs in this crate.
-pub use private_dex_seams::{
+pub use crate::dex::{
     abstract_leaf_cm, apply_reserves, apply_swap_action, asset_id_hub,
     build_swap_action_from_seam_notes as dex_build_swap_action_from_seam_notes, implied_price,
     oracle_mint_note, quote_exact_in, spend_opening_from_seam_sketch, synthetic_pool_spend_nf,
@@ -47,14 +47,14 @@ pub use private_dex_seams::{
     SeamNoteSketch as DexSeamNoteSketch, SpendNoteOpening, SwapActionError, SwapActionPublic,
     SwapActionV0, SwapFromSeamParams, SwapSeamState, PRICE_SCALE,
 };
-pub use seam_note_out::{
+pub use crate::dex::note::{
     decrypt_note_out, encrypt_note_out, is_dex_consumable as seam_is_dex_consumable,
     note_addr_claim, note_addr_cm, note_addr_pk, persist_plan_from_seam_note,
     to_dex_spend_inputs, NoteEnvelope, NotePersistError, NotePersistPlan, SeamNoteOutV0,
     CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, NF_BRIDGE_BURN, ORIGIN_BRIDGE_MINT,
     SCHEME_XCHACHA20POLY1305,
 };
-pub use bridge_auth_seams::{
+pub use crate::bridge::{
     authorize_bridge_mint as hinge_authorize_bridge_mint,
     authorize_bridge_mint_apply as hinge_authorize_bridge_mint_apply, BridgeMintClaim as HingeClaim,
     BridgeMintError as HingeBridgeMintError, BridgeMintPublic as HingeBridgeMintPublic,
@@ -66,7 +66,7 @@ pub use bridge_auth_seams::{
 // Types
 // =============================================================================
 
-pub type Hash32 = [u8; 32];
+pub use crate::domain::Hash32;
 
 /// In-memory asset registry view (fixture SSOT for bridge + swap compose).
 ///
@@ -167,8 +167,8 @@ impl AssetRegistryView {
     }
 
     /// Project into SWAP `AssetMap` (registered 32-byte ids only).
-    pub fn to_dex_asset_map(&self) -> private_dex_seams::AssetMap {
-        let mut m = private_dex_seams::AssetMap::new();
+    pub fn to_dex_asset_map(&self) -> crate::dex::AssetMap {
+        let mut m = crate::dex::AssetMap::new();
         for (id, rec) in &self.assets {
             if rec.status == AssetStatus::Active {
                 if let Some(ref d) = rec.denom {
@@ -675,11 +675,9 @@ pub struct ProductPathOutcome {
 ///   → apply_swap_action                             (R' + pool ν set)
 /// ```
 pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, ComposeError> {
-    use bridge_auth_seams::{
-        derive_claim_id_with_dest, derive_domain_binding, DEFAULT_CONFIRMATIONS_K,
-        DEFAULT_MAX_LC_LAG,
-    };
-    use private_dex_seams::{
+    use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
+    use crate::dex::{
         apply_swap_action, asset_id_hub, quote_exact_in, AssetId, Pool, PoolStatus, SwapSeamState,
         validate_swap_action,
     };
@@ -753,7 +751,7 @@ pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, Comp
     };
 
     let claim = BridgeMintClaim {
-        public: bridge_auth_seams::BridgeMintPublic {
+        public: crate::bridge::BridgeMintPublic {
             source_chain_tag: "bitcoin-mainnet".into(),
             tacit_asset_id: tacit_asset,
             value_u64: mint_value,
@@ -923,11 +921,9 @@ pub struct ProductPathOracleZecOutcome {
 /// Asserts openings.cm/rcm == mint note; pool ν ≠ bridge ingress ν.
 pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZecOutcome, ComposeError>
 {
-    use bridge_auth_seams::{
-        derive_claim_id_with_dest, derive_domain_binding, DEFAULT_CONFIRMATIONS_K,
-        DEFAULT_MAX_LC_LAG,
-    };
-    use private_dex_seams::{
+    use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
+    use crate::dex::{
         apply_swap_action, implied_price, quote_exact_in, AssetId, Pool, PoolStatus, SwapSeamState,
         validate_swap_action, OracleBoundParams, OracleMid,
     };
@@ -1001,7 +997,7 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
     };
 
     let claim = BridgeMintClaim {
-        public: bridge_auth_seams::BridgeMintPublic {
+        public: crate::bridge::BridgeMintPublic {
             source_chain_tag: "bitcoin-mainnet".into(),
             tacit_asset_id: tacit_asset,
             value_u64: mint_value,
@@ -1173,12 +1169,10 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bridge_auth_seams::{
-        derive_claim_id_with_dest, derive_domain_binding, DEFAULT_CONFIRMATIONS_K,
-        DEFAULT_MAX_LC_LAG,
-    };
-    use private_dex_seams::{quote_exact_in, synthetic_pool_spend_nf, validate_swap_action};
-    use seam_note_out::{is_dex_consumable, to_dex_spend_inputs, validate_seam_note_out_v0};
+    use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
+    use crate::dex::{quote_exact_in, synthetic_pool_spend_nf, validate_swap_action};
+    use crate::dex::note::{is_dex_consumable, to_dex_spend_inputs, validate_seam_note_out_v0};
     use sha2::{Digest, Sha256};
 
     fn h(label: &str) -> Hash32 {
@@ -1236,7 +1230,7 @@ mod tests {
             frozen: false,
         };
 
-        let public = bridge_auth_seams::BridgeMintPublic {
+        let public = crate::bridge::BridgeMintPublic {
             source_chain_tag: "bitcoin-mainnet".into(),
             tacit_asset_id: tacit_asset,
             value_u64: 1_000_000,
@@ -1278,7 +1272,7 @@ mod tests {
         });
         // Hub asset for swap sketch (C4)
         registry.register(AssetRecord {
-            asset_id: private_dex_seams::asset_id_hub(),
+            asset_id: crate::dex::asset_id_hub(),
             tacit_id: None,
             denom: Some("uterp".into()),
             origin: AssetOrigin::Native,
@@ -1397,7 +1391,7 @@ mod tests {
         // Registry with only hub (wrong asset) → reject.
         let mut wrong = AssetRegistryView::new();
         wrong.register(AssetRecord {
-            asset_id: private_dex_seams::asset_id_hub(),
+            asset_id: crate::dex::asset_id_hub(),
             tacit_id: None,
             denom: Some("uterp".into()),
             origin: AssetOrigin::Native,
@@ -1463,7 +1457,7 @@ mod tests {
 
         // Spend both notes into hub pool: delta_in = sum of both values
         let sum = note1.value as u128 + note2.value as u128;
-        let asset_out = private_dex_seams::asset_id_hub();
+        let asset_out = crate::dex::asset_id_hub();
         let r_in = 10_000_000u128;
         let r_out = 5_000_000u128;
         let gamma = 997u64;
@@ -1614,7 +1608,7 @@ mod tests {
         assert_eq!(out.bridge_minted_nullifiers.len(), 1);
         assert_eq!(out.pool_nullifiers.len(), 1);
         assert_ne!(out.pool_nullifiers[0], out.bridge_minted_nullifiers[0]);
-        assert_eq!(out.asset_out, private_dex_seams::asset_id_hub());
+        assert_eq!(out.asset_out, crate::dex::asset_id_hub());
         assert_eq!(out.delta_in, 1_000_000);
         assert_eq!(out.r_in_after, out.r_in_before + out.delta_in);
         assert_eq!(out.r_out_after, out.r_out_before - out.delta_out);
@@ -1631,7 +1625,7 @@ mod tests {
         assert_eq!(base.pool_nullifiers.len(), 1);
         assert_ne!(base.pool_nullifiers[0], base.bridge_minted_nullifiers[0]);
         assert_eq!(base.asset_out, h("sim-ZEC"));
-        assert_ne!(base.asset_out, private_dex_seams::asset_id_hub());
+        assert_ne!(base.asset_out, crate::dex::asset_id_hub());
         assert_eq!(out.action.witness.notes_in[0].cm_public, out.mint_note.cm_public);
         assert_eq!(out.action.witness.notes_in[0].rcm, out.mint_note.rcm);
         let opening = &out.action.witness.notes_in[0];
@@ -1789,7 +1783,7 @@ mod tests {
             observed_height: 1,
         };
         let err = oracle_mint_note(&mid, DexPoolAssetId::Hub, 1).unwrap_err();
-        assert_eq!(err, private_dex_seams::SeamError::ErrOracleDisabledMint);
+        assert_eq!(err, crate::dex::SeamError::ErrOracleDisabledMint);
     }
 
     /// Openings-only helper + evidence → action identity.

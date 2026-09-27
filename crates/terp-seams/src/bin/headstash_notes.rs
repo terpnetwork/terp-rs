@@ -1,11 +1,11 @@
 //! Ops CLI: live `notes_base` + blossom/snap auth + snap recover.
 //!
 //! ```bash
-//! cargo run -p seam_note_out --features cli --bin headstash-notes -- \
+//! cargo run -p terp-seams --features cli --bin headstash-notes -- \
 //!   put --base http://127.0.0.1:9090 --hs-id season-1 \
 //!   --owner-key <64hex> --seam-json note.json --auth-bearer "$TOKEN"
 //!
-//! cargo run -p seam_note_out --features cli --bin headstash-notes -- \
+//! cargo run -p terp-seams --features cli --bin headstash-notes -- \
 //!   recover --base http://127.0.0.1:9090 --hs-id season-1 \
 //!   --addr cm.deadbeef --owner-key <64hex> --auth-bearer "$TOKEN"
 //! ```
@@ -13,13 +13,13 @@
 //! Env: `NOTES_BASE`, `NOTES_BEARER_TOKEN`, `NOTES_SECP_SK`, `NOTES_OWNER_KEY`.
 
 use clap::{Parser, Subcommand};
-use seam_note_out::{
+use terp_seams::dex::note::{
     auth_headers_from_env, bearer_auth_headers, decrypt_note_out, get_note_envelope,
     list_note_keys, note_addr_cm, persist_plan_from_seam_note_opts, pir_get_note_envelope,
     put_note_envelope, EncryptNoteOpts, SeamNoteOutV0,
 };
 #[cfg(feature = "auth")]
-use seam_note_out::snap_secp_auth_headers;
+use terp_seams::dex::note::snap_secp_auth_headers;
 use std::path::PathBuf;
 
 #[derive(Parser)]
