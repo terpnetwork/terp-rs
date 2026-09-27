@@ -30,6 +30,14 @@ path = "bin/testnet.rs"
 name = "create_val"
 path = "bin/create_val.rs"
 
+[[bin]]
+name = "polytone_migrate"
+path = "bin/polytone_migrate.rs"
+
+[[bin]]
+name = "suite_coverage"
+path = "bin/suite_coverage.rs"
+
 [features]
 default = ["docker", "nostr", "hash-market"]
 docker = []
@@ -37,8 +45,20 @@ nostr = []
 zk = ["cosmwasm-std/zk", "dep:zk-test-press"]
 # Content plane + calendar NIP-52 egress (Phase B)
 hash-market = ["dep:hash-market"]
-# Pulls billboards suite (terp721-account). Off by default so pure lib/tests compile.
-account = ["dep:terp-account-scripts"]
+# Billboards/account composite stays off. Path dep omitted so default
+# cargo check is not forced to unify crates-io cosmwasm-crypto (=4.0.3)
+# against in-tree cosmwasm-crypto (=4.2.0).
+account = []
+# VSCK + suite::auth re-exports. Full TerpAuthenticatorSuite stays optional
+# (it pulls terp-zkjwt/halo2 and is parked for other authenticators).
+auth-suite = ["dep:terp-vsck", "dep:terp-auth"]
+auth-suite-full = ["auth-suite", "dep:terp-authenticator-suite"]
+circuit-demo-suite = ["orch-suite"]
+orch-suite = ["dep:terp-orch"]
+# zebra-* need protoc; keep off default so --test no_rick does not require protobuf.
+crosslink-e2e = ["dep:zebra-crosslink", "dep:zebra-chain"]
+# Live zakurad TFL RPC → CrosslinkHeader (not synthetic ed25519).
+zakura-live = ["ict-rs/zakura"]
 
 [dependencies]
 anyhow = "1.0"
@@ -50,24 +70,28 @@ cosmwasm-std = { path = "../../cosmwasm/packages/std" }
 csv = "1.4.0"
 cw-orch = { path = "../../cw-orchestrator/cw-orch", features = ["daemon"] }
 cw-orch-interchain = { path = "../../cw-orchestrator/cw-orch-interchain", features = ["daemon"] }
+cw-orch-polytone = { package = "abstract-cw-orch-polytone", path = "../../polytone/packages/cw-orch-polytone", default-features = false }
 dotenv = "0.15"
 env_logger = "0.11"
-hash-market = { path = "../tools/hash-market", features = ["server", "client", "ve", "blossom", "nostr"], optional = true }
+hash-market = { path = "../tools/hash-market", features = ["server", "client", "ve", "blossom", "nostr", "frost", "noise", "privval"], optional = true }
+tower = { version = "0.5", default-features = false, features = ["util"] }
+
 hex = "0.4"
 zk-test-press = { path = "../../headstash/test-press", features = ["interface"], optional = true }
 ict-rs = { path = "../../ict-rs/ict-rs", features = ["docker", "terp", "testing", "nostr"] }
 k256 = "0.13.4"
 log = "0.4.30"
-reqwest = "0.13.4"
+reqwest = { version = "0.13.4", features = ["json"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.11.0-pre.4"
 tempfile = "3.27.0"
-# Optional: suite module is currently commented out; enabling pulls terp721-account
-# which needs terp-account/full in this workspace layout.
-terp-account-scripts = { path = "../../terp-account-billboards/scripts", optional = true }
 terp-rs  = { path = "../crates/sdk" }
+terp-authenticator-suite = { path = "suite/terp-authenticator-suite", optional = true }
+terp-orch = { path = "suite/terp-orch", optional = true }
+terp-vsck = { path = "../contracts/smart-accounts/terp-vsck", features = ["library"], optional = true }
+terp-auth = { path = "../crates/terp-auth", optional = true }
 tokio = { version = "1", features = ["full"] }
 toml = "1.1.2"
 tracing = "0.1"
@@ -76,10 +100,23 @@ which = "8.0.2"
 cosmos-sdk-proto  = { path = "../../cosmos-rust/cosmos-sdk-proto", default-features = false }
 cosmrs  = { path = "../../cosmos-rust/cosmrs", default-features = false }
 crosslink-light-client = { path = "../crates/crosslink/light-client" }
+# Force halo2_proofs/multicore in this graph. zk-cosmwasm disables it for wasm;
+# feature-unification then leaves maybe-rayon/threads on and host rustc fails
+# (the_best_reduce / IndexedParallelIterator). Isolated norick-wasm stays
+# default-features=false in its own workspace.
+halo2_proofs = { path = "../../zcash/halo2/halo2_proofs", package = "halo2_proofs", features = ["batch", "multicore"] }
 cw-ics08-wasm-crosslink = {path = "../contracts/light-clients/cw-ics08-wasm-crosslink", features = ["interface"]}
 ed25519-zebra = { version = "4.2", default-features = false }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+frost-ed25519 = { version = "2.2", default-features = false, features = ["std", "serialization"] }
+kms-shard = { path = "../../kms-shard" }
+snow = "0.9"
+prost = "0.13"
+prost-types = "0.13"
+rand = "0.8"
+
+zebra-crosslink = { path = "../../zebra-crosslink/zebra-crosslink", optional = true }
+zebra-chain = { path = "../../zebra-crosslink/zebra-chain", optional = true }
 
 [dev-dependencies]
-zebra-crosslink = {path = "../../zebra-crosslink/zebra-crosslink"}
-zebra-chain = {path = "../../zebra-crosslink/zebra-chain"}
 rand_core = "0.6.4"

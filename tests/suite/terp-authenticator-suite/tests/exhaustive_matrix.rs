@@ -1432,50 +1432,7 @@ fn vsck_matrix_all_five_voter() {
         b"nf-matrix-1",
     );
 
-    five_lifecycle(
-        "vsck",
-        || {
-            suite.vsck.sudo_on_auth_added(dummy_on_auth_added(
-                acct.clone(),
-                "vsck-m",
-                Some(Binary::from(b"p")),
-            ))
-        },
-        || {
-            suite
-                .vsck
-                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "vsck-m", None))
-        },
-        || {
-            suite.vsck.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "vsck-m",
-                payload.clone(),
-                None,
-            ))
-        },
-        || {
-            suite.vsck.sudo_track(dummy_track_request(
-                acct.clone(),
-                "vsck-m",
-                Some(payload.clone()),
-            ))
-        },
-        || {
-            suite.vsck.sudo_confirm_execution(dummy_confirm_execution_request(
-                acct.clone(),
-                "vsck-m",
-                None,
-            ))
-        },
-        [
-            "vsck_on_auth_added",
-            "vsck_on_auth_removed",
-            "vsck_authenticate",
-            "vsck_track",
-            "vsck_confirm",
-        ],
-    );
+    vsck_lifecycle_fail_closed(&suite, &acct, "vsck-m", payload);
 }
 
 #[test]
@@ -1550,17 +1507,14 @@ fn vsck_role_delegator_and_tallier_smoke() {
         VsckCircuit::Delegation,
         b"nf-del",
     );
-    assert_action(
-        &suite
-            .vsck
-            .sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "1",
-                del,
-                None,
-            ))
-            .unwrap(),
-        "vsck_authenticate",
+    let del_err = suite
+        .vsck
+        .sudo_authenticate(dummy_authentication_request(acct.clone(), "1", del, None))
+        .unwrap_err();
+    assert!(
+        del_err.to_string().contains("CircuitNotLinked")
+            || del_err.to_string().contains("not linked"),
+        "{del_err}"
     );
 
     let tall = vsck_payload(
@@ -1569,12 +1523,14 @@ fn vsck_role_delegator_and_tallier_smoke() {
         VsckCircuit::ShareReveal,
         b"nf-tall",
     );
-    assert_action(
-        &suite
-            .vsck
-            .sudo_authenticate(dummy_authentication_request(acct, "1", tall, None))
-            .unwrap(),
-        "vsck_authenticate",
+    let tall_err = suite
+        .vsck
+        .sudo_authenticate(dummy_authentication_request(acct, "1", tall, None))
+        .unwrap_err();
+    assert!(
+        tall_err.to_string().contains("CircuitNotLinked")
+            || tall_err.to_string().contains("not linked"),
+        "{tall_err}"
     );
 }
 
@@ -1589,49 +1545,60 @@ fn vsck_five_lifecycle_role(
     let acct = mock_account();
     open_vsck_session(&suite, session);
     let payload = vsck_payload(session, role.clone(), circuit, nf);
-    five_lifecycle(
-        &format!("vsck-{role:?}"),
-        || {
-            suite.vsck.sudo_on_auth_added(dummy_on_auth_added(
+    vsck_lifecycle_fail_closed(&suite, &acct, auth_id, payload);
+}
+
+fn vsck_lifecycle_fail_closed(
+    suite: &TerpAuthenticatorSuite<Mock>,
+    acct: &cosmwasm_std::Addr,
+    auth_id: &str,
+    payload: Binary,
+) {
+    assert_action(
+        &suite
+            .vsck
+            .sudo_on_auth_added(dummy_on_auth_added(
                 acct.clone(),
                 auth_id,
                 Some(Binary::from(b"p")),
             ))
-        },
-        || {
-            suite
-                .vsck
-                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), auth_id, None))
-        },
-        || {
-            suite.vsck.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                auth_id,
-                payload.clone(),
-                None,
-            ))
-        },
-        || {
-            suite.vsck.sudo_track(dummy_track_request(
-                acct.clone(),
-                auth_id,
-                Some(payload.clone()),
-            ))
-        },
-        || {
-            suite.vsck.sudo_confirm_execution(dummy_confirm_execution_request(
-                acct.clone(),
-                auth_id,
-                None,
-            ))
-        },
-        [
-            "vsck_on_auth_added",
-            "vsck_on_auth_removed",
-            "vsck_authenticate",
-            "vsck_track",
-            "vsck_confirm",
-        ],
+            .unwrap(),
+        "vsck_on_auth_added",
+    );
+    assert_action(
+        &suite
+            .vsck
+            .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), auth_id, None))
+            .unwrap(),
+        "vsck_on_auth_removed",
+    );
+    let auth_err = suite
+        .vsck
+        .sudo_authenticate(dummy_authentication_request(
+            acct.clone(),
+            auth_id,
+            payload.clone(),
+            None,
+        ))
+        .unwrap_err();
+    assert!(
+        auth_err.to_string().contains("CircuitNotLinked")
+            || auth_err.to_string().contains("not linked"),
+        "expected fail-closed circuit: {auth_err}"
+    );
+    assert_action(
+        &suite
+            .vsck
+            .sudo_track(dummy_track_request(acct.clone(), auth_id, Some(payload)))
+            .unwrap(),
+        "vsck_track",
+    );
+    assert_action(
+        &suite
+            .vsck
+            .sudo_confirm_execution(dummy_confirm_execution_request(acct.clone(), auth_id, None))
+            .unwrap(),
+        "vsck_confirm",
     );
 }
 
@@ -1680,6 +1647,7 @@ fn vsck_neg_role_circuit_mismatch() {
 }
 
 /// Same nullifier tracked twice in a session → replay reject.
+/// Authenticate is fail-closed until vote-sdk circuits are linked; track still records nf.
 #[test]
 fn vsck_neg_nullifier_replay_on_track() {
     let suite = deploy();
@@ -1691,7 +1659,7 @@ fn vsck_neg_nullifier_replay_on_track() {
         VsckCircuit::VoteProof,
         b"nf-same",
     );
-    suite
+    let auth_err = suite
         .vsck
         .sudo_authenticate(dummy_authentication_request(
             acct.clone(),
@@ -1699,7 +1667,12 @@ fn vsck_neg_nullifier_replay_on_track() {
             payload.clone(),
             None,
         ))
-        .unwrap();
+        .unwrap_err();
+    assert!(
+        auth_err.to_string().contains("CircuitNotLinked")
+            || auth_err.to_string().contains("not linked"),
+        "expected fail-closed circuit: {auth_err}"
+    );
     suite
         .vsck
         .sudo_track(dummy_track_request(

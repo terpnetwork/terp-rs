@@ -11,6 +11,8 @@ Date: 2026-06-12
 
 **Agents: read [`agent/COMMANDS.md`](agent/COMMANDS.md) first.** Prefer `just scripts-ibc-*` from the workspace root.
 
+**Private Bridge corridor lab e2e** lives in [`e2e/private-bridge/`](e2e/private-bridge/) (not under `docs/`). From `crates/headstash`: `just demo-corridor-lab`.
+
 ### Capabilities
 
 1. **IBC info derivation** — `bin/ibc_info.rs` (`cargo run -p terp-scripts --bin terp-ibc`):

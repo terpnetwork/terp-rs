@@ -5,8 +5,8 @@ CosmWasm authenticators for Terp `x/smart-account`, with shared types in-tree:
 | Crate | Role |
 |-------|------|
 | `crates/terp-auth` | `AuthSudoMsg`, request types, `TerpAccountTrait` |
-| `crates/terp-account` | `traits::default::BtsgAccountTrait` → `TerpAccountTrait` |
-| `terp-authenticator-suite` | cw-orch `Deploy` + Mock sudo helpers |
+| `crates/terp-account` | `traits::default::TerpAccountTrait` → `TerpAccountTrait` |
+| `terp-authenticator-suite` | **moved** → `tests/suite/terp-authenticator-suite` (cw-orch Deploy + Mock) |
 | `terp-zkjwt` | ZK proof of JWT / OIDC identity |
 | `terp-vsck` | VSCK / vote-sdk private voting module auth |
 | `terp-zkposiedon` | Poseidon membership scaffold |

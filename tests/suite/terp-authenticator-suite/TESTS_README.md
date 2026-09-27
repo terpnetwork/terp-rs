@@ -2,7 +2,7 @@
 
 **Package:** `terp-authenticator-suite`  
 **Absolute root:** `/Users/returniflost/abstract/terp-core/crates/terp-rs`  
-**This crate:** `contracts/smart-accounts/terp-authenticator-suite/`
+**This crate:** `tests/suite/terp-authenticator-suite/`
 
 ## Run tests
 

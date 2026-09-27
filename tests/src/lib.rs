@@ -9,7 +9,7 @@ pub mod environments;
 pub mod ibc;
 pub mod ibc_core;
 pub mod report;
-// pub mod suite;
+pub mod suite;
 
 pub use report::{
     preflight_missing, required_env_for_mode, ArtifactRef, CapabilityMode, OutputFormat, RunEnv,

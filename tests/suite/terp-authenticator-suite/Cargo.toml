@@ -10,9 +10,15 @@ documentation = { workspace = true }
 authors = { workspace = true }
 rust-version = { workspace = true }
 
+[[bin]]
+name = "deploy-noncircuit-auth"
+path = "src/bin/deploy_noncircuit_auth.rs"
+required-features = ["daemon"]
+
 [features]
 default = []
-daemon-e2e = []
+daemon = ["cw-orch/daemon"]
+daemon-e2e = ["daemon"]
 vote-sdk = []
 # Production zk-jwt path: deps.api.proof_instance_verify via cosmwasm-std/zk.
 # Structural suite Authenticate positives must NOT run with this enabled unless a
@@ -24,9 +30,13 @@ vote-sdk = []
 zk-host = ["terp-zkjwt/zk-host", "cosmwasm-std/zk", "dep:zk-cosmwasm", "zk-cosmwasm/bn254"]
 
 [dependencies]
+anyhow = "1.0"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 cosmwasm-std = { workspace = true, features = ["std"] }
 cosmwasm-schema = { workspace = true }
 cw-orch = { workspace = true }
+dotenvy = "0.15"
+env_logger = "0.11"
 serde = { workspace = true }
 thiserror = { workspace = true }
 terp-auth = { workspace = true }

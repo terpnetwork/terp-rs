@@ -67,6 +67,15 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
         }
     }
 
+    /// Store only the non-circuit product authenticators (passkey, recovery, ed25519, eth).
+    pub fn upload_noncircuit_priority(&self) -> Result<(), CwOrchError> {
+        self.passkey.upload()?;
+        self.recovery.upload()?;
+        self.ed25519.upload()?;
+        self.eth.upload()?;
+        Ok(())
+    }
+
     pub fn upload_all(&self) -> Result<(), CwOrchError> {
         self.passkey.upload()?;
         self.recovery.upload()?;
@@ -78,6 +87,41 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
         self.vsck.upload()?;
         Ok(())
     }
+
+    /// Store wasm only when this Daemon has no code_id for the contract id.
+    /// This is the resume path when authenticators already exist on-chain.
+    pub fn upload_if_needed(&self) -> Result<(), CwOrchError> {
+        self.passkey.upload_if_needed()?;
+        self.recovery.upload_if_needed()?;
+        self.ed25519.upload_if_needed()?;
+        self.eth.upload_if_needed()?;
+        self.irl.upload_if_needed()?;
+        self.zk_jwt.upload_if_needed()?;
+        self.zk_poseidon.upload_if_needed()?;
+        self.vsck.upload_if_needed()?;
+        Ok(())
+    }
+
+    /// Code ids currently bound on this handle (state.json / Mock).
+    pub fn bound_code_ids(&self) -> Vec<(&'static str, Option<u64>)> {
+        vec![
+            ("terp-passkey", self.passkey.code_id().ok()),
+            ("terp-recovery", self.recovery.code_id().ok()),
+            ("terp-ed25519", self.ed25519.code_id().ok()),
+            ("terp-eth", self.eth.code_id().ok()),
+            ("terp-irl", self.irl.code_id().ok()),
+            ("terp-zkjwt", self.zk_jwt.code_id().ok()),
+            ("terp-zkposiedon", self.zk_poseidon.code_id().ok()),
+            ("terp-vsck", self.vsck.code_id().ok()),
+        ]
+    }
+
+    pub fn missing_code_ids(&self) -> Vec<&'static str> {
+        self.bound_code_ids()
+            .into_iter()
+            .filter_map(|(id, cid)| if cid.is_none() { Some(id) } else { None })
+            .collect()
+    }
 }
 
 impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<Chain> {
@@ -86,7 +130,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
 
     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
         let suite = Self::new(chain);
-        suite.upload_all()?;
+        suite.upload_if_needed()?;
         Ok(suite)
     }
 
@@ -104,6 +148,8 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
+        // Contract ids (terp-passkey, …) hydrate from Daemon state.json when present.
+        // Missing ids stay unbound — caller uses missing_code_ids() / upload_if_needed().
         Ok(Self::new(chain))
     }
 

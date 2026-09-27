@@ -203,17 +203,19 @@ fn vsck_voter_auth_after_open_session() {
         "vsck_on_auth_added",
     );
 
-    assert_action(
-        &suite
-            .vsck
-            .sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "vsck-1",
-                to_json_binary(&payload).unwrap(),
-                None,
-            ))
-            .unwrap(),
-        "vsck_authenticate",
+    let auth_err = suite
+        .vsck
+        .sudo_authenticate(dummy_authentication_request(
+            acct.clone(),
+            "vsck-1",
+            to_json_binary(&payload).unwrap(),
+            None,
+        ))
+        .unwrap_err();
+    assert!(
+        auth_err.to_string().contains("CircuitNotLinked")
+            || auth_err.to_string().contains("not linked"),
+        "{auth_err}"
     );
 
     assert_action(

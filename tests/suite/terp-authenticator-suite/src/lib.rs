@@ -3,7 +3,7 @@
 //! ## Types
 //! - [`terp_auth`] / [`terp_account`] — in-tree trait + `AuthSudoMsg`
 //!
-//! ## Suite fields (all implement `BtsgAccountTrait` + `AuthSudoContract`)
+//! ## Suite fields (all implement `TerpAccountTrait` + `AuthSudoContract`)
 //! | Field | Contract | Auth path |
 //! |-------|----------|-----------|
 //! | `passkey` | terp-passkey | WebAuthn-shaped payload |

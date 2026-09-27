@@ -1,0 +1,52 @@
+[package]
+name = "terp-orch"
+description = "Unified cw-orch / ict-rs test suite: Path A circuits, private-bridge, optional auth"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+
+[features]
+default = ["zk-host", "bridge"]
+zk-host = [
+    "cw-zk-verify-demo/zk-host",
+    "cw-zk-verify-demo/library",
+    "cosmwasm-std/zk",
+    "cw-orch/zk",
+    "dep:zk-cosmwasm",
+]
+bridge = [
+    "zk-host",
+    "dep:cw-private-dex",
+    "cw-private-dex/interface",
+    "cw-private-dex/library",
+    "cw-private-dex/zk-api",
+]
+auth = ["dep:terp-authenticator-suite"]
+ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
+# Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
+headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+
+[dependencies]
+anyhow = "1.0"
+cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-schema = { workspace = true }
+cw-orch = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+cw-zk-verify-demo = { path = "../../../contracts/zk/cw-zk-verify-demo", features = ["library"] }
+zk-cosmwasm = { path = "../../../../cosmwasm/packages/zk", optional = true, default-features = false }
+cw-private-dex = { path = "../../../contracts/revenue/private-dex", optional = true, default-features = false }
+terp-authenticator-suite = { path = "../terp-authenticator-suite", optional = true }
+ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch", optional = true, default-features = false }
+ict-rs = { path = "../../../../ict-rs/ict-rs", optional = true, default-features = false, features = ["docker", "terp", "testing"] }
+cw-headstash = { path = "../../../../headstash/contracts/cw-headstash", optional = true, default-features = false, features = ["interface", "library", "zk-api"] }
+zk-headstash = { path = "../../../../headstash/circuit", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
+rand = { version = "0.8", optional = true, features = ["std"] }
+
+[dev-dependencies]
+hex = { workspace = true, features = ["std"] }
