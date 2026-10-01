@@ -1,0 +1,23 @@
+[package]
+name = "terp-v63-upgrade"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Dry-run or broadcast the morocco-1 v6.3 expedited software-upgrade"
+
+# Own workspace so `cargo run` here does not load terp-rs (halo2 graph).
+[workspace]
+
+[[bin]]
+name = "v63-upgrade"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+cosmrs = { path = "../../../cosmos-rust/cosmrs" }
+cw-orch-daemon = { path = "../../../cw-orchestrator/cw-orch-daemon" }
+cw-orch-networks = { path = "../../../cw-orchestrator/packages/cw-orch-networks" }
+prost = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
