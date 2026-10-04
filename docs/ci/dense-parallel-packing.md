@@ -40,11 +40,11 @@ core-libs-a:  terp-auth, terp-account, terp-rs
 core-libs-b:  crosslink-light-client, cw721-nips
 
 contracts-a:  terp-ed25519, terp-passkey, terp-vsck   (+ wasm check)
-contracts-b:  terp-eth, terp-irl, terp-recovery
+contracts-b:  terp-eth, terp-bls, terp-recovery
 contracts-c:  terp-authenticator-suite, cw-ics08-wasm-crosslink  (+ wasm)
 
 contracts-heavy (optional label/dispatch):
-  terp-zkjwt, terp-zkposiedon, terp-recovery-poseidon-demo
+  terp-zkjwt
 ```
 
 List at any time: `just ci-dense-list` or `./scripts/ci/dense-packs.sh list`.

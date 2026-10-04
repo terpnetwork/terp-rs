@@ -5,8 +5,7 @@ use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
-use terp_passkey::PasskeyAuthPayload;
-use terp_irl::IrlWitnessPayload;
+use terp_authenticator_suite::passkey_fixture::passkey_auth_payload;
 
 fn deploy() -> TerpAuthenticatorSuite<Mock> {
     let mock = Mock::new("admin");
@@ -55,13 +54,7 @@ fn five_lifecycle(
 fn passkey_trait_workflow() {
     let suite = deploy();
     let acct = mock_account();
-    let payload = PasskeyAuthPayload {
-        origin: Some("https://app.terp.network".into()),
-        credential_id: Binary::from(b"cred-id-1"),
-        assertion: Binary::from(b"sig"),
-        authenticator_data: Binary::from(b"ad"),
-        client_data_json: Binary::from(b"{}"),
-    };
+    let payload = passkey_auth_payload(b"sign-mode-direct");
     let sig = to_json_binary(&payload).unwrap();
 
     assert!(suite
@@ -132,6 +125,7 @@ fn recovery_trait_workflow() {
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(attestation),
@@ -168,7 +162,7 @@ fn recovery_trait_workflow() {
 }
 
 #[test]
-fn recovery_poseidon_break_glass() {
+fn recovery_keccak256_break_glass() {
     use terp_recovery::{
         break_glass_challenge, rehash, ExecuteMsg, GuardianApproval, GuardianConfig,
         RecoveryAuthPayload, RecoveryConfig, RecoveryHashAlg, DEFAULT_DOMAIN,
@@ -178,7 +172,7 @@ fn recovery_poseidon_break_glass() {
     let acct = mock_account();
     let admin = suite.recovery.environment().sender_addr();
 
-    // Optional Poseidon path: switch recovery hash_alg without redeploying the suite.
+    // Non-default digest: switch hash_alg without redeploying the suite.
     suite
         .recovery
         .execute(
@@ -189,20 +183,20 @@ fn recovery_poseidon_break_glass() {
                     commitment: None,
                 }],
                 threshold: 1,
-                hash_alg: RecoveryHashAlg::PoseidonPallas,
+                hash_alg: RecoveryHashAlg::Keccak256,
                 rehash_rounds: 1,
                 domain: DEFAULT_DOMAIN.into(),
                 allow_address_only_approvals: true,
             }),
             &[],
         )
-        .expect("update recovery to PoseidonPallas");
+        .expect("update recovery to Keccak256");
 
     let mut auth_req = dummy_authentication_request(acct.clone(), "1", Binary::default(), None);
     auth_req.tx_data.chain_id = "terp-test-1".into();
     auth_req.account = acct.clone();
     let challenge = break_glass_challenge(
-        RecoveryHashAlg::PoseidonPallas,
+        RecoveryHashAlg::Keccak256,
         1,
         DEFAULT_DOMAIN,
         &auth_req.tx_data.chain_id,
@@ -216,10 +210,11 @@ fn recovery_poseidon_break_glass() {
     let mut att_pre = admin.as_bytes().to_vec();
     att_pre.push(0);
     att_pre.extend_from_slice(&challenge);
-    let attestation = rehash(RecoveryHashAlg::PoseidonPallas, &att_pre, 1).unwrap();
+    let attestation = rehash(RecoveryHashAlg::Keccak256, &att_pre, 1).unwrap();
     let payload = RecoveryAuthPayload {
-        hash_alg: RecoveryHashAlg::PoseidonPallas,
+        hash_alg: RecoveryHashAlg::Keccak256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(attestation),
@@ -230,7 +225,7 @@ fn recovery_poseidon_break_glass() {
     let res = suite
         .recovery
         .sudo_authenticate(auth_req)
-        .expect("poseidon break-glass authenticate");
+        .expect("keccak break-glass authenticate");
     assert_action(&res, "recovery_authenticate");
 }
 
@@ -383,43 +378,6 @@ fn eth_lifecycle_structural() {
 }
 
 #[test]
-fn irl_trait_workflow() {
-    let suite = deploy();
-    let acct = mock_account();
-    let payload = IrlWitnessPayload {
-        epoch_root: Binary::from(b"epoch-root-v1"),
-        witness: Binary::from(b"w"),
-        nullifier: Binary::from(b"n"),
-    };
-    let sig = to_json_binary(&payload).unwrap();
-    five_lifecycle(
-        "irl",
-        || {
-            suite.irl.sudo_on_auth_added(dummy_on_auth_added(
-                acct.clone(),
-                "1",
-                Some(Binary::from(b"p")),
-            ))
-        },
-        || suite.irl.sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None)),
-        || {
-            suite
-                .irl
-                .sudo_authenticate(dummy_authentication_request(acct.clone(), "1", sig, None))
-        },
-        || suite.irl.sudo_track(dummy_track_request(acct.clone(), "1", None)),
-        || suite.irl.sudo_confirm_execution(dummy_confirm_execution_request(acct.clone(), "1", None)),
-        [
-            "irl_on_auth_added",
-            "irl_on_auth_removed",
-            "irl_authenticate",
-            "irl_track",
-            "irl_confirm",
-        ],
-    );
-}
-
-#[test]
 fn full_suite_coexistence() {
     let suite = deploy();
     let addrs = [
@@ -427,9 +385,7 @@ fn full_suite_coexistence() {
         suite.recovery.addr_str().unwrap(),
         suite.ed25519.addr_str().unwrap(),
         suite.eth.addr_str().unwrap(),
-        suite.irl.addr_str().unwrap(),
         suite.zk_jwt.addr_str().unwrap(),
-        suite.zk_poseidon.addr_str().unwrap(),
         suite.vsck.addr_str().unwrap(),
     ];
     for a in &addrs {

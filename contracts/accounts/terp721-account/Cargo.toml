@@ -1,0 +1,33 @@
+[package]
+name = "terp721-account"
+version   = { workspace = true }
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# use library feature to disable all instantiate/execute/query exports
+default = ["interface"]
+library = []
+interface = ["dep:cw-orch"]
+abstract = ["dep:cw-orch", "abstract-std"]
+
+[dependencies]
+abstract-std        = { workspace = true, optional = true }
+cosmwasm-schema     = { workspace = true }
+cosmwasm-std        = { workspace = true }
+cw-controllers      = { workspace = true }
+cw-orch             = { workspace = true, optional = true }
+cw-ownable          = { workspace = true }
+cw-storage-plus     = { workspace = true }
+cw-utils            = { workspace = true }
+cw2                 = { workspace = true }
+cw721               = { workspace = true }
+serde               = { workspace = true, default-features = false, features = ["derive"] }
+terp-account        = { workspace = true, default-features = false, features = ["full"] }
+thiserror           = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork", features = ["cosmwasm_3_0", "stargate"] }

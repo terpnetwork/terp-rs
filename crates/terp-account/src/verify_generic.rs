@@ -1,5 +1,5 @@
 // condensed from: https://github.com/MegaRockLabs/smart-account-auth
-use cosmwasm_std::{ensure, Binary, StdError};
+use cosmwasm_std::{ensure, Api, Binary, StdError};
 
 use bech32::{Bech32, Hrp};
 use ripemd::Ripemd160;
@@ -53,13 +53,10 @@ impl CosmosArbitrary {
     }
 
     // verify an arbitrary secp256k1 signature is valid.
-    pub fn verify(&self) -> Result<(), StdError> {
-        let success = cosmwasm_crypto::secp256k1_verify(
-            &self.message_digest()?,
-            &self.signature,
-            &self.pubkey,
-        )
-        .map_err(|e| StdError::msg(e.to_string()))?;
+    pub fn verify(&self, api: &dyn Api) -> Result<(), StdError> {
+        let success = api
+            .secp256k1_verify(&self.message_digest()?, &self.signature, &self.pubkey)
+            .map_err(|e| StdError::msg(e.to_string()))?;
         ensure!(
             success,
             StdError::msg("Signature verification failed".to_string())
@@ -67,8 +64,8 @@ impl CosmosArbitrary {
         Ok(())
     }
 
-    pub fn verify_return_readable(&self) -> Result<String, StdError> {
-        self.verify()?;
+    pub fn verify_return_readable(&self, api: &dyn Api) -> Result<String, StdError> {
+        self.verify(api)?;
         pubkey_to_address(&self.pubkey, &self.hrp().expect("must have prefix"))
     }
 
@@ -177,7 +174,7 @@ mod tests {
             message: Binary::from(terpaddr.as_bytes().to_vec()), // set the base64 of the address
             hrp: Some(hrp.to_string()),
         }
-        .verify_return_readable()?;
+        .verify_return_readable(&cosmwasm_std::testing::mock_dependencies().api)?;
 
         // println!("hraddr: {:#?}", hraddr);
         // println!("terpaddr: {:#?}", terpaddr);

@@ -16,6 +16,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 library = []
+# Host `proof_instance_verify` for [`crate::proof`]. Off by default: stub proofs fail closed.
+zk-host = []
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["std"] }
@@ -30,11 +32,6 @@ sha2 = { workspace = true }
 sha3 = "0.10"
 blake2 = "0.10"
 hex = { workspace = true, features = ["alloc"] }
-# Pure-Rust Poseidon-Pallas for break-glass rehash (no CosmWasm host Poseidon yet).
-# Path relative to this package → monorepo crates/zcash/halo2.
-halo2_poseidon = { path = "../../../../zcash/halo2/halo2_poseidon" }
-pasta_curves = "0.5"
-ff = { version = "0.13", default-features = false }
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }

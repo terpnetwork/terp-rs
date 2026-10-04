@@ -1,0 +1,32 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "whitelist_mtree_msg_AdminListResponse",
+      "description": "Current admins.",
+      "type": "struct",
+      "properties": {
+        "admins": {
+          "value": 2
+        },
+        "mutable": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

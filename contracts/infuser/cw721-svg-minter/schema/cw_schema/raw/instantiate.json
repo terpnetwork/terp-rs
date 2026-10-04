@@ -1,0 +1,54 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_svg_minter_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "dregg_ibc_only": {
+          "defaulting": true,
+          "description": "If true, only DREGG runtime accounts / IBC packets may mint (no public native mint).",
+          "value": 4
+        },
+        "owner": {
+          "description": "Optional owner. If set, only the owner may create collections.",
+          "value": 2
+        },
+        "runtime_minters": {
+          "defaulting": true,
+          "description": "Terp addrs the DREGG runtime uses (OR with IBC packet receive).",
+          "value": 5
+        },
+        "svg_code_id": {
+          "description": "Code ID of the cw721-svg contract to instantiate.",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

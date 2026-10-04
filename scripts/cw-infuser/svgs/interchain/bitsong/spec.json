@@ -1,0 +1,62 @@
+ {
+  "version": "1",
+  "collection": "neon-logo",
+  "description": "Vibrant abstract logo with signature hot-pink solid base and electric cyan vertical gradient overlay. The glow layer features a gentle, living breath pulse that creates a dynamic energy effect while staying 100% faithful to the original geometry, proportions, and brand colors (#FF005C + #00E0FF).",
+
+  "palette_groups": [
+    {
+      "id": "base-pink",
+      "note": "Core hot magenta-pink brand color for the solid logo shape",
+      "anchor": "color-base",
+      "members": ["color-base"],
+      "ranges": [
+        { "r_min": 235, "r_max": 255, "g_min": 0, "g_max": 35, "b_min": 75, "b_max": 105 }
+      ]
+    },
+    {
+      "id": "glow-cyan",
+      "note": "Electric cyan glow family for the vertical energy gradient — allows beautiful subtle shifts while staying true to the original #00E0FF vibe",
+      "anchor": "color-glow-top",
+      "members": ["color-glow-top", "color-glow-bottom"],
+      "ranges": [
+        { "r_min": 0, "r_max": 45, "g_min": 205, "g_max": 255, "b_min": 235, "b_max": 255 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "glow-breath",
+      "note": "Gentle pulsating breath on the cyan gradient overlay — gives the logo a living, high-energy neon feel without being distracting",
+      "members": ["breath-glow"],
+      "min": "2.8",
+      "max": "6.5",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-base",
+      "kind": { "rgb_styled": [
+        { "r_min": 235, "r_max": 255, "g_min": 0, "g_max": 35, "b_min": 75, "b_max": 105 }
+      ]}
+    },
+    {
+      "name": "color-glow-top",
+      "kind": { "rgb_styled": [
+        { "r_min": 0, "r_max": 45, "g_min": 205, "g_max": 255, "b_min": 235, "b_max": 255 }
+      ]}
+    },
+    {
+      "name": "color-glow-bottom",
+      "kind": { "rgb_styled": [
+        { "r_min": 0, "r_max": 45, "g_min": 205, "g_max": 255, "b_min": 235, "b_max": 255 }
+      ]}
+    },
+    {
+      "name": "breath-glow",
+      "kind": { "range": { "min": "2.8", "max": "6.5", "precision": 2 } }
+    }
+  ]
+}

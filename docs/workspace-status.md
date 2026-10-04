@@ -166,9 +166,8 @@ Found by reading, not by a gate. None of these break a build.
   return `Ok(())` unconditionally — the second with a literal
   `// SILENT ERROR` comment. It is not a workspace member. Worth deciding
   whether a fails-open verifier should exist at all.
-- `contracts/smart-accounts/terp-dao/Cargo.toml` uses
-  `version = { workspace = true }` but `terp-dao` is not in the root `members`
-  list, so it cannot build standalone. `terp-wavs` and `terp-zktls` share this.
+- `terp-dao`, `terp-bls`, and `terp-zktls` are workspace members.
+  `terp-wavs` was renamed to `terp-bls`.
 - `contracts/smart-accounts/terp-zktls/src/lib.rs` still uses a bare
   `#[entry_point]` on one export while its siblings are
   `#[cfg_attr(not(feature = "library"), entry_point)]`.

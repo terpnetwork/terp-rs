@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Array_of_WavsRecordResponse",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/WavsRecordResponse"
+  },
+  "definitions": {
+    "WavsRecordResponse": {
+      "description": "An bech32 address and its burn count",
+      "type": "object",
+      "required": [
+        "addr"
+      ],
+      "properties": {
+        "addr": {
+          "type": "string"
+        },
+        "count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

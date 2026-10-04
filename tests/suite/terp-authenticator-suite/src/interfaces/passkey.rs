@@ -12,9 +12,7 @@ pub struct TerpPasskey;
 
 impl<Chain: TxHandler> Uploadable for TerpPasskey<Chain> {
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
-        artifacts_dir_from_workspace!()
-            .find_wasm_path("terp_passkey")
-            .expect("terp_passkey.wasm — use Mock")
+        super::wasm_path::wasm("terp_passkey")
     }
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_sudo(sudo))

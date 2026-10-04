@@ -1,0 +1,61 @@
+# hm-nft-minter — wasmd-safe wasm build
+#
+#   just wasm    # Docker rustc 1.86 + host wasm-opt bulk-memory lower → artifacts/
+
+set dotenv-load := false
+
+crates_dir := justfile_directory() + "/../../.."
+infuser_dir := justfile_directory() + "/../.."
+artifacts := infuser_dir + "/artifacts"
+
+# Build lib-only (skip schema bin) via optimizer image, then lower bulk-memory.
+wasm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ARCH="$(uname -m)"
+    case "${ARCH}" in
+      arm64|aarch64) IMG="${OPTIMIZER_IMAGE:-terpnetwork/optimizer-arm64:0.17.0}" ;;
+      *)             IMG="${OPTIMIZER_IMAGE:-terpnetwork/optimizer:0.17.0}" ;;
+    esac
+    echo "==> image ${IMG}"
+    mkdir -p "{{artifacts}}"
+    docker run --rm \
+      --entrypoint /bin/ash \
+      -v "{{crates_dir}}:/workspace" \
+      -w /workspace/cw-infuser \
+      -e CARGO_TARGET_DIR=/target \
+      --mount type=volume,source=hm_nft_minter_cache,target=/target \
+      --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+      "${IMG}" \
+      -c 'set -e
+          cargo build --release --target wasm32-unknown-unknown -p hm-nft-minter --lib
+          cp -f /target/wasm32-unknown-unknown/release/hm_nft_minter.wasm \
+            /workspace/cw-infuser/artifacts/hm_nft_minter.raw.wasm
+         '
+    WASM_OPT="$(command -v wasm-opt || true)"
+    if [[ -z "${WASM_OPT}" ]]; then
+      echo "error: wasm-opt required (brew install binaryen ≥120)" >&2
+      exit 1
+    fi
+    TMP="$(mktemp "${TMPDIR:-/tmp}/hm-nft.XXXXXX")"
+    "${WASM_OPT}" -Os \
+      --enable-bulk-memory \
+      --enable-sign-ext \
+      --llvm-memory-copy-fill-lowering \
+      --signext-lowering \
+      "{{artifacts}}/hm_nft_minter.raw.wasm" -o "${TMP}"
+    mv "${TMP}" "{{artifacts}}/hm_nft_minter.wasm"
+    rm -f "{{artifacts}}/hm_nft_minter.raw.wasm"
+    (
+      cd "{{artifacts}}"
+      shasum -a 256 hm_nft_minter.wasm | tee checksums-hm-nft.txt
+    )
+    wasm-opt --print-features "{{artifacts}}/hm_nft_minter.wasm" 2>&1 | grep -v warning || true
+    if wasm-opt --print-features "{{artifacts}}/hm_nft_minter.wasm" 2>&1 | grep -qi 'enable-bulk-memory'; then
+      echo "error: bulk-memory still enabled" >&2
+      exit 1
+    fi
+    echo "OK {{artifacts}}/hm_nft_minter.wasm"
+
+test:
+    cargo test -p hm-nft-minter

@@ -1,0 +1,35 @@
+[package]
+name = "terp-bls"
+description = "BLS12-381 authenticator: min-pk (G1 key, G2 signature) and min-sig (G2 key, G1 signature)"
+authors = [""]
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-ownable = { workspace = true }
+cw2 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+terp-auth = { workspace = true }
+terp-account = { workspace = true }
+
+[dev-dependencies]
+ark-bls12-381 = "0.5"
+ark-ec = "0.5"
+ark-ff = "0.5"
+ark-serialize = "0.5"
+hex = { workspace = true, features = ["std"] }

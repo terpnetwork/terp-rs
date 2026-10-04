@@ -1,0 +1,31 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "hm_nft_minter_msg_IsEligibleResponse",
+      "type": "struct",
+      "properties": {
+        "eligible": {
+          "value": 1
+        },
+        "error": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    }
+  ]
+}

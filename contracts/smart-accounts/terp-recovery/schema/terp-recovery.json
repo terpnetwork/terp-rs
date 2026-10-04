@@ -1,0 +1,1088 @@
+{
+  "contract_name": "terp-recovery",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "config"
+    ],
+    "properties": {
+      "config": {
+        "$ref": "#/definitions/RecoveryConfig"
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "GuardianConfig": {
+        "description": "One registered guardian.",
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "description": "Bech32 account address (canonical guardian id).",
+            "type": "string"
+          },
+          "commitment": {
+            "description": "Optional commitment `rehash(addr||salt||pk)` for stronger registration.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pubkey": {
+            "description": "Optional 32-byte ed25519 public key for signature break-glass.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecoveryConfig": {
+        "description": "On-chain recovery policy.",
+        "type": "object",
+        "required": [
+          "allow_address_only_approvals",
+          "domain",
+          "guardians",
+          "hash_alg",
+          "rehash_rounds",
+          "threshold"
+        ],
+        "properties": {
+          "allow_address_only_approvals": {
+            "description": "If true, guardians without pubkey may approve via digest attestation.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "Domain tag (default `terp-recovery/break-glass/v1`).",
+            "type": "string"
+          },
+          "guardians": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/GuardianConfig"
+            }
+          },
+          "hash_alg": {
+            "description": "Digest algorithm used for break-glass challenge rehashing.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RecoveryHashAlg"
+              }
+            ]
+          },
+          "rehash_rounds": {
+            "description": "Sequential rehash rounds (1..=64). Default should be 1 unless matching an external scheme.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "threshold": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecoveryHashAlg": {
+        "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+        "oneOf": [
+          {
+            "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+            "type": "string",
+            "enum": [
+              "sha256"
+            ]
+          },
+          {
+            "description": "SHA-512.",
+            "type": "string",
+            "enum": [
+              "sha512"
+            ]
+          },
+          {
+            "description": "Keccak-256 (Ethereum-family).",
+            "type": "string",
+            "enum": [
+              "keccak256"
+            ]
+          },
+          {
+            "description": "SHA3-256 (FIPS 202, not Keccak).",
+            "type": "string",
+            "enum": [
+              "sha3_256"
+            ]
+          },
+          {
+            "description": "BLAKE2s-256.",
+            "type": "string",
+            "enum": [
+              "blake2s256"
+            ]
+          },
+          {
+            "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+            "type": "string",
+            "enum": [
+              "blake2b256"
+            ]
+          },
+          {
+            "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+            "type": "string",
+            "enum": [
+              "sha256d"
+            ]
+          },
+          {
+            "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+            "type": "string",
+            "enum": [
+              "poseidon_pallas"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Replace full recovery config (should be gated by owner / governance in production).",
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "$ref": "#/definitions/RecoveryConfig"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "GuardianConfig": {
+        "description": "One registered guardian.",
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "description": "Bech32 account address (canonical guardian id).",
+            "type": "string"
+          },
+          "commitment": {
+            "description": "Optional commitment `rehash(addr||salt||pk)` for stronger registration.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pubkey": {
+            "description": "Optional 32-byte ed25519 public key for signature break-glass.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecoveryConfig": {
+        "description": "On-chain recovery policy.",
+        "type": "object",
+        "required": [
+          "allow_address_only_approvals",
+          "domain",
+          "guardians",
+          "hash_alg",
+          "rehash_rounds",
+          "threshold"
+        ],
+        "properties": {
+          "allow_address_only_approvals": {
+            "description": "If true, guardians without pubkey may approve via digest attestation.",
+            "type": "boolean"
+          },
+          "domain": {
+            "description": "Domain tag (default `terp-recovery/break-glass/v1`).",
+            "type": "string"
+          },
+          "guardians": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/GuardianConfig"
+            }
+          },
+          "hash_alg": {
+            "description": "Digest algorithm used for break-glass challenge rehashing.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RecoveryHashAlg"
+              }
+            ]
+          },
+          "rehash_rounds": {
+            "description": "Sequential rehash rounds (1..=64). Default should be 1 unless matching an external scheme.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "threshold": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "RecoveryHashAlg": {
+        "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+        "oneOf": [
+          {
+            "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+            "type": "string",
+            "enum": [
+              "sha256"
+            ]
+          },
+          {
+            "description": "SHA-512.",
+            "type": "string",
+            "enum": [
+              "sha512"
+            ]
+          },
+          {
+            "description": "Keccak-256 (Ethereum-family).",
+            "type": "string",
+            "enum": [
+              "keccak256"
+            ]
+          },
+          {
+            "description": "SHA3-256 (FIPS 202, not Keccak).",
+            "type": "string",
+            "enum": [
+              "sha3_256"
+            ]
+          },
+          {
+            "description": "BLAKE2s-256.",
+            "type": "string",
+            "enum": [
+              "blake2s256"
+            ]
+          },
+          {
+            "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+            "type": "string",
+            "enum": [
+              "blake2b256"
+            ]
+          },
+          {
+            "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+            "type": "string",
+            "enum": [
+              "sha256d"
+            ]
+          },
+          {
+            "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+            "type": "string",
+            "enum": [
+              "poseidon_pallas"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Compute challenge digest for the given auth context (client helper).",
+        "type": "object",
+        "required": [
+          "challenge"
+        ],
+        "properties": {
+          "challenge": {
+            "type": "object",
+            "required": [
+              "account",
+              "authenticator_id",
+              "chain_id",
+              "sign_mode_direct"
+            ],
+            "properties": {
+              "account": {
+                "type": "string"
+              },
+              "authenticator_id": {
+                "type": "string"
+              },
+              "chain_id": {
+                "type": "string"
+              },
+              "sign_mode_direct": {
+                "$ref": "#/definitions/Binary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SudoMsg",
+    "description": "`AuthSudoMsg` contains variants of messages that can be sent to the authenticator contract from smart account module through `CosmWasmAuthenticator`.\n\n`AuthenticateRequest` is `Box`-ed due to large size difference between other variants",
+    "oneOf": [
+      {
+        "description": "Osmosis CosmwasmAuthenticator JSON: on_authenticator_added",
+        "type": "object",
+        "required": [
+          "on_authenticator_added"
+        ],
+        "properties": {
+          "on_authenticator_added": {
+            "$ref": "#/definitions/OnAuthenticatorAddedRequest"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "on_authenticator_removed"
+        ],
+        "properties": {
+          "on_authenticator_removed": {
+            "$ref": "#/definitions/OnAuthenticatorRemovedRequest"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "authenticate"
+        ],
+        "properties": {
+          "authenticate": {
+            "$ref": "#/definitions/AuthenticationRequest"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "track"
+        ],
+        "properties": {
+          "track": {
+            "$ref": "#/definitions/TrackRequest"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "confirm_execution"
+        ],
+        "properties": {
+          "confirm_execution": {
+            "$ref": "#/definitions/ConfirmExecutionRequest"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Addr": {
+        "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
+      "Any": {
+        "type": "object",
+        "required": [
+          "type_url",
+          "value"
+        ],
+        "properties": {
+          "type_url": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthenticationRequest": {
+        "type": "object",
+        "required": [
+          "account",
+          "authenticator_id",
+          "fee",
+          "fee_payer",
+          "msg",
+          "msg_index",
+          "sign_mode_tx_data",
+          "signature",
+          "signature_data",
+          "simulate",
+          "tx_data"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/definitions/Addr"
+          },
+          "authenticator_id": {
+            "type": "string"
+          },
+          "authenticator_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "fee_granter": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee_payer": {
+            "$ref": "#/definitions/Addr"
+          },
+          "msg": {
+            "$ref": "#/definitions/Any"
+          },
+          "msg_index": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "sign_mode_tx_data": {
+            "$ref": "#/definitions/SignModeTxData"
+          },
+          "signature": {
+            "$ref": "#/definitions/Binary"
+          },
+          "signature_data": {
+            "$ref": "#/definitions/SignatureData"
+          },
+          "simulate": {
+            "type": "boolean"
+          },
+          "tx_data": {
+            "$ref": "#/definitions/TxData"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmExecutionRequest": {
+        "type": "object",
+        "required": [
+          "account",
+          "authenticator_id",
+          "fee",
+          "fee_payer",
+          "msg",
+          "msg_index"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/definitions/Addr"
+          },
+          "authenticator_id": {
+            "type": "string"
+          },
+          "authenticator_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "fee_granter": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee_payer": {
+            "$ref": "#/definitions/Addr"
+          },
+          "msg": {
+            "$ref": "#/definitions/Any"
+          },
+          "msg_index": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "OnAuthenticatorAddedRequest": {
+        "type": "object",
+        "required": [
+          "account",
+          "authenticator_id"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/definitions/Addr"
+          },
+          "authenticator_id": {
+            "type": "string"
+          },
+          "authenticator_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "OnAuthenticatorRemovedRequest": {
+        "type": "object",
+        "required": [
+          "account",
+          "authenticator_id"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/definitions/Addr"
+          },
+          "authenticator_id": {
+            "type": "string"
+          },
+          "authenticator_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignModeTxData": {
+        "type": "object",
+        "required": [
+          "sign_mode_direct"
+        ],
+        "properties": {
+          "sign_mode_direct": {
+            "$ref": "#/definitions/Binary"
+          },
+          "sign_mode_textual": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SignatureData": {
+        "type": "object",
+        "required": [
+          "signatures",
+          "signers"
+        ],
+        "properties": {
+          "signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "signers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Addr"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "TrackRequest": {
+        "type": "object",
+        "required": [
+          "account",
+          "authenticator_id",
+          "fee",
+          "fee_payer",
+          "msg",
+          "msg_index"
+        ],
+        "properties": {
+          "account": {
+            "$ref": "#/definitions/Addr"
+          },
+          "authenticator_id": {
+            "type": "string"
+          },
+          "authenticator_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "fee_granter": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fee_payer": {
+            "$ref": "#/definitions/Addr"
+          },
+          "msg": {
+            "$ref": "#/definitions/Any"
+          },
+          "msg_index": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "TxData": {
+        "type": "object",
+        "required": [
+          "account_number",
+          "chain_id",
+          "memo",
+          "msgs",
+          "sequence",
+          "timeout_height"
+        ],
+        "properties": {
+          "account_number": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "chain_id": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string"
+          },
+          "msgs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Any"
+            }
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "timeout_height": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "Uint256": {
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+        "type": "string"
+      }
+    }
+  },
+  "responses": {
+    "challenge": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChallengeResponse",
+      "type": "object",
+      "required": [
+        "digest",
+        "domain",
+        "hash_alg",
+        "rehash_rounds"
+      ],
+      "properties": {
+        "digest": {
+          "$ref": "#/definitions/Binary"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "hash_alg": {
+          "$ref": "#/definitions/RecoveryHashAlg"
+        },
+        "rehash_rounds": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "RecoveryHashAlg": {
+          "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+          "oneOf": [
+            {
+              "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+              "type": "string",
+              "enum": [
+                "sha256"
+              ]
+            },
+            {
+              "description": "SHA-512.",
+              "type": "string",
+              "enum": [
+                "sha512"
+              ]
+            },
+            {
+              "description": "Keccak-256 (Ethereum-family).",
+              "type": "string",
+              "enum": [
+                "keccak256"
+              ]
+            },
+            {
+              "description": "SHA3-256 (FIPS 202, not Keccak).",
+              "type": "string",
+              "enum": [
+                "sha3_256"
+              ]
+            },
+            {
+              "description": "BLAKE2s-256.",
+              "type": "string",
+              "enum": [
+                "blake2s256"
+              ]
+            },
+            {
+              "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+              "type": "string",
+              "enum": [
+                "blake2b256"
+              ]
+            },
+            {
+              "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+              "type": "string",
+              "enum": [
+                "sha256d"
+              ]
+            },
+            {
+              "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+              "type": "string",
+              "enum": [
+                "poseidon_pallas"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RecoveryConfig",
+      "description": "On-chain recovery policy.",
+      "type": "object",
+      "required": [
+        "allow_address_only_approvals",
+        "domain",
+        "guardians",
+        "hash_alg",
+        "rehash_rounds",
+        "threshold"
+      ],
+      "properties": {
+        "allow_address_only_approvals": {
+          "description": "If true, guardians without pubkey may approve via digest attestation.",
+          "type": "boolean"
+        },
+        "domain": {
+          "description": "Domain tag (default `terp-recovery/break-glass/v1`).",
+          "type": "string"
+        },
+        "guardians": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuardianConfig"
+          }
+        },
+        "hash_alg": {
+          "description": "Digest algorithm used for break-glass challenge rehashing.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RecoveryHashAlg"
+            }
+          ]
+        },
+        "rehash_rounds": {
+          "description": "Sequential rehash rounds (1..=64). Default should be 1 unless matching an external scheme.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "threshold": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "GuardianConfig": {
+          "description": "One registered guardian.",
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "description": "Bech32 account address (canonical guardian id).",
+              "type": "string"
+            },
+            "commitment": {
+              "description": "Optional commitment `rehash(addr||salt||pk)` for stronger registration.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "pubkey": {
+              "description": "Optional 32-byte ed25519 public key for signature break-glass.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "RecoveryHashAlg": {
+          "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+          "oneOf": [
+            {
+              "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+              "type": "string",
+              "enum": [
+                "sha256"
+              ]
+            },
+            {
+              "description": "SHA-512.",
+              "type": "string",
+              "enum": [
+                "sha512"
+              ]
+            },
+            {
+              "description": "Keccak-256 (Ethereum-family).",
+              "type": "string",
+              "enum": [
+                "keccak256"
+              ]
+            },
+            {
+              "description": "SHA3-256 (FIPS 202, not Keccak).",
+              "type": "string",
+              "enum": [
+                "sha3_256"
+              ]
+            },
+            {
+              "description": "BLAKE2s-256.",
+              "type": "string",
+              "enum": [
+                "blake2s256"
+              ]
+            },
+            {
+              "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+              "type": "string",
+              "enum": [
+                "blake2b256"
+              ]
+            },
+            {
+              "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+              "type": "string",
+              "enum": [
+                "sha256d"
+              ]
+            },
+            {
+              "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+              "type": "string",
+              "enum": [
+                "poseidon_pallas"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

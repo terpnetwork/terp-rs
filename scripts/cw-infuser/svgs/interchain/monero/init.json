@@ -1,0 +1,147 @@
+{
+  "name": "Monero SVG",
+  "symbol": "MONERO",
+  "collection_info_extension": {
+    "seed": "I+2HV/Mx3QN1Y53TtPinQg2Zv6yu13jqkBTK3PI1kcI=",
+    "svg_template": "<svg xmlns=\"http://www.w3.org/2000/svg\" id=\"Layer_1\" data-name=\"Layer 1\" viewBox=\"0 0 3756.09 3756.49\">\n  <title>monero</title>\n\n  \n  <path d=\"M4128,2249.81C4128,3287,3287.26,4127.86,2250,4127.86S372,3287,372,2249.81,1212.76,371.75,2250,371.75,4128,1212.54,4128,2249.81Z\"\n    transform=\"translate(-371.96 -371.75)\"\n    style=\"fill:${color-bg};opacity:${opacity-bg}\"/>\n\n  \n  <path id=\"_149931032\" data-name=\" 149931032\"\n    d=\"M2250,371.75c-1036.89,0-1879.12,842.06-1877.8,1878,0.26,207.26,33.31,406.63,95.34,593.12h561.88V1263L2250,2483.57,3470.52,1263v1579.9h562c62.12-186.48,95-385.85,95.37-593.12C4129.66,1212.76,3287,372,2250,372Z\"\n    transform=\"translate(-371.96 -371.75)\"\n    style=\"fill:${color-primary};opacity:${opacity-primary}\"/>\n\n  \n  <path id=\"_149931160\" data-name=\" 149931160\"\n    d=\"M1969.3,2764.17l-532.67-532.7v994.14H1029.38l-384.29.07c329.63,540.8,925.35,902.56,1604.91,902.56S3525.31,3766.4,3855,3225.6H3063.25V2231.47l-532.7,532.7-280.61,280.61-280.62-280.61h0Z\"\n    transform=\"translate(-371.96 -371.75)\"\n    style=\"fill:${color-secondary};opacity:${opacity-secondary}\"/>\n\n</svg>",
+    "variables": [
+      {
+        "name": "color-bg",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 180,
+              "r_max": 255,
+              "g_min": 180,
+              "g_max": 255,
+              "b_min": 180,
+              "b_max": 255
+            }
+          ]
+        }
+      },
+      {
+        "name": "opacity-bg",
+        "kind": {
+          "range": {
+            "min": "0.80",
+            "max": "1.0",
+            "precision": 2
+          }
+        }
+      },
+      {
+        "name": "color-primary",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 220,
+              "r_max": 255,
+              "g_min": 80,
+              "g_max": 130,
+              "b_min": 0,
+              "b_max": 40
+            }
+          ]
+        }
+      },
+      {
+        "name": "opacity-primary",
+        "kind": {
+          "range": {
+            "min": "0.85",
+            "max": "1.0",
+            "precision": 2
+          }
+        }
+      },
+      {
+        "name": "color-secondary",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 40,
+              "r_max": 90,
+              "g_min": 40,
+              "g_max": 90,
+              "b_min": 40,
+              "b_max": 90
+            }
+          ]
+        }
+      },
+      {
+        "name": "opacity-secondary",
+        "kind": {
+          "range": {
+            "min": "0.85",
+            "max": "1.0",
+            "precision": 2
+          }
+        }
+      }
+    ],
+    "template_slots": [
+      {
+        "start": 331,
+        "end": 342,
+        "var_idx": 0
+      },
+      {
+        "start": 351,
+        "end": 364,
+        "var_idx": 1
+      },
+      {
+        "start": 695,
+        "end": 711,
+        "var_idx": 2
+      },
+      {
+        "start": 720,
+        "end": 738,
+        "var_idx": 3
+      },
+      {
+        "start": 1045,
+        "end": 1063,
+        "var_idx": 4
+      },
+      {
+        "start": 1072,
+        "end": 1092,
+        "var_idx": 5
+      }
+    ],
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null
+  },
+  "minter": null,
+  "creator": null,
+  "withdraw_address": null
+}

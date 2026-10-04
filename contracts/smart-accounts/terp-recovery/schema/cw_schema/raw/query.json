@@ -1,0 +1,43 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_recovery_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "challenge": {
+          "description": "Compute challenge digest for the given auth context (client helper).",
+          "type": "named",
+          "properties": {
+            "account": {
+              "value": 1
+            },
+            "authenticator_id": {
+              "value": 1
+            },
+            "chain_id": {
+              "value": 1
+            },
+            "sign_mode_direct": {
+              "value": 2
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    }
+  ]
+}

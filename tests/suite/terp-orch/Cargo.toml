@@ -27,9 +27,29 @@ bridge = [
     "cw-private-dex/zk-api",
 ]
 auth = ["dep:terp-authenticator-suite"]
-ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
+ict = ["dep:ict-rs-cw-orch", "dep:ict-rs", "cw-orch/daemon"]
+# Every optimized artifact under crates/terp-rs/artifacts/.
+# Auth stays off the default feature set; this opts into it.
+stack = [
+    "auth",
+    "bridge",
+    "dep:crosslink-light-client",
+    "dep:cw-ics08-wasm-crosslink",
+    "dep:cw-ics08-wasm-dregg",
+    "dep:cw-ics08-wasm-terp",
+    "dep:polytone-any-proxy",
+    "dep:terp-dao",
+    "dep:terp-dregg",
+    "dep:terp-frost",
+    "dep:terp-bls",
+    "dep:terp-zktls",
+]
 # Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
 headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+# Account billboards (terp721 + manifold). Pulls Abstract.
+billboards = ["dep:terp-account-scripts"]
+# cw-infuser, cw721-svg, svg minter, whitelist. Pulls shitstrap.
+infuser = ["dep:cw-infuser-scripts"]
 
 [dependencies]
 anyhow = "1.0"
@@ -44,9 +64,22 @@ cw-private-dex = { path = "../../../contracts/revenue/private-dex", optional = t
 terp-authenticator-suite = { path = "../terp-authenticator-suite", optional = true }
 ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch", optional = true, default-features = false }
 ict-rs = { path = "../../../../ict-rs/ict-rs", optional = true, default-features = false, features = ["docker", "terp", "testing"] }
+crosslink-light-client = { path = "../../../crates/crosslink/light-client", optional = true, default-features = false }
+cw-ics08-wasm-crosslink = { path = "../../../contracts/light-clients/cw-ics08-wasm-crosslink", optional = true, default-features = false }
+cw-ics08-wasm-dregg = { path = "../../../contracts/light-clients/cw-ics08-wasm-dregg", optional = true, default-features = false, features = ["library"] }
+cw-ics08-wasm-terp = { path = "../../../contracts/light-clients/cw-ics08-wasm-terp", optional = true, default-features = false }
+polytone-any-proxy = { path = "../../../contracts/ibc/polytone-any-proxy", optional = true, default-features = false, features = ["library"] }
+terp-dao = { path = "../../../contracts/smart-accounts/terp-dao", optional = true, default-features = false, features = ["library"] }
+terp-dregg = { path = "../../../contracts/smart-accounts/terp-dregg", optional = true, default-features = false, features = ["library"] }
+terp-frost = { path = "../../../contracts/smart-accounts/terp-frost", optional = true, default-features = false, features = ["library"] }
+terp-bls = { path = "../../../contracts/smart-accounts/terp-bls", optional = true, default-features = false, features = ["library"] }
+terp-zktls = { path = "../../../contracts/smart-accounts/terp-zktls", optional = true, default-features = false, features = ["library"] }
 cw-headstash = { path = "../../../../headstash/contracts/cw-headstash", optional = true, default-features = false, features = ["interface", "library", "zk-api"] }
+terp-account-scripts = { workspace = true, optional = true }
+cw-infuser-scripts = { workspace = true, optional = true }
 zk-headstash = { path = "../../../../headstash/circuits/halo2", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
 rand = { version = "0.8", optional = true, features = ["std"] }
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

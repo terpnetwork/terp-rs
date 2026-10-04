@@ -1,0 +1,25 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw721_msg_MinterResponse",
+      "description": "Deprecated: use Cw721QueryMsg::GetMinterOwnership instead!\nShows who can mint these tokens.",
+      "type": "struct",
+      "properties": {
+        "minter": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

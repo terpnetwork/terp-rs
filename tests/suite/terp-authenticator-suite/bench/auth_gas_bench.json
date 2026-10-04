@@ -1,0 +1,112 @@
+{
+  "schema": "terp-auth-gas-bench/v1",
+  "action": {
+    "kind": "cw721-svg-mint",
+    "contract": "cw721-svg",
+    "msg_bytes": 87,
+    "msg_sha256": "99f35efb1063e06a4c5da0dade66ad62d8d310480ede5147eb0e06ee8b900958",
+    "mint_executed_on": "cw-orch-mock",
+    "mint_gas_internal": null,
+    "mint_gas_external": null,
+    "mint_gas_total": null,
+    "mint_gas_note": "cw721_svg.wasm absent; mint ran on cw-orch Mock and mint_gas is null"
+  },
+  "employed": [
+    "terp-ed25519",
+    "terp-eth",
+    "terp-passkey",
+    "terp-recovery"
+  ],
+  "not_employed": [
+    "terp-zkjwt"
+  ],
+  "fail_closed": [
+    "terp-vsck"
+  ],
+  "rows": [
+    {
+      "authenticator": "terp-ed25519",
+      "primitive": "ed25519_verify",
+      "employment": "signature",
+      "binds_signed_action": true,
+      "authenticate_ok": true,
+      "tamper_rejected": true,
+      "mint_dispatched": true,
+      "auth_gas_internal": 281155111,
+      "auth_gas_external": 2,
+      "auth_gas_total": 281155113,
+      "wasm_sha256": "6aa970e4c84ab6f7f41cb1235eac7924e5b6a716bc40b37c0ebdb31f89d9f3d5",
+      "notes": "signs sign_mode_direct, which is the mint execute JSON"
+    },
+    {
+      "authenticator": "terp-eth",
+      "primitive": "secp256k1_recover_pubkey",
+      "employment": "signature",
+      "binds_signed_action": true,
+      "authenticate_ok": true,
+      "tamper_rejected": true,
+      "mint_dispatched": true,
+      "auth_gas_internal": 449693333,
+      "auth_gas_external": 6,
+      "auth_gas_total": 449693339,
+      "wasm_sha256": "779dc5fe0097f72d1bac07f44486f54025b0ef12f703a3d8a45bae1995e2773d",
+      "notes": "EIP-191 personal_sign over sign_mode_direct (the mint JSON), Anvil account 0"
+    },
+    {
+      "authenticator": "terp-passkey",
+      "primitive": "secp256r1",
+      "employment": "signature",
+      "binds_signed_action": true,
+      "authenticate_ok": true,
+      "tamper_rejected": true,
+      "mint_dispatched": true,
+      "auth_gas_internal": 583951451,
+      "auth_gas_external": 3,
+      "auth_gas_total": 583951454,
+      "wasm_sha256": "da8accefbb6682412f09d6c10123f1098d4227e782f851fb3e5ee18868603d1c",
+      "notes": "ES256 over authenticatorData || SHA-256(clientDataJSON). Challenge is sign_mode_direct. Empty assertion rejected: true."
+    },
+    {
+      "authenticator": "terp-recovery",
+      "primitive": "sha256_rehash",
+      "employment": "hash_attestation",
+      "binds_signed_action": true,
+      "authenticate_ok": true,
+      "tamper_rejected": true,
+      "mint_dispatched": true,
+      "auth_gas_internal": 389881726,
+      "auth_gas_external": 3,
+      "auth_gas_total": 389881729,
+      "wasm_sha256": "182c60e04e580628eb94905b596b8ac81520b6369bb218a7e7d62f7fa7a0c3a9",
+      "notes": "address-only SHA-256 attestation of a challenge that includes sign_mode_direct. No guardian signature."
+    },
+    {
+      "authenticator": "terp-vsck",
+      "primitive": "circuit_not_linked",
+      "employment": "fail_closed_unlinked",
+      "binds_signed_action": false,
+      "authenticate_ok": false,
+      "tamper_rejected": true,
+      "mint_dispatched": false,
+      "auth_gas_internal": 224403176,
+      "auth_gas_external": 29,
+      "auth_gas_total": 224403205,
+      "wasm_sha256": "35a38a5cf3a4f089a911b594de50dd341e2ad39108fdf879910da475dbc6a65d",
+      "notes": "OpenSession is setup and is not included in auth_gas. Stub proofs are rejected. Mint is not dispatched. kind: Other, error: vote-sdk circuit verify not linked: VoteProof"
+    },
+    {
+      "authenticator": "terp-zkjwt",
+      "primitive": "structural_envelope",
+      "employment": "envelope_only",
+      "binds_signed_action": false,
+      "authenticate_ok": true,
+      "tamper_rejected": false,
+      "mint_dispatched": true,
+      "auth_gas_internal": 481331126,
+      "auth_gas_external": 136,
+      "auth_gas_total": 481331262,
+      "wasm_sha256": "0e960a34a0d13e706f5f0e07d6205a30378fd2035bcec8fd2f06ff92aa0258ff",
+      "notes": "default verifier checks the envelope only. Empty proof rejected: true. Omitted msg_bind still authenticates: true. Supplied msg_bind is checked against sign_mode_direct."
+    }
+  ]
+}

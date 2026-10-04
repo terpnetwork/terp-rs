@@ -57,10 +57,7 @@ fn main() -> anyhow::Result<()> {
     suite.passkey.instantiate(
         &terp_passkey::InstantiateMsg {
             owner: Some(admin.to_string()),
-            registration: terp_passkey::PasskeyRegistration {
-                origin: Some("https://app.terp.network".into()),
-                credential_id: Binary::from(b"cred-id-1"),
-            },
+            registration: terp_authenticator_suite::passkey_fixture::passkey_registration(),
         },
         Some(&admin),
         &[],

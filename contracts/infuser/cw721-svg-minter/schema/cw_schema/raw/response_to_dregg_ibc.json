@@ -1,0 +1,34 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_svg_minter_msg_DreggIbcStatus",
+      "type": "struct",
+      "properties": {
+        "channel": {
+          "value": 2
+        },
+        "ibc_only": {
+          "value": 3
+        },
+        "port": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

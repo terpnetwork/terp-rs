@@ -87,13 +87,11 @@
       "polytone:voice": 2,
       "terp-ed25519": 6,
       "terp-eth": 7,
-      "terp-irl": 8,
       "terp-lc:cw_ics08_wasm_crosslink": 76,
       "terp-passkey": 4,
       "terp-recovery": 5,
       "terp-vsck": 11,
-      "terp-zkjwt": 9,
-      "terp-zkposiedon": 10
+      "terp-zkjwt": 9
     },
     "default": {
       "abstract:account-monarchy": "terp1w70c0x7pwa3f49khksewz6k7n4wfwedfrh62rmfkv96d8vrruh6q5jr4cg",
@@ -111,12 +109,10 @@
       "polytone:voice": "terp1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrq64jqpj",
       "terp-ed25519": "terp1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq0ss832",
       "terp-eth": "terp1wn625s4jcmvk0szpl85rj5azkfc6suyvf75q6vrddscjdphtve8sd7sk4l",
-      "terp-irl": "terp1tqwwyth34550lg2437m05mjnjp8w7h5ka7m70jtzpxn4uh2ktsmqjwndv9",
       "terp-passkey": "terp1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqzsxmgf",
       "terp-recovery": "terp1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgs48kpqr",
       "terp-vsck": "terp1fventeva948ue0fzhp6xselr522rnqwger9wg7r0g9f4jemsqh6s5mkmal",
-      "terp-zkjwt": "terp1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jses3yvm",
-      "terp-zkposiedon": "terp1999u8suptza3rtxwk7lspve02m406xe7l622erg3np3aq05gawxsyqtyg9"
+      "terp-zkjwt": "terp1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jses3yvm"
     }
   },
   "akash-1": {

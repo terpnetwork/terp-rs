@@ -19,6 +19,8 @@ pub mod bridge;
 pub mod ict;
 pub mod interfaces;
 pub mod orch;
+#[cfg(feature = "stack")]
+pub mod stack;
 pub mod suite;
 #[cfg(feature = "headstash")]
 pub mod headstash;
@@ -33,6 +35,15 @@ pub use bridge::{TerpBridgeDeployData, TerpBridgeSuite};
 
 #[cfg(feature = "auth")]
 pub use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
+
+#[cfg(feature = "stack")]
+pub use stack::{TerpAccountSuite, TerpArtifactStack, TerpLightClientSuite};
+
+#[cfg(feature = "billboards")]
+pub use terp_account_scripts as billboards;
+
+#[cfg(feature = "infuser")]
+pub use cw_infuser_scripts as infuser;
 
 #[cfg(feature = "headstash")]
 pub use headstash::{run_headstash_claim, write_headstash_circuit, HeadstashClaimReport};

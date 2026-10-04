@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "config"
+  ],
+  "properties": {
+    "config": {
+      "$ref": "#/definitions/RecoveryConfig"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "GuardianConfig": {
+      "description": "One registered guardian.",
+      "type": "object",
+      "required": [
+        "address"
+      ],
+      "properties": {
+        "address": {
+          "description": "Bech32 account address (canonical guardian id).",
+          "type": "string"
+        },
+        "commitment": {
+          "description": "Optional commitment `rehash(addr||salt||pk)` for stronger registration.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pubkey": {
+          "description": "Optional 32-byte ed25519 public key for signature break-glass.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecoveryConfig": {
+      "description": "On-chain recovery policy.",
+      "type": "object",
+      "required": [
+        "allow_address_only_approvals",
+        "domain",
+        "guardians",
+        "hash_alg",
+        "rehash_rounds",
+        "threshold"
+      ],
+      "properties": {
+        "allow_address_only_approvals": {
+          "description": "If true, guardians without pubkey may approve via digest attestation.",
+          "type": "boolean"
+        },
+        "domain": {
+          "description": "Domain tag (default `terp-recovery/break-glass/v1`).",
+          "type": "string"
+        },
+        "guardians": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuardianConfig"
+          }
+        },
+        "hash_alg": {
+          "description": "Digest algorithm used for break-glass challenge rehashing.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RecoveryHashAlg"
+            }
+          ]
+        },
+        "rehash_rounds": {
+          "description": "Sequential rehash rounds (1..=64). Default should be 1 unless matching an external scheme.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "threshold": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RecoveryHashAlg": {
+      "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+      "oneOf": [
+        {
+          "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+          "type": "string",
+          "enum": [
+            "sha256"
+          ]
+        },
+        {
+          "description": "SHA-512.",
+          "type": "string",
+          "enum": [
+            "sha512"
+          ]
+        },
+        {
+          "description": "Keccak-256 (Ethereum-family).",
+          "type": "string",
+          "enum": [
+            "keccak256"
+          ]
+        },
+        {
+          "description": "SHA3-256 (FIPS 202, not Keccak).",
+          "type": "string",
+          "enum": [
+            "sha3_256"
+          ]
+        },
+        {
+          "description": "BLAKE2s-256.",
+          "type": "string",
+          "enum": [
+            "blake2s256"
+          ]
+        },
+        {
+          "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+          "type": "string",
+          "enum": [
+            "blake2b256"
+          ]
+        },
+        {
+          "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+          "type": "string",
+          "enum": [
+            "sha256d"
+          ]
+        },
+        {
+          "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+          "type": "string",
+          "enum": [
+            "poseidon_pallas"
+          ]
+        }
+      ]
+    }
+  }
+}

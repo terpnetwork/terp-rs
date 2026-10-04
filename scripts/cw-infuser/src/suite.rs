@@ -1,0 +1,185 @@
+use cosmwasm_std::Binary;
+use cw_infuser::interface::CwInfuser;
+use cw_orch::{anyhow, prelude::*};
+
+use cw721_svg::Cw721SvgContractSuite;
+use cw_svg_minter::interface::Cw721SvgMinter;
+use cw_svg_minter::msg::ExecuteMsgFns as _;
+use cw_svg_minter::InstantiateMsg as SvgMinterInitMsg;
+#[cfg(feature = "shitstrap")]
+use shit_scripts::CwShitstrapSuite;
+use whitelist_mtree::interface::WhitelistMerkleTree;
+
+#[derive(Clone, Debug)]
+pub struct CwSvgSuiteDeployData { 
+    pub svg: Vec<(
+        cw721_svg::InstantiateMsg,
+        Option<whitelist_mtree::msg::InstantiateMsg>,
+    )>,
+    pub infuse: Option<cw_infuser::msg::InstantiateMsg>,
+    #[cfg(feature = "shitstrap")]
+    pub shit: Option<shit_scripts::CwShitstrapSuiteDeployData>,
+    pub admin: Option<Addr>,
+    pub infuse_coins: Vec<Coin>,
+}
+
+pub struct CwSvgSuite<Chain> { // CwPermissionlessArtSuite
+    pub chain: Chain,
+    pub infuser: CwInfuser<Chain>,
+    pub cwsvg: Cw721SvgContractSuite<Chain>,
+    pub minter: Cw721SvgMinter<Chain>,
+    #[cfg(feature = "shitstrap")]
+    pub shit: CwShitstrapSuite<Chain>,
+    pub mtree: WhitelistMerkleTree<Chain>,
+
+    /// svg collections saved
+    pub svgs: Vec<String>,
+}
+
+impl<Chain: CwEnv> CwSvgSuite<Chain> {
+    pub fn new(chain: Chain) -> CwSvgSuite<Chain> {
+        CwSvgSuite::<Chain> {
+            chain: chain.clone(),
+            infuser: CwInfuser::new(chain.clone()),
+            cwsvg: Cw721SvgContractSuite::new(chain.clone()),
+            minter: Cw721SvgMinter::new(chain.clone()),
+            #[cfg(feature = "shitstrap")]
+            shit: CwShitstrapSuite::new(chain.clone()),
+            mtree: WhitelistMerkleTree::new(chain.clone()),
+            svgs: Vec::new(),
+        }
+    }
+    pub fn upload(&self) -> Result<(), CwOrchError> {
+        self.cwsvg.upload_if_needed()?;
+        self.minter.upload_if_needed()?;
+        self.mtree.upload_if_needed()?;
+        self.infuser.upload_if_needed()?;
+        #[cfg(feature = "shitstrap")]
+        self.shit.upload_if_needed()?;
+        Ok(())
+    }
+}
+// Terp Accounts `Deploy` Suite
+impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CwSvgSuite<Chain> {
+    type Error = CwOrchError;
+    type DeployData = Option<CwSvgSuiteDeployData>;
+
+    fn store_on(chain: Chain) -> Result<Self, Self::Error> {
+        let suite = CwSvgSuite::new(chain.clone());
+        suite.upload()?;
+        Ok(suite)
+    }
+
+    fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
+        let mut contracts: Vec<Box<&mut dyn ContractInstance<Chain>>> = Vec::new();
+        #[cfg(feature = "shitstrap")]
+        contracts.extend(self.shit.get_contracts_mut());
+        contracts.push(Box::new(&mut self.cwsvg));
+        contracts.push(Box::new(&mut self.minter));
+        contracts.push(Box::new(&mut self.infuser));
+        contracts.push(Box::new(&mut self.mtree));
+        contracts
+    }
+
+    fn load_from(_chain: Chain) -> Result<Self, Self::Error> {
+        todo!()
+    }
+
+    /// upload, and if DeployData is provided, instantiate
+    fn deploy_on(chain: Chain, data: Self::DeployData) -> Result<Self, Self::Error> {
+        let mut suite = CwSvgSuite::store_on(chain.clone())?;
+        // upload and initalize
+        if let Some(init) = data {
+            let admin = init.admin.as_ref();
+            let owner = Some(chain.sender_addr().to_string());
+            suite.minter.instantiate(
+                &SvgMinterInitMsg {
+                    owner,
+                    svg_code_id: suite.cwsvg.code_id()?,
+                    dregg_ibc_only: false,
+                    runtime_minters: vec![],
+                },
+                admin,
+                &[],
+            )?;
+            if !&init.svg.is_empty() {
+                for (mut i, mt) in init.svg {
+                    if let Some(mtree) = mt {
+                        // init merkle tree first, add to initmsg
+                        let mtree_addr = suite
+                            .mtree
+                            .instantiate(&mtree, admin, &[])?
+                            .instantiated_contract_address()?;
+                        // add whitelist
+                        i.collection_info_extension.whitelist = Some(mtree_addr.to_string());
+                    }
+                    let svg = suite
+                        .minter
+                        .create_svg_collection(i.clone(), "cwsvg-colllection")?
+                        .event_attr_value("wasm", "contract")?;
+                    suite.svgs.push(svg);
+                }
+                suite
+                    .cwsvg
+                    .set_address(&Addr::unchecked(suite.svgs.last().unwrap()));
+            }
+            if let Some(i) = &init.infuse {
+                suite.infuser.instantiate(i, admin, &[])?;
+            }
+        }
+
+        Ok(suite)
+    }
+}
+
+pub mod whitelist {
+    use super::*;
+    /// Load a whitelist-merkletree InstantiateMsg from a JSON file generated by gen_merkle.
+    pub fn load_terp_warrior_mtree(
+        path: &str,
+    ) -> anyhow::Result<whitelist_mtree::msg::InstantiateMsg> {
+        let contents = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("failed to read {}: {}", path, e))?;
+
+        let msg: whitelist_mtree::msg::InstantiateMsg =
+            serde_json::from_str(&contents).map_err(|e| {
+                anyhow::anyhow!("failed to deserialize InstantiateMsg from {}: {}", path, e)
+            })?;
+
+        Ok(msg)
+    }
+}
+pub mod svg {
+    use cw721_svg::InstantiateMsg;
+
+    use super::*;
+    /// Load a cw721-svg InstantiateMsg from a JSON file.
+    ///
+    /// The `seed` field can be either:
+    ///   - A base64 string (standard Binary encoding)
+    ///   - A plain UTF-8 string (will be blake3-hashed into 32 bytes)
+    pub fn load_svg_init_msg(path: &str) -> anyhow::Result<InstantiateMsg> {
+        let contents = std::fs::read_to_string(path)
+            .map_err(|e| anyhow::anyhow!("failed to read {}: {}", path, e))?;
+
+        let mut value: serde_json::Value = serde_json::from_str(&contents)
+            .map_err(|e| anyhow::anyhow!("failed to parse JSON from {}: {}", path, e))?;
+
+        // If `seed` is a string but not valid base64, hash it and replace with base64
+        if let Some(seed_val) = value.get("seed") {
+            if let Some(seed_str) = seed_val.as_str() {
+                if Binary::from_base64(seed_str).is_err() {
+                    let hashed = blake3::hash(seed_str.as_bytes());
+                    let b64 = Binary::from(hashed.as_bytes().as_slice()).to_base64();
+                    value["seed"] = serde_json::Value::String(b64);
+                }
+            }
+        }
+
+        let msg: InstantiateMsg = serde_json::from_value(value).map_err(|e| {
+            anyhow::anyhow!("failed to deserialize InstantiateMsg from {}: {}", path, e)
+        })?;
+
+        Ok(msg)
+    }
+}

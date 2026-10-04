@@ -17,6 +17,9 @@ crate-type = ["cdylib", "rlib"]
 default = []
 library = []
 
+[dev-dependencies]
+p256 = { version = "0.13", features = ["ecdsa"] }
+
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["std"] }
 cosmwasm-schema = { workspace = true }
@@ -27,3 +30,4 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 terp-auth = { workspace = true }
 terp-account = { workspace = true }
+sha2 = { workspace = true }

@@ -50,8 +50,8 @@ Concurrency: each workflow uses `cancel-in-progress: true` per ref.
 | **terp-scripts-offline** | `just scripts-ibc-preflight offline` → `scripts-ibc-offline` (`cargo test -p terp-scripts --lib --test ibc_unit --test ibc_golden` + `terp-ibc rebuild-from-public`) → `scripts-ibc-validate` + jq assert on RunReport | No | 45m |
 | **internal-libs** | Sequential: `cargo test -p {terp-auth,terp-account,crosslink-light-client,cw721-nips,terp-rs} --lib` | No | 45m |
 | **core-gate** | Echo only (`needs` both) | No | default |
-| **contracts-core** | Sequential lib tests: `terp-ed25519`, `terp-passkey`, `terp-vsck`, `terp-eth`, `terp-irl`, `terp-recovery`, `terp-authenticator-suite`, `cw-ics08-wasm-crosslink`; then sequential wasm `cargo check` subset | No | 60m |
-| **contracts-heavy** | Sequential: `terp-zkjwt`, `terp-zkposiedon`, `terp-recovery-poseidon-demo` (label/dispatch only) | No | 90m |
+| **contracts-core** | Sequential lib tests: `terp-ed25519`, `terp-passkey`, `terp-vsck`, `terp-eth`, `terp-bls`, `terp-recovery`, `terp-authenticator-suite`, `cw-ics08-wasm-crosslink`; then sequential wasm `cargo check` subset | No | 60m |
+| **contracts-heavy** | Sequential: `terp-zkjwt` (label/dispatch only) | No | 90m |
 | **scripts-integration** | `cargo test -p terp-scripts --lib --tests` (**non-ignored only**) | No | 45m |
 | **workspace-check** | `cargo check --workspace --tests` | No | 90m |
 | **docker-harness** | `just scripts-ibc-harness` → `cargo test -p terp-scripts --test ibc_multihop_harness -- --ignored` | **Yes** | 120m |

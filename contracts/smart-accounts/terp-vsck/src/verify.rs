@@ -162,8 +162,9 @@ pub mod vote_sdk_mirror {
     }
 
     fn fail_closed(circuit: VsckCircuit) -> Result<(), ContractError> {
-        let _ = circuit;
-        // Feature flag reserves the Halo2 link; neither build accepts stubs.
+        // `vote-circuits` does not link shielded-vote-circuits. A build with
+        // that feature still rejects stub proofs.
+        let _ = cfg!(feature = "vote-circuits");
         Err(ContractError::CircuitNotLinked {
             circuit: format!("{circuit:?}"),
         })

@@ -1,0 +1,25 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw721_msg_TokensResponse",
+      "type": "struct",
+      "properties": {
+        "tokens": {
+          "description": "Contains all token_ids in lexicographical ordering\nIf there are more than `limit`, use `start_after` in future queries\nto achieve pagination.",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

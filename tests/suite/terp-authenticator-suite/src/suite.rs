@@ -5,19 +5,17 @@ use cw_orch::prelude::*;
 
 use crate::interfaces::ed25519::TerpEd25519;
 use crate::interfaces::eth::TerpEth;
-use crate::interfaces::irl::TerpIrl;
 use crate::interfaces::passkey::TerpPasskey;
 use crate::interfaces::recovery::TerpRecovery;
 use crate::interfaces::vsck::TerpVsck;
 use crate::interfaces::zk_jwt::TerpZkJwt;
-use crate::interfaces::zk_poseidon::TerpZkPoseidon;
+use crate::passkey_fixture::passkey_registration;
 
 #[derive(Clone, Debug)]
 pub struct TerpAuthenticatorDeployData {
     pub admin: Addr,
     pub dao: Option<Addr>,
     /// Optional recovery break-glass hash algorithm (default: Sha256).
-    /// Set to `Some(RecoveryHashAlg::PoseidonPallas)` to demo Poseidon digests.
     pub recovery_hash_alg: Option<terp_recovery::RecoveryHashAlg>,
     /// When true, zk-jwt Authenticate requires a prior RegisterClaim for the account.
     /// Default `false` keeps structural suite tests free of claim linking.
@@ -47,9 +45,7 @@ pub struct TerpAuthenticatorSuite<Chain: CwEnv> {
     pub recovery: TerpRecovery<Chain>,
     pub ed25519: TerpEd25519<Chain>,
     pub eth: TerpEth<Chain>,
-    pub irl: TerpIrl<Chain>,
     pub zk_jwt: TerpZkJwt<Chain>,
-    pub zk_poseidon: TerpZkPoseidon<Chain>,
     pub vsck: TerpVsck<Chain>,
 }
 
@@ -60,9 +56,7 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
             recovery: TerpRecovery::new(chain.clone()),
             ed25519: TerpEd25519::new(chain.clone()),
             eth: TerpEth::new(chain.clone()),
-            irl: TerpIrl::new(chain.clone()),
             zk_jwt: TerpZkJwt::new(chain.clone()),
-            zk_poseidon: TerpZkPoseidon::new(chain.clone()),
             vsck: TerpVsck::new(chain),
         }
     }
@@ -81,9 +75,7 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
         self.recovery.upload()?;
         self.ed25519.upload()?;
         self.eth.upload()?;
-        self.irl.upload()?;
         self.zk_jwt.upload()?;
-        self.zk_poseidon.upload()?;
         self.vsck.upload()?;
         Ok(())
     }
@@ -95,9 +87,7 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
         self.recovery.upload_if_needed()?;
         self.ed25519.upload_if_needed()?;
         self.eth.upload_if_needed()?;
-        self.irl.upload_if_needed()?;
         self.zk_jwt.upload_if_needed()?;
-        self.zk_poseidon.upload_if_needed()?;
         self.vsck.upload_if_needed()?;
         Ok(())
     }
@@ -109,9 +99,7 @@ impl<Chain: CwEnv> TerpAuthenticatorSuite<Chain> {
             ("terp-recovery", self.recovery.code_id().ok()),
             ("terp-ed25519", self.ed25519.code_id().ok()),
             ("terp-eth", self.eth.code_id().ok()),
-            ("terp-irl", self.irl.code_id().ok()),
             ("terp-zkjwt", self.zk_jwt.code_id().ok()),
-            ("terp-zkposiedon", self.zk_poseidon.code_id().ok()),
             ("terp-vsck", self.vsck.code_id().ok()),
         ]
     }
@@ -140,9 +128,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
             Box::new(&mut self.recovery),
             Box::new(&mut self.ed25519),
             Box::new(&mut self.eth),
-            Box::new(&mut self.irl),
             Box::new(&mut self.zk_jwt),
-            Box::new(&mut self.zk_poseidon),
             Box::new(&mut self.vsck),
         ]
     }
@@ -161,10 +147,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
         suite.passkey.instantiate(
             &terp_passkey::InstantiateMsg {
                 owner: Some(admin.to_string()),
-                registration: terp_passkey::PasskeyRegistration {
-                    origin: Some("https://app.terp.network".into()),
-                    credential_id: Binary::from(b"cred-id-1"),
-                },
+                registration: passkey_registration(),
             },
             Some(admin),
             &[],
@@ -209,14 +192,6 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
             &[],
         )?;
 
-        suite.irl.instantiate(
-            &terp_irl::InstantiateMsg {
-                epoch_root: Binary::from(b"epoch-root-v1"),
-            },
-            Some(admin),
-            &[],
-        )?;
-
         suite.zk_jwt.instantiate(
             &terp_zkjwt::InstantiateMsg {
                 admin: Some(admin.to_string()),
@@ -231,12 +206,6 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpAuthenticatorSuite<C
                 }],
                 require_registered_claim: data.require_registered_claim,
             },
-            Some(admin),
-            &[],
-        )?;
-
-        suite.zk_poseidon.instantiate(
-            &terp_zkposiedon::InstantiateMsg {},
             Some(admin),
             &[],
         )?;

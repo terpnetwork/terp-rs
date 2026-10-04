@@ -1,0 +1,28 @@
+{
+  "name": "@terpnetwork/ts-names",
+  "version": "0.1.0",
+  "description": "Terp Network Accounts CosmWasm Typescript Types",
+  "main": "src/main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "codegen": "tsx codegen.ts"
+  },
+  "author": "Hard-nett",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@cosmjs/amino": "0.29.4",
+    "@cosmjs/cosmwasm-stargate": "^0.29.4",
+    "@cosmjs/encoding": "0.29.4",
+    "@cosmjs/proto-signing": "0.29.4",
+    "@cosmjs/stargate": "0.29.4",
+    "@cosmjs/tendermint-rpc": "^0.29.4",
+    "@cosmwasm/ts-codegen": "^0.24.0",
+    "cosmjs-types": "^0.5.2",
+    "cosmwasm": "1.1.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.3",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }}

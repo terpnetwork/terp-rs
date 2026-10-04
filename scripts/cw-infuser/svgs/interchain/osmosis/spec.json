@@ -1,0 +1,196 @@
+{
+  "version": "1",
+  "collection": "cosmic-eye",
+  "description": "Purple cosmic eye/planet with orbital ring, antenna, and decorative bubbles. Color scheme spans deep purple through lavender to cyan highlights, with blue-to-pink hemisphere gradients. Pulse animations on body, orb, orbital band, and bubble decorations.",
+
+  "palette_groups": [
+    {
+      "id": "core",
+      "note": "Core purple palette — body fill and radial gradient endpoints. Deep purple through lavender to near-black.",
+      "anchor": "color-body",
+      "members": ["color-body", "color-mauve", "color-core-hi", "color-core-mid", "color-core-lo"],
+      "entropy": "low",
+      "ranges": [
+        { "r_min": 70, "r_max": 130, "g_min": 20, "g_max": 70, "b_min": 110, "b_max": 180 },
+        { "r_min": 140, "r_max": 200, "g_min": 100, "g_max": 160, "b_min": 140, "b_max": 210 }
+      ]
+    },
+    {
+      "id": "hemisphere",
+      "note": "Bottom hemisphere left-to-right gradient — blue to pink/magenta spectrum.",
+      "anchor": "color-hemi-left",
+      "members": ["color-hemi-left", "color-hemi-right"],
+      "entropy": "medium",
+      "ranges": [
+        { "r_min": 30, "r_max": 80, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 },
+        { "r_min": 170, "r_max": 230, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 }
+      ]
+    },
+    {
+      "id": "shadow",
+      "note": "Dark shadow hemisphere — deep navy to mid purple.",
+      "anchor": "color-shadow-left",
+      "members": ["color-shadow-left", "color-shadow-right"],
+      "entropy": "low",
+      "ranges": [
+        { "r_min": 25, "r_max": 60, "g_min": 30, "g_max": 65, "b_min": 100, "b_max": 150 },
+        { "r_min": 80, "r_max": 140, "g_min": 40, "g_max": 90, "b_min": 120, "b_max": 180 }
+      ]
+    },
+    {
+      "id": "band",
+      "note": "Orbital band gradient — dark indigo to rich purple.",
+      "anchor": "color-band-left",
+      "members": ["color-band-left", "color-band-right"],
+      "entropy": "medium",
+      "ranges": [
+        { "r_min": 25, "r_max": 65, "g_min": 30, "g_max": 65, "b_min": 100, "b_max": 170 },
+        { "r_min": 120, "r_max": 190, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 }
+      ]
+    },
+    {
+      "id": "highlight",
+      "note": "Cyan highlight color for light-side overlay.",
+      "anchor": "color-cyan",
+      "members": ["color-cyan"],
+      "entropy": "medium",
+      "ranges": [
+        { "r_min": 100, "r_max": 180, "g_min": 190, "g_max": 240, "b_min": 200, "b_max": 250 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "body-breath",
+      "note": "Slow breathing pulse on the main body and shell — subtle opacity oscillation.",
+      "members": ["pulse-body"],
+      "min": "2.0",
+      "max": "5.0",
+      "precision": 2
+    },
+    {
+      "id": "orb-breath",
+      "note": "Slow scale pulse on the main sphere — very subtle grow/shrink.",
+      "members": ["pulse-orb"],
+      "min": "3.0",
+      "max": "7.0",
+      "precision": 2
+    },
+    {
+      "id": "bubble-breath",
+      "note": "Bubble opacity pulsation — gentle twinkling of decorative bubbles.",
+      "members": ["pulse-bubbles"],
+      "min": "1.5",
+      "max": "4.0",
+      "precision": 2
+    },
+    {
+      "id": "band-shimmer",
+      "note": "Orbital band shimmer — slow opacity variation on the equatorial ring.",
+      "members": ["pulse-band"],
+      "min": "2.5",
+      "max": "6.0",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-body",
+      "kind": { "rgb_styled": [
+        { "r_min": 70, "r_max": 130, "g_min": 20, "g_max": 70, "b_min": 110, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-mauve",
+      "kind": { "rgb_styled": [
+        { "r_min": 140, "r_max": 200, "g_min": 100, "g_max": 160, "b_min": 140, "b_max": 210 }
+      ]}
+    },
+    {
+      "name": "color-core-hi",
+      "kind": { "rgb_styled": [
+        { "r_min": 220, "r_max": 255, "g_min": 210, "g_max": 250, "b_min": 220, "b_max": 250 }
+      ]}
+    },
+    {
+      "name": "color-core-mid",
+      "kind": { "rgb_styled": [
+        { "r_min": 130, "r_max": 180, "g_min": 100, "g_max": 160, "b_min": 160, "b_max": 210 }
+      ]}
+    },
+    {
+      "name": "color-core-lo",
+      "kind": { "rgb_styled": [
+        { "r_min": 10, "r_max": 40, "g_min": 8, "g_max": 30, "b_min": 30, "b_max": 60 }
+      ]}
+    },
+    {
+      "name": "color-hemi-left",
+      "kind": { "rgb_styled": [
+        { "r_min": 30, "r_max": 80, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-hemi-right",
+      "kind": { "rgb_styled": [
+        { "r_min": 170, "r_max": 230, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-shadow-left",
+      "kind": { "rgb_styled": [
+        { "r_min": 25, "r_max": 60, "g_min": 30, "g_max": 65, "b_min": 100, "b_max": 150 }
+      ]}
+    },
+    {
+      "name": "color-shadow-right",
+      "kind": { "rgb_styled": [
+        { "r_min": 80, "r_max": 140, "g_min": 40, "g_max": 90, "b_min": 120, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-band-left",
+      "kind": { "rgb_styled": [
+        { "r_min": 25, "r_max": 65, "g_min": 30, "g_max": 65, "b_min": 100, "b_max": 170 }
+      ]}
+    },
+    {
+      "name": "color-band-right",
+      "kind": { "rgb_styled": [
+        { "r_min": 120, "r_max": 190, "g_min": 40, "g_max": 100, "b_min": 120, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-cyan",
+      "kind": { "rgb_styled": [
+        { "r_min": 100, "r_max": 180, "g_min": 190, "g_max": 240, "b_min": 200, "b_max": 250 }
+      ]}
+    },
+    {
+      "name": "opacity-bubbles",
+      "kind": { "range": { "min": "0.10", "max": "0.35", "precision": 2 } }
+    },
+    {
+      "name": "opacity-highlights",
+      "kind": { "range": { "min": "0.20", "max": "0.45", "precision": 2 } }
+    },
+    {
+      "name": "pulse-body",
+      "kind": { "range": { "min": "2.0", "max": "5.0", "precision": 2 } }
+    },
+    {
+      "name": "pulse-orb",
+      "kind": { "range": { "min": "3.0", "max": "7.0", "precision": 2 } }
+    },
+    {
+      "name": "pulse-bubbles",
+      "kind": { "range": { "min": "1.5", "max": "4.0", "precision": 2 } }
+    },
+    {
+      "name": "pulse-band",
+      "kind": { "range": { "min": "2.5", "max": "6.0", "precision": 2 } }
+    }
+  ]
+}

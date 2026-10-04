@@ -1,0 +1,217 @@
+{
+  "name": "Cosmos SVG",
+  "symbol": "COSMOS",
+  "collection_info_extension": {
+    "seed": "pW5XXOnIVTit4dd4OG5uBiNHnFhghHafK7z2SVLLVgs=",
+    "svg_template": "<svg xmlns=\"http://www.w3.org/2000/svg\" id=\"Layer_1\" data-name=\"Layer 1\" viewBox=\"0 0 2500 2500\" width=\"2500\" height=\"2500\" fill=\"none\">\n  <defs>\n\n    \n    <linearGradient id=\"orbit-gradient\" x1=\"800\" y1=\"800\" x2=\"1700\" y2=\"1700\" gradientUnits=\"userSpaceOnUse\">\n      <stop offset=\"0%\"   stop-color=\"${color-orbit-base}\"/>\n      <stop offset=\"100%\" stop-color=\"${color-orbit-highlight}\"/>\n    </linearGradient>\n\n  </defs>\n\n  \n  <circle cx=\"1250\" cy=\"1250\" r=\"1250\" fill=\"${color-bg-outer}\"/>\n\n  \n  <circle cx=\"1250\" cy=\"1250\" r=\"725.31\" fill=\"${color-bg-inner}\"/>\n\n  \n  <path d=\"M1252.57,159.47c-134.93,0-244.34,489.4-244.34,1093.11s109.41,1093.11,244.34,1093.11,244.34-489.4,244.34-1093.11S1387.5,159.47,1252.57,159.47ZM1269.44,2284c-15.43,20.58-30.86,5.14-30.86,5.14-62.14-72-93.21-205.76-93.21-205.76-108.69-349.79-82.82-1100.82-82.82-1100.82,51.08-596.24,144-737.09,175.62-768.36a19.29,19.29,0,0,1,24.74-2c45.88,32.51,84.36,168.47,84.36,168.47,113.63,421.81,103.34,817.9,103.34,817.9,10.29,344.65-56.94,730.45-56.94,730.45C1341.92,2222.22,1269.44,2284,1269.44,2284Z\" fill=\"url(#orbit-gradient)\"/>\n  <path d=\"M2200.72,708.59c-67.18-117.08-546.09,31.58-1070,332s-893.47,638.89-826.34,755.92,546.09-31.58,1070-332,893.47-638.89,826.34-755.92h0ZM366.36,1780.45c-25.72-3.24-19.91-24.38-19.91-24.38C378,1666.36,478.4,1572.84,478.4,1572.84c249.43-268.36,913.79-619.65,913.79-619.65,542.54-252.42,711.06-241.77,753.81-230a19.29,19.29,0,0,1,14,20.58c-5.14,56-104.17,157-104.17,157C1746.71,1209.36,1398,1397.58,1398,1397.58c-293.83,180.5-661.93,314.09-661.93,314.09-280.09,100.93-369.7,68.78-369.7,68.78h0Z\" fill=\"url(#orbit-gradient)\"/>\n  <path d=\"M2198.35,1800.41c67.7-116.77-300.93-456.79-823-759.47S374.43,587.76,306.79,704.73s300.93,456.79,823.3,759.47S2130.71,1917.39,2198.35,1800.41ZM351.65,749.85c-10-23.71,11.11-29.42,11.11-29.42C456.22,702.78,587.5,743,587.5,743c357.15,81.33,994,480.25,994,480.25,490.33,343.11,565.53,494.24,576.8,537.14a19.29,19.29,0,0,1-10.7,22.43c-51.13,23.41-188.07-11.47-188.07-11.47-422.07-113.17-759.62-320.52-759.62-320.52-303.29-163.58-603.19-415.28-603.19-415.28-227.88-191.87-245-285.44-245-285.44Z\" fill=\"url(#orbit-gradient)\"/>\n\n  \n  <circle cx=\"1250\" cy=\"1250\" r=\"128.6\" fill=\"${color-nucleus}\"/>\n\n  \n\n  \n  <ellipse rx=\"74.59\" ry=\"77.16\" fill=\"${color-electron}\">\n    <animateMotion\n      dur=\"${drift-electron-a}s\"\n      repeatCount=\"indefinite\"\n      rotate=\"none\">\n      <mpath xlink:href=\"#orbit-path-a\"/>\n    </animateMotion>\n  </ellipse>\n\n  \n  <ellipse rx=\"74.59\" ry=\"77.16\" fill=\"${color-electron}\">\n    <animateMotion\n      dur=\"${drift-electron-b}s\"\n      repeatCount=\"indefinite\"\n      rotate=\"none\">\n      <mpath xlink:href=\"#orbit-path-b\"/>\n    </animateMotion>\n  </ellipse>\n\n  \n  <ellipse rx=\"74.59\" ry=\"77.16\" fill=\"${color-electron}\">\n    <animateMotion\n      dur=\"${drift-electron-c}s\"\n      repeatCount=\"indefinite\"\n      rotate=\"none\">\n      <mpath xlink:href=\"#orbit-path-c\"/>\n    </animateMotion>\n  </ellipse>\n\n  \n  <path id=\"orbit-path-a\" display=\"none\"\n    d=\"M 1770.51,734.62\n       A 1093.11 244.34 150 1 1 729.49,1765.38\n       A 1093.11 244.34 150 1 1 1770.51,734.62 Z\"/>\n\n  <path id=\"orbit-path-b\" display=\"none\"\n    d=\"M 530.13,1045.37\n       A 1093.11 244.34 30 1 1 1969.87,1454.63\n       A 1093.11 244.34 30 1 1 530.13,1045.37 Z\"/>\n\n  <path id=\"orbit-path-c\" display=\"none\"\n    d=\"M 1066.44,1971.45\n       A 1093.11 244.34 90 1 1 1433.56,528.55\n       A 1093.11 244.34 90 1 1 1066.44,1971.45 Z\"/>\n\n</svg>",
+    "variables": [
+      {
+        "name": "color-bg-outer",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 25,
+              "r_max": 55,
+              "g_min": 25,
+              "g_max": 55,
+              "b_min": 65,
+              "b_max": 90
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-bg-inner",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 20,
+              "r_max": 45,
+              "g_min": 22,
+              "g_max": 48,
+              "b_min": 50,
+              "b_max": 75
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-orbit-base",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 95,
+              "r_max": 135,
+              "g_min": 105,
+              "g_max": 145,
+              "b_min": 135,
+              "b_max": 175
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-orbit-highlight",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 115,
+              "r_max": 165,
+              "g_min": 125,
+              "g_max": 175,
+              "b_min": 165,
+              "b_max": 210
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-nucleus",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 175,
+              "r_max": 215,
+              "g_min": 180,
+              "g_max": 220,
+              "b_min": 195,
+              "b_max": 235
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-electron",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 180,
+              "r_max": 230,
+              "g_min": 185,
+              "g_max": 235,
+              "b_min": 200,
+              "b_max": 250
+            }
+          ]
+        }
+      },
+      {
+        "name": "drift-electron-a",
+        "kind": {
+          "range": {
+            "min": "14.0",
+            "max": "38.0",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "drift-electron-b",
+        "kind": {
+          "range": {
+            "min": "19.0",
+            "max": "45.0",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "drift-electron-c",
+        "kind": {
+          "range": {
+            "min": "12.0",
+            "max": "32.0",
+            "precision": 1
+          }
+        }
+      }
+    ],
+    "template_slots": [
+      {
+        "start": 300,
+        "end": 319,
+        "var_idx": 2
+      },
+      {
+        "start": 361,
+        "end": 385,
+        "var_idx": 3
+      },
+      {
+        "start": 471,
+        "end": 488,
+        "var_idx": 0
+      },
+      {
+        "start": 543,
+        "end": 560,
+        "var_idx": 1
+      },
+      {
+        "start": 2213,
+        "end": 2229,
+        "var_idx": 4
+      },
+      {
+        "start": 2280,
+        "end": 2297,
+        "var_idx": 5
+      },
+      {
+        "start": 2330,
+        "end": 2349,
+        "var_idx": 6
+      },
+      {
+        "start": 2523,
+        "end": 2540,
+        "var_idx": 5
+      },
+      {
+        "start": 2573,
+        "end": 2592,
+        "var_idx": 7
+      },
+      {
+        "start": 2766,
+        "end": 2783,
+        "var_idx": 5
+      },
+      {
+        "start": 2816,
+        "end": 2835,
+        "var_idx": 8
+      }
+    ],
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null
+  },
+  "minter": null,
+  "creator": null,
+  "withdraw_address": null
+}

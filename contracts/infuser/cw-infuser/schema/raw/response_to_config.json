@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "description": "map of infusion",
+  "type": "object",
+  "required": [
+    "code_hash",
+    "code_id",
+    "contract_owner",
+    "latest_infusion_id",
+    "max_bundles",
+    "max_infusions",
+    "max_per_bundle",
+    "min_per_bundle",
+    "owner_fee"
+  ],
+  "properties": {
+    "code_hash": {
+      "description": "code hash of cw721. used for instantitate2 during infusion creation.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/HexBinary"
+        }
+      ]
+    },
+    "code_id": {
+      "description": "cw721-base code_id",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "contract_owner": {
+      "$ref": "#/definitions/Addr"
+    },
+    "latest_infusion_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_bundles": {
+      "description": "maximum bundles allowed per infusion",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_infusions": {
+      "description": "Maximum unique infusion that can be created at once. Defaults to 2",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_per_bundle": {
+      "description": "Contract global param enforcing maximum nfts bundles can require.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_creation_fee": {
+      "description": "Minimum fee that is required for creating an infusion.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Coin"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "min_infusion_fee": {
+      "description": "Minimum fee that is required to be set when new infusions are being created",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Coin"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "min_per_bundle": {
+      "description": "Contract global param enforcing minimum nfts each collection in an infusion must require to burn. hard coded to 1.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "owner_fee": {
+      "description": "Fee required to contribute to randomness % Fee from any infusion fee set to go to contract owner. 10 == 10% , 71 == 71%",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Addr": {
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "string"
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}

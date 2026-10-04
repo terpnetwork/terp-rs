@@ -11,20 +11,15 @@
 //! | recovery      | Y           | Y             | Y (Sha256 BG)| Y     | Y                | missing params; wrong hash_alg; empty; non-guardian; threshold 2/3; rehash_rounds |
 //! | ed25519       | Y           | Y             | Y golden+batch| Y    | Y                | missing/wrong params; short sig; wrong msg; wrong key |
 //! | eth           | Y           | Y             | Y golden personal_sign| Y | Y          | missing params; bad sig len; wrong signer; wrong msg |
-//! | irl           | Y           | Y             | Y            | Y     | Y                | missing params; wrong epoch; empty witness |
 //! | zk_jwt        | Y           | Y             | Y            | Y     | Y                | missing params; empty proof; wrong issuer; claim mismatch; msg_bind; nullifier replay |
-//! | zk_poseidon   | Y (S)       | Y (S)         | Y (S)        | Y (S) | Y (S)            | accept-all scaffold — no policy negatives |
 //! | vsck          | Y           | Y             | Y all roles  | Y     | Y                | missing params; closed; empty proof; role/circuit mismatch; nullifier replay |
-//!
-//! **S** = scaffold always-accept (zk_poseidon).
 //!
 //! ### Also covered outside this binary
 //! - zk-jwt require_registered_claim / inclusion root → `zk_jwt_inclusion.rs`
 //! - circom codec L1 + real snarkjs e2e → `zk_jwt_circom_codec.rs`, `zk_host.rs` (`--features zk-host`)
 //!
 //! ### Intentional gaps (not blocked here)
-//! - WebAuthn COSE crypto for passkey (contract TODO)
-//! - vote-sdk real Halo2 circuits for vsck
+//! - vote-sdk Halo2 circuits for vsck (fail-closed until linked)
 //! - Composite multi-authenticator AND/OR
 //!
 //! Uses [`terp_authenticator_suite::fixtures`] + [`AuthenticatorSudoExt`]. Mock only.
@@ -35,7 +30,6 @@ use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
 use terp_ed25519::Ed25519AuthPayload;
-use terp_irl::IrlWitnessPayload;
 use terp_passkey::PasskeyAuthPayload;
 use terp_recovery::{
     break_glass_challenge, rehash, GuardianApproval, RecoveryAuthPayload, RecoveryHashAlg,
@@ -105,13 +99,9 @@ fn five_lifecycle(
 }
 
 fn passkey_ok_payload() -> Binary {
-    to_json_binary(&PasskeyAuthPayload {
-        origin: Some("https://app.terp.network".into()),
-        credential_id: Binary::from(b"cred-id-1"),
-        assertion: Binary::from(b"sig"),
-        authenticator_data: Binary::from(b"ad"),
-        client_data_json: Binary::from(b"{}"),
-    })
+    to_json_binary(&terp_authenticator_suite::passkey_fixture::passkey_auth_payload(
+        b"sign-mode-direct",
+    ))
     .unwrap()
 }
 
@@ -143,6 +133,7 @@ fn recovery_sha256_auth_req(
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(attestation),
@@ -150,15 +141,6 @@ fn recovery_sha256_auth_req(
     };
     auth_req.signature = to_json_binary(&payload).unwrap();
     auth_req
-}
-
-fn irl_ok_sig() -> Binary {
-    to_json_binary(&IrlWitnessPayload {
-        epoch_root: Binary::from(b"epoch-root-v1"),
-        witness: Binary::from(b"w"),
-        nullifier: Binary::from(b"n"),
-    })
-    .unwrap()
 }
 
 /// Suite default issuer inclusion root (see suite.rs deploy).
@@ -227,16 +209,14 @@ fn vsck_payload(session_id: &str, role: VsckRole, circuit: VsckCircuit, nf: &[u8
 // ---------------------------------------------------------------------------
 
 #[test]
-fn all_eight_contracts_distinct_addresses() {
+fn all_suite_contracts_distinct_addresses() {
     let suite = deploy();
     let addrs = [
         suite.passkey.addr_str().unwrap(),
         suite.recovery.addr_str().unwrap(),
         suite.ed25519.addr_str().unwrap(),
         suite.eth.addr_str().unwrap(),
-        suite.irl.addr_str().unwrap(),
         suite.zk_jwt.addr_str().unwrap(),
-        suite.zk_poseidon.addr_str().unwrap(),
         suite.vsck.addr_str().unwrap(),
     ];
     for a in &addrs {
@@ -448,6 +428,7 @@ fn recovery_neg_wrong_hash_alg() {
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Keccak256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(b"unused"),
@@ -471,6 +452,7 @@ fn recovery_neg_empty_approvals_below_threshold() {
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![],
     };
     assert!(suite
@@ -554,6 +536,7 @@ fn recovery_threshold_2_of_3() {
     let one = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: att(admin.as_str()),
@@ -566,6 +549,7 @@ fn recovery_threshold_2_of_3() {
     let two = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![
             GuardianApproval {
                 guardian: admin.to_string(),
@@ -612,6 +596,7 @@ fn recovery_neg_non_guardian_approval() {
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: stranger.to_string(),
             signature: Binary::from(att),
@@ -668,6 +653,7 @@ fn recovery_rehash_rounds_2() {
     let payload = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 2,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(att),
@@ -683,6 +669,7 @@ fn recovery_rehash_rounds_2() {
     let bad = RecoveryAuthPayload {
         hash_alg: RecoveryHashAlg::Sha256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![],
     };
     let mut bad_req = dummy_authentication_request(acct, "1", Binary::default(), None);
@@ -690,10 +677,9 @@ fn recovery_rehash_rounds_2() {
     assert!(suite.recovery.sudo_authenticate(bad_req).is_err());
 }
 
-/// Poseidon-Pallas address-only break-glass (matrix hook).
-/// Full lifecycle also covered by `recovery_poseidon_break_glass` in core_authenticators.
+/// Keccak-256 address-only break-glass (non-default hash algorithm).
 #[test]
-fn recovery_poseidon_hook_placeholder() {
+fn recovery_keccak256_hook() {
     use terp_recovery::{ExecuteMsg, GuardianConfig, RecoveryConfig, DEFAULT_DOMAIN};
 
     let suite = deploy();
@@ -710,7 +696,7 @@ fn recovery_poseidon_hook_placeholder() {
                     commitment: None,
                 }],
                 threshold: 1,
-                hash_alg: RecoveryHashAlg::PoseidonPallas,
+                hash_alg: RecoveryHashAlg::Keccak256,
                 rehash_rounds: 1,
                 domain: DEFAULT_DOMAIN.into(),
                 allow_address_only_approvals: true,
@@ -723,7 +709,7 @@ fn recovery_poseidon_hook_placeholder() {
     auth_req.tx_data.chain_id = "terp-test-1".into();
     auth_req.account = acct.clone();
     let challenge = break_glass_challenge(
-        RecoveryHashAlg::PoseidonPallas,
+        RecoveryHashAlg::Keccak256,
         1,
         DEFAULT_DOMAIN,
         &auth_req.tx_data.chain_id,
@@ -735,10 +721,11 @@ fn recovery_poseidon_hook_placeholder() {
     let mut att_pre = admin.as_bytes().to_vec();
     att_pre.push(0);
     att_pre.extend_from_slice(&challenge);
-    let attestation = rehash(RecoveryHashAlg::PoseidonPallas, &att_pre, 1).unwrap();
+    let attestation = rehash(RecoveryHashAlg::Keccak256, &att_pre, 1).unwrap();
     let payload = RecoveryAuthPayload {
-        hash_alg: RecoveryHashAlg::PoseidonPallas,
+        hash_alg: RecoveryHashAlg::Keccak256,
         rehash_rounds: 1,
+        preimage_proof: None,
         approvals: vec![GuardianApproval {
             guardian: admin.to_string(),
             signature: Binary::from(attestation),
@@ -1097,100 +1084,6 @@ fn eth_neg_wrong_message() {
 }
 
 // ---------------------------------------------------------------------------
-// irl
-// ---------------------------------------------------------------------------
-
-#[test]
-fn irl_matrix_all_five_positive() {
-    let suite = deploy();
-    let acct = mock_account();
-    let sig = irl_ok_sig();
-    five_lifecycle(
-        "irl",
-        || {
-            suite.irl.sudo_on_auth_added(dummy_on_auth_added(
-                acct.clone(),
-                "irl-1",
-                Some(Binary::from(b"p")),
-            ))
-        },
-        || {
-            suite
-                .irl
-                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "irl-1", None))
-        },
-        || {
-            suite.irl.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "irl-1",
-                sig.clone(),
-                None,
-            ))
-        },
-        || suite.irl.sudo_track(dummy_track_request(acct.clone(), "irl-1", None)),
-        || {
-            suite
-                .irl
-                .sudo_confirm_execution(dummy_confirm_execution_request(acct.clone(), "irl-1", None))
-        },
-        [
-            "irl_on_auth_added",
-            "irl_on_auth_removed",
-            "irl_authenticate",
-            "irl_track",
-            "irl_confirm",
-        ],
-    );
-}
-
-#[test]
-fn irl_neg_missing_on_auth_added_params() {
-    let suite = deploy();
-    assert!(suite
-        .irl
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
-        .is_err());
-}
-
-#[test]
-fn irl_neg_wrong_epoch_root() {
-    let suite = deploy();
-    let bad = IrlWitnessPayload {
-        epoch_root: Binary::from(b"wrong-epoch"),
-        witness: Binary::from(b"w"),
-        nullifier: Binary::from(b"n"),
-    };
-    assert!(suite
-        .irl
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
-}
-
-#[test]
-fn irl_neg_empty_witness() {
-    let suite = deploy();
-    let bad = IrlWitnessPayload {
-        epoch_root: Binary::from(b"epoch-root-v1"),
-        witness: Binary::default(),
-        nullifier: Binary::from(b"n"),
-    };
-    assert!(suite
-        .irl
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
-}
-
-// ---------------------------------------------------------------------------
 // zk_jwt
 // ---------------------------------------------------------------------------
 
@@ -1364,56 +1257,6 @@ fn zk_jwt_msg_bind_positive_and_nullifier_replay() {
     );
     // same nullifier again
     assert!(suite.zk_jwt.sudo_authenticate(auth_req).is_err());
-}
-
-// ---------------------------------------------------------------------------
-// zk_poseidon — accept-all scaffold; still hit all five variants
-// ---------------------------------------------------------------------------
-
-#[test]
-fn zk_poseidon_matrix_all_five_variants() {
-    let suite = deploy();
-    let acct = mock_account();
-    five_lifecycle(
-        "zk_poseidon",
-        || {
-            suite
-                .zk_poseidon
-                .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "pos-1", None))
-        },
-        || {
-            suite
-                .zk_poseidon
-                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "pos-1", None))
-        },
-        || {
-            suite.zk_poseidon.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "pos-1",
-                Binary::from(b"any"),
-                None,
-            ))
-        },
-        || {
-            suite
-                .zk_poseidon
-                .sudo_track(dummy_track_request(acct.clone(), "pos-1", None))
-        },
-        || {
-            suite.zk_poseidon.sudo_confirm_execution(dummy_confirm_execution_request(
-                acct.clone(),
-                "pos-1",
-                None,
-            ))
-        },
-        [
-            "zkposeidon_on_auth_added",
-            "zkposeidon_on_auth_removed",
-            "zkposeidon_authenticate",
-            "zkposeidon_track",
-            "zkposeidon_confirm",
-        ],
-    );
 }
 
 // ---------------------------------------------------------------------------

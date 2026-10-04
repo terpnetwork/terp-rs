@@ -1,0 +1,21 @@
+{
+  "terp-2b": {
+    "code_ids": {
+      "abstract:account": 96,
+      "abstract:ans-host": 93,
+      "abstract:ibc-client": 97,
+      "abstract:ibc-host": 98,
+      "abstract:module-factory": 95,
+      "abstract:registry": 94,
+      "terp721_account": 111,
+      "terp721_account_marketplace": 113,
+      "terp721_account_manifold": 112,
+      "cw:blob": 92
+    },
+    "default": {
+      "terp721_account": "terp1tw4gh2yjkk7jzdzjwdeg0ytk4k7jn4cwd48m0zlajqqndtld89hswhxsxk",
+      "terp721_account_marketplace": "terp19qzwjunusv4akkz42dygw0lk7knrg548vd4hgygpvqz25crzy5eqxtpfss",
+      "terp721_account_manifold": "terp1yn9c2jrzx670v43nlglzjm06l22stcr8u986ntdcau4le3426pnquncdgq"
+    }
+  }
+}

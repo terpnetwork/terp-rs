@@ -40,5 +40,5 @@ rand_core = { version = "0.6", features = ["getrandom"], optional = true }
 schemars = "0.8.22"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sha2 = "0.11.0-pre.4"
+sha2 = { workspace = true }
 thiserror = "1.0"

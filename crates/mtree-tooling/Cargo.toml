@@ -1,0 +1,14 @@
+[package]
+name = "mtree-tooling"
+repository.workspace = true
+edition = "2021"
+homepage.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+blake3          = { workspace = true }
+cosmwasm-std = { workspace = true }
+hex      = { workspace = true }
+url             = { workspace = true }

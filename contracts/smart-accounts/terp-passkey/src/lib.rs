@@ -1,19 +1,20 @@
-//! Passkey authenticator — full `TerpAccountTrait` / `TerpAccountTrait` workflow.
+//! Passkey authenticator.
 //!
-//! Authenticate expects a JSON [`PasskeyAuthPayload`] in `signature`. Cryptographic
-//! WebAuthn verification can plug into [`verify_passkey_payload`]; the default
-//! path enforces registration + origin + non-empty assertion fields.
+//! Authenticate expects a JSON [`PasskeyAuthPayload`] in `signature`.
+//! [`webauthn::verify_passkey`] checks ES256 over
+//! `authenticatorData || SHA-256(clientDataJSON)` and binds the WebAuthn
+//! challenge to `sign_mode_direct`.
 
 mod error;
 mod state;
+pub mod webauthn;
 
 pub use error::ContractError;
 pub use state::{PasskeyRegistration, REGISTRATION};
+pub use webauthn::{assertion_message_hash, authenticator_data, client_data_json};
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
@@ -48,7 +49,7 @@ pub enum QueryMsg {
 pub struct PasskeyAuthPayload {
     pub origin: Option<String>,
     pub credential_id: Binary,
-    /// Authenticator assertion signature (opaque until WebAuthn verify lands).
+    /// ES256 signature: 64-byte `r || s`, or ASN.1 DER.
     pub assertion: Binary,
     pub authenticator_data: Binary,
     pub client_data_json: Binary,
@@ -73,6 +74,7 @@ pub fn instantiate(
         None => info.sender,
     };
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(owner.as_str()))?;
+    validate_registration(&msg.registration)?;
     REGISTRATION.save(deps.storage, &msg.registration)?;
     Ok(Response::new().add_attribute("action", "passkey_instantiate"))
 }
@@ -110,29 +112,17 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     PasskeyAuthenticator::process_sudo_auth(deps, env, &msg)
 }
 
-fn verify_passkey_payload(reg: &Reg, payload: &PasskeyAuthPayload) -> Result<(), ContractError> {
-    if payload.assertion.is_empty()
-        || payload.authenticator_data.is_empty()
-        || payload.client_data_json.is_empty()
-    {
+fn validate_registration(reg: &Reg) -> Result<(), ContractError> {
+    if reg.origin.is_empty() || reg.rp_id.is_empty() || reg.credential_id.is_empty() {
         return Err(ContractError::InvalidCredential {
-            reason: "empty assertion fields".into(),
+            reason: "origin, rp_id, and credential_id are required".into(),
         });
     }
-    if payload.credential_id != reg.credential_id {
+    if reg.public_key.len() != 33 && reg.public_key.len() != 65 {
         return Err(ContractError::InvalidCredential {
-            reason: "credential_id mismatch".into(),
+            reason: "public_key must be 33 or 65 bytes".into(),
         });
     }
-    if let Some(ref expected) = reg.origin {
-        match &payload.origin {
-            Some(o) if o == expected => {}
-            _ => {
-                return Err(ContractError::Unauthorized {});
-            }
-        }
-    }
-    // TODO: WebAuthn crypto (COSE key + assertion) — plug SAA / host verify here.
     Ok(())
 }
 
@@ -191,8 +181,12 @@ impl TerpAccountTrait for PasskeyAuthenticator {
                 reason: format!("decode: {e}"),
             }
         })?;
-        let reg = REGISTRATION.load(deps.storage)?;
-        verify_passkey_payload(&reg, &payload)?;
+        webauthn::verify_passkey(
+            deps.api,
+            &REGISTRATION.load(deps.storage)?,
+            &payload,
+            req.sign_mode_tx_data.sign_mode_direct.as_slice(),
+        )?;
         Ok(Response::new().add_attribute("action", "passkey_authenticate"))
     }
 

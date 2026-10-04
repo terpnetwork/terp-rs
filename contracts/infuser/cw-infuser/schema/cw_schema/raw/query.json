@@ -1,0 +1,94 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_infuser_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "config": {
+          "description": "Global infuser config.",
+          "type": "named",
+          "properties": {}
+        },
+        "infusion": {
+          "description": "One infusion by owner and id.",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 1
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "infusion_by_id": {
+          "description": "One infusion by id.",
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "infusion_genetics": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "infusions": {
+          "description": "Infusions owned by an address (page of 30 from `index`).",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 1
+            },
+            "index": {
+              "value": 2
+            }
+          }
+        },
+        "wavs_record": {
+          "type": "named",
+          "properties": {
+            "burner": {
+              "value": 5
+            },
+            "nfts": {
+              "value": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 3
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

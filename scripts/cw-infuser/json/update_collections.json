@@ -1,0 +1,37 @@
+{
+    "update_infusions_eligible_collections_or_bundle_type": {
+        "id": 2,
+        "to_add": [
+            {
+                "addr": "stars1sryvfl50ep8u450u27qj7fgularqfxycwqhdp057260lvuhpkfvs28fag0",
+                "min_req": 2,
+                "max_req": 2,
+                "payment_substitute": {
+                    "denom": "ibc/E45CFCB959F4F6D1065B7033EE49A88E606E6AD82E75725219B3D68B0FA89987",
+                    "amount": "3000"
+                }
+            },
+            {
+                "addr": "stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et",
+                "min_req": 3,
+                "max_req": 3,
+                "payment_substitute": {
+                    "denom": "ibc/8577E98BDDD2758FD5647A53563DAAC89921326F964EBF899B945ED05A66CA5F",
+                    "amount": "2500000000"
+                }
+            }
+        ],
+        "to_remove": [
+            "stars1sryvfl50ep8u450u27qj7fgularqfxycwqhdp057260lvuhpkfvs28fag0",
+            "stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et"
+        ],
+        "bundle_type": {
+            "any_of": {
+                "addrs": [
+                    "stars1sryvfl50ep8u450u27qj7fgularqfxycwqhdp057260lvuhpkfvs28fag0",
+                    "stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et"
+                ]
+            }
+        }
+    }
+}

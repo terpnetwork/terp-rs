@@ -1,0 +1,35 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "whitelist_mtree_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "freeze": {
+          "description": "Make the admin list immutable.",
+          "type": "named",
+          "properties": {}
+        },
+        "update_admins": {
+          "description": "Change the admin set while it is still mutable.",
+          "type": "named",
+          "properties": {
+            "admins": {
+              "value": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

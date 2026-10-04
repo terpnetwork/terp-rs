@@ -20,7 +20,7 @@ traits-only = []
 market-hooks = []
 manifold = []
 # Full NFT/account-token surface (requires cw721 stack)
-full = ["dep:cw721", "dep:cosmwasm-crypto", "dep:bech32", "dep:cw-ownable", "dep:cw-controllers"]
+full = ["dep:cw721", "dep:cosmwasm-crypto", "dep:bech32", "dep:cw-ownable", "dep:cw-controllers", "dep:ripemd"]
 abstract = ["full", "dep:abstract-std"]
 interface = ["dep:cw-orch"]
 

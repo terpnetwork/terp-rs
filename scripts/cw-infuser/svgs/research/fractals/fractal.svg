@@ -1,0 +1,26 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8' width='500' height='500'>
+<defs>
+<radialGradient id='bg'><stop offset='0%' stop-color='#111125'/><stop offset='100%' stop-color='#050510'/></radialGradient>
+</defs>
+<rect x='-4' y='-4' width='8' height='8' fill='url(#bg)'/>
+<line x1='-4' y1='0' x2='4' y2='0' stroke='#1a1a3e' stroke-width='0.015'/>
+<line x1='0' y1='-4' x2='0' y2='4' stroke='#1a1a3e' stroke-width='0.015'/>
+<circle cx='0' cy='0' r='1' fill='none' stroke='#1a1a3e' stroke-width='0.01'/>
+<circle cx='0' cy='0' r='2' fill='none' stroke='#1a1a3e' stroke-width='0.01'/>
+<circle cx='0' cy='0' r='3' fill='none' stroke='#1a1a3e' stroke-width='0.01'/>
+<polygon points='${a},${b} ${c},${d} ${s},${f} ${g},${h}' fill='none' stroke='#ffffff' stroke-width='0.02' opacity='0.15'/>
+<line x1='${a}' y1='${b}' x2='${c}' y2='${d}' stroke='#4488ff' stroke-width='0.03' opacity='0.6'/>
+<line x1='${s}' y1='${f}' x2='${g}' y2='${h}' stroke='#ff4488' stroke-width='0.03' opacity='0.6'/>
+<line x1='${a}' y1='${b}' x2='${s}' y2='${f}' stroke='#44ff88' stroke-width='0.02' opacity='0.25' stroke-dasharray='0.1 ${base_range}'/>
+<line x1='${c}' y1='${d}' x2='${g}' y2='${h}' stroke='#ff8844' stroke-width='0.02' opacity='0.25' stroke-dasharray='0.1 ${base_range}'/>
+<circle cx='${a}' cy='${b}' r='0.15' fill='#4488ff' opacity='0.9'/>
+<circle cx='${a}' cy='${b}' r='0.4' fill='none' stroke='#4488ff' stroke-width='0.02' opacity='0.4'/>
+<circle cx='${c}' cy='${d}' r='0.15' fill='#4488ff' opacity='0.9'/>
+<circle cx='${c}' cy='${d}' r='0.4' fill='none' stroke='#4488ff' stroke-width='0.02' opacity='0.4'/>
+<circle cx='${s}' cy='${f}' r='0.12' fill='#ff4488' opacity='0.9'/>
+<circle cx='${s}' cy='${f}' r='0.35' fill='none' stroke='#ff4488' stroke-width='0.02' opacity='0.4'/>
+<circle cx='${g}' cy='${h}' r='0.12' fill='#ff4488' opacity='0.9'/>
+<circle cx='${g}' cy='${h}' r='0.35' fill='none' stroke='#ff4488' stroke-width='0.02' opacity='0.4'/>
+<circle cx='0' cy='0' r='0.06' fill='#ffffff' opacity='0.5'/>
+<desc>${zooms}</desc>
+</svg>

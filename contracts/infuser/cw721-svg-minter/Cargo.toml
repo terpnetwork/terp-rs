@@ -1,0 +1,29 @@
+[package]
+name = "cw-svg-minter"
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+interface = ["cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw721-svg = { path = "../cw721-svg", features = ["library"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }

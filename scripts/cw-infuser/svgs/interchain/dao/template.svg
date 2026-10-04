@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" height="28" viewBox="0 0 28 28" width="28" transform="rotate(180deg)">
+  <defs>
+    <!--
+      CIRCULAR S-CURVE WIPE
+      =====================
+      Each fish body is stacked in two layers:
+        Bottom: solid base color (static)
+        Top:    solid swapped color, clipped by an expanding circle
+
+      The clip circle starts at the fish's tail, slides along
+      the S-curve spine (3 waypoints), and expands to cover
+      the full body. Then it reverses. The circular boundary
+      naturally curves to match the fish body shape.
+
+      YIN wipe: tail(19.5,14) → mid(14,20) → head(8.5,14)
+      YANG wipe: tail(8.5,14) → mid(14,8) → head(19.5,14)
+
+      All animations share a single ${drift-cycle}s duration.
+
+      Eye flip timing: computed from clip circle geometry.
+      The wipe circle covers each eye at t≈10.8% of cycle,
+      and uncovers at t≈89.2%. Eyes snap in a 2% window.
+    -->
+
+    <!-- Yin wipe: circle travels tail(right) → S-curve → head(left) -->
+    <clipPath id="wipe-yin">
+      <circle cx="19.5" cy="14" r="0">
+        <animate attributeName="cx"
+          values="19.5; 14; 8.5; 8.5; 14; 19.5"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+        <animate attributeName="cy"
+          values="14; 20; 14; 14; 8; 14"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+        <animate attributeName="r"
+          values="0; 16; 28; 28; 16; 0"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+      </circle>
+    </clipPath>
+
+    <!-- Yang wipe: circle travels tail(left) → S-curve → head(right) -->
+    <clipPath id="wipe-yang">
+      <circle cx="8.5" cy="14" r="0">
+        <animate attributeName="cx"
+          values="8.5; 14; 19.5; 19.5; 14; 8.5"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+        <animate attributeName="cy"
+          values="14; 8; 14; 14; 20; 14"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+        <animate attributeName="r"
+          values="0; 16; 28; 28; 16; 0"
+          keyTimes="0; 0.2; 0.45; 0.55; 0.8; 1"
+          dur="${drift-cycle}s" repeatCount="indefinite"/>
+      </circle>
+    </clipPath>
+  </defs>
+
+  <!-- L1: Static background circle -->
+  <circle cx="14" cy="14" r="13" fill="${color-yin}"/>
+
+  <!-- L2: Yin fish body — base color (static) -->
+  <path d="M14 14
+    C14 10.9624 11.5376 8.5 8.5 8.5
+    C5.46243 8.5 3 10.9624 3 14
+    C3 20.0751 7.92487 25 14 25
+    C20.0751 25 25 20.0751 25 14
+    C25 17.0376 22.5376 19.5 19.5 19.5
+    C16.4624 19.5 14 17.0376 14 14Z"
+    fill="${color-yin}"/>
+
+  <!-- L3: Yin fish body — swapped color (clipped wipe) -->
+  <path d="M14 14
+    C14 10.9624 11.5376 8.5 8.5 8.5
+    C5.46243 8.5 3 10.9624 3 14
+    C3 20.0751 7.92487 25 14 25
+    C20.0751 25 25 20.0751 25 14
+    C25 17.0376 22.5376 19.5 19.5 19.5
+    C16.4624 19.5 14 17.0376 14 14Z"
+    fill="${color-yang}" clip-path="url(#wipe-yin)"/>
+
+  <!-- L4: Yang fish body — base color (static) -->
+  <path d="M14 14
+    C14 17.0376 16.4624 19.5 19.5 19.5
+    C22.5376 19.5 25 17.0376 25 14
+    C25 7.92487 20.0751 3 14 3
+    C7.92487 3 3 7.92487 3 14
+    C3 10.9624 5.46243 8.5 8.5 8.5
+    C11.5376 8.5 14 10.9624 14 14Z"
+    fill="${color-yang}"/>
+
+  <!-- L5: Yang fish body — swapped color (clipped wipe) -->
+  <path d="M14 14
+    C14 17.0376 16.4624 19.5 19.5 19.5
+    C22.5376 19.5 25 17.0376 25 14
+    C25 7.92487 20.0751 3 14 3
+    C7.92487 3 3 7.92487 3 14
+    C3 10.9624 5.46243 8.5 8.5 8.5
+    C11.5376 8.5 14 10.9624 14 14Z"
+    fill="${color-yin}" clip-path="url(#wipe-yang)"/>
+
+  <!-- L6: Yin eye — flips when wipe circle covers it (t≈10.8%) -->
+  <circle cx="8.5" cy="14" r="1.5">
+    <animate attributeName="fill"
+      values="${color-yang}; ${color-yang}; ${color-yin}; ${color-yin}; ${color-yang}; ${color-yang}"
+      keyTimes="0; 0.10; 0.12; 0.88; 0.90; 1"
+      dur="${drift-cycle}s" repeatCount="indefinite" fill="freeze"/>
+  </circle>
+
+  <!-- L7: Yang eye — flips opposite to yin eye -->
+  <circle cx="19.5" cy="14" r="1.5">
+    <animate attributeName="fill"
+      values="${color-yin}; ${color-yin}; ${color-yang}; ${color-yang}; ${color-yin}; ${color-yin}"
+      keyTimes="0; 0.10; 0.12; 0.88; 0.90; 1"
+      dur="${drift-cycle}s" repeatCount="indefinite" fill="freeze"/>
+  </circle>
+
+  <!-- L8: Static border ring -->
+  <path clip-rule="evenodd"
+    d="M14 0C6.26801 0 0 6.26801 0 14C0 21.732 6.26801 28 14 28C21.732 28 28 21.732 28 14C28 6.26801 21.732 0 14 0ZM14 1.25C6.95837 1.25 1.25 6.95837 1.25 14C1.25 21.0416 6.95837 26.75 14 26.75C21.0416 26.75 26.75 21.0416 26.75 14C26.75 6.95837 21.0416 1.25 14 1.25Z"
+    fill-rule="evenodd" fill="${color-yang}"/>
+</svg>

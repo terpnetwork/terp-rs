@@ -1,0 +1,44 @@
+[package]
+name = "terp721-account-manifold"
+version  = { workspace = true }
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+# use library feature to disable all instantiate/execute/query exports
+library = []
+interface = ["cw-orch"]
+
+[dependencies]
+cw-storage-macro            = { workspace = true }
+terp-account            = { workspace = true, features = ["full", "market-hooks"] }
+# ─── Local & Workspace Crates ────────────────────────────────────────
+terp721-account           = { workspace = true, features = ["library"] }
+
+# ─── CW & CosmWasm Ecosystem (Workspace) ─────────────────────────────
+cosmwasm-schema            = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking", "cosmwasm_1_4", "cosmwasm_2_0"] }
+cw-ownable              = { workspace = true }
+cw-storage-plus         = { workspace = true }
+cw-utils                = { workspace = true }
+cw2                     = { workspace = true }
+cw721                     = { workspace = true }
+
+# ─── Utilities & Serialization ───────────────────────────────────────
+thiserror               = { workspace = true }
+
+# ─── Orchestrator (CW-Orch) ──────────────────────────────────────────
+cw-orch                 = { workspace = true, optional = true }
+
+# ─── Custom Controllers ──────────────────────────────────────────────
+cw-controllers          = { workspace = true }
+
+[dev-dependencies]
+# ─── Testing ─────────────────────────────────────────────────────────
+cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork", features = ["cosmwasm_2_1", "stargate"] }

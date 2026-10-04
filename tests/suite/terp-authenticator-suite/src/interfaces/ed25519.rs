@@ -12,9 +12,7 @@ pub struct TerpEd25519;
 
 impl<Chain: TxHandler> Uploadable for TerpEd25519<Chain> {
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
-        artifacts_dir_from_workspace!()
-            .find_wasm_path("terp_ed25519")
-            .expect("terp_ed25519.wasm — use Mock")
+        super::wasm_path::wasm("terp_ed25519")
     }
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_sudo(sudo))

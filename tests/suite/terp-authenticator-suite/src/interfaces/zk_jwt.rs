@@ -14,9 +14,7 @@ pub struct TerpZkJwt;
 
 impl<Chain: TxHandler> Uploadable for TerpZkJwt<Chain> {
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
-        artifacts_dir_from_workspace!()
-            .find_wasm_path("terp_zkjwt")
-            .expect("terp_zkjwt.wasm not found — use Mock wrapper")
+        super::wasm_path::wasm("terp_zkjwt")
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {

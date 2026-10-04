@@ -1,0 +1,88 @@
+ {
+  "version": "1",
+  "collection": "prism-facet",
+  "description": "Elegant multi-faceted geometric logo with a living jewel-tone palette. Each of the six vibrant facets breathes independently with gentle, staggered opacity pulses (3.8–12.5 s), creating a sophisticated, organic prism-like shimmer. 100% faithful to the original geometry and proportions — no scaling, rotation, or extra elements. Pure classy motion.",
+
+  "palette_groups": [
+    {
+      "id": "cool-blue",
+      "note": "Deep sky-blue facet — jewel tone variations",
+      "anchor": "color-blue",
+      "members": ["color-blue"],
+      "ranges": [
+        { "r_min": 65, "r_max": 105, "g_min": 135, "g_max": 175, "b_min": 215, "b_max": 255 }
+      ]
+    },
+    {
+      "id": "soft-magenta",
+      "note": "Gentle lavender-pink facet — elegant mid-tone variations",
+      "anchor": "color-purple",
+      "members": ["color-purple"],
+      "ranges": [
+        { "r_min": 200, "r_max": 235, "g_min": 125, "g_max": 165, "b_min": 195, "b_max": 235 }
+      ]
+    },
+    {
+      "id": "warm-coral",
+      "note": "Soft coral-red facet — warm accent variations",
+      "anchor": "color-coral",
+      "members": ["color-coral"],
+      "ranges": [
+        { "r_min": 235, "r_max": 255, "g_min": 135, "g_max": 170, "b_min": 130, "b_max": 165 }
+      ]
+    },
+    {
+      "id": "electric-cyan",
+      "note": "Bright turquoise-cyan facet — fresh jewel variations",
+      "anchor": "color-cyan",
+      "members": ["color-cyan"],
+      "ranges": [
+        { "r_min": 45, "r_max": 95, "g_min": 195, "g_max": 235, "b_min": 210, "b_max": 255 }
+      ]
+    },
+    {
+      "id": "fresh-lime",
+      "note": "Vibrant lime-green facet — spring jewel variations",
+      "anchor": "color-lime",
+      "members": ["color-lime"],
+      "ranges": [
+        { "r_min": 135, "r_max": 185, "g_min": 210, "g_max": 245, "b_min": 95, "b_max": 135 }
+      ]
+    },
+    {
+      "id": "golden-yellow",
+      "note": "Warm golden-yellow facet — luminous accent variations",
+      "anchor": "color-yellow",
+      "members": ["color-yellow"],
+      "ranges": [
+        { "r_min": 235, "r_max": 255, "g_min": 225, "g_max": 255, "b_min": 65, "b_max": 115 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "facet-pulses",
+      "note": "Independent gentle breaths on each facet — staggered periods create a beautiful, living crystal shimmer. Very classy and never distracting.",
+      "members": ["breath-a", "breath-b", "breath-c", "breath-d", "breath-e", "breath-f"],
+      "min": "3.8",
+      "max": "12.5",
+      "precision": 1
+    }
+  ],
+
+  "vars": [
+    { "name": "color-blue",   "kind": { "rgb_styled": [{ "r_min": 65,  "r_max": 105, "g_min": 135, "g_max": 175, "b_min": 215, "b_max": 255 }] }},
+    { "name": "color-purple", "kind": { "rgb_styled": [{ "r_min": 200, "r_max": 235, "g_min": 125, "g_max": 165, "b_min": 195, "b_max": 235 }] }},
+    { "name": "color-coral",  "kind": { "rgb_styled": [{ "r_min": 235, "r_max": 255, "g_min": 135, "g_max": 170, "b_min": 130, "b_max": 165 }] }},
+    { "name": "color-cyan",   "kind": { "rgb_styled": [{ "r_min": 45,  "r_max": 95,  "g_min": 195, "g_max": 235, "b_min": 210, "b_max": 255 }] }},
+    { "name": "color-lime",   "kind": { "rgb_styled": [{ "r_min": 135, "r_max": 185, "g_min": 210, "g_max": 245, "b_min": 95,  "b_max": 135 }] }},
+    { "name": "color-yellow", "kind": { "rgb_styled": [{ "r_min": 235, "r_max": 255, "g_min": 225, "g_max": 255, "b_min": 65,  "b_max": 115 }] }},
+    { "name": "breath-a",     "kind": { "range": { "min": "4.2", "max": "9.8", "precision": 1 } }},
+    { "name": "breath-b",     "kind": { "range": { "min": "5.5", "max": "11.2", "precision": 1 } }},
+    { "name": "breath-c",     "kind": { "range": { "min": "3.8", "max": "8.4", "precision": 1 } }},
+    { "name": "breath-d",     "kind": { "range": { "min": "6.8", "max": "12.5", "precision": 1 } }},
+    { "name": "breath-e",     "kind": { "range": { "min": "4.9", "max": "10.6", "precision": 1 } }},
+    { "name": "breath-f",     "kind": { "range": { "min": "5.1", "max": "9.5", "precision": 1 } }}
+  ]
+}

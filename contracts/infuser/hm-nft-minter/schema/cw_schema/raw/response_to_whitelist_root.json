@@ -1,0 +1,34 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "hm_nft_minter_msg_WhitelistRootResponse",
+      "type": "struct",
+      "properties": {
+        "codec": {
+          "value": 2
+        },
+        "enabled": {
+          "value": 1
+        },
+        "root": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    }
+  ]
+}

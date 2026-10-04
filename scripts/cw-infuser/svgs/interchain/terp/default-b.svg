@@ -1,0 +1,92 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="neonglow" x="-90%" y="-90%" width="280%" height="280%">
+      <!-- Lighter, cleaner neon bloom — fewer heavy outer layers so the dots stay bright & pure -->
+      <feDropShadow dx="0" dy="0" stdDeviation="2.0" flood-color="#cfffcf" flood-opacity="0.96"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4.6" flood-color="#cfffcf" flood-opacity="0.68"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="9.2" flood-color="#cfffcf" flood-opacity="0.36"/>
+    </filter>
+
+    <style>
+      <![CDATA[
+        @keyframes neonBreath {
+          0%, 100% {
+            r: 7.4;
+            fill: #cfffcf;
+          }
+          50% {
+            r: 12.6;
+            fill: #e8ffdb;
+          }
+        }
+
+        @keyframes strobeFlicker {
+          0%, 18%, 22%, 100% { opacity: 1; }
+          4%  { opacity: 0.42; }
+          9%  { opacity: 0.95; }
+          13% { opacity: 0.51; }
+          17% { opacity: 0.87; }
+        }
+
+        .orb {
+          animation:
+            neonBreath     var(--breath-dur)     var(--breath-delay)     infinite ease-in-out,
+            strobeFlicker  var(--flicker-dur)    var(--flicker-delay)    infinite linear;
+        }
+      ]]>
+    </style>
+  </defs>
+
+  <!-- Solid black background -->
+  <rect width="200" height="200" fill="#0000003a"/>
+
+  <!-- All 13 dots — each with its own chaotic pulse + strobe timing -->
+  <g filter="url(#neonglow)">
+    <!-- Center -->
+    <circle class="orb"
+            cx="100" cy="100" r="8.7" fill="#cfffcf"
+            style="--breath-dur:2.42s; --breath-delay:-0.11s; --flicker-dur:0.19s; --flicker-delay:0s;"/>
+
+    <!-- Far cardinal arms (outer cross) -->
+    <circle class="orb"
+            cx="52" cy="100" r="8.7" fill="#cfffcf"
+            style="--breath-dur:3.18s; --breath-delay:-1.23s; --flicker-dur:0.34s; --flicker-delay:-0.07s;"/>
+    <circle class="orb"
+            cx="148" cy="100" r="8.7" fill="#cfffcf"
+            style="--breath-dur:1.81s; --breath-delay:-0.62s; --flicker-dur:0.13s; --flicker-delay:0.21s;"/>
+    <circle class="orb"
+            cx="100" cy="52" r="8.7" fill="#cfffcf"
+            style="--breath-dur:2.91s; --breath-delay:-1.97s; --flicker-dur:0.42s; --flicker-delay:-0.29s;"/>
+    <circle class="orb"
+            cx="100" cy="148" r="8.7" fill="#cfffcf"
+            style="--breath-dur:1.64s; --breath-delay:-0.38s; --flicker-dur:0.21s; --flicker-delay:-0.14s;"/>
+
+    <!-- Mid cardinal positions -->
+    <circle class="orb"
+            cx="75" cy="100" r="8.7" fill="#cfffcf"
+            style="--breath-dur:4.07s; --breath-delay:-1.48s; --flicker-dur:0.27s; --flicker-delay:0.09s;"/>
+    <circle class="orb"
+            cx="125" cy="100" r="8.7" fill="#cfffcf"
+            style="--breath-dur:2.13s; --breath-delay:-0.81s; --flicker-dur:0.16s; --flicker-delay:-0.22s;"/>
+    <circle class="orb"
+            cx="100" cy="75" r="8.7" fill="#cfffcf"
+            style="--breath-dur:3.52s; --breath-delay:-1.82s; --flicker-dur:0.31s; --flicker-delay:0.04s;"/>
+    <circle class="orb"
+            cx="100" cy="125" r="8.7" fill="#cfffcf"
+            style="--breath-dur:1.92s; --breath-delay:-0.19s; --flicker-dur:0.24s; --flicker-delay:-0.39s;"/>
+
+    <!-- Diagonal positions -->
+    <circle class="orb"
+            cx="75" cy="75" r="8.7" fill="#cfffcf"
+            style="--breath-dur:2.68s; --breath-delay:-1.09s; --flicker-dur:0.17s; --flicker-delay:0.14s;"/>
+    <circle class="orb"
+            cx="75" cy="125" r="8.7" fill="#cfffcf"
+            style="--breath-dur:1.39s; --breath-delay:-2.31s; --flicker-dur:0.46s; --flicker-delay:-0.11s;"/>
+    <circle class="orb"
+            cx="125" cy="75" r="8.7" fill="#cfffcf"
+            style="--breath-dur:3.79s; --breath-delay:-0.74s; --flicker-dur:0.11s; --flicker-delay:-0.26s;"/>
+    <circle class="orb"
+            cx="125" cy="125" r="8.7" fill="#cfffcf"
+            style="--breath-dur:2.57s; --breath-delay:-1.36s; --flicker-dur:0.29s; --flicker-delay:0.07s;"/>
+  </g>
+</svg>

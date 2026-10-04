@@ -25,16 +25,32 @@ members = [
     "contracts/zk/cw-zk-verify-demo",
     "contracts/smart-accounts/terp-dregg",
     "contracts/smart-accounts/terp-zkjwt",
-    "contracts/smart-accounts/terp-zkposiedon",
     "contracts/smart-accounts/terp-vsck",
     "contracts/smart-accounts/terp-passkey",
     "contracts/smart-accounts/terp-recovery",
-    "contracts/smart-accounts/terp-recovery-poseidon-demo",
     "contracts/smart-accounts/terp-ed25519",
     "contracts/smart-accounts/terp-eth",
-    "contracts/smart-accounts/terp-irl",
     "contracts/smart-accounts/terp-frost",
-    "contracts/smart-accounts/terp-zkpallas",
+    "contracts/smart-accounts/terp-zktls",
+    "contracts/smart-accounts/terp-bls",
+    "contracts/smart-accounts/terp-dao",
+    "contracts/accounts/terp721-account",
+    "contracts/accounts/terp721-account-manifold",
+    "contracts/accounts/ownership-verifier",
+    "contracts/infuser/cw-infuser",
+    "contracts/infuser/cw721-svg",
+    "contracts/infuser/cw721-svg-minter",
+    "contracts/infuser/hm-nft-minter",
+    "contracts/infuser/whitelist-merkletree",
+    "crates/cw-infusions",
+    "crates/cw-svg",
+    "crates/easy-addr",
+    "crates/mtree-tooling",
+    "crates/hm-loyalty-whitelist",
+    "crates/hm-nft-oracle",
+    "scripts/terp-accounts",
+    "scripts/cw-infuser",
+    "tests/cw-infuser-suite",
 ]
 
 [workspace.package]
@@ -70,6 +86,7 @@ cw-utils = { path = "../cw-minus/packages/cw-utils" }
 cw-ownable = { path = "../cw-plus-plus/packages/ownable" }
 cw-controllers = { path = "../cw-minus/packages/controllers" }
 ibc-proto = { path = "../ibc-proto-rs", default-features = false }
+cosmos-sdk-proto = { path = "../cosmos-rust/cosmos-sdk-proto", default-features = false }
 prost = "0.14"
 sha2 = { version = "0.10.8", default-features = false }
 cw-multi-test = { package = "abstract-cw-multi-test", path = "../cw-multi-test-fork" }
@@ -80,11 +97,9 @@ terp-account = { path = "crates/terp-account" }
 terp-scripts = { path = "tests" }
 
 terp-zkjwt = { path = "contracts/smart-accounts/terp-zkjwt" }
-terp-zkposiedon = { path = "contracts/smart-accounts/terp-zkposiedon" }
 terp-vsck = { path = "contracts/smart-accounts/terp-vsck" }
 terp-passkey = { path = "contracts/smart-accounts/terp-passkey" }
 terp-recovery = { path = "contracts/smart-accounts/terp-recovery" }
-terp-recovery-poseidon-demo = { path = "contracts/smart-accounts/terp-recovery-poseidon-demo" }
 terp-ed25519 = { path = "contracts/smart-accounts/terp-ed25519" }
 terp-eth = { path = "contracts/smart-accounts/terp-eth" }
 terp-dregg = { path = "contracts/smart-accounts/terp-dregg" }
@@ -92,9 +107,34 @@ cw-ics08-wasm-dregg = { path = "contracts/light-clients/cw-ics08-wasm-dregg" }
 cw-ics08-wasm-zap1 = { path = "contracts/light-clients/cw-ics08-wasm-zap1" }
 terp-iavl-lc = { path = "contracts/light-clients/terp-iavl-lc" }
 terp-seams = { path = "crates/terp-seams" }
-terp-irl = { path = "contracts/smart-accounts/terp-irl" }
-terp-zkpallas = { path = "contracts/smart-accounts/terp-zkpallas" }
 cw-private-dex = { path = "contracts/revenue/private-dex" }
+
+# Account billboards and cw-infuser, extracted into this workspace.
+abstract-std = { path = "../abstract/framework/packages/abstract-std" }
+abstract-interface = { path = "../abstract/framework/packages/abstract-interface" }
+cw721 = { path = "../cw-nfts/packages/cw721" }
+cw-blob = { path = "../cw-packages/contracts/cw-blob" }
+cw-storage-macro = "3.0.1"
+anyhow = "1"
+blake3 = "1.8.3"
+semver = "1"
+url = "2.2.2"
+terp721-account = { path = "contracts/accounts/terp721-account" }
+terp721-account-manifold = { path = "contracts/accounts/terp721-account-manifold" }
+ownership-verifier = { path = "contracts/accounts/ownership-verifier" }
+cw-infuser = { path = "contracts/infuser/cw-infuser" }
+cw-infusions = { path = "crates/cw-infusions" }
+cw-svg = { path = "crates/cw-svg" }
+cw-svg-minter = { path = "contracts/infuser/cw721-svg-minter" }
+cw721-svg = { path = "contracts/infuser/cw721-svg" }
+hm-nft-minter = { path = "contracts/infuser/hm-nft-minter" }
+hm-loyalty-whitelist = { path = "crates/hm-loyalty-whitelist" }
+hm-nft-oracle = { path = "crates/hm-nft-oracle" }
+mtree-tooling = { path = "crates/mtree-tooling" }
+easy-addr = { path = "crates/easy-addr" }
+whitelist-mtree = { path = "contracts/infuser/whitelist-merkletree" }
+cw-infuser-scripts = { path = "scripts/cw-infuser", default-features = false }
+terp-account-scripts = { path = "scripts/terp-accounts" }
 
 # Monorepo path patches — force git/crates.io CosmWasm stack onto local forks.
 # Prevents re-resolve of abstract → cw-asset → permissionlessweb/cw-minus without cosmwasm-schema.

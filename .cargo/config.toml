@@ -1,5 +1,15 @@
-# Local wasm32 checks only. **Published CosmWasm artifacts MUST use the Docker
-# optimizer (Rust 1.86 MSRV)** — see scripts/build-crosslink-wasm.sh.
+# Local wasm32 checks only. Published artifacts use Rust 1.91 and the optimizer.
+# See docs/wasm-artifacts.md.
 # Host imports (db_*, ed25519_*, …) are provided by wasmvm at runtime.
+# simd128 stays off: the chain gatekeeper rejects guest SIMD, and Wasmer 7.4.2
+# singlepass plus the stack-limiter rewrite rejects some nightly LLVM output.
+# `cargo schema` from a contract directory. gen-tools also invokes
+# `cargo run --bin schema` / `--example schema` directly.
+[alias]
+schema = "run --bin schema"
+
 [target.wasm32-unknown-unknown]
-rustflags = ["-C", "link-arg=--allow-undefined"]
+rustflags = [
+    "-C", "link-arg=--allow-undefined",
+    "-C", "target-feature=-simd128",
+]

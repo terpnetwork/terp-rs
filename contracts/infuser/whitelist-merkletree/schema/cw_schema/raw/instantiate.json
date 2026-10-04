@@ -1,0 +1,42 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "whitelist_mtree_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "admins": {
+          "value": 3
+        },
+        "admins_mutable": {
+          "value": 4
+        },
+        "merkle_root": {
+          "value": 1
+        },
+        "merkle_tree_uri": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

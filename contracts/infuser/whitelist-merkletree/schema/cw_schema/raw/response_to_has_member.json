@@ -1,0 +1,19 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "whitelist_mtree_msg_HasMemberResponse",
+      "type": "struct",
+      "properties": {
+        "has_member": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

@@ -6,6 +6,11 @@
 pub mod traits;
 
 #[cfg(feature = "full")]
+mod market;
+#[cfg(feature = "full")]
+pub use market::*;
+
+#[cfg(feature = "full")]
 pub mod account;
 #[cfg(feature = "full")]
 pub mod manifold;

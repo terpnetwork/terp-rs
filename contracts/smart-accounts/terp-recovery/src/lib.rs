@@ -13,17 +13,20 @@
 //!      guardian || 0x00 || digest)` so clients prove knowledge of the same break-glass
 //!      hashing path without storing guardian keys on-chain.
 //! 4. Distinct valid guardian approvals ≥ threshold → allow.
+//! 5. An optional preimage proof must bind the same challenge. Without `zk-host`
+//!    that arm fails closed. It does not replace guardian approvals.
 //!
-//! See [`hash`] for algorithm catalog and domain separation.
+//! See [`hash`] for the digest catalog and [`proof`] for the proof arm.
 
 mod error;
 pub mod hash;
+pub mod proof;
 
 pub use error::ContractError;
 pub use hash::{
-    break_glass_challenge, challenge_preimage, poseidon_pallas_hash_once, rehash, RecoveryHashAlg,
-    DEFAULT_DOMAIN,
+    break_glass_challenge, challenge_preimage, rehash, RecoveryHashAlg, DEFAULT_DOMAIN,
 };
+pub use proof::{verify_preimage_proof, PreimageProof, CIRCUIT_ID_RECOVERY_PREIMAGE};
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -159,6 +162,9 @@ pub struct RecoveryAuthPayload {
     /// Must match on-chain `config.rehash_rounds`.
     pub rehash_rounds: u32,
     pub approvals: Vec<GuardianApproval>,
+    /// Optional circuit proof of the same challenge. Omitted for guardian-only auth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preimage_proof: Option<PreimageProof>,
 }
 
 pub type SudoMsg = AuthSudoMsg;
@@ -407,6 +413,10 @@ impl TerpAccountTrait for RecoveryAuthenticator {
                 got: valid,
                 need: cfg.threshold,
             });
+        }
+
+        if let Some(proof) = &payload.preimage_proof {
+            verify_preimage_proof(deps.api, &cfg, &challenge, proof)?;
         }
 
         Ok(Response::new()

@@ -1,0 +1,88 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "hm_nft_minter_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "is_eligible": {
+          "type": "named",
+          "properties": {
+            "address": {
+              "value": 1
+            },
+            "proof": {
+              "value": 2
+            }
+          }
+        },
+        "mint_price_bound": {
+          "type": "named",
+          "properties": {}
+        },
+        "next_token_id": {
+          "type": "named",
+          "properties": {}
+        },
+        "oracle_mid": {
+          "type": "named",
+          "properties": {}
+        },
+        "ownership": {
+          "type": "named",
+          "properties": {}
+        },
+        "whitelist_root": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "hm_loyalty_whitelist_LoyaltyProof",
+      "description": "On-chain / client proof payload (hex-encoded siblings + root).",
+      "type": "struct",
+      "properties": {
+        "address": {
+          "description": "Bech32 (or chain) address that was hashed into the leaf.",
+          "value": 1
+        },
+        "codec": {
+          "description": "Must equal [`CODEC_V1`] for v1 verifiers.",
+          "value": 1
+        },
+        "leaf": {
+          "description": "Optional precomputed leaf hex; recomputed from address if omitted.",
+          "value": 3
+        },
+        "proof": {
+          "description": "Sibling hashes, bottom-up (hex).",
+          "value": 4
+        },
+        "root": {
+          "description": "Expected root hex (optional cross-check against stored root).",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

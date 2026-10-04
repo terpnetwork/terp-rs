@@ -1,0 +1,37 @@
+{
+  "type": "v1",
+  "root": 2,
+  "definitions": [
+    {
+      "name": "cw_svg_minter_state_SvgCollection",
+      "type": "struct",
+      "properties": {
+        "contract": {
+          "description": "The instantiated collection contract address (primary key).",
+          "value": 1
+        },
+        "creator": {
+          "description": "Address that created this collection.",
+          "value": 1
+        },
+        "name": {
+          "description": "Collection name from InstantiateMsg.",
+          "value": 1
+        },
+        "symbol": {
+          "description": "Collection symbol from InstantiateMsg.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<cw_svg_minter::state::SvgCollection>",
+      "type": "array",
+      "items": 0
+    }
+  ]
+}

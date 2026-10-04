@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 // Constants
 
-const CONTRACT_NAME: &str = "crates.io:terp-irl";
+const CONTRACT_NAME: &str = "crates.io:terp-dao";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

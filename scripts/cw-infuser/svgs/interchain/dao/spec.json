@@ -1,0 +1,69 @@
+{
+  "version": "1",
+  "collection": "yinyang-fish",
+  "description": "Yin-yang symbol animated as two fish in eternal pursuit. Each fish body undergoes a circular S-curve wipe — a clip-path circle expands from the tail, slides along the body's S-curve spine, and floods the fish with its opposite color. Eyes flip at the geometrically precise moment the wipe circle covers them (t≈10.8%). A single shared drift-cycle keeps both halves perfectly synchronized. The border ring stays static throughout.",
+
+  "palette_groups": [
+    {
+      "id": "duality",
+      "note": "The two opposing fish colors. Curated as paired Options rather than RgbStyled to guarantee sufficient contrast between yin (darker principle) and yang (lighter principle). Each index in color-yin pairs with the same index in color-yang.",
+      "anchor": "color-yin",
+      "members": ["color-yin", "color-yang"],
+      "entropy": "full"
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "cycle",
+      "note": "Single shared cycle duration. Controls the speed of the circular wipe across both fish bodies, both eye flips, and both clip-path animations. All 9 occurrences of drift-cycle in the template receive the same value. Slower = meditative, faster = energetic.",
+      "members": ["drift-cycle"],
+      "min": "4.0",
+      "max": "14.0",
+      "precision": 1
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-yin",
+      "kind": {
+        "options": [
+          "rgb(64,38,14)",
+          "rgb(34,34,37)",
+          "rgb(0,0,0)",
+          "rgb(18,18,28)",
+          "rgb(42,30,60)",
+          "rgb(14,40,56)",
+          "rgb(58,22,22)",
+          "rgb(20,44,20)"
+        ]
+      }
+    },
+    {
+      "name": "color-yang",
+      "kind": {
+        "options": [
+          "rgb(141,93,51)",
+          "rgb(56,56,64)",
+          "rgb(221,221,222)",
+          "rgb(180,175,200)",
+          "rgb(170,150,200)",
+          "rgb(140,190,210)",
+          "rgb(200,140,130)",
+          "rgb(150,200,150)"
+        ]
+      }
+    },
+    {
+      "name": "drift-cycle",
+      "kind": {
+        "range": {
+          "min": "4.0",
+          "max": "14.0",
+          "precision": 1
+        }
+      }
+    }
+  ]
+}

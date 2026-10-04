@@ -1,0 +1,68 @@
+[
+  {
+    "name": "CwInfuser",
+    "dir": "../../contracts/cw-infuser/schema/cw-infuser",
+    "entryFiles": [
+      "CwInfuser.types.ts",
+      "CwInfuser.client.ts",
+      "CwInfuser.message-composer.ts"
+    ],
+    "globalName": "CwInfuser",
+    "outName": "cw-infuser"
+  },
+  {
+    "name": "CwInfusionMinter",
+    "dir": "../../contracts/cw-infuser/schema/cw-infusion-minter",
+    "entryFiles": [
+      "CwInfusionMinter.types.ts",
+      "CwInfusionMinter.client.ts",
+      "CwInfusionMinter.message-composer.ts"
+    ],
+    "globalName": "CwInfusionMinter",
+    "outName": "cw-infusion-minter"
+  },
+  {
+    "name": "CwSvgMinter",
+    "dir": "../../contracts/cw721/cw721-svg-minter/schema",
+    "entryFiles": [
+      "CwSvgMinter.types.ts",
+      "CwSvgMinter.client.ts",
+      "CwSvgMinter.message-composer.ts"
+    ],
+    "globalName": "CwSvgMinter",
+    "outName": "cw-svg-minter"
+  },
+  {
+    "name": "Cw721Svg",
+    "dir": "../../contracts/cw721/cw721-svg/schema",
+    "entryFiles": [
+      "Cw721Svg.types.ts",
+      "Cw721Svg.client.ts",
+      "Cw721Svg.message-composer.ts"
+    ],
+    "globalName": "Cw721Svg",
+    "outName": "cw721-svg"
+  },
+  {
+    "name": "WhitelistMtree",
+    "dir": "../../contracts/whitelist/whitelist-merkletree/schema",
+    "entryFiles": [
+      "WhitelistMtree.types.ts",
+      "WhitelistMtree.client.ts",
+      "WhitelistMtree.message-composer.ts"
+    ],
+    "globalName": "WhitelistMtree",
+    "outName": "whitelist-mtree"
+  },
+  {
+    "name": "DaoCalendar",
+    "dir": "../../vendor/dao-calendar/schema",
+    "entryFiles": [
+      "DaoCalendar.types.ts",
+      "DaoCalendar.client.ts",
+      "DaoCalendar.message-composer.ts"
+    ],
+    "globalName": "DaoCalendar",
+    "outName": "dao-calendar"
+  }
+]

@@ -14,9 +14,7 @@ pub struct TerpVsck;
 
 impl<Chain: TxHandler> Uploadable for TerpVsck<Chain> {
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
-        artifacts_dir_from_workspace!()
-            .find_wasm_path("terp_vsck")
-            .expect("terp_vsck.wasm not found — use Mock wrapper")
+        super::wasm_path::wasm("terp_vsck")
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {

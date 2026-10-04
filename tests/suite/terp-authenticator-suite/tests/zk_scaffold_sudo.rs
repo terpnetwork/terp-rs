@@ -33,54 +33,6 @@ fn assert_action(res: &<Mock as TxHandler>::Response, action: &str) {
     assert!(found, "expected action={action}, events={:#?}", res.events);
 }
 
-/// Accept-all scaffold: exercise every AuthSudoMsg arm (no policy).
-#[test]
-fn zk_poseidon_all_sudo_variants() {
-    let suite = deploy_suite();
-    let acct = mock_account();
-
-    assert_action(
-        &suite
-            .zk_poseidon
-            .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "pos-1", None))
-            .unwrap(),
-        "zkposeidon_on_auth_added",
-    );
-    assert_action(
-        &suite
-            .zk_poseidon
-            .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "pos-1", None))
-            .unwrap(),
-        "zkposeidon_on_auth_removed",
-    );
-    assert_action(
-        &suite
-            .zk_poseidon
-            .sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "pos-1",
-                Binary::from(b"any"),
-                None,
-            ))
-            .unwrap(),
-        "zkposeidon_authenticate",
-    );
-    assert_action(
-        &suite
-            .zk_poseidon
-            .sudo_track(dummy_track_request(acct.clone(), "pos-1", None))
-            .unwrap(),
-        "zkposeidon_track",
-    );
-    assert_action(
-        &suite
-            .zk_poseidon
-            .sudo_confirm_execution(dummy_confirm_execution_request(acct, "pos-1", None))
-            .unwrap(),
-        "zkposeidon_confirm",
-    );
-}
-
 #[test]
 fn zk_jwt_authenticate_with_proof_payload() {
     let suite = deploy_suite();
@@ -236,10 +188,7 @@ fn suite_coexistence_deploy() {
     let suite = deploy_suite();
     let addrs = [
         suite.zk_jwt.addr_str().unwrap(),
-        suite.zk_poseidon.addr_str().unwrap(),
         suite.vsck.addr_str().unwrap(),
     ];
     assert_ne!(addrs[0], addrs[1]);
-    assert_ne!(addrs[0], addrs[2]);
-    assert_ne!(addrs[1], addrs[2]);
 }

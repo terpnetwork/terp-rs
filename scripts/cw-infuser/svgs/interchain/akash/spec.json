@@ -1,0 +1,176 @@
+{
+  "version": "1",
+  "collection": "brad-geo",
+  "description": "Minimal geometric abstract form built from Brad's signature black (#232323) and red (#FF414C) palette. One shared linearGradient (grad-shared) fills all three shapes — highlight diamond, right solid overlay, left solid overlay — guaranteeing color continuity across the composition at all times. The gradient transfuses from a permanent dark anchor (stop 0%) to a pulsing red tip (stop 100%) driven by a single pulse-a timing. Motion variety comes purely from three independent opacity breath speeds (pulse-fast, pulse-mid, pulse-slow) with phase offsets (offset-mid, offset-slow) so no two shapes peak simultaneously. The two solid base fills remain ${color-main} and never animate — only their gradient overlay layers breathe.",
+
+  "palette_groups": [
+    {
+      "id": "main",
+      "note": "Core dark brand tones centered on #232323. Used as the permanent gradient stop-0 anchor and as the solid base fill for both solid paths. Tight entropy — must stay dark for brand legibility.",
+      "entropy": "tight",
+      "anchor": "color-main",
+      "members": [],
+      "ranges": [
+        { "r_min": 25, "r_max": 45, "g_min": 25, "g_max": 45, "b_min": 25, "b_max": 45 }
+      ]
+    },
+    {
+      "id": "accent",
+      "note": "Vibrant red brand tones centered on #FF414C. Used as the animated stop-100 target in grad-shared. Low entropy — stays within vivid Pantone-adjacent red.",
+      "entropy": "low",
+      "anchor": "color-accent",
+      "members": [],
+      "ranges": [
+        { "r_min": 220, "r_max": 255, "g_min": 45, "g_max": 85, "b_min": 55, "b_max": 95 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "color-pulse",
+      "note": "Master color cycle on grad-shared stop-100. ONE value controls when red appears and recedes across the entire composition. All three paths see this color change simultaneously — this is the transfusion heartbeat.",
+      "members": ["pulse-a"],
+      "min": "2.0",
+      "max": "6.0",
+      "precision": 2
+    },
+    {
+      "id": "breath-diamond",
+      "note": "Opacity breath for the highlight diamond (Path 1). Fastest — the diamond is the smallest and most focal shape, benefits from the most animation energy. No phase offset; sets the downbeat.",
+      "members": ["pulse-fast"],
+      "min": "1.5",
+      "max": "3.5",
+      "precision": 2
+    },
+    {
+      "id": "breath-right",
+      "note": "Opacity breath for the right solid gradient overlay (Path 2). Mid tempo. offset-mid staggers it from the diamond.",
+      "members": ["pulse-mid"],
+      "min": "2.5",
+      "max": "5.5",
+      "precision": 2
+    },
+    {
+      "id": "breath-left",
+      "note": "Opacity breath for the left solid gradient overlay (Path 3). Slowest — largest shape, grounding anchor. offset-slow phases it further from both other shapes.",
+      "members": ["pulse-slow"],
+      "min": "3.5",
+      "max": "7.0",
+      "precision": 2
+    },
+    {
+      "id": "phase-offsets",
+      "note": "begin delays that stagger Path 2 and Path 3 from Path 1, ensuring no two shapes are at opacity peak simultaneously.",
+      "members": ["offset-mid", "offset-slow"],
+      "min": "0.5",
+      "max": "3.0",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-main",
+      "note": "Dark brand anchor. Permanent stop-0 in grad-shared and solid base fill. Canonical #232323.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 25, "r_max": 45, "g_min": 25, "g_max": 45, "b_min": 25, "b_max": 45 }
+        ]
+      }
+    },
+    {
+      "name": "color-accent",
+      "note": "Red brand accent. Animated stop-100 target in grad-shared — the destination of every transfusion. Canonical #FF414C.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 220, "r_max": 255, "g_min": 45, "g_max": 85, "b_min": 55, "b_max": 95 }
+        ]
+      }
+    },
+    {
+      "name": "alpha-lo",
+      "note": "stop-opacity floor on grad-shared stop-100. The exhale state — red tip nearly invisible. Applies to all paths simultaneously since it lives in the gradient definition.",
+      "kind": {
+        "range": { "min": "0.0", "max": "0.10", "precision": 2 }
+      }
+    },
+    {
+      "name": "alpha-hi",
+      "note": "stop-opacity ceiling on grad-shared stop-100. The inhale peak — red tip fully present. Applies to all paths simultaneously.",
+      "kind": {
+        "range": { "min": "0.60", "max": "0.95", "precision": 2 }
+      }
+    },
+    {
+      "name": "alpha-bleed-lo",
+      "note": "Opacity floor for the solid path gradient overlay animations (Path 2 and Path 3). Keeps the bleed nearly invisible at rest.",
+      "kind": {
+        "range": { "min": "0.0", "max": "0.06", "precision": 2 }
+      }
+    },
+    {
+      "name": "alpha-bleed-hi",
+      "note": "Opacity ceiling for the solid path gradient overlay animations. Controls how strongly the red bleeds into the solid shapes at peak.",
+      "kind": {
+        "range": { "min": "0.08", "max": "0.22", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-lo",
+      "note": "Opacity floor for Path 1 (highlight diamond) breath animation.",
+      "kind": {
+        "range": { "min": "0.75", "max": "0.90", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-hi",
+      "note": "Opacity ceiling for Path 1 (highlight diamond) breath animation.",
+      "kind": {
+        "range": { "min": "0.95", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-a",
+      "note": "Master color cycle period — drives both stop-color and stop-opacity animations on grad-shared stop-100. One value governs the entire color story. Template appends 's'.",
+      "kind": {
+        "range": { "min": "2.0", "max": "6.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-fast",
+      "note": "Opacity breath period for Path 1 (highlight diamond). Fastest. Sets the rhythmic downbeat. Template appends 's'.",
+      "kind": {
+        "range": { "min": "1.5", "max": "3.5", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-mid",
+      "note": "Opacity breath period for Path 2 (right solid overlay). Mid tempo. Template appends 's'.",
+      "kind": {
+        "range": { "min": "2.5", "max": "5.5", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-slow",
+      "note": "Opacity breath period for Path 3 (left solid overlay). Slowest — grounding anchor. Template appends 's'.",
+      "kind": {
+        "range": { "min": "3.5", "max": "7.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "offset-mid",
+      "note": "begin delay for Path 2 breath animate. Phases the right solid out of sync with the diamond. Template appends 's'.",
+      "kind": {
+        "range": { "min": "0.5", "max": "2.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "offset-slow",
+      "note": "begin delay for Path 3 breath animate. Phases the left solid further from both other shapes. Template appends 's'.",
+      "kind": {
+        "range": { "min": "1.0", "max": "3.0", "precision": 2 }
+      }
+    }
+  ]
+}

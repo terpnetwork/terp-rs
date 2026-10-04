@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Returns a paginated list of all svg collections.",
+      "type": "object",
+      "required": [
+        "list_svg_collections"
+      ],
+      "properties": {
+        "list_svg_collections": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns a paginated list of all svg collections in reverse.",
+      "type": "object",
+      "required": [
+        "list_svg_collections_reverse"
+      ],
+      "properties": {
+        "list_svg_collections_reverse": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns a paginated list of svg collections created by a specific address.",
+      "type": "object",
+      "required": [
+        "list_svg_collections_by_creator"
+      ],
+      "properties": {
+        "list_svg_collections_by_creator": {
+          "type": "object",
+          "required": [
+            "creator"
+          ],
+          "properties": {
+            "creator": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns a paginated list of svg collections by creator in reverse.",
+      "type": "object",
+      "required": [
+        "list_svg_collections_by_creator_reverse"
+      ],
+      "properties": {
+        "list_svg_collections_by_creator_reverse": {
+          "type": "object",
+          "required": [
+            "creator"
+          ],
+          "properties": {
+            "creator": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns ownership info.",
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the cw721-svg code ID currently used to instantiate collections.",
+      "type": "object",
+      "required": [
+        "code_id"
+      ],
+      "properties": {
+        "code_id": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Bound DREGG IBC channel / runtime minters.",
+      "type": "object",
+      "required": [
+        "dregg_ibc"
+      ],
+      "properties": {
+        "dregg_ibc": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

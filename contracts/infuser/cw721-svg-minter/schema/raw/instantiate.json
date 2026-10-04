@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "svg_code_id"
+  ],
+  "properties": {
+    "dregg_ibc_only": {
+      "description": "If true, only DREGG runtime accounts / IBC packets may mint (no public native mint).",
+      "default": false,
+      "type": "boolean"
+    },
+    "owner": {
+      "description": "Optional owner. If set, only the owner may create collections.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "runtime_minters": {
+      "description": "Terp addrs the DREGG runtime uses (OR with IBC packet receive).",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "svg_code_id": {
+      "description": "Code ID of the cw721-svg contract to instantiate.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

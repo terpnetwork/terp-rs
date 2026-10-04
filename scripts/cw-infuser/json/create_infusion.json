@@ -1,0 +1,56 @@
+{
+    "enabled": true,
+    "owner": "stars1x7krclfpvt3d50ae4cvukckz4fe46g5gx393y2cjtdpar3aw6r3q3g8pd0",
+    "collections": [
+        {
+            "addr": "stars1sryvfl50ep8u450u27qj7fgularqfxycwqhdp057260lvuhpkfvs28fag0",
+            "min_req": 2,
+            "max_req": 2,
+            "payment_substitute": {
+                "denom": "ibc/E45CFCB959F4F6D1065B7033EE49A88E606E6AD82E75725219B3D68B0FA89987",
+                "amount": "300"
+            }
+        },
+        {
+            "addr": "stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et",
+            "min_req": 3,
+            "max_req": 3,
+            "payment_substitute": {
+                "denom": "ibc/8577E98BDDD2758FD5647A53563DAAC89921326F964EBF899B945ED05A66CA5F",
+                "amount": "2500000000"
+            }
+        }
+    ],
+    "infused_collection": {
+        "sg": true,
+        "admin": "stars1x7krclfpvt3d50ae4cvukckz4fe46g5gx393y2cjtdpar3aw6r3q3g8pd0",
+        "name": "Brace",
+        "description": "SMILE\n- 2 shitmos, \n- stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et",
+        "symbol": "BRACE",
+        "base_uri": "ipfs://Qme4Qzm29awwutJfDsbadBS9QM8SHQGuUNKr1SXz3iEu3q",
+        "image": "ipfs://QmQee2tq3knw6EexnF9t7py8CvHhS5MEShcQMqL2sGj8wg",
+        "num_tokens": 1000,
+        "royalty_info": null,
+        "start_trading_time": null,
+        "explicit_content": null,
+        "external_link": null,
+        "addr": "stars1ruq6mud3ndk7j2lm74n06fka8vk3cu2k8rcvsqvn7hexd684x6fsjlqh9m"
+    },
+    "infusion_params": {
+        "bundle_type": {
+            "any_of": {
+                "addrs": [
+                    "stars1sryvfl50ep8u450u27qj7fgularqfxycwqhdp057260lvuhpkfvs28fag0",
+                    "stars1273yvf8k229q98u6hzhykft6kj2gp8cv6z6tvznjsjw83grp8tksw345et"
+                ]
+            }
+        },
+        "mint_fee": {
+            "denom": "uterp",
+            "amount": "100000000"
+        },
+        "params": null,
+        "wavs_enabled": false
+    },
+    "payment_recipient": "stars1mk7rsmex4ueadgedsatljg85dn3ctadtdzrtxl"
+}

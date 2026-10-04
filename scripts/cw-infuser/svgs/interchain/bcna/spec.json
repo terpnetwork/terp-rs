@@ -1,0 +1,157 @@
+{
+  "version": "1",
+  "collection": "logo-flow",
+  "description": "Three-path logo (interlocking swash forms) with flowing gradient animation. The canonical fill is teal-mint #3cc194. Two animated linearGradients sweep across the logo form — grad-flow rotates continuously, grad-shimmer breathes vertically. A feGaussianBlur glow filter adds luminous halo depth. The palette stays within the teal-cyan-jade arc with slight warm-aqua drift allowed for artistic variation.",
+
+  "palette_groups": [
+    {
+      "id": "flow",
+      "note": "Three-stop animated gradient cycling through teal, cyan-jade, and deep aqua. Anchored at color-a (canonical mint #3cc194). color-b shifts cooler/cyan, color-c dips into deep teal-jade. Low-medium entropy — stays within the teal-cyan arc. glow-color is anchored here for filter coherence.",
+      "entropy": "medium",
+      "anchor": "color-a",
+      "members": ["color-b", "color-c", "glow-color"],
+      "ranges": {
+        "color-a": { "r_min": 40,  "r_max": 80,  "g_min": 185, "g_max": 220, "b_min": 130, "b_max": 170 },
+        "color-b": { "r_min": 10,  "r_max": 60,  "g_min": 195, "g_max": 240, "b_min": 185, "b_max": 230 },
+        "color-c": { "r_min": 15,  "r_max": 55,  "g_min": 155, "g_max": 200, "b_min": 140, "b_max": 190 },
+        "glow-color": { "r_min": 30, "r_max": 80, "g_min": 185, "g_max": 225, "b_min": 140, "b_max": 190 }
+      }
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "gradient-sweep",
+      "note": "Full rotation period of grad-flow gradient transform around the logo center. Slower = more stately, faster = energetic churn.",
+      "members": ["drift-sweep"],
+      "min": "6.0",
+      "max": "20.0",
+      "precision": 1
+    },
+    {
+      "id": "color-cycle",
+      "note": "Period of the stop-color animate cycle on grad-flow and grad-shimmer. Controls how fast hues transition between color-a/b/c.",
+      "members": ["pulse-flow", "pulse-shimmer"],
+      "min": "2.5",
+      "max": "6.0",
+      "precision": 2
+    },
+    {
+      "id": "body-breath",
+      "note": "Opacity breath animation on Path 3 (the large body form). Slow inhale/exhale giving the logo a living quality.",
+      "members": ["pulse-body"],
+      "min": "2.0",
+      "max": "5.0",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-a",
+      "note": "Gradient stop 0% — canonical teal-mint anchor. Maps to original #3cc194.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 40, "r_max": 80, "g_min": 185, "g_max": 220, "b_min": 130, "b_max": 170 }
+        ]
+      }
+    },
+    {
+      "name": "color-b",
+      "note": "Gradient stop 50% — cooler cyan-aqua. Provides the mid-sweep luminance shift.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 10, "r_max": 60, "g_min": 195, "g_max": 240, "b_min": 185, "b_max": 230 }
+        ]
+      }
+    },
+    {
+      "name": "color-c",
+      "note": "Gradient stop 100% — deeper teal-jade. Adds shadow depth to gradient tail.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 15, "r_max": 55, "g_min": 155, "g_max": 200, "b_min": 140, "b_max": 190 }
+        ]
+      }
+    },
+    {
+      "name": "glow-color",
+      "note": "feFlood color inside glow-filter. Anchored to flow palette — keeps halo coherent with fill animation.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 30, "r_max": 80, "g_min": 185, "g_max": 225, "b_min": 140, "b_max": 190 }
+        ]
+      }
+    },
+    {
+      "name": "blur-glow",
+      "note": "feGaussianBlur stdDeviation for glow filter. Lower = sharper crisp halo; higher = soft ambient bloom.",
+      "kind": {
+        "range": { "min": "0.5", "max": "3.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "opacity-glow",
+      "note": "flood-opacity of the glow feFlood. Controls glow intensity — higher values push saturation.",
+      "kind": {
+        "range": { "min": "0.30", "max": "0.75", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-primary",
+      "note": "Base opacity for Path 1 and Path 2 (the wing forms). Static — no animation.",
+      "kind": {
+        "range": { "min": "0.85", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-body",
+      "note": "Base opacity for Path 3 (large body form). Also used as animate from/to value for the breath cycle.",
+      "kind": {
+        "range": { "min": "0.70", "max": "0.95", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-hi",
+      "note": "Peak opacity in breath/shimmer animations — the 'inhale' ceiling. Should be >= opacity-body.",
+      "kind": {
+        "range": { "min": "0.90", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-lo",
+      "note": "Trough opacity in grad-shimmer stop animation — the subtle fade at gradient tail. Should be < opacity-body.",
+      "kind": {
+        "range": { "min": "0.40", "max": "0.70", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-flow",
+      "note": "Duration of color-stop animate cycle on grad-flow and grad-shimmer gradients. Controls hue cycling speed.",
+      "kind": {
+        "range": { "min": "2.5", "max": "6.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-shimmer",
+      "note": "Duration of opacity pulse on grad-shimmer stop-opacity — independently tunable from color cycle.",
+      "kind": {
+        "range": { "min": "2.5", "max": "6.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-body",
+      "note": "Duration of opacity breath on Path 3 (body form). Slow living pulse effect.",
+      "kind": {
+        "range": { "min": "2.0", "max": "5.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "drift-sweep",
+      "note": "Full rotation period (seconds) of the grad-flow gradient transform animateTransform. Controls how slowly the hue wash rotates across all three paths.",
+      "kind": {
+        "range": { "min": "6.0", "max": "20.0", "precision": 1 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mint_price_bound"
+      ],
+      "properties": {
+        "mint_price_bound": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "whitelist_root"
+      ],
+      "properties": {
+        "whitelist_root": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_eligible"
+      ],
+      "properties": {
+        "is_eligible": {
+          "type": "object",
+          "required": [
+            "address",
+            "proof"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "proof": {
+              "$ref": "#/definitions/LoyaltyProof"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "next_token_id"
+      ],
+      "properties": {
+        "next_token_id": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "oracle_mid"
+      ],
+      "properties": {
+        "oracle_mid": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "LoyaltyProof": {
+      "description": "On-chain / client proof payload (hex-encoded siblings + root).",
+      "type": "object",
+      "required": [
+        "address",
+        "codec",
+        "proof"
+      ],
+      "properties": {
+        "address": {
+          "description": "Bech32 (or chain) address that was hashed into the leaf.",
+          "type": "string"
+        },
+        "codec": {
+          "description": "Must equal [`CODEC_V1`] for v1 verifiers.",
+          "type": "string"
+        },
+        "leaf": {
+          "description": "Optional precomputed leaf hex; recomputed from address if omitted.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "proof": {
+          "description": "Sibling hashes, bottom-up (hex).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "root": {
+          "description": "Expected root hex (optional cross-check against stored root).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

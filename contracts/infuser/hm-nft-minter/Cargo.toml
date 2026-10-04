@@ -1,0 +1,33 @@
+[package]
+name = "hm-nft-minter"
+version.workspace = true
+authors.workspace = true
+edition = "2021"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "HashMerchant-perched oracle-priced loyalty-whitelist NFT minter (reference)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+hm-loyalty-whitelist = { workspace = true }
+hm-nft-oracle = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0"] }

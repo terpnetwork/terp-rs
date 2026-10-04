@@ -32,4 +32,10 @@ pub enum ContractError {
 
     #[error("duplicate guardian approval: {guardian}")]
     DuplicateApproval { guardian: String },
+
+    #[error("invalid recovery proof: {reason}")]
+    InvalidProof { reason: String },
+
+    #[error("recovery preimage proof verify is not linked")]
+    ProofNotLinked {},
 }

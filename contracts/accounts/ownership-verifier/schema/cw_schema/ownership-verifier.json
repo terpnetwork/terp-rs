@@ -1,0 +1,360 @@
+{
+  "contract_name": "ownership-verifier",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "ownership_verifier_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "ownership": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "abstract_std_objects_gov_type_GovernanceDetails_alloc_string_String_",
+        "description": "Governance types",
+        "type": "enum",
+        "cases": {
+          "abstract_account": {
+            "description": "Abstract account.\nAdmin actions have to be sent through signature bit flag\n\nMore details: https://github.com/burnt-labs/abstract-account/blob/2c933a7b2a8dacc0ae5bf4344159a7d4ab080135/README.md",
+            "type": "named",
+            "properties": {
+              "address": {
+                "description": "Address of this abstract account",
+                "value": 3
+              }
+            }
+          },
+          "external": {
+            "description": "An external governance source. This could be a cw3 contract for instance\nThe `governance_address` will be the admin of the Account.",
+            "type": "named",
+            "properties": {
+              "governance_address": {
+                "description": "The external contract address",
+                "value": 2
+              },
+              "governance_type": {
+                "description": "Governance type used for doing extra off-chain queries depending on the type.",
+                "value": 2
+              }
+            }
+          },
+          "monarchy": {
+            "description": "A single address is admin",
+            "type": "named",
+            "properties": {
+              "monarch": {
+                "description": "The monarch's address",
+                "value": 2
+              }
+            }
+          },
+          "nft": {
+            "description": "This account is linked to an NFT collection.\nThe owner of the specified token_id is the owner of the account",
+            "type": "named",
+            "properties": {
+              "collection_addr": {
+                "value": 2
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "renounced": {
+            "description": "Renounced account\nThis account no longer has an owner and cannot be used.",
+            "type": "named",
+            "properties": {}
+          },
+          "sub_account": {
+            "description": "Used when the account is a sub-account of another account.",
+            "type": "named",
+            "properties": {
+              "account": {
+                "value": 2
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_addresses_Addr",
+        "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+        "type": "address"
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "ownership_verifier_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "update_ownership": {
+            "type": "named",
+            "properties": {
+              "ownership": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "abstract_std_objects_gov_type_GovernanceDetails_alloc_string_String_",
+        "description": "Governance types",
+        "type": "enum",
+        "cases": {
+          "abstract_account": {
+            "description": "Abstract account.\nAdmin actions have to be sent through signature bit flag\n\nMore details: https://github.com/burnt-labs/abstract-account/blob/2c933a7b2a8dacc0ae5bf4344159a7d4ab080135/README.md",
+            "type": "named",
+            "properties": {
+              "address": {
+                "description": "Address of this abstract account",
+                "value": 3
+              }
+            }
+          },
+          "external": {
+            "description": "An external governance source. This could be a cw3 contract for instance\nThe `governance_address` will be the admin of the Account.",
+            "type": "named",
+            "properties": {
+              "governance_address": {
+                "description": "The external contract address",
+                "value": 2
+              },
+              "governance_type": {
+                "description": "Governance type used for doing extra off-chain queries depending on the type.",
+                "value": 2
+              }
+            }
+          },
+          "monarchy": {
+            "description": "A single address is admin",
+            "type": "named",
+            "properties": {
+              "monarch": {
+                "description": "The monarch's address",
+                "value": 2
+              }
+            }
+          },
+          "nft": {
+            "description": "This account is linked to an NFT collection.\nThe owner of the specified token_id is the owner of the account",
+            "type": "named",
+            "properties": {
+              "collection_addr": {
+                "value": 2
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "renounced": {
+            "description": "Renounced account\nThis account no longer has an owner and cannot be used.",
+            "type": "named",
+            "properties": {}
+          },
+          "sub_account": {
+            "description": "Used when the account is a sub-account of another account.",
+            "type": "named",
+            "properties": {
+              "account": {
+                "value": 2
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_addresses_Addr",
+        "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+        "type": "address"
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "ownership_verifier_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "ownership": {
+            "type": "named",
+            "properties": {}
+          }
+        }
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "ownership": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "abstract_std_objects_ownership_gov_ownable_Ownership_cosmwasm_std_addresses_Addr_",
+          "description": "The contract's ownership info",
+          "type": "struct",
+          "properties": {
+            "owner": {
+              "description": "The contract's current owner.",
+              "value": 1
+            },
+            "pending_expiry": {
+              "description": "The deadline for the pending owner to accept the ownership.\n`None` if there isn't a pending ownership transfer, or if a transfer\nexists and it doesn't have a deadline.",
+              "value": 8
+            },
+            "pending_owner": {
+              "description": "The account who has been proposed to take over the ownership.\n`None` if there isn't a pending ownership transfer.",
+              "value": 4
+            }
+          }
+        },
+        {
+          "name": "abstract_std_objects_gov_type_GovernanceDetails_cosmwasm_std_addresses_Addr_",
+          "description": "Governance types",
+          "type": "enum",
+          "cases": {
+            "abstract_account": {
+              "description": "Abstract account.\nAdmin actions have to be sent through signature bit flag\n\nMore details: https://github.com/burnt-labs/abstract-account/blob/2c933a7b2a8dacc0ae5bf4344159a7d4ab080135/README.md",
+              "type": "named",
+              "properties": {
+                "address": {
+                  "description": "Address of this abstract account",
+                  "value": 2
+                }
+              }
+            },
+            "external": {
+              "description": "An external governance source. This could be a cw3 contract for instance\nThe `governance_address` will be the admin of the Account.",
+              "type": "named",
+              "properties": {
+                "governance_address": {
+                  "description": "The external contract address",
+                  "value": 2
+                },
+                "governance_type": {
+                  "description": "Governance type used for doing extra off-chain queries depending on the type.",
+                  "value": 3
+                }
+              }
+            },
+            "monarchy": {
+              "description": "A single address is admin",
+              "type": "named",
+              "properties": {
+                "monarch": {
+                  "description": "The monarch's address",
+                  "value": 2
+                }
+              }
+            },
+            "nft": {
+              "description": "This account is linked to an NFT collection.\nThe owner of the specified token_id is the owner of the account",
+              "type": "named",
+              "properties": {
+                "collection_addr": {
+                  "value": 2
+                },
+                "token_id": {
+                  "value": 3
+                }
+              }
+            },
+            "renounced": {
+              "description": "Renounced account\nThis account no longer has an owner and cannot be used.",
+              "type": "named",
+              "properties": {}
+            },
+            "sub_account": {
+              "description": "Used when the account is a sub-account of another account.",
+              "type": "named",
+              "properties": {
+                "account": {
+                  "value": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<abstract_std::objects::gov_type::GovernanceDetails<cosmwasm_std::addresses::Addr>>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "cw_utils_expiration_Expiration",
+          "description": "Expiration represents a point in time when some event happens.\nIt can compare with a BlockInfo and will return is_expired() == true\nonce the condition is hit (and for every block in the future)",
+          "type": "enum",
+          "cases": {
+            "at_height": {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "tuple",
+              "items": [
+                6
+              ]
+            },
+            "at_time": {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "tuple",
+              "items": [
+                7
+              ]
+            },
+            "never": {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "named",
+              "properties": {}
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "core::option::Option<cw_utils::expiration::Expiration>",
+          "type": "optional",
+          "inner": 5
+        }
+      ]
+    }
+  }
+}

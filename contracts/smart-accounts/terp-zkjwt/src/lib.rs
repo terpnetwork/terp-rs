@@ -20,7 +20,7 @@ pub mod circom_codec;
 mod error;
 pub mod fixtures;
 mod instances;
-mod msg;
+pub mod msg;
 mod state;
 pub mod verify;
 

@@ -1,0 +1,109 @@
+{
+  "version": "1",
+  "collection": "cosmos-atom",
+  "description": "Living atom logo with deep cosmic palette. Three electrons travel along the actual elliptical orbital trails drawn in the SVG, using SVG animateMotion with mpath references to hidden arc-path definitions. Each orbit is a tilted ellipse (semi-major a=1093.11, semi-minor b=244.34, centered at 1250,1250): Electron A on the 150°-tilted orbit, B on the 30°-tilted orbit, C on the 90°-tilted (vertical) orbit. Starting positions match the original static electron placements within 35px. Independent drift timings (drift-electron-a/b/c) give each electron its own majestic pace. rotate='none' keeps electrons upright at all times. All original geometry and proportions preserved.",
+
+  "palette_groups": [
+    {
+      "id": "cosmic-bg",
+      "note": "Deep space indigo/black tones. bg-outer is the full-bleed circle; bg-inner is the darker void that the orbital trails pass through.",
+      "entropy": "tight",
+      "anchor": "color-bg-outer",
+      "members": ["color-bg-inner"],
+      "ranges": [
+        { "r_min": 22, "r_max": 55, "g_min": 24, "g_max": 52, "b_min": 60, "b_max": 90 }
+      ]
+    },
+    {
+      "id": "orbital-trails",
+      "note": "Metallic slate-blue diagonal gradient for the three stylized orbital path shapes. base anchors stop-0%, highlight anchors stop-100%.",
+      "entropy": "low",
+      "anchor": "color-orbit-base",
+      "members": ["color-orbit-highlight"],
+      "ranges": [
+        { "r_min": 95, "r_max": 145, "g_min": 105, "g_max": 155, "b_min": 135, "b_max": 190 }
+      ]
+    },
+    {
+      "id": "nucleus-accent",
+      "note": "Cool metallic silver-cyan shared by the central nucleus and all three electrons. Tight entropy — all four elements should read as the same material.",
+      "entropy": "tight",
+      "anchor": "color-nucleus",
+      "members": ["color-electron"],
+      "ranges": [
+        { "r_min": 175, "r_max": 230, "g_min": 180, "g_max": 235, "b_min": 195, "b_max": 250 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "electron-orbits",
+      "note": "Independent orbital periods for the three electrons. Each uses animateMotion with an mpath reference to its pre-computed arc path. All three orbits are geometrically identical ellipses (a=1093.11, b=244.34) at different tilts — only the duration differs. Longer = more majestic. Keep values clearly different so the three electrons are never in sync.",
+      "members": ["drift-electron-a", "drift-electron-b", "drift-electron-c"],
+      "min": "12.0",
+      "max": "48.0",
+      "precision": 1
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-bg-outer",
+      "note": "Full-bleed outer circle. Deep space indigo-black.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 25, "r_max": 55, "g_min": 25, "g_max": 55, "b_min": 65, "b_max": 90 }]
+      }
+    },
+    {
+      "name": "color-bg-inner",
+      "note": "Inner void circle (r=725.31). Slightly darker than bg-outer for depth layering.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 20, "r_max": 45, "g_min": 22, "g_max": 48, "b_min": 50, "b_max": 75 }]
+      }
+    },
+    {
+      "name": "color-orbit-base",
+      "note": "Gradient stop 0% for all three orbital trail paths. Darker metallic slate.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 95, "r_max": 135, "g_min": 105, "g_max": 145, "b_min": 135, "b_max": 175 }]
+      }
+    },
+    {
+      "name": "color-orbit-highlight",
+      "note": "Gradient stop 100% for orbital trails. Lighter metallic blue-white.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 115, "r_max": 165, "g_min": 125, "g_max": 175, "b_min": 165, "b_max": 210 }]
+      }
+    },
+    {
+      "name": "color-nucleus",
+      "note": "Central nucleus circle (r=128.6). Same material palette as electrons.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 175, "r_max": 215, "g_min": 180, "g_max": 220, "b_min": 195, "b_max": 235 }]
+      }
+    },
+    {
+      "name": "color-electron",
+      "note": "All three electrons share this color. Palette-anchored to nucleus group — they read as the same particle material.",
+      "kind": {
+        "rgb_styled": [{ "r_min": 180, "r_max": 230, "g_min": 185, "g_max": 235, "b_min": 200, "b_max": 250 }]
+      }
+    },
+    {
+      "name": "drift-electron-a",
+      "note": "Orbital period for Electron A (150°-tilted orbit). Template appends 's'.",
+      "kind": { "range": { "min": "14.0", "max": "38.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-electron-b",
+      "note": "Orbital period for Electron B (30°-tilted orbit). Template appends 's'.",
+      "kind": { "range": { "min": "19.0", "max": "45.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-electron-c",
+      "note": "Orbital period for Electron C (90°-tilted vertical orbit). Template appends 's'.",
+      "kind": { "range": { "min": "12.0", "max": "32.0", "precision": 1 } }
+    }
+  ]
+}

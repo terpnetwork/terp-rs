@@ -15,8 +15,7 @@
         "terp-ed25519": 6,
         "terp-passkey": 4,
         "terp-recovery": 5,
-        "terp-zkjwt": 9,
-        "terp-zkposiedon": 10
+        "terp-zkjwt": 9
       },
       "default": {
         "abstract:account-monarchy": "terp1w70c0x7pwa3f49khksewz6k7n4wfwedfrh62rmfkv96d8vrruh6q5jr4cg",

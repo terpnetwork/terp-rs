@@ -11,9 +11,7 @@ pub struct CwZkVerifyDemo;
 
 impl<Chain: TxHandler> Uploadable for CwZkVerifyDemo<Chain> {
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
-        artifacts_dir_from_workspace!()
-            .find_wasm_path("cw_zk_verify_demo")
-            .expect("cw_zk_verify_demo.wasm not found — use Mock wrapper")
+        super::wasm_path::wasm("cw_zk_verify_demo")
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
