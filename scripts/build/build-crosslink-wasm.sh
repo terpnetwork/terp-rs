@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build cw-ics08-wasm-crosslink via the Terp Docker optimizer.
 #
-# MSRV for CosmWasm artifacts: Rust **1.86** only (pinned in optimizer image +
-# workspace rust-version). No host rustc / older toolchains for published wasm.
+# Artifact rustc is 1.91. See crates/terp-rs/docs/wasm-artifacts.md.
+# No host nightly for published wasm.
 #
 # Run from the terp-rs crate root. Volume path is mounted at /workspace so path
 # deps resolve (../cosmwasm, ../cw-minus, ../ibc-proto-rs, …).
@@ -15,7 +15,7 @@ set -euo pipefail
 
 # Refuse accidental host cargo wasm publish paths.
 if [[ "${FORCE_HOST_WASM:-0}" == "1" ]]; then
-  echo "error: FORCE_HOST_WASM is not supported; CosmWasm artifacts must use Docker optimizer (rustc 1.86)" >&2
+  echo "error: FORCE_HOST_WASM is not supported; CosmWasm artifacts must use Docker optimizer (rustc 1.91)" >&2
   exit 1
 fi
 

@@ -16,7 +16,7 @@
 //!     responses: { query_name: { title, type, properties, definitions } }
 //!   }
 
-use crate::config::GenerationContext;
+use crate::config::{ts_variant_dir, GenerationContext};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde_json::Value;
@@ -34,8 +34,7 @@ impl Generator for TsCodegenGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let ts_out = ctx.ts_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&ts_out)?;
+        std::fs::create_dir_all(&ctx.ts_out)?;
 
         let mut total_files = 0;
         let mut contracts_processed = 0;
@@ -47,7 +46,7 @@ impl Generator for TsCodegenGenerator {
                 name: "ts-codegen",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(ts_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
                 message: Some("No contracts found to process".to_string()),
             });
         }
@@ -68,29 +67,38 @@ impl Generator for TsCodegenGenerator {
             // This ensures $ref resolution works globally
 
             let cname = pascal_case(contract_name);
+            let types_dir = ts_variant_dir(&ctx.ts_out, contract_name, "types");
+            let client_dir = ts_variant_dir(&ctx.ts_out, contract_name, "client");
+            let composer_dir = ts_variant_dir(&ctx.ts_out, contract_name, "message-composer");
+            std::fs::create_dir_all(&types_dir)?;
+            std::fs::create_dir_all(&client_dir)?;
+            std::fs::create_dir_all(&composer_dir)?;
 
-            // Generate .types.ts
             let types_ts = generate_types_file(&cname, &message_types, &response_types, &all_defs)?;
-            std::fs::write(ts_out.join(format!("{}.types.ts", cname)), &types_ts)?;
+            std::fs::write(types_dir.join(format!("{}.types.ts", cname)), &types_ts)?;
             total_files += 1;
 
-            // Generate .client.ts
             let client_ts = generate_client_file(&cname, &message_types, &response_types)?;
-            std::fs::write(ts_out.join(format!("{}.client.ts", cname)), &client_ts)?;
+            std::fs::write(client_dir.join(format!("{}.client.ts", cname)), &client_ts)?;
             total_files += 1;
 
-            // Generate .message-composer.ts
             let composer_ts = generate_message_composer_file(&cname, &message_types)?;
-            std::fs::write(ts_out.join(format!("{}.message-composer.ts", cname)), &composer_ts)?;
+            std::fs::write(
+                composer_dir.join(format!("{}.message-composer.ts", cname)),
+                &composer_ts,
+            )?;
             total_files += 1;
 
-            // Barrel export
-            let barrel_dir = ts_out.join("_entry");
-            std::fs::create_dir_all(&barrel_dir)?;
             let barrel_ts = format!(
-                "export * from '../{cname}.types';\nexport * from '../{cname}.client';\nexport * from '../{cname}.message-composer';\nexport * from '../{cname}.zod';\nexport * from '../{cname}.bundle.mjs';\nexport * from '../{cname}.filters';\nexport * from '../{cname}.argus';\n",
+                "export * from './types/{cname}.types';\n\
+                 export * from './client/{cname}.client';\n\
+                 export * from './message-composer/{cname}.message-composer';\n\
+                 export * from './zod/{cname}.zod';\n\
+                 export * from './esbundles/{cname}.bundle.mjs';\n\
+                 export * from './filters/{cname}.filters';\n\
+                 export * from './argus/{cname}.argus';\n",
             );
-            std::fs::write(barrel_dir.join(format!("{}.ts", contract_name)), &barrel_ts)?;
+            std::fs::write(ctx.ts_out.join(contract_name).join("index.ts"), &barrel_ts)?;
             total_files += 1;
 
             contracts_processed += 1;
@@ -100,7 +108,7 @@ impl Generator for TsCodegenGenerator {
             name: "ts-codegen",
             success: true,
             files_generated: total_files,
-            output_dir: Some(ts_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
             message: Some(format!(
                 "{} contracts processed, {} files generated",
                 contracts_processed, total_files

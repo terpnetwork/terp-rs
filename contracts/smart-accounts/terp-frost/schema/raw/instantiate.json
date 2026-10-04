@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "group_vk",
+    "n",
+    "seats",
+    "t"
+  ],
+  "properties": {
+    "group_vk": {
+      "type": "string"
+    },
+    "n": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "seats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "t": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,308 @@
+{
+  "contract_name": "trusted-builder-sbt",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "trusted_builder_sbt_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "admin": {
+            "value": 1
+          },
+          "ibc2_dest_port": {
+            "defaulting": true,
+            "value": 2
+          },
+          "ibc2_source_client": {
+            "defaulting": true,
+            "value": 2
+          },
+          "manifesto_contract": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "trusted_builder_sbt_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "commit_australge": {
+            "description": "Path 2: user commits to the Australge / Trustless Manifesto on Terp.\nStores a pending commitment and, if a client is registered, emits\n`Ibc2Msg::SendPacket` so ETH can pledge and attest back.",
+            "type": "named",
+            "properties": {
+              "commitment_hex": {
+                "value": 1
+              },
+              "eth_address": {
+                "value": 1
+              }
+            }
+          },
+          "deliver_eth_attestation": {
+            "description": "Relayer/admin delivery of an ETH pledge attestation (same mint as\n`ibc2_packet_receive`). Used when a real Eureka relayer is not in the loop.",
+            "type": "named",
+            "properties": {
+              "commitment_hex": {
+                "value": 1
+              },
+              "eth_address": {
+                "value": 1
+              },
+              "pledge_tx": {
+                "value": 1
+              }
+            }
+          },
+          "mint": {
+            "description": "Path 1: mint after hashmerchant VE / sidecar recorded the manifesto pledge.",
+            "type": "named",
+            "properties": {
+              "eth_address": {
+                "value": 1
+              },
+              "sign_tx": {
+                "value": 1
+              },
+              "ve_commitment_hex": {
+                "value": 1
+              }
+            }
+          },
+          "register_ibc_v2": {
+            "description": "Admin registers the IBC-v2 counterparty (no v1 handshake). This is the\napp-level \"connection\" to ETH (Eureka client id + dest port).",
+            "type": "named",
+            "properties": {
+              "dest_port": {
+                "value": 1
+              },
+              "source_client": {
+                "value": 1
+              }
+            }
+          },
+          "send_australge_packet": {
+            "description": "Emit `Ibc2Msg::SendPacket` for a pending Australge commitment (requires\n`RegisterIbcV2`). Separate from commit so the on-chain commitment works\neven when the host has no IBC-v2 client yet.",
+            "type": "named",
+            "properties": {
+              "eth_address": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "trusted_builder_sbt_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "commitment": {
+            "type": "named",
+            "properties": {
+              "eth_address": {
+                "value": 1
+              }
+            }
+          },
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "token": {
+            "type": "named",
+            "properties": {
+              "eth_address": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "commitment": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "trusted_builder_sbt_Commitment",
+          "type": "struct",
+          "properties": {
+            "commitment_hex": {
+              "value": 1
+            },
+            "committer": {
+              "value": 1
+            },
+            "eth_address": {
+              "value": 1
+            },
+            "height": {
+              "value": 2
+            },
+            "status": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "trusted_builder_sbt_CommitmentStatus",
+          "type": "enum",
+          "cases": {
+            "completed": {
+              "type": "unit"
+            },
+            "pending": {
+              "type": "unit"
+            },
+            "timed_out": {
+              "type": "unit"
+            }
+          }
+        }
+      ]
+    },
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "trusted_builder_sbt_Config",
+          "type": "struct",
+          "properties": {
+            "admin": {
+              "value": 1
+            },
+            "ibc2_dest_port": {
+              "value": 3
+            },
+            "ibc2_source_client": {
+              "value": 3
+            },
+            "manifesto_contract": {
+              "value": 1
+            },
+            "next_id": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    },
+    "token": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "trusted_builder_sbt_Token",
+          "type": "struct",
+          "properties": {
+            "eth_address": {
+              "value": 2
+            },
+            "mint_path": {
+              "value": 3
+            },
+            "minted_height": {
+              "value": 1
+            },
+            "owner": {
+              "value": 2
+            },
+            "sign_tx": {
+              "value": 2
+            },
+            "token_id": {
+              "value": 1
+            },
+            "ve_commitment_hex": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "trusted_builder_sbt_MintPath",
+          "type": "enum",
+          "cases": {
+            "ibc_v2_australge": {
+              "type": "unit"
+            },
+            "ve_sidecar": {
+              "type": "unit"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

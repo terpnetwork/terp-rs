@@ -1,0 +1,54 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_vsck_msg_InstantiateMsg",
+      "description": "DAO (or factory) registers this authenticator as a **voting module** for\nprivate ballots following the Shielded Vote / vote-sdk (VSCK) workflow.",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "value": 2
+        },
+        "circuit_vks": {
+          "description": "Verifying keys for vote-sdk circuit families (opaque until circuits linked).",
+          "value": 3
+        },
+        "dao": {
+          "description": "DAO core / voting module address that may open sessions.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "terp_vsck_msg_CircuitVerifyingKeys",
+      "description": "Maps to vote-sdk circuit crates: delegation, vote_proof, share_reveal.",
+      "type": "struct",
+      "properties": {
+        "delegation_vk": {
+          "value": 4
+        },
+        "share_reveal_vk": {
+          "value": 4
+        },
+        "vote_proof_vk": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    }
+  ]
+}

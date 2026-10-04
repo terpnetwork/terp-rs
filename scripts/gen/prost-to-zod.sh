@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # prost-to-zod.sh — Parse prost-generated .rs files and emit Zod schemas + TS types.
-# Usage: ./scripts/prost-to-zod.sh [--modules terp,osmosis] [--out-dir ts/zod]
+# Usage: ./scripts/gen/prost-to-zod.sh [--modules terp,osmosis] [--out-dir api/ts/terp-ts/zod]
 #
 # Reads src/gen/*.rs, extracts #[prost::Message] structs, maps prost field
 # annotations to Zod validators, and writes one .ts file per proto package.
@@ -21,7 +21,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 GEN_DIR="$ROOT/proto/src/gen"
-OUT_DIR="${OUT_DIR:-$ROOT/ts/zod}"
+OUT_DIR="${OUT_DIR:-$ROOT/api/ts/terp-ts/zod}"
 MODULES="${MODULES:-terp,osmosis}"
 
 # CLI overrides.
@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
     --modules)  MODULES="$2"; shift 2 ;;
     --out-dir)  OUT_DIR="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--modules terp,osmosis] [--out-dir ts/zod]"
+      echo "Usage: $0 [--modules terp,osmosis] [--out-dir api/ts/terp-ts/zod]"
       exit 0 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild passkey / recovery / ed25519 / eth wasm with the CosmWasm optimizer image
-# (rustc 1.86). Terp wasmvm meters bulk-memory; do **not** strip memory.copy/fill.
+# (rustc 1.91). Terp wasmvm meters bulk-memory; do **not** strip memory.copy/fill.
+# Standard: crates/terp-rs/docs/wasm-artifacts.md.
 #
 # Usage (from terp-rs/):
 #   ./scripts/build-noncircuit-auth-wasm.sh
@@ -49,14 +50,14 @@ for p in "${PACKAGES[@]}"; do
 done
 
 # Image ENTRYPOINT is terp-optimize.sh (bob over the whole workspace). Override
-# to rustc 1.86 cargo -p so we only emit the four non-circuit authenticators.
+# to rustc 1.91 cargo -p so we only emit the four non-circuit authenticators.
 docker run --rm \
   --entrypoint /bin/ash \
   -v "${CRATES_ROOT}:/workspace" \
   -v "${CRATE_ROOT}/artifacts:/artifacts_out" \
   -w "/workspace/${CRATE_NAME}" \
   -e CARGO_TARGET_DIR=/target \
-  -e RUSTFLAGS="-C link-arg=-s" \
+  -e RUSTFLAGS="-C link-arg=-s -C target-feature=-simd128" \
   --mount type=volume,source="${CRATE_NAME}_optimizer_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   "${OPTIMIZER_IMAGE}" \

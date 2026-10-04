@@ -1,0 +1,38 @@
+[package]
+name = "cw-infuser-suite"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+default = []
+vanilla = []
+
+[dependencies]
+anyhow = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-infuser = { workspace = true, features = ["interface"] }
+cw-infuser-scripts = { path = "../../../scripts/cw-infuser", default-features = false }
+cw-infusions = { workspace = true }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-storage-plus = { workspace = true }
+cw-svg = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw721 = { workspace = true }
+cw721-base = { path = "../../../../cw-nfts/contracts/cw721-base" }
+cw721-svg = { workspace = true, features = ["library","interface"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+whitelist-mtree = { workspace = true, features = ["library", "interface"] }
+
+[dev-dependencies]
+abstract-cw-multi-test = { path = "../../../../cw-multi-test-fork" }
+rand = "0.8.5"
+rs_merkle = { version = "1.4.1", default-features = false }
+

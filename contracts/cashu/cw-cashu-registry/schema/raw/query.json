@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mint"
+      ],
+      "properties": {
+        "mint": {
+          "type": "object",
+          "required": [
+            "mint_id"
+          ],
+          "properties": {
+            "mint_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "mint_by_url"
+      ],
+      "properties": {
+        "mint_by_url": {
+          "type": "object",
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Page of descriptors. Default status filter: **active only**.",
+      "type": "object",
+      "required": [
+        "list_mints"
+      ],
+      "properties": {
+        "list_mints": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "status_filter": {
+              "description": "When set, only that status. When omitted, only `active`.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/MintStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "True if mint_id is present, or normalized url maps to a mint. Provide exactly one of `mint_id` or `url`.",
+      "type": "object",
+      "required": [
+        "is_registered"
+      ],
+      "properties": {
+        "is_registered": {
+          "type": "object",
+          "properties": {
+            "mint_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "MintStatus": {
+      "description": "Discovery status for a registered mint.",
+      "oneOf": [
+        {
+          "description": "Discoverable; wallets may use subject to their own trust.",
+          "type": "string",
+          "enum": [
+            "active"
+          ]
+        },
+        {
+          "description": "Temporarily hidden from default list queries.",
+          "type": "string",
+          "enum": [
+            "paused"
+          ]
+        },
+        {
+          "description": "Tombstone; kept for audit, excluded from default list.",
+          "type": "string",
+          "enum": [
+            "revoked"
+          ]
+        }
+      ]
+    }
+  }
+}

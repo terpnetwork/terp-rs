@@ -1,0 +1,117 @@
+{
+  "contract_name": "polytone-any-proxy",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "polytone_any_proxy_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "unrestricted": {
+            "description": "If true, skip instantiator check (ict-rs / lab). Production: false, then `SetInstantiator` to the ICA.",
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "core::option::Option<bool>",
+        "type": "optional",
+        "inner": 1
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "polytone_any_proxy_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "dispatch": {
+            "description": "Dispatch protobuf Anys. Instantiator only unless `unrestricted`.",
+            "type": "named",
+            "properties": {
+              "msgs": {
+                "value": 4
+              }
+            }
+          },
+          "set_instantiator": {
+            "description": "Hand the gate to the polytone ICA address (after `RemoteAddress` query).",
+            "type": "named",
+            "properties": {
+              "addr": {
+                "value": 2
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "polytone_any_proxy_AnyPacket",
+        "type": "struct",
+        "properties": {
+          "type_url": {
+            "value": 2
+          },
+          "value": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "alloc::vec::Vec<polytone_any_proxy::AnyPacket>",
+        "type": "array",
+        "items": 1
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "polytone_any_proxy_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "instantiator": {
+            "type": "named",
+            "properties": {}
+          }
+        }
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "instantiator": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        }
+      ]
+    }
+  }
+}

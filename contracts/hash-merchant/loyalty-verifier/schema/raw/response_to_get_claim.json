@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClaimResponse",
+  "type": "object",
+  "required": [
+    "claimed",
+    "claimer",
+    "leaf_hash",
+    "root_index"
+  ],
+  "properties": {
+    "claimed": {
+      "type": "boolean"
+    },
+    "claimer": {
+      "type": "string"
+    },
+    "leaf_hash": {
+      "type": "string"
+    },
+    "root_index": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

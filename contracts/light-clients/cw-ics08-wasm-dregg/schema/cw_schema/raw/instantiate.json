@@ -1,0 +1,161 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_dregg_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "checksum": {
+          "description": "Optional 08-wasm bytecode checksum (stored for operators).",
+          "value": 5
+        },
+        "client_state": {
+          "value": 1
+        },
+        "consensus_state": {
+          "description": "Initial consensus (usually genesis lanes, height 0).",
+          "value": 12
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_ClientState",
+      "type": "struct",
+      "properties": {
+        "allow_gate_off_finality": {
+          "value": 10
+        },
+        "auth_min_proven_height": {
+          "value": 9
+        },
+        "auth_require_root_in_history": {
+          "value": 10
+        },
+        "chain_id": {
+          "value": 3
+        },
+        "claim_ceiling": {
+          "value": 11
+        },
+        "client_schema_version": {
+          "value": 2
+        },
+        "federation_id": {
+          "value": 5
+        },
+        "frozen_height": {
+          "value": 9
+        },
+        "genesis_lanes": {
+          "description": "Length 8 BabyBear lanes.",
+          "value": 7
+        },
+        "latest_height": {
+          "value": 8
+        },
+        "settlement_vk_hash": {
+          "description": "Hex, 32 bytes, non-zero.",
+          "value": 3
+        },
+        "trust_level": {
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_TrustLevel",
+      "type": "enum",
+      "cases": {
+        "settlement_wrap_only": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<u32>",
+      "type": "array",
+      "items": 2
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 8
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_ClaimCeiling",
+      "type": "enum",
+      "cases": {
+        "settlement_only": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_ConsensusState",
+      "type": "struct",
+      "properties": {
+        "kind": {
+          "value": 14
+        },
+        "proven_height": {
+          "value": 8
+        },
+        "proven_lanes": {
+          "value": 7
+        },
+        "proven_root_key": {
+          "value": 3
+        },
+        "version": {
+          "value": 13
+        }
+      }
+    },
+    {
+      "name": "u8",
+      "type": "integer",
+      "precision": 8,
+      "signed": false
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_ConsensusKind",
+      "type": "enum",
+      "cases": {
+        "b": {
+          "type": "unit"
+        }
+      }
+    }
+  ]
+}

@@ -50,7 +50,7 @@ members = [
     "crates/hm-nft-oracle",
     "scripts/terp-accounts",
     "scripts/cw-infuser",
-    "tests/cw-infuser-suite",
+    "tests/suite/cw-infuser-suite",
 ]
 
 [workspace.package]

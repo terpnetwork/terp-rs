@@ -2,7 +2,7 @@
 
 ## Status: Phase 1 complete
 - Unified CLI (gen-tools) managing 8 projects via gen-tools.yaml
-- All outputs default to terp-api/<lang>/ per workspace
+- All outputs default to api/<lang>/<contract>/ per workspace
 - Pipeline steps: schema, ts-codegen, proto, python, zod, go, openapi
 - Optional (now enabled by default): trailmark, githem, QMD, tensorzero
 

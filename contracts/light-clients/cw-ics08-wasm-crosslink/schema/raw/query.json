@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "description": "The query message.",
+  "oneOf": [
+    {
+      "description": "Verify a client message.",
+      "type": "object",
+      "required": [
+        "verify_client_message"
+      ],
+      "properties": {
+        "verify_client_message": {
+          "$ref": "#/definitions/VerifyClientMessageMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Check for misbehaviour.",
+      "type": "object",
+      "required": [
+        "check_for_misbehaviour"
+      ],
+      "properties": {
+        "check_for_misbehaviour": {
+          "$ref": "#/definitions/CheckForMisbehaviourMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get the timestamp at a given height.",
+      "type": "object",
+      "required": [
+        "timestamp_at_height"
+      ],
+      "properties": {
+        "timestamp_at_height": {
+          "$ref": "#/definitions/TimestampAtHeightMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get the status of the client.",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/StatusMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "CheckForMisbehaviourMsg": {
+      "description": "Check for misbehaviour request.",
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "description": "The serialized client message.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Height": {
+      "description": "A height.",
+      "type": "object",
+      "required": [
+        "revision_height",
+        "revision_number"
+      ],
+      "properties": {
+        "revision_height": {
+          "description": "The revision height.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "revision_number": {
+          "description": "The revision number.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "StatusMsg": {
+      "description": "Status request.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "TimestampAtHeightMsg": {
+      "description": "Timestamp at height request.",
+      "type": "object",
+      "required": [
+        "height"
+      ],
+      "properties": {
+        "height": {
+          "description": "The height to query.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Height"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyClientMessageMsg": {
+      "description": "Verify client message request.",
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "description": "The serialized client message.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

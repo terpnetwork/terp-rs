@@ -1,0 +1,68 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_dregg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "lc_contract": {
+          "value": 2
+        },
+        "min_proven_height": {
+          "value": 5
+        },
+        "mode": {
+          "value": 3
+        },
+        "owner": {
+          "value": 2
+        },
+        "require_root_in_history": {
+          "value": 7
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "terp_dregg_AuthMode",
+      "type": "enum",
+      "cases": {
+        "embedded_head": {
+          "type": "unit"
+        },
+        "query_lc": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<bool>",
+      "type": "optional",
+      "inner": 6
+    }
+  ]
+}

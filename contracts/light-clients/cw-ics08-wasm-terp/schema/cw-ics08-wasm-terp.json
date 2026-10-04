@@ -1,0 +1,484 @@
+{
+  "contract_name": "cw-ics08-wasm-terp",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "checksum",
+      "client_state",
+      "consensus_state"
+    ],
+    "properties": {
+      "checksum": {
+        "$ref": "#/definitions/Binary"
+      },
+      "client_state": {
+        "$ref": "#/definitions/Binary"
+      },
+      "consensus_state": {
+        "$ref": "#/definitions/Binary"
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Lab path (x/wasm instantiate): ICS-23 IAVL proof. Empty `value_hex` = non-membership.",
+        "type": "object",
+        "required": [
+          "confirm_ics23"
+        ],
+        "properties": {
+          "confirm_ics23": {
+            "type": "object",
+            "required": [
+              "key_hex",
+              "proof_hex",
+              "store_name",
+              "store_root_hex",
+              "value_hex"
+            ],
+            "properties": {
+              "key_hex": {
+                "type": "string"
+              },
+              "proof_hex": {
+                "type": "string"
+              },
+              "store_name": {
+                "type": "string"
+              },
+              "store_root_hex": {
+                "type": "string"
+              },
+              "value_hex": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "verify_client_message"
+        ],
+        "properties": {
+          "verify_client_message": {
+            "$ref": "#/definitions/VerifyClientMessageMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "check_for_misbehaviour"
+        ],
+        "properties": {
+          "check_for_misbehaviour": {
+            "$ref": "#/definitions/CheckForMisbehaviourMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "timestamp_at_height"
+        ],
+        "properties": {
+          "timestamp_at_height": {
+            "$ref": "#/definitions/TimestampAtHeightMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/definitions/StatusMsg"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "CheckForMisbehaviourMsg": {
+        "type": "object",
+        "required": [
+          "client_message"
+        ],
+        "properties": {
+          "client_message": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Height": {
+        "type": "object",
+        "properties": {
+          "revision_height": {
+            "default": 0,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "revision_number": {
+            "default": 0,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatusMsg": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "TimestampAtHeightMsg": {
+        "type": "object",
+        "required": [
+          "height"
+        ],
+        "properties": {
+          "height": {
+            "$ref": "#/definitions/Height"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyClientMessageMsg": {
+        "type": "object",
+        "required": [
+          "client_message"
+        ],
+        "properties": {
+          "client_message": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SudoMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "verify_membership"
+        ],
+        "properties": {
+          "verify_membership": {
+            "$ref": "#/definitions/VerifyMembershipMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "verify_non_membership"
+        ],
+        "properties": {
+          "verify_non_membership": {
+            "$ref": "#/definitions/VerifyNonMembershipMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_state"
+        ],
+        "properties": {
+          "update_state": {
+            "$ref": "#/definitions/UpdateStateMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_state_on_misbehaviour"
+        ],
+        "properties": {
+          "update_state_on_misbehaviour": {
+            "$ref": "#/definitions/MisbehaviourMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "verify_upgrade_and_update_state"
+        ],
+        "properties": {
+          "verify_upgrade_and_update_state": {
+            "$ref": "#/definitions/VerifyUpgradeAndUpdateStateMsg"
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "migrate_client_store"
+        ],
+        "properties": {
+          "migrate_client_store": {
+            "$ref": "#/definitions/MigrateClientStoreMsg"
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Height": {
+        "type": "object",
+        "properties": {
+          "revision_height": {
+            "default": 0,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "revision_number": {
+            "default": 0,
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "MerklePath": {
+        "type": "object",
+        "required": [
+          "key_path"
+        ],
+        "properties": {
+          "key_path": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "MigrateClientStoreMsg": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "MisbehaviourMsg": {
+        "type": "object",
+        "required": [
+          "client_message"
+        ],
+        "properties": {
+          "client_message": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStateMsg": {
+        "type": "object",
+        "required": [
+          "client_message"
+        ],
+        "properties": {
+          "client_message": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyMembershipMsg": {
+        "type": "object",
+        "required": [
+          "delay_block_period",
+          "delay_time_period",
+          "height",
+          "merkle_path",
+          "proof",
+          "value"
+        ],
+        "properties": {
+          "delay_block_period": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "delay_time_period": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "height": {
+            "$ref": "#/definitions/Height"
+          },
+          "merkle_path": {
+            "$ref": "#/definitions/MerklePath"
+          },
+          "proof": {
+            "$ref": "#/definitions/Binary"
+          },
+          "value": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyNonMembershipMsg": {
+        "type": "object",
+        "required": [
+          "delay_block_period",
+          "delay_time_period",
+          "height",
+          "merkle_path",
+          "proof"
+        ],
+        "properties": {
+          "delay_block_period": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "delay_time_period": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "height": {
+            "$ref": "#/definitions/Height"
+          },
+          "merkle_path": {
+            "$ref": "#/definitions/MerklePath"
+          },
+          "proof": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyUpgradeAndUpdateStateMsg": {
+        "type": "object",
+        "required": [
+          "proof_upgrade_client",
+          "proof_upgrade_consensus_state",
+          "upgrade_client_state",
+          "upgrade_consensus_state"
+        ],
+        "properties": {
+          "proof_upgrade_client": {
+            "$ref": "#/definitions/Binary"
+          },
+          "proof_upgrade_consensus_state": {
+            "$ref": "#/definitions/Binary"
+          },
+          "upgrade_client_state": {
+            "$ref": "#/definitions/Binary"
+          },
+          "upgrade_consensus_state": {
+            "$ref": "#/definitions/Binary"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "responses": {
+    "check_for_misbehaviour": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CheckForMisbehaviourResult",
+      "type": "object",
+      "required": [
+        "found_misbehaviour"
+      ],
+      "properties": {
+        "found_misbehaviour": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StatusResult",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timestamp_at_height": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TimestampAtHeightResult",
+      "type": "object",
+      "required": [
+        "timestamp"
+      ],
+      "properties": {
+        "timestamp": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "verify_client_message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Null",
+      "type": "null"
+    }
+  }
+}

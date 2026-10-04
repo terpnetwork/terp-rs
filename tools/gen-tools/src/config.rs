@@ -121,18 +121,18 @@ pub struct Cli {
     #[arg(short = 'v', long)]
     pub verbose: bool,
 
-    /// Generate ALL outputs into a single terp-api/<lang>/ directory
+    /// Generate ALL outputs into a single api/<lang>/ directory
     /// within the gen-tools crate root.
     ///
     /// When set:
-    ///   - ts-codegen → terp-api/ts/
-    ///   - Python     → terp-api/python/
-    ///   - Zod        → terp-api/zod/
-    ///   - Proto      → terp-api/proto/
-    ///   - Go         → terp-api/go/
-    ///   - OpenAPI    → terp-api/openapi/
-    ///   - TZ         → terp-api/tz/
-    ///   - Readme     → terp-api/readme/
+    ///   - ts-codegen → api/ts/<contract>/{types,client,message-composer}/
+    ///   - Python     → api/python/<contract>/
+    ///   - Zod        → api/ts/<contract>/zod/
+    ///   - Proto      → api/proto/<contract>/ plus api/proto/terp-proto/
+    ///   - Go         → api/go/<contract>/
+    ///   - OpenAPI    → api/openapi/<contract>/
+    ///   - TZ         → api/tz/
+    ///   - Readme     → api/readme/
     ///
     /// This flag overrides all per-project output dirs and consolidates
     /// all generated artifacts into one place. Compatible with justfile
@@ -249,11 +249,12 @@ impl ProjectConfigFile {
             })
             .unwrap_or_else(|| config_dir.to_path_buf());
 
-        if entry.path.is_absolute() {
+        let path = if entry.path.is_absolute() {
             entry.path.clone()
         } else {
             base.join(&entry.path)
-        }
+        };
+        path.canonicalize().unwrap_or(path)
     }
 
     /// Find a project by name.
@@ -359,7 +360,7 @@ pub struct ProjectOverrides {
     pub tz_profiles_dir: Option<PathBuf>,
     /// When true, all output dirs resolve against unified_base
     /// instead of workspace_root. All generated artifacts go into
-    /// a single terp-api/<lang>/ directory.
+    /// a single api/<lang>/<contract>/ directory.
     pub unified: bool,
     /// Base path for unified output dirs (the gen-tools crate root).
     pub unified_base: Option<PathBuf>,
@@ -417,42 +418,30 @@ pub fn build_context(
 
     let output_dir = output_dir_override
         .clone()
-        .unwrap_or_else(|| root_for_output.join("terp-api"));
+        .unwrap_or_else(|| root_for_output.join("api"));
 
-    let ts_out = resolve_dir(
-        overrides.ts_out.as_ref(),
-        root_for_output,
-        &["terp-api", "ts"],
-    );
+    let ts_out = resolve_dir(overrides.ts_out.as_ref(), root_for_output, &["api", "ts"]);
     let py_out = resolve_dir(
         overrides.py_out.as_ref(),
         root_for_output,
-        &["terp-api", "python"],
+        &["api", "python"],
     );
-    let zod_out = resolve_dir(
-        overrides.zod_out.as_ref(),
-        root_for_output,
-        &["terp-api", "ts"],
-    );
+    let zod_out = resolve_dir(overrides.zod_out.as_ref(), root_for_output, &["api", "ts"]);
     let proto_out = resolve_dir(
         overrides.proto_out.as_ref(),
         root_for_output,
-        &["terp-api", "proto"],
+        &["api", "proto"],
     );
-    let go_out = resolve_dir(
-        overrides.go_out.as_ref(),
-        root_for_output,
-        &["terp-api", "go"],
-    );
+    let go_out = resolve_dir(overrides.go_out.as_ref(), root_for_output, &["api", "go"]);
     let rust_out = resolve_dir(
         overrides.rust_out.as_ref(),
         root_for_output,
-        &["terp-api", "rust"],
+        &["api", "rust"],
     );
     let openapi_out = resolve_dir(
         overrides.openapi_out.as_ref(),
         root_for_output,
-        &["terp-api", "openapi"],
+        &["api", "openapi"],
     );
 
     let tz_out = overrides
@@ -466,9 +455,9 @@ pub fn build_context(
             }
         })
         .or_else(|| {
-            // Default TZ outputs to terp-api/tz (relative to root_for_output
+            // Default TZ outputs to api/tz (relative to root_for_output
             // in unified mode, or workspace_root otherwise)
-            Some(root_for_output.join("terp-api").join("tz"))
+            Some(root_for_output.join("api").join("tz"))
         });
 
     let proto_modules: Vec<String> = overrides
@@ -507,6 +496,18 @@ pub fn build_context(
         workspace_members,
         contracts,
     })
+}
+
+/// Directory for one contract under `api/<lang>/<contract>/`.
+pub fn contract_api_dir(lang_root: &Path, contract: &str) -> PathBuf {
+    lang_root.join(contract)
+}
+
+/// TypeScript variant directory: `api/ts/<contract>/<variant>/`.
+/// Variants are `zod`, `esbundles`, `types`, `client`, `message-composer`,
+/// `filters`, and `argus`.
+pub fn ts_variant_dir(ts_root: &Path, contract: &str, variant: &str) -> PathBuf {
+    ts_root.join(contract).join(variant)
 }
 
 /// Resolve an output directory: use override if set, else default relative to workspace root.

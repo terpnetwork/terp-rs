@@ -1,0 +1,22 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_dregg_msg_StatusResult",
+      "type": "struct",
+      "properties": {
+        "claim_class": {
+          "value": 1
+        },
+        "status": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

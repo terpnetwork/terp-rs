@@ -89,25 +89,34 @@ contract.
 
 ### Output location
 
-All generated types are written to `terp-api/<lang>/<project>/` within each
-project's workspace root.  For example, running against `cw-infuser` produces:
+Contract clients are written to `api/<lang>/<contract>/` under the terp-rs
+workspace (`crates/terp-rs/api`). That directory is gitignored: it is local
+output, and this README is the procedure that rebuilds it. Chain module
+clients (generated from the terp-core proto module) use the same shape with
+the name `terp-<lang>`:
 
 ```
-crates/cw-infuser/
-  terp-api/
-    go/cw-infuser/          ← Go struct types
-    python/cw-infuser/      ← Python dataclasses
-    ts/cw-infuser/          ← TS types, clients, bundles, Zod schemas
-    proto/cw-infuser/       ← Protobuf .proto definitions
-    openapi/cw-infuser/     ← OpenAPI 3.0 JSON + YAML
-    rust/cw-infuser/        ← Rust type definitions
-    tz/cw-infuser/          ← TensorZero function specs (opt-in)
+crates/terp-rs/api/
+  ts/<contract>/
+    zod/                 ← Zod schemas
+    esbundles/           ← ESM bundles (*.bundle.mjs)
+    types/               ← TypeScript message types
+    client/              ← query/execute client
+    message-composer/
+    filters/
+    argus/
+  ts/terp-ts/zod/        ← chain module Zod (prost-to-zod.sh)
+  python/<contract>/     ← contract dataclasses
+  python/terp-python/    ← chain module Python (prost-to-pyo3.sh)
+  proto/<contract>/      ← contract .proto
+  proto/terp-proto/      ← vendored terp-core proto/ plus gogoproto and google
+  go/<contract>/
+  openapi/<contract>/
+  rust/<contract>/
 ```
 
-Within the gen-tools checkout itself there is also a `terp-api/` directory
-containing the generated output from the previous run.  This directory IS the
-published client library for terp-rs consumers — import from it for
-cross-language type access.
+`protoc` needs `-I crates/terp-rs/api/proto/terp-proto` so `gogoproto/gogo.proto`,
+`google/protobuf/any.proto`, and `terp/...` imports resolve.
 
 ---
 
@@ -120,20 +129,20 @@ for all default steps.
 | Step | Default | Output dir | What it produces |
 |---|---|---|---|
 | `schema` | yes | `schema/` (contract-local) | Runs `cargo schema` to produce JSON schema files |
-| `ts-codegen` | yes | `terp-api/ts/` | TypeScript types (`*.types.ts`), query/execute client class, message composers — follows the cw-infuser design pattern |
-| `ts-bundles` | yes | `terp-api/ts/` | Zod validation schemas (`*.zod.ts`), ESM JS bundles (`*.bundle.mjs`), combined client class (`*.client.ts`), websocket filter tables (`*.filters.ts`), Argus indexer formulas (`*.argus.ts`) |
-| `proto` | yes | `terp-api/proto/` | Protobuf `.proto` definitions compatible with Cosmos SDK protobuf conventions |
-| `python` | yes | `terp-api/python/` | Python dataclasses with JSON encode/decode methods and TYPE_URL fields |
-| `zod` | yes | `terp-api/ts/` | Zod validation schemas (standalone — also available co-located via ts-bundles) |
-| `go` | yes | `terp-api/go/` | Go struct definitions with JSON tags using cosmwasm-go-gen type mappings |
-| `rust` | yes | `terp-api/rust/` | Rust type definitions mirroring the contract's own types |
-| `trailmark` | yes | `terp-api/trailmark/` | Invokes Trailmark (AST graph), githem (dependency graph), QMD probe (knowledge base).  Writes agent recipe JSON.  Scans both workspace sources AND generated terp-api types.  Requires external tools on `$PATH`. |
+| `ts-codegen` | yes | `api/ts/<contract>/{types,client,message-composer}/` | TypeScript types, query/execute client class, message composers |
+| `ts-bundles` | yes | `api/ts/<contract>/{zod,esbundles,client,filters,argus}/` | Zod schemas, ESM bundles, client, websocket filters, Argus formulas |
+| `proto` | yes | `api/proto/<contract>/` and `api/proto/terp-proto/` | Contract `.proto` plus a vendor of the workspace `proto/` module |
+| `python` | yes | `api/python/<contract>/` | Python dataclasses with JSON encode/decode methods and TYPE_URL fields |
+| `zod` | yes | `api/ts/<contract>/zod/` | Zod validation schemas |
+| `go` | yes | `api/go/<contract>/` | Go struct definitions with JSON tags using cosmwasm-go-gen type mappings |
+| `rust` | yes | `api/rust/<contract>/` | Rust type definitions mirroring the contract's own types |
+| `trailmark` | yes | `api/trailmark/` | Invokes Trailmark (AST graph), githem (dependency graph), QMD probe (knowledge base).  Writes agent recipe JSON.  Scans workspace sources and generated `api/` types.  Requires external tools on `$PATH`. |
 | `readme` | yes | `docs/api/` | API documentation in Markdown with tables of instantiate/execute/query messages |
-| `openapi` | yes | `terp-api/openapi/` | OpenAPI 3.0 specs in JSON + YAML with contract endpoints |
-| `tensorzero` | opt-in | `terp-api/tz/` | TensorZero function specs, model configs, recipe/episode definitions |
-| `mermaid` | opt-in | `terp-api/mermaid/` | Mermaid sequence/entity diagrams (placeholder) |
-| `indexer` | opt-in | `terp-api/indexer/` | Indexer formula definitions (placeholder) |
-| `tz-episodes` | opt-in | `terp-api/tz/` | TensorZero episode definitions (placeholder) |
+| `openapi` | yes | `api/openapi/<contract>/` | OpenAPI 3.0 specs in JSON + YAML with contract endpoints |
+| `tensorzero` | opt-in | `api/tz/` | TensorZero function specs, model configs, recipe/episode definitions |
+| `mermaid` | opt-in | `api/mermaid/` | Mermaid sequence/entity diagrams (placeholder) |
+| `indexer` | opt-in | `api/indexer/` | Indexer formula definitions (placeholder) |
+| `tz-episodes` | opt-in | `api/tz/` | TensorZero episode definitions (placeholder) |
 
 ### Skip-empty behavior
 
@@ -174,8 +183,8 @@ projects:
 ```
 
 `base_path` resolves relative to the config file's directory.  Each `path` is
-relative to `base_path`.  Output directories default to `terp-api/<lang>/`
-within each project root.
+relative to `base_path`.  Output directories default to `api/<lang>/<contract>/`
+within each project root. Chain module clients use `api/<lang>/terp-<lang>/`.
 
 ### Per-project overrides
 
@@ -356,8 +365,8 @@ TypeScript types are generated alongside Zod runtime validation schemas.
 Lightweight ESM bundles allow direct browser/Node imports without a bundler:
 
 ```typescript
-import { CwInfuserClient } from './terp-api/ts';
-import { CwInfuserExecuteMsg } from './terp-api/ts/CwInfuser.zod';
+import { CwInfuserClient } from './api/ts/cw-infuser/client/CwInfuser.client';
+import { CwInfuserExecuteMsg } from './api/ts/cw-infuser/zod/CwInfuser.zod';
 ```
 
 ---

@@ -96,9 +96,12 @@ fn main() -> anyhow::Result<()> {
                     let pipeline = Pipeline::new(&project_steps);
                     let results = pipeline.run(&ctx);
                     Pipeline::print_results(&results);
+                    if results.iter().any(|r| r.is_err()) {
+                        anyhow::bail!("project '{}' had failing steps", entry.name);
+                    }
                 }
                 Err(e) => {
-                    eprintln!("error setting up project '{}': {}", entry.name, e);
+                    anyhow::bail!("error setting up project '{}': {}", entry.name, e);
                 }
             }
         }
@@ -135,6 +138,9 @@ fn main() -> anyhow::Result<()> {
     let pipeline = Pipeline::new(&cli.steps);
     let results = pipeline.run(&ctx);
     Pipeline::print_results(&results);
+    if results.iter().any(|r| r.is_err()) {
+        anyhow::bail!("pipeline had failing steps");
+    }
 
     Ok(())
 }

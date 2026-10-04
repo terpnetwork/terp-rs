@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NullifierClaimResponse",
+  "type": "object",
+  "required": [
+    "amount",
+    "claimed",
+    "claimer",
+    "nullifier",
+    "root_index"
+  ],
+  "properties": {
+    "amount": {
+      "type": "string"
+    },
+    "claimed": {
+      "type": "boolean"
+    },
+    "claimer": {
+      "description": "Smart-account (or EOA) that executed the claim — not OIDC identity.",
+      "type": "string"
+    },
+    "nullifier": {
+      "type": "string"
+    },
+    "root_index": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

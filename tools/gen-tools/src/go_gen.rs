@@ -13,7 +13,7 @@
 //! migrate, sudo) and all definitions from a merged CosmWasm schema JSON,
 //! then generates Go code annotated with json tags.
 
-use crate::config::GenerationContext;
+use crate::config::{contract_api_dir, GenerationContext};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use std::collections::{HashMap, HashSet};
@@ -30,8 +30,7 @@ impl Generator for GoGenGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let go_out = ctx.go_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&go_out)?;
+        std::fs::create_dir_all(&ctx.go_out)?;
 
         let (_label, groups) = SourceResolver::resolve_grouped(ctx);
         if groups.is_empty() {
@@ -40,7 +39,7 @@ impl Generator for GoGenGenerator {
                 name: "go",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(go_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.go_out.to_string_lossy().to_string()),
                 message: Some("No schema dirs found, skipping".into()),
             });
         }
@@ -125,7 +124,9 @@ output.push('\n');
 
                 // Write file
                 let go_file_name = format!("{}.go", contract_name.replace('-', "_"));
-                let go_path = go_out.join(&go_file_name);
+                let contract_dir = contract_api_dir(&ctx.go_out, contract_name);
+                std::fs::create_dir_all(&contract_dir)?;
+                let go_path = contract_dir.join(&go_file_name);
                 std::fs::write(&go_path, &output)?;
                 total_files += 1;
                 log::info!("[go] Wrote {:?} ({} defs + {} msgs + {} responses)",
@@ -137,7 +138,7 @@ output.push('\n');
             name: "go",
             success: true,
             files_generated: total_files,
-            output_dir: Some(go_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.go_out.to_string_lossy().to_string()),
             message: Some(format!("{} Go files generated", total_files)),
         })
     }

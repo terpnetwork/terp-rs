@@ -1,0 +1,25 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "polytone_any_proxy_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "unrestricted": {
+          "description": "If true, skip instantiator check (ict-rs / lab). Production: false, then `SetInstantiator` to the ICA.",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<bool>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

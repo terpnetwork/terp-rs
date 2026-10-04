@@ -1,0 +1,63 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_dregg_types_ConsensusState",
+      "type": "struct",
+      "properties": {
+        "kind": {
+          "value": 2
+        },
+        "proven_height": {
+          "value": 6
+        },
+        "proven_lanes": {
+          "value": 4
+        },
+        "proven_root_key": {
+          "value": 5
+        },
+        "version": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u8",
+      "type": "integer",
+      "precision": 8,
+      "signed": false
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_ConsensusKind",
+      "type": "enum",
+      "cases": {
+        "b": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<u32>",
+      "type": "array",
+      "items": 3
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

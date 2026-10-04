@@ -7,7 +7,7 @@
 //! are not checked (lab); UpdateState extracts app hash + height.
 
 mod header;
-mod msg;
+pub mod msg;
 mod state;
 
 use cosmwasm_std::{

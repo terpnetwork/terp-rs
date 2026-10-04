@@ -3,7 +3,7 @@
 //! Runs the gen-tools pipeline on all CosmWasm workspaces defined in
 //! `tools/gen-tools/gen-tools.yaml`, generating typed API client libraries
 //! (proto, TypeScript, Python, Go, Zod, OpenAPI, README docs, etc.) into the
-//! `terp-api/` directory at the terp-rs workspace root.
+//! `api/<lang>/<contract>/` directory at the terp-rs workspace root.
 //!
 //! Usage:
 //!   gen-api                         # Generate for all projects (default steps)
@@ -189,7 +189,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     log::info!(
-        "Done. Generated API libraries are in {}/terp-api/",
+        "Done. Generated API libraries are in {}/api/",
         ws_root.display()
     );
 

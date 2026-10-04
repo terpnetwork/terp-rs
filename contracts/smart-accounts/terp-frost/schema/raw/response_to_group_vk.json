@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GroupVkResponse",
+  "type": "object",
+  "required": [
+    "group_vk"
+  ],
+  "properties": {
+    "group_vk": {
+      "type": "string"
+    },
+    "old_vk": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

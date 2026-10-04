@@ -1,0 +1,913 @@
+{
+  "contract_name": "cw-cashu-registry",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "properties": {
+      "admin": {
+        "description": "Contract admin. Defaults to instantiate sender when omitted.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "allow_public_register": {
+        "description": "When true, non-admin may RegisterMint. Default false.",
+        "default": false,
+        "type": "boolean"
+      },
+      "max_metadata_bytes": {
+        "description": "Cap on free-form metadata size (sum of key+value lengths). Default 512.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint32",
+        "minimum": 0.0
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Insert a mint descriptor. Rejects duplicate mint_id or normalized url. Admin always; anyone when `allow_public_register`.",
+        "type": "object",
+        "required": [
+          "register_mint"
+        ],
+        "properties": {
+          "register_mint": {
+            "type": "object",
+            "required": [
+              "url"
+            ],
+            "properties": {
+              "content_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "keyset_ids": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "metadata": {
+                "default": {},
+                "type": "object",
+                "additionalProperties": false
+              },
+              "mint_id": {
+                "description": "Optional override. Empty/None → `hex(sha256(normalize_url(url)))`.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nuts": {
+                "default": {},
+                "type": "object",
+                "additionalProperties": false
+              },
+              "pubkey": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "description": "Defaults to `active` when omitted.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/MintStatus"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "units": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Patch mutable fields. Admin or original registrar.",
+        "type": "object",
+        "required": [
+          "update_mint"
+        ],
+        "properties": {
+          "update_mint": {
+            "type": "object",
+            "required": [
+              "mint_id"
+            ],
+            "properties": {
+              "content_sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "keyset_ids": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "metadata": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false
+              },
+              "mint_id": {
+                "type": "string"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nuts": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false
+              },
+              "pubkey": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "units": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "string"
+                }
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin only: set discovery status.",
+        "type": "object",
+        "required": [
+          "set_status"
+        ],
+        "properties": {
+          "set_status": {
+            "type": "object",
+            "required": [
+              "mint_id",
+              "status"
+            ],
+            "properties": {
+              "mint_id": {
+                "type": "string"
+              },
+              "status": {
+                "$ref": "#/definitions/MintStatus"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin only: soft-revoke (status = revoked). Keeps row for audit.",
+        "type": "object",
+        "required": [
+          "remove_mint"
+        ],
+        "properties": {
+          "remove_mint": {
+            "type": "object",
+            "required": [
+              "mint_id"
+            ],
+            "properties": {
+              "mint_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin only: update config / transfer admin.",
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "properties": {
+              "admin": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "allow_public_register": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "max_metadata_bytes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "MintStatus": {
+        "description": "Discovery status for a registered mint.",
+        "oneOf": [
+          {
+            "description": "Discoverable; wallets may use subject to their own trust.",
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          {
+            "description": "Temporarily hidden from default list queries.",
+            "type": "string",
+            "enum": [
+              "paused"
+            ]
+          },
+          {
+            "description": "Tombstone; kept for audit, excluded from default list.",
+            "type": "string",
+            "enum": [
+              "revoked"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "mint"
+        ],
+        "properties": {
+          "mint": {
+            "type": "object",
+            "required": [
+              "mint_id"
+            ],
+            "properties": {
+              "mint_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "mint_by_url"
+        ],
+        "properties": {
+          "mint_by_url": {
+            "type": "object",
+            "required": [
+              "url"
+            ],
+            "properties": {
+              "url": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Page of descriptors. Default status filter: **active only**.",
+        "type": "object",
+        "required": [
+          "list_mints"
+        ],
+        "properties": {
+          "list_mints": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status_filter": {
+                "description": "When set, only that status. When omitted, only `active`.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/MintStatus"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "True if mint_id is present, or normalized url maps to a mint. Provide exactly one of `mint_id` or `url`.",
+        "type": "object",
+        "required": [
+          "is_registered"
+        ],
+        "properties": {
+          "is_registered": {
+            "type": "object",
+            "properties": {
+              "mint_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "MintStatus": {
+        "description": "Discovery status for a registered mint.",
+        "oneOf": [
+          {
+            "description": "Discoverable; wallets may use subject to their own trust.",
+            "type": "string",
+            "enum": [
+              "active"
+            ]
+          },
+          {
+            "description": "Temporarily hidden from default list queries.",
+            "type": "string",
+            "enum": [
+              "paused"
+            ]
+          },
+          {
+            "description": "Tombstone; kept for audit, excluded from default list.",
+            "type": "string",
+            "enum": [
+              "revoked"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "required": [
+        "admin",
+        "allow_public_register",
+        "max_metadata_bytes"
+      ],
+      "properties": {
+        "admin": {
+          "$ref": "#/definitions/Addr"
+        },
+        "allow_public_register": {
+          "type": "boolean"
+        },
+        "max_metadata_bytes": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "is_registered": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsRegisteredResponse",
+      "type": "object",
+      "required": [
+        "registered"
+      ],
+      "properties": {
+        "mint_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registered": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "list_mints": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ListMintsResponse",
+      "type": "object",
+      "required": [
+        "mints"
+      ],
+      "properties": {
+        "mints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MintDescriptor"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "MintDescriptor": {
+          "description": "Canonical mint descriptor (v0) — discovery only, not an endorsement.",
+          "type": "object",
+          "required": [
+            "keyset_ids",
+            "metadata",
+            "mint_id",
+            "nuts",
+            "registered_at",
+            "registrar",
+            "status",
+            "units",
+            "updated_at",
+            "url"
+          ],
+          "properties": {
+            "content_sha256": {
+              "description": "Optional 64-hex BUD pin of **public** mint-info only.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "keyset_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "metadata": {
+              "description": "Optional free-form metadata (size-capped by config).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "mint_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "nuts": {
+              "description": "Optional NUT feature map (string keys; values free-form short strings).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "pubkey": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registered_at": {
+              "description": "Block time (unix seconds) at registration.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "registrar": {
+              "$ref": "#/definitions/Addr"
+            },
+            "status": {
+              "$ref": "#/definitions/MintStatus"
+            },
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updated_at": {
+              "description": "Block time (unix seconds) of last update.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "MintStatus": {
+          "description": "Discovery status for a registered mint.",
+          "oneOf": [
+            {
+              "description": "Discoverable; wallets may use subject to their own trust.",
+              "type": "string",
+              "enum": [
+                "active"
+              ]
+            },
+            {
+              "description": "Temporarily hidden from default list queries.",
+              "type": "string",
+              "enum": [
+                "paused"
+              ]
+            },
+            {
+              "description": "Tombstone; kept for audit, excluded from default list.",
+              "type": "string",
+              "enum": [
+                "revoked"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "mint": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_MintDescriptor",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MintDescriptor"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "MintDescriptor": {
+          "description": "Canonical mint descriptor (v0) — discovery only, not an endorsement.",
+          "type": "object",
+          "required": [
+            "keyset_ids",
+            "metadata",
+            "mint_id",
+            "nuts",
+            "registered_at",
+            "registrar",
+            "status",
+            "units",
+            "updated_at",
+            "url"
+          ],
+          "properties": {
+            "content_sha256": {
+              "description": "Optional 64-hex BUD pin of **public** mint-info only.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "keyset_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "metadata": {
+              "description": "Optional free-form metadata (size-capped by config).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "mint_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "nuts": {
+              "description": "Optional NUT feature map (string keys; values free-form short strings).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "pubkey": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registered_at": {
+              "description": "Block time (unix seconds) at registration.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "registrar": {
+              "$ref": "#/definitions/Addr"
+            },
+            "status": {
+              "$ref": "#/definitions/MintStatus"
+            },
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updated_at": {
+              "description": "Block time (unix seconds) of last update.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "MintStatus": {
+          "description": "Discovery status for a registered mint.",
+          "oneOf": [
+            {
+              "description": "Discoverable; wallets may use subject to their own trust.",
+              "type": "string",
+              "enum": [
+                "active"
+              ]
+            },
+            {
+              "description": "Temporarily hidden from default list queries.",
+              "type": "string",
+              "enum": [
+                "paused"
+              ]
+            },
+            {
+              "description": "Tombstone; kept for audit, excluded from default list.",
+              "type": "string",
+              "enum": [
+                "revoked"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "mint_by_url": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_MintDescriptor",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MintDescriptor"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "MintDescriptor": {
+          "description": "Canonical mint descriptor (v0) — discovery only, not an endorsement.",
+          "type": "object",
+          "required": [
+            "keyset_ids",
+            "metadata",
+            "mint_id",
+            "nuts",
+            "registered_at",
+            "registrar",
+            "status",
+            "units",
+            "updated_at",
+            "url"
+          ],
+          "properties": {
+            "content_sha256": {
+              "description": "Optional 64-hex BUD pin of **public** mint-info only.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "keyset_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "metadata": {
+              "description": "Optional free-form metadata (size-capped by config).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "mint_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "nuts": {
+              "description": "Optional NUT feature map (string keys; values free-form short strings).",
+              "type": "object",
+              "additionalProperties": false
+            },
+            "pubkey": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registered_at": {
+              "description": "Block time (unix seconds) at registration.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "registrar": {
+              "$ref": "#/definitions/Addr"
+            },
+            "status": {
+              "$ref": "#/definitions/MintStatus"
+            },
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "updated_at": {
+              "description": "Block time (unix seconds) of last update.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "MintStatus": {
+          "description": "Discovery status for a registered mint.",
+          "oneOf": [
+            {
+              "description": "Discoverable; wallets may use subject to their own trust.",
+              "type": "string",
+              "enum": [
+                "active"
+              ]
+            },
+            {
+              "description": "Temporarily hidden from default list queries.",
+              "type": "string",
+              "enum": [
+                "paused"
+              ]
+            },
+            {
+              "description": "Tombstone; kept for audit, excluded from default list.",
+              "type": "string",
+              "enum": [
+                "revoked"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

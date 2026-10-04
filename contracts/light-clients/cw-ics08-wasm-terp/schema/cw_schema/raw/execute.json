@@ -1,0 +1,37 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_terp_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "confirm_ics23": {
+          "description": "Lab path (x/wasm instantiate): ICS-23 IAVL proof. Empty `value_hex` = non-membership.",
+          "type": "named",
+          "properties": {
+            "key_hex": {
+              "value": 1
+            },
+            "proof_hex": {
+              "value": 1
+            },
+            "store_name": {
+              "value": 1
+            },
+            "store_root_hex": {
+              "value": 1
+            },
+            "value_hex": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

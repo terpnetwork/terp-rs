@@ -1,0 +1,22 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_vsck_msg_ConfigResponse",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "value": 1
+        },
+        "dao": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

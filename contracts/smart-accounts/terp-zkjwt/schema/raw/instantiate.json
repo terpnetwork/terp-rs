@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "description": "Contract admin configures trusted OIDC/JWT issuers and circuit binding.",
+  "type": "object",
+  "required": [
+    "issuers",
+    "require_registered_claim"
+  ],
+  "properties": {
+    "admin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "issuers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/IssuerConfig"
+      }
+    },
+    "require_registered_claim": {
+      "description": "When true, claim_commitment must be registered to `req.account`.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "IssuerConfig": {
+      "description": "Trusted issuer + circuit binding + **inclusion set root**.\n\n## Inclusion set (Headscale / OIDC membership)\n\nThe issuer (or mesh operator) periodically publishes a merkle root over the set of allowed identities (e.g. OIDC `sub` values admitted to a Headscale tailnet, or a JWKS epoch). That root is stored here as `inclusion_set_root`.\n\nThe ZK circuit proves the JWT's subject is a leaf under that root; the root itself is a **public instance** so the contract can check:\n\n```text public_inputs[64..96) == IssuerConfig.inclusion_set_root ```\n\nRotating the root (new epoch of mesh members) is `RotateInclusionRoot`.\n\n## VM verification\n\nWhen `zkid` is set (feature `zk-host`): ```ignore deps.api.proof_instance_verify(zkid, proof, public_inputs)? ```",
+      "type": "object",
+      "required": [
+        "issuer",
+        "verifying_key"
+      ],
+      "properties": {
+        "audience": {
+          "description": "Optional audience (`aud`) restriction.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inclusion_set_root": {
+          "description": "Merkle / membership root of the inclusion set (32 bytes). When `Some`, Authenticate requires matching root in public instances.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issuer": {
+          "description": "OIDC issuer URL or stable id (e.g. Headscale IdP issuer).",
+          "type": "string"
+        },
+        "verifying_key": {
+          "description": "Optional client JWKS thumbprint / hint (not used for host PLONK verify).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "zkid": {
+          "description": "CosmWasm circuit id (required for zk-host path).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_zkjwt_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "register_claim": {
+          "description": "Link a claim commitment to the caller for later sudo Authenticate binding.",
+          "type": "named",
+          "properties": {
+            "claim_commitment": {
+              "value": 3
+            },
+            "issuer": {
+              "value": 2
+            }
+          }
+        },
+        "remove_issuer": {
+          "type": "named",
+          "properties": {
+            "issuer": {
+              "value": 2
+            }
+          }
+        },
+        "rotate_inclusion_root": {
+          "description": "Rotate the inclusion-set root for an issuer (new membership epoch).",
+          "type": "named",
+          "properties": {
+            "inclusion_set_root": {
+              "value": 3
+            },
+            "issuer": {
+              "value": 2
+            }
+          }
+        },
+        "update_admin": {
+          "type": "named",
+          "properties": {
+            "admin": {
+              "value": 2
+            }
+          }
+        },
+        "upsert_issuer": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "terp_zkjwt_msg_IssuerConfig",
+      "description": "Trusted issuer + circuit binding + **inclusion set root**.\n\n## Inclusion set (Headscale / OIDC membership)\n\nThe issuer (or mesh operator) periodically publishes a merkle root over the\nset of allowed identities (e.g. OIDC `sub` values admitted to a Headscale\ntailnet, or a JWKS epoch). That root is stored here as `inclusion_set_root`.\n\nThe ZK circuit proves the JWT's subject is a leaf under that root; the root\nitself is a **public instance** so the contract can check:\n\n```text\npublic_inputs[64..96) == IssuerConfig.inclusion_set_root\n```\n\nRotating the root (new epoch of mesh members) is `RotateInclusionRoot`.\n\n## VM verification\n\nWhen `zkid` is set (feature `zk-host`):\n```ignore\ndeps.api.proof_instance_verify(zkid, proof, public_inputs)?\n```",
+      "type": "struct",
+      "properties": {
+        "audience": {
+          "description": "Optional audience (`aud`) restriction.",
+          "value": 6
+        },
+        "inclusion_set_root": {
+          "description": "Merkle / membership root of the inclusion set (32 bytes).\nWhen `Some`, Authenticate requires matching root in public instances.",
+          "value": 7
+        },
+        "issuer": {
+          "description": "OIDC issuer URL or stable id (e.g. Headscale IdP issuer).",
+          "value": 2
+        },
+        "verifying_key": {
+          "description": "Optional client JWKS thumbprint / hint (not used for host PLONK verify).",
+          "value": 3
+        },
+        "zkid": {
+          "description": "CosmWasm circuit id (required for zk-host path).",
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+      "type": "optional",
+      "inner": 3
+    }
+  ]
+}

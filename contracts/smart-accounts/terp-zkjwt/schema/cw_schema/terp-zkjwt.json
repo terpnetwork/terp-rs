@@ -1,0 +1,741 @@
+{
+  "contract_name": "terp-zkjwt",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "terp_zkjwt_msg_InstantiateMsg",
+        "description": "Contract admin configures trusted OIDC/JWT issuers and circuit binding.",
+        "type": "struct",
+        "properties": {
+          "admin": {
+            "value": 2
+          },
+          "issuers": {
+            "value": 8
+          },
+          "require_registered_claim": {
+            "description": "When true, claim_commitment must be registered to `req.account`.",
+            "value": 9
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "terp_zkjwt_msg_IssuerConfig",
+        "description": "Trusted issuer + circuit binding + **inclusion set root**.\n\n## Inclusion set (Headscale / OIDC membership)\n\nThe issuer (or mesh operator) periodically publishes a merkle root over the\nset of allowed identities (e.g. OIDC `sub` values admitted to a Headscale\ntailnet, or a JWKS epoch). That root is stored here as `inclusion_set_root`.\n\nThe ZK circuit proves the JWT's subject is a leaf under that root; the root\nitself is a **public instance** so the contract can check:\n\n```text\npublic_inputs[64..96) == IssuerConfig.inclusion_set_root\n```\n\nRotating the root (new epoch of mesh members) is `RotateInclusionRoot`.\n\n## VM verification\n\nWhen `zkid` is set (feature `zk-host`):\n```ignore\ndeps.api.proof_instance_verify(zkid, proof, public_inputs)?\n```",
+        "type": "struct",
+        "properties": {
+          "audience": {
+            "description": "Optional audience (`aud`) restriction.",
+            "value": 2
+          },
+          "inclusion_set_root": {
+            "description": "Merkle / membership root of the inclusion set (32 bytes).\nWhen `Some`, Authenticate requires matching root in public instances.",
+            "value": 7
+          },
+          "issuer": {
+            "description": "OIDC issuer URL or stable id (e.g. Headscale IdP issuer).",
+            "value": 1
+          },
+          "verifying_key": {
+            "description": "Optional client JWKS thumbprint / hint (not used for host PLONK verify).",
+            "value": 4
+          },
+          "zkid": {
+            "description": "CosmWasm circuit id (required for zk-host path).",
+            "value": 6
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<u64>",
+        "type": "optional",
+        "inner": 5
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+        "type": "optional",
+        "inner": 4
+      },
+      {
+        "name": "alloc::vec::Vec<terp_zkjwt::msg::IssuerConfig>",
+        "type": "array",
+        "items": 3
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "terp_zkjwt_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "register_claim": {
+            "description": "Link a claim commitment to the caller for later sudo Authenticate binding.",
+            "type": "named",
+            "properties": {
+              "claim_commitment": {
+                "value": 3
+              },
+              "issuer": {
+                "value": 2
+              }
+            }
+          },
+          "remove_issuer": {
+            "type": "named",
+            "properties": {
+              "issuer": {
+                "value": 2
+              }
+            }
+          },
+          "rotate_inclusion_root": {
+            "description": "Rotate the inclusion-set root for an issuer (new membership epoch).",
+            "type": "named",
+            "properties": {
+              "inclusion_set_root": {
+                "value": 3
+              },
+              "issuer": {
+                "value": 2
+              }
+            }
+          },
+          "update_admin": {
+            "type": "named",
+            "properties": {
+              "admin": {
+                "value": 2
+              }
+            }
+          },
+          "upsert_issuer": {
+            "type": "tuple",
+            "items": [
+              1
+            ]
+          }
+        }
+      },
+      {
+        "name": "terp_zkjwt_msg_IssuerConfig",
+        "description": "Trusted issuer + circuit binding + **inclusion set root**.\n\n## Inclusion set (Headscale / OIDC membership)\n\nThe issuer (or mesh operator) periodically publishes a merkle root over the\nset of allowed identities (e.g. OIDC `sub` values admitted to a Headscale\ntailnet, or a JWKS epoch). That root is stored here as `inclusion_set_root`.\n\nThe ZK circuit proves the JWT's subject is a leaf under that root; the root\nitself is a **public instance** so the contract can check:\n\n```text\npublic_inputs[64..96) == IssuerConfig.inclusion_set_root\n```\n\nRotating the root (new epoch of mesh members) is `RotateInclusionRoot`.\n\n## VM verification\n\nWhen `zkid` is set (feature `zk-host`):\n```ignore\ndeps.api.proof_instance_verify(zkid, proof, public_inputs)?\n```",
+        "type": "struct",
+        "properties": {
+          "audience": {
+            "description": "Optional audience (`aud`) restriction.",
+            "value": 6
+          },
+          "inclusion_set_root": {
+            "description": "Merkle / membership root of the inclusion set (32 bytes).\nWhen `Some`, Authenticate requires matching root in public instances.",
+            "value": 7
+          },
+          "issuer": {
+            "description": "OIDC issuer URL or stable id (e.g. Headscale IdP issuer).",
+            "value": 2
+          },
+          "verifying_key": {
+            "description": "Optional client JWKS thumbprint / hint (not used for host PLONK verify).",
+            "value": 3
+          },
+          "zkid": {
+            "description": "CosmWasm circuit id (required for zk-host path).",
+            "value": 5
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<u64>",
+        "type": "optional",
+        "inner": 4
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 2
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+        "type": "optional",
+        "inner": 3
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "terp_zkjwt_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "claim_owner": {
+            "type": "named",
+            "properties": {
+              "claim_commitment": {
+                "value": 2
+              }
+            }
+          },
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "inclusion_set_root": {
+            "description": "Current inclusion root for an issuer (if set).",
+            "type": "named",
+            "properties": {
+              "issuer": {
+                "value": 1
+              }
+            }
+          },
+          "is_claim_registered": {
+            "type": "named",
+            "properties": {
+              "claim_commitment": {
+                "value": 2
+              }
+            }
+          },
+          "issuer": {
+            "type": "named",
+            "properties": {
+              "issuer": {
+                "value": 1
+              }
+            }
+          },
+          "list_issuers": {
+            "type": "named",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "terp_auth_types_AuthSudoMsg",
+        "description": "`AuthSudoMsg` contains variants of messages that can be sent to the authenticator contract\nfrom smart account module through `CosmWasmAuthenticator`.\n\n`AuthenticateRequest` is `Box`-ed due to large size difference between other variants",
+        "type": "enum",
+        "cases": {
+          "authenticate": {
+            "type": "tuple",
+            "items": [
+              22
+            ]
+          },
+          "confirm_execution": {
+            "type": "tuple",
+            "items": [
+              24
+            ]
+          },
+          "on_authenticator_added": {
+            "description": "Osmosis CosmwasmAuthenticator JSON: on_authenticator_added",
+            "type": "tuple",
+            "items": [
+              1
+            ]
+          },
+          "on_authenticator_removed": {
+            "type": "tuple",
+            "items": [
+              6
+            ]
+          },
+          "track": {
+            "type": "tuple",
+            "items": [
+              23
+            ]
+          }
+        }
+      },
+      {
+        "name": "terp_auth_types_OnAuthenticatorAddedRequest",
+        "type": "struct",
+        "properties": {
+          "account": {
+            "value": 2
+          },
+          "authenticator_id": {
+            "value": 3
+          },
+          "authenticator_params": {
+            "value": 5
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_addresses_Addr",
+        "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+        "type": "address"
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+        "type": "optional",
+        "inner": 4
+      },
+      {
+        "name": "terp_auth_types_OnAuthenticatorRemovedRequest",
+        "type": "struct",
+        "properties": {
+          "account": {
+            "value": 2
+          },
+          "authenticator_id": {
+            "value": 3
+          },
+          "authenticator_params": {
+            "value": 5
+          }
+        }
+      },
+      {
+        "name": "terp_auth_types_AuthenticationRequest",
+        "type": "struct",
+        "properties": {
+          "account": {
+            "value": 2
+          },
+          "authenticator_id": {
+            "value": 3
+          },
+          "authenticator_params": {
+            "value": 5
+          },
+          "fee": {
+            "value": 11
+          },
+          "fee_granter": {
+            "value": 8
+          },
+          "fee_payer": {
+            "value": 2
+          },
+          "msg": {
+            "value": 12
+          },
+          "msg_index": {
+            "value": 13
+          },
+          "sign_mode_tx_data": {
+            "value": 14
+          },
+          "signature": {
+            "value": 4
+          },
+          "signature_data": {
+            "value": 18
+          },
+          "simulate": {
+            "value": 21
+          },
+          "tx_data": {
+            "value": 16
+          }
+        }
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+        "type": "optional",
+        "inner": 2
+      },
+      {
+        "name": "cosmwasm_std_coin_Coin",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 10
+          },
+          "denom": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_math_uint256_Uint256",
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+        "type": "integer",
+        "precision": 256,
+        "signed": false
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+        "type": "array",
+        "items": 9
+      },
+      {
+        "name": "terp_auth_types_Any",
+        "type": "struct",
+        "properties": {
+          "type_url": {
+            "value": 3
+          },
+          "value": {
+            "value": 4
+          }
+        }
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "terp_auth_types_SignModeTxData",
+        "type": "struct",
+        "properties": {
+          "sign_mode_direct": {
+            "value": 4
+          },
+          "sign_mode_textual": {
+            "value": 15
+          }
+        }
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 3
+      },
+      {
+        "name": "terp_auth_types_TxData",
+        "type": "struct",
+        "properties": {
+          "account_number": {
+            "value": 13
+          },
+          "chain_id": {
+            "value": 3
+          },
+          "memo": {
+            "value": 3
+          },
+          "msgs": {
+            "value": 17
+          },
+          "sequence": {
+            "value": 13
+          },
+          "timeout_height": {
+            "value": 13
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<terp_auth::types::Any>",
+        "type": "array",
+        "items": 12
+      },
+      {
+        "name": "terp_auth_types_SignatureData",
+        "type": "struct",
+        "properties": {
+          "signatures": {
+            "value": 20
+          },
+          "signers": {
+            "value": 19
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::addresses::Addr>",
+        "type": "array",
+        "items": 2
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
+        "type": "array",
+        "items": 4
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "alloc::boxed::Box<terp_auth::types::AuthenticationRequest>",
+        "type": "boxed",
+        "inner": 7
+      },
+      {
+        "name": "terp_auth_types_TrackRequest",
+        "type": "struct",
+        "properties": {
+          "account": {
+            "value": 2
+          },
+          "authenticator_id": {
+            "value": 3
+          },
+          "authenticator_params": {
+            "value": 5
+          },
+          "fee": {
+            "value": 11
+          },
+          "fee_granter": {
+            "value": 8
+          },
+          "fee_payer": {
+            "value": 2
+          },
+          "msg": {
+            "value": 12
+          },
+          "msg_index": {
+            "value": 13
+          }
+        }
+      },
+      {
+        "name": "terp_auth_types_ConfirmExecutionRequest",
+        "type": "struct",
+        "properties": {
+          "account": {
+            "value": 2
+          },
+          "authenticator_id": {
+            "value": 3
+          },
+          "authenticator_params": {
+            "value": 5
+          },
+          "fee": {
+            "value": 11
+          },
+          "fee_granter": {
+            "value": 8
+          },
+          "fee_payer": {
+            "value": 2
+          },
+          "msg": {
+            "value": 12
+          },
+          "msg_index": {
+            "value": 13
+          }
+        }
+      }
+    ]
+  },
+  "responses": {
+    "claim_owner": {
+      "type": "v1",
+      "root": 1,
+      "definitions": [
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "terp_zkjwt_msg_ConfigResponse",
+          "type": "struct",
+          "properties": {
+            "admin": {
+              "value": 1
+            },
+            "require_registered_claim": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    },
+    "inclusion_set_root": {
+      "type": "v1",
+      "root": 1,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "is_claim_registered": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    },
+    "issuer": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "terp_zkjwt_msg_IssuerConfig",
+          "description": "Trusted issuer + circuit binding + **inclusion set root**.\n\n## Inclusion set (Headscale / OIDC membership)\n\nThe issuer (or mesh operator) periodically publishes a merkle root over the\nset of allowed identities (e.g. OIDC `sub` values admitted to a Headscale\ntailnet, or a JWKS epoch). That root is stored here as `inclusion_set_root`.\n\nThe ZK circuit proves the JWT's subject is a leaf under that root; the root\nitself is a **public instance** so the contract can check:\n\n```text\npublic_inputs[64..96) == IssuerConfig.inclusion_set_root\n```\n\nRotating the root (new epoch of mesh members) is `RotateInclusionRoot`.\n\n## VM verification\n\nWhen `zkid` is set (feature `zk-host`):\n```ignore\ndeps.api.proof_instance_verify(zkid, proof, public_inputs)?\n```",
+          "type": "struct",
+          "properties": {
+            "audience": {
+              "description": "Optional audience (`aud`) restriction.",
+              "value": 5
+            },
+            "inclusion_set_root": {
+              "description": "Merkle / membership root of the inclusion set (32 bytes).\nWhen `Some`, Authenticate requires matching root in public instances.",
+              "value": 6
+            },
+            "issuer": {
+              "description": "OIDC issuer URL or stable id (e.g. Headscale IdP issuer).",
+              "value": 1
+            },
+            "verifying_key": {
+              "description": "Optional client JWKS thumbprint / hint (not used for host PLONK verify).",
+              "value": 2
+            },
+            "zkid": {
+              "description": "CosmWasm circuit id (required for zk-host path).",
+              "value": 4
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<u64>",
+          "type": "optional",
+          "inner": 3
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+          "type": "optional",
+          "inner": 2
+        }
+      ]
+    },
+    "list_issuers": {
+      "type": "v1",
+      "root": 1,
+      "definitions": [
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "alloc::vec::Vec<alloc::string::String>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    }
+  }
+}

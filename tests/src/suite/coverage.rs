@@ -135,7 +135,7 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
     },
     SuiteCoverage {
         id: "cw-infuser",
-        crate_path: "terp-rs/contracts/infuser + scripts/cw-infuser + tests/cw-infuser-suite",
+        crate_path: "terp-rs/contracts/infuser + scripts/cw-infuser + tests/suite/cw-infuser-suite",
         feature: "terp-orch infuser",
         inclusion: Inclusion::External,
         resumable: "cargo check -p terp-orch --features infuser",

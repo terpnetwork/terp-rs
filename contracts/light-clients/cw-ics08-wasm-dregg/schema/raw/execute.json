@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "App-level settle (same as UpdateState body) for demos without IBC router.",
+      "type": "object",
+      "required": [
+        "settle"
+      ],
+      "properties": {
+        "settle": {
+          "$ref": "#/definitions/SettlementUpdate"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "SettlementUpdate": {
+      "type": "object",
+      "required": [
+        "chain_digest",
+        "commitment_pok",
+        "commitments",
+        "final_root",
+        "genesis_root",
+        "num_turns",
+        "proof"
+      ],
+      "properties": {
+        "chain_digest": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "commitment_pok": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commitments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "final_root": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "genesis_root": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "num_turns": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

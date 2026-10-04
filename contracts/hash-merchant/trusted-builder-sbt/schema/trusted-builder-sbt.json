@@ -1,0 +1,371 @@
+{
+  "contract_name": "trusted-builder-sbt",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "admin",
+      "manifesto_contract"
+    ],
+    "properties": {
+      "admin": {
+        "type": "string"
+      },
+      "ibc2_dest_port": {
+        "default": null,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "ibc2_source_client": {
+        "default": null,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "manifesto_contract": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Path 1: mint after hashmerchant VE / sidecar recorded the manifesto pledge.",
+        "type": "object",
+        "required": [
+          "mint"
+        ],
+        "properties": {
+          "mint": {
+            "type": "object",
+            "required": [
+              "eth_address",
+              "sign_tx",
+              "ve_commitment_hex"
+            ],
+            "properties": {
+              "eth_address": {
+                "type": "string"
+              },
+              "sign_tx": {
+                "type": "string"
+              },
+              "ve_commitment_hex": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin registers the IBC-v2 counterparty (no v1 handshake). This is the app-level \"connection\" to ETH (Eureka client id + dest port).",
+        "type": "object",
+        "required": [
+          "register_ibc_v2"
+        ],
+        "properties": {
+          "register_ibc_v2": {
+            "type": "object",
+            "required": [
+              "dest_port",
+              "source_client"
+            ],
+            "properties": {
+              "dest_port": {
+                "type": "string"
+              },
+              "source_client": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Path 2: user commits to the Australge / Trustless Manifesto on Terp. Stores a pending commitment and, if a client is registered, emits `Ibc2Msg::SendPacket` so ETH can pledge and attest back.",
+        "type": "object",
+        "required": [
+          "commit_australge"
+        ],
+        "properties": {
+          "commit_australge": {
+            "type": "object",
+            "required": [
+              "commitment_hex",
+              "eth_address"
+            ],
+            "properties": {
+              "commitment_hex": {
+                "type": "string"
+              },
+              "eth_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Emit `Ibc2Msg::SendPacket` for a pending Australge commitment (requires `RegisterIbcV2`). Separate from commit so the on-chain commitment works even when the host has no IBC-v2 client yet.",
+        "type": "object",
+        "required": [
+          "send_australge_packet"
+        ],
+        "properties": {
+          "send_australge_packet": {
+            "type": "object",
+            "required": [
+              "eth_address"
+            ],
+            "properties": {
+              "eth_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Relayer/admin delivery of an ETH pledge attestation (same mint as `ibc2_packet_receive`). Used when a real Eureka relayer is not in the loop.",
+        "type": "object",
+        "required": [
+          "deliver_eth_attestation"
+        ],
+        "properties": {
+          "deliver_eth_attestation": {
+            "type": "object",
+            "required": [
+              "commitment_hex",
+              "eth_address",
+              "pledge_tx"
+            ],
+            "properties": {
+              "commitment_hex": {
+                "type": "string"
+              },
+              "eth_address": {
+                "type": "string"
+              },
+              "pledge_tx": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "object",
+            "required": [
+              "eth_address"
+            ],
+            "properties": {
+              "eth_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "commitment"
+        ],
+        "properties": {
+          "commitment": {
+            "type": "object",
+            "required": [
+              "eth_address"
+            ],
+            "properties": {
+              "eth_address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "commitment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Commitment",
+      "type": "object",
+      "required": [
+        "commitment_hex",
+        "committer",
+        "eth_address",
+        "height",
+        "status"
+      ],
+      "properties": {
+        "commitment_hex": {
+          "type": "string"
+        },
+        "committer": {
+          "type": "string"
+        },
+        "eth_address": {
+          "type": "string"
+        },
+        "height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "status": {
+          "$ref": "#/definitions/CommitmentStatus"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "CommitmentStatus": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "completed",
+            "timed_out"
+          ]
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Config",
+      "type": "object",
+      "required": [
+        "admin",
+        "manifesto_contract",
+        "next_id"
+      ],
+      "properties": {
+        "admin": {
+          "type": "string"
+        },
+        "ibc2_dest_port": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ibc2_source_client": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manifesto_contract": {
+          "type": "string"
+        },
+        "next_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "token": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Token",
+      "type": "object",
+      "required": [
+        "eth_address",
+        "mint_path",
+        "minted_height",
+        "owner",
+        "sign_tx",
+        "token_id",
+        "ve_commitment_hex"
+      ],
+      "properties": {
+        "eth_address": {
+          "type": "string"
+        },
+        "mint_path": {
+          "$ref": "#/definitions/MintPath"
+        },
+        "minted_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "owner": {
+          "type": "string"
+        },
+        "sign_tx": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "ve_commitment_hex": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "MintPath": {
+          "type": "string",
+          "enum": [
+            "ve_sidecar",
+            "ibc_v2_australge"
+          ]
+        }
+      }
+    }
+  }
+}

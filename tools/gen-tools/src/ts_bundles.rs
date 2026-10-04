@@ -8,7 +8,7 @@
 //!   *.filters.ts        — Websocket subscription filter formula tables
 //!   *.argus.ts          — Argus indexer formula definitions
 
-use crate::config::GenerationContext;
+use crate::config::{ts_variant_dir, GenerationContext};
 use crate::resolver::SourceResolver;
 use crate::ts_codegen;
 use crate::{GenerationResult, Generator};
@@ -26,8 +26,7 @@ impl Generator for TsBundlesGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let ts_out = ctx.ts_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&ts_out)?;
+        std::fs::create_dir_all(&ctx.ts_out)?;
         let mut total_files = 0;
 
         let (_source_label, grouped) = SourceResolver::resolve_grouped(ctx);
@@ -36,7 +35,7 @@ impl Generator for TsBundlesGenerator {
                 name: "ts-bundles",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(ts_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
                 message: Some("No contracts found".to_string()),
             });
         }
@@ -56,36 +55,47 @@ impl Generator for TsBundlesGenerator {
             }
 
             let cname = pascal_case(contract_name);
+            let zod_dir = ts_variant_dir(&ctx.ts_out, contract_name, "zod");
+            let bundle_dir = ts_variant_dir(&ctx.ts_out, contract_name, "esbundles");
+            let client_dir = ts_variant_dir(&ctx.ts_out, contract_name, "client");
+            let filters_dir = ts_variant_dir(&ctx.ts_out, contract_name, "filters");
+            let argus_dir = ts_variant_dir(&ctx.ts_out, contract_name, "argus");
 
             // Skip non-contract entries (e.g. raw response types that don't have Execute/Query)
             let has_exec = message_types.iter().any(|(t, _)| t == "ExecuteMsg");
             let has_query = message_types.iter().any(|(t, _)| t == "QueryMsg");
             if !has_exec && !has_query {
-                // Still generate Zod for definition types
+                std::fs::create_dir_all(&zod_dir)?;
                 let zod = generate_co_located_zod(&cname, &all_defs);
-                std::fs::write(ts_out.join(format!("{}.zod.ts", cname)), &zod)?;
+                std::fs::write(zod_dir.join(format!("{}.zod.ts", cname)), &zod)?;
                 total_files += 1;
                 continue;
             }
 
+            std::fs::create_dir_all(&zod_dir)?;
+            std::fs::create_dir_all(&bundle_dir)?;
+            std::fs::create_dir_all(&client_dir)?;
+            std::fs::create_dir_all(&filters_dir)?;
+            std::fs::create_dir_all(&argus_dir)?;
+
             let zod = generate_co_located_zod(&cname, &all_defs);
-            std::fs::write(ts_out.join(format!("{}.zod.ts", cname)), &zod)?;
+            std::fs::write(zod_dir.join(format!("{}.zod.ts", cname)), &zod)?;
             total_files += 1;
 
             let bundle = generate_js_bundle(&cname, &message_types);
-            std::fs::write(ts_out.join(format!("{}.bundle.mjs", cname)), &bundle)?;
+            std::fs::write(bundle_dir.join(format!("{}.bundle.mjs", cname)), &bundle)?;
             total_files += 1;
 
             let client = generate_transact_client(&cname, &message_types, &response_types);
-            std::fs::write(ts_out.join(format!("{}.client.ts", cname)), &client)?;
+            std::fs::write(client_dir.join(format!("{}.client.ts", cname)), &client)?;
             total_files += 1;
 
             let filters = generate_filter_table(&cname, &message_types);
-            std::fs::write(ts_out.join(format!("{}.filters.ts", cname)), &filters)?;
+            std::fs::write(filters_dir.join(format!("{}.filters.ts", cname)), &filters)?;
             total_files += 1;
 
             let argus = generate_argus_indexer(&cname);
-            std::fs::write(ts_out.join(format!("{}.argus.ts", cname)), &argus)?;
+            std::fs::write(argus_dir.join(format!("{}.argus.ts", cname)), &argus)?;
             total_files += 1;
         }
 
@@ -93,7 +103,7 @@ impl Generator for TsBundlesGenerator {
             name: "ts-bundles",
             success: true,
             files_generated: total_files,
-            output_dir: Some(ts_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
             message: Some(format!("{} bundle files generated", total_files)),
         })
     }

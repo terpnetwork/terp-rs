@@ -16,6 +16,7 @@ overflow-checks = true
 
 [dependencies]
 cosmwasm-std = "1.5"
+cosmwasm-schema = "1.5"
 cw-storage-plus = "1.2"
 hex = "0.4"
 schemars = "0.8"

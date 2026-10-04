@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Build cw-ics08-wasm-terp via the Terp Docker optimizer (rustc 1.86).
+# Build cw-ics08-wasm-terp via the Terp Docker optimizer (rustc 1.91).
+# Standard: crates/terp-rs/docs/wasm-artifacts.md.
 #
 # Published CosmWasm / 08-wasm artifacts must not use host cargo wasm.
 # Store on-chain with `terpd tx ibc-wasm store-code` (08-wasm module), not
@@ -11,7 +12,7 @@
 set -euo pipefail
 
 if [[ "${FORCE_HOST_WASM:-0}" == "1" ]]; then
-  echo "error: FORCE_HOST_WASM is not supported; 08-wasm artifacts must use Docker optimizer (rustc 1.86)" >&2
+  echo "error: FORCE_HOST_WASM is not supported; 08-wasm artifacts must use Docker optimizer (rustc 1.91)" >&2
   exit 1
 fi
 
@@ -45,7 +46,7 @@ fi
 
 mkdir -p "${CRATE_ROOT}/artifacts"
 
-# Optimizer image rustc 1.86. Override ENTRYPOINT (bob/workspace) so we only
+# Optimizer image rustc 1.91. Override ENTRYPOINT (bob/workspace) so we only
 # emit this LC. Path deps resolve because crates/ is mounted at /workspace.
 docker run --rm \
   --entrypoint /bin/ash \
@@ -53,7 +54,7 @@ docker run --rm \
   -v "${CRATE_ROOT}/artifacts:/artifacts_out" \
   -w "/workspace/${CRATE_NAME}" \
   -e CARGO_TARGET_DIR=/target \
-  -e RUSTFLAGS="-C link-arg=-s" \
+  -e RUSTFLAGS="-C link-arg=-s -C target-feature=-simd128" \
   --mount type=volume,source="${CRATE_NAME}_optimizer_cache",target=/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
   "${OPTIMIZER_IMAGE}" \

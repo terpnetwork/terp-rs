@@ -19,6 +19,11 @@
         "description": "Contract admin (also protocol-fee recipient when fee is set).",
         "type": "string"
       },
+      "auto_execute_ingress": {
+        "description": "Governance flag: allow a relayer to auto-execute `Purchase` from Nostr ingress. **Default false** — parse-intent only. The contract never submits txs itself.",
+        "default": false,
+        "type": "boolean"
+      },
       "min_buffer_blocks": {
         "description": "Settlement buffer in blocks. Default **7**. Allowed range **5–10**.",
         "default": 7,
@@ -186,6 +191,28 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin only: flip ingress auto-execute policy. Default remains off. Does not cause the contract to pull Nostr events.",
+        "type": "object",
+        "required": [
+          "set_auto_execute_ingress"
+        ],
+        "properties": {
+          "set_auto_execute_ingress": {
+            "type": "object",
+            "required": [
+              "enabled"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -405,6 +432,7 @@
       "required": [
         "accepted_denom",
         "admin",
+        "auto_execute_ingress",
         "min_buffer_blocks",
         "next_order_id"
       ],
@@ -414,6 +442,9 @@
         },
         "admin": {
           "$ref": "#/definitions/Addr"
+        },
+        "auto_execute_ingress": {
+          "type": "boolean"
         },
         "min_buffer_blocks": {
           "type": "integer",

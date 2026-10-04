@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "type": "object",
+  "required": [
+    "admin",
+    "manifesto_contract",
+    "next_id"
+  ],
+  "properties": {
+    "admin": {
+      "type": "string"
+    },
+    "ibc2_dest_port": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ibc2_source_client": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manifesto_contract": {
+      "type": "string"
+    },
+    "next_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

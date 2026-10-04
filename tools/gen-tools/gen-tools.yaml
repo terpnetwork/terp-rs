@@ -7,9 +7,10 @@
 # base_path resolves from the directory this file lives in
 # (crates/terp-rs/tools/gen-tools/) up to the monorepo root (4 levels up).
 #
-# ALL output directories default to terp-api/<lang> within each project's
-# workspace root. Per-project overrides are removed to let these defaults
-# apply consistently. TZ outputs now go into terp-api/tz/ as well.
+# Contract clients land in crates/terp-rs/api/<lang>/<contract>/.
+# TypeScript variants are subfolders: api/ts/<contract>/{zod,esbundles,types,client,...}.
+# Chain (terp-core module) clients land in api/<lang>/terp-<lang>/.
+# TZ outputs go to api/tz/.
 
 base_path: "../../../.."
 
@@ -22,7 +23,7 @@ projects:
     tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
     tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
     tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+    tz_out: "api/tz"
 
   - name: abstract
     path: "crates/abstract/framework"
@@ -30,23 +31,64 @@ projects:
     tz_episodes_dir: "../../terp-rs/tools/gen-tools/tz-episodes"
     tz_recipes_dir: "../../terp-rs/tools/gen-tools/tz-recipes"
     tz_profiles_dir: "../../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+    tz_out: "api/tz"
 
-  - name: terp-account-billboards
-    path: "crates/terp-account-billboards"
-    tz_heuristics: "../terp-rs/tools/gen-tools/tz-heuristics.toml"
-    tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
-    tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
-    tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+  # Unified contract workspace. Clients land in crates/terp-rs/api/<lang>/<contract>/.
+  - name: terp-rs
+    path: "crates/terp-rs"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "api/ts"
+    py_out: "api/python"
+    zod_out: "api/ts"
+    proto_out: "api/proto"
+    go_out: "api/go"
+    rust_out: "api/rust"
+    openapi_out: "api/openapi"
 
-  - name: cw-infuser
-    path: "crates/cw-infuser"
-    tz_heuristics: "../terp-rs/tools/gen-tools/tz-heuristics.toml"
-    tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
-    tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
-    tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+  # Isolated optimizer workspaces (own Cargo.lock). Same client library.
+  - name: marketplace-mirror
+    path: "crates/terp-rs/contracts/hash-merchant/marketplace-mirror"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "../../../api/ts"
+    py_out: "../../../api/python"
+    zod_out: "../../../api/ts"
+    proto_out: "../../../api/proto"
+    go_out: "../../../api/go"
+    rust_out: "../../../api/rust"
+    openapi_out: "../../../api/openapi"
+
+  - name: loyalty-verifier
+    path: "crates/terp-rs/contracts/hash-merchant/loyalty-verifier"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "../../../api/ts"
+    py_out: "../../../api/python"
+    zod_out: "../../../api/ts"
+    proto_out: "../../../api/proto"
+    go_out: "../../../api/go"
+    rust_out: "../../../api/rust"
+    openapi_out: "../../../api/openapi"
+
+  - name: trusted-builder-sbt
+    path: "crates/terp-rs/contracts/hash-merchant/trusted-builder-sbt"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "../../../api/ts"
+    py_out: "../../../api/python"
+    zod_out: "../../../api/ts"
+    proto_out: "../../../api/proto"
+    go_out: "../../../api/go"
+    rust_out: "../../../api/rust"
+    openapi_out: "../../../api/openapi"
+
+  - name: cw-cashu-registry
+    path: "crates/terp-rs/contracts/cashu/cw-cashu-registry"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "../../../api/ts"
+    py_out: "../../../api/python"
+    zod_out: "../../../api/ts"
+    proto_out: "../../../api/proto"
+    go_out: "../../../api/go"
+    rust_out: "../../../api/rust"
+    openapi_out: "../../../api/openapi"
 
   - name: shitstrap
     path: "crates/shitstrap"
@@ -54,7 +96,7 @@ projects:
     tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
     tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
     tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+    tz_out: "api/tz"
 
   - name: polytone
     path: "crates/polytone"
@@ -62,7 +104,7 @@ projects:
     tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
     tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
     tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+    tz_out: "api/tz"
 
   - name: cw-ica-controller
     path: "crates/cw-ica-controller"
@@ -70,7 +112,7 @@ projects:
     tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
     tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
     tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "terp-api/tz"
+    tz_out: "api/tz"
 
   - name: akash-deploy-rs
     path: "crates/akash-deploy-rs"

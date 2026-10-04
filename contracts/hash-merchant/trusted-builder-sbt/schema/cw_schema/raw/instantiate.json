@@ -1,0 +1,35 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "trusted_builder_sbt_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "value": 1
+        },
+        "ibc2_dest_port": {
+          "defaulting": true,
+          "value": 2
+        },
+        "ibc2_source_client": {
+          "defaulting": true,
+          "value": 2
+        },
+        "manifesto_contract": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

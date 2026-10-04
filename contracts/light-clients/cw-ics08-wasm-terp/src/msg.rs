@@ -1,6 +1,6 @@
 //! ibc-go v11 08-wasm contract API (types/contract_api.go).
 
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Binary;
 
 #[cw_serde]
@@ -23,10 +23,15 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(())]
     VerifyClientMessage(VerifyClientMessageMsg),
+    #[returns(CheckForMisbehaviourResult)]
     CheckForMisbehaviour(CheckForMisbehaviourMsg),
+    #[returns(TimestampAtHeightResult)]
     TimestampAtHeight(TimestampAtHeightMsg),
+    #[returns(StatusResult)]
     Status(StatusMsg),
 }
 

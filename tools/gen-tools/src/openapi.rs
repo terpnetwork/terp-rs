@@ -3,7 +3,7 @@
 //! Generates an OpenAPI 3.0 specification from contract schema JSON files,
 //! enabling Swagger UI and code-first API documentation.
 
-use crate::config::GenerationContext;
+use crate::config::{contract_api_dir, GenerationContext};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde::Serialize;
@@ -21,8 +21,7 @@ impl Generator for OpenApiGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let openapi_out = ctx.openapi_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&openapi_out)?;
+        std::fs::create_dir_all(&ctx.openapi_out)?;
 
         let mut total_files = 0;
 
@@ -33,31 +32,31 @@ impl Generator for OpenApiGenerator {
                 name: "openapi",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(openapi_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.openapi_out.to_string_lossy().to_string()),
                 message: Some("No type sources found, skipping".into()),
             });
         }
 
         for (contract_name, schemas) in &groups {
+            let contract_dir = contract_api_dir(&ctx.openapi_out, contract_name);
+            std::fs::create_dir_all(&contract_dir)?;
             let spec = generate_openapi_spec(schemas, contract_name)?;
-            let spec_path = openapi_out.join(format!("{}.openapi.json", contract_name));
+            let spec_path = contract_dir.join(format!("{}.openapi.json", contract_name));
             let spec_content = serde_json::to_string_pretty(&spec)?;
             std::fs::write(&spec_path, &spec_content)?;
             total_files += 1;
             log::info!("[openapi] Wrote {:?}", spec_path);
 
-            // Also write YAML version
-            let yaml_path = openapi_out.join(format!("{}.openapi.yaml", contract_name));
+            let yaml_path = contract_dir.join(format!("{}.openapi.yaml", contract_name));
             let yaml_content = serde_yaml::to_string(&spec)?;
             std::fs::write(&yaml_path, &yaml_content)?;
             total_files += 1;
         }
 
-        // Generate a combined OpenAPI spec
         if total_files > 0 {
             let combined = generate_combined_openapi_spec(&groups)?;
             let combined_json = serde_json::to_string_pretty(&combined)?;
-            std::fs::write(openapi_out.join("openapi.json"), &combined_json)?;
+            std::fs::write(ctx.openapi_out.join("openapi.json"), &combined_json)?;
             total_files += 1;
         }
 
@@ -65,7 +64,7 @@ impl Generator for OpenApiGenerator {
             name: "openapi",
             success: true,
             files_generated: total_files,
-            output_dir: Some(openapi_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.openapi_out.to_string_lossy().to_string()),
             message: Some(format!("{} OpenAPI files generated", total_files)),
         })
     }

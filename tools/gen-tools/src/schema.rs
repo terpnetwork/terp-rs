@@ -29,10 +29,10 @@ impl Generator for SchemaGenerator {
         }
 
         let mut total_files = 0;
+        let mut failures: Vec<String> = Vec::new();
 
         if ctx.contracts.is_empty() {
-            // No contracts detected — run `cargo schema` at workspace root
-            log::info!("[schema] No contracts detected; running `cargo schema` at workspace root");
+            log::info!("[schema] No contracts detected; running schema at workspace root");
             total_files += run_cargo_schema(&ctx.workspace_root)?;
         } else {
             for contract in &ctx.contracts {
@@ -40,19 +40,28 @@ impl Generator for SchemaGenerator {
                     log::debug!("[schema] Skipping non-cosmwasm crate: {}", contract.name);
                     continue;
                 }
-                log::info!(
-                    "[schema] Running `cargo schema` for contract: {}",
-                    contract.name
-                );
-                match run_cargo_schema(&contract.manifest_path.parent().unwrap()) {
+                let dir = contract.manifest_path.parent().unwrap();
+                if schema_target(dir).is_none() {
+                    log::info!(
+                        "[schema] {} has no schema bin or example; skipping",
+                        contract.name
+                    );
+                    continue;
+                }
+                log::info!("[schema] {}", contract.name);
+                match run_cargo_schema(dir) {
                     Ok(count) => total_files += count,
-                    Err(e) => log::warn!(
-                        "[schema] `cargo schema` failed for {}: {}",
-                        contract.name,
-                        e
-                    ),
+                    Err(e) => failures.push(format!("{}: {}", contract.name, e)),
                 }
             }
+        }
+
+        if !failures.is_empty() {
+            return Err(anyhow::anyhow!(
+                "schema failed for {} contract(s):\n{}",
+                failures.len(),
+                failures.join("\n")
+            ));
         }
 
         // Count schema files produced
@@ -73,13 +82,55 @@ impl Generator for SchemaGenerator {
     }
 }
 
-/// Run `cargo schema` in the given directory.
+/// Host rustc for schema bins. wasmer 7.4.2 (pulled by host-only cw-orch)
+/// needs 1.95. Guest wasm stays on the optimizer's 1.91.
+fn cargo_cmd() -> Command {
+    let mut rustup = Command::new("rustup");
+    let probe = rustup
+        .args(["run", "1.95.0", "rustc", "--version"])
+        .output();
+    if probe.map(|o| o.status.success()).unwrap_or(false) {
+        let mut cmd = Command::new("rustup");
+        cmd.args(["run", "1.95.0", "cargo"]);
+        cmd
+    } else {
+        Command::new("cargo")
+    }
+}
+
+/// `src/bin/schema.rs` or `examples/schema.rs`.
+fn schema_target(dir: &Path) -> Option<&'static str> {
+    if dir.join("src/bin/schema.rs").is_file() {
+        Some("bin")
+    } else if dir.join("examples/schema.rs").is_file() {
+        Some("example")
+    } else {
+        None
+    }
+}
+
+/// Run the contract's schema binary (or example) in `dir`.
 fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
-    let output = Command::new("cargo")
-        .args(["schema"])
-        .current_dir(dir)
+    let Some(kind) = schema_target(dir) else {
+        log::info!(
+            "[schema] No src/bin/schema.rs or examples/schema.rs in {}",
+            dir.display()
+        );
+        return Ok(0);
+    };
+    let mut cmd = cargo_cmd();
+    cmd.current_dir(dir).arg("run").arg("--quiet");
+    match kind {
+        "bin" => {
+            cmd.args(["--bin", "schema"]);
+        }
+        _ => {
+            cmd.args(["--example", "schema"]);
+        }
+    }
+    let output = cmd
         .output()
-        .map_err(|e| anyhow::anyhow!("Failed to run `cargo schema`: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to run cargo schema: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -88,10 +139,8 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
             log::warn!("[schema] `cargo schema` not available (not a CosmWasm contract?)");
             return Ok(0);
         }
-        return Err(anyhow::anyhow!(
-            "`cargo schema` failed: {}",
-            stderr.lines().last().unwrap_or("(unknown)")
-        ));
+        let tail: String = stderr.lines().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+        return Err(anyhow::anyhow!("cargo schema failed:\n{}", tail));
     }
 
     // Count generated schema JSON files

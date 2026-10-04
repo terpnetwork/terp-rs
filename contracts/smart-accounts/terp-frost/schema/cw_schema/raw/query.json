@@ -1,0 +1,24 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_frost_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "group_vk": {
+          "type": "named",
+          "properties": {}
+        },
+        "pending": {
+          "type": "named",
+          "properties": {}
+        },
+        "status": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    }
+  ]
+}

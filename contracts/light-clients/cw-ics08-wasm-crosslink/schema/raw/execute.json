@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "description": "The execute message (not used).",
+  "type": "string",
+  "enum": []
+}
