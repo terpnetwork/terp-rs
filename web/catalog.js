@@ -1,0 +1,35 @@
+// Contract ESM bundles generated under api/ts/<id>/esbundles.
+// Paths are relative to this file so a static server rooted at crates/terp-rs
+// can load them with no build step.
+
+export const CONTRACTS = [
+  { id: "cw-cashu-registry", bundle: "../api/ts/cw-cashu-registry/esbundles/CwCashuRegistry.bundle.mjs" },
+  { id: "cw-ics08-wasm-crosslink", bundle: "../api/ts/cw-ics08-wasm-crosslink/esbundles/CwIcs08WasmCrosslink.bundle.mjs" },
+  { id: "cw-ics08-wasm-dregg", bundle: "../api/ts/cw-ics08-wasm-dregg/esbundles/CwIcs08WasmDregg.bundle.mjs" },
+  { id: "cw-ics08-wasm-terp", bundle: "../api/ts/cw-ics08-wasm-terp/esbundles/CwIcs08WasmTerp.bundle.mjs" },
+  { id: "cw-ics08-wasm-zap1", bundle: "../api/ts/cw-ics08-wasm-zap1/esbundles/CwIcs08WasmZap1.bundle.mjs" },
+  { id: "cw-infuser", bundle: "../api/ts/cw-infuser/esbundles/CwInfuser.bundle.mjs" },
+  { id: "cw-private-dex", bundle: "../api/ts/cw-private-dex/esbundles/CwPrivateDex.bundle.mjs" },
+  { id: "cw-svg-minter", bundle: "../api/ts/cw-svg-minter/esbundles/CwSvgMinter.bundle.mjs" },
+  { id: "cw-zk-verify-demo", bundle: "../api/ts/cw-zk-verify-demo/esbundles/CwZkVerifyDemo.bundle.mjs" },
+  { id: "cw721-svg", bundle: "../api/ts/cw721-svg/esbundles/Cw721Svg.bundle.mjs" },
+  { id: "hm-nft-minter", bundle: "../api/ts/hm-nft-minter/esbundles/HmNftMinter.bundle.mjs" },
+  { id: "loyalty-verifier", bundle: "../api/ts/loyalty-verifier/esbundles/LoyaltyVerifier.bundle.mjs" },
+  { id: "marketplace-mirror", bundle: "../api/ts/marketplace-mirror/esbundles/MarketplaceMirror.bundle.mjs" },
+  { id: "ownership-verifier", bundle: "../api/ts/ownership-verifier/esbundles/OwnershipVerifier.bundle.mjs" },
+  { id: "polytone-any-proxy", bundle: "../api/ts/polytone-any-proxy/esbundles/PolytoneAnyProxy.bundle.mjs" },
+  { id: "terp-dao", bundle: "../api/ts/terp-dao/esbundles/TerpDao.bundle.mjs" },
+  { id: "terp-dregg", bundle: "../api/ts/terp-dregg/esbundles/TerpDregg.bundle.mjs" },
+  { id: "terp-ed25519", bundle: "../api/ts/terp-ed25519/esbundles/TerpEd25519.bundle.mjs" },
+  { id: "terp-eth", bundle: "../api/ts/terp-eth/esbundles/TerpEth.bundle.mjs" },
+  { id: "terp-frost", bundle: "../api/ts/terp-frost/esbundles/TerpFrost.bundle.mjs" },
+  { id: "terp-passkey", bundle: "../api/ts/terp-passkey/esbundles/TerpPasskey.bundle.mjs" },
+  { id: "terp-recovery", bundle: "../api/ts/terp-recovery/esbundles/TerpRecovery.bundle.mjs" },
+  { id: "terp-vsck", bundle: "../api/ts/terp-vsck/esbundles/TerpVsck.bundle.mjs" },
+  { id: "terp-zkjwt", bundle: "../api/ts/terp-zkjwt/esbundles/TerpZkjwt.bundle.mjs" },
+  { id: "terp-zktls", bundle: "../api/ts/terp-zktls/esbundles/TerpZktls.bundle.mjs" },
+  { id: "terp721-account", bundle: "../api/ts/terp721-account/esbundles/Terp721Account.bundle.mjs" },
+  { id: "terp721-account-manifold", bundle: "../api/ts/terp721-account-manifold/esbundles/Terp721AccountManifold.bundle.mjs" },
+  { id: "trusted-builder-sbt", bundle: "../api/ts/trusted-builder-sbt/esbundles/TrustedBuilderSbt.bundle.mjs" },
+  { id: "whitelist-mtree", bundle: "../api/ts/whitelist-mtree/esbundles/WhitelistMtree.bundle.mjs" },
+];
