@@ -1,6 +1,8 @@
 target
 /schema
 /_plans/
+# Generated clients. Regenerate with the steps in tools/gen-tools/README.md.
+/api/
 # Per-crate wasm dumps (canonical store is crates/terp-rs/artifacts/)
 contracts/**/artifacts/
 crates/**/artifacts/
