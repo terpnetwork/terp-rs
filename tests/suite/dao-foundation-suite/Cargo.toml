@@ -1,0 +1,55 @@
+[package]
+name = "dao-foundation-suite"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Nested subDAO exercise of dao-testing's cw-orch DaoDaoSuite"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+dotenvy = "0.15"
+prost-types = "0.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std", features = ["staking", "stargate", "cosmwasm_2_2"] }
+cw-multi-test = { workspace = true }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-utils = { path = "../../../../cw-minus/packages/cw-utils" }
+cw4 = { path = "../../../../cw-plus/packages/cw4" }
+cw20 = { path = "../../../../cw-plus/packages/cw20" }
+cw721-base = { path = "../../../../cw-nfts/contracts/cw721-base" }
+dao-cw721-extensions = { path = "../../../../dao-contracts/packages/dao-cw721-extensions" }
+cw-admin-factory = { path = "../../../../dao-contracts/contracts/external/cw-admin-factory" }
+cw-denom = { path = "../../../../dao-contracts/packages/cw-denom" }
+cw-fund-distributor = { path = "../../../../dao-contracts/contracts/distribution/cw-fund-distributor" }
+cw-payroll-factory = { path = "../../../../dao-contracts/contracts/external/cw-payroll-factory" }
+cw-token-swap = { path = "../../../../dao-contracts/contracts/external/cw-token-swap" }
+cw-vesting = { path = "../../../../dao-contracts/contracts/external/cw-vesting" }
+cw20-base = { path = "../../../../cw-plus/contracts/cw20-base" }
+cw20-stake = { path = "../../../../dao-contracts/contracts/staking/cw20-stake" }
+cw20-stake-external-rewards = { path = "../../../../dao-contracts/contracts/staking/cw20-stake-external-rewards" }
+cw20-stake-reward-distributor = { path = "../../../../dao-contracts/contracts/staking/cw20-stake-reward-distributor" }
+dao-interface = { path = "../../../../dao-contracts/packages/dao-interface" }
+dao-pre-propose-single = { path = "../../../../dao-contracts/contracts/pre-propose/dao-pre-propose-single" }
+dao-proposal-multiple = { path = "../../../../dao-contracts/contracts/proposal/dao-proposal-multiple" }
+dao-proposal-single = { path = "../../../../dao-contracts/contracts/proposal/dao-proposal-single" }
+dao-rewards-distributor = { path = "../../../../dao-contracts/contracts/distribution/dao-rewards-distributor" }
+dao-testing = { path = "../../../../dao-contracts/packages/dao-testing", default-features = false }
+dao-vote-delegation = { path = "../../../../dao-contracts/contracts/delegation/dao-vote-delegation" }
+gauge-adapter = { path = "../../../../dao-contracts/contracts/gauges/gauge-adapter" }
+gauge-orchestrator = { path = "../../../../dao-contracts/contracts/gauges/gauge" }
+dao-voting = { path = "../../../../dao-contracts/packages/dao-voting" }
+dao-voting-cw4 = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw4" }
+dao-voting-cw20-balance = { path = "../../../../dao-contracts/contracts/test/dao-voting-cw20-balance" }
+dao-voting-cw20-staked = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw20-staked" }
+dao-voting-cw721-roles = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw721-roles" }
+dao-voting-cw721-staked = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw721-staked" }
+
+[dev-dependencies]
+cw4-group = { path = "../../../../cw-plus/contracts/cw4-group" }
+dao-dao-core = { path = "../../../../dao-contracts/contracts/dao-dao-core" }
+dao-pre-propose-single = { path = "../../../../dao-contracts/contracts/pre-propose/dao-pre-propose-single" }
+ict-rs = { path = "../../../../ict-rs/ict-rs", features = ["docker", "terp", "testing"] }
+ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }

@@ -51,6 +51,7 @@ members = [
     "scripts/terp-accounts",
     "scripts/cw-infuser",
     "tests/suite/cw-infuser-suite",
+    "tests/suite/dao-foundation-suite",
 ]
 
 [workspace.package]
@@ -79,7 +80,9 @@ cosmwasm-schema = { path = "../cosmwasm/packages/schema" }
 cosmwasm-std = { path = "../cosmwasm/packages/std" }
 cosmwasm-crypto = { path = "../cosmwasm/packages/crypto" }
 crosslink-light-client = { path = "crates/crosslink/light-client", default-features = false }
-cw-orch = { path = "../cw-orchestrator/cw-orch" }
+# Pushed fork/cw3. The patch table below replaces this checkout (local HEAD is ahead of the remote).
+cw-orch = { git = "https://github.com/permissionlessweb/cw-orchestrator", rev = "ec4d693aad80ee70ddbd77c3b78c9807bedb6be0" }
+cw-orch-interchain = { git = "https://github.com/permissionlessweb/cw-orchestrator", rev = "ec4d693aad80ee70ddbd77c3b78c9807bedb6be0" }
 cw2 = { path = "../cw-minus/packages/cw2" }
 cw-storage-plus = { path = "../cw-storage-plus" }
 cw-utils = { path = "../cw-minus/packages/cw-utils" }
@@ -152,6 +155,29 @@ cw-storage-plus = { path = "../cw-storage-plus" }
 cw-utils = { path = "../cw-minus/packages/cw-utils" }
 cw2 = { path = "../cw-minus/packages/cw2" }
 cw-controllers = { path = "../cw-minus/packages/controllers" }
+# Same versions as the registry copies that still depend on cosmwasm-std 2.
+# Local daemon is 0.29.0 and networks is 0.24.10; those do not satisfy 0.28.2 / 0.24.11.
+cw-orch-core = { path = "../cw-orchestrator/packages/cw-orch-core" }
+cw-orch-interchain = { path = "../cw-orchestrator/cw-orch-interchain" }
+cw-orch-interchain-core = { path = "../cw-orchestrator/packages/interchain/interchain-core" }
+cw-orch-interchain-daemon = { path = "../cw-orchestrator/packages/interchain/interchain-daemon" }
+cw-orch-interchain-mock = { path = "../cw-orchestrator/packages/interchain/interchain-mock" }
+cw-orch-mock = { path = "../cw-orchestrator/packages/cw-orch-mock" }
+cw-orch-starship = { path = "../cw-orchestrator/packages/interchain/starship" }
+cw-orch-traits = { path = "../cw-orchestrator/packages/cw-orch-traits" }
+
+[patch."https://github.com/permissionlessweb/cw-orchestrator"]
+cw-orch = { path = "../cw-orchestrator/cw-orch" }
+cw-orch-core = { path = "../cw-orchestrator/packages/cw-orch-core" }
+cw-orch-daemon = { path = "../cw-orchestrator/cw-orch-daemon" }
+cw-orch-interchain = { path = "../cw-orchestrator/cw-orch-interchain" }
+cw-orch-interchain-core = { path = "../cw-orchestrator/packages/interchain/interchain-core" }
+cw-orch-interchain-daemon = { path = "../cw-orchestrator/packages/interchain/interchain-daemon" }
+cw-orch-interchain-mock = { path = "../cw-orchestrator/packages/interchain/interchain-mock" }
+cw-orch-mock = { path = "../cw-orchestrator/packages/cw-orch-mock" }
+cw-orch-networks = { path = "../cw-orchestrator/packages/cw-orch-networks" }
+cw-orch-starship = { path = "../cw-orchestrator/packages/interchain/starship" }
+cw-orch-traits = { path = "../cw-orchestrator/packages/cw-orch-traits" }
 
 [patch."https://github.com/permissionlessweb/cosmwasm"]
 cosmwasm-core = { path = "../cosmwasm/packages/core" }
