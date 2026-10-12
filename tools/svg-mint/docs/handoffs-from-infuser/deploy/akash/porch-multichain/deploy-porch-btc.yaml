@@ -1,0 +1,63 @@
+---
+# BTC-only Akash P2P porch (this is the bid file).
+# One dseq, port 8333 globally. No 8332/8545/8546/9067.
+# Do not bid deploy-porch.yaml (ETH 800Gi + Base 400Gi) in this run.
+#
+# Pin: bitcoin/bitcoin:29.0 index digest from Docker Hub (linux/amd64+arm64+arm/v7).
+# After lease: ~/.oline/dregg-porch-multichain-<dseq>.env
+#   BTC_P2P=provider.host:PORT
+#   BTC_P2P_IP=A.B.C.D:PORT
+# DREGG (svg-mint-fed) never JSON-RPC to this lease. House remains 127.0.0.1.
+version: "2.0"
+
+services:
+  btc:
+    image: bitcoin/bitcoin:29.0@sha256:a6aa8a9e349b4108d13c558dbe43064057bd7b6474b858966884f9cb95b7ed78
+    env:
+      - BITCOIN_DATA=/data
+    command:
+      - bitcoind
+      - -datadir=/data
+      - -listen=1
+      - -bind=0.0.0.0
+      - -server=0
+      - -disablewallet
+      - -prune=550
+      - -txindex=0
+    expose:
+      - port: 8333
+        as: 8333
+        to:
+          - global: true
+        proto: tcp
+    params:
+      storage:
+        data:
+          mount: /data
+          readOnly: false
+
+profiles:
+  compute:
+    btc:
+      resources:
+        cpu: { units: 2.0 }
+        memory: { size: 8Gi }
+        storage:
+          - size: 8Gi
+          - name: data
+            size: 200Gi
+            attributes:
+              persistent: true
+              class: beta3
+  placement:
+    dregg-porch:
+      attributes:
+        host: akash
+      pricing:
+        btc: { denom: uact, amount: 1000000 }
+
+deployment:
+  btc:
+    dregg-porch:
+      profile: btc
+      count: 1

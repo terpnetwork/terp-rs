@@ -1,0 +1,82 @@
+---
+title: Wallet runtime
+description: Durable local ZEC wallet. Scan and spend prover are not linked.
+---
+
+# Wallet runtime
+
+`svg-mint-zrt` (`crates/svg-mint-zrt`) is the ZEC CLI the fed is supposed to call. It lives next to the `dregg` library crate, not inside terp-core. It does not import zcli, `zync-core`, or `zcash-devtool`. zcli's public server (`zcash.rotko.net`) and `zec.rocks` are not this desk.
+
+Read [Wallet gaps](/engines/wallet-gaps). `scripts/e2e-zrt-wallet.sh` is the persistence gate and passed on groot-wan against a temporary directory. `scripts/e2e-local-prod.sh` is the multi-chain suite in `e2e/`. Its wallet checkpoint calls this binary, then requires a restart of the same address and a fail-closed send. That suite is not a claim that this binary can see or move house funds. Do not `init` `~/.terp/svg-mint-zrt` on groot2 with this build. A new seed does not recover the old account.
+
+The thin `terp-core` crate `zigner/rust/zcash-wasm` only derives addresses for the browser. It is not the scanner.
+
+Three jobs, and where this build stops:
+
+1. **Balance** — sum of mined, unspent rows in `notes.sqlite`. The file starts empty. Nothing in the default binary fills it from the chain.
+2. **Notes** — the same ledger, as JSON. Trial decryption against house ztreamer is not linked. `sync` exits and leaves the ledger unchanged.
+3. **Recover** — `send` accepts only the donation unified address, selects notes, then exits. The prover is not linked, so notes stay unspent and nothing is broadcast.
+
+## Commands
+
+```bash
+svg-mint-zrt init
+svg-mint-zrt addresses
+svg-mint-zrt balance --json
+svg-mint-zrt notes
+svg-mint-zrt sync
+svg-mint-zrt send --zat <n> --address <u1…>
+```
+
+`init` prints the unified address and is the only command that creates `spend.seed`. The address is an Orchard receiver (orchard 0.16, ZIP-32 coin type 133, account 0, diversifier index 0). It is not an Ironwood payment address. Do not publish it as a pay target.
+
+`notes` returns the open account plus the ledger:
+
+```json
+{
+  "address": "u1…",
+  "diversifier_index": 0,
+  "notes": [
+    {
+      "txid": "",
+      "address": "u1…",
+      "memo": "",
+      "zat": 0,
+      "mined": false,
+      "spent": false,
+      "pool": "ironwood"
+    }
+  ]
+}
+```
+
+DREGG matches `address` to this checkout's diversified UA, or `memo` to this checkout's payment id. `mined: false` is receipt only. `mined: true` is the block that may mint. One shielded mempool transaction, with no match, is not this checkout. This binary does not perform that match. The desk code in `dregg` still does, against notes it is given.
+
+Ironwood is the only pool the ledger will count. The default binary has no command that inserts a note. `lab-credit` and `lab-commit-spend` compile only with `--features lab`, for `scripts/e2e-zrt-wallet.sh`.
+
+`send` refuses a destination that is not the donation UA. A donation destination still fails closed in this build: the error says the prover is not linked and that notes were not marked spent.
+
+## JSON balance
+
+```json
+{
+  "total": 0,
+  "sapling_spendable": 0,
+  "orchard_spendable": 0,
+  "ironwood_spendable": 0,
+  "transparent_spendable": 0,
+  "chain_tip_height": null
+}
+```
+
+`total` equals `ironwood_spendable`. DREGG's `parse_balance_json` reads those keys. Public `/health` does not include amounts. `chain_tip_height` stays null until a scan writes the meta row. This build does not write it.
+
+## Env
+
+| Name | Purpose |
+|---|---|
+| `SVG_MINT_ZRT_BIN` | Path DREGG execs. The groot2 unit still points at the previous release binary. |
+| `SVG_MINT_ZRT_DIR` | Wallet directory. Unset means `~/.terp/svg-mint-zrt`. The e2e sets a temp directory. |
+| `ZTREAMER_GRPC` | Intended compact host, loopback `127.0.0.1:9067`. This build does not dial it. |
+
+`ZCASH_DEVTOOL_WALLET`, `ZCASH_DEVTOOL_BIN`, and `ZCASH_DEVTOOL_IDENTITY` are not read. The old `/tmp/svg-mint-zcash-devtool` default is gone from this crate.

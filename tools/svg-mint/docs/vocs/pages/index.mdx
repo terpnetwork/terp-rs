@@ -1,0 +1,23 @@
+---
+title: Engines
+description: Runtimes behind the permissionless SVG mint desk
+---
+
+import { Card, Cards } from 'vocs'
+
+# Engines
+
+The mint desk is static HTML. Four house processes sit behind it. The browser talks HTTPS to DREGG and onboard. It never talks to Zakura JSON-RPC or the compact streamer.
+
+<Cards>
+  <Card title="Architecture" description="Who talks to whom. Mermaid." to="/engines/architecture" />
+  <Card title="DREGG" description="Checkout, prices, pay-targets, mint after payment." to="/engines/dregg" />
+  <Card title="Wallet runtime" description="svg-mint-zrt keeps one seed and one note ledger. Scan and prover are not linked." to="/engines/zrt" />
+  <Card title="Zakura" description="House Zcash full node. Loopback RPC only." to="/engines/zakura" />
+  <Card title="ztreamer" description="CompactTxStreamer for ZIP-321 watch. Vendor Ztreamer." to="/engines/ztreamer" />
+  <Card title="Ops collect" description="ADR-036 one-shot recover to the donation UA." to="/engines/ops" />
+  <Card title="Trailmark" description="Product contract, oracles, mint walk." to="/engines/trailmark" />
+  <Card title="Wallet gaps" description="Why ZEC looks gone after a restart." to="/engines/wallet-gaps" />
+</Cards>
+
+Source of truth for these pages is the svg-mint crate (`docs/vocs/pages`). Permissionless-docs copies them at compile time. Do not edit the generated copies under the Vocs site.

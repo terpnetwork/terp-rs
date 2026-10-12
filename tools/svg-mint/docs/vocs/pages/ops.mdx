@@ -1,0 +1,38 @@
+---
+title: Ops collect
+description: One-time ADR-036 recover to the donation UA
+---
+
+# Ops collect
+
+Unlinked desk: [permissionless.money/ops](https://permissionless.money/ops).
+
+1. Sign in with Keplr (ADR-036) to **read** `zec_wallet.total_zat`.
+2. Confirm the house total matches what you expect.
+3. Enter zatoshis. **Withdraw ZEC** asks Keplr to sign **once more**.
+
+The signed bytes are:
+
+```
+permissionless.money withdraw <zat> zat to <donation-ua> <challenge>
+```
+
+That signature binds amount + donation UA + a one-time challenge. A login signature cannot spend. Token and zid can read info; they cannot move funds. There is no dest field — foreign `to` is 400.
+
+Send is `svg-mint-zrt send --zat … --address <donation-ua>` against house ztreamer.
+
+```mermaid
+sequenceDiagram
+  participant Ops as Ops tab
+  participant D as DREGG
+  participant K as Keplr
+  participant Z as svg-mint-zrt
+  Ops->>D: GET /v1/admin/info
+  D-->>Ops: zec_wallet.total_zat
+  Ops->>D: GET /v1/admin/challenge
+  Ops->>K: signArbitrary withdraw statement
+  Ops->>D: POST /v1/admin/withdraw
+  D->>D: verify ADR-036 + designated admin
+  D->>Z: send --zat --address donation UA
+  Z-->>D: tx out
+```

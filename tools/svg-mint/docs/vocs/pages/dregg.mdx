@@ -1,0 +1,22 @@
+---
+title: DREGG
+description: SVG mint checkout runtime
+---
+
+# DREGG
+
+The **dregg** crate is the cell library. **svg-mint-fed** is the HTTP runtime that depends on it (`dregg = { path = "../dregg" }`). Public origin: `https://dregg-svg.permissionless.money`. Loopback: `127.0.0.1:8421`. Workspace: `~/abstract/svg-mint`.
+
+It:
+
+- Publishes `health`, `prices`, and `pay-targets`.
+- Issues a ZIP-321 URI when the house Zcash tip is current.
+- Watches notes from svg-mint-zrt (house ztreamer). Matches the checkout address or the payment memo. An unmined note is receipt. A mined note is the mint.
+- After payment, entitles and executes CosmWasm mint on the collection.
+- Serves ops collect: `zec_wallet` on `/v1/admin/info`, ADR-036 recover on `POST /v1/admin/withdraw`.
+
+`checkout_ready` is the Pay gate. Native THIOL can stay open while ZEC is hidden (`zec_uri` null) if the house tip drifted.
+
+Pending unpaid checkouts expire after 10 minutes (`pending_ttl_secs`). The pay step shows that time counting down. A note in the mempool stops the clock. Unknown-age carts (`issued_at` 0) expire immediately. The holder does not see a raw health blob.
+
+See [HTTP API](/api) and [Ops collect](/engines/ops).

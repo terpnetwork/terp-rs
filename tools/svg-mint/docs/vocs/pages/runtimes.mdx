@@ -1,0 +1,37 @@
+---
+title: Runtimes
+description: Git-pinned house processes for SVG mint
+---
+
+# Runtimes
+
+This workspace owns **documentation, the dregg library, and the fed/zrt binaries**. Zakura and ztreamer are **git submodules** under `runtimes/`. `svg-mint-zrt` is a local wallet crate (orchard 0.16 and a sqlite ledger). It does not import zcli or `zync-core`. `zcash-devtool` is not a runtime here. zcli's public zidecar is not this compact server.
+
+| Path | Remote | Role |
+|---|---|---|
+| `runtimes/zakura` | `https://github.com/zakura-core/zakura.git` tag `v1.6.0` | Zcash full node |
+| `runtimes/ztreamer` | house ztreamer (CompactTxStreamer, vendor `Ztreamer`) | Compact blocks for watch / zrt |
+| `svg-mint-zrt` | `crates/svg-mint-zrt` | Product ZEC wallet CLI. Local e2e only until scan and prover are linked. |
+
+DREGG talks to `svg-mint-zrt` only. The public contract is zrt's argv and the `notes` JSON, not zcash-devtool flags and not zcli's rotko endpoint.
+
+## Init
+
+From this workspace:
+
+```bash
+bash scripts/init-runtimes.sh
+```
+
+That script records submodule URLs from `runtimes/.gitmodules` and clones if missing. Do not point compact `--server` at zec.rocks.
+
+## House bind
+
+| Process | Bind |
+|---|---|
+| Zakura RPC | `127.0.0.1:8232` (cookie) |
+| ztreamer CompactTxStreamer | `127.0.0.1:9067` |
+| DREGG | `127.0.0.1:8421` |
+| onboard | `127.0.0.1:19090` |
+
+The browser never uses those loopback ports. Public Hosts terminate TLS on nginx.

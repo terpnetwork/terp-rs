@@ -1,0 +1,30 @@
+[package]
+name = "svg-mint-zrt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Durable Ironwood wallet for the SVG mint desk. Never zec.rocks. Never zcash-devtool."
+
+[features]
+# Test-only note credit and local spend commit. The default binary cannot fake a balance or a send.
+lab = []
+
+[lib]
+name = "svg_mint_zrt"
+path = "src/lib.rs"
+
+[[bin]]
+name = "svg-mint-zrt"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+hex = { workspace = true }
+blake3 = { workspace = true }
+zcash_address = { version = "0.13", default-features = false }
+zcash_protocol = { version = "0.10", default-features = false }
+zip32 = { version = "0.3", default-features = false }
+rusqlite = { version = "0.31", features = ["bundled"] }
+orchard = { version = "0.16", default-features = false }
+getrandom = "0.2"

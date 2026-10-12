@@ -1,0 +1,51 @@
+---
+title: Trailmark
+description: Product contract and oracles for the mint desk
+---
+
+# Trailmark
+
+This is the **product contract** between the mint page, DREGG, onboard, house Zakura/ztreamer/zrt, and the admin desk. Trailblaze `trail.yaml` files under `websites/permissionless.money/trails/` exercise these oracles. They are not a substitute for this page.
+
+## Critical walk
+
+```
+You (wallet gate)
+  → Desk (prices + checkout_ready)
+  → Send (ZIP-321 QR or native Keplr)
+  → Seen
+       Mempool   = payment received, not yet a mint
+       Deposited = in one block, then mint
+  → NFT mint (DREGG entitle / settle)
+  → Device gas (passkey only): POST /onboard/v1/passkey-grant
+       body address + c
+       c = pay-targets memo_hex (Pedersen)
+       unpaid → 402
+  → Yours
+```
+
+Wallet gate: Watch / ZIP-321 does not load until a Keplr `terp1` or passkey dest exists.
+
+## Oracles already true
+
+1. `/health` `pay` / `checkout_ready` can be true while `minted=0` — the desk is open, not that a payment landed.
+2. Unpaid passkey-grant is **402** without `c`.
+3. Admin stats **401** without token; **200** with Bearer.
+4. Compact indexer vendor is **Ztreamer** on loopback, not ECC LWD.
+5. Recover without ADR-036 is **401** `adr36_required`.
+6. Recover dest is hardcoded to the donation UA.
+7. Unpaid checkouts show a visible countdown and clear after 10 minutes. The clock stops at Mempool.
+8. Mempool copy is one sentence: "Payment received. Minting after the next block."
+9. The desk does not render `/health` as JSON and does not say "house mempool".
+
+## Suggested scenarios
+
+| Id | What |
+|---|---|
+| Unlock gate | No QR until Keplr or passkey. `/ops` not in mint nav |
+| Native Pay | Keplr mint; walk Payment → Mint → Yours |
+| ZEC Pay | ZIP-321; mempool then block then mint |
+| Passkey after paid | 402 without `c`; grant after `paid: true` |
+| Ops desk | ADR-036 session; fresh signature on each recover; donate UA only |
+
+Live Trails: `websites/permissionless.money/trails/` (`ops-adr36`, `wallet-gate`, `native-pay`, …).

@@ -1,0 +1,16 @@
+---
+title: ztreamer
+description: CompactTxStreamer for ZIP-321 watch
+---
+
+# ztreamer
+
+ztreamer is the house **CompactTxStreamer**. `GetLightdInfo.vendor` must be `Ztreamer`. ECC lightwalletd is not the product indexer.
+
+Lab bind is `127.0.0.1:19067`. House bind is `127.0.0.1:9067`.
+
+`ztreamer probe --bind 127.0.0.1:9067` fail-closes unless vendor is Ztreamer.
+
+svg-mint-zrt trial-decrypts compact blocks here. It does not fall through to zec.rocks or to zcli's public zidecar.
+
+See [Runtimes](/engines/runtimes) for the git submodule pin.

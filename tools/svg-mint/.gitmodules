@@ -1,0 +1,7 @@
+[submodule "runtimes/zakura"]
+	path = runtimes/zakura
+	url = https://github.com/zakura-core/zakura.git
+
+[submodule "runtimes/ztreamer"]
+	path = runtimes/ztreamer
+	url = https://github.com/distractedm1nd/ztreamer.git

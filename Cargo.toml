@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 # Nested cargo projects with their own [workspace] tables.
-exclude = ["tools/hash-market"]
+exclude = ["tools/hash-market", "tools/svg-mint"]
 members = [
     "crates/terp-auth",
     "crates/terp-account",

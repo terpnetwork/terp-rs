@@ -1,0 +1,78 @@
+---
+title: Wallet gaps
+description: Why house ZEC looks gone after a restart, and what the local wallet has proven
+---
+
+# Wallet gaps
+
+House ZEC does not vanish from the chain when the mint process restarts. The process loses the key and the note database that can see it and spend it.
+
+`svg-mint-zrt` now keeps one spend seed and one note ledger on disk. `scripts/e2e-zrt-wallet.sh` passed on this laptop on 2026-10-03, using a temporary `SVG_MINT_ZRT_DIR`. That run is not a production start. The binary was not copied to groot2, and `~/.terp/svg-mint-zrt` was not initialized. Compact scan is not linked. The Ironwood spend prover is not linked. `send` checks the donation unified address, then exits without marking notes spent and without broadcasting. Do not pay the address this binary prints. It is an Orchard receiver from orchard 0.16 (ZIP-32 coin type 133, account 0). `zcash_address` 0.13 has no Ironwood receiver, so this address is not the house payment target. A new seed does not sweep the old account.
+
+## What groot2 has after the last restart
+
+Checked 2026-10-02. Paths only. No key material.
+
+| Path | State |
+|---|---|
+| `~/.terp/dregg-hd.seed` | Present. Checkout HD seed for BTC, ETH, and an 11-byte ZEC diversifier. This file cannot spend ZEC. |
+| `~/.terp/svg-mint-fed-cell.json` | Present, about 28KB, last written 20:00 PDT. Mint cell, pending checkouts, spent nullifiers. |
+| `~/.terp/dregg-fed.systemd.env` | Missing. The user unit names this file. Systemd starts with no wallet env. |
+| `ZCASH_DEVTOOL_WALLET` directory | Missing. No `data.sqlite`, no `age-identity.txt`, no UFVK file, no `zrt-notes.json`. |
+| `/tmp/svg-mint-zcash-devtool` | Missing. This is the default wallet dir when the env var is unset. |
+| `/tmp/svg-mint-fed-cell.json` | Present and tiny (148 bytes). The crashlooping unit writes a fresh cell here because `SVG_MINT_FED_STORE` is unset. |
+
+`zakura-lab` 1.6.0 is at tip. The chain still holds the notes. Nothing on this host can trial-decrypt or spend them.
+
+`dregg-svg-mint-fed.service` is crashlooping (`Address already in use` on `:8421`, restart count in the hundreds). Each failed start logs a newly generated operator public key and exits before listen. The stray process that still holds `:8421` is a separate identity from those new keys.
+
+## Why a restart looks like lost funds
+
+The list below is the zcash-devtool wallet the groot2 release binary still runs. The laptop crate no longer does these things. The host has not been switched.
+
+1. **Default wallet dir is `/tmp`.** That `svg-mint-zrt` uses `ZCASH_DEVTOOL_WALLET`, and if that is unset it uses `/tmp/svg-mint-zcash-devtool`. A kernel reboot deletes `/tmp`. The same default hits the mint cell: `SVG_MINT_FED_STORE` falls back to `/tmp/svg-mint-fed-cell.json`. The good cell under `~/.terp` is then not the file the next start opens.
+
+2. **Spend key and view key are different files, and both are gone.** Scan reads a UFVK out of `data.sqlite` (or `SVG_MINT_UFVK_FILE`, or a raw `orchard-fvk` file). Send refuses to run unless `age-identity.txt` is on disk, then shells `zcash-devtool wallet send -i` that file. A restart that keeps the sqlite and drops the age file can still show a balance and cannot move it. A restart that drops both shows zero and cannot move it. The notes stay under the old key.
+
+3. **A new wallet is a new key.** zcash-devtool creates an account inside its sqlite. The next empty directory is a new UFVK and a new age identity. Diversified unified addresses from the old account are not regenerated. ZIP-321 payments already in flight pay the old address. The new process does not list those notes, so ops shows an empty wallet.
+
+4. **The HD seed is not that key.** `dregg-hd.seed` derives BTC and ETH, and `zec_diversifier(index)` is blake3 of the seed and the index. Comment in `hd.rs` says the wallet maps that diversifier onto a unified address. The mapper is zcash-devtool, against whichever account is in the sqlite. A new sqlite does not know the old diversifiers. Keeping `dregg-hd.seed` does not recover ZEC.
+
+5. **The in-process scanner is not the spend set.** `sync` writes `zrt-notes.json` and a height cursor `zrt-ironwood-height` in the wallet dir. `balance` and `send` ignore that file and ask zcash-devtool for `ironwood_spendable` in the sqlite. The notes file still lists notes that are already spent. After a wipe, both views are empty even when the chain is not.
+
+6. **The scanner loads the Orchard component of the UFVK, then asks it to decrypt Ironwood.** `fvk_from_ufvk` keeps only the Orchard item. The desk drops Orchard and Sapling and accepts Ironwood only. If that Orchard viewing key is not the Ironwood incoming viewing key, compact scan misses the payments. History then depends entirely on `zcash-devtool wallet list-tx`. When that sqlite is gone, there is no second source.
+
+7. **Mint history and payment history are different stores.** The cell file remembers pending checkouts, HD index, and spent nullifiers. Pending unpaid carts expire (default 10 minutes). A ZEC note mints only when a still-pending checkout's unified address or payment memo matches a note the wallet just decrypted. If the wallet cannot see the note, the cart expires, the NFT does not mint, and the ZEC sits in the old account. The cell does not itself hold the Zcash spending key.
+
+8. **Operator keys are generated in memory.** If `SVG_MINT_FED_SK_HEX` is unset, `load_keys` calls `generate_operator` and never writes the secret. Every start is a new operator. That is separate from the ZEC key, and it still breaks any flow that pinned the previous operator public key.
+
+## What the laptop binary does
+
+Directory is `SVG_MINT_ZRT_DIR`, or `~/.terp/svg-mint-zrt` when that variable is unset. Never `/tmp`. `init` is the only command that creates `spend.seed` (32 bytes, mode `0600`). A second `init` fails and leaves the seed bytes unchanged. Every other command exits when the seed is missing. `open` re-derives the address from the seed and refuses to continue when `account.json` disagrees.
+
+The note table is `notes.sqlite`. `balance --json` sums rows with `pool = ironwood`, `mined = 1`, and `spent = 0`. The JSON keys are `total`, `sapling_spendable`, `orchard_spendable`, `ironwood_spendable`, `transparent_spendable`, and `chain_tip_height`. Sapling, Orchard, and transparent spendable are zero. The default binary cannot insert a row. `lab-credit` and `lab-commit-spend` exist only on the `lab` feature, and only the e2e script uses them, inside a temp directory. `sync` exits and does not modify the ledger.
+
+`scripts/e2e-zrt-wallet.sh` checks all of that in one process tree: missing seed, restart of the same unified address, rejection of a non-donation destination, fail-closed donation send, and a lab spend that stays spent after a second process opens the same directory.
+
+## What still is not this wallet
+
+The groot2 release binary has not been replaced. The fed on that host still crashloops on `:8421` and was not restarted for this work. `watch_zec_zcli`, `watch_zec_zcashd` (`z_listreceivedbyaddress`), and the house-mempool cookie RPC are still in the fed source beside `watch_zec_zrt`. zcli was never installed on groot2. The compact listener on `127.0.0.1:9067` is still `lwd-lab` (ECC lightwalletd), not ztreamer. None of those paths were exercised by the laptop wallet suite.
+
+## What to delete
+
+One wallet binary. One directory. One seed.
+
+- Directory: `~/.terp/svg-mint-zrt/` (mode `0700`), never `/tmp`. Do not `init` this path on groot2 until a later gate says the scan and the prover are linked.
+- Files in that directory: `spend.seed` at `0600`, `account.json`, `notes.sqlite`. The same seed reopens the same address. There is no age file and no zcash-devtool sqlite.
+- `svg-mint-zrt` performs balance, address, and the send policy itself. No `zcash-devtool`, no rotko zcli, no `zcashd` `z_listreceivedbyaddress`. Scan and the spend proof are still absent, so balance is the local ledger, not the chain.
+- Do not take an Orchard viewing key and treat it as Ironwood. This build's unified address is an Orchard receiver because that is the type `zcash_address` 0.13 can encode. It is not an Ironwood payment address.
+- One watcher in the fed: `svg-mint-zrt notes`.
+- Mint cell path is explicit and durable: `SVG_MINT_FED_STORE=~/.terp/svg-mint-fed-cell.json`. The default must not be `/tmp`.
+- If the seed file is missing, the process exits. It does not generate a new account. A new account is how the old notes become invisible.
+- `dregg-hd.seed` stays the BTC/ETH seed. It is not a second ZEC spend key. ZEC diversifiers come from the wallet account, and the index is stored on the checkout row so the same account can reproduce the address.
+
+## Recovering what is already paid
+
+Notes paid to the previous account are spendable only with that account's spend key. `dregg-hd.seed` and the cell file are not substitutes. If `age-identity.txt` and `data.sqlite` were only under `/tmp`, a reboot deleted them and those notes are not recoverable from this host. Search backups and other disks for `age-identity.txt` and `data.sqlite` before creating any new wallet. Creating a new wallet does not sweep the old one.
+
+Do not print the seed, the UFVK, or the age file while doing that search.

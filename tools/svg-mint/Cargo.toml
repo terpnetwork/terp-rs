@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/dregg",
+  "crates/svg-mint-fed",
+  "crates/svg-mint-zrt",
+  "crates/cw-dregg-svg-gate",
+]
+exclude = ["e2e"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+rust-version = "1.86.0"
+
+[workspace.dependencies]
+dregg = { path = "crates/dregg" }
+blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+ed25519-dalek = { version = "1.0.1", features = ["std"] }
+rand = "0.7"
+curve25519-dalek = "3.2"
+hmac = "0.12"
+sha2 = "0.10"
+ripemd = "0.1"
+k256 = { version = "0.13", default-features = false, features = ["arithmetic", "ecdsa"] }
+tiny-keccak = { version = "2", features = ["keccak"] }
+bip39 = { version = "2", default-features = false, features = ["std"] }
+bech32 = "0.9"

@@ -1,0 +1,21 @@
+[package]
+name = "svg-mint-fed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP checkout runtime for permissionless SVG mint. Depends on the dregg library crate."
+
+[[bin]]
+name = "svg-mint-fed"
+path = "src/main.rs"
+
+[dependencies]
+dregg = { workspace = true }
+blake3 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+hex = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand = { workspace = true }
+hash-market = { path = "../../../hash-market", default-features = false, features = ["server", "pallas"] }
