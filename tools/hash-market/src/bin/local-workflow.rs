@@ -10,8 +10,8 @@ use hash_market::onboard_authz::{dao_authz_grants, fee_denom, OnboardRoles, ALLO
 fn main() {
     let chain = std::env::var("ONBOARD_CHAIN").unwrap_or_else(|_| "120u-1".into());
     let roles = OnboardRoles {
-        dao: std::env::var("ONBOARD_DAO").unwrap_or_else(|_| "terp1dao".into()),
-        runtime_key: std::env::var("ONBOARD_RUNTIME").unwrap_or_else(|_| "terp1runtime".into()),
+        runtime: std::env::var("ONBOARD_DAO").unwrap_or_else(|_| "terp1dao".into()),
+        hashmerchant: std::env::var("ONBOARD_RUNTIME").unwrap_or_else(|_| "terp1runtime".into()),
         chain_id: chain.clone(),
     };
 

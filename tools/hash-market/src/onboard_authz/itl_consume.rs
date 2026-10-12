@@ -9,8 +9,8 @@
 //! On-chain verify is `deps.api.verify_halo2_proof` after `MsgStoreCodeWithCircuit`.
 //! Local tests prove/verify here. MockBech32 is not a success path.
 
-use crate::itl_ingress::{ict_mock_refused, is_mock_bech32};
-use crate::poseidon::{
+use super::itl_ingress::{ict_mock_refused, is_mock_bech32};
+use super::poseidon::{
     door_nullifier, ticket_leaf, MerklePath, PoseidonTree, TREE_DEPTH, Fp as HostFp,
 };
 use ff::{Field, PrimeField};
@@ -24,7 +24,7 @@ use halo2_proofs::{
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
-use rand::rngs::OsRng;
+use rand::rng;
 use serde_json::{json, Value as Json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -721,7 +721,7 @@ pub fn prove_consume(circuit: ConsumeCircuit, inst: &ConsumeInstances) -> Result
     let instance = to_halo2_instance(inst);
     let refs: Vec<&[vesta::Scalar]> = instance.iter().map(|r| &r[..]).collect();
     let mut transcript = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(vec![]);
-    plonk::create_proof(params, pk, &[circuit], &[&refs], OsRng, &mut transcript)
+    plonk::create_proof(params, pk, &[circuit], &[&refs], rng(), &mut transcript)
         .map_err(|e| format!("create_proof: {e}"))?;
     Ok(transcript.finalize())
 }
@@ -833,8 +833,8 @@ pub fn verify_consume_msg(proof: &[u8], nullifier: &[u8; 32], event_id_fp: &[u8;
     json!({
         "verify_consume": {
             "proof": b64(proof),
-            "nullifier": crate::poseidon::hex_encode(nullifier),
-            "event_id": crate::poseidon::hex_encode(event_id_fp),
+            "nullifier": super::poseidon::hex_encode(nullifier),
+            "event_id": super::poseidon::hex_encode(event_id_fp),
         }
     })
 }
@@ -935,7 +935,7 @@ pub fn prove_issued(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::poseidon::{poseidon2, poseidon3, Fp};
+    use crate::onboard_authz::poseidon::{poseidon2, poseidon3, Fp};
     use halo2_proofs::dev::MockProver;
 
     #[test]

@@ -3,13 +3,13 @@
 //!
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_consume_e2e
 
-use terp_onboard_authz::itl_cashapp::{synthetic_received_eml, LIST_CENTS, SKU};
-use terp_onboard_authz::itl_consume::{
+use hash_market::onboard_authz::itl_cashapp::{synthetic_received_eml, LIST_CENTS, SKU};
+use hash_market::onboard_authz::itl_consume::{
     consume_backend_mocked, consume_local_prod_cmd, consume_success_allowed, fp_to_bytes,
     msg_store_code_with_circuit, parse_vk_footer, prove_issued, serialize_vk_with_footer,
     verify_halo2_proof, ConsumeEngine, MSG_STORE_CODE_WITH_CIRCUIT, PROVER_ID,
 };
-use terp_onboard_authz::itl_ingress::{ict_mock_refused, IngressEngine, EVENT_ID};
+use hash_market::onboard_authz::itl_ingress::{ict_mock_refused, IngressEngine, EVENT_ID};
 
 #[test]
 fn itl_consume_usher_only_nullifiers_no_guest_listmembers() {

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-use terp_onboard_authz::itl_frost::{
+use hash_market::onboard_authz::itl_frost::{
     confirm_txid_on_node, lab_taddr, require_node_txid, require_transparent_taddr, JobStatus,
     Ledger, PayRecord, PayeeKind, PendingJob, PayoutLeg, TicketInflow, FROST_N, FROST_T,
 };
@@ -304,7 +304,7 @@ fn itl_frost_notes_20_then_80_node_confirmed() {
     .unwrap();
     l.mark_broadcast("pay-80-ink", &txid_80).unwrap();
 
-    let rc = terp_onboard_authz::itl_frost_rotate::FrostCommittee::new(
+    let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
         "vk-old",
         &["desk", "steward", "spare"],
     )

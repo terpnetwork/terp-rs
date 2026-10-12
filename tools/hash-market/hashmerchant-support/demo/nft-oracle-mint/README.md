@@ -73,7 +73,7 @@ terpd tx wasm execute "$MINTER" \
   --from ops -y
 ```
 
-See also: `crates/cw-infuser/docs/hm-nft-oracle-minter-E2E-HANDOFF.md`
+See also: `crates/terp-rs/contracts/infuser/` and generated clients under `crates/terp-rs/api/ts/hm-nft-minter`.
 
 7. **Negative checks**
    - Non-member proof → reject  

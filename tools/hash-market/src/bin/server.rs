@@ -26,6 +26,27 @@ struct Cli {
     config: String,
 }
 
+fn apply_tree_host_env(config: &mut Config) {
+    if let Ok(bind) = std::env::var("HASH_MARKET_BIND") {
+        let bind = bind.trim();
+        if !bind.is_empty() {
+            config.bind = bind.to_string();
+        }
+    }
+    if let Ok(op) = std::env::var("HASH_MARKET_TREE_OPERATOR") {
+        let op = op.trim();
+        if !op.is_empty() {
+            config.tree_operator = op.to_string();
+        }
+    }
+    if let Ok(flag) = std::env::var("HASH_MARKET_ALLOW_PUBLIC_BIND") {
+        let flag = flag.trim();
+        if flag == "1" || flag.eq_ignore_ascii_case("true") || flag.eq_ignore_ascii_case("yes") {
+            config.allow_public_bind = true;
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -35,8 +56,20 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let config_str = std::fs::read_to_string(&cli.config)
         .with_context(|| format!("failed to read config: {}", cli.config))?;
-    let config: Config = toml::from_str(&config_str).context("invalid config")?;
+    let mut config: Config = toml::from_str(&config_str).context("invalid config")?;
+    apply_tree_host_env(&mut config);
     config.validate().map_err(anyhow::Error::msg)?;
+    let public_bind = hash_market::tree_operator::inspect_bind(
+        &config.bind,
+        config.allow_public_bind,
+    )
+    .map_err(anyhow::Error::msg)?;
+    if public_bind {
+        tracing::warn!(
+            bind = %config.bind,
+            "non-loopback bind allowed by allow_public_bind / HASH_MARKET_ALLOW_PUBLIC_BIND"
+        );
+    }
 
     let ve_enabled = config.wants_ve();
     let bounds_enabled = config.wants_oracle_bounds();
@@ -231,20 +264,20 @@ async fn main() -> anyhow::Result<()> {
         let mut rt = hash_market::onboard_authz::OnboardRuntime::from_env();
         rt.service_name = "hash-market-onboard".into();
         // Env (Akash) wins. Toml only fills empty so /onboard/status agrees with process env.
-        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.dao) {
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.runtime) {
             if let Some(dao) = oc
                 .dao
                 .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
             {
-                rt.roles.dao = dao;
+                rt.roles.runtime = dao;
             }
         }
-        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.runtime_key) {
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.hashmerchant) {
             if let Some(rk) = oc
                 .runtime_key
                 .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
             {
-                rt.roles.runtime_key = rk;
+                rt.roles.hashmerchant = rk;
             }
         }
         if let Some(c) = oc.chain_id.filter(|s| !s.is_empty()) {
@@ -272,7 +305,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!(
             prefix = "/onboard",
             chain = %rt.roles.chain_id,
-            dao = %rt.roles.dao,
+            dao = %rt.roles.runtime,
             "embedded onboard-authz (not a second process)"
         );
         state.set_onboard(std::sync::Arc::new(rt));
@@ -285,12 +318,12 @@ async fn main() -> anyhow::Result<()> {
             std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
         }
         let frost_bind =
-            terp_onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
+            hash_market::onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
         let inbox =
-            terp_onboard_authz::frost_http::shared_inbox_from_env().map_err(anyhow::Error::msg)?;
+            hash_market::onboard_authz::frost_http::shared_inbox_from_env().map_err(anyhow::Error::msg)?;
         tracing::info!(
             bind = %frost_bind,
-            persist = terp_onboard_authz::itl_frost::persist_required().is_ok(),
+            persist = hash_market::onboard_authz::itl_frost::persist_required().is_ok(),
             "embedded frost inbox (127.0.0.1; not FilePV)"
         );
         let frost_app = hash_market::frost::router(inbox);
@@ -330,6 +363,8 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
+    state.set_tree_operator(config.tree_operator.clone());
+    tracing::info!(operator = %config.tree_operator, "tree writes pinned to one operator");
     let state = Arc::new(state);
 
     // ── State-root VE feeders (legacy Path B) ────────────────────────────────

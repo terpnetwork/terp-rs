@@ -132,7 +132,7 @@ pub fn simulate_onboard(roles: &OnboardRoles, user: &str) -> Result<SimKeeper, A
     );
     let granted = k
         .authz
-        .get(&(roles.dao.clone(), roles.runtime_key.clone()))
+        .get(&(roles.runtime.clone(), roles.hashmerchant.clone()))
         .cloned()
         .unwrap_or_default();
     if !granted
@@ -146,10 +146,25 @@ pub fn simulate_onboard(roles: &OnboardRoles, user: &str) -> Result<SimKeeper, A
     Ok(k)
 }
 
-pub fn run_happy_path(k: &mut SimKeeper, roles: &OnboardRoles, user: &str) -> Result<(), ApplyErr> {
+pub fn run_happy_path(
+    k: &mut SimKeeper,
+    roles: &OnboardRoles,
+    user: &str,
+) -> Result<(), ApplyErr> {
     *k = simulate_onboard(roles, user)?;
-    k.use_feegrant(&roles.runtime_key, user, super::ADD_AUTHENTICATOR_TYPE_URL)?;
-    if k.use_feegrant(&roles.runtime_key, user, "/cosmos.bank.v1beta1.MsgSend")
+    k.use_feegrant(
+        &roles.hashmerchant,
+        user,
+        super::ADD_AUTHENTICATOR_TYPE_URL,
+    )?;
+    if k.use_feegrant(&roles.runtime, user, super::ADD_AUTHENTICATOR_TYPE_URL)
+        .is_ok()
+    {
+        return Err(ApplyErr::FeegrantDenied {
+            reason: "runtime must not be customer fee.granter",
+        });
+    }
+    if k.use_feegrant(&roles.hashmerchant, user, "/cosmos.bank.v1beta1.MsgSend")
         .is_ok()
     {
         return Err(ApplyErr::UnsoundAllowance);
@@ -163,8 +178,8 @@ mod tests {
 
     fn roles() -> OnboardRoles {
         OnboardRoles {
-            dao: "terp1dao".into(),
-            runtime_key: "terp1rt".into(),
+            runtime: "terp1dao".into(),
+            hashmerchant: "terp1rt".into(),
             chain_id: "120u-1".into(),
         }
     }
@@ -178,15 +193,9 @@ mod tests {
             .use_feegrant(rt, user, crate::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL)
             .is_ok());
         let send = k.use_feegrant(rt, user, "/cosmos.bank.v1beta1.MsgSend");
-        assert!(
-            matches!(send, Err(ApplyErr::FeegrantDenied { .. })),
-            "{send:?}"
-        );
+        assert!(matches!(send, Err(ApplyErr::FeegrantDenied { .. })), "{send:?}");
         let wasm = k.use_feegrant(rt, user, "/cosmwasm.wasm.v1.MsgExecuteContract");
-        assert!(
-            matches!(wasm, Err(ApplyErr::FeegrantDenied { .. })),
-            "{wasm:?}"
-        );
+        assert!(matches!(wasm, Err(ApplyErr::FeegrantDenied { .. })), "{wasm:?}");
     }
 
     #[test]

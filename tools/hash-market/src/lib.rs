@@ -10,6 +10,7 @@
 //! - `blossom` — BUD protocol server (requires server). Default note-serve path (NIP-BUD).
 //! - `pir` — opt-in public-leaf XOR PIR (`notes.json` + merkle path). Not default; not a second server; does not replace Nostr or blossom.
 //! - `onboard` — DAO feegrant plane nested at `/onboard` (on with `server`; not a second process)
+//! - `re-zerve` — opt-in deposit transcript (not Zcash inclusion; not default)
 //! - frost inbox nested at `/itl/frost/*` on 127.0.0.1 (not FilePV)
 #[cfg(test)]
 pub mod tests;
@@ -37,8 +38,13 @@ pub mod oracle;
 /// XOR PIR kernel (always) plus feature-`pir` public-leaf ingest.
 /// The `/notes/{hs_id}/pir` route is a no-op 404 unless `--features pir`.
 pub mod pir;
+#[cfg(feature = "re-zerve")]
+pub mod re_zerve;
 pub mod server;
 pub mod store;
+/// ADR-36 gate for `/trees` writes and the loopback bind check.
+#[cfg(feature = "custody")]
+pub mod tree_operator;
 pub mod trusted_builder;
 
 // ── Stable oracle library re-exports (Connect-style bounds) ─────────────────

@@ -7,8 +7,8 @@ use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use terp_onboard_authz::frost_http::FrostInbox;
-use terp_onboard_authz::itl_frost::persist_required;
+use hash_market::onboard_authz::frost_http::FrostInbox;
+use hash_market::onboard_authz::itl_frost::persist_required;
 
 fn tmp_dir(label: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -85,7 +85,7 @@ fn missing_key_stays_persistence_off_ram_only() {
     std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
     let mut a = FrostInbox::from_env().unwrap();
     assert!(!a.persist_on());
-    let rc = terp_onboard_authz::itl_frost_rotate::FrostCommittee::new(
+    let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
         "vk-old",
         &["desk", "steward", "spare"],
     )
@@ -126,7 +126,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
         "POST",
         "/itl/frost/jobs",
         &{
-            let rc = terp_onboard_authz::itl_frost_rotate::FrostCommittee::new(
+            let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
                 "vk-old",
                 &["desk", "steward", "spare"],
             )

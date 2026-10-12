@@ -86,6 +86,8 @@ pub struct AppState {
     /// Embedded onboard feegrant (None = do not nest `/onboard`).
     #[cfg(feature = "onboard")]
     pub onboard: Option<Arc<crate::onboard_authz::OnboardRuntime>>,
+    /// Sole terp1 allowed to write `/trees`. Reads stay public.
+    pub tree_operator: String,
 }
 
 impl AppState {
@@ -173,7 +175,12 @@ impl AppState {
             trusted_builder: RwLock::new(HashMap::new()),
             #[cfg(feature = "onboard")]
             onboard: None,
+            tree_operator: crate::config::DEFAULT_TREE_OPERATOR.into(),
         })
+    }
+
+    pub fn set_tree_operator(&mut self, operator: impl Into<String>) {
+        self.tree_operator = operator.into();
     }
 
     /// Apply `[cashu_mesh]` config (call before wrapping in `Arc` for the router).
@@ -198,8 +205,8 @@ impl AppState {
     ) {
         let mut rt = crate::onboard_authz::OnboardRuntime::from_env();
         rt.service_name = "hash-market-onboard".into();
-        rt.roles.dao = dao.into();
-        rt.roles.runtime_key = runtime_key.into();
+        rt.roles.runtime = dao.into();
+        rt.roles.hashmerchant = runtime_key.into();
         rt.roles.chain_id = chain_id.into();
         rt.broadcast = false;
         self.onboard = Some(Arc::new(rt));
@@ -248,8 +255,8 @@ impl AppState {
 /// /blobs/{hash}  GET, DELETE   — BUD-02 blob retrieval/deletion
 /// /blobs         GET, POST     — BUD-06 list/upload
 /// /upload        POST          — alias for /blobs POST
-/// /trees/{id}    GET, POST, DELETE — merkle tree CRUD
-/// /trees/{id}/members/{addr} GET — public whitelist proof for mint
+/// /trees/{id}    GET — public tree. POST, PUT, DELETE — one ADR-36 operator
+/// /trees/{id}/members/{addr} GET — public proof for one address (mint page)
 /// /trees         GET           — list tree IDs
 /// /headstash/{id} GET, POST    — headstash registration
 /// /notes/{hs_id}/{addr} GET, PUT, POST — private encrypted notes (auth; not public /content)
@@ -280,7 +287,10 @@ fn blossom_routes(state: Arc<AppState>, ve_health_alias: bool) -> Router {
         .route("/upload", post(blob_upload))
         .route(
             "/trees/:id",
-            get(tree_get).post(tree_save).delete(tree_delete),
+            get(tree_get)
+                .post(tree_save)
+                .put(tree_save)
+                .delete(tree_delete),
         )
         .route("/trees/:id/members/:addr", get(tree_member_proof))
         .route("/trees", get(tree_list))
@@ -346,6 +356,10 @@ pub fn router(state: Arc<AppState>) -> Router {
         if let Some(rt) = state.onboard.clone() {
             r = r.nest("/onboard", crate::onboard::router(rt));
         }
+        #[cfg(feature = "re-zerve")]
+        {
+            r = r.nest("/re-zerve", re_zerve_router());
+        }
         return with_cors(r);
     }
 
@@ -358,7 +372,32 @@ pub fn router(state: Arc<AppState>) -> Router {
     if let Some(rt) = state.onboard.clone() {
         r = r.nest("/onboard", crate::onboard::router(rt));
     }
+    #[cfg(feature = "re-zerve")]
+    {
+        r = r.nest("/re-zerve", re_zerve_router());
+    }
     with_cors(r)
+}
+
+#[cfg(feature = "re-zerve")]
+fn re_zerve_router() -> Router {
+    Router::new().route("/v1/deposit", post(re_zerve_deposit))
+}
+
+#[cfg(feature = "re-zerve")]
+async fn re_zerve_deposit(
+    Json(att): Json<crate::re_zerve::DepositAttestation>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    match att.verify(&att.frost_group_id) {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(serde_json::json!({"ok": true, "seam": "re-zerve"})),
+        ),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"ok": false, "error": e.to_string()})),
+        ),
+    }
 }
 
 fn with_cors(r: Router) -> Router {
@@ -1097,23 +1136,21 @@ async fn tree_member_proof(
     }
 }
 
-/// POST /trees/{id} — save/upload merkle tree (authenticated).
+/// POST or PUT `/trees/{id}` — upload a gen_merkle JSON tree.
+///
+/// One operator. Headers `X-Hash-Market-Pubkey` and `X-Hash-Market-Signature`
+/// are an ADR-36 signature over `tree_write_challenge(method, path, raw body)`.
+/// Missing or bad signatures are 401. A valid signature for another address is 403.
+/// Mint pages do not call this route.
 async fn tree_save(
     State(state): State<Arc<AppState>>,
+    method: Method,
     headers: HeaderMap,
     Path(id): Path<String>,
-    Json(input): Json<TreeInput>,
+    body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, StatusCode> {
-    state
-        .blossom
-        .auth
-        .verify(&headers)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    // Intent: AuthClaims is dropped — tree/headstash use a single admin-key model
-    // where any valid BUD auth token grants write access. No action-level scoping
-    // (like blob routes do with check_action) is applied here; the auth itself is
-    // the permission. Add per-action checks (e.g. "write:tree") if needed later.
-
+    authorize_tree(&state, &method, &format!("/trees/{id}"), &body, &headers)?;
+    let input: TreeInput = serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
     input.validate().map_err(|e| {
         tracing::warn!(id = %id, error = %e, "invalid tree input");
         StatusCode::BAD_REQUEST
@@ -1127,23 +1164,50 @@ async fn tree_save(
     Ok(StatusCode::CREATED)
 }
 
-/// DELETE /trees/{id} — delete merkle tree (authenticated).
+/// DELETE `/trees/{id}` — same operator signature as upload, over an empty body.
 async fn tree_delete(
     State(state): State<Arc<AppState>>,
+    method: Method,
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    state
-        .blossom
-        .auth
-        .verify(&headers)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    authorize_tree(&state, &method, &format!("/trees/{id}"), &[], &headers)?;
 
     state.tree_store.delete(&id).map_err(|e| {
         tracing::error!(id = %id, error = %e, "failed to delete tree");
         StatusCode::NOT_FOUND
     })?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+fn authorize_tree(
+    state: &AppState,
+    method: &Method,
+    path: &str,
+    body: &[u8],
+    headers: &HeaderMap,
+) -> Result<(), StatusCode> {
+    let pubkey = header_str(headers, "x-hash-market-pubkey");
+    let signature = header_str(headers, "x-hash-market-signature");
+    match crate::tree_operator::authorize_tree_write(
+        &state.tree_operator,
+        method.as_str(),
+        path,
+        body,
+        pubkey,
+        signature,
+    ) {
+        Ok(()) => Ok(()),
+        Err(crate::tree_operator::TreeWriteDeny::Forbidden) => Err(StatusCode::FORBIDDEN),
+        Err(crate::tree_operator::TreeWriteDeny::Unauthorized) => Err(StatusCode::UNAUTHORIZED),
+    }
+}
+
+fn header_str<'a>(headers: &'a HeaderMap, name: &str) -> &'a str {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
 }
 
 /// GET /trees — list all tree IDs.

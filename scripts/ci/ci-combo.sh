@@ -61,19 +61,18 @@ if [[ "$LIVE" == "1" ]]; then
   echo "  (onboard LCD checks run against hash-market-server /onboard when ICT_LCD is set)"
 fi
 
-echo "== itl_frost_e2e (onboard-authz, 20/80 t-addr) =="
-ONBOARD="${ONBOARD:-$ROOT/tools/onboard-authz}"
-cargo test --manifest-path "$ONBOARD/Cargo.toml" --test itl_frost_e2e -- --nocapture
-echo "== itl_frost_http_persist (onboard-authz, durable inbox) =="
-cargo test --manifest-path "$ONBOARD/Cargo.toml" --test itl_frost_http_persist -- --nocapture
+echo "== itl_frost_e2e (hash-market onboard, 20/80 t-addr) =="
+cargo test --manifest-path "$HM/Cargo.toml" --features onboard --test itl_frost_e2e -- --nocapture
+echo "== itl_frost_http_persist (hash-market onboard, durable inbox) =="
+cargo test --manifest-path "$HM/Cargo.toml" --features onboard --test itl_frost_http_persist -- --nocapture
 
 echo "== itl_cashapp_e2e (payRef bind, txId nullifier, rush, slot uniqueness) =="
-cargo test --manifest-path "$ONBOARD/Cargo.toml" --test itl_cashapp_e2e -- --nocapture
+cargo test --manifest-path "$HM/Cargo.toml" --features onboard --test itl_cashapp_e2e -- --nocapture
 
-echo "== itl_ingress_e2e (Gap 0 WASIX parse → payment nullifier → Poseidon guest_root; DREGG svg_mint_local_prod) =="
-cargo test --manifest-path "$ONBOARD/Cargo.toml" --test itl_ingress_e2e -- --nocapture
+echo "== itl_ingress_e2e (Gap 0 WASIX parse → payment nullifier → Poseidon guest_root) =="
+cargo test --manifest-path "$HM/Cargo.toml" --features onboard --test itl_ingress_e2e -- --nocapture
 
-echo "== itl_consume_e2e (Halo2 Pasta Poseidon merkle+nullifier, usher-only verify_consume, MsgStoreCodeWithCircuit) =="
-cargo test --manifest-path "$ONBOARD/Cargo.toml" --test itl_consume_e2e -- --nocapture
+echo "== itl_consume_e2e (Halo2 Pasta Poseidon merkle+nullifier, usher-only verify_consume) =="
+cargo test --manifest-path "$HM/Cargo.toml" --features onboard --test itl_consume_e2e -- --nocapture
 
 echo "PASS terp-rs combo"

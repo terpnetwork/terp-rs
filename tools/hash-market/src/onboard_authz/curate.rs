@@ -5,15 +5,15 @@
 //! until the cw-orch crate is on the workspace path.
 
 use super::{
-    authz_exec_feegrant, dao_authz_grants, mint_feegrant, registration_feegrant, GrantPurpose,
-    OnboardRoles, ALLOWED_MSG_TYPES, AUTHZ_MSG_TYPES, MINT_MSG_TYPES,
+    authz_exec_feegrant, dao_authz_grants, mint_feegrant, registration_feegrant, AllowanceScope,
+    GrantPurpose, OnboardRoles, AUTHZ_MSG_TYPES, ALLOWED_MSG_TYPES, MINT_MSG_TYPES,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-const EMBEDDED_INFRA: &str = include_str!("../../data/onboard-infra-codes.json");
+const EMBEDDED_INFRA: &str = include_str!("../../data/infra-codes.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfraFile {
@@ -196,14 +196,19 @@ impl GrantPreset {
             }
         }
         let allowance = match self.purpose {
-            GrantPurpose::Register => ALLOWED_MSG_TYPES.iter().map(|s| (*s).to_string()).collect(),
+            GrantPurpose::Register => ALLOWED_MSG_TYPES
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
             GrantPurpose::Mint => MINT_MSG_TYPES.iter().map(|s| (*s).to_string()).collect(),
+            GrantPurpose::Onboard => AllowanceScope::registration_only().allowed,
         };
         ResolvedPreset {
             id: self.id.into(),
             purpose: match self.purpose {
                 GrantPurpose::Register => "register".into(),
                 GrantPurpose::Mint => "mint".into(),
+                GrantPurpose::Onboard => "onboard".into(),
             },
             title: self.title.into(),
             chain_id: chain_id.into(),
@@ -237,17 +242,25 @@ pub fn curate(
 
     let cosmos_msgs = match mode {
         CurateMode::DaoProposal => {
-            // DAO → runtime: authz to issue feegrants (roles.dao is granter).
+            // Runtime → temp HashMerchant: authz to issue feegrants.
             dao_authz_grants(roles)
         }
         CurateMode::WalletProxy => {
             let mut wallet_roles = roles.clone();
-            // granter = operator wallet (roles.dao overwritten in the bin to --from-addr)
-            wallet_roles.dao = granter_wallet(roles);
+            // granter = operator wallet (roles.runtime overwritten in the bin to --from-addr)
+            wallet_roles.runtime = granter_wallet(roles);
             dao_authz_grants(&wallet_roles)
         }
         CurateMode::WalletAsRuntime => {
             let inner = match preset.purpose {
+                GrantPurpose::Onboard => super::onboard_feegrant(
+                    roles,
+                    &super::FeegrantRequest {
+                        grantee: sample_user.into(),
+                        spend_limit: "50000".into(),
+                        expiration: None,
+                    },
+                ),
                 GrantPurpose::Register => registration_feegrant(
                     roles,
                     &super::FeegrantRequest {
@@ -294,13 +307,16 @@ pub fn curate(
             CurateMode::WalletAsRuntime => "wallet-as-runtime".into(),
         },
         roles: json!({
-            "dao": roles.dao,
-            "runtime_key": roles.runtime_key,
+            "runtime": roles.runtime,
+            "hashmerchant": roles.hashmerchant,
+            "dao": roles.runtime,
+            "runtime_key": roles.hashmerchant,
             "chain_id": roles.chain_id,
             "granter": match mode {
-                CurateMode::DaoProposal => roles.dao.clone(),
+                CurateMode::DaoProposal => roles.runtime.clone(),
                 _ => granter_wallet(roles),
             },
+            "fee_granter": roles.hashmerchant,
         }),
         preset: resolved,
         cosmos_msgs,
@@ -310,7 +326,7 @@ pub fn curate(
 }
 
 fn granter_wallet(roles: &OnboardRoles) -> String {
-    std::env::var("ONBOARD_FROM_ADDR").unwrap_or_else(|_| roles.dao.clone())
+    std::env::var("ONBOARD_FROM_ADDR").unwrap_or_else(|_| roles.runtime.clone())
 }
 
 fn dao_proposal_envelope(
@@ -319,7 +335,10 @@ fn dao_proposal_envelope(
     preset: &ResolvedPreset,
     grants: &Value,
 ) -> Value {
-    let inner_msgs = grants.get("msgs").cloned().unwrap_or_else(|| json!([]));
+    let inner_msgs = grants
+        .get("msgs")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
     let cosmos: Vec<Value> = inner_msgs
         .as_array()
         .cloned()
@@ -338,7 +357,7 @@ fn dao_proposal_envelope(
 
     json!({
         "target": {
-            "dao": roles.dao,
+            "dao": roles.runtime,
             "proposal_module": proposal_module.unwrap_or(""),
             "proposal_module_code_id_keys": ["dao:dao_proposal_single", "dao_proposal_single"],
         },
@@ -354,7 +373,7 @@ fn dao_proposal_envelope(
                              Instances: {:?}\n\
                              Allowance: {:?}\n\
                              Runtime may *not* bank-send.",
-                            roles.runtime_key,
+                            roles.hashmerchant,
                             preset.id,
                             preset.chain_id,
                             preset.code_ids,
@@ -370,15 +389,10 @@ fn dao_proposal_envelope(
     })
 }
 
-fn terpd_script(
-    mode: CurateMode,
-    roles: &OnboardRoles,
-    preset: &GrantPreset,
-    user: &str,
-) -> String {
+fn terpd_script(mode: CurateMode, roles: &OnboardRoles, preset: &GrantPreset, user: &str) -> String {
     let chain = &roles.chain_id;
     let denom = super::fee_denom();
-    let rt = &roles.runtime_key;
+    let rt = &roles.hashmerchant;
     let from = match mode {
         CurateMode::DaoProposal => "DAO_MULTISIG_OR_PROP".to_string(),
         _ => std::env::var("ONBOARD_FROM").unwrap_or_else(|_| "wallet".into()),
@@ -388,7 +402,7 @@ fn terpd_script(
             "# Submit the curated proposal (after proto-encoding stargate values):\n\
              # terpd tx wasm execute {dao} dao-proposal.execute.json --from {from} --chain-id {chain} --fees 5000{denom} --yes\n\
              # After yes-vote: runtime {rt} may MsgGrantAllowance only.",
-            dao = roles.dao,
+            dao = roles.runtime,
         ),
         CurateMode::WalletProxy => format!(
             "terpd tx authz grant {rt} generic \\\n\
@@ -402,6 +416,7 @@ fn terpd_script(
             let types = match preset.purpose {
                 GrantPurpose::Register => ALLOWED_MSG_TYPES.join(","),
                 GrantPurpose::Mint => MINT_MSG_TYPES.join(","),
+                GrantPurpose::Onboard => AllowanceScope::registration_only().allowed.join(","),
             };
             format!(
                 "terpd tx feegrant grant {rt} {user} \\\n\
@@ -431,11 +446,7 @@ mod tests {
         let infra = load_infra(None);
         let r = preset("register").unwrap().resolve("120u-1", &infra);
         assert_eq!(r.code_ids.get("terp-passkey"), Some(&4));
-        assert!(r
-            .instances
-            .get("terp-passkey")
-            .unwrap()
-            .starts_with("terp1"));
+        assert!(r.instances.get("terp-passkey").unwrap().starts_with("terp1"));
     }
 
     #[test]
@@ -450,8 +461,8 @@ mod tests {
     fn dao_bundle_has_proposal() {
         let infra = load_infra(None);
         let roles = OnboardRoles {
-            dao: "terp1dao".into(),
-            runtime_key: "terp1rt".into(),
+            runtime: "terp1dao".into(),
+            hashmerchant: "terp1rt".into(),
             chain_id: "120u-1".into(),
         };
         let b = curate(
@@ -470,8 +481,8 @@ mod tests {
     fn wallet_as_runtime_is_feegrant_only() {
         let infra = load_infra(None);
         let roles = OnboardRoles {
-            dao: "terp1dao".into(),
-            runtime_key: "terp1wallet".into(),
+            runtime: "terp1dao".into(),
+            hashmerchant: "terp1wallet".into(),
             chain_id: "120u-1".into(),
         };
         let b = curate(
@@ -487,5 +498,38 @@ mod tests {
             b.cosmos_msgs["msgs"][0]["allowance"]["allowed_messages"][0],
             "/cosmwasm.wasm.v1.MsgExecuteContract"
         );
+    }
+
+    #[test]
+    fn wallet_proxy_grant_is_runtime_to_hashmerchant() {
+        std::env::remove_var("ONBOARD_FROM_ADDR");
+        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        let infra = load_infra(None);
+        let roles = OnboardRoles {
+            runtime: "terp1runtimeaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+            hashmerchant: "terp1hashmerchantaaaaaaaaaaaaaaaaaaaaaa".into(),
+            chain_id: "morocco-1".into(),
+        };
+        let b = curate(
+            CurateMode::WalletProxy,
+            &roles,
+            preset("register").unwrap(),
+            &infra,
+            None,
+            "terp1USER",
+        );
+        assert_eq!(b.mode, "wallet-proxy");
+        let msgs = b.cosmos_msgs["msgs"].as_array().unwrap();
+        assert_eq!(msgs.len(), 2);
+        for m in msgs {
+            assert_eq!(m["@type"], "/cosmos.authz.v1beta1.MsgGrant");
+            assert_eq!(m["granter"], roles.runtime);
+            assert_eq!(m["grantee"], roles.hashmerchant);
+            let msg = m["grant"]["authorization"]["msg"].as_str().unwrap();
+            assert!(AUTHZ_MSG_TYPES.contains(&msg));
+            assert!(!msg.contains("MsgSend"));
+        }
+        assert_eq!(b.roles["fee_granter"], roles.hashmerchant);
+        assert_ne!(b.roles["fee_granter"], roles.runtime);
     }
 }

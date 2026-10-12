@@ -1,8 +1,8 @@
 //! Existing test script: msg contract + preset curation.
 //! Chain hook: `ICT_ONBOARD=1 cargo test -p terp-onboard-authz --test ict_workflow -- --ignored`
 
-use terp_onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
-use terp_onboard_authz::{
+use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
+use hash_market::onboard_authz::{
     dao_authz_grants, registration_feegrant, AllowanceScope, FeegrantRequest, OnboardRoles,
     ALLOWED_MSG_TYPES,
 };

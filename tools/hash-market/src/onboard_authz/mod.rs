@@ -1,12 +1,35 @@
-//! DAO → runtime key → scoped feegrant for ephemeral wallet onboarding.
+//! Runtime (long-lived) → temp HashMerchant → one-time customer feegrant.
+//!
+//! The runtime grants authz (`MsgGrantAllowance` / `MsgRevokeAllowance` only)
+//! to an **ephemeral HashMerchant** account. That HM account is the only
+//! `fee.granter` customers see. The runtime must never sign customer feegrants.
 //!
 //! Soundness: the feegrant allowance must not include bank send, mint, or IBC.
 //! A **separate** granter-paid `MsgSend` of 1 THIOL creates the account and
 //! leaves runway. That send is not in `AllowedMsgAllowance`.
 //!
-//! Embedded in hash-market (`/onboard/*` on hash-market-server). Not a second process.
+//! Embed in another binary (hash-market, faucet-adjacent):
+//!
+//! ```ignore
+//! let rt = terp_onboard_authz::OnboardRuntime::from_env();
+//! // inside your HTTP router:
+//! if let Some(resp) = rt.try_handle(method, path, body) {
+//!     return resp.write_to(stream);
+//! }
+//! ```
+//!
+//! Standalone: `cargo run -p terp-onboard-authz --bin onboard-runtime`
 
 pub mod curate;
+pub mod http;
+pub mod itl_auth;
+pub mod itl_cashapp;
+pub mod itl_frost;
+pub mod frost_http;
+pub mod itl_frost_rotate;
+pub mod itl_ingress;
+pub mod itl_consume;
+pub mod poseidon;
 pub mod workflow;
 
 use serde::{Deserialize, Serialize};
@@ -14,13 +37,16 @@ use serde_json::{json, Value};
 
 /// Messages a **registration** feegrant may cover. Keep this list tiny.
 ///
-/// SoT is the chain module proto (`osmosis.smartaccount.v1beta1`):
+/// SoT is Terp's smartaccount module proto (`terp.smartaccount.v1beta1`):
 /// `MsgAddAuthenticator { sender, authenticator_type, data }`.
 /// CosmWasm `{ add_authenticator: … }` / `{ register_authenticator: … }`
 /// execute bodies are **not** this module and must not appear here.
-pub const ADD_AUTHENTICATOR_TYPE_URL: &str = "/osmosis.smartaccount.v1beta1.MsgAddAuthenticator";
-/// Lab `terp-core:local-zk` / morocco smartaccount module type URL.
-pub const ADD_AUTHENTICATOR_TYPE_URL_TERP: &str = "/terp.smartaccount.v1beta1.MsgAddAuthenticator";
+pub const ADD_AUTHENTICATOR_TYPE_URL: &str =
+    "/terp.smartaccount.v1beta1.MsgAddAuthenticator";
+/// Alias used by ict-rs svg_mint examples.
+pub const ADD_AUTHENTICATOR_TYPE_URL_TERP: &str = ADD_AUTHENTICATOR_TYPE_URL;
+pub const REMOVE_AUTHENTICATOR_TYPE_URL: &str =
+    "/terp.smartaccount.v1beta1.MsgRemoveAuthenticator";
 
 /// Type strings the module's authenticator manager actually knows.
 /// Not CosmWasm `ty: "passkey"`. Passkey-as-module type is whatever the
@@ -28,12 +54,16 @@ pub const ADD_AUTHENTICATOR_TYPE_URL_TERP: &str = "/terp.smartaccount.v1beta1.Ms
 /// in `data`, or CosmwasmAuthenticatorV1 wrapping a contract).
 pub const AUTHENTICATOR_SIGNATURE: &str = "SignatureVerification";
 pub const AUTHENTICATOR_COSMWASM: &str = "CosmwasmAuthenticatorV1";
+pub const AUTHENTICATOR_ANY_OF: &str = "AnyOf";
+pub const AUTHENTICATOR_ALL_OF: &str = "AllOf";
 
-pub const ALLOWED_MSG_TYPES: &[&str] = &[
-    ADD_AUTHENTICATOR_TYPE_URL,
-    ADD_AUTHENTICATOR_TYPE_URL_TERP,
-    "/abstractaccount.v1.MsgRegisterAccount",
-];
+/// Single proto type URL the feegrant may cover. Not terp.* alias, not
+/// MsgRegisterAccount, not CosmWasm execute.
+pub const ALLOWED_MSG_TYPES: &[&str] = &[ADD_AUTHENTICATOR_TYPE_URL];
+
+/// From ict-rs `svg_mint_local_prod` / load_storm: `25000{denom}` on
+/// AddAuthenticator via feegrant. Covers observed gas without a drainable cap.
+pub const REGISTER_SPEND_LIMIT_UTHOL: &str = "25000";
 
 /// Proto `MsgAddAuthenticator` as Amino/JSON Any. This is the module msg.
 /// Do not wrap this as `{ add_authenticator: { … } }` CosmWasm execute.
@@ -59,31 +89,50 @@ pub const DENOM: &str = "uthiol";
 /// 1 THIOL (6 decimals) — granter-paid runway on passkey register.
 pub const RUNWAY_UTHOL: &str = "1000000";
 
+pub fn is_live_terp1(s: &str) -> bool {
+    let s = s.trim();
+    s.starts_with("terp1") && s.len() >= 39 && !s.contains("placeholder") && s != "DAO_ADDR"
+}
+
 pub fn fee_denom() -> String {
     std::env::var("ONBOARD_DENOM").unwrap_or_else(|_| DENOM.to_string())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OnboardRoles {
-    pub dao: String,
-    pub runtime_key: String,
+    /// Long-lived runtime. Authz granter to HashMerchant. Never `fee.granter`.
+    #[serde(alias = "dao")]
+    pub runtime: String,
+    /// Temp HashMerchant. Signs customer feegrants via `MsgExec`.
+    #[serde(alias = "runtime_key")]
+    pub hashmerchant: String,
     pub chain_id: String,
-}
-
-/// Bech32 `terp1` of real length — not env placeholders like `DAO_ADDR`.
-pub fn is_live_terp1(s: &str) -> bool {
-    let s = s.trim();
-    s.starts_with("terp1") && s.len() >= 39 && !s.contains("placeholder") && s != "DAO_ADDR"
 }
 
 impl OnboardRoles {
     pub fn from_env() -> Self {
+        let runtime = std::env::var("ONBOARD_RUNTIME")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| std::env::var("ONBOARD_DAO").ok())
+            .unwrap_or_else(|| "DAO_ADDR".into());
+        let hashmerchant = std::env::var("ONBOARD_HASHMERCHANT")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "HASHMERCHANT_ADDR".into());
         Self {
-            dao: std::env::var("ONBOARD_DAO").unwrap_or_else(|_| "DAO_ADDR".into()),
-            runtime_key: std::env::var("ONBOARD_RUNTIME")
-                .unwrap_or_else(|_| "RUNTIME_KEY_ADDR".into()),
+            runtime,
+            hashmerchant,
             chain_id: std::env::var("ONBOARD_CHAIN").unwrap_or_else(|_| "120u-1".into()),
         }
+    }
+
+    /// Two distinct `terp1` keys. Lab may set `ONBOARD_ALLOW_COLLAPSE=1`.
+    pub fn is_sound(&self) -> bool {
+        let collapse = std::env::var("ONBOARD_ALLOW_COLLAPSE").ok().as_deref() == Some("1");
+        self.runtime.starts_with("terp1")
+            && self.hashmerchant.starts_with("terp1")
+            && (collapse || self.runtime != self.hashmerchant)
     }
 }
 
@@ -98,6 +147,8 @@ pub struct FeegrantRequest {
 pub enum GrantPurpose {
     Register,
     Mint,
+    /// One-time passkey path: authenticator register **and** mint gas.
+    Onboard,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,6 +169,13 @@ impl AllowanceScope {
         }
     }
 
+    /// One-time HashMerchant allowance: register + mint **gas** (not bank).
+    pub fn register_and_mint_gas() -> Self {
+        let mut allowed: Vec<String> = ALLOWED_MSG_TYPES.iter().map(|s| (*s).to_string()).collect();
+        allowed.extend(MINT_MSG_TYPES.iter().map(|s| (*s).to_string()));
+        Self { allowed }
+    }
+
     pub fn permits(&self, type_url: &str) -> bool {
         self.allowed.iter().any(|a| a == type_url)
     }
@@ -125,29 +183,22 @@ impl AllowanceScope {
     pub fn is_sound(&self) -> bool {
         !self.allowed.is_empty()
             && !self.permits("/cosmos.bank.v1beta1.MsgSend")
+            && !self.permits("/ibc.applications.transfer.v1.MsgTransfer")
             && self.allowed.iter().all(|a| {
                 ALLOWED_MSG_TYPES.contains(&a.as_str()) || MINT_MSG_TYPES.contains(&a.as_str())
             })
-            && !(self
-                .allowed
-                .iter()
-                .any(|a| ALLOWED_MSG_TYPES.contains(&a.as_str()))
-                && self
-                    .allowed
-                    .iter()
-                    .any(|a| MINT_MSG_TYPES.contains(&a.as_str())))
     }
 }
 
-/// DAO `MsgGrant` bundle: runtime may grant/revoke feegrant only.
+/// Runtime `MsgGrant` bundle: temp HashMerchant may grant/revoke feegrant only.
 pub fn dao_authz_grants(roles: &OnboardRoles) -> Value {
     let grants: Vec<Value> = AUTHZ_MSG_TYPES
         .iter()
         .map(|type_url| {
             json!({
                 "@type": "/cosmos.authz.v1beta1.MsgGrant",
-                "granter": roles.dao,
-                "grantee": roles.runtime_key,
+                "granter": roles.runtime,
+                "grantee": roles.hashmerchant,
                 "grant": {
                     "authorization": {
                         "@type": "/cosmos.authz.v1beta1.GenericAuthorization",
@@ -160,7 +211,7 @@ pub fn dao_authz_grants(roles: &OnboardRoles) -> Value {
         .collect();
     json!({
         "chain_id": roles.chain_id,
-        "memo": "dao → onboard-authz runtime: feegrant register-only",
+        "memo": "runtime → temp HashMerchant: feegrant grant/revoke only",
         "msgs": grants
     })
 }
@@ -168,7 +219,7 @@ pub fn dao_authz_grants(roles: &OnboardRoles) -> Value {
 pub fn mint_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Value {
     json!({
         "@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
-        "granter": roles.runtime_key,
+        "granter": roles.hashmerchant,
         "grantee": req.grantee,
         "allowance": {
             "@type": "/cosmos.feegrant.v1beta1.AllowedMsgAllowance",
@@ -185,7 +236,7 @@ pub fn mint_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Value {
 pub fn runway_send(roles: &OnboardRoles, to: &str, amount: &str) -> Value {
     json!({
         "@type": "/cosmos.bank.v1beta1.MsgSend",
-        "from_address": roles.runtime_key,
+        "from_address": roles.hashmerchant,
         "to_address": to,
         "amount": [{ "denom": fee_denom(), "amount": amount }]
     })
@@ -195,7 +246,26 @@ pub fn registration_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Val
     let scope = AllowanceScope::registration_only();
     json!({
         "@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
-        "granter": roles.runtime_key,
+        "granter": roles.hashmerchant,
+        "grantee": req.grantee,
+        "allowance": {
+            "@type": "/cosmos.feegrant.v1beta1.AllowedMsgAllowance",
+            "allowance": {
+                "@type": "/cosmos.feegrant.v1beta1.BasicAllowance",
+                "spend_limit": [{ "denom": fee_denom(), "amount": req.spend_limit }],
+                "expiration": req.expiration
+            },
+            "allowed_messages": scope.allowed
+        }
+    })
+}
+
+pub fn onboard_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Value {
+    // Passkey register only. HashMerchant never grants wasm mint gas.
+    let scope = AllowanceScope::registration_only();
+    json!({
+        "@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
+        "granter": roles.hashmerchant,
         "grantee": req.grantee,
         "allowance": {
             "@type": "/cosmos.feegrant.v1beta1.AllowedMsgAllowance",
@@ -212,7 +282,7 @@ pub fn registration_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Val
 pub fn authz_exec_feegrant(roles: &OnboardRoles, inner: Value) -> Value {
     json!({
         "@type": "/cosmos.authz.v1beta1.MsgExec",
-        "grantee": roles.runtime_key,
+        "grantee": roles.hashmerchant,
         "msgs": [inner]
     })
 }
@@ -222,8 +292,8 @@ pub fn terpd_hint(roles: &OnboardRoles) -> String {
         "# After DAO votes / multisig signs dao_authz_grants.json:\n\
          # Runtime key {rt} may MsgGrantAllowance only for:\n\
          #   {allowed}\n\
-         terpd tx authz exec feegrant-register.json --from onboard-runtime --chain-id {chain} --fees 5000{denom} --yes",
-        rt = roles.runtime_key,
+         terpd tx authz exec feegrant-register.json --from hashmerchant --chain-id {chain} --fees 5000{denom} --yes",
+        rt = roles.hashmerchant,
         allowed = ALLOWED_MSG_TYPES.join("\n#   "),
         chain = roles.chain_id,
         denom = fee_denom()
@@ -330,10 +400,7 @@ pub fn authenticators_query_ok(queried: &str) -> bool {
         return true;
     }
     if v.get("account")
-        .and_then(|a| {
-            a.get("authenticators")
-                .or_else(|| a.get("account_authenticators"))
-        })
+        .and_then(|a| a.get("authenticators").or_else(|| a.get("account_authenticators")))
         .map(nonempty)
         == Some(true)
     {
@@ -351,9 +418,43 @@ fn json_has_signature_verification(v: &Value) -> bool {
     }
 }
 
+fn terpd_bin() -> String {
+    std::env::var("ONBOARD_TERPD").unwrap_or_else(|_| "terpd-mainnet".into())
+}
+
+fn terpd_node_flags() -> Vec<String> {
+    let mut v = Vec::new();
+    if let Ok(n) = std::env::var("ONBOARD_NODE") {
+        if !n.is_empty() {
+            v.push("--node".into());
+            v.push(n);
+        }
+    }
+    v
+}
+
+fn terpd_keyring_flags() -> Vec<String> {
+    let mut v = Vec::new();
+    if let Ok(b) = std::env::var("ONBOARD_KEYRING_BACKEND") {
+        if !b.is_empty() {
+            v.push("--keyring-backend".into());
+            v.push(b);
+        }
+    }
+    if let Ok(d) = std::env::var("ONBOARD_KEYRING_DIR") {
+        if !d.is_empty() {
+            v.push("--keyring-dir".into());
+            v.push(d);
+        }
+    }
+    v
+}
+
 fn terpd_status_height() -> u64 {
     use std::process::Command;
-    let out = Command::new("terpd").args(["status"]).output();
+    let mut args = vec!["status".to_string()];
+    args.extend(terpd_node_flags());
+    let out = Command::new(terpd_bin()).args(&args).output();
     let blob = match out {
         Ok(o) => format!(
             "{}{}",
@@ -377,9 +478,15 @@ pub fn terpd_from_bech32(from: &str) -> String {
         return from.to_string();
     }
     use std::process::Command;
-    let out = Command::new("terpd")
-        .args(["keys", "show", from, "--output", "json"])
-        .output();
+    let mut args = vec![
+        "keys".into(),
+        "show".into(),
+        from.to_string(),
+        "--output".into(),
+        "json".into(),
+    ];
+    args.extend(terpd_keyring_flags());
+    let out = Command::new(terpd_bin()).args(&args).output();
     let blob = match out {
         Ok(o) => format!(
             "{}{}",
@@ -404,10 +511,16 @@ fn terpd_account_sequence(bech32: &str) -> Option<u64> {
         return None;
     }
     use std::process::Command;
-    let out = Command::new("terpd")
-        .args(["q", "auth", "account", bech32, "--output", "json"])
-        .output()
-        .ok()?;
+    let mut args = vec![
+        "q".into(),
+        "auth".into(),
+        "account".into(),
+        bech32.to_string(),
+        "--output".into(),
+        "json".into(),
+    ];
+    args.extend(terpd_node_flags());
+    let out = Command::new(terpd_bin()).args(&args).output().ok()?;
     let blob = format!(
         "{}{}",
         String::from_utf8_lossy(&out.stdout),
@@ -417,23 +530,25 @@ fn terpd_account_sequence(bech32: &str) -> Option<u64> {
 }
 
 fn onboard_from_key() -> String {
-    std::env::var("ONBOARD_FROM").unwrap_or_else(|_| "onboard-runtime".into())
+    std::env::var("ONBOARD_FROM").unwrap_or_else(|_| "hashmerchant".into())
 }
 
-/// Who signs feegrant / bank send. Inner `MsgGrantAllowance.granter` must be this bech32.
+/// Who signs feegrant / bank send: the **temp HashMerchant**, never the runtime.
 pub fn onboard_signer_bech32() -> String {
     let from = onboard_from_key();
     let addr = terpd_from_bech32(&from);
-    if !addr.is_empty() {
-        addr
-    } else {
-        std::env::var("ONBOARD_RUNTIME").unwrap_or(from)
+    if addr.starts_with("terp1") {
+        return addr;
     }
+    std::env::var("ONBOARD_HASHMERCHANT").unwrap_or(from)
 }
 
 fn terpd_run(args: &[String]) -> Value {
     use std::process::Command;
-    match Command::new("terpd").args(args).output() {
+    let mut all = args.to_vec();
+    all.extend(terpd_node_flags());
+    all.extend(terpd_keyring_flags());
+    match Command::new(terpd_bin()).args(&all).output() {
         Ok(o) => json!({
             "status": o.status.code(),
             "stdout": String::from_utf8_lossy(&o.stdout),
@@ -534,13 +649,22 @@ pub struct OnboardRuntime {
 }
 
 impl OnboardRuntime {
+    pub fn require_live_roles(&self) -> Result<(), String> {
+        if self.roles.is_sound() {
+            Ok(())
+        } else {
+            Err("onboard roles not live terp1 runtime+hashmerchant".into())
+        }
+    }
+
     pub fn from_env() -> Self {
         let broadcast = std::env::var("ONBOARD_BROADCAST").ok().as_deref() == Some("1");
         Self {
             roles: OnboardRoles::from_env(),
             service_name: std::env::var("ONBOARD_SERVICE")
                 .unwrap_or_else(|_| "onboard-authz".into()),
-            register_limit: std::env::var("ONBOARD_SPEND_LIMIT").unwrap_or_else(|_| "25000".into()),
+            register_limit: std::env::var("ONBOARD_SPEND_LIMIT")
+                .unwrap_or_else(|_| REGISTER_SPEND_LIMIT_UTHOL.into()),
             mint_limit: std::env::var("ONBOARD_MINT_LIMIT").unwrap_or_else(|_| "50000".into()),
             runway_amount: std::env::var("ONBOARD_RUNWAY_AMOUNT")
                 .unwrap_or_else(|_| RUNWAY_UTHOL.into()),
@@ -554,25 +678,21 @@ impl OnboardRuntime {
         }
     }
 
-    pub fn require_live_roles(&self) -> Result<(), String> {
-        if !is_live_terp1(&self.roles.dao) {
-            return Err("ONBOARD_DAO / dao must be a live terp1 address".into());
-        }
-        if !is_live_terp1(&self.roles.runtime_key) {
-            return Err("ONBOARD_RUNTIME / runtime_key must be a live terp1 address".into());
-        }
-        Ok(())
-    }
-
     pub fn status_json(&self) -> Value {
         json!({
-            "ready": is_live_terp1(&self.roles.dao) && is_live_terp1(&self.roles.runtime_key),
             "service": self.service_name,
             "chain_id": self.roles.chain_id,
-            "dao": self.roles.dao,
-            "runtime_key": self.roles.runtime_key,
-            "allowed_messages": AllowanceScope::registration_only().allowed,
-            "mint_messages": MINT_MSG_TYPES,
+            "runtime": self.roles.runtime,
+            "hashmerchant": self.roles.hashmerchant,
+            "fee_granter": self.roles.hashmerchant,
+            "authz_granter": self.roles.runtime,
+            "ready": self.roles.is_sound(),
+            "dao": self.roles.runtime,
+            "runtime_key": self.roles.hashmerchant,
+            "allowed_messages": vec![ADD_AUTHENTICATOR_TYPE_URL],
+            "register_spend_limit": self.register_limit,
+            "mint_messages": [],
+            "ok": self.roles.is_sound() && self.roles.runtime != self.roles.hashmerchant,
             "broadcast": self.broadcast,
             "runway_amount": self.runway_amount,
             "runway_denom": fee_denom(),
@@ -580,11 +700,81 @@ impl OnboardRuntime {
         })
     }
 
+    /// Feegrant + 1 THIOL runway only after DREGG reports this dest paid
+    /// (Pedersen `C` bound to `recipient`, phase Deposited/Entitled/Settled).
+    pub fn require_paid_commit(recipient: &str, c_hex: Option<&str>) -> Result<(), String> {
+        if std::env::var("ONBOARD_SKIP_PAID").ok().as_deref() == Some("1") {
+            return Ok(());
+        }
+        let c = c_hex
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| {
+                "pedersen C required: POST {address,c} after NFT payment (DREGG pay-targets memo)"
+                    .to_string()
+            })?;
+        let base = std::env::var("DREGG_SVG_URL").unwrap_or_else(|_| "http://127.0.0.1:8421".into());
+        let lower = base.to_lowercase();
+        if !(lower.contains("127.0.0.1") || lower.contains("localhost")) {
+            return Err("DREGG_SVG_URL must be house loopback".into());
+        }
+        let url = format!(
+            "{}/v1/query/paid?recipient={}&c={}",
+            base.trim_end_matches('/'),
+            recipient,
+            c
+        );
+        let body = http_get_local(&url)?;
+        let v: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+        if v.get("paid").and_then(|x| x.as_bool()) != Some(true) {
+            return Err(format!("nft payment not confirmed for this C: {body}"));
+        }
+        if let Some(dest) = v.get("recipient").and_then(|x| x.as_str()) {
+            if dest != recipient {
+                return Err("pedersen C dest != grant address".into());
+            }
+        }
+        Ok(())
+    }
+
     pub fn allocate(&self, purpose: GrantPurpose, address: &str) -> Result<Value, String> {
+        if !self.roles.is_sound() {
+            return Err(
+                "runtime and hashmerchant must be distinct terp1 keys (runtime must not feegrant customers)"
+                    .into(),
+            );
+        }
         if !address.starts_with("terp1") || address.len() < 20 {
             return Err("expected terp1 bech32".into());
         }
         let (mut inner, extra) = match purpose {
+            GrantPurpose::Onboard => {
+                let inner = onboard_feegrant(
+                    &self.roles,
+                    &FeegrantRequest {
+                        grantee: address.into(),
+                        spend_limit: self.register_limit.clone(),
+                        expiration: None,
+                    },
+                );
+                if !AllowanceScope::registration_only().is_sound() {
+                    return Err("unsound allowance".into());
+                }
+                let amt = self.runway_amount.clone();
+                let extra = if amt.is_empty() || amt == "0" {
+                    json!({"purpose": "onboard"})
+                } else {
+                    json!({
+                        "purpose": "onboard",
+                        "runway": {
+                            "amount": amt,
+                            "denom": fee_denom(),
+                            "msg": runway_send(&self.roles, address, &amt),
+                        }
+                    })
+                };
+                (inner, extra)
+            }
             GrantPurpose::Register => {
                 let inner = registration_feegrant(
                     &self.roles,
@@ -633,15 +823,19 @@ impl OnboardRuntime {
                 (inner, json!({"purpose": "mint"}))
             }
         };
-        // Inner MsgGrantAllowance.granter must be who actually signs the feegrant.
+        // Inner granter is the temp HashMerchant. Runtime must not appear here.
         let signer = onboard_signer_bech32();
-        let granter = if self.roles.runtime_key.starts_with("terp1") {
-            self.roles.runtime_key.clone()
-        } else if signer.starts_with("terp1") {
-            signer
-        } else {
-            self.roles.runtime_key.clone()
-        };
+        let granter = self.roles.hashmerchant.clone();
+        if granter == self.roles.runtime
+            && std::env::var("ONBOARD_ALLOW_COLLAPSE").ok().as_deref() != Some("1")
+        {
+            return Err("collapsed keys: runtime must not be the customer fee.granter".into());
+        }
+        if signer.starts_with("terp1") && signer != granter {
+            return Err(format!(
+                "ONBOARD_FROM/signer {signer} is not hashmerchant {granter}; runtime must not sign customer feegrants"
+            ));
+        }
         if let Some(g) = inner.get_mut("granter") {
             *g = json!(granter.clone());
         }
@@ -653,7 +847,7 @@ impl OnboardRuntime {
         if let Some(b) = &self.broadcaster {
             if self.broadcast {
                 let _seq = self.grant_tx_mu.lock().unwrap_or_else(|p| p.into_inner());
-                if purpose == GrantPurpose::Register {
+                if purpose == GrantPurpose::Register || purpose == GrantPurpose::Onboard {
                     if let Some(amt) = extra
                         .get("runway")
                         .and_then(|r| r.get("amount"))
@@ -696,14 +890,35 @@ impl OnboardRuntime {
     }
 }
 
+fn http_get_local(url: &str) -> Result<String, String> {
+    let rest = url
+        .strip_prefix("http://")
+        .ok_or_else(|| "DREGG_SVG_URL must be http://127.0.0.1".to_string())?;
+    let (hostport, path) = rest.split_once('/').unwrap_or((rest, ""));
+    let path = format!("/{path}");
+    let mut stream = std::net::TcpStream::connect(hostport).map_err(|e| e.to_string())?;
+    stream
+        .set_read_timeout(Some(std::time::Duration::from_secs(3)))
+        .ok();
+    let req = format!("GET {path} HTTP/1.0\r\nHost: {hostport}\r\nConnection: close\r\n\r\n");
+    use std::io::{Read, Write};
+    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    let mut buf = String::new();
+    stream.read_to_string(&mut buf).map_err(|e| e.to_string())?;
+    buf.split("\r\n\r\n")
+        .nth(1)
+        .map(|s| s.to_string())
+        .ok_or_else(|| "empty DREGG paid response".into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn roles() -> OnboardRoles {
         OnboardRoles {
-            dao: "terp1dao00000000000000000000000000000000000".into(),
-            runtime_key: "terp1runtime000000000000000000000000000000".into(),
+            runtime: "terp1dao00000000000000000000000000000000000".into(),
+            hashmerchant: "terp1runtime000000000000000000000000000000".into(),
             chain_id: "120u-1".into(),
         }
     }
@@ -713,9 +928,11 @@ mod tests {
         let s = AllowanceScope::registration_only();
         assert!(s.is_sound());
         assert!(s.permits(ADD_AUTHENTICATOR_TYPE_URL));
+        assert_eq!(ALLOWED_MSG_TYPES, &[ADD_AUTHENTICATOR_TYPE_URL]);
+        assert!(!s.permits("/osmosis.smartaccount.v1beta1.MsgAddAuthenticator"));
+        assert!(!s.permits("/abstractaccount.v1.MsgRegisterAccount"));
         assert!(!s.permits("/cosmwasm.wasm.v1.MsgExecuteContract"));
         assert!(!s.permits("/cosmos.bank.v1beta1.MsgSend"));
-        assert!(!s.permits("/cosmwasm.wasm.v1.MsgExecuteContract"));
     }
 
     #[test]
@@ -729,7 +946,11 @@ mod tests {
 
     #[test]
     fn add_authenticator_json_is_module_proto_not_cosmwasm() {
-        let msg = msg_add_authenticator("terp1alice", AUTHENTICATOR_SIGNATURE, "AA==");
+        let msg = msg_add_authenticator(
+            "terp1alice",
+            AUTHENTICATOR_SIGNATURE,
+            "AA==",
+        );
         assert_eq!(msg["@type"], ADD_AUTHENTICATOR_TYPE_URL);
         assert_eq!(msg["authenticator_type"], AUTHENTICATOR_SIGNATURE);
         assert!(msg.get("add_authenticator").is_none());
@@ -737,11 +958,35 @@ mod tests {
     }
 
     #[test]
-    fn mixed_register_and_mint_is_unsound() {
-        let mut s = AllowanceScope::registration_only();
-        s.allowed
-            .push("/cosmwasm.wasm.v1.MsgExecuteContract".into());
-        assert!(!s.is_sound());
+    fn onboard_allowance_is_register_only() {
+        let s = AllowanceScope::registration_only();
+        assert!(s.is_sound());
+        assert!(s.permits(ADD_AUTHENTICATOR_TYPE_URL));
+        assert!(!s.permits("/cosmwasm.wasm.v1.MsgExecuteContract"));
+        assert!(!s.permits("/cosmos.bank.v1beta1.MsgSend"));
+        let fg = onboard_feegrant(
+            &roles(),
+            &FeegrantRequest {
+                grantee: "terp1user".into(),
+                spend_limit: "1".into(),
+                expiration: None,
+            },
+        );
+        let allowed = fg["allowance"]["allowed_messages"].as_array().unwrap();
+        assert!(allowed
+            .iter()
+            .all(|x| x.as_str() != Some("/cosmwasm.wasm.v1.MsgExecuteContract")));
+    }
+
+    #[test]
+    fn collapsed_runtime_is_unsound() {
+        let r = OnboardRoles {
+            runtime: "terp1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+            hashmerchant: "terp1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+            chain_id: "morocco-1".into(),
+        };
+        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        assert!(!r.is_sound());
     }
 
     #[test]
@@ -751,9 +996,37 @@ mod tests {
         assert_eq!(msgs.len(), 2);
         for m in msgs {
             assert_eq!(m["@type"], "/cosmos.authz.v1beta1.MsgGrant");
+            assert_eq!(m["granter"], roles().runtime);
+            assert_eq!(m["grantee"], roles().hashmerchant);
             let msg = m["grant"]["authorization"]["msg"].as_str().unwrap();
             assert!(AUTHZ_MSG_TYPES.contains(&msg));
         }
+    }
+
+    #[test]
+    fn allocate_rejects_collapsed_keys() {
+        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        let rt = OnboardRuntime {
+            roles: OnboardRoles {
+                runtime: "terp1same000000000000000000000000000000000".into(),
+                hashmerchant: "terp1same000000000000000000000000000000000".into(),
+                chain_id: "morocco-1".into(),
+            },
+            service_name: "test".into(),
+            register_limit: "1".into(),
+            mint_limit: "1".into(),
+            runway_amount: RUNWAY_UTHOL.into(),
+            broadcast: false,
+            broadcaster: None,
+            grant_tx_mu: std::sync::Mutex::new(()),
+        };
+        let err = rt
+            .allocate(
+                GrantPurpose::Onboard,
+                "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
+            )
+            .unwrap_err();
+        assert!(err.contains("distinct") || err.contains("collapsed"), "{err}");
     }
 
     #[test]
@@ -769,6 +1042,8 @@ mod tests {
         let allowed = fg["allowance"]["allowed_messages"].as_array().unwrap();
         assert_eq!(allowed.len(), 1);
         assert_eq!(allowed[0], "/cosmwasm.wasm.v1.MsgExecuteContract");
+        assert_eq!(fg["granter"], roles().hashmerchant);
+        assert_ne!(fg["granter"], roles().runtime);
     }
 
     #[test]
@@ -779,6 +1054,18 @@ mod tests {
     }
 
     #[test]
+    #[test]
+    fn paid_commit_required_without_skip() {
+        std::env::set_var("ONBOARD_SKIP_PAID", "1");
+        assert!(OnboardRuntime::require_paid_commit(
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
+            None
+        )
+        .is_ok());
+        let msg = "pedersen C required: POST {address,c} after NFT payment (DREGG pay-targets memo)";
+        assert!(msg.contains("pedersen"));
+    }
+
     fn runtime_rejects_bad_addr() {
         let rt = OnboardRuntime {
             roles: roles(),
@@ -855,8 +1142,9 @@ mod tests {
             .unwrap();
         assert_eq!(v["ok"], true);
         assert_eq!(v["runway_txhash"], "sendhash");
-        assert_eq!(v["msg"]["granter"], roles().runtime_key);
-        assert_eq!(v["granter"], roles().runtime_key);
+        assert_eq!(v["msg"]["granter"], roles().hashmerchant);
+        assert_eq!(v["granter"], roles().hashmerchant);
+        assert_ne!(v["granter"], roles().runtime);
     }
 
     #[test]
@@ -889,9 +1177,7 @@ mod tests {
     #[test]
     fn authenticators_query_rejects_empty_list_substring() {
         assert!(!authenticators_query_ok(r#"{"authenticators":[]}"#));
-        assert!(!authenticators_query_ok(
-            r#"{"account":{"authenticators":[]}}"#
-        ));
+        assert!(!authenticators_query_ok(r#"{"account":{"authenticators":[]}}"#));
         assert!(authenticators_query_ok(
             r#"{"authenticators":[{"id":"1","type":"SignatureVerification"}]}"#
         ));

@@ -4,20 +4,20 @@
 
 **`docs/bootstrap/hashmerchant-nft-oracle-minter-handoff.md`**
 
-## Core contracts (landed in cw-infuser)
+## Core contracts (landed in terp-rs; not the isolated cw-infuser worktree)
 
-| Piece | Path under `crates/cw-infuser/` |
-|-------|--------------------------------|
-| Whitelist codec | `packages/hm-loyalty-whitelist` |
-| Oracle price lib | `packages/hm-nft-oracle` |
-| Reference minter | `contracts/cw721/hm-nft-minter` |
-| Architecture | `docs/hm-nft-oracle-minter-ARCHITECTURE.md` |
-| **E2E specialist handoff** | `docs/hm-nft-oracle-minter-E2E-HANDOFF.md` |
+| Piece | Path under `crates/terp-rs/` |
+|-------|------------------------------|
+| Whitelist codec | `crates/hm-loyalty-whitelist` |
+| Oracle price lib | `crates/hm-nft-oracle` |
+| Reference minter | `contracts/infuser/hm-nft-minter` |
+| Infuser contracts | `contracts/infuser/` |
+| Generated clients | `api/ts/cw-infuser`, `api/ts/hm-nft-minter` |
 
 Unit tests:
 
 ```bash
-cd crates/cw-infuser
+cd crates/terp-rs
 cargo test -p hm-loyalty-whitelist -p hm-nft-oracle -p hm-nft-minter
 ```
 

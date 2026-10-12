@@ -10,7 +10,7 @@
 
 use serde_json::json;
 use std::path::PathBuf;
-use terp_onboard_authz::{dao_authz_grants, OnboardRoles};
+use hash_market::onboard_authz::{dao_authz_grants, OnboardRoles};
 
 fn main() -> Result<(), String> {
     let runtime = std::env::var("ONBOARD_RUNTIME").map_err(|_| "ONBOARD_RUNTIME required")?;

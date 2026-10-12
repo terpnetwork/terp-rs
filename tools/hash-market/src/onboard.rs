@@ -72,8 +72,8 @@ mod tests {
     fn rt() -> Arc<OnboardRuntime> {
         let mut r = OnboardRuntime::from_env();
         r.roles = OnboardRoles {
-            dao: "terp1daoplaceholderxxxxxxxxxxxxxxxxx".into(),
-            runtime_key: "terp1runtimeplaceholderxxxxxxxxxxxxxxxx".into(),
+            runtime: "terp1daoplaceholderxxxxxxxxxxxxxxxxx".into(),
+            hashmerchant: "terp1runtimeplaceholderxxxxxxxxxxxxxxxx".into(),
             chain_id: "120u-1".into(),
         };
         r.service_name = "hash-market-onboard".into();

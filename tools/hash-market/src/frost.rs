@@ -9,7 +9,7 @@ use axum::{
     Router,
 };
 use serde_json::json;
-use terp_onboard_authz::frost_http::SharedInbox;
+use crate::onboard_authz::frost_http::SharedInbox;
 
 pub fn router(inbox: SharedInbox) -> Router {
     Router::new()
@@ -56,7 +56,7 @@ async fn dispatch(State(inbox): State<SharedInbox>, req: Request) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use terp_onboard_authz::frost_http::FrostInbox;
+    use crate::onboard_authz::frost_http::FrostInbox;
     use tower::ServiceExt;
 
     fn inbox() -> SharedInbox {
@@ -74,7 +74,7 @@ mod tests {
                     .uri("/itl/frost/jobs")
                     .header("content-type", "application/json")
                     .body(axum::body::Body::from({
-                        let rc = terp_onboard_authz::itl_frost::roster_commit(
+                        let rc = crate::onboard_authz::itl_frost::roster_commit(
                             0,
                             2,
                             3,

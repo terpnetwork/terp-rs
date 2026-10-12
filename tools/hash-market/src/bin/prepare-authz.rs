@@ -52,14 +52,14 @@ fn main() {
     }
 
     let roles = OnboardRoles {
-        dao: arg("--dao").unwrap_or_else(|| {
+        runtime: arg("--dao").unwrap_or_else(|| {
             if from_addr.is_empty() {
                 "DAO_ADDR".into()
             } else {
                 from_addr.clone()
             }
         }),
-        runtime_key: arg("--runtime").unwrap_or_else(|| "RUNTIME_KEY_ADDR".into()),
+        hashmerchant: arg("--runtime").unwrap_or_else(|| "RUNTIME_KEY_ADDR".into()),
         chain_id: arg("--chain-id").unwrap_or_else(|| "120u-1".into()),
     };
 

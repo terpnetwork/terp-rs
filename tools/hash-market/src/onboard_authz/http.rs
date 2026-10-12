@@ -5,7 +5,7 @@
 //! - `POST /v1/register-grant`  `{"address":"terp1…"}`
 //! - `POST /v1/mint-grant`      `{"address":"terp1…"}`
 
-use crate::{GrantPurpose, OnboardRuntime};
+use super::{GrantPurpose, OnboardRuntime};
 use serde::Deserialize;
 use serde_json::json;
 use std::io::{Read, Write};
@@ -236,7 +236,7 @@ pub fn serve(bind: &str, runtime: Arc<OnboardRuntime>) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::OnboardRoles;
+    use crate::onboard_authz::OnboardRoles;
 
     fn rt() -> OnboardRuntime {
         let _ = std::env::set_var("ONBOARD_SKIP_PAID", "1");
@@ -249,7 +249,7 @@ mod tests {
             service_name: "test".into(),
             register_limit: "25000".into(),
             mint_limit: "50000".into(),
-            runway_amount: crate::RUNWAY_UTHOL.into(),
+            runway_amount: crate::onboard_authz::RUNWAY_UTHOL.into(),
             broadcast: false,
             broadcaster: None,
             grant_tx_mu: std::sync::Mutex::new(()),

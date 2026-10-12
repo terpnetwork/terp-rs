@@ -3,7 +3,7 @@
 //!
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_frost_e2e
 
-use terp_onboard_authz::itl_frost::{lab_taddr, persist_required, require_node_txid, 
+use hash_market::onboard_authz::itl_frost::{lab_taddr, persist_required, require_node_txid, 
     commit_line, local_twenty_eighty, parse_sign_recipient, require_transparent_taddr,
     session_json_ok, share_line, sign_line, JobStatus, Ledger, PayRecord, PayeeKind, PendingJob,
     PayoutLeg, TicketInflow, CHECK_IN_GUEST, DKG_TAG_R1, DKG_TAG_R2, DOMAIN_ZEC_SPEND_V0, FROST_N,
@@ -108,7 +108,7 @@ fn itl_frost_queued_is_not_broadcast() {
 }
 
 fn lab_roster_commit() -> String {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     FrostCommittee::new("vk-old", &["desk", "steward", "spare"]).roster_commit()
 }
 
@@ -194,7 +194,7 @@ fn itl_frost_live_frostd_loopback() {
 
 #[test]
 fn itl_frost_rotate_pending_until_threshold_then_vk_changes() {
-    use terp_onboard_authz::itl_frost_rotate::{
+    use hash_market::onboard_authz::itl_frost_rotate::{
         msg_rotate_frost_pubkey, vk_commit, FrostCommittee, RotateKind, RotateStatus,
         EXECUTE_CONTRACT_TYPE_URL, ROTATE_MSG,
     };
@@ -225,7 +225,7 @@ fn itl_frost_rotate_pending_until_threshold_then_vk_changes() {
 
 #[test]
 fn itl_frost_rotate_always_writes_on_fail() {
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, RotateKind};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, RotateKind};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     assert_eq!(
         c.invoke_rotate("stranger", "vk-new", None),
@@ -252,7 +252,7 @@ fn itl_frost_rotate_always_writes_on_fail() {
 
 #[test]
 fn itl_frost_rotate_second_invoke_while_pending_fails_written() {
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, RotateKind};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, RotateKind};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     assert_eq!(
@@ -267,7 +267,7 @@ fn itl_frost_rotate_second_invoke_while_pending_fails_written() {
 
 #[test]
 fn itl_frost_rotate_rekey_spend_required() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -285,7 +285,7 @@ fn itl_frost_rotate_rekey_spend_required() {
 
 #[test]
 fn itl_frost_pay_job_rejects_ed25519_consensus_scheme() {
-    use terp_onboard_authz::itl_frost::{
+    use hash_market::onboard_authz::itl_frost::{
         BroadcastTarget, FrostScheme, JobStatus, PendingJob, FROST_N, FROST_T,
     };
     let mut job = PendingJob::open_for(
@@ -304,7 +304,7 @@ fn itl_frost_pay_job_rejects_ed25519_consensus_scheme() {
 
 #[test]
 fn itl_frost_snapshot_roundtrip_status_only() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -313,7 +313,7 @@ fn itl_frost_snapshot_roundtrip_status_only() {
     assert_eq!(snap.group_vk, "vk-new");
     assert_eq!(snap.old_vk.as_deref(), Some("vk-old"));
     let json = serde_json::to_string(&snap).unwrap();
-    assert!(terp_onboard_authz::itl_frost::session_json_ok(&json));
+    assert!(hash_market::onboard_authz::itl_frost::session_json_ok(&json));
     let mut c2 = FrostCommittee::new("other", &["desk", "steward", "spare"]);
     c2.restore_snapshot(snap).unwrap();
     assert_eq!(c2.group_vk, "vk-new");
@@ -321,7 +321,7 @@ fn itl_frost_snapshot_roundtrip_status_only() {
 
 #[test]
 fn itl_frost_inbox_drops_blobs_after_broadcast() {
-    use terp_onboard_authz::itl_frost::{JobStatus, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost::{JobStatus, PendingJob, FROST_N, FROST_T};
     let mut job = PendingJob::open_bound("j", "pay-20-ink", FROST_T, FROST_N, &lab_roster_commit())
         .unwrap();
     job.submit_share("desk", "S:0:a").unwrap();
@@ -333,7 +333,7 @@ fn itl_frost_inbox_drops_blobs_after_broadcast() {
 
 #[test]
 fn itl_frost_rotate_duplicate_admin() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -345,7 +345,7 @@ fn itl_frost_rotate_duplicate_admin() {
 
 #[test]
 fn itl_frost_rekey_to_vk_mismatch() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -358,7 +358,7 @@ fn itl_frost_rekey_to_vk_mismatch() {
 
 #[test]
 fn itl_frost_pay_job_rejects_bls_scheme() {
-    use terp_onboard_authz::itl_frost::{
+    use hash_market::onboard_authz::itl_frost::{
         BroadcastTarget, FrostScheme, PendingJob, FROST_N, FROST_T,
     };
     let mut job = PendingJob::open_for(
@@ -376,12 +376,12 @@ fn itl_frost_pay_job_rejects_bls_scheme() {
 
 #[test]
 fn itl_frost_snapshot_dirty_packages_refused() {
-    use terp_onboard_authz::itl_frost_rotate::{CommitteeSnapshot, FrostCommittee};
+    use hash_market::onboard_authz::itl_frost_rotate::{CommitteeSnapshot, FrostCommittee};
     let mut c = FrostCommittee::new("vk", &["desk", "steward", "spare"]);
     let mut snap = c.snapshot();
     snap.group_vk = "vk-packages-leak".into();
     // typed snapshot cannot carry KeyPackages; dirty string path:
-    assert!(!terp_onboard_authz::itl_frost::session_json_ok(
+    assert!(!hash_market::onboard_authz::itl_frost::session_json_ok(
         r#"{"group_vk":"x","packages":["deadbeef"]}"#
     ));
     let _ = snap;
@@ -410,7 +410,7 @@ fn itl_frost_lab_taddr_checksums() {
 
 #[test]
 fn itl_frost_http_inbox_holds_until_threshold() {
-    let mut box_ = terp_onboard_authz::frost_http::FrostInbox::default();
+    let mut box_ = hash_market::onboard_authz::frost_http::FrostInbox::default();
     let r = box_
         .try_handle(
             "POST",
@@ -454,7 +454,7 @@ fn itl_frost_http_inbox_holds_until_threshold() {
 
 #[test]
 fn itl_frost_rotate_add_member_changes_n_and_vk() {
-    use terp_onboard_authz::itl_frost_rotate::{
+    use hash_market::onboard_authz::itl_frost_rotate::{
         msg_rotate_frost_pubkey_roster, vk_commit, FrostCommittee, NextRoster, RotateStatus,
         ROTATE_MSG,
     };
@@ -497,7 +497,7 @@ fn itl_frost_rotate_add_member_changes_n_and_vk() {
 
 #[test]
 fn itl_frost_rotate_remove_member_drops_seat() {
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateStatus};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateStatus};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let roster = NextRoster::from_seats(&["desk", "steward"], 2, 2).unwrap();
     c.invoke_rotate_roster("desk", "vk-new", None, roster)
@@ -517,7 +517,7 @@ fn itl_frost_rotate_remove_member_drops_seat() {
 
 #[test]
 fn itl_frost_rotate_same_vk_membership_change_forbidden() {
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateKind};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateKind};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let roster = NextRoster::from_seats(&["desk", "steward", "spare", "usher"], 2, 4).unwrap();
     assert_eq!(
@@ -534,7 +534,7 @@ fn itl_frost_rotate_same_vk_membership_change_forbidden() {
 
 #[test]
 fn itl_frost_rotate_bad_next_roster_writes_fail() {
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateKind};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster, RotateKind};
     assert_eq!(
         NextRoster::from_seats(&["desk"], 2, 1),
         Err("bad_threshold")
@@ -555,7 +555,7 @@ fn itl_frost_rotate_bad_next_roster_writes_fail() {
 
 #[test]
 fn itl_frost_rotate_share_replay_across_epoch_fails() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -571,8 +571,8 @@ fn itl_frost_rotate_share_replay_across_epoch_fails() {
 
 #[test]
 fn itl_frost_spend_requires_roster_memo_sane() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let rc = c.roster_commit();
     let mut job = PendingJob::open_bound("j", "pay-20-ink", FROST_T, FROST_N, &rc).unwrap();
@@ -593,7 +593,7 @@ fn itl_frost_spend_insane_missing_roster_commit() {
 
 #[test]
 fn itl_frost_spend_insane_roster_split() {
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let a = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]).roster_commit();
     let b = FrostCommittee::new("vk-old", &["desk", "steward", "usher"]).roster_commit();
     assert_ne!(a, b);
@@ -607,8 +607,8 @@ fn itl_frost_spend_insane_roster_split() {
 
 #[test]
 fn itl_frost_spend_insane_stale_roster_after_add_member() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let old_rc = c.roster_commit();
     let mut job = PendingJob::open_bound("j", "pay-20-ink", FROST_T, FROST_N, &old_rc).unwrap();
@@ -627,8 +627,8 @@ fn itl_frost_spend_insane_stale_roster_after_add_member() {
 
 #[test]
 fn itl_frost_spend_insane_removed_holder() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob};
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let roster = NextRoster::from_seats(&["desk", "steward"], 2, 2).unwrap();
     c.invoke_rotate_roster("desk", "vk-new", None, roster)
@@ -646,8 +646,8 @@ fn itl_frost_spend_insane_removed_holder() {
 
 #[test]
 fn itl_frost_spend_insane_memo_mismatch_or_missing() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let rc = c.roster_commit();
     let mut job = PendingJob::open_bound("j", "pay-20-ink", FROST_T, FROST_N, &rc).unwrap();
@@ -663,8 +663,8 @@ fn itl_frost_spend_insane_memo_mismatch_or_missing() {
 
 #[test]
 fn itl_frost_spend_insane_pending_next_roster_not_live() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
-    use terp_onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost_rotate::{FrostCommittee, NextRoster};
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     let live = c.roster_commit();
     let roster = NextRoster::from_seats(&["desk", "steward", "spare", "usher"], 2, 4).unwrap();
@@ -683,8 +683,8 @@ fn itl_frost_spend_insane_pending_next_roster_not_live() {
 
 #[test]
 fn itl_frost_spend_insane_rekey_incomplete_blocks_pay() {
-    use terp_onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
-    use terp_onboard_authz::itl_frost_rotate::FrostCommittee;
+    use hash_market::onboard_authz::itl_frost::{spend_memo_roster, PendingJob, FROST_N, FROST_T};
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
     c.invoke_rotate("desk", "vk-new", None).unwrap();
     c.add_rotate_share("desk", "vk-new", None, "S:0:a").unwrap();
@@ -701,7 +701,7 @@ fn itl_frost_spend_insane_rekey_incomplete_blocks_pay() {
 
 #[test]
 fn itl_frost_http_pay_requires_roster_commit() {
-    let mut box_ = terp_onboard_authz::frost_http::FrostInbox::default();
+    let mut box_ = hash_market::onboard_authz::frost_http::FrostInbox::default();
     let r = box_
         .try_handle("POST", "/itl/frost/jobs", r#"{"pay_code":"pay-20-ink"}"#)
         .unwrap();

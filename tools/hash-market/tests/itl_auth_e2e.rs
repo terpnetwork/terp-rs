@@ -10,12 +10,12 @@
 //! Live add/rotate needs a signer + feegrant (HashMerchant onboard). Set
 //! ITL_AUTH_ADDR + ITL_AUTH_BROADCAST=1. Until then the in-process rotate is SoT.
 
-use terp_onboard_authz::itl_auth::{
+use hash_market::onboard_authz::itl_auth::{
     add_device, lcd_authenticators_path, local_anyof_rotate, msg_add_any_of,
     msg_remove_authenticator, parse_authenticator_ids, query_json_looks_like_account, rotate,
     zip321_ok, AuthAccount, ComposeOp, Device,
 };
-use terp_onboard_authz::{
+use hash_market::onboard_authz::{
     authenticators_query_ok, msg_add_authenticator, ADD_AUTHENTICATOR_TYPE_URL,
     AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE, REMOVE_AUTHENTICATOR_TYPE_URL,
 };

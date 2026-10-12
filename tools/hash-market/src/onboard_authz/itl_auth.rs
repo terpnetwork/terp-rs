@@ -8,7 +8,7 @@
 
 use serde_json::{json, Value};
 
-use crate::{
+use super::{
     authenticators_query_ok, msg_add_authenticator, AUTHENTICATOR_ALL_OF,
     AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE, REMOVE_AUTHENTICATOR_TYPE_URL,
 };
@@ -223,7 +223,7 @@ pub fn local_anyof_rotate() -> AuthAccount {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ADD_AUTHENTICATOR_TYPE_URL;
+    use crate::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL;
 
     #[test]
     fn add_query_rotate_never_empty() {

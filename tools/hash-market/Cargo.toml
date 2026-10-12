@@ -31,6 +31,21 @@ name = "onboard-local-workflow"
 path = "src/bin/local-workflow.rs"
 required-features = ["onboard"]
 
+[[bin]]
+name = "onboard-runtime"
+path = "src/bin/onboard-runtime.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "frost-inbox"
+path = "src/bin/frost-inbox.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "itl-consume-verify"
+path = "src/bin/itl-consume-verify.rs"
+required-features = ["onboard"]
+
 [features]
 # Default: Nostr + Blossom/BUD + Merkle trees (NFT whitelist host).
 # Vote extensions are OFF by default — enable with --features ve for validator sidecar.
@@ -44,7 +59,9 @@ pallas   = [ "tiny-keccak"]
 transport = [ "tokio/rt", "tokio/sync", "tokio/net", "tokio/io-util", "tokio/time", "tokio/signal", "tokio/macros"]
 # HTTP server core: BUD blobs + merkle trees + headstash (no VE dependency)
 # Onboard feegrant plane is part of the merchant server (not a second process).
-onboard  = ["dep:terp-onboard-authz"]
+onboard  = ["k256", "sha2", "dep:sha3", "dep:ff", "dep:pasta_curves", "dep:halo2_proofs", "dep:rand"]
+# re-zerve deposit transcript (local hash, not Zcash inclusion). Opt-in; not default.
+re-zerve = ["sha2"]
 server   = ["transport", "custody", "axum", "tower", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "reqwest", "onboard"]
 client   = ["eth", "pallas", "reqwest", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "async-trait"]
 nostr    = ["client", "custody", "tokio/full", "tokio-tungstenite", "futures-util", "sha2", "async-trait"]
@@ -64,7 +81,6 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 pir = ["server", "dep:ff", "dep:pasta_curves", "dep:halo2_gadgets"]
 
 [dependencies]
-terp-onboard-authz = { path = "../onboard-authz", optional = true }
 anyhow = "1"
 anybuf = { version = "0.5" }
 hex = "0.4"
@@ -112,6 +128,8 @@ cw721-nips = { path = "../../crates/nips" }
 
 
 blake3 = "1"
+bech32 = "0.11"
+ripemd = "0.1"
 kms-shard = { path = "../../../kms-shard", optional = true }
 frost-ed25519 = { version = "2.2", optional = true, default-features = false, features = ["std", "serialization"] }
 snow = { version = "0.9", optional = true }
@@ -121,3 +139,6 @@ prost-types = { version = "0.13", optional = true }
 ff = { version = "0.14", optional = true }
 pasta_curves = { package = "zakura-pasta-curves", path = "../../../../crates/zakura-common/crates/pasta_curves", default-features = false, features = ["default"], optional = true }
 halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../../crates/zakura-common/crates/halo2_gadgets", default-features = false, optional = true }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../crates/zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"], optional = true }
+rand = { version = "0.10", default-features = false, features = ["sys_rng", "thread_rng"], optional = true }
+sha3 = { version = "0.10", optional = true }

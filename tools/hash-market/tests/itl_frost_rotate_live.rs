@@ -7,7 +7,7 @@
 //! Query must show pending → t shares → `group_vk` changed on-chain.
 //! Do not put the inbox on Authenticate sudo.
 
-use terp_onboard_authz::itl_frost_rotate::{
+use hash_market::onboard_authz::itl_frost_rotate::{
     msg_rotate_frost_pubkey, vk_commit, EXECUTE_CONTRACT_TYPE_URL, ROTATE_MSG,
 };
 

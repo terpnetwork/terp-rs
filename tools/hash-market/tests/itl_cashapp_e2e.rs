@@ -3,7 +3,7 @@
 //!
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_cashapp_e2e
 
-use terp_onboard_authz::itl_cashapp::{
+use hash_market::onboard_authz::itl_cashapp::{
     parse_received_text, receipt_json, synthetic_received_html, Engine, CHECK_IN_GUEST,
     LIST_CENTS, SKU,
 };

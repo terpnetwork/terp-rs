@@ -11,9 +11,9 @@
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
-use terp_onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
-use terp_onboard_authz::http::serve;
-use terp_onboard_authz::{OnboardRoles, OnboardRuntime};
+use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
+use hash_market::onboard_authz::http::serve;
+use hash_market::onboard_authz::{OnboardRoles, OnboardRuntime};
 
 fn roles() -> OnboardRoles {
     OnboardRoles {

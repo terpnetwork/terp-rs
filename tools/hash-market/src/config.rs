@@ -15,14 +15,24 @@ use serde::{Deserialize, Serialize};
 /// TOML config for `hash-market-server`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-    /// HTTP bind address (e.g. "0.0.0.0:9090")
+    /// HTTP bind address. Default `127.0.0.1:9090`.
+    /// A non-loopback host (including `0.0.0.0`) refuses to start unless
+    /// `allow_public_bind` or `HASH_MARKET_ALLOW_PUBLIC_BIND=1`.
+    #[serde(default = "default_bind")]
     pub bind: String,
+    /// Explicit override for a non-loopback `bind`. Logged at startup.
+    #[serde(default)]
+    pub allow_public_bind: bool,
+    /// Sole `terp1` allowed to POST/PUT/DELETE `/trees`.
+    /// `HASH_MARKET_TREE_OPERATOR` overrides this.
+    #[serde(default = "default_tree_operator")]
+    pub tree_operator: String,
     /// CometBFT / app chain ID (metadata; used by VE when enabled)
     #[serde(default = "default_chain_id")]
     pub chain_id: String,
     /// Hex-encoded secp256k1 signing key.
-    /// Required only when `ve_enabled = true`. Optional for merkle/BUD-only host
-    /// (may still be used later for authenticated tree admin if desired).
+    /// Required only when `ve_enabled = true`. `/trees` writes use `tree_operator`
+    /// plus an ADR-36 request signature, not this key.
     #[serde(default)]
     pub signing_key: Option<String>,
     /// Optional data directory for tree/blob/headstash storage (default: "data")
@@ -287,6 +297,17 @@ impl OracleConfig {
 
 fn default_chain_id() -> String {
     "morocco-1".into()
+}
+
+fn default_bind() -> String {
+    "127.0.0.1:9090".into()
+}
+
+/// Deployed whitelist creator. Public address, not a key.
+pub const DEFAULT_TREE_OPERATOR: &str = "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052";
+
+fn default_tree_operator() -> String {
+    DEFAULT_TREE_OPERATOR.into()
 }
 
 impl Config {

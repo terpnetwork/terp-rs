@@ -5,9 +5,9 @@
 //!
 //! FROST inbox is the same process on HASHMERCHANT_BIND / ITL_FROST_BIND (127.0.0.1:19091).
 
-use terp_onboard_authz::frost_http;
-use terp_onboard_authz::http::serve;
-use terp_onboard_authz::OnboardRuntime;
+use hash_market::onboard_authz::frost_http;
+use hash_market::onboard_authz::http::serve;
+use hash_market::onboard_authz::OnboardRuntime;
 
 fn main() {
     let port = std::env::var("ONBOARD_PORT").unwrap_or_else(|_| "5001".into());

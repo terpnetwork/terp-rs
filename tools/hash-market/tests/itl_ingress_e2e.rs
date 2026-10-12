@@ -6,18 +6,18 @@
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::Mutex;
-use terp_onboard_authz::itl_cashapp::{
+use hash_market::onboard_authz::itl_cashapp::{
     nullifier_hex, parse_eml_wasix, synthetic_received_eml, synthetic_sent_eml, wasix_parse_json,
     LIST_CENTS, SKU,
 };
-use terp_onboard_authz::itl_ingress::{
+use hash_market::onboard_authz::itl_ingress::{
     browser_paid_refused, cashapp_chain_id, cashapp_local_prod_cmd, dest_ok, dregg_endpoint_ok,
     dregg_instruct_commits_paid, dregg_spawn_cmd, evidence_may_commit, ict_mock_refused,
     is_mock_bech32, is_second_stack_spawn, parse_inject_eml, public_json_is_clean, DreggWatch,
     EvidenceKind, IngressEngine, Rail, CASHAPP_CHAIN_ID, EVENT_ID, SVG_MINT_FEATURES,
     SVG_MINT_LOCAL_PROD,
 };
-use terp_onboard_authz::poseidon::{door_nullifier, ticket_leaf, PoseidonTree};
+use hash_market::onboard_authz::poseidon::{door_nullifier, ticket_leaf, PoseidonTree};
 
 #[test]
 fn itl_ingress_gap0_wasix_parse_payment_sent_reject() {

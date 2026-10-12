@@ -36,22 +36,26 @@ Primary production mode for NFT mint pages:
 ```toml
 # config.toml
 ve_enabled = false
-bind = "0.0.0.0:9090"
+bind = "127.0.0.1:9090"
 chain_id = "morocco-1"
 data_dir = "/var/lib/hash-market"
 # no signing_key or [[providers]] required
+# tree writes: one terp1 (default terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052)
 ```
 
-```bash
-# Build image without VE (Dockerfile default FEATURES)
-docker build -t hash-market:local -f tools/hash-market/Dockerfile .
+The tree host listens on loopback unless `allow_public_bind = true` or `HASH_MARKET_ALLOW_PUBLIC_BIND=1`. A `0.0.0.0` bind refuses to start, and an allowed public bind is logged.
 
-# Public APIs for frontends (terp.network svg mint)
-# GET  /health
-# GET  /trees
-# GET  /trees/{id}
-# GET  /trees/{id}/members/{addr}  → proof_hashes for fee-bypass mint
-# POST /trees/{id}  (auth)         → upload gen_merkle JSON
+```bash
+# groot2 binary. hash-market is its own workspace (excluded from the terp-rs root).
+cd tools/hash-market
+cargo build --release --bin hash-market-server
+
+# Mint page (public):
+# GET /trees/{id}/members/{addr}
+#   id is the tree id (the warriors upload uses the 64-hex merkle root)
+#   response.proof_hashes goes to whitelist-merkletree has_member
+# Operator upload (ADR-36, not the mint page):
+# POST or PUT /trees/{id}   DELETE /trees/{id}
 ```
 
 Frontend: `websites/terp.network/lib/merkle-server.js` + `config.services.merkleServer`.
@@ -189,7 +193,7 @@ cargo build --release --features "server" -p hash-market
 The server expects a TOML config file (default `config.toml`, override with `-c` / `--config`):
 
 ```toml
-bind = "0.0.0.0:9090"
+bind = "127.0.0.1:9090"
 chain_id = "terp-testnet-5"
 signing_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 data_dir = "/var/lib/hash-market"
@@ -214,7 +218,8 @@ address = "0.0.0.0:9091"
 
 | Field | Required | Description |
 |---|---|---|
-| `bind` | Yes | Listen address `host:port` |
+| `bind` | No | Listen address. Default `127.0.0.1:9090`. Non-loopback refuses to start unless `allow_public_bind` or `HASH_MARKET_ALLOW_PUBLIC_BIND=1` (logged). `HASH_MARKET_BIND` overrides the file. |
+| `tree_operator` | No | Sole `terp1` for `POST`/`PUT`/`DELETE /trees`. Default `terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052`. `HASH_MARKET_TREE_OPERATOR` overrides it. |
 | `chain_id` | Yes | CometBFT chain ID for domain separation |
 | `signing_key` | Yes | Hex-encoded secp256k1 private key |
 | `data_dir` | No | Data directory (default: `data/`) |
@@ -248,10 +253,30 @@ All blob endpoints require JWT or secp256k1 auth via the `X-Auth-Type` header.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/trees/{id}` | Load a merkle tree by ID |
-| `POST` | `/trees/{id}` | Upload/overwrite a merkle tree |
-| `DELETE` | `/trees/{id}` | Delete a merkle tree |
-| `GET` | `/trees` | List all tree IDs |
+| `GET` | `/trees` | List tree IDs (public) |
+| `GET` | `/trees/{id}` | Load a merkle tree by ID (public) |
+| `GET` | `/trees/{id}/members/{addr}` | Public proof for one address. Mint pages call this. |
+| `POST`, `PUT` | `/trees/{id}` | Upload/overwrite. One operator, ADR-36 signature. |
+| `DELETE` | `/trees/{id}` | Delete. Same operator signature, over an empty body. |
+
+Mint page proof route (already the member route; there is no `/proof/` path):
+
+```http
+GET /trees/f5c68fb4b1e98358963cdc43e83b653875f3f4794ed46d2927e65884451253b1/members/terp1...
+```
+
+Eligible body: `eligible`, `tree_id`, `merkle_root`, `address`, `allocation`, `tier`, `proof_hashes`. Pass `proof_hashes` to whitelist-merkletree `has_member` with the composite key `address || allocation` (no separator). The terp-warriors tree id is that chain root. `merkle_tree_uri` on the contract is null, so the page uses this host.
+
+Operator writes send `X-Hash-Market-Pubkey` (hex, 33-byte compressed secp256k1) and `X-Hash-Market-Signature` (hex, 64-byte r||s). The ADR-36 `data` field is standard base64 of:
+
+```text
+hash-market.tree-write.v1
+{METHOD}
+/trees/{id}
+{sha256 hex of the raw body}
+```
+
+Missing or bad signatures are 401. A valid signature for any other address is 403. `GET` stays public.
 
 Upload format matches `gen_merkle --output`:
 
