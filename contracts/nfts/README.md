@@ -16,3 +16,7 @@ is a cw721 token, including `cw721-svg`, pulled with `TransferNft` after
 `OwnerOf` / approval checks.
 
 Each crate has `LICENSE`, `NOTICE`, and `ORIGIN.md`.
+
+## Codegen
+
+gen-tools projects `raffle` and `nft-loan` (Cargo packages `nftfi-raffle`, `nftfi-loan`; schema bin `schema`). Run `just gen nftfi-schema <project>` or `just gen nftfi-schema-all`. Clients land in `api/ts/<cargo-package>/{types,client,message-composer}/`, plus `api/{python,go,rust,proto,openapi}/<cargo-package>/`.

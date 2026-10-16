@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-exclude = ["crates/randomness", "crates/zafu"]
+# nftfi-bench is its own workspace.
+exclude = ["crates/randomness", "crates/zafu", "tests/suite/nftfi-bench"]
 members = [
     "contracts/accounts/ownership-verifier",
     "contracts/accounts/ownership-verifier/e2e",
