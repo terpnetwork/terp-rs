@@ -222,6 +222,22 @@ pub fn run_mock() -> anyhow::Result<Table> {
         loan_default(&collection, &loan, &lender, &nft_addr),
     )?;
 
+    let measured = crate::kv::measure().context("kv gas")?;
+    for row in &mut table.rows {
+        let gas = measured
+            .iter()
+            .find(|item| item.protocol == row.protocol && item.action == row.action)
+            .with_context(|| format!("kv gas missing for {} {}", row.protocol, row.action))?;
+        anyhow::ensure!(
+            gas.gas > 0,
+            "{} {} kv gas is zero",
+            row.protocol,
+            row.action
+        );
+        row.kv_gas = Some(gas.gas);
+        row.detail = gas.gas.to_string();
+    }
+
     Ok(table)
 }
 
@@ -237,7 +253,8 @@ fn step(
                 protocol: protocol.into(),
                 action: action.into(),
                 mock_ok: true,
-                detail: "unmetered".into(),
+                detail: "kv".into(),
+                kv_gas: None,
                 daemon_gas: None,
             });
             Ok(())
@@ -248,6 +265,7 @@ fn step(
                 action: action.into(),
                 mock_ok: false,
                 detail: err.to_string(),
+                kv_gas: None,
                 daemon_gas: None,
             });
             Err(err)

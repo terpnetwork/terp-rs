@@ -2,9 +2,11 @@
 //!
 //! The marketplace, raffle, and loan contracts in this crate record the
 //! brief's actions on top of cw721-base. They are not the sibling ports.
-//! Mock cw-orch does not meter wasm gas. The daemon path does not broadcast.
+//! Mock gas is Cosmos SDK KV storage gas, the same schedule as
+//! `contracts/nfts/raffle/tests/gas.rs`. The daemon path does not broadcast.
 
 pub mod daemon;
+pub mod kv;
 pub mod loan;
 pub mod marketplace;
 pub mod nft;

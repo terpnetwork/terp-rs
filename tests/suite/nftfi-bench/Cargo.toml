@@ -24,6 +24,7 @@ local = ["cw-orch/daemon"]
 anyhow = "1"
 cosmwasm-schema = { path = "../../../../cosmwasm/packages/schema" }
 cosmwasm-std = { path = "../../../../cosmwasm/packages/std" }
+cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork" }
 cw-orch = { path = "../../../../cw-orchestrator/cw-orch" }
 cw-storage-plus = { path = "../../../../cw-storage-plus" }
 cw721 = { path = "../../../../cw-nfts/packages/cw721" }

@@ -27,8 +27,12 @@ fn mock_gas_table() {
     ] {
         assert!(text.contains(action), "GAS.md missing {action}");
     }
-    assert!(text.contains("unmetered"));
+    assert!(text.contains("read 1000"));
     assert!(text.contains("does not broadcast") || text.contains("No transaction sent"));
+    for row in &table.rows {
+        let gas = row.kv_gas.expect("kv gas");
+        assert!(gas > 0, "{} {} kv gas", row.protocol, row.action);
+    }
 }
 
 #[test]

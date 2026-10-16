@@ -10,6 +10,8 @@ pub struct Row {
     pub action: String,
     pub mock_ok: bool,
     pub detail: String,
+    /// Cosmos SDK KV gas for the action. `None` until the meter runs.
+    pub kv_gas: Option<u64>,
     pub daemon_gas: Option<u64>,
 }
 
@@ -25,7 +27,7 @@ impl Default for Table {
             rows: Vec::new(),
             notes: vec![
                 "Source: in-crate harness in `nftfi-bench` (not the sibling ports).".into(),
-                "Collateral: cw721-base. Mock cw-orch does not meter wasm gas.".into(),
+                "Mock kv gas uses the raffle `tests/gas.rs` schedule on the in-crate harness: read 1000 + 3 per byte of key and value, write 2000 + 30 per byte, delete 1000. cw-multi-test `gas_used` is 0. The figure is storage gas for the whole transaction, including bank and wasm-keeper writes, not wasmd opcode gas. Marketplace list sums three List executes, loan offer sums two Offer executes, and loan accept sums two Accept executes. Approvals, mints, transfers, and block updates sit outside the window.".into(),
                 "Daemon `gas_used` is filled only after a broadcast on svgc-preview-1. This run does not broadcast.".into(),
             ],
         }
@@ -34,7 +36,11 @@ impl Default for Table {
 
 impl Table {
     pub fn all_ok(&self) -> bool {
-        self.rows.len() == ACTIONS.len() && self.rows.iter().all(|row| row.mock_ok)
+        self.rows.len() == ACTIONS.len()
+            && self
+                .rows
+                .iter()
+                .all(|row| row.mock_ok && row.kv_gas.unwrap_or(0) > 0)
     }
 
     pub fn markdown(&self) -> String {
@@ -45,10 +51,14 @@ impl Table {
             let _ = writeln!(out, "{note}");
             let _ = writeln!(out);
         }
-        let _ = writeln!(out, "| protocol | action | mock | detail | daemon gas |");
-        let _ = writeln!(out, "|---|---|---|---|---|");
+        let _ = writeln!(out, "| protocol | action | mock | kv gas | daemon gas |");
+        let _ = writeln!(out, "|---|---|---|---:|---|");
         for row in &self.rows {
             let mock = if row.mock_ok { "ok" } else { "err" };
+            let kv = row
+                .kv_gas
+                .map(|g| g.to_string())
+                .unwrap_or_else(|| "—".into());
             let gas = row
                 .daemon_gas
                 .map(|g| g.to_string())
@@ -56,7 +66,7 @@ impl Table {
             let _ = writeln!(
                 out,
                 "| {} | {} | {} | {} | {} |",
-                row.protocol, row.action, mock, row.detail, gas
+                row.protocol, row.action, mock, kv, gas
             );
         }
         out

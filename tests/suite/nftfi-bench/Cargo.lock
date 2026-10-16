@@ -3538,6 +3538,7 @@ dependencies = [
 name = "nftfi-bench"
 version = "0.0.2"
 dependencies = [
+ "abstract-cw-multi-test",
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
