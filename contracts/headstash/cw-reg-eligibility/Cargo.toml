@@ -1,0 +1,24 @@
+[package]
+name = "cw-reg-eligibility"
+version = "0.1.0"
+edition = "2021"
+description = "Lab stand-in for DAO dummy-SA + wasmvm Authenticate (min-holders / eligibility)"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+# No `zk`: stock wasmd does not export proof_instance_verify.
+cosmwasm-std = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+cw-storage-plus = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

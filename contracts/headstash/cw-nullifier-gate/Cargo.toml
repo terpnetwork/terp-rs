@@ -1,0 +1,27 @@
+# Thin CosmwasmAuthenticator gate: raw-query ceremony module; no SSOT spent map.
+[package]
+name = "cw-nullifier-gate"
+version = "0.1.0"
+edition = "2021"
+description = "Thin nullifier-gate authenticator: raw-query ceremony module + MarkSpent trigger"
+license = "Apache-2.0"
+readme = "README.md"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+# No `zk`: stock wasmd does not export proof_instance_verify.
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["std"] }

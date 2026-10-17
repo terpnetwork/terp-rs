@@ -1,0 +1,61 @@
+{
+  "type": "v1",
+  "root": 5,
+  "definitions": [
+    {
+      "name": "cw_headstash_bridge_AssetEntry",
+      "type": "struct",
+      "properties": {
+        "asset_id": {
+          "description": "Domain-separated Terp asset id (32 bytes).",
+          "value": 1
+        },
+        "local_denom": {
+          "description": "Local denom or proof representation string.",
+          "value": 2
+        },
+        "origin": {
+          "description": "Optional origin tag (e.g. `native`, `tacit:bitcoin-mainnet`, IBC trace).",
+          "value": 3
+        },
+        "status": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "cw_headstash_bridge_AssetStatus",
+      "type": "enum",
+      "cases": {
+        "active": {
+          "type": "unit"
+        },
+        "frozen": {
+          "type": "unit"
+        },
+        "paused": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cw_headstash::bridge::AssetEntry>",
+      "type": "optional",
+      "inner": 0
+    }
+  ]
+}

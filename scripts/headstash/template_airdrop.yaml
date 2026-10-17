@@ -1,0 +1,160 @@
+# genesis-config.yaml
+zk_params:
+  contract:
+    - method: #  new,existing
+      - new: 
+          chain: "cosmos.terp"
+      - existing: 
+          # ... existing params in new
+          contract: "terp1..."
+  storage:
+    - method: # oneof,composite
+      - oneof: 
+      - composite: # custom blend of oneofs 
+  deployment:
+    - method: # oneof,composite
+  api-node:
+    - method: "new" # new,existing
+
+chains: 
+  cosmos:
+    terp:
+      chain-id: "morocco-1"
+      prefix: "terp"
+      native_coin: "uterp"
+      gas_coin: "uthiol"
+      rpc: "https://rpc.terp.network:443"
+      grpc: "https://grpc.terp.network:443"
+      api: "https://api.terp.network:443"
+
+# Global Parameters
+total_supply: 420000000
+activity-multiplier:
+  - range:
+    - min: 0
+    - max: 10
+    - additional:
+      - terp: 
+      - thiol:
+  - range:
+    - min: 11
+    - max: 100
+    - additional:
+      - terp: 
+      - thiol:
+  - range:
+    - min: 100
+    - max: -1
+    - additional:
+      - terp: 
+      - thiol:
+
+# Projects Configuration
+projects:
+  - name: bcna
+    csv: "../genesis/bcna_delegators.csv"
+    chain_type: "cosmos"
+    category: "genesis"
+    allocation_percentage: 0.01911
+    points_ranges:
+      - points: 1
+        min: 1
+        max: 56290873.26
+        tpp: 5790.90909  # tokens per point
+      - points: 2
+        min: 56290873.26
+        max: 581059663.70
+        tpp: 5790.90909
+      - points: 3
+        min: 581059663.70
+        max: 11695142809644.00
+        tpp: 5790.90909
+
+  - name: gaia
+    csv: "../genesis/gaia.csv"
+    chain_type: "cosmos"
+    category: "genesis"
+    allocation_percentage: 0.061152
+    points_ranges:
+      - points: 1
+        label: "1st - 74th"
+        min: 1
+        max: 50000000.0
+        tpp: 119.131693
+      - points: 2
+        label: "75th - 95th"
+        min: 50000000.0
+        max: 500000000.0
+        tpp: 119.131693
+      - points: 3
+        label: "96th - 100th"
+        min: 500000000.0
+        max: 10000000000.0
+        tpp: 119.131693
+
+  - name: scavenger_hunt
+    csv: "../genesis/scavenger_hunt.csv"
+    airdrop_type: "genesis"
+    allocation_percentage: 15.0
+    points_ranges: []
+ 
+  - name: terp_og
+    csv: "../genesis/terp_og.csv"
+    chain_type: "genesis"
+    allocation_percentage: 10.0
+    points_ranges: []
+
+    
+
+# Blends of Projects Parameters
+project_blends:
+  - blend: 
+    - projects: [gaia, bcna]
+    - points_ranges:
+      - points: 4
+        distribution:
+          gaia: 1
+          bcna: 3
+        tpp: 1477.51019575
+      - points: 5
+        distribution:
+          gaia: 2
+          bcna: 3
+        tpp: 1205.8344952
+      - points: 6
+        distribution:
+          gaia: 3
+          bcna: 3
+        tpp: 1024.7173615
+      - points: 7
+        distribution:
+          gaia: 1
+          bcna: 6
+        tpp: 1671.564267
+      - points: 8
+        distribution:
+          gaia: 2
+          bcna: 6
+        tpp: 1477.510195
+      - points: 9
+        distribution:
+          gaia: 3
+          bcna: 6
+        tpp: 1326.579251
+      - points: 10
+        distribution:
+          gaia: 1
+          bcna: 9
+        tpp: 1749.185896
+      - points: 11
+        distribution:
+          gaia: 2
+          bcna: 9
+        tpp: 1600.999150
+      - points: 12
+        distribution:
+          gaia: 3
+          bcna: 9
+        tpp: 1477.510195
+
+    

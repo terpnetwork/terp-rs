@@ -1,0 +1,612 @@
+{
+  "contract_name": "cw-vote-ceremony",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "properties": {
+      "admin": {
+        "description": "Optional admin (test / bootstrap). DAO path should call via proposal execute.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "max_nullifiers_per_mark": {
+        "description": "Default max nullifiers per MarkSpent call.",
+        "default": 8,
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0.0
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Start a ceremony (admin or future DAO proposal path).",
+        "type": "object",
+        "required": [
+          "start_ceremony"
+        ],
+        "properties": {
+          "start_ceremony": {
+            "type": "object",
+            "required": [
+              "domain",
+              "session_id"
+            ],
+            "properties": {
+              "anchor_policy": {
+                "description": "Optional anchor policy / root hint (opaque product string).",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "clerk": {
+                "description": "Clerk address allowed to AttestLeaf (defaults to admin).",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "domain": {
+                "type": "string"
+              },
+              "membership_module": {
+                "description": "Voting / membership contract for DaoMember gate.",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "registration_gate": {
+                "default": "open",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/RegistrationGate"
+                  }
+                ]
+              },
+              "registration_open": {
+                "description": "When false, Register is rejected.",
+                "default": true,
+                "type": "boolean"
+              },
+              "session_id": {
+                "type": "string"
+              },
+              "vm_verifier": {
+                "description": "Verifier / dummy-SA stand-in for VmProof (VerifyMinHolders).",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Close ceremony (no further spends / registrations).",
+        "type": "object",
+        "required": [
+          "close_ceremony"
+        ],
+        "properties": {
+          "close_ceremony": {
+            "type": "object",
+            "required": [
+              "session_id"
+            ],
+            "properties": {
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Participant self-register. `leaf_commit` required when gate is ClerkAttested.",
+        "type": "object",
+        "required": [
+          "register"
+        ],
+        "properties": {
+          "register": {
+            "type": "object",
+            "required": [
+              "session_id"
+            ],
+            "properties": {
+              "leaf_commit": {
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "proof": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Binary"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Clerk/admin attests a registration leaf (dual L-reg half).",
+        "type": "object",
+        "required": [
+          "attest_leaf"
+        ],
+        "properties": {
+          "attest_leaf": {
+            "type": "object",
+            "required": [
+              "leaf_commit",
+              "session_id"
+            ],
+            "properties": {
+              "leaf_commit": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Admin can toggle registration window.",
+        "type": "object",
+        "required": [
+          "set_registration_open"
+        ],
+        "properties": {
+          "set_registration_open": {
+            "type": "object",
+            "required": [
+              "open",
+              "session_id"
+            ],
+            "properties": {
+              "open": {
+                "type": "boolean"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "RegistrationGate": {
+        "description": "How Register is gated for this session (configurable product policy).",
+        "oneOf": [
+          {
+            "description": "Anyone with gas while registration_open (legacy).",
+            "type": "string",
+            "enum": [
+              "open"
+            ]
+          },
+          {
+            "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+            "type": "string",
+            "enum": [
+              "clerk_attested"
+            ]
+          },
+          {
+            "description": "Register requires non-zero voting power on membership_module.",
+            "type": "string",
+            "enum": [
+              "dao_member"
+            ]
+          },
+          {
+            "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+            "type": "string",
+            "enum": [
+              "pre_propose"
+            ]
+          },
+          {
+            "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+            "type": "string",
+            "enum": [
+              "vm_proof"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ceremony"
+        ],
+        "properties": {
+          "ceremony": {
+            "type": "object",
+            "required": [
+              "session_id"
+            ],
+            "properties": {
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_spent"
+        ],
+        "properties": {
+          "is_spent": {
+            "type": "object",
+            "required": [
+              "domain",
+              "nullifier",
+              "session_id"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "nullifier": {
+                "$ref": "#/definitions/Binary"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_registered"
+        ],
+        "properties": {
+          "is_registered": {
+            "type": "object",
+            "required": [
+              "addr",
+              "session_id"
+            ],
+            "properties": {
+              "addr": {
+                "type": "string"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Documented raw key bytes for ante raw-query consumers (V2).",
+        "type": "object",
+        "required": [
+          "raw_spent_key"
+        ],
+        "properties": {
+          "raw_spent_key": {
+            "type": "object",
+            "required": [
+              "domain",
+              "nullifier",
+              "session_id"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "nullifier": {
+                "$ref": "#/definitions/Binary"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "ceremony": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CeremonyResponse",
+      "type": "object",
+      "required": [
+        "ceremony"
+      ],
+      "properties": {
+        "ceremony": {
+          "$ref": "#/definitions/CeremonyInfo"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "CeremonyInfo": {
+          "type": "object",
+          "required": [
+            "domain",
+            "registration_open",
+            "session_id",
+            "status"
+          ],
+          "properties": {
+            "anchor_policy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clerk": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "domain": {
+              "type": "string"
+            },
+            "membership_module": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registration_gate": {
+              "default": "open",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/RegistrationGate"
+                }
+              ]
+            },
+            "registration_open": {
+              "type": "boolean"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/definitions/CeremonyStatus"
+            },
+            "vm_verifier": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "CeremonyStatus": {
+          "description": "Ceremony lifecycle status (string-stable for raw-query consumers).",
+          "type": "string",
+          "enum": [
+            "active",
+            "closed"
+          ]
+        },
+        "RegistrationGate": {
+          "description": "How Register is gated for this session (configurable product policy).",
+          "oneOf": [
+            {
+              "description": "Anyone with gas while registration_open (legacy).",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+              "type": "string",
+              "enum": [
+                "clerk_attested"
+              ]
+            },
+            {
+              "description": "Register requires non-zero voting power on membership_module.",
+              "type": "string",
+              "enum": [
+                "dao_member"
+              ]
+            },
+            {
+              "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+              "type": "string",
+              "enum": [
+                "pre_propose"
+              ]
+            },
+            {
+              "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+              "type": "string",
+              "enum": [
+                "vm_proof"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "required": [
+        "max_nullifiers_per_mark"
+      ],
+      "properties": {
+        "admin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_nullifiers_per_mark": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "is_registered": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsRegisteredResponse",
+      "type": "object",
+      "required": [
+        "registered"
+      ],
+      "properties": {
+        "leaf_commit": {
+          "description": "Bound leaf when Register stored one (ClerkAttested). Absent/empty on Open.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registered": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "is_spent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsSpentResponse",
+      "type": "object",
+      "required": [
+        "spent"
+      ],
+      "properties": {
+        "spent": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "raw_spent_key": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RawSpentKeyResponse",
+      "type": "object",
+      "required": [
+        "domain",
+        "map_namespace",
+        "nullifier",
+        "session_id"
+      ],
+      "properties": {
+        "domain": {
+          "type": "string"
+        },
+        "map_namespace": {
+          "description": "Full storage key as used by cw-storage-plus Map under prefix `spent` for debugging; normative layout is also in `raw_keys` module / README.",
+          "type": "string"
+        },
+        "nullifier": {
+          "$ref": "#/definitions/Binary"
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

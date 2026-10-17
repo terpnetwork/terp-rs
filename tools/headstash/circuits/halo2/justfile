@@ -1,0 +1,37 @@
+#!/bin/bash
+
+fmt:
+	cargo fmt --all --check
+schema:
+	sh scripts/sh/schema-and-codegen.sh
+lint:
+	cargo clippy --fix --tests -- -D warnings
+build:
+  docker run --rm -t -v "$(pwd)":/code \
+    --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+    --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+    cosmwasm/workspace-optimizer-arm64:0.17.0
+test:
+    cargo test --locked
+headstash_generate:
+    cd scripts && node main.js -10
+# generates all genesis headstash data, using final output
+genesis_sinsemilla:
+    cd scripts && node main.js -10 && cd ../zk-crates && cargo run --bin create_merkle -- data/genesis_sinsemilla.json
+gen_my_notes:
+    cd zk-crates && cargo run --bin gen_headstash_notes -- ./data/genesis_sinsemilla.json 0x0000000000000000000000000000000000000000
+build-geth:
+    cd scripts/geth && docker buildx build --platform linux/amd64 -t discoverdefiteam/geth-rpc:0.0.1 --load .
+
+build-test-data:
+    cd zk-crates/no-rick && just optimize && cd ../../test-press && cargo run --bin create_test_circuit_data
+# publish:
+#     #!/usr/bin/env bash
+#     crates=(
+ 
+#     )
+#     for crate in "${crates[@]}"; do
+#       cargo publish -p "$crate"
+#       echo "Sleeping before publishing the next crate..."
+#       sleep 30
+#     done

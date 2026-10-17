@@ -1,0 +1,153 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_ceremony_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "attest_leaf": {
+          "description": "Clerk/admin attests a registration leaf (dual L-reg half).",
+          "type": "named",
+          "properties": {
+            "leaf_commit": {
+              "value": 1
+            },
+            "session_id": {
+              "value": 1
+            }
+          }
+        },
+        "close_ceremony": {
+          "description": "Close ceremony (no further spends / registrations).",
+          "type": "named",
+          "properties": {
+            "session_id": {
+              "value": 1
+            }
+          }
+        },
+        "register": {
+          "description": "Participant self-register. `leaf_commit` required when gate is ClerkAttested.",
+          "type": "named",
+          "properties": {
+            "leaf_commit": {
+              "defaulting": true,
+              "value": 3
+            },
+            "proof": {
+              "defaulting": true,
+              "value": 6
+            },
+            "session_id": {
+              "value": 1
+            }
+          }
+        },
+        "set_registration_open": {
+          "description": "Admin can toggle registration window.",
+          "type": "named",
+          "properties": {
+            "open": {
+              "value": 2
+            },
+            "session_id": {
+              "value": 1
+            }
+          }
+        },
+        "start_ceremony": {
+          "description": "Start a ceremony (admin or future DAO proposal path).",
+          "type": "named",
+          "properties": {
+            "anchor_policy": {
+              "defaulting": true,
+              "description": "Optional anchor policy / root hint (opaque product string).",
+              "value": 3
+            },
+            "clerk": {
+              "defaulting": true,
+              "description": "Clerk address allowed to AttestLeaf (defaults to admin).",
+              "value": 3
+            },
+            "domain": {
+              "value": 1
+            },
+            "membership_module": {
+              "defaulting": true,
+              "description": "Voting / membership contract for DaoMember gate.",
+              "value": 3
+            },
+            "registration_gate": {
+              "defaulting": true,
+              "value": 4
+            },
+            "registration_open": {
+              "defaulting": true,
+              "description": "When false, Register is rejected.",
+              "value": 2
+            },
+            "session_id": {
+              "value": 1
+            },
+            "vm_verifier": {
+              "defaulting": true,
+              "description": "Verifier / dummy-SA stand-in for VmProof (VerifyMinHolders).",
+              "value": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "cw_vote_ceremony_msg_RegistrationGate",
+      "description": "How Register is gated for this session (configurable product policy).",
+      "type": "enum",
+      "cases": {
+        "clerk_attested": {
+          "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+          "type": "unit"
+        },
+        "dao_member": {
+          "description": "Register requires non-zero voting power on membership_module.",
+          "type": "unit"
+        },
+        "open": {
+          "description": "Anyone with gas while registration_open (legacy).",
+          "type": "unit"
+        },
+        "pre_propose": {
+          "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+          "type": "unit"
+        },
+        "vm_proof": {
+          "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+      "type": "optional",
+      "inner": 5
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[package]
+authors = [
+    "ERGORS Agent Team",
+    "Generated from ergors and ho-std packages",
+]
+edition = "2021"
+name = "ergors-proto"
+description = "Protocol buffer definitions for Ergors storage and orchestration layers"
+version     = { workspace = true }
+publish = false
+
+
+[dependencies]
+anyhow = "1.0"
+prost-build = "0.14.1"
+tonic-prost-build = { version = "0.14.1" }
+pbjson-build = "0.9.0"
+
+[lib]
+name = "ergors_proto"
+path = "src/lib.rs"

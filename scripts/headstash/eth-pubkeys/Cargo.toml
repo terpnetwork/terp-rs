@@ -1,0 +1,34 @@
+[package]
+name = "headstash-eth-pubkeys"
+description = "Parallel/batched Ethereum pubkey scrape for Headstash eligible holders"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+
+[[bin]]
+name = "headstash-eth-pubkeys"
+path = "src/main.rs"
+
+[[bin]]
+name = "gen_community_notes"
+path = "src/gen_community_notes.rs"
+
+[dependencies]
+alloy-consensus = { path = "../../../../alloy/crates/consensus", default-features = false, features = ["std"] }
+alloy-primitives = { version = "1.2.0", default-features = false, features = ["std", "serde"] }
+alloy-rpc-types-eth = { path = "../../../../alloy/crates/rpc-types-eth", default-features = false, features = ["serde"] }
+anyhow = { workspace = true }
+csv = "1.3"
+hex = { workspace = true }
+k256 = { version = "0.13", features = ["ecdsa"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+sha3 = "0.10"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+ff = { workspace = true }
+pasta_curves = { workspace = true }
+rand = { version = "0.10", features = ["std", "sys_rng", "thread_rng"] }
+rayon = "1.10"
+zk-headstash = { workspace = true, features = ["circuit", "std", "host-crypto", "multicore"] }

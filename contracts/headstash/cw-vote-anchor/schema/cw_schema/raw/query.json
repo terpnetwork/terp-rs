@@ -1,0 +1,46 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_anchor_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "get_anchor_at_height": {
+          "description": "Authoritative cast PI binding: GetAnchorAtHeight.",
+          "type": "named",
+          "properties": {
+            "height": {
+              "value": 2
+            },
+            "session_id": {
+              "value": 1
+            }
+          }
+        },
+        "get_latest": {
+          "type": "named",
+          "properties": {
+            "session_id": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

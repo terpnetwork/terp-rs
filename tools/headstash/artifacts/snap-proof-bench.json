@@ -1,0 +1,17 @@
+{
+  "dropped": "q_orchard selector and action cv/enable gates (never enabled)",
+  "floor_planner": "V1+floor-planner-v1-legacy-pdqsort",
+  "halo2": "zakura-halo2-proofs",
+  "k": 19,
+  "keygen_secs": 69.061623709,
+  "proof_bytes": 4800,
+  "prove_secs": 17.608991667,
+  "runtime": "native-release",
+  "scalar_mul": "glv-128",
+  "threads": 10,
+  "verify_secs": 1.2673809999999999,
+  "wasm_snap": {
+    "measured": false,
+    "reason": "Snap SES worker is single-threaded; host-crypto is not a wasm32 guest. initThreadPool is a no-op unless the execution environment exposes SharedArrayBuffer, which snaps-execution-environments does not."
+  }
+}

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package headstash.types.v1;
+
+import "google/protobuf/struct.proto";
+
+// HeadstashNote 
+message HeadstashNote {
+    // psi 
+    string psi = 1;
+    // epk
+    bytes epk = 2;
+    // esk
+    optional bytes esk = 3;
+    // nul_sk
+    bytes nul_sk = 4;
+    // nd
+    bytes nd = 5;
+    // fdi
+    uint64 fdi = 6;
+    // v
+    uint64 v = 7;
+    // recp
+    bytes recp = 8;
+    // m
+    bytes m  = 9;
+    // null
+    bytes nul  = 10;
+    // cm
+    bytes cm  = 11;
+}

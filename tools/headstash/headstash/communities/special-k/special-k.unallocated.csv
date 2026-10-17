@@ -1,0 +1,6 @@
+addr,amount,class,reason,community
+0x3344b512c48df2fe988c44961d6279587caabdc7,2,dead,never-sent,special-k
+0x24bb3fbba92b9697487b9ce7e216c03a7e6a38ce,1,dead,contract,special-k
+0x363deba39c26918594aa8c0319293fa50be031af,1,dead,contract,special-k
+0x412a5310fa959e68f38c72e1660e8aec46c39be4,1,dead,never-sent,special-k
+0xe0794b5654112b9ed19ba35a47cb8f88412d5e07,1,dead,contract,special-k

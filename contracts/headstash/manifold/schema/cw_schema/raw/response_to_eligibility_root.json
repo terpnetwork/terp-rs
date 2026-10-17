@@ -1,0 +1,68 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_headstash_manifold_msg_EligibilityRootRecord",
+      "description": "Manifold-side view of one additive eligibility root.",
+      "type": "struct",
+      "properties": {
+        "domain": {
+          "value": 4
+        },
+        "headstash": {
+          "value": 1
+        },
+        "label": {
+          "value": 6
+        },
+        "root": {
+          "value": 3
+        },
+        "root_id": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw_headstash_distro_DistroHashDomain",
+      "description": "Wire / JSON unit names are `poseidon_v1` / `sinsemilla_legacy` (cw_serde identifiers).\nHuman/ADR tags from [`DistroHashDomain::as_str`] are `poseidon-v1` / `sinsemilla-legacy`.\n\nNew Headstashes default to [`DistroHashDomain::PoseidonV1`].\n[`DistroHashDomain::SinsemillaLegacy`] is recovery-only for pre-Poseidon trees.",
+      "type": "enum",
+      "cases": {
+        "poseidon_v1": {
+          "description": "Poseidon over `pallas::Base` — ADR default for public inclusion.",
+          "type": "unit"
+        },
+        "sinsemilla_legacy": {
+          "description": "Orchard-family Sinsemilla — legacy recovery only; not for new drops.",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 5
+    }
+  ]
+}

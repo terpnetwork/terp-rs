@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package headstash.snp.v1;
+
+import "google/protobuf/struct.proto";
+
+// serialized note data 
+message SerializedNoteData {
+    ///  [nk,nul,nc,v,nd,fdi,recp,spent(bool)]
+    repeated bytes set = 1;
+}
+
+// claim a headstash note and broadcast claim 
+message MsgClaimHeadstashRequest {
+      // proof bytes
+      bytes proof = 1;
+      // instances:  [nk,nul,nc,v,nd,fdi,recp,spent(bool)]
+      repeated bytes instance = 2;
+      // headstash contract address
+      string hid = 3;
+}
+
+
+// response of claiming a headhstash note
+message MsgClaimHeadstashResponse {}
+
+service HeadstashSnapService {
+    // claim a headstash 
+    rpc ClaimHeadstash(MsgClaimHeadstashRequest) returns (MsgClaimHeadstashResponse);
+    // find new headstash
+    // list headstash info 
+    // perform headstash action
+}
+   
+// A transaction that appeared within a given block.
+message DownloadNullifierStateResponse {
+    // data
+    bytes data = 1;
+}
+// A transaction that appeared within a given block.
+message DownloadNullifierStateRequest {
+    // id
+  string id = 1;
+    // id
+  bytes pk = 2;
+}
+// A transaction that appeared within a given block.
+message UploadNullifierStateRequest {
+      // id of claim
+  string id = 1;
+      // data
+  bytes data = 2;
+      // sig
+  bytes sig = 3;
+ 
+}
+// A transaction that appeared within a given block.
+message UploadNullifierStateResponse {
+ 
+}
+ 

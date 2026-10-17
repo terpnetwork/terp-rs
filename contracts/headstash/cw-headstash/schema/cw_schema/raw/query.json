@@ -1,0 +1,151 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_headstash_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "bridge_asset": {
+          "description": "Internal asset registry entry.",
+          "type": "named",
+          "properties": {
+            "asset_id": {
+              "value": 7
+            }
+          }
+        },
+        "bridge_config": {
+          "description": "Bridge corridor config.",
+          "type": "named",
+          "properties": {}
+        },
+        "distro_config": {
+          "description": "Default distro hash domain + next root id.",
+          "type": "named",
+          "properties": {}
+        },
+        "eligibility_root": {
+          "description": "Single eligibility root by id.",
+          "type": "named",
+          "properties": {
+            "root_id": {
+              "value": 5
+            }
+          }
+        },
+        "eligibility_roots": {
+          "description": "List registered eligibility roots (additive set).",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "start_after": {
+              "value": 6
+            }
+          }
+        },
+        "epoch_root": {
+          "description": "Hashmerchant root stored for `headstash-pending` or `headstash-accepted`.",
+          "type": "named",
+          "properties": {
+            "algo": {
+              "value": 1
+            }
+          }
+        },
+        "external_asset_registry": {
+          "description": "External asset registry address (if configured).",
+          "type": "named",
+          "properties": {}
+        },
+        "is_bridge_minted": {
+          "description": "Whether a bridge-burn ν has already minted.",
+          "type": "named",
+          "properties": {
+            "nullifier": {
+              "value": 7
+            }
+          }
+        },
+        "is_egress_spent": {
+          "description": "Whether an egress-nf-v0 ν has already been spent (Option D burn).",
+          "type": "named",
+          "properties": {
+            "nullifier": {
+              "value": 7
+            }
+          }
+        },
+        "nullifer": {
+          "description": "Check if a nullifier exists (raw key or domain-separated `{root_id}:{nf}`).",
+          "type": "named",
+          "properties": {
+            "null": {
+              "value": 1
+            }
+          }
+        },
+        "nullifiers": {
+          "description": "Retrieve all nullifiers",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "start_after": {
+              "value": 2
+            }
+          }
+        },
+        "ownership": {
+          "description": "Query the contract's ownership information",
+          "type": "named",
+          "properties": {}
+        },
+        "reflection_tip": {
+          "description": "Current reflection tip snapshot (if set).",
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u32>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 5
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+[package]
+name = "cw-headstash"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+interface = ["dep:cw-orch"]
+# Enable only when deploying to a chain whose wasmvm exports proof_instance_verify.
+# Mirrors cw-private-dex: pulls cosmwasm-std `zk` (host import in guest wasm).
+zk-api = ["cosmwasm-std/zk"]
+
+[dependencies]
+anyhow  = { workspace = true }
+ark-bls12-381 = { workspace = true }
+ark-ec   = { workspace = true }
+ark-ff  = { workspace = true }
+ark-serialize = { workspace = true }
+blake3 = { workspace = true }
+cosmwasm-schema  = { workspace = true }
+ff = { workspace = true }
+group = { workspace = true }
+# Guest wasm: no cosmwasm-std `zk` feature (avoids env.proof_instance_verify import
+# missing on stock wasmd). Bridge mint uses pure mock_verify; claim proofs need zk-host.
+# cosmwasm_2_1 required for BLS host imports (hash_to_g2) used by WAVS PoP on instantiate.
+# Do not enable `zk` (proof_instance_verify) unless chain wasmvm exposes it.
+cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "zk"] }
+cw-orch = { workspace = true, optional = true }
+cw-ownable = { workspace = true }
+cw-storage-plus  = { workspace = true }
+# CosmWasm guest: getrandom needs `custom` (no OS RNG on wasm32-unknown-unknown).
+getrandom = { workspace = true, features = ["custom"] }
+halo2_proofs  = { workspace = true }
+hex  = { workspace = true }
+pasta_curves = { workspace = true }
+rand_core  = { workspace = true }
+# ark-ff UniformRand is rand 0.8; workspace rand is 0.10 for zakura halo2.
+rand08 = { workspace = true }
+serde  = { workspace = true }
+serde_json = { workspace = true }
+sha2  = { workspace = true }
+terp-auth  = { workspace = true }
+# Inherits workspace default-features=false (no multicore) — required for wasm32 guest.
+zk-headstash = { workspace = true }
+
+[dev-dependencies]
+cw-headstash-manifold = { workspace = true }
+cw-multi-test = { workspace = true }
+
+[[example]]
+name = "print_wavs"
+path = "examples/print_wavs.rs"
+required-features = ["interface"]

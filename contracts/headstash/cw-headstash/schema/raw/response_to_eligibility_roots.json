@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Array_of_EligibilityRootEntry",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/EligibilityRootEntry"
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "DistroHashDomain": {
+      "description": "Wire / JSON unit names are `poseidon_v1` / `sinsemilla_legacy` (cw_serde identifiers). Human/ADR tags from [`DistroHashDomain::as_str`] are `poseidon-v1` / `sinsemilla-legacy`.\n\nNew Headstashes default to [`DistroHashDomain::PoseidonV1`]. [`DistroHashDomain::SinsemillaLegacy`] is recovery-only for pre-Poseidon trees.",
+      "oneOf": [
+        {
+          "description": "Poseidon over `pallas::Base` — ADR default for public inclusion.",
+          "type": "string",
+          "enum": [
+            "poseidon_v1"
+          ]
+        },
+        {
+          "description": "Orchard-family Sinsemilla — legacy recovery only; not for new drops.",
+          "type": "string",
+          "enum": [
+            "sinsemilla_legacy"
+          ]
+        }
+      ]
+    },
+    "EligibilityRootEntry": {
+      "description": "One registered public eligibility root (one additive Headstash set).",
+      "type": "object",
+      "required": [
+        "domain",
+        "root",
+        "root_id"
+      ],
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/DistroHashDomain"
+        },
+        "label": {
+          "description": "Optional UI / suite label (e.g. `drop-0`, `community-batch-2`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "root": {
+          "description": "32-byte distro tree root (Poseidon-v1 or legacy encoding).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "root_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

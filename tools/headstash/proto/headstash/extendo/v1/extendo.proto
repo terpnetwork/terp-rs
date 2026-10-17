@@ -1,0 +1,9 @@
+
+syntax = "proto3";
+package headstash.extendo.v1;
+
+// HeadstashVoteExtensions defines the vote extension structure for nullifiers.
+message VoteExtension {
+  // Headstashes defines a map of id(HeadstashAddr) -> new nullifiers . i.e. 1 -> vec![0x123..] (bytes).
+  map<uint64, bytes> headstashes = 1;
+}

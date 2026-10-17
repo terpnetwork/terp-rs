@@ -1,0 +1,42 @@
+[package]
+name = "cw-norick"
+version = "0.2.0"
+authors = ["A Hardnett"]
+edition = "2024"
+description = "toy contract demonstrating building contract that utilizes its internal api for zk proof verification"
+
+[package.metadata.docs.rs]
+targets = ["wasm32-unknown-unknown"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# use library feature to disable all instantiate/execute/query exports
+default = []
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-orch = { workspace = true, optional = true }
+ff  = { workspace = true }
+lol_alloc  = { workspace = true }
+pasta_curves  = { workspace = true }
+prost = { workspace = true, features = ["std"] }
+rand_core  = { workspace = true }
+thiserror  = { workspace = true }
+
+[dev-dependencies]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true

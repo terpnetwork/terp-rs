@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package headstash.actions.v1;
+
+import "google/protobuf/struct.proto";
+
+// Create a distribution headstash tree for a given distribution param
+message MsgCreateHeadstashTree {}
+// Create a Headstash instance
+message MsgCreateHeadstash {
+      // HeadstashInstanceParams bytes
+      bytes params = 1;
+}
+
+// response of creating the tree 
+message MsgCreateHeadstashTreeResponse {
+      // genesis tree root
+      string root =  1;
+      // total leafs in genesis tree
+      uint64 total_leafs =  2;
+      // total eligible members
+      uint64 total_elig =  3;
+      // total byte size of genesis tree param file
+      uint64 total_size =  4;
+}
+
+service HeadstashService {
+      // client access to storage layer dedicated for headstash keys
+      rpc ManageHeadstashKeyFromStorage(MsgManageHeadstashKeyFromStorage) returns (MsgManageHeadstashKeyFromStorageResponse);
+      // retrieve token holder distribution
+      rpc CreateHeadstashNotes(MsgCreateHeadstashNotes) returns (MsgCreateHeadstashNoteResponse);
+      // Creates a new headstash instance
+      rpc CreateNewHeadstash(MsgCreateHeadstash) returns (MsgCreateHeadstashResponse);
+      // creates a note nullifier given private inputs
+      rpc PrepareNoteNullifier(MsgPrepareNoteNullifier) returns (MsgPrepareNoteNullifierResponse);
+      // generate headstash instance tree
+      rpc CreateHeadstashTree(MsgCreateHeadstashTree) returns (MsgCreateHeadstashTreeResponse);
+      // determine piecewise distribution
+      // prepare headstash config
+}
+
+service HeadstashActionsService {
+      // find new headstash
+      // list headstash info 
+      // perform headstash action
+}
+
+// request for client to access a circuit verifying key from its storage layer
+message MsgManageHeadstashKeyFromStorage {
+// technique
+ oneof tech  {
+      // sets key, or removes key via id if empty. 
+      // keys are mapped as values to prefixes of blake3 hashes of the hex encoded binary
+      SetHeadstashKey set_headstash_pk = 1;
+      // retrieves key via prefix (blake3 hash of pk)
+      GetHeadstashKey get_headstash_pk = 2;     
+ };
+}
+
+// set a headstash instance ProvingKey bytes
+message SetHeadstashKey {
+      // headstash instance ProvingKey bytes
+      bytes data =  1;
+};
+
+// get a headstash instance ProvingKey bytes given its storage key
+message GetHeadstashKey {
+      // store key for headstash circuit
+      string key =  1;
+};
+
+
+// response for client to access a circuit verifying key from its storage layer
+message MsgManageHeadstashKeyFromStorageResponse {
+      // store key for headstash circuit
+      string key =  1;
+}
+
+
+// Create a note nullifier for a given note input
+message MsgPrepareNoteNullifier {
+      // note-denom
+      string nd = 1;
+      // value
+      uint64 v = 2;
+      // fixed-denom-index
+      uint64 fdi = 3;
+      // recipient
+      string recp = 4;
+      // epk
+      bytes epk = 5;
+      // epk
+      bytes esk = 6;
+      // headstash sinsemilla root
+      bytes sinroot = 7;
+}
+
+// Return the resonse for a spefici note input
+message MsgPrepareNoteNullifierResponse {
+      // all instance values required for proof creation
+     repeated bytes instances = 1;
+}
+
+// All relevant information created during successful headstash creation
+message MsgCreateHeadstashResponse {}
+
+// Create a list of the notes for a given address and headstash instance
+message MsgCreateHeadstashNotes {}
+
+// output of note instance location
+message MsgCreateHeadstashNoteResponse {}

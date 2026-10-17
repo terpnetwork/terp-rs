@@ -1,0 +1,77 @@
+[package]
+name = "zk-headstash"
+version = { workspace = true }
+edition = "2021"
+
+[features]
+# Host defaults keep prove path; CosmWasm guest (cw-headstash) uses workspace dep with
+# default-features=false + features=["circuit","std"] only — no halo2-base/secp C-sys.
+default = ["circuit", "multicore", "std", "interface", "host-crypto"]
+circuit = ["dep:halo2_gadgets", "dep:halo2_proofs", "std"]
+interface = ["std", "circuit", "dep:cw-orch"]
+# Host prove/verify: rayon via halo2_proofs::multicore::TryFoldAndReduce.
+# Guest wasm (cw-headstash) must leave this off.
+multicore = ["halo2_proofs?/multicore", "dep:rayon"]
+std = ["core3/std", "group/wnaf-memuse", "reddsa/std"]
+# Host-only: axiom base + libsecp C (breaks wasm32 guest / optimizer).
+host-crypto = ["dep:halo2-base", "dep:secp256k1"]
+rpc = []
+test-dependencies = []
+dev-graph = []
+
+[dependencies]
+aes = { workspace = true }
+base64  = { workspace = true }
+bitvec = { workspace = true, default-features = false }
+blake2b_simd = { workspace = true, default-features = false }
+blake3  = { workspace = true }
+core3 = { workspace = true, default-features = false, features = ["alloc"] }
+# No `zk` feature — that injects env.proof_instance_verify host import, which stock
+# wasmd / many Terp images do not expose. Guest BridgeMintNote uses pure mock_verify.
+cosmwasm-std = { workspace = true }
+cw-orch  = { workspace = true, optional = true, features = ["zk", "daemon"] }
+ff  = { workspace = true }
+fpe = { workspace = true, default-features = false, features = ["alloc"] }
+getset = { workspace = true }
+group = { workspace = true }
+halo2-base  = { workspace = true, optional = true }
+halo2_gadgets  = { workspace = true, optional = true }
+halo2_proofs  = { workspace = true, optional = true, features = ["floor-planner-v1-legacy-pdqsort"] }
+headstash-randomness  = { workspace = true }
+hex = { workspace = true }
+incrementalmerkletree = "0.8.1"
+lazy_static  = { workspace = true }
+memuse = { workspace = true, default-features = false }
+nonempty = { workspace = true, default-features = false }
+num-bigint  = { workspace = true }
+num-traits = { workspace = true }
+pasta_curves  = { workspace = true }
+proptest = { workspace = true, optional = true }
+prost = { workspace = true }
+rand = { workspace = true }
+rand_core = { workspace = true }
+rayon  = { workspace = true, optional = true }
+reddsa = { workspace = true, default-features = false }
+secp256k1  = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] } 
+serde_json  = { workspace = true }
+sinsemilla = { workspace = true }
+subtle = { workspace = true, default-features = false }
+tracing = { workspace = true, default-features = false }
+visibility = { workspace = true }
+zcash_note_encryption = "0.4"
+zcash_spec = { workspace = true }
+zip32 = { workspace = true, default-features = false }
+zk-cosmwasm = { workspace = true }
+
+[dev-dependencies]
+halo2_gadgets = { workspace = true, features = ["test-dependencies"] }
+hex  = { workspace = true }
+incrementalmerkletree  = { workspace = true }
+proptest  = { workspace = true }
+shardtree = { workspace = true }
+zcash_note_encryption  = { workspace = true }
+
+[[example]]
+name = "curate_keys"
+required-features = ["interface", "host-crypto"]

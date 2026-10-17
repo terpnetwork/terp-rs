@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Check if a nullifier exists (raw key or domain-separated `{root_id}:{nf}`).",
+      "type": "object",
+      "required": [
+        "nullifer"
+      ],
+      "properties": {
+        "nullifer": {
+          "type": "object",
+          "required": [
+            "null"
+          ],
+          "properties": {
+            "null": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Retrieve all nullifiers",
+      "type": "object",
+      "required": [
+        "nullifiers"
+      ],
+      "properties": {
+        "nullifiers": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Default distro hash domain + next root id.",
+      "type": "object",
+      "required": [
+        "distro_config"
+      ],
+      "properties": {
+        "distro_config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Single eligibility root by id.",
+      "type": "object",
+      "required": [
+        "eligibility_root"
+      ],
+      "properties": {
+        "eligibility_root": {
+          "type": "object",
+          "required": [
+            "root_id"
+          ],
+          "properties": {
+            "root_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "List registered eligibility roots (additive set).",
+      "type": "object",
+      "required": [
+        "eligibility_roots"
+      ],
+      "properties": {
+        "eligibility_roots": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Current reflection tip snapshot (if set).",
+      "type": "object",
+      "required": [
+        "reflection_tip"
+      ],
+      "properties": {
+        "reflection_tip": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Whether a bridge-burn ν has already minted.",
+      "type": "object",
+      "required": [
+        "is_bridge_minted"
+      ],
+      "properties": {
+        "is_bridge_minted": {
+          "type": "object",
+          "required": [
+            "nullifier"
+          ],
+          "properties": {
+            "nullifier": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Whether an egress-nf-v0 ν has already been spent (Option D burn).",
+      "type": "object",
+      "required": [
+        "is_egress_spent"
+      ],
+      "properties": {
+        "is_egress_spent": {
+          "type": "object",
+          "required": [
+            "nullifier"
+          ],
+          "properties": {
+            "nullifier": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Internal asset registry entry.",
+      "type": "object",
+      "required": [
+        "bridge_asset"
+      ],
+      "properties": {
+        "bridge_asset": {
+          "type": "object",
+          "required": [
+            "asset_id"
+          ],
+          "properties": {
+            "asset_id": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Bridge corridor config.",
+      "type": "object",
+      "required": [
+        "bridge_config"
+      ],
+      "properties": {
+        "bridge_config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "External asset registry address (if configured).",
+      "type": "object",
+      "required": [
+        "external_asset_registry"
+      ],
+      "properties": {
+        "external_asset_registry": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Hashmerchant root stored for `headstash-pending` or `headstash-accepted`.",
+      "type": "object",
+      "required": [
+        "epoch_root"
+      ],
+      "properties": {
+        "epoch_root": {
+          "type": "object",
+          "required": [
+            "algo"
+          ],
+          "properties": {
+            "algo": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Query the contract's ownership information",
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

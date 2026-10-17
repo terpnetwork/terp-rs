@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RawSpentKeyResponse",
+  "type": "object",
+  "required": [
+    "domain",
+    "map_namespace",
+    "nullifier",
+    "session_id"
+  ],
+  "properties": {
+    "domain": {
+      "type": "string"
+    },
+    "map_namespace": {
+      "description": "Full storage key as used by cw-storage-plus Map under prefix `spent` for debugging; normative layout is also in `raw_keys` module / README.",
+      "type": "string"
+    },
+    "nullifier": {
+      "$ref": "#/definitions/Binary"
+    },
+    "session_id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

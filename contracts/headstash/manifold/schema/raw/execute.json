@@ -1,0 +1,626 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_ownership"
+      ],
+      "properties": {
+        "update_ownership": {
+          "$ref": "#/definitions/Action"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "create_headstash"
+      ],
+      "properties": {
+        "create_headstash": {
+          "type": "object",
+          "required": [
+            "instantiate_msg"
+          ],
+          "properties": {
+            "funding": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/FundingInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "instantiate_msg": {
+              "$ref": "#/definitions/InstantiateMsg"
+            },
+            "label": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Mirror an additive eligibility root into the manifold registry after (or while) registering it on the Headstash contract.\n\nIf `forward_to_headstash` is true, emits a Wasm execute to `RegisterEligibilityRoot` on the Headstash. Owner-only.",
+      "type": "object",
+      "required": [
+        "register_eligibility_root"
+      ],
+      "properties": {
+        "register_eligibility_root": {
+          "type": "object",
+          "required": [
+            "headstash",
+            "root"
+          ],
+          "properties": {
+            "domain": {
+              "description": "Defaults to poseidon-v1 when omitted.",
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/DistroHashDomain"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "forward_to_headstash": {
+              "description": "When true (default), also call the Headstash contract.",
+              "default": true,
+              "type": "boolean"
+            },
+            "headstash": {
+              "type": "string"
+            },
+            "label": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "root": {
+              "$ref": "#/definitions/Binary"
+            },
+            "root_id": {
+              "description": "If known (e.g. after Headstash reply), pin the root_id; otherwise manifold assigns from its own counter per headstash only when not forwarding. Prefer forwarding so Headstash is source of truth.",
+              "default": null,
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Action": {
+      "description": "Actions that can be taken to alter the contract's ownership",
+      "oneOf": [
+        {
+          "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+          "type": "object",
+          "required": [
+            "transfer_ownership"
+          ],
+          "properties": {
+            "transfer_ownership": {
+              "type": "object",
+              "required": [
+                "new_owner"
+              ],
+              "properties": {
+                "expiry": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Expiration"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "new_owner": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+          "type": "string",
+          "enum": [
+            "accept_ownership"
+          ]
+        },
+        {
+          "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+          "type": "string",
+          "enum": [
+            "renounce_ownership"
+          ]
+        }
+      ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "DenomUnit": {
+      "type": "object",
+      "required": [
+        "aliases",
+        "denom",
+        "exponent"
+      ],
+      "properties": {
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "denom": {
+          "type": "string"
+        },
+        "exponent": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "DistroHashDomain": {
+      "description": "Wire / JSON unit names are `poseidon_v1` / `sinsemilla_legacy` (cw_serde identifiers). Human/ADR tags from [`DistroHashDomain::as_str`] are `poseidon-v1` / `sinsemilla-legacy`.\n\nNew Headstashes default to [`DistroHashDomain::PoseidonV1`]. [`DistroHashDomain::SinsemillaLegacy`] is recovery-only for pre-Poseidon trees.",
+      "oneOf": [
+        {
+          "description": "Poseidon over `pallas::Base` — ADR default for public inclusion.",
+          "type": "string",
+          "enum": [
+            "poseidon_v1"
+          ]
+        },
+        {
+          "description": "Orchard-family Sinsemilla — legacy recovery only; not for new drops.",
+          "type": "string",
+          "enum": [
+            "sinsemilla_legacy"
+          ]
+        }
+      ]
+    },
+    "Expiration": {
+      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+      "oneOf": [
+        {
+          "description": "AtHeight will expire when `env.block.height` >= height",
+          "type": "object",
+          "required": [
+            "at_height"
+          ],
+          "properties": {
+            "at_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "AtTime will expire when `env.block.time` >= time",
+          "type": "object",
+          "required": [
+            "at_time"
+          ],
+          "properties": {
+            "at_time": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Never will never expire. Used to express the empty variant",
+          "type": "object",
+          "required": [
+            "never"
+          ],
+          "properties": {
+            "never": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FundingInfo": {
+      "type": "object",
+      "required": [
+        "amount",
+        "token"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "token": {
+          "$ref": "#/definitions/FundingToken"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FundingToken": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "object",
+              "required": [
+                "denom"
+              ],
+              "properties": {
+                "denom": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "object",
+              "required": [
+                "contract_addr"
+              ],
+              "properties": {
+                "contract_addr": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "HeadstashTokenObject": {
+      "type": "object",
+      "required": [
+        "proof",
+        "raw"
+      ],
+      "properties": {
+        "proof": {
+          "$ref": "#/definitions/Binary"
+        },
+        "raw": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InitialMint": {
+      "type": "object",
+      "required": [
+        "amount",
+        "to_address"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "to_address": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstantiateMsg": {
+      "type": "object",
+      "required": [
+        "genesis_root",
+        "token_strategy",
+        "wavs"
+      ],
+      "properties": {
+        "circuit_id": {
+          "description": "Stored circuit id after zkvm `store-circuit` / `upload_circuit` (default 0 until set).",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "distro_hash_domain": {
+          "description": "Public inclusion hash domain. Defaults to `poseidon-v1` for new Headstashes. Use `sinsemilla-legacy` only for recovery of pre-Poseidon trees.",
+          "default": "poseidon_v1",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DistroHashDomain"
+            }
+          ]
+        },
+        "genesis_label": {
+          "description": "Optional label for the genesis eligibility set.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "genesis_root": {
+          "description": "Headstash genesis merkle tree root (32 bytes). Registered as `root_id = 0`. Product A: depth-32 Poseidon-v1 path root (not shallow suite root).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "token_strategy": {
+          "description": "Token strategies for the tokens distributed to headstash users",
+          "allOf": [
+            {
+              "$ref": "#/definitions/TokenStrategy"
+            }
+          ]
+        },
+        "wavs": {
+          "description": "Aggregated list of keys",
+          "allOf": [
+            {
+              "$ref": "#/definitions/WavsProofOfOwnership"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Metadata": {
+      "type": "object",
+      "required": [
+        "denom_units"
+      ],
+      "properties": {
+        "base": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "denom_units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DenomUnit"
+          }
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "display": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "NewTokenConfig": {
+      "type": "object",
+      "required": [
+        "metadata",
+        "minters",
+        "subdenom"
+      ],
+      "properties": {
+        "initial_mint": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/InitialMint"
+          }
+        },
+        "manager": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metadata": {
+          "$ref": "#/definitions/Metadata"
+        },
+        "minters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subdenom": {
+          "$ref": "#/definitions/HeadstashTokenObject"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Timestamp": {
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint64"
+        }
+      ]
+    },
+    "TokenStrategy": {
+      "oneOf": [
+        {
+          "description": "Create new token via TokenFactory",
+          "type": "object",
+          "required": [
+            "new_fungible"
+          ],
+          "properties": {
+            "new_fungible": {
+              "$ref": "#/definitions/NewTokenConfig"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Use existing denom (must pre-fund contract)",
+          "type": "object",
+          "required": [
+            "existing_fungible"
+          ],
+          "properties": {
+            "existing_fungible": {
+              "$ref": "#/definitions/HeadstashTokenObject"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
+    },
+    "WavsAuthMetadata": {
+      "description": "[WavsAuthMetadata] is the object hashed and signed by all operator keys during proof of ownership & key rotation requests.",
+      "type": "object",
+      "required": [
+        "aggregate_key",
+        "nonce",
+        "threshold",
+        "total_operators"
+      ],
+      "properties": {
+        "aggregate_key": {
+          "type": "string"
+        },
+        "nonce": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "threshold": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0.0
+        },
+        "total_operators": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "WavsOpAuth": {
+      "type": "object",
+      "required": [
+        "key",
+        "poo"
+      ],
+      "properties": {
+        "key": {
+          "description": "<contract-addr>-<pubkey>>, where pubkey is the `bls12_381`,and contract-addr is this contract-addr",
+          "type": "string"
+        },
+        "poo": {
+          "description": "proof of ownership signature of `H(WavsAuthMetadata)` from the public key",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WavsProofOfOwnership": {
+      "type": "object",
+      "required": [
+        "msg",
+        "poos"
+      ],
+      "properties": {
+        "msg": {
+          "description": "msg that is used as dst for signing and hashing operators for offchain validation",
+          "allOf": [
+            {
+              "$ref": "#/definitions/WavsAuthMetadata"
+            }
+          ]
+        },
+        "poos": {
+          "description": "list of aggregated keys (used for proof of ownership)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WavsOpAuth"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

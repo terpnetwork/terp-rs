@@ -1,0 +1,25 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_anchor_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "description": "Authorized root poster (M1 session admin). Optional open mode if None (tests only).",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

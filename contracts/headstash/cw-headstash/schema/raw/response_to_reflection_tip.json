@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nullable_ReflectionSnapshot",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/ReflectionSnapshot"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "ReflectionSnapshot": {
+      "type": "object",
+      "required": [
+        "burn_root",
+        "confirmations_k",
+        "frozen",
+        "max_lc_lag",
+        "pool_root",
+        "source_height",
+        "spent_root",
+        "tip_height"
+      ],
+      "properties": {
+        "burn_root": {
+          "$ref": "#/definitions/Binary"
+        },
+        "confirmations_k": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "frozen": {
+          "type": "boolean"
+        },
+        "max_lc_lag": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "pool_root": {
+          "$ref": "#/definitions/Binary"
+        },
+        "source_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "spent_root": {
+          "$ref": "#/definitions/Binary"
+        },
+        "tip_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

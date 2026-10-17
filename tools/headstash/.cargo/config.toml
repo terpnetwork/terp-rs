@@ -1,0 +1,14 @@
+[alias]
+schema = "run --example schema"
+wasm = "build --release --target wasm32-unknown-unknown"
+wasm-debug = "build --target wasm32-unknown-unknown"
+unit-test = "test --lib"
+
+# CosmWasm host imports stay undefined at link time.
+# Disable bulk-memory / sign-ext so older wasmd (no bulk memory) accepts the module.
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C", "link-arg=--allow-undefined",
+  "-C", "target-feature=-bulk-memory,-sign-ext,-reference-types",
+  "--cfg", "getrandom_backend=\"unsupported\"",
+]

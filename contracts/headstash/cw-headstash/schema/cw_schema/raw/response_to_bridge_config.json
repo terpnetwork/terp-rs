@@ -1,0 +1,64 @@
+{
+  "type": "v1",
+  "root": 6,
+  "definitions": [
+    {
+      "name": "cw_headstash_bridge_BridgeCfg",
+      "type": "struct",
+      "properties": {
+        "confirmations_k": {
+          "value": 2
+        },
+        "dest_domain": {
+          "description": "Terp destination domain / chain bind (32 bytes).",
+          "value": 1
+        },
+        "egress_zkid": {
+          "defaulting": true,
+          "description": "Circuit id for Option D egress `proof_instance_verify` (production path).\nLab / mock_verify ignores this. Default `None` keeps existing BridgeCfg JSON valid.",
+          "value": 5
+        },
+        "lc_client_id": {
+          "description": "LC client id string (reflection corridor).",
+          "value": 3
+        },
+        "max_lc_lag": {
+          "value": 2
+        },
+        "mock_verify": {
+          "description": "When true, proof verify is mocked (always-ok membership under claim flags).\nProduction must set false and wire real verify.",
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "core::option::Option<cw_headstash::bridge::BridgeCfg>",
+      "type": "optional",
+      "inner": 0
+    }
+  ]
+}

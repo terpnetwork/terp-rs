@@ -1,0 +1,10 @@
+[package]
+name = "headstash-wire"
+description = "Headstash batch bytes, the sidecar signature, and the MetaMask personal_sign recovery the sidecar checks beside a claim."
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+k256 = { version = "=0.13.4", default-features = false, features = ["ecdsa"] }
+thiserror = "=1.0.69"

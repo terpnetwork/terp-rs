@@ -1,0 +1,59 @@
+{
+  "contract_name": "cw-nullifier-gate",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "type": "string",
+    "enum": []
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "description": "Gate holds no spent SSOT — this always documents policy.",
+        "type": "object",
+        "required": [
+          "gate_info"
+        ],
+        "properties": {
+          "gate_info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "gate_info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GateInfoResponse",
+      "type": "object",
+      "required": [
+        "note",
+        "owns_spent_map"
+      ],
+      "properties": {
+        "note": {
+          "type": "string"
+        },
+        "owns_spent_map": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

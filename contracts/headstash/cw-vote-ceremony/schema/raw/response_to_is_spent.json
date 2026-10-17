@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsSpentResponse",
+  "type": "object",
+  "required": [
+    "spent"
+  ],
+  "properties": {
+    "spent": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

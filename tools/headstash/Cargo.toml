@@ -1,0 +1,90 @@
+[workspace]
+resolver = "2"
+members = [
+    # Circuit crates were grouped under circuits/ when the set was extended.
+    "circuits/halo2",        # zk-headstash
+    "circuits/claim-flock",  # headstash-claim
+    "wire",                  # headstash-wire
+    # Contracts live in the terp-rs root workspace (contracts/headstash).
+    # test-press stays out: it pulls cw-private-dex git cw-orch whose cw-minus pin has no cosmwasm-schema.
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+aes = "0.8"
+
+# ── Utility ───────────────────────────────────────────────────────────────
+anyhow       = "1"
+ark-bls12-381 = "0.5.0"
+ark-ec = "0.5.0"
+ark-ff = "0.5.0"
+
+ark-serialize = "0.5.0"
+async-trait = "0.1.89"
+base64     = "0.22"
+bitvec       = "1"
+blake2b_simd = "1"
+blake3       = "1"
+core3 = "0.1"
+cosmwasm-schema = { path = "../../../cosmwasm/packages/schema" }
+# Guest wasm: do not enable `zk` here (injects env.proof_instance_verify). Host packages
+# that need zk APIs re-enable via package-level features.
+cosmwasm-std = { path = "../../../cosmwasm/packages/std" }
+cw-headstash          = { path = "../../contracts/headstash/cw-headstash" }
+cw-headstash-manifold = { path = "../../contracts/headstash/manifold" }
+cw-private-dex        = { path = "../../contracts/revenue/private-dex" }
+cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../cw-multi-test-fork" }
+cw-norick = { path = "../../contracts/headstash/no-rick", features = ["interface"] }
+cw-orch = { path = "../../../cw-orchestrator/cw-orch" }
+cw-ownable = { path = "../../../cw-plus-plus/packages/ownable" }
+cw-storage-plus = { path = "../../../cw-storage-plus" }
+ff           = "0.14"
+fpe          = "0.6"
+getset      = "0.1"
+group        = "0.14"
+halo2-base    = { path = "../../../zcash/halo2-lib/halo2-base" }
+halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../zakura-common/crates/halo2_gadgets", default-features = false }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"] }
+headstash-randomness = { path = "../../crates/randomness" }
+hex        = "0.4"
+ict-rs = { path = "../../../ict-rs/ict-rs" }
+incrementalmerkletree = { version = "0.8.1", features = ["test-dependencies"] }
+lazy_static = "1"
+lol_alloc = "0.4.1"
+memuse      = "0.2"
+nonempty    = "0.10"
+num-bigint   = "0.4"
+num-traits   = "0.2"
+pasta_curves = { package = "zakura-pasta-curves", path = "../../../zakura-common/crates/pasta_curves", default-features = false, features = ["default"] }
+proptest    = ">=1.0.0, <1.7.0"
+prost       = "0.14.3"
+rand       = { version = "0.10", features = ["std", "sys_rng", "thread_rng"] }
+rand_core = "0.10"
+rayon      = "1"
+reddsa      = { package = "zakura-reddsa", path = "../../../zakura-common/crates/reddsa", default-features = false, features = ["std"] }
+schemars  = "0.8.22"
+secp256k1    = "0.31"
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2        = "0.10"
+shardtree = "0.6"
+sinsemilla  = { package = "zakura-sinsemilla", path = "../../../zakura-common/crates/sinsemilla", default-features = false }
+subtle       = "2"
+terp-account = { path = "../../../terp-account-billboards/packages/terp-account" }
+terp-auth    = { path = "../../../terp-account-billboards/packages/terp-auth" }
+thiserror = { version = "2.0.16" }
+tracing     = "0.1"
+visibility  = "0.1"
+zcash_note_encryption = { version = "0.4", features = ["pre-zip-212"] }
+zcash_spec  = "0.2"
+zip32       = "0.2"
+zk-cosmwasm = { path = "../../../cosmwasm/packages/zk" }
+# default-features off so wasm guests (cw-headstash) can avoid multicore/rayon.
+# Host packages (test-press, circuit bins) re-enable multicore/interface as needed.
+zk-headstash = { path = "circuits/halo2", default-features = false, features = ["circuit", "std"] }
+zk-test-press = { path = "test-press" }
+
+# Halo2 stack is zakura-common (path). Do not patch permissionlessweb/halo2 here.

@@ -1,0 +1,112 @@
+[package]
+name = "zk-test-press"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["interface","zk","l0-seams"]
+library = []
+# Enables TerpVmSuite implementations for each test circuit.
+# Requires native (non-wasm) target — pulls in ict-rs (tokio, bollard, etc.).
+interface = [
+    "dep:ict-rs",
+    "dep:cw-headstash",
+    "dep:cw-headstash-manifold",
+    "cw-private-dex/interface",
+    "dep:cw-orch",
+    "dep:cw-norick",
+]
+zk = ["cosmwasm-std/zk", "cw-orch/zk",]
+# Optional cross-crate decode of NoteOutSketch → SeamNoteOutV0 (compose L0)
+# + note encrypt / persist plan.
+l0-seams = []
+# Live HTTP PUT/GET against hash-market notes_base.
+note-http = ["l0-seams", "terp-seams/http"]
+# L3 Daemon path: ict-rs Docker Terp + ict-rs-cw-orch Daemon + BridgeMintNote.
+# Required by `corridor_ict_funded` binary / `just demo-corridor-ict`.
+ict-daemon = [
+    "interface",
+    "dep:ict-rs-cw-orch",
+    "dep:tokio",
+    "ict-rs/docker",
+    "ict-rs/testing",
+]
+
+[[bin]]
+name = "corridor_ict_funded"
+path = "src/bin/corridor_ict_funded.rs"
+required-features = ["ict-daemon"]
+
+# No-Rick circuit + contract → Terp public testnet (120u-1) or CHAIN=local
+[[bin]]
+name = "deploy_norick_testnet"
+path = "src/bin/deploy_norick_testnet.rs"
+required-features = ["interface", "zk"]
+
+# Private DEX + tokenfactory seed denoms → testnet (lab mock_verify settle)
+[[bin]]
+name = "deploy_private_dex_testnet"
+path = "src/bin/deploy_private_dex_testnet.rs"
+required-features = ["interface"]
+
+
+[dependencies]
+async-trait = { workspace = true }
+base64  = { workspace = true }
+blake3  = { workspace = true }
+# Unified L0 seams (dex + bridge + corridor + compose).
+terp-seams = { path = "../../../crates/terp-seams", features = ["dex"] }
+# Lab t-of-n multi-sig (same digests as hash-market ThresholdCommitteeCustody)
+threshold_committee = { path = "../../../crates/threshold_committee" }
+# ZF FROST lab (Object A) — preferred product custody
+frost_escrow = { path = "../../../crates/frost_escrow" }
+# Corridor L0 also lives in terp_seams::corridor (harness may still use local DepositIntentV0).
+sha2 = { workspace = true }
+corez = "0.1.1"
+cosmwasm-std  = { workspace = true }
+cw-headstash = { workspace = true, optional = true, features = ["interface", "library", "zk-api"] }
+cw-headstash-manifold = { workspace = true, optional = true, features = ["interface"] }
+# Always: SwapStatementPublic map + lab handoff types (G3). interface feature enables cw-orch.
+cw-private-dex = { workspace = true }
+cw-norick = { workspace = true, optional = true, features = ["interface"] }
+cw-orch  = { workspace = true, optional = true, features = ["daemon"] }
+# Tokenfactory seed for private-dex demo (MsgCreateDenom / MsgMint)
+osmosis-std = { path = "../../../../osmosis-rust/packages/osmosis-std" }
+prost = { workspace = true }
+prost-types = "0.14"
+env_logger = "0.11.10"
+#cw-orch-interchain  = { workspace = true, optional = true, features = ["daemon"] }
+ff   = { workspace = true }
+group.workspace = true
+halo2-base  = { workspace = true }
+halo2_gadgets = { workspace = true }
+halo2_proofs  = { workspace = true, features = ["multicore"] }
+headstash-randomness  = { workspace = true }
+hex  = { workspace = true }
+ict-rs = { workspace = true, optional = true, features = ["terp"] }
+ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch", optional = true }
+tokio = { version = "1", features = ["full"], optional = true }
+pasta_curves  = { workspace = true }
+rand = { workspace = true }
+rand_core = { workspace = true }
+rustls = "0.23.41"
+schemars   = { workspace = true }
+secp256k1  = { workspace = true }
+serde  = { workspace = true }
+serde_json  = { workspace = true }
+sinsemilla  = { workspace = true }
+thiserror = { workspace = true }
+tracing-subscriber = "0.3.23"
+zk-cosmwasm  = { workspace = true }
+# Host prove path: re-enable host-crypto + multicore (guest uses workspace defaults only).
+zk-headstash = { workspace = true, features = ["host-crypto", "interface", "multicore"] }
+
+[[test]]
+name = "claim_clearnet"
+path = "tests/claim_clearnet.rs"
+required-features = ["interface", "zk"]
+
+[dev-dependencies]

@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CeremonyResponse",
+  "type": "object",
+  "required": [
+    "ceremony"
+  ],
+  "properties": {
+    "ceremony": {
+      "$ref": "#/definitions/CeremonyInfo"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "CeremonyInfo": {
+      "type": "object",
+      "required": [
+        "domain",
+        "registration_open",
+        "session_id",
+        "status"
+      ],
+      "properties": {
+        "anchor_policy": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "clerk": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "domain": {
+          "type": "string"
+        },
+        "membership_module": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registration_gate": {
+          "default": "open",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RegistrationGate"
+            }
+          ]
+        },
+        "registration_open": {
+          "type": "boolean"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/CeremonyStatus"
+        },
+        "vm_verifier": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "CeremonyStatus": {
+      "description": "Ceremony lifecycle status (string-stable for raw-query consumers).",
+      "type": "string",
+      "enum": [
+        "active",
+        "closed"
+      ]
+    },
+    "RegistrationGate": {
+      "description": "How Register is gated for this session (configurable product policy).",
+      "oneOf": [
+        {
+          "description": "Anyone with gas while registration_open (legacy).",
+          "type": "string",
+          "enum": [
+            "open"
+          ]
+        },
+        {
+          "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+          "type": "string",
+          "enum": [
+            "clerk_attested"
+          ]
+        },
+        {
+          "description": "Register requires non-zero voting power on membership_module.",
+          "type": "string",
+          "enum": [
+            "dao_member"
+          ]
+        },
+        {
+          "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+          "type": "string",
+          "enum": [
+            "pre_propose"
+          ]
+        },
+        {
+          "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+          "type": "string",
+          "enum": [
+            "vm_proof"
+          ]
+        }
+      ]
+    }
+  }
+}

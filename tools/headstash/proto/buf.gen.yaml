@@ -1,0 +1,9 @@
+version: v1
+plugins:
+  - plugin: buf.build/community/neoeinstein-prost:v0.4.0
+    out: src
+    opt:
+      - extern_path=.google.protobuf.Timestamp=crate::shim::Timestamp
+      - extern_path=.google.protobuf.Duration=crate::shim::Duration
+      - extern_path=.google.protobuf.Any=crate::shim::Any
+      - extern_path=.google.protobuf.Value=prost_types::Value

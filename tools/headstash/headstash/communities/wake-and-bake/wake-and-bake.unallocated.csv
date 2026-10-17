@@ -1,0 +1,12 @@
+addr,amount,class,reason,community
+0x43cbefc7b3e000dc7b01c958b26dabf9d3b67198,3,dead,contract,wake-and-bake
+0x48a19c6b158491325e84c8837ed8ba95a0403c13,2,dead,contract,wake-and-bake
+0xb7a6c53fcb176637abc9a549d0410fa584330637,1,dead,contract,wake-and-bake
+0x828018a9ebc5eef467c56495e607f36d683f7241,1,dead,contract,wake-and-bake
+0x84e26060dda3e400c43799268b14f0aec64ca607,1,dead,never-sent,wake-and-bake
+0xfbe986a7a771ba74fb302465d9c80192f4a26c71,1,dead,contract,wake-and-bake
+0xf9ed8bc441a1b76209f1626d35efdb5d29f4a50b,1,dead,never-sent,wake-and-bake
+0x0fc10c96a6bdc43969db74cd8e788033748da0b9,1,dead,contract,wake-and-bake
+0xcfa91e557b07a81d0244cf902e27934b1a9bde74,1,dead,contract,wake-and-bake
+0x696d5ff51f06bdf861e31b024cf18270188e5d25,1,dead,never-sent,wake-and-bake
+0x96bd8beab69247223c5a79a83b146562c140f3dc,1,dead,never-sent,wake-and-bake
