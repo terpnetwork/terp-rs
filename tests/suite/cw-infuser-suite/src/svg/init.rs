@@ -120,16 +120,14 @@ impl CwSvgSuite<MockBech32> {
             name: "Test SVG Collection".to_string(),
             symbol: "TSVG".to_string(),
             collection_info_extension: SvgCollectionMetadata {
-                svg_template: TEST_SVG_TEMPLATE.to_string(),
-                variables: test_variables(),
                 total: 100,
                 seed: test_seed(),
                 mint_start_time: None,
                 mint_end_time: None,
                 price_tiers: Vec::new(),
                 whitelist: None,
-                template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
                 require_auth: false,
+                packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
             },
             minter: None,
             creator: Some(admin.to_string()),
@@ -159,16 +157,14 @@ impl CwSvgSuite<MockBech32> {
             name: "Delayed SVG Collection".to_string(),
             symbol: "DSVG".to_string(),
             collection_info_extension: SvgCollectionMetadata {
-                svg_template: TEST_SVG_TEMPLATE.to_string(),
-                variables: test_variables(),
                 total: 100,
                 seed: test_seed(),
                 mint_start_time: Some(Timestamp::from_seconds(delay_secs)),
                 mint_end_time: None,
                 price_tiers: Vec::new(),
                 whitelist: None,
-                template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
                 require_auth: false,
+                packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
             },
             minter: Some(admin.to_string()),
             creator: None,
@@ -198,8 +194,6 @@ impl CwSvgSuite<MockBech32> {
             name: "Cutoff SVG Collection".to_string(),
             symbol: "CSVG".to_string(),
             collection_info_extension: SvgCollectionMetadata {
-                svg_template: TEST_SVG_TEMPLATE.to_string(),
-                variables: test_variables(),
                 total: 100,
                 seed: test_seed(),
                 mint_start_time: None,
@@ -207,8 +201,8 @@ impl CwSvgSuite<MockBech32> {
                 price_tiers: Vec::new(),
 
                 whitelist: None,
-                template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
                 require_auth: false,
+                packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
             },
             minter: Some(admin.to_string()),
             creator: None,
@@ -263,16 +257,14 @@ impl CwSvgSuite<MockBech32> {
             name: "WL Collection".to_string(),
             symbol: "WLSVG".to_string(),
             collection_info_extension: SvgCollectionMetadata {
-                svg_template: TEST_SVG_TEMPLATE.to_string(),
-                variables: test_variables(),
                 total: 100,
                 seed: test_seed(),
                 mint_start_time: None,
                 mint_end_time: None,
                 price_tiers,
                 whitelist: Some(wlist.addr_str()?),
-                template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
                 require_auth: false,
+                packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
             },
             minter: Some(admin.to_string()),
             creator: Some(admin.to_string()),
@@ -462,8 +454,6 @@ fn test_mint_exceeds_total_supply() -> anyhow::Result<()> {
         name: "Tiny Collection".to_string(),
         symbol: "TINY".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 3,
             seed: test_seed(),
             mint_start_time: None,
@@ -471,8 +461,8 @@ fn test_mint_exceeds_total_supply() -> anyhow::Result<()> {
             price_tiers: Vec::new(),
 
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
         minter: Some(admin.to_string()),
         creator: None,
@@ -502,8 +492,6 @@ fn test_mint_partial_exceeds_total_supply() -> anyhow::Result<()> {
         name: "Small Collection".to_string(),
         symbol: "SMOL".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 5,
             seed: test_seed(),
 
@@ -511,8 +499,8 @@ fn test_mint_partial_exceeds_total_supply() -> anyhow::Result<()> {
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
         minter: Some(admin.to_string()),
         creator: None,
@@ -714,16 +702,14 @@ pub fn dao_instantiate_msg(
         name: name.into(),
         symbol: symbol.into(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: YIN_YANG_SVG_TEMPLATE.to_string(),
-            variables: dao_variables(),
             total,
             seed,
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: vec![],
             whitelist: None,
-            template_slots: compute_template_slots(YIN_YANG_SVG_TEMPLATE, &dao_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(YIN_YANG_SVG_TEMPLATE.to_string()), &(dao_variables())),
         },
         minter: None,
         creator: None,
@@ -777,16 +763,14 @@ fn test_mintout_full_collection() -> anyhow::Result<()> {
         name: "Full Mint".to_string(),
         symbol: "FULL".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 10,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
         minter: Some(admin.to_string()),
         creator: None,
@@ -893,16 +877,14 @@ fn test_svg_template_too_large() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: oversized_template,
-            variables: test_variables(),
             total: 10,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: vec![],
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(oversized_template), &(test_variables())),
         },
     };
 
@@ -927,16 +909,14 @@ fn test_svg_template_at_max_size() -> anyhow::Result<()> {
         name: "Max Size".to_string(),
         symbol: "MAX".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: max_template,
-            variables: vec![],
             total: 10,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: vec![],
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(max_template), &(vec![])),
         },
         minter: Some(admin.to_string()),
         creator: None,
@@ -963,16 +943,14 @@ fn test_total_supply_too_high() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: MAX_TOTAL_SUPPLY + 1,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
     };
 
@@ -995,16 +973,14 @@ fn test_total_supply_at_max() -> anyhow::Result<()> {
         name: "Max Supply".to_string(),
         symbol: "MAXS".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: MAX_TOTAL_SUPPLY,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
         minter: None,
         creator: None,
@@ -1068,8 +1044,6 @@ fn test_price_tier_single_tier() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: None,
@@ -1080,7 +1054,7 @@ fn test_price_tier_single_tier() -> anyhow::Result<()> {
             }],
             whitelist: None,
             require_auth: false,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
     };
     svg.instantiate(&init_msg, Some(&admin), &[])?;
@@ -1122,8 +1096,6 @@ fn test_price_tier_batch_mint_cost() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: None,
@@ -1134,7 +1106,7 @@ fn test_price_tier_batch_mint_cost() -> anyhow::Result<()> {
             }],
             whitelist: None,
             require_auth: false,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
     };
     svg.instantiate(&init_msg, Some(&admin), &[])?;
@@ -1406,16 +1378,14 @@ fn test_delayed_start_allows_mints_after_wait() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: Some(Timestamp::from_seconds(100)),
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
     };
     svg.instantiate(&init_msg, Some(&admin), &[])?;
@@ -1449,8 +1419,6 @@ fn test_end_time_blocks_late_mints() -> anyhow::Result<()> {
         name: "Cutoff".to_string(),
         symbol: "CUT".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: None,
@@ -1458,8 +1426,8 @@ fn test_end_time_blocks_late_mints() -> anyhow::Result<()> {
             price_tiers: Vec::new(),
 
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
         minter: None,
         creator: None,
@@ -1499,16 +1467,14 @@ fn test_start_and_end_time_window() -> anyhow::Result<()> {
         creator: None,
         withdraw_address: Some(admin.to_string()),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: Some(Timestamp::from_seconds(50)),
             mint_end_time: Some(Timestamp::from_seconds(150)),
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
     };
     svg.instantiate(&init_msg, Some(&admin), &[])?;
@@ -1754,16 +1720,14 @@ fn test_whitelist_update_by_admin() -> anyhow::Result<()> {
         name: "No WL".to_string(),
         symbol: "NOWL".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
             total: 100,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(TEST_SVG_TEMPLATE, &test_variables()),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(TEST_SVG_TEMPLATE.to_string()), &(test_variables())),
         },
 
         minter: None,
@@ -1817,84 +1781,8 @@ fn test_whitelist_update_by_admin() -> anyhow::Result<()> {
 // Template slot validation tests
 // ===========================================================================
 
-#[test]
-fn test_template_slot_var_idx_out_of_range() -> anyhow::Result<()> {
-    let mock = MockBech32::new("mock");
-    let admin = mock.addr_make("admin");
-
-    let svg = Cw721SvgContractSuite::new(mock.clone());
-    svg.upload()?;
-
-    // Slot references var_idx=99 which is out of range
-    let init_msg = InstantiateMsg {
-        name: "Bad Idx".to_string(),
-        symbol: "BIDX".to_string(),
-        collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
-            total: 10,
-            seed: test_seed(),
-            mint_start_time: None,
-            mint_end_time: None,
-            price_tiers: Vec::new(),
-            whitelist: None,
-            require_auth: false,
-            template_slots: vec![TemplateSlot {
-                start: 19,
-                end: 31,
-                var_idx: 99,
-            }],
-        },
-        minter: None,
-        creator: None,
-        withdraw_address: Some(admin.to_string()),
-    };
-
-    svg.instantiate(&init_msg, Some(&admin), &[])
-        .expect_err("should fail: var_idx out of range");
-
-    Ok(())
-}
-
-#[test]
-fn test_template_slot_content_mismatch() -> anyhow::Result<()> {
-    let mock = MockBech32::new("mock");
-    let admin = mock.addr_make("admin");
-
-    let svg = Cw721SvgContractSuite::new(mock.clone());
-    svg.upload()?;
-
-    // Slot claims ${color_yin} is at wrong position
-    let init_msg = InstantiateMsg {
-        name: "Bad Pos".to_string(),
-        symbol: "BPOS".to_string(),
-        collection_info_extension: SvgCollectionMetadata {
-            svg_template: TEST_SVG_TEMPLATE.to_string(),
-            variables: test_variables(),
-            total: 10,
-            seed: test_seed(),
-            mint_start_time: None,
-            mint_end_time: None,
-            price_tiers: Vec::new(),
-            whitelist: None,
-            require_auth: false,
-            template_slots: vec![TemplateSlot {
-                start: 0,
-                end: 12,
-                var_idx: 0,
-            }],
-        },
-        minter: None,
-        creator: None,
-        withdraw_address: Some(admin.to_string()),
-    };
-
-    svg.instantiate(&init_msg, Some(&admin), &[])
-        .expect_err("should fail: slot content does not match template");
-
-    Ok(())
-}
-
+// test_template_slot_var_idx_out_of_range: removed (packed-only; template_slots are derived on chain, no longer an input).
+// test_template_slot_content_mismatch: removed (packed-only; template_slots are derived on chain, no longer an input).
 #[test]
 fn test_whitelist_update_unauthorized() -> anyhow::Result<()> {
     let suite = CwSvgSuite::setup()?;
@@ -2044,16 +1932,14 @@ fn test_rgb_variable_kind() -> anyhow::Result<()> {
         name: "Rgb Test".to_string(),
         symbol: "RGB".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: template.to_string(),
-            variables: variables.clone(),
             total: 10,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(template, &variables),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(template.to_string()), &(variables.clone())),
         },
         minter: None,
         creator: None,
@@ -2138,8 +2024,6 @@ fn test_rgb_styled_variable_kind() -> anyhow::Result<()> {
         name: "Styled Rgb Test".to_string(),
         symbol: "SRGB".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: template.to_string(),
-            variables: variables.clone(),
             total: 50,
             seed: test_seed(),
             mint_start_time: None,
@@ -2147,8 +2031,8 @@ fn test_rgb_styled_variable_kind() -> anyhow::Result<()> {
             price_tiers: Vec::new(),
 
             whitelist: None,
-            template_slots: compute_slots(template, &variables),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(template.to_string()), &(variables.clone())),
         },
         minter: None,
         creator: None,
@@ -2221,16 +2105,14 @@ fn test_rgb_styled_empty_ranges_rejected() -> anyhow::Result<()> {
         name: "Empty Ranges".to_string(),
         symbol: "EMPTY".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: template.to_string(),
-            variables: variables.clone(),
             total: 10,
             seed: test_seed(),
             mint_start_time: None,
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(template, &variables),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(template.to_string()), &(variables.clone())),
         },
         minter: None,
         creator: None,
@@ -2268,8 +2150,6 @@ fn test_rgb_styled_min_gt_max_rejected() -> anyhow::Result<()> {
         name: "Bad Range".to_string(),
         symbol: "BAD".to_string(),
         collection_info_extension: SvgCollectionMetadata {
-            svg_template: template.to_string(),
-            variables: variables.clone(),
             total: 10,
             seed: test_seed(),
 
@@ -2277,8 +2157,8 @@ fn test_rgb_styled_min_gt_max_rejected() -> anyhow::Result<()> {
             mint_end_time: None,
             price_tiers: Vec::new(),
             whitelist: None,
-            template_slots: compute_slots(template, &variables),
             require_auth: false,
+            packed: cw721_svg::pack_svg(&(template.to_string()), &(variables.clone())),
         },
         minter: None,
         creator: None,

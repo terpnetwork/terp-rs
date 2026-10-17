@@ -24,7 +24,7 @@ mod bench {
     use cosmwasm_vm::{call_execute, call_instantiate, call_sudo, GasReport, Instance, VmResult, CAP_BULK_MEMORY};
     use cw721_svg::{ExecuteMsg, InstantiateMsg, SvgCollectionMetadata, SvgExecuteMsgExt};
     use cw_orch::prelude::*;
-    use cw_svg::{compute_template_slots, MintMsg, VariableDef, VariableKind};
+    use cw_svg::{MintMsg, VariableDef, VariableKind};
     use ed25519_zebra::SigningKey;
     use k256::ecdsa::SigningKey as EthSigningKey;
     use serde::Serialize;
@@ -144,15 +144,13 @@ mod bench {
             symbol: "BSVG".into(),
             collection_info_extension: SvgCollectionMetadata {
                 seed: Binary::from(b"bench-seed-entropy-value-123456"),
-                svg_template: SVG_TEMPLATE.into(),
-                template_slots: compute_template_slots(SVG_TEMPLATE, &vars),
-                variables: vars,
                 price_tiers: vec![],
                 total: 100,
                 mint_start_time: None,
                 mint_end_time: None,
                 whitelist: None,
                 require_auth: false,
+                packed: cw721_svg::pack_svg(SVG_TEMPLATE, &vars),
             },
             minter: Some(admin.into()),
             creator: Some(admin.into()),
