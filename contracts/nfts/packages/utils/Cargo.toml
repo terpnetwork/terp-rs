@@ -1,0 +1,25 @@
+[package]
+name = "nftfi-utils"
+version = { workspace = true }
+edition = { workspace = true }
+license = "Apache-2.0"
+publish = false
+description = "Shared asset, lock, and cw721 helpers for the nftfi raffle and loan ports"
+
+[features]
+default = []
+# Host-only cw721 double used by the raffle and loan tests.
+testing = ["dep:cw-multi-test"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-storage-plus = { workspace = true }
+cw721 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+cw-multi-test = { workspace = true, optional = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

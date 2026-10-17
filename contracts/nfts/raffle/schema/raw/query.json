@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "raffle"
+      ],
+      "properties": {
+        "raffle": {
+          "type": "object",
+          "required": [
+            "raffle_id"
+          ],
+          "properties": {
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ticket"
+      ],
+      "properties": {
+        "ticket": {
+          "type": "object",
+          "required": [
+            "index",
+            "raffle_id"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ticket_count"
+      ],
+      "properties": {
+        "ticket_count": {
+          "type": "object",
+          "required": [
+            "owner",
+            "raffle_id"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string"
+            },
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,798 @@
+{
+  "contract_name": "nftfi-loan",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "nftfi_loan_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "fee_rate": {
+            "value": 3
+          },
+          "listing_fee_coins": {
+            "value": 7
+          },
+          "name": {
+            "value": 1
+          },
+          "owner": {
+            "value": 2
+          },
+          "treasury_addr": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "cosmwasm_std_math_decimal_Decimal",
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+        "type": "decimal",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_coin_Coin",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 5
+          },
+          "denom": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_math_uint256_Uint256",
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+        "type": "integer",
+        "precision": 256,
+        "signed": false
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+        "type": "array",
+        "items": 4
+      },
+      {
+        "name": "core::option::Option<alloc::vec::Vec<cosmwasm_std::coin::Coin>>",
+        "type": "optional",
+        "inner": 6
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "nftfi_loan_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "accept_loan": {
+            "type": "named",
+            "properties": {
+              "borrower": {
+                "value": 3
+              },
+              "comment": {
+                "value": 10
+              },
+              "loan_id": {
+                "value": 8
+              }
+            }
+          },
+          "accept_offer": {
+            "type": "named",
+            "properties": {
+              "global_offer_id": {
+                "value": 3
+              }
+            }
+          },
+          "cancel_offer": {
+            "type": "named",
+            "properties": {
+              "global_offer_id": {
+                "value": 3
+              }
+            }
+          },
+          "list_collaterals": {
+            "type": "named",
+            "properties": {
+              "comment": {
+                "value": 10
+              },
+              "terms": {
+                "value": 9
+              },
+              "tokens": {
+                "value": 6
+              }
+            }
+          },
+          "make_offer": {
+            "type": "named",
+            "properties": {
+              "borrower": {
+                "value": 3
+              },
+              "comment": {
+                "value": 10
+              },
+              "loan_id": {
+                "value": 8
+              },
+              "on_behalf_of": {
+                "value": 10
+              },
+              "terms": {
+                "value": 7
+              }
+            }
+          },
+          "refuse_offer": {
+            "type": "named",
+            "properties": {
+              "global_offer_id": {
+                "value": 3
+              }
+            }
+          },
+          "repay": {
+            "type": "named",
+            "properties": {
+              "loan_id": {
+                "value": 8
+              }
+            }
+          },
+          "set_fee_rate": {
+            "type": "named",
+            "properties": {
+              "fee_rate": {
+                "value": 12
+              }
+            }
+          },
+          "set_listing_fee": {
+            "type": "named",
+            "properties": {
+              "listing_fee_coins": {
+                "value": 13
+              }
+            }
+          },
+          "set_owner": {
+            "type": "named",
+            "properties": {
+              "owner": {
+                "value": 3
+              }
+            }
+          },
+          "set_treasury": {
+            "type": "named",
+            "properties": {
+              "treasury_addr": {
+                "value": 3
+              }
+            }
+          },
+          "toggle_lock": {
+            "type": "named",
+            "properties": {
+              "lock": {
+                "value": 11
+              }
+            }
+          },
+          "withdraw_collaterals": {
+            "type": "named",
+            "properties": {
+              "loan_id": {
+                "value": 8
+              }
+            }
+          },
+          "withdraw_defaulted": {
+            "type": "named",
+            "properties": {
+              "borrower": {
+                "value": 3
+              },
+              "loan_id": {
+                "value": 8
+              }
+            }
+          },
+          "withdraw_refused_offer": {
+            "type": "named",
+            "properties": {
+              "global_offer_id": {
+                "value": 3
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "nftfi_utils_asset_AssetInfo",
+        "description": "Prize, collateral, or ticket price.\n\nUpstream also had an `Sg721Token` arm. This port keeps cw721 only, which is\nthe trait `cw721-svg` implements.",
+        "type": "enum",
+        "cases": {
+          "coin": {
+            "type": "tuple",
+            "items": [
+              2
+            ]
+          },
+          "cw721": {
+            "type": "tuple",
+            "items": [
+              5
+            ]
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_coin_Coin",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 4
+          },
+          "denom": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_math_uint256_Uint256",
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+        "type": "integer",
+        "precision": 256,
+        "signed": false
+      },
+      {
+        "name": "nftfi_utils_asset_Cw721Token",
+        "description": "One cw721 token. `address` is stored in the form `Api::addr_validate` returns.",
+        "type": "struct",
+        "properties": {
+          "address": {
+            "value": 3
+          },
+          "token_id": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<nftfi_utils::asset::AssetInfo>",
+        "type": "array",
+        "items": 1
+      },
+      {
+        "name": "nftfi_loan_state_LoanTerms",
+        "type": "struct",
+        "properties": {
+          "duration_in_blocks": {
+            "value": 8
+          },
+          "interest": {
+            "value": 4
+          },
+          "principle": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<nftfi_loan::state::LoanTerms>",
+        "type": "optional",
+        "inner": 7
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 3
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "cosmwasm_std_math_decimal_Decimal",
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+        "type": "decimal",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+        "type": "array",
+        "items": 2
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "nftfi_loan_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "collateral": {
+            "type": "named",
+            "properties": {
+              "borrower": {
+                "value": 1
+              },
+              "loan_id": {
+                "value": 2
+              }
+            }
+          },
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "offer": {
+            "type": "named",
+            "properties": {
+              "global_offer_id": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "collateral": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "nftfi_loan_msg_CollateralResponse",
+          "type": "struct",
+          "properties": {
+            "borrower": {
+              "value": 1
+            },
+            "collateral": {
+              "value": 4
+            },
+            "loan_id": {
+              "value": 2
+            },
+            "state": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "nftfi_loan_state_LoanState",
+          "type": "enum",
+          "cases": {
+            "defaulted": {
+              "type": "unit"
+            },
+            "ended": {
+              "type": "unit"
+            },
+            "inactive": {
+              "type": "unit"
+            },
+            "published": {
+              "type": "unit"
+            },
+            "started": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "nftfi_loan_state_CollateralInfo",
+          "type": "struct",
+          "properties": {
+            "active_offer": {
+              "value": 13
+            },
+            "associated_assets": {
+              "value": 11
+            },
+            "comment": {
+              "value": 14
+            },
+            "list_date": {
+              "value": 12
+            },
+            "offer_amount": {
+              "value": 2
+            },
+            "start_block": {
+              "value": 13
+            },
+            "state": {
+              "value": 3
+            },
+            "terms": {
+              "value": 8
+            }
+          }
+        },
+        {
+          "name": "nftfi_loan_state_LoanTerms",
+          "type": "struct",
+          "properties": {
+            "duration_in_blocks": {
+              "value": 2
+            },
+            "interest": {
+              "value": 7
+            },
+            "principle": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 7
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<nftfi_loan::state::LoanTerms>",
+          "type": "optional",
+          "inner": 5
+        },
+        {
+          "name": "nftfi_utils_asset_AssetInfo",
+          "description": "Prize, collateral, or ticket price.\n\nUpstream also had an `Sg721Token` arm. This port keeps cw721 only, which is\nthe trait `cw721-svg` implements.",
+          "type": "enum",
+          "cases": {
+            "coin": {
+              "type": "tuple",
+              "items": [
+                6
+              ]
+            },
+            "cw721": {
+              "type": "tuple",
+              "items": [
+                10
+              ]
+            }
+          }
+        },
+        {
+          "name": "nftfi_utils_asset_Cw721Token",
+          "description": "One cw721 token. `address` is stored in the form `Api::addr_validate` returns.",
+          "type": "struct",
+          "properties": {
+            "address": {
+              "value": 1
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "alloc::vec::Vec<nftfi_utils::asset::AssetInfo>",
+          "type": "array",
+          "items": 9
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "core::option::Option<u64>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    },
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "nftfi_loan_state_Config",
+          "type": "struct",
+          "properties": {
+            "fee_rate": {
+              "description": "Share of interest paid to the treasury when the borrower repays.",
+              "value": 3
+            },
+            "global_offer_index": {
+              "value": 7
+            },
+            "listing_fee_coins": {
+              "value": 6
+            },
+            "locks": {
+              "value": 8
+            },
+            "name": {
+              "value": 1
+            },
+            "owner": {
+              "value": 2
+            },
+            "treasury_addr": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "cosmwasm_std_math_decimal_Decimal",
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+          "type": "decimal",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+          "type": "array",
+          "items": 4
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "nftfi_utils_Locks",
+          "description": "Admin lock plus an optional governance lock. Either one blocks new listings.",
+          "type": "struct",
+          "properties": {
+            "lock": {
+              "value": 9
+            },
+            "sudo_lock": {
+              "value": 9
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    },
+    "offer": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "nftfi_loan_msg_OfferResponse",
+          "type": "struct",
+          "properties": {
+            "global_offer_id": {
+              "value": 1
+            },
+            "offer": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "nftfi_loan_state_OfferInfo",
+          "type": "struct",
+          "properties": {
+            "borrower": {
+              "value": 3
+            },
+            "comment": {
+              "value": 11
+            },
+            "deposited_funds": {
+              "value": 10
+            },
+            "lender": {
+              "value": 3
+            },
+            "list_date": {
+              "value": 9
+            },
+            "loan_id": {
+              "value": 4
+            },
+            "offer_id": {
+              "value": 4
+            },
+            "state": {
+              "value": 8
+            },
+            "terms": {
+              "value": 5
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "nftfi_loan_state_LoanTerms",
+          "type": "struct",
+          "properties": {
+            "duration_in_blocks": {
+              "value": 4
+            },
+            "interest": {
+              "value": 7
+            },
+            "principle": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 7
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "nftfi_loan_state_OfferState",
+          "type": "enum",
+          "cases": {
+            "accepted": {
+              "type": "unit"
+            },
+            "cancelled": {
+              "type": "unit"
+            },
+            "published": {
+              "type": "unit"
+            },
+            "refused": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::coin::Coin>",
+          "type": "optional",
+          "inner": 6
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    }
+  }
+}

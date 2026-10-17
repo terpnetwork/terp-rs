@@ -1,0 +1,7 @@
+nftfi-raffle
+Portions adapted from Atlas app-contracts contracts/raffles
+https://github.com/AtlasDA0/app-contracts
+
+The upstream crate ships under the Apache License, Version 2.0, and does not
+include a separate NOTICE file. This NOTICE records that attribution.
+See ORIGIN.md and LICENSE.

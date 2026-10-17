@@ -1,0 +1,7 @@
+nftfi-utils
+Portions adapted from Atlas app-contracts packages/utils
+https://github.com/AtlasDA0/app-contracts
+
+The upstream package ships under the Apache License, Version 2.0, and does not
+include a separate NOTICE file. This NOTICE records that attribution.
+See ORIGIN.md and LICENSE.

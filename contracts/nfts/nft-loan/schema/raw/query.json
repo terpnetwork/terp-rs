@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collateral"
+      ],
+      "properties": {
+        "collateral": {
+          "type": "object",
+          "required": [
+            "borrower",
+            "loan_id"
+          ],
+          "properties": {
+            "borrower": {
+              "type": "string"
+            },
+            "loan_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "offer"
+      ],
+      "properties": {
+        "offer": {
+          "type": "object",
+          "required": [
+            "global_offer_id"
+          ],
+          "properties": {
+            "global_offer_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}
