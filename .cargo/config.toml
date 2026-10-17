@@ -12,4 +12,7 @@ schema = "run --bin schema"
 rustflags = [
     "-C", "link-arg=--allow-undefined",
     "-C", "target-feature=-simd128",
+    # rand 0.10 -> getrandom 0.4 has no wasm32-unknown-unknown backend.
+    # "unsupported" links nothing. wasm_js would be a browser import.
+    "--cfg", 'getrandom_backend="unsupported"',
 ]

@@ -719,3 +719,52 @@ branch does.
     nullifiers, the denom, the `{hrp}1` destination prefix, and `max_rows`.
     `pending_root_sorted` sorts digests before the contract preimage.
     `epoch::pending_root` still does not sort.
+
+21. The epoch end-to-end does not use Docker. Docker Desktop on this host
+    does not start, and no image is pulled. The run uses the local `terpd`
+    6.4.0 binary, chain id `headstash-epoch-e2e`, and home
+    `/tmp/headstash-epoch-chain`. Every listen address is `127.0.0.1`.
+    The stock server binary still has no custody-key field.
+    `headstash-epoch-e2e` embeds the same router and calls `install_signer`
+    in process. That key is not an environment variable and is not written
+    down. The sidecar cutoff is 50 and the contract cutoff is 80, so one
+    campaign can show a pending sudo, an accepted sudo below the contract
+    cutoff, and an accepted sudo at the cutoff. `pending_root_sorted` is
+    the preimage the stage stores. The sidecar `pending_root` sorts before
+    it hashes, so the two agree. One row makes the order irrelevant; the
+    e2e still hashes the sorted preimage. There is no unstage message. The
+    height-80 sudo arrives while a mismatched stage is stored, so that
+    sudo does not pay. The correcting `StageEpochBatch` sends the coins,
+    and only because that sudo root is already stored and equals
+    `attested_root` of the real rows. Quorum stays `0.667`. One validator
+    meets it. Escrow is one minimum period, 1000 blocks.
+
+
+22. Wasm builds in this worktree pass
+    `--cfg getrandom_backend="unsupported"` for `wasm32-unknown-unknown`.
+    `rand` 0.10 pulls `getrandom` 0.4, and that crate refuses this target
+    unless a backend cfg is set. The unsupported backend links no host
+    import. A guest call that actually asks for OS entropy returns an error.
+    The epoch instantiate and sudo paths do not. `wasm_js` would import a
+    browser function this chain does not provide, and a custom backend would
+    be an unresolved import.
+
+
+23. The epoch wasm is optimized with `wasm-opt -O1`, not `-Oz`.
+    The rustc release module has 93 locals in its largest function.
+    `-Oz` raises that function to 107 locals. This chain's static
+    wasm check rejects a function with more than 100 locals, so the
+    `-Oz` module cannot be stored. `-O1` stays at 93 and keeps bulk
+    memory. `getrandom_backend="unsupported"` is unchanged.
+
+
+24. The epoch end-to-end registers one ed25519 OracleSource in genesis.
+    terpd 6.4.0 accepts a non-empty vote extension only when that
+    extension carries a `headstash-batch` attestation, the hex root
+    equals `aggregateAttestationRoot`, and the custody signature opens
+    under a registered enabled source. An empty attestation list makes
+    `fetchSidecar` return an empty extension, so a sealed headstash vote
+    cannot skip the check. No transaction adds an oracle source. The
+    32-byte seed is created in the chain home before `init` and is not
+    printed. The same key signs the lane. Quorum stays `0.667`. The
+    stock binary is not rebuilt.
