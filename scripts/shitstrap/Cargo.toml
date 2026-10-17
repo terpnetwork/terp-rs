@@ -1,0 +1,39 @@
+[package]
+name = "shit-scripts"
+license = "BSD-3-Clause"
+repository.workspace = true
+edition.workspace = true
+version.workspace = true
+
+[features]
+default = []
+e2e = []
+
+[[bin]]
+name = "shitstrap-deploy"
+path = "src/bin/deploy.rs"
+
+[[bin]]
+name = "shitstrap-upload"
+path = "src/bin/upload.rs"
+
+[[bin]]
+name = "shitstrap-e2e"
+path = "tests/e2e.rs"
+required-features = ["e2e"]
+
+[dependencies]
+cw-shitstrap = { workspace = true, features = ["interface"] }
+cw-shitstrap-factory = { workspace = true, features = ["interface"] }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-shit-denom = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+anyhow = "1.0"
+sha2 = { workspace = true }
+tracing = "0.1"
+env_logger = "0.11"
+clap = { version = "4", features = ["derive"] }
+dotenv = "0.15"
+serde_json = "1.0"
+terp-rs = { workspace = true }

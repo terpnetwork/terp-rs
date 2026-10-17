@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Returns max possible deposit value for a shit-strap instance",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Current amount of shit value that has been deposited in the shit-strap. Can be used to calculate how much more is needed for a full-of-shit status.",
+      "type": "object",
+      "required": [
+        "has_shit"
+      ],
+      "properties": {
+        "has_shit": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Current amount of shit value that still is to be shit by the shitstrap.",
+      "type": "object",
+      "required": [
+        "to_shit"
+      ],
+      "properties": {
+        "to_shit": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Query if the shit strap contract is no longer active",
+      "type": "object",
+      "required": [
+        "full_of_shit"
+      ],
+      "properties": {
+        "full_of_shit": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Query the shit conversation ratio for a given asset",
+      "type": "object",
+      "required": [
+        "shit_rate"
+      ],
+      "properties": {
+        "shit_rate": {
+          "type": "object",
+          "required": [
+            "asset"
+          ],
+          "properties": {
+            "asset": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Query the shit conversation ratio for a given asset",
+      "type": "object",
+      "required": [
+        "shit_rates"
+      ],
+      "properties": {
+        "shit_rates": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

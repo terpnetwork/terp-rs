@@ -1,0 +1,24 @@
+[
+  {
+    "name": "CwShitstrapFactory",
+    "dir": "../../contracts/cw-shitstrap-factory/schema",
+    "entryFiles": [
+      "CwShitstrapFactory.types.ts",
+      "CwShitstrapFactory.client.ts",
+      "CwShitstrapFactory.message-composer.ts"
+    ],
+    "globalName": "CwShitstrapFactory",
+    "outName": "cw-shitstrap-factory"
+  },
+  {
+    "name": "CwShitstrap",
+    "dir": "../../contracts/cw-shitstrap/schema",
+    "entryFiles": [
+      "CwShitstrap.types.ts",
+      "CwShitstrap.client.ts",
+      "CwShitstrap.message-composer.ts"
+    ],
+    "globalName": "CwShitstrap",
+    "outName": "cw-shitstrap"
+  }
+]

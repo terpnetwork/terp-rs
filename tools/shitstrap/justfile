@@ -1,0 +1,11 @@
+# cw-shitstrap is a terp-rs workspace member. Wasm and clients come from the
+# root optimizer and tools/gen-tools (`--project terp-rs`), not this folder.
+
+schema-codegen:
+    ../../scripts/shitstrap/schema-codegen.sh
+
+optimize:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "From crates/terp-rs: just core optimize"
+    echo "Image: terpnetwork/optimizer-arm64:0.17.0 on this Mac (see docs/COMPILING.md)."

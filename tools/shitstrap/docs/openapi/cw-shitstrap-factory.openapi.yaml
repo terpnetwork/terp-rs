@@ -1,0 +1,988 @@
+openapi: 3.0.3
+info:
+  title: cw-shitstrap-factory API
+  version: 1.0.0
+  description: Auto-generated OpenAPI spec for cw-shitstrap-factory
+paths: {}
+components:
+  schemas:
+    CwShitstrapFactory:
+      contract_name: cw-shitstrap-factory
+      contract_version: 0.1.0
+      execute:
+        $schema: http://json-schema.org/draft-07/schema#
+        definitions:
+          Action:
+            description: Actions that can be taken to alter the contract's ownership
+            oneOf:
+            - additionalProperties: false
+              description: |-
+                Propose to transfer the contract's ownership to another account, optionally with an expiry time.
+
+                Can only be called by the contract's current owner.
+
+                Any existing pending ownership transfer is overwritten.
+              properties:
+                transfer_ownership:
+                  additionalProperties: false
+                  properties:
+                    expiry:
+                      anyOf:
+                      - $ref: '#/definitions/Expiration'
+                      - type: 'null'
+                    new_owner:
+                      type: string
+                  required:
+                  - new_owner
+                  type: object
+              required:
+              - transfer_ownership
+              type: object
+            - description: |-
+                Accept the pending ownership transfer.
+
+                Can only be called by the pending owner.
+              enum:
+              - accept_ownership
+              type: string
+            - description: |-
+                Give up the contract's ownership and the possibility of appointing a new owner.
+
+                Can only be invoked by the contract's current owner.
+
+                Any existing pending ownership transfer is canceled.
+              enum:
+              - renounce_ownership
+              type: string
+          Addr:
+            description: |-
+              A human readable address.
+
+              In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.
+
+              This type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.
+
+              This type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.
+            type: string
+          DaoParams:
+            additionalProperties: false
+            properties:
+              addr:
+                allOf:
+                - $ref: '#/definitions/Addr'
+                description: Dao addr
+              ceiling:
+                allOf:
+                - $ref: '#/definitions/Uint128'
+                description: Set to 0 to disable
+              floor:
+                allOf:
+                - $ref: '#/definitions/Uint128'
+                description: Set to 0 to disable
+            required:
+            - addr
+            - ceiling
+            - floor
+            type: object
+          Expiration:
+            description: Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)
+            oneOf:
+            - additionalProperties: false
+              description: AtHeight will expire when `env.block.height` >= height
+              properties:
+                at_height:
+                  format: uint64
+                  minimum: 0.0
+                  type: integer
+              required:
+              - at_height
+              type: object
+            - additionalProperties: false
+              description: AtTime will expire when `env.block.time` >= time
+              properties:
+                at_time:
+                  $ref: '#/definitions/Timestamp'
+              required:
+              - at_time
+              type: object
+            - additionalProperties: false
+              description: Never will never expire. Used to express the empty variant
+              properties:
+                never:
+                  additionalProperties: false
+                  type: object
+              required:
+              - never
+              type: object
+          InstantiateMsg:
+            additionalProperties: false
+            properties:
+              accepted:
+                description: a list of possible accepted assets, and the shit_rate you would like to set for.
+                items:
+                  $ref: '#/definitions/PossibleShit'
+                type: array
+              cutoff:
+                allOf:
+                - $ref: '#/definitions/Uint128'
+                description: Desired cutoff points for shitstrap. 1000000 == 1 token.
+              daos:
+                description: Dao one must be a member of to make use of shitstraps
+                items:
+                  $ref: '#/definitions/DaoParams'
+                type: array
+              description:
+                description: description of shitstrap for recordkeeping
+                type: string
+              owner:
+                description: owner of the shit strap. This address will recieve all shit sent for this shitstrap.
+                type:
+                - string
+                - 'null'
+              shitmos:
+                allOf:
+                - $ref: '#/definitions/UncheckedDenom'
+                description: SHITMOS token address
+              title:
+                description: label for contract & front end
+                type: string
+            required:
+            - accepted
+            - cutoff
+            - daos
+            - description
+            - shitmos
+            - title
+            type: object
+          PossibleShit:
+            additionalProperties: false
+            properties:
+              shit_rate:
+                allOf:
+                - $ref: '#/definitions/Uint128'
+                description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+              token:
+                allOf:
+                - $ref: '#/definitions/UncheckedDenom'
+                description: Generic type for contract address or token included in shitstrap.
+            required:
+            - shit_rate
+            - token
+            type: object
+          Timestamp:
+            allOf:
+            - $ref: '#/definitions/Uint64'
+            description: |-
+              A point in time in nanosecond precision.
+
+              This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+
+              ## Examples
+
+              ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);
+
+              let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+          Uint128:
+            description: |-
+              A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+              # Examples
+
+              Use `from` to create instances of this and `u128` to get the value out:
+
+              ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+              let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+              let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+            type: string
+          Uint64:
+            description: |-
+              A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+              # Examples
+
+              Use `from` to create instances of this and `u64` to get the value out:
+
+              ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+
+              let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+            type: string
+          UncheckedDenom:
+            description: A denom that has not been checked to confirm it points to a valid asset.
+            oneOf:
+            - additionalProperties: false
+              description: A native (bank module) asset.
+              properties:
+                native:
+                  type: string
+              required:
+              - native
+              type: object
+            - additionalProperties: false
+              description: A cw20 asset.
+              properties:
+                cw20:
+                  type: string
+              required:
+              - cw20
+              type: object
+        oneOf:
+        - additionalProperties: false
+          description: Instantiates a new vesting contract that is funded by a native token.
+          properties:
+            create_native_shit_strap_contract:
+              additionalProperties: false
+              properties:
+                instantiate_msg:
+                  $ref: '#/definitions/InstantiateMsg'
+                label:
+                  type: string
+              required:
+              - instantiate_msg
+              - label
+              type: object
+          required:
+          - create_native_shit_strap_contract
+          type: object
+        - additionalProperties: false
+          description: Callable only by the current owner. Updates the code ID used while instantiating vesting contracts.
+          properties:
+            update_code_id:
+              additionalProperties: false
+              properties:
+                shitstrap_code_id:
+                  format: uint64
+                  minimum: 0.0
+                  type: integer
+              required:
+              - shitstrap_code_id
+              type: object
+          required:
+          - update_code_id
+          type: object
+        - additionalProperties: false
+          description: Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.
+          properties:
+            update_ownership:
+              $ref: '#/definitions/Action'
+          required:
+          - update_ownership
+          type: object
+        title: ExecuteMsg
+      idl_version: 1.0.0
+      instantiate:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+          owner:
+            type:
+            - string
+            - 'null'
+          shitstrap_id:
+            format: uint64
+            minimum: 0.0
+            type: integer
+        required:
+        - shitstrap_id
+        title: InstantiateMsg
+        type: object
+      migrate: null
+      query:
+        $schema: http://json-schema.org/draft-07/schema#
+        oneOf:
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts
+          properties:
+            list_shitstrap_contracts:
+              additionalProperties: false
+              properties:
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                start_after:
+                  type:
+                  - string
+                  - 'null'
+              type: object
+          required:
+          - list_shitstrap_contracts
+          type: object
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts in reverse
+          properties:
+            list_shitstrap_contracts_reverse:
+              additionalProperties: false
+              properties:
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                start_before:
+                  type:
+                  - string
+                  - 'null'
+              type: object
+          required:
+          - list_shitstrap_contracts_reverse
+          type: object
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts by who instantiated them
+          properties:
+            list_shitstrap_contracts_by_instantiator:
+              additionalProperties: false
+              properties:
+                instantiator:
+                  type: string
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                start_after:
+                  type:
+                  - string
+                  - 'null'
+              required:
+              - instantiator
+              type: object
+          required:
+          - list_shitstrap_contracts_by_instantiator
+          type: object
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts by who instantiated them in reverse
+          properties:
+            list_shitstrap_contracts_by_instantiator_reverse:
+              additionalProperties: false
+              properties:
+                instantiator:
+                  type: string
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                start_before:
+                  type:
+                  - string
+                  - 'null'
+              required:
+              - instantiator
+              type: object
+          required:
+          - list_shitstrap_contracts_by_instantiator_reverse
+          type: object
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts by recipient
+          properties:
+            list_shitstrap_contracts_by_token:
+              additionalProperties: false
+              properties:
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                recipient:
+                  type: string
+                start_after:
+                  type:
+                  - string
+                  - 'null'
+              required:
+              - recipient
+              type: object
+          required:
+          - list_shitstrap_contracts_by_token
+          type: object
+        - additionalProperties: false
+          description: Returns list of all vesting payment contracts by recipient in reverse
+          properties:
+            list_shitstrap_contracts_by_token_reverse:
+              additionalProperties: false
+              properties:
+                limit:
+                  format: uint32
+                  minimum: 0.0
+                  type:
+                  - integer
+                  - 'null'
+                recipient:
+                  type: string
+                start_before:
+                  type:
+                  - string
+                  - 'null'
+              required:
+              - recipient
+              type: object
+          required:
+          - list_shitstrap_contracts_by_token_reverse
+          type: object
+        - additionalProperties: false
+          description: Returns info about the contract ownership, if set
+          properties:
+            ownership:
+              additionalProperties: false
+              type: object
+          required:
+          - ownership
+          type: object
+        - additionalProperties: false
+          description: Returns the code ID currently being used to instantiate vesting contracts.
+          properties:
+            code_id:
+              additionalProperties: false
+              type: object
+          required:
+          - code_id
+          type: object
+        title: QueryMsg
+      responses:
+        code_id:
+          $schema: http://json-schema.org/draft-07/schema#
+          format: uint64
+          minimum: 0.0
+          title: uint64
+          type: integer
+        list_shitstrap_contracts:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        list_shitstrap_contracts_by_instantiator:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        list_shitstrap_contracts_by_instantiator_reverse:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        list_shitstrap_contracts_by_token:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        list_shitstrap_contracts_by_token_reverse:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        list_shitstrap_contracts_reverse:
+          $schema: http://json-schema.org/draft-07/schema#
+          definitions:
+            PossibleShit:
+              additionalProperties: false
+              properties:
+                shit_rate:
+                  allOf:
+                  - $ref: '#/definitions/Uint128'
+                  description: Atomic unit value for conversion ratio with shitmos.\ * 1000000000000000000 == 1:1 coversion ratio\ *  500000000000000000 ==  0.5
+                token:
+                  allOf:
+                  - $ref: '#/definitions/UncheckedDenom'
+                  description: Generic type for contract address or token included in shitstrap.
+              required:
+              - shit_rate
+              - token
+              type: object
+            ShitstrapContract:
+              additionalProperties: false
+              properties:
+                contract:
+                  type: string
+                instantiator:
+                  type: string
+                shit:
+                  type: string
+                slop:
+                  items:
+                    $ref: '#/definitions/PossibleShit'
+                  type: array
+              required:
+              - contract
+              - instantiator
+              - shit
+              - slop
+              type: object
+            Uint128:
+              description: |-
+                A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u128` to get the value out:
+
+                ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+
+                let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+
+                let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+              type: string
+            UncheckedDenom:
+              description: A denom that has not been checked to confirm it points to a valid asset.
+              oneOf:
+              - additionalProperties: false
+                description: A native (bank module) asset.
+                properties:
+                  native:
+                    type: string
+                required:
+                - native
+                type: object
+              - additionalProperties: false
+                description: A cw20 asset.
+                properties:
+                  cw20:
+                    type: string
+                required:
+                - cw20
+                type: object
+          items:
+            $ref: '#/definitions/ShitstrapContract'
+          title: Array_of_ShitstrapContract
+          type: array
+        ownership:
+          $schema: http://json-schema.org/draft-07/schema#
+          additionalProperties: false
+          definitions:
+            Addr:
+              description: |-
+                A human readable address.
+
+                In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.
+
+                This type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.
+
+                This type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.
+              type: string
+            Expiration:
+              description: Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)
+              oneOf:
+              - additionalProperties: false
+                description: AtHeight will expire when `env.block.height` >= height
+                properties:
+                  at_height:
+                    format: uint64
+                    minimum: 0.0
+                    type: integer
+                required:
+                - at_height
+                type: object
+              - additionalProperties: false
+                description: AtTime will expire when `env.block.time` >= time
+                properties:
+                  at_time:
+                    $ref: '#/definitions/Timestamp'
+                required:
+                - at_time
+                type: object
+              - additionalProperties: false
+                description: Never will never expire. Used to express the empty variant
+                properties:
+                  never:
+                    additionalProperties: false
+                    type: object
+                required:
+                - never
+                type: object
+            Timestamp:
+              allOf:
+              - $ref: '#/definitions/Uint64'
+              description: |-
+                A point in time in nanosecond precision.
+
+                This type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.
+
+                ## Examples
+
+                ``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);
+
+                let ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```
+            Uint64:
+              description: |-
+                A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+
+                # Examples
+
+                Use `from` to create instances of this and `u64` to get the value out:
+
+                ``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);
+
+                let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
+              type: string
+          description: The contract's ownership info
+          properties:
+            owner:
+              anyOf:
+              - $ref: '#/definitions/Addr'
+              - type: 'null'
+              description: The contract's current owner. `None` if the ownership has been renounced.
+            pending_expiry:
+              anyOf:
+              - $ref: '#/definitions/Expiration'
+              - type: 'null'
+              description: The deadline for the pending owner to accept the ownership. `None` if there isn't a pending ownership transfer, or if a transfer exists and it doesn't have a deadline.
+            pending_owner:
+              anyOf:
+              - $ref: '#/definitions/Addr'
+              - type: 'null'
+              description: The account who has been proposed to take over the ownership. `None` if there isn't a pending ownership transfer.
+          title: Ownership_for_Addr
+          type: object
+      sudo: null
