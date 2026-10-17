@@ -27,33 +27,58 @@ bridge = [
     "cw-private-dex/zk-api",
 ]
 auth = ["dep:terp-authenticator-suite"]
-ict = ["dep:ict-rs-cw-orch", "dep:ict-rs", "cw-orch/daemon"]
-# Every optimized artifact under crates/terp-rs/artifacts/.
-# Auth stays off the default feature set; this opts into it.
+ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
+# Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
+headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+# Every published artifact: accounts, light clients, and the product contracts.
 stack = [
-    "auth",
-    "bridge",
-    "dep:crosslink-light-client",
-    "dep:cw-ics08-wasm-crosslink",
-    "dep:cw-ics08-wasm-dregg",
-    "dep:cw-ics08-wasm-terp",
-    "dep:polytone-any-proxy",
+    "dep:terp-authenticator-suite",
     "dep:terp-dao",
     "dep:terp-dregg",
     "dep:terp-frost",
     "dep:terp-bls",
     "dep:terp-zktls",
+    "dep:polytone-any-proxy",
+    "dep:cw-ics08-wasm-crosslink",
+    "dep:cw-ics08-wasm-dregg",
+    "dep:cw-ics08-wasm-terp",
+    "dep:cw-ics08-wasm-zap1",
+    "dep:crosslink-light-client",
+    "dep:cw-shitstrap",
+    "dep:cw-shitstrap-factory",
+    "dep:cw-shit-denom",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
+    "dep:nftfi-loan",
+    "dep:revenue-marketplace",
+    "dep:revenue-reserve-auction",
+    "dep:cw420",
+    "dep:cw-ave",
+    "dep:cw-ave-factory",
+    "dep:cw-headstash",
+    "dep:cw-headstash-manifold",
+    "dep:cw-norick",
+    "dep:cw-nullifier-auth",
+    "dep:cw-nullifier-gate",
+    "dep:cw-vote-anchor",
+    "dep:cw-vote-ceremony",
+    "dep:cw-reg-eligibility",
+    "dep:svg-auction",
+    "dep:cw-oracle-aggregator",
+    "dep:cw-oracle-twap-probe",
+    "dep:marketplace-mirror",
+    "dep:loyalty-verifier",
+    "dep:trusted-builder-sbt",
+    "dep:cw-cashu-registry",
+    "dep:hm-nft-minter",
+    "dep:hm-loyalty-whitelist",
+    "dep:hm-nft-oracle",
+    "dep:cosmwasm-vm",
 ]
-# Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
-headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
-# Account billboards (terp721 + manifold). Pulls Abstract.
-billboards = ["dep:terp-account-scripts"]
-# cw-infuser, cw721-svg, svg minter, whitelist. Pulls shitstrap.
-infuser = ["dep:cw-infuser-scripts"]
 
 [dependencies]
 anyhow = "1.0"
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw-orch = { workspace = true }
 serde = { workspace = true }
@@ -64,22 +89,56 @@ cw-private-dex = { path = "../../../contracts/revenue/private-dex", optional = t
 terp-authenticator-suite = { path = "../terp-authenticator-suite", optional = true }
 ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch", optional = true, default-features = false }
 ict-rs = { path = "../../../../ict-rs/ict-rs", optional = true, default-features = false, features = ["docker", "terp", "testing"] }
-crosslink-light-client = { path = "../../../crates/crosslink/light-client", optional = true, default-features = false }
-cw-ics08-wasm-crosslink = { path = "../../../contracts/light-clients/cw-ics08-wasm-crosslink", optional = true, default-features = false }
-cw-ics08-wasm-dregg = { path = "../../../contracts/light-clients/cw-ics08-wasm-dregg", optional = true, default-features = false, features = ["library"] }
-cw-ics08-wasm-terp = { path = "../../../contracts/light-clients/cw-ics08-wasm-terp", optional = true, default-features = false }
-polytone-any-proxy = { path = "../../../contracts/ibc/polytone-any-proxy", optional = true, default-features = false, features = ["library"] }
+cw-headstash = { path = "../../../contracts/headstash/cw-headstash", optional = true, default-features = false, features = ["interface", "library", "zk-api"] }
 terp-dao = { path = "../../../contracts/smart-accounts/terp-dao", optional = true, default-features = false, features = ["library"] }
 terp-dregg = { path = "../../../contracts/smart-accounts/terp-dregg", optional = true, default-features = false, features = ["library"] }
 terp-frost = { path = "../../../contracts/smart-accounts/terp-frost", optional = true, default-features = false, features = ["library"] }
 terp-bls = { path = "../../../contracts/smart-accounts/terp-bls", optional = true, default-features = false, features = ["library"] }
 terp-zktls = { path = "../../../contracts/smart-accounts/terp-zktls", optional = true, default-features = false, features = ["library"] }
-cw-headstash = { path = "../../../../headstash/contracts/cw-headstash", optional = true, default-features = false, features = ["interface", "library", "zk-api"] }
-terp-account-scripts = { workspace = true, optional = true }
-cw-infuser-scripts = { workspace = true, optional = true }
-zk-headstash = { path = "../../../../headstash/circuits/halo2", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
-rand = { version = "0.8", optional = true, features = ["std"] }
+polytone-any-proxy = { path = "../../../contracts/ibc/polytone-any-proxy", optional = true, default-features = false, features = ["library"] }
+cw-ics08-wasm-crosslink = { path = "../../../contracts/light-clients/cw-ics08-wasm-crosslink", optional = true, default-features = false, features = ["library"] }
+cw-ics08-wasm-dregg = { path = "../../../contracts/light-clients/cw-ics08-wasm-dregg", optional = true, default-features = false, features = ["library"] }
+cw-ics08-wasm-terp = { path = "../../../contracts/light-clients/cw-ics08-wasm-terp", optional = true, default-features = false, features = ["library"] }
+cw-ics08-wasm-zap1 = { path = "../../../contracts/light-clients/cw-ics08-wasm-zap1", optional = true, default-features = false, features = ["library"] }
+crosslink-light-client = { workspace = true, optional = true }
+cw-shitstrap = { path = "../../../contracts/shitstrap/cw-shitstrap", optional = true, default-features = false, features = ["library"] }
+cw-shitstrap-factory = { path = "../../../contracts/shitstrap/cw-shitstrap-factory", optional = true, default-features = false, features = ["library"] }
+cw-shit-denom = { path = "../../../crates/cw-shit-denom", optional = true }
+nftfi-raffle = { path = "../../../contracts/nfts/raffle", optional = true, default-features = false, features = ["library", "interface"] }
+nftfi-randomness = { path = "../../../contracts/nfts/packages/randomness", optional = true }
+nftfi-loan = { path = "../../../contracts/nfts/nft-loan", optional = true, default-features = false, features = ["library", "interface"] }
+revenue-marketplace = { path = "../../../contracts/revenue/marketplace", optional = true, default-features = false, features = ["library"] }
+revenue-reserve-auction = { path = "../../../contracts/revenue/reserve-auction", optional = true, default-features = false, features = ["library"] }
+cw420 = { path = "../../../contracts/ave/cw420", optional = true, default-features = false, features = ["library"] }
+cw-ave = { path = "../../../contracts/ave/cw-ave", optional = true, default-features = false, features = ["library"] }
+cw-ave-factory = { path = "../../../contracts/ave/cw-ave-factory", optional = true, default-features = false, features = ["library"] }
+cw-headstash-manifold = { path = "../../../contracts/headstash/manifold", optional = true, default-features = false, features = ["library"] }
+cw-norick = { path = "../../../contracts/headstash/no-rick", optional = true, default-features = false, features = ["library"] }
+cw-nullifier-auth = { path = "../../../contracts/headstash/cw-nullifier-auth", optional = true, default-features = false, features = ["library"] }
+cw-nullifier-gate = { path = "../../../contracts/headstash/cw-nullifier-gate", optional = true, default-features = false, features = ["library"] }
+cw-vote-anchor = { path = "../../../contracts/headstash/cw-vote-anchor", optional = true, default-features = false, features = ["library"] }
+cw-vote-ceremony = { path = "../../../contracts/headstash/cw-vote-ceremony", optional = true, default-features = false, features = ["library"] }
+cw-reg-eligibility = { path = "../../../contracts/headstash/cw-reg-eligibility", optional = true, default-features = false, features = ["library"] }
+svg-auction = { path = "../../../contracts/infuser/svg-auction", optional = true, default-features = false, features = ["library"] }
+cw-oracle-aggregator = { path = "../../../contracts/hash-merchant/oracle-aggregator", optional = true, default-features = false, features = ["library", "interface"] }
+cw-oracle-twap-probe = { path = "../../../contracts/hash-merchant/oracle-twap-probe", optional = true, default-features = false, features = ["library", "interface"] }
+marketplace-mirror = { path = "../../../contracts/hash-merchant/marketplace-mirror", optional = true, default-features = false, features = ["library", "interface"] }
+loyalty-verifier = { path = "../../../contracts/hash-merchant/loyalty-verifier", optional = true, default-features = false, features = ["library", "interface"] }
+trusted-builder-sbt = { path = "../../../contracts/hash-merchant/trusted-builder-sbt", optional = true, default-features = false, features = ["library", "interface"] }
+cw-cashu-registry = { path = "../../../contracts/cashu/cw-cashu-registry", optional = true, default-features = false, features = ["library", "interface"] }
+hm-nft-minter = { path = "../../../contracts/infuser/hm-nft-minter", optional = true, default-features = false, features = ["library", "interface"] }
+hm-loyalty-whitelist = { workspace = true, optional = true }
+hm-nft-oracle = { workspace = true, optional = true }
+cosmwasm-vm = { path = "../../../../cosmwasm/packages/vm", optional = true, default-features = false, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }
+zk-headstash = { path = "../../../tools/headstash/circuits/halo2", optional = true, default-features = false, features = ["circuit", "std", "interface", "host-crypto", "multicore"] }
+rand = { version = "0.10", optional = true, features = ["std", "sys_rng"] }
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# The gov bin is cfg-gated. Without required-features, `cargo test --features headstash`
+# still tries to compile it and fails with `cannot find gov`.
+[[bin]]
+name = "terp_gov_proposal"
+path = "src/bin/terp_gov_proposal.rs"
+required-features = ["gov"]

@@ -1,0 +1,114 @@
+{
+  "kind": "recover",
+  "counterparty_chain_id": "live",
+  "title": "Recover expired light clients on live IBC paths",
+  "summary": "Recover every expired 07-tendermint client on morocco-1 for chains that are still live, in one proposal. Stargaze, Evmos, and OmniFlix are not included: their clients are expired and those chains are not producing headers, so no substitute can be Active. Atomone 07-tendermint-34 is not included; a new client will be created for it instead of recovering the old one. Each MsgRecoverClient copies one Active substitute, created at the counterparty tip, onto an expired subject. Clients that share unbonding period, trust level, and max clock drift share one substitute. Akash 07-tendermint-24 and 07-tendermint-25 use 07-tendermint-35; akash 07-tendermint-32 uses 07-tendermint-36. Osmosis 07-tendermint-3 uses 07-tendermint-37; osmosis 07-tendermint-33 uses 07-tendermint-38. Juno 07-tendermint-0, 07-tendermint-1, and 07-tendermint-2 use 07-tendermint-39. Secret 07-tendermint-26, 07-tendermint-27, and 07-tendermint-28 use 07-tendermint-40; secret 07-tendermint-29, 07-tendermint-30, and 07-tendermint-31 use 07-tendermint-41. Gitopia 07-tendermint-16 uses 07-tendermint-42. Open paths kept by this recovery: akash connection-8/channel-6 and connection-11/channel-9; osmosis connection-2/channel-1 and connection-13/channel-11; juno connection-1/channel-0; secret connection-9/channel-7 and connection-10/channel-8; gitopia connection-5/channel-4. Juno connection-0 is still STATE_INIT. The initial deposit is 5000 TERP, half of the 10000 TERP minimum, so this proposal stays in the deposit period and does not enter voting. Passing it later recovers the named clients. It does not mint, burn, or move any other tokens.",
+  "metadata": "One proposal. Recover live-chain expired 07-tendermint clients using substitutes 07-tendermint-35 through 07-tendermint-42. Deposit period only.",
+  "deposit": "5000000000uterp",
+  "expedited": false,
+  "substitute_client_id": "",
+  "note": "Halted Stargaze, Evmos, and OmniFlix clients are omitted. Substitutes 35-42 were created Active at the counterparty tip before this proposal.",
+  "subjects": [
+    {
+      "client_id": "07-tendermint-24",
+      "chain_id": "akashnet-2",
+      "substitute_client_id": "07-tendermint-35"
+    },
+    {
+      "client_id": "07-tendermint-25",
+      "chain_id": "akashnet-2",
+      "substitute_client_id": "07-tendermint-35",
+      "connection_id": "connection-8",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-6"
+    },
+    {
+      "client_id": "07-tendermint-32",
+      "chain_id": "akashnet-2",
+      "substitute_client_id": "07-tendermint-36",
+      "connection_id": "connection-11",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-9"
+    },
+    {
+      "client_id": "07-tendermint-3",
+      "chain_id": "osmosis-1",
+      "substitute_client_id": "07-tendermint-37",
+      "connection_id": "connection-2",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-1"
+    },
+    {
+      "client_id": "07-tendermint-33",
+      "chain_id": "osmosis-1",
+      "substitute_client_id": "07-tendermint-38",
+      "connection_id": "connection-13",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-11"
+    },
+    {
+      "client_id": "07-tendermint-0",
+      "chain_id": "juno-1",
+      "substitute_client_id": "07-tendermint-39"
+    },
+    {
+      "client_id": "07-tendermint-1",
+      "chain_id": "juno-1",
+      "substitute_client_id": "07-tendermint-39",
+      "connection_id": "connection-0",
+      "connection_state": "STATE_INIT"
+    },
+    {
+      "client_id": "07-tendermint-2",
+      "chain_id": "juno-1",
+      "substitute_client_id": "07-tendermint-39",
+      "connection_id": "connection-1",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-0"
+    },
+    {
+      "client_id": "07-tendermint-26",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-40"
+    },
+    {
+      "client_id": "07-tendermint-27",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-40"
+    },
+    {
+      "client_id": "07-tendermint-28",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-40",
+      "connection_id": "connection-9",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-7"
+    },
+    {
+      "client_id": "07-tendermint-29",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-41"
+    },
+    {
+      "client_id": "07-tendermint-30",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-41"
+    },
+    {
+      "client_id": "07-tendermint-31",
+      "chain_id": "secret-4",
+      "substitute_client_id": "07-tendermint-41",
+      "connection_id": "connection-10",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-8"
+    },
+    {
+      "client_id": "07-tendermint-16",
+      "chain_id": "gitopia",
+      "substitute_client_id": "07-tendermint-42",
+      "connection_id": "connection-5",
+      "connection_state": "STATE_OPEN",
+      "channel_id": "channel-4"
+    }
+  ]
+}

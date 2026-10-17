@@ -8,7 +8,9 @@
 //! | [`suite`] | Path A verify contract + Stwo/Flock `circuit_interface` |
 //! | [`bridge`] | `cw-private-dex` corridor settle + spend circuit |
 //! | [`headstash`] | Product A airdrop claim → **clearnet** (`--features headstash`) |
+//! | [`stack`] | Accounts, light clients, and product contracts (`--features stack`) |
 //! | [`ict`] | ict-rs chain → cw-orch Daemon (`--features ict`) |
+//! | [`gov`] | morocco-1 gov drafts, cw-orch dry-run (`--features gov`) |
 //!
 //! Auth stays `terp-authenticator-suite` (halo2-heavy); re-export with `--features auth`.
 
@@ -24,6 +26,8 @@ pub mod stack;
 pub mod suite;
 #[cfg(feature = "headstash")]
 pub mod headstash;
+#[cfg(feature = "gov")]
+pub mod gov;
 
 pub use artifacts::write_demo_circuit_artifacts;
 pub use interfaces::{CwZkVerifyDemo, FlockLigeritoCircuit, StwoSsleCircuit};
