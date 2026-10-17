@@ -1,0 +1,18 @@
+[package]
+name = "svg-auction"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal NFT escrow market for cw721-svg collections: buy-now listings and timed auctions. Message shapes follow terp-marketplace-utils (crates/marketplace)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

@@ -14,20 +14,21 @@ interface = ["cw-orch"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-svg = { workspace = true }
+cw-svg-pack = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw721 = { workspace = true }
-schemars = "0.8.16"
-serde = { version = "1.0.197", default-features = false, features = ["derive"] }
+schemars = { workspace = true }
+serde = { workspace = true }
 sha2 = { workspace = true }
-thiserror = { version = "1.0.58" }
+thiserror = { workspace = true }
 whitelist-mtree = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
-cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork" }
+cw-multi-test = { workspace = true }
 

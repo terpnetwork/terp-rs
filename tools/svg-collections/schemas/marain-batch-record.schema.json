@@ -1,0 +1,18 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "terp:svg-collections/marain-batch-record/v1",
+ "title": "Marain orb poem batch (draft -> curated -> frozen into one collection)",
+ "type": "object",
+ "required": ["batch","status","model","prompt_sha256","raw_output_sha256","candidates","record_sha256"],
+ "properties": {
+  "batch": {"type": "string"},
+  "status": {"type": "string"},
+  "model": {"type": "object", "required": ["runtime","name","digest","options"]},
+  "prompt": {"type": "string"}, "prompt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+  "raw_output": {"type": "string"}, "raw_output_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+  "candidates": {"type": "array", "items": {"type": "string", "pattern": "^[a-z ]{6,60}$"}},
+  "approved": {"type": "array", "maxItems": 12, "items": {"type": "string"}, "description": "curator-approved, order = Options index"},
+  "curator": {"type": "string"},
+  "record_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+ }
+}

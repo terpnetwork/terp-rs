@@ -17,12 +17,14 @@ interface = ["cw-orch"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["stargate", "zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-cw721-svg = { path = "../cw721-svg", features = ["library"] }
+cw-svg = { workspace = true }
+cw-svg-pack = { workspace = true }
+cw721-svg = { workspace = true, features = ["library"] }
 schemars = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }

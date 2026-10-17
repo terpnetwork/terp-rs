@@ -93,7 +93,7 @@
             "type": "named",
             "properties": {
               "packet": {
-                "value": 25
+                "value": 14
               }
             }
           },
@@ -102,7 +102,7 @@
             "type": "named",
             "properties": {
               "code_id": {
-                "value": 17
+                "value": 6
               }
             }
           },
@@ -110,7 +110,7 @@
             "description": "Update the contract's ownership. The `action` to be provided\ncan be either to propose transferring ownership to an account,\naccept a pending ownership transfer, or renounce the ownership\npermanently.",
             "type": "tuple",
             "items": [
-              26
+              15
             ]
           }
         }
@@ -125,11 +125,11 @@
           },
           "creator": {
             "description": "Sets the creator of collection. The creator is the only one eligible to update `CollectionInfo`.",
-            "value": 23
+            "value": 12
           },
           "minter": {
             "description": "The minter is the only one who can create new NFTs.\nThis is designed for a base NFT that is controlled by an external program\nor contract. You will likely replace this with custom logic in custom NFTs",
-            "value": 23
+            "value": 12
           },
           "name": {
             "description": "Name of the NFT contract",
@@ -140,7 +140,7 @@
             "value": 2
           },
           "withdraw_address": {
-            "value": 23
+            "value": 12
           }
         }
       },
@@ -153,40 +153,34 @@
         "type": "struct",
         "properties": {
           "mint_end_time": {
-            "value": 22
+            "value": 11
           },
           "mint_start_time": {
             "description": "Timestamp of mint start. If less than current block, mints available",
-            "value": 22
+            "value": 11
+          },
+          "packed": {
+            "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
+            "value": 4
           },
           "price_tiers": {
             "description": "Price tiers for minting. Empty or None = free mint.",
-            "value": 20
+            "value": 9
           },
           "require_auth": {
             "defaulting": true,
             "description": "When true, every mint must include valid ADR-36 `ext` auth\n(`CosmosArbitrary` over DST+nonce[|digest]). Required for trustless\npledge collections; default false preserves open-mint SVG drops.",
-            "value": 24
+            "value": 13
           },
           "seed": {
             "value": 4
           },
-          "svg_template": {
-            "value": 2
-          },
-          "template_slots": {
-            "description": "Pre-computed placeholder positions in the SVG template.\nEach slot maps a `${varname}` occurrence to its byte offsets and variable index.",
-            "value": 15
-          },
           "total": {
-            "value": 17
-          },
-          "variables": {
-            "value": 12
+            "value": 6
           },
           "whitelist": {
             "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
-            "value": 23
+            "value": 12
           }
         }
       },
@@ -196,145 +190,17 @@
         "type": "binary"
       },
       {
-        "name": "cw_svg_VariableDef",
-        "type": "struct",
-        "properties": {
-          "kind": {
-            "value": 6
-          },
-          "name": {
-            "value": 2
-          }
-        }
-      },
-      {
-        "name": "cw_svg_VariableKind",
-        "type": "enum",
-        "cases": {
-          "options": {
-            "description": "Pick from a list of string values",
-            "type": "tuple",
-            "items": [
-              7
-            ]
-          },
-          "range": {
-            "description": "Generate a decimal string in [min, max] at given precision.\n`min` and `max` are decimal strings (e.g. \"-2.5\", \"80\").",
-            "type": "named",
-            "properties": {
-              "max": {
-                "value": 2
-              },
-              "min": {
-                "value": 2
-              },
-              "precision": {
-                "value": 8
-              }
-            }
-          },
-          "rgb": {
-            "description": "Generate a random `rgb(R,G,B)` color string.\nEach channel is independently random in 0–255.",
-            "type": "unit"
-          },
-          "rgb_styled": {
-            "description": "Pick a random range from the list, then generate a random shade within it.\nEach channel is constrained to [min, max] of the selected range.",
-            "type": "tuple",
-            "items": [
-              11
-            ]
-          }
-        }
-      },
-      {
-        "name": "alloc::vec::Vec<alloc::string::String>",
-        "type": "array",
-        "items": 2
-      },
-      {
-        "name": "u32",
-        "type": "integer",
-        "precision": 32,
-        "signed": false
-      },
-      {
-        "name": "cw_svg_RgbRange",
-        "type": "struct",
-        "properties": {
-          "b_max": {
-            "value": 10
-          },
-          "b_min": {
-            "value": 10
-          },
-          "g_max": {
-            "value": 10
-          },
-          "g_min": {
-            "value": 10
-          },
-          "r_max": {
-            "value": 10
-          },
-          "r_min": {
-            "value": 10
-          }
-        }
-      },
-      {
-        "name": "u8",
-        "type": "integer",
-        "precision": 8,
-        "signed": false
-      },
-      {
-        "name": "alloc::vec::Vec<cw_svg::RgbRange>",
-        "type": "array",
-        "items": 9
-      },
-      {
-        "name": "alloc::vec::Vec<cw_svg::VariableDef>",
-        "type": "array",
-        "items": 5
-      },
-      {
-        "name": "cw_svg_TemplateSlot",
-        "type": "struct",
-        "properties": {
-          "end": {
-            "value": 8
-          },
-          "start": {
-            "value": 8
-          },
-          "var_idx": {
-            "value": 14
-          }
-        }
-      },
-      {
-        "name": "u16",
-        "type": "integer",
-        "precision": 16,
-        "signed": false
-      },
-      {
-        "name": "alloc::vec::Vec<cw_svg::TemplateSlot>",
-        "type": "array",
-        "items": 13
-      },
-      {
         "name": "cw721_svg_contract_PriceTier",
         "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
         "type": "struct",
         "properties": {
           "price": {
             "description": "Price per token in this tier",
-            "value": 18
+            "value": 7
           },
           "until_count": {
             "description": "This tier applies while mint_count < until_count",
-            "value": 17
+            "value": 6
           }
         }
       },
@@ -349,7 +215,7 @@
         "type": "struct",
         "properties": {
           "amount": {
-            "value": 19
+            "value": 8
           },
           "denom": {
             "value": 2
@@ -366,7 +232,7 @@
       {
         "name": "alloc::vec::Vec<cw721_svg::contract::PriceTier>",
         "type": "array",
-        "items": 16
+        "items": 5
       },
       {
         "name": "cosmwasm_std_timestamp_Timestamp",
@@ -376,7 +242,7 @@
       {
         "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
         "type": "optional",
-        "inner": 21
+        "inner": 10
       },
       {
         "name": "core::option::Option<alloc::string::String>",
@@ -434,7 +300,7 @@
             "type": "named",
             "properties": {
               "expiry": {
-                "value": 28
+                "value": 17
               },
               "new_owner": {
                 "value": 2
@@ -452,14 +318,14 @@
             "description": "AtHeight will expire when `env.block.height` >= height",
             "type": "tuple",
             "items": [
-              17
+              6
             ]
           },
           "at_time": {
             "description": "AtTime will expire when `env.block.time` >= time",
             "type": "tuple",
             "items": [
-              21
+              10
             ]
           },
           "never": {
@@ -472,7 +338,7 @@
       {
         "name": "core::option::Option<cw_utils::expiration::Expiration>",
         "type": "optional",
-        "inner": 27
+        "inner": 16
       }
     ]
   },

@@ -1,0 +1,339 @@
+{
+ "script": "Marain (Iain M. Banks, Culture novels)",
+ "status": "community transcription, NOT an official mapping",
+ "bit_order": "9 cells row-major, top-left first; '1' = filled cell. bits[0] is the top-left cell.",
+ "value_note": "Banks' essay gives the first letter (w, 'wa') as binary 100111100 and also calls it 121 in base 10. 121 is that bit string read LSB-first (reversed), so this table stores the bit string and both readings.",
+ "sources": [
+  {
+   "url": "https://vuink.com/post/geribe-ubcxvaf-d-dpbz/banks/a-few-notes-on-marain-d-dhtml",
+   "what": "copy of Banks, 'A Few Notes on Marain' (text only, no glyph images): 3x3 grid, 9-bit, w = 100111100 = 121"
+  },
+  {
+   "url": "https://raw.githubusercontent.com/willow385/cmarain/main/src/mchar_t.h",
+   "what": "glyph bit values (GPL-3.0 code; values transcribed from Banks' alphabet figure by the author)"
+  },
+  {
+   "url": "https://raw.githubusercontent.com/willow385/cmarain/main/src/mchar_t.c",
+   "what": "ASCII key per glyph"
+  },
+  {
+   "url": "https://www.omniglot.com/conscripts/marain.htm",
+   "what": "background; glyph chart is an image (not machine-read)"
+  },
+  {
+   "url": "https://theculture.fandom.com/wiki/Marain",
+   "what": "background: primary glyphs distinct under rotation/mirroring; numbers base 8"
+  }
+ ],
+ "verified": "Only w = 100111100 is confirmed against Banks' own text. All other rows come from the cmarain transcription; check them against the figure in the essay before minting.",
+ "glyphs": [
+  {
+   "key": "w",
+   "name": "wa",
+   "bits": "100111100",
+   "value_msb_first": 316,
+   "value_banks_lsb_first": 121
+  },
+  {
+   "key": "u",
+   "name": "uh",
+   "bits": "100011001",
+   "value_msb_first": 281,
+   "value_banks_lsb_first": 305
+  },
+  {
+   "key": "m",
+   "name": "ma",
+   "bits": "001001111",
+   "value_msb_first": 79,
+   "value_banks_lsb_first": 484
+  },
+  {
+   "key": "h",
+   "name": "hek",
+   "bits": "101101010",
+   "value_msb_first": 362,
+   "value_banks_lsb_first": 173
+  },
+  {
+   "key": "d",
+   "name": "de",
+   "bits": "110010011",
+   "value_msb_first": 403,
+   "value_banks_lsb_first": 403
+  },
+  {
+   "key": "a",
+   "name": "a",
+   "bits": "111100010",
+   "value_msb_first": 482,
+   "value_banks_lsb_first": 143
+  },
+  {
+   "key": "p",
+   "name": "pika",
+   "bits": "100101111",
+   "value_msb_first": 303,
+   "value_banks_lsb_first": 489
+  },
+  {
+   "key": "s",
+   "name": "seth",
+   "bits": "011010101",
+   "value_msb_first": 213,
+   "value_banks_lsb_first": 342
+  },
+  {
+   "key": "t",
+   "name": "tawa",
+   "bits": "101111001",
+   "value_msb_first": 377,
+   "value_banks_lsb_first": 317
+  },
+  {
+   "key": "i",
+   "name": "ihk",
+   "bits": "110011001",
+   "value_msb_first": 409,
+   "value_banks_lsb_first": 307
+  },
+  {
+   "key": "l",
+   "name": "le",
+   "bits": "110111010",
+   "value_msb_first": 442,
+   "value_banks_lsb_first": 187
+  },
+  {
+   "key": "C",
+   "name": "tchey",
+   "bits": "111010100",
+   "value_msb_first": 468,
+   "value_banks_lsb_first": 87
+  },
+  {
+   "key": "k",
+   "name": "keluh",
+   "bits": "001111011",
+   "value_msb_first": 123,
+   "value_banks_lsb_first": 444
+  },
+  {
+   "key": "o",
+   "name": "ot",
+   "bits": "011011100",
+   "value_msb_first": 220,
+   "value_banks_lsb_first": 118
+  },
+  {
+   "key": "b",
+   "name": "bat",
+   "bits": "001011111",
+   "value_msb_first": 95,
+   "value_banks_lsb_first": 500
+  },
+  {
+   "key": "H",
+   "name": "chem",
+   "bits": "011101010",
+   "value_msb_first": 234,
+   "value_banks_lsb_first": 174
+  },
+  {
+   "key": "f",
+   "name": "ihf",
+   "bits": "111111001",
+   "value_msb_first": 505,
+   "value_banks_lsb_first": 319
+  },
+  {
+   "key": "A",
+   "name": "ayyuhm",
+   "bits": "010101111",
+   "value_msb_first": 175,
+   "value_banks_lsb_first": 490
+  },
+  {
+   "key": "v",
+   "name": "vash",
+   "bits": "111101101",
+   "value_msb_first": 493,
+   "value_banks_lsb_first": 367
+  },
+  {
+   "key": "L",
+   "name": "llewu",
+   "bits": "101010111",
+   "value_msb_first": 343,
+   "value_banks_lsb_first": 469
+  },
+  {
+   "key": "n",
+   "name": "nek",
+   "bits": "110111110",
+   "value_msb_first": 446,
+   "value_banks_lsb_first": 251
+  },
+  {
+   "key": "E",
+   "name": "iye",
+   "bits": "101110111",
+   "value_msb_first": 375,
+   "value_banks_lsb_first": 477
+  },
+  {
+   "key": "g",
+   "name": "gu",
+   "bits": "010011110",
+   "value_msb_first": 158,
+   "value_banks_lsb_first": 242
+  },
+  {
+   "key": "G",
+   "name": "eng",
+   "bits": "011110001",
+   "value_msb_first": 241,
+   "value_banks_lsb_first": 286
+  },
+  {
+   "key": "z",
+   "name": "zau",
+   "bits": "101111010",
+   "value_msb_first": 378,
+   "value_banks_lsb_first": 189
+  },
+  {
+   "key": "e",
+   "name": "ep",
+   "bits": "110001111",
+   "value_msb_first": 399,
+   "value_banks_lsb_first": 483
+  },
+  {
+   "key": "j",
+   "name": "ye",
+   "bits": "111101011",
+   "value_msb_first": 491,
+   "value_banks_lsb_first": 431
+  },
+  {
+   "key": "S",
+   "name": "shihk",
+   "bits": "110110101",
+   "value_msb_first": 437,
+   "value_banks_lsb_first": 347
+  },
+  {
+   "key": "y",
+   "name": "yoter",
+   "bits": "111011110",
+   "value_msb_first": 478,
+   "value_banks_lsb_first": 247
+  },
+  {
+   "key": "O",
+   "name": "uf",
+   "bits": "110011101",
+   "value_msb_first": 413,
+   "value_banks_lsb_first": 371
+  },
+  {
+   "key": "r",
+   "name": "rek",
+   "bits": "101111111",
+   "value_msb_first": 383,
+   "value_banks_lsb_first": 509
+  },
+  {
+   "key": "T",
+   "name": "tham",
+   "bits": "111111011",
+   "value_msb_first": 507,
+   "value_banks_lsb_first": 447
+  },
+  {
+   "key": " ",
+   "name": "space",
+   "bits": "000000000",
+   "value_msb_first": 0,
+   "value_banks_lsb_first": 0
+  },
+  {
+   "key": "(",
+   "name": "openb",
+   "bits": "000100110",
+   "value_msb_first": 38,
+   "value_banks_lsb_first": 200
+  },
+  {
+   "key": ")",
+   "name": "closeb",
+   "bits": "011001000",
+   "value_msb_first": 200,
+   "value_banks_lsb_first": 38
+  },
+  {
+   "key": ".",
+   "name": "stop",
+   "bits": "100100100",
+   "value_msb_first": 292,
+   "value_banks_lsb_first": 73
+  },
+  {
+   "key": "0",
+   "name": "nhech",
+   "bits": "111101111",
+   "value_msb_first": 495,
+   "value_banks_lsb_first": 495
+  },
+  {
+   "key": "1",
+   "name": "sto",
+   "bits": "000111110",
+   "value_msb_first": 62,
+   "value_banks_lsb_first": 248
+  },
+  {
+   "key": "2",
+   "name": "hre",
+   "bits": "011110111",
+   "value_msb_first": 247,
+   "value_banks_lsb_first": 478
+  },
+  {
+   "key": "3",
+   "name": "dosa",
+   "bits": "111111111",
+   "value_msb_first": 511,
+   "value_banks_lsb_first": 511
+  },
+  {
+   "key": "4",
+   "name": "llamih",
+   "bits": "110011111",
+   "value_msb_first": 415,
+   "value_banks_lsb_first": 499
+  },
+  {
+   "key": "5",
+   "name": "ko",
+   "bits": "110110111",
+   "value_msb_first": 439,
+   "value_banks_lsb_first": 475
+  },
+  {
+   "key": "6",
+   "name": "gol",
+   "bits": "100111010",
+   "value_msb_first": 314,
+   "value_banks_lsb_first": 185
+  },
+  {
+   "key": "7",
+   "name": "lyeway",
+   "bits": "010110111",
+   "value_msb_first": 183,
+   "value_banks_lsb_first": 474
+  }
+ ]
+}

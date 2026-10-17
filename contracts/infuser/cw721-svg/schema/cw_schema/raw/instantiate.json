@@ -12,11 +12,11 @@
         },
         "creator": {
           "description": "Sets the creator of collection. The creator is the only one eligible to update `CollectionInfo`.",
-          "value": 22
+          "value": 11
         },
         "minter": {
           "description": "The minter is the only one who can create new NFTs.\nThis is designed for a base NFT that is controlled by an external program\nor contract. You will likely replace this with custom logic in custom NFTs",
-          "value": 22
+          "value": 11
         },
         "name": {
           "description": "Name of the NFT contract",
@@ -27,7 +27,7 @@
           "value": 1
         },
         "withdraw_address": {
-          "value": 22
+          "value": 11
         }
       }
     },
@@ -40,40 +40,34 @@
       "type": "struct",
       "properties": {
         "mint_end_time": {
-          "value": 21
+          "value": 10
         },
         "mint_start_time": {
           "description": "Timestamp of mint start. If less than current block, mints available",
-          "value": 21
+          "value": 10
+        },
+        "packed": {
+          "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
+          "value": 3
         },
         "price_tiers": {
           "description": "Price tiers for minting. Empty or None = free mint.",
-          "value": 19
+          "value": 8
         },
         "require_auth": {
           "defaulting": true,
           "description": "When true, every mint must include valid ADR-36 `ext` auth\n(`CosmosArbitrary` over DST+nonce[|digest]). Required for trustless\npledge collections; default false preserves open-mint SVG drops.",
-          "value": 23
+          "value": 12
         },
         "seed": {
           "value": 3
         },
-        "svg_template": {
-          "value": 1
-        },
-        "template_slots": {
-          "description": "Pre-computed placeholder positions in the SVG template.\nEach slot maps a `${varname}` occurrence to its byte offsets and variable index.",
-          "value": 14
-        },
         "total": {
-          "value": 16
-        },
-        "variables": {
-          "value": 11
+          "value": 5
         },
         "whitelist": {
           "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
-          "value": 22
+          "value": 11
         }
       }
     },
@@ -83,145 +77,17 @@
       "type": "binary"
     },
     {
-      "name": "cw_svg_VariableDef",
-      "type": "struct",
-      "properties": {
-        "kind": {
-          "value": 5
-        },
-        "name": {
-          "value": 1
-        }
-      }
-    },
-    {
-      "name": "cw_svg_VariableKind",
-      "type": "enum",
-      "cases": {
-        "options": {
-          "description": "Pick from a list of string values",
-          "type": "tuple",
-          "items": [
-            6
-          ]
-        },
-        "range": {
-          "description": "Generate a decimal string in [min, max] at given precision.\n`min` and `max` are decimal strings (e.g. \"-2.5\", \"80\").",
-          "type": "named",
-          "properties": {
-            "max": {
-              "value": 1
-            },
-            "min": {
-              "value": 1
-            },
-            "precision": {
-              "value": 7
-            }
-          }
-        },
-        "rgb": {
-          "description": "Generate a random `rgb(R,G,B)` color string.\nEach channel is independently random in 0–255.",
-          "type": "unit"
-        },
-        "rgb_styled": {
-          "description": "Pick a random range from the list, then generate a random shade within it.\nEach channel is constrained to [min, max] of the selected range.",
-          "type": "tuple",
-          "items": [
-            10
-          ]
-        }
-      }
-    },
-    {
-      "name": "alloc::vec::Vec<alloc::string::String>",
-      "type": "array",
-      "items": 1
-    },
-    {
-      "name": "u32",
-      "type": "integer",
-      "precision": 32,
-      "signed": false
-    },
-    {
-      "name": "cw_svg_RgbRange",
-      "type": "struct",
-      "properties": {
-        "b_max": {
-          "value": 9
-        },
-        "b_min": {
-          "value": 9
-        },
-        "g_max": {
-          "value": 9
-        },
-        "g_min": {
-          "value": 9
-        },
-        "r_max": {
-          "value": 9
-        },
-        "r_min": {
-          "value": 9
-        }
-      }
-    },
-    {
-      "name": "u8",
-      "type": "integer",
-      "precision": 8,
-      "signed": false
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::RgbRange>",
-      "type": "array",
-      "items": 8
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::VariableDef>",
-      "type": "array",
-      "items": 4
-    },
-    {
-      "name": "cw_svg_TemplateSlot",
-      "type": "struct",
-      "properties": {
-        "end": {
-          "value": 7
-        },
-        "start": {
-          "value": 7
-        },
-        "var_idx": {
-          "value": 13
-        }
-      }
-    },
-    {
-      "name": "u16",
-      "type": "integer",
-      "precision": 16,
-      "signed": false
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::TemplateSlot>",
-      "type": "array",
-      "items": 12
-    },
-    {
       "name": "cw721_svg_contract_PriceTier",
       "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
       "type": "struct",
       "properties": {
         "price": {
           "description": "Price per token in this tier",
-          "value": 17
+          "value": 6
         },
         "until_count": {
           "description": "This tier applies while mint_count < until_count",
-          "value": 16
+          "value": 5
         }
       }
     },
@@ -236,7 +102,7 @@
       "type": "struct",
       "properties": {
         "amount": {
-          "value": 18
+          "value": 7
         },
         "denom": {
           "value": 1
@@ -253,7 +119,7 @@
     {
       "name": "alloc::vec::Vec<cw721_svg::contract::PriceTier>",
       "type": "array",
-      "items": 15
+      "items": 4
     },
     {
       "name": "cosmwasm_std_timestamp_Timestamp",
@@ -263,7 +129,7 @@
     {
       "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
       "type": "optional",
-      "inner": 20
+      "inner": 9
     },
     {
       "name": "core::option::Option<alloc::string::String>",

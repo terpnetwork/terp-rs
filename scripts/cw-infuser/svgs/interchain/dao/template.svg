@@ -103,7 +103,8 @@
     fill="${color-yin}" clip-path="url(#wipe-yang)"/>
 
   <!-- L6: Yin eye — flips when wipe circle covers it (t≈10.8%) -->
-  <circle cx="8.5" cy="14" r="1.5">
+  <!-- Static fill matches the animation's first value so the eye remains if SMIL is dropped. -->
+  <circle cx="8.5" cy="14" r="1.5" fill="${color-yang}">
     <animate attributeName="fill"
       values="${color-yang}; ${color-yang}; ${color-yin}; ${color-yin}; ${color-yang}; ${color-yang}"
       keyTimes="0; 0.10; 0.12; 0.88; 0.90; 1"
@@ -111,7 +112,7 @@
   </circle>
 
   <!-- L7: Yang eye — flips opposite to yin eye -->
-  <circle cx="19.5" cy="14" r="1.5">
+  <circle cx="19.5" cy="14" r="1.5" fill="${color-yin}">
     <animate attributeName="fill"
       values="${color-yin}; ${color-yin}; ${color-yang}; ${color-yang}; ${color-yin}; ${color-yin}"
       keyTimes="0; 0.10; 0.12; 0.88; 0.90; 1"

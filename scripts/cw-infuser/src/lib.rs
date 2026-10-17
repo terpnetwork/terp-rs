@@ -30,9 +30,6 @@ pub mod fractal {
             symbol: "FRACTAL".into(),
             collection_info_extension: cw721_svg::SvgCollectionMetadata {
                 seed: blake3::hash(&seed.to_le_bytes()).as_bytes().into(),
-                svg_template: FRACTAL_SVG_TEMPLATE.to_string(),
-                variables: v.clone(),
-                template_slots: cw_svg::compute_template_slots(FRACTAL_SVG_TEMPLATE, &v),
                 price_tiers: vec![
                     cw721_svg::PriceTier {
                         until_count: 1000,
@@ -52,7 +49,8 @@ pub mod fractal {
                 mint_end_time: None,
                 whitelist: None,
             require_auth: false,
-            },
+            packed: cw721_svg::pack_svg(&(FRACTAL_SVG_TEMPLATE.to_string()), &(v.clone())),
+        },
             minter: Some(admin.to_string()),
             creator: Some(admin.to_string()),
             withdraw_address: Some(admin.to_string()),

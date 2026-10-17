@@ -1,0 +1,11 @@
+[package]
+name = "cw-svg-pack"
+version = "0.1.0"
+edition = "2021"
+description = "SVP1 compact SVG template codec (deterministic decoder for cw721-svg)"
+
+[dependencies]
+cw-svg = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["std"] }

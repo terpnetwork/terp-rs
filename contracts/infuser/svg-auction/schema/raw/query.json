@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "auction"
+      ],
+      "properties": {
+        "auction": {
+          "type": "object",
+          "required": [
+            "auction_id"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Active auction for a token, if any.",
+      "type": "object",
+      "required": [
+        "nft_auction"
+      ],
+      "properties": {
+        "nft_auction": {
+          "type": "object",
+          "required": [
+            "nft_contract",
+            "token_id"
+          ],
+          "properties": {
+            "nft_contract": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "auction_by_contract"
+      ],
+      "properties": {
+        "auction_by_contract": {
+          "type": "object",
+          "required": [
+            "nft_contract"
+          ],
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "nft_contract": {
+              "type": "string"
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bid_history_by_auction_id"
+      ],
+      "properties": {
+        "bid_history_by_auction_id": {
+          "type": "object",
+          "required": [
+            "auction_id"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

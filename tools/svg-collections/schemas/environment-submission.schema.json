@@ -1,0 +1,20 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "terp:svg-collections/environment-submission/v1",
+ "title": "Paid set/setting submission for a symbient persona",
+ "type": "object",
+ "required": ["id","persona","text","payer","payment_tx","fee","paid_at","status"],
+ "properties": {
+  "id": {"type": "string"},
+  "persona": {"type": "string"},
+  "text": {"type": "string", "minLength": 8, "maxLength": 280, "pattern": "^[ -~]+$"},
+  "payer": {"type": "string", "pattern": "^terp1[0-9a-z]{38,58}$"},
+  "payment_tx": {"type": "string"},
+  "fee": {"type": "object", "required": ["denom","amount"]},
+  "paid_at": {"type": "string", "format": "date-time"},
+  "status": {"enum": ["queued","prefilter_failed","approved","rejected","applied","refund_due","refunded"]},
+  "target_day": {"type": ["string","null"], "format": "date", "description": "assigned on approval, see SKILL-symbient.md"},
+  "moderation": {"type": "object", "properties": {"rules_failed": {"type":"array","items":{"type":"string"}},
+     "reviewer": {"type":"string"}, "at": {"type":"string","format":"date-time"}, "note": {"type":"string"}}}
+ }
+}

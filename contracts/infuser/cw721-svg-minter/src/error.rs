@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("Instantiate2 address error: {msg}")]
     Instantiate2AddressError { msg: String },
+
+    #[error("{0}")]
+    Svg(#[from] cw_svg::SvgError),
 }

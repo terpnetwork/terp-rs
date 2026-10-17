@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><title>svg-sanitize link tests</title>
+<script type="module">
+import { sanitizeSvgResult, externalLinkAllowed } from '/lib/svg-sanitize.js';
+const CID = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
+const wrap = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10">${inner}</svg>`;
+const hrefOf = (svg) => { const d = document.createElement('div'); d.innerHTML = svg; const a = d.querySelector('a'); return a ? { href: a.getAttribute('href') || a.getAttribute('xlink:href'), target: a.getAttribute('target'), rel: a.getAttribute('rel') } : null; };
+const results = [];
+const t = (name, ok) => results.push({ name, ok: !!ok });
+// unit: the link rule
+t('unit ipfs ok', externalLinkAllowed(`ipfs://${CID}`));
+t('unit ipfs path ok', externalLinkAllowed(`ipfs://${CID}/index.html`));
+t('unit gateway ok', externalLinkAllowed(`https://dweb.link/ipfs/${CID}`));
+t('unit gateway not allowlisted', !externalLinkAllowed(`https://evil.example/ipfs/${CID}`));
+t('unit gateway lookalike', !externalLinkAllowed(`https://ipfs.io.evil.example/ipfs/${CID}`));
+t('unit http', !externalLinkAllowed(`http://ipfs.io/ipfs/${CID}`));
+t('unit dot segment', !externalLinkAllowed(`ipfs://${CID}/../x`));
+t('unit js', !externalLinkAllowed('javascript:alert(1)'));
+t('unit space', !externalLinkAllowed(` ipfs://${CID}`));
+t('unit userinfo', !externalLinkAllowed(`https://ipfs.io@evil.example/ipfs/${CID}`));
+// full filter
+const keep = (name, href) => { const r = sanitizeSvgResult(wrap(`<a href="${href}"><text y="5">x</text></a>`)); const h = hrefOf(r.svg); t(name, r.ok && h && h.href === href && h.target === '_blank' && h.rel === 'noopener noreferrer nofollow'); };
+const drop = (name, inner) => { const r = sanitizeSvgResult(wrap(inner)); const h = hrefOf(r.svg); t(name, r.ok && (!h || !h.href) && !/javascript|evil/i.test(r.svg)); };
+keep('a ipfs kept', `ipfs://${CID}`);
+keep('a gateway kept', `https://ipfs.io/ipfs/${CID}`);
+drop('a evil gateway dropped', `<a href="https://evil.example/ipfs/${CID}"><text>x</text></a>`);
+drop('a javascript dropped', '<a href="javascript:alert(1)"><text>x</text></a>');
+drop('a JaVaScRiPt dropped', '<a href="JaVaScRiPt:alert(1)"><text>x</text></a>');
+drop('a entity javascript dropped', '<a href="&#106;avascript:alert(1)"><text>x</text></a>');
+drop('a xlink javascript dropped', '<a xlink:href="javascript:alert(1)"><text>x</text></a>');
+drop('a http dropped', `<a href="http://evil.example/"><text>x</text></a>`);
+{ const r = sanitizeSvgResult(wrap(`<image href="https://ipfs.io/ipfs/${CID}" width="5" height="5"/>`)); t('image external href removed', r.ok && !/ipfs\.io/.test(r.svg)); }
+{ const r = sanitizeSvgResult(wrap(`<a href="ipfs://${CID}"><set attributeName="href" to="javascript:alert(1)"/><text>x</text></a>`)); t('set href removed', r.ok && !/javascript/i.test(r.svg) && /ipfs:\/\//.test(r.svg)); }
+{ const r = sanitizeSvgResult(wrap(`<a href="ipfs://${CID}" onclick="alert(1)"><text>x</text></a>`)); t('onclick removed', r.ok && !/onclick/i.test(r.svg)); }
+{ const r = sanitizeSvgResult(wrap('<a href="#a"><text>x</text></a><circle id="a" r="1" fill="red"/>')); const h = hrefOf(r.svg); t('same-doc href kept, no target', r.ok && h && h.href === '#a' && !h.target); }
+// note: DOMPurify's svg profile drops <use> entirely (unchanged behaviour)
+// real example token
+try {
+  const svg = await (await fetch('/example.svg')).text();
+  const r = sanitizeSvgResult(svg); const h = hrefOf(r.svg);
+  t('example token keeps gateway link', r.ok && h && externalLinkAllowed(h.href) && h.href.startsWith('https://'));
+} catch (e) { t('example token keeps gateway link: ' + e, false); }
+window.__results = results;
+document.body.textContent = JSON.stringify(results);
+</script>

@@ -1,0 +1,12 @@
+{
+ "about": "Curated mint-time themes for the Marain orb. One is picked per token from the token seed (cw721-svg options variable `scribe`); a scribe later replaces it with a saying. Charset: a-z, 0-7, space . , ' - ; <= 40 glyphs.",
+ "version": 1,
+ "themes": [
+  "first light", "the long orbit", "quiet ships", "tides", "a kind mind", "distance",
+  "play", "the open hand", "small stars", "returning home", "the deep dark", "patience",
+  "the gift", "a shared meal", "rain on glass", "slow growth", "the gate", "old friends",
+  "a new name", "the wide sky", "listening", "the last word", "morning", "the river",
+  "a quiet joke", "courage", "the map", "keeping watch", "the seed", "a long sleep",
+  "the dance", "wonder"
+ ]
+}

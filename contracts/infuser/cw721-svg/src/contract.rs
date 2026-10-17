@@ -16,9 +16,75 @@ use sha2::{Digest, Sha256};
 pub const MAX_SVG_SIZE: usize = 42 * 1024;
 pub const MAX_TOTAL_SUPPLY: u64 = 10_000;
 pub const PAUSED: Item<()> = Item::new("svg_paused");
-pub const SVG_TEMPLATE: Item<String> = Item::new("svg_template");
-pub const VARIABLES: Item<Vec<cw_svg::VariableDef>> = Item::new("variables");
-pub const TEMPLATE_SLOTS: Item<Vec<cw_svg::TemplateSlot>> = Item::new("template_slots");
+/// Raw SVP1 bytes: the only copy of the template and variables.
+pub const SVG_PACKED_KEY: &[u8] = b"svg_packed";
+
+/// Decode SVP1 bytes; maps codec errors to a contract error (never panics).
+pub fn decode_packed(
+    bytes: &[u8],
+) -> Result<(String, Vec<cw_svg::VariableDef>), ContractError> {
+    cw_svg_pack::unpack(bytes).map_err(|e| ContractError::GenericMsg { m: e.to_string() })
+}
+
+/// Non-panicking `${name}` scan (same rule as `cw_svg::compute_template_slots`).
+pub fn scan_slots(
+    template: &str,
+    variables: &[cw_svg::VariableDef],
+) -> Result<Vec<cw_svg::TemplateSlot>, ContractError> {
+    let b = template.as_bytes();
+    let mut slots = Vec::new();
+    let mut i = 0;
+    while i + 1 < b.len() {
+        if b[i] == b'$' && b[i + 1] == b'{' {
+            let j = b[i + 2..]
+                .iter()
+                .position(|&c| c == b'}')
+                .map(|k| i + 2 + k)
+                .ok_or_else(|| ContractError::InvalidTemplatePlaceholder {
+                    reason: format!("unclosed placeholder at {i}"),
+                })?;
+            let name = &template[i + 2..j];
+            let var_idx = variables.iter().position(|v| v.name == name).ok_or_else(|| {
+                ContractError::InvalidTemplatePlaceholder {
+                    reason: format!("undefined variable '{name}'"),
+                }
+            })?;
+            slots.push(cw_svg::TemplateSlot {
+                start: i as u32,
+                end: (j + 1) as u32,
+                var_idx: var_idx as u16,
+            });
+            i = j + 1;
+        } else {
+            i += 1;
+        }
+    }
+    Ok(slots)
+}
+
+fn packed_bytes(storage: &dyn cosmwasm_std::Storage) -> Result<Vec<u8>, ContractError> {
+    storage
+        .get(SVG_PACKED_KEY)
+        .ok_or_else(|| ContractError::GenericMsg { m: "no packed template stored".into() })
+}
+
+/// Template, slots and variables for rendering, decoded from the packed bytes.
+pub fn load_render(
+    storage: &dyn cosmwasm_std::Storage,
+) -> Result<(String, Vec<cw_svg::TemplateSlot>, Vec<cw_svg::VariableDef>), ContractError> {
+    let (t, v) = decode_packed(&packed_bytes(storage)?)?;
+    let s = scan_slots(&t, &v)?;
+    Ok((t, s, v))
+}
+
+/// Variables for mint: decoded from the packed header (measured cheaper overall
+/// than a separate variable table, 2026-10-15).
+pub fn load_vars(
+    storage: &dyn cosmwasm_std::Storage,
+) -> Result<Vec<cw_svg::VariableDef>, ContractError> {
+    cw_svg_pack::unpack_vars(&packed_bytes(storage)?)
+        .map_err(|e| ContractError::GenericMsg { m: e.to_string() })
+}
 /// Full collection metadata. Mint must not range `collection_extension`
 /// (zk-wasmd cacheMergeIterator panics on that Map::range during execute).
 pub const SVG_COLLECTION: Item<crate::SvgCollectionMetadata> = Item::new("svg_collection");
@@ -28,6 +94,89 @@ pub const WL_MINTER_ADDRS: Map<&Addr, u32> = Map::new("wl_minter_addrs");
 /// DREGG runtime Terp accounts may mint without native payment (foreign rail already paid).
 pub const DREGG_RUNTIME_MINTERS: Map<&Addr, ()> = Map::new("dregg_runtime_minters");
 pub const DREGG_IBC_ONLY: Item<bool> = Item::new("dregg_ibc_only");
+
+// ── Scribe slot ──────────────────────────────────────────────────────────────
+// A template opts in by defining an options variable named `scribe` (the curated
+// theme list; one is picked at mint from the token seed) plus placeholder options
+// variables `scribe.c0`..`scribe.c8` and `scribe.dur`. Those ten are never read from
+// storage: render derives them from the token's current `scribe` text (Marain 3x3).
+pub const SCRIBE_VAR: &str = "scribe";
+#[derive(Clone, Copy, Debug)]
+pub struct ScribeLayout {
+    pub text: usize,
+    pub cells: [usize; 9],
+    pub dur: usize,
+}
+
+/// `Ok(None)` when the template has no `scribe` variable. Errors if the scribe set is
+/// incomplete or a theme option is outside the Marain charset.
+pub fn scribe_layout(vars: &[cw_svg::VariableDef]) -> Result<Option<ScribeLayout>, ContractError> {
+    let find = |n: &str| vars.iter().position(|v| v.name == n);
+    let Some(text) = find(SCRIBE_VAR) else {
+        if vars.iter().any(|v| v.name.starts_with("scribe.")) {
+            return Err(ContractError::InvalidVariableDef { reason: "scribe.* without scribe".into() });
+        }
+        return Ok(None);
+    };
+    let need = |n: String| {
+        find(&n).ok_or_else(|| ContractError::InvalidVariableDef { reason: format!("scribe slot needs variable '{n}'") })
+    };
+    let mut cells = [0usize; 9];
+    for (i, c) in cells.iter_mut().enumerate() {
+        *c = need(format!("scribe.c{i}"))?;
+    }
+    let dur = need("scribe.dur".into())?;
+    for idx in cells.iter().chain([text, dur].iter()) {
+        if !matches!(vars[*idx].kind, cw_svg::VariableKind::Options(_)) {
+            return Err(ContractError::InvalidVariableDef { reason: format!("'{}' must be an options variable", vars[*idx].name) });
+        }
+    }
+    if let cw_svg::VariableKind::Options(themes) = &vars[text].kind {
+        for t in themes {
+            cw_svg::marain::validate_text(t)
+                .map_err(|e| ContractError::InvalidVariableDef { reason: format!("theme {t:?}: {e}") })?;
+        }
+    }
+    Ok(Some(ScribeLayout { text, cells, dur }))
+}
+
+/// Substitute slots; derived scribe values are computed from the current text.
+pub fn render_params(
+    template: &str,
+    slots: &[cw_svg::TemplateSlot],
+    params: &[cw_svg::TokenParam],
+    layout: Option<ScribeLayout>,
+    message: Option<&str>,
+    speed_pct: Option<u16>,
+) -> String {
+    // The seeded theme stays in params forever; the animation spells the selected message, else the theme.
+    let derived = layout.map(|l| {
+        let (cells, dur) = cw_svg::marain::derived(message.unwrap_or(&params[l.text].value));
+        (cells, speed_pct.map(|sp| crate::scribing::scale_dur(&dur, sp)).unwrap_or(dur))
+    });
+    let mut out = String::with_capacity(template.len() + 2048);
+    let mut cursor = 0usize;
+    for slot in slots {
+        out.push_str(&template[cursor..slot.start as usize]);
+        let i = slot.var_idx as usize;
+        let v: &str = match (&layout, &derived) {
+            (Some(l), Some((cells, dur))) => {
+                if let Some(c) = l.cells.iter().position(|x| *x == i) {
+                    &cells[c]
+                } else if l.dur == i {
+                    dur
+                } else {
+                    &params[i].value
+                }
+            }
+            _ => &params[i].value,
+        };
+        out.push_str(v);
+        cursor = slot.end as usize;
+    }
+    out.push_str(&template[cursor..]);
+    out
+}
 
 pub fn execute_mint(
     deps: DepsMut,
@@ -140,7 +289,7 @@ pub fn execute_mint(
         )?
     };
 
-    let variables = VARIABLES.load(deps.storage)?;
+    let variables = load_vars(deps.storage)?;
     let mut events = vec![];
     for i in 0..amnt {
         let tid = mint_count + i;
@@ -181,6 +330,7 @@ pub fn execute_mint(
         Cw721SvgContract::default()
             .config
             .increment_tokens(deps.storage)?;
+        crate::scribing::ORIGIN.save(deps.storage, &token_id, &info.sender)?;
 
         events.push(
             Event::new("mint")
@@ -278,6 +428,18 @@ pub enum WhitelistHasMemberMsg {
 #[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
 pub enum SvgExecuteMsgExt {
     Mint(cw_svg::MintMsg),
+    /// Collection admin (creator owner): scribing epochs, fee, split and shield orb.
+    ConfigureScribing { epoch_blocks: u64, min_fee: Coin, owner_bps: u16, max_proposals: u32, shield_token_id: String },
+    /// Anyone: pay >= min_fee to propose a Marain line for an orb in the current epoch.
+    Propose { token_id: String, text: String },
+    /// Shield-orb owner: pick one proposal of an ended epoch (window = the following epoch).
+    Select { token_id: String, epoch: u64, index: u32 },
+    /// Anyone, after the selection window: pay out an unselected epoch (no message change).
+    Settle { token_id: String, epoch: u64 },
+    /// Proposer: claim the participant record for (epoch, orb) once.
+    ClaimParticipation { token_id: String, epoch: u64 },
+    /// Orb owner: default flash speed in percent (25..=400; None = as derived).
+    SetSpeed { token_id: String, speed_pct: Option<u16> },
     Pause {
         pause: bool,
     },
@@ -300,6 +462,9 @@ pub enum SvgQueryMsgExt {
     SvgPlaceholder { seed: Option<String> },
     #[returns(SvgTemplateResponse)]
     SvgTemplate {},
+    /// Raw SVP1 bytes of the template + variables.
+    #[returns(cosmwasm_std::Binary)]
+    SvgPacked {},
     #[returns(Option<Addr>)]
     Whitelist {},
     /// Returns the total mint count for a given address.
@@ -310,6 +475,23 @@ pub enum SvgQueryMsgExt {
     WlMintCount { address: String },
     #[returns(PriceTier)]
     CurrentPriceTier {},
+    /// Current selected message of an orb, if any.
+    #[returns(Option<crate::scribing::MessageRecord>)]
+    Scribed { token_id: String },
+    #[returns(crate::scribing::EpochInfo)]
+    ScribeEpoch {},
+    #[returns(Vec<crate::scribing::ProposalView>)]
+    Proposals { token_id: String, epoch: u64 },
+    #[returns(Option<crate::scribing::EpochPot>)]
+    EpochPot { token_id: String, epoch: u64 },
+    #[returns(Vec<crate::scribing::MessageRecord>)]
+    ScribeHistory { token_id: String },
+    #[returns(Vec<crate::scribing::ParticipantView>)]
+    Participants { epoch: u64, limit: Option<u32> },
+    #[returns(Option<u16>)]
+    Speed { token_id: String },
+    #[returns(Option<Addr>)]
+    OriginalMinter { token_id: String },
 }
 
 impl CustomMsg for SvgQueryMsgExt {}
@@ -494,35 +676,22 @@ pub fn query_svg_token_uri(
     deps: cosmwasm_std::Deps,
     token_id: String,
 ) -> Result<String, ContractError> {
-    let template = SVG_TEMPLATE.load(deps.storage)?;
-    let slots = TEMPLATE_SLOTS.load(deps.storage)?;
+    let (template, slots, vars) = load_render(deps.storage)?;
     let token = Cw721SvgContract::default()
         .config
         .nft_info
         .load(deps.storage, &token_id)?;
 
-    let mut result = String::with_capacity(template.len());
-    let mut cursor = 0usize;
-
-    for slot in &slots {
-        let start = slot.start as usize;
-        let end = slot.end as usize;
-        result.push_str(&template[cursor..start]);
-        result.push_str(&token.extension.params[slot.var_idx as usize].value);
-        cursor = end;
-    }
-    result.push_str(&template[cursor..]);
-
-    Ok(result)
+    let msg = crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?;
+    let speed = crate::scribing::SPEED.may_load(deps.storage, &token_id)?;
+    Ok(render_params(&template, &slots, &token.extension.params, scribe_layout(&vars)?, msg.as_ref().map(|m| m.text.as_str()), speed))
 }
 
 pub fn query_svg_placeholder(
     deps: cosmwasm_std::Deps,
     seed: Option<String>,
 ) -> Result<String, ContractError> {
-    let template = SVG_TEMPLATE.load(deps.storage)?;
-    let slots = TEMPLATE_SLOTS.load(deps.storage)?;
-    let variables = VARIABLES.load(deps.storage)?;
+    let (template, slots, variables) = load_render(deps.storage)?;
 
     let seed_bytes = seed.unwrap_or_else(|| "placeholder".to_string());
     let mut hasher = Sha256::new();
@@ -537,19 +706,7 @@ pub fn query_svg_placeholder(
         })
         .collect();
 
-    let mut result = String::with_capacity(template.len());
-    let mut cursor = 0usize;
-
-    for slot in &slots {
-        let start = slot.start as usize;
-        let end = slot.end as usize;
-        result.push_str(&template[cursor..start]);
-        result.push_str(&params[slot.var_idx as usize].value);
-        cursor = end;
-    }
-    result.push_str(&template[cursor..]);
-
-    Ok(result)
+    Ok(render_params(&template, &slots, &params, scribe_layout(&variables)?, None, None))
 }
 
 pub fn query_config(
@@ -562,7 +719,7 @@ pub fn query_config(
 }
 
 pub fn query_svg_template(deps: cosmwasm_std::Deps) -> Result<String, ContractError> {
-    Ok(SVG_TEMPLATE.load(deps.storage)?)
+    Ok(load_render(deps.storage)?.0)
 }
 
 pub fn execute_update_whitelist(

@@ -677,70 +677,54 @@ pub fn main() -> Result<()> {
         None => vec![],
     };
 
-    // 7. Build InstantiateMsg
+    // 7. Pre-flight validation — mirror the on-chain instantiate checks so
+    //    errors are caught here rather than burning gas on-chain.
+    println!("\nRunning pre-flight validation...");
+    if total > MAX_TOTAL_SUPPLY {
+        return Err(anyhow!(
+            "total supply {} exceeds on-chain limit of {}",
+            total,
+            MAX_TOTAL_SUPPLY
+        ));
+    }
+    validate_variables(&variables).map_err(|e| anyhow!("Variable definition error: {}", e))?;
+    validate_template_slots(&template, &variables, &template_slots)
+        .map_err(|e| anyhow!("Template slot error: {}", e))?;
+    let packed = cw721_svg::pack_svg(&template, &variables);
+    if packed.len() > MAX_SVG_SIZE {
+        return Err(anyhow!(
+            "packed template is {} bytes — exceeds on-chain limit of {} bytes",
+            packed.len(),
+            MAX_SVG_SIZE
+        ));
+    }
+    println!(
+        "  ✓ template {} bytes, packed {} bytes  (limit {})",
+        template.len(),
+        packed.len(),
+        MAX_SVG_SIZE
+    );
+    println!("  ✓ {} variable(s) valid", variables.len());
+    println!("  ✓ {} template slot(s) valid", template_slots.len());
+
+    // 7b. Build InstantiateMsg
     let msg = cw721_svg::InstantiateMsg {
         name,
         symbol,
         collection_info_extension: cw721_svg::SvgCollectionMetadata {
             seed,
-            svg_template: template,
-            variables,
-            template_slots,
+            packed,
             price_tiers,
             total,
             mint_start_time: None,
             mint_end_time: None,
             whitelist: None,
-        require_auth: false,
+            require_auth: false,
         },
         minter: None,
         creator: None,
         withdraw_address: None,
     };
-
-    // 7. Pre-flight validation — mirror the on-chain instantiate checks so
-    //    errors are caught here rather than burning gas on-chain.
-    println!("\nRunning pre-flight validation...");
-
-    if msg.collection_info_extension.svg_template.len() > MAX_SVG_SIZE {
-        return Err(anyhow!(
-            "SVG template is {} bytes — exceeds on-chain limit of {} bytes",
-            msg.collection_info_extension.svg_template.len(),
-            MAX_SVG_SIZE
-        ));
-    }
-
-    if msg.collection_info_extension.total > MAX_TOTAL_SUPPLY {
-        return Err(anyhow!(
-            "total supply {} exceeds on-chain limit of {}",
-            msg.collection_info_extension.total,
-            MAX_TOTAL_SUPPLY
-        ));
-    }
-
-    validate_variables(&msg.collection_info_extension.variables)
-        .map_err(|e| anyhow!("Variable definition error: {}", e))?;
-
-    validate_template_slots(
-        &msg.collection_info_extension.svg_template,
-        &msg.collection_info_extension.variables,
-        &msg.collection_info_extension.template_slots,
-    )
-    .map_err(|e| anyhow!("Template slot error: {}", e))?;
-
-    println!(
-        "  ✓ template {} bytes  (limit {})",
-        msg.collection_info_extension.svg_template.len(),
-        MAX_SVG_SIZE
-    );
-    println!(
-        "  ✓ {} variable(s) valid",
-        msg.collection_info_extension.variables.len()
-    );
-    println!(
-        "  ✓ {} template slot(s) valid",
-        msg.collection_info_extension.template_slots.len()
-    );
 
     // 8. Output JSON
     let json = serde_json::to_string_pretty(&msg)?;

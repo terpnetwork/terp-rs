@@ -128,6 +128,11 @@ pub fn execute_create_svg_collection(
         return Err(ContractError::Unauthorized {});
     }
 
+    // Fail early (before instantiate2) on bad templates, for both input paths.
+    let (template, _) = cw_svg_pack::unpack(&instantiate_msg.collection_info_extension.packed)
+        .map_err(|e| ContractError::Std(cosmwasm_std::StdError::msg(e.to_string())))?;
+    cw_svg::validate_animated_paint(&template)?;
+
     let code_id = SVG_CODE_ID.load(deps.storage)?;
 
     // Fetch code checksum required for instantiate2 address derivation.

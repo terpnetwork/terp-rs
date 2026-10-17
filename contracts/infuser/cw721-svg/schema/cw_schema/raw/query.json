@@ -112,7 +112,7 @@
           "type": "named",
           "properties": {
             "msg": {
-              "value": 11
+              "value": 12
             }
           }
         },
@@ -289,6 +289,17 @@
           "type": "named",
           "properties": {}
         },
+        "epoch_pot": {
+          "type": "named",
+          "properties": {
+            "epoch": {
+              "value": 11
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
         "mint_count": {
           "description": "Returns the total mint count for a given address.",
           "type": "named",
@@ -298,8 +309,72 @@
             }
           }
         },
+        "original_minter": {
+          "type": "named",
+          "properties": {
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
         "ownership": {
           "description": "Query the contract's ownership information",
+          "type": "named",
+          "properties": {}
+        },
+        "participants": {
+          "type": "named",
+          "properties": {
+            "epoch": {
+              "value": 11
+            },
+            "limit": {
+              "value": 6
+            }
+          }
+        },
+        "proposals": {
+          "type": "named",
+          "properties": {
+            "epoch": {
+              "value": 11
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "scribe_epoch": {
+          "type": "named",
+          "properties": {}
+        },
+        "scribe_history": {
+          "type": "named",
+          "properties": {
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "scribed": {
+          "description": "Current selected message of an orb, if any.",
+          "type": "named",
+          "properties": {
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "speed": {
+          "type": "named",
+          "properties": {
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "svg_packed": {
+          "description": "Raw SVP1 bytes of the template + variables.",
           "type": "named",
           "properties": {}
         },
@@ -340,19 +415,29 @@
       }
     },
     {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
       "name": "cw721_svg_state_SvgCollectionMetadata",
       "type": "struct",
       "properties": {
         "mint_end_time": {
-          "value": 29
+          "value": 19
         },
         "mint_start_time": {
           "description": "Timestamp of mint start. If less than current block, mints available",
-          "value": 29
+          "value": 19
+        },
+        "packed": {
+          "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
+          "value": 13
         },
         "price_tiers": {
           "description": "Price tiers for minting. Empty or None = free mint.",
-          "value": 27
+          "value": 17
         },
         "require_auth": {
           "defaulting": true,
@@ -360,20 +445,10 @@
           "value": 2
         },
         "seed": {
-          "value": 12
-        },
-        "svg_template": {
-          "value": 1
-        },
-        "template_slots": {
-          "description": "Pre-computed placeholder positions in the SVG template.\nEach slot maps a `${varname}` occurrence to its byte offsets and variable index.",
-          "value": 22
+          "value": 13
         },
         "total": {
-          "value": 24
-        },
-        "variables": {
-          "value": 19
+          "value": 11
         },
         "whitelist": {
           "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
@@ -387,154 +462,26 @@
       "type": "binary"
     },
     {
-      "name": "cw_svg_VariableDef",
-      "type": "struct",
-      "properties": {
-        "kind": {
-          "value": 14
-        },
-        "name": {
-          "value": 1
-        }
-      }
-    },
-    {
-      "name": "cw_svg_VariableKind",
-      "type": "enum",
-      "cases": {
-        "options": {
-          "description": "Pick from a list of string values",
-          "type": "tuple",
-          "items": [
-            15
-          ]
-        },
-        "range": {
-          "description": "Generate a decimal string in [min, max] at given precision.\n`min` and `max` are decimal strings (e.g. \"-2.5\", \"80\").",
-          "type": "named",
-          "properties": {
-            "max": {
-              "value": 1
-            },
-            "min": {
-              "value": 1
-            },
-            "precision": {
-              "value": 5
-            }
-          }
-        },
-        "rgb": {
-          "description": "Generate a random `rgb(R,G,B)` color string.\nEach channel is independently random in 0–255.",
-          "type": "unit"
-        },
-        "rgb_styled": {
-          "description": "Pick a random range from the list, then generate a random shade within it.\nEach channel is constrained to [min, max] of the selected range.",
-          "type": "tuple",
-          "items": [
-            18
-          ]
-        }
-      }
-    },
-    {
-      "name": "alloc::vec::Vec<alloc::string::String>",
-      "type": "array",
-      "items": 1
-    },
-    {
-      "name": "cw_svg_RgbRange",
-      "type": "struct",
-      "properties": {
-        "b_max": {
-          "value": 17
-        },
-        "b_min": {
-          "value": 17
-        },
-        "g_max": {
-          "value": 17
-        },
-        "g_min": {
-          "value": 17
-        },
-        "r_max": {
-          "value": 17
-        },
-        "r_min": {
-          "value": 17
-        }
-      }
-    },
-    {
-      "name": "u8",
-      "type": "integer",
-      "precision": 8,
-      "signed": false
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::RgbRange>",
-      "type": "array",
-      "items": 16
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::VariableDef>",
-      "type": "array",
-      "items": 13
-    },
-    {
-      "name": "cw_svg_TemplateSlot",
-      "type": "struct",
-      "properties": {
-        "end": {
-          "value": 5
-        },
-        "start": {
-          "value": 5
-        },
-        "var_idx": {
-          "value": 21
-        }
-      }
-    },
-    {
-      "name": "u16",
-      "type": "integer",
-      "precision": 16,
-      "signed": false
-    },
-    {
-      "name": "alloc::vec::Vec<cw_svg::TemplateSlot>",
-      "type": "array",
-      "items": 20
-    },
-    {
       "name": "cw721_svg_contract_PriceTier",
       "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
       "type": "struct",
       "properties": {
         "price": {
           "description": "Price per token in this tier",
-          "value": 25
+          "value": 15
         },
         "until_count": {
           "description": "This tier applies while mint_count < until_count",
-          "value": 24
+          "value": 11
         }
       }
-    },
-    {
-      "name": "u64",
-      "type": "integer",
-      "precision": 64,
-      "signed": false
     },
     {
       "name": "cosmwasm_std_coin_Coin",
       "type": "struct",
       "properties": {
         "amount": {
-          "value": 26
+          "value": 16
         },
         "denom": {
           "value": 1
@@ -551,7 +498,7 @@
     {
       "name": "alloc::vec::Vec<cw721_svg::contract::PriceTier>",
       "type": "array",
-      "items": 23
+      "items": 14
     },
     {
       "name": "cosmwasm_std_timestamp_Timestamp",
@@ -561,7 +508,7 @@
     {
       "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
       "type": "optional",
-      "inner": 28
+      "inner": 18
     }
   ]
 }

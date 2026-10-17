@@ -1,0 +1,18 @@
+[package]
+name = "svg-collections"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Off-chain builders for packed-only (SVP1) cw721-svg collections: Marain orb + Symbient ASCII"
+
+# Own workspace on purpose: keeps the terp-rs root Cargo.toml untouched.
+[workspace]
+
+[dependencies]
+cw-svg = { path = "../../crates/cw-svg" }
+cw-svg-pack = { path = "../../crates/svg-codec" }
+cw721-svg = { path = "../../contracts/infuser/cw721-svg", features = ["library"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+base64 = "0.22"
