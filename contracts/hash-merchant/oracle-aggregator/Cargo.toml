@@ -1,0 +1,25 @@
+[package]
+name = "cw-oracle-aggregator"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Permissionless TWAP/median over cw-oracle-registry. Users instantiate their own copy."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-orch = { workspace = true, optional = true }
+cw-oracle-registry = { workspace = true,  features = ["library"] }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

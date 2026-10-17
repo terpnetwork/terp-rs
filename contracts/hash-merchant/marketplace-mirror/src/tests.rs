@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
-use cosmwasm_std::{Addr, Binary, Coin, SubMsg, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, SubMsg, Uint128, Uint256};
 
 use crate::contract::{execute, instantiate, query, sudo};
 use crate::error::ContractError;
@@ -7,7 +7,7 @@ use crate::msg::*;
 use crate::state::{OrderStatus, DEFAULT_MIN_BUFFER_BLOCKS};
 
 type TestDeps = cosmwasm_std::OwnedDeps<
-    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockStorage,
     cosmwasm_std::testing::MockApi,
     cosmwasm_std::testing::MockQuerier,
 >;
@@ -209,7 +209,7 @@ fn settle_after_buffer_succeeds() {
             ..
         } => {
             assert_eq!(to_address, seller_addr().as_str());
-            assert_eq!(amount[0].amount, Uint128::new(100));
+            assert_eq!(amount[0].amount, Uint256::new(100));
         }
         other => panic!("unexpected msg: {other:?}"),
     }

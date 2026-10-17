@@ -105,7 +105,7 @@ fn assert_admin(info: &MessageInfo, cfg: &Config) -> Result<(), ContractError> {
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -143,7 +143,7 @@ pub fn instantiate(
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -450,7 +450,7 @@ fn execute_update_config(
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {
@@ -534,7 +534,7 @@ fn query_is_registered(
                 }),
             }
         }
-        _ => Err(cosmwasm_std::StdError::generic_err(
+        _ => Err(cosmwasm_std::StdError::msg(
             "IsRegistered requires exactly one of mint_id or url",
         )),
     }

@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "trusted-builder-sbt"
 version = "0.1.0"
@@ -12,11 +10,14 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 library = []
+interface = ["dep:cw-orch"]
 
 [dependencies]
-cosmwasm-std = { path = "../../../../cosmwasm/packages/std", features = ["ibc2"] }
-cosmwasm-schema = { path = "../../../../cosmwasm/packages/schema" }
-cw-storage-plus = { path = "../../../../cw-storage-plus" }
-schemars = "0.8"
-serde = { version = "1", default-features = false, features = ["derive"] }
-thiserror = "1"
+cw-orch = { workspace = true, optional = true }
+# ibc2 is an empty feature flag on this cosmwasm-std; Ibc2Msg is gated on it.
+cosmwasm-std = { workspace = true, features = ["ibc2", "zk"] }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

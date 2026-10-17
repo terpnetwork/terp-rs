@@ -1,0 +1,99 @@
+{
+  "contract_name": "cw-oracle-twap-probe",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "mid"
+    ],
+    "properties": {
+      "mid": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "set_mid"
+        ],
+        "properties": {
+          "set_mid": {
+            "type": "object",
+            "required": [
+              "mid"
+            ],
+            "properties": {
+              "mid": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "arithmetic_twap"
+        ],
+        "properties": {
+          "arithmetic_twap": {
+            "type": "object",
+            "required": [
+              "pool_id"
+            ],
+            "properties": {
+              "pool_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "arithmetic_twap": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TwapResponse",
+      "type": "object",
+      "required": [
+        "arithmetic_twap",
+        "pool_id"
+      ],
+      "properties": {
+        "arithmetic_twap": {
+          "type": "string"
+        },
+        "pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

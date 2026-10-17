@@ -1,0 +1,24 @@
+[package]
+name = "cw-oracle-registry"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = "Permissionless Osmosis TWAP / price-bound registry. Bounds only; never mints."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

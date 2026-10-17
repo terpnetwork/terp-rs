@@ -13,13 +13,18 @@
 
 use cosmwasm_std::{
     entry_point, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128,
+    Response, StdError, StdResult, Uint128, Uint256,
 };
 use cw_storage_plus::{Item, Map};
 use sha2::{Digest, Sha256};
 
 pub mod msg;
 use msg::*;
+
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::LoyaltyVerifier;
 
 // ---------------------------------------------------------------------------
 // State
@@ -65,7 +70,7 @@ const MINT_CFG: Item<MintConfig> = Item::new("mint_cfg");
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -90,7 +95,7 @@ pub fn instantiate(
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
     match msg {
         SudoMsg::HashMerchant {
@@ -127,7 +132,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -164,7 +169,7 @@ pub fn execute(
         } => {
             let mut cfg = MINT_CFG.load(deps.storage)?;
             if info.sender.as_str() != cfg.admin {
-                return Err(StdError::generic_err("only admin"));
+                return Err(StdError::msg("only admin"));
             }
             cfg.reward_denom = reward_denom;
             cfg.mint_enabled = mint_enabled;
@@ -184,16 +189,16 @@ fn execute_claim_rewards(
     let sender = info.sender.to_string();
 
     if CLAIMS.has(deps.storage, (&sender, root_index)) {
-        return Err(StdError::generic_err("already claimed for this root"));
+        return Err(StdError::msg("already claimed for this root"));
     }
 
     let roots = ROOTS.load(deps.storage)?;
     let entry = roots
         .get(root_index as usize)
-        .ok_or_else(|| StdError::generic_err("root_index out of bounds"))?;
+        .ok_or_else(|| StdError::msg("root_index out of bounds"))?;
 
     if !verify_proof(&leaf_hash, &proof, &entry.root) {
-        return Err(StdError::generic_err("Merkle proof verification failed"));
+        return Err(StdError::msg("Merkle proof verification failed"));
     }
 
     CLAIMS.save(
@@ -246,25 +251,25 @@ fn execute_claim_private(
     let sender = info.sender.to_string();
     let nf = nullifier.trim().to_ascii_lowercase();
     if nf.is_empty() || nf.len() < 16 {
-        return Err(StdError::generic_err(
+        return Err(StdError::msg(
             "nullifier required (zk-jwt codec hex, min 16 chars)",
         ));
     }
     if amount.is_zero() {
-        return Err(StdError::generic_err("amount must be > 0"));
+        return Err(StdError::msg("amount must be > 0"));
     }
 
     if let Some(ref bind) = action_bind {
         let expected = compute_action_bind(root_index, amount, &leaf_hash, sender.as_str());
         if bind.trim().to_ascii_lowercase() != expected {
-            return Err(StdError::generic_err(
+            return Err(StdError::msg(
                 "action_bind mismatch (loyalty-claim/v1 bind failed)",
             ));
         }
     }
 
     if NULLIFIER_CLAIMS.has(deps.storage, (&nf, root_index)) {
-        return Err(StdError::generic_err(
+        return Err(StdError::msg(
             "nullifier already claimed for this root (private double-claim)",
         ));
     }
@@ -272,10 +277,10 @@ fn execute_claim_private(
     let roots = ROOTS.load(deps.storage)?;
     let entry = roots
         .get(root_index as usize)
-        .ok_or_else(|| StdError::generic_err("root_index out of bounds"))?;
+        .ok_or_else(|| StdError::msg("root_index out of bounds"))?;
 
     if !verify_proof(&leaf_hash, &proof, &entry.root) {
-        return Err(StdError::generic_err("Merkle proof verification failed"));
+        return Err(StdError::msg("Merkle proof verification failed"));
     }
 
     NULLIFIER_CLAIMS.save(
@@ -309,12 +314,12 @@ fn execute_claim_private(
         if let Some(denom) = cfg.reward_denom {
             let coin = Coin {
                 denom: denom.clone(),
-                amount,
+                amount: amount.into(),
             };
             let balance = deps
                 .querier
                 .query_balance(env.contract.address.clone(), denom.clone())?;
-            if balance.amount >= amount {
+            if balance.amount >= Uint256::from(amount) {
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: sender,
                     amount: vec![coin],
@@ -371,7 +376,7 @@ fn verify_proof(leaf_hex: &str, proof: &[ProofStep], expected_root_hex: &str) ->
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetRoot { chain_uid, algo } => {
@@ -389,7 +394,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                     height: r.height,
                     index: idx as u32,
                 }),
-                None => Err(StdError::not_found("root")),
+                None => Err(StdError::msg("root not found")),
             }
         }
         QueryMsg::GetRootCount {} => {
@@ -402,7 +407,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let roots = ROOTS.load(deps.storage)?;
             let entry = roots
                 .get(index as usize)
-                .ok_or_else(|| StdError::not_found("root"))?;
+                .ok_or_else(|| StdError::msg("root not found"))?;
             to_json_binary(&RootResponse {
                 chain_uid: entry.chain_uid.clone(),
                 algo: entry.algo.clone(),
@@ -484,7 +489,7 @@ mod tests {
     use cosmwasm_std::Addr;
 
     type TestDeps = cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockStorage,
         cosmwasm_std::testing::MockApi,
         cosmwasm_std::testing::MockQuerier,
     >;

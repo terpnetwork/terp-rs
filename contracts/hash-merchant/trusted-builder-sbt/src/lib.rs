@@ -16,6 +16,11 @@ use cosmwasm_std::{
 use cw_storage_plus::{Item, Map};
 use thiserror::Error;
 
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::TrustedBuilderSbt;
+
 pub const IBC2_VERSION: &str = "australge-1";
 pub const IBC2_ENCODING: &str = "application/json";
 
@@ -156,7 +161,7 @@ const CONFIG: Item<Config> = Item::new("config");
 const BY_ETH: Map<&str, Token> = Map::new("by_eth");
 const COMMIT: Map<&str, Commitment> = Map::new("commit");
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     _env: Env,
@@ -179,7 +184,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -403,7 +408,7 @@ fn write_token(
         .add_attribute("eth", eth))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
@@ -420,7 +425,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 /// Permissionless send check: only the pending committer (or admin) may emit
 /// an Australge packet from this contract's IBC-v2 port.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc2_packet_send(
     deps: DepsMut,
     _env: Env,
@@ -452,7 +457,7 @@ pub fn ibc2_packet_send(
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc2_packet_receive(
     deps: DepsMut,
     env: Env,
@@ -484,7 +489,7 @@ pub fn ibc2_packet_receive(
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc2_packet_ack(
     _deps: DepsMut,
     _env: Env,
@@ -493,7 +498,7 @@ pub fn ibc2_packet_ack(
     Ok(IbcBasicResponse::new().add_attribute("action", "ibc2_ack"))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn ibc2_packet_timeout(
     deps: DepsMut,
     _env: Env,

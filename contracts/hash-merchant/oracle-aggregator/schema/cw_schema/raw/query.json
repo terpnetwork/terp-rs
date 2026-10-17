@@ -1,0 +1,38 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_oracle_aggregator_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "median": {
+          "description": "Median of the newest `window` observations for `market_id`.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 1
+            },
+            "window": {
+              "value": 2
+            }
+          }
+        },
+        "registry": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    }
+  ]
+}

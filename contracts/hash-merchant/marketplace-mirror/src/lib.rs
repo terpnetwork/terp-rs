@@ -24,5 +24,10 @@ pub use crate::error::ContractError;
 pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 pub use crate::state::{Config, OrderStatus, Product, PurchaseOrder, RootEntry};
 
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::MarketplaceMirror;
+
 #[cfg(test)]
 mod tests;

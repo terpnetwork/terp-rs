@@ -1,0 +1,254 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_oracle_registry_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "callback": {
+          "description": "Polytone note ACK. Wire tag `{ \"callback\": { ... } }` matches\n`polytone::callbacks::CallbackMessage`.",
+          "type": "tuple",
+          "items": [
+            9
+          ]
+        },
+        "set_bounty": {
+          "description": "Admin: fund later bounties (also acceptable as a bank send).",
+          "type": "named",
+          "properties": {
+            "bounty": {
+              "value": 8
+            }
+          }
+        },
+        "set_note": {
+          "description": "Admin: bind the polytone note that may deliver callbacks.",
+          "type": "named",
+          "properties": {
+            "note": {
+              "value": 1
+            }
+          }
+        },
+        "set_relayer": {
+          "description": "Admin: allow or revoke a named relayer when `open_submit` is false.",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 1
+            },
+            "allowed": {
+              "value": 5
+            }
+          }
+        },
+        "submit": {
+          "description": "Relayer or polytone callback posts an Osmosis (or other) bound.\nFirst observation at `(market_id, height)` wins and may take `bounty`.",
+          "type": "named",
+          "properties": {
+            "height": {
+              "value": 3
+            },
+            "market_id": {
+              "value": 1
+            },
+            "mid": {
+              "description": "Decimal string, e.g. `\"1.234567\"`.",
+              "value": 1
+            },
+            "pool_id": {
+              "value": 4
+            },
+            "source": {
+              "value": 2
+            },
+            "source_chain": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cw_oracle_registry_state_SourceKind",
+      "type": "enum",
+      "cases": {
+        "polytone": {
+          "description": "Polytone callback wrote the same schema.",
+          "type": "unit"
+        },
+        "relayer": {
+          "description": "Sidecar / IBC packet processor posted the Osmosis query result.",
+          "type": "unit"
+        },
+        "ve_quorum": {
+          "description": "x/hashmerchant vote-extension quorum (`price_median_v1`).",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 7
+        },
+        "denom": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::coin::Coin>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneCallbackMessage",
+      "description": "Same JSON as polytone note → receiver execute.",
+      "type": "struct",
+      "properties": {
+        "initiator": {
+          "value": 10
+        },
+        "initiator_msg": {
+          "value": 11
+        },
+        "result": {
+          "value": 12
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneCallback",
+      "type": "enum",
+      "cases": {
+        "execute": {
+          "type": "tuple",
+          "items": [
+            17
+          ]
+        },
+        "fatal_error": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "query": {
+          "type": "tuple",
+          "items": [
+            13
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneQueryResult",
+      "type": "enum",
+      "cases": {
+        "error": {
+          "type": "tuple",
+          "items": [
+            15
+          ]
+        },
+        "success": {
+          "type": "tuple",
+          "items": [
+            14
+          ]
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
+      "type": "array",
+      "items": 11
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneError",
+      "type": "struct",
+      "properties": {
+        "error": {
+          "value": 1
+        },
+        "message_index": {
+          "value": 16
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint64_Uint64",
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding,\nsuch that the full u64 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n```\n# use cosmwasm_std::Uint64;\nlet a = Uint64::from(42u64);\nassert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32);\nassert_eq!(b.u64(), 70);\n```",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneExecResult",
+      "type": "enum",
+      "cases": {
+        "error": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "success": {
+          "type": "tuple",
+          "items": [
+            18
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_oracle_registry_msg_PolytoneExecOk",
+      "type": "struct",
+      "properties": {
+        "executed_by": {
+          "value": 1
+        }
+      }
+    }
+  ]
+}

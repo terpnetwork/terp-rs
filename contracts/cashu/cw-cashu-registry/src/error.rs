@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
-    Std(#[from] StdError),
+    Std(String),
 
     #[error("unauthorized")]
     Unauthorized {},
@@ -35,4 +35,10 @@ pub enum ContractError {
 
     #[error("IsRegistered requires exactly one of mint_id or url")]
     InvalidIsRegisteredQuery {},
+}
+
+impl From<StdError> for ContractError {
+    fn from(err: StdError) -> Self {
+        ContractError::Std(err.to_string())
+    }
 }

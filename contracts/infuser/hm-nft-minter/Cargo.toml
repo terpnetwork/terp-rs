@@ -17,7 +17,7 @@ interface = ["cw-orch"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -30,4 +30,4 @@ serde = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0", "zk"] }

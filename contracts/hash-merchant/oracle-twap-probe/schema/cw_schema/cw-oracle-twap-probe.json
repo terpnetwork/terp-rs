@@ -1,0 +1,106 @@
+{
+  "contract_name": "cw-oracle-twap-probe",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_oracle_twap_probe_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "mid": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_oracle_twap_probe_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "set_mid": {
+            "type": "named",
+            "properties": {
+              "mid": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_oracle_twap_probe_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "arithmetic_twap": {
+            "type": "named",
+            "properties": {
+              "pool_id": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "arithmetic_twap": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_oracle_twap_probe_TwapResponse",
+          "type": "struct",
+          "properties": {
+            "arithmetic_twap": {
+              "value": 1
+            },
+            "pool_id": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        }
+      ]
+    }
+  }
+}

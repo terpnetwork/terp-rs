@@ -1,1 +1,1 @@
-9f88d98d48b2e2a6f3591152cda8ded6b618a8849745fa0aa687d86013cbace8  marketplace_mirror.wasm
+d923a109559a1ae1e0a9af12f4a8e2731a1cdbca1e1b75bb2975a76edc502c25  marketplace_mirror.wasm

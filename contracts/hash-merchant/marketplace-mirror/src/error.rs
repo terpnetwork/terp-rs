@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
-    Std(#[from] StdError),
+    Std(String),
 
     #[error("{0}")]
     Overflow(#[from] OverflowError),
@@ -73,4 +73,10 @@ pub enum ContractError {
 
     #[error("protocol_fee_bps {bps} exceeds 10000")]
     InvalidFeeBps { bps: u64 },
+}
+
+impl From<StdError> for ContractError {
+    fn from(err: StdError) -> Self {
+        ContractError::Std(err.to_string())
+    }
 }

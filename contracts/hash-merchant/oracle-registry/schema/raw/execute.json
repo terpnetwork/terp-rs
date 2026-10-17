@@ -1,0 +1,349 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Relayer or polytone callback posts an Osmosis (or other) bound. First observation at `(market_id, height)` wins and may take `bounty`.",
+      "type": "object",
+      "required": [
+        "submit"
+      ],
+      "properties": {
+        "submit": {
+          "type": "object",
+          "required": [
+            "height",
+            "market_id",
+            "mid",
+            "source",
+            "source_chain"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "market_id": {
+              "type": "string"
+            },
+            "mid": {
+              "description": "Decimal string, e.g. `\"1.234567\"`.",
+              "type": "string"
+            },
+            "pool_id": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "source": {
+              "$ref": "#/definitions/SourceKind"
+            },
+            "source_chain": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin: allow or revoke a named relayer when `open_submit` is false.",
+      "type": "object",
+      "required": [
+        "set_relayer"
+      ],
+      "properties": {
+        "set_relayer": {
+          "type": "object",
+          "required": [
+            "addr",
+            "allowed"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            },
+            "allowed": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin: fund later bounties (also acceptable as a bank send).",
+      "type": "object",
+      "required": [
+        "set_bounty"
+      ],
+      "properties": {
+        "set_bounty": {
+          "type": "object",
+          "properties": {
+            "bounty": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin: bind the polytone note that may deliver callbacks.",
+      "type": "object",
+      "required": [
+        "set_note"
+      ],
+      "properties": {
+        "set_note": {
+          "type": "object",
+          "required": [
+            "note"
+          ],
+          "properties": {
+            "note": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Polytone note ACK. Wire tag `{ \"callback\": { ... } }` matches `polytone::callbacks::CallbackMessage`.",
+      "type": "object",
+      "required": [
+        "callback"
+      ],
+      "properties": {
+        "callback": {
+          "$ref": "#/definitions/PolytoneCallbackMessage"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Addr": {
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolytoneCallback": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "$ref": "#/definitions/PolytoneQueryResult"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "execute"
+          ],
+          "properties": {
+            "execute": {
+              "$ref": "#/definitions/PolytoneExecResult"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "fatal_error"
+          ],
+          "properties": {
+            "fatal_error": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PolytoneCallbackMessage": {
+      "description": "Same JSON as polytone note → receiver execute.",
+      "type": "object",
+      "required": [
+        "initiator",
+        "initiator_msg",
+        "result"
+      ],
+      "properties": {
+        "initiator": {
+          "$ref": "#/definitions/Addr"
+        },
+        "initiator_msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "result": {
+          "$ref": "#/definitions/PolytoneCallback"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolytoneError": {
+      "type": "object",
+      "required": [
+        "error",
+        "message_index"
+      ],
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "message_index": {
+          "$ref": "#/definitions/Uint64"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolytoneExecOk": {
+      "type": "object",
+      "required": [
+        "executed_by"
+      ],
+      "properties": {
+        "executed_by": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PolytoneExecResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "success"
+          ],
+          "properties": {
+            "success": {
+              "$ref": "#/definitions/PolytoneExecOk"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "error"
+          ],
+          "properties": {
+            "error": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PolytoneQueryResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "success"
+          ],
+          "properties": {
+            "success": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Binary"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "error"
+          ],
+          "properties": {
+            "error": {
+              "$ref": "#/definitions/PolytoneError"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "SourceKind": {
+      "oneOf": [
+        {
+          "description": "Sidecar / IBC packet processor posted the Osmosis query result.",
+          "type": "string",
+          "enum": [
+            "relayer"
+          ]
+        },
+        {
+          "description": "Polytone callback wrote the same schema.",
+          "type": "string",
+          "enum": [
+            "polytone"
+          ]
+        },
+        {
+          "description": "x/hashmerchant vote-extension quorum (`price_median_v1`).",
+          "type": "string",
+          "enum": [
+            "ve_quorum"
+          ]
+        }
+      ]
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
+    }
+  }
+}

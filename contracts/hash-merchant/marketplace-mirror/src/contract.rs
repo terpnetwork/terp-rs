@@ -11,7 +11,7 @@ use crate::state::*;
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -64,7 +64,7 @@ pub fn instantiate(
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::HashMerchant {
@@ -103,7 +103,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -333,7 +333,7 @@ fn execute_settle(
             to_address: order.seller.to_string(),
             amount: vec![Coin {
                 denom: cfg.accepted_denom.clone(),
-                amount: seller_amt,
+                amount: seller_amt.into(),
             }],
         }));
     }
@@ -342,7 +342,7 @@ fn execute_settle(
             to_address: cfg.admin.to_string(),
             amount: vec![Coin {
                 denom: cfg.accepted_denom.clone(),
-                amount: fee_amt,
+                amount: fee_amt.into(),
             }],
         }));
     }
@@ -396,7 +396,7 @@ fn execute_cancel(
         to_address: order.buyer.to_string(),
         amount: vec![Coin {
             denom: cfg.accepted_denom,
-            amount: order.amount,
+            amount: order.amount.into(),
         }],
     });
 
@@ -430,7 +430,7 @@ fn execute_set_auto_execute_ingress(
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {
@@ -503,7 +503,12 @@ fn must_pay(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
                 expected: denom.into(),
             });
         }
-        total = total.checked_add(c.amount)?;
+        let paid = Uint128::try_from(c.amount).map_err(|_| ContractError::InsufficientFunds {
+            need: "u128".into(),
+            got: c.amount.to_string(),
+            denom: denom.into(),
+        })?;
+        total = total.checked_add(paid)?;
     }
     Ok(total)
 }
