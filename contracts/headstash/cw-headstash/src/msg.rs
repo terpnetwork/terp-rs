@@ -59,7 +59,6 @@ pub enum ExecuteMsg {
     // -------------------------------------------------------------------------
     // Private-bridge mint surface (cw-headstash is the mint router — CLARITY)
     // -------------------------------------------------------------------------
-
     /// Advance reflection / LC attested roots (owner/operator).
     UpdateReflection {
         pool_root: Binary,
@@ -115,6 +114,15 @@ pub enum ExecuteMsg {
     /// Owner: these nullifiers are paid only by the public batch, not the Halo2 batch.
     AssignPublicNotes {
         nullifiers: Vec<Binary>,
+    },
+    /// Owner: epoch creator parameters. Campaigns that never set them keep the store-only sudo.
+    SetEpochCampaign {
+        campaign: crate::epoch::EpochCampaignParams,
+    },
+    /// Owner: the rows and proof digests an accepted sudo can pay.
+    StageEpochBatch {
+        digests: Vec<Binary>,
+        rows: Vec<crate::epoch::EpochPayout>,
     },
     /// Pay a Halo2 epoch batch whose aggregate is the stored `headstash-accepted` root.
     /// Does not verify the proof.

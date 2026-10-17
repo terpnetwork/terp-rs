@@ -45,6 +45,102 @@ const PUBLIC_RESERVED: Map<&str, ()> = Map::new("epoch_public_nf");
 const PUBLIC_LOGS: Map<&str, ()> = Map::new("epoch_public_log");
 const DENOM_TABLE: Item<Vec<u64>> = Item::new("epoch_denom_table");
 
+const EPOCH_CAMPAIGN: Item<EpochCampaignParams> = Item::new("epoch_campaign");
+const EPOCH_STAGE: Item<StagedBatch> = Item::new("epoch_stage");
+const EPOCH_PAID: Item<bool> = Item::new("epoch_paid");
+
+#[cw_serde]
+pub struct AmountCap {
+    pub amount: u64,
+    pub cap: u32,
+}
+
+/// Creator parameters. Stored by the owner after instantiate so existing
+/// campaigns keep the store-only sudo.
+#[cw_serde]
+pub struct EpochCampaignParams {
+    pub ctx: Binary,
+    pub backend: String,
+    pub cutoff_height: u64,
+    pub bech32_hrp: String,
+    pub denom: Binary,
+    pub amounts: Vec<AmountCap>,
+    /// Nullifiers the public path owns. The epoch batch cannot pay them.
+    pub reserved: Vec<Binary>,
+    /// Trusted verifier keys. Stored, not checked against receipts here.
+    pub trusted: Vec<Binary>,
+    pub trusted_verify_threshold: u32,
+    pub trusted_sign_threshold: u32,
+    pub max_rows: u32,
+    pub allocation_root: Binary,
+    /// Eligibility root the nullifiers are spent under. Genesis is 0.
+    pub root_id: u64,
+}
+
+#[cw_serde]
+struct StagedBatch {
+    digests: Vec<Binary>,
+    rows: Vec<EpochPayout>,
+    pending: Binary,
+    accepted: Binary,
+}
+
+/// Sorts, then uses the contract preimage. `pending_root` itself does not sort.
+pub fn pending_root_sorted(digests: &[[u8; 32]]) -> [u8; 32] {
+    let mut ordered = digests.to_vec();
+    ordered.sort();
+    pending_root(&ordered)
+}
+
+pub fn set_campaign(
+    deps: DepsMut,
+    info: MessageInfo,
+    campaign: EpochCampaignParams,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    if EPOCH_STAGE.may_load(deps.storage)?.is_some()
+        || EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false)
+    {
+        return Err(StdError::msg("campaign is already staged"));
+    }
+    validate_campaign(&campaign)?;
+    EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
+    Ok(Response::new()
+        .add_attribute("action", "set_epoch_campaign")
+        .add_attribute("backend", campaign.backend)
+        .add_attribute("cutoff", campaign.cutoff_height.to_string()))
+}
+
+pub fn stage_batch(
+    deps: DepsMut,
+    env: &Env,
+    info: MessageInfo,
+    digests: Vec<Binary>,
+    rows: Vec<EpochPayout>,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    if EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
+        return Err(StdError::msg("epoch batch already paid"));
+    }
+    let campaign = EPOCH_CAMPAIGN
+        .may_load(deps.storage)?
+        .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    let staged = validate_stage(&campaign, &digests, &rows)?;
+    for row in &rows {
+        deps.api.addr_validate(&row.destination)?;
+        let prefix = format!("{}1", campaign.bech32_hrp);
+        if !row.destination.starts_with(&prefix) {
+            return Err(StdError::msg("destination hrp does not match the campaign"));
+        }
+    }
+    EPOCH_STAGE.save(deps.storage, &staged)?;
+    let (paid, n) = settle(deps, env)?;
+    Ok(paid
+        .add_attribute("action", "stage_epoch_batch")
+        .add_attribute("rows", rows.len().to_string())
+        .add_attribute("minted", n.to_string()))
+}
+
 #[cw_serde]
 pub struct EpochPayout {
     /// 32-byte nullifier.
@@ -208,9 +304,7 @@ pub fn attested_root(batch_hash: &[u8; 32]) -> [u8; 32] {
 
 /// Message an ed25519 custody key signs for the fixed headstash attestation.
 pub fn custody_message(value: &[u8]) -> Vec<u8> {
-    let domain = sha256(
-        format!("hashmerchant/custody/{BATCH_SCOPE}/{BATCH_SOURCE_ID}").as_bytes(),
-    );
+    let domain = sha256(format!("hashmerchant/custody/{BATCH_SCOPE}/{BATCH_SOURCE_ID}").as_bytes());
     let mut payload = Vec::with_capacity(32 + value.len() + 16);
     payload.extend_from_slice(&domain);
     payload.extend_from_slice(value);
@@ -234,7 +328,7 @@ pub fn pedersen_commit(destination: &str, blind: &[u8; 32]) -> StdResult<[u8; 32
         .map_err(|_| StdError::msg("pedersen point is not 32 bytes"))
 }
 
-pub fn sudo(deps: DepsMut, msg: HashMerchantSudoMsg) -> Result<Response, StdError> {
+pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Response, StdError> {
     let payload = msg.hash_merchant;
     if payload.chain_uid != CHAIN_UID {
         return Err(StdError::msg(format!(
@@ -248,12 +342,17 @@ pub fn sudo(deps: DepsMut, msg: HashMerchantSudoMsg) -> Result<Response, StdErro
     let root = decode_root(&payload.root)?;
     EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
     EPOCH_HEIGHTS.save(deps.storage, payload.algo.as_str(), &payload.height)?;
+    let (paid, n) = if payload.algo == ALGO_ACCEPTED {
+        settle(deps, env)?
+    } else {
+        (Response::new(), 0)
+    };
     let _hints = payload.oracle_sources.len();
-    Ok(Response::new()
+    Ok(paid
         .add_attribute("action", "sudo_hash_merchant")
         .add_attribute("chain_uid", payload.chain_uid)
         .add_attribute("algo", payload.algo)
-        .add_attribute("minted", "0"))
+        .add_attribute("minted", n.to_string()))
 }
 
 pub fn query_root(storage: &dyn Storage, algo: String) -> StdResult<EpochRootResponse> {
@@ -349,13 +448,7 @@ pub fn apply_accepted_batch(
         let strategy = strategy_for(&cfg.ts, &row.denom)?;
         let hex = hex::encode(&row.nullifier);
         verify_nullifier_stateful(deps.storage, nullifier_storage_key(root_id, &hex))?;
-        res = push_credit(
-            res,
-            &env,
-            strategy,
-            &row.destination,
-            row.amount,
-        )?;
+        res = push_credit(res, &env, strategy, &row.destination, row.amount)?;
     }
     Ok(res.add_attribute("paid", rows.len().to_string()))
 }
@@ -381,9 +474,7 @@ pub fn apply_public_batch(
         let amount = *table
             .get(row.index as usize)
             .ok_or_else(|| StdError::msg("denomination index out of range"))?;
-        let blind: [u8; 32] = require_32(&row.blind, "blind")?
-            .try_into()
-            .expect("32");
+        let blind: [u8; 32] = require_32(&row.blind, "blind")?.try_into().expect("32");
         let commitment: [u8; 32] = require_32(&row.commitment, "commitment")?
             .try_into()
             .expect("32");
@@ -396,7 +487,10 @@ pub fn apply_public_batch(
             return Err(StdError::msg("missing ethereum log"));
         }
         let log_key = format!("{}:{}", row.tx_hash, row.log_index);
-        if PUBLIC_LOGS.may_load(deps.storage, log_key.as_str())?.is_some() {
+        if PUBLIC_LOGS
+            .may_load(deps.storage, log_key.as_str())?
+            .is_some()
+        {
             return Err(StdError::msg("ethereum log already paid"));
         }
         require_32(&row.nullifier, "nullifier")?;
@@ -412,6 +506,167 @@ pub fn apply_public_batch(
         res = push_credit(res, &env, strategy, &row.destination, amount)?;
     }
     Ok(res.add_attribute("paid", rows.len().to_string()))
+}
+
+fn validate_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
+    require_32(&campaign.ctx, "ctx")?;
+    if campaign.backend != "flock" && campaign.backend != "halo2" {
+        return Err(StdError::msg("backend must be flock or halo2"));
+    }
+    if campaign.bech32_hrp.is_empty() {
+        return Err(StdError::msg("bech32 hrp is empty"));
+    }
+    require_32(&campaign.denom, "denom")?;
+    require_32(&campaign.allocation_root, "allocation root")?;
+    if campaign.amounts.is_empty() || campaign.max_rows == 0 {
+        return Err(StdError::msg("campaign needs amounts and a row cap"));
+    }
+    let mut amounts = HashSet::new();
+    for class in &campaign.amounts {
+        if class.amount == 0 || class.cap == 0 || !amounts.insert(class.amount) {
+            return Err(StdError::msg("amount classes must be positive and unique"));
+        }
+    }
+    let mut reserved = HashSet::new();
+    for nullifier in &campaign.reserved {
+        require_32(nullifier, "reserved nullifier")?;
+        if !reserved.insert(nullifier.to_vec()) {
+            return Err(StdError::msg("reserved nullifiers must be unique"));
+        }
+    }
+    let mut trusted = HashSet::new();
+    for key in &campaign.trusted {
+        require_32(key, "trusted key")?;
+        if !trusted.insert(key.to_vec()) {
+            return Err(StdError::msg("trusted keys must be unique"));
+        }
+    }
+    let n = campaign.trusted.len() as u32;
+    if campaign.trusted_verify_threshold == 0
+        || campaign.trusted_verify_threshold > n
+        || campaign.trusted_sign_threshold == 0
+        || campaign.trusted_sign_threshold > n
+    {
+        return Err(StdError::msg("thresholds must sit inside the trusted set"));
+    }
+    Ok(())
+}
+
+fn validate_stage(
+    campaign: &EpochCampaignParams,
+    digests: &[Binary],
+    rows: &[EpochPayout],
+) -> StdResult<StagedBatch> {
+    if rows.is_empty() || digests.len() != rows.len() || rows.len() > campaign.max_rows as usize {
+        return Err(StdError::msg("batch rows do not match the campaign"));
+    }
+    let mut raw_digests = Vec::with_capacity(digests.len());
+    let mut seen_digests = HashSet::new();
+    for digest in digests {
+        let bytes = require_32(digest, "digest")?;
+        if !seen_digests.insert(bytes.to_vec()) {
+            return Err(StdError::msg("duplicate proof digest"));
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(bytes);
+        raw_digests.push(arr);
+    }
+    let mut seen_nf = HashSet::new();
+    let mut used: std::collections::BTreeMap<u64, u32> = std::collections::BTreeMap::new();
+    let reserved: HashSet<Vec<u8>> = campaign.reserved.iter().map(|nf| nf.to_vec()).collect();
+    for row in rows {
+        check_row(row)?;
+        if row.denom != campaign.denom {
+            return Err(StdError::msg("denom does not match the campaign"));
+        }
+        if reserved.contains(row.nullifier.as_slice()) {
+            return Err(StdError::msg("note is on the public path"));
+        }
+        if !seen_nf.insert(row.nullifier.to_vec()) {
+            return Err(StdError::msg("duplicate nullifier in batch"));
+        }
+        let cap = campaign
+            .amounts
+            .iter()
+            .find(|class| class.amount == row.amount)
+            .map(|class| class.cap)
+            .ok_or_else(|| StdError::msg("amount is not in the published set"))?;
+        let count = used.entry(row.amount).or_insert(0);
+        if *count >= cap {
+            return Err(StdError::msg("amount class is full"));
+        }
+        *count += 1;
+    }
+    let pending = pending_root_sorted(&raw_digests);
+    let accepted = accepted_root(campaign.allocation_root.as_slice(), rows)?;
+    let mut ordered: Vec<Binary> = raw_digests
+        .into_iter()
+        .map(|word| Binary::from(word.to_vec()))
+        .collect();
+    ordered.sort_by(|a, b| a.as_slice().cmp(b.as_slice()));
+    Ok(StagedBatch {
+        digests: ordered,
+        rows: rows.to_vec(),
+        pending: Binary::from(pending.to_vec()),
+        accepted: Binary::from(accepted.to_vec()),
+    })
+}
+
+/// Pay the staged rows when the stored accepted attestation matches and the
+/// stored height is at or past the cutoff. A miss returns no messages.
+fn settle(deps: DepsMut, env: &Env) -> StdResult<(Response, u64)> {
+    let empty = || (Response::new(), 0u64);
+    if EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
+        return Ok(empty());
+    }
+    let Some(campaign) = EPOCH_CAMPAIGN.may_load(deps.storage)? else {
+        return Ok(empty());
+    };
+    let Some(stage) = EPOCH_STAGE.may_load(deps.storage)? else {
+        return Ok(empty());
+    };
+    let Some(stored) = EPOCH_ROOTS.may_load(deps.storage, ALGO_ACCEPTED)? else {
+        return Ok(empty());
+    };
+    let height = EPOCH_HEIGHTS
+        .may_load(deps.storage, ALGO_ACCEPTED)?
+        .unwrap_or(0);
+    if height < campaign.cutoff_height {
+        return Ok(empty());
+    }
+    let batch = accepted_root(campaign.allocation_root.as_slice(), &stage.rows)?;
+    if stage.accepted.as_slice() != batch {
+        return Err(StdError::msg(
+            "staged batch does not match its accepted root",
+        ));
+    }
+    if stored.as_slice() != attested_root(&batch) {
+        return Ok(empty());
+    }
+    distro::assert_claim_root(
+        deps.storage,
+        campaign.root_id,
+        Some(&campaign.allocation_root),
+    )?;
+    for row in &stage.rows {
+        let hex = hex::encode(&row.nullifier);
+        if PUBLIC_RESERVED
+            .may_load(deps.storage, hex.as_str())?
+            .is_some()
+        {
+            return Err(StdError::msg("note is on the public path"));
+        }
+    }
+    EPOCH_PAID.save(deps.storage, &true)?;
+    let mut res = Response::new();
+    let cfg = HEADSTASH_CFG.load(deps.storage)?;
+    for row in &stage.rows {
+        let strategy = strategy_for(&cfg.ts, &row.denom)?;
+        let hex = hex::encode(&row.nullifier);
+        verify_nullifier_stateful(deps.storage, nullifier_storage_key(campaign.root_id, &hex))?;
+        res = push_credit(res, env, strategy, &row.destination, row.amount)?;
+    }
+    Ok((res, stage.rows.len() as u64))
 }
 
 fn push_credit(
@@ -432,12 +687,10 @@ fn push_credit(
                 Uint128::new(amount as u128),
                 denom.clone(),
             )?;
-            Ok(res
-                .add_message(mint)
-                .add_message(BankMsg::Send {
-                    to_address: destination.to_string(),
-                    amount: vec![Coin::new(amount as u128, denom)],
-                }))
+            Ok(res.add_message(mint).add_message(BankMsg::Send {
+                to_address: destination.to_string(),
+                amount: vec![Coin::new(amount as u128, denom)],
+            }))
         }
         TokenStrategy::ExistingFungible(_) => Ok(res.add_message(BankMsg::Send {
             to_address: destination.to_string(),
@@ -460,7 +713,9 @@ fn check_row(row: &EpochPayout) -> StdResult<()> {
     require_32(&row.nullifier, "nullifier")?;
     require_32(&row.denom, "denom")?;
     if row.destination.is_empty() || row.amount == 0 {
-        return Err(StdError::msg("payout needs a destination and a positive amount"));
+        return Err(StdError::msg(
+            "payout needs a destination and a positive amount",
+        ));
     }
     if row.destination.len() > 128 {
         return Err(StdError::msg("destination is too long"));
@@ -575,13 +830,23 @@ mod tests {
     fn lane_keeps_a_reject_out_of_the_accepted_root() {
         let mut lane = ClaimLane::default();
         let denom = denom();
-        lane.submit(b"proof-ok", Some(row(1, "terp1a", 5, denom.clone())), Verdict::Accept, &HashSet::new())
-            .unwrap();
+        lane.submit(
+            b"proof-ok",
+            Some(row(1, "terp1a", 5, denom.clone())),
+            Verdict::Accept,
+            &HashSet::new(),
+        )
+        .unwrap();
         lane.submit(b"proof-bad", None, Verdict::Reject, &HashSet::new())
             .unwrap();
         assert_eq!(lane.rows().len(), 1);
         assert!(lane
-            .submit(b"proof-ok", Some(row(3, "terp1c", 5, denom.clone())), Verdict::Accept, &HashSet::new())
+            .submit(
+                b"proof-ok",
+                Some(row(3, "terp1c", 5, denom.clone())),
+                Verdict::Accept,
+                &HashSet::new()
+            )
             .is_err());
         let mut reserved = HashSet::new();
         reserved.insert(nf(4).to_vec());
@@ -664,9 +929,14 @@ mod tests {
                 }],
             },
         };
-        let stored = sudo(deps.as_mut(), sudo_msg).unwrap();
+        let stored = sudo(deps.as_mut(), &env, sudo_msg).unwrap();
         assert_eq!(
-            stored.attributes.iter().find(|a| a.key == "minted").unwrap().value,
+            stored
+                .attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
             "0"
         );
         assert!(NULLIFIERS.is_empty(deps.as_ref().storage));
@@ -682,7 +952,7 @@ mod tests {
                 oracle_sources: vec![],
             },
         };
-        sudo(deps.as_mut(), pending).unwrap();
+        sudo(deps.as_mut(), &env, pending).unwrap();
 
         let wrong = execute(
             deps.as_mut(),
@@ -724,7 +994,10 @@ mod tests {
                 rows: vec![payout],
             },
         );
-        assert!(again.unwrap_err().to_string().contains("nullifier already exists"));
+        assert!(again
+            .unwrap_err()
+            .to_string()
+            .contains("nullifier already exists"));
     }
 
     #[test]
@@ -756,6 +1029,7 @@ mod tests {
         let hash = accepted_root(root.as_slice(), &[private.clone()]).unwrap();
         sudo(
             deps.as_mut(),
+            &env,
             HashMerchantSudoMsg {
                 hash_merchant: HashMerchantSudoPayload {
                     chain_uid: CHAIN_UID.into(),
@@ -832,7 +1106,10 @@ mod tests {
             info,
             ExecuteMsg::ApplyPublicBatch { rows: vec![bad] },
         );
-        assert!(unreserved.unwrap_err().to_string().contains("not on the public path"));
+        assert!(unreserved
+            .unwrap_err()
+            .to_string()
+            .contains("not on the public path"));
     }
 
     #[test]
@@ -840,6 +1117,7 @@ mod tests {
         let (mut deps, env, _) = setup();
         let err = sudo(
             deps.as_mut(),
+            &env,
             HashMerchantSudoMsg {
                 hash_merchant: HashMerchantSudoPayload {
                     chain_uid: "ethereum-mainnet".into(),
@@ -901,5 +1179,260 @@ mod tests {
         crate::headstash::add_credit(&mut map, key.clone(), 15);
         crate::headstash::add_credit(&mut map, key.clone(), 15);
         assert_eq!(map[&key], 30);
+    }
+
+    fn campaign(root: &Binary) -> EpochCampaignParams {
+        EpochCampaignParams {
+            ctx: Binary::from([1u8; 32].to_vec()),
+            backend: "flock".into(),
+            cutoff_height: 10,
+            bech32_hrp: "cosmwasm".into(),
+            denom: denom(),
+            amounts: vec![AmountCap { amount: 15, cap: 1 }],
+            reserved: vec![nf(9)],
+            trusted: vec![Binary::from([8u8; 32].to_vec())],
+            trusted_verify_threshold: 1,
+            trusted_sign_threshold: 1,
+            max_rows: 4,
+            allocation_root: root.clone(),
+            root_id: 0,
+        }
+    }
+
+    #[test]
+    fn sorted_pending_root_matches_either_digest_order() {
+        let hi = [2u8; 32];
+        let lo = [1u8; 32];
+        assert_eq!(
+            pending_root_sorted(&[hi, lo]),
+            pending_root_sorted(&[lo, hi])
+        );
+        assert_ne!(pending_root_sorted(&[hi, lo]), pending_root(&[hi, lo]));
+    }
+
+    #[test]
+    fn accepted_sudo_pays_the_staged_batch_only_at_the_cutoff() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let dest = deps.api.addr_make("dest").to_string();
+        let info = message_info(&creator, &[]);
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: campaign(&root),
+            },
+        )
+        .unwrap();
+
+        let payout = row(1, &dest, 15, denom());
+        let digest = Binary::from([4u8; 32].to_vec());
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![digest],
+                rows: vec![payout.clone()],
+            },
+        )
+        .unwrap();
+        assert!(NULLIFIERS.is_empty(deps.as_ref().storage));
+
+        let hash = accepted_root(root.as_slice(), &[payout.clone()]).unwrap();
+        let early = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 9,
+                    root: root_b64(&attested_root(&hash)),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            early
+                .attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
+            "0"
+        );
+        assert!(NULLIFIERS.is_empty(deps.as_ref().storage));
+
+        let pending = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_PENDING.into(),
+                    height: 11,
+                    root: root_b64(&attested_root(&hash)),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            pending
+                .attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
+            "0"
+        );
+
+        let paid = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 10,
+                    root: root_b64(&attested_root(&hash)),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![OracleHint {
+                        source_id: "hint".into(),
+                        value: "ff".into(),
+                        height: 10,
+                    }],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            paid.attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
+            "1"
+        );
+        let bank = paid
+            .messages
+            .iter()
+            .find_map(|msg| match &msg.msg {
+                CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                    Some((to_address.clone(), amount[0].amount))
+                }
+                _ => None,
+            })
+            .expect("bank send");
+        assert_eq!(bank.0, dest);
+        assert_eq!(bank.1, Uint256::from(15u64));
+
+        let again = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 12,
+                    root: root_b64(&attested_root(&hash)),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            again
+                .attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
+            "0"
+        );
+        let restage = execute(
+            deps.as_mut(),
+            env,
+            info,
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([5u8; 32].to_vec())],
+                rows: vec![payout],
+            },
+        );
+        assert!(restage.unwrap_err().to_string().contains("already paid"));
+    }
+
+    #[test]
+    fn stage_rejects_a_full_class_a_reserved_note_and_a_bad_denom() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let dest = deps.api.addr_make("dest").to_string();
+        let info = message_info(&creator, &[]);
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: campaign(&root),
+            },
+        )
+        .unwrap();
+        let digest = Binary::from([4u8; 32].to_vec());
+        let over = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![digest.clone(), Binary::from([6u8; 32].to_vec())],
+                rows: vec![row(1, &dest, 15, denom()), row(2, &dest, 15, denom())],
+            },
+        );
+        assert!(over
+            .unwrap_err()
+            .to_string()
+            .contains("amount class is full"));
+
+        let reserved = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![digest.clone()],
+                rows: vec![row(9, &dest, 15, denom())],
+            },
+        );
+        assert!(reserved.unwrap_err().to_string().contains("public path"));
+
+        let bad_denom = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![digest],
+                rows: vec![row(3, &dest, 15, Binary::from([7u8; 32].to_vec()))],
+            },
+        );
+        assert!(bad_denom.unwrap_err().to_string().contains("denom"));
+
+        let stranger = deps.api.addr_make("stranger");
+        let denied = execute(
+            deps.as_mut(),
+            env,
+            message_info(&stranger, &[]),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: campaign(&root),
+            },
+        );
+        assert!(denied.is_err());
     }
 }

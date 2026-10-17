@@ -31,11 +31,11 @@ use crate::{
 };
 
 use ark_ff::Zero;
-use cosmwasm_schema::{QueryResponses, cw_serde, serde};
+use cosmwasm_schema::{cw_serde, serde, QueryResponses};
 use cosmwasm_std::{
-    Addr, BLS12_381_G1_GENERATOR as G1, BLS12_381_G2_GENERATOR as G2, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdError, StdResult,
-    Storage, SubMsg, Uint128, coins, from_json, to_json_binary,
+    coins, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Reply, Response, StdError, StdResult, Storage, SubMsg, Uint128,
+    BLS12_381_G1_GENERATOR as G1, BLS12_381_G2_GENERATOR as G2,
 };
 use cw_storage_plus::{Bound, Bounder, Item, KeyDeserialize, Map};
 pub use msg::*;
@@ -340,6 +340,10 @@ pub fn execute(
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
             epoch::assign_public_notes(deps, info, nullifiers)
         }
+        ExecuteMsg::SetEpochCampaign { campaign } => epoch::set_campaign(deps, info, campaign),
+        ExecuteMsg::StageEpochBatch { digests, rows } => {
+            epoch::stage_batch(deps, &env, info, digests, rows)
+        }
         ExecuteMsg::ApplyAcceptedBatch {
             allocation_root,
             root_id,
@@ -352,10 +356,10 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: epoch::HashMerchantSudoMsg,
 ) -> Result<Response, StdError> {
-    epoch::sudo(deps, msg)
+    epoch::sudo(deps, &env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
@@ -881,10 +885,9 @@ mod instantiate_tests {
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
 
-        assert!(
-            err.to_string()
-                .contains("invalid amount of operators defined")
-        );
+        assert!(err
+            .to_string()
+            .contains("invalid amount of operators defined"));
     }
 
     #[test]

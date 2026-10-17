@@ -700,3 +700,22 @@ branch does.
 17. Proof bytes are bincode of the Ligerito proof, the commitment, and the
     public words. `proof_len` is that length. The digest is SHA-256 of those
     bytes. A caller cannot swap the public inputs out from under the proof.
+
+18. Campaign parameters are an owner `SetEpochCampaign`, not new instantiate
+    fields. Existing instantiate literals and JSON stay valid. A campaign
+    that never sets them keeps the store-only sudo. `root_id` selects the
+    eligibility root the nullifiers are spent under. Genesis is 0, and the
+    allocation root must equal that registered root.
+19. The owner stages rows and proof digests with `StageEpochBatch`. The
+    accepted sudo pays that batch when `attested_root` of the staged
+    accepted root matches the stored root and `payload.height` is at or past
+    the cutoff. Pending sudo does not pay. An accepted callback below the
+    cutoff does not pay. `payload.height` is the height Hashmerchant puts on
+    the callback, the vote's foreign height, not attestation height 1.
+    Whichever of stage and sudo happens second performs the pay.
+20. The chain stores the trusted keys, `trusted_verify_threshold`, and
+    `trusted_sign_threshold`. It does not check receipts or re-run
+    `verify_claim`. Staging enforces the amount set, the caps, the reserved
+    nullifiers, the denom, the `{hrp}1` destination prefix, and `max_rows`.
+    `pending_root_sorted` sorts digests before the contract preimage.
+    `epoch::pending_root` still does not sort.
