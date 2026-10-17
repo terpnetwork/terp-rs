@@ -186,8 +186,8 @@ headstash-claim-v1:{ctx_hex}:{root_hex}:{nullifier_hex}:{destination}:{amount}
   `private_sign_message` is one of the formats this body replaces.
 - `destination` is the bech32 string under creator parameter `bech32_hrp`.
   The 20 address bytes are the five destination words, each little-endian,
-  concatenated. `accepted_root` stores those same 20 bytes. It does not
-  store a second encoding.
+  concatenated. `accepted_root` hashes the bech32 string with a
+  little-endian u16 length. It does not hash the raw 20 bytes.
 - `amount` is the decimal `u64` with no leading zeros. Zero is `0`.
 
 The holder signs that body with `personal_sign`. EIP-191
@@ -344,9 +344,9 @@ flowchart LR
 ```
 
 Full proof blobs stop at tier 1, except the `audit_s` blobs tier 2 pulls.
-Tier 3 sees roots and signature batches. The chain sees one attestation,
-the quorum root, and the row bytes inside that attestation value so sudo
-can pay without a second transaction.
+Tier 3 sees roots and signature batches. The chain sees one attestation
+whose value is the 32-byte batch root. The row bytes stay in the batch
+the sudo reads. They are not the attestation value.
 
 ## Creator parameters
 
@@ -359,7 +359,7 @@ allocation list are fixed at instantiate for the life of the campaign.
 | `backend` | `flock` or `halo2`. Exactly one. |
 | `ctx` | The 32-byte SHA-256 above. Public input to the contract, the retained verifier, and every sidecar. |
 | `cutoff_height` or `epoch_length` | The height at which the accepted tree freezes. Answered: this is the cutoff. |
-| `bech32_hrp` | HRP for the destination string in the signed body and for the 20 bytes inside `accepted_root`. |
+| `bech32_hrp` | HRP for the destination string in the signed body. `accepted_root` hashes that string. |
 | `denom_proof` | The 32-byte denom every sidecar puts in the row. It is the token strategy's proof representation, not the Flock `nd` word. |
 | `payout_denom` | Bank denom sudo sends. |
 | `allocation_root` | The campaign root proofs must open. Immutable. |
@@ -407,14 +407,12 @@ retained variant.
 The epoch path pays inside the accepted sudo:
 
 - One attestation, `source_id = headstash-batch`.
-- `value` is the canonical sorted row bytes.
-- `height` is the cutoff height from the contract, the same integer on
-  every sidecar.
+- `value` is the 32-byte pending or accepted root. The attestation height is 1.
+- The seal height selects pending versus accepted. It is `foreign_height` on the vote, not the attestation height.
 - The quorum root is `aggregateAttestationRoot` of that attestation.
-- Sudo parses `oracle_sources[0].value` as those rows, recomputes the
-  aggregate, checks it against the sudo root, checks the allocation root,
-  checks the public `ctx` against the stored `ctx`, rejects a known
-  nullifier, and sends `payout_denom` of each amount.
+- Sudo recomputes `attested_root` from that 32-byte value and checks it
+  against the quorum root. The row bytes are the stored batch. They are not
+  `oracle_sources[0].value`. Paying those rows is the step-3 sudo change.
 - A batch above `max_rows` is not signed, so it never reaches sudo.
 
 `ApplyAcceptedBatch` is not on this path.
@@ -664,3 +662,41 @@ branch does.
    witness into `prove_fast_ligerito_union_circuit`. The Blake3 slot stays
    the boolean witness. `verify_built` is unchanged: the verifier already
    requires an element subproof when the circuit has an element slot.
+8. `accepted_root` hashes the UTF-8 bech32 string with a little-endian u16
+   length. That is what `epoch::accepted_root` hashes. The raw 20 address
+   bytes are not the stored field.
+9. `pending_root` sorts digests, then uses the contract preimage
+   (`terp-headstash-pending-v1`, count, digest bytes). `epoch::pending_root`
+   does not sort. Step 3 sudo has to sort before it hashes, or the signed
+   root will not match.
+10. The flock circuit does not bind a denom. Ingress requires the submitted
+    32-byte denom to equal the campaign constant. The accepted row uses
+    that constant. The proof is not treated as a denom check.
+11. `Campaign::open` with backend `halo2` returns an error. This slice does
+    not stub a halo2 verifier.
+12. The state machine is the workspace member `headstash-epoch`. hash-market
+    mounts it only with the non-default feature `headstash`, which also
+    enables `ve`. Claim routes are `POST /ve/headstash/campaign`,
+    `POST /ve/headstash/claims`, and `POST /ve/headstash/seal`.
+    `/headstash/:id` stays the snap note server.
+13. The campaign does not store an ed25519 secret. `accept_batch` and `seal`
+    take the key as an argument. The HTTP seal has no key field. `deny_unknown_fields`
+    rejects a body that carries one. Seal returns 503 until the process has
+    installed the OracleSource key in memory.
+14. `GET /vote-extension` for chain `headstash-claim` emits the one
+    `headstash-batch` attestation from the sealed vote. `HASHMERCHANT_ATTESTATIONS`
+    cannot override that chain. Other chains keep the fixture. No seal is
+    HTTP 503, which terpd treats as an empty extension, rather than a body
+    with zero attestations.
+15. A user-facing reject does not enter the pending digest list. A bad blob
+    cannot move the signed root, and a fixed proof can be submitted again.
+16. The attestation value is the 32-byte pending or accepted root. Its height
+    is 1 and its timestamp is 1, matching `attested_root` and
+    `custody_message`. The seal height only picks the algo and is stored as
+    `foreign_height`. `trusted_verify_threshold` is enforced. Receipts are
+    counted before `verify_claim`. `trusted_sign_threshold` is stored and
+    not enforced: the keeper checks one OracleSource signature. Amount 0 is
+    rejected because the contract's `check_row` rejects it.
+17. Proof bytes are bincode of the Ligerito proof, the commitment, and the
+    public words. `proof_len` is that length. The digest is SHA-256 of those
+    bytes. A caller cannot swap the public inputs out from under the proof.
