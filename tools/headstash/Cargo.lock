@@ -3753,6 +3753,7 @@ dependencies = [
 name = "headstash-claim"
 version = "0.1.0"
 dependencies = [
+ "bech32",
  "bincode",
  "flock-core",
  "flock-hash",

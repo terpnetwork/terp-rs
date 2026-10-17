@@ -43,6 +43,7 @@ fn main() {
     let leaf = &notes[INDEX];
     let opening = Opening::<DEPTH> {
         rseed: leaf.rseed,
+        ctx: [9, 8, 7, 6, 5, 4, 3, 2],
         epk_x: leaf.epk_words,
         nd: leaf.nd,
         v: leaf.v,
@@ -60,7 +61,7 @@ fn main() {
         let prove_secs = t_prove.elapsed().as_secs_f64();
         let proof_bytes = bincode::serialize(&proved.proof).expect("proof").len();
         let t_verify = Instant::now();
-        let claim = verify_claim::<DEPTH>(opening.index, &proved).expect("sidecar verify");
+        let claim = verify_claim::<DEPTH>(&proved).expect("sidecar verify");
         let verify_secs = t_verify.elapsed().as_secs_f64();
         assert_eq!(claim.root, tree.root);
         assert_eq!(claim.amount, leaf.v);
