@@ -46,6 +46,11 @@ name = "itl-consume-verify"
 path = "src/bin/itl-consume-verify.rs"
 required-features = ["onboard"]
 
+[[bin]]
+name = "headstash-epoch-e2e"
+path = "src/bin/headstash-epoch-e2e.rs"
+required-features = ["headstash"]
+
 [features]
 # Default: Nostr + Blossom/BUD + Merkle trees (NFT whitelist host).
 # Vote extensions are OFF by default — enable with --features ve for validator sidecar.
@@ -80,7 +85,7 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 # Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
 pir = ["server", "dep:ff", "dep:pasta_curves", "dep:halo2_gadgets"]
 # Headstash claim lane inside this sidecar. Off by default. Not the snap note server.
-headstash = ["ve", "dep:headstash-epoch"]
+headstash = ["ve", "dep:headstash-epoch", "dep:headstash-claim", "dep:headstash-wire"]
 
 [dependencies]
 anyhow = "1"
@@ -145,3 +150,5 @@ halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../crates/zak
 rand = { version = "0.10", default-features = false, features = ["sys_rng", "thread_rng"], optional = true }
 sha3 = { version = "0.10", optional = true }
 headstash-epoch = { path = "../headstash/epoch", optional = true }
+headstash-claim = { path = "../headstash/circuits/claim-flock", optional = true }
+headstash-wire = { path = "../headstash/wire", optional = true }
