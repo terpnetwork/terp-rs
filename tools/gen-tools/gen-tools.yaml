@@ -11,6 +11,10 @@
 # TypeScript variants are subfolders: api/ts/<contract>/{zod,esbundles,types,client,...}.
 # Chain (terp-core module) clients land in api/<lang>/terp-<lang>/.
 # TZ outputs go to api/tz/.
+#
+# cw-infuser / cw721-svg / whitelist-mtree / hm-nft-minter live in
+# crates/terp-rs/contracts/infuser (not the leftover isolated crates/cw-infuser
+# worktree). Generated TS is crates/terp-rs/api/ts/<contract>/.
 
 base_path: "../../../.."
 
@@ -34,6 +38,10 @@ projects:
     tz_out: "api/tz"
 
   # Unified contract workspace. Clients land in crates/terp-rs/api/<lang>/<contract>/.
+  # Invoke with `just gen api` from the terp-rs root.
+  # Every workspace member with src/bin/schema.rs or examples/schema.rs is picked up.
+  # A cdylib that depends on cosmwasm-std and has neither file fails the schema step.
+  # Library crates are skipped. Do not add a per-contract list here.
   - name: terp-rs
     path: "crates/terp-rs"
     steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
@@ -44,59 +52,6 @@ projects:
     go_out: "api/go"
     rust_out: "api/rust"
     openapi_out: "api/openapi"
-
-  # Isolated optimizer workspaces (own Cargo.lock). Same client library.
-  - name: marketplace-mirror
-    path: "crates/terp-rs/contracts/hash-merchant/marketplace-mirror"
-    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
-    ts_out: "../../../api/ts"
-    py_out: "../../../api/python"
-    zod_out: "../../../api/ts"
-    proto_out: "../../../api/proto"
-    go_out: "../../../api/go"
-    rust_out: "../../../api/rust"
-    openapi_out: "../../../api/openapi"
-
-  - name: loyalty-verifier
-    path: "crates/terp-rs/contracts/hash-merchant/loyalty-verifier"
-    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
-    ts_out: "../../../api/ts"
-    py_out: "../../../api/python"
-    zod_out: "../../../api/ts"
-    proto_out: "../../../api/proto"
-    go_out: "../../../api/go"
-    rust_out: "../../../api/rust"
-    openapi_out: "../../../api/openapi"
-
-  - name: trusted-builder-sbt
-    path: "crates/terp-rs/contracts/hash-merchant/trusted-builder-sbt"
-    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
-    ts_out: "../../../api/ts"
-    py_out: "../../../api/python"
-    zod_out: "../../../api/ts"
-    proto_out: "../../../api/proto"
-    go_out: "../../../api/go"
-    rust_out: "../../../api/rust"
-    openapi_out: "../../../api/openapi"
-
-  - name: cw-cashu-registry
-    path: "crates/terp-rs/contracts/cashu/cw-cashu-registry"
-    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
-    ts_out: "../../../api/ts"
-    py_out: "../../../api/python"
-    zod_out: "../../../api/ts"
-    proto_out: "../../../api/proto"
-    go_out: "../../../api/go"
-    rust_out: "../../../api/rust"
-    openapi_out: "../../../api/openapi"
-
-  - name: shitstrap
-    path: "crates/shitstrap"
-    tz_heuristics: "../terp-rs/tools/gen-tools/tz-heuristics.toml"
-    tz_episodes_dir: "../terp-rs/tools/gen-tools/tz-episodes"
-    tz_recipes_dir: "../terp-rs/tools/gen-tools/tz-recipes"
-    tz_profiles_dir: "../terp-rs/tools/gen-tools/tz-profiles"
-    tz_out: "api/tz"
 
   - name: polytone
     path: "crates/polytone"

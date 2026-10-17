@@ -42,10 +42,17 @@ impl Generator for SchemaGenerator {
                 }
                 let dir = contract.manifest_path.parent().unwrap();
                 if schema_target(dir).is_none() {
-                    log::info!(
-                        "[schema] {} has no schema bin or example; skipping",
-                        contract.name
-                    );
+                    if is_cdylib(&contract.manifest_path) {
+                        failures.push(format!(
+                            "{}: contract has no src/bin/schema.rs or examples/schema.rs. Add that file; `just gen api` picks up every workspace member that has one",
+                            contract.name
+                        ));
+                    } else {
+                        log::info!(
+                            "[schema] {} has no schema bin or example; skipping",
+                            contract.name
+                        );
+                    }
                     continue;
                 }
                 log::info!("[schema] {}", contract.name);
@@ -96,6 +103,14 @@ fn cargo_cmd() -> Command {
     } else {
         Command::new("cargo")
     }
+}
+
+/// CosmWasm contracts are `cdylib`. Library crates that merely depend on
+/// `cosmwasm-std` are not required to ship a schema entrypoint.
+fn is_cdylib(manifest: &Path) -> bool {
+    std::fs::read_to_string(manifest)
+        .map(|text| text.contains("cdylib"))
+        .unwrap_or(false)
 }
 
 /// `src/bin/schema.rs` or `examples/schema.rs`.
