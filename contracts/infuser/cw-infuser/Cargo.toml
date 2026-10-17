@@ -17,21 +17,20 @@ zk = ["cosmwasm-std/zk"]
 
 [dependencies]
 cosmwasm-schema  = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-controllers = { workspace = true }
 cw-infusions = { workspace = true }
 cw-orch = { workspace = true, optional = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw721 = { workspace = true }
-nois = { version = "2.0.0" }
-rand_xoshiro = { version = "0.6.0", default-features = false }
-semver = "1"
-sha2 = { version = "0.10.8", default-features = false }
-shuffle = { git = "https://github.com/webmaster128/shuffle", branch = "rm-getrandom", version = "0.1.7" }
-thiserror = { version = "1.0.58" }
-url = "2.2.2"
+rand_xoshiro = { workspace = true }
+semver = { workspace = true }
+sha2 = { workspace = true }
+shuffle = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = { package = "abstract-cw-multi-test", path = "../../../../cw-multi-test-fork" }
+cw-multi-test = { workspace = true }
 

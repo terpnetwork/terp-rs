@@ -9,12 +9,13 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 interface = ["dep:cw-orch"]
+library = []
 
 [dependencies]
 ibc-proto = { workspace = true }
 crosslink-light-client = { workspace = true }
 
-cosmwasm-std = { workspace = true, features = ["std", "cosmwasm_3_0"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0", "zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 prost = { workspace = true, features = ["std"] }
@@ -31,4 +32,4 @@ crosslink-light-client = { workspace = true }
 
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { workspace = true, features = ["js"] }

@@ -25,7 +25,7 @@ use chacha20poly1305::{
     aead::{Aead, AeadCore, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
 };
-use rand_core::OsRng;
+use rand_core06::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

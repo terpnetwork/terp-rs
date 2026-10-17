@@ -21,7 +21,7 @@ sha2                        = { workspace = true }
 cosmrs = { path = "../../../cosmos-rust/cosmrs" }
 cosmwasm-crypto             = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cosmwasm-std                = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-ownable                  = { workspace = true }
 
 # NFT & Account Contracts

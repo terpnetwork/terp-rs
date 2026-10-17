@@ -18,7 +18,7 @@ default = []
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -27,7 +27,7 @@ sha2 = { workspace = true }
 terp-auth = { workspace = true }
 terp-account = { workspace = true }
 thiserror = { workspace = true, features = ["std"] }
-osst = { path = "../../../../zeratul/crates/osst", default-features = false, features = ["secp256k1"] }
+osst = { workspace = true, features = ["secp256k1"] }
 
 [dev-dependencies]
-rand = "0.8"
+rand08 = { workspace = true }

@@ -7,6 +7,7 @@ description = "08-wasm light client for Terp hybrid IAVL (SHA-256 IBC + BLAKE3 a
 
 [features]
 default = []
+library = []
 # DIY IAVL + wrong-alg membership cross-check (benches / lab extras).
 bench = ["terp-iavl-lc/bench"]
 
@@ -15,11 +16,11 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["std", "cosmwasm_3_0"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0", "zk"] }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
 hex = { workspace = true }
-ics23 = { path = "../../../../ics23/rust", default-features = false }
+ics23 = { workspace = true }
 prost = { workspace = true, features = ["std"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -27,4 +28,4 @@ terp-iavl-lc = { workspace = true }
 thiserror = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { workspace = true, features = ["js"] }

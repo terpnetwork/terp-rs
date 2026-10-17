@@ -20,7 +20,7 @@ library = []
 zk-host = []
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -29,8 +29,8 @@ thiserror = { workspace = true }
 terp-auth = { workspace = true }
 terp-account = { workspace = true }
 sha2 = { workspace = true }
-sha3 = "0.10"
-blake2 = "0.10"
+sha3 = { workspace = true }
+blake2 = { workspace = true }
 hex = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]

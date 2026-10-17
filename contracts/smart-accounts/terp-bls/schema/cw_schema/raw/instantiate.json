@@ -3,34 +3,31 @@
   "root": 0,
   "definitions": [
     {
-      "name": "terp_wavs_msg_InstantiateMsg",
+      "name": "terp_bls_msg_InstantiateMsg",
       "type": "struct",
       "properties": {
+        "operator_pubkeys": {
+          "description": "Compressed BLS12-381 public keys. Length is fixed by [`BlsVariant`].",
+          "value": 4
+        },
         "owner": {
-          "description": "Owner of this contract. Expected to be address that is making use of this custom authenticator.",
           "value": 2
         },
         "threshold": {
-          "description": "The minimum amount of `wavs_operator_pubkeys` required in authentication requests",
+          "description": "Distinct valid signatures required. `1..=operator_pubkeys.len()`, at most 10 keys.",
           "value": 5
         },
-        "wavs_operator_pubkeys": {
-          "description": "Array of BLS12-381 pubkeys that are to be authorizing actions",
-          "value": 4
-        },
-        "wavs_pubkey_type": {
-          "description": "Description of pubkey type for future support of different aggregate key algos.",
+        "variant": {
           "value": 6
         }
       }
     },
     {
-      "name": "cosmwasm_std_addresses_Addr",
-      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
-      "type": "address"
+      "name": "String",
+      "type": "string"
     },
     {
-      "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+      "name": "core::option::Option<alloc::string::String>",
       "type": "optional",
       "inner": 1
     },
@@ -45,14 +42,25 @@
       "items": 3
     },
     {
-      "name": "usize",
+      "name": "u32",
       "type": "integer",
-      "precision": 64,
+      "precision": 32,
       "signed": false
     },
     {
-      "name": "String",
-      "type": "string"
+      "name": "terp_bls_msg_BlsVariant",
+      "description": "Which BLS12-381 subgroup holds the public key.\n\nBoth variants use the proof-of-possession ciphersuite (basic scheme).\nThe signed message is `sign_mode_direct`.",
+      "type": "enum",
+      "cases": {
+        "min_pk": {
+          "description": "Public key on G1 (48 bytes), signature on G2 (96 bytes).\nHash-to-G2 with `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`.",
+          "type": "unit"
+        },
+        "min_sig": {
+          "description": "Public key on G2 (96 bytes), signature on G1 (48 bytes).\nHash-to-G1 with `BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_`.",
+          "type": "unit"
+        }
+      }
     }
   ]
 }

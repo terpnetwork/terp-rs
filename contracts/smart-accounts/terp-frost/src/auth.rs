@@ -299,7 +299,7 @@ mod tests {
     use cosmwasm_std::{Coin, Order, Storage, from_json};
     use osst::frost::{Signature, SigningPackage};
     use osst::{OsstScalar, SecretShare};
-    use rand::rngs::OsRng;
+    use rand08::rngs::OsRng;
 
     type TestDeps = cosmwasm_std::OwnedDeps<
         cosmwasm_std::testing::MockStorage,

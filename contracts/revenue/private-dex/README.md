@@ -48,7 +48,7 @@ Guest default builds **omit** cosmwasm-std `zk` so wasm deploys on stock wasmd
 ## Build / test
 
 ```bash
-cd crates/headstash
+cd crates/terp-rs && cargo test -p cw-headstash --lib
 
 # unit tests (mock_verify dual-path; no host import)
 cargo test -p cw-private-dex

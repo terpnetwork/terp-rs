@@ -28,14 +28,14 @@ interface = ["cw-orch"]
 [dependencies]
 blake3          = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cosmwasm-std    = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-orch  = { workspace = true, optional = true }
 cw-storage-plus = { workspace = true }
 cw-utils        = { workspace = true }
 cw2             = { workspace = true }
-hex             = "0.4.3"
+hex = { workspace = true, features = ["std"] }
 mtree-tooling   = { workspace = true }
-rs_merkle       = { version = "1.4.1", default-features = false }
+rs_merkle = { workspace = true }
 semver          = { workspace = true }
 thiserror       = { workspace = true }
 url             = { workspace = true }

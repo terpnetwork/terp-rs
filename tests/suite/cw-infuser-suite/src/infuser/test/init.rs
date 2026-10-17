@@ -1,4 +1,4 @@
-use abstract_cw_multi_test::Contract;
+use cw_multi_test::{Contract, ContractWrapper};
 use anyhow::anyhow;
 use cosmwasm_std::{coin, coins, Decimal, Event, Fraction, HexBinary, Uint128};
 use cw721::EmptyOptionalCollectionExtension;

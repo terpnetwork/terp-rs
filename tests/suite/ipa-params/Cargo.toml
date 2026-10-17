@@ -7,7 +7,7 @@ license = { workspace = true }
 publish = false
 
 [dependencies]
-halo2_proofs = { path = "../../../../zcash/halo2/halo2_proofs", default-features = false, features = ["batch", "multicore"] }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch", "multicore"] }
 hex = { workspace = true, features = ["std"] }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }

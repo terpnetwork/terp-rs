@@ -15,7 +15,7 @@ vanilla = []
 [dependencies]
 anyhow = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-infuser = { workspace = true, features = ["interface"] }
 cw-infuser-scripts = { path = "../../../scripts/cw-infuser", default-features = false }
 cw-infusions = { workspace = true }
@@ -32,7 +32,7 @@ serde = { workspace = true }
 whitelist-mtree = { workspace = true, features = ["library", "interface"] }
 
 [dev-dependencies]
-abstract-cw-multi-test = { path = "../../../../cw-multi-test-fork" }
+cw-multi-test = { workspace = true }
 rand = "0.8.5"
 rs_merkle = { version = "1.4.1", default-features = false }
 

@@ -3,13 +3,16 @@
 //! Verifies a `zap1-verify` BLAKE2b Merkle path and IBC v2 packet fields
 //! (source/dest **clients**, sequence, timeout, `app_data_hash`).
 //! This is not Crosslink header / Ed25519 finalizer verification.
+//!
+//! Leaf and node hashes stay inside `zap1-verify` (`blake2b_simd`) with
+//! personals `NordicShield_` and `NordicShield_MRK`. Host `Api::blake2b_256`
+//! is message-only and is not a substitute. Guest `simd128` stays off.
 
 use cosmwasm_std::{
     entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult,
 };
 use cw_storage_plus::Map;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use zap1_verify::{compute_leaf_hash, verify_proof, EventPayload, ProofStep, SiblingPosition};
 
@@ -43,16 +46,16 @@ pub fn app_data_hash(
     )
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
+#[cosmwasm_schema::cw_serde]
 pub struct InstantiateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
+#[cosmwasm_schema::cw_serde]
 pub struct Zap1ProofStepMsg {
     pub sibling_hex: String,
     pub sibling_is_left: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
+#[cosmwasm_schema::cw_serde]
 pub struct IbcV2Fields {
     pub source_client: String,
     pub dest_client: String,
@@ -61,8 +64,7 @@ pub struct IbcV2Fields {
     pub app_data_hash_hex: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cosmwasm_schema::cw_serde]
 pub enum ExecuteMsg {
     CreateClient {
         source_client: String,
@@ -86,8 +88,8 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema, cosmwasm_schema::QueryResponses)]
-#[serde(rename_all = "snake_case")]
+#[cosmwasm_schema::cw_serde]
+#[derive(cosmwasm_schema::QueryResponses)]
 pub enum QueryMsg {
     #[returns(AcceptedResp)]
     Accepted {
@@ -98,7 +100,7 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
+#[cosmwasm_schema::cw_serde]
 pub struct AcceptedResp {
     pub accepted: bool,
 }
@@ -107,9 +109,9 @@ const ACCEPTED: Map<(&str, &str, u64), String> = Map::new("zap1_ibcv2_accepted")
 
 fn parse_hex32(s: &str) -> StdResult<[u8; 32]> {
     let t = s.trim().trim_start_matches("0x");
-    let v = hex::decode(t).map_err(|_| StdError::generic_err("invalid hex"))?;
+    let v = hex::decode(t).map_err(|_| StdError::msg("invalid hex"))?;
     v.try_into()
-        .map_err(|_| StdError::generic_err("expected 32 bytes"))
+        .map_err(|_| StdError::msg("expected 32 bytes"))
 }
 
 /// Pure verify used by the wasm entry point and by PIR (same fields as IBC v2).
@@ -171,7 +173,7 @@ pub fn verify_zap1_ibcv2(
     Ok(expect)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     _deps: DepsMut,
     _env: Env,
@@ -181,7 +183,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("client", "08-zap1-ibcv2"))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, _info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::CreateClient {
@@ -189,7 +191,7 @@ pub fn execute(deps: DepsMut, _env: Env, _info: MessageInfo, msg: ExecuteMsg) ->
             dest_client,
         } => {
             if source_client.is_empty() || dest_client.is_empty() {
-                return Err(StdError::generic_err("empty client id"));
+                return Err(StdError::msg("empty client id"));
             }
             Ok(Response::new().add_attribute("action", "create_client"))
         }
@@ -234,7 +236,7 @@ pub fn execute(deps: DepsMut, _env: Env, _info: MessageInfo, msg: ExecuteMsg) ->
                 &root,
                 &steps,
             )
-            .map_err(StdError::generic_err)?;
+            .map_err(StdError::msg)?;
             let hexh = hex::encode(hash);
             ACCEPTED.save(
                 deps.storage,
@@ -248,7 +250,7 @@ pub fn execute(deps: DepsMut, _env: Env, _info: MessageInfo, msg: ExecuteMsg) ->
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Accepted {

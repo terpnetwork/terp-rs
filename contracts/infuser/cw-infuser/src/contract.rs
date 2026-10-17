@@ -29,7 +29,6 @@ use cw_infusions::{
 };
 
 use cw_infusions::CompatibleTraits;
-use nois::int_in_range;
 // use rand_core::SeedableRng;
 use rand_xoshiro::Xoshiro128PlusPlus;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -1540,15 +1539,12 @@ fn random_mintable_token_mapping(
         .into_bytes(),
     );
 
-    // Cut first 16 bytes from 32 byte value
-    let randomness: [u8; 32] = sha256.to_vec().try_into().unwrap();
-    let r = int_in_range(randomness, 0, 50);
-
-    let mut rem = 50;
+    let randomness: [u8; 32] = sha256.into();
+    let mut rem = 50u32;
     if rem > mintable_num_tokens {
         rem = mintable_num_tokens;
     }
-    let n = r % rem;
+    let n = u32::from_be_bytes(randomness[..4].try_into().unwrap()) % rem;
     let mut infusion_positions = MINTABLE_TOKEN_VECTORS.load(storage, infusion_id)?;
     let token_id = infusion_positions[n as usize];
 

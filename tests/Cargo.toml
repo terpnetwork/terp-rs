@@ -68,8 +68,8 @@ clap = { version = "4", features = ["derive"] }
 cosmwasm-schema = { path = "../../cosmwasm/packages/schema" }
 cosmwasm-std = { path = "../../cosmwasm/packages/std" }
 csv = "1.4.0"
-cw-orch = { path = "../../cw-orchestrator/cw-orch", features = ["daemon"] }
-cw-orch-interchain = { path = "../../cw-orchestrator/cw-orch-interchain", features = ["daemon"] }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
 cw-orch-polytone = { package = "abstract-cw-orch-polytone", path = "../../polytone/packages/cw-orch-polytone", default-features = false }
 dotenv = "0.15"
 env_logger = "0.11"
@@ -77,7 +77,7 @@ hash-market = { path = "../tools/hash-market", features = ["server", "client", "
 tower = { version = "0.5", default-features = false, features = ["util"] }
 
 hex = "0.4"
-zk-test-press = { path = "../../headstash/test-press", features = ["interface"], optional = true }
+zk-test-press = { path = "../tools/headstash/test-press", features = ["interface"], optional = true }
 ict-rs = { path = "../../ict-rs/ict-rs", features = ["docker", "terp", "testing", "nostr"] }
 k256 = "0.13.4"
 log = "0.4.30"
@@ -106,7 +106,7 @@ crosslink-light-client = { path = "../crates/crosslink/light-client" }
 # feature-unification then leaves maybe-rayon/threads on and host rustc fails
 # (the_best_reduce / IndexedParallelIterator). Isolated norick-wasm stays
 # default-features=false in its own workspace.
-halo2_proofs = { path = "../../zcash/halo2/halo2_proofs", package = "halo2_proofs", features = ["batch", "multicore"] }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch", "multicore"] }
 cw-ics08-wasm-crosslink = {path = "../contracts/light-clients/cw-ics08-wasm-crosslink", features = ["interface"]}
 ed25519-zebra = { version = "4.2", default-features = false }
 ed25519-dalek = { version = "2", features = ["rand_core"] }

@@ -18,10 +18,10 @@ default = []
 library = []
 
 [dev-dependencies]
-p256 = { version = "0.13", features = ["ecdsa"] }
+p256 = { workspace = true, features = ["arithmetic", "ecdsa", "pem", "std"] }
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }

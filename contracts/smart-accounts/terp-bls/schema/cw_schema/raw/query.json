@@ -3,9 +3,14 @@
   "root": 0,
   "definitions": [
     {
-      "name": "terp_wavs_msg_QueryMsg",
+      "name": "terp_bls_msg_QueryMsg",
       "type": "enum",
-      "cases": {}
+      "cases": {
+        "config": {
+          "type": "named",
+          "properties": {}
+        }
+      }
     }
   ]
 }

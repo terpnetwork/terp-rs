@@ -1,6 +1,8 @@
 //! This module contains the CosmWasm entrypoints for the 08-wasm smart contract.
 
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Response, entry_point};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Response};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 
 use crate::custom_query::CrosslinkCustomQuery;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Migration, QueryMsg, SudoMsg};
@@ -15,7 +17,7 @@ pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 /// # Errors
 ///
 /// Will return an error if the client state or consensus state cannot be deserialized.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn instantiate(
     deps: DepsMut<CrosslinkCustomQuery>,
@@ -35,7 +37,7 @@ pub fn instantiate(
 /// # Errors
 ///
 /// Will return an error if the handler returns an error.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn sudo(
     deps: DepsMut<CrosslinkCustomQuery>,
@@ -65,7 +67,7 @@ pub fn sudo(
 }
 
 /// Execute entry point is not used in this contract.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 #[allow(clippy::needless_pass_by_value, clippy::missing_errors_doc)]
 pub fn execute(
     _deps: DepsMut,
@@ -83,7 +85,7 @@ pub fn execute(
 /// # Errors
 ///
 /// Will return an error if the handler returns an error.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
     deps: Deps<CrosslinkCustomQuery>,
     env: Env,
@@ -108,7 +110,7 @@ pub fn query(
 /// # Errors
 ///
 /// Will return an error if the state version is not newer than the current one.
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 #[allow(clippy::needless_pass_by_value)]
 pub fn migrate(
     deps: DepsMut<CrosslinkCustomQuery>,

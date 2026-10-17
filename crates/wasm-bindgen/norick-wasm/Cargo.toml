@@ -20,7 +20,7 @@ ff = "0.13"
 group = "0.13"
 rand = "0.8"
 getrandom = { version = "0.2", features = ["js"] }
-halo2_proofs = { path = "../../../../zcash/halo2/halo2_proofs", package = "halo2_proofs", default-features = false }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"] }
 
 [profile.release]
 opt-level = "s"

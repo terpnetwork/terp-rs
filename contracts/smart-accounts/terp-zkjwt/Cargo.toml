@@ -20,7 +20,7 @@ library = []
 zk-host = ["cosmwasm-std/zk"]
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }

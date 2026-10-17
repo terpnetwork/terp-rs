@@ -11,8 +11,8 @@ default = []
 bench = []
 
 [dependencies]
-blake3 = "1.5"
-ics23 = { path = "../../../../ics23/rust", default-features = false }
-prost = { version = "0.14", default-features = false, features = ["derive"] }
+blake3 = { workspace = true }
+ics23 = { workspace = true }
+prost = { workspace = true, features = ["derive"] }
 sha2 = { workspace = true }
 thiserror = { workspace = true }

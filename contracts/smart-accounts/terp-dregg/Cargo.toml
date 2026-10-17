@@ -18,7 +18,7 @@ default = []
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std"] }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -27,4 +27,4 @@ thiserror = { workspace = true }
 terp-auth = { workspace = true }
 terp-account = { workspace = true }
 # Shared B2 types + pack_lanes (library feature avoids double entry points)
-cw-ics08-wasm-dregg = { path = "../../light-clients/cw-ics08-wasm-dregg", default-features = true, features = ["library", "mock-verify"] }
+cw-ics08-wasm-dregg = { workspace = true, features = ["library", "mock-verify"] }

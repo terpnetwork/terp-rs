@@ -10,15 +10,15 @@ description = "Core light client verification primitives for Zcash Crosslink TFL
 zebra-crosslink-compare = []
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
 hex = { workspace = true }
 thiserror = { workspace = true }
-blake3 = "1.5"
-byteorder = "1.5.0"
+blake3 = { workspace = true }
+byteorder = { workspace = true }
 
 [dev-dependencies]
 # Full zebra-crosslink crate imported ONLY for type invariance tests
-zebra-crosslink = { path = "../../../../zebra-crosslink/zebra-crosslink" }
-zebra-chain = { path = "../../../../zebra-crosslink/zebra-chain" }
+zebra-crosslink = { workspace = true }
+zebra-chain = { workspace = true }

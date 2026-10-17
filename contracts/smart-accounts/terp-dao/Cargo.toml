@@ -19,7 +19,7 @@ library = []
 [dependencies]
 cosmwasm-schema    = { workspace = true }
 cw-storage-plus    = { workspace = true }
-cosmwasm-std       = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 terp-auth          = { workspace = true }
 terp-account       = { workspace = true }
 cw2                = { workspace = true }

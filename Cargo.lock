@@ -1856,6 +1856,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "av-event-helpers"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-std",
+]
+
+[[package]]
 name = "aws-lc-rs"
 version = "1.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,8 +2231,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90dbd31c98227229239363921e60fcf5e558e43ec69094d46fc4996f08d1d5bc"
 dependencies = [
  "bitcoin_hashes 0.14.101",
- "rand 0.7.3",
- "rand_core 0.5.1",
+ "rand 0.8.7",
+ "rand_core 0.6.4",
  "serde",
  "unicode-normalization",
 ]
@@ -3233,6 +3240,7 @@ dependencies = [
  "cosmos-sdk-proto 0.28.0",
  "ecdsa",
  "eyre",
+ "getrandom 0.2.17",
  "k256",
  "rand_core 0.6.4",
  "serde",
@@ -3260,6 +3268,7 @@ dependencies = [
  "ark-serialize 0.5.0",
  "ark-std 0.5.0",
  "blake2",
+ "blake2b_simd",
  "blake3",
  "cosmwasm-core",
  "curve25519-dalek 4.1.3",
@@ -3680,12 +3689,91 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-ave"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "av-event-helpers",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "cw4",
+ "cw420",
+ "schemars 0.8.22",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-ave-factory"
+version = "0.1.0"
+dependencies = [
+ "abstract-cw-multi-test",
+ "av-event-helpers",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-ave",
+ "cw-denom",
+ "cw-orch",
+ "cw-ownable",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "cw4",
+ "cw420",
+ "easy-addr",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-ave-scripts"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "av-event-helpers",
+ "clap",
+ "cosmwasm-std",
+ "cw-ave",
+ "cw-ave-factory",
+ "cw-orch",
+ "cw4",
+ "cw420",
+ "dotenv",
+ "env_logger 0.11.11",
+ "k256",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-blob"
 version = "0.2.0"
 dependencies = [
  "cosmrs 0.23.0",
  "cosmwasm-std",
  "cw-orch",
+]
+
+[[package]]
+name = "cw-cashu-registry"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -3758,8 +3846,9 @@ dependencies = [
 
 [[package]]
 name = "cw-headstash"
-version = "0.1.0"
+version = "0.0.2"
 dependencies = [
+ "abstract-cw-multi-test",
  "anyhow",
  "ark-bls12-381",
  "ark-ec 0.5.0",
@@ -3768,6 +3857,7 @@ dependencies = [
  "blake3",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-headstash-manifold",
  "cw-orch",
  "cw-ownable",
  "cw-storage-plus",
@@ -3780,7 +3870,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "terp-auth 0.2.0",
+ "terp-auth",
  "zakura-halo2-proofs 1.3.0-alpha.1",
  "zakura-pasta-curves 1.3.0-alpha.1",
  "zk-headstash",
@@ -3788,7 +3878,7 @@ dependencies = [
 
 [[package]]
 name = "cw-headstash-manifold"
-version = "0.1.0"
+version = "0.0.2"
 dependencies = [
  "ark-bls12-381",
  "cosmwasm-schema",
@@ -3798,7 +3888,7 @@ dependencies = [
  "cw-ownable",
  "cw-storage-plus",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -3895,7 +3985,7 @@ dependencies = [
  "semver 1.0.28",
  "sha2 0.10.9",
  "shuffle",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
  "url",
 ]
 
@@ -3993,6 +4083,75 @@ dependencies = [
  "rand_core 0.10.1",
  "thiserror 2.0.19",
  "zakura-pasta-curves 1.3.0-alpha.1",
+]
+
+[[package]]
+name = "cw-nullifier-auth"
+version = "0.1.0"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-nullifier-gate"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-oracle-aggregator"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-oracle-registry",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-oracle-registry"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-oracle-twap-probe"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "schemars 0.8.22",
+ "serde",
 ]
 
 [[package]]
@@ -4343,6 +4502,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-reg-eligibility"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "cw-reply-helper"
 version = "2.8.0-alpha.2"
 dependencies = [
@@ -4377,18 +4549,21 @@ dependencies = [
 
 [[package]]
 name = "cw-shit-denom"
-version = "0.1.0"
+version = "0.0.2"
 dependencies = [
+ "abstract-cw-multi-test",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw20",
- "thiserror 1.0.69",
+ "cw20-base",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
 name = "cw-shitstrap"
 version = "0.1.0"
 dependencies = [
+ "abstract-cw-multi-test",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-orch",
@@ -4398,17 +4573,21 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "dao-interface",
+ "hex",
  "schemars 0.8.22",
  "serde",
- "terp-account 0.2.0",
+ "serde_json",
+ "terp-account",
  "terp-rs",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
 name = "cw-shitstrap-factory"
 version = "0.1.0"
 dependencies = [
+ "abstract-cw-multi-test",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-orch",
@@ -4419,7 +4598,8 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw20",
- "thiserror 1.0.69",
+ "cw20-base",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -4467,7 +4647,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "sha2 0.10.9",
- "terp-account 0.0.2",
+ "terp-account",
  "thiserror 2.0.19",
 ]
 
@@ -4481,12 +4661,21 @@ dependencies = [
  "cw-ownable",
  "cw-storage-plus",
  "cw-svg",
+ "cw-svg-pack",
  "cw2",
  "cw721-svg",
  "schemars 0.8.22",
  "serde",
  "sha2 0.10.9",
  "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-svg-pack"
+version = "0.1.0"
+dependencies = [
+ "cw-svg",
+ "serde_json",
 ]
 
 [[package]]
@@ -4564,6 +4753,33 @@ dependencies = [
  "serde",
  "thiserror 1.0.69",
  "wynd-utils",
+]
+
+[[package]]
+name = "cw-vote-anchor"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "cw-vote-ceremony"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -4751,6 +4967,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw420"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw4",
+ "easy-addr",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "cw721"
 version = "0.22.0"
 dependencies = [
@@ -4796,7 +5029,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -4829,13 +5062,14 @@ dependencies = [
  "cw-ownable",
  "cw-storage-plus",
  "cw-svg",
+ "cw-svg-pack",
  "cw-utils",
  "cw2",
  "cw721",
  "schemars 0.8.22",
  "serde",
  "sha2 0.10.9",
- "thiserror 1.0.69",
+ "thiserror 2.0.19",
  "whitelist-mtree",
 ]
 
@@ -5568,7 +5802,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c54e03a951783e8b327515db3f2a2fd0e3bed362a96b066f341ce66ed49b4ead"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -6000,7 +6234,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
-name = "dregg-svg-mint"
+name = "dregg"
 version = "0.1.0"
 dependencies = [
  "bech32 0.9.1",
@@ -6018,6 +6252,8 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 1.0.69",
  "tiny-keccak",
+ "zcash_address 0.13.0",
+ "zcash_protocol 0.10.6",
 ]
 
 [[package]]
@@ -6545,6 +6781,15 @@ dependencies = [
 [[package]]
 name = "f4jumble"
 version = "0.1.1"
+dependencies = [
+ "blake2b_simd",
+]
+
+[[package]]
+name = "f4jumble"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d42773cb15447644d170be20231a3268600e0c4cea8987d013b93ac973d3cf7"
 dependencies = [
  "blake2b_simd",
 ]
@@ -7492,7 +7737,7 @@ dependencies = [
  "ff 0.13.1",
  "group 0.13.0",
  "halo2_poseidon",
- "halo2_proofs 0.3.5",
+ "halo2_proofs",
  "lazy_static",
  "pasta_curves",
  "rand 0.8.7",
@@ -7517,23 +7762,6 @@ dependencies = [
  "ff 0.13.1",
  "group 0.13.0",
  "pasta_curves",
-]
-
-[[package]]
-name = "halo2_proofs"
-version = "0.3.2"
-dependencies = [
- "blake2b_simd",
- "digest 0.10.7",
- "ff 0.13.1",
- "group 0.13.0",
- "hex",
- "indexmap 1.9.3",
- "maybe-rayon",
- "pasta_curves",
- "rand_core 0.6.4",
- "sha2 0.10.9",
- "tracing",
 ]
 
 [[package]]
@@ -7595,6 +7823,7 @@ dependencies = [
  "clap",
  "cw721-nips",
  "ed25519-dalek 2.2.0",
+ "ff 0.14.0",
  "frost-ed25519",
  "futures-util",
  "hex",
@@ -7603,14 +7832,15 @@ dependencies = [
  "kms-shard",
  "prost 0.13.5",
  "prost-types 0.13.5",
+ "rand 0.10.2",
  "rand_core 0.6.4",
  "reqwest 0.12.28",
  "ripemd 0.1.3",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "sha3 0.10.9",
  "snow 0.9.6",
- "terp-onboard-authz",
  "thiserror 1.0.69",
  "tiny-keccak",
  "tokio",
@@ -7619,6 +7849,8 @@ dependencies = [
  "tower 0.5.3",
  "tracing",
  "tracing-subscriber 0.3.23",
+ "zakura-halo2-proofs 1.3.0-alpha.1",
+ "zakura-pasta-curves 1.3.0-alpha.1",
 ]
 
 [[package]]
@@ -7739,6 +7971,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54b4a22553d4242c49fddb9ba998a99962b5cc6f22cb5a3482bec22522403ce4"
 dependencies = [
  "http 1.5.0",
+]
+
+[[package]]
+name = "headstash-eth-pubkeys"
+version = "0.0.2"
+dependencies = [
+ "alloy-consensus",
+ "alloy-primitives 1.7.3",
+ "alloy-rpc-types-eth",
+ "anyhow",
+ "csv",
+ "ff 0.14.0",
+ "hex",
+ "k256",
+ "rand 0.10.2",
+ "rayon",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha3 0.10.9",
+ "tokio",
+ "zakura-pasta-curves 1.3.0-alpha.1",
+ "zk-headstash",
 ]
 
 [[package]]
@@ -8468,13 +8724,13 @@ dependencies = [
  "cw-orch-core",
  "cw-orch-daemon",
  "cw-orch-traits",
- "dregg-svg-mint",
+ "dregg",
  "ict-rs",
  "prost 0.14.4",
  "prost-types 0.14.4",
  "rustls 0.23.43",
  "serde_json",
- "terp-onboard-authz",
+ "sha2 0.10.9",
  "thiserror 2.0.19",
  "tokio",
  "tracing",
@@ -9560,6 +9816,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "loyalty-verifier"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "lru"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9655,6 +9926,19 @@ name = "map-macro"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb950a42259642e5a3483115aca87eebed2a64886993463af9c9739c205b8d3a"
+
+[[package]]
+name = "marketplace-mirror"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
 
 [[package]]
 name = "match-lookup"
@@ -9949,7 +10233,7 @@ dependencies = [
 [[package]]
 name = "nam-wasm-instrument"
 version = "0.5.3-terp.2"
-source = "git+https://github.com/permissionlessweb/nam-wasm-instrument?rev=248ac2796903fe39977f31cb9bdef54c77ccf7a0#248ac2796903fe39977f31cb9bdef54c77ccf7a0"
+source = "git+https://github.com/permissionlessweb/nam-wasm-instrument?rev=fa6735f54d543326faa2e8ae58119e97be9e11bc#fa6735f54d543326faa2e8ae58119e97be9e11bc"
 dependencies = [
  "parity-wasm",
 ]
@@ -9992,6 +10276,68 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "nftfi-loan"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "cw721",
+ "nftfi-utils",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "nftfi-raffle"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "cw721",
+ "cw721-svg",
+ "nftfi-loan",
+ "nftfi-randomness",
+ "nftfi-utils",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "nftfi-randomness"
+version = "0.0.2"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "schemars 0.8.22",
+ "serde",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "nftfi-utils"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw721",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -10388,7 +10734,7 @@ dependencies = [
  "group 0.13.0",
  "halo2_gadgets",
  "halo2_poseidon",
- "halo2_proofs 0.3.5",
+ "halo2_proofs",
  "hex",
  "incrementalmerkletree",
  "lazy_static",
@@ -10538,7 +10884,7 @@ dependencies = [
 [[package]]
 name = "parity-wasm"
 version = "0.45.0"
-source = "git+https://github.com/permissionlessweb/nam-wasm-instrument?rev=248ac2796903fe39977f31cb9bdef54c77ccf7a0#248ac2796903fe39977f31cb9bdef54c77ccf7a0"
+source = "git+https://github.com/permissionlessweb/nam-wasm-instrument?rev=fa6735f54d543326faa2e8ae58119e97be9e11bc#fa6735f54d543326faa2e8ae58119e97be9e11bc"
 
 [[package]]
 name = "parking"
@@ -12150,6 +12496,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1cab9bd343c737660e523ee69f788018f3db686d537d2fd0f99c9f747c1bda4f"
 
 [[package]]
+name = "revenue-marketplace"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw721",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "sha2 0.10.9",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "revenue-reserve-auction"
+version = "0.0.2"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw721",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "revm-primitives"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13408,7 +13790,7 @@ checksum = "dc6fe69c597f9c37bfeeeeeb33da3530379845f10be461a66d16d03eca2ded77"
 
 [[package]]
 name = "shit-scripts"
-version = "0.1.0"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -13792,6 +14174,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "svg-auction"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
 name = "svm-rs"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14034,7 +14427,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
@@ -14364,22 +14757,7 @@ dependencies = [
  "ripemd 0.1.3",
  "serde",
  "sha2 0.10.9",
- "terp-auth 0.0.2",
-]
-
-[[package]]
-name = "terp-account"
-version = "0.2.0"
-dependencies = [
- "bech32 0.11.1",
- "cosmwasm-crypto",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-controllers",
- "cw-ownable",
- "cw721",
- "ripemd 0.1.3",
- "sha2 0.10.9",
+ "terp-auth",
 ]
 
 [[package]]
@@ -14412,8 +14790,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "terp721-account",
  "terp721-account-manifold",
  "tokio",
@@ -14432,20 +14810,6 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "thiserror 2.0.19",
-]
-
-[[package]]
-name = "terp-auth"
-version = "0.2.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -14470,8 +14834,8 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "sha3 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "terp-ed25519",
  "terp-eth",
  "terp-passkey",
@@ -14498,8 +14862,8 @@ dependencies = [
  "hex",
  "schemars 0.8.22",
  "serde",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14512,8 +14876,8 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "serde",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14527,8 +14891,8 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "serde",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14543,8 +14907,8 @@ dependencies = [
  "cw2",
  "hex",
  "serde",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14560,8 +14924,8 @@ dependencies = [
  "hex",
  "serde",
  "sha3 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14577,8 +14941,8 @@ dependencies = [
  "rand 0.8.7",
  "serde",
  "sha2 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14597,29 +14961,11 @@ dependencies = [
 name = "terp-ipa-params"
 version = "0.0.2"
 dependencies = [
- "halo2_proofs 0.3.2",
  "hex",
  "serde",
  "serde_json",
  "sha2 0.10.9",
-]
-
-[[package]]
-name = "terp-onboard-authz"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "bech32 0.11.1",
- "ff 0.14.0",
- "k256",
- "rand 0.10.2",
- "ripemd 0.1.3",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "sha3 0.10.9",
  "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
 ]
 
 [[package]]
@@ -14627,37 +14973,59 @@ name = "terp-orch"
 version = "0.0.2"
 dependencies = [
  "anyhow",
- "clap",
- "cosmos-sdk-proto 0.28.0",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cosmwasm-vm",
  "crosslink-light-client",
+ "cw-ave",
+ "cw-ave-factory",
+ "cw-cashu-registry",
  "cw-headstash",
+ "cw-headstash-manifold",
  "cw-ics08-wasm-crosslink",
  "cw-ics08-wasm-dregg",
  "cw-ics08-wasm-terp",
- "cw-infuser-scripts",
+ "cw-ics08-wasm-zap1",
+ "cw-norick",
+ "cw-nullifier-auth",
+ "cw-nullifier-gate",
+ "cw-oracle-aggregator",
+ "cw-oracle-twap-probe",
  "cw-orch",
  "cw-private-dex",
+ "cw-reg-eligibility",
+ "cw-shit-denom",
+ "cw-shitstrap",
+ "cw-shitstrap-factory",
+ "cw-vote-anchor",
+ "cw-vote-ceremony",
  "cw-zk-verify-demo",
- "dotenvy",
+ "cw420",
  "hex",
- "ibc-proto",
+ "hm-loyalty-whitelist",
+ "hm-nft-minter",
+ "hm-nft-oracle",
  "ict-rs",
  "ict-rs-cw-orch",
+ "loyalty-verifier",
+ "marketplace-mirror",
+ "nftfi-loan",
+ "nftfi-raffle",
+ "nftfi-randomness",
  "polytone-any-proxy",
- "prost-types 0.14.4",
- "rand 0.8.7",
+ "rand 0.10.2",
+ "revenue-marketplace",
+ "revenue-reserve-auction",
  "serde",
  "serde_json",
- "terp-account-scripts",
+ "svg-auction",
  "terp-authenticator-suite",
  "terp-bls",
  "terp-dao",
  "terp-dregg",
  "terp-frost",
  "terp-zktls",
- "tokio",
+ "trusted-builder-sbt",
  "zk-cosmwasm",
  "zk-headstash",
 ]
@@ -14674,8 +15042,8 @@ dependencies = [
  "p256",
  "serde",
  "sha2 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14704,8 +15072,8 @@ dependencies = [
  "serde",
  "sha2 0.10.9",
  "sha3 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14748,7 +15116,6 @@ dependencies = [
  "ed25519-zebra",
  "env_logger 0.11.11",
  "frost-ed25519",
- "halo2_proofs 0.3.2",
  "hash-market",
  "hex",
  "ict-rs",
@@ -14766,7 +15133,7 @@ dependencies = [
  "sha2 0.10.9",
  "snow 0.9.6",
  "tempfile",
- "terp-auth 0.0.2",
+ "terp-auth",
  "terp-authenticator-suite",
  "terp-orch",
  "terp-rs",
@@ -14777,6 +15144,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber 0.3.23",
  "which",
+ "zakura-halo2-proofs 1.3.0-alpha.1",
  "zebra-chain",
  "zebra-crosslink",
  "zk-test-press",
@@ -14807,8 +15175,8 @@ dependencies = [
  "cw2",
  "serde",
  "sha2 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14823,8 +15191,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14846,8 +15214,8 @@ dependencies = [
  "serde",
  "sha2 0.10.9",
  "sha3 0.10.9",
- "terp-account 0.0.2",
- "terp-auth 0.0.2",
+ "terp-account",
+ "terp-auth",
  "thiserror 2.0.19",
 ]
 
@@ -14867,7 +15235,7 @@ dependencies = [
  "cw2",
  "cw721",
  "serde",
- "terp-account 0.0.2",
+ "terp-account",
  "thiserror 2.0.19",
 ]
 
@@ -14886,7 +15254,7 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw721",
- "terp-account 0.0.2",
+ "terp-account",
  "terp721-account",
  "thiserror 2.0.19",
 ]
@@ -15621,6 +15989,19 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "trusted-builder-sbt"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -17069,14 +17450,39 @@ dependencies = [
  "bech32 0.11.1",
  "bs58",
  "corez",
- "f4jumble",
- "zcash_encoding",
- "zcash_protocol",
+ "f4jumble 0.1.1",
+ "zcash_encoding 0.4.0",
+ "zcash_protocol 0.9.0",
+]
+
+[[package]]
+name = "zcash_address"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a854b28c07dba372f4410ea8ad62b4bf7d5c2bf8be32fc4b31bc0db6521a975"
+dependencies = [
+ "bech32 0.11.1",
+ "bs58",
+ "corez",
+ "f4jumble 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zcash_encoding 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zcash_protocol 0.10.6",
 ]
 
 [[package]]
 name = "zcash_encoding"
 version = "0.4.0"
+dependencies = [
+ "corez",
+ "hex",
+ "nonempty 0.11.0",
+]
+
+[[package]]
+name = "zcash_encoding"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1440921903cdb86133fb9e2fe800be488015db2939a30bedb413078a1acb0306"
 dependencies = [
  "corez",
  "hex",
@@ -17128,9 +17534,9 @@ dependencies = [
  "secp256k1 0.29.1",
  "serde",
  "sha2 0.10.9",
- "zcash_encoding",
+ "zcash_encoding 0.4.0",
  "zcash_note_encryption",
- "zcash_protocol",
+ "zcash_protocol 0.9.0",
  "zcash_script 0.6.0",
  "zcash_transparent",
 ]
@@ -17143,7 +17549,20 @@ dependencies = [
  "document-features",
  "hex",
  "memuse",
- "zcash_encoding",
+ "zcash_encoding 0.4.0",
+]
+
+[[package]]
+name = "zcash_protocol"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b20adb1cdb6ab551e83d1507461e89b41fc67e800eec9e59e0c8de96152e8c5c"
+dependencies = [
+ "corez",
+ "document-features",
+ "hex",
+ "memuse",
+ "zcash_encoding 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -17202,9 +17621,9 @@ dependencies = [
  "secp256k1 0.29.1",
  "sha2 0.10.9",
  "subtle",
- "zcash_address",
- "zcash_encoding",
- "zcash_protocol",
+ "zcash_address 0.12.0",
+ "zcash_encoding 0.4.0",
+ "zcash_protocol 0.9.0",
  "zcash_script 0.6.0",
  "zcash_spec",
  "zip32",
@@ -17230,7 +17649,7 @@ dependencies = [
  "equihash",
  "futures",
  "group 0.13.0",
- "halo2_proofs 0.3.5",
+ "halo2_proofs",
  "hex",
  "humantime",
  "incrementalmerkletree",
@@ -17261,12 +17680,12 @@ dependencies = [
  "tracing",
  "uint 0.10.0",
  "x25519-dalek",
- "zcash_address",
- "zcash_encoding",
+ "zcash_address 0.12.0",
+ "zcash_encoding 0.4.0",
  "zcash_history",
  "zcash_note_encryption",
  "zcash_primitives",
- "zcash_protocol",
+ "zcash_protocol 0.9.0",
  "zcash_script 0.4.5",
  "zcash_transparent",
 ]

@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn snap_headers_verify_with_prehash() {
-        let sk = SigningKey::random(&mut rand_core::OsRng);
+        let sk = SigningKey::random(&mut rand_core06::OsRng);
         let sk_hex = hex::encode(sk.to_bytes());
         let headers = snap_secp_auth_headers(&sk_hex).unwrap();
         let map: std::collections::HashMap<_, _> = headers.into_iter().collect();

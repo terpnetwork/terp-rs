@@ -1,7 +1,14 @@
 [workspace]
 resolver = "2"
 # Nested cargo projects with their own [workspace] tables.
-exclude = ["tools/hash-market", "tools/svg-mint"]
+exclude = [
+    "tools/hash-market",
+    "tools/svg-mint",
+    # Circuits, wire, and the test-press keep their own lock (rand 0.10 / halo2).
+    "tools/headstash",
+    # Hello-world stub left beside cw-headstash. Not a product script.
+    "contracts/headstash/cw-headstash/scripts",
+]
 members = [
     "crates/terp-auth",
     "crates/terp-account",
@@ -42,8 +49,10 @@ members = [
     "contracts/infuser/cw721-svg-minter",
     "contracts/infuser/hm-nft-minter",
     "contracts/infuser/whitelist-merkletree",
+    "contracts/infuser/svg-auction",
     "crates/cw-infusions",
     "crates/cw-svg",
+    "crates/svg-codec",
     "crates/easy-addr",
     "crates/mtree-tooling",
     "crates/hm-loyalty-whitelist",
@@ -52,6 +61,37 @@ members = [
     "scripts/cw-infuser",
     "tests/suite/cw-infuser-suite",
     "tests/suite/dao-foundation-suite",
+    "contracts/hash-merchant/oracle-registry",
+    "contracts/hash-merchant/oracle-aggregator",
+    "contracts/hash-merchant/oracle-twap-probe",
+    "contracts/hash-merchant/marketplace-mirror",
+    "contracts/hash-merchant/loyalty-verifier",
+    "contracts/hash-merchant/trusted-builder-sbt",
+    "contracts/cashu/cw-cashu-registry",
+    "contracts/headstash/cw-headstash",
+    "contracts/headstash/manifold",
+    "contracts/headstash/no-rick",
+    "contracts/headstash/cw-nullifier-auth",
+    "contracts/headstash/cw-nullifier-gate",
+    "contracts/headstash/cw-reg-eligibility",
+    "contracts/headstash/cw-vote-anchor",
+    "contracts/headstash/cw-vote-ceremony",
+    "contracts/ave/cw-ave",
+    "contracts/ave/cw-ave-factory",
+    "contracts/ave/cw420",
+    "crates/av-event-helpers",
+    "scripts/cw-ave",
+    "scripts/headstash/eth-pubkeys",
+    "contracts/nfts/packages/utils",
+    "contracts/nfts/packages/randomness",
+    "contracts/nfts/raffle",
+    "contracts/nfts/nft-loan",
+    "contracts/revenue/marketplace",
+    "contracts/revenue/reserve-auction",
+    "contracts/shitstrap/cw-shitstrap",
+    "contracts/shitstrap/cw-shitstrap-factory",
+    "crates/cw-shit-denom",
+    "scripts/shitstrap",
 ]
 
 [workspace.package]
@@ -77,7 +117,9 @@ rand = { version = "0.9", default-features = false }
 rand08 = { package = "rand", version = "0.8", features = ["std", "std_rng"] }
 
 cosmwasm-schema = { path = "../cosmwasm/packages/schema" }
-cosmwasm-std = { path = "../cosmwasm/packages/std" }
+# Guest baseline. `zk` is opt-in (`features = ["zk"]` or a crate feature that enables `cosmwasm-std/zk`).
+# Cargo does not let a member disable features inherited from here.
+cosmwasm-std = { path = "../cosmwasm/packages/std", default-features = false, features = ["exports", "iterator", "std"] }
 cosmwasm-crypto = { path = "../cosmwasm/packages/crypto" }
 crosslink-light-client = { path = "crates/crosslink/light-client", default-features = false }
 # Pushed fork/cw3. The patch table below replaces this checkout (local HEAD is ahead of the remote).
@@ -90,7 +132,7 @@ cw-ownable = { path = "../cw-plus-plus/packages/ownable" }
 cw-controllers = { path = "../cw-minus/packages/controllers" }
 ibc-proto = { path = "../ibc-proto-rs", default-features = false }
 cosmos-sdk-proto = { path = "../cosmos-rust/cosmos-sdk-proto", default-features = false }
-prost = "0.14"
+prost = { version = "0.14", default-features = false }
 sha2 = { version = "0.10.8", default-features = false }
 cw-multi-test = { package = "abstract-cw-multi-test", path = "../cw-multi-test-fork" }
 
@@ -126,8 +168,10 @@ terp721-account = { path = "contracts/accounts/terp721-account" }
 terp721-account-manifold = { path = "contracts/accounts/terp721-account-manifold" }
 ownership-verifier = { path = "contracts/accounts/ownership-verifier" }
 cw-infuser = { path = "contracts/infuser/cw-infuser" }
+svg-auction = { path = "contracts/infuser/svg-auction" }
 cw-infusions = { path = "crates/cw-infusions" }
 cw-svg = { path = "crates/cw-svg" }
+cw-svg-pack = { path = "crates/svg-codec" }
 cw-svg-minter = { path = "contracts/infuser/cw721-svg-minter" }
 cw721-svg = { path = "contracts/infuser/cw721-svg" }
 hm-nft-minter = { path = "contracts/infuser/hm-nft-minter" }
@@ -135,9 +179,85 @@ hm-loyalty-whitelist = { path = "crates/hm-loyalty-whitelist" }
 hm-nft-oracle = { path = "crates/hm-nft-oracle" }
 mtree-tooling = { path = "crates/mtree-tooling" }
 easy-addr = { path = "crates/easy-addr" }
+av-event-helpers = { path = "crates/av-event-helpers" }
+cw4 = { path = "../cw-plus/packages/cw4" }
+cw20 = { path = "../cw-plus/packages/cw20" }
+cw20-base = { path = "../cw-plus/contracts/cw20-base" }
+cw-denom = { path = "../dao-contracts/packages/cw-denom" }
+cw420 = { path = "contracts/ave/cw420" }
+cw-ave = { path = "contracts/ave/cw-ave" }
+cw-ave-factory = { path = "contracts/ave/cw-ave-factory" }
+cw-ave-scripts = { path = "scripts/cw-ave" }
+cw-headstash = { path = "contracts/headstash/cw-headstash" }
+cw-headstash-manifold = { path = "contracts/headstash/manifold" }
+cw-norick = { path = "contracts/headstash/no-rick", features = ["interface"] }
+zk-headstash = { path = "tools/headstash/circuits/halo2", default-features = false, features = ["circuit", "std"] }
+ff = "0.14"
+group = "0.14"
+ark-bls12-381 = "0.5.0"
+ark-ec = "0.5.0"
+ark-ff = "0.5.0"
+ark-serialize = "0.5.0"
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"] }
+pasta_curves = { package = "zakura-pasta-curves", path = "../zakura-common/crates/pasta_curves", default-features = false, features = ["default"] }
+rand_core = "0.10"
+lol_alloc = "0.4.1"
+nftfi-utils = { path = "contracts/nfts/packages/utils" }
+nftfi-randomness = { path = "contracts/nfts/packages/randomness" }
+nftfi-raffle = { path = "contracts/nfts/raffle" }
+nftfi-loan = { path = "contracts/nfts/nft-loan" }
+revenue-marketplace = { path = "contracts/revenue/marketplace" }
+revenue-reserve-auction = { path = "contracts/revenue/reserve-auction" }
+cw-shitstrap = { path = "contracts/shitstrap/cw-shitstrap" }
+cw-shitstrap-factory = { path = "contracts/shitstrap/cw-shitstrap-factory" }
+cw-shit-denom = { path = "crates/cw-shit-denom" }
+shit-scripts = { path = "scripts/shitstrap" }
+dao-interface = { path = "../dao-contracts/packages/dao-interface" }
+terp-rs = { path = "crates/sdk", default-features = false }
 whitelist-mtree = { path = "contracts/infuser/whitelist-merkletree" }
 cw-infuser-scripts = { path = "scripts/cw-infuser", default-features = false }
 terp-account-scripts = { path = "scripts/terp-accounts" }
+
+# Direct deps of contracts/ and crates/ that were previously inlined.
+# One pin per crate. A second major stays under its own key (rand08, rand_core06).
+axum = { version = "0.7", default-features = false }
+base64 = "0.22"
+bech32 = { version = "0.11.0", default-features = false }
+blake2 = "0.10"
+byteorder = "1.5.0"
+bytes = "1.11.1"
+chacha20 = "0.9"
+chacha20poly1305 = "0.10"
+clap = "4"
+constant_time_eq = "0.3"
+cw-oracle-registry = { path = "contracts/hash-merchant/oracle-registry", default-features = false }
+digest = { version = "0.10", default-features = false }
+ecdsa = "0.16"
+getrandom = { version = "0.2", default-features = false }
+hkdf = "0.12"
+hmac = "0.12"
+ics23 = { path = "../ics23/rust", default-features = false }
+k256 = { version = "0.13", default-features = false }
+osst = { path = "../zeratul/crates/osst", default-features = false }
+p256 = { version = "0.13", default-features = false }
+pbjson-types = "0.9"
+proc-macro2 = "1"
+pyo3 = "0.24"
+quote = "1"
+rand_core06 = { package = "rand_core", version = "0.6", default-features = false }
+rand_xoshiro = { version = "0.6.0", default-features = false }
+reqwest = { version = "0.12", default-features = false }
+ripemd = { version = "0.1.3", default-features = false }
+rs_merkle = { version = "1.4.1", default-features = false }
+rstest = "0.23"
+sha3 = "0.10"
+shuffle = { git = "https://github.com/webmaster128/shuffle", branch = "rm-getrandom", version = "0.1.7" }
+syn = "1.0.6"
+tonic = "0.14"
+tonic-prost = "0.14.4"
+zap1-verify = "0.2.1"
+zebra-chain = { path = "../zebra-crosslink/zebra-chain" }
+zebra-crosslink = { path = "../zebra-crosslink/zebra-crosslink" }
 
 # Monorepo path patches — force git/crates.io CosmWasm stack onto local forks.
 # Prevents re-resolve of abstract → cw-asset → permissionlessweb/cw-minus without cosmwasm-schema.

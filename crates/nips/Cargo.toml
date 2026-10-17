@@ -12,7 +12,7 @@ nip15 = []
 nip52 = []
 nip77 = []
 nip44 = [
-    "dep:rand_core",
+    "dep:rand_core06",
     "dep:hmac",
     "dep:hkdf",
     "dep:constant_time_eq",
@@ -26,19 +26,19 @@ nuts = ["nut02"]
 nut02 = []
 
 [dependencies]
-axum = { version = "0.7", default-features = false, features = ["json"] }
+axum = { workspace = true, features = ["json"] }
 # NIP-44 v2
-base64 = { version = "0.22", optional = true }
-chacha20 = { version = "0.9", optional = true }
-constant_time_eq = { version = "0.3", optional = true }
-cosmwasm-std = { path = "../../../cosmwasm/packages/std", optional = true }
-cw721 = { path = "../../../cw-nfts/packages/cw721", optional = true }
-hex = "0.4"
-hkdf = { version = "0.12", optional = true }
-hmac = { version = "0.12", optional = true }
-rand_core = { version = "0.6", features = ["getrandom"], optional = true }
-schemars = "0.8.22"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+base64 = { workspace = true, optional = true }
+chacha20 = { workspace = true, optional = true }
+constant_time_eq = { workspace = true, optional = true }
+cosmwasm-std = { workspace = true, optional = true, features = ["zk"] }
+cw721 = { workspace = true, optional = true }
+hex = { workspace = true, features = ["std"] }
+hkdf = { workspace = true, optional = true }
+hmac = { workspace = true, optional = true }
+rand_core06 = { workspace = true, optional = true, features = ["getrandom"] }
+schemars = { workspace = true }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
 sha2 = { workspace = true }
-thiserror = "1.0"
+thiserror = { workspace = true }

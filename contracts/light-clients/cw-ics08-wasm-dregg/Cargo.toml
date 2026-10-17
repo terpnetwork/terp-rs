@@ -20,7 +20,7 @@ mock-verify = []
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["std", "cosmwasm_3_0"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0", "zk"] }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
