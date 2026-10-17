@@ -4,6 +4,7 @@ members = [
     # Circuit crates were grouped under circuits/ when the set was extended.
     "circuits/halo2",        # zk-headstash
     "circuits/claim-flock",  # headstash-claim
+    "epoch",                 # headstash-epoch, the hash-market claim lane
     "wire",                  # headstash-wire
     # Contracts live in the terp-rs root workspace (contracts/headstash).
     # test-press stays out: it pulls cw-private-dex git cw-orch whose cw-minus pin has no cosmwasm-schema.

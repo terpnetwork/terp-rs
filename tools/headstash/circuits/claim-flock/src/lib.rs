@@ -28,7 +28,13 @@ use flock_hash::blake3_compress;
 use flock_prover::r1cs_hashes::blake3::{Compression, build_block_r1cs, io_schema};
 
 const IV: [u32; 8] = [
-    0x6A09_E667, 0xBB67_AE85, 0x3C6E_F372, 0xA54F_F53A, 0x510E_527F, 0x9B05_688C, 0x1F83_D9AB,
+    0x6A09_E667,
+    0xBB67_AE85,
+    0x3C6E_F372,
+    0xA54F_F53A,
+    0x510E_527F,
+    0x9B05_688C,
+    0x1F83_D9AB,
     0x5BE0_CD19,
 ];
 
@@ -243,7 +249,7 @@ pub(crate) fn nullifier_message(rseed: &[u32; 8], ctx: &[u32; 8]) -> [u32; 16] {
 /// Blake3 commitment of the leaf key. The sidecar checks this against the
 /// recovered MetaMask key. It is not the key, and the chain batch does not
 /// carry it.
-pub(crate) fn key_com(epk_x: &[u32; 4]) -> [u32; 8] {
+pub fn key_com(epk_x: &[u32; 4]) -> [u32; 8] {
     let mut m = [0u32; 16];
     m[..4].copy_from_slice(epk_x);
     compress(&m, FLAG_KEY)
@@ -284,7 +290,10 @@ pub(crate) fn node_message(left: &[u32; 8], right: &[u32; 8]) -> [u32; 16] {
 /// not depend on `ctx`.
 pub fn derive<const D: usize>(opening: &Opening<D>) -> Claim {
     let rseed_com = compress(&rseed_message(&opening.rseed), FLAG_RSEED);
-    let nullifier = compress(&nullifier_message(&opening.rseed, &opening.ctx), FLAG_NULLIFIER);
+    let nullifier = compress(
+        &nullifier_message(&opening.rseed, &opening.ctx),
+        FLAG_NULLIFIER,
+    );
     let mut running = merkle_leaf(
         &rseed_com,
         &opening.epk_x,
@@ -314,15 +323,26 @@ pub fn derive<const D: usize>(opening: &Opening<D>) -> Claim {
 }
 
 fn pack4(w: [u32; 4]) -> F128 {
-    F128::new(w[0] as u64 | ((w[1] as u64) << 32), w[2] as u64 | ((w[3] as u64) << 32))
+    F128::new(
+        w[0] as u64 | ((w[1] as u64) << 32),
+        w[2] as u64 | ((w[3] as u64) << 32),
+    )
 }
 
 fn unpack4(v: F128) -> [u32; 4] {
-    [v.lo as u32, (v.lo >> 32) as u32, v.hi as u32, (v.hi >> 32) as u32]
+    [
+        v.lo as u32,
+        (v.lo >> 32) as u32,
+        v.hi as u32,
+        (v.hi >> 32) as u32,
+    ]
 }
 
 fn pack8(w: &[u32; 8]) -> [F128; 2] {
-    [pack4([w[0], w[1], w[2], w[3]]), pack4([w[4], w[5], w[6], w[7]])]
+    [
+        pack4([w[0], w[1], w[2], w[3]]),
+        pack4([w[4], w[5], w[6], w[7]]),
+    ]
 }
 
 fn unpack8(a: F128, b: F128) -> [u32; 8] {
@@ -357,14 +377,27 @@ pub fn build<const D: usize>(
     let rseed_w = [b.value(rseed[0]), b.value(rseed[1])];
     let zero = b.public_value(F128::ZERO);
     let rseed_params = b.public_value(pack_params(FLAG_RSEED));
-    let rseed_out = b.gate(g, &[cv[0], cv[1], rseed_w[0], rseed_w[1], zero, zero, rseed_params]);
+    let rseed_out = b.gate(
+        g,
+        &[
+            cv[0],
+            cv[1],
+            rseed_w[0],
+            rseed_w[1],
+            zero,
+            zero,
+            rseed_params,
+        ],
+    );
 
     let ctx = pack8(&opening.ctx);
     let ctx_w = [b.public_value(ctx[0]), b.public_value(ctx[1])];
     let nf_params = b.public_value(pack_params(FLAG_NULLIFIER));
     let nf_out = b.gate(
         g,
-        &[cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params],
+        &[
+            cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params,
+        ],
     );
     let nf_at = b.public_len();
     b.publish(nf_out[0]);
@@ -381,11 +414,22 @@ pub fn build<const D: usize>(
     let leaf_params = b.public_value(pack_params(FLAG_LEAF));
     let inner = b.gate(
         g,
-        &[cv[0], cv[1], rseed_out[0], rseed_out[1], epk, alloc, leaf_params],
+        &[
+            cv[0],
+            cv[1],
+            rseed_out[0],
+            rseed_out[1],
+            epk,
+            alloc,
+            leaf_params,
+        ],
     );
     let amount = b.public_value(pack4([opening.v, 0, 0, 0]));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
-    let leaf_out = b.gate(g, &[cv[0], cv[1], inner[0], inner[1], amount, zero, bind_params]);
+    let leaf_out = b.gate(
+        g,
+        &[cv[0], cv[1], inner[0], inner[1], amount, zero, bind_params],
+    );
     let dest_lo = b.public_value(pack4([
         opening.destination[0],
         opening.destination[1],
@@ -427,14 +471,20 @@ pub fn build<const D: usize>(
     assert_eq!(got_nf, claim.nullifier, "published nullifier");
     assert_eq!(got_key, key_com(&opening.epk_x), "published key commitment");
     assert_eq!(got_root, claim.root, "published root");
-    assert_eq!(got_dest_lo, [
-        claim.destination[0],
-        claim.destination[1],
-        claim.destination[2],
-        claim.destination[3],
-    ]);
+    assert_eq!(
+        got_dest_lo,
+        [
+            claim.destination[0],
+            claim.destination[1],
+            claim.destination[2],
+            claim.destination[3],
+        ]
+    );
     assert_eq!(got_dest_hi[0], claim.destination[4]);
-    assert_eq!(got_amount[0], claim.amount, "payout amount is the leaf amount");
+    assert_eq!(
+        got_amount[0], claim.amount,
+        "payout amount is the leaf amount"
+    );
     let got_ctx = unpack8(published[ctx_at], published[ctx_at + 1]);
     assert_eq!(got_ctx, claim.ctx, "published campaign context");
     let _ = sel;
@@ -526,14 +576,27 @@ pub fn build_private<const D: usize>(
     let rseed = pack8(&opening.open.rseed);
     let rseed_w = [b.value(rseed[0]), b.value(rseed[1])];
     let rseed_params = b.public_value(pack_params(FLAG_RSEED));
-    let rseed_out = b.gate(g, &[cv[0], cv[1], rseed_w[0], rseed_w[1], zero, zero, rseed_params]);
+    let rseed_out = b.gate(
+        g,
+        &[
+            cv[0],
+            cv[1],
+            rseed_w[0],
+            rseed_w[1],
+            zero,
+            zero,
+            rseed_params,
+        ],
+    );
 
     let ctx = pack8(&opening.open.ctx);
     let ctx_w = [b.public_value(ctx[0]), b.public_value(ctx[1])];
     let nf_params = b.public_value(pack_params(FLAG_NULLIFIER));
     let nf_out = b.gate(
         g,
-        &[cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params],
+        &[
+            cv[0], cv[1], rseed_w[0], rseed_w[1], ctx_w[0], ctx_w[1], nf_params,
+        ],
     );
     let nf_at = b.public_len();
     b.publish(nf_out[0]);
@@ -549,11 +612,22 @@ pub fn build_private<const D: usize>(
     let leaf_params = b.public_value(pack_params(FLAG_LEAF));
     let inner = b.gate(
         g,
-        &[cv[0], cv[1], rseed_out[0], rseed_out[1], epk, alloc, leaf_params],
+        &[
+            cv[0],
+            cv[1],
+            rseed_out[0],
+            rseed_out[1],
+            epk,
+            alloc,
+            leaf_params,
+        ],
     );
     let amount = b.value(pack4([opening.open.v, 0, 0, 0]));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
-    let leaf_out = b.gate(g, &[cv[0], cv[1], inner[0], inner[1], amount, zero, bind_params]);
+    let leaf_out = b.gate(
+        g,
+        &[cv[0], cv[1], inner[0], inner[1], amount, zero, bind_params],
+    );
 
     let node_params = b.public_value(pack_params(FLAG_NODE));
     let running = absorb_path(
@@ -580,12 +654,22 @@ pub fn build_private<const D: usize>(
     let pay_params = b.public_value(pack_params(FLAG_PAYOUT_COM));
     let pay_inner = b.gate(
         g,
-        &[cv[0], cv[1], pay_w[0], pay_w[1], pay_w[2], pay_w[3], pay_params],
+        &[
+            cv[0], cv[1], pay_w[0], pay_w[1], pay_w[2], pay_w[3], pay_params,
+        ],
     );
     let bind_pay = b.public_value(pack_params(FLAG_PAYOUT_BIND));
     let pay_out = b.gate(
         g,
-        &[cv[0], cv[1], pay_inner[0], pay_inner[1], amount, zero, bind_pay],
+        &[
+            cv[0],
+            cv[1],
+            pay_inner[0],
+            pay_inner[1],
+            amount,
+            zero,
+            bind_pay,
+        ],
     );
     let pay_at = b.public_len();
     b.publish(pay_out[0]);
@@ -705,6 +789,27 @@ pub struct ClaimProof {
     pub public: Vec<F128>,
 }
 
+/// Proof bytes the campaign checks for length and hashes for the digest.
+/// The public words travel with the proof so a caller cannot swap them.
+pub fn encode_claim_proof(proof: &ClaimProof) -> Vec<u8> {
+    bincode::serialize(&(
+        proof.proof.clone(),
+        proof.commitment.clone(),
+        proof.public.clone(),
+    ))
+    .expect("claim proof encodes")
+}
+
+/// Inverse of [`encode_claim_proof`]. A bad blob is `None`.
+pub fn decode_claim_proof(bytes: &[u8]) -> Option<ClaimProof> {
+    let (proof, commitment, public) = bincode::deserialize(bytes).ok()?;
+    Some(ClaimProof {
+        proof,
+        commitment,
+        public,
+    })
+}
+
 #[derive(Debug)]
 pub enum VerifyError {
     Index,
@@ -746,8 +851,8 @@ fn prove_built(
     flock_core::proof::R1csProofCircuitMerged,
     flock_core::pcs::Commitment,
 ) {
-    use flock_core::pcs::ligerito::LigeritoProfile;
     use flock_core::pcs::PcsParams;
+    use flock_core::pcs::ligerito::LigeritoProfile;
     use flock_core::union::UnionInstance;
     use flock_prover::challenger::FsChallenger;
     use flock_prover::prover::{self, UnionSlotProverInput};
@@ -801,8 +906,8 @@ fn verify_built(
     commitment: &flock_core::pcs::Commitment,
     proof: &flock_core::proof::R1csProofCircuitMerged,
 ) -> Result<(), ()> {
-    use flock_core::pcs::ligerito::LigeritoProfile;
     use flock_core::pcs::PcsParams;
+    use flock_core::pcs::ligerito::LigeritoProfile;
     use flock_core::union::UnionInstance;
     use flock_prover::challenger::FsChallenger;
     use flock_prover::verifier;
@@ -907,17 +1012,30 @@ mod tests {
         let mut other = sample::<FIXTURE_DEPTH>(99, 1);
         other.siblings = a.siblings;
         let moved = derive(&other);
-        assert_ne!(moved.nullifier, claim.nullifier, "a second string is a second nullifier");
-        assert_ne!(moved.root, claim.root, "a second string is not in the same leaf");
+        assert_ne!(
+            moved.nullifier, claim.nullifier,
+            "a second string is a second nullifier"
+        );
+        assert_ne!(
+            moved.root, claim.root,
+            "a second string is not in the same leaf"
+        );
 
         let mut relocated = sample::<FIXTURE_DEPTH>(1, 0);
         relocated.siblings = a.siblings;
-        assert_ne!(derive(&relocated).root, claim.root, "the index bit selects the side");
+        assert_ne!(
+            derive(&relocated).root,
+            claim.root,
+            "the index bit selects the side"
+        );
 
         let mut other_ctx = a;
         other_ctx.ctx[0] ^= 1;
         let scoped = derive(&other_ctx);
-        assert_ne!(scoped.nullifier, claim.nullifier, "ctx is inside the nullifier");
+        assert_ne!(
+            scoped.nullifier, claim.nullifier,
+            "ctx is inside the nullifier"
+        );
         assert_eq!(scoped.root, claim.root, "ctx is not inside the leaf");
         let mut zero_ctx = a;
         zero_ctx.ctx = [0; 8];
@@ -939,11 +1057,20 @@ mod tests {
         assert_eq!(parsed.nullifier, claim.nullifier);
         assert_eq!(parsed.root, claim.root);
         assert_eq!(parsed.amount, opening.v);
-        assert_eq!(public_key_com(&built.witness.public), Some(key_com(&opening.epk_x)));
+        assert_eq!(
+            public_key_com(&built.witness.public),
+            Some(key_com(&opening.epk_x))
+        );
         let hidden_key = pack4(opening.epk_x);
         let hidden_alloc = pack4([opening.nd[0], opening.nd[1], opening.fdi, 0]);
         assert!(built.witness.public.iter().all(|word| *word != hidden_key));
-        assert!(built.witness.public.iter().all(|word| *word != hidden_alloc));
+        assert!(
+            built
+                .witness
+                .public
+                .iter()
+                .all(|word| *word != hidden_alloc)
+        );
 
         let (same_index, _) = build(&skeleton::<FIXTURE_DEPTH>(opening.index));
         assert_eq!(
@@ -984,16 +1111,20 @@ mod tests {
         let (built, _) = build_private(&opening);
         let parsed_nf = unpack8(built.witness.public[7], built.witness.public[8]);
         assert_eq!(parsed_nf, claim.nullifier);
-        assert!(built
-            .witness
-            .public
-            .iter()
-            .all(|word| *word != pack4(opening.open.epk_x)));
-        assert!(built
-            .witness
-            .public
-            .iter()
-            .all(|word| *word != pack4([opening.open.v, 0, 0, 0])));
+        assert!(
+            built
+                .witness
+                .public
+                .iter()
+                .all(|word| *word != pack4(opening.open.epk_x))
+        );
+        assert!(
+            built
+                .witness
+                .public
+                .iter()
+                .all(|word| *word != pack4([opening.open.v, 0, 0, 0]))
+        );
 
         let mut other = opening;
         other.blind[0] ^= 1;

@@ -84,7 +84,13 @@ mod tests {
         let ctx = [0xab; 32];
         let root = [0x11; 32];
         let nullifier = [0x22; 32];
-        let message = canonical_sign_message(&ctx, &root, &nullifier, "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k", 15);
+        let message = canonical_sign_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
         let text = String::from_utf8(message.clone()).unwrap();
         assert!(text.starts_with("headstash-claim-v1:"));
         assert!(text.ends_with(":terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k:15"));
@@ -98,7 +104,13 @@ mod tests {
         let ctx = [1u8; 32];
         let root = [2u8; 32];
         let nullifier = [3u8; 32];
-        let message = canonical_sign_message(&ctx, &root, &nullifier, "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k", 15);
+        let message = canonical_sign_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
         let signature = sign_personal(&secret, &message).expect("sign");
         let leaf_x = recover_pubkey_x(&message, &signature).expect("recover");
         assert!(signature_opens_leaf(&message, &signature, &leaf_x));

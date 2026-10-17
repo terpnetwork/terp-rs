@@ -14,7 +14,13 @@ use flock_hash::blake3_compress;
 use flock_prover::r1cs_hashes::blake3::{Compression, build_block_r1cs, io_schema};
 
 const IV: [u32; 8] = [
-    0x6A09_E667, 0xBB67_AE85, 0x3C6E_F372, 0xA54F_F53A, 0x510E_527F, 0x9B05_688C, 0x1F83_D9AB,
+    0x6A09_E667,
+    0xBB67_AE85,
+    0x3C6E_F372,
+    0xA54F_F53A,
+    0x510E_527F,
+    0x9B05_688C,
+    0x1F83_D9AB,
     0x5BE0_CD19,
 ];
 
@@ -105,15 +111,26 @@ pub fn egress(accepted: &[Payout], rejected: u32) -> Egress {
 }
 
 fn pack4(w: [u32; 4]) -> F128 {
-    F128::new(w[0] as u64 | ((w[1] as u64) << 32), w[2] as u64 | ((w[3] as u64) << 32))
+    F128::new(
+        w[0] as u64 | ((w[1] as u64) << 32),
+        w[2] as u64 | ((w[3] as u64) << 32),
+    )
 }
 
 fn unpack4(v: F128) -> [u32; 4] {
-    [v.lo as u32, (v.lo >> 32) as u32, v.hi as u32, (v.hi >> 32) as u32]
+    [
+        v.lo as u32,
+        (v.lo >> 32) as u32,
+        v.hi as u32,
+        (v.hi >> 32) as u32,
+    ]
 }
 
 fn pack8(w: &[u32; 8]) -> [F128; 2] {
-    [pack4([w[0], w[1], w[2], w[3]]), pack4([w[4], w[5], w[6], w[7]])]
+    [
+        pack4([w[0], w[1], w[2], w[3]]),
+        pack4([w[4], w[5], w[6], w[7]]),
+    ]
 }
 
 fn unpack8(a: F128, b: F128) -> [u32; 8] {
@@ -154,10 +171,21 @@ pub fn build(accepted: &[Payout], rejected: u32) -> flock_core::circuit::builder
     let mut running = [zero, zero];
     for payout in accepted {
         let msg = message_wires(&mut b, &payout_message(payout));
-        let dig = b.gate(g, &[cv[0], cv[1], msg[0], msg[1], msg[2], msg[3], payout_params]);
+        let dig = b.gate(
+            g,
+            &[cv[0], cv[1], msg[0], msg[1], msg[2], msg[3], payout_params],
+        );
         let out = b.gate(
             g,
-            &[cv[0], cv[1], running[0], running[1], dig[0], dig[1], batch_params],
+            &[
+                cv[0],
+                cv[1],
+                running[0],
+                running[1],
+                dig[0],
+                dig[1],
+                batch_params,
+            ],
         );
         running = [out[0], out[1]];
     }
@@ -171,7 +199,10 @@ pub fn build(accepted: &[Payout], rejected: u32) -> flock_core::circuit::builder
     }
     let built = b.finish().expect("batch circuit");
     if !accepted.is_empty() {
-        let got = unpack8(built.witness.public[root_at], built.witness.public[root_at + 1]);
+        let got = unpack8(
+            built.witness.public[root_at],
+            built.witness.public[root_at + 1],
+        );
         assert_eq!(got, want.nullifier_root, "batch root");
     }
     built

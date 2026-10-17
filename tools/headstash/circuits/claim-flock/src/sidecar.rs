@@ -9,10 +9,10 @@
 use std::collections::HashSet;
 
 use headstash_wire::{
-    canonical_batch, recover_pubkey_x, sign_batch, verify_batch, BatchPayout, WireError,
+    BatchPayout, WireError, canonical_batch, recover_pubkey_x, sign_batch, verify_batch,
 };
 
-use crate::{verify_claim, Claim, ClaimProof, VerifyError};
+use crate::{Claim, ClaimProof, VerifyError, verify_claim};
 
 #[derive(Debug)]
 pub enum SidecarError {
