@@ -1,0 +1,54 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_marketplace_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "burn_bps": {
+          "description": "Share of the remaining protocol fee (and of listing fees) that is burned. The rest goes to `fee_manager`.",
+          "value": 3
+        },
+        "default_denom": {
+          "value": 1
+        },
+        "fee_manager": {
+          "value": 1
+        },
+        "maker_reward_bps": {
+          "description": "Finder reward as a fraction of the protocol fee, in basis points.",
+          "value": 3
+        },
+        "max_royalty_fee_bps": {
+          "value": 3
+        },
+        "protocol_fee_bps": {
+          "value": 3
+        },
+        "royalty_registry": {
+          "description": "Optional Stargaze-style royalty registry. cw721 collection royalties are used when this is unset or returns nothing.",
+          "value": 2
+        },
+        "taker_reward_bps": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

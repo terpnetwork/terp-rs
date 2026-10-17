@@ -1,0 +1,7 @@
+Stargaze reserve-auction was published under the Business Source License 1.1
+with Change Date 2025-05-01 and Change License GPL-2.0-or-later.
+That date has passed. This port is distributed under GPL-2.0-or-later.
+The original LICENSE file is kept beside this notice.
+Upstream: https://github.com/public-awesome/marketplace
+Commit: ae9ffacbf2c61b8f7f6635030bad4cbbea7cfd3c
+Path: contracts/reserve-auction

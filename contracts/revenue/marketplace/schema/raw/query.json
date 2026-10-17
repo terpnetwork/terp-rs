@@ -1,0 +1,545 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collection_denom"
+      ],
+      "properties": {
+        "collection_denom": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ask"
+      ],
+      "properties": {
+        "ask": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "asks"
+      ],
+      "properties": {
+        "asks": {
+          "type": "object",
+          "required": [
+            "ids"
+          ],
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "asks_by_collection_denom"
+      ],
+      "properties": {
+        "asks_by_collection_denom": {
+          "type": "object",
+          "required": [
+            "collection",
+            "denom"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "denom": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_PriceOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "asks_by_creator_collection"
+      ],
+      "properties": {
+        "asks_by_creator_collection": {
+          "type": "object",
+          "required": [
+            "collection",
+            "creator"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "creator": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_String"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bid"
+      ],
+      "properties": {
+        "bid": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bids"
+      ],
+      "properties": {
+        "bids": {
+          "type": "object",
+          "required": [
+            "ids"
+          ],
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bids_by_token_price"
+      ],
+      "properties": {
+        "bids_by_token_price": {
+          "type": "object",
+          "required": [
+            "collection",
+            "denom",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "denom": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_PriceOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "bids_by_creator_collection"
+      ],
+      "properties": {
+        "bids_by_creator_collection": {
+          "type": "object",
+          "required": [
+            "collection",
+            "creator"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "creator": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_String"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collection_bid"
+      ],
+      "properties": {
+        "collection_bid": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collection_bids"
+      ],
+      "properties": {
+        "collection_bids": {
+          "type": "object",
+          "required": [
+            "ids"
+          ],
+          "properties": {
+            "ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collection_bids_by_price"
+      ],
+      "properties": {
+        "collection_bids_by_price": {
+          "type": "object",
+          "required": [
+            "collection",
+            "denom"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "denom": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_PriceOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "collection_bids_by_creator_collection"
+      ],
+      "properties": {
+        "collection_bids_by_creator_collection": {
+          "type": "object",
+          "required": [
+            "collection",
+            "creator"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "creator": {
+              "type": "string"
+            },
+            "query_options": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/QueryOptions_for_String"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "BoundOffset_for_PriceOffset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "inclusive"
+          ],
+          "properties": {
+            "inclusive": {
+              "$ref": "#/definitions/PriceOffset"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "exclusive"
+          ],
+          "properties": {
+            "exclusive": {
+              "$ref": "#/definitions/PriceOffset"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "BoundOffset_for_String": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "inclusive"
+          ],
+          "properties": {
+            "inclusive": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "exclusive"
+          ],
+          "properties": {
+            "exclusive": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PriceOffset": {
+      "type": "object",
+      "required": [
+        "amount",
+        "id"
+      ],
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueryOptions_for_PriceOffset": {
+      "type": "object",
+      "properties": {
+        "descending": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BoundOffset_for_PriceOffset"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BoundOffset_for_PriceOffset"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueryOptions_for_String": {
+      "type": "object",
+      "properties": {
+        "descending": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BoundOffset_for_String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/BoundOffset_for_String"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

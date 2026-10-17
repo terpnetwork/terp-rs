@@ -1,0 +1,331 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_marketplace_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "accept_ask": {
+          "description": "Buy a listed ask. `details.price` is the maximum the buyer will pay. The ask price is charged.",
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "accept_bid": {
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "accept_collection_bid": {
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "buy_collection_nft": {
+          "description": "Collection bid that reverts if no ask matches.",
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            }
+          }
+        },
+        "buy_specific_nft": {
+          "description": "Bid on a token and revert if no ask matches.",
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "receive_nft": {
+          "type": "tuple",
+          "items": [
+            8
+          ]
+        },
+        "remove_ask": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "remove_bid": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "remove_collection_bid": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "remove_listing_fee": {
+          "type": "named",
+          "properties": {
+            "denom": {
+              "value": 2
+            }
+          }
+        },
+        "sell_nft": {
+          "description": "Set an ask and revert if nothing matches.",
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "set_ask": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "set_bid": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        },
+        "set_collection_bid": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "details": {
+              "value": 7
+            }
+          }
+        },
+        "set_listing_fee": {
+          "type": "named",
+          "properties": {
+            "fee": {
+              "value": 5
+            }
+          }
+        },
+        "update_ask": {
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "update_bid": {
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "update_collection_bid": {
+          "type": "named",
+          "properties": {
+            "details": {
+              "value": 7
+            },
+            "id": {
+              "value": 2
+            }
+          }
+        },
+        "update_collection_denom": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "denom": {
+              "value": 2
+            }
+          }
+        },
+        "update_config": {
+          "type": "named",
+          "properties": {
+            "config": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "revenue_marketplace_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "burn_bps": {
+          "description": "Share of the remaining protocol fee (and of listing fees) that is burned. The rest goes to `fee_manager`.",
+          "value": 4
+        },
+        "default_denom": {
+          "value": 2
+        },
+        "fee_manager": {
+          "value": 2
+        },
+        "maker_reward_bps": {
+          "description": "Finder reward as a fraction of the protocol fee, in basis points.",
+          "value": 4
+        },
+        "max_royalty_fee_bps": {
+          "value": 4
+        },
+        "protocol_fee_bps": {
+          "value": 4
+        },
+        "royalty_registry": {
+          "description": "Optional Stargaze-style royalty registry. cw721 collection royalties are used when this is unset or returns nothing.",
+          "value": 3
+        },
+        "taker_reward_bps": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 6
+        },
+        "denom": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "revenue_marketplace_msg_OrderDetails",
+      "description": "Message-level order terms. Addresses are validated before storage.",
+      "type": "struct",
+      "properties": {
+        "finder": {
+          "value": 3
+        },
+        "price": {
+          "value": 5
+        },
+        "recipient": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "revenue_marketplace_msg_Cw721ReceiveMsg",
+      "type": "struct",
+      "properties": {
+        "msg": {
+          "value": 9
+        },
+        "sender": {
+          "value": 2
+        },
+        "token_id": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    }
+  ]
+}

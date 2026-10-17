@@ -1,0 +1,298 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_marketplace_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "ask": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 1
+            }
+          }
+        },
+        "asks": {
+          "type": "named",
+          "properties": {
+            "ids": {
+              "value": 2
+            }
+          }
+        },
+        "asks_by_collection_denom": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "denom": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 12
+            }
+          }
+        },
+        "asks_by_creator_collection": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "creator": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 16
+            }
+          }
+        },
+        "bid": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 1
+            }
+          }
+        },
+        "bids": {
+          "type": "named",
+          "properties": {
+            "ids": {
+              "value": 2
+            }
+          }
+        },
+        "bids_by_creator_collection": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "creator": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 16
+            }
+          }
+        },
+        "bids_by_token_price": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "denom": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 12
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "collection_bid": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 1
+            }
+          }
+        },
+        "collection_bids": {
+          "type": "named",
+          "properties": {
+            "ids": {
+              "value": 2
+            }
+          }
+        },
+        "collection_bids_by_creator_collection": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "creator": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 16
+            }
+          }
+        },
+        "collection_bids_by_price": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "denom": {
+              "value": 1
+            },
+            "query_options": {
+              "value": 12
+            }
+          }
+        },
+        "collection_denom": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "revenue_marketplace_msg_QueryOptions_revenue_marketplace_msg_PriceOffset_",
+      "type": "struct",
+      "properties": {
+        "descending": {
+          "value": 5
+        },
+        "limit": {
+          "value": 7
+        },
+        "max": {
+          "value": 11
+        },
+        "min": {
+          "value": 11
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<bool>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u32>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "revenue_marketplace_msg_BoundOffset_revenue_marketplace_msg_PriceOffset_",
+      "type": "enum",
+      "cases": {
+        "exclusive": {
+          "type": "tuple",
+          "items": [
+            9
+          ]
+        },
+        "inclusive": {
+          "type": "tuple",
+          "items": [
+            9
+          ]
+        }
+      }
+    },
+    {
+      "name": "revenue_marketplace_msg_PriceOffset",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 10
+        },
+        "id": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u128",
+      "type": "integer",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<revenue_marketplace::msg::BoundOffset<revenue_marketplace::msg::PriceOffset>>",
+      "type": "optional",
+      "inner": 8
+    },
+    {
+      "name": "core::option::Option<revenue_marketplace::msg::QueryOptions<revenue_marketplace::msg::PriceOffset>>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "revenue_marketplace_msg_QueryOptions_alloc_string_String_",
+      "type": "struct",
+      "properties": {
+        "descending": {
+          "value": 5
+        },
+        "limit": {
+          "value": 7
+        },
+        "max": {
+          "value": 15
+        },
+        "min": {
+          "value": 15
+        }
+      }
+    },
+    {
+      "name": "revenue_marketplace_msg_BoundOffset_alloc_string_String_",
+      "type": "enum",
+      "cases": {
+        "exclusive": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "inclusive": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<revenue_marketplace::msg::BoundOffset<alloc::string::String>>",
+      "type": "optional",
+      "inner": 14
+    },
+    {
+      "name": "core::option::Option<revenue_marketplace::msg::QueryOptions<alloc::string::String>>",
+      "type": "optional",
+      "inner": 13
+    }
+  ]
+}

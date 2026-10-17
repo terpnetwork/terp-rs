@@ -1,0 +1,1711 @@
+{
+  "contract_name": "revenue-marketplace",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "revenue_marketplace_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "burn_bps": {
+            "description": "Share of the remaining protocol fee (and of listing fees) that is burned. The rest goes to `fee_manager`.",
+            "value": 3
+          },
+          "default_denom": {
+            "value": 1
+          },
+          "fee_manager": {
+            "value": 1
+          },
+          "maker_reward_bps": {
+            "description": "Finder reward as a fraction of the protocol fee, in basis points.",
+            "value": 3
+          },
+          "max_royalty_fee_bps": {
+            "value": 3
+          },
+          "protocol_fee_bps": {
+            "value": 3
+          },
+          "royalty_registry": {
+            "description": "Optional Stargaze-style royalty registry. cw721 collection royalties are used when this is unset or returns nothing.",
+            "value": 2
+          },
+          "taker_reward_bps": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "revenue_marketplace_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "accept_ask": {
+            "description": "Buy a listed ask. `details.price` is the maximum the buyer will pay. The ask price is charged.",
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "accept_bid": {
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "accept_collection_bid": {
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "buy_collection_nft": {
+            "description": "Collection bid that reverts if no ask matches.",
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              }
+            }
+          },
+          "buy_specific_nft": {
+            "description": "Bid on a token and revert if no ask matches.",
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "receive_nft": {
+            "type": "tuple",
+            "items": [
+              8
+            ]
+          },
+          "remove_ask": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "remove_bid": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "remove_collection_bid": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "remove_listing_fee": {
+            "type": "named",
+            "properties": {
+              "denom": {
+                "value": 2
+              }
+            }
+          },
+          "sell_nft": {
+            "description": "Set an ask and revert if nothing matches.",
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "set_ask": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "set_bid": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "set_collection_bid": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "details": {
+                "value": 7
+              }
+            }
+          },
+          "set_listing_fee": {
+            "type": "named",
+            "properties": {
+              "fee": {
+                "value": 5
+              }
+            }
+          },
+          "update_ask": {
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "update_bid": {
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "update_collection_bid": {
+            "type": "named",
+            "properties": {
+              "details": {
+                "value": 7
+              },
+              "id": {
+                "value": 2
+              }
+            }
+          },
+          "update_collection_denom": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 2
+              },
+              "denom": {
+                "value": 2
+              }
+            }
+          },
+          "update_config": {
+            "type": "named",
+            "properties": {
+              "config": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "revenue_marketplace_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "burn_bps": {
+            "description": "Share of the remaining protocol fee (and of listing fees) that is burned. The rest goes to `fee_manager`.",
+            "value": 4
+          },
+          "default_denom": {
+            "value": 2
+          },
+          "fee_manager": {
+            "value": 2
+          },
+          "maker_reward_bps": {
+            "description": "Finder reward as a fraction of the protocol fee, in basis points.",
+            "value": 4
+          },
+          "max_royalty_fee_bps": {
+            "value": 4
+          },
+          "protocol_fee_bps": {
+            "value": 4
+          },
+          "royalty_registry": {
+            "description": "Optional Stargaze-style royalty registry. cw721 collection royalties are used when this is unset or returns nothing.",
+            "value": 3
+          },
+          "taker_reward_bps": {
+            "value": 4
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 2
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_coin_Coin",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 6
+          },
+          "denom": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_math_uint256_Uint256",
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+        "type": "integer",
+        "precision": 256,
+        "signed": false
+      },
+      {
+        "name": "revenue_marketplace_msg_OrderDetails",
+        "description": "Message-level order terms. Addresses are validated before storage.",
+        "type": "struct",
+        "properties": {
+          "finder": {
+            "value": 3
+          },
+          "price": {
+            "value": 5
+          },
+          "recipient": {
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "revenue_marketplace_msg_Cw721ReceiveMsg",
+        "type": "struct",
+        "properties": {
+          "msg": {
+            "value": 9
+          },
+          "sender": {
+            "value": 2
+          },
+          "token_id": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "revenue_marketplace_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "ask": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 1
+              }
+            }
+          },
+          "asks": {
+            "type": "named",
+            "properties": {
+              "ids": {
+                "value": 2
+              }
+            }
+          },
+          "asks_by_collection_denom": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "denom": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 12
+              }
+            }
+          },
+          "asks_by_creator_collection": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "creator": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 16
+              }
+            }
+          },
+          "bid": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 1
+              }
+            }
+          },
+          "bids": {
+            "type": "named",
+            "properties": {
+              "ids": {
+                "value": 2
+              }
+            }
+          },
+          "bids_by_creator_collection": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "creator": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 16
+              }
+            }
+          },
+          "bids_by_token_price": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "denom": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 12
+              },
+              "token_id": {
+                "value": 1
+              }
+            }
+          },
+          "collection_bid": {
+            "type": "named",
+            "properties": {
+              "id": {
+                "value": 1
+              }
+            }
+          },
+          "collection_bids": {
+            "type": "named",
+            "properties": {
+              "ids": {
+                "value": 2
+              }
+            }
+          },
+          "collection_bids_by_creator_collection": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "creator": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 16
+              }
+            }
+          },
+          "collection_bids_by_price": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              },
+              "denom": {
+                "value": 1
+              },
+              "query_options": {
+                "value": 12
+              }
+            }
+          },
+          "collection_denom": {
+            "type": "named",
+            "properties": {
+              "collection": {
+                "value": 1
+              }
+            }
+          },
+          "config": {
+            "type": "named",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "alloc::vec::Vec<alloc::string::String>",
+        "type": "array",
+        "items": 1
+      },
+      {
+        "name": "revenue_marketplace_msg_QueryOptions_revenue_marketplace_msg_PriceOffset_",
+        "type": "struct",
+        "properties": {
+          "descending": {
+            "value": 5
+          },
+          "limit": {
+            "value": 7
+          },
+          "max": {
+            "value": 11
+          },
+          "min": {
+            "value": 11
+          }
+        }
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "core::option::Option<bool>",
+        "type": "optional",
+        "inner": 4
+      },
+      {
+        "name": "u32",
+        "type": "integer",
+        "precision": 32,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<u32>",
+        "type": "optional",
+        "inner": 6
+      },
+      {
+        "name": "revenue_marketplace_msg_BoundOffset_revenue_marketplace_msg_PriceOffset_",
+        "type": "enum",
+        "cases": {
+          "exclusive": {
+            "type": "tuple",
+            "items": [
+              9
+            ]
+          },
+          "inclusive": {
+            "type": "tuple",
+            "items": [
+              9
+            ]
+          }
+        }
+      },
+      {
+        "name": "revenue_marketplace_msg_PriceOffset",
+        "type": "struct",
+        "properties": {
+          "amount": {
+            "value": 10
+          },
+          "id": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "u128",
+        "type": "integer",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<revenue_marketplace::msg::BoundOffset<revenue_marketplace::msg::PriceOffset>>",
+        "type": "optional",
+        "inner": 8
+      },
+      {
+        "name": "core::option::Option<revenue_marketplace::msg::QueryOptions<revenue_marketplace::msg::PriceOffset>>",
+        "type": "optional",
+        "inner": 3
+      },
+      {
+        "name": "revenue_marketplace_msg_QueryOptions_alloc_string_String_",
+        "type": "struct",
+        "properties": {
+          "descending": {
+            "value": 5
+          },
+          "limit": {
+            "value": 7
+          },
+          "max": {
+            "value": 15
+          },
+          "min": {
+            "value": 15
+          }
+        }
+      },
+      {
+        "name": "revenue_marketplace_msg_BoundOffset_alloc_string_String_",
+        "type": "enum",
+        "cases": {
+          "exclusive": {
+            "type": "tuple",
+            "items": [
+              1
+            ]
+          },
+          "inclusive": {
+            "type": "tuple",
+            "items": [
+              1
+            ]
+          }
+        }
+      },
+      {
+        "name": "core::option::Option<revenue_marketplace::msg::BoundOffset<alloc::string::String>>",
+        "type": "optional",
+        "inner": 14
+      },
+      {
+        "name": "core::option::Option<revenue_marketplace::msg::QueryOptions<alloc::string::String>>",
+        "type": "optional",
+        "inner": 13
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "ask": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Ask",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "core::option::Option<revenue_marketplace::orders::Ask>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "asks": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Ask",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Ask>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "asks_by_collection_denom": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Ask",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Ask>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "asks_by_creator_collection": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Ask",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Ask>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "bid": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Bid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "core::option::Option<revenue_marketplace::orders::Bid>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "bids": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Bid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Bid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "bids_by_creator_collection": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Bid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Bid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "bids_by_token_price": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_Bid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::Bid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "collection_bid": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_CollectionBid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "core::option::Option<revenue_marketplace::orders::CollectionBid>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "collection_bids": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_CollectionBid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::CollectionBid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "collection_bids_by_creator_collection": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_CollectionBid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::CollectionBid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "collection_bids_by_price": {
+      "type": "v1",
+      "root": 7,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_orders_CollectionBid",
+          "type": "struct",
+          "properties": {
+            "collection": {
+              "value": 2
+            },
+            "creator": {
+              "value": 2
+            },
+            "id": {
+              "value": 1
+            },
+            "terms": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "revenue_marketplace_orders_OrderTerms",
+          "type": "struct",
+          "properties": {
+            "finder": {
+              "value": 6
+            },
+            "price": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_coin_Coin",
+          "type": "struct",
+          "properties": {
+            "amount": {
+              "value": 5
+            },
+            "denom": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint256_Uint256",
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+          "type": "integer",
+          "precision": 256,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "alloc::vec::Vec<revenue_marketplace::orders::CollectionBid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "collection_denom": {
+      "type": "v1",
+      "root": 1,
+      "definitions": [
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "revenue_marketplace_state_Config",
+          "type": "struct",
+          "properties": {
+            "burn_bps": {
+              "value": 3
+            },
+            "default_denom": {
+              "value": 4
+            },
+            "fee_manager": {
+              "value": 1
+            },
+            "maker_reward_bps": {
+              "value": 3
+            },
+            "max_royalty_fee_bps": {
+              "value": 3
+            },
+            "protocol_fee_bps": {
+              "value": 3
+            },
+            "royalty_registry": {
+              "value": 2
+            },
+            "taker_reward_bps": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "String",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

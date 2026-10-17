@@ -1,0 +1,96 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_reserve_auction_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "burn_bps": {
+          "description": "Share of the protocol fee that is burned. The rest is sent to `fee_manager`.",
+          "value": 3
+        },
+        "create_auction_fee": {
+          "description": "Exact coin charged when creating an auction. Zero amount means no fee.",
+          "value": 4
+        },
+        "extend_duration": {
+          "value": 3
+        },
+        "fee_manager": {
+          "value": 1
+        },
+        "halt_buffer_duration": {
+          "value": 3
+        },
+        "halt_duration_threshold": {
+          "value": 3
+        },
+        "halt_postpone_duration": {
+          "value": 3
+        },
+        "max_auctions_to_settle_per_block": {
+          "value": 3
+        },
+        "max_duration": {
+          "value": 3
+        },
+        "min_bid_increment_percent": {
+          "description": "Each later bid must be at least this fraction above the previous bid.",
+          "value": 2
+        },
+        "min_duration": {
+          "value": 3
+        },
+        "min_reserve_prices": {
+          "value": 6
+        },
+        "trading_fee_percent": {
+          "description": "Fraction of the winning bid paid as the protocol fee (for example 0.02 = 2%).",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_math_decimal_Decimal",
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "decimal",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 5
+        },
+        "denom": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+      "type": "array",
+      "items": 4
+    }
+  ]
+}

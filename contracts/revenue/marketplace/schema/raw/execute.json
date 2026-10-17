@@ -1,0 +1,619 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_config"
+      ],
+      "properties": {
+        "update_config": {
+          "type": "object",
+          "required": [
+            "config"
+          ],
+          "properties": {
+            "config": {
+              "$ref": "#/definitions/InstantiateMsg"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_collection_denom"
+      ],
+      "properties": {
+        "update_collection_denom": {
+          "type": "object",
+          "required": [
+            "collection",
+            "denom"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_listing_fee"
+      ],
+      "properties": {
+        "set_listing_fee": {
+          "type": "object",
+          "required": [
+            "fee"
+          ],
+          "properties": {
+            "fee": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_listing_fee"
+      ],
+      "properties": {
+        "remove_listing_fee": {
+          "type": "object",
+          "required": [
+            "denom"
+          ],
+          "properties": {
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_ask"
+      ],
+      "properties": {
+        "set_ask": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_ask"
+      ],
+      "properties": {
+        "remove_ask": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_ask"
+      ],
+      "properties": {
+        "update_ask": {
+          "type": "object",
+          "required": [
+            "details",
+            "id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Buy a listed ask. `details.price` is the maximum the buyer will pay. The ask price is charged.",
+      "type": "object",
+      "required": [
+        "accept_ask"
+      ],
+      "properties": {
+        "accept_ask": {
+          "type": "object",
+          "required": [
+            "details",
+            "id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_bid"
+      ],
+      "properties": {
+        "set_bid": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_bid"
+      ],
+      "properties": {
+        "remove_bid": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_bid"
+      ],
+      "properties": {
+        "update_bid": {
+          "type": "object",
+          "required": [
+            "details",
+            "id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "accept_bid"
+      ],
+      "properties": {
+        "accept_bid": {
+          "type": "object",
+          "required": [
+            "details",
+            "id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_collection_bid"
+      ],
+      "properties": {
+        "set_collection_bid": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_collection_bid"
+      ],
+      "properties": {
+        "remove_collection_bid": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_collection_bid"
+      ],
+      "properties": {
+        "update_collection_bid": {
+          "type": "object",
+          "required": [
+            "details",
+            "id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "accept_collection_bid"
+      ],
+      "properties": {
+        "accept_collection_bid": {
+          "type": "object",
+          "required": [
+            "details",
+            "id",
+            "token_id"
+          ],
+          "properties": {
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "id": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Set an ask and revert if nothing matches.",
+      "type": "object",
+      "required": [
+        "sell_nft"
+      ],
+      "properties": {
+        "sell_nft": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Bid on a token and revert if no ask matches.",
+      "type": "object",
+      "required": [
+        "buy_specific_nft"
+      ],
+      "properties": {
+        "buy_specific_nft": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Collection bid that reverts if no ask matches.",
+      "type": "object",
+      "required": [
+        "buy_collection_nft"
+      ],
+      "properties": {
+        "buy_collection_nft": {
+          "type": "object",
+          "required": [
+            "collection",
+            "details"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "details": {
+              "$ref": "#/definitions/OrderDetails"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "receive_nft"
+      ],
+      "properties": {
+        "receive_nft": {
+          "$ref": "#/definitions/Cw721ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Cw721ReceiveMsg": {
+      "type": "object",
+      "required": [
+        "msg",
+        "sender",
+        "token_id"
+      ],
+      "properties": {
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InstantiateMsg": {
+      "type": "object",
+      "required": [
+        "burn_bps",
+        "default_denom",
+        "fee_manager",
+        "maker_reward_bps",
+        "max_royalty_fee_bps",
+        "protocol_fee_bps",
+        "taker_reward_bps"
+      ],
+      "properties": {
+        "burn_bps": {
+          "description": "Share of the remaining protocol fee (and of listing fees) that is burned. The rest goes to `fee_manager`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "default_denom": {
+          "type": "string"
+        },
+        "fee_manager": {
+          "type": "string"
+        },
+        "maker_reward_bps": {
+          "description": "Finder reward as a fraction of the protocol fee, in basis points.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_royalty_fee_bps": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "protocol_fee_bps": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "royalty_registry": {
+          "description": "Optional Stargaze-style royalty registry. cw721 collection royalties are used when this is unset or returns nothing.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "taker_reward_bps": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "OrderDetails": {
+      "description": "Message-level order terms. Addresses are validated before storage.",
+      "type": "object",
+      "required": [
+        "price"
+      ],
+      "properties": {
+        "finder": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "$ref": "#/definitions/Coin"
+        },
+        "recipient": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}
