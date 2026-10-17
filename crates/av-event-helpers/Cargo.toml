@@ -1,0 +1,13 @@
+[package]
+name = "av-event-helpers"
+version.workspace = true
+edition = "2021"
+publish = false
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+ 

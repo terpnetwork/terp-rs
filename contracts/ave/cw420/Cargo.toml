@@ -1,0 +1,39 @@
+[package]
+name = "cw420"
+version.workspace = true
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2021"
+description = "Simple cw4 implementation of group membership controlled by admin "
+license = "Apache-2.0"
+repository.workspace = true
+homepage = "https://cosmwasm.com"
+documentation = "https://docs.cosmwasm.com"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "artifacts/*",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw4 = { workspace = true }
+cw-controllers = { workspace = true }
+cw-storage-plus = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+easy-addr = { workspace = true }

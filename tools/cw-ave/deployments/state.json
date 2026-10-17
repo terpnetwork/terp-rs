@@ -1,0 +1,12 @@
+{
+  "juno-1": {
+    "code_ids": {
+      "cw420": 4940,
+      "cw_ave": 4937,
+      "cw_ave_factory": 4938
+    },
+    "default": {
+      "cw_ave_factory": "juno1965e0dgwuej9t0cujev6ud4jkfamqahhw0ucv2nschtujac69vmqv3smcc"
+    }
+  }
+}
