@@ -11,11 +11,11 @@ use crate::msg::VoteExtensionHashData;
 use crate::server::AppState;
 use crate::transport::TransportMode;
 use axum::{
+    Json, Router,
     extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 
 use std::sync::Arc;
@@ -55,13 +55,24 @@ pub struct ProviderKey {
 
 /// Build the axum router (mounted under `/ve` by the unified server).
 pub fn router(state: Arc<AppState>) -> Router {
-    Router::new()
+    let router = Router::new()
         .route("/health", get(health))
         .route("/providers", get(list_providers))
         .route("/vote-extension", get(vote_extension_get))
         .route("/extend-vote", post(extend_vote))
-        .route("/verify-vote-extension", post(verify_vote_extension))
-        .with_state(state)
+        .route("/verify-vote-extension", post(verify_vote_extension));
+    #[cfg(feature = "headstash")]
+    let router = router
+        .route(
+            "/headstash/campaign",
+            post(crate::ve::headstash::install_campaign),
+        )
+        .route(
+            "/headstash/claims",
+            post(crate::ve::headstash::submit_claims),
+        )
+        .route("/headstash/seal", post(crate::ve::headstash::seal));
+    router.with_state(state)
 }
 
 /// Root-level aliases so `HASHMERCHANT_SIDECAR_URL=http://host:9090` works
@@ -118,6 +129,10 @@ async fn vote_extension_get(
     // Env fixture lets two sidecars present the same set in opposite order
     // without a foreign poller (2-val ict-rs VE determinism).
     if store.is_empty() {
+        #[cfg(feature = "headstash")]
+        if crate::ve::headstash::env_chain_is_headstash() {
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        }
         if let Some((atts, root)) = crate::ve::attestations::env_attestation_payload() {
             return Ok(Json(serde_json::json!({
                 "runtime_id": std::env::var("HASHMERCHANT_RUNTIME_ID").unwrap_or_else(|_| "env-fixture".into()),
@@ -153,6 +168,19 @@ async fn vote_extension_get(
             .then_with(|| a.0.chain_uid.cmp(&b.0.chain_uid))
             .then_with(|| a.0.algo.cmp(&b.0.algo))
     });
+    #[cfg(feature = "headstash")]
+    {
+        let chain_uid = entries[0].1.data.chain_uid.clone();
+        if chain_uid == headstash_epoch::CHAIN_UID {
+            drop(entries);
+            drop(store);
+            let host = state.headstash.read().await;
+            return match host.sealed() {
+                Some(sealed) => Ok(Json(crate::ve::headstash::vote_json(sealed))),
+                None => Err(StatusCode::SERVICE_UNAVAILABLE),
+            };
+        }
+    }
     let entry = entries[0].1;
     Ok(Json(serde_json::json!({
         "runtime_id": entry.data.runtime_id,

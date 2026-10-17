@@ -9,6 +9,7 @@
 //! - `nostr` — Nostr relay integration (NIP-77, NIP-87)
 //! - `blossom` — BUD protocol server (requires server). Default note-serve path (NIP-BUD).
 //! - `pir` — opt-in public-leaf XOR PIR (`notes.json` + merkle path). Not default; not a second server; does not replace Nostr or blossom.
+//! - `headstash` — claim lane on the vote-extension server. Off by default. Not the snap note server.
 //! - `onboard` — DAO feegrant plane nested at `/onboard` (on with `server`; not a second process)
 //! - `re-zerve` — opt-in deposit transcript (not Zcash inclusion; not default)
 //! - frost inbox nested at `/itl/frost/*` on 127.0.0.1 (not FilePV)

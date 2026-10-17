@@ -79,6 +79,8 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 # Build: cargo build -p hash-market --features pir
 # Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
 pir = ["server", "dep:ff", "dep:pasta_curves", "dep:halo2_gadgets"]
+# Headstash claim lane inside this sidecar. Off by default. Not the snap note server.
+headstash = ["ve", "dep:headstash-epoch"]
 
 [dependencies]
 anyhow = "1"
@@ -142,3 +144,4 @@ halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../../crates/z
 halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../crates/zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"], optional = true }
 rand = { version = "0.10", default-features = false, features = ["sys_rng", "thread_rng"], optional = true }
 sha3 = { version = "0.10", optional = true }
+headstash-epoch = { path = "../headstash/epoch", optional = true }

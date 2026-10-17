@@ -15,13 +15,13 @@
 //! This matches the BUD-02/BUD-06 spec while keeping a single canonical store.
 
 use axum::body::Body;
-use axum::http::{header, HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode, header};
 use axum::{
+    Json, Router,
     extract::{Path, State},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{delete, get, post},
-    Json, Router,
 };
 use cw721_nips::buds::{self, BlossomState};
 use std::collections::HashMap;
@@ -69,6 +69,9 @@ pub struct AppState {
     pub tree_store: Arc<TreeStore>,
     /// Headstash metadata storage
     pub headstash_store: Arc<HeadstashStore>,
+    /// Claim lane. Not the snap note store above.
+    #[cfg(feature = "headstash")]
+    pub headstash: RwLock<crate::ve::headstash::HeadstashHost>,
     /// Cashu mesh: mint discovery cache + encrypted wallet stash (`data/cashu/…`).
     pub cashu_mesh: Arc<CashuMeshStore>,
     /// When true, `GET /cashu/mints*` does not require auth (canonical discovery preference).
@@ -161,6 +164,8 @@ impl AppState {
             blossom,
             tree_store,
             headstash_store,
+            #[cfg(feature = "headstash")]
+            headstash: RwLock::new(crate::ve::headstash::HeadstashHost::new()),
             cashu_mesh,
             // Lab-friendly defaults; server binary overrides from `[cashu_mesh]`.
             cashu_public_mint_list: true,
@@ -1376,7 +1381,9 @@ async fn note_pir_index(
                 StatusCode::BAD_REQUEST
             })?
             .ok_or(StatusCode::NOT_FOUND)?;
-        Ok(Json(serde_json::to_value(index).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?))
+        Ok(Json(
+            serde_json::to_value(index).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        ))
     }
 }
 

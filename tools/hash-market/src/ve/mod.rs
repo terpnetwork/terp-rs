@@ -3,6 +3,8 @@
 //! The VoteExtensionHandler lives in client/ve since it's used by both
 //! the client and server binaries.
 pub mod attestations;
+#[cfg(feature = "headstash")]
+pub mod headstash;
 pub mod server;
 pub use crate::client::ve::{SignedVoteExtension, VoteExtensionHandler};
 
