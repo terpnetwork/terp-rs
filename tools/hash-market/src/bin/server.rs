@@ -418,9 +418,25 @@ async fn main() -> anyhow::Result<()> {
             .enumerate()
         {
             let transport_mode = match provider.mode.as_str() {
-                "grpc" => TransportMode::Grpc {
-                    listen_addr: provider.address.clone(),
-                },
+                "grpc" => {
+                    let public = hash_market::tree_operator::inspect_bind(
+                        &provider.address,
+                        config.allow_public_bind,
+                    )
+                    .map_err(|err| {
+                        anyhow::anyhow!("provider '{}': {err}", provider.name)
+                    })?;
+                    if public {
+                        tracing::warn!(
+                            bind = %provider.address,
+                            provider = %provider.name,
+                            "non-loopback grpc bind allowed by allow_public_bind / HASH_MARKET_ALLOW_PUBLIC_BIND"
+                        );
+                    }
+                    TransportMode::Grpc {
+                        listen_addr: provider.address.clone(),
+                    }
+                }
                 "http_poll" => TransportMode::HttpPoll {
                     url: provider.address.clone(),
                     interval_secs: provider.interval_secs,

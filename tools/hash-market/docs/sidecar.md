@@ -46,14 +46,14 @@ name = "ethereum-mainnet"
 chain_uid = "ethereum-mainnet"
 algo = "keccak256"
 mode = "grpc"
-address = "0.0.0.0:9091"
+address = "127.0.0.1:9091"
 
 [[providers]]
 name = "arbitrum-one"
 chain_uid = "arbitrum-one"
 algo = "keccak256"
 mode = "grpc"
-address = "0.0.0.0:9092"
+address = "127.0.0.1:9092"
 
 [[providers]]
 name = "cosmoshub"
@@ -79,7 +79,7 @@ Each provider has:
 
 | Mode | `address` field | Use case |
 |---|---|---|
-| `grpc` | Listen address (e.g. `0.0.0.0:9091`) | Client on same machine or LAN |
+| `grpc` | Listen address (e.g. `127.0.0.1:9091`) | Client on same machine or LAN |
 | `http_poll` | URL to poll (e.g. `http://client:8080/data`) | Client behind a firewall |
 | `websocket` | WebSocket URL | Real-time streaming (requires `tokio-tungstenite`) |
 

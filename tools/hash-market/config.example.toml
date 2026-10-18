@@ -38,7 +38,7 @@ ve_enabled = false
 # chain_uid = "ethereum-mainnet"
 # algo = "keccak256"
 # mode = "grpc"
-# address = "0.0.0.0:9091"
+# address = "127.0.0.1:9091"
 #
 # terpd: HASHMERCHANT_SIDECAR_URL=http://127.0.0.1:9090
 # (root /vote-extension alias; also available under /ve/vote-extension)

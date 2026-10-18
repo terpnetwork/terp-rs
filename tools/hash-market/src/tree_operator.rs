@@ -143,6 +143,15 @@ pub fn inspect_bind(bind: &str, allow_public: bool) -> Result<bool, String> {
     Ok(true)
 }
 
+/// After `TcpListener::bind`. The caller still refuses a non-`127.0.0.1` prefix first.
+pub fn require_loopback_listener(addr: std::net::SocketAddr) -> Result<(), String> {
+    if addr.ip().is_loopback() {
+        Ok(())
+    } else {
+        Err(format!("listener {addr} is not loopback"))
+    }
+}
+
 fn bind_host(bind: &str) -> &str {
     let bind = bind.trim();
     if let Some(rest) = bind.strip_prefix('[') {
@@ -203,5 +212,16 @@ mod tests {
         assert!(inspect_bind("[::]:9090", false).is_err());
         assert!(inspect_bind("10.0.0.8:9090", false).is_err());
         assert!(inspect_bind("0.0.0.0:9090", true).unwrap());
+    }
+
+    #[test]
+    fn grpc_provider_uses_the_same_bind_rule() {
+        assert!(inspect_bind("127.0.0.1:9091", false).is_ok());
+        assert!(inspect_bind("0.0.0.0:9091", false).is_err());
+        assert!(inspect_bind("[::]:9091", false).is_err());
+        assert!(inspect_bind("0.0.0.0:9091", true).is_ok());
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        assert!(require_loopback_listener(addr).is_ok());
     }
 }

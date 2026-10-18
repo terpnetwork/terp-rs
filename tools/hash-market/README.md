@@ -211,7 +211,7 @@ name = "arbitrum-one"
 chain_uid = "eip155:42161"
 algo = "keccak256"
 mode = "grpc"
-address = "0.0.0.0:9091"
+address = "127.0.0.1:9091"
 ```
 
 ### Fields

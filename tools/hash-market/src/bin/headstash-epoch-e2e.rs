@@ -156,28 +156,12 @@ fn attested_root(batch: &[u8; 32]) -> [u8; 32] {
 }
 
 fn scrub(text: &str) -> String {
-    text.lines()
-        .filter(|line| {
-            let low = line.to_ascii_lowercase();
-            let phrase = line.split_whitespace().count() >= 12
-                && line
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_whitespace());
-            !phrase
-                && !low.contains("mnemonic")
-                && !low.contains("priv_key")
-                && !low.contains("private key")
-        })
-        .map(|line| {
-            if line.len() > 400 {
-                line[..400].to_string()
-            } else {
-                line.to_string()
-            }
-        })
-        .take(8)
-        .collect::<Vec<_>>()
-        .join(" | ")
+    hash_market::log_scrub::scrub_log(text)
+}
+
+fn write_chain_json(path: &std::path::Path, text: &str) -> anyhow::Result<()> {
+    hash_market::owner_file::write_owner_only(path, text.as_bytes())
+        .map_err(|err| anyhow::anyhow!("write {}: {err}", path.display()))
 }
 
 fn env_required(name: &str) -> anyhow::Result<String> {
@@ -629,7 +613,7 @@ async fn run() -> anyhow::Result<Report> {
         "wavs": wavs,
     });
     let init_msg = init.to_string();
-    fs::write(cfg.home.join("instantiate.json"), &init_msg)?;
+    write_chain_json(&cfg.home.join("instantiate.json"), &init_msg)?;
     let owner_addr = {
         let out = terpd_raw(
             &cfg,
@@ -678,7 +662,7 @@ async fn run() -> anyhow::Result<Report> {
         .ok_or_else(|| anyhow::anyhow!("no contract: {}", scrub(&instantiated.to_string())))?;
     eprintln!("contract {contract}");
     let campaign_msg = chain_campaign(&claim, &custody_pk, &vk_hash).to_string();
-    fs::write(cfg.home.join("campaign.json"), &campaign_msg)?;
+    write_chain_json(&cfg.home.join("campaign.json"), &campaign_msg)?;
     let set = broadcast(
         &cfg,
         &cfg.owner_key,
@@ -944,7 +928,7 @@ async fn run() -> anyhow::Result<Report> {
         claim.amount,
     );
     let mut stage_msg_text = stage_msg(&[claim.digest], &[real_row.clone()]).to_string();
-    fs::write(cfg.home.join("stage.json"), &stage_msg_text)?;
+    write_chain_json(&cfg.home.join("stage.json"), &stage_msg_text)?;
     let stranger = broadcast(
         &cfg,
         &cfg.stranger_key,
@@ -1029,7 +1013,7 @@ async fn run() -> anyhow::Result<Report> {
     }
     let bad_row = payout_row(&bad_nf, &claim.denom, &claim.destination, claim.amount);
     stage_msg_text = stage_msg(&[bad_digest], &[bad_row]).to_string();
-    fs::write(cfg.home.join("stage.json"), &stage_msg_text)?;
+    write_chain_json(&cfg.home.join("stage.json"), &stage_msg_text)?;
     let mismatched = broadcast(
         &cfg,
         &cfg.owner_key,
@@ -1059,7 +1043,7 @@ async fn run() -> anyhow::Result<Report> {
     );
 
     stage_msg_text = stage_msg(&[claim.digest], &[real_row]).to_string();
-    fs::write(cfg.home.join("stage.json"), &stage_msg_text)?;
+    write_chain_json(&cfg.home.join("stage.json"), &stage_msg_text)?;
     let paid = broadcast(
         &cfg,
         &cfg.owner_key,

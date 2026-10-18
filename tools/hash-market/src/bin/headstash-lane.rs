@@ -39,16 +39,22 @@ async fn main() -> anyhow::Result<()> {
             "vk_id": 1,
         });
         std::fs::write(&out, serde_json::to_vec(&body)?)?;
-        std::fs::write(PathBuf::from(&out).with_extension("vk"), base64_vk(&hash))?;
+        hash_market::owner_file::write_owner_only(
+            &PathBuf::from(&out).with_extension("vk"),
+            base64_vk(&hash).as_bytes(),
+        )?;
         println!("prove_ok bytes {}", bundle.proof.len());
         return Ok(());
     }
     let dir = PathBuf::from(std::env::var("HASH_MARKET_DATA").unwrap_or_else(|_| "/tmp/hm-lane".into()));
     std::fs::create_dir_all(&dir)?;
-    std::fs::write(dir.join("vk.hash"), base64_vk(&hash))?;
+    hash_market::owner_file::write_owner_only(&dir.join("vk.hash"), base64_vk(&hash).as_bytes())?;
     let signer = load_signer()?;
     let public = signer.verifying_key().to_bytes();
-    std::fs::write(dir.join("custody.pub"), hex::encode(public))?;
+    hash_market::owner_file::write_owner_only(
+        &dir.join("custody.pub"),
+        hex::encode(public).as_bytes(),
+    )?;
     let state = hash_market::server::AppState::new(
         None::<hash_market::VoteExtensionHandler>,
         "headstash-fm-1".into(),
@@ -58,6 +64,8 @@ async fn main() -> anyhow::Result<()> {
     state.headstash.write().await.install_signer(signer);
     let app = hash_market::server::router(std::sync::Arc::new(state));
     let listener = tokio::net::TcpListener::bind(&bind).await?;
+    let local = listener.local_addr()?;
+    hash_market::tree_operator::require_loopback_listener(local).map_err(anyhow::Error::msg)?;
     println!("lane_up {bind}");
     axum::serve(listener, app).await?;
     Ok(())

@@ -26,6 +26,8 @@ pub mod fields;
 #[cfg(feature = "onboard")]
 pub mod frost;
 pub mod hash;
+/// Operator logs: drop mnemonic lines and redact long hex runs.
+pub mod log_scrub;
 pub mod msg;
 #[cfg(feature = "onboard")]
 pub mod onboard;
@@ -43,6 +45,8 @@ pub mod pir;
 pub mod re_zerve;
 pub mod server;
 pub mod store;
+/// Files that carry a verifying-key hash or a custody public key.
+pub mod owner_file;
 /// ADR-36 gate for `/trees` writes and the loopback bind check.
 #[cfg(feature = "custody")]
 pub mod tree_operator;
