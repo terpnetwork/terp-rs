@@ -1136,4 +1136,6 @@ Reproduced on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-co
 | replayed_nullifier_across_epochs | PASS | 2411ms | second spend rejected (`nullifier already exists`) |
 | unclaimed_funds | PASS | 2648ms | height 323, escrow 999985 uterp to 0, tx code 0 |
 
+`unclaimed_funds` is the live `SweepUnclaimed` on that chain. After the replay was rejected, the owner executed `{"sweep_unclaimed":{}}`. Height 323 is past cutoff 1. Escrow moved from 999985 uterp to 0 in 2648ms, tx code 0. Commit `79fed14` checks the same gates in the in-process model. The shell script was not changed, so that row is the Docker coverage.
+
 
