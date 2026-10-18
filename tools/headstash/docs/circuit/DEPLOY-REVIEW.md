@@ -65,7 +65,7 @@ feature it returns an error. With `zk-api` it calls
 `api.proof_instance_verify`. The comment in that function still names
 `claim_mock_verify`; the code does not consult that flag.
 
-## Gaps still open
+## Gaps
 
 1. **The chain does not check the verifying key at payout.** `sudo` stores
    the root and the height after checking `chain_uid` and the algo name.
@@ -75,6 +75,7 @@ feature it returns an error. With `zk-api` it calls
    any non-zero halo2 id and any 32-byte hash until a batch is staged or
    the epoch is marked paid. There is no on-chain list of blobs and no
    admin of one. The registry admin is whoever starts the process.
+   This one is a design call. It is unchanged.
 
 2. **`/ve/headstash/campaign`, `/claims`, and `/seal` have no authenticator.**
    Any client that can open the port can install a campaign whose hash
@@ -83,26 +84,31 @@ feature it returns an error. With `zk-api` it calls
    `hash-market-server` publishes those routes with the rest of the
    router. A second install with the same vk can still replace the
    allocation root, the cutoff, and the amount caps until the first
-   claim is stored.
+   claim is stored. This one is a design call. It is unchanged.
 
-3. **A zero `vk_hash` skips the cache compare inside `evaluate_halo2`.**
-   The comment marks this as the in-process fixture. HTTP halo2 install
-   cannot store that hash, because install requires equality with the
-   loaded blob. Any other caller of `Campaign::open` can. Production
-   sidecars should not construct a halo2 campaign with a zero hash.
+3. **Closed.** `Campaign::open` returns `Params` for a halo2 campaign
+   whose `vk_hash` is 32 zero bytes. `evaluate_halo2` compares the
+   stored hash to `halo2_vk_hash(vk_id)` before `verifies` increments.
+   The in-process lane tests use `open_unbound_fixture`, which is the
+   only constructor that skips that compare. `POST /ve/headstash/campaign`
+   rejects an all-zero halo2 hash with `400` `vk hash`. Flock may still
+   omit the hash.
 
 4. **`seal` flips the batch root when `HEADSTASH_LIE_ROOT` and
    `HEADSTASH_LAB_LIE` are both exactly `1`.** A production environment
    has to leave both unset. One flag alone does not flip the root.
 
-5. **One server listener is not covered by `inspect_bind`.** A state-root
-   provider with `mode = "grpc"` binds `provider.address` as given
-   (`tools/hash-market/src/bin/server.rs`). Example configs still show
-   `0.0.0.0` for that address. The epoch lane and the e2e do not start
-   this transport. `headstash-lane` also does not re-check
-   `local.ip().is_loopback()` after `TcpListener::bind`. The e2e does.
-   An opted-in relay bind of `0.0.0.0` is still advertised as
-   `ws://0.0.0.0:9444`. The `wss` URL rewrites that host to `localhost`.
+5. **Closed.** A state-root provider with `mode = "grpc"` goes through
+   `inspect_bind` before the listener is spawned. `0.0.0.0`, `[::]`, and
+   any other non-loopback host refuse to start unless `allow_public_bind`
+   is set. Example grpc addresses in `config.example.toml`, `README.md`,
+   and `docs/sidecar.md` are `127.0.0.1`. The snap note example in
+   `docs/headstash.md` listens on `127.0.0.1:8080`. `headstash-lane`
+   still requires a `127.0.0.1:` prefix, then checks
+   `local.ip().is_loopback()` after bind. An opted-in relay bind of
+   `0.0.0.0` is still advertised as `ws://0.0.0.0:9444`. The `wss` URL
+   rewrites that host to `localhost`. That advertisement was left as it
+   is.
 
 6. **Lab verify remains in the same crate, off the epoch settle path.**
    Owner `SetBridgeCfg` with `mock_verify` makes bridge and egress accept
@@ -114,12 +120,12 @@ feature it returns an error. With `zk-api` it calls
    MockStorage, MockQuerier}`. Those types are the in-process VM shell.
    The accept/reject decision is `do_proof_instance_verify`.
 
-7. **The Rust failure-mode model does not sweep.**
-   `tools/hash-market/src/bin/headstash-failure-modes.rs` sets
-   `campaign_open = false`, `unclaimed = 3`, and `sweep = false`, then
-   prints `unclaimed_funds_after_campaign_end`. It does not execute
-   `SweepUnclaimed`. The chain script is the one in `a221190`. This
-   review did not run it.
+7. **Closed.** `headstash-failure-modes` calls `sweep_unclaimed` on an
+   in-memory escrow. The caller must be the owner, a campaign must be
+   stored, the recipient must be set, and the height must be past the
+   cutoff. An unpaid staged batch returns `staged batch is unpaid`. The
+   printed case moves 999985 and a second call is `nothing to sweep`,
+   so the escrow is 0. The shell script was not edited and was not run.
 
 8. **The live epoch wasm is the pre-sweep file.**
    `/tmp/headstash-epoch-chain/cw_headstash.wasm` is 896512 bytes,
@@ -130,21 +136,21 @@ feature it returns an error. With `zk-api` it calls
    Storing it means a new code id. The running epoch chain should not
    be re-inited to do that.
 
-9. **Logs are filtered by phrase, and two public files are mode-default.**
-   `scrub` in the e2e drops lines that contain `mnemonic`, `priv_key`,
-   or `private key`, drops a 12-word lowercase line, and keeps eight
-   lines of at most 400 characters. A hex secret in command stderr would
-   pass that filter. The e2e writes `instantiate.json`, `campaign.json`,
-   and `stage.json` under the chain home. `campaign.json` carries the
-   vk hash and the custody public key. The lane's `vk.hash` and
-   `custody.pub` are created with the process umask, not an explicit
-   `0600`.
+9. **Closed.** `vk.hash`, `custody.pub`, the prove-path `.vk` file, and
+   the chain-home `instantiate.json`, `campaign.json`, and `stage.json`
+   are written mode `0600`. `scrub` still drops mnemonic lines. It also
+   replaces a standalone hex run of 64 or more digits, including a `0x`
+   prefix, with `[hex]`. Scrubbed step text therefore redacts
+   transaction hashes of that length. Shorter hex stays.
 
-10. **The epoch circuit still uses halo2-base for secp256k1 field types.**
-    The uses are in `circuits/halo2/src/circuit/gadget/secp256k1_chip.rs`
-    and `circuits/halo2/src/suite/suite.rs`, behind host-crypto. The
-    k256 replacement is not on this commit. Cherry-pick stays deferred
-    until that removal is committed on its own branch.
+10. **Plan only, on `wip/headstash-halo2-base-removal`.** Commit
+    `2908d6b54d9dbfe5c488c1160aaf12820592c65b` is
+    `tools/headstash/docs/circuit/HALO2-BASE-REMOVAL.md` on that branch.
+    Epoch-claim still has the halo2-base imports in `secp256k1_chip.rs`
+    and `suite.rs`. The removal itself is wasm-check `eafaf8b` (in-crate
+    `secp_host_field`, `num-bigint`, `k256` kept). Do not cherry-pick
+    `bf194dc`. After `eafaf8b` is cherry-picked here, rerun the loopback
+    e2e (17/17) and `two_registered_keys_select_and_reject`.
 
 11. **`tests/itl_frost_notes_live.rs` writes a regtest config that listens
     on `0.0.0.0` and sets cookie auth off.** The epoch scripts do not
@@ -158,7 +164,8 @@ Leave `HASH_MARKET_ALLOW_PUBLIC_BIND` unset and do not set
 bridge `mock_verify`. Do not add a grpc provider on a public address.
 Store the sweep wasm as a new code id when the target chain should
 sweep, and point the campaign `vk_hash` at the sidecar's
-`install_epoch_host` output. Treat gaps 1 and 2 as the ones that still
-need a design decision: chain-side vk enforcement, and authentication
-on the three `/ve/headstash` routes, if those routes will ever be
-reachable beyond the host.
+`install_epoch_host` output. Gaps 1 and 2 are the design decisions
+still open: chain-side vk enforcement at payout, and authentication
+on the three `/ve/headstash` routes. The halo2-base port is the plan
+on `wip/headstash-halo2-base-removal` (`2908d6b`), not a change on
+this branch.
