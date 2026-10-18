@@ -97,9 +97,9 @@ pub struct CampaignParams {
     pub reserved: Vec<[u8; 32]>,
     /// Halo2 registry id. Flock may leave this at 0.
     pub vk_id: u64,
-    /// SHA-256 of the whole circuit blob. A non-zero hash is checked
-    /// against the cached blob before the host runs. Zero is the
-    /// in-process fixture and is not a chain commitment.
+    /// SHA-256 of the whole circuit blob. Halo2 refuses the all-zero
+    /// hash. A real campaign hash is checked against the cached blob
+    /// before the host runs.
     pub vk_hash: [u8; 32],
 }
 
@@ -160,10 +160,12 @@ pub struct Campaign<const D: usize> {
     verifies: AtomicU64,
     vk_id: u64,
     vk_hash: [u8; 32],
+    /// True only for the in-process fixture. `open` never sets this.
+    unbound_fixture: bool,
 }
 
 impl<const D: usize> Campaign<D> {
-    pub fn open(params: CampaignParams) -> Result<Self, IngressError> {
+    fn validate(params: &CampaignParams) -> Result<(), IngressError> {
         if params.proof_len == 0 || params.max_rows == 0 || params.bech32_hrp.is_empty() {
             return Err(IngressError::Params);
         }
@@ -180,15 +182,21 @@ impl<const D: usize> Campaign<D> {
             }
         }
         let mut reserved = HashSet::with_capacity(params.reserved.len());
-        for nf in params.reserved {
-            if !reserved.insert(nf) {
+        for nf in &params.reserved {
+            if !reserved.insert(*nf) {
                 return Err(IngressError::Params);
             }
         }
         if params.backend == Backend::Halo2 && params.vk_id == 0 {
             return Err(IngressError::Params);
         }
-        Ok(Self {
+        Ok(())
+    }
+
+    fn from_params(params: CampaignParams, unbound_fixture: bool) -> Self {
+        let trusted = params.trusted.into_iter().collect();
+        let reserved = params.reserved.into_iter().collect();
+        Self {
             backend: params.backend,
             ctx: params.ctx,
             allocation_root: params.allocation_root,
@@ -210,7 +218,26 @@ impl<const D: usize> Campaign<D> {
             verifies: AtomicU64::new(0),
             vk_id: params.vk_id,
             vk_hash: params.vk_hash,
-        })
+            unbound_fixture,
+        }
+    }
+
+    pub fn open(params: CampaignParams) -> Result<Self, IngressError> {
+        Self::validate(&params)?;
+        if params.backend == Backend::Halo2 && params.vk_hash == [0u8; 32] {
+            return Err(IngressError::Params);
+        }
+        Ok(Self::from_params(params, false))
+    }
+
+    /// Lane tests only. HTTP and `open` cannot build a zero-hash halo2 campaign.
+    #[cfg(test)]
+    fn open_unbound_fixture(params: CampaignParams) -> Result<Self, IngressError> {
+        Self::validate(&params)?;
+        if params.backend != Backend::Halo2 || params.vk_hash != [0u8; 32] {
+            return Err(IngressError::Params);
+        }
+        Ok(Self::from_params(params, true))
     }
 
     pub fn backend(&self) -> Backend {
@@ -490,9 +517,9 @@ impl<const D: usize> Campaign<D> {
         if item.vk_id != self.vk_id {
             return Err(IngressError::Vk);
         }
-        // Zero stays unbound so the fixture proof can count a host call.
-        // A real campaign hash must be the blob cached for this id.
-        if self.vk_hash != [0u8; 32] && crate::host::halo2_vk_hash(self.vk_id) != Some(self.vk_hash)
+        // Production open refuses a zero hash. The in-process fixture is the
+        // only campaign that skips this compare, so its proof can count a host call.
+        if !self.unbound_fixture && crate::host::halo2_vk_hash(self.vk_id) != Some(self.vk_hash)
         {
             return Err(IngressError::Vk);
         }
@@ -747,7 +774,7 @@ mod tests {
         denom: [u8; 32],
         vk_hash: [u8; 32],
     ) -> Campaign<FIXTURE_DEPTH> {
-        Campaign::open(CampaignParams {
+        let params = CampaignParams {
             backend: Backend::Halo2,
             ctx,
             allocation_root: root,
@@ -763,8 +790,12 @@ mod tests {
             reserved: Vec::new(),
             vk_id: 1,
             vk_hash,
-        })
-        .unwrap()
+        };
+        if vk_hash == [0u8; 32] {
+            Campaign::open_unbound_fixture(params).unwrap()
+        } else {
+            Campaign::open(params).unwrap()
+        }
     }
 
     #[test]
@@ -917,6 +948,31 @@ mod tests {
         assert!(!campaign.same_vk(2, &[0u8; 32]));
         assert_eq!(campaign.vk_id(), 1);
         assert_eq!(campaign.vk_hash(), [0u8; 32]);
+    }
+
+    #[test]
+    fn epoch_claim_halo2_refuses_a_zero_vk_hash() {
+        let params = CampaignParams {
+            backend: Backend::Halo2,
+            ctx: [7u8; 32],
+            allocation_root: [8u8; 32],
+            bech32_hrp: "terp".into(),
+            denom: [9u8; 32],
+            proof_len: 4,
+            cutoff_height: 50,
+            amounts: BTreeMap::from([(15u64, 1u32)]),
+            trusted: vec![local_key().verifying_key().to_bytes()],
+            trusted_verify_threshold: 1,
+            trusted_sign_threshold: 1,
+            max_rows: 4,
+            reserved: Vec::new(),
+            vk_id: 1,
+            vk_hash: [0u8; 32],
+        };
+        assert_eq!(
+            Campaign::<FIXTURE_DEPTH>::open(params).err(),
+            Some(IngressError::Params)
+        );
     }
 
     #[test]

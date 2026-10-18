@@ -872,9 +872,9 @@ system and verifying key. Query `{"epoch_campaign":{}}` returns the
 stored params. The campaign POST repeats `vk_id` and `vk_hash_hex`. The
 sidecar checks that hash when the campaign is installed. The open
 campaign keeps the hash. A claim does not carry the hash. Before the
-host runs, a non-zero campaign hash must equal the blob cached for
-that `vk_id`. The campaign POST reads the registry. It does not
-register a key.
+host runs, the campaign hash must equal the blob cached for that
+`vk_id`. `Campaign::open` refuses a halo2 hash of 32 zero bytes.
+The campaign POST reads the registry. It does not register a key.
 
 ### Who may register a verifying key
 
@@ -919,9 +919,9 @@ hash returns `400`, error `vk hash`, and installs nothing. A campaign
 POST of the cache hash returns `200`. Each later claim requires that
 stored hash to equal `halo2_vk_hash(vk_id)` before
 `do_proof_instance_verify`. A miss returns `verifying key does not
-match the campaign` and does not call the host. The zero hash is the
-in-process fixture used by lane tests. Halo2 HTTP rejects an empty or
-short `vk_hash_hex`, so a production POST cannot store zeros.
+match the campaign` and does not call the host. Halo2 HTTP rejects an
+empty, short, or all-zero `vk_hash_hex`. The in-process lane fixture
+is `open_unbound_fixture`, and HTTP cannot construct it.
 
 The sidecar does not read the on-chain hash at startup, at campaign
 install, or at claim time. A process whose cache drifted can accept a
@@ -1004,8 +1004,8 @@ the Docker harness code against. Unknown JSON fields are rejected.
 `POST /ve/headstash/campaign`
 
 Halo2 requires `vk_id` (JSON number, not zero) and `vk_hash_hex`
-(64 lowercase hex characters, SHA-256 of the whole blob). Flock may
-omit both. Omitted means id 0 and a zero hash.
+(64 lowercase hex characters, SHA-256 of the whole blob, not 32 zero
+bytes). Flock may omit both. Omitted means id 0 and a zero hash.
 
 ```json
 {
@@ -1063,7 +1063,7 @@ limbs. The 168-byte lane wire stays inside the sidecar.
 | Status | Body | Meaning |
 |---|---|---|
 | 200 | `{"accepted":[0],"rejected":[]}` | Host returned 0 under that `vk_id`. |
-| 200 | `rejected[].error` = `verifying key does not match the campaign` | `vk_id` is not the campaign id, or the campaign stored a non-zero `vk_hash` that is not the cached blob. The host is not called. |
+| 200 | `rejected[].error` = `verifying key does not match the campaign` | `vk_id` is not the campaign id, or the campaign hash is not the cached blob. The host is not called. |
 | 200 | `rejected[].error` = `proof did not verify` | Host returned 1, or the proof is malformed. |
 | 400 | `{"error":"claim body"}` | Missing `vk_id`, or a field the halo2 body does not have. |
 
@@ -1082,7 +1082,7 @@ flowchart TD
   chain["cw-headstash EpochCampaignParams owner SetEpochCampaign"]
   camp["POST /ve/headstash/campaign"]
   post["POST /ve/headstash/claims proof_hex message denom_hex vk_id"]
-  lane["lane: vk_id matches and a non-zero vk_hash matches the cache"]
+  lane["lane: vk_id matches and vk_hash matches the cache"]
   limbs["nine by 32 host limbs from message"]
   info["CircuitInfo returns the 72-byte circuit key"]
   loader["CircuitLoader returns the cached key"]

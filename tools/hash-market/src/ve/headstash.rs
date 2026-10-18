@@ -174,6 +174,9 @@ pub async fn install_campaign(
     Json(body): Json<CampaignBody>,
 ) -> Result<Json<serde_json::Value>, HttpError> {
     let params = params_from(&body)?;
+    if params.backend == Backend::Halo2 && params.vk_hash == [0u8; 32] {
+        return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
+    }
     if params.backend == Backend::Halo2 {
         match halo2_vk_hash(params.vk_id) {
             Some(loaded) if loaded == params.vk_hash => {}
@@ -362,7 +365,11 @@ fn vk_from_body(body: &CampaignBody, backend: Backend) -> Result<(u64, [u8; 32])
             if body.vk_hash_hex.len() != 64 {
                 return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
             }
-            Ok((body.vk_id, decode_32(&body.vk_hash_hex)?))
+            let hash = decode_32(&body.vk_hash_hex)?;
+            if hash == [0u8; 32] {
+                return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
+            }
+            Ok((body.vk_id, hash))
         }
         Backend::Flock => {
             if body.vk_hash_hex.is_empty() {
@@ -528,5 +535,32 @@ mod tests {
         let parsed: super::AmountBody = serde_json::from_str(&raw).unwrap();
         assert_eq!(parsed.amount, wide);
         assert_eq!(parsed.cap, 2);
+    }
+
+    #[test]
+    fn halo2_campaign_refuses_a_zero_vk_hash() {
+        let zeros = "00".repeat(32);
+        let nonzero = "11".repeat(32);
+        let halo = campaign_json("halo2", 1, &zeros);
+        let err = super::vk_from_body(&halo, headstash_epoch::Backend::Halo2).unwrap_err();
+        assert_eq!(err.0, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!((err.1).0["error"], "vk hash");
+        let ok = campaign_json("halo2", 1, &nonzero);
+        let (id, hash) =
+            super::vk_from_body(&ok, headstash_epoch::Backend::Halo2).unwrap();
+        assert_eq!(id, 1);
+        assert_eq!(hash[0], 0x11);
+        let flock = campaign_json("flock", 0, "");
+        let (id, hash) = super::vk_from_body(&flock, headstash_epoch::Backend::Flock).unwrap();
+        assert_eq!(id, 0);
+        assert_eq!(hash, [0u8; 32]);
+    }
+
+    fn campaign_json(backend: &str, vk_id: u64, vk_hash_hex: &str) -> super::CampaignBody {
+        let z = "00".repeat(32);
+        let raw = format!(
+            r#"{{"backend":"{backend}","ctx_hex":"{z}","allocation_root_hex":"{z}","bech32_hrp":"terp","denom_hex":"{z}","proof_len":4,"cutoff_height":50,"amounts":[{{"amount":15,"cap":1}}],"trusted_hex":["{z}"],"trusted_verify_threshold":1,"trusted_sign_threshold":1,"max_rows":4,"vk_id":{vk_id},"vk_hash_hex":"{vk_hash_hex}"}}"#
+        );
+        serde_json::from_str(&raw).unwrap()
     }
 }
