@@ -1122,3 +1122,18 @@ Harness: `hash-market` bin `headstash-failure-modes`. It runs these six cases in
 
 The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The epoch-chain file `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes) does not contain `SweepUnclaimed`. The rebuild that does is `/tmp/cw_headstash-sweep.wasm` (902068 bytes, `wasm-opt -O1`, bulk memory left on). Pass that path as `WASM`. The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. `SweepUnclaimed` is owner-only and pays `sweep_recipient` from the campaign after the cutoff block. The instantiate script passes that address when `SWEEP_RECIPIENT` is set. `headstash-halo2-failure-modes.sh` sends `SweepUnclaimed` after the replay is rejected, once the height is past the cutoff, and the contract uterp balance must be zero. Until that message, unclaimed coins stay in the contract balance. A new drop is a new campaign.
 
+Reproduced on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-core:local-arm64`, publish host `127.0.0.1`). The runner is `tools/hash-market/scripts/headstash-halo2-failure-modes.sh`. It instantiates with `headstash-halo2-campaign.sh` and `/tmp/cw_headstash-sweep.wasm`, `vk_id` 1, and four loopback lanes. `baseline_four_up` and `recovers_next_epoch` share one clock: both are the moment all four lanes have sealed.
+
+| Case | Result | Time | Evidence |
+|---|---|---|---|
+| mismatched_vk_hash_rejected | PASS | 104ms | campaign HTTP 400 `vk hash`; claim HTTP 503 |
+| one_sidecar_down_still_pays | PASS | 8812ms | count=3, escrow 999985 uterp |
+| two_sidecars_down_no_quorum | PASS | 12310ms | count stayed 3, height moved, escrow unchanged |
+| recovers_next_epoch | PASS | 79488ms | count=4 |
+| baseline_four_up | PASS | 79488ms | count=4 |
+| sidecar_restart_mid_epoch | PASS | 59212ms | count=4 |
+| wrong_root_outvoted | PASS | 63004ms | count=3 |
+| replayed_nullifier_across_epochs | PASS | 2411ms | second spend rejected (`nullifier already exists`) |
+| unclaimed_funds | PASS | 2648ms | height 323, escrow 999985 uterp to 0, tx code 0 |
+
+
