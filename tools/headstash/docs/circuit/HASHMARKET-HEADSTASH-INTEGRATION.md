@@ -868,8 +868,68 @@ cw-headstash stores `vk_id` (`u64`) and `vk_hash` (32 bytes) on
 is not the footer's `vk_checksum`, which covers only the constraint
 system and verifying key. Query `{"epoch_campaign":{}}` returns the
 stored params. The campaign POST repeats `vk_id` and `vk_hash_hex`. The
-sidecar checks that hash when the campaign is installed. A claim does
-not carry the hash.
+sidecar checks that hash when the campaign is installed. The open
+campaign keeps the hash. A claim does not carry the hash. Before the
+host runs, a non-zero campaign hash must equal the blob cached for
+that `vk_id`. The campaign POST reads the registry. It does not
+register a key.
+
+### Who may register a verifying key
+
+Registration is a process call, `VmVerifier::register`. There is no
+HTTP route that uploads a blob. `register` refuses an id that is
+already present (`vk id`), and it refuses id 0 and any id above
+`u32::MAX`. Startup calls `install_epoch_host` from
+`tools/hash-market/src/bin/server.rs` before the listen socket is
+bound. That call compiles the epoch blob, registers it under id 1,
+and requires the registry hash to equal `epoch_vk_hash()` of that
+same blob. A second `install_halo2_host` keeps the first host.
+Replacing a cached key means a new process, and a new process starts
+with an empty in-memory campaign.
+
+The chain owner writes `vk_id` and `vk_hash` with `SetEpochCampaign`.
+`cw_ownable::assert_owner` is the check. The owner may overwrite that
+store until a batch is staged or the epoch has been paid, which
+returns `campaign is already staged`. The contract stores the hash.
+Payout does not read it, and the contract does not verify the Halo2
+proof.
+
+`POST /ve/headstash/campaign` is mounted under `/ve` with no
+authenticator. On `127.0.0.1`, a local caller can install a campaign.
+Halo2 install requires `vk_hash_hex` to equal `halo2_vk_hash(vk_id)`.
+A second POST while the campaign has no claims may replace the root,
+the amounts, and the cutoff. It may not replace `vk_id` or `vk_hash`
+(`409`, error `vk is fixed`). A POST after a claim has been accepted
+stays `409`, error `campaign already has claims`.
+
+### Startup compares the blob to itself
+
+`install_epoch_host` compares the blob it just registered with
+`epoch_vk_hash()` of that blob. It does not query
+`{"epoch_campaign":{}}`. The contract may not exist yet. The loopback
+order is host install, then instantiate, then `SetEpochCampaign`,
+then the campaign POST.
+
+### A cached key that drifts from the chain
+
+A campaign POST of the on-chain hash against a cache with a different
+hash returns `400`, error `vk hash`, and installs nothing. A campaign
+POST of the cache hash returns `200`. Each later claim requires that
+stored hash to equal `halo2_vk_hash(vk_id)` before
+`do_proof_instance_verify`. A miss returns `verifying key does not
+match the campaign` and does not call the host. The zero hash is the
+in-process fixture used by lane tests. Halo2 HTTP rejects an empty or
+short `vk_hash_hex`, so a production POST cannot store zeros.
+
+The sidecar does not read the on-chain hash at startup, at campaign
+install, or at claim time. A process whose cache drifted can accept a
+POST of the new cache hash, and claims then verify under that cache.
+The chain keeps the previous hash until the owner writes a new
+campaign. The accepted sudo and `ApplyAcceptedBatch` do not compare
+`vk_hash` and do not verify the proof. An owner overwrite after the
+sidecar has installed its campaign stays invisible to that process.
+A loopback query of `{"epoch_campaign":{}}` at campaign install would
+close that gap. This slice does not add that query.
 
 The native `Proof::verify` path in decision 26 remains the prover
 self-check only. Gas for the host call is the fork schedule
@@ -915,6 +975,8 @@ omit both. Omitted means id 0 and a zero hash.
 | 400 | `{"error":"vk is not loaded"}` | That `vk_id` is not in the registry. |
 | 400 | `{"error":"vk hash"}` | Hash does not match the loaded blob. |
 | 400 | `{"error":"vk id"}` | Halo2 id is 0. |
+| 409 | `{"error":"campaign already has claims"}` | A claim was already accepted. |
+| 409 | `{"error":"vk is fixed"}` | A second install would change `vk_id` or `vk_hash`. |
 
 `POST /ve/headstash/claims` when the campaign backend is `halo2`.
 One object in `claims`. `proof_hex` is the hex-encoded proof. `message`
@@ -943,7 +1005,7 @@ limbs. The 168-byte lane wire stays inside the sidecar.
 | Status | Body | Meaning |
 |---|---|---|
 | 200 | `{"accepted":[0],"rejected":[]}` | Host returned 0 under that `vk_id`. |
-| 200 | `rejected[].error` = `verifying key does not match the campaign` | `vk_id` is not the campaign id. The host is not called. |
+| 200 | `rejected[].error` = `verifying key does not match the campaign` | `vk_id` is not the campaign id, or the campaign stored a non-zero `vk_hash` that is not the cached blob. The host is not called. |
 | 200 | `rejected[].error` = `proof did not verify` | Host returned 1, or the proof is malformed. |
 | 400 | `{"error":"claim body"}` | Missing `vk_id`, or a field the halo2 body does not have. |
 
@@ -955,18 +1017,23 @@ Flock claims are unchanged: `proof_hex`, `message`, `signature_hex`,
 
 ```mermaid
 flowchart TD
-  chain["cw-headstash EpochCampaignParams vk_id and vk_hash"]
+  proc["process start install_epoch_host"]
+  blob["epoch blob compiled in this process"]
+  reg["registry: deserialize once, cache AnyVerifyingKey by vk_id"]
+  self["self-check SHA-256 equals epoch_vk_hash of that blob"]
+  chain["cw-headstash EpochCampaignParams owner SetEpochCampaign"]
   camp["POST /ve/headstash/campaign"]
-  reg["registry: deserialize once, cache AnyVerifyingKey"]
   post["POST /ve/headstash/claims proof_hex message denom_hex vk_id"]
-  lane["lane: vk_id must equal the campaign"]
+  lane["lane: vk_id matches and a non-zero vk_hash matches the cache"]
   limbs["nine by 32 host limbs from message"]
   info["CircuitInfo returns the 72-byte circuit key"]
   loader["CircuitLoader returns the cached key"]
   host["do_proof_instance_verify curve id 0"]
 
-  chain --> camp
-  camp --> reg
+  proc --> blob
+  blob --> reg
+  reg --> self
+  camp -->|"posted hash must match the cache"| reg
   post --> lane
   lane --> limbs
   limbs --> host
@@ -974,6 +1041,9 @@ flowchart TD
   info --> loader
   loader --> host
 ```
+
+`chain` is the on-chain store. The diagram has no arrow from `chain`
+into the registry: startup and the campaign POST do not query it.
 
 ## FAILURE-MODES
 
@@ -991,4 +1061,6 @@ The accepted root is what sudo pays. A pending root only stores. Payout is the H
 | Unclaimed after campaign end | Cutoff has passed and the campaign is closed. Some allocation rows were never claimed. | No new claims. Unclaimed coins stay in the campaign escrow. This slice does not sweep them. A new drop is a new campaign. |
 
 Harness: `hash-market` bin `headstash-failure-modes`. It runs these six cases in process with equal stake and the `0.667` rule. A Docker 4-validator `terpd` chain is the deployment target via ict-rs (`CosmosChain::new` with `num_validators = 4`) and is not started by this bin while the data volume is at 98% and the only local chain image is `terp-core:local-arm64`. Do not factory-reset Docker and do not delete volumes to make room.
+
+The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The wasm file is `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes, `wasm-opt -O1`, bulk memory left on). The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. There is no sweep message. Unclaimed coins stay in the contract balance. A new drop is a new campaign.
 

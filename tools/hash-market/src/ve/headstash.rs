@@ -187,15 +187,16 @@ pub async fn install_campaign(
     }
     let campaign = Campaign::<DEPTH>::open(params).map_err(error_json)?;
     let mut host = state.headstash.write().await;
-    if host
-        .campaign
-        .as_ref()
-        .is_some_and(|existing| !existing.digests().is_empty())
-    {
-        return Err(error_json_msg(
-            StatusCode::CONFLICT,
-            "campaign already has claims",
-        ));
+    if let Some(existing) = host.campaign.as_ref() {
+        if !existing.digests().is_empty() {
+            return Err(error_json_msg(
+                StatusCode::CONFLICT,
+                "campaign already has claims",
+            ));
+        }
+        if !existing.same_vk(campaign.vk_id(), &campaign.vk_hash()) {
+            return Err(error_json_msg(StatusCode::CONFLICT, "vk is fixed"));
+        }
     }
     host.campaign = Some(campaign);
     host.sealed = None;

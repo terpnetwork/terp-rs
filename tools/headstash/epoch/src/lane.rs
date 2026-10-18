@@ -97,8 +97,9 @@ pub struct CampaignParams {
     pub reserved: Vec<[u8; 32]>,
     /// Halo2 registry id. Flock may leave this at 0.
     pub vk_id: u64,
-    /// SHA-256 of the whole circuit blob. HTTP install checks it.
-    /// The open campaign keeps `vk_id` only.
+    /// SHA-256 of the whole circuit blob. A non-zero hash is checked
+    /// against the cached blob before the host runs. Zero is the
+    /// in-process fixture and is not a chain commitment.
     pub vk_hash: [u8; 32],
 }
 
@@ -158,6 +159,7 @@ pub struct Campaign<const D: usize> {
     spent: HashSet<[u8; 32]>,
     verifies: AtomicU64,
     vk_id: u64,
+    vk_hash: [u8; 32],
 }
 
 impl<const D: usize> Campaign<D> {
@@ -207,11 +209,25 @@ impl<const D: usize> Campaign<D> {
             spent: HashSet::new(),
             verifies: AtomicU64::new(0),
             vk_id: params.vk_id,
+            vk_hash: params.vk_hash,
         })
     }
 
     pub fn backend(&self) -> Backend {
         self.backend
+    }
+
+    pub fn vk_id(&self) -> u64 {
+        self.vk_id
+    }
+
+    pub fn vk_hash(&self) -> [u8; 32] {
+        self.vk_hash
+    }
+
+    /// A second install may replace roots and caps. The vk binding stays.
+    pub fn same_vk(&self, vk_id: u64, vk_hash: &[u8; 32]) -> bool {
+        self.vk_id == vk_id && self.vk_hash == *vk_hash
     }
 
     pub fn trusted_sign_threshold(&self) -> usize {
@@ -474,6 +490,12 @@ impl<const D: usize> Campaign<D> {
         if item.vk_id != self.vk_id {
             return Err(IngressError::Vk);
         }
+        // Zero stays unbound so the fixture proof can count a host call.
+        // A real campaign hash must be the blob cached for this id.
+        if self.vk_hash != [0u8; 32] && crate::host::halo2_vk_hash(self.vk_id) != Some(self.vk_hash)
+        {
+            return Err(IngressError::Vk);
+        }
         let mut recipient = [0u8; 32];
         recipient[..20].copy_from_slice(&raw);
         self.verifies.fetch_add(1, Ordering::Relaxed);
@@ -716,6 +738,15 @@ mod tests {
     }
 
     fn halo2_campaign(ctx: [u8; 32], root: [u8; 32], denom: [u8; 32]) -> Campaign<FIXTURE_DEPTH> {
+        halo2_campaign_hash(ctx, root, denom, [0u8; 32])
+    }
+
+    fn halo2_campaign_hash(
+        ctx: [u8; 32],
+        root: [u8; 32],
+        denom: [u8; 32],
+        vk_hash: [u8; 32],
+    ) -> Campaign<FIXTURE_DEPTH> {
         Campaign::open(CampaignParams {
             backend: Backend::Halo2,
             ctx,
@@ -731,7 +762,7 @@ mod tests {
             max_rows: 4,
             reserved: Vec::new(),
             vk_id: 1,
-            vk_hash: [0u8; 32],
+            vk_hash,
         })
         .unwrap()
     }
@@ -841,6 +872,51 @@ mod tests {
         assert_eq!(report.rejected, vec![(0, IngressError::Vk)]);
         assert_eq!(campaign.verifies(), 0);
         assert!(campaign.rows().is_empty());
+    }
+
+    #[test]
+    fn epoch_claim_halo2_rejects_a_drifted_vk_hash_before_verify() {
+        let ctx = [7u8; 32];
+        let root = [0u8; 32];
+        let mut nullifier = [0u8; 32];
+        nullifier[0] = 4;
+        let denom = [9u8; 32];
+        let mut vk_hash = [0u8; 32];
+        vk_hash[0] = 1;
+        let mut campaign = halo2_campaign_hash(ctx, root, denom, vk_hash);
+        let message = canonical_sign_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            15,
+        );
+        let item = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message,
+            signature: Vec::new(),
+            leaf_x: [0u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+            vk_id: 1,
+        };
+        let report = campaign.accept_batch(&[item], Some(&local_key()));
+        assert_eq!(report.rejected, vec![(0, IngressError::Vk)]);
+        assert_eq!(campaign.verifies(), 0);
+        assert!(campaign.rows().is_empty());
+    }
+
+    #[test]
+    fn epoch_claim_halo2_keeps_the_vk_binding() {
+        let campaign = halo2_campaign([7u8; 32], [8u8; 32], [9u8; 32]);
+        assert!(campaign.same_vk(1, &[0u8; 32]));
+        let mut drifted = [0u8; 32];
+        drifted[0] = 1;
+        assert!(!campaign.same_vk(1, &drifted));
+        assert!(!campaign.same_vk(2, &[0u8; 32]));
+        assert_eq!(campaign.vk_id(), 1);
+        assert_eq!(campaign.vk_hash(), [0u8; 32]);
     }
 
     #[test]
