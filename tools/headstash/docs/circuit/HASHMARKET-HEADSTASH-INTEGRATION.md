@@ -982,8 +982,10 @@ registry code is unchanged.
   loopback ports and refuses a node that is not `tcp://127.0.0.1`.
   The hash-market server defaults to `127.0.0.1:9090`. `inspect_bind`
   refuses `0.0.0.0` and `[::]` unless `HASH_MARKET_ALLOW_PUBLIC_BIND`
-  is set. `hash-market-relay` still defaults to `0.0.0.0:9444` in its
-  own config and is not started by these scripts.
+  is set. `hash-market-relay` defaults to `127.0.0.1:9444` and calls
+  the same `inspect_bind`. A public bind starts only when
+  `allow_public_bind` or `HASH_MARKET_ALLOW_PUBLIC_BIND` is set. These
+  scripts do not start the relay.
 
 The native `Proof::verify` path in decision 26 remains the prover
 self-check only. Gas for the host call is the fork schedule
