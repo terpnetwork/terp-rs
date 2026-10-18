@@ -822,3 +822,55 @@ branch does.
 28. A halo2 replay is rejected as a spent nullifier before the amount
     class cap. A second distinct note in a full class is still
     class-full. The class cap on the chain campaign stays 1.
+
+29. The hash-market process builds the halo2 verifying key once before
+    it listens. Claim checks reuse that key. A release test measured
+    one warm verify at 0.949s. The key build in that run was 47.409s
+    and is not on the claim path.
+
+## Sidecar verifier POST (wB:p9)
+
+Coordinate point for the embedded CosmWasm VM verifier with multiple verifying keys. The host sidecar does not call `Proof::verify` directly once that change lands. It POSTs this body and trusts only a 200 from the guest. Field names are frozen for this branch.
+
+`POST /ve/headstash/verify`
+
+```json
+{
+  "backend": "halo2",
+  "vk_id": "hex-sha256-of-vk-bytes",
+  "proof_b64": "base64-proof",
+  "public": {
+    "ctx_hex": "64-hex",
+    "nullifier_hex": "64-hex",
+    "allocation_root_hex": "64-hex",
+    "amount": "15",
+    "recipient": "terp1..."
+  }
+}
+```
+
+| Status | Meaning |
+|---|---|
+| 200 `{"ok":true,"vk_id":"..."}` | Proof opened under that VK. The sidecar may receipt and seal. |
+| 400 | Unknown `vk_id` or `backend` is not the campaign backend. |
+| 422 | Proof rejected. Do not receipt. |
+
+`vk_id` absent on the campaign means the single epoch VK already built at process start. A campaign that sets `vk_id` must match one key loaded in the guest. The chain sudo still does not re-verify. Quorum and payout stay on the accepted root.
+
+## FAILURE-MODES
+
+Four equal-stake validators. Each runs its own hash-market sidecar on the headstash lane. Stake quorum is `0.667` of bonded stake (`stake_up * 1000 >= 667 * total`). Member thresholds are separate and are not this number. Listen addresses are `127.0.0.1`. No mainnet. One nginx at most, and this e2e does not use it. Docker publish host is `ICT_PUBLISH_HOST=127.0.0.1` when a chain container is used. Images already on the host are the only images. Nothing is pulled.
+
+The accepted root is what sudo pays. A pending root only stores. Payout is the Halo2 claim row inside the accepted sudo, not `ApplyAcceptedBatch`.
+
+| Mode | Setup | Expected |
+|---|---|---|
+| One sidecar down | 3 of 4 return the honest accepted root. Stake fraction 0.75. | Quorum holds. Sudo pays the claim. |
+| Two sidecars down | 2 of 4 return a root. Stake fraction 0.50. | No quorum. No payout this epoch. The next epoch pays if at least 3 sidecars return the same honest root. |
+| Wrong root | 1 sidecar returns a different root. 3 return the honest root. | The wrong root is outvoted. Sudo pays the honest root only. |
+| Validator restart mid-epoch | One validator process stops after the pending seal and returns before the accepted seal. | Its sidecar may miss the pending vote. The accepted vote still counts it if the process is back. A missed vote is an absence, not a wrong root. |
+| Replayed nullifier | The same nullifier is submitted again in a later epoch of the same campaign. | Rejected as already spent before the amount-class cap. No second payout. |
+| Unclaimed after campaign end | Cutoff has passed and the campaign is closed. Some allocation rows were never claimed. | No new claims. Unclaimed coins stay in the campaign escrow. This slice does not sweep them. A new drop is a new campaign. |
+
+Harness: `hash-market` bin `headstash-failure-modes`. It runs these six cases in process with equal stake and the `0.667` rule. A Docker 4-validator `terpd` chain is the deployment target via ict-rs (`CosmosChain::new` with `num_validators = 4`) and is not started by this bin while the data volume is at 98% and the only local chain image is `terp-core:local-arm64`. Do not factory-reset Docker and do not delete volumes to make room.
+

@@ -47,6 +47,10 @@ path = "src/bin/itl-consume-verify.rs"
 required-features = ["onboard"]
 
 [[bin]]
+name = "headstash-failure-modes"
+path = "src/bin/headstash-failure-modes.rs"
+
+[[bin]]
 name = "headstash-epoch-e2e"
 path = "src/bin/headstash-epoch-e2e.rs"
 required-features = ["headstash"]
