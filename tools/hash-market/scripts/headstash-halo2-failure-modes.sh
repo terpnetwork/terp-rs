@@ -413,7 +413,7 @@ PY
 chmod 600 "$WORK"/sidecar-bad.json "$WORK"/sidecar-campaign.json "$WORK"/claim-post.json "$WORK"/vk.b64 "$WORK"/public.env "$WORK"/claim.json
 
 t0=$(now_ms)
-bad_code=$(post_json 18521 /ve/headstash/campaign "$WORK/sidecar-bad.json" "$WORK/bad-campaign.json")
+bad_code=$(post_json 18521 /ve/headstash/campaign "$WORK/sidecar-bad.json" "$WORK/bad-campaign.json" operator)
 claim_code=$(post_json 18521 /ve/headstash/claims "$WORK/claim-post.json" "$WORK/bad-claim.json")
 bad_err=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("error",""))' "$WORK/bad-campaign.json")
 claim_acc=$(python3 -c 'import json,sys
@@ -447,9 +447,27 @@ case "$CONTRACT" in
   *) echo "contract missing" >&2; exit 1 ;;
 esac
 
-python3 - "$WORK/public.env" "$WORK/stage.json" "$WORK/replay.json" << 'PY'
+python3 - "$WORK/campaign.json" "$WORK/vk-lock.json" << 'PY'
 import base64, json, pathlib, sys
-env_path, stage_path, replay_path = sys.argv[1:]
+src, dest = sys.argv[1:]
+body = json.loads(pathlib.Path(src).read_text())
+raw = bytearray(base64.b64decode(body["set_epoch_campaign"]["campaign"]["vk_hash"]))
+raw[0] ^= 0x5A
+body["set_epoch_campaign"]["campaign"]["vk_hash"] = base64.b64encode(bytes(raw)).decode()
+pathlib.Path(dest).write_text(json.dumps(body, separators=(",", ":")))
+PY
+t0=$(now_ms)
+LOCK_MSG=$(cat "$WORK/vk-lock.json")
+set +e
+tx_wait 3000000 tx wasm execute "$CONTRACT" "$LOCK_MSG"
+set -e
+ok=0
+if grep -q "vk is fixed" "$WORK/tx-query.json" 2>/dev/null; then ok=1; fi
+report vk_hash_locked "$ok" "$(( $(now_ms) - t0 ))" "second set refused"
+
+python3 - "$WORK/public.env" "$WORK/stage.json" "$WORK/replay.json" "$WORK/vk.b64" << 'PY'
+import base64, json, pathlib, sys
+env_path, stage_path, replay_path, vk_path = sys.argv[1:]
 env = {}
 for line in pathlib.Path(env_path).read_text().splitlines():
     if not line.strip():
@@ -475,6 +493,7 @@ replay = {
         "allocation_root": b64hex("ALLOCATION_ROOT_HEX"),
         "root_id": 0,
         "rows": [row],
+        "vk_hash": pathlib.Path(vk_path).read_text().strip(),
     }
 }
 pathlib.Path(stage_path).write_text(json.dumps(stage, separators=(",", ":")))
