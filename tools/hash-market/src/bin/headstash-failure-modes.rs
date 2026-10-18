@@ -63,6 +63,42 @@ fn spent(epoch_nullifiers: &[&str], nullifier: &str) -> bool {
     epoch_nullifiers.iter().any(|n| *n == nullifier)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Escrow {
+    owner: &'static str,
+    campaign_set: bool,
+    cutoff_height: u64,
+    sweep_recipient: &'static str,
+    staged: bool,
+    paid: bool,
+    balance: u64,
+}
+
+/// Same gates as cw-headstash `sweep_unclaimed`. The message carries no address.
+fn sweep_unclaimed(escrow: &mut Escrow, caller: &str, height: u64) -> Result<u64, &'static str> {
+    if caller != escrow.owner {
+        return Err("Caller is not the contract's current owner");
+    }
+    if !escrow.campaign_set {
+        return Err("epoch campaign is not set");
+    }
+    if escrow.sweep_recipient.is_empty() {
+        return Err("sweep recipient is not set");
+    }
+    if height <= escrow.cutoff_height {
+        return Err("campaign has not ended");
+    }
+    if escrow.staged && !escrow.paid {
+        return Err("staged batch is unpaid");
+    }
+    if escrow.balance == 0 {
+        return Err("nothing to sweep");
+    }
+    let moved = escrow.balance;
+    escrow.balance = 0;
+    Ok(moved)
+}
+
 fn main() {
     let honest = "accepted-root-honest";
     let wrong = "accepted-root-wrong";
@@ -181,10 +217,19 @@ fn main() {
         failed += 1;
     }
 
-    let campaign_open = false;
-    let unclaimed = 4u64 - 1u64;
-    let sweep = false;
-    let unclaimed_ok = !campaign_open && unclaimed == 3 && !sweep;
+    let mut escrow = Escrow {
+        owner: "dao",
+        campaign_set: true,
+        cutoff_height: 80,
+        sweep_recipient: "terp1treasury",
+        staged: true,
+        paid: true,
+        balance: 999_985,
+    };
+    let moved = sweep_unclaimed(&mut escrow, "dao", 323);
+    let second = sweep_unclaimed(&mut escrow, "dao", 324);
+    let unclaimed_ok =
+        moved == Ok(999_985) && escrow.balance == 0 && second == Err("nothing to sweep");
     println!(
         "{} unclaimed_funds_after_campaign_end",
         if unclaimed_ok { "PASS" } else { "FAIL" }
@@ -198,4 +243,78 @@ fn main() {
         std::process::exit(1);
     }
     println!("ALL_PASS validators={VALIDATORS} quorum=0.667");
+}
+
+#[cfg(test)]
+mod sweep_tests {
+    use super::*;
+
+    fn funded() -> Escrow {
+        Escrow {
+            owner: "dao",
+            campaign_set: true,
+            cutoff_height: 80,
+            sweep_recipient: "terp1treasury",
+            staged: false,
+            paid: false,
+            balance: 999_985,
+        }
+    }
+
+    #[test]
+    fn sweep_moves_the_balance_after_the_cutoff() {
+        let mut escrow = funded();
+        assert_eq!(sweep_unclaimed(&mut escrow, "dao", 81).unwrap(), 999_985);
+        assert_eq!(escrow.balance, 0);
+        assert_eq!(
+            sweep_unclaimed(&mut escrow, "dao", 82),
+            Err("nothing to sweep")
+        );
+    }
+
+    #[test]
+    fn sweep_refuses_the_gates_the_contract_refuses() {
+        let mut missing = funded();
+        missing.campaign_set = false;
+        assert_eq!(
+            sweep_unclaimed(&mut missing, "dao", 81),
+            Err("epoch campaign is not set")
+        );
+        assert_eq!(missing.balance, 999_985);
+
+        let mut stranger = funded();
+        assert!(sweep_unclaimed(&mut stranger, "other", 81)
+            .unwrap_err()
+            .contains("owner"));
+        assert_eq!(stranger.balance, 999_985);
+
+        let mut empty = funded();
+        empty.sweep_recipient = "";
+        assert_eq!(
+            sweep_unclaimed(&mut empty, "dao", 81),
+            Err("sweep recipient is not set")
+        );
+
+        let mut early = funded();
+        assert_eq!(
+            sweep_unclaimed(&mut early, "dao", 80),
+            Err("campaign has not ended")
+        );
+        assert_eq!(early.balance, 999_985);
+
+        let mut unpaid = funded();
+        unpaid.staged = true;
+        unpaid.paid = false;
+        assert_eq!(
+            sweep_unclaimed(&mut unpaid, "dao", 81),
+            Err("staged batch is unpaid")
+        );
+        assert_eq!(unpaid.balance, 999_985);
+
+        let mut paid = funded();
+        paid.staged = true;
+        paid.paid = true;
+        assert_eq!(sweep_unclaimed(&mut paid, "dao", 81).unwrap(), 999_985);
+        assert_eq!(paid.balance, 0);
+    }
 }
