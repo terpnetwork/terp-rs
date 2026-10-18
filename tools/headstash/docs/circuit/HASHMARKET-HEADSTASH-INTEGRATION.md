@@ -425,7 +425,11 @@ The epoch path pays inside the accepted sudo:
   `oracle_sources[0].value`. Paying those rows is the step-3 sudo change.
 - A batch above `max_rows` is not signed, so it never reaches sudo.
 
-`ApplyAcceptedBatch` is not on this path.
+`ApplyAcceptedBatch` is not on this path. The attestation `value` above
+is the 32-byte batch hash on the wasm already stored on the loopback
+chain. The decision in "Chain vk and operator routes" appends the
+verifying-key hash for a new code id. The quorum root stays
+`attested_root` of the 32-byte batch hash.
 
 ## Allocation set
 
@@ -890,19 +894,18 @@ Replacing a cached key means a new process, and a new process starts
 with an empty in-memory campaign.
 
 The chain owner writes `vk_id` and `vk_hash` with `SetEpochCampaign`.
-`cw_ownable::assert_owner` is the check. The owner may overwrite that
-store until a batch is staged or the epoch has been paid, which
-returns `campaign is already staged`. The contract stores the hash.
-Payout does not read it, and the contract does not verify the Halo2
-proof.
+`cw_ownable::assert_owner` is the check. After the first successful
+write those two fields are immutable, including before
+`StageEpochBatch`. A later write that changes either one returns
+`vk is fixed`. The contract still does not verify the Halo2 proof.
+Payout on a new code id compares the hash the sidecar attested. The
+rules are in "Chain vk and operator routes".
 
-`POST /ve/headstash/campaign` is mounted under `/ve` with no
-authenticator. On `127.0.0.1`, a local caller can install a campaign.
-Halo2 install requires `vk_hash_hex` to equal `halo2_vk_hash(vk_id)`.
-A second POST while the campaign has no claims may replace the root,
-the amounts, and the cutoff. It may not replace `vk_id` or `vk_hash`
-(`409`, error `vk is fixed`). A POST after a claim has been accepted
-stays `409`, error `campaign already has claims`.
+`POST /ve/headstash/campaign` and `POST /ve/headstash/seal` require an
+operator signature. `POST /ve/headstash/claims` stays public. Halo2
+install still requires `vk_hash_hex` to equal `halo2_vk_hash(vk_id)`.
+A second POST is `409` `campaign already exists` as soon as a campaign
+is stored, including when no claim has been accepted and the vk matches.
 
 ### Startup compares the blob to itself
 
@@ -1137,5 +1140,78 @@ Reproduced on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-co
 | unclaimed_funds | PASS | 2648ms | height 323, escrow 999985 uterp to 0, tx code 0 |
 
 `unclaimed_funds` is the live `SweepUnclaimed` on that chain. After the replay was rejected, the owner executed `{"sweep_unclaimed":{}}`. Height 323 is past cutoff 1. Escrow moved from 999985 uterp to 0 in 2648ms, tx code 0. Commit `79fed14` checks the same gates in the in-process model. The shell script was not changed, so that row is the Docker coverage.
+
+## Chain vk and operator routes
+
+Decided for this branch. The chain stores the verifying key the sidecar used, and it refuses a payout under a different hash. Campaign install and seal require an operator signature. Claims stay public.
+
+### Chain
+
+`SetEpochCampaign` stores `vk_id` and `vk_hash` (SHA-256 of the whole circuit blob, 32 bytes). Both are immutable after that write. A later owner message that changes either field returns `vk is fixed`, including when no batch is staged and the epoch is not paid. Other creator fields may still change before staging. Staging or a paid epoch still returns `campaign is already staged`.
+
+A halo2 campaign with `vk_hash` of 32 zero bytes is refused at creation. The error text contains `vk hash`. Halo2 `vk_id` 0 stays refused. Flock may still store 32 zero bytes. That zero is the unbound flock fixture, not a halo2 key. Settle applies the hash check only when the stored hash is not all zeros.
+
+Stock `terpd` 6.4.0 does not grow a `vk_hash` field on the sudo JSON. The sudo it sends is `chain_uid`, `algo`, `height`, `root`, `attestation_count`, `block_time`, and `oracle_sources`. Each oracle source is `source_id`, `value`, `height`. The registered source is `headstash-batch`. `value` is the bytes the sidecar signed. The quorum `root` is still `attested_root` of the 32-byte batch hash. The wasm on the loopback chain ignores `oracle_sources`, so a longer value does not change that payout.
+
+The sidecar attestation value becomes `batch_hash || vk_hash` (64 bytes). Custody signs those 64 bytes. The vote's `root` field stays `attested_root(batch_hash)`.
+
+On a new code id, `settle` of an accepted sudo does this when the stored hash is not all zeros:
+
+- Read the `headstash-batch` oracle value.
+- Base64-decode it, the same way `root` is decoded.
+- Require 64 bytes, and require the last 32 to equal the stored `vk_hash`.
+- Otherwise return an error whose text contains `vk hash`, and pay nothing. The sudo cache rolls back, so the root is not stored either.
+
+`ApplyAcceptedBatch` carries `vk_hash`. Serde defaults a missing field to empty. When the stored hash is not all zeros, empty, zero, or any other mismatch returns `vk hash` before a credit. The 4-validator replay body includes the real hash, so a second spend of an already paid nullifier still returns `nullifier already exists`. A copy of that body with the first vk byte flipped is the mismatch case. The contract does not verify the Halo2 proof on either path.
+
+### Operator routes
+
+`POST /ve/headstash/campaign` and `POST /ve/headstash/seal` require the headers `x-hash-market-pubkey` and `x-hash-market-signature`. `POST /ve/headstash/claims` does not. Users reach claims through the single nginx. Nginx must forward the two headers on the operator routes. A stripped header fails closed.
+
+The signed string is the tree-write challenge, domain `hash-market.tree-write.v1`:
+
+```text
+hash-market.tree-write.v1
+METHOD
+path
+sha256(raw body) as hex
+```
+
+`METHOD` is upper case. `path` is the request path, `/ve/headstash/campaign` or `/ve/headstash/seal`. The hash is of the raw body bytes, not a re-encoded JSON document. `tools/hash-market/scripts/headstash-operator-sign.py` signs this string.
+
+When the client sends `x-hash-market-expiry`, a fifth line `expiry:<unix seconds>` is part of the challenge, and a timestamp in the past is refused. When the client sends `x-hash-market-nonce`, a line `nonce:<value>` is part of the challenge. The failure-modes signer sends neither header. Those four-line signatures stay valid.
+
+secp256k1 uses the ADR-36 amino `sign/MsgSignData` document over that challenge, SHA-256 of the document, compact `r || s`. The 33-byte compressed pubkey must derive the configured `tree_operator` `terp1` address, or it must be listed in `operator_pubkeys`. ed25519 uses a 32-byte pubkey listed in `operator_pubkeys` and a 64-byte signature over SHA-256 of the same challenge string. It does not use the ADR-36 document. `HEADSTASH_OPERATOR` on the lane sets `tree_operator`. An empty operator and an empty pubkey list refuse every admin request.
+
+Each accepted signature hex is stored in the process. A second presentation is `401`, which is the replay nonce. A repeated explicit nonce is also `401`. Missing or invalid material is `401`. A signature that verifies for a different key is `403`. The store is memory. A process restart forgets it. An expiry, when the client sent one, still bounds that signature after a restart.
+
+A second campaign POST returns `409` `campaign already exists` once a campaign is stored for that process, before any claim and even when `vk_id` and `vk_hash` match. The loopback driver drops its in-memory campaign between the context check, the root check, and the good install. That drop is not an HTTP route. `second_campaign_blocked` remains a `409` after a claim has been accepted.
+
+### Data flow
+
+```mermaid
+flowchart LR
+  op["operator key"] --> camp["POST /ve/headstash/campaign"]
+  op --> seal["POST /ve/headstash/seal"]
+  user["claimant via nginx"] --> claims["POST /ve/headstash/claims"]
+  camp --> mem["in-memory campaign vk_id vk_hash"]
+  claims --> mem
+  mem --> vote["vote value is batch hash then vk_hash"]
+  vote --> sudo["terpd sudo oracle_sources"]
+  chain["SetEpochCampaign stores vk_id and vk_hash"] --> settle["settle"]
+  sudo --> settle
+  settle --> pay["credits or vk hash"]
+  apply["ApplyAcceptedBatch.vk_hash"] --> pay
+```
+
+### Security notes
+
+- The owner cannot swap the payout key after creation, including before staging. A sidecar that verified under a different blob cannot be paid by the new code id.
+- The stock binary cannot learn a new sudo field. The hash rides in the attestation value the module already forwards. A sidecar that still signs only the 32-byte batch hash fails closed on the new wasm.
+- The loopback chain keeps the old wasm. It does not see the suffix, so its payout does not depend on this check. Do not store the new wasm onto that chain and do not re-init it.
+- Claims stay unsigned. The operator signature is what stops a client who can reach the port from installing a campaign or sealing a root.
+- Replay protection is per process. It stops a repeated request. It does not survive a restart. Pair it with an expiry when the operator wants a time bound.
+- Flock's zero hash is not a halo2 key. The settle check does not treat that zero as a match for a halo2 campaign.
+- The contract still does not run `do_proof_instance_verify`. The sidecar does. The chain checks that the hash the sidecar put in the attestation is the hash stored at creation.
 
 
