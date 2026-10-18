@@ -46,7 +46,6 @@ ff           = "0.14"
 fpe          = "0.6"
 getset      = "0.1"
 group        = "0.14"
-halo2-base    = { path = "../../../zcash/halo2-lib/halo2-base" }
 halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../zakura-common/crates/halo2_gadgets", default-features = false }
 halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"] }
 headstash-randomness = { path = "../../crates/randomness" }

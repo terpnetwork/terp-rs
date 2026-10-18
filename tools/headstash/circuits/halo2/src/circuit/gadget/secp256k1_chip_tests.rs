@@ -7,7 +7,7 @@ use std::println;
 
 use super::secp256k1_chip::*;
 use ff::{Field, PrimeField};
-use halo2_base::halo2_proofs::halo2curves::secp256k1::{Fp as Secp256k1Fp, Fq as Secp256k1Fq};
+use super::secp256k1_chip::{Secp256k1Fp, Secp256k1Fq};
 use halo2_gadgets::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 use halo2_proofs::{
     circuit::{Layouter, SimpleFloorPlanner, Value},
@@ -277,14 +277,14 @@ fn test_secp256k1_key_pairing_valid() {
 
 #[test]
 fn test_reconstruct_xy_from_limbs() {
-    use halo2_base::utils::fe_to_biguint;
+    use super::secp256k1_chip::fe_to_biguint_host;
     use num_bigint::BigUint;
 
     let gen_x_fp = Secp256k1Fp::from_bytes(&GENERATOR_X).unwrap();
     let gen_y_fp = Secp256k1Fp::from_bytes(&GENERATOR_Y).unwrap();
 
-    let gen_x_big = fe_to_biguint(&gen_x_fp);
-    let gen_y_big = fe_to_biguint(&gen_y_fp);
+    let gen_x_big = fe_to_biguint_host(&gen_x_fp);
+    let gen_y_big = fe_to_biguint_host(&gen_y_fp);
 
     // Decompose into 4x64-bit limbs
     let x_limbs = crate::spec::decompose_biguint_simple(&gen_x_big, 4, 64);
@@ -372,7 +372,7 @@ fn test_foreign_field_limb_decomposition() {
     ];
 
     let v = secp_fp_from_le(test_value_bytes);
-    let v_biguint = halo2_base::utils::fe_to_biguint(&v);
+    let v_biguint = super::secp256k1_chip::fe_to_biguint_host(&v);
 
     // Decompose into 4x64-bit limbs
     let limbs = crate::spec::decompose_biguint_simple(&v_biguint, 4, 64);
@@ -408,7 +408,7 @@ fn test_foreign_field_limb_decomposition() {
 // ============================================================================
 #[test]
 fn test_secp256k1_pk_to_pallas_crt_conversion() {
-    use halo2_base::utils::fe_to_biguint;
+    use super::secp256k1_chip::fe_to_biguint_host;
     use num_bigint::BigUint;
     use secp256k1::{PublicKey, Secp256k1, SecretKey};
 
@@ -427,8 +427,8 @@ fn test_secp256k1_pk_to_pallas_crt_conversion() {
 
     let pk_x_fp = secp_fp_from_le(pk_x_bytes);
     let pk_y_fp = secp_fp_from_le(pk_y_bytes);
-    let pk_x_big = fe_to_biguint(&pk_x_fp);
-    let pk_y_big = fe_to_biguint(&pk_y_fp);
+    let pk_x_big = fe_to_biguint_host(&pk_x_fp);
+    let pk_y_big = fe_to_biguint_host(&pk_y_fp);
 
     // Decompose into 4x64-bit limbs
     let x_limbs = crate::spec::decompose_biguint_simple(&pk_x_big, 4, 64);
@@ -457,7 +457,7 @@ fn test_secp256k1_pk_to_pallas_crt_conversion() {
 
 #[test]
 fn test_secp256k1_sk_to_pallas_base_conversion() {
-    use halo2_base::utils::fe_to_biguint;
+    use super::secp256k1_chip::fe_to_biguint_host;
     use num_bigint::BigUint;
 
     let sk_bytes = [
@@ -467,7 +467,7 @@ fn test_secp256k1_sk_to_pallas_base_conversion() {
     ];
 
     let sk_fq = secp_fq_from_le(sk_bytes);
-    let sk_big = fe_to_biguint(&sk_fq);
+    let sk_big = fe_to_biguint_host(&sk_fq);
 
     // Decompose into 4x64-bit limbs
     let limbs = crate::spec::decompose_biguint_simple(&sk_big, 4, 64);
@@ -524,7 +524,7 @@ fn test_non_paired_keys_detection() {
 
 #[test]
 fn test_eth_key_pairing_with_crt() {
-    use halo2_base::utils::fe_to_biguint;
+    use super::secp256k1_chip::fe_to_biguint_host;
     use num_bigint::BigUint;
     use secp256k1::{PublicKey, Secp256k1, SecretKey};
 
@@ -546,7 +546,7 @@ fn test_eth_key_pairing_with_crt() {
     let pk_y_fp = secp_fp_from_le(pk_y_bytes);
 
     // Verify CRT decomposition with 4x64-bit limbs
-    let sk_limbs = crate::spec::decompose_biguint_simple(&fe_to_biguint(&sk_fq), 4, 64);
+    let sk_limbs = crate::spec::decompose_biguint_simple(&fe_to_biguint_host(&sk_fq), 4, 64);
     for (i, limb) in sk_limbs.iter().enumerate() {
         let limb_big = crate::spec::fe_to_biguint_simple(limb);
         assert!(limb_big.bits() <= 64, "Limb {} exceeds 64 bits", i);
@@ -561,7 +561,7 @@ fn test_eth_key_pairing_with_crt() {
                 let limb_big = crate::spec::fe_to_biguint_simple(limb);
                 acc + (limb_big << (64 * i))
             });
-    assert_eq!(reconstructed_sk, fe_to_biguint(&sk_fq));
+    assert_eq!(reconstructed_sk, fe_to_biguint_host(&sk_fq));
 
     // Verify curve equation for pk
     let p = BigUint::parse_bytes(

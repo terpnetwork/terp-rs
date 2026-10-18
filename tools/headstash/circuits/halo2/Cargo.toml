@@ -13,8 +13,8 @@ interface = ["std", "circuit", "dep:cw-orch"]
 # Guest wasm (cw-headstash) must leave this off.
 multicore = ["halo2_proofs?/multicore", "dep:rayon"]
 std = ["core3/std", "group/wnaf-memuse", "reddsa/std"]
-# Host-only: axiom base + libsecp C (breaks wasm32 guest / optimizer).
-host-crypto = ["dep:halo2-base", "dep:secp256k1"]
+# Host-only: libsecp C (breaks wasm32 guest / optimizer). In-crate field, no halo2-base.
+host-crypto = ["dep:secp256k1"]
 rpc = []
 test-dependencies = []
 dev-graph = []
@@ -34,7 +34,6 @@ ff  = { workspace = true }
 fpe = { workspace = true, default-features = false, features = ["alloc"] }
 getset = { workspace = true }
 group = { workspace = true }
-halo2-base  = { workspace = true, optional = true }
 halo2_gadgets  = { workspace = true, optional = true }
 halo2_proofs  = { workspace = true, optional = true, features = ["floor-planner-v1-legacy-pdqsort"] }
 headstash-randomness  = { workspace = true }

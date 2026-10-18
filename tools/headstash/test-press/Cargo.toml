@@ -81,7 +81,6 @@ env_logger = "0.11.10"
 #cw-orch-interchain  = { workspace = true, optional = true, features = ["daemon"] }
 ff   = { workspace = true }
 group.workspace = true
-halo2-base  = { workspace = true }
 halo2_gadgets = { workspace = true }
 halo2_proofs  = { workspace = true, features = ["multicore"] }
 headstash-randomness  = { workspace = true }

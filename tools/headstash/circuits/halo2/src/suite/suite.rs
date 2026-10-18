@@ -178,7 +178,7 @@ pub trait HeadstashBitwiseInstance {
     fn derive_esk_native(&self, sk: [u8; 32]) -> Fp {
         use crate::spec::biguint_to_fe_simple;
         let skfq = crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&sk);
-        let sk_big = halo2_base::utils::fe_to_biguint(&skfq);
+        let sk_big = num_bigint::BigUint::from_bytes_le(skfq.to_repr().as_ref());
         biguint_to_fe_simple(&sk_big)
     }
 

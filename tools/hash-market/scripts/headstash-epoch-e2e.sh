@@ -243,10 +243,10 @@ if [ "${SKIP_E2E:-0}" = 1 ]; then
 fi
 cd "$WT/tools/hash-market"
 # The lock contains the zk-headstash graph and the embedded cosmwasm-vm
-# resolve. Do not restore an older snapshot over it.
+# resolve, without halo2-base or halo2-axiom. Do not restore an older snapshot over it.
 LOCK_SHA="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
 case "$LOCK_SHA" in
-  02564547e716b854d7049757149633b01ec8db3805aab608e3a5c7b775cb4394) ;;
+  dd68c1bcc1a300f40b750d66dcef2e70d5e6b322129d94f57b46cc1bde7379bc) ;;
   *) echo "refusing hash-market lock ${LOCK_SHA}" >&2; exit 1 ;;
 esac
 HALO2_LOCK="/tmp/hash-market-Cargo.lock.halo2"
