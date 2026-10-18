@@ -65,6 +65,7 @@ start_lane() {
     HASH_MARKET_BIND="127.0.0.1:${port}" \
     HASH_MARKET_DATA="$data" \
     HEADSTASH_CUSTODY_SEED="$WORK/custody.seed" \
+    HEADSTASH_OPERATOR="$HEADSTASH_OPERATOR" \
     HASHMERCHANT_CHAIN_UID=headstash-claim \
     HEADSTASH_LIE_ROOT=1 \
     HEADSTASH_LAB_LIE=1 \
@@ -73,6 +74,7 @@ start_lane() {
     HASH_MARKET_BIND="127.0.0.1:${port}" \
     HASH_MARKET_DATA="$data" \
     HEADSTASH_CUSTODY_SEED="$WORK/custody.seed" \
+    HEADSTASH_OPERATOR="$HEADSTASH_OPERATOR" \
     HASHMERCHANT_CHAIN_UID=headstash-claim \
     "$LANE" > "$WORK/lane$i.log" 2>&1 &
   fi
@@ -121,9 +123,19 @@ stop_lane() {
 }
 
 post_json() {
-  local port="$1" path="$2" body="$3" out="$4"
+  local port="$1" path="$2" body="$3" out="$4" auth="${5:-public}"
+  local -a auth_hdr=()
+  if [ "$auth" = "operator" ]; then
+    local sig pubhex
+    sig=$(python3 "$WT/tools/hash-market/scripts/headstash-operator-sign.py" \
+      --key "$WORK/op.seed" --method POST --path "$path" --body "$body" \
+      --domain "${HEADSTASH_AUTH_DOMAIN:-hash-market.tree-write.v1}")
+    pubhex=$(cat "$WORK/op.pub")
+    auth_hdr=(-H "x-hash-market-pubkey: ${pubhex}" -H "x-hash-market-signature: ${sig}")
+  fi
   curl -sS --max-time 900 -o "$out" -w "%{http_code}" \
     -H 'content-type: application/json' \
+    "${auth_hdr[@]}" \
     -X POST "http://127.0.0.1:${port}${path}" \
     --data-binary @"$body"
 }
@@ -132,7 +144,7 @@ install_claim_on() {
   local i="$1"
   local port="${PORTS[$i]}"
   local code
-  code=$(post_json "$port" /ve/headstash/campaign "$WORK/sidecar-campaign.json" "$WORK/camp-$i.json")
+  code=$(post_json "$port" /ve/headstash/campaign "$WORK/sidecar-campaign.json" "$WORK/camp-$i.json" operator)
   if [ "$code" != "200" ]; then
     echo "campaign lane $i http $code" >&2
     return 1
@@ -148,7 +160,7 @@ body = json.load(open(sys.argv[1]))
 if body.get("accepted") != [0] or body.get("rejected"):
     raise SystemExit("claim not accepted")
 PY
-  code=$(post_json "$port" /ve/headstash/seal "$WORK/seal.json" "$WORK/seal-$i.json")
+  code=$(post_json "$port" /ve/headstash/seal "$WORK/seal.json" "$WORK/seal-$i.json" operator)
   if [ "$code" != "200" ]; then
     echo "seal lane $i http $code" >&2
     return 1
@@ -262,6 +274,16 @@ fi
 
 dd if=/dev/urandom of="$WORK/custody.seed" bs=32 count=1 status=none
 chmod 600 "$WORK/custody.seed"
+dd if=/dev/urandom of="$WORK/op.seed" bs=32 count=1 status=none
+chmod 600 "$WORK/op.seed"
+python3 "$WT/tools/hash-market/scripts/headstash-operator-sign.py" --key "$WORK/op.seed" --pubkey-only > "$WORK/op.pub"
+HEADSTASH_OPERATOR=$(python3 "$WT/tools/hash-market/scripts/headstash-operator-sign.py" --key "$WORK/op.seed" --address-only)
+export HEADSTASH_OPERATOR
+case "$HEADSTASH_OPERATOR" in
+  terp1*) ;;
+  *) echo "operator missing" >&2; exit 1 ;;
+esac
+chmod 600 "$WORK/op.pub"
 printf '%s' '{"height":1}' > "$WORK/seal.json"
 
 for i in 0 1 2 3; do
@@ -461,9 +483,40 @@ PY
 STAGE_MSG=$(cat "$WORK/stage.json")
 tx_wait 5000000 tx wasm execute "$CONTRACT" "$STAGE_MSG"
 
+operator_routes() {
+  local t0 code ok
+  t0=$(now_ms)
+  code=$(post_json 18521 /ve/headstash/campaign "$WORK/sidecar-campaign.json" "$WORK/noauth-camp.json" public)
+  ok=0
+  if [ "$code" = "401" ] || [ "$code" = "403" ]; then ok=1; fi
+  report unauthenticated_campaign_refused "$ok" "$(( $(now_ms) - t0 ))" "http ${code}"
+  t0=$(now_ms)
+  code=$(post_json 18521 /ve/headstash/campaign "$WORK/sidecar-campaign.json" "$WORK/auth-camp.json" operator)
+  ok=0
+  if [ "$code" = "200" ]; then ok=1; fi
+  report operator_campaign_accepted "$ok" "$(( $(now_ms) - t0 ))" "http ${code}"
+  t0=$(now_ms)
+  code=$(post_json 18521 /ve/headstash/claims "$WORK/claim-post.json" "$WORK/public-claim.json" public)
+  ok=0
+  if [ "$code" = "200" ] && python3 -c 'import json,sys; b=json.load(open(sys.argv[1])); raise SystemExit(0 if b.get("accepted")==[0] and not b.get("rejected") else 1)' "$WORK/public-claim.json"; then
+    ok=1
+  fi
+  report public_claim_succeeds "$ok" "$(( $(now_ms) - t0 ))" "http ${code}"
+  t0=$(now_ms)
+  code=$(post_json 18521 /ve/headstash/seal "$WORK/seal.json" "$WORK/noauth-seal.json" public)
+  ok=0
+  if [ "$code" = "401" ] || [ "$code" = "403" ]; then ok=1; fi
+  report unauthenticated_seal_refused "$ok" "$(( $(now_ms) - t0 ))" "http ${code}"
+  t0=$(now_ms)
+  code=$(post_json 18521 /ve/headstash/seal "$WORK/seal.json" "$WORK/auth-seal.json" operator)
+  ok=0
+  if [ "$code" = "200" ]; then ok=1; fi
+  report operator_seal_accepted "$ok" "$(( $(now_ms) - t0 ))" "http ${code}"
+}
+
 stop_lane 3
+operator_routes
 t0=$(now_ms)
-install_claim_on 0
 install_claim_on 1
 install_claim_on 2
 paid=0
@@ -542,6 +595,26 @@ ms=$(( $(now_ms) - t0 ))
 ok=0
 if [ "$countw" = "3" ]; then ok=1; fi
 report wrong_root_outvoted "$ok" "$ms" "count=${countw:-none}"
+
+t0=$(now_ms)
+python3 - "$WORK/replay.json" "$WORK/vk.b64" "$WORK/payout-mismatch.json" << 'PY'
+import base64, json, pathlib, sys
+replay, vk_path, dest = sys.argv[1:]
+body = json.loads(pathlib.Path(replay).read_text())
+vk = bytearray(base64.b64decode(pathlib.Path(vk_path).read_text().strip()))
+vk[0] ^= 0x5A
+body["apply_accepted_batch"]["vk_hash"] = base64.b64encode(bytes(vk)).decode()
+pathlib.Path(dest).write_text(json.dumps(body, separators=(",", ":")))
+PY
+held_pay=$(contract_amount)
+MISMATCH_MSG=$(cat "$WORK/payout-mismatch.json")
+set +e
+tx_wait 5000000 tx wasm execute "$CONTRACT" "$MISMATCH_MSG"
+set -e
+ok=0
+after_pay=$(contract_amount || echo missing)
+if grep -q "vk hash" "$WORK/tx-query.json" 2>/dev/null && [ "$after_pay" = "$held_pay" ]; then ok=1; fi
+report payout_vk_hash_rejected "$ok" "$(( $(now_ms) - t0 ))" "escrow stayed ${after_pay}"
 
 t0=$(now_ms)
 REPLAY_MSG=$(cat "$WORK/replay.json")

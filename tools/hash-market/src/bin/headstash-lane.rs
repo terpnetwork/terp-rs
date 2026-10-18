@@ -55,12 +55,18 @@ async fn main() -> anyhow::Result<()> {
         &dir.join("custody.pub"),
         hex::encode(public).as_bytes(),
     )?;
-    let state = hash_market::server::AppState::new(
+    let mut state = hash_market::server::AppState::new(
         None::<hash_market::VoteExtensionHandler>,
         "headstash-fm-1".into(),
         dir,
         true,
     )?;
+    if let Ok(op) = std::env::var("HEADSTASH_OPERATOR") {
+        if !op.starts_with("terp1") || op.chars().any(|ch| ch.is_whitespace()) {
+            anyhow::bail!("operator");
+        }
+        state.set_tree_operator(op);
+    }
     state.headstash.write().await.install_signer(signer);
     let app = hash_market::server::router(std::sync::Arc::new(state));
     let listener = tokio::net::TcpListener::bind(&bind).await?;
