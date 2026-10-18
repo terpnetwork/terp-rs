@@ -75,6 +75,10 @@ pub struct EpochCampaignParams {
     pub allocation_root: Binary,
     /// Eligibility root the nullifiers are spent under. Genesis is 0.
     pub root_id: u64,
+    /// Sidecar registry id. Halo2 must not be 0. Flock may be 0.
+    pub vk_id: u64,
+    /// SHA-256 of the whole circuit blob. 32 bytes for both backends.
+    pub vk_hash: Binary,
 }
 
 #[cw_serde]
@@ -355,6 +359,12 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
         .add_attribute("minted", n.to_string()))
 }
 
+pub fn query_campaign(storage: &dyn Storage) -> StdResult<EpochCampaignParams> {
+    EPOCH_CAMPAIGN
+        .may_load(storage)?
+        .ok_or_else(|| StdError::msg("epoch campaign is not set"))
+}
+
 pub fn query_root(storage: &dyn Storage, algo: String) -> StdResult<EpochRootResponse> {
     let root = EPOCH_ROOTS
         .may_load(storage, algo.as_str())?
@@ -548,6 +558,12 @@ fn validate_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
         || campaign.trusted_sign_threshold > n
     {
         return Err(StdError::msg("thresholds must sit inside the trusted set"));
+    }
+    if campaign.vk_hash.len() != 32 {
+        return Err(StdError::msg("vk hash"));
+    }
+    if campaign.backend == "halo2" && campaign.vk_id == 0 {
+        return Err(StdError::msg("vk id"));
     }
     Ok(())
 }
@@ -1196,6 +1212,8 @@ mod tests {
             max_rows: 4,
             allocation_root: root.clone(),
             root_id: 0,
+            vk_id: 0,
+            vk_hash: Binary::from([0u8; 32].to_vec()),
         }
     }
 

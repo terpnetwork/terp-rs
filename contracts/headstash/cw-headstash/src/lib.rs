@@ -384,6 +384,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BridgeConfig {} => bridge::query_bridge_cfg(deps),
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
+        QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
     }
 }
 

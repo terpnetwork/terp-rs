@@ -73,6 +73,8 @@ pub enum IngressError {
     Proof,
     #[error("trusted receipts are below the threshold")]
     Receipts,
+    #[error("verifying key does not match the campaign")]
+    Vk,
 }
 
 #[derive(Clone, Debug)]
@@ -93,6 +95,11 @@ pub struct CampaignParams {
     pub trusted_sign_threshold: usize,
     pub max_rows: usize,
     pub reserved: Vec<[u8; 32]>,
+    /// Halo2 registry id. Flock may leave this at 0.
+    pub vk_id: u64,
+    /// SHA-256 of the whole circuit blob. HTTP install checks it.
+    /// The open campaign keeps `vk_id` only.
+    pub vk_hash: [u8; 32],
 }
 
 #[derive(Clone, Debug)]
@@ -111,6 +118,8 @@ pub struct SubmittedClaim {
     /// Present when the caller put a leaf index on the submission.
     pub index: Option<u32>,
     pub receipts: Vec<PeerReceipt>,
+    /// Halo2 registry id. Flock claims leave this at 0.
+    pub vk_id: u64,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -148,6 +157,7 @@ pub struct Campaign<const D: usize> {
     rows: Vec<PayoutRow>,
     spent: HashSet<[u8; 32]>,
     verifies: AtomicU64,
+    vk_id: u64,
 }
 
 impl<const D: usize> Campaign<D> {
@@ -173,6 +183,9 @@ impl<const D: usize> Campaign<D> {
                 return Err(IngressError::Params);
             }
         }
+        if params.backend == Backend::Halo2 && params.vk_id == 0 {
+            return Err(IngressError::Params);
+        }
         Ok(Self {
             backend: params.backend,
             ctx: params.ctx,
@@ -193,6 +206,7 @@ impl<const D: usize> Campaign<D> {
             rows: Vec::new(),
             spent: HashSet::new(),
             verifies: AtomicU64::new(0),
+            vk_id: params.vk_id,
         })
     }
 
@@ -457,6 +471,9 @@ impl<const D: usize> Campaign<D> {
         if self.receipt_count(&body, item, local) < self.verify_threshold {
             return Err(IngressError::Receipts);
         }
+        if item.vk_id != self.vk_id {
+            return Err(IngressError::Vk);
+        }
         let mut recipient = [0u8; 32];
         recipient[..20].copy_from_slice(&raw);
         self.verifies.fetch_add(1, Ordering::Relaxed);
@@ -468,12 +485,14 @@ impl<const D: usize> Campaign<D> {
             amount: parsed.amount,
             recipient,
         };
-        zk_headstash::circuit::verify_epoch_statement(&item.proof, &statement).map_err(|err| {
+        let instances = zk_headstash::circuit::host_public_inputs(&statement).map_err(|err| {
             match err {
                 zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
                 zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
             }
         })?;
+        crate::host::verify_with_host(item.vk_id, &item.proof, &instances)
+            .map_err(|_| IngressError::Proof)?;
         Ok(Prepared {
             digest,
             nullifier: parsed.nullifier,
@@ -647,6 +666,7 @@ mod tests {
             denom,
             index: None,
             receipts: Vec::new(),
+            vk_id: 0,
         }
     }
 
@@ -685,6 +705,8 @@ mod tests {
             trusted_sign_threshold: threshold,
             max_rows,
             reserved,
+            vk_id: 0,
+            vk_hash: [0u8; 32],
         })
         .unwrap()
     }
@@ -708,6 +730,8 @@ mod tests {
             trusted_sign_threshold: 1,
             max_rows: 4,
             reserved: Vec::new(),
+            vk_id: 1,
+            vk_hash: [0u8; 32],
         })
         .unwrap()
     }
@@ -737,6 +761,7 @@ mod tests {
             denom,
             index: None,
             receipts: Vec::new(),
+            vk_id: 0,
         };
         let report = campaign.accept_batch(&[signed], Some(&local_key()));
         assert_eq!(report.rejected, vec![(0, IngressError::KeyMaterial)]);
@@ -749,6 +774,7 @@ mod tests {
             denom,
             index: None,
             receipts: Vec::new(),
+            vk_id: 0,
         };
         let report = campaign.accept_batch(&[leaf], Some(&local_key()));
         assert_eq!(report.rejected[0].1, IngressError::KeyMaterial);
@@ -778,10 +804,42 @@ mod tests {
             denom,
             index: None,
             receipts: Vec::new(),
+            vk_id: 1,
         };
         let report = campaign.accept_batch(&[item], Some(&local_key()));
         assert_eq!(report.rejected, vec![(0, IngressError::Proof)]);
         assert_eq!(campaign.verifies(), 1);
+        assert!(campaign.rows().is_empty());
+    }
+
+    #[test]
+    fn epoch_claim_halo2_rejects_a_different_vk_id_before_verify() {
+        let ctx = [7u8; 32];
+        let root = [0u8; 32];
+        let mut nullifier = [0u8; 32];
+        nullifier[0] = 3;
+        let denom = [9u8; 32];
+        let mut campaign = halo2_campaign(ctx, root, denom);
+        let message = canonical_sign_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            15,
+        );
+        let item = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message,
+            signature: Vec::new(),
+            leaf_x: [0u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+            vk_id: 2,
+        };
+        let report = campaign.accept_batch(&[item], Some(&local_key()));
+        assert_eq!(report.rejected, vec![(0, IngressError::Vk)]);
+        assert_eq!(campaign.verifies(), 0);
         assert!(campaign.rows().is_empty());
     }
 
@@ -1020,6 +1078,8 @@ mod tests {
             trusted_sign_threshold: 1,
             max_rows: 4,
             reserved: Vec::new(),
+            vk_id: 0,
+            vk_hash: [0u8; 32],
         })
         .unwrap();
         let report = campaign.accept_batch(&[item], Some(&local_key()));

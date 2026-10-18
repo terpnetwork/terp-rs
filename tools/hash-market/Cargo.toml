@@ -89,7 +89,7 @@ privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
 # Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
 pir = ["server", "dep:ff", "dep:pasta_curves", "dep:halo2_gadgets"]
 # Headstash claim lane inside this sidecar. Off by default. Not the snap note server.
-headstash = ["ve", "dep:headstash-epoch", "dep:headstash-claim", "dep:headstash-wire"]
+headstash = ["ve", "dep:headstash-epoch", "dep:headstash-claim", "dep:headstash-wire", "dep:cosmwasm-vm", "dep:cosmwasm-std", "dep:wat", "dep:wasmer"]
 
 [dependencies]
 anyhow = "1"
@@ -156,3 +156,7 @@ sha3 = { version = "0.10", optional = true }
 headstash-epoch = { path = "../headstash/epoch", optional = true }
 headstash-claim = { path = "../headstash/circuits/claim-flock", optional = true }
 headstash-wire = { path = "../headstash/wire", optional = true }
+cosmwasm-vm = { path = "../../../cosmwasm/packages/vm", optional = true, default-features = false, features = ["zk", "iterator"] }
+cosmwasm-std = { path = "../../../cosmwasm/packages/std", optional = true, default-features = false, features = ["std", "iterator", "zk"] }
+wat = { version = "=1.259.0", optional = true }
+wasmer = { version = "=7.4.2", default-features = false, features = ["singlepass"], optional = true }

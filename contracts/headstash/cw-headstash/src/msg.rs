@@ -186,6 +186,9 @@ pub enum QueryMsg {
     /// Hashmerchant root stored for `headstash-pending` or `headstash-accepted`.
     #[returns(crate::epoch::EpochRootResponse)]
     EpochRoot { algo: String },
+    /// Creator campaign, including the sidecar `vk_id` and blob hash.
+    #[returns(crate::epoch::EpochCampaignParams)]
+    EpochCampaign {},
 }
 
 #[cw_serde]

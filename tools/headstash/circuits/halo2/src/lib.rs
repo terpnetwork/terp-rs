@@ -43,6 +43,9 @@ mod constants;
 #[cfg(all(feature = "circuit", feature = "host-crypto"))]
 pub mod circuit;
 
+#[cfg(all(feature = "circuit", feature = "host-crypto", feature = "std"))]
+pub mod toy_host;
+
 // Guest CosmWasm: Instance-only surface (no multicore / C-sys graph).
 #[cfg(all(feature = "circuit", not(feature = "host-crypto")))]
 #[path = "circuit_guest.rs"]

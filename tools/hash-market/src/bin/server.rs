@@ -506,6 +506,12 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
+    #[cfg(feature = "headstash")]
+    {
+        tracing::info!("registering the halo2 verifying key");
+        hash_market::ve::vm_verify::install_epoch_host().map_err(anyhow::Error::msg)?;
+    }
+
     let app = hash_market::server::router(state);
     let listener = tokio::net::TcpListener::bind(&config.bind).await?;
     tracing::info!(

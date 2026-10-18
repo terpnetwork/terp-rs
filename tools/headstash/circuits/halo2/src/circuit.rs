@@ -954,21 +954,109 @@ impl Instance {
     }
 }
 
+fn epoch_verifying_key() -> &'static std::sync::OnceLock<VerifyingKey> {
+    use std::sync::OnceLock;
+    static VK: OnceLock<VerifyingKey> = OnceLock::new();
+    &VK
+}
+
+/// Build the halo2 verifying key once for this process.
+///
+/// The prover self-check uses this cache. Claim checks do not.
+pub fn prepare_halo2_verifier() {
+    let cell = epoch_verifying_key();
+    if cell.get().is_some() {
+        return;
+    }
+    let started = std::time::Instant::now();
+    let _vk = cell.get_or_init(VerifyingKey::build);
+    std::eprintln!(
+        "epoch-claim vk_ready_secs {:.3}",
+        started.elapsed().as_secs_f64()
+    );
+}
+
 /// Verify a halo2 claim. The proof is checked against the canonical statement.
 /// The eligible key, the signature scalars, and the note commitment are not inputs.
 pub fn verify_epoch_statement(
     proof: &[u8],
     statement: &EpochStatement,
 ) -> Result<(), EpochVerifyError> {
-    use std::sync::OnceLock;
     let instance = Instance::from_epoch_statement(statement)?;
-    static VK: OnceLock<VerifyingKey> = OnceLock::new();
-    let vk = VK.get_or_init(VerifyingKey::build);
+    let vk = epoch_verifying_key().get_or_init(VerifyingKey::build);
     Proof::new(proof.to_vec())
         .verify(vk, &[instance])
         .map_err(|_| EpochVerifyError::Proof)
 }
 
+
+fn checksum32(bytes: &[u8]) -> [u8; 32] {
+    let mut out = [0u8; 32];
+    out.copy_from_slice(Checksum::generate(bytes).as_slice());
+    out
+}
+
+/// Params, post-synthesis constraint system, verifying key, and an 80-byte footer.
+///
+/// `instances` is the footer public-input count. The epoch prover hashes nine
+/// limbs, so that blob uses 9. The campaign hash is SHA-256 of this whole buffer.
+pub fn pasta_circuit_blob(
+    params: &halo2_proofs::poly::commitment::Params<vesta::Affine>,
+    vk: &plonk::VerifyingKey<vesta::Affine>,
+    k: u8,
+    instances: u8,
+) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::new();
+    params.write(&mut buf).map_err(|_| "circuit")?;
+    let param_len = buf.len();
+    vk.cs().write(&mut buf).map_err(|_| "circuit")?;
+    let cs_len = buf.len() - param_len;
+    vk.write(&mut buf).map_err(|_| "circuit")?;
+    let vk_len = buf.len() - cs_len - param_len;
+    let param_hash = checksum32(&buf[..param_len]);
+    let vk_hash = checksum32(&buf[param_len..]);
+    buf.extend_from_slice(
+        &zk_cosmwasm::CircuitFooter::new(
+            zk_cosmwasm::CircuitType::Plonkish,
+            zk_cosmwasm::curves::CurveType::Pasta,
+            k,
+            instances,
+            param_len as u32,
+            cs_len as u32,
+            vk_len as u32,
+            param_hash,
+            vk_hash,
+        )
+        .to_bytes(),
+    );
+    Ok(buf)
+}
+
+/// Epoch blob for vk id 1. Built once from the prover's cached verifying key.
+pub fn epoch_circuit_blob() -> &'static [u8] {
+    use std::sync::OnceLock;
+    static BLOB: OnceLock<Vec<u8>> = OnceLock::new();
+    BLOB.get_or_init(|| {
+        prepare_halo2_verifier();
+        let vk = epoch_verifying_key().get().expect("vk");
+        pasta_circuit_blob(&vk.params, &vk.vk, K as u8, 9).expect("circuit")
+    })
+    .as_slice()
+}
+
+/// SHA-256 of the whole epoch blob, including the footer.
+pub fn epoch_vk_hash() -> [u8; 32] {
+    checksum32(epoch_circuit_blob())
+}
+
+/// Nine 32-byte little-endian limbs. Rows 0..8 match the circuit. Row 8 is zero
+/// because the prover transcript includes that trailing instance.
+pub fn host_public_inputs(statement: &EpochStatement) -> Result<Vec<u8>, EpochVerifyError> {
+    let instance = Instance::from_epoch_statement(statement)?;
+    let mut bytes = instance.to_vm_public_inputs();
+    bytes.extend_from_slice(&[0u8; 32]);
+    Ok(bytes)
+}
 
 /// Leaf 0 of a 32,769-note Poseidon-v1 suite tree.
 ///
@@ -1110,9 +1198,9 @@ pub struct EpochClaimBundle {
 /// Prove a canonical epoch claim for `destination`.
 ///
 /// `recipient` is the 20-byte bech32 payload, right-padded with zeros.
-/// The eligible key stays a witness. The first successful
-/// `verify_epoch_statement` in this process builds the verifying key
-/// and later checks reuse it.
+/// The eligible key stays a witness. [`prepare_halo2_verifier`] caches
+/// the verifying key for this self-check. The sidecar claim path does not
+/// call [`verify_epoch_statement`].
 #[cfg(feature = "host-crypto")]
 pub fn prove_epoch_claim(
     destination: &str,
@@ -1843,5 +1931,32 @@ mod tests {
             .view_height(0..(1 << 11))
             .render(K, &circuit, &root)
             .unwrap();
+    }
+
+    /// Release only. Debug verify of this K=19 circuit is not the bar.
+    #[cfg(all(not(debug_assertions), feature = "host-crypto", feature = "interface"))]
+    #[test]
+    fn warm_verify_stays_under_one_second() {
+        use std::time::Instant;
+
+        super::prepare_halo2_verifier();
+        let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
+        let recipient = [0u8; 32];
+        let ctx = [9u8; 32];
+        let amount = 15u64;
+        let bundle = super::prove_epoch_claim(destination, recipient, amount, ctx).expect("prove");
+        let statement = super::EpochStatement {
+            ctx: bundle.ctx,
+            root: bundle.root,
+            nullifier: bundle.nullifier,
+            destination: bundle.destination.clone(),
+            amount: bundle.amount,
+            recipient,
+        };
+        let started = Instant::now();
+        super::verify_epoch_statement(bundle.proof.as_slice(), &statement).expect("warm verify");
+        let secs = started.elapsed().as_secs_f64();
+        std::eprintln!("epoch-claim warm_verify_secs {secs:.3}");
+        assert!(secs < 1.0, "warm verify {secs:.3}s");
     }
 }

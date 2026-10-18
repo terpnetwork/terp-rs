@@ -407,7 +407,13 @@ fn prove_claim_pub(recipient: &str) -> anyhow::Result<ClaimPub> {
     })
 }
 
-fn campaign_body(claim: &ClaimPub, backend: &str, ctx: &[u8; 32], custody_pk: &[u8; 32]) -> Value {
+fn campaign_body(
+    claim: &ClaimPub,
+    backend: &str,
+    ctx: &[u8; 32],
+    custody_pk: &[u8; 32],
+    vk_hash: &[u8; 32],
+) -> Value {
     json!({
         "backend": backend,
         "ctx_hex": hex_bytes(ctx),
@@ -422,6 +428,8 @@ fn campaign_body(claim: &ClaimPub, backend: &str, ctx: &[u8; 32], custody_pk: &[
         "trusted_sign_threshold": 1,
         "max_rows": 4,
         "reserved_hex": [],
+        "vk_id": 1,
+        "vk_hash_hex": hex_bytes(vk_hash),
     })
 }
 
@@ -431,6 +439,7 @@ fn claim_body(proof_hex: &str, message: &str, denom: &[u8; 32]) -> Value {
             "proof_hex": proof_hex,
             "message": message,
             "denom_hex": hex_bytes(denom),
+            "vk_id": 1,
         }]
     })
 }
@@ -468,7 +477,7 @@ async fn http_json(
     Ok((status, value))
 }
 
-fn chain_campaign(claim: &ClaimPub, custody_pk: &[u8; 32]) -> Value {
+fn chain_campaign(claim: &ClaimPub, custody_pk: &[u8; 32], vk_hash: &[u8; 32]) -> Value {
     json!({
         "set_epoch_campaign": {
             "campaign": {
@@ -485,6 +494,8 @@ fn chain_campaign(claim: &ClaimPub, custody_pk: &[u8; 32]) -> Value {
                 "max_rows": 4,
                 "allocation_root": b64(&claim.root),
                 "root_id": 0,
+                "vk_id": 1,
+                "vk_hash": b64(vk_hash),
             }
         }
     })
@@ -524,6 +535,8 @@ async fn run() -> anyhow::Result<Report> {
         anyhow::bail!("bind {} is not loopback", cfg.bind);
     }
     let mut report = Report { steps: Vec::new() };
+    eprintln!("registering the halo2 verifying key");
+    let vk_hash = hash_market::ve::vm_verify::install_epoch_host().map_err(|err| anyhow::anyhow!(err))?;
     eprintln!("proving halo2 epoch claim");
     let claim = prove_claim_pub(&cfg.recipient)?;
     if claim.amount != AMOUNT {
@@ -664,7 +677,7 @@ async fn run() -> anyhow::Result<Report> {
     let contract = find_attr(&instantiated, "_contract_address")
         .ok_or_else(|| anyhow::anyhow!("no contract: {}", scrub(&instantiated.to_string())))?;
     eprintln!("contract {contract}");
-    let campaign_msg = chain_campaign(&claim, &custody_pk).to_string();
+    let campaign_msg = chain_campaign(&claim, &custody_pk, &vk_hash).to_string();
     fs::write(cfg.home.join("campaign.json"), &campaign_msg)?;
     let set = broadcast(
         &cfg,
@@ -678,6 +691,13 @@ async fn run() -> anyhow::Result<Report> {
             tx_code(&set),
             scrub(&set.to_string())
         );
+    }
+    let on_chain = smart(&cfg, &contract, &json!({"epoch_campaign": {}}))?;
+    if on_chain["vk_id"].as_u64() != Some(1) {
+        anyhow::bail!("chain vk id");
+    }
+    if on_chain["vk_hash"].as_str() != Some(b64(&vk_hash).as_str()) {
+        anyhow::bail!("chain vk hash");
     }
     let registered = broadcast(
         &cfg,
@@ -715,7 +735,7 @@ async fn run() -> anyhow::Result<Report> {
         &client,
         "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "halo2", &wrong_ctx, &custody_pk)),
+        Some(&campaign_body(&claim, "halo2", &wrong_ctx, &custody_pk, &vk_hash)),
     )
     .await?;
     let (cstatus, cbody) = http_json(
@@ -738,7 +758,7 @@ async fn run() -> anyhow::Result<Report> {
         ),
     );
 
-    let mut wrong_root = campaign_body(&claim, "halo2", &claim.ctx, &custody_pk);
+    let mut wrong_root = campaign_body(&claim, "halo2", &claim.ctx, &custody_pk, &vk_hash);
     let mut flipped = claim.root;
     flipped[0] ^= 0xff;
     wrong_root["allocation_root_hex"] = json!(hex_bytes(&flipped));
@@ -767,7 +787,7 @@ async fn run() -> anyhow::Result<Report> {
         &client,
         "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "halo2", &claim.ctx, &custody_pk)),
+        Some(&campaign_body(&claim, "halo2", &claim.ctx, &custody_pk, &vk_hash)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
@@ -907,7 +927,7 @@ async fn run() -> anyhow::Result<Report> {
         &client,
         "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "halo2", &other_ctx, &custody_pk)),
+        Some(&campaign_body(&claim, "halo2", &other_ctx, &custody_pk, &vk_hash)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;

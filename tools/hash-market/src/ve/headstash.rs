@@ -12,6 +12,7 @@ use ed25519_dalek::SigningKey;
 use headstash_epoch::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, BATCH_SOURCE_ID, Backend, CHAIN_UID,
     Campaign, CampaignParams, DEPTH, IngressError, PeerReceipt, SealedVote, SubmittedClaim,
+    halo2_vk_hash,
 };
 use serde::Deserialize;
 
@@ -96,6 +97,14 @@ pub struct CampaignBody {
     pub max_rows: usize,
     #[serde(default)]
     pub reserved_hex: Vec<String>,
+    /// Halo2 registry id. Required to be non-zero when `backend` is `halo2`.
+    /// Flock may omit it.
+    #[serde(default)]
+    pub vk_id: u64,
+    /// 64 lowercase hex characters. SHA-256 of the whole circuit blob.
+    /// Flock may omit it.
+    #[serde(default)]
+    pub vk_hash_hex: String,
 }
 
 #[derive(Deserialize)]
@@ -138,6 +147,7 @@ struct Halo2ClaimBody {
     proof_hex: String,
     message: String,
     denom_hex: String,
+    vk_id: u64,
     #[serde(default)]
     index: Option<u32>,
     #[serde(default)]
@@ -164,6 +174,17 @@ pub async fn install_campaign(
     Json(body): Json<CampaignBody>,
 ) -> Result<Json<serde_json::Value>, HttpError> {
     let params = params_from(&body)?;
+    if params.backend == Backend::Halo2 {
+        match halo2_vk_hash(params.vk_id) {
+            Some(loaded) if loaded == params.vk_hash => {}
+            Some(_) => {
+                return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
+            }
+            None => {
+                return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk is not loaded"));
+            }
+        }
+    }
     let campaign = Campaign::<DEPTH>::open(params).map_err(error_json)?;
     let mut host = state.headstash.write().await;
     if host
@@ -294,6 +315,7 @@ fn params_from(body: &CampaignBody) -> Result<CampaignParams, HttpError> {
             return Err(error_json_msg(StatusCode::BAD_REQUEST, "duplicate amount"));
         }
     }
+    let (vk_id, vk_hash) = vk_from_body(body, backend)?;
     Ok(CampaignParams {
         backend,
         ctx: decode_32(&body.ctx_hex)?,
@@ -316,7 +338,30 @@ fn params_from(body: &CampaignBody) -> Result<CampaignParams, HttpError> {
             .iter()
             .map(|hex| decode_32(hex))
             .collect::<Result<Vec<_>, _>>()?,
+        vk_id,
+        vk_hash,
     })
+}
+
+fn vk_from_body(body: &CampaignBody, backend: Backend) -> Result<(u64, [u8; 32]), HttpError> {
+    match backend {
+        Backend::Halo2 => {
+            if body.vk_id == 0 {
+                return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk id"));
+            }
+            if body.vk_hash_hex.len() != 64 {
+                return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
+            }
+            Ok((body.vk_id, decode_32(&body.vk_hash_hex)?))
+        }
+        Backend::Flock => {
+            if body.vk_hash_hex.is_empty() {
+                Ok((body.vk_id, [0u8; 32]))
+            } else {
+                Ok((body.vk_id, decode_32(&body.vk_hash_hex)?))
+            }
+        }
+    }
 }
 
 fn claims_from(body: &ClaimsBody) -> Result<Vec<SubmittedClaim>, HttpError> {
@@ -341,6 +386,7 @@ fn claims_from(body: &ClaimsBody) -> Result<Vec<SubmittedClaim>, HttpError> {
             denom: decode_32(&claim.denom_hex)?,
             index: claim.index,
             receipts,
+            vk_id: 0,
         });
     }
     Ok(out)
@@ -368,6 +414,7 @@ fn claims_from_halo2(body: &Halo2ClaimsBody) -> Result<Vec<SubmittedClaim>, Http
             denom: decode_32(&claim.denom_hex)?,
             index: claim.index,
             receipts,
+            vk_id: claim.vk_id,
         });
     }
     Ok(out)
@@ -434,11 +481,12 @@ mod tests {
     fn epoch_claim_halo2_body_rejects_a_signature() {
         let raw = r#"{"claims":[{"proof_hex":"ab","message":"headstash-claim-v1:","denom_hex":"0000000000000000000000000000000000000000000000000000000000000000","signature_hex":"cc","leaf_x_hex":"0000000000000000000000000000000000000000000000000000000000000000"}]}"#;
         assert!(serde_json::from_str::<super::Halo2ClaimsBody>(raw).is_err());
-        let bare = r#"{"claims":[{"proof_hex":"ab","message":"headstash-claim-v1:aa","denom_hex":"0000000000000000000000000000000000000000000000000000000000000000"}]}"#;
+        let bare = r#"{"claims":[{"proof_hex":"ab","message":"headstash-claim-v1:aa","denom_hex":"0000000000000000000000000000000000000000000000000000000000000000","vk_id":1}]}"#;
         let parsed: super::Halo2ClaimsBody = serde_json::from_str(bare).unwrap();
         let items = super::claims_from_halo2(&parsed).unwrap();
         assert!(items[0].signature.is_empty());
         assert_eq!(items[0].leaf_x, [0u8; 32]);
+        assert_eq!(items[0].vk_id, 1);
     }
 
     #[test]

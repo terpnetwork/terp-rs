@@ -5,6 +5,8 @@
 pub mod attestations;
 #[cfg(feature = "headstash")]
 pub mod headstash;
+#[cfg(feature = "headstash")]
+pub mod vm_verify;
 pub mod server;
 pub use crate::client::ve::{SignedVoteExtension, VoteExtensionHandler};
 

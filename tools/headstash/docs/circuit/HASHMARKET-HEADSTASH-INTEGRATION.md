@@ -799,8 +799,9 @@ branch does.
     and the note commitment are witnesses or internal cells. The payment
     address stays in the body. Its 20 bech32 bytes are right-padded with
     zeros to 32 bytes and published as the recipient Poseidon. The lane
-    calls `Proof::verify` for a halo2 campaign and rejects a body that
-    carries a signature or a leaf key. One campaign keeps one backend.
+    selects the campaign `vk_id` and calls the host for a halo2 campaign.
+    It rejects a body that carries a signature or a leaf key. One
+    campaign keeps one backend.
     Flock is a comparison variant; candidate gift/onramp backend (bearer
     link, design TBD). It still checks secp256k1 beside the proof.
     The host sidecar wire is 168 bytes: anchor, context, amount,
@@ -818,44 +819,161 @@ branch does.
     witness is the real set, also suite depth 16. The benchmark is three
     release proves of each witness, with one shared keygen. No
     gift-account code was added.
-\n
 28. A halo2 replay is rejected as a spent nullifier before the amount
     class cap. A second distinct note in a full class is still
     class-full. The class cap on the chain campaign stays 1.
 
-29. The hash-market process builds the halo2 verifying key once before
-    it listens. Claim checks reuse that key. A release test measured
-    one warm verify at 0.949s. The key build in that run was 47.409s
-    and is not on the claim path.
+29. Superseded by the registry section below. A process-wide `OnceLock`
+    still caches the epoch `VerifyingKey` build for the prover self-check.
+    It is not the claim verifier. A release test measured one native warm
+    verify at 0.949s after a 47.409s key build. Those numbers are the
+    native self-check, not the host method.
 
-## Sidecar verifier POST (wB:p9)
+## Sidecar verifier (embedded CosmWasm VM)
 
-Coordinate point for the embedded CosmWasm VM verifier with multiple verifying keys. The host sidecar does not call `Proof::verify` directly once that change lands. It POSTs this body and trusts only a 200 from the guest. Field names are frozen for this branch.
+The string `proof_instance_verification` is not a symbol in this fork.
+The host method is `Api::proof_instance_verify`.
 
-`POST /ve/headstash/verify`
+- Trait: `crates/cosmwasm/packages/std/src/traits.rs` (`proof_instance_verify`,
+  `zkid: u64`, proof bytes, public-input bytes). Default body is
+  `unimplemented!()`. Fork revision `c156aef60`
+  (`https://github.com/permissionlessweb/cosmwasm`).
+- Guest import name: `env.proof_instance_verify`
+  (`packages/std/src/exports/imports.rs`, wired from
+  `packages/vm/src/instance.rs`).
+- Host function: `do_proof_instance_verify` in
+  `crates/cosmwasm/packages/vm/src/imports.rs`. The wasmer import passes
+  `zkid` as `u32`. Return is `0` when the proof verifies, `1` when the
+  cryptography rejects it, and an error when the circuit is missing or
+  the bytes are not a proof.
+- `x/wasm/wasmvm/ZK.md` still names `verify_halo2_proof`. That note is
+  not the implementation. `libwasmvm` does not export this method.
+
+hash-market links this same `cosmwasm-vm` (feature `zk`, not `bn254`) and
+calls `do_proof_instance_verify`. The epoch circuit is Pasta, footer
+curve id 0. The campaign `vk_id` is the `zkid` argument. It is not the
+curve id.
+
+The sidecar keeps a registry of verifying keys, keyed by `vk_id`. A key
+is deserialized once when it is registered (process start for the epoch
+blob, id 1). A claim only selects a cached `AnyVerifyingKey`. It does
+not build a key and it does not read a blob. The host resolves `zkid`
+through `WasmQuery::CircuitInfo` to a 72-byte circuit key, then the
+sidecar `CircuitLoader` returns the cached key. A cache miss does not
+cold-load another blob. An unknown id fails closed.
+
+cw-headstash stores `vk_id` (`u64`) and `vk_hash` (32 bytes) on
+`EpochCampaignParams`. `vk_hash` is SHA-256 of the whole circuit blob
+(params, constraint system, verifying key, and the 80-byte footer). It
+is not the footer's `vk_checksum`, which covers only the constraint
+system and verifying key. Query `{"epoch_campaign":{}}` returns the
+stored params. The campaign POST repeats `vk_id` and `vk_hash_hex`. The
+sidecar checks that hash when the campaign is installed. A claim does
+not carry the hash.
+
+The native `Proof::verify` path in decision 26 remains the prover
+self-check only. Gas for the host call is the fork schedule
+`halo2_proof_instance_verify_cost` (base `2_700_000_000`, plus
+`200_000_000` per unit). The sidecar refills that meter before each
+claim. The meter is not a chain block.
+
+### POST contract
+
+Routes stay under `/ve`. There is no `/ve/headstash/verify` route.
+These bodies are what the browser prover (`websites/dao-dao-ui`) and
+the Docker harness code against. Unknown JSON fields are rejected.
+
+`POST /ve/headstash/campaign`
+
+Halo2 requires `vk_id` (JSON number, not zero) and `vk_hash_hex`
+(64 lowercase hex characters, SHA-256 of the whole blob). Flock may
+omit both. Omitted means id 0 and a zero hash.
 
 ```json
 {
   "backend": "halo2",
-  "vk_id": "hex-sha256-of-vk-bytes",
-  "proof_b64": "base64-proof",
-  "public": {
-    "ctx_hex": "64-hex",
-    "nullifier_hex": "64-hex",
-    "allocation_root_hex": "64-hex",
-    "amount": "15",
-    "recipient": "terp1..."
-  }
+  "ctx_hex": "<64 hex>",
+  "allocation_root_hex": "<64 hex>",
+  "bech32_hrp": "terp",
+  "denom_hex": "<64 hex>",
+  "proof_len": 4800,
+  "cutoff_height": 50,
+  "amounts": [{"amount": 15, "cap": 1}],
+  "trusted_hex": ["<64 hex>"],
+  "trusted_verify_threshold": 1,
+  "trusted_sign_threshold": 1,
+  "max_rows": 4,
+  "reserved_hex": [],
+  "vk_id": 1,
+  "vk_hash_hex": "<64 lowercase hex>"
 }
 ```
 
-| Status | Meaning |
-|---|---|
-| 200 `{"ok":true,"vk_id":"..."}` | Proof opened under that VK. The sidecar may receipt and seal. |
-| 400 | Unknown `vk_id` or `backend` is not the campaign backend. |
-| 422 | Proof rejected. Do not receipt. |
+| Status | Body | Meaning |
+|---|---|---|
+| 200 | `{"status":"ok"}` | Campaign installed. Halo2 hash matched a loaded key. |
+| 400 | `{"error":"vk is not loaded"}` | That `vk_id` is not in the registry. |
+| 400 | `{"error":"vk hash"}` | Hash does not match the loaded blob. |
+| 400 | `{"error":"vk id"}` | Halo2 id is 0. |
 
-`vk_id` absent on the campaign means the single epoch VK already built at process start. A campaign that sets `vk_id` must match one key loaded in the guest. The chain sudo still does not re-verify. Quorum and payout stay on the accepted root.
+`POST /ve/headstash/claims` when the campaign backend is `halo2`.
+One object in `claims`. `proof_hex` is the hex-encoded proof. `message`
+is the canonical body
+`headstash-claim-v1:{ctx_hex}:{root_hex}:{nullifier_hex}:{destination}:{amount}`.
+`denom_hex` is 64 hex characters. `vk_id` is the campaign's id, as a
+JSON number. Optional `index` and `receipts` stay. Do not send a
+signature, a leaf, the verifying key, or `vk_hash_hex`.
+
+```json
+{
+  "claims": [{
+    "proof_hex": "<hex>",
+    "message": "headstash-claim-v1:<64 hex>:<64 hex>:<64 hex>:<bech32>:<amount>",
+    "denom_hex": "<64 hex>",
+    "vk_id": 1
+  }]
+}
+```
+
+The sidecar derives the statement from `message` and passes the host
+nine 32-byte little-endian field limbs: the eight public rows plus the
+trailing zero the prover already hashes. Callers do not send those
+limbs. The 168-byte lane wire stays inside the sidecar.
+
+| Status | Body | Meaning |
+|---|---|---|
+| 200 | `{"accepted":[0],"rejected":[]}` | Host returned 0 under that `vk_id`. |
+| 200 | `rejected[].error` = `verifying key does not match the campaign` | `vk_id` is not the campaign id. The host is not called. |
+| 200 | `rejected[].error` = `proof did not verify` | Host returned 1, or the proof is malformed. |
+| 400 | `{"error":"claim body"}` | Missing `vk_id`, or a field the halo2 body does not have. |
+
+Flock claims are unchanged: `proof_hex`, `message`, `signature_hex`,
+`leaf_x_hex`, `denom_hex`, and optional `index` and `receipts`. No
+`vk_id`.
+
+`POST /ve/headstash/seal` is unchanged (`{"height": <number>}`).
+
+```mermaid
+flowchart TD
+  chain["cw-headstash EpochCampaignParams vk_id and vk_hash"]
+  camp["POST /ve/headstash/campaign"]
+  reg["registry: deserialize once, cache AnyVerifyingKey"]
+  post["POST /ve/headstash/claims proof_hex message denom_hex vk_id"]
+  lane["lane: vk_id must equal the campaign"]
+  limbs["nine by 32 host limbs from message"]
+  info["CircuitInfo returns the 72-byte circuit key"]
+  loader["CircuitLoader returns the cached key"]
+  host["do_proof_instance_verify curve id 0"]
+
+  chain --> camp
+  camp --> reg
+  post --> lane
+  lane --> limbs
+  limbs --> host
+  reg --> info
+  info --> loader
+  loader --> host
+```
 
 ## FAILURE-MODES
 

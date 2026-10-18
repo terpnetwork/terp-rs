@@ -242,11 +242,11 @@ if [ "${SKIP_E2E:-0}" = 1 ]; then
   exit 0
 fi
 cd "$WT/tools/hash-market"
-# The committed lock already contains the zk-headstash graph. Do not copy
-# the pre-zk additive lock over it: --locked would then refuse to build.
+# The lock contains the zk-headstash graph and the embedded cosmwasm-vm
+# resolve. Do not restore an older snapshot over it.
 LOCK_SHA="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
 case "$LOCK_SHA" in
-  8d5f3ee3c10f7ad0428a131bdc58b3fb11f0e8515541dd92241a436804570064) ;;
+  02564547e716b854d7049757149633b01ec8db3805aab608e3a5c7b775cb4394) ;;
   *) echo "refusing hash-market lock ${LOCK_SHA}" >&2; exit 1 ;;
 esac
 HALO2_LOCK="/tmp/hash-market-Cargo.lock.halo2"
