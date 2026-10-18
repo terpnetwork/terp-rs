@@ -116,9 +116,18 @@ feature it returns an error. With `zk-api` it calls
    release wasm is not built with `cfg(test)`). test-press corridor bins
    still default that lab flag for other products. Deploy of this wasm
    should not send `SetBridgeCfg` with `mock_verify`. The embedded host
-   in `vm_verify.rs` is built on `cosmwasm_vm::testing::{MockApi,
-   MockStorage, MockQuerier}`. Those types are the in-process VM shell.
-   The accept/reject decision is `do_proof_instance_verify`.
+   in `vm_verify.rs` is no longer the testing shell. `HostApi` converts
+   `terp` bech32 addresses and does not accept or reject a proof.
+   `MemoryStorage` is an in-memory map. The querier answers
+   `WasmQuery::CircuitInfo` from the process registry and refuses
+   `WasmQuery::Circuit` and every other query, so a cache miss cannot
+   cold-load a blob. `do_proof_instance_verify` still asks for
+   CircuitInfo first and still makes the accept or reject decision.
+   The vm crate has no `testing` feature, and none was added.
+   `cargo test -p hash-market --features headstash --offline --locked
+   --lib ve::vm_verify` passed 4 tests: the two-key select and reject,
+   the terp address round trip, the storage scan, and the querier
+   refusal.
 
 7. **Closed.** `headstash-failure-modes` calls `sweep_unclaimed` on an
    in-memory escrow. The caller must be the owner, a campaign must be
@@ -143,14 +152,18 @@ feature it returns an error. With `zk-api` it calls
    prefix, with `[hex]`. Scrubbed step text therefore redacts
    transaction hashes of that length. Shorter hex stays.
 
-10. **Plan only, on `wip/headstash-halo2-base-removal`.** Commit
-    `2908d6b54d9dbfe5c488c1160aaf12820592c65b` is
-    `tools/headstash/docs/circuit/HALO2-BASE-REMOVAL.md` on that branch.
-    Epoch-claim still has the halo2-base imports in `secp256k1_chip.rs`
-    and `suite.rs`. The removal itself is wasm-check `eafaf8b` (in-crate
-    `secp_host_field`, `num-bigint`, `k256` kept). Do not cherry-pick
-    `bf194dc`. After `eafaf8b` is cherry-picked here, rerun the loopback
-    e2e (17/17) and `two_registered_keys_select_and_reject`.
+10. **Closed on this branch by `e8b9230`, taken from wasm-check
+    `eafaf8b`.** Host Fp and Fq live in `secp_host_field`. `host-crypto`
+    stayed `secp256k1`. `k256` was not taken, and `bf194dc` was not
+    taken. The cargo tree in both workspaces is clear of `halo2-base`
+    and `halo2-axiom`. The PLONK constraints were intended to stay the
+    same. `epoch_vk_hash` on this branch measures prefix `9f809a09`,
+    which is not the wasm-check figure `160bf6e0`. This branch hashes
+    the params, the constraint system, the verifying key, and the
+    footer together. wasm-check does not define `epoch_vk_hash`. The
+    plan branch `wip/headstash-halo2-base-removal` at `2908d6b` is
+    superseded and is left where it is. The loopback e2e has not been
+    rerun on this port yet.
 
 11. **`tests/itl_frost_notes_live.rs` writes a regtest config that listens
     on `0.0.0.0` and sets cookie auth off.** The epoch scripts do not
@@ -166,6 +179,5 @@ Store the sweep wasm as a new code id when the target chain should
 sweep, and point the campaign `vk_hash` at the sidecar's
 `install_epoch_host` output. Gaps 1 and 2 are the design decisions
 still open: chain-side vk enforcement at payout, and authentication
-on the three `/ve/headstash` routes. The halo2-base port is the plan
-on `wip/headstash-halo2-base-removal` (`2908d6b`), not a change on
-this branch.
+on the three `/ve/headstash` routes. The halo2-base port is `e8b9230`
+on this branch. Its measured `epoch_vk_hash` prefix is `9f809a09`.
