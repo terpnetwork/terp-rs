@@ -267,7 +267,16 @@ pub async fn seal(
             "no custody key",
         ));
     };
-    let sealed = campaign.seal(body.height, signer);
+    let mut sealed = campaign.seal(body.height, signer);
+    if std::env::var("HEADSTASH_LIE_ROOT").ok().as_deref() == Some("1") {
+        sealed.batch_hash[0] ^= 0x5a;
+        sealed.attested = headstash_epoch::attested_root(&sealed.batch_hash);
+        sealed.custody_signature = ed25519_dalek::Signer::sign(
+            signer,
+            &headstash_epoch::custody_message(&sealed.batch_hash),
+        )
+        .to_bytes();
+    }
     let json = vote_json(&sealed);
     let algo = sealed.algo.clone();
     let root = sealed.attested.to_vec();

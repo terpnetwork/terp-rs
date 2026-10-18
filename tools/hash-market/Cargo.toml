@@ -51,6 +51,11 @@ name = "headstash-failure-modes"
 path = "src/bin/headstash-failure-modes.rs"
 
 [[bin]]
+name = "headstash-lane"
+path = "src/bin/headstash-lane.rs"
+required-features = ["headstash"]
+
+[[bin]]
 name = "headstash-epoch-e2e"
 path = "src/bin/headstash-epoch-e2e.rs"
 required-features = ["headstash"]
