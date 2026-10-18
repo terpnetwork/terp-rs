@@ -3,7 +3,8 @@
 //! Proves one canonical-body claim, serves the hash-market router on
 //! 127.0.0.1, and pays that claim through SetEpochCampaign,
 //! StageEpochBatch, and the hashmerchant sudo. The custody key stays
-//! in this process. The note is one leaf on a dummy 32-level path.
+//! in this process. The paid note is leaf 0 of a 32,769-note
+//! Poseidon-v1 suite tree (suite depth 16) on that leaf's real path.
 
 use std::fs;
 use std::io::Read;

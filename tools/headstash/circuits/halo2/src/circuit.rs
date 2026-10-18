@@ -969,9 +969,131 @@ pub fn verify_epoch_statement(
         .map_err(|_| EpochVerifyError::Proof)
 }
 
+
+/// Leaf 0 of a 32,769-note Poseidon-v1 suite tree.
+///
+/// Suite depth is 16. The circuit path is that real sibling path,
+/// padded with zero siblings to [`MERKLE_DEPTH_ORCHARD`]. The anchor
+/// is the padded root. The payment address is not part of the leaf.
+#[cfg(all(feature = "host-crypto", feature = "interface"))]
+fn depth16_member(
+    recipient: [u8; 32],
+    amount: u64,
+    rng: &mut rand::rngs::ThreadRng,
+) -> Result<(Note, crate::tree::MerklePath, Anchor), String> {
+    use crate::note::RandomSeed;
+    use crate::suite::suite::{
+        poseidon_distro_leaf_from_note, HeadstashBitwiseInstance, HeadstashCircuitSuite,
+        MerkleTestDataBuilder, PartialClaimNote,
+    };
+    use cw_orch::mock::Mock;
+
+    const SUITE_NOTES: usize = 32_769;
+    const MEMBER: usize = 0;
+
+    let started = std::time::Instant::now();
+    let suite = HeadstashCircuitSuite::new(Mock::new("epoch-claim"));
+    let mut leaves = suite.generate_test_leaves(SUITE_NOTES);
+    if leaves.len() != SUITE_NOTES {
+        return Err("suite notes".into());
+    }
+    {
+        let member = &mut leaves[MEMBER];
+        member.raw_v = amount;
+        member.raw_token = String::from("uterp");
+        member.raw_fdi = 1;
+        member.v = pallas::Base::from(amount);
+        member.fdi = pallas::Base::from(1u64);
+        let nd_bytes =
+            <HeadstashCircuitSuite<Mock> as HeadstashBitwiseInstance>::derive_nd("uterp");
+        let nd = pallas::Base::from_repr(nd_bytes);
+        if !bool::from(nd.is_some()) {
+            return Err("nd".into());
+        }
+        member.nd = nd.unwrap();
+    }
+
+    let mut tries = 0u32;
+    let (note, leaf_fp) = loop {
+        tries += 1;
+        if tries > 64 {
+            return Err("member note".into());
+        }
+        let rho = Rho::from_nf_old(Nullifier::dummy(rng));
+        let trial = RandomSeed::from_bytes(leaves[MEMBER].rseed, &rho);
+        if !bool::from(trial.is_some()) {
+            rand::Rng::fill_bytes(rng, &mut leaves[MEMBER].rseed);
+            continue;
+        }
+        let rseed = trial.unwrap();
+        let mut partial = PartialClaimNote::from_test_leaf(&leaves[MEMBER]);
+        partial.recipient = recipient;
+        match partial.to_note(rho, rseed) {
+            Ok(note) => {
+                if note.value().inner() != amount {
+                    return Err("amount".into());
+                }
+                let leaf_fp = poseidon_distro_leaf_from_note(&note);
+                let expected = suite.compute_leaf_from_data_poseidon_v1(&leaves[MEMBER]);
+                if leaf_fp != expected {
+                    return Err("claim leaf is not the suite member".into());
+                }
+                break (note, leaf_fp);
+            }
+            Err(_) => {
+                rand::Rng::fill_bytes(rng, &mut leaves[MEMBER].rseed);
+            }
+        }
+    };
+
+    let leaf_hashes: Vec<_> = leaves
+        .iter()
+        .map(|leaf| suite.compute_leaf_from_data_poseidon_v1(leaf))
+        .collect();
+    if leaf_hashes[MEMBER] != leaf_fp {
+        return Err("tree leaf".into());
+    }
+    let tree = suite.generate_full_merkle_tree_poseidon_v1(leaf_hashes);
+    if tree.depth != 16 {
+        return Err(format!("suite depth {}", tree.depth));
+    }
+    let auth = suite.compute_merkle_path(&tree, MEMBER);
+    if auth.siblings.len() != tree.depth || auth.siblings[0] == pallas::Base::ZERO {
+        return Err("suite path".into());
+    }
+    if !suite.verify_merkle_path_poseidon_v1(&leaf_fp, &auth, &tree.root()) {
+        return Err("suite inclusion".into());
+    }
+    let (path, anchor) = auth.to_circuit_path_and_root_poseidon_v1(leaf_fp);
+    if path.root_from_leaf(leaf_fp).to_bytes() != anchor.to_bytes() {
+        return Err("circuit anchor".into());
+    }
+    if anchor.to_bytes() == tree.root().to_repr() {
+        return Err("anchor is the shallow suite root".into());
+    }
+    std::eprintln!(
+        "epoch-claim tree notes {} suite_depth {} index {} tree_secs {:.3}",
+        SUITE_NOTES,
+        tree.depth,
+        MEMBER,
+        started.elapsed().as_secs_f64()
+    );
+    Ok((note, path, anchor))
+}
+
+#[cfg(all(feature = "host-crypto", not(feature = "interface")))]
+fn depth16_member(
+    _recipient: [u8; 32],
+    _amount: u64,
+    _rng: &mut rand::rngs::ThreadRng,
+) -> Result<(Note, crate::tree::MerklePath, Anchor), String> {
+    Err("epoch claim tree needs the interface feature".into())
+}
+
 /// Two proofs of one epoch claim. The second transcript is a fresh
-/// digest of the same nullifier. The note is one leaf on a dummy
-/// 32-level path. Circuit depth stays [`MERKLE_DEPTH_ORCHARD`].
+/// digest of the same nullifier. The note is leaf 0 of a 32,769-note
+/// Poseidon-v1 suite tree (suite depth 16). Circuit depth stays
+/// [`MERKLE_DEPTH_ORCHARD`].
 #[cfg(feature = "host-crypto")]
 #[derive(Clone, Debug)]
 pub struct EpochClaimBundle {
@@ -1000,14 +1122,8 @@ pub fn prove_epoch_claim(
 ) -> Result<EpochClaimBundle, String> {
     use std::time::Instant;
 
-    use crate::circuit::gadget::secp256k1_chip::{
-        secp_coord_be_to_pallas_base, secp_fp_from_coord_be,
-    };
-    use crate::claim_auth::{canonical_claim_body, claim_nk_scoped, claim_rseed_com};
-    use crate::distro_poseidon::poseidon_distro_leaf;
-    use crate::keys::EligibleSk;
-    use crate::tree::MerklePath;
-    use crate::value::HeadstashValue;
+    use crate::circuit::gadget::secp256k1_chip::secp_fp_from_coord_be;
+    use crate::claim_auth::{canonical_claim_body, claim_nk_scoped};
     use halo2_proofs::circuit::Value;
 
     if destination.is_empty() || destination.len() > 128 || destination.contains(':') {
@@ -1018,11 +1134,8 @@ pub fn prove_epoch_claim(
     }
 
     let mut rng = crate::os_rng();
-    let hv = HeadstashValue::from_raw(amount, "uterp", 1)?;
-    let (value, denom, fdi) = hv.into_parts();
-    let esk = EligibleSk::random(&mut rng);
-    let rho = Rho::from_nf_old(Nullifier::dummy(&mut rng));
-    let note = Note::new(denom, value, fdi, RecpAddr::new(recipient), esk, rho, &mut rng);
+    let (note, path, anchor) = depth16_member(recipient, amount, &mut rng)?;
+    let esk = note.elig_sk();
     let (epkx_be, epky_be) = esk.epk().xy();
     let epkx = secp_fp_from_coord_be(&epkx_be);
     let epky = secp_fp_from_coord_be(&epky_be);
@@ -1030,16 +1143,6 @@ pub fn prove_epoch_claim(
     let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&ctx);
     let nk = NullifierDerivingKey::from_prf(claim_nk_scoped(bound.rseed_lo, bound.rseed_hi, &ctx));
     let nf = note.nullifier_for_ctx(&ctx);
-    let path = MerklePath::dummy(&mut rng);
-    let distro_leaf = poseidon_distro_leaf(
-        secp_coord_be_to_pallas_base(&epkx_be),
-        secp_coord_be_to_pallas_base(&epky_be),
-        note.nd().to_fp(),
-        pallas::Base::from(note.value().inner()),
-        pallas::Base::from(note.fdi()),
-        claim_rseed_com(bound.rseed_lo, bound.rseed_hi),
-    );
-    let anchor = path.root_from_leaf(distro_leaf);
     let mut circuit = Circuit {
         path: Value::known(path.auth_path()),
         pos: Value::known(path.position()),

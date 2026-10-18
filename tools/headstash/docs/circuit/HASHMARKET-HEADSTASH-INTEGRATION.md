@@ -810,12 +810,14 @@ branch does.
     the leaf and the note commitment. `process_headstash` hashes that
     prefix, so the retained on-chain checker is not this epoch verifier.
 
-27. The loopback halo2 payout is one note on a dummy 32-level path.
-    The circuit depth stays 32. A 32,769-note witness is suite depth
-    16, and the 51,807-note witness is the real set, also suite depth
-    16. Both are padded to 32 levels. The benchmark is three release
-    proves of each witness, with one shared keygen. No gift-account
-    code was added.
+27. The loopback halo2 payout is leaf 0 of a 32,769-note Poseidon-v1
+    suite tree. That tree is suite depth 16. The auth path is the real
+    sibling path, padded with zero siblings to the circuit depth of 32.
+    The published anchor is that padded root. The member's amount is
+    15 uterp. The payment address is not part of the leaf. A 51,807-note
+    witness is the real set, also suite depth 16. The benchmark is three
+    release proves of each witness, with one shared keygen. No
+    gift-account code was added.
 \n
 28. A halo2 replay is rejected as a spent nullifier before the amount
     class cap. A second distinct note in a full class is still
