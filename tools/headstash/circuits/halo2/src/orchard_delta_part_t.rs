@@ -74,8 +74,14 @@ fn valid_claim_pair<R: Rng>(mut rng: R) -> (Circuit, Instance) {
     let recp = spent_note.recipient();
 
     let bound = spent_note.hiding_binding();
-    let nk = bound.nk;
-    let nf = spent_note.nullifier();
+    let ctx = [0x44u8; 32];
+    let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&ctx);
+    let nk = crate::keys::NullifierDerivingKey::from_prf(crate::claim_auth::claim_nk_scoped(
+        bound.rseed_lo,
+        bound.rseed_hi,
+        &ctx,
+    ));
+    let nf = spent_note.nullifier_for_ctx(&ctx);
     let cmx = spent_note.commitment().into();
     let nd = spent_note.nd();
     let v = spent_note.value();
@@ -99,6 +105,8 @@ fn valid_claim_pair<R: Rng>(mut rng: R) -> (Circuit, Instance) {
         path: Value::known(path.auth_path()),
         pos: Value::known(path.position()),
         nk: Value::known(nk),
+        ctx_lo: Value::known(ctx_lo),
+        ctx_hi: Value::known(ctx_hi),
         rseed_lo: Value::known(bound.rseed_lo),
         rseed_hi: Value::known(bound.rseed_hi),
         nd: Value::known(spent_note.nd().to_fp()),
@@ -122,6 +130,8 @@ fn valid_claim_pair<R: Rng>(mut rng: R) -> (Circuit, Instance) {
         recp,
         nf,
         cmx,
+        ctx,
+        destination: "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k".into(),
         e: [0u8; 32],
     };
     circuit.attach_personal_sign(&mut instance, &esk.secret_bytes());
@@ -172,7 +182,7 @@ fn h1_valid_claim() {
     let (circuit, instance) = valid_claim_pair(os_rng());
     let public = public_columns(&instance);
     let prover = MockProver::run(K, &circuit, public).expect("H1: MockProver must construct");
-    assert_eq!(instance.to_bytes().len(), 200, "H1: public instance wire size");
+    assert_eq!(instance.to_bytes().len(), 168, "H1: public instance wire size");
     assert_eq!(
         prover.verify(),
         Ok(()),
@@ -354,11 +364,11 @@ fn h6_claim_output_schema() {
 #[test]
 fn h12_instance_nd_bound_to_witness() {
     let (circuit, mut instance) = valid_claim_pair(os_rng());
-    instance.nd = NoteDenom::new_for_proof("not-the-witness-denom");
+    instance.ctx[0] ^= 0x01;
     let prover = MockProver::run(K, &circuit, public_columns(&instance)).expect("MockProver");
     assert!(
         prover.verify().is_err(),
-        "mutated public nd must fail MockProver after constrain_instance(HS_ND)"
+        "mutated public context must fail MockProver"
     );
 }
 

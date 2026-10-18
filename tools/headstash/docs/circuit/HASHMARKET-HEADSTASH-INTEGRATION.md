@@ -42,6 +42,9 @@ The creator parameter `backend` is `flock` or `halo2`. A campaign has
 exactly one. Ingress rejects a proof whose backend byte disagrees with
 that parameter before it verifies anything.
 
+Halo2 is the airdrop prover. Flock is a comparison variant, use case TBD
+(studying Zakura).
+
 The two backends stay available as two example campaigns, so a benchmark
 can compare them on the same note count. Each example has its own
 contract, its own `allocation_root`, and its own `ctx`. A campaign never
@@ -785,3 +788,24 @@ branch does.
     that amount to a `u32` class cap. `AmountCap.amount` and the
     cw-headstash payout row were already `u64`. This does not make
     the Flock signature check unlinkable.
+
+26. Halo2 is the epoch prover. The public instance is the canonical
+    body. Context is two public limbs. The nullifier key is
+    Poseidon(`terp-hs-nk-v1`, Poseidon(`DST_HKDF`, rseed),
+    Poseidon(`terp-hs-nk-ctx-v1`, ctx)). ECDSA runs inside the proof.
+    The public challenge is the reduced EIP-191 keccak of the canonical
+    body. The circuit has no keccak gadget, so the sidecar checks that
+    public word by equality. `(r, s)`, the eligible point, `key_com`,
+    and the note commitment are witnesses or internal cells. The payment
+    address stays in the body. Its 20 bech32 bytes are right-padded with
+    zeros to 32 bytes and published as the recipient Poseidon. The lane
+    calls `Proof::verify` for a halo2 campaign and rejects a body that
+    carries a signature or a leaf key. One campaign keeps one backend.
+    Flock is a comparison variant, use case TBD (studying Zakura). It
+    still checks secp256k1 beside the proof.
+    The host sidecar wire is 168 bytes: anchor, context, amount,
+    nullifier, recipient, and challenge. The leaf and the note
+    commitment are not on that wire. The guest module still serializes
+    200 bytes. Its first 168 bytes are the older prefix, which includes
+    the leaf and the note commitment. `process_headstash` hashes that
+    prefix, so the retained on-chain checker is not this epoch verifier.

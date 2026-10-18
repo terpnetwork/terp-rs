@@ -6,6 +6,7 @@ use std::{
     string::ToString,
 };
 
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use cosmwasm_std::Checksum;
@@ -75,12 +76,14 @@ pub use crate::Proof;
 pub(crate) const K: u32 = 19;
 
 // Absolute offsets for public inputs.
+// Slot 1 was the denom and slot 5 was the note commitment. Both stay
+// witnesses. The sidecar statement is the canonical claim body.
 const ANCHOR: usize = 0;
-const HS_ND: usize = 1;
+const CTX_LO: usize = 1;
 const HS_V: usize = 2;
 const RECP: usize = 3;
 const NF_OLD: usize = 4;
-const CMX: usize = 5;
+const CTX_HI: usize = 5;
 /// Low and high 128-bit halves of the public EIP-191 challenge scalar.
 const E_LO: usize = 6;
 const E_HI: usize = 7;
@@ -116,6 +119,9 @@ pub struct Circuit {
     pub(crate) epkx: Value<Secp256k1Fp>,
     pub(crate) epky: Value<Secp256k1Fp>,
     pub(crate) nk: Value<NullifierDerivingKey>,
+    /// Campaign context limbs. Public. Not the eligible key.
+    pub(crate) ctx_lo: Value<pallas::Base>,
+    pub(crate) ctx_hi: Value<pallas::Base>,
     /// Low and high halves of the note's one-time 32-byte random string.
     pub(crate) rseed_lo: Value<pallas::Base>,
     pub(crate) rseed_hi: Value<pallas::Base>,
@@ -204,8 +210,16 @@ impl Circuit {
         let recp = spend.note.recipient();
         let nd = spend.note.nd();
 
-        // nk is the DST_HKDF PRF of the note string, not a free witness.
-        let nk = bound.nk;
+        // Legacy constructor has no campaign. The scoped key of the zero
+        // context is what synthesize checks. A real epoch claim overwrites
+        // both the limbs and this key before proving.
+        let ctx = [0u8; 32];
+        let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&ctx);
+        let nk = crate::keys::NullifierDerivingKey::from_prf(crate::claim_auth::claim_nk_scoped(
+            bound.rseed_lo,
+            bound.rseed_hi,
+            &ctx,
+        ));
 
         Circuit {
             path: Value::known(spend.merkle_path.auth_path()),
@@ -216,6 +230,8 @@ impl Circuit {
             rcm_old: Value::known(rcm_old),
             cm_old: Value::known(spend.note.commitment()),
             nk: Value::known(nk),
+            ctx_lo: Value::known(ctx_lo),
+            ctx_hi: Value::known(ctx_hi),
             rseed_lo: Value::known(bound.rseed_lo),
             rseed_hi: Value::known(bound.rseed_hi),
             sig_e: Value::unknown(),
@@ -229,18 +245,28 @@ impl Circuit {
         }
     }
 
-    /// Fill `(e, r, s)` from a personal_sign of the instance prefix.
+    /// Fill `(e, r, s)` from a personal_sign of the canonical claim body.
     ///
-    /// The signed body is `keccak256` of the 168-byte instance with the
-    /// challenge bytes still zero. `instance.e` becomes the reduced scalar.
+    /// The body is `headstash-claim-v1:{ctx}:{root}:{nullifier}:{destination}:{amount}`.
+    /// `instance.e` becomes the reduced EIP-191 keccak of that string.
+    /// The circuit checks the signature under the note's key. It does not
+    /// hash the string again: the public `e` is that challenge.
     pub fn attach_personal_sign(&mut self, instance: &mut Instance, secret_be: &[u8; 32]) {
-        use crate::claim_auth::{keccak256, sign_personal_claim};
+        use crate::claim_auth::{canonical_claim_body, ctx_limbs, sign_canonical_body};
         use crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be;
 
-        let prefix = instance.to_bytes();
-        let body = keccak256(&prefix[..168]);
-        let (e_be, r_be, s_be) = sign_personal_claim(secret_be, &body);
+        let body = canonical_claim_body(
+            &instance.ctx,
+            &instance.anchor.to_bytes(),
+            &instance.nf.to_bytes(),
+            &instance.destination,
+            instance.v.inner(),
+        );
+        let (e_be, r_be, s_be) = sign_canonical_body(secret_be, &body);
         instance.e = e_be;
+        let (ctx_lo, ctx_hi) = ctx_limbs(&instance.ctx);
+        self.ctx_lo = Value::known(ctx_lo);
+        self.ctx_hi = Value::known(ctx_hi);
         self.sig_e = Value::known(secp_fq_from_secret_be(&e_be));
         self.sig_r = Value::known(secp_fq_from_secret_be(&r_be));
         self.sig_s = Value::known(secp_fq_from_secret_be(&s_be));
@@ -441,10 +467,8 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             (nd, v, fdi, recp, psi_old, rho_old, nk)
         };
 
-        // Public instances must match the same cells used in Poseidon note + distro leaf.
-        // Distro tree is public (unlike Orchard Sinsemilla cmx-in-tree); binding nd/v/recp
-        // here is what makes a clearnet claim mint the allocation the proof opened.
-        layouter.constrain_instance(nd.cell(), config.primary, HS_ND)?;
+        // The denom stays a leaf witness. The public statement publishes the
+        // campaign context, the amount, and the payment address.
         layouter.constrain_instance(recp.cell(), config.primary, RECP)?;
 
         // --- Note commit + nullifier FIRST (Poseidon-v1 cmx + lift), before distro path.
@@ -480,6 +504,18 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             config.advices[0],
             self.rseed_hi,
         )?;
+        let ctx_lo = assign_free_advice(
+            layouter.namespace(|| "witness ctx lo"),
+            config.advices[0],
+            self.ctx_lo,
+        )?;
+        let ctx_hi = assign_free_advice(
+            layouter.namespace(|| "witness ctx hi"),
+            config.advices[0],
+            self.ctx_hi,
+        )?;
+        layouter.constrain_instance(ctx_lo.cell(), config.primary, CTX_LO)?;
+        layouter.constrain_instance(ctx_hi.cell(), config.primary, CTX_HI)?;
         // rho and psi are the note-random halves. rcm is their sum.
         // nk is a PRF of that string. rseed_com hides the halves in the leaf.
         let rseed_com = note_poseidon_gadget::derive_rseed_commitment(
@@ -496,6 +532,8 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             &config.add_chip(),
             rseed_lo,
             rseed_hi,
+            ctx_lo,
+            ctx_hi,
             &rho_old,
             &psi_old,
             &rcm_base,
@@ -530,8 +568,8 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             rcm_base,
         )?;
 
-        // Public CMX = Poseidon cmx (not extract_p of the lift).
-        layouter.constrain_instance(cmx_cell.cell(), config.primary, CMX)?;
+        // The note commitment stays inside DeriveNullifier. It is not a public word.
+        let _cmx_private = cmx_cell;
 
         let _nf_old = {
             let nf_old = gadget::derive_nullifier(
@@ -715,9 +753,33 @@ pub struct Instance {
     pub(crate) v: NoteValue,
     pub(crate) nf: Nullifier,
     pub(crate) recp: RecpAddr,
+    /// Note commitment. Kept for the retained on-chain mapping. It is not a
+    /// public instance word and it is not on the sidecar wire.
     pub(crate) cmx: ExtractedNoteCommitment,
-    /// Reduced EIP-191 challenge, 32 big-endian bytes. Not part of the signed prefix.
+    /// Campaign context, 32 bytes. Public.
+    pub ctx: [u8; 32],
+    /// Payment address in the canonical body. Public. Not the eligible key.
+    pub destination: alloc::string::String,
+    /// Reduced EIP-191 challenge of the canonical body, 32 big-endian bytes.
     pub e: [u8; 32],
+}
+
+/// What a halo2 sidecar is allowed to know about one claim.
+#[derive(Clone, Debug)]
+pub struct EpochStatement {
+    pub ctx: [u8; 32],
+    pub root: [u8; 32],
+    pub nullifier: [u8; 32],
+    pub destination: String,
+    pub amount: u64,
+    /// 20-byte bech32 payload, right-padded with zeros.
+    pub recipient: [u8; 32],
+}
+
+#[derive(Debug)]
+pub enum EpochVerifyError {
+    Public,
+    Proof,
 }
 
 impl Instance {
@@ -746,6 +808,8 @@ impl Instance {
             recp,
             nf,
             cmx,
+            ctx: [0u8; 32],
+            destination: String::new(),
             e: [0u8; 32],
             // rk,
             // enable_spend,
@@ -753,26 +817,21 @@ impl Instance {
         }
     }
 
-    /// Constructs an [`Instance`] from its constituent parts in bytes. Expected to have already been formatted for in-circuit use
-    /// Anchor: 32 bytes
-    /// Note Denom: 32 bytes
-    /// Value: 8 bytes
-    /// Nullifier: 32 bytes
-    /// Recipient: 32 bytes
-    /// Note Commitment: 32 bytes
-    /// Challenge: 32 bytes
-    /// Total: 200 bytes. The challenge is not part of the signed prefix.
+    /// Sidecar wire. The note commitment and the denom are absent.
+    ///
+    /// Anchor 32, context 32, value 8, nullifier 32, recipient 32, challenge 32.
+    /// Total 168 bytes.
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         const THREETWO: usize = 32;
         const EIGHT: usize = 8;
-        const TOTAL_SIZE: usize = (6 * THREETWO) + EIGHT;
+        const TOTAL_SIZE: usize = (5 * THREETWO) + EIGHT;
         assert_eq!(bytes.len(), TOTAL_SIZE);
         let mut offset = 0;
 
         let anchor: &[u8; 32] = &bytes[offset..offset + THREETWO].try_into().expect("anchor");
         offset += THREETWO;
 
-        let nd: &[u8; 32] = &bytes[offset..offset + THREETWO].try_into().expect("nd");
+        let ctx: [u8; 32] = bytes[offset..offset + THREETWO].try_into().expect("ctx");
         offset += THREETWO;
 
         let v_bytes = &bytes[offset..offset + EIGHT];
@@ -784,32 +843,30 @@ impl Instance {
 
         let recp = &bytes[offset..offset + THREETWO];
         offset += THREETWO;
-        let cmx: &[u8; 32] = &bytes[offset..offset + THREETWO].try_into().expect("cmx");
-        offset += THREETWO;
         let e: [u8; 32] = bytes[offset..offset + THREETWO].try_into().expect("e");
 
         Instance {
             anchor: Anchor::from_bytes(*anchor).expect("anchor"),
-            nd: NoteDenom::from(*nd),
+            nd: NoteDenom::from([0u8; 32]),
             v: NoteValue::from(v),
             nf: Nullifier::from_bytes(nf).expect("msg"),
             recp: RecpAddr::try_from(recp).expect(""),
-            cmx: ExtractedNoteCommitment::from_bytes(cmx).expect(""),
+            cmx: ExtractedNoteCommitment::from_bytes(&[0u8; 32]).expect(""),
+            ctx,
+            destination: String::new(),
             e,
         }
     }
 
-    /// Constructs an  [Vec<u8>]  from an instance for serialization/deserialization.
-    /// NOTE: we store ALL values as their out-of-circuit specs, NOT applying in circuit serialization for field comatibility.
+    /// Sidecar wire. See [`Self::from_bytes`].
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(200);
+        let mut bytes = Vec::with_capacity(168);
 
         bytes.extend_from_slice(&self.anchor.to_bytes());
-        bytes.extend_from_slice(&self.nd.to_fp().to_repr());
+        bytes.extend_from_slice(&self.ctx);
         bytes.extend_from_slice(&self.v.inner().to_le_bytes());
         bytes.extend_from_slice(&self.nf.to_bytes());
         bytes.extend_from_slice(&self.recp.to_canonical_bytes());
-        bytes.extend_from_slice(&self.cmx.to_bytes());
         bytes.extend_from_slice(&self.e);
 
         bytes
@@ -818,25 +875,35 @@ impl Instance {
     /// 8x32-byte little-endian scalars for wasmvm `proof_instance_verify`.
     /// Same field elements as `to_halo2_instance` rows 0..8.
     pub fn to_vm_public_inputs(&self) -> Vec<u8> {
-        crate::vm_instance::encode_vm_public_inputs(
+        let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&self.ctx);
+        let mut out = Vec::with_capacity(8 * 32);
+        let e_lo = u128::from_be_bytes(self.e[16..32].try_into().expect("e lo"));
+        let e_hi = u128::from_be_bytes(self.e[0..16].try_into().expect("e hi"));
+        let scalars = [
             self.anchor.inner(),
-            self.nd.to_fp(),
-            self.v.inner(),
+            ctx_lo,
+            pallas::Base::from(self.v.inner()),
             self.recp.to_fp(),
             self.nf.0,
-            self.cmx.inner(),
-            self.e,
-        )
+            ctx_hi,
+            pallas::Base::from_u128(e_lo),
+            pallas::Base::from_u128(e_hi),
+        ];
+        for scalar in scalars {
+            out.extend_from_slice(scalar.to_repr().as_ref());
+        }
+        out
     }
-    /// Constructs the `[[vesta::Scalar; 9]; 1]` array representation from an instance for serialization/deserialization.
+    /// Public instance. Slot 8 stays zero. The note commitment is not a row.
     pub fn to_halo2_instance(&self) -> [[vesta::Scalar; 9]; 1] {
         let mut instance = [vesta::Scalar::zero(); 9];
+        let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&self.ctx);
         instance[ANCHOR] = self.anchor.inner();
-        instance[HS_ND] = self.nd.to_fp();
+        instance[CTX_LO] = ctx_lo;
         instance[HS_V] = self.v.inner().into();
         instance[RECP] = self.recp.to_fp();
         instance[NF_OLD] = self.nf.0;
-        instance[CMX] = self.cmx.inner();
+        instance[CTX_HI] = ctx_hi;
         let e_lo = u128::from_be_bytes(self.e[16..32].try_into().expect("e lo"));
         let e_hi = u128::from_be_bytes(self.e[0..16].try_into().expect("e hi"));
         instance[E_LO] = pallas::Base::from_u128(e_lo);
@@ -844,6 +911,62 @@ impl Instance {
 
         [instance]
     }
+}
+
+fn field_opt(bytes: [u8; 32]) -> Option<pallas::Base> {
+    Option::from(pallas::Base::from_repr(bytes))
+}
+
+impl Instance {
+    /// Public instance for one epoch claim. `e` is the canonical challenge.
+    pub fn from_epoch_statement(statement: &EpochStatement) -> Result<Self, EpochVerifyError> {
+        use crate::claim_auth::{canonical_challenge, canonical_claim_body};
+
+        let anchor_fp = field_opt(statement.root).ok_or(EpochVerifyError::Public)?;
+        let nf_fp = field_opt(statement.nullifier).ok_or(EpochVerifyError::Public)?;
+        let anchor = Anchor::from_bytes(statement.root)
+            .into_option()
+            .ok_or(EpochVerifyError::Public)?;
+        let nf = Nullifier::from_bytes(&statement.nullifier)
+            .into_option()
+            .ok_or(EpochVerifyError::Public)?;
+        let _ = (anchor_fp, nf_fp);
+        let body = canonical_claim_body(
+            &statement.ctx,
+            &statement.root,
+            &statement.nullifier,
+            &statement.destination,
+            statement.amount,
+        );
+        Ok(Instance {
+            anchor,
+            nd: NoteDenom::from([0u8; 32]),
+            v: NoteValue::from(statement.amount),
+            recp: RecpAddr::new(statement.recipient),
+            nf,
+            cmx: ExtractedNoteCommitment::from_bytes(&[0u8; 32])
+                .into_option()
+                .ok_or(EpochVerifyError::Public)?,
+            ctx: statement.ctx,
+            destination: statement.destination.clone(),
+            e: canonical_challenge(&body),
+        })
+    }
+}
+
+/// Verify a halo2 claim. The proof is checked against the canonical statement.
+/// The eligible key, the signature scalars, and the note commitment are not inputs.
+pub fn verify_epoch_statement(
+    proof: &[u8],
+    statement: &EpochStatement,
+) -> Result<(), EpochVerifyError> {
+    use std::sync::OnceLock;
+    let instance = Instance::from_epoch_statement(statement)?;
+    static VK: OnceLock<VerifyingKey> = OnceLock::new();
+    let vk = VK.get_or_init(VerifyingKey::build);
+    Proof::new(proof.to_vec())
+        .verify(vk, &[instance])
+        .map_err(|_| EpochVerifyError::Proof)
 }
 
 impl Proof {
@@ -913,7 +1036,7 @@ mod tests {
     use alloc::vec::Vec;
     use core::iter;
 
-    use ff::PrimeField;
+    use ff::{Field, PrimeField};
     use halo2_proofs::{circuit::Value, dev::MockProver};
     use pasta_curves::pallas;
     use rand_core::RngCore;
@@ -947,8 +1070,14 @@ mod tests {
         let recp = spent_note.recipient();
 
         let bound = spent_note.hiding_binding();
-        let nk = bound.nk;
-        let nf = spent_note.nullifier();
+        let ctx = [0x44u8; 32];
+        let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&ctx);
+        let nk = crate::keys::NullifierDerivingKey::from_prf(crate::claim_auth::claim_nk_scoped(
+            bound.rseed_lo,
+            bound.rseed_hi,
+            &ctx,
+        ));
+        let nf = spent_note.nullifier_for_ctx(&ctx);
         // Private note cmx: Poseidon CL9 (NoteCommitment::derive / note_poseidon SSOT).
         let cmx = spent_note.commitment().into();
         let nd = spent_note.nd();
@@ -976,6 +1105,8 @@ mod tests {
             path: Value::known(path.auth_path()),
             pos: Value::known(path.position()),
             nk: Value::known(nk),
+            ctx_lo: Value::known(ctx_lo),
+            ctx_hi: Value::known(ctx_hi),
             rseed_lo: Value::known(bound.rseed_lo),
             rseed_hi: Value::known(bound.rseed_hi),
             nd: Value::known(spent_note.nd().to_fp()),
@@ -999,10 +1130,59 @@ mod tests {
             recp,
             nf,
             cmx,
+            ctx,
+            destination: "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k".into(),
             e: [0u8; 32],
         };
         circuit.attach_personal_sign(&mut instance, &esk.secret_bytes());
         (circuit, instance)
+    }
+
+    #[test]
+    fn epoch_claim_public_statement_verifies() {
+        use crate::claim_auth::{canonical_challenge, canonical_claim_body};
+
+        let mut rng = os_rng();
+        let (circuit, instance) = generate_circuit_instance(&mut rng);
+        let body = canonical_claim_body(
+            &instance.ctx,
+            &instance.anchor.to_bytes(),
+            &instance.nf.to_bytes(),
+            &instance.destination,
+            instance.v.inner(),
+        );
+        assert_eq!(instance.e, canonical_challenge(&body));
+        assert_eq!(instance.to_bytes().len(), 168);
+        let cmx = instance.cmx.to_bytes();
+        let wire = instance.to_bytes();
+        assert!(
+            !wire.windows(32).any(|window| window == cmx),
+            "the note commitment is not on the sidecar wire"
+        );
+        let public = instance.to_halo2_instance()[0];
+        assert!(public.iter().all(|word| *word != instance.cmx.inner()));
+        assert!(bool::from(public[8].is_zero()));
+        let columns: Vec<Vec<pallas::Base>> = instance
+            .to_halo2_instance()
+            .iter()
+            .map(|row| row.to_vec())
+            .collect();
+        assert_eq!(
+            MockProver::run(K, &circuit, columns).unwrap().verify(),
+            Ok(())
+        );
+
+        let mut moved = instance.clone();
+        moved.ctx[0] ^= 1;
+        let bad: Vec<Vec<pallas::Base>> = moved
+            .to_halo2_instance()
+            .iter()
+            .map(|row| row.to_vec())
+            .collect();
+        assert!(
+            MockProver::run(K, &circuit, bad).unwrap().verify().is_err(),
+            "a different campaign context must not verify"
+        );
     }
 
     // TODO: recast as a proptest
@@ -1368,6 +1548,8 @@ mod tests {
             // alpha: Value::unknown(),
             // ak: Value::unknown(),
             nk: Value::unknown(),
+            ctx_lo: Value::unknown(),
+            ctx_hi: Value::unknown(),
             rseed_lo: Value::unknown(),
             rseed_hi: Value::unknown(),
             // rivk: Value::unknown(),

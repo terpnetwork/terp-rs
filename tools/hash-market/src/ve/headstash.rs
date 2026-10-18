@@ -125,6 +125,25 @@ pub struct ClaimBody {
     pub receipts: Vec<ReceiptBody>,
 }
 
+/// Halo2 submissions have no signature and no leaf key. Unknown fields are rejected.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Halo2ClaimsBody {
+    claims: Vec<Halo2ClaimBody>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Halo2ClaimBody {
+    proof_hex: String,
+    message: String,
+    denom_hex: String,
+    #[serde(default)]
+    index: Option<u32>,
+    #[serde(default)]
+    receipts: Vec<ReceiptBody>,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReceiptBody {
@@ -164,10 +183,30 @@ pub async fn install_campaign(
 
 pub async fn submit_claims(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<ClaimsBody>,
+    Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, HttpError> {
-    let items = claims_from(&body)?;
     let mut host = state.headstash.write().await;
+    let backend = host.campaign.as_ref().map(|campaign| campaign.backend());
+    let Some(backend) = backend else {
+        return Err(error_json_msg(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "no campaign",
+        ));
+    };
+    let items = match backend {
+        Backend::Flock => {
+            let parsed: ClaimsBody = serde_json::from_value(body).map_err(|_| {
+                error_json_msg(StatusCode::BAD_REQUEST, "claim body")
+            })?;
+            claims_from(&parsed)?
+        }
+        Backend::Halo2 => {
+            let parsed: Halo2ClaimsBody = serde_json::from_value(body).map_err(|_| {
+                error_json_msg(StatusCode::BAD_REQUEST, "claim body")
+            })?;
+            claims_from_halo2(&parsed)?
+        }
+    };
     let signer = host.signer.take();
     let Some(campaign) = host.campaign.as_mut() else {
         host.signer = signer;
@@ -307,6 +346,33 @@ fn claims_from(body: &ClaimsBody) -> Result<Vec<SubmittedClaim>, HttpError> {
     Ok(out)
 }
 
+fn claims_from_halo2(body: &Halo2ClaimsBody) -> Result<Vec<SubmittedClaim>, HttpError> {
+    let mut out = Vec::with_capacity(body.claims.len());
+    for claim in &body.claims {
+        let mut receipts = Vec::with_capacity(claim.receipts.len());
+        for receipt in &claim.receipts {
+            let signature = decode_hex(&receipt.signature_hex)?;
+            let signature: [u8; 64] = signature
+                .try_into()
+                .map_err(|_| error_json_msg(StatusCode::BAD_REQUEST, "receipt signature"))?;
+            receipts.push(PeerReceipt {
+                signer: decode_32(&receipt.signer_hex)?,
+                signature,
+            });
+        }
+        out.push(SubmittedClaim {
+            proof: decode_hex(&claim.proof_hex)?,
+            message: claim.message.as_bytes().to_vec(),
+            signature: Vec::new(),
+            leaf_x: [0u8; 32],
+            denom: decode_32(&claim.denom_hex)?,
+            index: claim.index,
+            receipts,
+        });
+    }
+    Ok(out)
+}
+
 fn decode_32(hex_str: &str) -> Result<[u8; 32], HttpError> {
     let bytes = decode_hex(hex_str)?;
     bytes
@@ -362,6 +428,17 @@ mod tests {
         assert_eq!(value["attestations"].as_array().unwrap().len(), 1);
         assert_eq!(value["root"], hex::encode([3u8; 32]));
         assert_eq!(value["foreign_height"], 49);
+    }
+
+    #[test]
+    fn epoch_claim_halo2_body_rejects_a_signature() {
+        let raw = r#"{"claims":[{"proof_hex":"ab","message":"headstash-claim-v1:","denom_hex":"0000000000000000000000000000000000000000000000000000000000000000","signature_hex":"cc","leaf_x_hex":"0000000000000000000000000000000000000000000000000000000000000000"}]}"#;
+        assert!(serde_json::from_str::<super::Halo2ClaimsBody>(raw).is_err());
+        let bare = r#"{"claims":[{"proof_hex":"ab","message":"headstash-claim-v1:aa","denom_hex":"0000000000000000000000000000000000000000000000000000000000000000"}]}"#;
+        let parsed: super::Halo2ClaimsBody = serde_json::from_str(bare).unwrap();
+        let items = super::claims_from_halo2(&parsed).unwrap();
+        assert!(items[0].signature.is_empty());
+        assert_eq!(items[0].leaf_x, [0u8; 32]);
     }
 
     #[test]

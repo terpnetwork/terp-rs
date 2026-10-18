@@ -10,7 +10,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ed25519_dalek::SigningKey;
 use headstash_claim::statement::{
-    canonical_claim_message, destination_bech32, pack_words, signature_opens_leaf,
+    canonical_claim_message, canonical_sign_message, decode_destination, destination_bech32,
+    pack_words, signature_opens_leaf,
 };
 use headstash_claim::{
     ClaimProof, decode_claim_proof, key_com, public_key_com, tree, verify_claim,
@@ -32,6 +33,8 @@ pub enum Backend {
 pub enum IngressError {
     #[error("halo2 campaigns are not verified in this slice")]
     Backend,
+    #[error("halo2 claim carries key material")]
+    KeyMaterial,
     #[error("campaign parameters are not usable")]
     Params,
     #[error("proof length does not match the campaign")]
@@ -123,9 +126,10 @@ struct Prepared {
     amount: u64,
 }
 
-/// In-memory triple tree for one flock campaign.
+/// In-memory triple tree for one campaign. One campaign keeps one backend.
 #[derive(Debug)]
 pub struct Campaign<const D: usize> {
+    backend: Backend,
     ctx: [u8; 32],
     allocation_root: [u8; 32],
     hrp: String,
@@ -148,9 +152,6 @@ pub struct Campaign<const D: usize> {
 
 impl<const D: usize> Campaign<D> {
     pub fn open(params: CampaignParams) -> Result<Self, IngressError> {
-        if params.backend != Backend::Flock {
-            return Err(IngressError::Backend);
-        }
         if params.proof_len == 0 || params.max_rows == 0 || params.bech32_hrp.is_empty() {
             return Err(IngressError::Params);
         }
@@ -173,6 +174,7 @@ impl<const D: usize> Campaign<D> {
             }
         }
         Ok(Self {
+            backend: params.backend,
             ctx: params.ctx,
             allocation_root: params.allocation_root,
             hrp: params.bech32_hrp,
@@ -192,6 +194,10 @@ impl<const D: usize> Campaign<D> {
             spent: HashSet::new(),
             verifies: AtomicU64::new(0),
         })
+    }
+
+    pub fn backend(&self) -> Backend {
+        self.backend
     }
 
     pub fn trusted_sign_threshold(&self) -> usize {
@@ -307,6 +313,9 @@ impl<const D: usize> Campaign<D> {
         local: Option<&SigningKey>,
     ) -> Result<Prepared, IngressError> {
         structural(self, item)?;
+        if self.backend == Backend::Halo2 {
+            return self.evaluate_halo2(item, local);
+        }
         let digest = sha256(&item.proof);
         if self.seen.contains(&digest) {
             return Err(IngressError::Digest);
@@ -378,6 +387,100 @@ impl<const D: usize> Campaign<D> {
         })
     }
 
+    fn evaluate_halo2(
+        &self,
+        item: &SubmittedClaim,
+        local: Option<&SigningKey>,
+    ) -> Result<Prepared, IngressError> {
+        if !item.signature.is_empty() || item.leaf_x != [0u8; 32] {
+            return Err(IngressError::KeyMaterial);
+        }
+        let digest = sha256(&item.proof);
+        if self.seen.contains(&digest) {
+            return Err(IngressError::Digest);
+        }
+        let parsed = parse_canonical_message(&item.message).ok_or(IngressError::Message)?;
+        if parsed.ctx != self.ctx {
+            return Err(IngressError::Context);
+        }
+        if parsed.root != self.allocation_root {
+            return Err(IngressError::Root);
+        }
+        if item.denom != self.denom {
+            return Err(IngressError::Denom);
+        }
+        let raw = decode_destination(&self.hrp, &parsed.destination)
+            .map_err(|_| IngressError::Destination)?;
+        if parsed.destination.len() > 128 {
+            return Err(IngressError::Destination);
+        }
+        let expected = canonical_sign_message(
+            &parsed.ctx,
+            &parsed.root,
+            &parsed.nullifier,
+            &parsed.destination,
+            parsed.amount,
+        );
+        if item.message != expected {
+            return Err(IngressError::Message);
+        }
+        if parsed.amount == 0 {
+            return Err(IngressError::Amount);
+        }
+        let cap = self
+            .amounts
+            .get(&parsed.amount)
+            .copied()
+            .ok_or(IngressError::Amount)?;
+        let used = self.used.get(&parsed.amount).copied().unwrap_or(0);
+        if used >= cap {
+            return Err(IngressError::Cap);
+        }
+        if self.reserved.contains(&parsed.nullifier) {
+            return Err(IngressError::Reserved);
+        }
+        if self.spent.contains(&parsed.nullifier) {
+            return Err(IngressError::Spent);
+        }
+        if self.rows.len() >= self.max_rows {
+            return Err(IngressError::Full);
+        }
+        let body = receipt_message(
+            &self.ctx,
+            &self.allocation_root,
+            &parsed.nullifier,
+            &parsed.destination,
+            parsed.amount,
+            &digest,
+        );
+        if self.receipt_count(&body, item, local) < self.verify_threshold {
+            return Err(IngressError::Receipts);
+        }
+        let mut recipient = [0u8; 32];
+        recipient[..20].copy_from_slice(&raw);
+        self.verifies.fetch_add(1, Ordering::Relaxed);
+        let statement = zk_headstash::circuit::EpochStatement {
+            ctx: parsed.ctx,
+            root: parsed.root,
+            nullifier: parsed.nullifier,
+            destination: parsed.destination.clone(),
+            amount: parsed.amount,
+            recipient,
+        };
+        zk_headstash::circuit::verify_epoch_statement(&item.proof, &statement).map_err(|err| {
+            match err {
+                zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
+                zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
+            }
+        })?;
+        Ok(Prepared {
+            digest,
+            nullifier: parsed.nullifier,
+            destination: parsed.destination,
+            amount: parsed.amount,
+        })
+    }
+
     fn verify_proof(&self, proved: &ClaimProof, leaf_x: &[u8; 32]) -> Result<(), IngressError> {
         self.verifies.fetch_add(1, Ordering::Relaxed);
         verify_claim::<D>(proved).map_err(|_| IngressError::Proof)?;
@@ -420,7 +523,7 @@ mod tests {
         ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, attested_root, receipt_message, sha256,
     };
     use ed25519_dalek::{Signer, SigningKey};
-    use headstash_claim::statement::{canonical_claim_message, pack_words};
+    use headstash_claim::statement::{canonical_claim_message, canonical_sign_message, pack_words};
     use headstash_claim::tree::{self, SecretNote};
     use headstash_claim::{FIXTURE_DEPTH, Opening, derive, prove_claim};
     use headstash_wire::{recover_pubkey_x, sign_personal};
@@ -589,25 +692,96 @@ mod tests {
         open_at(fix, fix.ctx, fix.root, 4, 8, 1, Vec::new())
     }
 
-    #[test]
-    fn halo2_is_not_a_verifier_in_this_slice() {
-        let err = Campaign::<FIXTURE_DEPTH>::open(CampaignParams {
+    fn halo2_campaign(ctx: [u8; 32], root: [u8; 32], denom: [u8; 32]) -> Campaign<FIXTURE_DEPTH> {
+        Campaign::open(CampaignParams {
             backend: Backend::Halo2,
-            ctx: [0; 32],
-            allocation_root: [0; 32],
+            ctx,
+            allocation_root: root,
             bech32_hrp: "terp".into(),
-            denom: [0; 32],
-            proof_len: 1,
-            cutoff_height: 1,
-            amounts: BTreeMap::new(),
-            trusted: Vec::new(),
+            denom,
+            proof_len: 4,
+            cutoff_height: 50,
+            amounts: BTreeMap::from([(15u64, 1u32)]),
+            trusted: vec![local_key().verifying_key().to_bytes()],
             trusted_verify_threshold: 1,
             trusted_sign_threshold: 1,
-            max_rows: 1,
+            max_rows: 4,
             reserved: Vec::new(),
         })
-        .unwrap_err();
-        assert_eq!(err, IngressError::Backend);
+        .unwrap()
+    }
+
+    #[test]
+    fn epoch_claim_halo2_opens_and_refuses_key_material() {
+        let ctx = [7u8; 32];
+        let root = [8u8; 32];
+        let denom = [9u8; 32];
+        let mut campaign = halo2_campaign(ctx, root, denom);
+        assert_eq!(campaign.backend(), Backend::Halo2);
+        let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k";
+        let message = canonical_sign_message(&ctx, &root, &[3u8; 32], destination, 15);
+        let halo = zk_headstash::claim_auth::canonical_claim_body(
+            &ctx,
+            &root,
+            &[3u8; 32],
+            destination,
+            15,
+        );
+        assert_eq!(halo, message);
+        let signed = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message: message.clone(),
+            signature: vec![9],
+            leaf_x: [0u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+        };
+        let report = campaign.accept_batch(&[signed], Some(&local_key()));
+        assert_eq!(report.rejected, vec![(0, IngressError::KeyMaterial)]);
+        assert_eq!(campaign.verifies(), 0);
+        let leaf = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message,
+            signature: Vec::new(),
+            leaf_x: [1u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+        };
+        let report = campaign.accept_batch(&[leaf], Some(&local_key()));
+        assert_eq!(report.rejected[0].1, IngressError::KeyMaterial);
+        assert!(campaign.rows().is_empty());
+    }
+
+    #[test]
+    fn epoch_claim_halo2_proof_is_verified() {
+        let ctx = [7u8; 32];
+        let root = [0u8; 32];
+        let mut nullifier = [0u8; 32];
+        nullifier[0] = 3;
+        let denom = [9u8; 32];
+        let mut campaign = halo2_campaign(ctx, root, denom);
+        let message = canonical_sign_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            15,
+        );
+        let item = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message,
+            signature: Vec::new(),
+            leaf_x: [0u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+        };
+        let report = campaign.accept_batch(&[item], Some(&local_key()));
+        assert_eq!(report.rejected, vec![(0, IngressError::Proof)]);
+        assert_eq!(campaign.verifies(), 1);
+        assert!(campaign.rows().is_empty());
     }
 
     #[test]
@@ -869,6 +1043,47 @@ mod tests {
             signature: key.sign(&body).to_bytes(),
         }
     }
+}
+
+struct ParsedBody {
+    ctx: [u8; 32],
+    root: [u8; 32],
+    nullifier: [u8; 32],
+    destination: String,
+    amount: u64,
+}
+
+fn parse_canonical_message(message: &[u8]) -> Option<ParsedBody> {
+    let text = std::str::from_utf8(message).ok()?;
+    let parts: Vec<&str> = text.split(':').collect();
+    if parts.len() != 6 || parts[0] != "headstash-claim-v1" {
+        return None;
+    }
+    let ctx = hex32(parts[1])?;
+    let root = hex32(parts[2])?;
+    let nullifier = hex32(parts[3])?;
+    if parts[4].is_empty() || parts[4].len() > 128 {
+        return None;
+    }
+    let amount = parts[5].parse().ok()?;
+    Some(ParsedBody {
+        ctx,
+        root,
+        nullifier,
+        destination: parts[4].to_string(),
+        amount,
+    })
+}
+
+fn hex32(text: &str) -> Option<[u8; 32]> {
+    if text.len() != 64 || !text.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return None;
+    }
+    let bytes = hex::decode(text).ok()?;
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&bytes);
+    Some(out)
 }
 
 fn structural<const D: usize>(

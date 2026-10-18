@@ -2,7 +2,8 @@
 //!
 //! The snap note server is a different route. This crate checks a flock
 //! proof, keeps the in-memory batch, and signs the pending or accepted root
-//! that cw-headstash already hashes. Halo2 campaigns are refused here.
+//! that cw-headstash already hashes. A halo2 campaign checks `Proof::verify`
+//! and does not accept a signature or a leaf key.
 
 mod lane;
 mod roots;

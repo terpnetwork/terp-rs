@@ -69,6 +69,18 @@ pub fn canonical_claim_message(claim: &crate::Claim, hrp: &str) -> Result<Vec<u8
     ))
 }
 
+/// 20-byte payload of a BIP-173 destination, checked against `hrp`.
+pub fn decode_destination(hrp: &str, addr: &str) -> Result<[u8; 20], ()> {
+    let (found, data) = bech32::decode(addr).map_err(|_| ())?;
+    let expect = bech32::Hrp::parse(hrp).map_err(|_| ())?;
+    if found != expect || data.len() != 20 {
+        return Err(());
+    }
+    let mut out = [0u8; 20];
+    out.copy_from_slice(&data);
+    Ok(out)
+}
+
 /// The signature recovers `leaf_x` for this message.
 pub fn signature_opens_leaf(message: &[u8], signature: &[u8], leaf_x: &[u8; 32]) -> bool {
     recover_pubkey_x(message, signature).ok().as_ref() == Some(leaf_x)
@@ -117,6 +129,14 @@ mod tests {
         let mut other = message.clone();
         other[20] ^= 1;
         assert!(!signature_opens_leaf(&other, &signature, &leaf_x));
+    }
+
+    #[test]
+    fn decode_destination_roundtrips_the_bech32_payload() {
+        let words = [0u32; 5];
+        let addr = destination_bech32("terp", &words).unwrap();
+        assert_eq!(decode_destination("terp", &addr).unwrap(), [0u8; 20]);
+        assert!(decode_destination("cosmos", &addr).is_err());
     }
 
     #[test]

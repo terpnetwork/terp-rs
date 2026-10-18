@@ -1728,7 +1728,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let spend_info = SpendInfo::new(fvk, note.clone(), merkle_path)
             .ok_or("SpendInfo creation failed")?;
 
-        let nf = note.nullifier();
+        let nf = note.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(note.commitment());
         let mut instance =
             crate::circuit::Instance::from_parts(anchor, hv.denom(), hv.amount(), recp, nf, cmx);
@@ -1778,7 +1778,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
             SpendInfo::new(fvk, note.clone(), merkle_path).ok_or("SpendInfo failed")?;
         let mut circuit = Circuit::from_action_context_unchecked(spend_info, note.clone());
 
-        let nf = note.nullifier();
+        let nf = note.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(note.commitment());
         let mut instance =
             crate::circuit::Instance::from_parts(anchor, hv.denom(), hv.amount(), recp, nf, cmx);
@@ -1825,7 +1825,7 @@ pub trait HeadstashLaunchpadInstance: HeadstashBitwiseInstance + HeadstashIpfsIn
 
         let secret_be = esk.secret_bytes();
         let n = Note::from_parts(hv, recp, esk, rho, rseed).expect("note derivation");
-        let nf = n.nullifier();
+        let nf = n.nullifier_for_ctx(&[0u8; 32]);
         let cmx = ExtractedNoteCommitment::from(n.commitment());
 
         let c = SpendInfo::new(fvk, n.clone(), mp).expect("headstash claim");
@@ -1986,7 +1986,7 @@ pub trait HeadstashTestDataGenerator:
 
     //         // Compute anchor and build instance
     //         let anchor = merkle_path.root(note.commitment().into());
-    //         let nf = note.nullifier();
+    //         let nf = note.nullifier_for_ctx(&[0u8; 32]);
     //         let cmx = ExtractedNoteCommitment::from(note.commitment());
     //         let instance = crate::circuit::Instance::from_parts(
     //             anchor,
