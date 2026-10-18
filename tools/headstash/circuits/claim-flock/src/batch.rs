@@ -31,14 +31,14 @@ const FLAG_BATCH: u32 = 6;
 pub struct Payout {
     pub nullifier: [u32; 8],
     pub destination: [u32; 5],
-    pub amount: u32,
+    pub amount: u64,
 }
 
 /// What the chain stores for one epoch of claims.
 pub struct Egress {
     pub nullifier_root: [u32; 8],
     pub rejected: u32,
-    pub payouts: Vec<([u32; 5], u32)>,
+    pub payouts: Vec<([u32; 5], u64)>,
 }
 
 struct Blake3Gate {
@@ -83,7 +83,9 @@ fn payout_message(payout: &Payout) -> [u32; 16] {
     let mut m = [0u32; 16];
     m[..8].copy_from_slice(&payout.nullifier);
     m[8..13].copy_from_slice(&payout.destination);
-    m[15] = payout.amount;
+    let limbs = super::amount_limbs(payout.amount);
+    m[14] = limbs[1];
+    m[15] = limbs[0];
     m
 }
 
@@ -212,7 +214,7 @@ pub fn build(accepted: &[Payout], rejected: u32) -> flock_core::circuit::builder
 mod tests {
     use super::*;
 
-    fn payout(nf0: u32, amount: u32) -> Payout {
+    fn payout(nf0: u32, amount: u64) -> Payout {
         Payout {
             nullifier: [nf0, 2, 3, 4, 5, 6, 7, 8],
             destination: [0xaaaa, 0xbbbb, 0xcccc, 0xdddd, 0xeeee],
@@ -235,5 +237,15 @@ mod tests {
     fn circuit_publishes_the_batch_root() {
         let accepted = [payout(1, 15), payout(2, 30)];
         let _built = build(&accepted, 1);
+    }
+
+    #[test]
+    fn high_limb_changes_the_batch_root() {
+        let wide = u64::from(u32::MAX) + 15;
+        let small = egress(&[payout(1, 15)], 0);
+        let big = egress(&[payout(1, wide)], 0);
+        assert_eq!(big.payouts[0].1, wide);
+        assert_ne!(small.nullifier_root, big.nullifier_root);
+        let _built = build(&[payout(1, wide)], 0);
     }
 }

@@ -65,7 +65,7 @@ pub fn canonical_claim_message(claim: &crate::Claim, hrp: &str) -> Result<Vec<u8
         &pack_words(&claim.root),
         &pack_words(&claim.nullifier),
         &destination,
-        u64::from(claim.amount),
+        claim.amount,
     ))
 }
 
@@ -127,5 +127,20 @@ mod tests {
         let (hrp, raw) = bech32::decode(&text).expect("decode");
         assert_eq!(hrp.as_str(), "terp");
         assert_eq!(raw[..4], [0x04, 0x03, 0x02, 0x01]);
+    }
+
+    #[test]
+    fn the_decimal_amount_keeps_bits_above_32() {
+        let amount = u64::from(u32::MAX) + 1;
+        let message = canonical_sign_message(
+            &[0xab; 32],
+            &[0x11; 32],
+            &[0x22; 32],
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            amount,
+        );
+        let text = String::from_utf8(message).unwrap();
+        assert!(text.ends_with(&format!(":{amount}")));
+        assert_eq!(text.matches(':').count(), 5);
     }
 }

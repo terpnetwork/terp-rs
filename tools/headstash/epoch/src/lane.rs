@@ -81,8 +81,8 @@ pub struct CampaignParams {
     pub denom: [u8; 32],
     pub proof_len: usize,
     pub cutoff_height: u64,
-    /// Amount word to the number of claims allowed for that word.
-    pub amounts: BTreeMap<u32, u32>,
+    /// Payout amount, in base units, to the number of claims allowed for it.
+    pub amounts: BTreeMap<u64, u32>,
     pub trusted: Vec<[u8; 32]>,
     pub trusted_verify_threshold: usize,
     /// Stored for the creator. This slice does not enforce it: the keeper
@@ -120,7 +120,7 @@ struct Prepared {
     digest: [u8; 32],
     nullifier: [u8; 32],
     destination: String,
-    amount: u32,
+    amount: u64,
 }
 
 /// In-memory triple tree for one flock campaign.
@@ -132,8 +132,8 @@ pub struct Campaign<const D: usize> {
     denom: [u8; 32],
     proof_len: usize,
     cutoff_height: u64,
-    amounts: BTreeMap<u32, u32>,
-    used: BTreeMap<u32, u32>,
+    amounts: BTreeMap<u64, u32>,
+    used: BTreeMap<u64, u32>,
     trusted: HashSet<[u8; 32]>,
     verify_threshold: usize,
     sign_threshold: usize,
@@ -296,7 +296,7 @@ impl<const D: usize> Campaign<D> {
             nullifier: prepared.nullifier,
             denom: self.denom,
             destination: prepared.destination,
-            amount: u64::from(prepared.amount),
+            amount: prepared.amount,
         });
         Ok(())
     }
@@ -363,7 +363,7 @@ impl<const D: usize> Campaign<D> {
             &self.allocation_root,
             &nullifier,
             &destination,
-            u64::from(claim.amount),
+            claim.amount,
             &digest,
         );
         if self.receipt_count(&body, item, local) < self.verify_threshold {
@@ -485,7 +485,7 @@ mod tests {
         recover_pubkey_x(b"headstash-claim-v1", &signed).unwrap()
     }
 
-    fn secret_note(rseed0: u32, leaf_x: &[u8; 32], v: u32) -> SecretNote {
+    fn secret_note(rseed0: u32, leaf_x: &[u8; 32], v: u64) -> SecretNote {
         SecretNote {
             rseed: [rseed0, 2, 3, 4, 5, 6, 7, 8],
             epk_x: *leaf_x,
@@ -575,7 +575,7 @@ mod tests {
             denom: fix.denom,
             proof_len: fix.proof_len,
             cutoff_height: 50,
-            amounts: BTreeMap::from([(15u32, cap)]),
+            amounts: BTreeMap::from([(15u64, cap)]),
             trusted,
             trusted_verify_threshold: threshold,
             trusted_sign_threshold: threshold,
@@ -801,12 +801,56 @@ mod tests {
         assert_eq!(accepted.attestation_timestamp, BATCH_ATTEST_TIMESTAMP);
         assert!(accepted.custody_ok());
         assert_ne!(accepted.batch_hash, pending.batch_hash);
+        assert_eq!(campaign.rows()[0].amount, 15);
         assert!(
             campaign
                 .rows()
                 .iter()
                 .all(|row| row.destination.starts_with("terp1"))
         );
+    }
+
+    #[test]
+    fn an_amount_above_u32_max_is_stored_on_the_row() {
+        let wide = u64::from(u32::MAX) + 1;
+        let leaf = leaf_x();
+        let ctx_words = [4u32, 5, 6, 7, 8, 9, 10, 11];
+        let notes = [secret_note(3, &leaf, wide)];
+        let (built, path) = tree::siblings(&notes, 0);
+        let opening = opening(
+            &notes[0],
+            0,
+            array_path(path),
+            [0x1111, 0x2222, 0x3333, 0x4444, 0x5555],
+            ctx_words,
+        );
+        let claim = derive(&opening);
+        assert_eq!(claim.amount, wide);
+        assert_eq!(claim.root, built.root);
+        let denom = [9u8; 32];
+        let item = submitted(&opening, &leaf, denom);
+        let text = String::from_utf8(item.message.clone()).unwrap();
+        assert!(text.ends_with(&format!(":{wide}")));
+        let mut campaign = Campaign::<FIXTURE_DEPTH>::open(CampaignParams {
+            backend: Backend::Flock,
+            ctx: pack_words(&ctx_words),
+            allocation_root: pack_words(&built.root),
+            bech32_hrp: "terp".into(),
+            denom,
+            proof_len: item.proof.len(),
+            cutoff_height: 50,
+            amounts: BTreeMap::from([(wide, 1u32)]),
+            trusted: vec![local_key().verifying_key().to_bytes()],
+            trusted_verify_threshold: 1,
+            trusted_sign_threshold: 1,
+            max_rows: 4,
+            reserved: Vec::new(),
+        })
+        .unwrap();
+        let report = campaign.accept_batch(&[item], Some(&local_key()));
+        assert_eq!(report.accepted, vec![0]);
+        assert!(report.rejected.is_empty());
+        assert_eq!(campaign.rows()[0].amount, wide);
     }
 
     fn peer_receipt(item: &SubmittedClaim) -> PeerReceipt {

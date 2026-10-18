@@ -57,8 +57,8 @@ pub(crate) const FLAG_PAYOUT_COM: u32 = 9;
 pub(crate) const FLAG_PAYOUT_BIND: u32 = 10;
 
 /// Private opening of one leaf, plus the siblings for `D` levels.
-/// `destination` is the payout address (20 bytes, five words). `v` is both
-/// the leaf amount and the public payout amount.
+/// `destination` is the payout address (20 bytes, five words). `v` is the
+/// payout amount in base units. Both 32-bit limbs are the public amount word.
 ///
 /// `D` is [`DEPTH`] for the real set. The index bits are witnesses. Two leaf
 /// positions share one circuit shape.
@@ -69,7 +69,7 @@ pub struct Opening<const D: usize> {
     pub ctx: [u32; 8],
     pub epk_x: [u32; 4],
     pub nd: [u32; 2],
-    pub v: u32,
+    pub v: u64,
     pub fdi: u32,
     /// Leaf position. A witness. It is not a public input.
     pub index: u32,
@@ -84,7 +84,7 @@ pub struct Claim {
     pub root: [u32; 8],
     pub nullifier: [u32; 8],
     pub destination: [u32; 5],
-    pub amount: u32,
+    pub amount: u64,
 }
 
 struct Blake3Gate {
@@ -255,14 +255,27 @@ pub fn key_com(epk_x: &[u32; 4]) -> [u32; 8] {
     compress(&m, FLAG_KEY)
 }
 
+/// Little-endian 32-bit limbs of a payout amount. The Blake3 amount word is
+/// `pack4` of `[lo, hi, 0, 0]`. A value above `u32::MAX` is not its low limb.
+pub(crate) fn amount_limbs(amount: u64) -> [u32; 4] {
+    [amount as u32, (amount >> 32) as u32, 0, 0]
+}
+
+pub(crate) fn amount_from_limbs(words: [u32; 4]) -> Option<u64> {
+    if words[2] != 0 || words[3] != 0 {
+        return None;
+    }
+    Some(u64::from(words[0]) | (u64::from(words[1]) << 32))
+}
+
 /// Merkle leaf. The first compression absorbs `rseed_com`, the key, and the
-/// allocation except the amount. The second absorbs that digest and the
-/// amount, so the amount is bound and the key is not a public input.
+/// allocation except the amount. The second absorbs that digest and both
+/// amount limbs, so the full `u64` is bound and the key is not a public input.
 pub(crate) fn merkle_leaf(
     rseed_com: &[u32; 8],
     epk_x: &[u32; 4],
     nd: &[u32; 2],
-    v: u32,
+    v: u64,
     fdi: u32,
 ) -> [u32; 8] {
     let mut alloc = [0u32; 16];
@@ -274,7 +287,9 @@ pub(crate) fn merkle_leaf(
     let inner = compress(&alloc, FLAG_LEAF);
     let mut bound = [0u32; 16];
     bound[..8].copy_from_slice(&inner);
-    bound[8] = v;
+    let limbs = amount_limbs(v);
+    bound[8] = limbs[0];
+    bound[9] = limbs[1];
     compress(&bound, FLAG_BIND)
 }
 
@@ -424,7 +439,7 @@ pub fn build<const D: usize>(
             leaf_params,
         ],
     );
-    let amount = b.public_value(pack4([opening.v, 0, 0, 0]));
+    let amount = b.public_value(pack4(amount_limbs(opening.v)));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
     let leaf_out = b.gate(
         g,
@@ -482,7 +497,8 @@ pub fn build<const D: usize>(
     );
     assert_eq!(got_dest_hi[0], claim.destination[4]);
     assert_eq!(
-        got_amount[0], claim.amount,
+        amount_from_limbs(got_amount),
+        Some(claim.amount),
         "payout amount is the leaf amount"
     );
     let got_ctx = unpack8(published[ctx_at], published[ctx_at + 1]);
@@ -534,11 +550,13 @@ pub(crate) fn payout_message(destination: &[u32; 5], blind: &[u32; 8]) -> [u32; 
     m
 }
 
-pub(crate) fn payout_commitment(destination: &[u32; 5], amount: u32, blind: &[u32; 8]) -> [u32; 8] {
+pub(crate) fn payout_commitment(destination: &[u32; 5], amount: u64, blind: &[u32; 8]) -> [u32; 8] {
     let inner = compress(&payout_message(destination, blind), FLAG_PAYOUT_COM);
     let mut bound = [0u32; 16];
     bound[..8].copy_from_slice(&inner);
-    bound[8] = amount;
+    let limbs = amount_limbs(amount);
+    bound[8] = limbs[0];
+    bound[9] = limbs[1];
     compress(&bound, FLAG_PAYOUT_BIND)
 }
 
@@ -622,7 +640,7 @@ pub fn build_private<const D: usize>(
             leaf_params,
         ],
     );
-    let amount = b.value(pack4([opening.open.v, 0, 0, 0]));
+    let amount = b.value(pack4(amount_limbs(opening.open.v)));
     let bind_params = b.public_value(pack_params(FLAG_BIND));
     let leaf_out = b.gate(
         g,
@@ -690,7 +708,7 @@ pub fn build_private<const D: usize>(
         claim.payout_com
     );
     let hidden_key = pack4(opening.open.epk_x);
-    let hidden_amount = pack4([opening.open.v, 0, 0, 0]);
+    let hidden_amount = pack4(amount_limbs(opening.open.v));
     let hidden_dest = pack4([
         opening.open.destination[0],
         opening.open.destination[1],
@@ -738,13 +756,13 @@ pub fn claim_from_public(public: &[F128]) -> Option<Claim> {
     }
     let dest_lo = unpack4(public[PUB_DEST_LO]);
     let dest_hi = unpack4(public[PUB_DEST_HI]);
-    let amount = unpack4(public[PUB_AMOUNT]);
+    let amount = amount_from_limbs(unpack4(public[PUB_AMOUNT]))?;
     Some(Claim {
         ctx: unpack8(public[PUB_CTX], public[PUB_CTX + 1]),
         nullifier: unpack8(public[PUB_NF], public[PUB_NF + 1]),
         root: unpack8(public[PUB_ROOT], public[PUB_ROOT + 1]),
         destination: [dest_lo[0], dest_lo[1], dest_lo[2], dest_lo[3], dest_hi[0]],
-        amount: amount[0],
+        amount,
     })
 }
 
@@ -1123,7 +1141,7 @@ mod tests {
                 .witness
                 .public
                 .iter()
-                .all(|word| *word != pack4([opening.open.v, 0, 0, 0]))
+                .all(|word| *word != pack4(amount_limbs(opening.open.v)))
         );
 
         let mut other = opening;
@@ -1132,5 +1150,36 @@ mod tests {
         assert_ne!(moved.payout_com, claim.payout_com);
         assert_eq!(moved.root, claim.root);
         assert_eq!(moved.nullifier, claim.nullifier);
+    }
+
+    #[test]
+    fn amount_above_u32_max_is_bound_in_the_public_word() {
+        let mut opening = sample::<FIXTURE_DEPTH>(1, 1);
+        opening.v = u64::from(u32::MAX) + 1;
+        let claim = derive(&opening);
+        assert_eq!(claim.amount, opening.v);
+        let mut low = opening;
+        low.v = u64::from(opening.v as u32);
+        assert_ne!(derive(&low).root, claim.root);
+        let (built, _) = build(&opening);
+        let parsed = claim_from_public(&built.witness.public).expect("public claim");
+        assert_eq!(parsed.amount, opening.v);
+        let proved = prove_claim(&opening);
+        let verified = verify_claim::<FIXTURE_DEPTH>(&proved).expect("verify");
+        assert_eq!(verified.amount, opening.v);
+        let text = String::from_utf8(
+            statement::canonical_claim_message(&claim, "terp").expect("body"),
+        )
+        .unwrap();
+        assert!(text.ends_with(&format!(":{}", opening.v)));
+        let private = PrivateOpening {
+            open: opening,
+            blind: [8, 7, 6, 5, 4, 3, 2, 1],
+        };
+        let hidden = derive_private(&private);
+        let mut truncated = private;
+        truncated.open.v = low.v;
+        assert_ne!(derive_private(&truncated).payout_com, hidden.payout_com);
+        assert_ne!(derive_private(&truncated).root, hidden.root);
     }
 }

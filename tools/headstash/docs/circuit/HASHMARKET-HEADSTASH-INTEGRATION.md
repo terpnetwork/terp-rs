@@ -189,6 +189,11 @@ headstash-claim-v1:{ctx_hex}:{root_hex}:{nullifier_hex}:{destination}:{amount}
   concatenated. `accepted_root` hashes the bech32 string with a
   little-endian u16 length. It does not hash the raw 20 bytes.
 - `amount` is the decimal `u64` with no leading zeros. Zero is `0`.
+  Flock publishes that integer as one field word, `pack4([lo, hi, 0, 0])`.
+  The leaf and the payout commitment store `lo` at message word 8 and `hi`
+  at word 9. Halo2 publishes the same integer as `NoteValue`'s `u64`
+  (`MAX_NOTE_VALUE` is `u64::MAX`) in the public instance. The class cap
+  counts claims of one amount and stays a `u32`.
 
 The holder signs that body with `personal_sign`. EIP-191
 (`\x19Ethereum Signed Message:\n` plus the decimal length, then keccak256)
@@ -768,3 +773,15 @@ branch does.
     32-byte seed is created in the chain home before `init` and is not
     printed. The same key signs the lane. Quorum stays `0.667`. The
     stock binary is not rebuilt.
+
+25. A payout amount is a `u64` in both prover statements.
+    The previous statement cap was 4,294,967,295 base units. Flock's
+    public amount word is `pack4([lo, hi, 0, 0])`. The leaf and the
+    payout commitment store `lo` at message word 8 and `hi` at word 9.
+    The batch egress keeps `lo` at word 15, where a 32-bit amount
+    already sat, and stores `hi` at word 14, which was zero, so an
+    amount that fits in 32 bits keeps the old batch root. Halo2's
+    statement amount was already `NoteValue(u64)`. The lane map is
+    that amount to a `u32` class cap. `AmountCap.amount` and the
+    cw-headstash payout row were already `u64`. This does not make
+    the Flock signature check unlinkable.

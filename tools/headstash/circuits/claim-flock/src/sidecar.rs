@@ -123,7 +123,7 @@ impl Sidecar {
                 .map(|payout| crate::batch::Payout {
                     nullifier: bytes_to_words(&payout.nullifier),
                     destination: destination_words(&payout.destination),
-                    amount: payout.amount as u32,
+                    amount: u64::try_from(payout.amount).expect("batch amount fits u64"),
                 })
                 .collect::<Vec<_>>(),
             self.rejected,

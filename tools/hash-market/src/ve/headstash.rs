@@ -101,7 +101,7 @@ pub struct CampaignBody {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AmountBody {
-    pub amount: u32,
+    pub amount: u64,
     pub cap: u32,
 }
 
@@ -362,5 +362,14 @@ mod tests {
         assert_eq!(value["attestations"].as_array().unwrap().len(), 1);
         assert_eq!(value["root"], hex::encode([3u8; 32]));
         assert_eq!(value["foreign_height"], 49);
+    }
+
+    #[test]
+    fn campaign_amount_accepts_a_u64_above_u32_max() {
+        let wide = u64::from(u32::MAX) + 1;
+        let raw = format!(r#"{{"amount":{wide},"cap":2}}"#);
+        let parsed: super::AmountBody = serde_json::from_str(&raw).unwrap();
+        assert_eq!(parsed.amount, wide);
+        assert_eq!(parsed.cap, 2);
     }
 }

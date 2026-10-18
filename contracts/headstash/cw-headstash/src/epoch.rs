@@ -1435,4 +1435,70 @@ mod tests {
         );
         assert!(denied.is_err());
     }
+
+    #[test]
+    fn accepted_sudo_pays_an_amount_above_u32_max() {
+        let wide = u64::from(u32::MAX) + 9;
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let dest = deps.api.addr_make("dest").to_string();
+        let info = message_info(&creator, &[]);
+        let mut params = campaign(&root);
+        params.amounts = vec![AmountCap {
+            amount: wide,
+            cap: 1,
+        }];
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap();
+        let payout = row(1, &dest, wide, denom());
+        let low = row(1, &dest, u64::from(wide as u32), denom());
+        assert_ne!(
+            accepted_root(root.as_slice(), &[payout.clone()]).unwrap(),
+            accepted_root(root.as_slice(), &[low]).unwrap()
+        );
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([4u8; 32].to_vec())],
+                rows: vec![payout.clone()],
+            },
+        )
+        .unwrap();
+        let hash = accepted_root(root.as_slice(), &[payout]).unwrap();
+        let paid = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 10,
+                    root: root_b64(&attested_root(&hash)),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![],
+                },
+            },
+        )
+        .unwrap();
+        let bank = paid
+            .messages
+            .iter()
+            .find_map(|msg| match &msg.msg {
+                CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                    Some((to_address.clone(), amount[0].amount))
+                }
+                _ => None,
+            })
+            .expect("bank send");
+        assert_eq!(bank.0, dest);
+        assert_eq!(bank.1, Uint256::from(wide));
+    }
 }

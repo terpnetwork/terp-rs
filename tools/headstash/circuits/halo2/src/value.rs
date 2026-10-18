@@ -1114,4 +1114,18 @@ mod tests {
 
         assert_eq!(fp1 * (fp2 + fp3), fp1 * fp2 + fp1 * fp3);
     }
+
+    #[test]
+    fn note_value_statement_keeps_the_high_32_bits() {
+        let amount = u64::from(u32::MAX) + 1;
+        let value = NoteValue::from(amount);
+        assert_eq!(value.inner(), amount);
+        assert_eq!(NoteValue::from(amount).to_bytes(), amount.to_le_bytes());
+        let word = pallas::Base::from(value.inner());
+        let repr = word.to_repr();
+        let bytes: &[u8] = repr.as_ref();
+        assert_eq!(&bytes[..8], &amount.to_le_bytes());
+        assert!(bytes[8..].iter().all(|byte| *byte == 0));
+        assert_ne!(word, pallas::Base::from(u64::from(amount as u32)));
+    }
 }

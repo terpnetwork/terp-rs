@@ -426,7 +426,7 @@ fn prove_claim_pub(recipient: &str) -> anyhow::Result<ClaimPub> {
     let started = Instant::now();
     let mut notes = Vec::with_capacity(NOTE_COUNT);
     for index in 0..NOTE_COUNT {
-        let amount = if index == 0 { AMOUNT as u32 } else { 1 };
+        let amount = if index == 0 { AMOUNT } else { 1 };
         notes.push(SecretNote {
             rseed: rseed_at(&salt, index as u32),
             epk_x: leaf_x,
