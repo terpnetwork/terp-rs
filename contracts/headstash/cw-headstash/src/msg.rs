@@ -119,6 +119,9 @@ pub enum ExecuteMsg {
     SetEpochCampaign {
         campaign: crate::epoch::EpochCampaignParams,
     },
+    /// Owner: send leftover escrow of the campaign denom to `sweep_recipient`.
+    /// The block height must be past the cutoff. This message carries no address.
+    SweepUnclaimed {},
     /// Owner: the rows and proof digests an accepted sudo can pay.
     StageEpochBatch {
         digests: Vec<Binary>,

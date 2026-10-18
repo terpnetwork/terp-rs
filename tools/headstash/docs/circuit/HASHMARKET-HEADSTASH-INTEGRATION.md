@@ -931,6 +931,32 @@ sidecar has installed its campaign stays invisible to that process.
 A loopback query of `{"epoch_campaign":{}}` at campaign install would
 close that gap. This slice does not add that query.
 
+### Review of 8c993c3 and 422b9dd
+
+Re-read of `VmVerifier::register`, `install_epoch_host`, the campaign
+POST, and `evaluate_halo2`. No registry code change in this pass.
+
+- Who may register. Only the process. `register` refuses an id that is
+  already cached, and it refuses id 0 and any id above `u32::MAX`.
+  There is no HTTP upload of a blob. `install_halo2_host` keeps the
+  first host. A new process starts with an empty campaign.
+- Startup self-compare. `install_epoch_host` checks the blob it just
+  registered against `epoch_vk_hash()` of that same blob. It does not
+  query `{"epoch_campaign":{}}`. The contract may not exist yet.
+- Drifted-cache window. Until a campaign POST, no claim is checked.
+  The POST binds the in-memory campaign to the cache hash, not to the
+  chain hash. `422b9dd` then re-checks that stored hash before the
+  host runs and before the verifier counter moves. A POST of the
+  on-chain hash against a different cache returns `400` `vk hash`.
+  A POST of the cache hash returns `200`, and later claims verify
+  under that cache. The chain store and the payout path still do not
+  read `vk_hash`. The sidecar has no contract address at startup, so
+  this pass does not add a chain query.
+- A second POST with an empty digest list may still replace the root,
+  the amounts, and the cutoff. It cannot replace `vk_id` or `vk_hash`
+  (`409` `vk is fixed`). The loopback run posts a wrong root and then
+  the real one before any claim, so that replacement stays.
+
 The native `Proof::verify` path in decision 26 remains the prover
 self-check only. Gas for the host call is the fork schedule
 `halo2_proof_instance_verify_cost` (base `2_700_000_000`, plus
@@ -1058,9 +1084,9 @@ The accepted root is what sudo pays. A pending root only stores. Payout is the H
 | Wrong root | 1 sidecar returns a different root. 3 return the honest root. | The wrong root is outvoted. Sudo pays the honest root only. |
 | Validator restart mid-epoch | One validator process stops after the pending seal and returns before the accepted seal. | Its sidecar may miss the pending vote. The accepted vote still counts it if the process is back. A missed vote is an absence, not a wrong root. |
 | Replayed nullifier | The same nullifier is submitted again in a later epoch of the same campaign. | Rejected as already spent before the amount-class cap. No second payout. |
-| Unclaimed after campaign end | Cutoff has passed and the campaign is closed. Some allocation rows were never claimed. | No new claims. Unclaimed coins stay in the campaign escrow. This slice does not sweep them. A new drop is a new campaign. |
+| Unclaimed after campaign end | Cutoff has passed and the campaign is closed. Some allocation rows were never claimed. | No new claims. The owner (the DAO when the DAO owns the contract) may call `SweepUnclaimed`. The message carries no address. The recipient is `sweep_recipient` on the campaign. The block height must be greater than `cutoff_height`. An unpaid staged batch blocks the sweep. The message sends the full balance of the campaign denom. A second sweep finds an empty balance. An empty `sweep_recipient` leaves the coins in the contract. A new drop is a new campaign. |
 
 Harness: `hash-market` bin `headstash-failure-modes`. It runs these six cases in process with equal stake and the `0.667` rule. A Docker 4-validator `terpd` chain is the deployment target via ict-rs (`CosmosChain::new` with `num_validators = 4`) and is not started by this bin while the data volume is at 98% and the only local chain image is `terp-core:local-arm64`. Do not factory-reset Docker and do not delete volumes to make room.
 
-The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The wasm file is `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes, `wasm-opt -O1`, bulk memory left on). The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. There is no sweep message. Unclaimed coins stay in the contract balance. A new drop is a new campaign.
+The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The epoch-chain file `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes) does not contain `SweepUnclaimed`. The rebuild that does is `/tmp/cw_headstash-sweep.wasm` (902068 bytes, `wasm-opt -O1`, bulk memory left on). Pass that path as `WASM`. The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. `SweepUnclaimed` is owner-only and pays `sweep_recipient` from the campaign after the cutoff block. The instantiate script passes that address when `SWEEP_RECIPIENT` is set. Until that message, unclaimed coins stay in the contract balance. A new drop is a new campaign.
 

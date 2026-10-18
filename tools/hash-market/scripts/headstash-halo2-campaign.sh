@@ -24,13 +24,18 @@
 #   REGISTER_FUNDS=1000000uterp  hashmerchant register-contract deposit
 #   LABEL=headstash-halo2
 #   TERPD=.../build/terpd-v6.4.0-darwin-arm64
-#   WASM=/tmp/headstash-epoch-chain/cw_headstash.wasm
+#   WASM=/tmp/cw_headstash-sweep.wasm
+#                                SweepUnclaimed build. The epoch-chain
+#                                file of the same name is the previous
+#                                artifact and has no sweep message.
 #   KEYRING_BACKEND=test
 #   GAS_PRICES=0.025uterp
 #   VK_HASH_B64=standard base64 of the 32-byte epoch blob hash
 #   SRC_NODE=tcp://127.0.0.1:36667
 #   SRC_CONTRACT=terp1...        used when VK_HASH_B64 is unset
 #   WORK=directory for the JSON files (mode 700)
+#   SWEEP_RECIPIENT=terp1...     stored on the campaign; the sweep message
+#                                carries no address. Empty leaves sweep off.
 #   DRY=1                        resolve the hash and stop before any tx
 #
 # cw-orch: ExecuteMsg::SetEpochCampaign is the same write when the contract
@@ -41,15 +46,17 @@
 # apply_accepted_batch again. The contract returns
 # "nullifier already exists". One staged batch that repeats a nullifier
 # returns "duplicate nullifier in batch".
-# Unclaimed: there is no sweep message. query bank balances of the
-# contract still shows the escrow. A new drop is a new campaign.
+# Unclaimed: the owner calls SweepUnclaimed after the cutoff. The
+# recipient is sweep_recipient on the campaign, not an argument.
+# Set SWEEP_RECIPIENT to store one. Empty leaves the coins in the
+# contract. A new drop is a new campaign.
 
 set -euo pipefail
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:${HOME}/.cargo/bin:${PATH}"
 
 TERPD="${TERPD:-/Users/returniflost/abstract/terp-core/build/terpd-v6.4.0-darwin-arm64}"
-WASM="${WASM:-/tmp/headstash-epoch-chain/cw_headstash.wasm}"
+WASM="${WASM:-/tmp/cw_headstash-sweep.wasm}"
 NODE="${NODE:-}"
 CHAIN_ID="${CHAIN_ID:-}"
 KEY="${KEY:-}"
@@ -66,6 +73,7 @@ MAX_ROWS="${MAX_ROWS:-4}"
 ESCROW="${ESCROW:-1000000uterp}"
 REGISTER_FUNDS="${REGISTER_FUNDS:-1000000uterp}"
 LABEL="${LABEL:-headstash-halo2}"
+SWEEP_RECIPIENT="${SWEEP_RECIPIENT:-}"
 KEYRING_BACKEND="${KEYRING_BACKEND:-test}"
 GAS_PRICES="${GAS_PRICES:-0.025uterp}"
 VK_HASH_B64="${VK_HASH_B64:-}"
@@ -160,7 +168,7 @@ PY
 fi
 chmod 600 "$HASH_FILE"
 
-export ALLOCATION_ROOT_HEX DENOM_HEX TRUSTED_HEX CTX_HEX CUTOFF AMOUNT CAP MAX_ROWS LABEL
+export ALLOCATION_ROOT_HEX DENOM_HEX TRUSTED_HEX CTX_HEX CUTOFF AMOUNT CAP MAX_ROWS LABEL SWEEP_RECIPIENT
 python3 - "$HASH_FILE" "$WORK" "$WAVS" << 'PY'
 import base64, json, os, pathlib, sys
 hash_file, work, wavs_path = sys.argv[1:]
@@ -219,6 +227,11 @@ campaign = {
         }
     }
 }
+recipient = os.environ.get("SWEEP_RECIPIENT", "").strip()
+if recipient:
+    if not recipient.startswith("terp1") or any(ch.isspace() for ch in recipient):
+        raise SystemExit("sweep recipient")
+    campaign["set_epoch_campaign"]["campaign"]["sweep_recipient"] = recipient
 for name, body in (("instantiate.json", init), ("campaign.json", campaign)):
     path = work / name
     path.write_text(json.dumps(body, separators=(",", ":")))

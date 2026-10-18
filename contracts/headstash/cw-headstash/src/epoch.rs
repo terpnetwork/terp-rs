@@ -79,6 +79,10 @@ pub struct EpochCampaignParams {
     pub vk_id: u64,
     /// SHA-256 of the whole circuit blob. 32 bytes for both backends.
     pub vk_hash: Binary,
+    /// Bech32 address that receives leftover escrow after the cutoff block.
+    /// Empty disables the sweep. The sweep message does not carry an address.
+    #[serde(default)]
+    pub sweep_recipient: String,
 }
 
 #[cw_serde]
@@ -108,11 +112,56 @@ pub fn set_campaign(
         return Err(StdError::msg("campaign is already staged"));
     }
     validate_campaign(&campaign)?;
+    if !campaign.sweep_recipient.is_empty() {
+        deps.api.addr_validate(&campaign.sweep_recipient)?;
+    }
     EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
     Ok(Response::new()
         .add_attribute("action", "set_epoch_campaign")
         .add_attribute("backend", campaign.backend)
         .add_attribute("cutoff", campaign.cutoff_height.to_string()))
+}
+
+/// Owner sends the campaign denom balance to the recipient stored on the
+/// campaign. The block must be past the cutoff, and a staged batch that
+/// has not been paid still owns its escrow.
+pub fn sweep_unclaimed(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let campaign = EPOCH_CAMPAIGN
+        .may_load(deps.storage)?
+        .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    if campaign.sweep_recipient.is_empty() {
+        return Err(StdError::msg("sweep recipient is not set"));
+    }
+    let recipient = deps.api.addr_validate(&campaign.sweep_recipient)?;
+    if env.block.height <= campaign.cutoff_height {
+        return Err(StdError::msg("campaign has not ended"));
+    }
+    let staged = EPOCH_STAGE.may_load(deps.storage)?;
+    let paid = EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false);
+    if staged.is_some() && !paid {
+        return Err(StdError::msg("staged batch is unpaid"));
+    }
+    let cfg = HEADSTASH_CFG.load(deps.storage)?;
+    let strategy = strategy_for(&cfg.ts, &campaign.denom)?;
+    let denom = strategy.denom(&env.contract.address);
+    let balance = deps
+        .querier
+        .query_balance(env.contract.address, denom.clone())?;
+    if balance.amount.is_zero() {
+        return Err(StdError::msg("nothing to sweep"));
+    }
+    Ok(Response::new()
+        .add_message(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: vec![balance],
+        })
+        .add_attribute("action", "sweep_unclaimed")
+        .add_attribute("denom", denom))
 }
 
 pub fn stage_batch(
@@ -565,6 +614,14 @@ fn validate_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
     if campaign.backend == "halo2" && campaign.vk_id == 0 {
         return Err(StdError::msg("vk id"));
     }
+    if !campaign.sweep_recipient.is_empty() {
+        let prefix = format!("{}1", campaign.bech32_hrp);
+        if !campaign.sweep_recipient.starts_with(&prefix) {
+            return Err(StdError::msg(
+                "sweep recipient hrp does not match the campaign",
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -803,9 +860,10 @@ mod tests {
         derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig,
     };
     use crate::wavs::generate_test_wavs_proof;
-    use crate::{execute, instantiate};
+    use crate::{execute, instantiate, query};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{CosmosMsg, Empty, OwnedDeps, Uint256};
+    use cosmwasm_std::{coins, Addr, CosmosMsg, Empty, OwnedDeps, Uint256};
+    use cw_multi_test::{App, BankSudo, ContractWrapper, Executor, SudoMsg};
 
     type TestDeps = OwnedDeps<
         cosmwasm_std::testing::MockStorage,
@@ -1214,6 +1272,7 @@ mod tests {
             root_id: 0,
             vk_id: 0,
             vk_hash: Binary::from([0u8; 32].to_vec()),
+            sweep_recipient: String::new(),
         }
     }
 
@@ -1518,5 +1577,143 @@ mod tests {
             .expect("bank send");
         assert_eq!(bank.0, dest);
         assert_eq!(bank.1, Uint256::from(wide));
+    }
+    fn uterp_of(app: &App, addr: &Addr) -> Uint256 {
+        app.wrap().query_balance(addr, "uterp").unwrap().amount
+    }
+
+    fn sweep_err(app: &mut App, sender: &Addr, contract: &Addr) -> String {
+        app.execute_contract(
+            sender.clone(),
+            contract.clone(),
+            &ExecuteMsg::SweepUnclaimed {},
+            &[],
+        )
+        .unwrap_err()
+        .to_string()
+    }
+
+    /// Existing-fungible escrow. The bank in this app actually holds the coins.
+    fn escrow_app(cutoff: u64, height: u64, with_recipient: bool) -> (App, Addr, Addr, Addr) {
+        let mut app = App::default();
+        let owner = app.api().addr_make("owner");
+        let treasury = app.api().addr_make("treasury");
+        app.sudo(SudoMsg::Bank(BankSudo::Mint {
+            to_address: owner.to_string(),
+            amount: coins(1_000_000, "uterp"),
+        }))
+        .unwrap();
+        let code_id = app.store_code(Box::new(ContractWrapper::new(
+            execute,
+            instantiate,
+            query,
+        )));
+        let root = Binary::from(vec![0u8; 32]);
+        let contract = app
+            .instantiate_contract(
+                code_id,
+                owner.clone(),
+                &InstantiateMsg {
+                    genesis_root: root.clone(),
+                    distro_hash_domain: Default::default(),
+                    genesis_label: None,
+                    token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                        "uterp".into(),
+                    )),
+                    wavs: generate_test_wavs_proof(1),
+                    circuit_id: None,
+                },
+                &coins(1_000_000, "uterp"),
+                "headstash",
+                None,
+            )
+            .unwrap();
+        app.update_block(|block| {
+            block.height = height;
+        });
+        let mut params = campaign(&root);
+        params.backend = "halo2".into();
+        params.vk_id = 1;
+        params.cutoff_height = cutoff;
+        params.bech32_hrp = "cosmwasm".into();
+        params.denom = derive_nd("uterp");
+        params.sweep_recipient = if with_recipient {
+            treasury.to_string()
+        } else {
+            String::new()
+        };
+        app.execute_contract(
+            owner.clone(),
+            contract.clone(),
+            &ExecuteMsg::SetEpochCampaign { campaign: params },
+            &[],
+        )
+        .unwrap();
+        (app, owner, contract, treasury)
+    }
+
+    #[test]
+    fn sweep_recipient_must_match_the_campaign_hrp() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let mut params = campaign(&root);
+        params.sweep_recipient = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw".into();
+        let err = execute(
+            deps.as_mut(),
+            env,
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("sweep recipient hrp"));
+    }
+
+    #[test]
+    fn sweep_waits_until_the_block_after_cutoff() {
+        let (mut app, owner, contract, _) = escrow_app(20, 20, true);
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("campaign has not ended"), "{err}");
+        assert_eq!(uterp_of(&app, &contract), Uint256::from(1_000_000u128));
+
+        let (mut app, owner, contract, _) = escrow_app(19, 20, false);
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("sweep recipient is not set"), "{err}");
+        assert_eq!(uterp_of(&app, &contract), Uint256::from(1_000_000u128));
+    }
+
+    #[test]
+    fn sweep_sends_unclaimed_uterp_to_the_configured_recipient() {
+        let (mut app, owner, contract, _treasury) = escrow_app(19, 20, true);
+        let stranger = app.api().addr_make("stranger");
+        let err = sweep_err(&mut app, &stranger, &contract);
+        assert!(err.contains("owner"), "{err}");
+
+        let dest = app.api().addr_make("dest");
+        app.execute_contract(
+            owner.clone(),
+            contract.clone(),
+            &ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from(vec![4u8; 32])],
+                rows: vec![row(1, dest.as_str(), 15, derive_nd("uterp"))],
+            },
+            &[],
+        )
+        .unwrap();
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("staged batch is unpaid"), "{err}");
+        assert_eq!(uterp_of(&app, &contract), Uint256::from(1_000_000u128));
+
+        let (mut app, owner, contract, treasury) = escrow_app(19, 20, true);
+        app.execute_contract(
+            owner.clone(),
+            contract.clone(),
+            &ExecuteMsg::SweepUnclaimed {},
+            &[],
+        )
+        .unwrap();
+        assert!(uterp_of(&app, &contract).is_zero());
+        assert_eq!(uterp_of(&app, &treasury), Uint256::from(1_000_000u128));
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("nothing to sweep"), "{err}");
     }
 }

@@ -341,6 +341,7 @@ pub fn execute(
             epoch::assign_public_notes(deps, info, nullifiers)
         }
         ExecuteMsg::SetEpochCampaign { campaign } => epoch::set_campaign(deps, info, campaign),
+        ExecuteMsg::SweepUnclaimed {} => epoch::sweep_unclaimed(deps, env, info),
         ExecuteMsg::StageEpochBatch { digests, rows } => {
             epoch::stage_batch(deps, &env, info, digests, rows)
         }
