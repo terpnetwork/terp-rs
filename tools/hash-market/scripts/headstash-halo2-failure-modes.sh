@@ -568,15 +568,5 @@ if [ "$sweep_rc" = "0" ] && [ "$code" = "0" ] && [ "$left" = "0" ] && [ "$height
 fi
 report unclaimed_funds "$ok" "$(( $(now_ms) - t0 ))" "height ${height} escrow ${held} -> ${left} code ${code}"
 
-t0=$(now_ms)
-printf "%s" "{\"sweep_unclaimed\":{}}" > "$WORK/sweep.json"
-set +e
-tx_wait 3000000 tx wasm execute "$CONTRACT" "{\"sweep_unclaimed\":{}}"
-set -e
-code=$(python3 -c "import json; print(json.load(open(\"$WORK/tx-query.json\")).get(\"code\", 1))" 2>/dev/null || echo 1)
-after=$(contract_amount)
-ok=0
-if [ "$code" = "0" ] && [ "$after" = "0" ] && [ "$left" != "0" ]; then ok=1; fi
-report sweep_unclaimed "$ok" "$(( $(now_ms) - t0 ))" "escrow ${left} -> ${after}"
 cp "$REPORT" /tmp/headstash-fm-halo2-report.txt
 echo "report $REPORT"
