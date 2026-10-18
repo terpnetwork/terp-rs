@@ -268,7 +268,7 @@ pub async fn seal(
         ));
     };
     let mut sealed = campaign.seal(body.height, signer);
-    if std::env::var("HEADSTASH_LIE_ROOT").ok().as_deref() == Some("1") {
+    if lab_lie_root() {
         sealed.batch_hash[0] ^= 0x5a;
         sealed.attested = headstash_epoch::attested_root(&sealed.batch_hash);
         sealed.custody_signature = ed25519_dalek::Signer::sign(
@@ -449,6 +449,19 @@ fn error_json_msg(code: StatusCode, msg: &str) -> HttpError {
     (code, Json(serde_json::json!({"error": msg})))
 }
 
+/// Lab hook for the wrong-root failure mode. Both variables must be
+/// exactly `1`. A production server leaves them unset.
+fn lab_lie_root() -> bool {
+    lab_lie_root_from(
+        std::env::var("HEADSTASH_LIE_ROOT").ok().as_deref(),
+        std::env::var("HEADSTASH_LAB_LIE").ok().as_deref(),
+    )
+}
+
+fn lab_lie_root_from(lie: Option<&str>, lab: Option<&str>) -> bool {
+    lie == Some("1") && lab == Some("1")
+}
+
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -497,6 +510,15 @@ mod tests {
         assert!(items[0].signature.is_empty());
         assert_eq!(items[0].leaf_x, [0u8; 32]);
         assert_eq!(items[0].vk_id, 1);
+    }
+
+    #[test]
+    fn a_stray_lie_root_does_not_flip_the_seal() {
+        assert!(!super::lab_lie_root_from(None, None));
+        assert!(!super::lab_lie_root_from(Some("1"), None));
+        assert!(!super::lab_lie_root_from(Some("1"), Some("0")));
+        assert!(!super::lab_lie_root_from(None, Some("1")));
+        assert!(super::lab_lie_root_from(Some("1"), Some("1")));
     }
 
     #[test]

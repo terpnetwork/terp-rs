@@ -957,6 +957,34 @@ POST, and `evaluate_halo2`. No registry code change in this pass.
   (`409` `vk is fixed`). The loopback run posts a wrong root and then
   the real one before any claim, so that replacement stays.
 
+### Pass at 3f7943a
+
+Re-read of `VmVerifier::register`, `install_epoch_host`, the campaign
+POST, and `evaluate_halo2` on top of the failure-mode script. The
+registry code is unchanged.
+
+- Who may register. Still only the process. `register` refuses a cached
+  id, id 0, and any id above `u32::MAX`. The failure-mode lanes call
+  `install_epoch_host` at startup. There is no HTTP upload of a blob.
+- Startup self-compare. `install_epoch_host` still checks the blob it
+  just registered against `epoch_vk_hash()` of that same blob. It does
+  not query the chain.
+- Drifted-cache window. Unchanged until a campaign POST. The
+  failure-mode script posts a flipped hash first and requires `400`
+  `vk hash`, then posts the cache hash. Claims re-check the stored
+  hash before the verifier counter moves. Payout still does not read
+  `vk_hash`.
+- Lab lie. `seal` signs a flipped batch root only when
+  `HEADSTASH_LIE_ROOT` and `HEADSTASH_LAB_LIE` are both `1`. The
+  wrong-root lane sets both. A production server sets neither.
+- Binds. `headstash-lane` and `headstash-epoch-e2e` refuse a bind that
+  does not start with `127.0.0.1:`. The failure-mode script uses those
+  loopback ports and refuses a node that is not `tcp://127.0.0.1`.
+  The hash-market server defaults to `127.0.0.1:9090`. `inspect_bind`
+  refuses `0.0.0.0` and `[::]` unless `HASH_MARKET_ALLOW_PUBLIC_BIND`
+  is set. `hash-market-relay` still defaults to `0.0.0.0:9444` in its
+  own config and is not started by these scripts.
+
 The native `Proof::verify` path in decision 26 remains the prover
 self-check only. Gas for the host call is the fork schedule
 `halo2_proof_instance_verify_cost` (base `2_700_000_000`, plus
@@ -1088,5 +1116,5 @@ The accepted root is what sudo pays. A pending root only stores. Payout is the H
 
 Harness: `hash-market` bin `headstash-failure-modes`. It runs these six cases in process with equal stake and the `0.667` rule. A Docker 4-validator `terpd` chain is the deployment target via ict-rs (`CosmosChain::new` with `num_validators = 4`) and is not started by this bin while the data volume is at 98% and the only local chain image is `terp-core:local-arm64`. Do not factory-reset Docker and do not delete volumes to make room.
 
-The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The epoch-chain file `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes) does not contain `SweepUnclaimed`. The rebuild that does is `/tmp/cw_headstash-sweep.wasm` (902068 bytes, `wasm-opt -O1`, bulk memory left on). Pass that path as `WASM`. The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. `SweepUnclaimed` is owner-only and pays `sweep_recipient` from the campaign after the cutoff block. The instantiate script passes that address when `SWEEP_RECIPIENT` is set. Until that message, unclaimed coins stay in the contract balance. A new drop is a new campaign.
+The 4-validator chain instantiates cw-headstash with `tools/hash-market/scripts/headstash-halo2-campaign.sh`. The epoch-chain file `/tmp/headstash-epoch-chain/cw_headstash.wasm` (896512 bytes) does not contain `SweepUnclaimed`. The rebuild that does is `/tmp/cw_headstash-sweep.wasm` (902068 bytes, `wasm-opt -O1`, bulk memory left on). Pass that path as `WASM`. The script escrows `1000000uterp`, sets `vk_id` 1, and copies `vk_hash` from a loopback `{"epoch_campaign":{}}` query of the epoch blob. Genesis root and `allocation_root` are the same 32 bytes. A replayed nullifier is a second `ApplyAcceptedBatch` of a row that already paid, which returns `nullifier already exists`. A second row with the same nullifier inside one staged batch returns `duplicate nullifier in batch`. `SweepUnclaimed` is owner-only and pays `sweep_recipient` from the campaign after the cutoff block. The instantiate script passes that address when `SWEEP_RECIPIENT` is set. `headstash-halo2-failure-modes.sh` sends `SweepUnclaimed` after the replay is rejected, once the height is past the cutoff, and the contract uterp balance must be zero. Until that message, unclaimed coins stay in the contract balance. A new drop is a new campaign.
 

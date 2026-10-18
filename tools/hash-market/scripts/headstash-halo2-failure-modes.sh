@@ -3,6 +3,9 @@
 # Campaign instantiate is headstash-halo2-campaign.sh (vk_id 1 and the blob hash).
 # Four loopback lanes verify one Halo2 claim. Binds stay on 127.0.0.1.
 # Does not print keys, seeds, proofs, or the vk hash.
+# After the replay is rejected, the owner calls SweepUnclaimed. The
+# recipient was stored on the campaign. Leftover uterp must leave the
+# contract. A lying lane sets both HEADSTASH_LIE_ROOT and HEADSTASH_LAB_LIE.
 set -euo pipefail
 
 export PATH="/usr/local/bin:/opt/homebrew/bin:${HOME}/.cargo/bin:${PATH}"
@@ -12,7 +15,7 @@ WT="${WT:-/Users/returniflost/abstract/terp-core/crates/terp-rs-headstash-epoch}
 ICT="${ICT:-/Users/returniflost/abstract/terp-core/crates/ict-rs}"
 TERPD="${TERPD:-/Users/returniflost/abstract/terp-core/build/terpd-v6.4.0-darwin-arm64}"
 LANE="${LANE:-$WT/tools/hash-market/target/release/headstash-lane}"
-WASM="${WASM:-/tmp/headstash-epoch-chain/cw_headstash.wasm}"
+WASM="${WASM:-/tmp/cw_headstash-sweep.wasm}"
 WAVS="${WAVS:-/tmp/headstash-epoch-chain/wavs.json}"
 WORK="${WORK:-$(mktemp -d /tmp/headstash-fm-halo2.XXXXXX)}"
 CHAIN_ID=headstash-fm-1
@@ -64,6 +67,7 @@ start_lane() {
     HEADSTASH_CUSTODY_SEED="$WORK/custody.seed" \
     HASHMERCHANT_CHAIN_UID=headstash-claim \
     HEADSTASH_LIE_ROOT=1 \
+    HEADSTASH_LAB_LIE=1 \
     "$LANE" > "$WORK/lane$i.log" 2>&1 &
   else
     HASH_MARKET_BIND="127.0.0.1:${port}" \
@@ -410,6 +414,8 @@ export KEY=validator
 export TRUSTED_HEX="$PUB"
 export CUTOFF=1
 export AMOUNT=15
+export WASM="${WASM}"
+export SWEEP_RECIPIENT="$OWNER"
 VK_HASH_B64=$(cat "$WORK/vk.b64")
 export VK_HASH_B64 WORK
 bash "$WT/tools/hash-market/scripts/headstash-halo2-campaign.sh" | tee "$WORK/campaign.out"
@@ -547,9 +553,30 @@ if grep -q "nullifier already exists" "$WORK/tx-query.json" 2>/dev/null; then ok
 report replayed_nullifier_across_epochs "$ok" "$(( $(now_ms) - t0 ))" "second spend rejected"
 
 t0=$(now_ms)
-left=$(contract_amount)
+held=$(contract_amount || echo missing)
+height=$(chain_height || echo 0)
+SWEEP_MSG='{"sweep_unclaimed":{}}'
+set +e
+tx_wait 5000000 tx wasm execute "$CONTRACT" "$SWEEP_MSG"
+sweep_rc=$?
+set -e
+code=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("code",""))' "$WORK/tx-query.json" 2>/dev/null || echo missing)
+left=$(contract_amount || echo missing)
 ok=0
-if [ "$left" != "0" ]; then ok=1; fi
-report unclaimed_funds_sweep "$ok" "$(( $(now_ms) - t0 ))" "escrow still holds uterp"
+if [ "$sweep_rc" = "0" ] && [ "$code" = "0" ] && [ "$left" = "0" ] && [ "$height" -gt 1 ]; then
+  ok=1
+fi
+report unclaimed_funds "$ok" "$(( $(now_ms) - t0 ))" "height ${height} escrow ${held} -> ${left} code ${code}"
+
+t0=$(now_ms)
+printf "%s" "{\"sweep_unclaimed\":{}}" > "$WORK/sweep.json"
+set +e
+tx_wait 3000000 tx wasm execute "$CONTRACT" "{\"sweep_unclaimed\":{}}"
+set -e
+code=$(python3 -c "import json; print(json.load(open(\"$WORK/tx-query.json\")).get(\"code\", 1))" 2>/dev/null || echo 1)
+after=$(contract_amount)
+ok=0
+if [ "$code" = "0" ] && [ "$after" = "0" ] && [ "$left" != "0" ]; then ok=1; fi
+report sweep_unclaimed "$ok" "$(( $(now_ms) - t0 ))" "escrow ${left} -> ${after}"
 cp "$REPORT" /tmp/headstash-fm-halo2-report.txt
 echo "report $REPORT"
