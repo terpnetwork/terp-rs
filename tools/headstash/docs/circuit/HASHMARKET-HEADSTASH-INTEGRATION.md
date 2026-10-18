@@ -42,8 +42,8 @@ The creator parameter `backend` is `flock` or `halo2`. A campaign has
 exactly one. Ingress rejects a proof whose backend byte disagrees with
 that parameter before it verifies anything.
 
-Halo2 is the airdrop prover. Flock is a comparison variant, use case TBD
-(studying Zakura).
+Halo2 is the airdrop prover. Flock is a comparison variant; candidate
+gift/onramp backend (bearer link, design TBD).
 
 The two backends stay available as two example campaigns, so a benchmark
 can compare them on the same note count. Each example has its own
@@ -801,11 +801,22 @@ branch does.
     zeros to 32 bytes and published as the recipient Poseidon. The lane
     calls `Proof::verify` for a halo2 campaign and rejects a body that
     carries a signature or a leaf key. One campaign keeps one backend.
-    Flock is a comparison variant, use case TBD (studying Zakura). It
-    still checks secp256k1 beside the proof.
+    Flock is a comparison variant; candidate gift/onramp backend (bearer
+    link, design TBD). It still checks secp256k1 beside the proof.
     The host sidecar wire is 168 bytes: anchor, context, amount,
     nullifier, recipient, and challenge. The leaf and the note
     commitment are not on that wire. The guest module still serializes
     200 bytes. Its first 168 bytes are the older prefix, which includes
     the leaf and the note commitment. `process_headstash` hashes that
     prefix, so the retained on-chain checker is not this epoch verifier.
+
+27. The loopback halo2 payout is one note on a dummy 32-level path.
+    The circuit depth stays 32. A 32,769-note witness is suite depth
+    16, and the 51,807-note witness is the real set, also suite depth
+    16. Both are padded to 32 levels. The benchmark is three release
+    proves of each witness, with one shared keygen. No gift-account
+    code was added.
+\n
+28. A halo2 replay is rejected as a spent nullifier before the amount
+    class cap. A second distinct note in a full class is still
+    class-full. The class cap on the chain campaign stays 1.

@@ -242,21 +242,23 @@ if [ "${SKIP_E2E:-0}" = 1 ]; then
   exit 0
 fi
 cd "$WT/tools/hash-market"
-# step4e2e is the pre-feature lock. The additive lock only adds the two
-# headstash edges. A later cargo run must not replace either one.
-ADDITIVE="/tmp/hash-market-Cargo.lock.e2e-additive"
-if [ ! -f "$ADDITIVE" ]; then
-  cp Cargo.lock "$ADDITIVE"
-fi
-cp "$ADDITIVE" Cargo.lock
+# The committed lock already contains the zk-headstash graph. Do not copy
+# the pre-zk additive lock over it: --locked would then refuse to build.
+LOCK_SHA="$(shasum -a 256 Cargo.lock | awk '{print $1}')"
+case "$LOCK_SHA" in
+  8d5f3ee3c10f7ad0428a131bdc58b3fb11f0e8515541dd92241a436804570064) ;;
+  *) echo "refusing hash-market lock ${LOCK_SHA}" >&2; exit 1 ;;
+esac
+HALO2_LOCK="/tmp/hash-market-Cargo.lock.halo2"
+cp Cargo.lock "$HALO2_LOCK"
 restore_hm() {
-  if ! cmp -s Cargo.lock "$ADDITIVE"; then
-    echo "hash-market lock changed during e2e; restoring additive lock"
-    cp "$ADDITIVE" Cargo.lock
+  if ! cmp -s Cargo.lock "$HALO2_LOCK"; then
+    echo "hash-market lock changed during e2e; restoring halo2 lock"
+    cp "$HALO2_LOCK" Cargo.lock
   fi
 }
 trap 'restore_tree; restore_hm' EXIT
-CARGO_BUILD_JOBS=2 cargo run --offline --locked --features headstash --bin headstash-epoch-e2e -- \
+CARGO_BUILD_JOBS=2 cargo run --release --offline --locked --features headstash --bin headstash-epoch-e2e -- \
   >"$CHAIN_HOME/e2e.log" 2>&1
 echo "e2e log $CHAIN_HOME/e2e.log"
 tail -40 "$CHAIN_HOME/e2e.log"

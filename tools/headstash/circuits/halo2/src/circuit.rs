@@ -969,6 +969,181 @@ pub fn verify_epoch_statement(
         .map_err(|_| EpochVerifyError::Proof)
 }
 
+/// Two proofs of one epoch claim. The second transcript is a fresh
+/// digest of the same nullifier. The note is one leaf on a dummy
+/// 32-level path. Circuit depth stays [`MERKLE_DEPTH_ORCHARD`].
+#[cfg(feature = "host-crypto")]
+#[derive(Clone, Debug)]
+pub struct EpochClaimBundle {
+    pub proof: Vec<u8>,
+    pub replay_proof: Vec<u8>,
+    pub ctx: [u8; 32],
+    pub root: [u8; 32],
+    pub nullifier: [u8; 32],
+    pub destination: String,
+    pub amount: u64,
+    pub message: String,
+}
+
+/// Prove a canonical epoch claim for `destination`.
+///
+/// `recipient` is the 20-byte bech32 payload, right-padded with zeros.
+/// The eligible key stays a witness. The first successful
+/// `verify_epoch_statement` in this process builds the verifying key
+/// and later checks reuse it.
+#[cfg(feature = "host-crypto")]
+pub fn prove_epoch_claim(
+    destination: &str,
+    recipient: [u8; 32],
+    amount: u64,
+    ctx: [u8; 32],
+) -> Result<EpochClaimBundle, String> {
+    use std::time::Instant;
+
+    use crate::circuit::gadget::secp256k1_chip::{
+        secp_coord_be_to_pallas_base, secp_fp_from_coord_be,
+    };
+    use crate::claim_auth::{canonical_claim_body, claim_nk_scoped, claim_rseed_com};
+    use crate::distro_poseidon::poseidon_distro_leaf;
+    use crate::keys::EligibleSk;
+    use crate::tree::MerklePath;
+    use crate::value::HeadstashValue;
+    use halo2_proofs::circuit::Value;
+
+    if destination.is_empty() || destination.len() > 128 || destination.contains(':') {
+        return Err("destination".into());
+    }
+    if amount == 0 {
+        return Err("amount".into());
+    }
+
+    let mut rng = crate::os_rng();
+    let hv = HeadstashValue::from_raw(amount, "uterp", 1)?;
+    let (value, denom, fdi) = hv.into_parts();
+    let esk = EligibleSk::random(&mut rng);
+    let rho = Rho::from_nf_old(Nullifier::dummy(&mut rng));
+    let note = Note::new(denom, value, fdi, RecpAddr::new(recipient), esk, rho, &mut rng);
+    let (epkx_be, epky_be) = esk.epk().xy();
+    let epkx = secp_fp_from_coord_be(&epkx_be);
+    let epky = secp_fp_from_coord_be(&epky_be);
+    let bound = note.hiding_binding();
+    let (ctx_lo, ctx_hi) = crate::claim_auth::ctx_limbs(&ctx);
+    let nk = NullifierDerivingKey::from_prf(claim_nk_scoped(bound.rseed_lo, bound.rseed_hi, &ctx));
+    let nf = note.nullifier_for_ctx(&ctx);
+    let path = MerklePath::dummy(&mut rng);
+    let distro_leaf = poseidon_distro_leaf(
+        secp_coord_be_to_pallas_base(&epkx_be),
+        secp_coord_be_to_pallas_base(&epky_be),
+        note.nd().to_fp(),
+        pallas::Base::from(note.value().inner()),
+        pallas::Base::from(note.fdi()),
+        claim_rseed_com(bound.rseed_lo, bound.rseed_hi),
+    );
+    let anchor = path.root_from_leaf(distro_leaf);
+    let mut circuit = Circuit {
+        path: Value::known(path.auth_path()),
+        pos: Value::known(path.position()),
+        nk: Value::known(nk),
+        ctx_lo: Value::known(ctx_lo),
+        ctx_hi: Value::known(ctx_hi),
+        rseed_lo: Value::known(bound.rseed_lo),
+        rseed_hi: Value::known(bound.rseed_hi),
+        nd: Value::known(note.nd().to_fp()),
+        v: Value::known(note.value()),
+        fdi: Value::known(pallas::Base::from(note.fdi())),
+        recp: Value::known(note.recipient().to_fp()),
+        sig_e: Value::unknown(),
+        sig_r: Value::unknown(),
+        sig_s: Value::unknown(),
+        epkx: Value::known(epkx),
+        epky: Value::known(epky),
+        rho_old: Value::known(bound.rho),
+        psi_old: Value::known(bound.psi),
+        rcm_old: Value::known(bound.rcm),
+        cm_old: Value::known(note.commitment()),
+    };
+    let mut instance = Instance {
+        anchor,
+        nd: note.nd(),
+        v: note.value(),
+        recp: note.recipient(),
+        nf,
+        cmx: note.commitment().into(),
+        ctx,
+        destination: destination.to_string(),
+        e: [0u8; 32],
+    };
+    circuit.attach_personal_sign(&mut instance, &esk.secret_bytes());
+
+    let root = instance.anchor.to_bytes();
+    let nullifier = instance.nf.to_bytes();
+    let body = canonical_claim_body(&ctx, &root, &nullifier, destination, amount);
+    let statement = EpochStatement {
+        ctx,
+        root,
+        nullifier,
+        destination: destination.to_string(),
+        amount,
+        recipient,
+    };
+    let rebuilt =
+        Instance::from_epoch_statement(&statement).map_err(|_| "statement".to_string())?;
+    if rebuilt.to_halo2_instance() != instance.to_halo2_instance() {
+        return Err("public instance does not match the epoch statement".into());
+    }
+
+    std::eprintln!("epoch-claim keygen");
+    let started = Instant::now();
+    let pk = ProvingKey::build();
+    std::eprintln!(
+        "epoch-claim keygen_secs {:.3}",
+        started.elapsed().as_secs_f64()
+    );
+
+    std::eprintln!("epoch-claim prove");
+    let started = Instant::now();
+    let proof = Proof::create(&pk, &[circuit.clone()], &[instance.clone()], &mut rng)
+        .map_err(|err| format!("prove {err:?}"))?;
+    std::eprintln!(
+        "epoch-claim prove_secs {:.3}",
+        started.elapsed().as_secs_f64()
+    );
+
+    std::eprintln!("epoch-claim replay");
+    let started = Instant::now();
+    let replay = Proof::create(&pk, &[circuit], &[instance], &mut rng)
+        .map_err(|err| format!("replay prove {err:?}"))?;
+    std::eprintln!(
+        "epoch-claim replay_secs {:.3}",
+        started.elapsed().as_secs_f64()
+    );
+    if proof.as_ref() == replay.as_ref() {
+        return Err("replay proof was identical".into());
+    }
+
+    std::eprintln!("epoch-claim self-check");
+    let started = Instant::now();
+    verify_epoch_statement(proof.as_ref(), &statement).map_err(|err| format!("verify {err:?}"))?;
+    verify_epoch_statement(replay.as_ref(), &statement)
+        .map_err(|err| format!("replay verify {err:?}"))?;
+    std::eprintln!(
+        "epoch-claim verify_secs {:.3}",
+        started.elapsed().as_secs_f64()
+    );
+    std::eprintln!("epoch-claim proof_bytes {}", proof.as_ref().len());
+
+    Ok(EpochClaimBundle {
+        proof: proof.as_ref().to_vec(),
+        replay_proof: replay.as_ref().to_vec(),
+        ctx,
+        root,
+        nullifier,
+        destination: destination.to_string(),
+        amount,
+        message: String::from_utf8(body).map_err(|_| "message".to_string())?,
+    })
+}
+
 impl Proof {
     /// Creates a proof for the given circuits and instances.
     pub fn create(

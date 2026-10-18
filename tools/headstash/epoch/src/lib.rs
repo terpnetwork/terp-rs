@@ -9,6 +9,7 @@ mod lane;
 mod roots;
 
 pub use headstash_claim::DEPTH;
+pub use zk_headstash::circuit::{prove_epoch_claim, EpochClaimBundle};
 
 pub use lane::{
     Backend, BatchReport, Campaign, CampaignParams, IngressError, PeerReceipt, SubmittedClaim,

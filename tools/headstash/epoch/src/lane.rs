@@ -432,15 +432,16 @@ impl<const D: usize> Campaign<D> {
             .get(&parsed.amount)
             .copied()
             .ok_or(IngressError::Amount)?;
+        // A replay of a spent nullifier is spent even when the class is full.
+        if self.spent.contains(&parsed.nullifier) {
+            return Err(IngressError::Spent);
+        }
         let used = self.used.get(&parsed.amount).copied().unwrap_or(0);
         if used >= cap {
             return Err(IngressError::Cap);
         }
         if self.reserved.contains(&parsed.nullifier) {
             return Err(IngressError::Reserved);
-        }
-        if self.spent.contains(&parsed.nullifier) {
-            return Err(IngressError::Spent);
         }
         if self.rows.len() >= self.max_rows {
             return Err(IngressError::Full);

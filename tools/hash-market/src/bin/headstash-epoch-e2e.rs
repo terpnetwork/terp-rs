@@ -1,8 +1,9 @@
-//! Real depth-16 flock epoch on a loopback terpd.
+//! Halo2 epoch claim on a loopback terpd.
 //!
-//! Proves one claim, serves the hash-market router on 127.0.0.1, and pays
-//! that claim through SetEpochCampaign, StageEpochBatch, and the
-//! hashmerchant sudo. The custody key stays in this process.
+//! Proves one canonical-body claim, serves the hash-market router on
+//! 127.0.0.1, and pays that claim through SetEpochCampaign,
+//! StageEpochBatch, and the hashmerchant sudo. The custody key stays
+//! in this process. The note is one leaf on a dummy 32-level path.
 
 use std::fs;
 use std::io::Read;
@@ -13,15 +14,9 @@ use std::time::{Duration, Instant};
 
 use base64::Engine;
 use ed25519_dalek::SigningKey;
-use headstash_claim::statement::{canonical_claim_message, destination_bech32, pack_words};
-use headstash_claim::tree::{self, SecretNote};
-use headstash_claim::{derive, encode_claim_proof, prove_claim, Opening};
-use headstash_wire::{recover_pubkey_x, sign_personal};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-const NOTE_COUNT: usize = 32769;
-const DEPTH: usize = 16;
 const AMOUNT: u64 = 15;
 const HRP: &str = "terp";
 const DENOM_RAW: &str = "uterp";
@@ -53,9 +48,8 @@ struct ClaimPub {
     destination: String,
     amount: u64,
     proof_hex: String,
+    replay_proof_hex: String,
     message: String,
-    signature_hex: String,
-    leaf_x_hex: String,
 }
 
 struct Step {
@@ -158,43 +152,6 @@ fn attested_root(batch: &[u8; 32]) -> [u8; 32] {
     pre.extend_from_slice(batch);
     pre.extend_from_slice(&1u64.to_le_bytes());
     sha256(&pre)
-}
-
-fn words5(bytes: &[u8]) -> anyhow::Result<[u32; 5]> {
-    if bytes.len() != 20 {
-        anyhow::bail!("destination is {} bytes", bytes.len());
-    }
-    let mut out = [0u32; 5];
-    for i in 0..5 {
-        out[i] = u32::from_le_bytes(bytes[4 * i..4 * i + 4].try_into().unwrap());
-    }
-    Ok(out)
-}
-
-fn destination_words(addr: &str) -> anyhow::Result<[u32; 5]> {
-    let (hrp, data) = bech32::decode(addr).map_err(|err| anyhow::anyhow!("bech32: {err}"))?;
-    if hrp.as_str() != HRP {
-        anyhow::bail!("address hrp is {}", hrp.as_str());
-    }
-    let words = words5(&data)?;
-    let again = destination_bech32(HRP, &words).map_err(|_| anyhow::anyhow!("re-encode"))?;
-    if again != addr {
-        anyhow::bail!("address does not round-trip through BIP-173");
-    }
-    Ok(words)
-}
-
-fn rseed_at(salt: &[u8; 32], index: u32) -> [u32; 8] {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(b"headstash-epoch-e2e-rseed-v1");
-    hasher.update(salt);
-    hasher.update(&index.to_le_bytes());
-    let bytes = *hasher.finalize().as_bytes();
-    let mut words = [0u32; 8];
-    for i in 0..8 {
-        words[i] = u32::from_le_bytes(bytes[4 * i..4 * i + 4].try_into().unwrap());
-    }
-    words
 }
 
 fn scrub(text: &str) -> String {
@@ -414,89 +371,38 @@ fn smart(cfg: &Cfg, contract: &str, query_msg: &Value) -> anyhow::Result<Value> 
 
 fn prove_claim_pub(recipient: &str) -> anyhow::Result<ClaimPub> {
     let denom = denom_bytes();
-    let dest_words = destination_words(recipient)?;
+    let raw = headstash_claim::statement::decode_destination(HRP, recipient)
+        .map_err(|_| anyhow::anyhow!("recipient is not canonical bech32"))?;
+    let mut padded = [0u8; 32];
+    padded[..20].copy_from_slice(&raw);
     let ctx = random_32();
-    let ctx_words = tree::words_from_le_bytes(&ctx);
-    let mut leaf_secret = random_32();
-    let leaf_probe = sign_personal(&leaf_secret, b"headstash-epoch-e2e-leaf")
-        .map_err(|_| anyhow::anyhow!("leaf sign"))?;
-    let leaf_x = recover_pubkey_x(b"headstash-epoch-e2e-leaf", &leaf_probe)
-        .map_err(|_| anyhow::anyhow!("leaf recover"))?;
-    let salt = random_32();
-    let started = Instant::now();
-    let mut notes = Vec::with_capacity(NOTE_COUNT);
-    for index in 0..NOTE_COUNT {
-        let amount = if index == 0 { AMOUNT } else { 1 };
-        notes.push(SecretNote {
-            rseed: rseed_at(&salt, index as u32),
-            epk_x: leaf_x,
-            epk_y: [0u8; 32],
-            epk_words: tree::epk_words(&leaf_x),
-            nd: [13, 14],
-            v: amount,
-            fdi: 1,
-        });
-    }
-    eprintln!(
-        "tree notes {NOTE_COUNT} in {:.1}s",
-        started.elapsed().as_secs_f64()
-    );
-    let (built, path) = tree::siblings(&notes, 0);
-    if built.depth != DEPTH as u32 || path.len() != DEPTH {
-        anyhow::bail!("tree depth {} path {}", built.depth, path.len());
-    }
-    let mut siblings = [[0u32; 8]; DEPTH];
-    for (i, row) in path.into_iter().enumerate() {
-        siblings[i] = row;
-    }
-    let note = &notes[0];
-    let opening = Opening::<DEPTH> {
-        rseed: note.rseed,
-        ctx: ctx_words,
-        epk_x: note.epk_words,
-        nd: note.nd,
-        v: note.v,
-        fdi: note.fdi,
-        index: 0,
-        siblings,
-        destination: dest_words,
-    };
-    drop(notes);
-    let claim = derive(&opening);
-    let root = pack_words(&claim.root);
-    if root != pack_words(&built.root) {
-        anyhow::bail!("claim root diverges from the tree");
-    }
-    let message = canonical_claim_message(&claim, HRP).map_err(|_| anyhow::anyhow!("message"))?;
-    let signature = sign_personal(&leaf_secret, &message).map_err(|_| anyhow::anyhow!("sign"))?;
-    let leaf_x = recover_pubkey_x(&message, &signature).map_err(|_| anyhow::anyhow!("recover"))?;
-    leaf_secret.fill(0);
-    eprintln!("prove start");
-    let proved = Instant::now();
-    let proof = prove_claim(&opening);
-    eprintln!("prove {:.3}s", proved.elapsed().as_secs_f64());
-    let encoded = encode_claim_proof(&proof);
-    let destination = String::from_utf8(message.clone()).map_err(|_| anyhow::anyhow!("utf8"))?;
-    let destination = destination
-        .rsplit(':')
-        .nth(1)
-        .ok_or_else(|| anyhow::anyhow!("destination field"))?
-        .to_string();
-    if destination != recipient {
+    eprintln!("halo2 epoch claim");
+    let bundle = headstash_epoch::prove_epoch_claim(recipient, padded, AMOUNT, ctx)
+        .map_err(|err| anyhow::anyhow!("prove: {err}"))?;
+    if bundle.destination != recipient {
         anyhow::bail!("claim destination is not the recipient");
     }
+    if bundle.amount != AMOUNT {
+        anyhow::bail!("amount {}", bundle.amount);
+    }
+    if bundle.ctx != ctx || bundle.proof.len() != bundle.replay_proof.len() {
+        anyhow::bail!("replay proof length");
+    }
+    if bundle.proof == bundle.replay_proof {
+        anyhow::bail!("replay proof matched the first proof");
+    }
+    eprintln!("halo2 proof bytes {}", bundle.proof.len());
     Ok(ClaimPub {
-        ctx,
-        root,
+        ctx: bundle.ctx,
+        root: bundle.root,
         denom,
-        nullifier: pack_words(&claim.nullifier),
-        digest: sha256(&encoded),
-        destination,
-        amount: u64::from(claim.amount),
-        proof_hex: hex_bytes(&encoded),
-        message: String::from_utf8(message).map_err(|_| anyhow::anyhow!("utf8"))?,
-        signature_hex: hex_bytes(&signature),
-        leaf_x_hex: hex_bytes(&leaf_x),
+        nullifier: bundle.nullifier,
+        digest: sha256(&bundle.proof),
+        destination: bundle.destination,
+        amount: bundle.amount,
+        proof_hex: hex_bytes(&bundle.proof),
+        replay_proof_hex: hex_bytes(&bundle.replay_proof),
+        message: bundle.message,
     })
 }
 
@@ -518,14 +424,12 @@ fn campaign_body(claim: &ClaimPub, backend: &str, ctx: &[u8; 32], custody_pk: &[
     })
 }
 
-fn claim_body(claim: &ClaimPub, message: &str, signature_hex: &str) -> Value {
+fn claim_body(proof_hex: &str, message: &str, denom: &[u8; 32]) -> Value {
     json!({
         "claims": [{
-            "proof_hex": claim.proof_hex,
+            "proof_hex": proof_hex,
             "message": message,
-            "signature_hex": signature_hex,
-            "leaf_x_hex": claim.leaf_x_hex,
-            "denom_hex": hex_bytes(&claim.denom),
+            "denom_hex": hex_bytes(denom),
         }]
     })
 }
@@ -568,7 +472,7 @@ fn chain_campaign(claim: &ClaimPub, custody_pk: &[u8; 32]) -> Value {
         "set_epoch_campaign": {
             "campaign": {
                 "ctx": b64(&claim.ctx),
-                "backend": "flock",
+                "backend": "halo2",
                 "cutoff_height": CONTRACT_CUTOFF,
                 "bech32_hrp": HRP,
                 "denom": b64(&claim.denom),
@@ -619,7 +523,7 @@ async fn run() -> anyhow::Result<Report> {
         anyhow::bail!("bind {} is not loopback", cfg.bind);
     }
     let mut report = Report { steps: Vec::new() };
-    eprintln!("proving depth-{DEPTH} claim");
+    eprintln!("proving halo2 epoch claim");
     let claim = prove_claim_pub(&cfg.recipient)?;
     if claim.amount != AMOUNT {
         anyhow::bail!("amount {}", claim.amount);
@@ -638,7 +542,6 @@ async fn run() -> anyhow::Result<Report> {
     let custody = SigningKey::from_bytes(&custody_seed);
     custody_seed.fill(0);
     let custody_pk = custody.verifying_key().to_bytes();
-    eprintln!("custody_pk {}", hex_bytes(&custody_pk));
 
     let data_dir = cfg.home.join("hm");
     fs::create_dir_all(&data_dir)?;
@@ -663,7 +566,7 @@ async fn run() -> anyhow::Result<Report> {
     });
     let base = format!("http://{}", cfg.bind);
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(20))
+        .timeout(Duration::from_secs(300))
         .build()?;
     let health = format!("{base}/ve/health");
     let start = Instant::now();
@@ -805,34 +708,20 @@ async fn run() -> anyhow::Result<Report> {
     let seal_url = format!("{base}/ve/headstash/seal");
     let vote_url = format!("{base}/vote-extension");
 
-    let (status, body) = http_json(
-        &client,
-        "POST",
-        &campaign_url,
-        Some(&campaign_body(&claim, "halo2", &claim.ctx, &custody_pk)),
-    )
-    .await?;
-    let after = balance_of(&cfg, &cfg.recipient)?;
-    report.push(
-        "halo2_refused",
-        status == 400 && error_text(&body).contains("halo2") && same_balance(baseline, after),
-        format!("status {status} err {} bal {after}", error_text(&body)),
-    );
-
     let mut wrong_ctx = claim.ctx;
     wrong_ctx[0] ^= 0x01;
     let (status, _body) = http_json(
         &client,
         "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "flock", &wrong_ctx, &custody_pk)),
+        Some(&campaign_body(&claim, "halo2", &wrong_ctx, &custody_pk)),
     )
     .await?;
     let (cstatus, cbody) = http_json(
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &claim.message, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &claim.message, &claim.denom)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
@@ -848,62 +737,65 @@ async fn run() -> anyhow::Result<Report> {
         ),
     );
 
-    let mut replay_ctx = random_32();
-    if replay_ctx == claim.ctx || replay_ctx == wrong_ctx {
-        replay_ctx[1] ^= 0xff;
-    }
-    let (status, _) = http_json(
-        &client,
-        "POST",
-        &campaign_url,
-        Some(&campaign_body(&claim, "flock", &replay_ctx, &custody_pk)),
-    )
-    .await?;
+    let mut wrong_root = campaign_body(&claim, "halo2", &claim.ctx, &custody_pk);
+    let mut flipped = claim.root;
+    flipped[0] ^= 0xff;
+    wrong_root["allocation_root_hex"] = json!(hex_bytes(&flipped));
+    let (status, _body) = http_json(&client, "POST", &campaign_url, Some(&wrong_root)).await?;
     let (cstatus, cbody) = http_json(
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &claim.message, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &claim.message, &claim.denom)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
     report.push(
-        "replay_same_secret_different_ctx",
+        "wrong_root",
         status == 200
             && cstatus == 200
-            && error_text(&cbody).contains("context does not match")
+            && error_text(&cbody).contains("allocation root does not match")
             && same_balance(baseline, after),
-        format!("install {status} err {}", error_text(&cbody)),
+        format!(
+            "install {status} claim {cstatus} err {}",
+            error_text(&cbody)
+        ),
     );
 
     let (status, body) = http_json(
         &client,
         "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "flock", &claim.ctx, &custody_pk)),
-    )
-    .await?;
-    if status != 200 {
-        anyhow::bail!("real campaign {status} {}", body);
-    }
-
-    let mut bad_sig = claim.signature_hex.clone();
-    let byte = u8::from_str_radix(&bad_sig[0..2], 16)? ^ 0xff;
-    bad_sig.replace_range(0..2, &format!("{byte:02x}"));
-    let (status, body) = http_json(
-        &client,
-        "POST",
-        &claims_url,
-        Some(&claim_body(&claim, &claim.message, &bad_sig)),
+        Some(&campaign_body(&claim, "halo2", &claim.ctx, &custody_pk)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
     report.push(
-        "bad_signature",
-        status == 200
-            && error_text(&body).contains("signature does not open")
+        "halo2_campaign",
+        status == 200 && same_balance(baseline, after),
+        format!("status {status} {}", error_text(&body)),
+    );
+    if status != 200 {
+        return Ok(report);
+    }
+
+    let signed = json!({
+        "claims": [{
+            "proof_hex": claim.proof_hex,
+            "message": claim.message,
+            "signature_hex": "00",
+            "leaf_x_hex": "00",
+            "denom_hex": hex_bytes(&claim.denom),
+        }]
+    });
+    let (status, body) = http_json(&client, "POST", &claims_url, Some(&signed)).await?;
+    let after = balance_of(&cfg, &cfg.recipient)?;
+    report.push(
+        "signed_body_refused",
+        status == 400
+            && error_text(&body).contains("claim body")
             && same_balance(baseline, after),
-        format!("err {}", error_text(&body)),
+        format!("status {status} err {}", error_text(&body)),
     );
 
     let mut parts: Vec<String> = claim.message.split(':').map(str::to_string).collect();
@@ -911,38 +803,38 @@ async fn run() -> anyhow::Result<Report> {
         anyhow::bail!("message fields {}", parts.len());
     }
     parts[5] = "16".into();
-    let tampered_amount = parts.join(":");
+    let wrong_amount = parts.join(":");
     let (status, body) = http_json(
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &tampered_amount, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &wrong_amount, &claim.denom)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
     report.push(
-        "tampered_amount",
+        "wrong_amount",
         status == 200
-            && error_text(&body).contains("signed message is not")
+            && error_text(&body).contains("amount is not in the published set")
             && same_balance(baseline, after),
         format!("err {}", error_text(&body)),
     );
 
     parts[5] = AMOUNT.to_string();
-    parts[4] = format!("{HRP}1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
-    let tampered_dest = parts.join(":");
+    parts[4] = format!("{HRP}1not-a-bech32-address");
+    let wrong_dest = parts.join(":");
     let (status, body) = http_json(
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &tampered_dest, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &wrong_dest, &claim.denom)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
     report.push(
-        "tampered_dest",
+        "wrong_destination",
         status == 200
-            && error_text(&body).contains("signed message is not")
+            && error_text(&body).contains("destination is not canonical bech32")
             && same_balance(baseline, after),
         format!("err {}", error_text(&body)),
     );
@@ -951,7 +843,7 @@ async fn run() -> anyhow::Result<Report> {
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &claim.message, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &claim.message, &claim.denom)),
     )
     .await?;
     let accepted = body["accepted"]
@@ -974,12 +866,12 @@ async fn run() -> anyhow::Result<Report> {
         &client,
         "POST",
         &claims_url,
-        Some(&claim_body(&claim, &claim.message, &claim.signature_hex)),
+        Some(&claim_body(&claim.proof_hex, &claim.message, &claim.denom)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
     report.push(
-        "double_nullifier",
+        "replay_digest",
         status == 200
             && error_text(&body).contains("proof digest is already")
             && same_balance(baseline, after),
@@ -989,8 +881,32 @@ async fn run() -> anyhow::Result<Report> {
     let (status, body) = http_json(
         &client,
         "POST",
+        &claims_url,
+        Some(&claim_body(
+            &claim.replay_proof_hex,
+            &claim.message,
+            &claim.denom,
+        )),
+    )
+    .await?;
+    let after = balance_of(&cfg, &cfg.recipient)?;
+    report.push(
+        "replay_nullifier",
+        status == 200
+            && error_text(&body).contains("nullifier is already spent")
+            && same_balance(baseline, after),
+        format!("err {}", error_text(&body)),
+    );
+
+    let mut other_ctx = random_32();
+    if other_ctx == claim.ctx {
+        other_ctx[1] ^= 0xff;
+    }
+    let (status, body) = http_json(
+        &client,
+        "POST",
         &campaign_url,
-        Some(&campaign_body(&claim, "flock", &replay_ctx, &custody_pk)),
+        Some(&campaign_body(&claim, "halo2", &other_ctx, &custody_pk)),
     )
     .await?;
     let after = balance_of(&cfg, &cfg.recipient)?;
