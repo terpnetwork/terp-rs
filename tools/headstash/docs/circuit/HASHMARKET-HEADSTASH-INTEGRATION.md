@@ -5,6 +5,8 @@ The claim path is a feature of the existing hash-market process
 operators may run that same process with different membership. Dev binds
 `127.0.0.1` only.
 
+The deploy read of `c8fd4ec` is [DEPLOY-REVIEW.md](DEPLOY-REVIEW.md).
+
 `tools/hash-market/docs/headstash.md` is a different feature (encrypted
 notes and circuit keys). This note does not change those routes.
 `ProcessHeadstash` stays in cw-headstash as a retained on-chain Halo2
