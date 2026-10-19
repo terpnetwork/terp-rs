@@ -20,9 +20,10 @@ const FRONTIER: Item<Vec<Binary>> = Item::new("reg_frontier");
 const COUNT: Item<u32> = Item::new("reg_count");
 const ROOT: Item<Binary> = Item::new("reg_root");
 const NEXT_ANCHOR: Item<u64> = Item::new("reg_next_anchor");
-const ANCHORS: Item<Vec<Binary>> = Item::new("reg_anchors");
+const ANCHORS: Item<Vec<AcceptedAnchor>> = Item::new("reg_anchors");
 const ADDRESSES: Map<&str, ()> = Map::new("reg_addr");
-const KEYS: Map<&str, ()> = Map::new("reg_key");
+const KEYS: Map<&str, RegisteredKey> = Map::new("reg_key");
+const LEAVES: Map<u32, Binary> = Map::new("reg_leaf");
 const PAID_BATCH: Map<&str, ()> = Map::new("reg_paid_batch");
 
 #[cosmwasm_schema::cw_serde]
@@ -35,11 +36,32 @@ pub struct RegistrationConfig {
 }
 
 #[cosmwasm_schema::cw_serde]
+pub struct AcceptedAnchor {
+    pub root: Binary,
+    pub leaf_count: u32,
+}
+
+#[cosmwasm_schema::cw_serde]
+struct RegisteredKey {
+    index: u32,
+    amount: u64,
+}
+
+#[cosmwasm_schema::cw_serde]
 pub struct RegistrationTreeResponse {
     pub count: u32,
     pub root: Binary,
     pub next_anchor_height: u64,
-    pub anchors: Vec<Binary>,
+    pub min_anonymity_set: u32,
+    pub anchors: Vec<AcceptedAnchor>,
+}
+
+#[cosmwasm_schema::cw_serde]
+pub struct RegistrationPathResponse {
+    pub index: u32,
+    pub leaf: String,
+    pub amount: u64,
+    pub siblings: Vec<String>,
 }
 
 pub fn validate_config(cfg: &RegistrationConfig, ctx: &[u8]) -> StdResult<()> {
@@ -91,8 +113,83 @@ pub fn query_tree(
         next_anchor_height: NEXT_ANCHOR
             .may_load(storage)?
             .unwrap_or(cfg.anchor_start_height),
+        min_anonymity_set: cfg.min_anonymity_set,
         anchors: ANCHORS.may_load(storage)?.unwrap_or_default(),
     })
+}
+
+pub fn query_path(
+    storage: &dyn Storage,
+    key_com: &[u8],
+    anchor: &[u8],
+) -> StdResult<RegistrationPathResponse> {
+    if key_com.len() != 32 || parse_fp(key_com).is_err() {
+        return Err(StdError::msg("key commitment"));
+    }
+    let record = KEYS
+        .may_load(storage, hex::encode(key_com).as_str())?
+        .ok_or_else(|| StdError::msg("key commitment"))?;
+    let stored = ANCHORS.may_load(storage)?.unwrap_or_default();
+    let matched = stored
+        .iter()
+        .find(|item| item.root.as_slice() == anchor)
+        .ok_or_else(|| StdError::msg("anchor"))?;
+    if record.index >= matched.leaf_count {
+        return Err(StdError::msg("anchor"));
+    }
+    let mut leaves = Vec::with_capacity(matched.leaf_count as usize);
+    for index in 0..matched.leaf_count {
+        let leaf = LEAVES
+            .may_load(storage, index)?
+            .ok_or_else(|| StdError::msg("registration"))?;
+        let bytes: [u8; 32] = leaf
+            .as_slice()
+            .try_into()
+            .map_err(|_| StdError::msg("registration"))?;
+        leaves.push(bytes);
+    }
+    let leaf = leaves[record.index as usize];
+    Ok(RegistrationPathResponse {
+        index: record.index,
+        leaf: hex::encode(leaf),
+        amount: record.amount,
+        siblings: siblings_under(&leaves, record.index)?,
+    })
+}
+
+fn siblings_under(leaves: &[[u8; 32]], index: u32) -> StdResult<Vec<String>> {
+    let mut out = Vec::with_capacity(DEPTH);
+    for level in 0..DEPTH {
+        let sibling_at = (index >> level) ^ 1;
+        let bytes = match subtree(leaves, level, sibling_at)? {
+            Some(node) => node.to_repr(),
+            None => [0u8; 32],
+        };
+        out.push(hex::encode(bytes));
+    }
+    Ok(out)
+}
+
+fn subtree(leaves: &[[u8; 32]], level: usize, node_index: u32) -> StdResult<Option<pallas::Base>> {
+    let start = node_index << (level as u32);
+    if start >= leaves.len() as u32 {
+        return Ok(None);
+    }
+    if level == 0 {
+        return Ok(Some(parse_fp(&leaves[start as usize])?));
+    }
+    let left = subtree(leaves, level - 1, node_index << 1)?;
+    let right = subtree(leaves, level - 1, (node_index << 1) + 1)?;
+    match (left, right) {
+        (None, None) => Ok(None),
+        (None, Some(_)) => Err(StdError::msg("registration")),
+        (Some(left), None) => Ok(Some(poseidon_distro_crh(
+            (level - 1) as u32,
+            left,
+            pallas::Base::ZERO,
+        ))),
+        (Some(left), Some(right)) => Ok(Some(poseidon_distro_crh((level - 1) as u32, left, right))),
+    }
 }
 
 pub fn register(
@@ -154,7 +251,15 @@ pub fn register(
     COUNT.save(deps.storage, &(count + 1))?;
     ROOT.save(deps.storage, &Binary::from(root.to_vec()))?;
     ADDRESSES.save(deps.storage, addr_key.as_str(), &())?;
-    KEYS.save(deps.storage, key_hex.as_str(), &())?;
+    LEAVES.save(deps.storage, count, &Binary::from(leaf.to_vec()))?;
+    KEYS.save(
+        deps.storage,
+        key_hex.as_str(),
+        &RegisteredKey {
+            index: count,
+            amount,
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "register_headstash")
         .add_attribute("index", count.to_string())
@@ -184,10 +289,13 @@ pub fn accept_anchor(
         .may_load(deps.storage)?
         .unwrap_or_else(|| Binary::from(vec![0u8; 32]));
     let mut anchors = ANCHORS.may_load(deps.storage)?.unwrap_or_default();
-    if anchors.last().is_some_and(|latest| latest == &root) {
+    if anchors.last().is_some_and(|latest| latest.root == root) {
         return Err(StdError::msg("anchor unchanged"));
     }
-    anchors.push(root.clone());
+    anchors.push(AcceptedAnchor {
+        root: root.clone(),
+        leaf_count: count,
+    });
     ANCHORS.save(deps.storage, &anchors)?;
     NEXT_ANCHOR.save(deps.storage, &(env.block.height + cfg.anchor_interval))?;
     Ok(Response::new()
@@ -197,7 +305,7 @@ pub fn accept_anchor(
 
 pub fn anchor_known(storage: &dyn Storage, anchor: &[u8]) -> StdResult<bool> {
     let anchors = ANCHORS.may_load(storage)?.unwrap_or_default();
-    Ok(anchors.iter().any(|item| item.as_slice() == anchor))
+    Ok(anchors.iter().any(|item| item.root.as_slice() == anchor))
 }
 
 pub fn batch_already_paid(storage: &dyn Storage, attested: &[u8]) -> StdResult<bool> {
@@ -359,7 +467,7 @@ mod tests {
         attested_root, root_b64, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload,
         OracleHint, ALGO_ACCEPTED, BATCH_SOURCE_ID, CHAIN_UID,
     };
-    use crate::msg::{ExecuteMsg, InstantiateMsg};
+    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
     use crate::tokenfactory::{
         derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig,
     };
@@ -746,6 +854,111 @@ mod tests {
             err.to_string().contains("nullifier already exists"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn path_under_an_anchor_rebuilds_that_root() {
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let first = eligible(1, &ctx, 11, 15);
+        let second = eligible(2, &ctx, 12, 15);
+        let leaf0 = eligibility_leaf(&first.address, 15);
+        let leaf1 = eligibility_leaf(&second.address, 15);
+        let elig = eligibility_node(&leaf0, &leaf1);
+        let (mut deps, mut env) = setup();
+        install(deps.as_mut(), &env, campaign_with(&ctx, elig, 1));
+        do_register(deps.as_mut(), &env, &first, 0, leaf1).unwrap();
+        let anyone = deps.api.addr_make("anyone");
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&anyone, &[]),
+            ExecuteMsg::AcceptAnchor {},
+        )
+        .unwrap();
+        let anchor_a = ROOT.load(deps.as_ref().storage).unwrap();
+        let opened = path_for(deps.as_ref(), &env, &first.key_com, &anchor_a);
+        assert_eq!(opened.index, 0);
+        assert_eq!(opened.amount, 15);
+        assert_eq!(opened.siblings.len(), DEPTH);
+        assert!(opened
+            .siblings
+            .iter()
+            .all(|sibling| sibling == &"0".repeat(64)));
+        assert_eq!(
+            fold_path(opened.index, &opened.leaf, &opened.siblings),
+            anchor_a.to_vec()
+        );
+        let tree = tree_for(deps.as_ref(), &env);
+        assert_eq!(tree.min_anonymity_set, 1);
+        assert_eq!(tree.count, 1);
+        assert_eq!(tree.anchors.len(), 1);
+        assert_eq!(tree.anchors[0].leaf_count, 1);
+        assert_eq!(tree.anchors[0].root, anchor_a);
+
+        env.block.height += 1;
+        do_register(deps.as_mut(), &env, &second, 1, leaf0).unwrap();
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&anyone, &[]),
+            ExecuteMsg::AcceptAnchor {},
+        )
+        .unwrap();
+        let anchor_b = ROOT.load(deps.as_ref().storage).unwrap();
+        let later = path_for(deps.as_ref(), &env, &first.key_com, &anchor_b);
+        assert_ne!(later.siblings[0], "0".repeat(64));
+        assert_eq!(
+            fold_path(later.index, &later.leaf, &later.siblings),
+            anchor_b.to_vec()
+        );
+        let err = crate::query(
+            deps.as_ref(),
+            env.clone(),
+            QueryMsg::RegistrationPath {
+                key_com: Binary::from(second.key_com.to_vec()),
+                anchor: anchor_a,
+            },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("anchor"), "{err}");
+    }
+
+    fn tree_for(deps: cosmwasm_std::Deps, env: &cosmwasm_std::Env) -> RegistrationTreeResponse {
+        let raw = crate::query(deps, env.clone(), QueryMsg::RegistrationTree {}).unwrap();
+        cosmwasm_std::from_json(raw).unwrap()
+    }
+
+    fn path_for(
+        deps: cosmwasm_std::Deps,
+        env: &cosmwasm_std::Env,
+        key_com: &[u8],
+        anchor: &Binary,
+    ) -> RegistrationPathResponse {
+        let raw = crate::query(
+            deps,
+            env.clone(),
+            QueryMsg::RegistrationPath {
+                key_com: Binary::from(key_com.to_vec()),
+                anchor: anchor.clone(),
+            },
+        )
+        .unwrap();
+        cosmwasm_std::from_json(raw).unwrap()
+    }
+
+    fn fold_path(index: u32, leaf_hex: &str, siblings: &[String]) -> Vec<u8> {
+        let leaf = hex::decode(leaf_hex).unwrap();
+        let mut current = parse_fp(&leaf).unwrap();
+        for (level, sibling) in siblings.iter().enumerate() {
+            let bytes = hex::decode(sibling).unwrap();
+            let sib = parse_fp(&bytes).unwrap();
+            current = if (index >> level) & 1 == 0 {
+                poseidon_distro_crh(level as u32, current, sib)
+            } else {
+                poseidon_distro_crh(level as u32, sib, current)
+            };
+        }
+        current.to_repr().to_vec()
     }
 
     fn row_root() -> Vec<u8> {

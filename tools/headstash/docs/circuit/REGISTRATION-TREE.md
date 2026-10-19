@@ -317,6 +317,73 @@ that registration.
 
 A sidecar that sees the proof sees the public inputs and the proof bytes.
 
+## Page queries
+
+The claim page polls these cw-headstash queries. CosmWasm JSON encodes
+each `Binary` as standard base64. Roots are 32 bytes. Code id 9 on the
+loopback chain is the earlier registration measurement. It returns
+`anchors` as base64 roots and has no path query. The shapes below are
+this contract.
+
+`{"registration_tree":{}}` returns:
+
+```json
+{
+  "count": 2,
+  "root": "<base64>",
+  "next_anchor_height": 12346,
+  "min_anonymity_set": 1,
+  "anchors": [
+    {"root": "<base64>", "leaf_count": 1},
+    {"root": "<base64>", "leaf_count": 2}
+  ]
+}
+```
+
+`count` is the number of leaves now. `min_anonymity_set` is the campaign
+minimum. `anchors` is the append-only history. Each entry is the root
+and the leaf count at the `AcceptAnchor` that stored it. A root is
+claimable when it is one of those entries. `AcceptAnchor` stores an
+entry only when `count >= min_anonymity_set` and the root is not already
+the latest entry. The current `root` is the frontier tip. It is
+claimable once an entry carries it. The page reads `count` against
+`min_anonymity_set` to see whether a later `AcceptAnchor` can succeed.
+That comparison does not make the current root claimable. The default
+anchor is the last entry. Older entries stay claimable. An entry covers
+leaf `index` when `index < leaf_count`.
+
+`{"registration_path":{"key_com":"<base64>","anchor":"<base64>"}}`
+returns the path of that key under that accepted root:
+
+```json
+{
+  "index": 0,
+  "leaf": "<64 lowercase hex>",
+  "amount": 15,
+  "siblings": ["<64 lowercase hex>", "... 16 values"]
+}
+```
+
+`key_com` and `anchor` are the same 32 bytes as `RegisterHeadstash.key_com`
+and `anchors[].root`. `index` is the append index. `leaf` is 64
+lowercase hex of the 32-byte little-endian leaf, the same hex as the
+`register_headstash` event attribute `leaf`. `amount` is the registered
+decimal u64. `siblings` has length 16. Position 0 is the leaf level,
+which is bit 0 of `index`. Each sibling is 64 lowercase hex of the
+little-endian field (`to_repr`). A side with no leaf under that anchor's
+`leaf_count` is 64 zero hex characters, the zero field, not a hash of an
+empty subtree. A missing key returns `key commitment`. An unknown root,
+or a root whose `leaf_count` does not cover `index`, returns `anchor`.
+
+`denom_hex` in `POST /ve/headstash/claims` is 64 lowercase hex
+characters, 32 bytes, with no `0x` prefix. Query `{"epoch_campaign":{}}`
+and hex-encode the base64 `denom` field. Those bytes are
+`blake3(raw_utf8)` with the last byte masked by `0x1F`
+(`byte[31] &= 0x1F`), the same value as `derive_nd(raw)`. `raw` is the
+token strategy's UTF-8 denom. On the loopback chain that string is
+`uterp`. The membership circuit does not read this field. The sidecar
+accepts the claim only when these 32 bytes equal the campaign `denom`.
+
 ## Gas
 
 One registration does one `secp256k1_recover_pubkey`, one keccak256 for
@@ -327,15 +394,15 @@ check does not write the frontier.
 
 On chain `headstash-epoch-e2e` at `127.0.0.1:36667`, code id 9
 (`terp1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqkzx4sf`)
-stored this contract and one successful `RegisterHeadstash` used 398371
-gas. `gas_wanted` was 200000000. The figure is `gas_used` from
-`tx wasm execute`, including the ante. The wasm stored for that
-measurement is sha256
+stored the contract before the path query and one successful
+`RegisterHeadstash` used 398371 gas. `gas_wanted` was 200000000. The
+figure is `gas_used` from `tx wasm execute`, including the ante. The
+wasm stored for that measurement is sha256
 `cadb3ea3aa5a0508ec8fbb912c7776a21ac25e7a99b4f01ec708fc9e487064e4`
 (965535 bytes). Store, instantiate, and `SetEpochCampaign` on the same
 code used 6296735, 274645, and 202779 gas. Those are not the
 registration figure. The query after the transaction reported leaf
-count 1.
+count 1. That code id does not serve `registration_path`.
 
 The contract hash has to equal `key_commitment`, `membership_leaf`, and
 `poseidon_distro_crh` from the circuit crate on fixed inputs. The
