@@ -6,7 +6,7 @@
 // with single integration:
 //   cargo run -p cw-infuser-scripts --bin integration -- --network mainnet --single
 
-use cosmwasm_std::{coin, Decimal};
+use cosmwasm_std::{Decimal, coin};
 use cw_infuser::msg::InstantiateMsg;
 use cw_infuser_scripts::suite::CwSvgSuite;
 use cw_orch::{daemon::networks::TERP_MAINNET, prelude::*};

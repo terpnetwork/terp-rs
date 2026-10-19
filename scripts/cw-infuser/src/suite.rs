@@ -2,16 +2,16 @@ use cosmwasm_std::Binary;
 use cw_infuser::interface::CwInfuser;
 use cw_orch::{anyhow, prelude::*};
 
-use cw721_svg::Cw721SvgContractSuite;
+use cw_svg_minter::InstantiateMsg as SvgMinterInitMsg;
 use cw_svg_minter::interface::Cw721SvgMinter;
 use cw_svg_minter::msg::ExecuteMsgFns as _;
-use cw_svg_minter::InstantiateMsg as SvgMinterInitMsg;
+use cw721_svg::Cw721SvgContractSuite;
 #[cfg(feature = "shitstrap")]
 use shit_scripts::CwShitstrapSuite;
 use whitelist_mtree::interface::WhitelistMerkleTree;
 
 #[derive(Clone, Debug)]
-pub struct CwSvgSuiteDeployData { 
+pub struct CwSvgSuiteDeployData {
     pub svg: Vec<(
         cw721_svg::InstantiateMsg,
         Option<whitelist_mtree::msg::InstantiateMsg>,
@@ -23,7 +23,8 @@ pub struct CwSvgSuiteDeployData {
     pub infuse_coins: Vec<Coin>,
 }
 
-pub struct CwSvgSuite<Chain> { // CwPermissionlessArtSuite
+pub struct CwSvgSuite<Chain> {
+    // CwPermissionlessArtSuite
     pub chain: Chain,
     pub infuser: CwInfuser<Chain>,
     pub cwsvg: Cw721SvgContractSuite<Chain>,

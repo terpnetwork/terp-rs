@@ -159,7 +159,10 @@ fn main() -> Result<()> {
                     }
                 }
             }
-            eprintln!("  Tier 1 (active accounts, sequence >= {}): {}", args.min_sequence, count);
+            eprintln!(
+                "  Tier 1 (active accounts, sequence >= {}): {}",
+                args.min_sequence, count
+            );
         }
     }
 
@@ -193,7 +196,10 @@ fn main() -> Result<()> {
 
             validator_meta.insert(
                 account_addr,
-                (val.description.moniker.clone(), val.operator_address.clone()),
+                (
+                    val.description.moniker.clone(),
+                    val.operator_address.clone(),
+                ),
             );
 
             if val.is_active() {
@@ -204,7 +210,10 @@ fn main() -> Result<()> {
         }
 
         eprintln!("  Tier 3 (active bonded validators):      {}", active_count);
-        eprintln!("  Tier 2 (inactive/historical validators): {}", inactive_count);
+        eprintln!(
+            "  Tier 2 (inactive/historical validators): {}",
+            inactive_count
+        );
     }
 
     // ---------------------------------------------------------------------------
@@ -249,13 +258,25 @@ fn main() -> Result<()> {
 
     let buf: Vec<u8> = Vec::new();
     let mut writer = csv::Writer::from_writer(buf);
-    writer.write_record(["address", "operator_address", "moniker", "tier", "allocation"])?;
+    writer.write_record([
+        "address",
+        "operator_address",
+        "moniker",
+        "tier",
+        "allocation",
+    ])?;
     for (addr, tier, alloc) in &rows {
         let (moniker, operator) = validator_meta
             .get(addr)
             .map(|(m, o)| (m.as_str(), o.as_str()))
             .unwrap_or(("", ""));
-        writer.write_record([addr.as_str(), operator, moniker, &tier.to_string(), &alloc.to_string()])?;
+        writer.write_record([
+            addr.as_str(),
+            operator,
+            moniker,
+            &tier.to_string(),
+            &alloc.to_string(),
+        ])?;
     }
     writer.flush()?;
     let buf = writer.into_inner()?;

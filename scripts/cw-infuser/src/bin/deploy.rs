@@ -6,13 +6,13 @@
 // with single integration:
 //   cargo run -p cw-infuser-scripts --bin integration -- --network mainnet --single
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cw_infuser_scripts::{
     fractal::default_permissionless_fractal_init,
     suite::{
-        svg::load_svg_init_msg, whitelist::load_terp_warrior_mtree, CwSvgSuite,
-        CwSvgSuiteDeployData,
+        CwSvgSuite, CwSvgSuiteDeployData, svg::load_svg_init_msg,
+        whitelist::load_terp_warrior_mtree,
     },
 };
 use cw_orch::prelude::*;
@@ -41,7 +41,6 @@ pub fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 fn workflow(network: ChainInfoOwned) -> anyhow::Result<()> {
     let chain = DaemonBuilder::new(network.clone()).build()?;

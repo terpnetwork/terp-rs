@@ -1,6 +1,7 @@
 use cosmwasm_std::coin;
 
 pub mod suite;
+pub mod yijing;
 
 pub mod prelude {
     pub use crate::suite::{CwSvgSuite, CwSvgSuiteDeployData};
@@ -9,7 +10,7 @@ pub mod prelude {
 pub mod fractal {
     use super::*;
     use cw_svg::{VariableDef, VariableKind};
-    use rand::{rngs::StdRng, SeedableRng};
+    use rand::{SeedableRng, rngs::StdRng};
 
     /// Minimal SVG template that visualizes attractor params as a geometric constellation.
     /// The real fractal rendering happens off-chain; this gives each token a displayable on-chain preview.
@@ -48,9 +49,9 @@ pub mod fractal {
                 mint_start_time: None,
                 mint_end_time: None,
                 whitelist: None,
-            require_auth: false,
-            packed: cw721_svg::pack_svg(&(FRACTAL_SVG_TEMPLATE.to_string()), &(v.clone())),
-        },
+                require_auth: false,
+                packed: cw721_svg::pack_svg(&(FRACTAL_SVG_TEMPLATE.to_string()), &(v.clone())),
+            },
             minter: Some(admin.to_string()),
             creator: Some(admin.to_string()),
             withdraw_address: Some(admin.to_string()),

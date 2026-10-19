@@ -16,10 +16,10 @@
 /// Dictionary mode (--dict):
 ///   Loads a pre-generated *.dict.json file (Collection Layer dictionary).
 ///   Extracts the "vars" field as the variable definitions.
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
-use cw721_svg::contract::*;
 use cw_svg::*;
+use cw721_svg::contract::*;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
@@ -335,7 +335,7 @@ fn define_variable(name: &str, occurrence_count: usize) -> Result<VariableDef> {
             return Err(anyhow!(
                 "Invalid choice '{}', expected 1, 2, 3, or 4",
                 choice
-            ))
+            ));
         }
     };
 

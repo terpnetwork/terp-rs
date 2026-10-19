@@ -5,8 +5,8 @@ use cw_orch::daemon::networks::TERP_MAINNET;
 use cw_orch::daemon::{Daemon, TxSender};
 use cw_orch::prelude::CwOrchInstantiate;
 
-use cw721_svg::*;
 use cw_svg::*;
+use cw721_svg::*;
 use std::path::PathBuf;
 
 /// Deploy fractal attractor SVG NFTs using on-chain Range variables.
