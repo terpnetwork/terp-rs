@@ -18,15 +18,15 @@ default = []
 library = []
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
-cw2 = { workspace = true }
-cw-storage-plus = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
 serde = { workspace = true }
-thiserror = { workspace = true }
-terp-auth = { workspace = true }
 terp-account = { workspace = true }
+terp-auth = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }

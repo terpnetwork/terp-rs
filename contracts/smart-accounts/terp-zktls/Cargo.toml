@@ -13,29 +13,25 @@ documentation = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# use library feature to disable all instantiate/execute/query exports
 library = []
 
 [dependencies]
 cosmwasm-schema    = { workspace = true }
-cw-storage-plus    = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["zk"] }
-cw-ownable         = { workspace = true }
 cw-orch            = { workspace = true }
+cw-ownable         = { workspace = true }
+cw-storage-plus    = { workspace = true }
 cw-utils           = { workspace = true }
-terp-auth          = { workspace = true }
-terp-account       = { workspace = true }
 cw2                = { workspace = true }
-sha2               = { workspace = true }
-sha3 = { workspace = true }
 hex = { workspace = true, features = ["std"] }
-k256 = { workspace = true, features = ["ecdsa-core", "ecdsa"] }
-digest = { workspace = true }
-
 
 schemars           = { workspace = true }
 serde              = { workspace = true }
+sha2               = { workspace = true }
+sha3 = { workspace = true }
+terp-account       = { workspace = true }
+terp-auth          = { workspace = true }
 thiserror          = { workspace = true }
 
-
 [dev-dependencies]
+k256 = { workspace = true, features = ["ecdsa"] }

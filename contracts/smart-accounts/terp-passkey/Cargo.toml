@@ -17,17 +17,17 @@ crate-type = ["cdylib", "rlib"]
 default = []
 library = []
 
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+terp-account = { workspace = true }
+terp-auth = { workspace = true }
+thiserror = { workspace = true }
+
 [dev-dependencies]
 p256 = { workspace = true, features = ["arithmetic", "ecdsa", "pem", "std"] }
-
-[dependencies]
-cosmwasm-std = { workspace = true, features = ["zk"] }
-cosmwasm-schema = { workspace = true }
-cw2 = { workspace = true }
-cw-storage-plus = { workspace = true }
-cw-ownable = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
-terp-auth = { workspace = true }
-terp-account = { workspace = true }
-sha2 = { workspace = true }
