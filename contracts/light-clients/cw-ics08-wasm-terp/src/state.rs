@@ -1,8 +1,8 @@
 use cosmwasm_std::Storage;
 use prost::Message;
 
-use crate::msg::Height;
 use crate::ContractError;
+use crate::msg::Height;
 
 pub const HOST_CLIENT_STATE_KEY: &str = "clientState";
 pub const HOST_CONSENSUS_STATES_KEY: &str = "consensusStates";
@@ -149,9 +149,7 @@ fn put_any(storage: &mut dyn Storage, key: &[u8], type_url: &str, value: Vec<u8>
 }
 
 fn get_any(storage: &dyn Storage, key: &[u8]) -> Result<Any, ContractError> {
-    let bz = storage
-        .get(key)
-        .ok_or(ContractError::ClientStateNotFound)?;
+    let bz = storage.get(key).ok_or(ContractError::ClientStateNotFound)?;
     Any::decode(bz.as_slice()).map_err(|e| ContractError::Prost(e.to_string()))
 }
 
@@ -247,7 +245,8 @@ const TM_CONSENSUS_TYPE_URL: &str = "/ibc.lightclients.tendermint.v1.ConsensusSt
 
 fn inner_from_tm(data: &[u8]) -> Result<InnerClient, ContractError> {
     let body = inner_bytes(data);
-    let tm = TmClientState::decode(body.as_slice()).map_err(|e| ContractError::Prost(e.to_string()))?;
+    let tm =
+        TmClientState::decode(body.as_slice()).map_err(|e| ContractError::Prost(e.to_string()))?;
     if tm.chain_id.is_empty() && tm.latest_height.is_none() {
         return Err(ContractError::Json("not tendermint client state".into()));
     }
@@ -269,7 +268,8 @@ fn inner_from_tm(data: &[u8]) -> Result<InnerClient, ContractError> {
 
 fn consensus_from_tm(data: &[u8]) -> Result<InnerConsensus, ContractError> {
     let body = inner_bytes(data);
-    let tm = TmConsensusState::decode(body.as_slice()).map_err(|e| ContractError::Prost(e.to_string()))?;
+    let tm = TmConsensusState::decode(body.as_slice())
+        .map_err(|e| ContractError::Prost(e.to_string()))?;
     let hash = tm.root.as_ref().map(|r| r.hash.as_slice()).unwrap_or(&[]);
     if hash.is_empty() {
         return Err(ContractError::Json("not tendermint consensus state".into()));

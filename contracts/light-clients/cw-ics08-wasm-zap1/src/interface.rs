@@ -24,9 +24,7 @@ impl<Chain> Uploadable for CwIcs08WasmZap1Contract<Chain> {
         }
         artifacts_dir_from_workspace!()
             .find_wasm_path("cw_ics08_wasm_zap1")
-            .unwrap_or_else(|_| {
-                WasmPath::new(root.join("Cargo.toml")).expect("crate root")
-            })
+            .unwrap_or_else(|_| WasmPath::new(root.join("Cargo.toml")).expect("crate root"))
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {

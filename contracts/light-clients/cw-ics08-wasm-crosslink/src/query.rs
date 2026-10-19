@@ -49,7 +49,7 @@ pub fn check_for_misbehaviour(
     let consensus_state =
         state::get_crosslink_consensus_state(deps.storage, client_state.latest_bft_height)?;
 
-    let found = verify::check_for_misbehaviour(&client_state, &consensus_state, &header)
+    let found = verify::check_for_misbehaviour(deps.api, &client_state, &consensus_state, &header)
         .map_err(ContractError::VerifyClientMessageFailed)?;
 
     to_json_binary(&CheckForMisbehaviourResult {

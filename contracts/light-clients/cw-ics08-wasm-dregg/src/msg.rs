@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Binary;
 
 use crate::types::{ClientState, ConsensusState, SettlementUpdate};
@@ -40,7 +40,9 @@ pub enum QueryMsg {
 /// 08-wasm-shaped sudo surface (subset for B2).
 #[cw_serde]
 pub enum SudoMsg {
-    UpdateState { client_message: Binary },
+    UpdateState {
+        client_message: Binary,
+    },
     VerifyMembership {
         /// unused in B2
         height: u64,
@@ -53,7 +55,9 @@ pub enum SudoMsg {
         proof: Binary,
         path: Vec<Binary>,
     },
-    UpdateStateOnMisbehaviour { client_message: Binary },
+    UpdateStateOnMisbehaviour {
+        client_message: Binary,
+    },
 }
 
 #[cw_serde]

@@ -2,9 +2,9 @@
 
 use prost::Message;
 
+use crate::ContractError;
 use crate::msg::Height;
 use crate::state::InnerConsensus;
-use crate::ContractError;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct JsonHeader {
@@ -119,11 +119,14 @@ fn decode_tm_header(bz: &[u8]) -> Result<ParsedHeader, ContractError> {
     if raw.app_hash.len() != 32 || raw.height <= 0 {
         return Err(ContractError::InvalidClientMessage);
     }
-    let ts = raw.time.map(|t| {
-        (t.seconds.max(0) as u64)
-            .saturating_mul(1_000_000_000)
-            .saturating_add(t.nanos.max(0) as u64)
-    }).unwrap_or(0);
+    let ts = raw
+        .time
+        .map(|t| {
+            (t.seconds.max(0) as u64)
+                .saturating_mul(1_000_000_000)
+                .saturating_add(t.nanos.max(0) as u64)
+        })
+        .unwrap_or(0);
     let revision_number = h
         .trusted_height
         .map(|t| t.revision_number)

@@ -12,9 +12,7 @@ use host::Ics23Host;
 use prost::Message;
 
 #[cfg(feature = "bench")]
-pub use iavl::{
-    hash_inner, hash_leaf, hash_value, verify_existence, ExistenceProof, InnerStep,
-};
+pub use iavl::{ExistenceProof, InnerStep, hash_inner, hash_leaf, hash_value, verify_existence};
 
 /// Hash algorithm used by one IAVL tree.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,9 +26,16 @@ impl HashAlg {
     #[must_use]
     pub fn for_store(name: &str) -> Self {
         match name {
-            "ibc" | "transfer" | "icahost" | "icacontroller"
-            | "packetfowardmiddleware" | "packetforwardmiddleware"
-            | "ibc-hooks" | "hooks-for-ibc" | "08-wasm" | "capability" => Self::Sha256,
+            "ibc"
+            | "transfer"
+            | "icahost"
+            | "icacontroller"
+            | "packetfowardmiddleware"
+            | "packetforwardmiddleware"
+            | "ibc-hooks"
+            | "hooks-for-ibc"
+            | "08-wasm"
+            | "capability" => Self::Sha256,
             _ => Self::Blake3,
         }
     }
@@ -172,8 +177,9 @@ fn exist_layers(
     let mut root = Vec::new();
     for (i, proof) in proofs.iter().enumerate() {
         let key = layer_key(merkle_path, i)?;
-        root = ics23::membership_root::<Ics23Host>(proof, &specs[i], key, &current)
-            .ok_or(ProofError::Ics23Reject(if i == 0 { "iavl" } else { "tendermint" }))?;
+        root = ics23::membership_root::<Ics23Host>(proof, &specs[i], key, &current).ok_or(
+            ProofError::Ics23Reject(if i == 0 { "iavl" } else { "tendermint" }),
+        )?;
         current = root.clone();
     }
     if root != app_root {
@@ -225,15 +231,17 @@ pub fn verify_chained_nonmembership(
     let store = store_name_from_path(merkle_path);
     let mode = resolve_mode(mode, &proofs[0]);
     let specs = iavl_and_simple_specs(&store, mode, proofs.len())?;
-    let key = merkle_path.last().ok_or(ProofError::Ics23Chain("empty path"))?;
+    let key = merkle_path
+        .last()
+        .ok_or(ProofError::Ics23Chain("empty path"))?;
     let subroot = match &proofs[0].proof {
         Some(ics23::commitment_proof::Proof::Nonexist(_)) => {
             let p = &proofs[0];
             let sub = nonexist_subroot(p)?;
             if !ics23::verify_non_membership::<Ics23Host>(p, &specs[0], &sub, key) {
-                return Err(ProofError::Ics23Reject(
-                    reject_label(HashAlg::for_store_mode(&store, mode)),
-                ));
+                return Err(ProofError::Ics23Reject(reject_label(
+                    HashAlg::for_store_mode(&store, mode),
+                )));
             }
             sub
         }
@@ -347,15 +355,17 @@ mod tests {
 
     fn exist_proof(hash: i32) -> ics23::CommitmentProof {
         ics23::CommitmentProof {
-            proof: Some(ics23::commitment_proof::Proof::Exist(ics23::ExistenceProof {
-                key: b"k".to_vec(),
-                value: b"v".to_vec(),
-                leaf: Some(ics23::LeafOp {
-                    hash,
-                    ..Default::default()
-                }),
-                path: vec![],
-            })),
+            proof: Some(ics23::commitment_proof::Proof::Exist(
+                ics23::ExistenceProof {
+                    key: b"k".to_vec(),
+                    value: b"v".to_vec(),
+                    leaf: Some(ics23::LeafOp {
+                        hash,
+                        ..Default::default()
+                    }),
+                    path: vec![],
+                },
+            )),
         }
     }
 
@@ -401,7 +411,7 @@ mod tests {
 #[cfg(all(test, feature = "bench"))]
 mod bench_tests {
     use super::*;
-    use crate::iavl::{hash_leaf, hash_value, verify_existence, ExistenceProof};
+    use crate::iavl::{ExistenceProof, hash_leaf, hash_value, verify_existence};
 
     #[test]
     fn blake3_empty_matches_go() {

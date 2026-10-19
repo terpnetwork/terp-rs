@@ -26,6 +26,7 @@ pub fn verify_membership(
     let client_state = state::get_crosslink_client_state(deps.storage)?;
 
     membership::verify_membership(
+        deps.api,
         consensus_state,
         client_state,
         msg.proof.to_vec(),
@@ -55,6 +56,7 @@ pub fn verify_non_membership(
     let client_state = state::get_crosslink_client_state(deps.storage)?;
 
     membership::verify_non_membership(
+        deps.api,
         consensus_state,
         client_state,
         msg.proof.to_vec(),
@@ -92,7 +94,7 @@ pub fn update_state(
 
     // Update consensus state and client state
     let (new_height, new_consensus_state, updated_client_state) =
-        update::update_consensus_state(consensus_state, client_state, &header)
+        update::update_consensus_state(deps.api, consensus_state, client_state, &header)
             .map_err(ContractError::UpdateClientStateFailed)?;
 
     // Store the new consensus state
@@ -141,7 +143,7 @@ pub fn misbehaviour(
         deps.as_ref().storage,
         client_state.latest_bft_height,
     )?;
-    let found = verify::check_for_misbehaviour(&client_state, &consensus_state, &header)
+    let found = verify::check_for_misbehaviour(deps.api, &client_state, &consensus_state, &header)
         .map_err(ContractError::VerifyClientMessageFailed)?;
     if !found {
         return Err(ContractError::InvalidClientMessage);

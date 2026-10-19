@@ -2,7 +2,7 @@
 
 use crate::error::ContractError;
 use crate::types::{
-    lanes_canonical, pack_lanes_hex, ClientState, ConsensusState, SettlementUpdate,
+    ClientState, ConsensusState, SettlementUpdate, lanes_canonical, pack_lanes_hex,
 };
 
 /// Apply a SettlementUpdate to (client, consensus). Returns new consensus.
@@ -26,9 +26,7 @@ pub fn apply_settlement(
     if update.genesis_root != head.proven_lanes {
         return Err(ContractError::ContinuityBroken);
     }
-    if update.proof.len() != 8
-        || update.commitments.len() != 2
-        || update.commitment_pok.len() != 2
+    if update.proof.len() != 8 || update.commitments.len() != 2 || update.commitment_pok.len() != 2
     {
         return Err(ContractError::VerifyFailed(
             "proof envelope length mismatch (need 8/2/2)".into(),
@@ -134,9 +132,12 @@ mod tests {
     fn advances_height_on_continuous_settle() {
         let (c, h) = client_head();
         let final_root = vec![10u32, 11, 12, 13, 14, 15, 16, 17];
-        let (c2, h2) =
-            apply_settlement(&c, &h, &ok_update(h.proven_lanes.clone(), final_root.clone(), 3))
-                .unwrap();
+        let (c2, h2) = apply_settlement(
+            &c,
+            &h,
+            &ok_update(h.proven_lanes.clone(), final_root.clone(), 3),
+        )
+        .unwrap();
         assert_eq!(h2.proven_height, 3);
         assert_eq!(c2.latest_height, 3);
         assert_eq!(h2.proven_lanes, final_root);
@@ -145,12 +146,8 @@ mod tests {
     #[test]
     fn rejects_continuity_break() {
         let (c, h) = client_head();
-        let err = apply_settlement(
-            &c,
-            &h,
-            &ok_update(vec![99u32; 8], vec![1u32; 8], 1),
-        )
-        .unwrap_err();
+        let err =
+            apply_settlement(&c, &h, &ok_update(vec![99u32; 8], vec![1u32; 8], 1)).unwrap_err();
         assert!(matches!(err, ContractError::ContinuityBroken));
     }
 

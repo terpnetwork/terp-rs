@@ -1,12 +1,12 @@
 //! This module contains the CosmWasm entrypoints for the 08-wasm smart contract.
 
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Response};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Response};
 
 use crate::custom_query::CrosslinkCustomQuery;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Migration, QueryMsg, SudoMsg};
-use crate::{instantiate, query, sudo, ContractError};
+use crate::{ContractError, instantiate, query, sudo};
 
 /// The version of the contract's state.
 const STATE_VERSION: &str = env!("CARGO_PKG_VERSION");

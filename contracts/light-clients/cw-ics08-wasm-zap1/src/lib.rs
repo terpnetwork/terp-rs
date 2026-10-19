@@ -9,12 +9,12 @@
 //! is message-only and is not a substitute. Guest `simd128` stays off.
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, entry_point,
+    to_json_binary,
 };
 use cw_storage_plus::Map;
 use sha2::{Digest, Sha256};
-use zap1_verify::{compute_leaf_hash, verify_proof, EventPayload, ProofStep, SiblingPosition};
+use zap1_verify::{EventPayload, ProofStep, SiblingPosition, compute_leaf_hash, verify_proof};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod interface;
@@ -110,8 +110,7 @@ const ACCEPTED: Map<(&str, &str, u64), String> = Map::new("zap1_ibcv2_accepted")
 fn parse_hex32(s: &str) -> StdResult<[u8; 32]> {
     let t = s.trim().trim_start_matches("0x");
     let v = hex::decode(t).map_err(|_| StdError::msg("invalid hex"))?;
-    v.try_into()
-        .map_err(|_| StdError::msg("expected 32 bytes"))
+    v.try_into().map_err(|_| StdError::msg("expected 32 bytes"))
 }
 
 /// Pure verify used by the wasm entry point and by PIR (same fields as IBC v2).
@@ -124,7 +123,7 @@ pub fn verify_zap1_ibcv2(
     frost_group: &[u8; 32],
     leaf: &[u8; 32],
     merkle_root: &[u8; 32],
-    proof: &[( [u8; 32], bool )],
+    proof: &[([u8; 32], bool)],
 ) -> Result<[u8; 32], String> {
     if ibc.source_client.is_empty() || ibc.dest_client.is_empty() {
         return Err("empty ibc client id".into());
@@ -184,7 +183,12 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, _env: Env, _info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    msg: ExecuteMsg,
+) -> StdResult<Response> {
     match msg {
         ExecuteMsg::CreateClient {
             source_client,
@@ -259,11 +263,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             sequence,
             app_data_hash_hex,
         } => {
-            let stored = ACCEPTED.may_load(
-                deps.storage,
-                (&source_client, &dest_client, sequence),
-            )?;
-            let want = app_data_hash_hex.trim().trim_start_matches("0x").to_ascii_lowercase();
+            let stored =
+                ACCEPTED.may_load(deps.storage, (&source_client, &dest_client, sequence))?;
+            let want = app_data_hash_hex
+                .trim()
+                .trim_start_matches("0x")
+                .to_ascii_lowercase();
             let accepted = stored
                 .map(|s| s.eq_ignore_ascii_case(&want))
                 .unwrap_or(false);

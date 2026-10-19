@@ -11,11 +11,11 @@ pub mod msg;
 mod state;
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, entry_point, to_json_binary,
 };
 use terp_iavl_lc::{
-    verify_chained_membership, verify_chained_nonmembership, verify_ics23_existence,
-    verify_ics23_nonexistence, HashAlg,
+    HashAlg, verify_chained_membership, verify_chained_nonmembership, verify_ics23_existence,
+    verify_ics23_nonexistence,
 };
 
 use header::parse_client_message;
@@ -99,12 +99,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             inner.frozen = true;
             let checksum = load_checksum(deps.storage)?;
             let height = inner.latest_height.clone();
-            store_wasm_client(
-                deps.storage,
-                encode_inner_client(&inner)?,
-                checksum,
-                height,
-            )?;
+            store_wasm_client(deps.storage, encode_inner_client(&inner)?, checksum, height)?;
             Ok(Response::default().set_data(Binary::default()))
         }
         SudoMsg::VerifyUpgradeAndUpdateState(_) | SudoMsg::MigrateClientStore(_) => {
@@ -123,7 +118,12 @@ fn verify_membership(
     }
     let cons = load_inner_consensus(storage, &msg.height)?;
     let root = cons.root_bytes()?;
-    let path: Vec<Vec<u8>> = msg.merkle_path.key_path.iter().map(|b| b.to_vec()).collect();
+    let path: Vec<Vec<u8>> = msg
+        .merkle_path
+        .key_path
+        .iter()
+        .map(|b| b.to_vec())
+        .collect();
     verify_chained_membership(
         &inner.hasher_mode,
         &path,
@@ -144,7 +144,12 @@ fn verify_non_membership(
     }
     let cons = load_inner_consensus(storage, &msg.height)?;
     let root = cons.root_bytes()?;
-    let path: Vec<Vec<u8>> = msg.merkle_path.key_path.iter().map(|b| b.to_vec()).collect();
+    let path: Vec<Vec<u8>> = msg
+        .merkle_path
+        .key_path
+        .iter()
+        .map(|b| b.to_vec())
+        .collect();
     verify_chained_nonmembership(&inner.hasher_mode, &path, msg.proof.as_slice(), &root)
         .map_err(|e| ContractError::Proof(e.to_string()))
 }

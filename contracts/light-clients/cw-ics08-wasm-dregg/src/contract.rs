@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -10,7 +8,7 @@ use crate::msg::{
 };
 use crate::settle::apply_settlement;
 use crate::state::{CLIENT_STATE, CONSENSUS_HEAD, PROVEN_ROOTS, WASM_CHECKSUM};
-use crate::types::{pack_lanes_hex, parse_vk_hash, SettlementUpdate};
+use crate::types::{SettlementUpdate, pack_lanes_hex, parse_vk_hash};
 
 const CONTRACT_NAME: &str = "crates.io:cw-ics08-wasm-dregg";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -28,8 +26,8 @@ pub fn instantiate(
     if msg.consensus_state.proven_lanes != msg.client_state.genesis_lanes {
         return Err(ContractError::ContinuityBroken);
     }
-    let root = pack_lanes_hex(&msg.client_state.genesis_lanes)
-        .map_err(|_| ContractError::InvalidLane)?;
+    let root =
+        pack_lanes_hex(&msg.client_state.genesis_lanes).map_err(|_| ContractError::InvalidLane)?;
     CLIENT_STATE.save(deps.storage, &msg.client_state)?;
     CONSENSUS_HEAD.save(deps.storage, &msg.consensus_state)?;
     PROVEN_ROOTS.save(deps.storage, &root, &true)?;
@@ -42,7 +40,10 @@ pub fn instantiate(
         .add_attribute("claim_class", "settlement_only")
         .add_attribute("trust_level", "settlement_wrap_only")
         .add_attribute("genesis_root", root)
-        .add_attribute("proven_height", msg.consensus_state.proven_height.to_string()))
+        .add_attribute(
+            "proven_height",
+            msg.consensus_state.proven_height.to_string(),
+        ))
 }
 
 pub fn execute(

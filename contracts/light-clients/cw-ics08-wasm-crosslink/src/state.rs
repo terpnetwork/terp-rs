@@ -89,6 +89,6 @@ pub fn store_consensus_state(
         type_url: WasmConsensusState::type_url(),
         value: wasm_consensus_state.encode_to_vec(),
     };
-    storage.set(consensus_db_key(height).as_bytes(), &any.encode_to_vec()); 
+    storage.set(consensus_db_key(height).as_bytes(), &any.encode_to_vec());
     Ok(())
 }

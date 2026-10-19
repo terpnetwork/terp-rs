@@ -1,6 +1,6 @@
 //! ibc-go v11 08-wasm contract API (types/contract_api.go).
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Binary;
 
 #[cw_serde]
