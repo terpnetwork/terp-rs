@@ -16,8 +16,8 @@ interface = ["dep:cw-orch"]
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-oracle-registry = { workspace = true, features = ["library"] }
 cw-orch = { workspace = true, optional = true }
-cw-oracle-registry = { workspace = true,  features = ["library"] }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 schemars = { workspace = true }
