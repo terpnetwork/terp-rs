@@ -1,0 +1,21 @@
+[package]
+name = "nftfi-scripts"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+description = "cw-orch suite for the nftfi loan, raffle, and an SVG collection"
+
+[[bin]]
+name = "nftfi-deploy"
+path = "src/bin/deploy.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-orch = { workspace = true }
+cw721 = { workspace = true }
+cw721-svg = { workspace = true, features = ["interface"] }
+nftfi-loan = { workspace = true }
+nftfi-raffle = { workspace = true }
+nftfi-randomness = { workspace = true }
+nftfi-utils = { workspace = true, features = ["svg"] }
