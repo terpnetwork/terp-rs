@@ -125,16 +125,24 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
 
     let mut hm = HashMerchantSuite::mint_host_onboard("ict-hm-live", BIND, &lab, &lab);
     let registry = SidecarRegistry::new();
-    hm.start(&registry).await.context("start hash-market-server")?;
+    hm.start(&registry)
+        .await
+        .context("start hash-market-server")?;
     let client = hm.http_client().context("http client")?;
     line(true, "server", &hm.server_http_url().unwrap_or_default());
 
     let health = client.health().await.context("GET /health")?;
     anyhow::ensure!(health["status"] == "ok", "health {health}");
-    anyhow::ensure!(health["onboard"]["prefix"] == "/onboard", "onboard nest {health}");
+    anyhow::ensure!(
+        health["onboard"]["prefix"] == "/onboard",
+        "onboard nest {health}"
+    );
     line(true, "health", "merchant + onboard prefix");
 
-    let ost = client.onboard_status().await.context("GET /onboard/status")?;
+    let ost = client
+        .onboard_status()
+        .await
+        .context("GET /onboard/status")?;
     anyhow::ensure!(ost["ready"].as_bool() == Some(true), "onboard ready {ost}");
     anyhow::ensure!(ost["chain_id"] == "ict-hm-live", "{ost}");
     line(true, "onboard/status", &ost["dao"].to_string());
@@ -156,7 +164,10 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
     let (st, _) = client.request_register_grant("cosmos1nope").await?;
     anyhow::ensure!(st == StatusCode::BAD_REQUEST, "insanity grant {st}");
     let st = client.probe("GET", "/status").await?;
-    anyhow::ensure!(st == StatusCode::NOT_FOUND, "root /status must 404, got {st}");
+    anyhow::ensure!(
+        st == StatusCode::NOT_FOUND,
+        "root /status must 404, got {st}"
+    );
     line(true, "insanity", "bad addr + no root /status");
 
     let payload = b"live-hashmerchant-blob";
@@ -180,7 +191,10 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
     let (mp, proof) = client
         .member_proof("live-a", "terp1live00000000000000000000000000000")
         .await?;
-    anyhow::ensure!(mp.is_success() && proof["eligible"] == true, "member {mp} {proof}");
+    anyhow::ensure!(
+        mp.is_success() && proof["eligible"] == true,
+        "member {mp} {proof}"
+    );
     line(true, "member-proof", "eligible");
 
     let mut tasks = Vec::new();
@@ -238,7 +252,11 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
         ])
         .await
         .context("feegrant tx")?;
-    anyhow::ensure!(grant_tx.exit_code == 0, "feegrant {}", grant_tx.stderr_str());
+    anyhow::ensure!(
+        grant_tx.exit_code == 0,
+        "feegrant {}",
+        grant_tx.stderr_str()
+    );
     let txj: serde_json::Value =
         serde_json::from_str(grant_tx.stdout_str().trim()).unwrap_or(serde_json::Value::Null);
     let hash = txj["txhash"].as_str().unwrap_or("");
@@ -246,13 +264,7 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
     wait_for_blocks(chain, 2).await.ok();
     let q = chain
         .chain_exec(&[
-            "query",
-            "feegrant",
-            "grant",
-            &lab,
-            &grantee,
-            "--output",
-            "json",
+            "query", "feegrant", "grant", &lab, &grantee, "--output", "json",
         ])
         .await
         .context("feegrant query")?;
@@ -271,7 +283,11 @@ async fn run_workflow(chain: &CosmosChain) -> Result<()> {
     let coins = tokio::task::spawn_blocking(move || daemon_bank_query(info, lab_q))
         .await
         .context("daemon thread")??;
-    line(true, "cw-orch", &format!("gRPC {grpc:?} (bank secondary) {coins}"));
+    line(
+        true,
+        "cw-orch",
+        &format!("gRPC {grpc:?} (bank secondary) {coins}"),
+    );
 
     hm.stop().await.ok();
     Ok(())

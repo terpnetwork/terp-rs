@@ -723,8 +723,8 @@ fn prepare_wasm_light_clients(daemon: Daemon) -> Result<()> {
     // Without this check, CreateClient fails later with "checksum has not
     // been previously stored" and the real failure is hard to see.
     let prop_info = rt.block_on(async {
-        use cosmrs::proto::cosmos::gov::v1::query_client::QueryClient;
         use cosmrs::proto::cosmos::gov::v1::QueryProposalRequest;
+        use cosmrs::proto::cosmos::gov::v1::query_client::QueryClient;
         let channel = daemon.channel();
         let mut client = QueryClient::new(channel);
         let resp = client
@@ -775,8 +775,10 @@ fn fmt_header_debug(header: &CrosslinkHeader) -> String {
         header.bft_block.finalization_candidate_height,
         header.fat_pointer.signatures.len(),
         &header.fat_pointer.points_at_block_hash().0[..4],
-        &header.block_hash().0[..4],
-        header.validate_block_commitment(),
+        &header
+            .block_hash(&cosmwasm_std::testing::MockApi::default())
+            .0[..4],
+        header.validate_block_commitment(&cosmwasm_std::testing::MockApi::default()),
     )
 }
 
@@ -1086,7 +1088,7 @@ fn signed_header_update(
     let bft_block = bft_block(bft_height, commit_height, prev_hash);
 
     // The 44-byte message to sign is the current BFT block's blake3 hash + protocol suffix.
-    let block_hash = bft_block.blake3_hash();
+    let block_hash = bft_block.blake3_hash(&cosmwasm_std::testing::MockApi::default());
     let vote_message = compute_vote_message(&block_hash);
 
     // Native ed25519 signing (all keys for the roster).

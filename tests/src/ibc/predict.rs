@@ -106,7 +106,9 @@ pub fn check_invariants(world: &PredictedWorld) -> DiffReport {
                     report.push_at(
                         DiffSeverity::Error,
                         "preferred_contention",
-                        format!("{preferred_transfer} preferred transfer channels (need exactly one)"),
+                        format!(
+                            "{preferred_transfer} preferred transfer channels (need exactly one)"
+                        ),
                         format!("ibc_data.{key}"),
                     );
                 }

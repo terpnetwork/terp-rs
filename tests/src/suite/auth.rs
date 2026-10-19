@@ -10,14 +10,14 @@
 use cosmwasm_std::{Addr, Binary};
 
 pub use terp_vsck::{
-    verify::{verify_envelope, vote_sdk_mirror, DefaultVsckVerifier, VsckVerifier},
     CircuitVerifyingKeys, ContractError as VsckContractError, ExecuteMsg as VsckExecuteMsg,
     InstantiateMsg as VsckInstantiateMsg, VsckAuthPayload, VsckCircuit, VsckRole,
+    verify::{DefaultVsckVerifier, VsckVerifier, verify_envelope, vote_sdk_mirror},
 };
 
 #[cfg(feature = "auth-suite-full")]
 pub use terp_authenticator_suite::{
-    TerpAuthenticatorDeployData, TerpAuthenticatorSuite, ETH_GOLDEN_SIGNER,
+    ETH_GOLDEN_SIGNER, TerpAuthenticatorDeployData, TerpAuthenticatorSuite,
 };
 
 /// Minimal `Authenticate` sudo body for VSCK matrix tests (no suite fixtures).

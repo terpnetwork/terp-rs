@@ -86,7 +86,10 @@ async fn insanity_onboard_rejects_non_terp() {
     let hm = onboard_host();
     let (code, body) = hm.request_register_grant("cosmos1nope").await.unwrap();
     assert_eq!(code, StatusCode::BAD_REQUEST);
-    assert!(body["error"].as_str().unwrap_or("").contains("terp1"), "{body}");
+    assert!(
+        body["error"].as_str().unwrap_or("").contains("terp1"),
+        "{body}"
+    );
 }
 
 #[tokio::test]
@@ -135,10 +138,7 @@ async fn sanity_tree_roundtrip() {
 async fn insanity_tree_bad_root() {
     let hm = merkle_host();
     let st = hm
-        .put_tree(
-            "bad",
-            json!({ "merkle_root": "nope", "accounts": {} }),
-        )
+        .put_tree("bad", json!({ "merkle_root": "nope", "accounts": {} }))
         .await
         .unwrap();
     assert_eq!(st, StatusCode::BAD_REQUEST);
@@ -236,7 +236,6 @@ async fn concurrent_families_in_parallel() {
     d.unwrap();
 }
 
-
 const MEMBER: &str = "terp1member000000000000000000000000000";
 
 #[tokio::test]
@@ -250,7 +249,8 @@ async fn sanity_mint_grant() {
         .cloned()
         .unwrap_or_default();
     assert!(
-        msgs.iter().any(|v| v.as_str() == Some("/cosmwasm.wasm.v1.MsgExecuteContract")),
+        msgs.iter()
+            .any(|v| v.as_str() == Some("/cosmwasm.wasm.v1.MsgExecuteContract")),
         "{body}"
     );
 }

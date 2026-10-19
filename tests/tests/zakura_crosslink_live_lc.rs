@@ -25,9 +25,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use ict_rs::prelude::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const TFL_FAT_POINTER: &str = "get_tfl_fat_pointer_to_bft_chain_tip";
 const TFL_FINAL_HEIGHT_HASH: &str = "get_tfl_final_block_height_and_hash";
@@ -68,8 +68,8 @@ async fn json_rpc(rpc_url: &str, method: &str, params: Value) -> Result<Value> {
             String::from_utf8_lossy(&out.stderr)
         ));
     }
-    let v: Value = serde_json::from_slice(&out.stdout)
-        .with_context(|| format!("parse {method} body"))?;
+    let v: Value =
+        serde_json::from_slice(&out.stdout).with_context(|| format!("parse {method} body"))?;
     if let Some(err) = v.get("error") {
         return Err(anyhow!("{method} JSON-RPC error: {err}"));
     }
@@ -179,9 +179,7 @@ async fn zakura_live_node_exposes_tfl_rpc() {
         "getblockchaininfo result must include chain: {chain}"
     );
 
-    let probe = probe_tfl(node.rpc_url())
-        .await
-        .expect("probe TFL RPC");
+    let probe = probe_tfl(node.rpc_url()).await.expect("probe TFL RPC");
     let summary = probe.summary();
 
     if lab {
@@ -199,9 +197,7 @@ async fn zakura_live_node_exposes_tfl_rpc() {
              (not SigningKey::from seed, not FatPointerToBftBlock2::null). {summary}"
         );
     } else if probe.fat_pointer.is_err() {
-        eprintln!(
-            "honest residual (CX3+): TFL RPC not on this zakurad yet. {summary}"
-        );
+        eprintln!("honest residual (CX3+): TFL RPC not on this zakurad yet. {summary}");
     }
 
     let _ = node.teardown().await;
@@ -225,9 +221,7 @@ async fn zakura_live_header_updates_wasm_lc() {
         }
     };
 
-    let probe = probe_tfl(node.rpc_url())
-        .await
-        .expect("probe TFL RPC");
+    let probe = probe_tfl(node.rpc_url()).await.expect("probe TFL RPC");
     if probe.fat_pointer.is_err() || !probe.fat_pointer_has_sigs() {
         let summary = probe.summary();
         let _ = node.teardown().await;

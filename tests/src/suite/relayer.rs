@@ -11,9 +11,7 @@ use tracing::info;
 use ict_rs::relayer::Relayer;
 use ict_rs::runtime::RuntimeBackend;
 
-use crate::suite::sidecar::{
-    EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar,
-};
+use crate::suite::sidecar::{EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar};
 
 /// Configuration for the IBC relayer.
 #[derive(Clone, Debug)]
@@ -92,12 +90,8 @@ impl TerpSidecar for RelayerSuite {
 
         let relayer: Box<dyn Relayer> = match self.config.relayer_type {
             ict_rs::relayer::RelayerType::Hermes => {
-                let hermes = ict_rs::relayer::HermesRelayer::new(
-                    runtime,
-                    &self.id,
-                    "local",
-                )
-                .await?;
+                let hermes =
+                    ict_rs::relayer::HermesRelayer::new(runtime, &self.id, "local").await?;
                 Box::new(hermes)
             }
             ict_rs::relayer::RelayerType::CosmosRly => {

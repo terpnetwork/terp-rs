@@ -18,16 +18,16 @@ use std::collections::HashMap;
 
 use ict_rs::chain::cosmos::CosmosChain;
 use ict_rs::chain::{Chain, ChainConfig, ChainType, SigningAlgorithm};
-use ict_rs::interchain::{wait_for_blocks, Interchain, InterchainBuildOptions, InterchainLink};
+use ict_rs::interchain::{Interchain, InterchainBuildOptions, InterchainLink, wait_for_blocks};
 use ict_rs::modules::tokenfactory::TokenfactoryMsgExt;
-use ict_rs::relayer::{build_relayer, RelayerType};
+use ict_rs::relayer::{RelayerType, build_relayer};
 use ict_rs::runtime::{DockerConfig, DockerImage, IctRuntime};
 use ict_rs::tx::{TransferOptions, WalletAmount};
-use terp_scripts::ibc::{
-    check_invariants, compute_ibc_denom_hash, hop_count_from_trace_path, ChannelHop,
-    IBCChannelGraph, PredictedWorld,
-};
 use serde_json::json;
+use terp_scripts::ibc::{
+    ChannelHop, IBCChannelGraph, PredictedWorld, check_invariants, compute_ibc_denom_hash,
+    hop_count_from_trace_path,
+};
 
 // ---------------------------------------------------------------------------
 // Topology constants
@@ -73,8 +73,15 @@ fn predict_ibc_denom(trace_path: &str) -> String {
 }
 
 /// Ordered hop list origin→dest: each entry is the **receive** channel on the hop destination.
-fn predict_after_hops(receive_channels_origin_to_dest: &[&str], base_denom: &str) -> (String, String) {
-    let looking_back: Vec<&str> = receive_channels_origin_to_dest.iter().rev().copied().collect();
+fn predict_after_hops(
+    receive_channels_origin_to_dest: &[&str],
+    base_denom: &str,
+) -> (String, String) {
+    let looking_back: Vec<&str> = receive_channels_origin_to_dest
+        .iter()
+        .rev()
+        .copied()
+        .collect();
     let path = predict_trace_path(&looking_back, base_denom);
     let denom = predict_ibc_denom(&path);
     // Cross-check hop_count honesty + graph helper agreement
@@ -87,7 +94,12 @@ fn predict_after_hops(receive_channels_origin_to_dest: &[&str], base_denom: &str
 
 /// Same geometry via lib `IBCChannelGraph::compute_ibc_denom_for_route` (must match helpers).
 fn predict_via_graph(
-    hops_origin_to_dest: &[(/*from*/ &str, /*from_ch*/ &str, /*to*/ &str, /*to_ch*/ &str)],
+    hops_origin_to_dest: &[(
+        /*from*/ &str,
+        /*from_ch*/ &str,
+        /*to*/ &str,
+        /*to_ch*/ &str,
+    )],
     base: &str,
 ) -> (String, String) {
     let graph = IBCChannelGraph::new();
@@ -155,14 +167,7 @@ fn terp_line_config(chain_id: &str) -> ChainConfig {
 
 async fn key_address(chain: &dyn Chain, key_name: &str) -> String {
     let output = chain
-        .chain_exec(&[
-            "keys",
-            "show",
-            key_name,
-            "-a",
-            "--keyring-backend",
-            "test",
-        ])
+        .chain_exec(&["keys", "show", key_name, "-a", "--keyring-backend", "test"])
         .await
         .unwrap_or_else(|e| panic!("keys show {key_name}: {e}"));
     let addr = output.stdout_str().trim().to_string();
@@ -177,19 +182,12 @@ fn factory_denom(creator: &str, subdenom: &str) -> String {
 /// Open transfer channels on a chain: (channel_id, counterparty_channel_id).
 async fn list_transfer_channels(chain: &dyn Chain) -> Vec<(String, String)> {
     let output = chain
-        .chain_exec(&[
-            "query",
-            "ibc",
-            "channel",
-            "channels",
-            "--output",
-            "json",
-        ])
+        .chain_exec(&["query", "ibc", "channel", "channels", "--output", "json"])
         .await
         .unwrap_or_else(|e| panic!("query channels on {}: {e}", chain.chain_id()));
 
-    let v: serde_json::Value = serde_json::from_str(output.stdout_str().trim())
-        .unwrap_or_else(|e| {
+    let v: serde_json::Value =
+        serde_json::from_str(output.stdout_str().trim()).unwrap_or_else(|e| {
             panic!(
                 "parse channels JSON on {}: {e}\nstdout={}",
                 chain.chain_id(),
@@ -332,10 +330,7 @@ fn parse_trace_path(stdout: &str) -> Option<String> {
     // { "path": "transfer/channel-0/uterp" }  (full path variants)
     if let Some(dt) = v.get("denom_trace").or_else(|| v.get("trace")) {
         let path = dt.get("path").and_then(|p| p.as_str()).unwrap_or("");
-        let base = dt
-            .get("base_denom")
-            .and_then(|b| b.as_str())
-            .unwrap_or("");
+        let base = dt.get("base_denom").and_then(|b| b.as_str()).unwrap_or("");
         if !path.is_empty() && !base.is_empty() {
             // path field is usually "transfer/channel-0" without base.
             if path.contains(base) {
@@ -429,9 +424,7 @@ async fn run_scenario(
             )
             .await
             .unwrap_or_else(|e| {
-                panic!(
-                    "scenario={scenario} hop={hop_num} send_ibc_transfer failed: {e}"
-                )
+                panic!("scenario={scenario} hop={hop_num} send_ibc_transfer failed: {e}")
             });
         println!("    tx={} height={}", tx.tx_hash, tx.height);
 
@@ -476,11 +469,7 @@ async fn run_scenario(
 
         if actual_trace != expected_path && actual_trace != "<missing denom_trace>" {
             // Some CLI versions return path without base — accept if path is a prefix match.
-            let alt = format!(
-                "{}/{}",
-                actual_trace.trim_end_matches('/'),
-                base_denom
-            );
+            let alt = format!("{}/{}", actual_trace.trim_end_matches('/'), base_denom);
             if actual_trace != expected_path && alt != expected_path {
                 auth_mismatch(
                     scenario,
@@ -539,10 +528,7 @@ fn predict_single_hop_matches_ibc_core_hash() {
 fn predict_multi_hop_looking_back_order() {
     // A→B→C: receive on B is channel-0, receive on C is channel-1
     let (path, denom) = predict_after_hops(&["channel-0", "channel-1"], "factory/x/ta1");
-    assert_eq!(
-        path,
-        "transfer/channel-1/transfer/channel-0/factory/x/ta1"
-    );
+    assert_eq!(path, "transfer/channel-1/transfer/channel-0/factory/x/ta1");
     assert_eq!(denom, compute_ibc_denom_hash(&path));
     // hop_count geometry: number of transfer/ segments == hops
     assert_eq!(path.matches("transfer/").count(), 2);
@@ -550,8 +536,7 @@ fn predict_multi_hop_looking_back_order() {
 
 #[test]
 fn predict_triple_hop_geometry() {
-    let (path, _) =
-        predict_after_hops(&["channel-0", "channel-1", "channel-0"], "factory/x/ta2");
+    let (path, _) = predict_after_hops(&["channel-0", "channel-1", "channel-0"], "factory/x/ta2");
     assert_eq!(
         path,
         "transfer/channel-0/transfer/channel-1/transfer/channel-0/factory/x/ta2"
@@ -587,14 +572,9 @@ async fn test_line_four_chain_tokenfactory_multihop() {
     let chain_c = CosmosChain::new(terp_line_config(CHAIN_C), 1, 0, runtime.clone());
     let chain_d = CosmosChain::new(terp_line_config(CHAIN_D), 1, 0, runtime.clone());
 
-    let relayer = build_relayer(
-        RelayerType::Hermes,
-        runtime.clone(),
-        test_name,
-        &network_id,
-    )
-    .await
-    .expect("build Hermes relayer");
+    let relayer = build_relayer(RelayerType::Hermes, runtime.clone(), test_name, &network_id)
+        .await
+        .expect("build Hermes relayer");
 
     let mut ic = Interchain::new(runtime)
         .add_chain(Box::new(chain_a))
@@ -882,24 +862,9 @@ fn harness_ibc_data(ab: &LinkChannels, bc: &LinkChannels, cd: &LinkChannels) -> 
 
     let mut map = serde_json::Map::new();
     for (k, v) in [
-        pair_entry(
-            &ab.chain1,
-            &ab.chain2,
-            &ab.channel_on_1,
-            &ab.channel_on_2,
-        ),
-        pair_entry(
-            &bc.chain1,
-            &bc.chain2,
-            &bc.channel_on_1,
-            &bc.channel_on_2,
-        ),
-        pair_entry(
-            &cd.chain1,
-            &cd.chain2,
-            &cd.channel_on_1,
-            &cd.channel_on_2,
-        ),
+        pair_entry(&ab.chain1, &ab.chain2, &ab.channel_on_1, &ab.channel_on_2),
+        pair_entry(&bc.chain1, &bc.chain2, &bc.channel_on_1, &bc.channel_on_2),
+        pair_entry(&cd.chain1, &cd.chain2, &cd.channel_on_1, &cd.channel_on_2),
     ] {
         map.insert(k, v);
     }

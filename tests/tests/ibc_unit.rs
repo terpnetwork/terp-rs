@@ -1,12 +1,13 @@
 //! Pure IBC authenticity unit tests (no Docker).
 
-use terp_scripts::ibc::{
-    build_channel_to_chain_map, check_invariants, compute_ibc_denom_hash,
-    finalize_channels_for_ibc_entry, hop_count_from_trace_path, ordering_to_str,
-    validate_ibc_data_entry, IBCAssetRoutingTable, IBCChannelGraph, PredictedWorld,
-};
 use serde_json::json;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use terp_scripts::ibc::{
+    IBCAssetRoutingTable, IBCChannelGraph, PredictedWorld, build_channel_to_chain_map,
+    check_invariants, compute_ibc_denom_hash, finalize_channels_for_ibc_entry,
+    hop_count_from_trace_path, ordering_to_str, validate_ibc_data_entry,
+};
 
 #[test]
 fn hash_format_and_known_akt_osmosis() {
@@ -14,7 +15,8 @@ fn hash_format_and_known_akt_osmosis() {
     assert!(h.starts_with("ibc/"));
     assert_eq!(h.len(), 68);
     assert_eq!(
-        h, "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4"
+        h,
+        "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4"
     );
 }
 
@@ -93,11 +95,13 @@ fn prefer_direct_triangle() {
     let preferred = table.lookup_ibc_denom("TOKEN", "c").expect("preferred");
     assert_eq!(preferred.hop_count, 1);
     assert!(preferred.preferred);
-    assert!(!table
-        .lookup_by_dest_chain("c")
-        .iter()
-        .filter(|r| r.hop_count > 1)
-        .any(|r| r.preferred));
+    assert!(
+        !table
+            .lookup_by_dest_chain("c")
+            .iter()
+            .filter(|r| r.hop_count > 1)
+            .any(|r| r.preferred)
+    );
 }
 
 #[test]
@@ -160,4 +164,104 @@ fn check_invariants_flags_hop_count_lie() {
     let report = check_invariants(&world);
     assert!(report.has_errors());
     assert!(report.errors().any(|e| e.code == "hop_count"));
+}
+
+/// The cw-orch state file is what app code reads. Every one-hop denom in it
+/// has to be the SHA-256 of its trace, and no recorded client may still say Active.
+#[test]
+fn state_json_one_hop_denoms_match_hash() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../public/state.json");
+    let raw =
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let state: serde_json::Value = serde_json::from_str(&raw).expect("state.json");
+    let morocco = &state["morocco-1"];
+    let denoms = &morocco["ibc_denoms"];
+    assert!(denoms["on_terp"].as_array().unwrap().len() >= 12);
+    for side in ["on_terp", "terp_on_counterparty"] {
+        for row in denoms[side].as_array().expect(side) {
+            let trace = row["trace"].as_str().unwrap();
+            let denom = row["denom"].as_str().unwrap();
+            assert_eq!(compute_ibc_denom_hash(trace), denom, "{trace}");
+            assert_eq!(hop_count_from_trace_path(trace), 1, "{trace}");
+            if let Some(status) = row.get("client_status").and_then(|v| v.as_str()) {
+                assert_eq!(status, "Expired", "{trace}");
+            }
+        }
+    }
+    let hermes: Vec<_> = denoms["on_terp"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|row| row["hermes_allow"] == true)
+        .map(|row| row["trace"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        hermes,
+        vec![
+            "transfer/channel-9/uakt",
+            "transfer/channel-11/uosmo",
+            "transfer/channel-10/uatone",
+            "transfer/channel-0/ujuno",
+            "transfer/channel-7/uscrt",
+            "transfer/channel-8/uscrt",
+        ]
+    );
+    let temp = morocco["temp_mint_denoms"]["assets"]
+        .as_array()
+        .expect("temp_mint_denoms");
+    let symbols: Vec<_> = temp
+        .iter()
+        .map(|row| row["symbol"].as_str().unwrap())
+        .collect();
+    assert_eq!(symbols, vec!["AKT", "OSMO", "UM", "ETH", "ZEC", "BTC"]);
+    for row in temp {
+        let trace = row["trace"].as_str().unwrap();
+        assert_eq!(
+            compute_ibc_denom_hash(trace),
+            row["denom"].as_str().unwrap(),
+            "{trace}"
+        );
+        assert_eq!(row["temporary"], true, "{trace}");
+        assert_eq!(row["client_status"], "Expired", "{trace}");
+        if let Some(canonical) = row["canonical_trace"].as_str() {
+            assert_eq!(
+                compute_ibc_denom_hash(canonical),
+                row["canonical_denom"].as_str().unwrap(),
+                "{canonical}"
+            );
+        }
+    }
+    let on_terp = denoms["on_terp"].as_array().unwrap();
+    for kept in [
+        "transfer/channel-9/uakt",
+        "transfer/channel-6/uakt",
+        "transfer/channel-11/uosmo",
+        "transfer/channel-1/uosmo",
+    ] {
+        assert!(
+            on_terp.iter().any(|row| row["trace"] == kept),
+            "canonical one-hop row removed: {kept}"
+        );
+    }
+    assert_eq!(temp[2]["hop_count"], 2);
+    assert!(temp[2]["canonical_trace"].is_null());
+    fn walk(v: &serde_json::Value) {
+        match v {
+            serde_json::Value::Object(map) => {
+                if let Some(status) = map.get("client_status").and_then(|s| s.as_str()) {
+                    assert_ne!(status, "Active", "state.json still marks a client Active");
+                }
+                for child in map.values() {
+                    walk(child);
+                }
+            }
+            serde_json::Value::Array(items) => {
+                for child in items {
+                    walk(child);
+                }
+            }
+            _ => {}
+        }
+    }
+    walk(morocco);
 }

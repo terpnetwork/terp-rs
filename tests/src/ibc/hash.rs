@@ -32,7 +32,8 @@ mod tests {
     fn test_known_akt_on_osmosis() {
         let h = compute_ibc_denom_hash("transfer/channel-1/uakt");
         assert_eq!(
-            h, "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4"
+            h,
+            "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4"
         );
     }
 

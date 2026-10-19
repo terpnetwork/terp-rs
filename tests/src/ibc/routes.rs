@@ -100,10 +100,12 @@ impl IBCAssetRoutingTable {
                                 "ibc" | "ibc-cw20" | "ibc-bridge"
                             )
                         }) {
-                            let cp_chain =
-                                ibc_trace["counterparty"]["chain_name"].as_str().unwrap_or("");
-                            let cp_denom =
-                                ibc_trace["counterparty"]["base_denom"].as_str().unwrap_or("");
+                            let cp_chain = ibc_trace["counterparty"]["chain_name"]
+                                .as_str()
+                                .unwrap_or("");
+                            let cp_denom = ibc_trace["counterparty"]["base_denom"]
+                                .as_str()
+                                .unwrap_or("");
                             let source_trace = ibc_trace["chain"]["path"].as_str().unwrap_or("");
 
                             for dest_chain in graph.edges.keys() {
@@ -144,10 +146,7 @@ impl IBCAssetRoutingTable {
                                         preferred,
                                     };
 
-                                    routes
-                                        .entry(dest_chain.clone())
-                                        .or_default()
-                                        .push(entry);
+                                    routes.entry(dest_chain.clone()).or_default().push(entry);
                                 }
                             }
                         }
@@ -341,10 +340,7 @@ mod tests {
         graph.add_channel("b", "channel-1", "c", "channel-0", true, "ACTIVE".into());
 
         let mut assets = HashMap::new();
-        assets.insert(
-            "a".to_string(),
-            vec![json!({"symbol": "A", "base": "ua"})],
-        );
+        assets.insert("a".to_string(), vec![json!({"symbol": "A", "base": "ua"})]);
 
         let table = IBCAssetRoutingTable::premine(&graph, &assets, 3);
         let routes = table.lookup_by_dest_chain("c");
@@ -379,7 +375,10 @@ mod tests {
 
         let table = IBCAssetRoutingTable::premine(&graph, &assets, 3);
         let preferred = table.lookup_ibc_denom("TOKEN", "c").expect("lookup");
-        assert_eq!(preferred.hop_count, 1, "preferred must be direct single hop");
+        assert_eq!(
+            preferred.hop_count, 1,
+            "preferred must be direct single hop"
+        );
         assert!(preferred.preferred);
         assert_eq!(preferred.trace_path, "transfer/channel-ca/utoken");
 

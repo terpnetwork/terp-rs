@@ -134,7 +134,8 @@ mod tests {
         let out = dir.path().join("public");
         fs::create_dir_all(&out).unwrap();
         let pubr = AtomicPublisher::create(&out).unwrap();
-        pubr.write_rel("ibc_lookup_table.json", b"{\"ok\":true}").unwrap();
+        pubr.write_rel("ibc_lookup_table.json", b"{\"ok\":true}")
+            .unwrap();
         assert!(!out.join("ibc_lookup_table.json").exists());
         let paths = pubr.promote().unwrap();
         assert_eq!(paths.len(), 1);

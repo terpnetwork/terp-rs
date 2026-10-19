@@ -273,7 +273,7 @@ fn main() -> anyhow::Result<()> {
     //     amount: Uint128::new(500000000000).to_string(),
     //     denom: "uterp".into(),
     // });
-    rt.block_on(sender.commit_tx_any(vec![any,any2], None))?;
+    rt.block_on(sender.commit_tx_any(vec![any, any2], None))?;
 
     // eprintln!("[MAIN] Starting realign_delegations (dry run + file generation)...");
     // // Execute the async function using the runtime

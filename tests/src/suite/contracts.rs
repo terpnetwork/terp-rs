@@ -46,9 +46,11 @@ where
         }
         #[cfg(feature = "orch-suite")]
         if data.attach_orch {
-            suite.orch = Some(<terp_orch::TerpOrchSuite<Chain> as cw_orch::contract::Deploy<Chain>>::load_from(
-                chain.clone(),
-            )?);
+            suite.orch = Some(
+                <terp_orch::TerpOrchSuite<Chain> as cw_orch::contract::Deploy<Chain>>::load_from(
+                    chain.clone(),
+                )?,
+            );
         }
         #[cfg(feature = "zk")]
         if data.attach_pdex {
@@ -93,4 +95,3 @@ where
         }
     }
 }
-

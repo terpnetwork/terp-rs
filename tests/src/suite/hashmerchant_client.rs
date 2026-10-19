@@ -8,14 +8,16 @@
 //! `terp_onboard_authz::curate`; this type only speaks HTTP.
 
 use anyhow::{Context, Result};
+use axum::Router;
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use axum::Router;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tower::ServiceExt;
 
-use hash_market::server::{router, AppState};
+use hash_market::server::{AppState, router};
+use hash_market::tree_operator::{ephemeral_operator, sign_tree_write};
+use k256::ecdsa::SigningKey;
 
 /// Talks to hash-market-server planes (`/health`, `/blobs`, `/trees`, `/onboard`).
 #[derive(Clone)]
@@ -23,6 +25,8 @@ pub struct HashMerchantClient {
     mode: Mode,
     /// Keeps the merkle/blob data dir alive for in-process hosts.
     _data: Option<Arc<tempfile::TempDir>>,
+    /// In-process tree operator. Writes to `/trees` are signed with this key.
+    tree_key: Option<SigningKey>,
 }
 
 #[derive(Clone)]
@@ -52,6 +56,7 @@ impl HashMerchantClient {
         Self {
             mode: Mode::Http(base.into().trim_end_matches('/').to_string()),
             _data: None,
+            tree_key: None,
         }
     }
 
@@ -59,13 +64,17 @@ impl HashMerchantClient {
     pub fn in_process(opts: InProcessOpts) -> Result<Self> {
         let dir = tempfile::tempdir().context("hashmerchant data dir")?;
         let mut state = AppState::new_merkle_host(opts.chain_id.clone(), dir.path().to_path_buf())?;
-        if let (Some(dao), Some(rt_key)) = (opts.onboard_dao.clone(), opts.onboard_runtime.clone()) {
+        if let (Some(dao), Some(rt_key)) = (opts.onboard_dao.clone(), opts.onboard_runtime.clone())
+        {
             state.enable_onboard_roles(dao, rt_key, opts.chain_id.clone());
         }
+        let (tree_key, operator) = ephemeral_operator();
+        state.set_tree_operator(operator);
         let app = router(Arc::new(state));
         Ok(Self {
             mode: Mode::InProcess(app),
             _data: Some(Arc::new(dir)),
+            tree_key: Some(tree_key),
         })
     }
 
@@ -150,7 +159,6 @@ impl HashMerchantClient {
         Ok(st)
     }
 
-
     pub async fn delete_blob(&self, sha256_hex: &str) -> Result<StatusCode> {
         self.probe("DELETE", &format!("/blobs/{sha256_hex}")).await
     }
@@ -206,9 +214,8 @@ impl HashMerchantClient {
         if raw.is_empty() {
             return Ok((st, Value::Null));
         }
-        let v = serde_json::from_slice(&raw).unwrap_or(Value::String(
-            String::from_utf8_lossy(&raw).into_owned(),
-        ));
+        let v = serde_json::from_slice(&raw)
+            .unwrap_or(Value::String(String::from_utf8_lossy(&raw).into_owned()));
         Ok((st, v))
     }
 
@@ -219,11 +226,18 @@ impl HashMerchantClient {
         body: &[u8],
         content_type: &str,
     ) -> Result<(StatusCode, Vec<u8>)> {
+        let (pubkey, signature) = self.tree_write_headers(method, path, body);
         match &self.mode {
             Mode::InProcess(app) => {
                 let mut b = Request::builder().method(method).uri(path);
                 if !content_type.is_empty() {
                     b = b.header("content-type", content_type);
+                }
+                if let Some(pk) = &pubkey {
+                    b = b.header("x-hash-market-pubkey", pk);
+                }
+                if let Some(sig) = &signature {
+                    b = b.header("x-hash-market-signature", sig);
                 }
                 let req = b.body(Body::from(body.to_vec()))?;
                 let res = app.clone().oneshot(req).await?;
@@ -246,6 +260,12 @@ impl HashMerchantClient {
                 if !content_type.is_empty() {
                     req = req.header("content-type", content_type);
                 }
+                if let Some(pk) = &pubkey {
+                    req = req.header("x-hash-market-pubkey", pk);
+                }
+                if let Some(sig) = &signature {
+                    req = req.header("x-hash-market-signature", sig);
+                }
                 if !body.is_empty() {
                     req = req.body(body.to_vec());
                 }
@@ -255,5 +275,22 @@ impl HashMerchantClient {
                 Ok((st, bytes.to_vec()))
             }
         }
+    }
+
+    fn tree_write_headers(
+        &self,
+        method: &str,
+        path: &str,
+        body: &[u8],
+    ) -> (Option<String>, Option<String>) {
+        let write = matches!(method, "POST" | "PUT" | "DELETE") && path.starts_with("/trees/");
+        let Some(sk) = &self.tree_key else {
+            return (None, None);
+        };
+        if !write {
+            return (None, None);
+        }
+        let (pk, sig) = sign_tree_write(sk, method, path, body);
+        (Some(pk), Some(sig))
     }
 }

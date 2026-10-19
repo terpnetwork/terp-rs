@@ -5,7 +5,7 @@
 // //! starts all sidecars (minio-ipfs, indexer, merkle-server, hashmerchant),
 // //! uploads website dist to MinIO, and keeps running until Ctrl+C.
 // //!
-// //! The cw-orch state file (~/.cw-orchestrator/state.json) auto-records
+// //! The cw-orch state file (~/.cw-orch/state.json) auto-records
 // //! deployed contract addresses, which are consumed by the frontends
 // //! (terp-docs, dao-dao-ui, terp.network) via config-loader.js.
 // //!
@@ -386,9 +386,9 @@
 //     }
 
 //     // 10. Print cw-orchestrator state (contract addresses → frontends)
-//     println!("\n--- Contract addresses (from ~/.cw-orchestrator/state.json) ---");
+//     println!("\n--- Contract addresses (from ~/.cw-orch/state.json) ---");
 //     let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
-//     let state_path = std::path::PathBuf::from(home).join(".cw-orchestrator/state.json");
+//     let state_path = std::path::PathBuf::from(home).join(".cw-orch/state.json");
 //     if state_path.exists() {
 //         let raw = std::fs::read_to_string(&state_path)?;
 //         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&raw) {
@@ -506,7 +506,7 @@
 //         let raw = std::fs::read_to_string(&config_path)?;
 //         if let Ok(mut config) = serde_json::from_str::<serde_json::Value>(&raw) {
 //             let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
-//             let state_path = std::path::PathBuf::from(home).join(".cw-orchestrator/state.json");
+//             let state_path = std::path::PathBuf::from(home).join(".cw-orch/state.json");
 //             if state_path.exists() {
 //                 let state_raw = std::fs::read_to_string(&state_path)?;
 //                 if let Ok(state) = serde_json::from_str::<serde_json::Value>(&state_raw) {

@@ -1,3 +1,4 @@
+use clap::{Parser, Subcommand, ValueEnum};
 use cw_orch::{
     daemon::{
         Daemon, DaemonState,
@@ -9,20 +10,20 @@ use cw_orch::{
 };
 use cw_orch_interchain::prelude::*;
 use log::info;
-use clap::{Parser, Subcommand, ValueEnum};
-use terp_scripts::ibc::{
-    build_channel_to_chain_map as lib_build_channel_to_chain_map, check_invariants,
-    compute_ibc_denom_hash, derive_terp_ibc_denom, finalize_channels_for_ibc_entry,
-    file_sha256, resolve_out_dir, AtomicPublisher, FixtureBackend, PredictedWorld, TerpChannelInfo,
-};
-use terp_scripts::{
-    preflight_missing, ArtifactRef, CapabilityMode, OutputFormat, RunEnv, RunReport,
-};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use terp_rs::{Message, ibc::lightclients::tendermint::v1::ClientState};
+use terp_scripts::ibc::{
+    AtomicPublisher, FixtureBackend, PredictedWorld, TerpChannelInfo,
+    build_channel_to_chain_map as lib_build_channel_to_chain_map, check_invariants,
+    compute_ibc_denom_hash, derive_terp_ibc_denom, file_sha256, finalize_channels_for_ibc_entry,
+    resolve_out_dir,
+};
+use terp_scripts::{
+    ArtifactRef, CapabilityMode, OutputFormat, RunEnv, RunReport, preflight_missing,
+};
 use tracing::warn;
 
 const TOOL: &str = "terp-ibc";
@@ -262,12 +263,7 @@ fn main() {
     }
 }
 
-fn internal_err(
-    verb: &str,
-    out: &Path,
-    start: Instant,
-    e: anyhow::Error,
-) -> RunReport {
+fn internal_err(verb: &str, out: &Path, start: Instant, e: anyhow::Error) -> RunReport {
     RunReport {
         tool: TOOL.into(),
         verb: verb.into(),
@@ -305,7 +301,9 @@ fn load_public_ibc_data(public_dir: &std::path::Path) -> anyhow::Result<serde_js
     Ok(serde_json::Value::Object(map))
 }
 
-fn minimal_assets_from_public(public_dir: &std::path::Path) -> HashMap<String, Vec<serde_json::Value>> {
+fn minimal_assets_from_public(
+    public_dir: &std::path::Path,
+) -> HashMap<String, Vec<serde_json::Value>> {
     let mut chain_assets = HashMap::new();
     chain_assets.insert(
         "terp".into(),
@@ -339,7 +337,9 @@ fn minimal_assets_from_public(public_dir: &std::path::Path) -> HashMap<String, V
             for (_k, entry) in obj {
                 for side in ["chain_1", "chain_2"] {
                     if let Some(name) = entry[side]["chain_name"].as_str() {
-                        chain_assets.entry(name.to_string()).or_insert_with(Vec::new);
+                        chain_assets
+                            .entry(name.to_string())
+                            .or_insert_with(Vec::new);
                     }
                 }
             }
@@ -376,7 +376,7 @@ fn cmd_compare(
     strict: bool,
     start: Instant,
 ) -> anyhow::Result<RunReport> {
-    use terp_scripts::ibc::{compare_predict_observe_with, CompareOptions, SnapshotBackend};
+    use terp_scripts::ibc::{CompareOptions, SnapshotBackend, compare_predict_observe_with};
     let ibc_data = load_public_ibc_data(public_dir)?;
     let assets = minimal_assets_from_public(public_dir);
     let world = PredictedWorld::from_inputs(ibc_data, &assets, 3);
@@ -510,7 +510,6 @@ fn cmd_rebuild_from_public(
     )
     .with_artifacts(artifacts))
 }
-
 
 fn derive_full_ibc_state() -> anyhow::Result<()> {
     let interchain = DaemonInterchain::new(
@@ -791,7 +790,7 @@ fn derive_full_ibc_state() -> anyhow::Result<()> {
 
         // Direct transposition into state content here: the finalized entry (with real channel_id/port_id
         // from the query + alpha remap + preferred tags) is written to state.ibc_data[cp] immediately.
-        // This ensures the ~/.cw-orchestrator/state.json (and anything reading state.ibc_data) gets the
+        // This ensures the ~/.cw-orch/state.json (and anything reading state.ibc_data) gets the
         // channel information, not just the public/ files or the in-memory output list.
         let cp_key_for_state = if chain_1_name == "terp" {
             chain_2_name.to_string()
@@ -1621,7 +1620,6 @@ fn load_assetlist_for_chain(chain_name: &str, state: &DaemonState) -> Vec<serde_
 ///    - Multi-hop on source: transfer/{terp_ch}/{source_trace_path}
 /// 3. If Terp has NO direct channel to counterparty but has channel to source chain:
 ///    - Route through source: transfer/{terp_ch_to_source}/{source_trace_path}
-
 
 /// Current unix timestamp as a string.
 pub fn now_timestamp() -> String {

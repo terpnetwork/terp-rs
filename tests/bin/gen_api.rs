@@ -1,4 +1,3 @@
-
 // /// Generate a full markdown API reference from the suite manifest + schema files.
 // ///
 // /// `workspace_root`: path to the repo root containing `contracts/` and `schema/`.

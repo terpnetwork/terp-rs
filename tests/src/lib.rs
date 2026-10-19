@@ -12,8 +12,8 @@ pub mod report;
 pub mod suite;
 
 pub use report::{
-    preflight_missing, required_env_for_mode, ArtifactRef, CapabilityMode, OutputFormat, RunEnv,
-    RunReport,
+    ArtifactRef, CapabilityMode, OutputFormat, RunEnv, RunReport, preflight_missing,
+    required_env_for_mode,
 };
 
 #[cfg(feature = "nostr")]
@@ -25,7 +25,7 @@ pub use environments::quickspawn;
 #[cfg(all(feature = "nostr", feature = "hash-market"))]
 pub mod prelude {
     pub use crate::environments::nostr::{
-        bind_and_bridge_offchain, calendar_meta_to_nostr, chain_event_to_nostr, nip01_to_ict,
-        NostrClient, NostrEvent, NostrRelayerManager, NostrTestEnv,
+        NostrClient, NostrEvent, NostrRelayerManager, NostrTestEnv, bind_and_bridge_offchain,
+        calendar_meta_to_nostr, chain_event_to_nostr, nip01_to_ict,
     };
 }

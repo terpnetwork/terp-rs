@@ -12,7 +12,7 @@
 //! Default: upload note / voice / proxy only, no instantiate, no admin.
 //! `--full-connection` instantiates note+voice with admin = None unless `--admin` is set.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use cw_orch::prelude::networks::{TERP_MAINNET, TERP_TESTNET};
 use cw_orch::prelude::*;
@@ -82,10 +82,7 @@ fn upload_polytone(daemon: Daemon, upload_if_needed: bool) -> Result<Polytone<Da
     Ok(polytone)
 }
 
-fn instantiate_note_and_voice(
-    polytone: &Polytone<Daemon>,
-    admin: Option<String>,
-) -> Result<()> {
+fn instantiate_note_and_voice(polytone: &Polytone<Daemon>, admin: Option<String>) -> Result<()> {
     info!(
         "Instantiating note + voice (admin={})",
         admin.as_deref().unwrap_or("<none/immutable>")
@@ -126,7 +123,10 @@ fn main() -> Result<()> {
     let chain_name = cli.chain.as_deref().unwrap_or("terp-testnet");
     let chain = resolve_chain(chain_name)?;
     let chain_id = chain.chain_id;
-    info!("=== Polytone migrate via cw_orch_polytone::Polytone on {} ===", chain_id);
+    info!(
+        "=== Polytone migrate via cw_orch_polytone::Polytone on {} ===",
+        chain_id
+    );
 
     let rt = Runtime::new().context("tokio runtime")?;
     let daemon = DaemonBuilder::new(chain)
@@ -144,9 +144,7 @@ fn main() -> Result<()> {
         info!("[Phase D] instantiate (immutable unless --admin)");
         instantiate_note_and_voice(&polytone, cli.admin.clone())?;
         if cli.remote_chain.is_some() {
-            info!(
-                "[Phase E] IBC channel not auto-created here; use polytone connect / hermes"
-            );
+            info!("[Phase E] IBC channel not auto-created here; use polytone connect / hermes");
         }
     }
 
@@ -154,6 +152,9 @@ fn main() -> Result<()> {
     polytone.note.code_id()?;
     polytone.voice.code_id()?;
     polytone.proxy.code_id()?;
-    info!("=== done — cw-orch state.json should now have polytone:* for {} ===", chain_id);
+    info!(
+        "=== done — cw-orch state.json should now have polytone:* for {} ===",
+        chain_id
+    );
     Ok(())
 }

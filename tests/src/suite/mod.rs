@@ -31,17 +31,17 @@ pub mod relayer;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use std::collections::HashMap;
 use cw_orch::daemon::Daemon;
 use cw_orch::environment::{ChainInfoOwned, ChainKind, Environment, NetworkInfoOwned};
+use std::collections::HashMap;
 
 use ict_rs::runtime::IctRuntime;
 
-pub use sidecar::{
-    DockerSidecar, EndpointMap, HealthStatus, InProcessSidecar, SidecarBinaryResolver,
-    SidecarId, SidecarRegistry, SubprocessConfig, SubprocessSidecar,
-};
 use sidecar::TerpSidecar;
+pub use sidecar::{
+    DockerSidecar, EndpointMap, HealthStatus, InProcessSidecar, SidecarBinaryResolver, SidecarId,
+    SidecarRegistry, SubprocessConfig, SubprocessSidecar,
+};
 
 pub use contracts::TerpNetworkSuite;
 pub use contracts::TerpNetworkSuite as DeploySuite;
@@ -57,11 +57,11 @@ use nostr::NostrRelaySuite;
 #[cfg(feature = "docker")]
 use relayer::RelayerSuite;
 
-pub mod config;
 #[cfg(feature = "auth-suite")]
 pub mod auth;
 #[cfg(feature = "orch-suite")]
 pub mod circuit_demo;
+pub mod config;
 
 // ---------------------------------------------------------------------------
 // SidecarFleet
@@ -292,7 +292,7 @@ impl SidecarFleet {
         if let Some(ref rt) = self.runtime {
             #[cfg(feature = "docker")]
             #[cfg(feature = "docker")]
-        if let Some(ref mut idx) = self.indexer {
+            if let Some(ref mut idx) = self.indexer {
                 idx.runtime = Some(rt.clone());
             }
             #[cfg(feature = "nostr")]
@@ -400,26 +400,44 @@ impl SidecarFleet {
         let mut results = HashMap::new();
 
         if let Some(ref hm) = self.hashmerchant {
-            results.insert("hashmerchant".into(), hm.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "hashmerchant".into(),
+                hm.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
         if let Some(ref ms) = self.merkle_server {
-            results.insert("merkle-server".into(), ms.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "merkle-server".into(),
+                ms.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
         #[cfg(feature = "docker")]
         if let Some(ref mini) = self.minio_ipfs {
-            results.insert("minio-ipfs".into(), mini.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "minio-ipfs".into(),
+                mini.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
         #[cfg(feature = "nostr")]
         if let Some(ref nr) = self.nostr_relay {
-            results.insert("nostr-relay".into(), nr.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "nostr-relay".into(),
+                nr.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
         #[cfg(feature = "docker")]
         if let Some(ref rel) = self.relayer {
-            results.insert("relayer".into(), rel.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "relayer".into(),
+                rel.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
         #[cfg(feature = "docker")]
         if let Some(ref idx) = self.indexer {
-            results.insert("indexer".into(), idx.health().await.unwrap_or(HealthStatus::Unknown));
+            results.insert(
+                "indexer".into(),
+                idx.health().await.unwrap_or(HealthStatus::Unknown),
+            );
         }
 
         Ok(results)
@@ -436,7 +454,9 @@ impl SidecarFleet {
 
 impl Environment<Daemon> for SidecarFleet {
     fn environment(&self) -> &Daemon {
-        self.daemon.as_ref().expect("Daemon not initialized — call start_all() first or set with_local_chain()")
+        self.daemon
+            .as_ref()
+            .expect("Daemon not initialized — call start_all() first or set with_local_chain()")
     }
 }
 

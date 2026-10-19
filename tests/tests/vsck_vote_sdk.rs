@@ -9,12 +9,13 @@
 #![cfg(feature = "auth-suite")]
 
 use cosmwasm_std::{
+    Addr, Binary, MessageInfo,
     testing::{mock_dependencies, mock_env},
-    to_json_binary, Addr, Binary, MessageInfo,
+    to_json_binary,
 };
 use terp_scripts::suite::auth::{
-    verify_envelope, vsck_authenticate_sudo, vote_sdk_mirror, CircuitVerifyingKeys,
-    VsckAuthPayload, VsckCircuit, VsckExecuteMsg, VsckInstantiateMsg, VsckRole,
+    CircuitVerifyingKeys, VsckAuthPayload, VsckCircuit, VsckExecuteMsg, VsckInstantiateMsg,
+    VsckRole, verify_envelope, vote_sdk_mirror, vsck_authenticate_sudo,
 };
 
 fn vks() -> CircuitVerifyingKeys {
@@ -28,8 +29,6 @@ fn vks() -> CircuitVerifyingKeys {
 fn root() -> Binary {
     Binary::from(b"note-tree-root-32bytes___________")
 }
-
-
 
 fn payload(session: &str, role: VsckRole, circuit: VsckCircuit, nf: &[u8]) -> VsckAuthPayload {
     let mut pi = root().to_vec();
@@ -77,12 +76,8 @@ fn open_and_auth(session: &str, p: VsckAuthPayload) -> Result<cosmwasm_std::Resp
     )
     .map_err(|e| e.to_string())?;
     let sig = to_json_binary(&p).map_err(|e| e.to_string())?;
-    terp_vsck::sudo(
-        deps.as_mut(),
-        mock_env(),
-        vsck_authenticate_sudo(sig),
-    )
-    .map_err(|e| e.to_string())
+    terp_vsck::sudo(deps.as_mut(), mock_env(), vsck_authenticate_sudo(sig))
+        .map_err(|e| e.to_string())
 }
 
 #[test]
@@ -156,12 +151,9 @@ fn suite_unbound_public_inputs() {
 
 #[test]
 fn suite_reexports_envelope_and_mirror() {
-    let err = vote_sdk_mirror::verify_vote_proof(
-        &vks().vote_proof_vk,
-        &Binary::from(b"p"),
-        &root(),
-    )
-    .unwrap_err();
+    let err =
+        vote_sdk_mirror::verify_vote_proof(&vks().vote_proof_vk, &Binary::from(b"p"), &root())
+            .unwrap_err();
     assert!(matches!(
         err,
         terp_scripts::suite::auth::VsckContractError::CircuitNotLinked { .. }

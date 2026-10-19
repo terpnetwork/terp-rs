@@ -99,7 +99,12 @@ impl IBCChannelGraph {
 
                         if !ch1_id.is_empty() && !ch2_id.is_empty() {
                             graph.add_channel(
-                                chain_1_name, ch1_id, chain_2_name, ch2_id, preferred, status,
+                                chain_1_name,
+                                ch1_id,
+                                chain_2_name,
+                                ch2_id,
+                                preferred,
+                                status,
                             );
                         }
                     }
@@ -127,11 +132,9 @@ impl IBCChannelGraph {
         self.edges
             .get(from)
             .map(|edges| {
-                edges.iter().any(|e| {
-                    e.counterparty_chain == to
-                        && e.preferred
-                        && e.status == "ACTIVE"
-                })
+                edges
+                    .iter()
+                    .any(|e| e.counterparty_chain == to && e.preferred && e.status == "ACTIVE")
             })
             .unwrap_or(false)
     }
@@ -345,7 +348,11 @@ mod tests {
         graph.add_channel("a", "channel-ac", "c", "channel-ca", false, "ACTIVE".into());
         graph.add_channel("a", "channel-ab", "b", "channel-ba", true, "ACTIVE".into());
         graph.add_channel("b", "channel-bc", "c", "channel-cb", true, "ACTIVE".into());
-        let multi = graph.find_routes("a", "c", 3).into_iter().find(|r| r.len() == 2).unwrap();
+        let multi = graph
+            .find_routes("a", "c", 3)
+            .into_iter()
+            .find(|r| r.len() == 2)
+            .unwrap();
         assert!(
             !graph.route_is_preferred("a", "c", &multi),
             "any direct ACTIVE must demote multi-hop preferred"

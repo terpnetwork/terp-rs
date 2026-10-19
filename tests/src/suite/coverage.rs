@@ -117,7 +117,7 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
         crate_path: "tests/src/suite/deploy_data.rs (commented out)",
         feature: "account (dead)",
         inclusion: Inclusion::External,
-        resumable: "deploy_data is thin TerpNetworkDeployData; infuser/shitstrap still out of tree",
+        resumable: "deploy_data is thin TerpNetworkDeployData; shitstrap is contracts/shitstrap and rides terp-orch --features stack",
     },
     SuiteCoverage {
         id: "artifact-stack",

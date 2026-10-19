@@ -71,9 +71,7 @@ pub fn validate_asset_entry(asset: &Value, path: &str) -> Vec<String> {
                     let cp = &t["counterparty"];
                     for f in &["chain_name", "base_denom", "channel_id"] {
                         if cp.get(*f).and_then(|v| v.as_str()).is_none() {
-                            errs.push(format!(
-                                "{path}.traces[{i}].counterparty: missing '{f}'"
-                            ));
+                            errs.push(format!("{path}.traces[{i}].counterparty: missing '{f}'"));
                         }
                     }
                     if let Some(ch) = cp["channel_id"].as_str() {

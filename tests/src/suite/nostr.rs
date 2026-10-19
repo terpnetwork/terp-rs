@@ -12,9 +12,7 @@ use tracing::info;
 use ict_rs::nostr::NostrRelayerManager;
 use ict_rs::runtime::RuntimeBackend;
 
-use crate::suite::sidecar::{
-    EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar,
-};
+use crate::suite::sidecar::{EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar};
 
 /// Local Nostr relay for integration testing.
 pub struct NostrRelaySuite {

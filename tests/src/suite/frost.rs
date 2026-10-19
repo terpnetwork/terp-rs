@@ -151,11 +151,8 @@ impl FrostPrivvalHarness {
         Ok(Self { dir })
     }
 
-    pub fn coordinator(
-        &self,
-    ) -> Result<hash_market::custody::frost::FrostCoordinator> {
-        hash_market::custody::frost::FrostCoordinator::from_dkg(3, 2)
-            .context("from_dkg(3,2)")
+    pub fn coordinator(&self) -> Result<hash_market::custody::frost::FrostCoordinator> {
+        hash_market::custody::frost::FrostCoordinator::from_dkg(3, 2).context("from_dkg(3,2)")
     }
 
     pub fn hrs(&self, name: &str) -> Result<hash_market::custody::hrs::HrsLock> {
@@ -174,7 +171,11 @@ impl FrostPrivvalHarness {
             let msg = b"sidecar-vote";
             let sig = c.sign_consensus(msg).await?;
             assert_sig_valid(c.group_pubkey(), msg, &sig, "colocated")?;
-            report.push(true, "colocated_2_of_3_signs_ed25519", "t-of-n FROST → Ed25519");
+            report.push(
+                true,
+                "colocated_2_of_3_signs_ed25519",
+                "t-of-n FROST → Ed25519",
+            );
         }
 
         // — sound: earmark + consume (prevote take must not steal precommit) —
@@ -195,7 +196,11 @@ impl FrostPrivvalHarness {
             assert_ne!(&pv, &pc, "two msgs two nonces");
             assert_sig_valid(c.group_pubkey(), b"prevote-m", &pv, "prevote")?;
             assert_sig_valid(c.group_pubkey(), b"precommit-m", &pc, "precommit")?;
-            report.push(true, "inventory_earmark_and_consume", "prevote take ≠ precommit steal");
+            report.push(
+                true,
+                "inventory_earmark_and_consume",
+                "prevote take ≠ precommit steal",
+            );
         }
 
         // — sound: idle refill restores `need` —
@@ -217,46 +222,76 @@ impl FrostPrivvalHarness {
         // — sound: VoteSignBytes == Go (CometBFT 0.40 golden) —
         if matrix.vote_sign_bytes {
             let bz = golden_vote_sign_bytes()?;
-            let want = hex::decode("730801112a0000000000000019010000000000000022480a200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2012240801122000000000000000000000000000000000000000000000000000000000000000002a0b0880e2cfaa0610959aef3a3206746573742d31")?;
+            let want = hex::decode(
+                "730801112a0000000000000019010000000000000022480a200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2012240801122000000000000000000000000000000000000000000000000000000000000000002a0b0880e2cfaa0610959aef3a3206746573742d31",
+            )?;
             assert_eq!(bz, want, "must match types.VoteSignBytes");
-            report.push(true, "vote_sign_bytes_matches_cometbft_0_40", format!("{} bytes", bz.len()));
+            report.push(
+                true,
+                "vote_sign_bytes_matches_cometbft_0_40",
+                format!("{} bytes", bz.len()),
+            );
         }
 
         // — sound: SignVote protobuf loopback (FROST over VoteSignBytes) —
         if matrix.cmt_loopback {
             let (sig, bz) = cmt_signvote_loopback().await?;
             assert_eq!(sig.len(), 64);
-            report.push(true, "cmt_signvote_protobuf_loopback", format!("{} vote-bytes", bz.len()));
+            report.push(
+                true,
+                "cmt_signvote_protobuf_loopback",
+                format!("{} vote-bytes", bz.len()),
+            );
         }
 
         // — sound: JSON privval loopback + HRS persist —
         if matrix.json_loopback {
             json_loopback_sign_and_hrs(&self.dir).await?;
-            report.push(true, "json_loopback_sign_and_hrs", "mock validator JSON privval");
+            report.push(
+                true,
+                "json_loopback_sign_and_hrs",
+                "mock validator JSON privval",
+            );
         }
 
         // — sound: Noise XX lab roundtrip —
         if matrix.noise_roundtrip {
             noise_xx_roundtrip().await?;
-            report.push(true, "noise_xx_roundtrip", "snow XX lab (not Go libp2p bytes)");
+            report.push(
+                true,
+                "noise_xx_roundtrip",
+                "snow XX lab (not Go libp2p bytes)",
+            );
         }
 
         // — sound: kms-shard scheme DKG signs + verifies as Ed25519 —
         if matrix.kms_scheme {
             kms_dkg_signs_as_ed25519()?;
-            report.push(true, "dkg_2_of_3_signs_and_verifies_as_ed25519", "scheme crate");
+            report.push(
+                true,
+                "dkg_2_of_3_signs_and_verifies_as_ed25519",
+                "scheme crate",
+            );
         }
 
         // — unsound: <t shares yield nothing —
         if matrix.below_threshold {
             kms_below_threshold_fails_closed()?;
-            report.push(true, "below_threshold_cannot_combine", "sign_share errors before combine");
+            report.push(
+                true,
+                "below_threshold_cannot_combine",
+                "sign_share errors before combine",
+            );
         }
 
         // — unsound: same HRS cached, lower H/R/S refused —
         if matrix.hrs_cache_regression {
             hrs_cache_and_regression(&self.dir)?;
-            report.push(true, "same_hrs_returns_cached", "persist-first FilePV; refuse regression");
+            report.push(
+                true,
+                "same_hrs_returns_cached",
+                "persist-first FilePV; refuse regression",
+            );
         }
 
         // — unsound: abort pool zeroizes unused nonces —
@@ -268,7 +303,11 @@ impl FrostPrivvalHarness {
             // pool recovers via emergency single-mint on next sign (never a ceremony)
             let sig = c.sign_consensus(b"after-abort").await?;
             assert_sig_valid(c.group_pubkey(), b"after-abort", &sig, "post-abort")?;
-            report.push(true, "abort_pool_zeroizes_unused", "drain drops nonces; fail closed");
+            report.push(
+                true,
+                "abort_pool_zeroizes_unused",
+                "drain drops nonces; fail closed",
+            );
         }
 
         // — unsound: earmark isolation (stall/mix guard) —
@@ -284,10 +323,17 @@ impl FrostPrivvalHarness {
             let a = inv.take(PresigKind::Prevote).expect("prevote slot");
             assert_eq!(a, 1);
             assert_eq!(inv.snapshot().precommit, 1, "precommit queue intact");
-            assert!(inv.take(PresigKind::Prevote).is_none(), "no steal from precommit");
+            assert!(
+                inv.take(PresigKind::Prevote).is_none(),
+                "no steal from precommit"
+            );
             let b = inv.take(PresigKind::Precommit).expect("precommit slot");
             assert_eq!(b, 2);
-            report.push(true, "earmark_does_not_steal_precommit_for_prevote", "inventory queues");
+            report.push(
+                true,
+                "earmark_does_not_steal_precommit_for_prevote",
+                "inventory queues",
+            );
         }
 
         // — unsound: poisoned slot (commit published, z_i never issued) —
@@ -300,7 +346,11 @@ impl FrostPrivvalHarness {
             let dropped = c.abort_pool()?;
             assert_eq!(dropped, n0);
             assert_eq!(c.stock()?.total(), 0, "unsure-leak slot must not survive");
-            report.push(true, "poisoned_slot_abort", "drop slot; fail closed (abort_pool)");
+            report.push(
+                true,
+                "poisoned_slot_abort",
+                "drop slot; fail closed (abort_pool)",
+            );
         }
 
         Ok(report)
@@ -313,7 +363,9 @@ impl FrostPrivvalHarness {
 
 pub fn assert_sig_valid(pk: &[u8], msg: &[u8], sig: &[u8; 64], ctx: &str) -> Result<()> {
     anyhow::ensure!(sig.len() == 64, "{ctx}: sig ≠ 64 bytes");
-    let pk32: [u8; 32] = pk.try_into().map_err(|_| anyhow::anyhow!("{ctx}: pk ≠ 32 bytes"))?;
+    let pk32: [u8; 32] = pk
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("{ctx}: pk ≠ 32 bytes"))?;
     let vk = ed25519_dalek::VerifyingKey::from_bytes(&pk32)
         .map_err(|e| anyhow::anyhow!("{ctx}: bad pk: {e}"))?;
     vk.verify_strict(msg, &ed25519_dalek::Signature::from_bytes(sig))
@@ -329,9 +381,15 @@ pub fn golden_vote_sign_bytes() -> Result<Vec<u8>> {
         round: 1,
         block_id: Some(BlockId {
             hash: (1u8..=32).collect(),
-            part_set_header: Some(PartSetHeader { total: 1, hash: vec![0u8; 32] }),
+            part_set_header: Some(PartSetHeader {
+                total: 1,
+                hash: vec![0u8; 32],
+            }),
         }),
-        timestamp: Some(prost_types::Timestamp { seconds: 1_700_000_000, nanos: 123_456_789 }),
+        timestamp: Some(prost_types::Timestamp {
+            seconds: 1_700_000_000,
+            nanos: 123_456_789,
+        }),
         validator_address: vec![0u8; 20],
         validator_index: 0,
         signature: vec![],
@@ -368,7 +426,14 @@ async fn cmt_signvote_loopback() -> Result<(Vec<u8>, Vec<u8>)> {
     let s2 = signer.clone();
     let sidecar = tokio::spawn(async move {
         let crypto = Cleartext;
-        let _ = hash_market::transport::privval::serve_once(&crypto, &addr.to_string(), s2, "cmt", None).await;
+        let _ = hash_market::transport::privval::serve_once(
+            &crypto,
+            &addr.to_string(),
+            s2,
+            "cmt",
+            None,
+        )
+        .await;
     });
     let (mut tcp, _) = lst.accept().await?;
     let vote = Vote {
@@ -377,9 +442,15 @@ async fn cmt_signvote_loopback() -> Result<(Vec<u8>, Vec<u8>)> {
         round: 1,
         block_id: Some(BlockId {
             hash: (1u8..=32).collect(),
-            part_set_header: Some(PartSetHeader { total: 1, hash: vec![0u8; 32] }),
+            part_set_header: Some(PartSetHeader {
+                total: 1,
+                hash: vec![0u8; 32],
+            }),
         }),
-        timestamp: Some(prost_types::Timestamp { seconds: 1_700_000_000, nanos: 123_456_789 }),
+        timestamp: Some(prost_types::Timestamp {
+            seconds: 1_700_000_000,
+            nanos: 123_456_789,
+        }),
         validator_address: vec![0u8; 20],
         validator_index: 0,
         signature: vec![],
@@ -388,7 +459,10 @@ async fn cmt_signvote_loopback() -> Result<(Vec<u8>, Vec<u8>)> {
     };
     let want_bytes = vote_sign_bytes("test-1", &vote)?;
     let req = PrivvalMessage {
-        sum: Some(PrivvalSum::SignVoteRequest(SignVoteRequest { vote: Some(vote), chain_id: "test-1".into() })),
+        sum: Some(PrivvalSum::SignVoteRequest(SignVoteRequest {
+            vote: Some(vote),
+            chain_id: "test-1".into(),
+        })),
     };
     let body = req.encode_to_vec();
     tcp.write_all(&(body.len() as u32).to_be_bytes()).await?;
@@ -406,8 +480,10 @@ async fn cmt_signvote_loopback() -> Result<(Vec<u8>, Vec<u8>)> {
     let signed = r.vote.context("vote")?;
     assert_eq!(signed.signature.len(), 64, "sig ≠ 64 bytes");
     let pk32: [u8; 32] = pk.as_slice().try_into().unwrap();
-    ed25519_dalek::VerifyingKey::from_bytes(&pk32)?
-        .verify_strict(&want_bytes, &ed25519_dalek::Signature::from_bytes(signed.signature.as_slice().try_into().unwrap()))?;
+    ed25519_dalek::VerifyingKey::from_bytes(&pk32)?.verify_strict(
+        &want_bytes,
+        &ed25519_dalek::Signature::from_bytes(signed.signature.as_slice().try_into().unwrap()),
+    )?;
     drop(tcp);
     let _ = sidecar.await;
     Ok((signed.signature, want_bytes))
@@ -422,13 +498,22 @@ async fn json_loopback_sign_and_hrs(dir: &std::path::Path) -> Result<()> {
     let coord = hash_market::custody::frost::FrostCoordinator::from_dkg(3, 2)?;
     let pk = coord.pubkey_bytes().to_vec();
     let signer: Arc<dyn ConsensusSigner> = Arc::new(coord);
-    let hrs = Arc::new(Mutex::new(hash_market::custody::hrs::HrsLock::load(&dir.join("loop-hrs.json"))?));
+    let hrs = Arc::new(Mutex::new(hash_market::custody::hrs::HrsLock::load(
+        &dir.join("loop-hrs.json"),
+    )?));
     let lst = TcpListener::bind("127.0.0.1:0").await?;
     let addr = lst.local_addr()?;
     let (s2, h2) = (signer.clone(), hrs.clone());
     let sidecar = tokio::spawn(async move {
         let crypto = Cleartext;
-        let _ = hash_market::transport::privval::serve_once(&crypto, &addr.to_string(), s2, "json", Some(h2)).await;
+        let _ = hash_market::transport::privval::serve_once(
+            &crypto,
+            &addr.to_string(),
+            s2,
+            "json",
+            Some(h2),
+        )
+        .await;
     });
     let (mut tcp, _) = lst.accept().await?;
 
@@ -454,8 +539,10 @@ async fn json_loopback_sign_and_hrs(dir: &std::path::Path) -> Result<()> {
         let sig = hex::decode(resp["sig_hex"].as_str().context("sig_hex")?)?;
         assert_eq!(sig.len(), 64);
         let pk32: [u8; 32] = pk.as_slice().try_into().unwrap();
-        ed25519_dalek::VerifyingKey::from_bytes(&pk32)?
-            .verify_strict(msg.as_bytes(), &ed25519_dalek::Signature::from_bytes(sig.as_slice().try_into().unwrap()))?;
+        ed25519_dalek::VerifyingKey::from_bytes(&pk32)?.verify_strict(
+            msg.as_bytes(),
+            &ed25519_dalek::Signature::from_bytes(sig.as_slice().try_into().unwrap()),
+        )?;
         sigs.push(sig);
     }
     assert_ne!(sigs[0], sigs[1], "two msgs two nonces");
@@ -474,7 +561,11 @@ async fn json_loopback_sign_and_hrs(dir: &std::path::Path) -> Result<()> {
     let mut buf = vec![0u8; n];
     tcp.read_exact(&mut buf).await?;
     let resp: serde_json::Value = serde_json::from_slice(&buf)?;
-    assert_eq!(resp["sig_hex"].as_str().unwrap(), &hex::encode(&sigs[1]), "same HRS → cached");
+    assert_eq!(
+        resp["sig_hex"].as_str().unwrap(),
+        &hex::encode(&sigs[1]),
+        "same HRS → cached"
+    );
 
     let req = serde_json::json!({
         "op": "sign", "msg_hex": hex::encode("vote-precommit"),
@@ -490,7 +581,10 @@ async fn json_loopback_sign_and_hrs(dir: &std::path::Path) -> Result<()> {
     tcp.read_exact(&mut buf).await?;
     let resp: serde_json::Value = serde_json::from_slice(&buf)?;
     let err = resp["error"].as_str().unwrap_or("");
-    assert!(err.contains("double-sign"), "lower H/R/S must refuse, got: {resp}");
+    assert!(
+        err.contains("double-sign"),
+        "lower H/R/S must refuse, got: {resp}"
+    );
 
     drop(tcp);
     let _ = sidecar.await;
@@ -498,7 +592,7 @@ async fn json_loopback_sign_and_hrs(dir: &std::path::Path) -> Result<()> {
 }
 
 async fn noise_xx_roundtrip() -> Result<()> {
-    use hash_market::transport::noise::{noise_accept, NoiseXx};
+    use hash_market::transport::noise::{NoiseXx, noise_accept};
     use hash_market::transport::session::SessionCrypto;
     use tokio::net::{TcpListener, TcpStream};
 
@@ -528,12 +622,13 @@ async fn noise_xx_roundtrip() -> Result<()> {
 
 fn kms_dkg_signs_as_ed25519() -> Result<()> {
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-    use kms_shard::{dkg_all, ConsensusScheme, FrostEd25519};
+    use kms_shard::{ConsensusScheme, FrostEd25519, dkg_all};
     use rand::rngs::OsRng;
     use std::collections::BTreeMap;
 
     let mut rng = OsRng;
-    let (shares, group) = dkg_all::<FrostEd25519>(3, 2, &mut rng).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let (shares, group) =
+        dkg_all::<FrostEd25519>(3, 2, &mut rng).map_err(|e| anyhow::anyhow!("{e}"))?;
     let pk = FrostEd25519::group_pk_bytes(&group).map_err(|e| anyhow::anyhow!("{e}"))?;
     let vk = VerifyingKey::from_bytes(&pk).context("32-byte ed25519 pk")?;
     let msg = b"cometbft-vote-bytes";
@@ -548,22 +643,25 @@ fn kms_dkg_signs_as_ed25519() -> Result<()> {
     let mut partials = BTreeMap::new();
     for id in [1u16, 2] {
         let (share, n) = nonces.remove(&id).unwrap();
-        let p = FrostEd25519::sign_share(&share, n, &commit_map, msg).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let p = FrostEd25519::sign_share(&share, n, &commit_map, msg)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
         partials.insert(id, p);
     }
-    let sig = FrostEd25519::combine(&commit_map, &partials, msg, &group).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let sig = FrostEd25519::combine(&commit_map, &partials, msg, &group)
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     let bytes = FrostEd25519::signature_bytes(&sig).map_err(|e| anyhow::anyhow!("{e}"))?;
     vk.verify(msg, &Signature::from_bytes(&bytes))?;
     Ok(())
 }
 
 fn kms_below_threshold_fails_closed() -> Result<()> {
-    use kms_shard::{dkg_all, ConsensusScheme, FrostEd25519};
+    use kms_shard::{ConsensusScheme, FrostEd25519, dkg_all};
     use rand::rngs::OsRng;
     use std::collections::BTreeMap;
 
     let mut rng = OsRng;
-    let (shares, group) = dkg_all::<FrostEd25519>(3, 2, &mut rng).map_err(|e| anyhow::anyhow!("{e}"))?;
+    let (shares, group) =
+        dkg_all::<FrostEd25519>(3, 2, &mut rng).map_err(|e| anyhow::anyhow!("{e}"))?;
     let _ = group;
     let msg = b"one-share-must-fail";
     let share = &shares[0].1;
@@ -571,7 +669,10 @@ fn kms_below_threshold_fails_closed() -> Result<()> {
     let mut commit_map = BTreeMap::new();
     commit_map.insert(frost_ed25519::Identifier::try_from(shares[0].0).unwrap(), c);
     let err = FrostEd25519::sign_share(share, n, &commit_map, msg).err();
-    anyhow::ensure!(err.is_some(), "<t commitments must fail closed before combine");
+    anyhow::ensure!(
+        err.is_some(),
+        "<t commitments must fail closed before combine"
+    );
     Ok(())
 }
 
@@ -593,7 +694,10 @@ fn hrs_cache_and_regression(dir: &std::path::Path) -> Result<()> {
 
 /// Fail the run if a process with the TCP socket also loads
 /// `priv_validator_key.json` for the **same** pubkey (dual signers).
-pub fn fail_if_dual_signer(sidecar_pubkey_32: &[u8], filepv_pubkey_32: Option<&[u8]>) -> Result<()> {
+pub fn fail_if_dual_signer(
+    sidecar_pubkey_32: &[u8],
+    filepv_pubkey_32: Option<&[u8]>,
+) -> Result<()> {
     if let Some(fp) = filepv_pubkey_32 {
         anyhow::ensure!(
             sidecar_pubkey_32 != fp,
@@ -624,7 +728,10 @@ pub fn check_empty_pool_recovers_without_ceremony(
 ) -> Result<()> {
     anyhow::ensure!(stock_before > 0, "pool starts stocked");
     anyhow::ensure!(stock_after_drain == 0, "drain drops all");
-    anyhow::ensure!(recovered_sig_len == 64, "emergency single-mint signs (no ceremony)");
+    anyhow::ensure!(
+        recovered_sig_len == 64,
+        "emergency single-mint signs (no ceremony)"
+    );
     Ok(())
 }
 
@@ -703,9 +810,9 @@ impl TerpSidecar for FrostPrivvalSuite {
         }
         let state_dir = tempfile::tempdir().context("frost state dir")?;
         let hrs_path = state_dir.path().join("privval-hrs.json");
-        let hrs = Arc::new(Mutex::new(
-            hash_market::custody::hrs::HrsLock::load(&hrs_path)?,
-        ));
+        let hrs = Arc::new(Mutex::new(hash_market::custody::hrs::HrsLock::load(
+            &hrs_path,
+        )?));
         let coord = hash_market::custody::frost::FrostCoordinator::from_dkg(3, 2)?;
         self.pubkey_hex = Some(hex::encode(coord.group_pubkey()));
         let signer: Arc<dyn ConsensusSigner> = Arc::new(coord);
@@ -715,7 +822,9 @@ impl TerpSidecar for FrostPrivvalSuite {
         let handle = tokio::spawn(async move {
             // Accept exactly one validator connection and serve until EOF,
             // mirroring `serve_once` dial-shape in reverse (lab loopback).
-            let Ok((tcp, _)) = lst.accept().await else { return };
+            let Ok((tcp, _)) = lst.accept().await else {
+                return;
+            };
             // serve_once dials out; for the suite we accept then wrap the
             // accepted socket via a connected pair. Simplest faithful shape:
             // re-bind dial: connect back through the accepted addr is not

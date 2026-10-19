@@ -36,7 +36,11 @@ impl SuiteProfile {
     pub fn fleet(self, name: &str) -> SidecarFleet {
         let fleet = SidecarFleet::new(name);
         match self {
-            Self::ChainOnly | Self::Crosslink | Self::Norick | Self::CashuMint | Self::FrostPrivval => fleet,
+            Self::ChainOnly
+            | Self::Crosslink
+            | Self::Norick
+            | Self::CashuMint
+            | Self::FrostPrivval => fleet,
             Self::NostrCalendar => {
                 #[cfg(feature = "nostr")]
                 {
@@ -47,7 +51,9 @@ impl SuiteProfile {
                     fleet
                 }
             }
-            Self::HashmerchantVe => fleet.with_hashmerchant_defaults("terp-test-1").with_merkle_server_defaults(),
+            Self::HashmerchantVe => fleet
+                .with_hashmerchant_defaults("terp-test-1")
+                .with_merkle_server_defaults(),
             Self::NostrVe => {
                 let fleet = fleet
                     .with_hashmerchant_defaults("terp-test-1")

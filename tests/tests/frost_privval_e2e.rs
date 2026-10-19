@@ -20,9 +20,9 @@
 //! Never assert "presig equals this prevote" — presigs are message-independent.
 
 use terp_scripts::suite::frost::{
-    assert_sig_valid, check_empty_pool_recovers_without_ceremony, check_vote_bytes_bind_chain_id,
+    FrostMatrix, FrostPrivvalHarness, FrostPrivvalSuite, assert_sig_valid,
+    check_empty_pool_recovers_without_ceremony, check_vote_bytes_bind_chain_id,
     fail_if_dual_signer, fail_if_shared_kcons, golden_vote_sign_bytes, presig_step_for_vote_type,
-    FrostMatrix, FrostPrivvalHarness, FrostPrivvalSuite,
 };
 use terp_scripts::suite::sidecar::TerpSidecar;
 
@@ -33,21 +33,39 @@ use terp_scripts::suite::sidecar::TerpSidecar;
 #[tokio::test]
 async fn sound_colocated_2_of_3_signs_ed25519() {
     let h = FrostPrivvalHarness::new("sound-colocated").unwrap();
-    let r = h.run(FrostMatrix { colocated_sign: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            colocated_sign: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
 #[tokio::test]
 async fn sound_inventory_earmark_and_consume() {
     let h = FrostPrivvalHarness::new("sound-earmark").unwrap();
-    let r = h.run(FrostMatrix { earmark_consume: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            earmark_consume: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
 #[tokio::test]
 async fn sound_refill_restores_after_consume() {
     let h = FrostPrivvalHarness::new("sound-refill").unwrap();
-    let r = h.run(FrostMatrix { refill: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            refill: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
@@ -61,30 +79,48 @@ fn sound_vote_sign_bytes_matches_cometbft_0_40() {
 #[tokio::test]
 async fn sound_cmt_signvote_protobuf_loopback() {
     let h = FrostPrivvalHarness::new("sound-cmt").unwrap();
-    let r = h.run(FrostMatrix { cmt_loopback: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            cmt_loopback: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
 #[tokio::test]
 async fn sound_json_loopback_sign_and_hrs() {
     let h = FrostPrivvalHarness::new("sound-json").unwrap();
-    let r = h.run(FrostMatrix { json_loopback: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            json_loopback: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
 #[tokio::test]
 async fn sound_noise_xx_roundtrip() {
     let h = FrostPrivvalHarness::new("sound-noise").unwrap();
-    let r = h.run(FrostMatrix { noise_roundtrip: true, ..Default::default() }).await.unwrap();
+    let r = h
+        .run(FrostMatrix {
+            noise_roundtrip: true,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
     r.assert_all();
 }
 
 #[test]
 fn sound_kms_scheme_dkg_signs_as_ed25519() {
-    use std::collections::BTreeMap;
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-    use kms_shard::{dkg_all, ConsensusScheme, FrostEd25519};
+    use kms_shard::{ConsensusScheme, FrostEd25519, dkg_all};
     use rand::rngs::OsRng;
+    use std::collections::BTreeMap;
 
     let mut rng = OsRng;
     let (shares, group) = dkg_all::<FrostEd25519>(3, 2, &mut rng).expect("dkg");
@@ -102,7 +138,10 @@ fn sound_kms_scheme_dkg_signs_as_ed25519() {
     let mut partials = BTreeMap::new();
     for id in [1u16, 2] {
         let (share, n) = nonces.remove(&id).unwrap();
-        partials.insert(id, FrostEd25519::sign_share(&share, n, &commit_map, msg).unwrap());
+        partials.insert(
+            id,
+            FrostEd25519::sign_share(&share, n, &commit_map, msg).unwrap(),
+        );
     }
     let sig = FrostEd25519::combine(&commit_map, &partials, msg, &group).unwrap();
     let bytes = FrostEd25519::signature_bytes(&sig).unwrap();
@@ -116,7 +155,7 @@ fn sound_kms_scheme_dkg_signs_as_ed25519() {
 
 #[test]
 fn unsound_below_threshold_cannot_combine() {
-    use kms_shard::{dkg_all, ConsensusScheme, FrostEd25519};
+    use kms_shard::{ConsensusScheme, FrostEd25519, dkg_all};
     use rand::rngs::OsRng;
     use std::collections::BTreeMap;
 
@@ -143,7 +182,10 @@ fn unsound_same_hrs_cached_and_regression_refused() {
     l.commit(1, 0, 2, &[9u8; 64]).unwrap();
     let again = hash_market::custody::hrs::HrsLock::load(&p).unwrap();
     assert_eq!(again.check(1, 0, 2).unwrap().unwrap(), vec![9u8; 64]);
-    assert!(again.check(1, 0, 1).is_err(), "lower step must refuse double-sign");
+    assert!(
+        again.check(1, 0, 1).is_err(),
+        "lower step must refuse double-sign"
+    );
     assert!(again.check(0, 0, 2).is_err(), "lower height must refuse");
 }
 
@@ -153,7 +195,11 @@ async fn unsound_abort_pool_zeroizes_unused() {
     let coord = hash_market::custody::frost::FrostCoordinator::from_dkg(3, 2).unwrap();
     assert!(coord.stock().unwrap().total() > 0);
     coord.abort_pool().unwrap();
-    assert_eq!(coord.stock().unwrap().total(), 0, "reuse after abort — railguard broken");
+    assert_eq!(
+        coord.stock().unwrap().total(),
+        0,
+        "reuse after abort — railguard broken"
+    );
     // fail-closed recovery: next sign mints one emergency slot, never a ceremony
     let sig = coord.sign_consensus(b"after-abort").await.unwrap();
     assert_sig_valid(coord.group_pubkey(), b"after-abort", &sig, "post-abort").unwrap();
@@ -162,12 +208,23 @@ async fn unsound_abort_pool_zeroizes_unused() {
 #[test]
 fn unsound_earmark_does_not_steal_precommit_for_prevote() {
     use hash_market::custody::presig::{PresigInventory, PresigKind, StockPolicy};
-    let mut inv = PresigInventory::new(StockPolicy { rounds_buf: 1, may_propose: false, margin: 0 });
+    let mut inv = PresigInventory::new(StockPolicy {
+        rounds_buf: 1,
+        may_propose: false,
+        margin: 0,
+    });
     inv.push_minted(1u8);
     inv.push_minted(2u8);
     assert_eq!(inv.take(PresigKind::Prevote).unwrap(), 1);
-    assert_eq!(inv.snapshot().precommit, 1, "stall precommit — railguard broken");
-    assert!(inv.take(PresigKind::Prevote).is_none(), "mix steps — railguard broken");
+    assert_eq!(
+        inv.snapshot().precommit,
+        1,
+        "stall precommit — railguard broken"
+    );
+    assert!(
+        inv.take(PresigKind::Prevote).is_none(),
+        "mix steps — railguard broken"
+    );
     assert_eq!(inv.take(PresigKind::Precommit).unwrap(), 2);
 }
 
@@ -187,9 +244,17 @@ async fn unsound_poisoned_slot_drops_and_fails_closed() {
 #[test]
 fn unsound_stock_formula_and_drain() {
     use hash_market::custody::presig::StockPolicy;
-    let p = StockPolicy { rounds_buf: 3, may_propose: true, margin: 2 };
+    let p = StockPolicy {
+        rounds_buf: 3,
+        may_propose: true,
+        margin: 2,
+    };
     assert_eq!(p.target(), 3 * 3 + 2);
-    let q = StockPolicy { rounds_buf: 2, may_propose: false, margin: 1 };
+    let q = StockPolicy {
+        rounds_buf: 2,
+        may_propose: false,
+        margin: 1,
+    };
     assert_eq!(q.target(), 2 * 2 + 1);
 }
 
@@ -222,7 +287,10 @@ async fn l1_mock_backend_sidecar_lifecycle() {
     use terp_scripts::suite::sidecar::SidecarRegistry;
     let mut suite = FrostPrivvalSuite::colocated_json("frost-mock-l1");
     let registry = SidecarRegistry::new();
-    let eps = suite.start(&registry).await.expect("start loopback sidecar");
+    let eps = suite
+        .start(&registry)
+        .await
+        .expect("start loopback sidecar");
     assert!(eps["privval"].starts_with("tcp://127.0.0.1:"));
     assert!(suite.privval_addr().is_some());
     assert!(suite.pubkey_hex().is_some());
@@ -294,7 +362,10 @@ async fn l2_full_lifecycle_chain_daemon_sidecar_railguards() -> anyhow::Result<(
     require_gate();
     let _ = env_logger::try_init();
 
-    let runtime = match IctRuntime::Docker(DockerConfig::default()).into_backend().await {
+    let runtime = match IctRuntime::Docker(DockerConfig::default())
+        .into_backend()
+        .await
+    {
         Ok(r) => r,
         Err(e) => {
             eprintln!("Skipping L2: Docker unavailable: {e}");
@@ -305,7 +376,10 @@ async fn l2_full_lifecycle_chain_daemon_sidecar_railguards() -> anyhow::Result<(
     cfg.chain_id = "ict-frost-e2e".into();
     let mut chain = CosmosChain::new(cfg, 1, 0, runtime);
     if let Err(e) = chain
-        .initialize(&TestContext { test_name: "frost-privval-e2e".into(), network_id: String::new() })
+        .initialize(&TestContext {
+            test_name: "frost-privval-e2e".into(),
+            network_id: String::new(),
+        })
         .await
     {
         eprintln!("Skipping L2: initialize failed: {e}");
@@ -324,13 +398,28 @@ async fn run_l2_workflow(chain: &ict_rs::prelude::CosmosChain) -> anyhow::Result
     use cw_orch::environment::{BankQuerier, QuerierGetter};
     use ict_rs::prelude::*;
 
-    chain.build_wallet("lab", LAB_MNEMONIC).await.map_err(|e| anyhow::anyhow!("{e}"))?;
-    let lab = chain.key_address("lab").await.map_err(|e| anyhow::anyhow!("{e}"))?;
     chain
-        .send_funds("validator", &WalletAmount { address: lab.clone(), denom: "uterp".into(), amount: 10_000_000 })
+        .build_wallet("lab", LAB_MNEMONIC)
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))?;
-    wait_for_blocks(chain, 2).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+    let lab = chain
+        .key_address("lab")
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    chain
+        .send_funds(
+            "validator",
+            &WalletAmount {
+                address: lab.clone(),
+                denom: "uterp".into(),
+                amount: 10_000_000,
+            },
+        )
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    wait_for_blocks(chain, 2)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
     println!("PASS chain funded {lab}");
 
     // cw-orch Daemon is the secondary read path (bank query), like hashmerchant_live.
@@ -365,7 +454,12 @@ async fn run_l2_workflow(chain: &ict_rs::prelude::CosmosChain) -> anyhow::Result
     r.assert_all();
 
     // Operator railguards — manual-fail conditions from the handoff.
-    let sidecar_pk = hex::decode(suite.pubkey_hex().map(|s| s.to_owned()).unwrap_or("00".repeat(32)))?;
+    let sidecar_pk = hex::decode(
+        suite
+            .pubkey_hex()
+            .map(|s| s.to_owned())
+            .unwrap_or("00".repeat(32)),
+    )?;
     fail_if_dual_signer(&sidecar_pk, None)?; // no filePV loaded for this pk in test
     println!("PASS railguard no-dual-signer");
     fail_if_shared_kcons("sidecar-K_cons-test", None)?; // no Go kms shares K_cons here

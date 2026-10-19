@@ -46,18 +46,16 @@
 //! [`QueryHandler`]: cw_orch_core::environment::QueryHandler
 //! [`ChainState`]: cw_orch_core::environment::ChainState
 
-use std::sync::Arc;
 use anyhow::Context;
 use cw_orch::daemon::{DaemonAsync, DaemonAsyncBuilder};
-use cw_orch::environment::{
-    ChainInfoOwned, ChainKind, Environment, NetworkInfoOwned,
-};
+use cw_orch::environment::{ChainInfoOwned, ChainKind, Environment, NetworkInfoOwned};
 pub use ict_rs::chain::SidecarConfig;
+use ict_rs::cosmos::event_watcher::ChainEventWatcher;
 pub use ict_rs::nostr::NostrClient;
 pub use ict_rs::nostr::NostrEvent;
 pub use ict_rs::nostr::NostrRelayerManager;
 use ict_rs::runtime::{IctRuntime, RuntimeBackend};
-use ict_rs::cosmos::event_watcher::ChainEventWatcher;
+use std::sync::Arc;
 
 /// Combined test environment: cw-orch `DaemonAsync` chain environment + local Nostr relay container.
 ///
@@ -399,8 +397,8 @@ pub fn bind_and_bridge_offchain(
     pubkey: &str,
     action: Option<&hash_market::CalendarChainAction>,
 ) -> anyhow::Result<(hash_market::OffchainBind, NostrEvent)> {
-    let (bind, mut meta) = hash_market::bind_offchain_event(store, body, kind)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let (bind, mut meta) =
+        hash_market::bind_offchain_event(store, body, kind).map_err(|e| anyhow::anyhow!(e))?;
     if let Some(d) = d_tag {
         meta.d_tag = Some(d.to_string());
     }
@@ -473,7 +471,10 @@ mod tests {
         .await;
 
         // The Daemon build fails because MockBackend doesn't provide a real gRPC endpoint.
-        assert!(result.is_err(), "Expected Daemon build to fail without real chain");
+        assert!(
+            result.is_err(),
+            "Expected Daemon build to fail without real chain"
+        );
 
         // Cleanup the relay
         relayer.stop().await.unwrap();
@@ -524,7 +525,11 @@ mod tests {
         .unwrap();
         assert_eq!(bind.chain_cid.len(), 64);
         assert_eq!(ev.kind, KIND_TIME_BASED as u32);
-        assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("cid"))
+        );
         assert!(ev.content.contains("Suite Event"));
         let _ = std::fs::remove_dir_all(&dir);
     }

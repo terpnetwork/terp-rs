@@ -11,7 +11,6 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 
-
 use ict_rs::chain::SidecarConfig;
 use ict_rs::runtime::{DockerImage, RuntimeBackend};
 
@@ -94,9 +93,18 @@ impl MinioIpfsSuite {
             ],
             env: vec![
                 ("MINIO_ROOT_USER".into(), self.config.root_user.clone()),
-                ("MINIO_ROOT_PASSWORD".into(), self.config.root_password.clone()),
-                ("WEBHOOK_AUTH_TOKEN".into(), self.config.webhook_auth_token.clone()),
-                ("AUTOPIN_BUCKETS".into(), self.config.autopin_buckets.clone()),
+                (
+                    "MINIO_ROOT_PASSWORD".into(),
+                    self.config.root_password.clone(),
+                ),
+                (
+                    "WEBHOOK_AUTH_TOKEN".into(),
+                    self.config.webhook_auth_token.clone(),
+                ),
+                (
+                    "AUTOPIN_BUCKETS".into(),
+                    self.config.autopin_buckets.clone(),
+                ),
             ],
             cmd: vec![],
             pre_start: false,

@@ -39,9 +39,7 @@ pub fn finalize_channels_for_ibc_entry(
     let has_explicit_preferred_transfer = raw_channels.iter().any(|ch| {
         let p1 = ch["chain_1"]["port_id"].as_str().unwrap_or("");
         let p2 = ch["chain_2"]["port_id"].as_str().unwrap_or("");
-        p1 == "transfer"
-            && p2 == "transfer"
-            && ch["tags"]["preferred"].as_bool() == Some(true)
+        p1 == "transfer" && p2 == "transfer" && ch["tags"]["preferred"].as_bool() == Some(true)
     });
 
     let mut assigned_auto_preferred = false;
@@ -159,13 +157,25 @@ pub fn build_channel_to_chain_map(
                 if data["chain_1"].is_object() {
                     if terp_is_chain1 {
                         (
-                            c["chain_1"]["channel_id"].as_str().unwrap_or("").to_string(),
-                            c["chain_2"]["channel_id"].as_str().unwrap_or("").to_string(),
+                            c["chain_1"]["channel_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string(),
+                            c["chain_2"]["channel_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string(),
                         )
                     } else {
                         (
-                            c["chain_2"]["channel_id"].as_str().unwrap_or("").to_string(),
-                            c["chain_1"]["channel_id"].as_str().unwrap_or("").to_string(),
+                            c["chain_2"]["channel_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string(),
+                            c["chain_1"]["channel_id"]
+                                .as_str()
+                                .unwrap_or("")
+                                .to_string(),
                         )
                     }
                 } else {
