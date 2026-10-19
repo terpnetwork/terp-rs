@@ -1167,6 +1167,8 @@ On a new code id, `settle` of an accepted sudo does this when the stored hash is
 
 `ApplyAcceptedBatch` carries `vk_hash`. Serde defaults a missing field to empty. When the stored hash is not all zeros, empty, zero, or any other mismatch returns `vk hash` before a credit. The 4-validator replay body includes the real hash, so a second spend of an already paid nullifier still returns `nullifier already exists`. A copy of that body with the first vk byte flipped is the mismatch case. The contract does not verify the Halo2 proof on either path.
 
+An accepted sudo whose `headstash-batch` value ends in the stored vk hash records that suffix, including when the staged rows are not the attested batch yet. A later stage message has no oracle value. Settle uses the recorded suffix. A stage with no oracle value and no recorded suffix returns `vk hash` and pays nothing.
+
 ### Operator routes
 
 `POST /ve/headstash/campaign` and `POST /ve/headstash/seal` require the headers `x-hash-market-pubkey` and `x-hash-market-signature`. `POST /ve/headstash/claims` does not. Users reach claims through the single nginx. Nginx must forward the two headers on the operator routes. A stripped header fails closed.

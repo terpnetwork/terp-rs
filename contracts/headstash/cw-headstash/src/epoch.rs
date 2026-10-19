@@ -48,6 +48,8 @@ const DENOM_TABLE: Item<Vec<u64>> = Item::new("epoch_denom_table");
 const EPOCH_CAMPAIGN: Item<EpochCampaignParams> = Item::new("epoch_campaign");
 const EPOCH_STAGE: Item<StagedBatch> = Item::new("epoch_stage");
 const EPOCH_PAID: Item<bool> = Item::new("epoch_paid");
+/// Vk suffix from the last accepted sudo whose attestation matched the campaign.
+const EPOCH_ATTESTED_VK: Item<[u8; 32]> = Item::new("epoch_attested_vk");
 
 #[cw_serde]
 pub struct AmountCap {
@@ -192,8 +194,8 @@ pub fn stage_batch(
         }
     }
     EPOCH_STAGE.save(deps.storage, &staged)?;
-    // No oracle value on a stage. Flock (a zero vk hash) can still pay
-    // against a root that is already stored. Halo2 is checked on sudo.
+    // No oracle value on a stage. Flock pays against a stored root.
+    // Halo2 uses the vk suffix the accepted sudo already recorded.
     let (paid, n) = settle(deps, env, &[])?;
     Ok(paid
         .add_attribute("action", "stage_epoch_batch")
@@ -416,6 +418,9 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
     let root = decode_root(&payload.root)?;
     EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
     EPOCH_HEIGHTS.save(deps.storage, payload.algo.as_str(), &payload.height)?;
+    if payload.algo == ALGO_ACCEPTED {
+        record_attested_vk(deps.storage, &payload.oracle_sources)?;
+    }
     let (paid, n) = if payload.algo == ALGO_ACCEPTED {
         settle(deps, env, &payload.oracle_sources)?
     } else {
@@ -757,7 +762,13 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
         return Ok(empty());
     }
     if campaign.vk_hash.iter().any(|byte| *byte != 0) {
-        let got = attested_vk(oracle)?;
+        let got = if oracle.is_empty() {
+            EPOCH_ATTESTED_VK
+                .may_load(deps.storage)?
+                .ok_or_else(|| StdError::msg("vk hash"))?
+        } else {
+            attested_vk(oracle)?
+        };
         if got.as_slice() != campaign.vk_hash.as_slice() {
             return Err(StdError::msg("vk hash"));
         }
@@ -847,6 +858,22 @@ fn require_32<'a>(bytes: &'a Binary, name: &str) -> StdResult<&'a [u8]> {
         return Err(StdError::msg(format!("{name} must be 32 bytes")));
     }
     Ok(bytes.as_slice())
+}
+
+fn record_attested_vk(storage: &mut dyn Storage, oracle: &[OracleHint]) -> StdResult<()> {
+    let Some(campaign) = EPOCH_CAMPAIGN.may_load(storage)? else {
+        return Ok(());
+    };
+    if campaign.vk_hash.iter().all(|byte| *byte == 0) {
+        return Ok(());
+    }
+    let Ok(got) = attested_vk(oracle) else {
+        return Ok(());
+    };
+    if got.as_slice() != campaign.vk_hash.as_slice() {
+        return Ok(());
+    }
+    EPOCH_ATTESTED_VK.save(storage, &got)
 }
 
 fn attested_vk(oracle: &[OracleHint]) -> StdResult<[u8; 32]> {
@@ -1451,6 +1478,87 @@ mod tests {
                         height: 1,
                     }],
                 },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            paid.attributes
+                .iter()
+                .find(|attr| attr.key == "minted")
+                .unwrap()
+                .value,
+            "1"
+        );
+    }
+
+    #[test]
+    fn stage_after_the_attested_sudo_pays_with_the_saved_vk() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
+        let mut params = campaign(&root);
+        params.backend = "halo2".into();
+        params.vk_id = 1;
+        params.vk_hash = Binary::from([9u8; 32].to_vec());
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap();
+        let dest = deps.api.addr_make("dest").to_string();
+        let real_rows = vec![row(1, &dest, 15, denom())];
+        let hash = accepted_root(root.as_slice(), &real_rows).unwrap();
+        let attested = stored_root_for(&hash, &[9u8; 32]);
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([3u8; 32].to_vec())],
+                rows: vec![row(2, &dest, 15, denom())],
+            },
+        )
+        .unwrap();
+        let mut good_value = hash.to_vec();
+        good_value.extend_from_slice(&[9u8; 32]);
+        let stored = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 10,
+                    root: root_b64(&attested),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![OracleHint {
+                        source_id: BATCH_SOURCE_ID.into(),
+                        value: Binary::from(good_value).to_base64(),
+                        height: 1,
+                    }],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            stored
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "minted")
+                .unwrap()
+                .value,
+            "0"
+        );
+        let paid = execute(
+            deps.as_mut(),
+            env,
+            info,
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([4u8; 32].to_vec())],
+                rows: real_rows,
             },
         )
         .unwrap();
