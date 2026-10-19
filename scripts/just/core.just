@@ -1,8 +1,7 @@
 # scripts/just/core.just
 # Workspace compile, lint, and the CI gate tiers.
 #
-# These are the recipes the GHA workflows call by name, so a rename here is a
-# CI break. Keep names in sync with .github/workflows/.
+# Workflows call these as `just core <recipe>` or `just ibc <recipe>`.
 
 # --- compile / lint ---------------------------------------------------------
 
@@ -37,7 +36,10 @@ ci-local: fmt-check clippy check test-rs
 # prove YAML fidelity on top of a green host run.
 
 # Tier 0. Offline IBC pipeline + dense internal lib packs. No Docker.
-ci-core: scripts-ibc-preflight scripts-ibc-offline scripts-ibc-validate
+ci-core:
+    just ibc scripts-ibc-preflight
+    just ibc scripts-ibc-offline
+    just ibc scripts-ibc-validate
     ./scripts/ci/dense-packs.sh core-libs
 
 # Tier 1. Contract lib packs, wasm target checks, non-ignored terp-scripts tests.
@@ -53,3 +55,20 @@ ci-heavy: check
 # Docker-only IBC multihop harness. Ignored tests; see ci-heavy.yml.
 scripts-ibc-harness:
     cargo test -p terp-scripts --test ibc_multihop_harness -- --ignored --nocapture
+
+# Workspace optimizer. Writes artifacts/ and artifacts/checksums.txt.
+# Same mount as docs/COMPILING.md. arm64 uses the arm64 image tag.
+optimize:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    image=terpnetwork/optimizer:0.17.0
+    case "$(uname -m)" in
+      arm64|aarch64) image=terpnetwork/optimizer-arm64:0.17.0 ;;
+    esac
+    cd ..
+    docker run --rm \
+      -v "$(pwd)":/workspace \
+      -e PROJECT_DIR=/workspace/terp-rs \
+      --mount type=volume,source=terp-rs_cache,target=/target \
+      --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+      "$image"
