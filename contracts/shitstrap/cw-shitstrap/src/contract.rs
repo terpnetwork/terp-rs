@@ -2,17 +2,17 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    ensure_eq, from_json, to_json_binary, Addr, Attribute, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, IbcBasicResponse, IbcDestinationCallbackMsg, MessageInfo, Response, StdAck,
-    StdResult, Uint128, Uint256, WasmMsg,
+    Addr, Attribute, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, IbcBasicResponse,
+    IbcDestinationCallbackMsg, MessageInfo, Response, StdAck, StdResult, Uint128, Uint256, WasmMsg,
+    ensure_eq, from_json, to_json_binary,
 };
 
 use cosmwasm_std::{DecimalRangeExceeded, DivideByZeroError, OverflowError, StdError};
-use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_shit_denom::{AssetUnchecked, CheckedDenom, UncheckedDenom};
 use cw_shit_denom::{DenomError, PossibleShit};
 use cw_svg::SvgMintCallbackAction;
+use cw2::set_contract_version;
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use msg::*;
 use state::*;
 use terp_rs::ibc::applications::transfer::v1::FungibleTokenPacketData;
@@ -20,7 +20,7 @@ use thiserror::Error;
 
 pub mod msg {
     use super::*;
-    use cosmwasm_schema::{cw_serde, QueryResponses};
+    use cosmwasm_schema::{QueryResponses, cw_serde};
     use cw_shit_denom::AssetUnchecked;
     #[cfg(not(target_arch = "wasm32"))]
     use cw_shit_denom::PossibleShit;
@@ -94,7 +94,7 @@ pub mod msg {
         Receive(Cw20ReceiveMsg),
         /// Atomically deposit tokens and trigger mint from SVG collection if cutoff reached.
         /// Sends funds (native) along with the execute message.
-        /// NOTE: recipient and 
+        /// NOTE: recipient and
         ShitStrapAndMint {
             shitstrap: ShitstrapMsg,
             mint: SvgMintCallbackAction,
@@ -153,7 +153,6 @@ pub mod msg {
         // LeftToShit { shit: String },
     }
     pub struct MigrateMsg {}
-    
 }
 
 use cosmwasm_schema::{cw_schema, cw_serde};
@@ -411,13 +410,13 @@ pub fn ibc_destination_callback(
                 _ => {
                     return Err(ContractError::IbcCallbackError {
                         e: format!("only WasmMsg::Execute accepted"),
-                    })
+                    });
                 }
             },
             _ => {
                 return Err(ContractError::IbcCallbackError {
                     e: format!("only CosmosMsg::Wasm accepted"),
-                })
+                });
             }
         }
     }
@@ -461,8 +460,8 @@ fn execute_deposit(
                 deps.as_ref(),
                 info.sender(),
                 d,
-                Uint128::try_from(room.1 .0).unwrap_or(Uint128::zero()),
-                Uint128::try_from(room.1 .1).unwrap_or(Uint128::zero()),
+                Uint128::try_from(room.1.0).unwrap_or(Uint128::zero()),
+                Uint128::try_from(room.1.1).unwrap_or(Uint128::zero()),
             )?;
         }
         #[cfg(not(feature = "dao"))]
@@ -870,7 +869,7 @@ pub fn calculate_shit_return(
 #[cfg(feature = "interface")]
 pub mod interface {
     pub use super::msg::*;
-    use crate::contract::{execute, instantiate, query, CW_SHITSTRAP};
+    use crate::contract::{CW_SHITSTRAP, execute, instantiate, query};
     use cw_orch::prelude::*;
 
     #[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CW_SHITSTRAP)]

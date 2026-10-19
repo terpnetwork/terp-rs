@@ -1,5 +1,5 @@
 // ── Memo Construction Tests ──
-use cosmwasm_std::{coin, coins, Addr, Coin, CosmosMsg, Uint128, Uint256, WasmMsg};
+use cosmwasm_std::{Addr, Coin, CosmosMsg, Uint128, Uint256, WasmMsg, coin, coins};
 use cw_shit_denom::AssetUnchecked;
 use cw_shitstrap::contract::msg::{ExecuteMsg, ShitstrapMemoAdr08};
 
@@ -88,15 +88,15 @@ mod memo {
 #[cfg(test)]
 mod ibc_callback_tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage};
+    use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, mock_dependencies, mock_env};
     use cosmwasm_std::{
-        to_json_binary, BankMsg, Binary, Coin, Env, IbcAcknowledgement, IbcDestinationCallbackMsg,
-        IbcEndpoint, IbcPacket, IbcTimeoutBlock, IbcTransferCallback, OwnedDeps, StdAck, Uint256,
-        WasmMsg,
+        BankMsg, Binary, Coin, Env, IbcAcknowledgement, IbcDestinationCallbackMsg, IbcEndpoint,
+        IbcPacket, IbcTimeoutBlock, IbcTransferCallback, OwnedDeps, StdAck, Uint256, WasmMsg,
+        to_json_binary,
     };
     use cw_shit_denom::CheckedDenom;
-    use cw_shitstrap::contract::state::{Config, CONFIG, CURRENT_SHITSTRAP_VALUE, SHITSTRAP_STATE};
-    use cw_shitstrap::contract::{ibc_destination_callback, ContractError};
+    use cw_shitstrap::contract::state::{CONFIG, CURRENT_SHITSTRAP_VALUE, Config, SHITSTRAP_STATE};
+    use cw_shitstrap::contract::{ContractError, ibc_destination_callback};
     use terp_rs::ibc::applications::transfer::v1::FungibleTokenPacketData;
 
     /// Helper: build a minimal IbcDestinationCallbackMsg with sensible defaults.
@@ -373,9 +373,10 @@ mod ibc_callback_tests {
         assert!(res.is_err());
         let err = res.unwrap_err();
         println!("  error: {}", err);
-        assert!(err
-            .to_string()
-            .contains("only want to handle transfer packets"));
+        assert!(
+            err.to_string()
+                .contains("only want to handle transfer packets")
+        );
     }
 
     // ─── ACK VALIDATION ─────────────────────────────────────────────
@@ -733,9 +734,10 @@ mod ibc_callback_tests {
         let err = res.unwrap_err();
         println!("  error: {}", err);
         assert!(matches!(err, ContractError::IbcCallbackError { .. }));
-        assert!(err
-            .to_string()
-            .contains(&format!("only msgs to {} accepted", me)));
+        assert!(
+            err.to_string()
+                .contains(&format!("only msgs to {} accepted", me))
+        );
     }
 
     // ─── DENOM VALIDATION ───────────────────────────────────────────

@@ -40,11 +40,11 @@ pub fn unit_shit_return_rate() {
     assert_eq!(result.1, Uint256::from(225u128));
 }
 
-use cosmwasm_std::{coin, to_json_binary, Addr, Decimal, Empty, Event, Fraction, Uint128, Uint256};
-use cw20::{Cw20Coin, Cw20ReceiveMsg};
-use cw20_base::msg::InstantiateMsg as Cw20Init;
+use cosmwasm_std::{Addr, Decimal, Empty, Event, Fraction, Uint128, Uint256, coin, to_json_binary};
 use cw_multi_test::{App, AppResponse, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_shit_denom::UncheckedDenom;
+use cw20::{Cw20Coin, Cw20ReceiveMsg};
+use cw20_base::msg::InstantiateMsg as Cw20Init;
 
 #[derive(Debug)]
 enum TestError {
@@ -345,9 +345,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::ShittyCutoffRatio {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::ShittyCutoffRatio {}.to_string())
+    );
     init_msg.cutoff = Uint128::from(1_000_000u128);
     let err = shit
         .app
@@ -360,9 +361,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::ShittyTitle {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::ShittyTitle {}.to_string())
+    );
     init_msg.title = "shitstrap".into();
     let err = shit
         .app
@@ -375,9 +377,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::ShittyDescription {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::ShittyDescription {}.to_string())
+    );
     init_msg.description = "shitstrap description".into();
     let err = shit
         .app
@@ -390,9 +393,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::UnnaceptableShitAmount {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::UnnaceptableShitAmount {}.to_string())
+    );
     possible = possible[..possible.len() - 1].to_vec();
     init_msg.accepted = possible.clone();
     let err = shit
@@ -406,9 +410,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::SameShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::SameShit {}.to_string())
+    );
     possible[1].token = UncheckedDenom::Native("uatom2".into());
     init_msg.accepted = possible.clone();
     let err = shit
@@ -422,9 +427,10 @@ fn test_bad_init() -> TestResult {
             Some(shit.owner.to_string()),
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::ShittyConversionRatio {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::ShittyConversionRatio {}.to_string())
+    );
     possible[2].shit_rate = Uint128::one();
     init_msg.accepted = possible;
     shit.app
@@ -470,18 +476,20 @@ fn test_shitstrap() -> TestResult {
             &vec![coin(first_deposit, "uatom")],
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::WrongShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::WrongShit {}.to_string())
+    );
     let cw20_id = shit.app.store_code(cw20_contract());
     let cw20 = &init_bad_cw20(&mut shit.app, cw20_id, shit.owner.clone()).to_string();
     // error with wrong cw20 token
     let err = shit
         .participate_cw20(&shit.owner.to_string(), first_deposit, cw20)
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::WrongShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::WrongShit {}.to_string())
+    );
 
     // error without sending token
     let err = shit
@@ -497,9 +505,10 @@ fn test_shitstrap() -> TestResult {
             &vec![],
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::DidntSendShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::DidntSendShit {}.to_string())
+    );
 
     // move forward in time
     let mut block = shit.app.block_info();
@@ -581,7 +590,7 @@ fn test_shitstrap() -> TestResult {
     // confirm balances
     let balance = shit.app.wrap().query_balance(shitstrap.clone(), "uatom")?;
     assert_eq!(balance.amount, Uint256::zero()); // 1 token is waiting to be redeemed by last shit strapper
-                                                 // assert_eq!(balance.amount, Uint256::new(1_000_000u128)); // 1 token is waiting to be redeemed by last shit strapper
+    // assert_eq!(balance.amount, Uint256::new(1_000_000u128)); // 1 token is waiting to be redeemed by last shit strapper
     let balance = shit.app.wrap().query_balance(s1.clone(), "uatom")?;
     assert_eq!(balance.amount, Uint256::new(777_000_000u128));
     let owner_bal = shit.app.wrap().query_balance(shit.owner, "uatom")?;
@@ -601,9 +610,10 @@ fn test_shitstrap() -> TestResult {
             &vec![coin(2_000_000u128, "uatom")],
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::FullOfShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::FullOfShit {}.to_string())
+    );
 
     // move forward in time
     let mut block = shit.app.block_info();
@@ -773,9 +783,10 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
             &vec![coin(first_deposit, "usilk")],
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::WrongShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::WrongShit {}.to_string())
+    );
 
     // create another cw20
     let cw20_init = Cw20Init {
@@ -827,9 +838,10 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
             &vec![],
         )
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::WrongShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::WrongShit {}.to_string())
+    );
 
     // user 1 funds with native
     shit.participate_native(&s1.to_string(), 100_000_000, "uatom")?;
@@ -885,7 +897,7 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
         )
     );
     assert_eq!(s3_usilk.amount, Uint256::new(DEFAULT_BALANCE)); // has full balance of non accepted token
-                                                                // we skip checking cw20 balance in this test, done in next step.
+    // we skip checking cw20 balance in this test, done in next step.
     Ok(())
 }
 
@@ -923,9 +935,10 @@ fn test_cw20_receive() -> TestResult {
         )
         .unwrap_err();
 
-    assert!(err
-        .to_string()
-        .contains(&ContractError::ShittyCw20 {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::ShittyCw20 {}.to_string())
+    );
 
     // only cw20 can call receive entry point
     let err = shit
@@ -947,9 +960,10 @@ fn test_cw20_receive() -> TestResult {
         )
         .unwrap_err();
 
-    assert!(err
-        .to_string()
-        .contains(&ContractError::WrongShit {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::WrongShit {}.to_string())
+    );
 
     Ok(())
 }
