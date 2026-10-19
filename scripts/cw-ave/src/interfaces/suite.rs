@@ -3,7 +3,7 @@ use cw_orch::{
     prelude::{ContractInstance, CwEnv, CwOrchUpload, Deploy},
 };
 
-use crate::interfaces::{cw_420::Cw420, CwAve, CwAveFactory};
+use crate::interfaces::{CwAve, CwAveFactory, cw_420::Cw420};
 
 #[derive(Clone)]
 pub struct CwAveSuite<Chain: CwEnv> {

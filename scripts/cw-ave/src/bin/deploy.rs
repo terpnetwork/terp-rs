@@ -1,6 +1,5 @@
 use av_event_helpers::get_license_fee;
-use cosmwasm_std::{coin, Timestamp};
-use cw4::Member;
+use cosmwasm_std::{Timestamp, coin};
 use cw_ave::{
     msg::InstantiateMsg,
     state::{EventSegment, EventSegmentAccessType, GuestDetails},
@@ -10,6 +9,7 @@ use cw_orch::{
     daemon::networks::{JUNO_1, LOCAL_JUNO},
     prelude::{networks::ChainInfo, *},
 };
+use cw4::Member;
 use scripts::interfaces::CwAveSuite;
 
 fn full_deploy(networks: Vec<ChainInfo>) -> cw_orch::anyhow::Result<()> {
