@@ -21,12 +21,13 @@ the most common way to waste ten minutes on a path-dependency error.
 |---|---|---|
 | Root workspace members (`crates/*`, most of `contracts/`, `proto/`, `tests/`, `tools/gen-tools`) | repo root | `cargo test -p <pkg>` |
 | HashMerchant sidecar | `tools/hash-market` | `cargo test --manifest-path tools/hash-market/Cargo.toml -p <pkg>` |
+| Headstash circuits, wire, test-press | `tools/headstash` | `cargo test --manifest-path tools/headstash/Cargo.toml -p <pkg>` |
+| Headstash contracts, AV event, nftfi, revenue | repo root | `cargo test -p cw-headstash` / `-p cw-ave` / `-p nftfi-raffle` / `-p revenue-marketplace` |
 | Onboard authz / ITL planes | `tools/onboard-authz` | `cargo test --manifest-path tools/onboard-authz/Cargo.toml` |
 | zkjwt in-circuit prover | `crates/wasm-bindgen/zkjwt-wasm` | `cargo test --manifest-path crates/wasm-bindgen/zkjwt-wasm/Cargo.toml` |
 | norick / snap-n-pull wasm | `crates/wasm-bindgen/{norick-wasm,snap-n-pull-rs}` | `--manifest-path`, each is its own workspace |
 
-`tools/hash-market` is listed in the root `exclude` list. Passing
-`cargo test -p hash-market-server` from the repo root will not find it.
+`tools/hash-market`, `tools/svg-mint`, and `tools/headstash` are listed in the root `exclude` list. Headstash circuits stay in that nested workspace. Headstash contracts, cw-ave, nftfi, and the revenue marketplace and auctions are root members, so `cargo test -p cw-headstash` and `cargo test -p cw-ave` run from the repo root.
 
 `zkjwt-wasm` needs **nightly** — it opens with `#![feature(generic_const_exprs)]`.
 `norick-wasm` is stable. MSRV 1.86 throughout; the root workspace is edition 2024.
@@ -158,8 +159,9 @@ Caused by: failed to read `.../crates/headstash/circuit/Cargo.toml`
 
 `cargo metadata`, `check`, `build`, `test` and `run` **all** fail this way,
 including for packages that do not themselves need headstash — it is a manifest
-load failure, not a compile error. The cause is a path rename in the
-`crates/headstash` sibling repo, not here. See
+load failure, not a compile error. Headstash circuits live at `tools/headstash`
+(`circuits/halo2`). Headstash contracts live at `contracts/headstash`. A root-workspace path that still points at
+`crates/headstash` fails the whole workspace. See
 [docs/workspace-status.md](../../docs/workspace-status.md).
 
 The nested projects still build while the root workspace is down, so use them
