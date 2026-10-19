@@ -10,7 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::config::ProviderConfig;
 #[cfg(feature = "ve")]
 use crate::oracle::bound_to_vote_extension;
-use crate::oracle::{parse_ticker_json, price_chain_uid, AggregationPolicy, ALGO_PRICE_MEDIAN_V1};
+use crate::oracle::{ALGO_PRICE_MEDIAN_V1, AggregationPolicy, parse_ticker_json, price_chain_uid};
 use crate::server::AppState;
 
 fn now_unix() -> u64 {

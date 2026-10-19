@@ -3,9 +3,9 @@
 //!   cargo run -p hash-market --features onboard --bin onboard-local-workflow
 //!   ONBOARD_PRESET=norick ONBOARD_MODE=wallet-as-runtime cargo run -p hash-market --features onboard --bin onboard-local-workflow
 
-use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
-use hash_market::onboard_authz::workflow::{run_happy_path, SimKeeper};
-use hash_market::onboard_authz::{dao_authz_grants, fee_denom, OnboardRoles, ALLOWED_MSG_TYPES};
+use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
+use hash_market::onboard_authz::workflow::{SimKeeper, run_happy_path};
+use hash_market::onboard_authz::{ALLOWED_MSG_TYPES, OnboardRoles, dao_authz_grants, fee_denom};
 
 fn main() {
     let chain = std::env::var("ONBOARD_CHAIN").unwrap_or_else(|_| "120u-1".into());

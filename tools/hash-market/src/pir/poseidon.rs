@@ -97,7 +97,8 @@ pub(crate) fn fp_from_hex(s: &str) -> anyhow::Result<pallas::Base> {
     anyhow::ensure!(raw.len() == 32, "field element must be 32 bytes");
     let mut bytes = [0u8; 32];
     bytes.copy_from_slice(&raw);
-    Option::from(pallas::Base::from_repr(bytes)).ok_or_else(|| anyhow::anyhow!("non-canonical field element"))
+    Option::from(pallas::Base::from_repr(bytes))
+        .ok_or_else(|| anyhow::anyhow!("non-canonical field element"))
 }
 
 pub(crate) fn fp_to_hex(fp: pallas::Base) -> String {

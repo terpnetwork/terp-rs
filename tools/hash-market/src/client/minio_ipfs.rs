@@ -10,7 +10,7 @@
 
 use crate::client::nostr::{ClientError, ClientResult, HashMerchantRelayInfo, NegentropyFilter};
 use crate::client::{HashMerchantClient, RootConfirmation};
-use crate::content::{encode_for_chain, CidKind};
+use crate::content::{CidKind, encode_for_chain};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 

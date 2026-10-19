@@ -20,7 +20,7 @@
 //! re-sign with operator key before publish. Mirrors `calendar_egress.rs`.
 
 use crate::client::nostr::calendar_egress::Nip01Event;
-use crate::content::{content_path, parse_cid, CidKind};
+use crate::content::{CidKind, content_path, parse_cid};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -360,10 +360,11 @@ mod tests {
         let ev = product_to_nip15(&meta, None, "pubkey1").unwrap();
         assert_eq!(ev.kind, KIND_SET_PRODUCT as u32);
         assert!(ev.tags.iter().any(|t| t.as_slice() == ["d", "product-tee"]));
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("cid"))
+        );
         assert!(!ev.id.is_empty());
     }
 
@@ -384,9 +385,10 @@ mod tests {
         };
         let ev = purchase_confirmation_to_nostr(&action, "pubkey1");
         assert_eq!(ev.kind, KIND_PURCHASE_NOTE as u32);
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t.as_slice() == ["status", "settled"]));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.as_slice() == ["status", "settled"])
+        );
     }
 }

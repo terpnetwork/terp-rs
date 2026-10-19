@@ -49,10 +49,10 @@ pub mod trusted_builder;
 
 // ── Stable oracle library re-exports (Connect-style bounds) ─────────────────
 pub use oracle::{
+    ALGO_PRICE_MEDIAN_V1, AggregateError, AggregationMethod, AggregationPolicy, AttributedPrice,
+    BOUND_ROOT_LEN, OracleAttributeStore, OracleBound, OracleBoundsResponse, ProviderKind,
     aggregate_bounds, bound_to_vote_extension, decode_bound_root, encode_bound_root,
-    parse_decimal_str, parse_ticker_json, price_chain_uid, AggregateError, AggregationMethod,
-    AggregationPolicy, AttributedPrice, OracleAttributeStore, OracleBound, OracleBoundsResponse,
-    ProviderKind, ALGO_PRICE_MEDIAN_V1, BOUND_ROOT_LEN,
+    parse_decimal_str, parse_ticker_json, price_chain_uid,
 };
 
 #[cfg(feature = "custody")]
@@ -75,8 +75,8 @@ pub use client::eth::{EthBlock, EthClient, EthProofResponse};
 
 #[cfg(feature = "ve")]
 pub use ve::{
-    router, run_provider_feeder, ExtendVoteAllRequest, ExtendVoteRequest, ExtendVoteResponse,
-    ProviderData, ProviderKey, ProviderStatus,
+    ExtendVoteAllRequest, ExtendVoteRequest, ExtendVoteResponse, ProviderData, ProviderKey,
+    ProviderStatus, router, run_provider_feeder,
 };
 
 #[cfg(feature = "ve")]
@@ -84,14 +84,14 @@ pub use crate::client::ve::{SignedVoteExtension, VoteExtensionHandler};
 
 #[cfg(feature = "nostr")]
 pub use client::nostr::{
-    chain_attrs_to_nostr, metadata_to_nip52_event, offchain_to_nip52, onchain_to_nip52,
-    parse_calendar_action, CalendarChainAction, CalendarMetaView, HashMerchantKind,
-    HashMerchantPayload, HashMerchantRelayInfo, NegentropyFilter, Nip01Event,
+    CalendarChainAction, CalendarMetaView, HashMerchantKind, HashMerchantPayload,
+    HashMerchantRelayInfo, NegentropyFilter, Nip01Event, chain_attrs_to_nostr,
+    metadata_to_nip52_event, offchain_to_nip52, onchain_to_nip52, parse_calendar_action,
 };
 
 // Content plane calendar/listing bind/resolve is always available (no second blob store).
 pub use content::{
+    CidKind, KIND_DATE_BASED, KIND_TIME_BASED, OffchainBind, OffchainCalendarMeta, ParsedCid,
     bind_listing_body, bind_offchain_body, bind_offchain_event, content_path, encode_for_chain,
-    is_nip52_event_kind, parse_cid, resolve_local, resolve_url, CidKind, OffchainBind,
-    OffchainCalendarMeta, ParsedCid, KIND_DATE_BASED, KIND_TIME_BASED,
+    is_nip52_event_kind, parse_cid, resolve_local, resolve_url,
 };

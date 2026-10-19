@@ -12,7 +12,7 @@
 //!
 //! TreeStore remains the sole `BlobStore` for bytes.
 
-use super::cid::{content_path, encode_for_chain, parse_cid, CidKind, ParsedCid};
+use super::cid::{CidKind, ParsedCid, content_path, encode_for_chain, parse_cid};
 use crate::store::TreeStore;
 use cw721_nips::buds::BlobStore;
 use serde::{Deserialize, Serialize};
@@ -199,8 +199,8 @@ pub async fn resolve_http(base: &str, cid: &str) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
     use crate::content::{
-        encode_for_chain, parse_cid, CidKind, ContentOrigin, DistributionConfig,
-        DistributionRuntime,
+        CidKind, ContentOrigin, DistributionConfig, DistributionRuntime, encode_for_chain,
+        parse_cid,
     };
 
     #[test]

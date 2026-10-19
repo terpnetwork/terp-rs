@@ -7,7 +7,7 @@ use snow::{Builder, TransportState};
 
 use tokio::net::TcpStream;
 
-use super::session::{read_lp, write_lp, SecureConn, SessionCrypto};
+use super::session::{SecureConn, SessionCrypto, read_lp, write_lp};
 
 const PATTERN: &str = "Noise_XX_25519_ChaChaPoly_SHA256";
 

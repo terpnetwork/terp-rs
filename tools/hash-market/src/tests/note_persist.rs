@@ -92,11 +92,12 @@ fn note_persist_private_notes_not_under_content_index() {
     store
         .set_note("hs-priv", "cm.priv01", &opaque_envelope("secret-body"))
         .unwrap();
-    assert!(dir
-        .join("notes")
-        .join("hs-priv")
-        .join("cm.priv01.json")
-        .is_file());
+    assert!(
+        dir.join("notes")
+            .join("hs-priv")
+            .join("cm.priv01.json")
+            .is_file()
+    );
     // No content-plane spill
     assert!(!dir.join("content").exists());
     assert!(!dir.join("blobs").exists() || store.list_note_keys("hs-priv").unwrap().len() == 1);
@@ -111,7 +112,7 @@ fn note_persist_private_notes_not_under_content_index() {
 #[cfg(feature = "server")]
 mod l1_http {
     use super::*;
-    use crate::server::{router, AppState};
+    use crate::server::{AppState, router};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use cw721_nips::buds::{AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier};

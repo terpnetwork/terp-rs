@@ -11,13 +11,13 @@
 //! ITL_AUTH_ADDR + ITL_AUTH_BROADCAST=1. Until then the in-process rotate is SoT.
 
 use hash_market::onboard_authz::itl_auth::{
-    add_device, lcd_authenticators_path, local_anyof_rotate, msg_add_any_of,
-    msg_remove_authenticator, parse_authenticator_ids, query_json_looks_like_account, rotate,
-    zip321_ok, AuthAccount, ComposeOp, Device,
+    AuthAccount, ComposeOp, Device, add_device, lcd_authenticators_path, local_anyof_rotate,
+    msg_add_any_of, msg_remove_authenticator, parse_authenticator_ids,
+    query_json_looks_like_account, rotate, zip321_ok,
 };
 use hash_market::onboard_authz::{
-    authenticators_query_ok, msg_add_authenticator, ADD_AUTHENTICATOR_TYPE_URL,
-    AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE, REMOVE_AUTHENTICATOR_TYPE_URL,
+    ADD_AUTHENTICATOR_TYPE_URL, AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE,
+    REMOVE_AUTHENTICATOR_TYPE_URL, authenticators_query_ok, msg_add_authenticator,
 };
 
 #[test]
@@ -83,9 +83,8 @@ fn itl_rotate_is_add_then_remove() {
 #[ignore = "needs ICT_LCD"]
 fn live_lcd_query_authenticators() {
     let lcd = std::env::var("ICT_LCD").expect("ICT_LCD");
-    let addr = std::env::var("ITL_AUTH_ADDR").unwrap_or_else(|_| {
-        "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0".into()
-    });
+    let addr = std::env::var("ITL_AUTH_ADDR")
+        .unwrap_or_else(|_| "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0".into());
     let mut last = String::new();
     for path in lcd_authenticators_path(&addr) {
         let url = format!("{}{path}", lcd.trim_end_matches('/'));

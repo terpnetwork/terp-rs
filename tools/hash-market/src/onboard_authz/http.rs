@@ -148,9 +148,11 @@ impl OnboardRuntime {
                     if path.ends_with("passkey-grant") {
                         let hash = v.get("txhash").and_then(|x| x.as_str()).unwrap_or("");
                         let granter = v.get("granter").and_then(|x| x.as_str()).unwrap_or("");
-                        let runway_on =
-                            !self.runway_amount.is_empty() && self.runway_amount != "0";
-                        let rhash = v.get("runway_txhash").and_then(|x| x.as_str()).unwrap_or("");
+                        let runway_on = !self.runway_amount.is_empty() && self.runway_amount != "0";
+                        let rhash = v
+                            .get("runway_txhash")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or("");
                         let ok = v.get("ok").and_then(|x| x.as_bool()).unwrap_or(false);
                         if !ok
                             || hash.is_empty()
@@ -205,11 +207,17 @@ fn handle_conn(mut s: TcpStream, runtime: &OnboardRuntime) {
     let mut parts = start.split_whitespace();
     let method = parts.next().unwrap_or("GET");
     let path = parts.next().unwrap_or("/");
-    let body = req.split("\r\n\r\n").nth(1).unwrap_or("").trim_end_matches('\0');
-    let resp = runtime.try_handle(method, path, body).unwrap_or(HttpResponse {
-        status: 404,
-        body: json!({"error":"not found"}).to_string(),
-    });
+    let body = req
+        .split("\r\n\r\n")
+        .nth(1)
+        .unwrap_or("")
+        .trim_end_matches('\0');
+    let resp = runtime
+        .try_handle(method, path, body)
+        .unwrap_or(HttpResponse {
+            status: 404,
+            body: json!({"error":"not found"}).to_string(),
+        });
     let _ = resp.write_to(&mut s);
 }
 
@@ -289,8 +297,14 @@ mod tests {
         assert_eq!(gv["granter"], "terp1rt");
         assert_ne!(gv["granter"], "terp1dao");
         let v: serde_json::Value = serde_json::from_str(&g.body).unwrap();
-        let allowed = v["msg"]["allowance"]["allowed_messages"].as_array().unwrap();
-        assert!(allowed.iter().all(|x| x.as_str() != Some("/cosmos.bank.v1beta1.MsgSend")));
+        let allowed = v["msg"]["allowance"]["allowed_messages"]
+            .as_array()
+            .unwrap();
+        assert!(
+            allowed
+                .iter()
+                .all(|x| x.as_str() != Some("/cosmos.bank.v1beta1.MsgSend"))
+        );
         assert_eq!(v["runway"]["amount"], "1000000");
         assert_eq!(v["runway"]["msg"]["@type"], "/cosmos.bank.v1beta1.MsgSend");
         let pk = rt

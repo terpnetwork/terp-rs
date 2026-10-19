@@ -9,7 +9,7 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use hash_market::client::nostr::{discovery, HashMerchantRelayInfo};
+use hash_market::client::nostr::{HashMerchantRelayInfo, discovery};
 use hash_market::client::{MinioIpfsClient, RootConfirmation};
 use serde::Deserialize;
 use std::sync::Arc;

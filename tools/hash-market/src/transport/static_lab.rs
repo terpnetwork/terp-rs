@@ -5,7 +5,7 @@
 
 use crate::msg::VoteExtensionHashData;
 use tokio::sync::mpsc;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 pub async fn run(
     data: VoteExtensionHashData,

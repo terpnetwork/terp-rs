@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
-use crate::store::{validate_id, HeadstashStore};
+use crate::store::{HeadstashStore, validate_id};
 
 use super::poseidon::{auth_tree, fp_from_hex, fp_to_hex, path_root};
 
@@ -123,7 +123,8 @@ pub fn load_pir_blobs(
     for key in &index.keys {
         validate_id(key)?;
         let path = dir.join(format!("{key}.json"));
-        let data = std::fs::read(&path).with_context(|| format!("read pir blob {}", path.display()))?;
+        let data =
+            std::fs::read(&path).with_context(|| format!("read pir blob {}", path.display()))?;
         blobs.push(data);
     }
     let max_len = blobs.iter().map(|b| b.len()).max().unwrap_or(0);
@@ -266,7 +267,7 @@ pub fn ingest_community_notes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::server::{router, AppState};
+    use crate::server::{AppState, router};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use pasta_curves::pallas;
@@ -334,8 +335,8 @@ mod tests {
         let dir = tmp_dir("ingest");
         let (notes_path, merkle_path, root) = write_fixture(&dir, 3);
         let store = HeadstashStore::new(&dir).unwrap();
-        let report = ingest_community_notes(&store, "community-notes", &notes_path, &merkle_path)
-            .unwrap();
+        let report =
+            ingest_community_notes(&store, "community-notes", &notes_path, &merkle_path).unwrap();
         assert!(!report.skipped_existing);
         assert_eq!(report.count, 3);
         assert_eq!(norm_hex(&report.root), norm_hex(&root));
@@ -369,11 +370,13 @@ mod tests {
         )
         .unwrap();
         let addr = format!("0x{:040x}", 2u64);
-        assert!(state
-            .headstash_store
-            .get_note("community-notes", &addr)
-            .unwrap()
-            .is_none());
+        assert!(
+            state
+                .headstash_store
+                .get_note("community-notes", &addr)
+                .unwrap()
+                .is_none()
+        );
         let app = router(Arc::new(state));
 
         let health = app
@@ -405,7 +408,10 @@ mod tests {
             .await
             .unwrap();
         let index: PirIndex = serde_json::from_slice(&index_bytes).unwrap();
-        assert_eq!(index.keys, vec!["00000000".to_string(), "00000001".to_string()]);
+        assert_eq!(
+            index.keys,
+            vec!["00000000".to_string(), "00000001".to_string()]
+        );
         assert_eq!(index.addrs[1], addr);
 
         let pir = app

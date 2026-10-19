@@ -1,10 +1,10 @@
 //! Existing test script: msg contract + preset curation.
 //! Chain hook: `ICT_ONBOARD=1 cargo test -p terp-onboard-authz --test ict_workflow -- --ignored`
 
-use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
+use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
 use hash_market::onboard_authz::{
-    dao_authz_grants, registration_feegrant, AllowanceScope, FeegrantRequest, OnboardRoles,
-    ALLOWED_MSG_TYPES,
+    ALLOWED_MSG_TYPES, AllowanceScope, FeegrantRequest, OnboardRoles, dao_authz_grants,
+    registration_feegrant,
 };
 
 #[test]
@@ -24,10 +24,7 @@ fn prepared_msgs_match_faucet_adjacent_contract() {
             expiration: None,
         },
     );
-    assert_eq!(
-        fg["allowance"]["allowed_messages"][0],
-        ALLOWED_MSG_TYPES[0]
-    );
+    assert_eq!(fg["allowance"]["allowed_messages"][0], ALLOWED_MSG_TYPES[0]);
     assert!(AllowanceScope::registration_only().is_sound());
 }
 

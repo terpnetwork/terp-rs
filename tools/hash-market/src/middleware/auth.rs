@@ -26,7 +26,7 @@
 use crate::config::NotesAuthConfig;
 use anyhow::Result;
 use cw721_nips::buds::AuthVerifier;
-use k256::ecdsa::{signature::Verifier, Signature, VerifyingKey};
+use k256::ecdsa::{Signature, VerifyingKey, signature::Verifier};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};

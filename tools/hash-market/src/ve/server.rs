@@ -11,11 +11,11 @@ use crate::msg::VoteExtensionHashData;
 use crate::server::AppState;
 use crate::transport::TransportMode;
 use axum::{
+    Json, Router,
     extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 
 use std::sync::Arc;

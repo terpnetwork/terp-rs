@@ -2,20 +2,25 @@
 //! Stock terpd without the zk host must fail-closed on-chain; this binary
 //! exercises the **product** circuit, not MockBech32.
 
-use hash_market::onboard_authz::itl_cashapp::{synthetic_received_eml, LIST_CENTS, SKU};
+use hash_market::onboard_authz::itl_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
 use hash_market::onboard_authz::itl_consume::{
-    prove_issued, serialize_vk_with_footer, verify_halo2_proof, ConsumeEngine, PROVER_ID, VK_MAGIC,
+    ConsumeEngine, PROVER_ID, VK_MAGIC, prove_issued, serialize_vk_with_footer, verify_halo2_proof,
 };
-use hash_market::onboard_authz::itl_ingress::{IngressEngine, EVENT_ID};
+use hash_market::onboard_authz::itl_ingress::{EVENT_ID, IngressEngine};
 
 fn main() {
     let mut ing = IngressEngine::default();
     let o = ing.create_cash_order("cred-guest");
     let eml = synthetic_received_eml(&o.pay_ref, LIST_CENTS, "D-HOSTVERIFY");
     let issued = ing.ingest_cashapp_eml(&eml).expect("paid");
-    let (proof, inst, nf) =
-        prove_issued(ing.tree(), &issued.ticket_secret, SKU, EVENT_ID, issued.leaf_index)
-            .expect("prove");
+    let (proof, inst, nf) = prove_issued(
+        ing.tree(),
+        &issued.ticket_secret,
+        SKU,
+        EVENT_ID,
+        issued.leaf_index,
+    )
+    .expect("prove");
     assert!(verify_halo2_proof(&proof, &inst).expect("verify"));
     let vk = serialize_vk_with_footer().expect("vk");
     assert_eq!(vk[vk.len() - 10], PROVER_ID);

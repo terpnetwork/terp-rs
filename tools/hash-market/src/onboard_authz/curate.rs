@@ -5,11 +5,11 @@
 //! until the cw-orch crate is on the workspace path.
 
 use super::{
-    authz_exec_feegrant, dao_authz_grants, mint_feegrant, registration_feegrant, AllowanceScope,
-    GrantPurpose, OnboardRoles, AUTHZ_MSG_TYPES, ALLOWED_MSG_TYPES, MINT_MSG_TYPES,
+    ALLOWED_MSG_TYPES, AUTHZ_MSG_TYPES, AllowanceScope, GrantPurpose, MINT_MSG_TYPES, OnboardRoles,
+    authz_exec_feegrant, dao_authz_grants, mint_feegrant, registration_feegrant,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -196,10 +196,7 @@ impl GrantPreset {
             }
         }
         let allowance = match self.purpose {
-            GrantPurpose::Register => ALLOWED_MSG_TYPES
-                .iter()
-                .map(|s| (*s).to_string())
-                .collect(),
+            GrantPurpose::Register => ALLOWED_MSG_TYPES.iter().map(|s| (*s).to_string()).collect(),
             GrantPurpose::Mint => MINT_MSG_TYPES.iter().map(|s| (*s).to_string()).collect(),
             GrantPurpose::Onboard => AllowanceScope::registration_only().allowed,
         };
@@ -335,10 +332,7 @@ fn dao_proposal_envelope(
     preset: &ResolvedPreset,
     grants: &Value,
 ) -> Value {
-    let inner_msgs = grants
-        .get("msgs")
-        .cloned()
-        .unwrap_or_else(|| json!([]));
+    let inner_msgs = grants.get("msgs").cloned().unwrap_or_else(|| json!([]));
     let cosmos: Vec<Value> = inner_msgs
         .as_array()
         .cloned()
@@ -389,7 +383,12 @@ fn dao_proposal_envelope(
     })
 }
 
-fn terpd_script(mode: CurateMode, roles: &OnboardRoles, preset: &GrantPreset, user: &str) -> String {
+fn terpd_script(
+    mode: CurateMode,
+    roles: &OnboardRoles,
+    preset: &GrantPreset,
+    user: &str,
+) -> String {
     let chain = &roles.chain_id;
     let denom = super::fee_denom();
     let rt = &roles.hashmerchant;
@@ -446,7 +445,12 @@ mod tests {
         let infra = load_infra(None);
         let r = preset("register").unwrap().resolve("120u-1", &infra);
         assert_eq!(r.code_ids.get("terp-passkey"), Some(&4));
-        assert!(r.instances.get("terp-passkey").unwrap().starts_with("terp1"));
+        assert!(
+            r.instances
+                .get("terp-passkey")
+                .unwrap()
+                .starts_with("terp1")
+        );
     }
 
     #[test]

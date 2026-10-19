@@ -8,9 +8,9 @@
 //!   cargo run --example hashmerchant_authz_bootstrap
 //! ```
 
+use hash_market::onboard_authz::{OnboardRoles, dao_authz_grants};
 use serde_json::json;
 use std::path::PathBuf;
-use hash_market::onboard_authz::{dao_authz_grants, OnboardRoles};
 
 fn main() -> Result<(), String> {
     let runtime = std::env::var("ONBOARD_RUNTIME").map_err(|_| "ONBOARD_RUNTIME required")?;

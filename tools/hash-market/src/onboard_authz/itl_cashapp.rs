@@ -5,7 +5,7 @@
 //! WASIX guest (`itl/cashapp/wasix`) is the sandboxed parse; this module is the
 //! same regex/nullifier so onboard-authz local tests need no wasmer.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 

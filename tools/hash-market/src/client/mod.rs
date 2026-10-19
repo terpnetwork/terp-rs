@@ -18,8 +18,8 @@ pub use minio_ipfs::{MinioIpfsClient, MinioIpfsDurableConfig};
 
 use crate::fields::pasta;
 
-use crate::msg::VoteExtensionHashData;
 use crate::EthClient;
+use crate::msg::VoteExtensionHashData;
 use anyhow::{Context, Result};
 
 /// Run the ETH proof polling loop.

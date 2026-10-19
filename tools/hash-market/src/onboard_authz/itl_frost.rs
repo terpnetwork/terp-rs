@@ -372,7 +372,11 @@ impl PendingJob {
     }
 
     /// Live path: reject fixtures / premature mempool strings; require a node-confirmed txid.
-    pub fn broadcast_node_confirmed(&mut self, txid: &str, rpc_url: &str) -> Result<(), &'static str> {
+    pub fn broadcast_node_confirmed(
+        &mut self,
+        txid: &str,
+        rpc_url: &str,
+    ) -> Result<(), &'static str> {
         if self.status != JobStatus::Threshold {
             return Err("below_threshold");
         }
@@ -551,7 +555,6 @@ fn sha256d(data: &[u8]) -> [u8; 32] {
     o.copy_from_slice(&h2);
     o
 }
-
 
 /// 32-byte hex txid from the node. Rejects fixtures, dummy 0xaa.., and short labels.
 pub fn require_node_txid(txid: &str) -> Result<(), &'static str> {

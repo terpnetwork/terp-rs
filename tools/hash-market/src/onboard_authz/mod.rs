@@ -21,19 +21,22 @@
 //! Standalone: `cargo run -p terp-onboard-authz --bin onboard-runtime`
 
 pub mod curate;
+pub mod frost_http;
 pub mod http;
 pub mod itl_auth;
 pub mod itl_cashapp;
+pub mod itl_consume;
+pub mod itl_door;
 pub mod itl_frost;
-pub mod frost_http;
 pub mod itl_frost_rotate;
 pub mod itl_ingress;
-pub mod itl_consume;
+pub mod itl_pay;
+pub mod itl_session;
 pub mod poseidon;
 pub mod workflow;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Messages a **registration** feegrant may cover. Keep this list tiny.
 ///
@@ -41,12 +44,10 @@ use serde_json::{json, Value};
 /// `MsgAddAuthenticator { sender, authenticator_type, data }`.
 /// CosmWasm `{ add_authenticator: … }` / `{ register_authenticator: … }`
 /// execute bodies are **not** this module and must not appear here.
-pub const ADD_AUTHENTICATOR_TYPE_URL: &str =
-    "/terp.smartaccount.v1beta1.MsgAddAuthenticator";
+pub const ADD_AUTHENTICATOR_TYPE_URL: &str = "/terp.smartaccount.v1beta1.MsgAddAuthenticator";
 /// Alias used by ict-rs svg_mint examples.
 pub const ADD_AUTHENTICATOR_TYPE_URL_TERP: &str = ADD_AUTHENTICATOR_TYPE_URL;
-pub const REMOVE_AUTHENTICATOR_TYPE_URL: &str =
-    "/terp.smartaccount.v1beta1.MsgRemoveAuthenticator";
+pub const REMOVE_AUTHENTICATOR_TYPE_URL: &str = "/terp.smartaccount.v1beta1.MsgRemoveAuthenticator";
 
 /// Type strings the module's authenticator manager actually knows.
 /// Not CosmWasm `ty: "passkey"`. Passkey-as-module type is whatever the
@@ -400,7 +401,10 @@ pub fn authenticators_query_ok(queried: &str) -> bool {
         return true;
     }
     if v.get("account")
-        .and_then(|a| a.get("authenticators").or_else(|| a.get("account_authenticators")))
+        .and_then(|a| {
+            a.get("authenticators")
+                .or_else(|| a.get("account_authenticators"))
+        })
         .map(nonempty)
         == Some(true)
     {
@@ -713,7 +717,8 @@ impl OnboardRuntime {
                 "pedersen C required: POST {address,c} after NFT payment (DREGG pay-targets memo)"
                     .to_string()
             })?;
-        let base = std::env::var("DREGG_SVG_URL").unwrap_or_else(|_| "http://127.0.0.1:8421".into());
+        let base =
+            std::env::var("DREGG_SVG_URL").unwrap_or_else(|_| "http://127.0.0.1:8421".into());
         let lower = base.to_lowercase();
         if !(lower.contains("127.0.0.1") || lower.contains("localhost")) {
             return Err("DREGG_SVG_URL must be house loopback".into());
@@ -902,7 +907,9 @@ fn http_get_local(url: &str) -> Result<String, String> {
         .ok();
     let req = format!("GET {path} HTTP/1.0\r\nHost: {hostport}\r\nConnection: close\r\n\r\n");
     use std::io::{Read, Write};
-    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| e.to_string())?;
     let mut buf = String::new();
     stream.read_to_string(&mut buf).map_err(|e| e.to_string())?;
     buf.split("\r\n\r\n")
@@ -946,11 +953,7 @@ mod tests {
 
     #[test]
     fn add_authenticator_json_is_module_proto_not_cosmwasm() {
-        let msg = msg_add_authenticator(
-            "terp1alice",
-            AUTHENTICATOR_SIGNATURE,
-            "AA==",
-        );
+        let msg = msg_add_authenticator("terp1alice", AUTHENTICATOR_SIGNATURE, "AA==");
         assert_eq!(msg["@type"], ADD_AUTHENTICATOR_TYPE_URL);
         assert_eq!(msg["authenticator_type"], AUTHENTICATOR_SIGNATURE);
         assert!(msg.get("add_authenticator").is_none());
@@ -973,9 +976,11 @@ mod tests {
             },
         );
         let allowed = fg["allowance"]["allowed_messages"].as_array().unwrap();
-        assert!(allowed
-            .iter()
-            .all(|x| x.as_str() != Some("/cosmwasm.wasm.v1.MsgExecuteContract")));
+        assert!(
+            allowed
+                .iter()
+                .all(|x| x.as_str() != Some("/cosmwasm.wasm.v1.MsgExecuteContract"))
+        );
     }
 
     #[test]
@@ -1026,7 +1031,10 @@ mod tests {
                 "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
             )
             .unwrap_err();
-        assert!(err.contains("distinct") || err.contains("collapsed"), "{err}");
+        assert!(
+            err.contains("distinct") || err.contains("collapsed"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -1057,12 +1065,15 @@ mod tests {
     #[test]
     fn paid_commit_required_without_skip() {
         std::env::set_var("ONBOARD_SKIP_PAID", "1");
-        assert!(OnboardRuntime::require_paid_commit(
-            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
-            None
-        )
-        .is_ok());
-        let msg = "pedersen C required: POST {address,c} after NFT payment (DREGG pay-targets memo)";
+        assert!(
+            OnboardRuntime::require_paid_commit(
+                "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
+                None
+            )
+            .is_ok()
+        );
+        let msg =
+            "pedersen C required: POST {address,c} after NFT payment (DREGG pay-targets memo)";
         assert!(msg.contains("pedersen"));
     }
 
@@ -1078,12 +1089,13 @@ mod tests {
             grant_tx_mu: std::sync::Mutex::new(()),
         };
         assert!(rt.allocate(GrantPurpose::Register, "nope").is_err());
-        assert!(rt
-            .allocate(
+        assert!(
+            rt.allocate(
                 GrantPurpose::Register,
                 "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0"
             )
-            .is_ok());
+            .is_ok()
+        );
     }
 
     struct FakeBc {
@@ -1165,11 +1177,7 @@ mod tests {
         let stuck = || {
             let i = n.get();
             n.set(i + 1);
-            if i == 0 {
-                0
-            } else {
-                1
-            }
+            if i == 0 { 0 } else { 1 }
         };
         assert!(!wait_until_height_commits(0, stuck, || {}));
     }
@@ -1177,7 +1185,9 @@ mod tests {
     #[test]
     fn authenticators_query_rejects_empty_list_substring() {
         assert!(!authenticators_query_ok(r#"{"authenticators":[]}"#));
-        assert!(!authenticators_query_ok(r#"{"account":{"authenticators":[]}}"#));
+        assert!(!authenticators_query_ok(
+            r#"{"account":{"authenticators":[]}}"#
+        ));
         assert!(authenticators_query_ok(
             r#"{"authenticators":[{"id":"1","type":"SignatureVerification"}]}"#
         ));

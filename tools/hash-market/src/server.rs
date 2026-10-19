@@ -15,13 +15,13 @@
 //! This matches the BUD-02/BUD-06 spec while keeping a single canonical store.
 
 use axum::body::Body;
-use axum::http::{header, HeaderMap, HeaderValue, Method, Request, Response, StatusCode};
+use axum::http::{HeaderMap, HeaderValue, Method, Request, Response, StatusCode, header};
 use axum::{
+    Json, Router,
     extract::{Path, State},
     middleware::{self, Next},
     response::IntoResponse,
     routing::{delete, get, post},
-    Json, Router,
 };
 use cw721_nips::buds::{self, BlossomState};
 use std::collections::HashMap;
@@ -1376,7 +1376,9 @@ async fn note_pir_index(
                 StatusCode::BAD_REQUEST
             })?
             .ok_or(StatusCode::NOT_FOUND)?;
-        Ok(Json(serde_json::to_value(index).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?))
+        Ok(Json(
+            serde_json::to_value(index).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+        ))
     }
 }
 

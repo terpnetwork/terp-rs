@@ -12,8 +12,8 @@
 //! Pure conversion lives here (no Docker). Relay publish uses a caller-supplied
 //! sink so tests can use mock or `ict_rs::nostr::NostrClient`.
 
-use crate::content::calendar::{is_nip52_event_kind, KIND_DATE_BASED, KIND_TIME_BASED};
-use crate::content::{content_path, parse_cid, CidKind};
+use crate::content::calendar::{KIND_DATE_BASED, KIND_TIME_BASED, is_nip52_event_kind};
+use crate::content::{CidKind, content_path, parse_cid};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -461,7 +461,7 @@ fn deterministic_id(ev: &Nip01Event) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::content::{bind_offchain_event, resolve_local, KIND_TIME_BASED};
+    use crate::content::{KIND_TIME_BASED, bind_offchain_event, resolve_local};
     use crate::store::TreeStore;
 
     #[test]
@@ -514,18 +514,21 @@ mod tests {
         assert_eq!(ev.kind, KIND_TIME_BASED as u32);
         assert_eq!(ev.pubkey, "pub_abc");
         assert!(ev.content.contains("Town Hall"));
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t == &["cid".to_string(), bind.chain_cid.clone()]));
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t.first().map(|s| s.as_str()) == Some("bud")));
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t == &["t".to_string(), "dao-calendar".to_string()]));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t == &["cid".to_string(), bind.chain_cid.clone()])
+        );
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("bud"))
+        );
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t == &["t".to_string(), "dao-calendar".to_string()])
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -535,10 +538,11 @@ mod tests {
         let e = r#"{"d_tag":"x","title":"OnChain","content":"body","start_time":1,"end_time":2,"event_type":"TimeBased"}"#;
         let ev = onchain_to_nip52(e, KIND_TIME_BASED, Some("x"), "pk").unwrap();
         assert_eq!(ev.kind, KIND_TIME_BASED as u32);
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t == &["title".to_string(), "OnChain".to_string()]));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t == &["title".to_string(), "OnChain".to_string()])
+        );
     }
 
     #[test]

@@ -23,7 +23,7 @@ use crate::config::ProviderConfig;
 use crate::hash::{build as build_tree, verify as verify_tree};
 use crate::msg::VoteExtensionHashData;
 use crate::oracle::{
-    aggregate_bounds, AggregationMethod, AggregationPolicy, AttributedPrice, ProviderKind,
+    AggregationMethod, AggregationPolicy, AttributedPrice, ProviderKind, aggregate_bounds,
 };
 
 // ── Capability matrix ───────────────────────────────────────────────────────

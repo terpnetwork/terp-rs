@@ -12,7 +12,7 @@
 //! Odd-length layers are padded by duplicating the last node.
 //! Proofs are sibling hashes from leaf to root (not including root).
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::collections::HashMap;
 
 fn leaf(address: &str, allocation: u32) -> [u8; 32] {

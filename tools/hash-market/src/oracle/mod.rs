@@ -38,6 +38,9 @@ mod feeder;
 #[cfg(feature = "server")]
 pub use feeder::run_price_bound_feeder;
 
+/// Osmosis poolmanager arithmetic TWAP JSON → [`AttributedPrice`].
+pub mod osmosis;
+
 /// What a provider is allowed to attest.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]

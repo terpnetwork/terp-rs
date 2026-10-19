@@ -3,12 +3,11 @@
 //! Uses NIP-77 negentropy for efficient root event sync and NIP-87 for
 //! relay discovery. Each synced root calls `on_root_confirmed`.
 
-use crate::client::{HashMerchantClient, RootConfirmation};
 use crate::client::nostr::{
-    discovery, negentropy, roots, ClientError, ClientResult, HashMerchantPayload,
-    HashMerchantRelayInfo, NegentropyFilter, HASHMERCHANT_DISCOVERY_KIND,
-    HASHMERCHANT_ROOT_KIND,
+    ClientError, ClientResult, HASHMERCHANT_DISCOVERY_KIND, HASHMERCHANT_ROOT_KIND,
+    HashMerchantPayload, HashMerchantRelayInfo, NegentropyFilter, discovery, negentropy, roots,
 };
+use crate::client::{HashMerchantClient, RootConfirmation};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// HashMerchantClient backed by a Nostr relay connection.

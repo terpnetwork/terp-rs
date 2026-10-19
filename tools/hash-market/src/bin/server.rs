@@ -59,11 +59,9 @@ async fn main() -> anyhow::Result<()> {
     let mut config: Config = toml::from_str(&config_str).context("invalid config")?;
     apply_tree_host_env(&mut config);
     config.validate().map_err(anyhow::Error::msg)?;
-    let public_bind = hash_market::tree_operator::inspect_bind(
-        &config.bind,
-        config.allow_public_bind,
-    )
-    .map_err(anyhow::Error::msg)?;
+    let public_bind =
+        hash_market::tree_operator::inspect_bind(&config.bind, config.allow_public_bind)
+            .map_err(anyhow::Error::msg)?;
     if public_bind {
         tracing::warn!(
             bind = %config.bind,
@@ -319,8 +317,8 @@ async fn main() -> anyhow::Result<()> {
         }
         let frost_bind =
             hash_market::onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
-        let inbox =
-            hash_market::onboard_authz::frost_http::shared_inbox_from_env().map_err(anyhow::Error::msg)?;
+        let inbox = hash_market::onboard_authz::frost_http::shared_inbox_from_env()
+            .map_err(anyhow::Error::msg)?;
         tracing::info!(
             bind = %frost_bind,
             persist = hash_market::onboard_authz::itl_frost::persist_required().is_ok(),

@@ -13,7 +13,7 @@ use crate::config::NotesAuthConfig;
 use cw721_nips::buds::{
     AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier, NoopAuthVerifier,
 };
-use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
+use k256::ecdsa::{Signature, VerifyingKey, signature::hazmat::PrehashVerifier};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -197,7 +197,7 @@ impl AuthVerifier for AnyOfAuthVerifier {
 mod tests {
     use super::*;
     use axum::http::HeaderMap;
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, SigningKey};
+    use k256::ecdsa::{SigningKey, signature::hazmat::PrehashSigner};
 
     fn sign_snap(sk: &SigningKey) -> HeaderMap {
         let pubkey_hex = hex::encode(sk.verifying_key().to_sec1_bytes());

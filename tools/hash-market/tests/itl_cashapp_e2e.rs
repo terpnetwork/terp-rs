@@ -4,8 +4,8 @@
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_cashapp_e2e
 
 use hash_market::onboard_authz::itl_cashapp::{
-    parse_received_text, receipt_json, synthetic_received_html, Engine, CHECK_IN_GUEST,
-    LIST_CENTS, SKU,
+    CHECK_IN_GUEST, Engine, LIST_CENTS, SKU, parse_received_text, receipt_json,
+    synthetic_received_html,
 };
 
 #[test]
@@ -68,7 +68,10 @@ fn itl_cashapp_reservation_one_winner() {
     }
     assert_eq!(ok, 1);
     assert_eq!(taken, 39);
-    assert!(e.book_slot("needle", "2026-10-18T18:00:00Z", "other").is_ok());
+    assert!(
+        e.book_slot("needle", "2026-10-18T18:00:00Z", "other")
+            .is_ok()
+    );
 }
 
 #[test]
@@ -87,8 +90,7 @@ fn itl_cashapp_receipt_json_is_tickets_plane_shape() {
 #[test]
 #[ignore = "needs ICT_LCD or ITL_MOCK_CASHAPP (harness mock :3051)"]
 fn live_mock_cashapp_receipt_http() {
-    let base = std::env::var("ITL_MOCK_CASHAPP")
-        .unwrap_or_else(|_| "http://127.0.0.1:3051".into());
+    let base = std::env::var("ITL_MOCK_CASHAPP").unwrap_or_else(|_| "http://127.0.0.1:3051".into());
     let pay = "cmt_HARNESS";
     let inj = curl(
         &format!("{base}/inject"),
@@ -105,7 +107,14 @@ fn curl(url: &str, body: Option<&str>) -> String {
     let mut cmd = std::process::Command::new("curl");
     cmd.args(["-sS", "--max-time", "8"]);
     if let Some(b) = body {
-        cmd.args(["-X", "POST", "-H", "content-type: application/json", "-d", b]);
+        cmd.args([
+            "-X",
+            "POST",
+            "-H",
+            "content-type: application/json",
+            "-d",
+            b,
+        ]);
     }
     cmd.arg(url);
     let out = cmd.output().expect("curl");

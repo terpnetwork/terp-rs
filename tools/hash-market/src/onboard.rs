@@ -11,13 +11,13 @@
 
 use crate::onboard_authz::{GrantPurpose, OnboardRuntime};
 use axum::{
+    Json, Router,
     extract::State,
     http::StatusCode,
     routing::{get, post},
-    Json, Router,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 pub fn router(rt: Arc<OnboardRuntime>) -> Router {

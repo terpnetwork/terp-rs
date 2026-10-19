@@ -10,9 +10,9 @@
 //! zkEmail Groth16 is out. FROST is out.
 
 use super::itl_auth::zip321_ok;
-use super::itl_cashapp::{nullifier_hex, wasix_parse_json, Engine as CashEngine, LIST_CENTS, SKU};
-use super::poseidon::{door_nullifier, hex_encode, ticket_leaf, PoseidonTree};
-use serde_json::{json, Value};
+use super::itl_cashapp::{Engine as CashEngine, LIST_CENTS, SKU, nullifier_hex, wasix_parse_json};
+use super::poseidon::{PoseidonTree, door_nullifier, hex_encode, ticket_leaf};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -22,8 +22,7 @@ pub const CW_AVE: &str = "terp1cwave";
 pub const CASHAPP_CHAIN_ID: &str = "itl-cashapp-1";
 
 /// Existing ict-rs example. Do not duplicate this spawn.
-pub const SVG_MINT_LOCAL_PROD: &str =
-    "cargo run --example svg_mint_local_prod -p ict-rs-cw-orch --features docker,zakura,dregg-node,ethereum,bitcoin";
+pub const SVG_MINT_LOCAL_PROD: &str = "cargo run --example svg_mint_local_prod -p ict-rs-cw-orch --features docker,zakura,dregg-node,ethereum,bitcoin";
 pub const SVG_MINT_FEATURES: &str = "docker,zakura,dregg-node,ethereum,bitcoin";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -50,6 +49,10 @@ impl Rail {
 
     pub fn is_dregg(self) -> bool {
         matches!(self, Rail::Zec | Rail::Btc | Rail::Eth | Rail::Base)
+    }
+
+    pub fn on_tickets(self) -> bool {
+        matches!(self, Rail::Zec | Rail::Eth | Rail::Base | Rail::Penumbra)
     }
 }
 
@@ -230,6 +233,9 @@ impl IngressEngine {
             return Err("invented_rpc");
         }
         dest_ok(watch.rail, &watch.dest)?;
+        if zec_mainnet_ua(&watch.dest) || evm_mainnet_hint(&watch.dest, &watch.record_id) {
+            return Err("mainnet_refused");
+        }
         if watch.record_id.trim().is_empty() {
             return Err("missing_record_id");
         }
@@ -322,9 +328,57 @@ pub fn dest_ok(rail: Rail, dest: &str) -> Result<(), &'static str> {
                 Err("bad_evm_dest")
             }
         }
-        Rail::Penumbra => Err("penumbra_skipped"),
+        Rail::Penumbra => {
+            if s.starts_with("penumbra1") {
+                Err("mainnet_refused")
+            } else if s.starts_with("penumbratest1")
+                || s.starts_with("plmt1")
+                || s.starts_with("penumbrat1")
+            {
+                Ok(())
+            } else {
+                Err("bad_penumbra_dest")
+            }
+        }
         Rail::CashApp => Err("cashapp_not_dest"),
     }
+}
+
+/// Pre-arrival catalog. Cash App is door-only.
+pub fn tickets_catalog() -> &'static [&'static str] {
+    &["zec", "eth", "base", "penumbra"]
+}
+
+pub fn cashapp_on_tickets() -> bool {
+    false
+}
+
+pub fn mainnet_chain_id_refused(id: u64) -> bool {
+    id == 1 || id == 8453
+}
+
+/// Sepolia (11155111) and Base-Sepolia (84532) only. Anvil / OP-Sepolia / mainnet refused.
+pub fn lab_evm_chain_id(id: u64) -> bool {
+    matches!(id, 11155111 | 84532)
+}
+
+/// Mainnet unified UA (`u1…`) excluding the lab fixture `u1lab`.
+pub fn zec_mainnet_ua(uri: &str) -> bool {
+    let addr = uri
+        .trim()
+        .trim_start_matches("zcash:")
+        .split('?')
+        .next()
+        .unwrap_or("");
+    addr.starts_with("u1")
+        && !addr.starts_with("u1lab")
+        && !addr.starts_with("utest")
+        && !addr.starts_with("uregtest")
+}
+
+fn evm_mainnet_hint(dest: &str, record_id: &str) -> bool {
+    let l = format!("{dest} {record_id}").to_ascii_lowercase();
+    l.contains("mainnet") || l.contains("chainid-1") || l.contains("chain-id-1")
 }
 
 pub fn is_mock_bech32(s: &str) -> bool {

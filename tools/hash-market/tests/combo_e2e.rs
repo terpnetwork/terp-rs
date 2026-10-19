@@ -8,12 +8,12 @@
 //!   ICT_LCD=https://testnet-api.terp.network ICT_CHAIN=120u-1 \
 //!     cargo test -p terp-onboard-authz --test combo_e2e -- --ignored --nocapture
 
+use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
+use hash_market::onboard_authz::http::serve;
+use hash_market::onboard_authz::{OnboardRoles, OnboardRuntime};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::thread;
-use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
-use hash_market::onboard_authz::http::serve;
-use hash_market::onboard_authz::{OnboardRoles, OnboardRuntime};
 
 fn roles() -> OnboardRoles {
     OnboardRoles {
@@ -38,7 +38,14 @@ fn combo_curate_all_presets_three_modes() {
             CurateMode::WalletProxy,
             CurateMode::WalletAsRuntime,
         ] {
-            let b = curate(mode, &r, p, &infra, None, "terp1aliceqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
+            let b = curate(
+                mode,
+                &r,
+                p,
+                &infra,
+                None,
+                "terp1aliceqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+            );
             assert!(
                 !b.preset.allowance_msg_types.is_empty(),
                 "{} {:?}",
@@ -123,9 +130,15 @@ fn combo_runtime_register_and_mint_grants() {
         &format!("http://{bind}/v1/mint-grant"),
         &format!(r#"{{"address":"{user}"}}"#),
     );
-    assert!(mint.contains("does not grant mint") || mint.contains("\"ok\":false"), "{mint}");
+    assert!(
+        mint.contains("does not grant mint") || mint.contains("\"ok\":false"),
+        "{mint}"
+    );
     let health = http_get(&format!("http://{bind}/health"));
-    assert!(health.contains("\"ok\":true") || health.contains("\"ready\":true"), "{health}");
+    assert!(
+        health.contains("\"ok\":true") || health.contains("\"ready\":true"),
+        "{health}"
+    );
     assert!(!status.contains("MsgExecuteContract"), "{status}");
 }
 
@@ -153,11 +166,7 @@ fn combo_lcd_dao_infra_matches_presets() {
         .map(|(k, id)| {
             let lcd = lcd.clone();
             thread::spawn(move || {
-                let url = format!(
-                    "{}/cosmwasm/wasm/v1/code/{}",
-                    lcd.trim_end_matches('/'),
-                    id
-                );
+                let url = format!("{}/cosmwasm/wasm/v1/code/{}", lcd.trim_end_matches('/'), id);
                 let body = http_get(&url);
                 (k, id, body)
             })

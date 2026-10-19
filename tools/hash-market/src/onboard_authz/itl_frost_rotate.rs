@@ -10,7 +10,7 @@
 //! use frost-spend with the current group_vk. Rotate is t-of-n of **admin seats**
 //! (passkey authenticators), not a chicken-egg FROST-sign of the rotate itself.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -181,13 +181,7 @@ impl FrostCommittee {
 
     /// Live holder-mempool commit (current epoch seats + vk). Pending next_seats are not live.
     pub fn roster_commit(&self) -> String {
-        super::itl_frost::roster_commit(
-            self.epoch,
-            self.t,
-            self.n,
-            &self.group_vk,
-            &self.seats,
-        )
+        super::itl_frost::roster_commit(self.epoch, self.t, self.n, &self.group_vk, &self.seats)
     }
 
     /// Hash of the *proposed* next roster — must not authorize spends until apply.
@@ -400,7 +394,6 @@ impl FrostCommittee {
         self.write("system", RotateKind::Apply, Some("rekey_spend"));
         Ok(())
     }
-
 }
 
 pub fn vk_commit(group_vk: &str) -> String {

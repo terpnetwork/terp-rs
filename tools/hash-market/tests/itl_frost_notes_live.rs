@@ -10,8 +10,8 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use hash_market::onboard_authz::itl_frost::{
-    confirm_txid_on_node, lab_taddr, require_node_txid, require_transparent_taddr, JobStatus,
-    Ledger, PayRecord, PayeeKind, PendingJob, PayoutLeg, TicketInflow, FROST_N, FROST_T,
+    FROST_N, FROST_T, JobStatus, Ledger, PayRecord, PayeeKind, PayoutLeg, PendingJob, TicketInflow,
+    confirm_txid_on_node, lab_taddr, require_node_txid, require_transparent_taddr,
 };
 
 const RPC: &str = "http://127.0.0.1:18232";
@@ -78,7 +78,9 @@ fn rpc_is_nu63() -> bool {
 }
 
 fn spawn_zakura() {
-    if std::env::var("SVG_MINT_ZAKURA_REUSE").ok().as_deref() == Some("1") && rpc_ready() && rpc_is_nu63()
+    if std::env::var("SVG_MINT_ZAKURA_REUSE").ok().as_deref() == Some("1")
+        && rpc_ready()
+        && rpc_is_nu63()
     {
         eprintln!("reusing zakura RPC at {RPC}");
         return;

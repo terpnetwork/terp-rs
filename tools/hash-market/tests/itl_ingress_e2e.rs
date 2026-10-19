@@ -3,21 +3,21 @@
 //!
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_ingress_e2e
 
+use hash_market::onboard_authz::itl_cashapp::{
+    LIST_CENTS, SKU, nullifier_hex, parse_eml_wasix, synthetic_received_eml, synthetic_sent_eml,
+    wasix_parse_json,
+};
+use hash_market::onboard_authz::itl_ingress::{
+    CASHAPP_CHAIN_ID, DreggWatch, EVENT_ID, EvidenceKind, IngressEngine, Rail, SVG_MINT_FEATURES,
+    SVG_MINT_LOCAL_PROD, browser_paid_refused, cashapp_chain_id, cashapp_local_prod_cmd, dest_ok,
+    dregg_endpoint_ok, dregg_instruct_commits_paid, dregg_spawn_cmd, evidence_may_commit,
+    ict_mock_refused, is_mock_bech32, is_second_stack_spawn, parse_inject_eml,
+    public_json_is_clean,
+};
+use hash_market::onboard_authz::poseidon::{PoseidonTree, door_nullifier, ticket_leaf};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::Mutex;
-use hash_market::onboard_authz::itl_cashapp::{
-    nullifier_hex, parse_eml_wasix, synthetic_received_eml, synthetic_sent_eml, wasix_parse_json,
-    LIST_CENTS, SKU,
-};
-use hash_market::onboard_authz::itl_ingress::{
-    browser_paid_refused, cashapp_chain_id, cashapp_local_prod_cmd, dest_ok, dregg_endpoint_ok,
-    dregg_instruct_commits_paid, dregg_spawn_cmd, evidence_may_commit, ict_mock_refused,
-    is_mock_bech32, is_second_stack_spawn, parse_inject_eml, public_json_is_clean, DreggWatch,
-    EvidenceKind, IngressEngine, Rail, CASHAPP_CHAIN_ID, EVENT_ID, SVG_MINT_FEATURES,
-    SVG_MINT_LOCAL_PROD,
-};
-use hash_market::onboard_authz::poseidon::{door_nullifier, ticket_leaf, PoseidonTree};
 
 #[test]
 fn itl_ingress_gap0_wasix_parse_payment_sent_reject() {
@@ -178,8 +178,9 @@ fn itl_ingress_dregg_watch_commits_instruct_does_not() {
     dest_ok(Rail::Base, "0xabcdefffffffffffffffffffffffffffffff0001").unwrap();
     assert_eq!(
         dest_ok(Rail::Penumbra, "penumbra1xyz").unwrap_err(),
-        "penumbra_skipped"
+        "mainnet_refused"
     );
+    dest_ok(Rail::Penumbra, "penumbratest1qqlabdest").unwrap();
 
     let mut e = IngressEngine::default();
     let empty = e.guest_root_hex();
@@ -289,7 +290,10 @@ fn itl_ingress_wasix_json_issues_poseidon_commitment() {
         "nullifier": nullifier_hex("D-WASIX0002"),
         "proven": true
     });
-    assert_eq!(e.ingest_wasix_json(&groth).unwrap_err(), "zkemail_groth16_out");
+    assert_eq!(
+        e.ingest_wasix_json(&groth).unwrap_err(),
+        "zkemail_groth16_out"
+    );
 }
 
 #[test]
@@ -314,7 +318,8 @@ fn itl_ingress_dregg_btc_eth_base_reuse_svg_mint_not_second_stack() {
         },
     ];
     for w in &watches {
-        e.ingest_dregg(w).unwrap_or_else(|err| panic!("{:?} {err}", w.rail));
+        e.ingest_dregg(w)
+            .unwrap_or_else(|err| panic!("{:?} {err}", w.rail));
     }
     assert_eq!(e.paid_count(), 3);
     assert_eq!(e.unique_payment_nullifiers(), 3);
@@ -323,3 +328,33 @@ fn itl_ingress_dregg_btc_eth_base_reuse_svg_mint_not_second_stack() {
     assert_eq!(CASHAPP_CHAIN_ID, "itl-cashapp-1");
 }
 
+#[test]
+fn itl_ingress_tickets_catalog_excludes_cashapp_and_refuses_mainnet() {
+    use hash_market::onboard_authz::itl_ingress::{
+        cashapp_on_tickets, lab_evm_chain_id, mainnet_chain_id_refused, tickets_catalog,
+        zec_mainnet_ua,
+    };
+    assert_eq!(tickets_catalog(), &["zec", "eth", "base", "penumbra"]);
+    assert!(!cashapp_on_tickets());
+    assert!(!Rail::CashApp.on_tickets());
+    assert!(Rail::Zec.on_tickets());
+    assert!(mainnet_chain_id_refused(1));
+    assert!(mainnet_chain_id_refused(8453));
+    assert!(!mainnet_chain_id_refused(31337));
+    assert!(!lab_evm_chain_id(31337));
+    assert!(lab_evm_chain_id(11155111));
+    assert!(lab_evm_chain_id(84532));
+    assert!(!lab_evm_chain_id(8453));
+    assert!(zec_mainnet_ua("zcash:u1qtestmainnetua"));
+    assert!(!zec_mainnet_ua("zcash:u1lab?amount=0.068&memo=YWJj"));
+    assert!(!zec_mainnet_ua("zcash:uregtest1qqqq?amount=0.01"));
+    assert!(!zec_mainnet_ua("zcash:utest1qqqq?amount=0.01"));
+
+    let mut e = IngressEngine::default();
+    let mainnet = DreggWatch {
+        rail: Rail::Zec,
+        record_id: "memo_mainnet_01".into(),
+        dest: "zcash:u1qthiswouldbeaunifiedmainnetaddr".into(),
+    };
+    assert_eq!(e.ingest_dregg(&mainnet).unwrap_err(), "mainnet_refused");
+}

@@ -6,11 +6,11 @@
 //! Passkey is not the chain signer. Each device is a module authenticator;
 //! AnyOf is the multi-device wrap. Same msgs HashMerchant may feegrant.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{
-    authenticators_query_ok, msg_add_authenticator, AUTHENTICATOR_ALL_OF,
-    AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE, REMOVE_AUTHENTICATOR_TYPE_URL,
+    AUTHENTICATOR_ALL_OF, AUTHENTICATOR_ANY_OF, AUTHENTICATOR_SIGNATURE,
+    REMOVE_AUTHENTICATOR_TYPE_URL, authenticators_query_ok, msg_add_authenticator,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,13 +54,15 @@ pub fn msg_remove_authenticator(sender: &str, id: u64) -> Value {
 
 /// Osmosis-shaped nested init list (JSON). Live encode is proto; this is the plan.
 pub fn compose_members(devices: &[Device]) -> Value {
-    json!(devices
-        .iter()
-        .map(|d| json!({
-            "authenticator_type": d.authenticator_type,
-            "data": d.data_b64,
-        }))
-        .collect::<Vec<_>>())
+    json!(
+        devices
+            .iter()
+            .map(|d| json!({
+                "authenticator_type": d.authenticator_type,
+                "data": d.data_b64,
+            }))
+            .collect::<Vec<_>>()
+    )
 }
 
 pub fn msg_add_any_of(sender: &str, devices: &[Device]) -> Value {
@@ -97,13 +99,7 @@ fn base64_nopad(bytes: &[u8]) -> String {
 
 /// In-process ledger: assign ids 1,2,3… like the module.
 pub fn add_device(acc: &mut AuthAccount, label: &str, data_b64: &str) -> u64 {
-    let next = acc
-        .devices
-        .iter()
-        .filter_map(|d| d.id)
-        .max()
-        .unwrap_or(0)
-        + 1;
+    let next = acc.devices.iter().filter_map(|d| d.id).max().unwrap_or(0) + 1;
     acc.devices.push(Device {
         label: label.into(),
         id: Some(next),
@@ -126,7 +122,12 @@ pub fn remove_device(acc: &mut AuthAccount, id: u64) -> Result<(), String> {
 }
 
 /// Rotate: add the new device, then drop `retire` if we still have ≥1 other.
-pub fn rotate(acc: &mut AuthAccount, retire: u64, new_label: &str, new_data: &str) -> Result<u64, String> {
+pub fn rotate(
+    acc: &mut AuthAccount,
+    retire: u64,
+    new_label: &str,
+    new_data: &str,
+) -> Result<u64, String> {
     let added = add_device(acc, new_label, new_data);
     remove_device(acc, retire)?;
     Ok(added)
@@ -291,7 +292,9 @@ mod tests {
         assert!(zip321_ok("zcash:u1xyz?amount=0.1&memo=abc"));
         assert!(!zip321_ok("zcash://u1xyz"));
         assert!(!zip321_ok(""));
-        assert!(!zip321_ok("zcash:u1?memo=terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0"));
+        assert!(!zip321_ok(
+            "zcash:u1?memo=terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0"
+        ));
     }
 
     #[test]

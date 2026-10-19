@@ -8,7 +8,7 @@
 //! Do not put the inbox on Authenticate sudo.
 
 use hash_market::onboard_authz::itl_frost_rotate::{
-    msg_rotate_frost_pubkey, vk_commit, EXECUTE_CONTRACT_TYPE_URL, ROTATE_MSG,
+    EXECUTE_CONTRACT_TYPE_URL, ROTATE_MSG, msg_rotate_frost_pubkey, vk_commit,
 };
 
 #[ignore = "needs ICT_SPAWN"]

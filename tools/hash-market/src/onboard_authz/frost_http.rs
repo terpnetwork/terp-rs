@@ -4,7 +4,7 @@
 
 use super::http::HttpResponse;
 use super::itl_frost::{
-    persist_required, BroadcastTarget, FrostScheme, PendingJob, FROST_N, FROST_T,
+    BroadcastTarget, FROST_N, FROST_T, FrostScheme, PendingJob, persist_required,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -76,6 +76,38 @@ fn err_status(status: u16, e: &str) -> HttpResponse {
     HttpResponse {
         status,
         body: json!({"ok": false, "error": e}).to_string(),
+    }
+}
+
+/// FROST job routes are admin-only. Door consume is usher-only.
+/// Missing cookie is 401. An usher calling a FROST job is 403.
+pub fn authorize(path: &str, cookie: Option<&str>) -> Option<HttpResponse> {
+    let path = path.split('?').next().unwrap_or(path);
+    let frost = path.starts_with("/itl/frost/");
+    let door = path.starts_with("/itl/door/");
+    if !frost && !door {
+        return None;
+    }
+    let role = super::itl_session::session_from_cookie(cookie).map(|s| s.role);
+    if frost {
+        return match role.as_deref() {
+            Some("admin") => None,
+            Some("usher") => Some(err_status(403, "usher_not_frost")),
+            Some(_) => Some(err_status(403, "not_admin")),
+            None => Some(err_status(401, "unauthenticated")),
+        };
+    }
+    if path == "/itl/door/consume" {
+        return match role.as_deref() {
+            Some("usher") => None,
+            Some(_) => Some(err_status(403, "not_usher")),
+            None => Some(err_status(401, "unauthenticated")),
+        };
+    }
+    match role.as_deref() {
+        Some("admin") => None,
+        Some(_) => Some(err_status(403, "not_admin")),
+        None => Some(err_status(401, "unauthenticated")),
     }
 }
 
@@ -328,7 +360,7 @@ impl FrostInbox {
                 return HttpResponse {
                     status: 400,
                     body: json!({"ok": false, "error": e.to_string()}).to_string(),
-                }
+                };
             }
         };
         let scheme = match parse_scheme(parsed.scheme.as_deref().unwrap_or("RedPallas")) {
@@ -391,7 +423,7 @@ impl FrostInbox {
                 return HttpResponse {
                     status: 400,
                     body: json!({"ok": false, "error": e.to_string()}).to_string(),
-                }
+                };
             }
         };
         let st = {
@@ -427,7 +459,7 @@ impl FrostInbox {
                 return HttpResponse {
                     status: 400,
                     body: json!({"ok": false, "error": e.to_string()}).to_string(),
-                }
+                };
             }
         };
         let txid = parsed.txid;
@@ -474,10 +506,34 @@ fn handle_conn(mut s: TcpStream, inbox: &SharedInbox) {
         .nth(1)
         .unwrap_or("")
         .trim_end_matches('\0');
+    let origin = super::itl_session::header_line(&req, "origin");
+    let cookie = super::itl_session::header_line(&req, "cookie");
+    if let Some(r) =
+        super::itl_session::try_handle(method, path, body, origin.as_deref(), cookie.as_deref())
+    {
+        let _ = r.write_to(&mut s, origin.as_deref());
+        return;
+    }
+    if let Some(r) = authorize(path, cookie.as_deref()) {
+        let _ = r.write_to(&mut s);
+        return;
+    }
+    if path.starts_with("/itl/door") {
+        if let Some(r) = super::itl_door::try_handle(method, path, body, cookie.as_deref()) {
+            let _ = r.write_to(&mut s);
+            return;
+        }
+    }
     let resp = match inbox.lock() {
-        Ok(mut g) => g
-            .try_handle(method, path, body)
-            .unwrap_or(err_status(404, "not found")),
+        Ok(mut g) => {
+            if let Some(r) = g.try_handle(method, path, body) {
+                r
+            } else if let Some(r) = super::itl_pay::try_handle(method, path, body) {
+                r
+            } else {
+                err_status(404, "not found")
+            }
+        }
         Err(_) => err_status(500, "inbox_lock"),
     };
     let _ = resp.write_to(&mut s);
@@ -493,7 +549,7 @@ pub fn serve(bind: &str, inbox: SharedInbox) -> std::io::Result<()> {
     }
     let listener = TcpListener::bind(bind)?;
     listener.set_nonblocking(false)?;
-    eprintln!("frost-inbox → http://{bind}  POST /itl/frost/jobs (loopback)");
+    eprintln!("frost-inbox → http://{bind}  POST /itl/frost/jobs  POST /itl/session/* (loopback)");
     for stream in listener.incoming() {
         let s = match stream {
             Ok(s) => s,

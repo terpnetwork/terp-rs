@@ -162,9 +162,11 @@ mod tests {
         );
         let p = parse_cid("ipfs:bafybeigdyrzt").unwrap();
         assert_eq!(p.kind, CidKind::Ipfs);
-        assert!(encode_for_chain(CidKind::Ipfs, "bafybeigdyrzt")
-            .unwrap()
-            .starts_with("ipfs:"));
+        assert!(
+            encode_for_chain(CidKind::Ipfs, "bafybeigdyrzt")
+                .unwrap()
+                .starts_with("ipfs:")
+        );
     }
 
     #[test]

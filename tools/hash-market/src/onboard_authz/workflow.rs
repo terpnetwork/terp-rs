@@ -1,8 +1,8 @@
 //! In-process keeper simulation for the onboard grant graph.
 
 use super::{
-    authz_exec_feegrant, dao_authz_grants, registration_feegrant, AllowanceScope, FeegrantRequest,
-    OnboardRoles, ALLOWED_MSG_TYPES, AUTHZ_MSG_TYPES,
+    ALLOWED_MSG_TYPES, AUTHZ_MSG_TYPES, AllowanceScope, FeegrantRequest, OnboardRoles,
+    authz_exec_feegrant, dao_authz_grants, registration_feegrant,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -146,17 +146,9 @@ pub fn simulate_onboard(roles: &OnboardRoles, user: &str) -> Result<SimKeeper, A
     Ok(k)
 }
 
-pub fn run_happy_path(
-    k: &mut SimKeeper,
-    roles: &OnboardRoles,
-    user: &str,
-) -> Result<(), ApplyErr> {
+pub fn run_happy_path(k: &mut SimKeeper, roles: &OnboardRoles, user: &str) -> Result<(), ApplyErr> {
     *k = simulate_onboard(roles, user)?;
-    k.use_feegrant(
-        &roles.hashmerchant,
-        user,
-        super::ADD_AUTHENTICATOR_TYPE_URL,
-    )?;
+    k.use_feegrant(&roles.hashmerchant, user, super::ADD_AUTHENTICATOR_TYPE_URL)?;
     if k.use_feegrant(&roles.runtime, user, super::ADD_AUTHENTICATOR_TYPE_URL)
         .is_ok()
     {
@@ -189,13 +181,20 @@ mod tests {
         let user = "terp1user";
         let k = simulate_onboard(&roles(), user).expect("sim");
         let rt = "terp1rt";
-        assert!(k
-            .use_feegrant(rt, user, crate::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL)
-            .is_ok());
+        assert!(
+            k.use_feegrant(rt, user, crate::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL)
+                .is_ok()
+        );
         let send = k.use_feegrant(rt, user, "/cosmos.bank.v1beta1.MsgSend");
-        assert!(matches!(send, Err(ApplyErr::FeegrantDenied { .. })), "{send:?}");
+        assert!(
+            matches!(send, Err(ApplyErr::FeegrantDenied { .. })),
+            "{send:?}"
+        );
         let wasm = k.use_feegrant(rt, user, "/cosmwasm.wasm.v1.MsgExecuteContract");
-        assert!(matches!(wasm, Err(ApplyErr::FeegrantDenied { .. })), "{wasm:?}");
+        assert!(
+            matches!(wasm, Err(ApplyErr::FeegrantDenied { .. })),
+            "{wasm:?}"
+        );
     }
 
     #[test]

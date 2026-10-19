@@ -8,14 +8,14 @@
 //!   --mode wallet-as-runtime --preset svg --runtime terp1WALLET
 //!   --state path/to/terp-state.json
 
+use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
+use hash_market::onboard_authz::{
+    FeegrantRequest, OnboardRoles, authz_exec_feegrant, dao_authz_grants, registration_feegrant,
+    terpd_hint,
+};
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use hash_market::onboard_authz::curate::{curate, load_infra, preset, CurateMode, PRESETS};
-use hash_market::onboard_authz::{
-    authz_exec_feegrant, dao_authz_grants, registration_feegrant, terpd_hint, FeegrantRequest,
-    OnboardRoles,
-};
 
 fn arg(flag: &str) -> Option<String> {
     let mut it = env::args().skip(1);
@@ -115,7 +115,11 @@ fn main() {
         out.join("preset.json"),
         &serde_json::to_value(&bundle.preset).unwrap(),
     );
-    fs::write(out.join("TERPD.sh"), format!("#!/bin/sh\nset -eu\n{}\n", bundle.terpd)).ok();
+    fs::write(
+        out.join("TERPD.sh"),
+        format!("#!/bin/sh\nset -eu\n{}\n", bundle.terpd),
+    )
+    .ok();
     println!("wrote {}", out.display());
     println!(
         "  mode={} preset={} chain={} codes={:?}",

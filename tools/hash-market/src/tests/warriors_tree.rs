@@ -64,8 +64,7 @@ fn terp_warriors_proofs_rebuild_the_chain_root() {
             "has_member failed for {addr}"
         );
         assert!(
-            crate::hash::verify(addr, acc.allocation, &acc.proof_hashes, CHAIN_ROOT)
-                .unwrap(),
+            crate::hash::verify(addr, acc.allocation, &acc.proof_hashes, CHAIN_ROOT).unwrap(),
             "hash::tree::verify failed for {addr}"
         );
     }
@@ -74,7 +73,7 @@ fn terp_warriors_proofs_rebuild_the_chain_root() {
 #[cfg(feature = "server")]
 mod served {
     use super::*;
-    use crate::server::{router, AppState};
+    use crate::server::{AppState, router};
     use crate::tree_operator::{ephemeral_operator, sign_tree_write};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};

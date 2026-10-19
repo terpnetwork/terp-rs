@@ -11,7 +11,7 @@
 
 use super::itl_ingress::{ict_mock_refused, is_mock_bech32};
 use super::poseidon::{
-    door_nullifier, ticket_leaf, MerklePath, PoseidonTree, TREE_DEPTH, Fp as HostFp,
+    Fp as HostFp, MerklePath, PoseidonTree, TREE_DEPTH, door_nullifier, ticket_leaf,
 };
 use ff::{Field, PrimeField};
 use halo2_proofs::{
@@ -25,7 +25,7 @@ use halo2_proofs::{
 };
 use pasta_curves::{pallas, vesta};
 use rand::rng;
-use serde_json::{json, Value as Json};
+use serde_json::{Value as Json, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::OnceLock;
@@ -96,9 +96,7 @@ fn mds() -> &'static [[Base; T]; T] {
         let mut m = [[Base::ZERO; T]; T];
         for i in 0..T {
             for j in 0..T {
-                m[i][j] = Base::from((i + j + 3) as u64)
-                    .invert()
-                    .expect("mds denom");
+                m[i][j] = Base::from((i + j + 3) as u64).invert().expect("mds denom");
             }
         }
         m
@@ -212,7 +210,11 @@ fn configure(meta: &mut ConstraintSystem<Base>) -> ConsumeConfig {
         meta.advice_column(),
         meta.advice_column(),
     ];
-    let rc = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
+    let rc = [
+        meta.fixed_column(),
+        meta.fixed_column(),
+        meta.fixed_column(),
+    ];
     let const_col = meta.fixed_column();
     meta.enable_constant(const_col);
     let instance = meta.instance_column();
@@ -230,10 +232,7 @@ fn configure(meta: &mut ConstraintSystem<Base>) -> ConsumeConfig {
     meta.create_gate("poseidon_full", |meta| {
         let s = meta.query_selector(s_full);
         let cur: Vec<Expression<Base>> = (0..T)
-            .map(|i| {
-                meta.query_advice(state[i], Rotation::cur())
-                    + meta.query_fixed(rc[i])
-            })
+            .map(|i| meta.query_advice(state[i], Rotation::cur()) + meta.query_fixed(rc[i]))
             .collect();
         let sbox: Vec<Expression<Base>> = cur.into_iter().map(pow5_expr).collect();
         (0..T)
@@ -251,10 +250,7 @@ fn configure(meta: &mut ConstraintSystem<Base>) -> ConsumeConfig {
     meta.create_gate("poseidon_partial", |meta| {
         let s = meta.query_selector(s_partial);
         let after_rc: Vec<Expression<Base>> = (0..T)
-            .map(|i| {
-                meta.query_advice(state[i], Rotation::cur())
-                    + meta.query_fixed(rc[i])
-            })
+            .map(|i| meta.query_advice(state[i], Rotation::cur()) + meta.query_fixed(rc[i]))
             .collect();
         let mixed: Vec<Expression<Base>> = {
             let mut v = after_rc;
@@ -291,8 +287,7 @@ fn configure(meta: &mut ConstraintSystem<Base>) -> ConsumeConfig {
         let one = Expression::Constant(Base::ONE);
         vec![
             s.clone()
-                * (left
-                    - ((one.clone() - bit.clone()) * cur.clone() + bit.clone() * sib.clone())),
+                * (left - ((one.clone() - bit.clone()) * cur.clone() + bit.clone() * sib.clone())),
             s.clone() * (right - (bit.clone() * cur + (one.clone() - bit.clone()) * sib)),
             s * bit.clone() * (bit - one),
         ]
@@ -347,12 +342,18 @@ impl Chip {
                 cur.copy_advice(|| "cur", &mut region, self.config.state[0], 0)?;
                 region.assign_advice(|| "sib", self.config.state[1], 0, || sib)?;
                 region.assign_advice(|| "bit", self.config.state[2], 0, || bit)?;
-                let left = cur.value().copied().zip(sib).zip(bit).map(|((c, s), b)| {
-                    (Base::ONE - b) * c + b * s
-                });
-                let right = cur.value().copied().zip(sib).zip(bit).map(|((c, s), b)| {
-                    b * c + (Base::ONE - b) * s
-                });
+                let left = cur
+                    .value()
+                    .copied()
+                    .zip(sib)
+                    .zip(bit)
+                    .map(|((c, s), b)| (Base::ONE - b) * c + b * s);
+                let right = cur
+                    .value()
+                    .copied()
+                    .zip(sib)
+                    .zip(bit)
+                    .map(|((c, s), b)| b * c + (Base::ONE - b) * s);
                 let l = region.assign_advice(|| "left", self.config.state[0], 1, || left)?;
                 let r = region.assign_advice(|| "right", self.config.state[1], 1, || right)?;
                 Ok((l, r))
@@ -387,10 +388,10 @@ impl Chip {
                 let half = RF / 2;
                 let mut row = 0;
                 let apply_round = |region: &mut halo2_proofs::circuit::Region<Base>,
-                                       row: usize,
-                                       full: bool,
-                                       state: &mut [Value<Base>; 3],
-                                       k: &mut usize|
+                                   row: usize,
+                                   full: bool,
+                                   state: &mut [Value<Base>; 3],
+                                   k: &mut usize|
                  -> Result<(), Error> {
                     if full {
                         self.config.s_full.enable(region, row)?;
@@ -398,7 +399,12 @@ impl Chip {
                         self.config.s_partial.enable(region, row)?;
                     }
                     for i in 0..T {
-                        region.assign_fixed(|| "rc", self.config.rc[i], row, || Value::known(rc[*k + i]))?;
+                        region.assign_fixed(
+                            || "rc",
+                            self.config.rc[i],
+                            row,
+                            || Value::known(rc[*k + i]),
+                        )?;
                     }
                     let r0 = rc[*k];
                     let r1 = rc[*k + 1];
@@ -416,11 +422,7 @@ impl Chip {
                             after[2].map(|x| x.pow([5])),
                         ]
                     } else {
-                        [
-                            after[0].map(|x| x.pow([5])),
-                            after[1],
-                            after[2],
-                        ]
+                        [after[0].map(|x| x.pow([5])), after[1], after[2]]
                     };
                     let mm = mds();
                     let mut nxt = [Value::known(Base::ZERO); 3];
@@ -512,7 +514,10 @@ impl Chip {
         mut layouter: impl Layouter<Base>,
         inputs: &[AssignedCell<Base, Base>],
     ) -> Result<AssignedCell<Base, Base>, Error> {
-        let len = self.load_const(layouter.namespace(|| "len"), Base::from(inputs.len() as u64))?;
+        let len = self.load_const(
+            layouter.namespace(|| "len"),
+            Base::from(inputs.len() as u64),
+        )?;
         let zero = self.load_const(layouter.namespace(|| "z"), Base::ZERO)?;
         let mut state = [len, zero.clone(), zero];
         let mut i = 0;
@@ -609,12 +614,17 @@ impl Circuit<Base> for ConsumeCircuit {
         config: Self::Config,
         mut layouter: impl Layouter<Base>,
     ) -> Result<(), Error> {
-        let chip = Chip { config: config.clone() };
+        let chip = Chip {
+            config: config.clone(),
+        };
         let secret = chip.load(layouter.namespace(|| "secret"), self.ticket_secret)?;
         let sku = chip.load(layouter.namespace(|| "sku"), self.sku)?;
         let event_id = chip.load(layouter.namespace(|| "eid"), self.event_id)?;
 
-        let leaf = chip.hash(layouter.namespace(|| "leaf"), &[secret.clone(), sku, event_id.clone()])?;
+        let leaf = chip.hash(
+            layouter.namespace(|| "leaf"),
+            &[secret.clone(), sku, event_id.clone()],
+        )?;
         let nullifier = chip.hash(layouter.namespace(|| "nf"), &[secret, event_id.clone()])?;
 
         let mut cur = leaf;
@@ -643,11 +653,7 @@ pub struct ConsumeInstances {
 }
 
 impl ConsumeInstances {
-    pub fn from_ticket(
-        guest_root: [u8; 32],
-        ticket_secret: &[u8],
-        event_id: &str,
-    ) -> Self {
+    pub fn from_ticket(guest_root: [u8; 32], ticket_secret: &[u8], event_id: &str) -> Self {
         Self {
             guest_root: fp_from_bytes(&guest_root),
             nullifier: pasta_door_nullifier(ticket_secret, event_id),
@@ -935,7 +941,7 @@ pub fn prove_issued(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::onboard_authz::poseidon::{poseidon2, poseidon3, Fp};
+    use crate::onboard_authz::poseidon::{Fp, poseidon2, poseidon3};
     use halo2_proofs::dev::MockProver;
 
     #[test]
@@ -1013,8 +1019,10 @@ mod tests {
         assert_eq!(msg["@type"], MSG_STORE_CODE_WITH_CIRCUIT);
         assert_eq!(msg["prover_id"], 0);
         assert!(msg.get("verifying_key").is_some());
-        assert!(!msg["@type"].as_str().unwrap().ends_with("MsgStoreCode")
-            || msg["@type"].as_str().unwrap().contains("Circuit"));
+        assert!(
+            !msg["@type"].as_str().unwrap().ends_with("MsgStoreCode")
+                || msg["@type"].as_str().unwrap().contains("Circuit")
+        );
         assert_ne!(msg["@type"], "/cosmwasm.wasm.v1.MsgStoreCode");
     }
 
@@ -1025,5 +1033,23 @@ mod tests {
         assert!(!consume_success_allowed("MockBech32", None));
         assert!(consume_success_allowed("daemon", None));
         assert!(!consume_success_allowed("ict-rs-docker", Some("true")));
+    }
+
+    #[test]
+    fn html_door_is_not_consume() {
+        let e = ConsumeEngine::default();
+        assert!(e.guest_list_members().is_none());
+        assert!(e.guest_root().is_none());
+        let mut e = ConsumeEngine::default();
+        assert_eq!(
+            e.verify_consume("guest", &[], [0u8; 32], [0u8; 32]),
+            Err("not_usher")
+        );
+    }
+
+    #[test]
+    fn mock_backend_never_counts_as_door() {
+        assert!(!consume_success_allowed("MockBech32", None));
+        assert!(!consume_success_allowed("mock", None));
     }
 }

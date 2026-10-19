@@ -794,9 +794,11 @@ mod headstash_note_tests {
     fn set_note_rejects_invalid_addr() {
         let dir = tmp_dir("path");
         let store = HeadstashStore::new(&dir).unwrap();
-        assert!(store
-            .set_note("hs1", "../escape", &sample_envelope())
-            .is_err());
+        assert!(
+            store
+                .set_note("hs1", "../escape", &sample_envelope())
+                .is_err()
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1041,11 +1043,12 @@ mod cashu_mesh_store_tests {
         assert_eq!(got.status, MintStatus::Active);
         assert_eq!(got.source.as_deref(), Some("manual"));
         assert!(got.updated_at > 0);
-        assert!(dir
-            .join("cashu")
-            .join("mints")
-            .join(format!("{id}.json"))
-            .is_file());
+        assert!(
+            dir.join("cashu")
+                .join("mints")
+                .join(format!("{id}.json"))
+                .is_file()
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1086,12 +1089,13 @@ mod cashu_mesh_store_tests {
             vec![iid.to_string()]
         );
         // Path shape; not under notes/ or content/
-        assert!(dir
-            .join("cashu")
-            .join("wallets")
-            .join(wid)
-            .join(format!("{iid}.json"))
-            .is_file());
+        assert!(
+            dir.join("cashu")
+                .join("wallets")
+                .join(wid)
+                .join(format!("{iid}.json"))
+                .is_file()
+        );
         assert!(!dir.join("content").exists());
         assert!(!dir.join("notes").exists());
         let _ = std::fs::remove_dir_all(&dir);

@@ -3,13 +3,13 @@
 //!
 //!   cargo test --manifest-path tools/onboard-authz/Cargo.toml --test itl_consume_e2e
 
-use hash_market::onboard_authz::itl_cashapp::{synthetic_received_eml, LIST_CENTS, SKU};
+use hash_market::onboard_authz::itl_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
 use hash_market::onboard_authz::itl_consume::{
-    consume_backend_mocked, consume_local_prod_cmd, consume_success_allowed, fp_to_bytes,
-    msg_store_code_with_circuit, parse_vk_footer, prove_issued, serialize_vk_with_footer,
-    verify_halo2_proof, ConsumeEngine, MSG_STORE_CODE_WITH_CIRCUIT, PROVER_ID,
+    ConsumeEngine, MSG_STORE_CODE_WITH_CIRCUIT, PROVER_ID, consume_backend_mocked,
+    consume_local_prod_cmd, consume_success_allowed, fp_to_bytes, msg_store_code_with_circuit,
+    parse_vk_footer, prove_issued, serialize_vk_with_footer, verify_halo2_proof,
 };
-use hash_market::onboard_authz::itl_ingress::{ict_mock_refused, IngressEngine, EVENT_ID};
+use hash_market::onboard_authz::itl_ingress::{EVENT_ID, IngressEngine, ict_mock_refused};
 
 #[test]
 fn itl_consume_usher_only_nullifiers_no_guest_listmembers() {
@@ -18,7 +18,10 @@ fn itl_consume_usher_only_nullifiers_no_guest_listmembers() {
     assert!(door.is_usher("terp1usher"));
     assert!(!door.is_usher("terp1guest"));
     assert!(door.guest_list_members().is_none());
-    assert_eq!(door.verify_consume("terp1guest", &[1], [0u8; 32], [0u8; 32]), Err("not_usher"));
+    assert_eq!(
+        door.verify_consume("terp1guest", &[1], [0u8; 32], [0u8; 32]),
+        Err("not_usher")
+    );
     assert_eq!(
         door.verify_consume("mock1usher", &[1], [0u8; 32], [0u8; 32]),
         Err("mock_bech32")
@@ -79,13 +82,15 @@ fn itl_consume_paid_proof_usher_ok_replay_unpaid_nonusher() {
 
     let unpaid_secret = [0x11u8; 32];
     let unpaid_err = prove_issued(ing.tree(), &unpaid_secret, SKU, EVENT_ID, issued.leaf_index);
-    assert!(unpaid_err.is_err() || {
-        let (p, uinst, unf) = unpaid_err.unwrap();
-        !verify_halo2_proof(&p, &uinst).unwrap_or(false)
-            && door
-                .verify_consume("terp1usher", &p, unf, fp_to_bytes(uinst.event_id))
-                .is_err()
-    });
+    assert!(
+        unpaid_err.is_err() || {
+            let (p, uinst, unf) = unpaid_err.unwrap();
+            !verify_halo2_proof(&p, &uinst).unwrap_or(false)
+                && door
+                    .verify_consume("terp1usher", &p, unf, fp_to_bytes(uinst.event_id))
+                    .is_err()
+        }
+    );
 }
 
 #[test]

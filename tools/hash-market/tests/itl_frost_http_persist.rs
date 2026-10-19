@@ -1,14 +1,14 @@
 //! Durable FROST inbox: two holder POSTs, kill, restart still sees threshold, one broadcast.
 //! Local always (tempdir). No Docker.
 
+use hash_market::onboard_authz::frost_http::FrostInbox;
+use hash_market::onboard_authz::itl_frost::persist_required;
 use serde_json::Value;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use hash_market::onboard_authz::frost_http::FrostInbox;
-use hash_market::onboard_authz::itl_frost::persist_required;
 
 fn tmp_dir(label: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -121,19 +121,16 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
     let mut child = spawn_inbox(&bind, key, &dir);
     wait_up(&bind);
 
-    let (c, v) = http_json(
-        &bind,
-        "POST",
-        "/itl/frost/jobs",
-        &{
-            let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
-                "vk-old",
-                &["desk", "steward", "spare"],
-            )
-            .roster_commit();
-            format!(r#"{{"pay_code":"pay-20-ink","scheme":"RedPallas","target":"Zcash","roster_commit":"{rc}"}}"#)
-        },
-    );
+    let (c, v) = http_json(&bind, "POST", "/itl/frost/jobs", &{
+        let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
+            "vk-old",
+            &["desk", "steward", "spare"],
+        )
+        .roster_commit();
+        format!(
+            r#"{{"pay_code":"pay-20-ink","scheme":"RedPallas","target":"Zcash","roster_commit":"{rc}"}}"#
+        )
+    });
     assert_eq!(c, 200, "{v}");
     let id = v["id"].as_str().expect("id").to_string();
 
@@ -182,5 +179,7 @@ fn two_shares_kill_restart_get_job_one_broadcast() {
 
     kill_wait(&mut child2);
     let _ = std::fs::remove_dir_all(&dir);
-    eprintln!("proof: two shares; kill; restart; GET job still pending/ready; one broadcast. Bind is {bind}");
+    eprintln!(
+        "proof: two shares; kill; restart; GET job still pending/ready; one broadcast. Bind is {bind}"
+    );
 }
