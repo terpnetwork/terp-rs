@@ -27,6 +27,10 @@ pub struct Config {
     /// `HASH_MARKET_TREE_OPERATOR` overrides this.
     #[serde(default = "default_tree_operator")]
     pub tree_operator: String,
+    /// Campaign and seal keys besides `tree_operator`.
+    /// Each entry is compressed secp256k1 hex (33 bytes) or ed25519 hex (32 bytes).
+    #[serde(default)]
+    pub operator_pubkeys: Vec<String>,
     /// CometBFT / app chain ID (metadata; used by VE when enabled)
     #[serde(default = "default_chain_id")]
     pub chain_id: String,

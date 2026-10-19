@@ -10,7 +10,7 @@ use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use base64::Engine;
@@ -26,6 +26,9 @@ const CONTRACT_CUTOFF: u64 = 80;
 const PENDING_HEIGHT: u64 = 10;
 const EARLY_HEIGHT: u64 = 50;
 const PAY_HEIGHT: u64 = 80;
+
+static E2E_OPERATOR: OnceLock<k256::ecdsa::SigningKey> = OnceLock::new();
+static E2E_STATE: OnceLock<Arc<hash_market::server::AppState>> = OnceLock::new();
 
 struct Cfg {
     terpd: PathBuf,
@@ -440,6 +443,23 @@ fn same_balance(before: u128, after: u128) -> bool {
     before == after
 }
 
+fn operator_path(url: &str) -> Option<&'static str> {
+    if url.ends_with("/ve/headstash/campaign") {
+        Some("/ve/headstash/campaign")
+    } else if url.ends_with("/ve/headstash/seal") {
+        Some("/ve/headstash/seal")
+    } else {
+        None
+    }
+}
+
+async fn driver_clear() {
+    let Some(state) = E2E_STATE.get() else {
+        return;
+    };
+    state.headstash.write().await.clear_campaign();
+}
+
 async fn http_json(
     client: &reqwest::Client,
     method: &str,
@@ -448,7 +468,24 @@ async fn http_json(
 ) -> anyhow::Result<(u16, Value)> {
     let req = match method {
         "GET" => client.get(url),
-        "POST" => client.post(url).json(body.unwrap()),
+        "POST" => {
+            let bytes = serde_json::to_vec(body.unwrap())?;
+            let mut req = client
+                .post(url)
+                .header("content-type", "application/json")
+                .body(bytes.clone());
+            if let Some(path) = operator_path(url) {
+                let key = E2E_OPERATOR
+                    .get()
+                    .ok_or_else(|| anyhow::anyhow!("operator key"))?;
+                let (pubkey, signature) =
+                    hash_market::tree_operator::sign_tree_write(key, "POST", path, &bytes);
+                req = req
+                    .header("x-hash-market-pubkey", pubkey)
+                    .header("x-hash-market-signature", signature);
+            }
+            req
+        }
         _ => anyhow::bail!("method"),
     };
     let res = req
@@ -543,14 +580,22 @@ async fn run() -> anyhow::Result<Report> {
 
     let data_dir = cfg.home.join("hm");
     fs::create_dir_all(&data_dir)?;
-    let state = hash_market::server::AppState::new(
+    let mut state = hash_market::server::AppState::new(
         None::<hash_market::VoteExtensionHandler>,
         cfg.chain_id.clone(),
         data_dir,
         true,
     )?;
+    let (operator_key, operator_addr) = hash_market::tree_operator::ephemeral_operator();
+    state.set_tree_operator(operator_addr);
     state.headstash.write().await.install_signer(custody);
     let state = Arc::new(state);
+    E2E_STATE
+        .set(state.clone())
+        .map_err(|_| anyhow::anyhow!("operator state"))?;
+    E2E_OPERATOR
+        .set(operator_key)
+        .map_err(|_| anyhow::anyhow!("operator key"))?;
     let app = hash_market::server::router(state);
     let listener = tokio::net::TcpListener::bind(&cfg.bind).await?;
     let local = listener.local_addr()?;
@@ -741,6 +786,7 @@ async fn run() -> anyhow::Result<Report> {
             error_text(&cbody)
         ),
     );
+    driver_clear().await;
 
     let mut wrong_root = campaign_body(&claim, "halo2", &claim.ctx, &custody_pk, &vk_hash);
     let mut flipped = claim.root;
@@ -766,6 +812,7 @@ async fn run() -> anyhow::Result<Report> {
             error_text(&cbody)
         ),
     );
+    driver_clear().await;
 
     let (status, body) = http_json(
         &client,
@@ -964,7 +1011,8 @@ async fn run() -> anyhow::Result<Report> {
     report.push(
         "pending_sudo",
         pending_vote["algo"].as_str() == Some("headstash-pending")
-            && pending_value == hex_bytes(&real_pending)
+            && pending_value
+                == format!("{}{}", hex_bytes(&real_pending), hex_bytes(&vk_hash))
             && stored_pending.0 == PENDING_HEIGHT
             && stored_pending.1 == b64(&attested_root(&real_pending))
             && same_balance(baseline, after),

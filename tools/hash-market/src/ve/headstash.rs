@@ -7,7 +7,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use axum::{Json, extract::State, http::StatusCode};
+use axum::body::Bytes;
+use axum::http::{HeaderMap, StatusCode};
+use axum::{Json, extract::State};
 use ed25519_dalek::SigningKey;
 use headstash_epoch::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, BATCH_SOURCE_ID, Backend, CHAIN_UID,
@@ -42,6 +44,13 @@ impl HeadstashHost {
         self.signer = Some(key);
     }
 
+    /// In-memory only. The loopback driver uses this between installs.
+    /// It is not an HTTP route.
+    pub fn clear_campaign(&mut self) {
+        self.campaign = None;
+        self.sealed = None;
+    }
+
     pub fn sealed(&self) -> Option<&SealedVote> {
         self.sealed.as_ref()
     }
@@ -62,7 +71,7 @@ pub fn env_chain_is_headstash() -> bool {
 pub fn vote_json(sealed: &SealedVote) -> serde_json::Value {
     let attestation = serde_json::json!({
         "source_id": BATCH_SOURCE_ID,
-        "value": hex::encode(sealed.batch_hash),
+        "value": hex::encode(sealed.attestation_value()),
         "height": sealed.attestation_height,
         "timestamp": sealed.attestation_timestamp,
         "custody_signature": hex::encode(sealed.custody_signature),
@@ -171,8 +180,12 @@ type HttpError = (StatusCode, Json<serde_json::Value>);
 
 pub async fn install_campaign(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<CampaignBody>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Result<Json<serde_json::Value>, HttpError> {
+    require_operator(&state, "POST", CAMPAIGN_PATH, &headers, &body)?;
+    let body: CampaignBody = serde_json::from_slice(&body)
+        .map_err(|_| error_json_msg(StatusCode::BAD_REQUEST, "campaign body"))?;
     let params = params_from(&body)?;
     if params.backend == Backend::Halo2 && params.vk_hash == [0u8; 32] {
         return Err(error_json_msg(StatusCode::BAD_REQUEST, "vk hash"));
@@ -190,16 +203,11 @@ pub async fn install_campaign(
     }
     let campaign = Campaign::<DEPTH>::open(params).map_err(error_json)?;
     let mut host = state.headstash.write().await;
-    if let Some(existing) = host.campaign.as_ref() {
-        if !existing.digests().is_empty() {
-            return Err(error_json_msg(
-                StatusCode::CONFLICT,
-                "campaign already has claims",
-            ));
-        }
-        if !existing.same_vk(campaign.vk_id(), &campaign.vk_hash()) {
-            return Err(error_json_msg(StatusCode::CONFLICT, "vk is fixed"));
-        }
+    if host.campaign.is_some() {
+        return Err(error_json_msg(
+            StatusCode::CONFLICT,
+            "campaign already exists",
+        ));
     }
     host.campaign = Some(campaign);
     host.sealed = None;
@@ -255,8 +263,12 @@ pub async fn submit_claims(
 
 pub async fn seal(
     State(state): State<Arc<AppState>>,
-    Json(body): Json<SealBody>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Result<Json<serde_json::Value>, HttpError> {
+    require_operator(&state, "POST", SEAL_PATH, &headers, &body)?;
+    let body: SealBody = serde_json::from_slice(&body)
+        .map_err(|_| error_json_msg(StatusCode::BAD_REQUEST, "seal body"))?;
     let mut host = state.headstash.write().await;
     let Some(campaign) = host.campaign.as_ref() else {
         return Err(error_json_msg(
@@ -274,9 +286,10 @@ pub async fn seal(
     if lab_lie_root() {
         sealed.batch_hash[0] ^= 0x5a;
         sealed.attested = headstash_epoch::attested_root(&sealed.batch_hash);
+        let value = sealed.attestation_value();
         sealed.custody_signature = ed25519_dalek::Signer::sign(
             signer,
-            &headstash_epoch::custody_message(&sealed.batch_hash),
+            &headstash_epoch::custody_message(&value),
         )
         .to_bytes();
     }
@@ -469,6 +482,53 @@ fn lab_lie_root_from(lie: Option<&str>, lab: Option<&str>) -> bool {
     lie == Some("1") && lab == Some("1")
 }
 
+const CAMPAIGN_PATH: &str = "/ve/headstash/campaign";
+const SEAL_PATH: &str = "/ve/headstash/seal";
+
+fn header_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .filter(|text| !text.is_empty())
+}
+
+fn require_operator(
+    state: &AppState,
+    method: &str,
+    path: &str,
+    headers: &HeaderMap,
+    body: &[u8],
+) -> Result<(), HttpError> {
+    let pubkey = header_value(headers, "x-hash-market-pubkey").unwrap_or("");
+    let signature = header_value(headers, "x-hash-market-signature").unwrap_or("");
+    let expiry = header_value(headers, "x-hash-market-expiry");
+    let nonce = header_value(headers, "x-hash-market-nonce");
+    crate::tree_operator::authorize_operator(
+        &state.tree_operator,
+        &state.operator_pubkeys,
+        method,
+        path,
+        body,
+        pubkey,
+        signature,
+        expiry,
+        nonce,
+        now_secs(),
+    )
+    .map_err(|deny| match deny {
+        crate::tree_operator::TreeWriteDeny::Forbidden => {
+            error_json_msg(StatusCode::FORBIDDEN, "operator")
+        }
+        crate::tree_operator::TreeWriteDeny::Unauthorized => {
+            error_json_msg(StatusCode::UNAUTHORIZED, "operator")
+        }
+    })?;
+    if !state.remember_admin(signature, nonce) {
+        return Err(error_json_msg(StatusCode::UNAUTHORIZED, "operator"));
+    }
+    Ok(())
+}
+
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -479,6 +539,10 @@ fn now_secs() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::vote_json;
+    use std::sync::Arc;
+    use axum::body::Bytes;
+    use axum::extract::State;
+    use axum::http::{HeaderMap, StatusCode};
     use headstash_epoch::{
         ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, BATCH_SOURCE_ID, CHAIN_UID,
         SealedVote,
@@ -489,6 +553,7 @@ mod tests {
         let sealed = SealedVote {
             algo: ALGO_PENDING.into(),
             batch_hash: [2u8; 32],
+            vk_hash: [0u8; 32],
             attested: [3u8; 32],
             custody_signature: [4u8; 64],
             custody_public: [5u8; 32],
@@ -505,6 +570,14 @@ mod tests {
         assert_eq!(value["attestations"].as_array().unwrap().len(), 1);
         assert_eq!(value["root"], hex::encode([3u8; 32]));
         assert_eq!(value["foreign_height"], 49);
+        assert_eq!(value["attestations"][0]["value"], hex::encode([2u8; 32]));
+        let mut wide = sealed;
+        wide.vk_hash = [9u8; 32];
+        let wide_json = vote_json(&wide);
+        assert_eq!(
+            wide_json["attestations"][0]["value"],
+            format!("{}{}", hex::encode([2u8; 32]), hex::encode([9u8; 32]))
+        );
     }
 
     #[test]
@@ -562,5 +635,178 @@ mod tests {
             r#"{{"backend":"{backend}","ctx_hex":"{z}","allocation_root_hex":"{z}","bech32_hrp":"terp","denom_hex":"{z}","proof_len":4,"cutoff_height":50,"amounts":[{{"amount":15,"cap":1}}],"trusted_hex":["{z}"],"trusted_verify_threshold":1,"trusted_sign_threshold":1,"max_rows":4,"vk_id":{vk_id},"vk_hash_hex":"{vk_hash_hex}"}}"#
         );
         serde_json::from_str(&raw).unwrap()
+    }
+
+    fn flock_bytes(cutoff: u64) -> Vec<u8> {
+        let pk = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32])
+            .verifying_key()
+            .to_bytes();
+        let body = serde_json::json!({
+            "backend": "flock",
+            "ctx_hex": "11".repeat(32),
+            "allocation_root_hex": "22".repeat(32),
+            "bech32_hrp": "terp",
+            "denom_hex": "33".repeat(32),
+            "proof_len": 8,
+            "cutoff_height": cutoff,
+            "amounts": [{"amount": 15, "cap": 1}],
+            "trusted_hex": [hex::encode(pk)],
+            "trusted_verify_threshold": 1,
+            "trusted_sign_threshold": 1,
+            "max_rows": 4
+        });
+        serde_json::to_vec(&body).unwrap()
+    }
+
+    fn signed_headers(sk: &k256::ecdsa::SigningKey, path: &str, body: &[u8]) -> HeaderMap {
+        let (pk, sig) = crate::tree_operator::sign_operator(sk, "POST", path, body, None, None);
+        let mut headers = HeaderMap::new();
+        headers.insert("x-hash-market-pubkey", pk.parse().unwrap());
+        headers.insert("x-hash-market-signature", sig.parse().unwrap());
+        headers
+    }
+
+    fn block_on<T>(fut: impl std::future::Future<Output = T>) -> T {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(fut)
+    }
+
+    fn fresh_state(operator: &str, pubkeys: Vec<String>) -> (Arc<crate::server::AppState>, std::path::PathBuf) {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("hs-op-auth-{stamp}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut state = crate::server::AppState::new(
+            None::<crate::VoteExtensionHandler>,
+            "headstash-auth-test".into(),
+            dir.clone(),
+            false,
+        )
+        .unwrap();
+        state.set_tree_operator(operator.to_string());
+        state.set_operator_pubkeys(pubkeys);
+        (Arc::new(state), dir)
+    }
+
+    #[test]
+    fn admin_routes_reject_unsigned_wrong_key_replay_and_reinstall() {
+        let (sk, addr) = crate::tree_operator::ephemeral_operator();
+        let (state, dir) = fresh_state(&addr, Vec::new());
+        let body = flock_bytes(50);
+        let missing = block_on(super::install_campaign(
+            State(state.clone()),
+            HeaderMap::new(),
+            Bytes::from(body.clone()),
+        ));
+        let err = missing.unwrap_err();
+        assert_eq!(err.0, StatusCode::UNAUTHORIZED);
+
+        let (other, _) = crate::tree_operator::ephemeral_operator();
+        let wrong = block_on(super::install_campaign(
+            State(state.clone()),
+            signed_headers(&other, super::CAMPAIGN_PATH, &body),
+            Bytes::from(body.clone()),
+        ));
+        assert_eq!(wrong.unwrap_err().0, StatusCode::FORBIDDEN);
+
+        let ok = block_on(super::install_campaign(
+            State(state.clone()),
+            signed_headers(&sk, super::CAMPAIGN_PATH, &body),
+            Bytes::from(body.clone()),
+        ));
+        assert!(ok.is_ok());
+
+        let replay = block_on(super::install_campaign(
+            State(state.clone()),
+            signed_headers(&sk, super::CAMPAIGN_PATH, &body),
+            Bytes::from(body.clone()),
+        ));
+        assert_eq!(replay.unwrap_err().0, StatusCode::UNAUTHORIZED);
+
+        let second = flock_bytes(51);
+        let again = block_on(super::install_campaign(
+            State(state.clone()),
+            signed_headers(&sk, super::CAMPAIGN_PATH, &second),
+            Bytes::from(second),
+        ));
+        let conflict = again.unwrap_err();
+        assert_eq!(conflict.0, StatusCode::CONFLICT);
+        assert_eq!(conflict.1 .0["error"], "campaign already exists");
+
+        let seal_body = br#"{"height":1}"#.to_vec();
+        let unsigned_seal = block_on(super::seal(
+            State(state.clone()),
+            HeaderMap::new(),
+            Bytes::from(seal_body.clone()),
+        ));
+        assert_eq!(unsigned_seal.unwrap_err().0, StatusCode::UNAUTHORIZED);
+
+        block_on(async {
+            state
+                .headstash
+                .write()
+                .await
+                .install_signer(ed25519_dalek::SigningKey::from_bytes(&[3u8; 32]));
+        });
+        let sealed = block_on(super::seal(
+            State(state.clone()),
+            signed_headers(&sk, super::SEAL_PATH, &seal_body),
+            Bytes::from(seal_body.clone()),
+        ));
+        assert!(sealed.is_ok(), "{sealed:?}");
+        let replay_seal = block_on(super::seal(
+            State(state.clone()),
+            signed_headers(&sk, super::SEAL_PATH, &seal_body),
+            Bytes::from(seal_body),
+        ));
+        assert_eq!(replay_seal.unwrap_err().0, StatusCode::UNAUTHORIZED);
+
+        let esk = ed25519_dalek::SigningKey::from_bytes(&[9u8; 32]);
+        let epk = hex::encode(esk.verifying_key().to_bytes());
+        let (ed_state, ed_dir) = fresh_state("", vec![epk.clone()]);
+        let ed_body = flock_bytes(40);
+        let challenge =
+            crate::tree_operator::operator_challenge("POST", super::CAMPAIGN_PATH, &ed_body, None, None);
+        let esig = crate::tree_operator::sign_operator_ed25519(&esk, &challenge);
+        let mut ed_headers = HeaderMap::new();
+        ed_headers.insert("x-hash-market-pubkey", epk.parse().unwrap());
+        ed_headers.insert("x-hash-market-signature", esig.parse().unwrap());
+        let ed_ok = block_on(super::install_campaign(
+            State(ed_state),
+            ed_headers,
+            Bytes::from(ed_body),
+        ));
+        assert!(ed_ok.is_ok(), "{ed_ok:?}");
+
+        let (exp_state, exp_dir) = fresh_state(&addr, Vec::new());
+        let exp_body = flock_bytes(12);
+        let (exp_pk, exp_sig) = crate::tree_operator::sign_operator(
+            &sk,
+            "POST",
+            super::CAMPAIGN_PATH,
+            &exp_body,
+            Some("1"),
+            None,
+        );
+        let mut exp_headers = HeaderMap::new();
+        exp_headers.insert("x-hash-market-pubkey", exp_pk.parse().unwrap());
+        exp_headers.insert("x-hash-market-signature", exp_sig.parse().unwrap());
+        exp_headers.insert("x-hash-market-expiry", "1".parse().unwrap());
+        let expired = block_on(super::install_campaign(
+            State(exp_state),
+            exp_headers,
+            Bytes::from(exp_body),
+        ));
+        assert_eq!(expired.unwrap_err().0, StatusCode::UNAUTHORIZED);
+
+        drop(state);
+        let _ = std::fs::remove_dir_all(dir);
+        let _ = std::fs::remove_dir_all(ed_dir);
+        let _ = std::fs::remove_dir_all(exp_dir);
     }
 }

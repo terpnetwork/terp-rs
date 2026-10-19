@@ -110,6 +110,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -133,6 +134,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(2, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -144,6 +146,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![row],
+                vk_hash: Binary::default(),
             },
             &[],
         )
@@ -162,6 +165,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -201,6 +205,7 @@ mod tests {
                 allocation_root: root,
                 root_id: 0,
                 rows: vec![public_row],
+                vk_hash: Binary::default(),
             },
             &[],
         );

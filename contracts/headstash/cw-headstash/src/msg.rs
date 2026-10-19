@@ -133,6 +133,10 @@ pub enum ExecuteMsg {
         allocation_root: Binary,
         root_id: u64,
         rows: Vec<crate::epoch::EpochPayout>,
+        /// SHA-256 of the circuit blob the sidecar verified under.
+        /// Empty fails closed when the stored campaign hash is not all zeros.
+        #[serde(default)]
+        vk_hash: Binary,
     },
     /// Pay opened Pedersen destinations for Ethereum logs of fixed denomination indexes.
     ApplyPublicBatch {

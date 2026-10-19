@@ -19,7 +19,8 @@ use headstash_claim::{
 
 use crate::roots::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, PayoutRow,
-    SealedVote, accepted_root, attested_root, receipt_message, sha256, sign_custody,
+    SealedVote, accepted_root, attestation_value, attested_root, receipt_message, sha256,
+    sign_custody,
     verify_ed25519,
 };
 
@@ -333,11 +334,13 @@ impl<const D: usize> Campaign<D> {
         } else {
             (ALGO_PENDING, self.pending_root())
         };
+        let value = attestation_value(&batch_hash, &self.vk_hash);
         SealedVote {
             algo: algo.to_string(),
             batch_hash,
+            vk_hash: self.vk_hash,
             attested: attested_root(&batch_hash),
-            custody_signature: sign_custody(custody, &batch_hash),
+            custody_signature: sign_custody(custody, &value),
             custody_public: custody.verifying_key().to_bytes(),
             attestation_height: BATCH_ATTEST_HEIGHT,
             attestation_timestamp: BATCH_ATTEST_TIMESTAMP,

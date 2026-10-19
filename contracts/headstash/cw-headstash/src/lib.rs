@@ -349,7 +349,8 @@ pub fn execute(
             allocation_root,
             root_id,
             rows,
-        } => epoch::apply_accepted_batch(deps, env, allocation_root, root_id, rows),
+            vk_hash,
+        } => epoch::apply_accepted_batch(deps, env, allocation_root, root_id, rows, vk_hash),
         ExecuteMsg::ApplyPublicBatch { rows } => epoch::apply_public_batch(deps, env, rows),
     }
 }

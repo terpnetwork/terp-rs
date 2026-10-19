@@ -26,13 +26,16 @@ pub struct PayoutRow {
     pub amount: u64,
 }
 
-/// One signed vote. The attestation value is `batch_hash`, not the row bytes.
-/// `foreign_height` is the chain height that picked the algo. The attestation
-/// height stays [`BATCH_ATTEST_HEIGHT`].
+/// One signed vote. A zero `vk_hash` publishes `batch_hash` as the
+/// attestation value. Any other hash appends those 32 bytes. `attested`
+/// stays the aggregate of the 32-byte batch hash, so an older contract
+/// still pays. `foreign_height` is the chain height that picked the algo.
+/// The attestation height stays [`BATCH_ATTEST_HEIGHT`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SealedVote {
     pub algo: String,
     pub batch_hash: [u8; 32],
+    pub vk_hash: [u8; 32],
     pub attested: [u8; 32],
     pub custody_signature: [u8; 64],
     pub custody_public: [u8; 32],
@@ -46,9 +49,25 @@ impl SealedVote {
         verify_custody(
             &self.custody_public,
             &self.custody_signature,
-            &self.batch_hash,
+            &self.attestation_value(),
         )
     }
+
+    pub fn attestation_value(&self) -> Vec<u8> {
+        attestation_value(&self.batch_hash, &self.vk_hash)
+    }
+}
+
+/// Bytes the OracleSource signs and the module copies into the sudo hint.
+/// A zero verifying-key hash stays 32 bytes so flock votes do not grow.
+pub fn attestation_value(batch_hash: &[u8; 32], vk_hash: &[u8; 32]) -> Vec<u8> {
+    if vk_hash.iter().all(|byte| *byte == 0) {
+        return batch_hash.to_vec();
+    }
+    let mut out = Vec::with_capacity(64);
+    out.extend_from_slice(batch_hash);
+    out.extend_from_slice(vk_hash);
+    out
 }
 
 pub fn sha256(bytes: &[u8]) -> [u8; 32] {
@@ -118,13 +137,13 @@ pub fn custody_message(value: &[u8]) -> Vec<u8> {
     payload
 }
 
-pub fn sign_custody(key: &ed25519_dalek::SigningKey, batch_hash: &[u8; 32]) -> [u8; 64] {
+pub fn sign_custody(key: &ed25519_dalek::SigningKey, value: &[u8]) -> [u8; 64] {
     use ed25519_dalek::Signer;
-    key.sign(&custody_message(batch_hash)).to_bytes()
+    key.sign(&custody_message(value)).to_bytes()
 }
 
-pub fn verify_custody(public: &[u8; 32], signature: &[u8; 64], batch_hash: &[u8; 32]) -> bool {
-    verify_ed25519(public, signature, &custody_message(batch_hash))
+pub fn verify_custody(public: &[u8; 32], signature: &[u8; 64], value: &[u8]) -> bool {
+    verify_ed25519(public, signature, &custody_message(value))
 }
 
 pub fn verify_ed25519(public: &[u8; 32], signature: &[u8; 64], message: &[u8]) -> bool {
@@ -235,9 +254,17 @@ mod tests {
         assert_eq!(attested_root(&batch), sha256(&pre));
 
         let key = ed25519_dalek::SigningKey::from_bytes(&[8u8; 32]);
+        assert_eq!(attestation_value(&batch, &[0u8; 32]), batch.to_vec());
+        let mut wide = batch.to_vec();
+        wide.extend_from_slice(&[9u8; 32]);
+        assert_eq!(attestation_value(&batch, &[9u8; 32]), wide);
+
         let sig = sign_custody(&key, &batch);
         let public = key.verifying_key().to_bytes();
         assert!(verify_custody(&public, &sig, &batch));
         assert!(!verify_custody(&public, &sig, &[5u8; 32]));
+        let wide_sig = sign_custody(&key, &wide);
+        assert!(verify_custody(&public, &wide_sig, &wide));
+        assert!(!verify_custody(&public, &sig, &wide));
     }
 }

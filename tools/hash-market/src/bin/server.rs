@@ -364,6 +364,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     state.set_tree_operator(config.tree_operator.clone());
+    state.set_operator_pubkeys(config.operator_pubkeys.clone());
     tracing::info!(operator = %config.tree_operator, "tree writes pinned to one operator");
     let state = Arc::new(state);
 

@@ -24,9 +24,9 @@ use axum::{
     routing::{delete, get, post},
 };
 use cw721_nips::buds::{self, BlossomState};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 
 #[cfg(feature = "ve")]
@@ -90,7 +90,12 @@ pub struct AppState {
     #[cfg(feature = "onboard")]
     pub onboard: Option<Arc<crate::onboard_authz::OnboardRuntime>>,
     /// Sole terp1 allowed to write `/trees`. Reads stay public.
+    /// Campaign and seal also accept this address.
     pub tree_operator: String,
+    /// Extra campaign and seal keys. 33-byte secp256k1 hex or 32-byte ed25519 hex.
+    pub operator_pubkeys: Vec<String>,
+    /// Accepted campaign and seal signatures. Process memory only.
+    pub admin_replay: Mutex<HashSet<String>>,
 }
 
 impl AppState {
@@ -181,11 +186,41 @@ impl AppState {
             #[cfg(feature = "onboard")]
             onboard: None,
             tree_operator: crate::config::DEFAULT_TREE_OPERATOR.into(),
+            operator_pubkeys: Vec::new(),
+            admin_replay: Mutex::new(HashSet::new()),
         })
     }
 
     pub fn set_tree_operator(&mut self, operator: impl Into<String>) {
         self.tree_operator = operator.into();
+    }
+
+    pub fn set_operator_pubkeys(&mut self, keys: Vec<String>) {
+        self.operator_pubkeys = keys;
+    }
+
+    /// Remember a signature that already verified. A restart drops the set.
+    /// A failed verification must not call this.
+    pub fn remember_admin(&self, signature_hex: &str, nonce: Option<&str>) -> bool {
+        let mut seen = self
+            .admin_replay
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let sig_key = format!("sig:{}", signature_hex.trim().to_ascii_lowercase());
+        if seen.contains(&sig_key) {
+            return false;
+        }
+        let nonce_key = nonce.map(|value| format!("nonce:{value}"));
+        if let Some(key) = nonce_key.as_ref() {
+            if seen.contains(key) {
+                return false;
+            }
+        }
+        seen.insert(sig_key);
+        if let Some(key) = nonce_key {
+            seen.insert(key);
+        }
+        true
     }
 
     /// Apply `[cashu_mesh]` config (call before wrapping in `Arc` for the router).

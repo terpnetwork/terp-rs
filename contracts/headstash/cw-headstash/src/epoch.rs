@@ -106,14 +106,19 @@ pub fn set_campaign(
     campaign: EpochCampaignParams,
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    validate_campaign(&campaign)?;
+    if !campaign.sweep_recipient.is_empty() {
+        deps.api.addr_validate(&campaign.sweep_recipient)?;
+    }
+    if let Some(existing) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
+        if existing.vk_id != campaign.vk_id || existing.vk_hash != campaign.vk_hash {
+            return Err(StdError::msg("vk is fixed"));
+        }
+    }
     if EPOCH_STAGE.may_load(deps.storage)?.is_some()
         || EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false)
     {
         return Err(StdError::msg("campaign is already staged"));
-    }
-    validate_campaign(&campaign)?;
-    if !campaign.sweep_recipient.is_empty() {
-        deps.api.addr_validate(&campaign.sweep_recipient)?;
     }
     EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
     Ok(Response::new()
@@ -187,7 +192,9 @@ pub fn stage_batch(
         }
     }
     EPOCH_STAGE.save(deps.storage, &staged)?;
-    let (paid, n) = settle(deps, env)?;
+    // No oracle value on a stage. Flock (a zero vk hash) can still pay
+    // against a root that is already stored. Halo2 is checked on sudo.
+    let (paid, n) = settle(deps, env, &[])?;
     Ok(paid
         .add_attribute("action", "stage_epoch_batch")
         .add_attribute("rows", rows.len().to_string())
@@ -396,7 +403,7 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
     EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
     EPOCH_HEIGHTS.save(deps.storage, payload.algo.as_str(), &payload.height)?;
     let (paid, n) = if payload.algo == ALGO_ACCEPTED {
-        settle(deps, env)?
+        settle(deps, env, &payload.oracle_sources)?
     } else {
         (Response::new(), 0)
     };
@@ -476,7 +483,19 @@ pub fn apply_accepted_batch(
     allocation_root: Binary,
     root_id: u64,
     rows: Vec<EpochPayout>,
+    vk_hash: Binary,
 ) -> Result<Response, StdError> {
+    if let Some(campaign) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
+        if campaign.vk_hash.iter().any(|byte| *byte != 0) {
+            let presented = vk_hash.as_slice();
+            if presented.len() != 32
+                || presented.iter().all(|byte| *byte == 0)
+                || presented != campaign.vk_hash.as_slice()
+            {
+                return Err(StdError::msg("vk hash"));
+            }
+        }
+    }
     let stored = EPOCH_ROOTS
         .may_load(deps.storage, ALGO_ACCEPTED)?
         .ok_or_else(|| StdError::msg("no accepted root"))?;
@@ -614,6 +633,9 @@ fn validate_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
     if campaign.backend == "halo2" && campaign.vk_id == 0 {
         return Err(StdError::msg("vk id"));
     }
+    if campaign.backend == "halo2" && campaign.vk_hash.iter().all(|byte| *byte == 0) {
+        return Err(StdError::msg("vk hash"));
+    }
     if !campaign.sweep_recipient.is_empty() {
         let prefix = format!("{}1", campaign.bech32_hrp);
         if !campaign.sweep_recipient.starts_with(&prefix) {
@@ -687,7 +709,7 @@ fn validate_stage(
 
 /// Pay the staged rows when the stored accepted attestation matches and the
 /// stored height is at or past the cutoff. A miss returns no messages.
-fn settle(deps: DepsMut, env: &Env) -> StdResult<(Response, u64)> {
+fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Response, u64)> {
     let empty = || (Response::new(), 0u64);
     if EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
         return Ok(empty());
@@ -715,6 +737,12 @@ fn settle(deps: DepsMut, env: &Env) -> StdResult<(Response, u64)> {
     }
     if stored.as_slice() != attested_root(&batch) {
         return Ok(empty());
+    }
+    if campaign.vk_hash.iter().any(|byte| *byte != 0) {
+        let got = attested_vk(oracle)?;
+        if got.as_slice() != campaign.vk_hash.as_slice() {
+            return Err(StdError::msg("vk hash"));
+        }
     }
     distro::assert_claim_root(
         deps.storage,
@@ -801,6 +829,23 @@ fn require_32<'a>(bytes: &'a Binary, name: &str) -> StdResult<&'a [u8]> {
         return Err(StdError::msg(format!("{name} must be 32 bytes")));
     }
     Ok(bytes.as_slice())
+}
+
+fn attested_vk(oracle: &[OracleHint]) -> StdResult<[u8; 32]> {
+    let hint = oracle
+        .iter()
+        .find(|hint| hint.source_id == BATCH_SOURCE_ID)
+        .ok_or_else(|| StdError::msg("vk hash"))?;
+    let bytes = Binary::from_base64(&hint.value).map_err(|_| StdError::msg("vk hash"))?;
+    if bytes.len() != 64 {
+        return Err(StdError::msg("vk hash"));
+    }
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&bytes[32..]);
+    if out.iter().all(|byte| *byte == 0) {
+        return Err(StdError::msg("vk hash"));
+    }
+    Ok(out)
 }
 
 fn decode_root(raw: &str) -> StdResult<[u8; 32]> {
@@ -1036,6 +1081,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![row(2, &dest, 15, denom.clone())],
+                vk_hash: Binary::default(),
             },
         );
         assert!(wrong.unwrap_err().to_string().contains("does not match"));
@@ -1048,6 +1094,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout.clone()],
+                vk_hash: Binary::default(),
             },
         )
         .unwrap();
@@ -1066,6 +1113,7 @@ mod tests {
                 allocation_root: root,
                 root_id: 0,
                 rows: vec![payout],
+                vk_hash: Binary::default(),
             },
         );
         assert!(again
@@ -1125,6 +1173,7 @@ mod tests {
                 allocation_root: root,
                 root_id: 0,
                 rows: vec![private],
+                vk_hash: Binary::default(),
             },
         );
         assert!(blocked.unwrap_err().to_string().contains("public path"));
@@ -1253,6 +1302,148 @@ mod tests {
         crate::headstash::add_credit(&mut map, key.clone(), 15);
         crate::headstash::add_credit(&mut map, key.clone(), 15);
         assert_eq!(map[&key], 30);
+    }
+
+    #[test]
+    fn halo2_vk_is_immutable_and_zero_is_refused() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
+        let mut params = campaign(&root);
+        params.backend = "halo2".into();
+        params.vk_id = 1;
+        params.vk_hash = Binary::from([0u8; 32].to_vec());
+        let zero = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: params.clone(),
+            },
+        );
+        assert!(zero.unwrap_err().to_string().contains("vk hash"));
+
+        params.vk_hash = Binary::from([9u8; 32].to_vec());
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: params.clone(),
+            },
+        )
+        .unwrap();
+        let mut changed = params.clone();
+        changed.vk_hash = Binary::from([8u8; 32].to_vec());
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: changed },
+        );
+        assert!(err.unwrap_err().to_string().contains("vk is fixed"));
+
+        let mut same = params.clone();
+        same.max_rows = 3;
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: same },
+        )
+        .unwrap();
+        let mut changed_id = params.clone();
+        changed_id.vk_id = 2;
+        let id_err = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: changed_id,
+            },
+        );
+        assert!(id_err.unwrap_err().to_string().contains("vk is fixed"));
+
+        let dest = deps.api.addr_make("dest").to_string();
+        let mismatch = execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::ApplyAcceptedBatch {
+                allocation_root: root.clone(),
+                root_id: 0,
+                rows: vec![row(1, &dest, 15, denom())],
+                vk_hash: Binary::from([1u8; 32].to_vec()),
+            },
+        );
+        assert!(mismatch.unwrap_err().to_string().contains("vk hash"));
+
+        let hash = accepted_root(root.as_slice(), &[row(1, &dest, 15, denom())]).unwrap();
+        let attested = attested_root(&hash);
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([4u8; 32].to_vec())],
+                rows: vec![row(1, &dest, 15, denom())],
+            },
+        )
+        .unwrap();
+        let mut bad_value = hash.to_vec();
+        bad_value.extend_from_slice(&[7u8; 32]);
+        let sudo_err = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 10,
+                    root: root_b64(&attested),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![OracleHint {
+                        source_id: BATCH_SOURCE_ID.into(),
+                        value: Binary::from(bad_value).to_base64(),
+                        height: 1,
+                    }],
+                },
+            },
+        );
+        assert!(sudo_err.unwrap_err().to_string().contains("vk hash"));
+        assert!(NULLIFIERS.is_empty(deps.as_ref().storage));
+
+        let mut good_value = hash.to_vec();
+        good_value.extend_from_slice(&[9u8; 32]);
+        let paid = sudo(
+            deps.as_mut(),
+            &env,
+            HashMerchantSudoMsg {
+                hash_merchant: HashMerchantSudoPayload {
+                    chain_uid: CHAIN_UID.into(),
+                    algo: ALGO_ACCEPTED.into(),
+                    height: 10,
+                    root: root_b64(&attested),
+                    attestation_count: 1,
+                    block_time: 1,
+                    oracle_sources: vec![OracleHint {
+                        source_id: BATCH_SOURCE_ID.into(),
+                        value: Binary::from(good_value).to_base64(),
+                        height: 1,
+                    }],
+                },
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            paid.attributes
+                .iter()
+                .find(|attr| attr.key == "minted")
+                .unwrap()
+                .value,
+            "1"
+        );
     }
 
     fn campaign(root: &Binary) -> EpochCampaignParams {
@@ -1634,6 +1825,7 @@ mod tests {
         let mut params = campaign(&root);
         params.backend = "halo2".into();
         params.vk_id = 1;
+        params.vk_hash = Binary::from([9u8; 32].to_vec());
         params.cutoff_height = cutoff;
         params.bech32_hrp = "cosmwasm".into();
         params.denom = derive_nd("uterp");

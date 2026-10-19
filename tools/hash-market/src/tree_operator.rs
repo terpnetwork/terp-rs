@@ -8,6 +8,9 @@ use bech32::{Bech32, Hrp};
 use k256::ecdsa::signature::hazmat::PrehashVerifier;
 use k256::ecdsa::{Signature, VerifyingKey};
 use ripemd::Ripemd160;
+use ed25519_dalek::{
+    Signature as Ed25519Signature, Verifier, VerifyingKey as Ed25519VerifyingKey,
+};
 use sha2::{Digest, Sha256};
 
 pub use crate::config::DEFAULT_TREE_OPERATOR;
@@ -112,6 +115,123 @@ pub fn authorize_tree_write(
     let digest = adr36_digest(&signer, &tree_write_challenge(method, path, body));
     vk.verify_prehash(&digest, &sig)
         .map_err(|_| TreeWriteDeny::Unauthorized)
+}
+
+/// Campaign and seal challenge. Expiry and nonce lines are present only when
+/// those headers were sent, so a four-line tree-write signature still matches.
+pub fn operator_challenge(
+    method: &str,
+    path: &str,
+    body: &[u8],
+    expiry: Option<&str>,
+    nonce: Option<&str>,
+) -> String {
+    let mut challenge = tree_write_challenge(method, path, body);
+    if let Some(expiry) = expiry {
+        challenge.push_str("\nexpiry:");
+        challenge.push_str(expiry);
+    }
+    if let Some(nonce) = nonce {
+        challenge.push_str("\nnonce:");
+        challenge.push_str(nonce);
+    }
+    challenge
+}
+
+/// Same ADR-36 signature as [`sign_tree_write`] when expiry and nonce are absent.
+pub fn sign_operator(
+    sk: &k256::ecdsa::SigningKey,
+    method: &str,
+    path: &str,
+    body: &[u8],
+    expiry: Option<&str>,
+    nonce: Option<&str>,
+) -> (String, String) {
+    use k256::ecdsa::signature::hazmat::PrehashSigner;
+    let pk = sk.verifying_key().to_encoded_point(true);
+    let pubkey = pk.as_bytes();
+    let addr = pubkey_to_terp(pubkey).expect("33-byte compressed pubkey");
+    let digest = adr36_digest(&addr, &operator_challenge(method, path, body, expiry, nonce));
+    let sig: Signature = sk.sign_prehash(&digest).expect("sign operator");
+    (hex::encode(pubkey), hex::encode(sig.to_bytes()))
+}
+
+/// Ed25519 over SHA-256 of the challenge string. Not an ADR-36 document.
+pub fn sign_operator_ed25519(sk: &ed25519_dalek::SigningKey, challenge: &str) -> String {
+    use ed25519_dalek::Signer;
+    let digest = Sha256::digest(challenge.as_bytes());
+    hex::encode(sk.sign(&digest).to_bytes())
+}
+
+fn pubkey_listed(pubkeys: &[String], pubkey_hex: &str) -> bool {
+    let want = pubkey_hex.trim().to_ascii_lowercase();
+    pubkeys
+        .iter()
+        .any(|item| item.trim().to_ascii_lowercase() == want)
+}
+
+/// Gate for `/ve/headstash/campaign` and `/ve/headstash/seal`.
+/// `/trees` stays on [`authorize_tree_write`] and does not grow a replay set.
+/// A 33-byte key must derive `operator` or be listed. A 32-byte key must be
+/// listed. An empty operator and an empty list refuse every request.
+pub fn authorize_operator(
+    operator: &str,
+    operator_pubkeys: &[String],
+    method: &str,
+    path: &str,
+    body: &[u8],
+    pubkey_hex: &str,
+    signature_hex: &str,
+    expiry: Option<&str>,
+    nonce: Option<&str>,
+    now: u64,
+) -> Result<(), TreeWriteDeny> {
+    if operator.trim().is_empty() && operator_pubkeys.iter().all(|item| item.trim().is_empty()) {
+        return Err(TreeWriteDeny::Unauthorized);
+    }
+    if let Some(expiry) = expiry {
+        let exp: u64 = expiry.parse().map_err(|_| TreeWriteDeny::Unauthorized)?;
+        if now > exp {
+            return Err(TreeWriteDeny::Unauthorized);
+        }
+    }
+    let pubkey = hex::decode(pubkey_hex.trim()).map_err(|_| TreeWriteDeny::Unauthorized)?;
+    let signature = hex::decode(signature_hex.trim()).map_err(|_| TreeWriteDeny::Unauthorized)?;
+    if signature.len() != 64 {
+        return Err(TreeWriteDeny::Unauthorized);
+    }
+    let challenge = operator_challenge(method, path, body, expiry, nonce);
+    if pubkey.len() == 33 {
+        let signer = pubkey_to_terp(&pubkey).map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let address_ok = !operator.trim().is_empty() && signer == operator.trim();
+        if !address_ok && !pubkey_listed(operator_pubkeys, pubkey_hex) {
+            return Err(TreeWriteDeny::Forbidden);
+        }
+        let vk = VerifyingKey::from_sec1_bytes(&pubkey).map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let sig = Signature::from_slice(&signature).map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let digest = adr36_digest(&signer, &challenge);
+        vk.verify_prehash(&digest, &sig)
+            .map_err(|_| TreeWriteDeny::Unauthorized)?;
+        return Ok(());
+    }
+    if pubkey.len() == 32 {
+        if !pubkey_listed(operator_pubkeys, pubkey_hex) {
+            return Err(TreeWriteDeny::Forbidden);
+        }
+        let key_bytes: [u8; 32] = pubkey
+            .as_slice()
+            .try_into()
+            .map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let vk =
+            Ed25519VerifyingKey::from_bytes(&key_bytes).map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let sig =
+            Ed25519Signature::from_slice(&signature).map_err(|_| TreeWriteDeny::Unauthorized)?;
+        let digest = Sha256::digest(challenge.as_bytes());
+        vk.verify(&digest, &sig)
+            .map_err(|_| TreeWriteDeny::Unauthorized)?;
+        return Ok(());
+    }
+    Err(TreeWriteDeny::Unauthorized)
 }
 
 /// `true` when `bind`'s host is IPv4 loopback, `localhost`, or `::1`.
@@ -223,5 +343,83 @@ mod tests {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         assert!(require_loopback_listener(addr).is_ok());
+    }
+
+    #[test]
+    fn operator_challenge_matches_the_tree_write_string() {
+        let body = br#"{"height":1}"#;
+        let path = "/ve/headstash/seal";
+        assert_eq!(
+            operator_challenge("POST", path, body, None, None),
+            tree_write_challenge("POST", path, body)
+        );
+        let (sk, addr) = ephemeral_operator();
+        let (pk, sig) = sign_tree_write(&sk, "POST", path, body);
+        let (pk2, sig2) = sign_operator(&sk, "POST", path, body, None, None);
+        assert_eq!((pk.clone(), sig.clone()), (pk2, sig2));
+        authorize_operator(&addr, &[], "POST", path, body, &pk, &sig, None, None, 0).unwrap();
+        let (other, _) = ephemeral_operator();
+        let (wrong_pk, wrong_sig) = sign_operator(&other, "POST", path, body, None, None);
+        assert!(matches!(
+            authorize_operator(
+                &addr,
+                &[],
+                "POST",
+                path,
+                body,
+                &wrong_pk,
+                &wrong_sig,
+                None,
+                None,
+                0
+            ),
+            Err(TreeWriteDeny::Forbidden)
+        ));
+        assert!(matches!(
+            authorize_operator(&addr, &[], "POST", path, body, "", "", None, None, 0),
+            Err(TreeWriteDeny::Unauthorized)
+        ));
+        assert!(matches!(
+            authorize_operator("", &[], "POST", path, body, &pk, &sig, None, None, 0),
+            Err(TreeWriteDeny::Unauthorized)
+        ));
+        let past = Some("10");
+        let (expired_pk, expired_sig) = sign_operator(&sk, "POST", path, body, past, None);
+        assert!(matches!(
+            authorize_operator(
+                &addr,
+                &[],
+                "POST",
+                path,
+                body,
+                &expired_pk,
+                &expired_sig,
+                past,
+                None,
+                11
+            ),
+            Err(TreeWriteDeny::Unauthorized)
+        ));
+        let esk = ed25519_dalek::SigningKey::from_bytes(&[9u8; 32]);
+        let epk = hex::encode(esk.verifying_key().to_bytes());
+        let challenge = operator_challenge("POST", path, body, None, None);
+        let esig = sign_operator_ed25519(&esk, &challenge);
+        authorize_operator(
+            "",
+            &[epk.clone()],
+            "POST",
+            path,
+            body,
+            &epk,
+            &esig,
+            None,
+            None,
+            0,
+        )
+        .unwrap();
+        assert!(matches!(
+            authorize_operator("other", &[], "POST", path, body, &epk, &esig, None, None, 0),
+            Err(TreeWriteDeny::Forbidden)
+        ));
     }
 }
