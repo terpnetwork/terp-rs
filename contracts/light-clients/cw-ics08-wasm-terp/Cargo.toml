@@ -5,20 +5,20 @@ edition = { workspace = true }
 repository = { workspace = true }
 description = "08-wasm light client for Terp hybrid IAVL (SHA-256 IBC + BLAKE3 app stores)"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [features]
 default = []
 library = []
 # DIY IAVL + wrong-alg membership cross-check (benches / lab extras).
 bench = ["terp-iavl-lc/bench"]
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["cosmwasm_3_0", "zk"] }
-cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
 hex = { workspace = true }
 ics23 = { workspace = true }
 prost = { workspace = true, features = ["std"] }
