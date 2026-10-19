@@ -1,9 +1,9 @@
 //! Voice-chain probe. Polytone `Query` hits this instead of a live pool.
 //! Shape matches Osmosis `arithmetic_twap` JSON so the registry parser is shared.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
 };
 use cw_storage_plus::Item;
 
@@ -83,8 +83,8 @@ pub use interface::OracleTwapProbe;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
     use cosmwasm_std::from_json;
+    use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
 
     #[test]
     fn canned_twap() {
@@ -93,9 +93,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             message_info(&MockApi::default().addr_make("u"), &[]),
-            InstantiateMsg {
-                mid: "1.25".into(),
-            },
+            InstantiateMsg { mid: "1.25".into() },
         )
         .unwrap();
         let bin = query(

@@ -1,5 +1,5 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, Uint128, Uint64};
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, Uint64, Uint128};
 
 use crate::state::SourceKind;
 

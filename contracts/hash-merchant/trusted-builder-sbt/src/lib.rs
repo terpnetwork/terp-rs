@@ -7,11 +7,11 @@
 //!    to ETH; after the manifesto is pledged, an attestation packet (or relayer
 //!    `DeliverEthAttestation`) mints here with the ETH tx hash.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, Ibc2Msg,
-    Ibc2PacketAckMsg, Ibc2PacketReceiveMsg, Ibc2PacketSendMsg, Ibc2PacketTimeoutMsg, Ibc2Payload,
-    IbcBasicResponse, IbcReceiveResponse, MessageInfo, Response, StdAck, StdResult, Timestamp,
+    Binary, CosmosMsg, Deps, DepsMut, Env, Ibc2Msg, Ibc2PacketAckMsg, Ibc2PacketReceiveMsg,
+    Ibc2PacketSendMsg, Ibc2PacketTimeoutMsg, Ibc2Payload, IbcBasicResponse, IbcReceiveResponse,
+    MessageInfo, Response, StdAck, StdResult, Timestamp, entry_point, from_json, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use thiserror::Error;
@@ -214,7 +214,14 @@ pub fn execute(
             commitment_hex,
         } => {
             only_admin(deps.as_ref(), &info)?;
-            mint_from_eth_attestation(deps, env, info.sender.to_string(), eth_address, pledge_tx, commitment_hex)
+            mint_from_eth_attestation(
+                deps,
+                env,
+                info.sender.to_string(),
+                eth_address,
+                pledge_tx,
+                commitment_hex,
+            )
         }
     }
 }
@@ -290,9 +297,7 @@ fn exec_send_packet(
         only_admin(deps.as_ref(), &info)?;
     }
     let cfg = CONFIG.load(deps.storage)?;
-    let source_client = cfg
-        .ibc2_source_client
-        .ok_or(ContractError::EmptyField)?;
+    let source_client = cfg.ibc2_source_client.ok_or(ContractError::EmptyField)?;
     let dest_port = cfg.ibc2_dest_port.ok_or(ContractError::EmptyField)?;
     let packet = Ibc2Packet::CommitAustralge {
         eth_address: eth.clone(),
@@ -483,8 +488,10 @@ pub fn ibc2_packet_receive(
         }
         Ibc2Packet::CommitAustralge { .. } => {
             // Inbound commit is unexpected on Terp (we are the source). Ack ok, no mint.
-            Ok(IbcReceiveResponse::new(StdAck::success(b"ignored").to_binary())
-                .add_attribute("action", "ibc2_recv_commit_ignored"))
+            Ok(
+                IbcReceiveResponse::new(StdAck::success(b"ignored").to_binary())
+                    .add_attribute("action", "ibc2_recv_commit_ignored"),
+            )
         }
     }
 }
@@ -543,9 +550,16 @@ mod tests {
         message_info, mock_dependencies, mock_env, mock_ibc2_packet_recv, mock_ibc2_packet_send,
         mock_ibc2_packet_timeout,
     };
-    use cosmwasm_std::{from_json, Addr};
+    use cosmwasm_std::{Addr, from_json};
 
-    fn setup() -> (cosmwasm_std::OwnedDeps<cosmwasm_std::testing::MockStorage, cosmwasm_std::testing::MockApi, cosmwasm_std::testing::MockQuerier>, Addr) {
+    fn setup() -> (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::testing::MockStorage,
+            cosmwasm_std::testing::MockApi,
+            cosmwasm_std::testing::MockQuerier,
+        >,
+        Addr,
+    ) {
         let mut deps = mock_dependencies();
         let admin = deps.api.addr_make("admin");
         instantiate(
@@ -587,7 +601,10 @@ mod tests {
         .unwrap();
         let tok: Token = from_json(bin).unwrap();
         assert_eq!(tok.token_id, 1);
-        assert_eq!(tok.eth_address, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+        assert_eq!(
+            tok.eth_address,
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+        );
         assert!(matches!(tok.mint_path, MintPath::VeSidecar));
     }
 
@@ -701,7 +718,13 @@ mod tests {
             sign_tx: "0x1".into(),
             ve_commitment_hex: "cc".into(),
         };
-        execute(deps.as_mut(), mock_env(), message_info(&admin, &[]), msg.clone()).unwrap();
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            message_info(&admin, &[]),
+            msg.clone(),
+        )
+        .unwrap();
         let err = execute(deps.as_mut(), mock_env(), message_info(&admin, &[]), msg).unwrap_err();
         assert!(matches!(err, ContractError::AlreadyMinted));
     }

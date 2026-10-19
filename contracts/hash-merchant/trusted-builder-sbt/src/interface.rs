@@ -1,8 +1,14 @@
 use cw_orch::prelude::*;
 
-use crate::{execute, instantiate, query, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "trusted-builder-sbt")]
+#[cw_orch::interface(
+    InstantiateMsg,
+    ExecuteMsg,
+    QueryMsg,
+    Empty,
+    id = "trusted-builder-sbt"
+)]
 pub struct TrustedBuilderSbt;
 
 impl<Chain: CwEnv> Uploadable for TrustedBuilderSbt<Chain> {

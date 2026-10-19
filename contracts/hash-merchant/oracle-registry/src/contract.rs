@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, Uint128,
+    BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, Uint128,
+    entry_point, to_json_binary,
 };
 
 use crate::error::ContractError;

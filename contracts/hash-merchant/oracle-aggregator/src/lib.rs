@@ -1,10 +1,10 @@
 //! Fractal price view: query one registry, compute your own window / method.
 //! Instantiate as many times as you want. The registry stays the SSOT.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult,
+    Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, entry_point,
+    to_json_binary,
 };
 use cw_oracle_registry::msg::{HistoryResponse, QueryMsg as RegistryQuery};
 use cw_storage_plus::Item;
@@ -114,8 +114,8 @@ pub use interface::OracleAggregator;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
-    use cosmwasm_std::{from_json, ContractResult, SystemResult, WasmQuery};
+    use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
+    use cosmwasm_std::{ContractResult, SystemResult, WasmQuery, from_json};
     use cw_oracle_registry::msg::ObservationResponse;
     use cw_oracle_registry::state::SourceKind;
 

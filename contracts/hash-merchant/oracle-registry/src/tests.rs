@@ -1,7 +1,9 @@
-use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
-use cosmwasm_std::{from_json, to_json_binary, Addr, Binary, Coin, Decimal};
+use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, from_json, to_json_binary};
 
-use crate::contract::{execute, height_weighted_twap, instantiate, query, sudo, ALGO_PRICE_MEDIAN_V1};
+use crate::contract::{
+    ALGO_PRICE_MEDIAN_V1, execute, height_weighted_twap, instantiate, query, sudo,
+};
 use crate::error::ContractError;
 use crate::msg::*;
 use crate::state::{Observation, SourceKind};
@@ -13,11 +15,13 @@ fn relayer() -> Addr {
     MockApi::default().addr_make("relayer")
 }
 
-fn init_open(deps: &mut cosmwasm_std::OwnedDeps<
-    cosmwasm_std::testing::MockStorage,
-    cosmwasm_std::testing::MockApi,
-    cosmwasm_std::testing::MockQuerier,
->) {
+fn init_open(
+    deps: &mut cosmwasm_std::OwnedDeps<
+        cosmwasm_std::testing::MockStorage,
+        cosmwasm_std::testing::MockApi,
+        cosmwasm_std::testing::MockQuerier,
+    >,
+) {
     instantiate(
         deps.as_mut(),
         mock_env(),
@@ -227,9 +231,9 @@ fn polytone_callback_records_query_mid() {
         ExecuteMsg::Callback(PolytoneCallbackMessage {
             initiator: relayer(),
             initiator_msg: to_json_binary(&hint).unwrap(),
-            result: PolytoneCallback::Query(PolytoneQueryResult::Success(vec![
-                Binary::from(twap.to_vec()),
-            ])),
+            result: PolytoneCallback::Query(PolytoneQueryResult::Success(vec![Binary::from(
+                twap.to_vec(),
+            )])),
         }),
     )
     .unwrap();
@@ -285,5 +289,3 @@ fn polytone_callback_rejects_wrong_note() {
     .unwrap_err();
     assert!(matches!(err, ContractError::Unauthorized {}));
 }
-
-

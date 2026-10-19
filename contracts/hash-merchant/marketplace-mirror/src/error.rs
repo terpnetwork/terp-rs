@@ -13,11 +13,7 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("invalid min_buffer_blocks {got}: must be in range [{min}, {max}]")]
-    InvalidBuffer {
-        got: u64,
-        min: u64,
-        max: u64,
-    },
+    InvalidBuffer { got: u64, min: u64, max: u64 },
 
     #[error("accepted_denom cannot be empty")]
     EmptyDenom {},

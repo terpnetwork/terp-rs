@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order as IterOrder, Response, StdResult, Uint128,
+    BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order as IterOrder,
+    Response, StdResult, Uint128, entry_point, to_json_binary,
 };
 
 use crate::error::ContractError;
@@ -18,8 +18,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    if msg.min_buffer_blocks < MIN_BUFFER_BLOCKS_LO
-        || msg.min_buffer_blocks > MIN_BUFFER_BLOCKS_HI
+    if msg.min_buffer_blocks < MIN_BUFFER_BLOCKS_LO || msg.min_buffer_blocks > MIN_BUFFER_BLOCKS_HI
     {
         return Err(ContractError::InvalidBuffer {
             got: msg.min_buffer_blocks,
@@ -54,10 +53,7 @@ pub fn instantiate(
         .add_attribute("path", "marketplace-mirror")
         .add_attribute("min_buffer_blocks", msg.min_buffer_blocks.to_string())
         .add_attribute("accepted_denom", msg.accepted_denom)
-        .add_attribute(
-            "auto_execute_ingress",
-            msg.auto_execute_ingress.to_string(),
-        ))
+        .add_attribute("auto_execute_ingress", msg.auto_execute_ingress.to_string()))
 }
 
 // ---------------------------------------------------------------------------
@@ -161,10 +157,7 @@ fn execute_list_product(
         .add_attribute("seller", info.sender)
         .add_attribute("stock", stock.to_string())
         .add_attribute("unit_price", unit_price)
-        .add_attribute(
-            "content_cid",
-            content_cid.unwrap_or_default(),
-        )
+        .add_attribute("content_cid", content_cid.unwrap_or_default())
         .add_attribute("d_tag", d_tag.unwrap_or_default()))
 }
 
@@ -229,9 +222,7 @@ fn execute_purchase(
         });
     }
 
-    let need = product
-        .unit_price
-        .checked_mul(Uint128::from(qty))?;
+    let need = product.unit_price.checked_mul(Uint128::from(qty))?;
     let paid = must_pay(&info, &cfg.accepted_denom)?;
     if paid < need {
         return Err(ContractError::InsufficientFunds {
@@ -273,11 +264,7 @@ fn execute_purchase(
         .add_attribute("status", OrderStatus::Reserved.as_str()))
 }
 
-fn execute_settle(
-    deps: DepsMut,
-    env: Env,
-    order_id: u64,
-) -> Result<Response, ContractError> {
+fn execute_settle(deps: DepsMut, env: Env, order_id: u64) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
     let mut order = ORDERS
         .may_load(deps.storage, order_id)?

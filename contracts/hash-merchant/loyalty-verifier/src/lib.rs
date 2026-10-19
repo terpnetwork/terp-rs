@@ -12,8 +12,8 @@
 //! See `reviews/ZKJWT-LOYALTY-REWARDS-EXTENSION.md`.
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128, Uint256,
+    BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128, Uint256, entry_point, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use sha2::{Digest, Sha256};
@@ -485,8 +485,8 @@ fn base64_decode(input: &str) -> StdResult<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Addr;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     type TestDeps = cosmwasm_std::OwnedDeps<
         cosmwasm_std::testing::MockStorage,
@@ -565,11 +565,7 @@ mod tests {
             mock_env(),
             message_info(&Addr::unchecked("admin"), &[]),
             InstantiateMsg {
-                reward_denom: if mint {
-                    Some("uloyalty".into())
-                } else {
-                    None
-                },
+                reward_denom: if mint { Some("uloyalty".into()) } else { None },
                 mint_enabled: mint,
             },
         )
@@ -644,14 +640,16 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "mode" && a.value == "zkjwt"));
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "action_bind" && a.value == "ok"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "mode" && a.value == "zkjwt")
+        );
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "action_bind" && a.value == "ok")
+        );
 
         let err = execute(deps.as_mut(), mock_env(), message_info(&sa, &[]), msg).unwrap_err();
         assert!(err.to_string().contains("nullifier already claimed"));
@@ -690,10 +688,11 @@ mod tests {
         )
         .unwrap();
 
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "settlement" && a.value == "bank_send"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "settlement" && a.value == "bank_send")
+        );
         assert_eq!(res.messages.len(), 1);
 
         let q = query(
@@ -791,13 +790,7 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            message_info(&user, &[]),
-            msg,
-        )
-        .unwrap_err();
+        let err = execute(deps.as_mut(), mock_env(), message_info(&user, &[]), msg).unwrap_err();
         assert!(err.to_string().contains("already claimed"));
     }
 
@@ -1109,10 +1102,11 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "settlement" && a.value == "mint_intent"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "settlement" && a.value == "mint_intent")
+        );
         assert!(res.messages.is_empty());
     }
 
@@ -1151,19 +1145,17 @@ mod tests {
 
         let t1 = Instant::now();
         for i in 0..iters {
-            let _ = compute_action_bind(
-                0,
-                Uint128::new(620),
-                &alice_leaf,
-                &format!("terp1dest{i}"),
-            );
+            let _ =
+                compute_action_bind(0, Uint128::new(620), &alice_leaf, &format!("terp1dest{i}"));
         }
         let bind_ns = t1.elapsed().as_nanos() / iters as u128;
 
         println!("\n=== offline micro-bench (n={iters}) ===");
         println!("  merkle verify:     {merkle_ns:>8} ns/op");
         println!("  action_bind hash:  {bind_ns:>8} ns/op");
-        println!("  (on-chain gas → cargo run --example loyalty_rewards --features \"docker hashmerchant\")");
+        println!(
+            "  (on-chain gas → cargo run --example loyalty_rewards --features \"docker hashmerchant\")"
+        );
     }
 
     #[test]

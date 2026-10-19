@@ -1,8 +1,14 @@
 use cw_orch::prelude::*;
 
-use crate::{execute, instantiate, query, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "cw-oracle-twap-probe")]
+#[cw_orch::interface(
+    InstantiateMsg,
+    ExecuteMsg,
+    QueryMsg,
+    Empty,
+    id = "cw-oracle-twap-probe"
+)]
 pub struct OracleTwapProbe;
 
 impl<Chain: CwEnv> Uploadable for OracleTwapProbe<Chain> {
