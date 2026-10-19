@@ -28,7 +28,10 @@ pub fn is_vanilla_placeholder(svg: &str) -> bool {
 }
 
 /// Scan `${NAME}` in `template` against `variables[].name`. Byte offsets, no hand slots.
-pub fn compute_template_slots(template: &str, variables: &[serde_json::Value]) -> Vec<serde_json::Value> {
+pub fn compute_template_slots(
+    template: &str,
+    variables: &[serde_json::Value],
+) -> Vec<serde_json::Value> {
     let names: Vec<&str> = variables
         .iter()
         .filter_map(|v| v.get("name").and_then(|n| n.as_str()))
@@ -106,9 +109,11 @@ mod tests {
         assert_eq!(slots.len(), n_ph);
         assert!(n_ph >= 6);
         let body = collection_instantiate("terp1owner");
-        assert!(body["collection_info_extension"]["template_slots"]
-            .as_array()
-            .map(|a| !a.is_empty())
-            .unwrap_or(false));
+        assert!(
+            body["collection_info_extension"]["template_slots"]
+                .as_array()
+                .map(|a| !a.is_empty())
+                .unwrap_or(false)
+        );
     }
 }

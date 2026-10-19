@@ -1,7 +1,7 @@
 //! One-step cell: no mint without an unspent deposit.
 
 use crate::commit::{
-    bind, commit_action, commit_deposit, nullifier, ActionOpening, DepositOpening,
+    ActionOpening, DepositOpening, bind, commit_action, commit_deposit, nullifier,
 };
 use crate::observer::confirm_rail;
 use crate::packet::MintPacket;
@@ -149,17 +149,27 @@ impl<'de> serde::Deserialize<'de> for Cell {
 
 #[derive(Clone, Debug)]
 pub enum Turn {
-    DepositSeen { opening: DepositOpening },
-    MintEntitled { n_deposit: [u8; 32], action: ActionOpening },
+    DepositSeen {
+        opening: DepositOpening,
+    },
+    MintEntitled {
+        n_deposit: [u8; 32],
+        action: ActionOpening,
+    },
     MintSettled {
         n_deposit: [u8; 32],
         token_id: String,
         terp_tx: String,
         receipt: [u8; 32],
     },
-    DepositRefunded { n_deposit: [u8; 32] },
+    DepositRefunded {
+        n_deposit: [u8; 32],
+    },
     /// Bind a collection max supply (query-refunds use this).
-    SetCollection { id: String, max_supply: u64 },
+    SetCollection {
+        id: String,
+        max_supply: u64,
+    },
     /// On-chain supply observed at a queried height (must carry a real receipt digest).
     ObserveSupply {
         collection: String,
@@ -169,9 +179,13 @@ pub enum Turn {
         receipt: [u8; 32],
     },
     /// Set cell clock so entitle timestamps and stale-mint refunds are deterministic.
-    Tick { now: u64 },
+    Tick {
+        now: u64,
+    },
     /// Refund entitled slots whose mint was not observed within `timeout_secs`.
-    SweepStaleEntitlements { timeout_secs: u64 },
+    SweepStaleEntitlements {
+        timeout_secs: u64,
+    },
 }
 
 impl Cell {
@@ -183,7 +197,10 @@ impl Cell {
         self.checkout_with_tip(crate::zec_tip::probe())
     }
 
-    pub fn checkout_with_tip(&self, tip: crate::zec_tip::ZecTip) -> crate::checkout::CheckoutStatus {
+    pub fn checkout_with_tip(
+        &self,
+        tip: crate::zec_tip::ZecTip,
+    ) -> crate::checkout::CheckoutStatus {
         let (bound, minted, max) = self.supply("svg");
         let mut s = crate::checkout::CheckoutStatus::evaluate(
             bound,
@@ -298,7 +315,10 @@ impl Cell {
                         col.minted = col.minted.saturating_add(add.min(room));
                     }
                 }
-                let slot = self.slots.get_mut(&n_deposit).ok_or(CellError::NotEntitled)?;
+                let slot = self
+                    .slots
+                    .get_mut(&n_deposit)
+                    .ok_or(CellError::NotEntitled)?;
                 let c_action = slot.c_action.ok_or(CellError::NotEntitled)?;
                 let b = slot.bind.ok_or(CellError::NotEntitled)?;
                 let packet = MintPacket {
@@ -359,10 +379,13 @@ impl Cell {
                 if crate::qc::is_dummy_receipt(&receipt) {
                     return Err(CellError::DummyReceipt);
                 }
-                let e = self.collections.entry(collection).or_insert(CollectionSupply {
-                    max: max_supply,
-                    minted: 0,
-                });
+                let e = self
+                    .collections
+                    .entry(collection)
+                    .or_insert(CollectionSupply {
+                        max: max_supply,
+                        minted: 0,
+                    });
                 e.max = max_supply;
                 if minted > e.minted {
                     e.minted = minted;

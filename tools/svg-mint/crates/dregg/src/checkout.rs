@@ -127,8 +127,12 @@ pub fn minter_balance_native() -> Option<u128> {
 }
 
 fn query_minter_lcd() -> Option<u128> {
-    let lcd = std::env::var("DREGG_MINTER_LCD").ok().filter(|s| !s.is_empty())?;
-    let addr = std::env::var("DREGG_MINTER_ADDR").ok().filter(|s| s.starts_with("terp1"))?;
+    let lcd = std::env::var("DREGG_MINTER_LCD")
+        .ok()
+        .filter(|s| !s.is_empty())?;
+    let addr = std::env::var("DREGG_MINTER_ADDR")
+        .ok()
+        .filter(|s| s.starts_with("terp1"))?;
     let denom = prices::native_denom();
     let url = format!(
         "{}/cosmos/bank/v1beta1/balances/{}",
@@ -139,7 +143,10 @@ fn query_minter_lcd() -> Option<u128> {
     let bals = v.get("balances")?.as_array()?;
     for c in bals {
         if c.get("denom").and_then(|d| d.as_str()) == Some(denom.as_str()) {
-            return c.get("amount").and_then(|a| a.as_str()).and_then(|s| s.parse().ok());
+            return c
+                .get("amount")
+                .and_then(|a| a.as_str())
+                .and_then(|s| s.parse().ok());
         }
     }
     Some(0)

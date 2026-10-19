@@ -1,8 +1,8 @@
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Env, Ibc3ChannelOpenResponse,
-    IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder,
-    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo,
-    Response, StdError, StdResult,
+    Binary, Deps, DepsMut, Env, Ibc3ChannelOpenResponse, IbcBasicResponse, IbcChannelCloseMsg,
+    IbcChannelConnectMsg, IbcChannelOpenMsg, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, MessageInfo, Response, StdError, StdResult,
+    entry_point, from_json, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,10 @@ pub enum ExecuteMsg {
         receipt: [u8; 32],
         signatures: Vec<OracleSig>,
     },
-    BindDreggChannel { channel: String, port: String },
+    BindDreggChannel {
+        channel: String,
+        port: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, schemars::JsonSchema)]
@@ -431,10 +434,8 @@ mod tests {
             },
         )
         .unwrap();
-        let st: DreggIbcStatus = from_json(
-            query(deps.as_ref(), mock_env(), QueryMsg::DreggIbc {}).unwrap(),
-        )
-        .unwrap();
+        let st: DreggIbcStatus =
+            from_json(query(deps.as_ref(), mock_env(), QueryMsg::DreggIbc {}).unwrap()).unwrap();
         assert_eq!(st.channel.as_deref(), Some("channel-7"));
         assert!(st.ibc_only);
     }

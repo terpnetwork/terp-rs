@@ -7,8 +7,8 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use rusqlite::{params, Connection};
-use serde_json::{json, Value};
+use rusqlite::{Connection, params};
+use serde_json::{Value, json};
 
 pub const DONATION_UA: &str = "u1uml44spc4nn732t6605wjcwu3wn9dla4aehpyrvnhssq2ew3dk8mqk5e9jhnndzfny7fkrkx5ape05nzf8gwruqykkvc27fm0v9ln4hfrwkmtfrs27r06xu0uc9eneh777le3m8362v7xaurgtkgxtspy5eqhgpzw6axjwgwdy5wjdjt";
 
@@ -77,9 +77,7 @@ pub fn open(dir: &Path) -> Result<Account, String> {
     seed.fill(0);
     let stored = read_account(dir)?;
     if stored.0 != derived.0 || stored.1 != derived.2 {
-        return Err(
-            "account file does not match the spend seed; refusing to continue".into(),
-        );
+        return Err("account file does not match the spend seed; refusing to continue".into());
     }
     open_db(dir)?;
     Ok(Account {
@@ -216,7 +214,9 @@ pub fn prepare_send(dir: &Path, zat: u64, address: &str) -> Result<SendPlan, Str
         }
     }
     if have < zat {
-        return Err(format!("insufficient ironwood spendable: have {have} need {zat}"));
+        return Err(format!(
+            "insufficient ironwood spendable: have {have} need {zat}"
+        ));
     }
     Ok(SendPlan {
         zat,
@@ -262,7 +262,9 @@ fn write_seed_new(path: &Path, seed: &[u8; 32]) -> Result<(), String> {
         use std::os::unix::fs::OpenOptionsExt;
         opts.mode(0o600);
     }
-    let mut f = opts.open(path).map_err(|e| format!("create spend seed: {e}"))?;
+    let mut f = opts
+        .open(path)
+        .map_err(|e| format!("create spend seed: {e}"))?;
     f.write_all(seed).map_err(|e| e.to_string())?;
     f.sync_all().map_err(|e| e.to_string())?;
     Ok(())
@@ -283,8 +285,11 @@ fn write_account(dir: &Path, diversifier_index: u32, address: &str) -> Result<()
         "address": address,
     });
     let path = dir.join(ACCOUNT_FILE);
-    fs::write(&path, serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
+    fs::write(
+        &path,
+        serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -446,7 +451,11 @@ mod tests {
         assert_eq!(bal3["total"], 150_000, "prepare_send must not spend");
 
         let other = "u1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
-        assert!(prepare_send(&dir, 1, other).unwrap_err().contains("donation"));
+        assert!(
+            prepare_send(&dir, 1, other)
+                .unwrap_err()
+                .contains("donation")
+        );
         assert_eq!(balance(&dir).unwrap()["total"], 150_000);
 
         commit_spend(&dir, &plan.nullifiers, "spend-tx").unwrap();

@@ -17,8 +17,7 @@ use ict_rs_cw_orch::daemon_builder_from_chain;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-const LAB_MNEMONIC: &str =
-    "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius";
+const LAB_MNEMONIC: &str = "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius";
 
 fn refuse_mock() -> Result<(), Box<dyn std::error::Error>> {
     if std::env::var("ICT_MOCK").ok().as_deref() == Some("1") {
@@ -82,12 +81,16 @@ fn ensure_product_fed_bin() -> Result<(), Box<dyn std::error::Error>> {
     Err("DREGG_NODE_BIN unset. Build svg-mint-fed as a Linux ELF from this repo before the chain suite.".into())
 }
 
-
-
 #[tokio::main]
 async fn main() {
-    if std::env::var("TERP_IMAGE_VERSION").ok().filter(|s| !s.is_empty()).is_none()
-        && std::env::var("ICT_IMAGE_VERSION").ok().filter(|s| !s.is_empty()).is_none()
+    if std::env::var("TERP_IMAGE_VERSION")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .is_none()
+        && std::env::var("ICT_IMAGE_VERSION")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .is_none()
     {
         std::env::set_var("TERP_IMAGE_VERSION", "v6.3.0-dev");
     }
@@ -108,7 +111,10 @@ async fn main() {
         }
         Err(e) => {
             eprintln!("{e}");
-            println!("{}", serde_json::json!({ "live": false, "error": e.to_string() }));
+            println!(
+                "{}",
+                serde_json::json!({ "live": false, "error": e.to_string() })
+            );
             std::process::exit(2);
         }
     }
@@ -348,7 +354,9 @@ async fn exercise(
     let (minter_addr, collection_addr, svg_code, minter_code) =
         deploy_svg_cw_orch(chain, &owner_bech, &arts)?;
     if collection_addr.is_empty() || !collection_addr.starts_with("terp1") {
-        return Err(format!("CwSvgSuite/Deploy did not return collection: {collection_addr}").into());
+        return Err(
+            format!("CwSvgSuite/Deploy did not return collection: {collection_addr}").into(),
+        );
     }
     // CLOSE Linus 3: sidecar env is Docker DNS LCD of the **contract**, not validator bank.
     let lcd_docker = format!("http://{}:{}", node0.hostname, node0.ports.api);
@@ -374,7 +382,11 @@ async fn exercise(
     std::env::set_var("DREGG_SVG_URL", dregg_url);
     std::env::remove_var("ONBOARD_SKIP_PAID");
 
-    let health = http_json("GET", &format!("{}/health", dregg_url.trim_end_matches('/')), None)?;
+    let health = http_json(
+        "GET",
+        &format!("{}/health", dregg_url.trim_end_matches('/')),
+        None,
+    )?;
     if health.get("service").and_then(|x| x.as_str()) != Some("dregg-svg") {
         return Err(format!("dregg federation not live: {health}").into());
     }
@@ -387,7 +399,11 @@ async fn exercise(
     if setc.get("ok") != Some(&serde_json::Value::Bool(true)) {
         return Err(format!("set collection max supply failed: {setc}").into());
     }
-    let health2 = http_json("GET", &format!("{}/health", dregg_url.trim_end_matches('/')), None)?;
+    let health2 = http_json(
+        "GET",
+        &format!("{}/health", dregg_url.trim_end_matches('/')),
+        None,
+    )?;
     if health2.get("checkout_ready") != Some(&serde_json::Value::Bool(true)) {
         return Err(format!(
             "dregg checkout not ready after collection bind (LCD of contract, not validator): {health2}"
@@ -442,10 +458,9 @@ async fn exercise(
     assert_pay_targets_private(&pay_a, &owner_bech)?;
     assert_pay_targets_private(&pay_b, &owner_bech)?;
     if pay_a.get("zec_ua").and_then(|x| x.as_str()) != Some(wallet_lab.ua.as_str()) {
-        return Err(format!(
-            "pay-targets zec_ua must be the managed wallet address, got {pay_a}"
-        )
-        .into());
+        return Err(
+            format!("pay-targets zec_ua must be the managed wallet address, got {pay_a}").into(),
+        );
     }
     // CLOSE Linus 10/11: HD addrs from fed derive() (all-hardened); bech32 via crate not convert_bits.
     if pay_a.get("eth_addr") == pay_b.get("eth_addr")
@@ -453,7 +468,9 @@ async fn exercise(
         || pay_a.get("zec_diversifier") == pay_b.get("zec_diversifier")
         || pay_a.get("memo_commit") == pay_b.get("memo_commit")
     {
-        return Err(format!("HD/diversifier/C reused across checkouts: a={pay_a} b={pay_b}").into());
+        return Err(
+            format!("HD/diversifier/C reused across checkouts: a={pay_a} b={pay_b}").into(),
+        );
     }
     let memo_hex = pay_a
         .get("memo_hex")
@@ -509,10 +526,7 @@ async fn exercise(
     }
     let n_btc = btc_dep["n_deposit"].clone();
 
-    let eth_addr = pay_a
-        .get("eth_addr")
-        .and_then(|x| x.as_str())
-        .unwrap_or("");
+    let eth_addr = pay_a.get("eth_addr").and_then(|x| x.as_str()).unwrap_or("");
     let base_rpc = base_anvil.docker_dns_rpc_url();
     let eth_hex = format!("0x{eth_wei:x}");
     let base_send = base_anvil
@@ -541,8 +555,9 @@ async fn exercise(
         }),
     )?;
     if base_dep.get("ok") != Some(&serde_json::Value::Bool(true)) {
-        return Err(format!("federation did not record Base payment: {base_dep} {base_blob}")
-            .into());
+        return Err(
+            format!("federation did not record Base payment: {base_dep} {base_blob}").into(),
+        );
     }
     let n_base = base_dep["n_deposit"].clone();
 
@@ -622,11 +637,7 @@ async fn exercise(
     if entitle_base.get("ok") != Some(&serde_json::Value::Bool(true)) {
         return Err(format!("federation Base entitle refused: {entitle_base}").into());
     }
-    let zec_info = json_rpc(
-        zakura_rpc,
-        "getblockchaininfo",
-        serde_json::json!([]),
-    )?;
+    let zec_info = json_rpc(zakura_rpc, "getblockchaininfo", serde_json::json!([]))?;
     if zec_info.get("result").is_none() {
         return Err(format!("zakura getblockchaininfo has no result: {zec_info}").into());
     }
@@ -637,10 +648,9 @@ async fn exercise(
     }
     let zec_info = json_rpc(zakura_rpc, "getblockchaininfo", serde_json::json!([]))?;
     if !nu63_is_active(&zec_info) {
-        return Err(format!(
-            "lab zakura NU6.3 must be active after generate 2, got {zec_info}"
-        )
-        .into());
+        return Err(
+            format!("lab zakura NU6.3 must be active after generate 2, got {zec_info}").into(),
+        );
     }
     // One SVG unit. prices::ZEC_ZAT is 150_000. A smaller note is underpay.
     std::env::set_var("SVG_MINT_IRONWOOD_ZAT", "150000");
@@ -648,17 +658,22 @@ async fn exercise(
     if zec_open.get("ok") != Some(&serde_json::Value::Bool(true)) {
         return Err(format!("ironwood open refused: {zec_open}").into());
     }
-    let zec_zat = zec_open.get("amount_zat").and_then(|x| x.as_u64()).unwrap_or(0);
+    let zec_zat = zec_open
+        .get("amount_zat")
+        .and_then(|x| x.as_u64())
+        .unwrap_or(0);
     if zec_zat != 150_000 {
-        return Err(format!("ironwood open amount_zat must be 150000, got {zec_zat} in {zec_open}").into());
+        return Err(format!(
+            "ironwood open amount_zat must be 150000, got {zec_zat} in {zec_open}"
+        )
+        .into());
     }
     catch_up_public_zakura(zakura_rpc)?;
-    let zec_txid = zec_open
-        .get("txid")
-        .and_then(|x| x.as_str())
-        .unwrap_or("");
+    let zec_txid = zec_open.get("txid").and_then(|x| x.as_str()).unwrap_or("");
     if zec_txid.len() != 64 || !zec_txid.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(format!("ironwood txid must be 64 hex chars, got {zec_txid:?} in {zec_open}").into());
+        return Err(
+            format!("ironwood txid must be 64 hex chars, got {zec_txid:?} in {zec_open}").into(),
+        );
     }
     let zec = fed_signed(
         dregg_url,
@@ -780,9 +795,13 @@ async fn exercise(
         )
         .into());
     }
-    let tpl = wasm_smart_query(&cid, &home, &collection_addr, r#"{"svg_template":{}}"#).unwrap_or_default();
+    let tpl = wasm_smart_query(&cid, &home, &collection_addr, r#"{"svg_template":{}}"#)
+        .unwrap_or_default();
     if dregg::hopalong::is_vanilla_placeholder(&tpl) {
-        return Err(format!("collection is vanilla 1x1 SVG, expected hopalong entropy template: {tpl}").into());
+        return Err(format!(
+            "collection is vanilla 1x1 SVG, expected hopalong entropy template: {tpl}"
+        )
+        .into());
     }
     let height = 2u64;
     // CLOSE Linus 12: observe-supply minted is queried_minted, not hardcoded 8.
@@ -799,15 +818,23 @@ async fn exercise(
         &format!("{}/v1/checkpoint-preview", dregg_url.trim_end_matches('/')),
         Some(&observe_body),
     )?;
-    let digest = extract_digest(&prev).ok_or_else(|| format!("observe preview missing digest: {prev}"))?;
+    let digest =
+        extract_digest(&prev).ok_or_else(|| format!("observe preview missing digest: {prev}"))?;
     let signed = http_json(
         "POST",
         &format!("{}/v1/sign", dregg_url.trim_end_matches('/')),
         Some(&serde_json::json!({"digest": digest})),
     )?;
     let mut observe_body = observe_body;
-    observe_body["signatures"] = signed.get("signatures").cloned().unwrap_or(serde_json::json!([]));
-    if observe_body["signatures"].as_array().map(|a| a.is_empty()).unwrap_or(true) {
+    observe_body["signatures"] = signed
+        .get("signatures")
+        .cloned()
+        .unwrap_or(serde_json::json!([]));
+    if observe_body["signatures"]
+        .as_array()
+        .map(|a| a.is_empty())
+        .unwrap_or(true)
+    {
         return Err(format!("observe-supply unsigned: {signed}").into());
     }
     let observed = http_json(
@@ -923,7 +950,8 @@ async fn exercise(
     }
     let btc_refund_txid = btc.refund_sats(&btc_dest, btc_sats).await?;
     let eth_refund_tx = eth_vault_refund(anvil, from, &vault_addr, &lock_id).await?;
-    let zec_refund = ironwood_escrow("refund").map_err(|err| format!("ironwood refund failed: {err}"))?;
+    let zec_refund =
+        ironwood_escrow("refund").map_err(|err| format!("ironwood refund failed: {err}"))?;
     if zec_refund.get("ok") != Some(&serde_json::Value::Bool(true)) {
         return Err(format!("ironwood refund refused: {zec_refund}").into());
     }
@@ -1082,11 +1110,16 @@ fn deploy_svg_cw_orch(
     let fund = dregg::checkout::native_needed_for_nfts(2);
     let arts = arts.to_path_buf();
     let builder = daemon_builder_from_chain(chain, Some(LAB_MNEMONIC))?;
-    let out = std::thread::spawn(move || -> Result<(String, String, String, String), String> {
-        let daemon = builder.build().map_err(|e| format!("DaemonBuilder.build: {e}"))?;
-        let d = ict_rs_cw_orch::svg_runtime::deploy_hopalong_minter(&daemon, &arts, &denom, fund)?;
-        Ok((d.minter_addr, d.collection_addr, d.svg_code, d.minter_code))
-    })
+    let out = std::thread::spawn(
+        move || -> Result<(String, String, String, String), String> {
+            let daemon = builder
+                .build()
+                .map_err(|e| format!("DaemonBuilder.build: {e}"))?;
+            let d =
+                ict_rs_cw_orch::svg_runtime::deploy_hopalong_minter(&daemon, &arts, &denom, fund)?;
+            Ok((d.minter_addr, d.collection_addr, d.svg_code, d.minter_code))
+        },
+    )
     .join()
     .map_err(|_| "cw-orch deploy thread panicked")??;
     Ok(out)
@@ -1157,7 +1190,11 @@ fn resolve_zrt_linux() -> Result<PathBuf, String> {
     Err("SVG_MINT_ZRT_LINUX missing. Build svg-mint-zrt --features lab as a Linux ELF.".into())
 }
 
-fn wallet_container(dir: &std::path::Path, bin: &std::path::Path, args: &[&str]) -> Result<std::process::Output, String> {
+fn wallet_container(
+    dir: &std::path::Path,
+    bin: &std::path::Path,
+    args: &[&str],
+) -> Result<std::process::Output, String> {
     let _ = std::process::Command::new(docker_bin())
         .args(["rm", "-f", "ict-svg-mint-wallet"])
         .output();
@@ -1241,7 +1278,8 @@ fn prepare_wallet_lab() -> Result<WalletLab, String> {
     }
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let (admin_terp, _, _) = dregg::adr36::sign_keplr_arbitrary(&adr36_secret(1), "", b"designate")?;
+    let (admin_terp, _, _) =
+        dregg::adr36::sign_keplr_arbitrary(&adr36_secret(1), "", b"designate")?;
     std::fs::write(&admin_file, admin_terp.as_bytes()).map_err(|e| e.to_string())?;
     let mut lab = WalletLab {
         dir,
@@ -1259,7 +1297,9 @@ fn prepare_wallet_lab() -> Result<WalletLab, String> {
     }
     let ua = String::from_utf8_lossy(&init.stdout).trim().to_string();
     if !ua.starts_with("u1") {
-        return Err(format!("wallet container init did not print a unified address: {ua}"));
+        return Err(format!(
+            "wallet container init did not print a unified address: {ua}"
+        ));
     }
     let hash_a = wallet_seed_hash(&lab.dir)?;
     let again = wallet_container(&lab.dir, &lab.bin, &["addresses"])?;
@@ -1420,7 +1460,13 @@ fn exercise_managed_wallet(
     let send = wallet_container(
         &lab.dir,
         &lab.bin,
-        &["send", "--zat", "150000", "--address", dregg::adr36::DONATE_ZEC_UA],
+        &[
+            "send",
+            "--zat",
+            "150000",
+            "--address",
+            dregg::adr36::DONATE_ZEC_UA,
+        ],
     )?;
     let send_err = String::from_utf8_lossy(&send.stderr);
     if send.status.success()
@@ -1502,7 +1548,9 @@ fn exercise_managed_wallet(
         || refunded.get("minted") != Some(&serde_json::Value::Bool(false))
         || refunded.get("phase").and_then(|x| x.as_str()) != Some("refunded")
     {
-        return Err(format!("ADR refund did not leave the checkout unminted: {refunded}"));
+        return Err(format!(
+            "ADR refund did not leave the checkout unminted: {refunded}"
+        ));
     }
     let push = adr_checkout(dregg_url, "mint-to", &customer, None)?;
     if push.get("minted") == Some(&serde_json::Value::Bool(true))
@@ -1520,7 +1568,9 @@ fn exercise_managed_wallet(
         || auth.get("minted") != Some(&serde_json::Value::Bool(false))
         || auth.get("phase").and_then(|x| x.as_str()) != Some("entitled")
     {
-        return Err(format!("ADR mint-to must authorize without minting: {auth}"));
+        return Err(format!(
+            "ADR mint-to must authorize without minting: {auth}"
+        ));
     }
     let bad = adr_checkout(dregg_url, "mint-to", owner, Some("dregg-lost-race"))?;
     if bad.get("minted") == Some(&serde_json::Value::Bool(true))
@@ -1539,7 +1589,8 @@ fn exercise_managed_wallet(
         &format!("{}/v1/admin/withdraw", dregg_url.trim_end_matches('/')),
         Some(&withdraw_body),
     )?;
-    if wd.get("authorized") != Some(&serde_json::Value::Bool(true)) || wd.get("ok") != Some(&serde_json::Value::Bool(true))
+    if wd.get("authorized") != Some(&serde_json::Value::Bool(true))
+        || wd.get("ok") != Some(&serde_json::Value::Bool(true))
     {
         return Err(format!("ADR withdraw of the payment failed: {wd}"));
     }
@@ -1592,7 +1643,9 @@ fn record_authorized_mint(dregg_url: &str, owner: &str, mint_hash: &str) -> Resu
         || rec.get("phase").and_then(|x| x.as_str()) != Some("settled")
         || rec.get("terp_tx").and_then(|x| x.as_str()) != Some(hash)
     {
-        return Err(format!("ADR mint record did not settle on the chain hash: {rec}"));
+        return Err(format!(
+            "ADR mint record did not settle on the chain hash: {rec}"
+        ));
     }
     let row = session_row(dregg_url, owner)?;
     if row.get("phase").and_then(|x| x.as_str()) != Some("settled")
@@ -1603,7 +1656,11 @@ fn record_authorized_mint(dregg_url: &str, owner: &str, mint_hash: &str) -> Resu
     Ok(true)
 }
 
-fn json_rpc(url: &str, method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
+fn json_rpc(
+    url: &str,
+    method: &str,
+    params: serde_json::Value,
+) -> Result<serde_json::Value, String> {
     let body = serde_json::json!({"jsonrpc":"2.0","id":1,"method": method, "params": params});
     http_json("POST", url, Some(&body))
 }
@@ -1614,7 +1671,8 @@ fn extract_tx_hash(s: &str) -> Option<String> {
     for key in ["\"transactionHash\"", "\"hash\""] {
         let mut rest = s;
         while let Some(i) = rest.find(key) {
-            let after = rest[i + key.len()..].trim_start_matches(|c: char| c == ':' || c == ' ' || c == '"');
+            let after = rest[i + key.len()..]
+                .trim_start_matches(|c: char| c == ':' || c == ' ' || c == '"');
             let bytes = after.as_bytes();
             if bytes.len() >= 66
                 && bytes[0] == b'0'
@@ -1652,10 +1710,20 @@ fn assert_pay_targets_private(
     if !uri.is_empty() && (!uri.starts_with("zcash:") || !uri.contains("memo=")) {
         return Err(format!("bad ZIP-321: {uri}").into());
     }
-    if pay.get("eth_addr").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+    if pay
+        .get("eth_addr")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .is_empty()
+    {
         return Err(format!("missing HD eth_addr: {pay}").into());
     }
-    if pay.get("btc_addr").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+    if pay
+        .get("btc_addr")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .is_empty()
+    {
         return Err(format!("missing HD btc_addr: {pay}").into());
     }
     Ok(())
@@ -1757,9 +1825,7 @@ fn spawn_ztreamer_lab() -> Result<ZtreamerLab, Box<dyn std::error::Error>> {
         return Err(format!("ztreamer vendor not Ztreamer: {pstdout}").into());
     }
     std::env::set_var("ZTREAMER_SPAWNED", "1");
-    Ok(ZtreamerLab {
-        child: Some(child),
-    })
+    Ok(ZtreamerLab { child: Some(child) })
 }
 
 async fn eth_vault_lock(
@@ -1794,7 +1860,8 @@ async fn eth_vault_lock(
         ])
         .await?;
     let deploy_out = format!("{}{}", deploy.stdout_str(), deploy.stderr_str());
-    let deploy_tx = extract_tx_hash(&deploy_out).ok_or_else(|| format!("vault deploy tx missing: {deploy_out}"))?;
+    let deploy_tx = extract_tx_hash(&deploy_out)
+        .ok_or_else(|| format!("vault deploy tx missing: {deploy_out}"))?;
     let rec = anvil.get_receipt(&deploy_tx).await?;
     let rec_v: serde_json::Value = serde_json::from_str(rec.trim()).unwrap_or_default();
     let vault = rec_v
@@ -1842,8 +1909,8 @@ async fn eth_vault_lock(
         ])
         .await?;
     let sent_out = format!("{}{}", sent.stdout_str(), sent.stderr_str());
-    let lock_tx = extract_tx_hash(&sent_out)
-        .ok_or_else(|| format!("vault lock tx missing: {sent_out}"))?;
+    let lock_tx =
+        extract_tx_hash(&sent_out).ok_or_else(|| format!("vault lock tx missing: {sent_out}"))?;
     let lrec = anvil.get_receipt(&lock_tx).await?;
     let lv: serde_json::Value = serde_json::from_str(lrec.trim()).unwrap_or_default();
     let lock_id = lv
@@ -1879,7 +1946,8 @@ async fn eth_vault_refund(
         ])
         .await?;
     let out = format!("{}{}", refund.stdout_str(), refund.stderr_str());
-    extract_tx_hash(&out).ok_or_else(|| format!("ETH vault refund has no tx hash: {}", out.trim()).into())
+    extract_tx_hash(&out)
+        .ok_or_else(|| format!("ETH vault refund has no tx hash: {}", out.trim()).into())
 }
 
 /// solc creation bytecode only. Constructor args are passed to `cast send --create`.
@@ -1956,7 +2024,9 @@ fn ironwood_escrow(cmd: &str) -> Result<serde_json::Value, String> {
         let path = std::env::var("PATH").unwrap_or_default();
         c.env("PATH", format!("{}:{path}", dir.display()));
     }
-    let out = c.output().map_err(|e| format!("svg-mint-ironwood {cmd}: {e}"))?;
+    let out = c
+        .output()
+        .map_err(|e| format!("svg-mint-ironwood {cmd}: {e}"))?;
     let stdout = String::from_utf8_lossy(&out.stdout);
     let json_line = stdout
         .lines()
@@ -1989,9 +2059,8 @@ fn fed_signed(
         &format!("{base}/v1/checkpoint-preview"),
         Some(&body),
     )?;
-    let digest = extract_digest(&prev).ok_or_else(|| {
-        format!("checkpoint-preview missing digest: {prev}")
-    })?;
+    let digest = extract_digest(&prev)
+        .ok_or_else(|| format!("checkpoint-preview missing digest: {prev}"))?;
     let signed = http_json(
         "POST",
         &format!("{base}/v1/sign"),
@@ -2022,7 +2091,10 @@ async fn exercise_onboard_passkey(
     std::env::set_var("ONBOARD_FROM", granter);
     std::env::set_var("ONBOARD_RUNTIME", granter);
     std::env::set_var("ONBOARD_DAO", granter);
-    std::env::set_var("ONBOARD_RUNWAY_AMOUNT", hash_market::onboard_authz::RUNWAY_UTHOL);
+    std::env::set_var(
+        "ONBOARD_RUNWAY_AMOUNT",
+        hash_market::onboard_authz::RUNWAY_UTHOL,
+    );
 
     let shown = terpd_tx(
         cid,
@@ -2081,7 +2153,9 @@ async fn exercise_onboard_passkey(
     let bind = {
         let l = std::net::TcpListener::bind("127.0.0.1:0")
             .map_err(|e| format!("e2e-onboard bind: {e}"))?;
-        let addr = l.local_addr().map_err(|e| format!("e2e-onboard addr: {e}"))?;
+        let addr = l
+            .local_addr()
+            .map_err(|e| format!("e2e-onboard addr: {e}"))?;
         drop(l);
         addr.to_string()
     };
@@ -2143,7 +2217,11 @@ async fn exercise_onboard_passkey(
     )
     .unwrap_or_else(|e| serde_json::json!({ "ok": false, "error": e }));
     if paid_grant.get("ok") != Some(&serde_json::Value::Bool(true))
-        && paid_grant.get("txhash").and_then(|x| x.as_str()).unwrap_or("").is_empty()
+        && paid_grant
+            .get("txhash")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .is_empty()
     {
         return Err(format!("paid passkey-grant (entitled dest + c) failed: {paid_grant}").into());
     }
@@ -2174,7 +2252,9 @@ async fn exercise_onboard_passkey(
     )
     .unwrap_or_else(|e| serde_json::json!({"ok": false, "error": e}));
     let bad_err = bad_sess.get("error").and_then(|x| x.as_str()).unwrap_or("");
-    if bad_sess.get("ok") == Some(&serde_json::Value::Bool(true)) || !bad_err.contains("signature mismatch") {
+    if bad_sess.get("ok") == Some(&serde_json::Value::Bool(true))
+        || !bad_err.contains("signature mismatch")
+    {
         return Err(format!("morocco-1 ADR-036 doc must mismatch Keplr bytes: {bad_sess}").into());
     }
     // Sign-in and withdraw are different byte strings. A withdraw sentence must not open stats.
@@ -2208,7 +2288,9 @@ async fn exercise_onboard_passkey(
         .cloned()
         .unwrap_or_default();
     if !withdraw_to.iter().any(|u| u.as_str() == Some(donate)) {
-        return Err(format!("admin stats withdraw_to must include hardcoded donate UA: {admin}").into());
+        return Err(
+            format!("admin stats withdraw_to must include hardcoded donate UA: {admin}").into(),
+        );
     }
     let admin_token = http_json_h(
         "GET",
@@ -2298,7 +2380,9 @@ async fn exercise_onboard_passkey(
     let (_, steal_req) = dregg_adr36_withdraw_proof(dregg_url, &admin_sk, 1)?;
     let mut steal_req = steal_req;
     steal_req["rail"] = serde_json::json!("zec");
-    steal_req["to"] = serde_json::json!("u1stealxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    steal_req["to"] = serde_json::json!(
+        "u1stealxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    );
     let steal = http_json(
         "POST",
         &format!("{}/v1/admin/withdraw", dregg_url.trim_end_matches('/')),
@@ -2330,7 +2414,10 @@ async fn exercise_onboard_passkey(
         None,
     )
     .unwrap_or_else(|_| serde_json::json!({}));
-    let phase0 = status0.get("phase").cloned().unwrap_or(serde_json::Value::Null);
+    let phase0 = status0
+        .get("phase")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
 
     let mut grant = serde_json::json!({});
     let mut last_grant_err = String::new();
@@ -2365,7 +2452,9 @@ async fn exercise_onboard_passkey(
         }
     }
     if !last_grant_err.is_empty() && grant.get("txhash").is_none() {
-        return Err(format!("passkey-grant failed after sequence retries: {last_grant_err}").into());
+        return Err(
+            format!("passkey-grant failed after sequence retries: {last_grant_err}").into(),
+        );
     }
     let txhash = grant.get("txhash").and_then(|x| x.as_str()).unwrap_or("");
     let runway_hash = grant
@@ -2397,14 +2486,7 @@ async fn exercise_onboard_passkey(
     let bals = terpd_tx(
         cid,
         &[
-            "q",
-            "bank",
-            "balances",
-            &user,
-            "--home",
-            home,
-            "--output",
-            "json",
+            "q", "bank", "balances", &user, "--home", home, "--output", "json",
         ],
     )?;
     if !bals.contains(hash_market::onboard_authz::RUNWAY_UTHOL) {
@@ -2413,15 +2495,7 @@ async fn exercise_onboard_passkey(
     let fg = terpd_tx(
         cid,
         &[
-            "q",
-            "feegrant",
-            "grant",
-            granter,
-            &user,
-            "--home",
-            home,
-            "--output",
-            "json",
+            "q", "feegrant", "grant", granter, &user, "--home", home, "--output", "json",
         ],
     )?;
     if !fg.contains("MsgAddAuthenticator") && !fg.to_lowercase().contains("allowance") {
@@ -2448,9 +2522,10 @@ async fn exercise_onboard_passkey(
         .as_array()
         .cloned()
         .unwrap_or_default();
-    if !reg_allowed.iter().any(|x| {
-        x.as_str() == Some(hash_market::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL)
-    }) {
+    if !reg_allowed
+        .iter()
+        .any(|x| x.as_str() == Some(hash_market::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL))
+    {
         return Err(format!("register-grant must allow MsgAddAuthenticator: {register}").into());
     }
     if reg_allowed
@@ -2542,7 +2617,9 @@ async fn exercise_onboard_passkey(
     terpd_wait_next_block(cid, home);
     let auths = query_authenticators(cid, home, &user)?;
     if !hash_market::onboard_authz::authenticators_query_ok(&auths) {
-        return Err(format!("authenticator query empty after feegrant-paid register: {auths}").into());
+        return Err(
+            format!("authenticator query empty after feegrant-paid register: {auths}").into(),
+        );
     }
 
     let send_denied = terpd_tx(
@@ -2596,7 +2673,7 @@ async fn exercise_onboard_passkey(
         "withdraw_dest_hardcoded": wd_dest == donate,
         "withdraw_foreign_blocked": steal.get("ok") != Some(&serde_json::Value::Bool(true)),
         "withdraw_zero_blocked": wd0.get("ok") != Some(&serde_json::Value::Bool(true)),
-"status_phase": phase0,
+    "status_phase": phase0,
         "paid_c": c,
         "user": user,
         "granter": granter_out,
@@ -2626,10 +2703,7 @@ struct LabTerpdBroadcaster {
 impl hash_market::onboard_authz::GrantBroadcaster for LabTerpdBroadcaster {
     fn broadcast_authz_exec(&self, exec: &serde_json::Value) -> serde_json::Value {
         let inner = exec.get("msgs").and_then(|m| m.get(0)).unwrap_or(exec);
-        let grantee = inner
-            .get("grantee")
-            .and_then(|x| x.as_str())
-            .unwrap_or("");
+        let grantee = inner.get("grantee").and_then(|x| x.as_str()).unwrap_or("");
         let spend = inner
             .pointer("/allowance/allowance/spend_limit/0/amount")
             .and_then(|x| x.as_str())
@@ -2644,9 +2718,7 @@ impl hash_market::onboard_authz::GrantBroadcaster for LabTerpdBroadcaster {
             })
             .filter(|v: &Vec<String>| !v.is_empty())
             .unwrap_or_else(|| {
-                vec![
-                    hash_market::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL.to_string(),
-                ]
+                vec![hash_market::onboard_authz::ADD_AUTHENTICATOR_TYPE_URL.to_string()]
             });
         let spend_c = format!("{spend}{}", self.denom);
         let fees = format!("20000{}", self.denom);
@@ -2700,7 +2772,8 @@ impl hash_market::onboard_authz::GrantBroadcaster for LabTerpdBroadcaster {
             match terpd_tx(&self.cid, &refs) {
                 Ok(s) => {
                     terpd_wait_next_block(&self.cid, &self.home);
-                    return serde_json::from_str(s.trim()).unwrap_or(serde_json::json!({"stdout": s}));
+                    return serde_json::from_str(s.trim())
+                        .unwrap_or(serde_json::json!({"stdout": s}));
                 }
                 Err(e) => {
                     last = e;
@@ -2754,7 +2827,8 @@ impl hash_market::onboard_authz::GrantBroadcaster for LabTerpdBroadcaster {
             match terpd_tx(&self.cid, &args) {
                 Ok(s) => {
                     terpd_wait_next_block(&self.cid, &self.home);
-                    return serde_json::from_str(s.trim()).unwrap_or(serde_json::json!({"stdout": s}));
+                    return serde_json::from_str(s.trim())
+                        .unwrap_or(serde_json::json!({"stdout": s}));
                 }
                 Err(e) => {
                     last = e;
@@ -2875,7 +2949,6 @@ fn adr36_secret(n: u8) -> [u8; 32] {
     s
 }
 
-
 fn dregg_adr36_withdraw_proof(
     dregg_url: &str,
     secret: &[u8; 32],
@@ -2893,8 +2966,7 @@ fn dregg_adr36_withdraw_proof(
         .to_string();
     let ua = dregg::adr36::DONATE_ZEC_UA;
     let statement = dregg::adr36::withdraw_statement(zat, ua, &challenge);
-    let (signer, pk, sig) =
-        dregg::adr36::sign_keplr_arbitrary(secret, "", statement.as_bytes())?;
+    let (signer, pk, sig) = dregg::adr36::sign_keplr_arbitrary(secret, "", statement.as_bytes())?;
     Ok((
         signer.clone(),
         serde_json::json!({
@@ -2932,8 +3004,7 @@ fn dregg_adr36_proof_chain(
         .ok_or_else(|| format!("challenge missing: {ch}"))?
         .to_string();
     let data = hex_decode(&challenge)?;
-    let (signer, pk, sig) =
-        dregg::adr36::sign_keplr_arbitrary(secret, sign_chain_id, &data)?;
+    let (signer, pk, sig) = dregg::adr36::sign_keplr_arbitrary(secret, sign_chain_id, &data)?;
     Ok((
         signer.clone(),
         serde_json::json!({
@@ -3009,17 +3080,7 @@ fn terpd_account_sequence(cid: &str, home: &str, addr: &str) -> Option<u64> {
     }
     let out = std::process::Command::new(docker_bin())
         .args([
-            "exec",
-            cid,
-            "terpd",
-            "q",
-            "auth",
-            "account",
-            addr,
-            "--home",
-            home,
-            "--output",
-            "json",
+            "exec", cid, "terpd", "q", "auth", "account", addr, "--home", home, "--output", "json",
         ])
         .output()
         .ok()?;
@@ -3155,7 +3216,11 @@ fn list_code_ids(cid: &str, home: &str) -> Result<Vec<String>, String> {
 
 fn cosmos_txhash(blob: &str) -> Option<String> {
     if let Ok(v) = serde_json::from_str::<serde_json::Value>(blob.trim()) {
-        if let Some(h) = v.get("txhash").or_else(|| v.get("hash")).and_then(|x| x.as_str()) {
+        if let Some(h) = v
+            .get("txhash")
+            .or_else(|| v.get("hash"))
+            .and_then(|x| x.as_str())
+        {
             if h.len() >= 32 {
                 return Some(h.to_string());
             }
@@ -3176,18 +3241,7 @@ fn wait_tx_included(cid: &str, home: &str, blob: &str) -> Result<(), String> {
     };
     for _ in 0..40 {
         std::thread::sleep(std::time::Duration::from_millis(400));
-        if let Ok(q) = terpd_tx(
-            cid,
-            &[
-                "q",
-                "tx",
-                &hash,
-                "--home",
-                home,
-                "--output",
-                "json",
-            ],
-        ) {
+        if let Ok(q) = terpd_tx(cid, &["q", "tx", &hash, "--home", home, "--output", "json"]) {
             let v: serde_json::Value = serde_json::from_str(q.trim()).unwrap_or_default();
             let code = v.get("code").and_then(|c| c.as_u64()).unwrap_or(u64::MAX);
             if code == 0 {
@@ -3216,7 +3270,10 @@ fn poll_num_tokens(
         let queried = wasm_query
             .get("count")
             .or_else(|| wasm_query.get("data").and_then(|d| d.get("count")))
-            .and_then(|c| c.as_u64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
+            .and_then(|c| {
+                c.as_u64()
+                    .or_else(|| c.as_str().and_then(|s| s.parse().ok()))
+            })
             .unwrap_or(0);
         if queried > 0 {
             return Ok((wasm_query, queried));
@@ -3329,7 +3386,10 @@ fn extract_contract_addr(s: &str) -> Option<String> {
         if let Some(raw) = v.get("raw_log").and_then(|x| x.as_str()) {
             if let Some(i) = raw.find("terp1") {
                 let slice = &raw[i..];
-                let addr: String = slice.chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+                let addr: String = slice
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric())
+                    .collect();
                 if addr.len() > 20 {
                     return Some(addr);
                 }
@@ -3406,7 +3466,6 @@ fn instantiate_wasm(
     Err("minter address not in list-contract-by-code".into())
 }
 
-
 fn zakura_height(rpc: &str) -> Result<u64, Box<dyn std::error::Error>> {
     let v = json_rpc(rpc, "getblockcount", serde_json::json!([]))?;
     v.get("result")
@@ -3417,8 +3476,8 @@ fn zakura_height(rpc: &str) -> Result<u64, Box<dyn std::error::Error>> {
 /// The Ironwood open mines coinbases on the private node. The public node must
 /// reach the same tip or checkout fail-closes on zec_tip_drift.
 fn catch_up_public_zakura(private_rpc: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let public_rpc = std::env::var("ZCASH_PUBLIC_RPC_HOST")
-        .map_err(|_| "ZCASH_PUBLIC_RPC_HOST unset")?;
+    let public_rpc =
+        std::env::var("ZCASH_PUBLIC_RPC_HOST").map_err(|_| "ZCASH_PUBLIC_RPC_HOST unset")?;
     let private_h = zakura_height(private_rpc)?;
     let public_h = zakura_height(&public_rpc)?;
     if private_h > public_h {
@@ -3439,7 +3498,6 @@ fn catch_up_public_zakura(private_rpc: &str) -> Result<(), Box<dyn std::error::E
     }
     Ok(())
 }
-
 
 fn terpd_out(cid: &str, args: &[&str]) -> Result<String, String> {
     let out = std::process::Command::new(docker_bin())
@@ -3480,8 +3538,8 @@ fn fresh_terp(cid: &str, home: &str, name: &str) -> Result<String, String> {
         (Some(i), Some(j)) if j > i => &blob[i..=j],
         _ => blob.trim(),
     };
-    let v: serde_json::Value = serde_json::from_str(json_blob)
-        .map_err(|e| format!("keys add {name}: {e} blob={blob}"))?;
+    let v: serde_json::Value =
+        serde_json::from_str(json_blob).map_err(|e| format!("keys add {name}: {e} blob={blob}"))?;
     v.get("address")
         .and_then(|a| a.as_str())
         .map(str::to_string)
@@ -3505,7 +3563,10 @@ async fn parallel_wallets(
         fresh_terp(cid, home, "svg-w1")?,
         fresh_terp(cid, home, "svg-w2")?,
     ];
-    if recipients[0] == recipients[1] || recipients[1] == recipients[2] || recipients[0] == recipients[2] {
+    if recipients[0] == recipients[1]
+        || recipients[1] == recipients[2]
+        || recipients[0] == recipients[2]
+    {
         return Err(format!("parallel wallets were not distinct: {recipients:?}").into());
     }
     let mut pays = Vec::new();
@@ -3544,41 +3605,55 @@ async fn parallel_wallets(
         .ok_or("wallet2 pay-targets missing eth_addr")?
         .to_string();
     let dregg = dregg_url.to_string();
-    let (eth_tx, base_tx, btc_tx) = tokio::join!(
-        eth_vault_lock(anvil, from_eth, treasury, &memo0),
-        async {
-            let rpc = base_anvil.docker_dns_rpc_url();
-            let value = format!("0x{eth_wei:x}");
-            let sent = base_anvil
-                .exec_cast(&[
-                    "send",
-                    "--rpc-url",
-                    &rpc,
-                    "--private-key",
-                    from_base,
-                    &base_addr,
-                    "--value",
-                    &value,
-                    "--json",
-                ])
-                .await?;
-            let blob = format!("{}{}", sent.stdout_str(), sent.stderr_str());
-            let hash = extract_tx_hash(&blob).ok_or_else(|| format!("base tx hash missing: {blob}"))?;
-            Ok::<String, Box<dyn std::error::Error>>(hash)
-        },
-        async {
-            btc.pay_sats_to(&btc_addr, btc_sats)
-                .await
-                .map_err(|e| -> Box<dyn std::error::Error> { format!("parallel btc pay: {e}").into() })
-        }
-    );
+    let (eth_tx, base_tx, btc_tx) =
+        tokio::join!(
+            eth_vault_lock(anvil, from_eth, treasury, &memo0),
+            async {
+                let rpc = base_anvil.docker_dns_rpc_url();
+                let value = format!("0x{eth_wei:x}");
+                let sent = base_anvil
+                    .exec_cast(&[
+                        "send",
+                        "--rpc-url",
+                        &rpc,
+                        "--private-key",
+                        from_base,
+                        &base_addr,
+                        "--value",
+                        &value,
+                        "--json",
+                    ])
+                    .await?;
+                let blob = format!("{}{}", sent.stdout_str(), sent.stderr_str());
+                let hash = extract_tx_hash(&blob)
+                    .ok_or_else(|| format!("base tx hash missing: {blob}"))?;
+                Ok::<String, Box<dyn std::error::Error>>(hash)
+            },
+            async {
+                btc.pay_sats_to(&btc_addr, btc_sats).await.map_err(
+                    |e| -> Box<dyn std::error::Error> { format!("parallel btc pay: {e}").into() },
+                )
+            }
+        );
     let (eth_tx, _, _) = eth_tx?;
     let base_tx = base_tx?;
     let btc_tx = btc_tx?;
     let rows = [
-        ("Eth", eth_wei.to_string(), eth_tx.trim_start_matches("0x").to_string()),
-        ("Base", eth_wei.to_string(), base_tx.trim_start_matches("0x").to_string()),
-        ("Btc", btc_sats.to_string(), btc_tx.trim_start_matches("0x").to_string()),
+        (
+            "Eth",
+            eth_wei.to_string(),
+            eth_tx.trim_start_matches("0x").to_string(),
+        ),
+        (
+            "Base",
+            eth_wei.to_string(),
+            base_tx.trim_start_matches("0x").to_string(),
+        ),
+        (
+            "Btc",
+            btc_sats.to_string(),
+            btc_tx.trim_start_matches("0x").to_string(),
+        ),
     ];
     let mut ids = Vec::new();
     for (rail, amount, raw) in rows {
@@ -3591,7 +3666,10 @@ async fn parallel_wallets(
         if dep.get("ok") != Some(&serde_json::Value::Bool(true)) {
             return Err(format!("parallel {rail} deposit refused: {dep}").into());
         }
-        let n = dep.get("n_deposit").cloned().ok_or_else(|| format!("parallel {rail} missing n_deposit: {dep}"))?;
+        let n = dep
+            .get("n_deposit")
+            .cloned()
+            .ok_or_else(|| format!("parallel {rail} missing n_deposit: {dep}"))?;
         if n.is_null() {
             return Err(format!("parallel {rail} n_deposit is null: {dep}").into());
         }
@@ -3607,7 +3685,9 @@ async fn parallel_wallets(
         tokio::task::spawn_blocking(move || {
             use cw_orch::prelude::Coin;
             use ict_rs_cw_orch::svg_runtime::{mint_via_daemon, native_svg_mint_msg};
-            let daemon = mint_builder.build().map_err(|e| format!("Daemon.build mint: {e}"))?;
+            let daemon = mint_builder
+                .build()
+                .map_err(|e| format!("Daemon.build mint: {e}"))?;
             mint_via_daemon(
                 &daemon,
                 &collection_for_mint,

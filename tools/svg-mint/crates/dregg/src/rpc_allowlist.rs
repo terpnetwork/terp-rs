@@ -67,18 +67,29 @@ fn host_allowed(host: &str) -> bool {
         return true;
     }
     // RFC1918 docker bridges
-    if host.starts_with("10.") || host.starts_with("172.16.") || host.starts_with("172.17.")
-        || host.starts_with("172.18.") || host.starts_with("172.19.")
-        || host.starts_with("172.20.") || host.starts_with("172.21.")
-        || host.starts_with("172.22.") || host.starts_with("172.23.")
-        || host.starts_with("172.24.") || host.starts_with("172.25.")
-        || host.starts_with("172.26.") || host.starts_with("172.27.")
-        || host.starts_with("172.28.") || host.starts_with("172.29.")
-        || host.starts_with("172.30.") || host.starts_with("172.31.")
+    if host.starts_with("10.")
+        || host.starts_with("172.16.")
+        || host.starts_with("172.17.")
+        || host.starts_with("172.18.")
+        || host.starts_with("172.19.")
+        || host.starts_with("172.20.")
+        || host.starts_with("172.21.")
+        || host.starts_with("172.22.")
+        || host.starts_with("172.23.")
+        || host.starts_with("172.24.")
+        || host.starts_with("172.25.")
+        || host.starts_with("172.26.")
+        || host.starts_with("172.27.")
+        || host.starts_with("172.28.")
+        || host.starts_with("172.29.")
+        || host.starts_with("172.30.")
+        || host.starts_with("172.31.")
     {
         return true;
     }
-    extra_allow().iter().any(|h| h == host || host.ends_with(&format!(".{h}")))
+    extra_allow()
+        .iter()
+        .any(|h| h == host || host.ends_with(&format!(".{h}")))
 }
 
 /// `true` if this URL is acceptable as ETH_RPC / BASE_RPC / BTC_RPC / compact streamer host.
@@ -174,9 +185,7 @@ mod tests {
         assert!(!rpc_url_is_self_hosted(
             "https://eth-mainnet.g.alchemy.com/v2/KEY"
         ));
-        assert!(!rpc_url_is_self_hosted(
-            "https://mainnet.infura.io/v3/KEY"
-        ));
+        assert!(!rpc_url_is_self_hosted("https://mainnet.infura.io/v3/KEY"));
         assert!(!rpc_url_is_self_hosted("https://ethereum.publicnode.com"));
         assert!(!rpc_url_is_self_hosted("https://rpc.ankr.com/eth"));
         assert!(!rpc_url_is_self_hosted("https://eth.llamarpc.com"));

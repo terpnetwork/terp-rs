@@ -1,7 +1,7 @@
 //! Mentor verifies that proof commitments bind to the user's mint action.
 //! Opening is not published on chain.
 
-use crate::commit::{bind, verify_action, verify_deposit, ActionOpening, DepositOpening};
+use crate::commit::{ActionOpening, DepositOpening, bind, verify_action, verify_deposit};
 
 #[derive(Clone, Debug)]
 pub struct MentorOpening {

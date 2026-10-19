@@ -260,7 +260,9 @@ fn basic_b64(data: &[u8]) -> String {
         out.push(T[(b0 >> 2) as usize] as char);
         out.push(T[(((b0 & 0x03) << 4) | (b1.unwrap_or(0) >> 4)) as usize] as char);
         if b1.is_some() {
-            out.push(T[(((b1.unwrap_or(0) & 0x0f) << 2) | (b2.unwrap_or(0) >> 6)) as usize] as char);
+            out.push(
+                T[(((b1.unwrap_or(0) & 0x0f) << 2) | (b2.unwrap_or(0) >> 6)) as usize] as char,
+            );
         } else {
             out.push('=');
         }
@@ -296,9 +298,7 @@ fn post_https_json(
     if let Some(a) = authorization.filter(|s| !s.is_empty()) {
         cmd.args(["-H", &format!("Authorization: {a}")]);
     }
-    let out = cmd
-        .output()
-        .map_err(|e| format!("curl https: {e}"))?;
+    let out = cmd.output().map_err(|e| format!("curl https: {e}"))?;
     if !out.status.success() {
         return Err(format!(
             "curl https {}: {}",
@@ -315,7 +315,9 @@ fn parse_height(v: &serde_json::Value) -> Result<u64, String> {
             return Err(format!("rpc error: {err}"));
         }
     }
-    let r = v.get("result").ok_or_else(|| "getblockcount: no result".to_string())?;
+    let r = v
+        .get("result")
+        .ok_or_else(|| "getblockcount: no result".to_string())?;
     if let Some(n) = r.as_u64() {
         return Ok(n);
     }
@@ -347,9 +349,8 @@ mod tests {
             let (mut s, _) = listener.accept().unwrap();
             let mut buf = [0u8; 2048];
             let _ = s.read(&mut buf);
-            let payload = format!(
-                "{{\"jsonrpc\":\"1.0\",\"id\":\"dregg-tip\",\"result\":{height}}}"
-            );
+            let payload =
+                format!("{{\"jsonrpc\":\"1.0\",\"id\":\"dregg-tip\",\"result\":{height}}}");
             let resp = format!(
                 "HTTP/1.0 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{payload}",
                 payload.len()
@@ -408,14 +409,8 @@ mod tests {
         clear_cache();
         let (pub_port, pub_h) = serve_height(40);
         let (priv_port, priv_h) = serve_height(40);
-        std::env::set_var(
-            "ZCASH_PUBLIC_RPC",
-            format!("http://127.0.0.1:{pub_port}"),
-        );
-        std::env::set_var(
-            "ZCASH_PRIVATE_RPC",
-            format!("http://127.0.0.1:{priv_port}"),
-        );
+        std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port}"));
+        std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{priv_port}"));
         let ok = probe_uncached();
         let _ = pub_h.join();
         let _ = priv_h.join();
@@ -425,10 +420,7 @@ mod tests {
 
         clear_cache();
         let (pub_port2, pub_h2) = serve_height(41);
-        std::env::set_var(
-            "ZCASH_PUBLIC_RPC",
-            format!("http://127.0.0.1:{pub_port2}"),
-        );
+        std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port2}"));
         std::env::set_var("ZCASH_PRIVATE_RPC", "http://127.0.0.1:1");
         let down = probe_uncached();
         let _ = pub_h2.join();
@@ -483,7 +475,10 @@ mod tests {
         std::fs::write(&cookie, "rpcuser:rpcpass\n").unwrap();
         std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{port}"));
         std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{port}"));
-        std::env::set_var("ZCASH_PRIVATE_RPC_COOKIE", cookie.to_string_lossy().as_ref());
+        std::env::set_var(
+            "ZCASH_PRIVATE_RPC_COOKIE",
+            cookie.to_string_lossy().as_ref(),
+        );
         std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE");
         // First call is public (no cookie) — spawn a second listener in the same
         // process by probing private only via getblockcount helper path:

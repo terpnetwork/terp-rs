@@ -304,7 +304,12 @@ mod tests {
         row.blinding = r;
         pending.insert(c, row);
 
-        let uri = payment_request("u1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", 450_000, &c).unwrap();
+        let uri = payment_request(
+            "u1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            450_000,
+            &c,
+        )
+        .unwrap();
         let param = uri.split("memo=").nth(1).unwrap();
         let hex = memo_hex(&c);
         let decoded = zip321::decode_memo_bytes(param).expect("b64url");

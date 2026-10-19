@@ -53,7 +53,6 @@ pub fn checkout_statement(action: &str, terp: &str, challenge_hex: &str) -> Resu
     ))
 }
 
-
 pub fn sign_doc_json(chain_id: &str, signer: &str, data: &[u8]) -> String {
     let data_b64 = b64(data);
     format!(
@@ -150,7 +149,10 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
             _ => Err("b64".into()),
         }
     }
-    let s: Vec<u8> = s.bytes().filter(|c| *c != b'=' && !c.is_ascii_whitespace()).collect();
+    let s: Vec<u8> = s
+        .bytes()
+        .filter(|c| *c != b'=' && !c.is_ascii_whitespace())
+        .collect();
     if s.len() % 4 != 0 && s.len() % 4 == 1 {
         return Err("b64 length".into());
     }
@@ -187,8 +189,14 @@ mod tests {
     fn withdraw_only_allowlisted_donate_ua() {
         let allow = vec![DONATE_ZEC_UA.to_string()];
         assert!(withdraw_ua_allowed(DONATE_ZEC_UA, &allow));
-        assert!(!withdraw_ua_allowed("u1notallowlistedxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", &allow));
-        assert!(!withdraw_ua_allowed("terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0", &allow));
+        assert!(!withdraw_ua_allowed(
+            "u1notallowlistedxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            &allow
+        ));
+        assert!(!withdraw_ua_allowed(
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
+            &allow
+        ));
         assert!(!withdraw_ua_allowed("", &allow));
     }
 
@@ -247,7 +255,11 @@ mod tests {
     fn withdraw_statement_matches_keplr_data() {
         let challenge = "8fea0767dd928658ca128e3d4ee365c8eec6578cb8b0349ed05a204730949b92";
         let statement = withdraw_statement(290000, DONATE_ZEC_UA, challenge);
-        let doc = sign_doc_json("", "terp1fc34h3q2af5lxdy2f4h7eq2h7smlerpsyz0zar", statement.as_bytes());
+        let doc = sign_doc_json(
+            "",
+            "terp1fc34h3q2af5lxdy2f4h7eq2h7smlerpsyz0zar",
+            statement.as_bytes(),
+        );
         assert!(doc.contains("cGVybWlzc2lvbmxlc3MubW9uZXkgd2l0aGRyYXcgMjkwMDAw"));
         assert!(doc.contains("\"chain_id\":\"\""));
     }
@@ -277,6 +289,9 @@ mod tests {
     }
 
     fn hex_ok(s: &str) -> Vec<u8> {
-        (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
     }
 }

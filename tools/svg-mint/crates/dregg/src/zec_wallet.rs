@@ -4,7 +4,7 @@
 //! (loopback, never zec.rocks). Amounts are for the admin ops desk; do not put
 //! totals on public `/health`.
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -50,7 +50,6 @@ impl ZecWallet {
     }
 }
 
-
 /// Spendable zat the desk may show. Orchard, sapling, and transparent notes are not accepted.
 pub fn ironwood_spendable_from_notes(notes: &[Value]) -> u64 {
     notes.iter().fold(0u64, |acc, n| {
@@ -80,7 +79,10 @@ pub fn format_zec(zat: u64) -> String {
 
 fn zat_field(v: &Value, key: &str) -> u64 {
     match v.get(key) {
-        Some(Value::Number(n)) => n.as_u64().or_else(|| n.as_i64().map(|i| i.max(0) as u64)).unwrap_or(0),
+        Some(Value::Number(n)) => n
+            .as_u64()
+            .or_else(|| n.as_i64().map(|i| i.max(0) as u64))
+            .unwrap_or(0),
         Some(Value::String(s)) => s.parse().unwrap_or(0),
         _ => 0,
     }
@@ -168,7 +170,8 @@ fn is_locked(err: &str) -> bool {
 /// While zcash-devtool `sync` holds sqlite, return the last good total.
 pub fn query() -> ZecWallet {
     let last_ok = cache_slot().lock().ok().and_then(|g| {
-        g.as_ref().and_then(|(_, w)| if w.ok { Some(w.clone()) } else { None })
+        g.as_ref()
+            .and_then(|(_, w)| if w.ok { Some(w.clone()) } else { None })
     });
     if let Ok(g) = cache_slot().lock() {
         if let Some((at, w)) = g.as_ref() {
@@ -229,7 +232,11 @@ pub fn query_fresh() -> ZecWallet {
             Err(e) => failed(e),
         };
     }
-    failed(format!("svg-mint-zrt balance: {} {}", stderr.trim(), stdout.trim()))
+    failed(format!(
+        "svg-mint-zrt balance: {} {}",
+        stderr.trim(),
+        stdout.trim()
+    ))
 }
 
 #[cfg(test)]
@@ -278,5 +285,4 @@ mod tests {
         ];
         assert_eq!(ironwood_spendable_from_notes(&notes), 150000);
     }
-
 }

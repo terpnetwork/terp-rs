@@ -67,6 +67,9 @@ impl RailBooks {
     }
 
     pub fn of(&self, n: &[u8; 32]) -> RailPayout {
-        self.paid.get(&hex32(n)).copied().unwrap_or(RailPayout::None)
+        self.paid
+            .get(&hex32(n))
+            .copied()
+            .unwrap_or(RailPayout::None)
     }
 }

@@ -4,8 +4,8 @@
 //! UA, or its memo is that checkout's payment id. A mempool note (`mined == false`)
 //! is receipt, not a mint. A mined note is the block signal.
 
-use crate::store::{dest_for_zec_watch, PendingPay};
 use crate::pedersen::Commit;
+use crate::store::{PendingPay, dest_for_zec_watch};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -117,10 +117,18 @@ pub fn parse_list_tx(text: &str) -> Vec<SeenNote> {
             notes.push(SeenNote {
                 txid: txid.to_string(),
                 address: address.trim().to_string(),
-                memo: if memo == "Memo::Empty" { String::new() } else { memo.trim().to_string() },
+                memo: if memo == "Memo::Empty" {
+                    String::new()
+                } else {
+                    memo.trim().to_string()
+                },
                 zat,
                 mined,
-                pool: if pool.is_empty() { "ironwood".into() } else { pool.to_string() },
+                pool: if pool.is_empty() {
+                    "ironwood".into()
+                } else {
+                    pool.to_string()
+                },
                 receiver: String::new(),
             });
         }
@@ -128,7 +136,9 @@ pub fn parse_list_tx(text: &str) -> Vec<SeenNote> {
     for line in text.lines() {
         let trim = line.trim();
         if trim.len() == 64 && trim.chars().all(|c| c.is_ascii_hexdigit()) {
-            flush(&mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat);
+            flush(
+                &mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat,
+            );
             txid = trim.to_string();
             mined = true;
             in_output = false;
@@ -143,7 +153,9 @@ pub fn parse_list_tx(text: &str) -> Vec<SeenNote> {
             mined = false;
         }
         if trim.starts_with("Output ") {
-            flush(&mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat);
+            flush(
+                &mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat,
+            );
             in_output = true;
             received = false;
             address.clear();
@@ -169,7 +181,9 @@ pub fn parse_list_tx(text: &str) -> Vec<SeenNote> {
             memo = rest.trim().to_string();
         }
     }
-    flush(&mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat);
+    flush(
+        &mut notes, &txid, mined, in_output, received, &address, &memo, &pool, zat,
+    );
     notes
 }
 
@@ -182,22 +196,47 @@ fn zec_line_to_zat(rest: &str) -> u64 {
     while frac_digits.len() < 8 {
         frac_digits.push('0');
     }
-    whole.saturating_mul(100_000_000).saturating_add(frac_digits.parse().unwrap_or(0))
+    whole
+        .saturating_mul(100_000_000)
+        .saturating_add(frac_digits.parse().unwrap_or(0))
 }
 
 pub fn parse_notes_json(raw: &str) -> Result<Vec<SeenNote>, String> {
     let v: serde_json::Value = serde_json::from_str(raw).map_err(|e| e.to_string())?;
-    let arr = v.get("notes").and_then(|n| n.as_array()).ok_or("notes array")?;
+    let arr = v
+        .get("notes")
+        .and_then(|n| n.as_array())
+        .ok_or("notes array")?;
     let mut out = Vec::new();
     for n in arr {
         out.push(SeenNote {
-            txid: n.get("txid").and_then(|x| x.as_str()).unwrap_or("").to_string(),
-            address: n.get("address").and_then(|x| x.as_str()).unwrap_or("").to_string(),
-            memo: n.get("memo").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+            txid: n
+                .get("txid")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+            address: n
+                .get("address")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+            memo: n
+                .get("memo")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
             zat: n.get("zat").and_then(|x| x.as_u64()).unwrap_or(0),
             mined: n.get("mined").and_then(|x| x.as_bool()).unwrap_or(true),
-            pool: n.get("pool").and_then(|x| x.as_str()).unwrap_or("").to_string(),
-            receiver: n.get("receiver").and_then(|x| x.as_str()).unwrap_or("").to_string(),
+            pool: n
+                .get("pool")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+            receiver: n
+                .get("receiver")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
         });
     }
     Ok(out)
@@ -268,8 +307,14 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n\
 
     #[test]
     fn second_checkout_does_not_take_the_first_address() {
-        let (c1, p1) = pending("terp1a", "u1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        let (c2, p2) = pending("terp1b", "u1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+        let (c1, p1) = pending(
+            "terp1a",
+            "u1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        );
+        let (c2, p2) = pending(
+            "terp1b",
+            "u1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        );
         let mut map = HashMap::new();
         map.insert(c1, p1);
         map.insert(c2, p2);

@@ -4,9 +4,9 @@
 //! ZEC: diversifier index `i` (Orchard diversified UA via zcash-devtool when present).
 
 use hmac::{Hmac, Mac};
-use rand::RngCore;
-use k256::elliptic_curve::sec1::ToEncodedPoint;
 use k256::SecretKey;
+use k256::elliptic_curve::sec1::ToEncodedPoint;
+use rand::RngCore;
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256, Sha512};
 use tiny_keccak::{Hasher, Keccak};
@@ -92,14 +92,10 @@ impl HdEngine {
         let m = bip39::Mnemonic::parse_normalized(phrase.trim())
             .map_err(|e| format!("mnemonic: {e}"))?;
         let seed = m.to_seed("");
-        let hd = Self { seed: seed.to_vec() };
-        let sk = hd.derive_cosmos(&[
-            44 | HARDEN,
-            118 | HARDEN,
-            HARDEN,
-            0,
-            0,
-        ])?;
+        let hd = Self {
+            seed: seed.to_vec(),
+        };
+        let sk = hd.derive_cosmos(&[44 | HARDEN, 118 | HARDEN, HARDEN, 0, 0])?;
         let pk = sk.public_key().to_encoded_point(true);
         let h160 = hash160(pk.as_bytes());
         encode_cosmos("terp", &h160)
@@ -147,8 +143,12 @@ impl HdEngine {
 
 fn add_sk(a: &SecretKey, b: &SecretKey) -> Result<[u8; 32], String> {
     use k256::elliptic_curve::PrimeField;
-    let sa = k256::Scalar::from_repr(a.to_bytes()).into_option().ok_or("parent scalar")?;
-    let sb = k256::Scalar::from_repr(b.to_bytes()).into_option().ok_or("il scalar")?;
+    let sa = k256::Scalar::from_repr(a.to_bytes())
+        .into_option()
+        .ok_or("parent scalar")?;
+    let sb = k256::Scalar::from_repr(b.to_bytes())
+        .into_option()
+        .ok_or("il scalar")?;
     let sum = sa + sb;
     Ok(sum.to_bytes().into())
 }
@@ -171,7 +171,8 @@ fn terp_home() -> std::path::PathBuf {
 }
 
 fn read_mnemonic_path(p: &std::path::Path) -> Result<String, String> {
-    let s = std::fs::read_to_string(p).map_err(|_| format!("missing {} (chmod 600)", p.display()))?;
+    let s =
+        std::fs::read_to_string(p).map_err(|_| format!("missing {} (chmod 600)", p.display()))?;
     let t = s.trim().to_string();
     if t.is_empty() {
         return Err(format!("empty mnemonic file {}", p.display()));
@@ -213,7 +214,7 @@ pub fn addr_from_mnemonic_file(kind: &str) -> Result<String, String> {
 
 /// BIP173 Bech32 (not Bech32m). Crate 0.9 matches bitcoin/bitcoin:29 for witness v0.
 fn encode_segwit(hrp: &str, witver: u8, prog: &[u8]) -> Result<String, String> {
-    use bech32::{u5, ToBase32, Variant};
+    use bech32::{ToBase32, Variant, u5};
     if witver > 16 {
         return Err("witver".into());
     }

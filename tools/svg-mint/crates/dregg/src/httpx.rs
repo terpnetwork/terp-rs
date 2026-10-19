@@ -51,16 +51,14 @@ pub fn get_json(url: &str) -> Result<serde_json::Value, String> {
         return Err("https not used for local LCD/RPC".into());
     }
     let mut stream = TcpStream::connect((host.as_str(), port)).map_err(|e| e.to_string())?;
-    stream
-        .set_write_timeout(Some(Duration::from_secs(3)))
-        .ok();
-    stream
-        .set_read_timeout(Some(Duration::from_secs(8)))
-        .ok();
+    stream.set_write_timeout(Some(Duration::from_secs(3))).ok();
+    stream.set_read_timeout(Some(Duration::from_secs(8))).ok();
     let req = format!(
         "GET {path} HTTP/1.0\r\nHost: {host}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
     );
-    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| e.to_string())?;
     let body = read_http_body(&mut stream)?;
     serde_json::from_slice(&body).map_err(|e| format!("json: {e}"))
 }
@@ -98,8 +96,8 @@ pub fn post_json_timeout_auth(
         .map_err(|e| e.to_string())?
         .next()
         .ok_or_else(|| format!("dns: {host}"))?;
-    let mut stream =
-        TcpStream::connect_timeout(&addr, write.min(Duration::from_secs(3))).map_err(|e| e.to_string())?;
+    let mut stream = TcpStream::connect_timeout(&addr, write.min(Duration::from_secs(3)))
+        .map_err(|e| e.to_string())?;
     stream.set_write_timeout(Some(write)).ok();
     stream.set_read_timeout(Some(read)).ok();
     let auth = authorization
@@ -110,7 +108,9 @@ pub fn post_json_timeout_auth(
         "POST {path} HTTP/1.0\r\nHost: {host}\r\nContent-Type: application/json\r\n{auth}Content-Length: {}\r\nConnection: close\r\n\r\n{payload}",
         payload.len()
     );
-    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| e.to_string())?;
     let resp = read_http_body(&mut stream)?;
     serde_json::from_slice(&resp).map_err(|e| format!("rpc json: {e}"))
 }

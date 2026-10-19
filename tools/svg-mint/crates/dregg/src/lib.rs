@@ -8,26 +8,26 @@
 //! Not HashMerchant. No feegrant. No 07-tendermint trusting period here (P4).
 
 pub mod adr36;
-pub mod commit;
-pub mod packet;
 pub mod cell;
+pub mod checkout;
+pub mod commit;
+pub mod hd;
+pub mod hopalong;
+pub mod httpx;
+pub mod memo;
 pub mod mentor;
 pub mod observer;
+pub mod packet;
 pub mod payout;
-pub mod qc;
-pub mod store;
-pub mod memo;
-pub mod zip321;
 pub mod pedersen;
-pub mod hd;
 pub mod prices;
-pub mod hopalong;
-pub mod checkout;
-pub mod httpx;
+pub mod qc;
 pub mod rpc_allowlist;
+pub mod store;
+pub mod zec_notes;
 pub mod zec_tip;
 pub mod zec_wallet;
-pub mod zec_notes;
+pub mod zip321;
 
 pub use cell::{Cell, CellError, SoldOutRefundAnswer, Turn};
 pub use commit::{ActionOpening, DepositOpening, ForeignWitness, Rail};

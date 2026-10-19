@@ -38,7 +38,11 @@ impl Log {
             .and_then(|b| serde_json::from_slice::<File>(&b).ok())
             .map(|f| (f.next_id.max(1), f.rows))
             .unwrap_or((1, Vec::new()));
-        Self { path, next_id, rows }
+        Self {
+            path,
+            next_id,
+            rows,
+        }
     }
 
     fn save(&self) {
@@ -101,7 +105,11 @@ impl Log {
     /// Refund a checkout that has not minted. A token id means a mint was recorded.
     pub fn refund(&mut self, terp: &str) -> bool {
         let Some(row) = self.rows.iter_mut().rev().find(|r| {
-            r.terp == terp && matches!(r.phase.as_str(), "issued" | "mempool" | "deposited" | "entitled")
+            r.terp == terp
+                && matches!(
+                    r.phase.as_str(),
+                    "issued" | "mempool" | "deposited" | "entitled"
+                )
         }) else {
             return false;
         };
@@ -120,9 +128,12 @@ impl Log {
         if terp_tx.len() != 64 || !terp_tx.chars().all(|c| c.is_ascii_hexdigit()) {
             return false;
         }
-        let Some(row) = self.rows.iter_mut().rev().find(|r| {
-            r.terp == terp && r.phase == "entitled" && r.token_id.is_empty()
-        }) else {
+        let Some(row) = self
+            .rows
+            .iter_mut()
+            .rev()
+            .find(|r| r.terp == terp && r.phase == "entitled" && r.token_id.is_empty())
+        else {
             return false;
         };
         row.phase = "settled".into();
@@ -152,7 +163,11 @@ impl Log {
         rows.sort_by(|a, b| b.id.cmp(&a.id));
         let more = rows.len() > limit;
         rows.truncate(limit);
-        let next = if more { rows.last().map(|r| r.id) } else { None };
+        let next = if more {
+            rows.last().map(|r| r.id)
+        } else {
+            None
+        };
         (rows, next)
     }
 

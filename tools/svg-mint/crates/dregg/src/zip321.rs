@@ -5,7 +5,7 @@
 //! `6431…` instead of raw binary. ZIP-321 still base64url-encodes those bytes.
 //! Never `terp1`. Spec: https://zips.z.cash/zip-0321 — memo ≤ 512 bytes.
 
-use crate::pedersen::{memo_hex, Commit, parse_commit};
+use crate::pedersen::{Commit, memo_hex, parse_commit};
 
 const MEMO_MAX: usize = 512;
 
@@ -43,7 +43,10 @@ pub fn zat_from_zec_decimal(s: &str) -> Option<u64> {
     } else {
         whole.parse().ok()?
     };
-    let mut f = frac.chars().filter(|c| c.is_ascii_digit()).collect::<String>();
+    let mut f = frac
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect::<String>();
     if f.len() > 8 {
         f.truncate(8);
     }
@@ -136,7 +139,8 @@ mod tests {
     use super::*;
 
     const TERP: &str = "terp1cyyzpxplxdzkeea7kwsydadg87357qnacvvp23";
-    const UA: &str = "u1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    const UA: &str =
+        "u1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
     #[test]
     fn uri_contains_zcash_scheme_amount_and_commit_memo() {

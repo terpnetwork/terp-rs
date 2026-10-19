@@ -167,7 +167,11 @@ mod tests {
         let terp = "terp1cyyzpxplxdzkeea7kwsydadg87357qnacvvp23";
         let (c, r) = commit(terp, &mut rng);
         assert!(verify(terp, &r, &c));
-        assert!(!verify("terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2ve3x0", &r, &c));
+        assert!(!verify(
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2ve3x0",
+            &r,
+            &c
+        ));
         let memo = memo_bytes(&c);
         assert!(!String::from_utf8_lossy(&memo).contains("terp1"));
         assert_eq!(parse_commit(&memo), Some(c));

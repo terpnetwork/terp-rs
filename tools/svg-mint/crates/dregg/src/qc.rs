@@ -68,7 +68,12 @@ pub fn sign(kp: &Keypair, digest: &[u8; 32]) -> OracleSig {
     }
 }
 
-pub fn count_valid(digest: &[u8; 32], sigs: &[OracleSig], allowed: &[[u8; 32]], threshold: u32) -> Result<u32, QcError> {
+pub fn count_valid(
+    digest: &[u8; 32],
+    sigs: &[OracleSig],
+    allowed: &[[u8; 32]],
+    threshold: u32,
+) -> Result<u32, QcError> {
     if sigs.is_empty() {
         return Err(QcError::Unsigned);
     }
@@ -94,12 +99,21 @@ pub fn count_valid(digest: &[u8; 32], sigs: &[OracleSig], allowed: &[[u8; 32]], 
         }
     }
     if got < threshold {
-        return Err(QcError::Threshold { got, need: threshold });
+        return Err(QcError::Threshold {
+            got,
+            need: threshold,
+        });
     }
     Ok(got)
 }
 
-pub fn require_receipt(receipt: &[u8; 32], digest: &[u8; 32], sigs: &[OracleSig], allowed: &[[u8; 32]], threshold: u32) -> Result<(), QcError> {
+pub fn require_receipt(
+    receipt: &[u8; 32],
+    digest: &[u8; 32],
+    sigs: &[OracleSig],
+    allowed: &[[u8; 32]],
+    threshold: u32,
+) -> Result<(), QcError> {
     if is_dummy_receipt(receipt) {
         return Err(QcError::DummyReceipt);
     }

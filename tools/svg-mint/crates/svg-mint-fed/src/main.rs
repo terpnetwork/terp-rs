@@ -2,25 +2,25 @@
 //! Durable cell store. Not HashMerchant.
 
 use dregg::cell::{Cell, Phase, Turn};
+use dregg::checkout::{self, CheckoutStatus};
 use dregg::commit::{ActionOpening, DepositOpening, ForeignWitness, Rail};
 use dregg::hd::HdEngine;
 use dregg::memo::parse_terp_recipient;
-use dregg::pedersen::{self, Commit};
-use dregg::store::PendingPay;
-use dregg::checkout::{self, CheckoutStatus};
-use dregg::prices;
-use dregg::zip321::{payment_request, zat_from_zec_decimal};
 use dregg::observer::{confirm_rail, wasm_supply_tag};
 use dregg::payout::{RailBooks, RailPayout};
-use dregg::qc::{count_valid, sign, Checkpoint, OracleSig};
+use dregg::pedersen::{self, Commit};
+use dregg::prices;
+use dregg::qc::{Checkpoint, OracleSig, count_valid, sign};
 use dregg::store::Durable;
+use dregg::store::PendingPay;
+use dregg::zip321::{payment_request, zat_from_zec_decimal};
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Verifier};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 mod sessions;
@@ -72,7 +72,10 @@ fn load_recipients(path: &str) -> HashMap<String, [u8; 32]> {
 }
 
 fn save_recipients(path: &str, map: &HashMap<String, [u8; 32]>) {
-    let hexmap: HashMap<String, String> = map.iter().map(|(k, n)| (k.clone(), hex::encode(n))).collect();
+    let hexmap: HashMap<String, String> = map
+        .iter()
+        .map(|(k, n)| (k.clone(), hex::encode(n)))
+        .collect();
     if let Ok(bytes) = serde_json::to_vec(&hexmap) {
         let _ = std::fs::write(path, bytes);
     }
@@ -88,7 +91,10 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
         assert_eq!(raw.len(), 32, "ed25519 sk 32 bytes");
         let sk = SecretKey::from_bytes(&raw).expect("sk");
         let pk = PublicKey::from(&sk);
-        let kp = Keypair { secret: sk, public: pk };
+        let kp = Keypair {
+            secret: sk,
+            public: pk,
+        };
         let pk_bytes = kp.public.to_bytes();
         return (vec![kp], vec![pk_bytes], thresh);
     }
@@ -105,7 +111,8 @@ fn main() {
     let bind = std::env::var("SVG_MINT_FED_BIND").unwrap_or_else(|_| "0.0.0.0:8421".into());
     let store_path = std::env::var("SVG_MINT_FED_STORE")
         .unwrap_or_else(|_| "/tmp/svg-mint-fed-cell.json".into());
-    let (durable, mut cell, books, pending, hd_index, bogo_seen) = Durable::open(&store_path).expect("store");
+    let (durable, mut cell, books, pending, hd_index, bogo_seen) =
+        Durable::open(&store_path).expect("store");
     if !cell.supply("svg").0 {
         let max_supply = std::env::var("DREGG_SVG_MAX_SUPPLY")
             .ok()
@@ -196,7 +203,9 @@ fn cancel_checkout(fed: &Arc<Mutex<Fed>>, rec: &str) -> (u16, serde_json::Value)
         btc_watch_drop(&p.btc_addr);
     }
     if !dropped.is_empty() {
-        let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+        let _ = f
+            .durable
+            .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
     }
     dregg::store::cancel_http(None, dropped.len())
 }
@@ -234,7 +243,11 @@ fn resolve_dest(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Option<String> {
     parse_terp_recipient(blob)
 }
 
-fn issue_pay_target(fed: &Arc<Mutex<Fed>>, terp: &str, qty: u32) -> Result<serde_json::Value, String> {
+fn issue_pay_target(
+    fed: &Arc<Mutex<Fed>>,
+    terp: &str,
+    qty: u32,
+) -> Result<serde_json::Value, String> {
     let qty = qty.clamp(checkout::QTY_MIN, checkout::QTY_MAX);
     let mut rng = rand::rngs::OsRng;
     let mut session = [0u8; 32];
@@ -242,11 +255,7 @@ fn issue_pay_target(fed: &Arc<Mutex<Fed>>, terp: &str, qty: u32) -> Result<serde
     let (c, r) = pedersen::commit_session(terp, &session, &mut rng);
     let mut f = fed.lock().unwrap();
     let st = checkout_now(&f);
-    let reserved: u64 = f
-        .pending
-        .values()
-        .map(|p| p.qty.max(1) as u64)
-        .sum();
+    let reserved: u64 = f.pending.values().map(|p| p.qty.max(1) as u64).sum();
     if !st.checkout_ready || st.remaining_supply < reserved.saturating_add(qty as u64) {
         return Err(format!(
             "checkout closed: {}",
@@ -307,7 +316,9 @@ fn issue_pay_target(fed: &Arc<Mutex<Fed>>, terp: &str, qty: u32) -> Result<serde
         },
     );
     f.sessions.issue(terp, qty, zat);
-    let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+    let _ = f
+        .durable
+        .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
     let ttl = checkout::pending_ttl_secs();
     let bogo_seen = f.bogo_seen;
     drop(f);
@@ -349,7 +360,8 @@ fn zrt_bin() -> String {
             return b;
         }
     }
-    let sibling = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/release/svg-mint-zrt");
+    let sibling =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/release/svg-mint-zrt");
     sibling.to_string_lossy().into_owned()
 }
 
@@ -367,9 +379,7 @@ fn diversified_zec_ua(index: u32) -> Option<String> {
             addr_cmd.env("SVG_MINT_ZRT_DIR", dir);
         }
     }
-    let out = addr_cmd
-        .output()
-        .ok()?;
+    let out = addr_cmd.output().ok()?;
     let s = String::from_utf8_lossy(&out.stdout);
     for line in s.lines() {
         let t = line.trim();
@@ -395,55 +405,60 @@ fn diversified_zec_ua(index: u32) -> Option<String> {
 }
 
 fn spawn_stale_sweeper(fed: Arc<Mutex<Fed>>) {
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(15));
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        let mut f = match fed.lock() {
-            Ok(g) => g,
-            Err(_) => continue,
-        };
-        let _ = f.cell.apply(Turn::Tick { now });
-        let _ = f.cell.apply(Turn::SweepStaleEntitlements {
-            timeout_secs: checkout::mint_timeout_secs(),
-        });
-        let ns = f.cell.refunded_nullifiers();
-        let pending = f.pending.clone();
-        let wires: Vec<_> = ns
-            .into_iter()
-            .filter_map(|n| f.cell.refund_wire(&n).map(|w| (n, w)))
-            .collect();
-        drop(f);
-        for (n, (rail, amt, raw)) in wires {
-            let dest = btc_dest_for(&pending, &n);
-            let txid = attempt_rail_refund(rail, amt, &raw, dest.as_deref());
-            if let Ok(mut f) = fed.lock() {
-                let bytes = txid
-                    .as_deref()
-                    .map(|t| {
-                        hex::decode(t.trim_start_matches("0x")).unwrap_or_else(|_| t.as_bytes().to_vec())
-                    })
-                    .unwrap_or_else(|| blake3::hash(&n).as_bytes().to_vec());
-                let _ = f.books.apply(n, RailPayout::Refund, bytes);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(15));
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            let mut f = match fed.lock() {
+                Ok(g) => g,
+                Err(_) => continue,
+            };
+            let _ = f.cell.apply(Turn::Tick { now });
+            let _ = f.cell.apply(Turn::SweepStaleEntitlements {
+                timeout_secs: checkout::mint_timeout_secs(),
+            });
+            let ns = f.cell.refunded_nullifiers();
+            let pending = f.pending.clone();
+            let wires: Vec<_> = ns
+                .into_iter()
+                .filter_map(|n| f.cell.refund_wire(&n).map(|w| (n, w)))
+                .collect();
+            drop(f);
+            for (n, (rail, amt, raw)) in wires {
+                let dest = btc_dest_for(&pending, &n);
+                let txid = attempt_rail_refund(rail, amt, &raw, dest.as_deref());
+                if let Ok(mut f) = fed.lock() {
+                    let bytes = txid
+                        .as_deref()
+                        .map(|t| {
+                            hex::decode(t.trim_start_matches("0x"))
+                                .unwrap_or_else(|_| t.as_bytes().to_vec())
+                        })
+                        .unwrap_or_else(|| blake3::hash(&n).as_bytes().to_vec());
+                    let _ = f.books.apply(n, RailPayout::Refund, bytes);
+                }
             }
-        }
-        let dropped = if let Ok(mut f) = fed.lock() {
-            let keep: std::collections::HashSet<String> = f.mempool.keys().cloned().collect();
-            let gone = dregg::store::expire_unpaid_keeping(
-                &mut f.pending,
-                now,
-                checkout::pending_ttl_secs(),
-                &keep,
-            );
-            let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
-            gone
-        } else {
-            Vec::new()
-        };
-        for p in dropped {
-            btc_watch_drop(&p.btc_addr);
+            let dropped = if let Ok(mut f) = fed.lock() {
+                let keep: std::collections::HashSet<String> = f.mempool.keys().cloned().collect();
+                let gone = dregg::store::expire_unpaid_keeping(
+                    &mut f.pending,
+                    now,
+                    checkout::pending_ttl_secs(),
+                    &keep,
+                );
+                let _ = f
+                    .durable
+                    .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                gone
+            } else {
+                Vec::new()
+            };
+            for p in dropped {
+                btc_watch_drop(&p.btc_addr);
+            }
         }
     });
 }
@@ -460,32 +475,40 @@ fn apply_paid_qty(f: &mut Fed, n: &[u8; 32], amount: u128, rail: Rail) -> (u32, 
 
 fn spawn_note_watchers(fed: Arc<Mutex<Fed>>) {
     let f_eth = fed.clone();
-    std::thread::spawn(move || loop {
-        if let Err(e) = watch_eth_once(&f_eth) {
-            eprintln!("eth watch: {e}");
+    std::thread::spawn(move || {
+        loop {
+            if let Err(e) = watch_eth_once(&f_eth) {
+                eprintln!("eth watch: {e}");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(12));
         }
-        std::thread::sleep(std::time::Duration::from_secs(12));
     });
     let f_base = fed.clone();
-    std::thread::spawn(move || loop {
-        if let Err(e) = watch_base_once(&f_base) {
-            eprintln!("base watch: {e}");
+    std::thread::spawn(move || {
+        loop {
+            if let Err(e) = watch_base_once(&f_base) {
+                eprintln!("base watch: {e}");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(12));
         }
-        std::thread::sleep(std::time::Duration::from_secs(12));
     });
     let f_btc = fed.clone();
-    std::thread::spawn(move || loop {
-        if let Err(e) = watch_btc_once(&f_btc) {
-            eprintln!("btc watch: {e}");
+    std::thread::spawn(move || {
+        loop {
+            if let Err(e) = watch_btc_once(&f_btc) {
+                eprintln!("btc watch: {e}");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(12));
         }
-        std::thread::sleep(std::time::Duration::from_secs(12));
     });
     let f_zec = fed.clone();
-    std::thread::spawn(move || loop {
-        if let Err(e) = watch_zec_once(&f_zec) {
-            eprintln!("zec watch: {e}");
+    std::thread::spawn(move || {
+        loop {
+            if let Err(e) = watch_zec_once(&f_zec) {
+                eprintln!("zec watch: {e}");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(12));
         }
-        std::thread::sleep(std::time::Duration::from_secs(12));
     });
 }
 
@@ -495,37 +518,45 @@ fn watch_eth_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         Err(_) => return Ok(()),
     };
     if let Ok(vault) = std::env::var("DREGG_ETH_VAULT") {
-    let body = serde_json::json!({
-        "jsonrpc":"2.0","id":1,"method":"eth_getLogs",
-        "params":[{"address": vault, "fromBlock": "earliest", "toBlock": "latest"}]
-    });
-    let v = http_json_local(&rpc, &body)?;
-    let logs = v.pointer("/result").and_then(|x| x.as_array()).cloned().unwrap_or_default();
-    for log in logs {
-        let txh = log.get("transactionHash").and_then(|x| x.as_str()).unwrap_or("");
-        if txh.is_empty() {
-            continue;
+        let body = serde_json::json!({
+            "jsonrpc":"2.0","id":1,"method":"eth_getLogs",
+            "params":[{"address": vault, "fromBlock": "earliest", "toBlock": "latest"}]
+        });
+        let v = http_json_local(&rpc, &body)?;
+        let logs = v
+            .pointer("/result")
+            .and_then(|x| x.as_array())
+            .cloned()
+            .unwrap_or_default();
+        for log in logs {
+            let txh = log
+                .get("transactionHash")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            if txh.is_empty() {
+                continue;
+            }
+            let tx = http_json_local(
+                &rpc,
+                &serde_json::json!({"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash","params":[txh]}),
+            )?;
+            let input = tx
+                .pointer("/result/input")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            let Some(rec) = resolve_dest(fed, input.as_bytes()) else {
+                continue;
+            };
+            let raw = hex::decode(txh.trim_start_matches("0x"))
+                .unwrap_or_else(|_| txh.as_bytes().to_vec());
+            let value = tx
+                .pointer("/result/value")
+                .and_then(|x| x.as_str())
+                .unwrap_or("0x0");
+            let amt = u128::from_str_radix(value.trim_start_matches("0x"), 16)
+                .unwrap_or_else(|_| prices::eth_wei().parse().unwrap_or(Rail::Eth.price_units()));
+            ingest_observed(fed, Rail::Eth, amt, raw, rec)?;
         }
-        let tx = http_json_local(
-            &rpc,
-            &serde_json::json!({"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash","params":[txh]}),
-        )?;
-        let input = tx
-            .pointer("/result/input")
-            .and_then(|x| x.as_str())
-            .unwrap_or("");
-        let Some(rec) = resolve_dest(fed, input.as_bytes()) else {
-            continue;
-        };
-        let raw = hex::decode(txh.trim_start_matches("0x")).unwrap_or_else(|_| txh.as_bytes().to_vec());
-        let value = tx
-            .pointer("/result/value")
-            .and_then(|x| x.as_str())
-            .unwrap_or("0x0");
-        let amt = u128::from_str_radix(value.trim_start_matches("0x"), 16)
-            .unwrap_or_else(|_| prices::eth_wei().parse().unwrap_or(Rail::Eth.price_units()));
-        ingest_observed(fed, Rail::Eth, amt, raw, rec)?;
-    }
     }
     watch_evm_hd(fed, &rpc, Rail::Eth)?;
     Ok(())
@@ -537,37 +568,49 @@ fn watch_base_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         Err(_) => return Ok(()),
     };
     if let Ok(vault) = std::env::var("DREGG_BASE_VAULT") {
-    let body = serde_json::json!({
-        "jsonrpc":"2.0","id":1,"method":"eth_getLogs",
-        "params":[{"address": vault, "fromBlock": "earliest", "toBlock": "latest"}]
-    });
-    let v = http_json_local(&rpc, &body)?;
-    let logs = v.pointer("/result").and_then(|x| x.as_array()).cloned().unwrap_or_default();
-    for log in logs {
-        let txh = log.get("transactionHash").and_then(|x| x.as_str()).unwrap_or("");
-        if txh.is_empty() {
-            continue;
+        let body = serde_json::json!({
+            "jsonrpc":"2.0","id":1,"method":"eth_getLogs",
+            "params":[{"address": vault, "fromBlock": "earliest", "toBlock": "latest"}]
+        });
+        let v = http_json_local(&rpc, &body)?;
+        let logs = v
+            .pointer("/result")
+            .and_then(|x| x.as_array())
+            .cloned()
+            .unwrap_or_default();
+        for log in logs {
+            let txh = log
+                .get("transactionHash")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            if txh.is_empty() {
+                continue;
+            }
+            let tx = http_json_local(
+                &rpc,
+                &serde_json::json!({"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash","params":[txh]}),
+            )?;
+            let input = tx
+                .pointer("/result/input")
+                .and_then(|x| x.as_str())
+                .unwrap_or("");
+            let Some(rec) = resolve_dest(fed, input.as_bytes()) else {
+                continue;
+            };
+            let raw = hex::decode(txh.trim_start_matches("0x"))
+                .unwrap_or_else(|_| txh.as_bytes().to_vec());
+            let value = tx
+                .pointer("/result/value")
+                .and_then(|x| x.as_str())
+                .unwrap_or("0x0");
+            let amt =
+                u128::from_str_radix(value.trim_start_matches("0x"), 16).unwrap_or_else(|_| {
+                    prices::base_wei()
+                        .parse()
+                        .unwrap_or(Rail::Base.price_units())
+                });
+            ingest_observed(fed, Rail::Base, amt, raw, rec)?;
         }
-        let tx = http_json_local(
-            &rpc,
-            &serde_json::json!({"jsonrpc":"2.0","id":1,"method":"eth_getTransactionByHash","params":[txh]}),
-        )?;
-        let input = tx
-            .pointer("/result/input")
-            .and_then(|x| x.as_str())
-            .unwrap_or("");
-        let Some(rec) = resolve_dest(fed, input.as_bytes()) else {
-            continue;
-        };
-        let raw = hex::decode(txh.trim_start_matches("0x")).unwrap_or_else(|_| txh.as_bytes().to_vec());
-        let value = tx
-            .pointer("/result/value")
-            .and_then(|x| x.as_str())
-            .unwrap_or("0x0");
-        let amt = u128::from_str_radix(value.trim_start_matches("0x"), 16)
-            .unwrap_or_else(|_| prices::base_wei().parse().unwrap_or(Rail::Base.price_units()));
-        ingest_observed(fed, Rail::Base, amt, raw, rec)?;
-    }
     }
     watch_evm_hd(fed, &rpc, Rail::Base)?;
     Ok(())
@@ -630,11 +673,14 @@ fn watch_evm_hd(fed: &Arc<Mutex<Fed>>, rpc: &str, rail: Rail) -> Result<(), Stri
             if amt == 0 {
                 continue;
             }
-            let raw = hex::decode(hash.trim_start_matches("0x")).unwrap_or_else(|_| hash.as_bytes().to_vec());
+            let raw = hex::decode(hash.trim_start_matches("0x"))
+                .unwrap_or_else(|_| hash.as_bytes().to_vec());
             ingest_observed(fed, rail, amt, raw, rec.clone())?;
             if let Ok(mut f) = fed.lock() {
                 f.pending.retain(|_, p| p.eth_addr.to_lowercase() != to);
-                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                let _ = f
+                    .durable
+                    .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
             }
         }
     }
@@ -692,7 +738,9 @@ fn watch_btc_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         ingest_observed(fed, Rail::Btc, amt, raw, rec)?;
         if let Ok(mut f) = fed.lock() {
             f.pending.retain(|_, p| p.btc_addr != addr);
-            let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+            let _ = f
+                .durable
+                .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
         }
         btc_watch_drop(addr);
     }
@@ -771,7 +819,6 @@ fn ztreamer_require_vendor() -> Result<(), String> {
     Ok(())
 }
 
-
 fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     let bin = zrt_bin();
     if !std::path::Path::new(&bin).is_file() {
@@ -787,9 +834,7 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
             notes_cmd.env("SVG_MINT_ZRT_DIR", dir);
         }
     }
-    let out = notes_cmd
-        .output()
-        .map_err(|e| e.to_string())?;
+    let out = notes_cmd.output().map_err(|e| e.to_string())?;
     if !out.status.success() {
         return Err(format!(
             "svg-mint-zrt notes: {}",
@@ -803,14 +848,20 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         f.pending.clone()
     };
     for note in notes {
-        let Some(rec) = dregg::zec_notes::match_note(&pending, &note) else { continue };
+        let Some(rec) = dregg::zec_notes::match_note(&pending, &note) else {
+            continue;
+        };
         let txid = if note.txid.is_empty() {
             hex::encode(blake3::hash(note.address.as_bytes()).as_bytes())
         } else {
             note.txid.clone()
         };
         let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
-        let zat = if note.zat == 0 { zec_paid_fallback(fed, &rec) } else { note.zat as u128 };
+        let zat = if note.zat == 0 {
+            zec_paid_fallback(fed, &rec)
+        } else {
+            note.zat as u128
+        };
         match dregg::zec_notes::list_tx_credit(true, !note.mined) {
             dregg::zec_notes::ListTxCredit::Mint => {
                 ingest_observed(fed, Rail::ZecIronwood, zat, raw, rec)?;
@@ -856,17 +907,26 @@ fn zcash_cookie_rpc(method: &str, params: serde_json::Value) -> Result<serde_jso
     if url.is_empty() {
         return Err("empty zcash rpc".into());
     }
-    let cookie_path = std::env::var("ZCASH_PRIVATE_RPC_COOKIE")
-        .unwrap_or_else(|_| format!("{}/.terp/zakura.rpc.cookie", std::env::var("HOME").unwrap_or_else(|_| ".".into())));
+    let cookie_path = std::env::var("ZCASH_PRIVATE_RPC_COOKIE").unwrap_or_else(|_| {
+        format!(
+            "{}/.terp/zakura.rpc.cookie",
+            std::env::var("HOME").unwrap_or_else(|_| ".".into())
+        )
+    });
     let cookie = std::fs::read_to_string(&cookie_path).map_err(|e| format!("zcash cookie: {e}"))?;
     let cookie = cookie.trim();
     let body = serde_json::json!({"jsonrpc":"1.0","id":"dregg","method":method,"params":params});
     let out = std::process::Command::new("curl")
         .args([
-            "-sS", "--max-time", "8",
-            "-u", cookie,
-            "-H", "content-type: application/json",
-            "-d", &body.to_string(),
+            "-sS",
+            "--max-time",
+            "8",
+            "-u",
+            cookie,
+            "-H",
+            "content-type: application/json",
+            "-d",
+            &body.to_string(),
             &url,
         ])
         .output()
@@ -891,8 +951,16 @@ fn watch_zec_house_mempool(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
         let Some(txid) = id.as_str() else { continue };
         let tx = zcash_cookie_rpc("getrawtransaction", serde_json::json!([txid, 1]))?;
         let result = tx.get("result").cloned().unwrap_or(serde_json::Value::Null);
-        let n_iw = result.pointer("/ironwood/actions").and_then(|x| x.as_array()).map(|a| a.len()).unwrap_or(0);
-        let n_or = result.pointer("/orchard/actions").and_then(|x| x.as_array()).map(|a| a.len()).unwrap_or(0);
+        let n_iw = result
+            .pointer("/ironwood/actions")
+            .and_then(|x| x.as_array())
+            .map(|a| a.len())
+            .unwrap_or(0);
+        let n_or = result
+            .pointer("/orchard/actions")
+            .and_then(|x| x.as_array())
+            .map(|a| a.len())
+            .unwrap_or(0);
         if n_iw + n_or == 0 {
             continue;
         }
@@ -940,7 +1008,11 @@ fn watch_zec_zcashd(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
 }
 
 fn parse_zec_paid_zat(item: &serde_json::Value, line: Option<&str>) -> Option<u128> {
-    if let Some(z) = item.get("amountZat").or_else(|| item.get("zatoshis")).and_then(|x| x.as_u64()) {
+    if let Some(z) = item
+        .get("amountZat")
+        .or_else(|| item.get("zatoshis"))
+        .and_then(|x| x.as_u64())
+    {
         if z > 0 {
             return Some(z as u128);
         }
@@ -997,17 +1069,13 @@ fn ingest_zec_json(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<(), S
         .cloned()
         .unwrap_or_default();
     for item in arr {
-        let memo = item
-            .get("memo")
-            .and_then(|x| x.as_str())
-            .unwrap_or("");
+        let memo = item.get("memo").and_then(|x| x.as_str()).unwrap_or("");
         let blob = item.to_string();
         let Some(rec) = {
             let f = fed.lock().unwrap();
             dregg::store::dest_for_zec_watch(&f.pending, memo, blob.as_bytes())
         }
-        .or_else(|| resolve_dest(fed, blob.as_bytes()))
-        else {
+        .or_else(|| resolve_dest(fed, blob.as_bytes())) else {
             continue;
         };
         let txid = item
@@ -1018,9 +1086,13 @@ fn ingest_zec_json(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<(), S
         if txid.is_empty() {
             continue;
         }
-        let raw = hex::decode(txid.trim_start_matches("0x")).unwrap_or_else(|_| txid.as_bytes().to_vec());
+        let raw =
+            hex::decode(txid.trim_start_matches("0x")).unwrap_or_else(|_| txid.as_bytes().to_vec());
         let zat = parse_zec_paid_zat(&item, None).unwrap_or_else(|| zec_paid_fallback(fed, &rec));
-        let conf = item.get("confirmations").and_then(|x| x.as_i64()).unwrap_or(1);
+        let conf = item
+            .get("confirmations")
+            .and_then(|x| x.as_i64())
+            .unwrap_or(1);
         if conf == 0 {
             note_mempool(fed, &rec, txid, zat);
             continue;
@@ -1046,12 +1118,16 @@ fn note_mempool(fed: &Arc<Mutex<Fed>>, rec: &str, txid: &str, zat: u128) {
     );
 }
 
-
 fn recipient_for_zec_ua(fed: &Arc<Mutex<Fed>>, ua: &str) -> Option<String> {
     let ua = ua.trim();
-    if !ua.starts_with("u1") { return None; }
+    if !ua.starts_with("u1") {
+        return None;
+    }
     let f = fed.lock().unwrap();
-    f.pending.values().find(|p| p.zec_ua.as_deref() == Some(ua)).map(|p| p.terp.clone())
+    f.pending
+        .values()
+        .find(|p| p.zec_ua.as_deref() == Some(ua))
+        .map(|p| p.terp.clone())
 }
 
 fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
@@ -1081,7 +1157,9 @@ fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
         if let Some(rest) = trim.strip_prefix("To:") {
             let ua = rest.trim();
             if let Some(rec) = recipient_for_zec_ua(fed, ua) {
-                let txid = last_txid.clone().unwrap_or_else(|| hex::encode(blake3::hash(ua.as_bytes()).as_bytes()));
+                let txid = last_txid
+                    .clone()
+                    .unwrap_or_else(|| hex::encode(blake3::hash(ua.as_bytes()).as_bytes()));
                 let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
                 let zat = zec_paid_fallback(fed, &rec);
                 match dregg::zec_notes::list_tx_credit(true, unmined) {
@@ -1094,7 +1172,12 @@ fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
             }
         }
         let memo_text = if let Some(m) = line.split("memo=").nth(1) {
-            Some(m.split(['&', ' ', '"', ',']).next().unwrap_or("").to_string())
+            Some(
+                m.split(['&', ' ', '"', ','])
+                    .next()
+                    .unwrap_or("")
+                    .to_string(),
+            )
         } else if let Some(rest) = trim.strip_prefix("Memo:") {
             Some(rest.trim().to_string())
         } else {
@@ -1108,9 +1191,10 @@ fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
             }
             .or_else(|| resolve_dest(fed, m.as_bytes()))
             {
-                let txid = last_txid.clone().or_else(|| extract_txid(line)).unwrap_or_else(|| {
-                    hex::encode(blake3::hash(line.as_bytes()).as_bytes())
-                });
+                let txid = last_txid
+                    .clone()
+                    .or_else(|| extract_txid(line))
+                    .unwrap_or_else(|| hex::encode(blake3::hash(line.as_bytes()).as_bytes()));
                 let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
                 let zat = parse_zec_paid_zat(&serde_json::json!({}), Some(line))
                     .unwrap_or_else(|| zec_paid_fallback(fed, &rec));
@@ -1125,7 +1209,8 @@ fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
         }
         // To: and Memo: already applied list_tx_credit. This tail used to mint
         // any terp1 on the line and ignored Unmined.
-        let handled = trim.starts_with("To:") || trim.starts_with("Memo:") || line.contains("memo=");
+        let handled =
+            trim.starts_with("To:") || trim.starts_with("Memo:") || line.contains("memo=");
         if !handled {
             if let Some(rec) = resolve_dest(fed, line.as_bytes()) {
                 let open = {
@@ -1247,7 +1332,12 @@ fn btc_dest_for(
 
 /// EVM: `eth_sendTransaction` from unlocked `DREGG_EVM_REFUND_FROM` to original `tx.from`.
 /// BTC: `sendtoaddress` when dest is known.
-fn attempt_rail_refund(rail: Rail, amount: u128, witness_raw: &[u8], btc_dest: Option<&str>) -> Option<String> {
+fn attempt_rail_refund(
+    rail: Rail,
+    amount: u128,
+    witness_raw: &[u8],
+    btc_dest: Option<&str>,
+) -> Option<String> {
     match rail {
         Rail::Eth | Rail::Base => {
             let rpc = if rail == Rail::Eth {
@@ -1255,7 +1345,9 @@ fn attempt_rail_refund(rail: Rail, amount: u128, witness_raw: &[u8], btc_dest: O
             } else {
                 std::env::var("BASE_RPC").ok()
             }?;
-            let from = std::env::var("DREGG_EVM_REFUND_FROM").ok().filter(|s| s.starts_with("0x"))?;
+            let from = std::env::var("DREGG_EVM_REFUND_FROM")
+                .ok()
+                .filter(|s| s.starts_with("0x"))?;
             let hash = txhash_hex(witness_raw);
             let tx = http_json_local(
                 &rpc,
@@ -1266,7 +1358,10 @@ fn attempt_rail_refund(rail: Rail, amount: u128, witness_raw: &[u8], btc_dest: O
                 }),
             )
             .ok()?;
-            let to = tx.pointer("/result/from").and_then(|x| x.as_str())?.to_string();
+            let to = tx
+                .pointer("/result/from")
+                .and_then(|x| x.as_str())?
+                .to_string();
             let val = tx
                 .pointer("/result/value")
                 .and_then(|x| x.as_str())
@@ -1285,11 +1380,15 @@ fn attempt_rail_refund(rail: Rail, amount: u128, witness_raw: &[u8], btc_dest: O
                 }),
             )
             .ok()?;
-            sent.pointer("/result").and_then(|x| x.as_str()).map(|s| s.to_string())
+            sent.pointer("/result")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string())
         }
         Rail::Btc => {
             let url = std::env::var("BTC_RPC").ok()?;
-            let dest = btc_dest.filter(|s| s.starts_with("bcrt1") || s.starts_with("bc1") || s.starts_with("tb1"))?;
+            let dest = btc_dest.filter(|s| {
+                s.starts_with("bcrt1") || s.starts_with("bc1") || s.starts_with("tb1")
+            })?;
             let btc = (amount as f64) / 100_000_000.0;
             let v = http_json_local(
                 &url,
@@ -1300,7 +1399,9 @@ fn attempt_rail_refund(rail: Rail, amount: u128, witness_raw: &[u8], btc_dest: O
                 }),
             )
             .ok()?;
-            v.pointer("/result").and_then(|x| x.as_str()).map(|s| s.to_string())
+            v.pointer("/result")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string())
         }
         _ => None,
     }
@@ -1335,8 +1436,7 @@ fn ingest_observed(
     let _sigs: Vec<_> = f.operators.iter().map(|kp| sign(kp, &ck.digest)).collect();
     match f.cell.apply(Turn::DepositSeen { opening }) {
         Ok(_) => {}
-        Err(dregg::cell::CellError::DoubleSpend)
-        | Err(dregg::cell::CellError::CheckoutClosed) => {
+        Err(dregg::cell::CellError::DoubleSpend) | Err(dregg::cell::CellError::CheckoutClosed) => {
             return Ok(());
         }
         Err(dregg::cell::CellError::Underpay) => {
@@ -1349,7 +1449,9 @@ fn ingest_observed(
         Err(e) => return Err(e.to_string()),
     }
     if f.cell.phase(&n) != Some(Phase::Deposited) {
-        let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+        let _ = f
+            .durable
+            .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
         return Ok(());
     }
     let action = ActionOpening {
@@ -1375,8 +1477,11 @@ fn ingest_observed(
     f.by_recipient.insert(recipient.clone(), n);
     save_recipients(&f.recipients_path, &f.by_recipient);
     f.mempool.remove(&recipient);
-    f.sessions.advance(&recipient, "entitled", "", amount as u64, "");
-    let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+    f.sessions
+        .advance(&recipient, "entitled", "", amount as u64, "");
+    let _ = f
+        .durable
+        .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
     Ok(())
 }
 
@@ -1451,19 +1556,21 @@ fn parse_n32(v: &serde_json::Value) -> Option<[u8; 32]> {
 }
 
 fn n_from_body(v: &serde_json::Value) -> [u8; 32] {
-    v.get("n_deposit")
-        .and_then(parse_n32)
-        .unwrap_or([0u8; 32])
+    v.get("n_deposit").and_then(parse_n32).unwrap_or([0u8; 32])
 }
 
 fn deposit_opening_from(v: &serde_json::Value) -> Option<dregg::commit::DepositOpening> {
     let rail: Rail = serde_json::from_value(v.get("rail")?.clone()).ok()?;
-    let amount = v.get("amount").and_then(|x| x.as_u64()).map(|u| u as u128)?;
+    let amount = v
+        .get("amount")
+        .and_then(|x| x.as_u64())
+        .map(|u| u as u128)?;
     let raw_hex = v.get("raw_hex")?.as_str()?;
     if raw_hex.trim() == "aa" || raw_hex.trim() == "0xaa" {
         return None;
     }
-    let raw = hex::decode(raw_hex.trim_start_matches("0x")).unwrap_or_else(|_| raw_hex.as_bytes().to_vec());
+    let raw = hex::decode(raw_hex.trim_start_matches("0x"))
+        .unwrap_or_else(|_| raw_hex.as_bytes().to_vec());
     let mut salt = [11u8; 32];
     salt.copy_from_slice(blake3::hash(&raw).as_bytes());
     Some(dregg::commit::DepositOpening {
@@ -1479,7 +1586,9 @@ fn deposit_opening_from(v: &serde_json::Value) -> Option<dregg::commit::DepositO
 fn tag_from_body(v: &serde_json::Value) -> Result<String, String> {
     if let Some(wq) = v.get("wasm_query").filter(|x| !x.is_null()) {
         return Ok(wasm_supply_tag(
-            v.get("collection").and_then(|x| x.as_str()).unwrap_or("svg"),
+            v.get("collection")
+                .and_then(|x| x.as_str())
+                .unwrap_or("svg"),
             v.get("minted").and_then(|x| x.as_u64()).unwrap_or(0),
             v.get("max_supply").and_then(|x| x.as_u64()).unwrap_or(0),
             v.get("height").and_then(|x| x.as_u64()).unwrap_or(0),
@@ -1514,7 +1623,11 @@ fn preview_ckpt(fed: &Fed, v: &serde_json::Value) -> Result<Checkpoint, String> 
     Ok(Checkpoint::new(fed.epoch, fed.cell.cell_root(), n, &tag))
 }
 
-fn require_qc_body(fed: &Fed, v: &serde_json::Value, sigs: &[OracleSig]) -> Result<Checkpoint, String> {
+fn require_qc_body(
+    fed: &Fed,
+    v: &serde_json::Value,
+    sigs: &[OracleSig],
+) -> Result<Checkpoint, String> {
     let ck = preview_ckpt(fed, v)?;
     count_valid(&ck.digest, sigs, &fed.allowed, fed.threshold).map_err(|e| e.to_string())?;
     Ok(ck)
@@ -1546,10 +1659,7 @@ fn admin_adr36_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::
         .or_else(|| v.get("pub_key"))
         .and_then(|x| x.as_str())
         .unwrap_or("");
-    let sig = v
-        .get("signature")
-        .and_then(|x| x.as_str())
-        .unwrap_or("");
+    let sig = v.get("signature").and_then(|x| x.as_str()).unwrap_or("");
     if challenge.is_empty() || signer.is_empty() || pk.is_empty() || sig.is_empty() {
         return Err("ADR-036 requires challenge, signer, pub_key, signature".into());
     }
@@ -1599,7 +1709,6 @@ fn admin_adr36_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::
     };
     Ok(json!({"ok": true, "token": token, "signer": terp, "mode": "adr36"}))
 }
-
 
 fn withdraw_history(limit: usize, before: Option<u64>) -> Result<serde_json::Value, String> {
     let ua = withdraw_allowlist().into_iter().next().unwrap_or_default();
@@ -1651,7 +1760,11 @@ fn zcli_withdraw_zec(to: &str, zat: u64, lab_txid: Option<&str>) -> Result<Strin
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     if !out.status.success() {
-        return Err(format!("svg-mint-zrt send failed: {} {}", stderr.trim(), stdout.trim()));
+        return Err(format!(
+            "svg-mint-zrt send failed: {} {}",
+            stderr.trim(),
+            stdout.trim()
+        ));
     }
     Ok(stdout.trim().to_string())
 }
@@ -1659,7 +1772,11 @@ fn zcli_withdraw_zec(to: &str, zat: u64, lab_txid: Option<&str>) -> Result<Strin
 fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Value, String> {
     let v: serde_json::Value = serde_json::from_str(body).map_err(|e| e.to_string())?;
     let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
-    let pk_hex = v.get("publicKey").or_else(|| v.get("public_key")).and_then(|x| x.as_str()).unwrap_or("");
+    let pk_hex = v
+        .get("publicKey")
+        .or_else(|| v.get("public_key"))
+        .and_then(|x| x.as_str())
+        .unwrap_or("");
     let sig_hex = v.get("signature").and_then(|x| x.as_str()).unwrap_or("");
     if challenge.is_empty() || pk_hex.is_empty() || sig_hex.is_empty() {
         return Err("challenge, publicKey, signature required".into());
@@ -1675,8 +1792,10 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
             _ => return Err("challenge expired or unknown".into()),
         }
     }
-    let pk_raw = hex::decode(pk_hex.trim_start_matches("0x")).map_err(|_| "publicKey hex".to_string())?;
-    let sig_raw = hex::decode(sig_hex.trim_start_matches("0x")).map_err(|_| "signature hex".to_string())?;
+    let pk_raw =
+        hex::decode(pk_hex.trim_start_matches("0x")).map_err(|_| "publicKey hex".to_string())?;
+    let sig_raw =
+        hex::decode(sig_hex.trim_start_matches("0x")).map_err(|_| "signature hex".to_string())?;
     if pk_raw.len() != 32 || sig_raw.len() != 64 {
         return Err("ed25519 publicKey 32 bytes, signature 64 bytes".into());
     }
@@ -1687,10 +1806,15 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
     let pk = PublicKey::from_bytes(&pk32).map_err(|_| "publicKey".to_string())?;
     let sig = Signature::from_bytes(&sig64).map_err(|_| "signature".to_string())?;
     let msg = hex::decode(challenge).map_err(|_| "challenge hex".to_string())?;
-    pk.verify(&msg, &sig).map_err(|_| "zid signature".to_string())?;
+    pk.verify(&msg, &sig)
+        .map_err(|_| "zid signature".to_string())?;
 
-    let path = std::env::var("DREGG_ADMIN_ZID_PK_PATH")
-        .unwrap_or_else(|_| format!("{}/.terp/dregg-admin-zid.pk", std::env::var("HOME").unwrap_or_else(|_| ".".into())));
+    let path = std::env::var("DREGG_ADMIN_ZID_PK_PATH").unwrap_or_else(|_| {
+        format!(
+            "{}/.terp/dregg-admin-zid.pk",
+            std::env::var("HOME").unwrap_or_else(|_| ".".into())
+        )
+    });
     let designated = std::fs::read_to_string(&path)
         .ok()
         .map(|s| s.trim().to_lowercase())
@@ -1702,7 +1826,10 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
                 let _ = std::fs::create_dir_all(parent);
             }
             std::fs::write(&path, pk_norm.as_bytes()).map_err(|e| e.to_string())?;
-            let _ = std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o600));
+            let _ = std::fs::set_permissions(
+                &path,
+                std::os::unix::fs::PermissionsExt::from_mode(0o600),
+            );
         }
         Some(want) if want.trim_start_matches("0x") != pk_norm => {
             return Err("zid public key is not the designated admin".into());
@@ -1804,11 +1931,7 @@ fn admin_adr36_over(
 fn admin_adr36_authorize(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<String, String> {
     let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
     let zat = v.get("zat").and_then(|x| x.as_u64()).unwrap_or(0);
-    let statement = dregg::adr36::withdraw_statement(
-        zat,
-        dregg::adr36::DONATE_ZEC_UA,
-        challenge,
-    );
+    let statement = dregg::adr36::withdraw_statement(zat, dregg::adr36::DONATE_ZEC_UA, challenge);
     admin_adr36_over(fed, v, statement.as_bytes())
 }
 
@@ -1845,7 +1968,12 @@ fn checkout_action(
             )
         }
     } else {
-        let tx = v.get("terp_tx").and_then(|x| x.as_str()).unwrap_or("").trim().to_string();
+        let tx = v
+            .get("terp_tx")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
         let mut g = fed.lock().unwrap();
         let phase = g.sessions.open_row(terp).map(|r| r.phase.clone());
         if phase.as_deref() != Some("entitled") {
@@ -1900,11 +2028,12 @@ fn checkout_action(
     }
 }
 
-
 fn status_for(fed: &Fed, rec: &str) -> serde_json::Value {
     let st = checkout_now(fed);
     let n = fed.by_recipient.get(rec);
-    let mut phase = n.and_then(|n| fed.cell.phase(n)).map(|ph| format!("{ph:?}"));
+    let mut phase = n
+        .and_then(|n| fed.cell.phase(n))
+        .map(|ph| format!("{ph:?}"));
     let mut mempool = serde_json::Value::Null;
     if phase.is_none() {
         if let Some(m) = fed.mempool.get(rec) {
@@ -1922,9 +2051,18 @@ fn status_for(fed: &Fed, rec: &str) -> serde_json::Value {
     })
 }
 
-fn write_phase_stream(mut stream: TcpStream, fed: Arc<Mutex<Fed>>, path: &str) -> std::io::Result<()> {
+fn write_phase_stream(
+    mut stream: TcpStream,
+    fed: Arc<Mutex<Fed>>,
+    path: &str,
+) -> std::io::Result<()> {
     let rec = urlencoding_decode(
-        path.split("recipient=").nth(1).unwrap_or("").split('&').next().unwrap_or(""),
+        path.split("recipient=")
+            .nth(1)
+            .unwrap_or("")
+            .split('&')
+            .next()
+            .unwrap_or(""),
     );
     let header = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: keep-alive\r\nAccess-Control-Allow-Origin: *\r\n\r\n";
     stream.write_all(header.as_bytes())?;
@@ -2025,7 +2163,6 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             let mut dest = rec.clone();
             if !c_hex.is_empty() {
                 if let Some(c) = dregg::pedersen::parse_commit(c_hex.as_bytes()) {
-
                     if let Some(t) = dregg::store::dest_for_commit(&f.pending, &c) {
                         dest = t.clone();
                         if rec.is_empty() || rec == t {
@@ -2098,9 +2235,16 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
         ("POST", "/v1/admin/session") => {
             let kind = serde_json::from_str::<serde_json::Value>(body)
                 .ok()
-                .and_then(|v| v.get("kind").and_then(|x| x.as_str()).map(|s| s.to_string()))
+                .and_then(|v| {
+                    v.get("kind")
+                        .and_then(|x| x.as_str())
+                        .map(|s| s.to_string())
+                })
                 .unwrap_or_default();
-            let r = if kind == "adr36" || body.contains("sign/MsgSignData") || body.contains("signer") {
+            let r = if kind == "adr36"
+                || body.contains("sign/MsgSignData")
+                || body.contains("signer")
+            {
                 admin_adr36_session(&fed, body)
             } else {
                 admin_zid_session(&fed, body)
@@ -2112,14 +2256,25 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
         }
         ("POST", "/v1/admin/checkout") => {
             let v = serde_json::from_str::<serde_json::Value>(body).unwrap_or(json!({}));
-            let terp = v.get("terp").and_then(|x| x.as_str()).unwrap_or("").trim().to_string();
+            let terp = v
+                .get("terp")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
             let action = v.get("action").and_then(|x| x.as_str()).unwrap_or("");
             if terp.is_empty() {
                 (400, json!({"ok": false, "error": "terp required"}))
             } else if action != "refund" && action != "mint-to" {
-                (400, json!({"ok": false, "error": "action is refund or mint-to"}))
+                (
+                    400,
+                    json!({"ok": false, "error": "action is refund or mint-to"}),
+                )
             } else if adr36_fields(&v).is_err() {
-                (401, json!({"ok": false, "authorized": false, "error": "ADR-036 required"}))
+                (
+                    401,
+                    json!({"ok": false, "authorized": false, "error": "ADR-036 required"}),
+                )
             } else {
                 let challenge = v.get("challenge").and_then(|x| x.as_str()).unwrap_or("");
                 match dregg::adr36::checkout_statement(action, &terp, challenge) {
@@ -2137,65 +2292,72 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             } else {
                 let mut g = fed.lock().unwrap();
                 let rows = g.sessions.export_once();
-                (200, json!({"ok": true, "flushed": rows.len(), "sessions": rows}))
+                (
+                    200,
+                    json!({"ok": true, "flushed": rows.len(), "sessions": rows}),
+                )
             }
         }
-        ("POST", "/v1/admin/withdraw") => {
-            match serde_json::from_str::<serde_json::Value>(body) {
-                Ok(v) => match admin_adr36_authorize(&fed, &v) {
-                    Err(e) => (401, json!({"ok": false, "error": e})),
-                    Ok(signer) => {
-                        let dest = dregg::adr36::DONATE_ZEC_UA.to_string();
-                        let to = v.get("to").and_then(|x| x.as_str()).unwrap_or("");
-                        let zat = v.get("zat").and_then(|x| x.as_u64()).unwrap_or(0);
-                        let rail = v.get("rail").and_then(|x| x.as_str()).unwrap_or("zec");
-                        if rail != "zec" {
-                            (400, json!({"ok": false, "error": "only zec withdraw in this cut"}))
-                        } else if !to.is_empty() && to != dest {
-                            (
+        ("POST", "/v1/admin/withdraw") => match serde_json::from_str::<serde_json::Value>(body) {
+            Ok(v) => match admin_adr36_authorize(&fed, &v) {
+                Err(e) => (401, json!({"ok": false, "error": e})),
+                Ok(signer) => {
+                    let dest = dregg::adr36::DONATE_ZEC_UA.to_string();
+                    let to = v.get("to").and_then(|x| x.as_str()).unwrap_or("");
+                    let zat = v.get("zat").and_then(|x| x.as_u64()).unwrap_or(0);
+                    let rail = v.get("rail").and_then(|x| x.as_str()).unwrap_or("zec");
+                    if rail != "zec" {
+                        (
+                            400,
+                            json!({"ok": false, "error": "only zec withdraw in this cut"}),
+                        )
+                    } else if !to.is_empty() && to != dest {
+                        (
+                            400,
+                            json!({
+                                "ok": false,
+                                "error": "withdraw dest is not the donation / allowlisted UA",
+                                "withdraw_to": dest,
+                                "signer": signer,
+                            }),
+                        )
+                    } else if zat == 0 {
+                        (
+                            400,
+                            json!({"ok": false, "error": "zat required", "withdraw_to": dest}),
+                        )
+                    } else {
+                        let lab_txid = v.get("lab_txid").and_then(|x| x.as_str());
+                        match zcli_withdraw_zec(&dest, zat, lab_txid) {
+                            Ok(out) => (
+                                200,
+                                json!({
+                                    "ok": true,
+                                    "authorized": true,
+                                    "rail": "zec",
+                                    "to": dest,
+                                    "zat": zat,
+                                    "signer": signer,
+                                    "zcli": out,
+                                }),
+                            ),
+                            Err(e) => (
                                 400,
                                 json!({
                                     "ok": false,
-                                    "error": "withdraw dest is not the donation / allowlisted UA",
-                                    "withdraw_to": dest,
+                                    "authorized": true,
+                                    "error": e,
+                                    "to": dest,
+                                    "zat": zat,
                                     "signer": signer,
                                 }),
-                            )
-                        } else if zat == 0 {
-                            (400, json!({"ok": false, "error": "zat required", "withdraw_to": dest}))
-                        } else {
-                            let lab_txid = v.get("lab_txid").and_then(|x| x.as_str());
-                            match zcli_withdraw_zec(&dest, zat, lab_txid) {
-                                Ok(out) => (
-                                    200,
-                                    json!({
-                                        "ok": true,
-                                        "authorized": true,
-                                        "rail": "zec",
-                                        "to": dest,
-                                        "zat": zat,
-                                        "signer": signer,
-                                        "zcli": out,
-                                    }),
-                                ),
-                                Err(e) => (
-                                    400,
-                                    json!({
-                                        "ok": false,
-                                        "authorized": true,
-                                        "error": e,
-                                        "to": dest,
-                                        "zat": zat,
-                                        "signer": signer,
-                                    }),
-                                ),
-                            }
+                            ),
                         }
                     }
-                },
-                Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
-            }
-        }
+                }
+            },
+            Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
+        },
         ("GET", p) if p.starts_with("/v1/admin/stats") => {
             if !admin_token_ok(admin_got.as_deref()) {
                 (401, json!({"ok": false, "error": "admin token required"}))
@@ -2248,8 +2410,17 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             if !admin_token_ok(admin_got.as_deref()) {
                 (401, json!({"ok": false, "error": "admin"}))
             } else {
-                let limit = p.split("limit=").nth(1).and_then(|s| s.split('&').next()).and_then(|s| s.parse().ok()).unwrap_or(20usize);
-                let before = p.split("before=").nth(1).and_then(|s| s.split('&').next()).and_then(|s| s.parse().ok());
+                let limit = p
+                    .split("limit=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(20usize);
+                let before = p
+                    .split("before=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .and_then(|s| s.parse().ok());
                 match withdraw_history(limit, before) {
                     Ok(v) => (200, v),
                     Err(e) => (400, json!({"ok": false, "error": e})),
@@ -2260,8 +2431,17 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             if !admin_token_ok(admin_got.as_deref()) {
                 (401, json!({"ok": false, "error": "admin"}))
             } else {
-                let limit = p.split("limit=").nth(1).and_then(|s| s.split('&').next()).and_then(|s| s.parse().ok()).unwrap_or(20usize);
-                let before = p.split("before=").nth(1).and_then(|s| s.split('&').next()).and_then(|s| s.parse().ok());
+                let limit = p
+                    .split("limit=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(20usize);
+                let before = p
+                    .split("before=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .and_then(|s| s.parse().ok());
                 let f = fed.lock().unwrap();
                 let (rows, next) = f.sessions.page(limit, before);
                 (200, json!({"ok": true, "sessions": rows, "next": next}))
@@ -2274,7 +2454,14 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 let (pending, mempool_n, minted, remaining, ready, reasons) = {
                     let f = fed.lock().unwrap();
                     let st = checkout_now(&f);
-                    (f.pending.len(), f.mempool.len(), st.minted, st.remaining_supply, st.checkout_ready, st.reasons.clone())
+                    (
+                        f.pending.len(),
+                        f.mempool.len(),
+                        st.minted,
+                        st.remaining_supply,
+                        st.checkout_ready,
+                        st.reasons.clone(),
+                    )
                 };
                 let wallet = dregg::zec_wallet::query().to_json();
                 let incoming: Vec<_> = {
@@ -2387,10 +2574,25 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             }
         }
         ("GET", p) if p.starts_with("/v1/checkpoint-preview") => {
-            let tag = p.split("tag=").nth(1).unwrap_or("").split('&').next().unwrap_or("");
-            let nhex = p.split("n_deposit=").nth(1).unwrap_or("").split('&').next().unwrap_or("");
+            let tag = p
+                .split("tag=")
+                .nth(1)
+                .unwrap_or("")
+                .split('&')
+                .next()
+                .unwrap_or("");
+            let nhex = p
+                .split("n_deposit=")
+                .nth(1)
+                .unwrap_or("")
+                .split('&')
+                .next()
+                .unwrap_or("");
             if tag.is_empty() || nhex.is_empty() {
-                (400, json!({"ok": false, "error": "checkpoint-preview requires tag and n_deposit (same as apply)"}))
+                (
+                    400,
+                    json!({"ok": false, "error": "checkpoint-preview requires tag and n_deposit (same as apply)"}),
+                )
             } else {
                 let n = parse_n32(&json!(nhex)).ok_or_else(|| "n_deposit".to_string());
                 match n {
@@ -2430,7 +2632,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             }
             let mut v: serde_json::Value = serde_json::from_str(body).unwrap_or(json!({}));
             let sigs = parse_sigs(&v);
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("set-collection");
             }
             match serde_json::from_value::<SetCol>(v.clone()) {
@@ -2442,7 +2648,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                             max_supply: s.max_supply,
                         }) {
                             Ok(_) => {
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                                let _ = f.durable.save(
+                                    &f.cell,
+                                    &f.books,
+                                    &f.pending,
+                                    f.hd_index,
+                                    f.bogo_seen,
+                                );
                                 (200, json!({"ok": true}))
                             }
                             Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
@@ -2491,23 +2703,32 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     if qj.is_empty() || o.wasm_query.is_null() {
                         (400, json!({"ok": false, "error": "wasm query required"}))
                     } else {
-                    let mut f = fed.lock().unwrap();
-                    match require_qc_body(&f, &v, &sigs) {
-                        Ok(ck) => match f.cell.apply(Turn::ObserveSupply {
-                            collection: o.collection,
-                            minted: o.minted,
-                            max_supply: o.max_supply,
-                            height: o.height,
-                            receipt: ck.digest,
-                        }) {
-                            Ok(_) => {
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
-                                (200, json!({"ok": true, "receipt": ck.digest, "height": o.height, "wasm": true}))
-                            }
-                            Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
-                        },
-                        Err(e) => (401, json!({"ok": false, "error": e})),
-                    }
+                        let mut f = fed.lock().unwrap();
+                        match require_qc_body(&f, &v, &sigs) {
+                            Ok(ck) => match f.cell.apply(Turn::ObserveSupply {
+                                collection: o.collection,
+                                minted: o.minted,
+                                max_supply: o.max_supply,
+                                height: o.height,
+                                receipt: ck.digest,
+                            }) {
+                                Ok(_) => {
+                                    let _ = f.durable.save(
+                                        &f.cell,
+                                        &f.books,
+                                        &f.pending,
+                                        f.hd_index,
+                                        f.bogo_seen,
+                                    );
+                                    (
+                                        200,
+                                        json!({"ok": true, "receipt": ck.digest, "height": o.height, "wasm": true}),
+                                    )
+                                }
+                                Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
+                            },
+                            Err(e) => (401, json!({"ok": false, "error": e})),
+                        }
                     }
                 }
                 Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
@@ -2516,7 +2737,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
         ("POST", "/v1/query/sold-out-refund") => {
             let mut v: serde_json::Value = serde_json::from_str(body).unwrap_or(json!({}));
             let sigs = parse_sigs(&v);
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("sold-out-refund");
             }
             #[derive(Deserialize)]
@@ -2548,7 +2773,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                                         let _ = f.books.apply(*n, RailPayout::Refund, raw);
                                     }
                                 }
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                                let _ = f.durable.save(
+                                    &f.cell,
+                                    &f.books,
+                                    &f.pending,
+                                    f.hd_index,
+                                    f.bogo_seen,
+                                );
                                 (
                                     200,
                                     json!({
@@ -2577,7 +2808,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             struct Rf {
                 n_deposit: [u8; 32],
             }
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("refund");
             }
             match serde_json::from_value::<Rf>(v.clone()) {
@@ -2588,7 +2823,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                             n_deposit: r.n_deposit,
                         }) {
                             Ok(_) => {
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                                let _ = f.durable.save(
+                                    &f.cell,
+                                    &f.books,
+                                    &f.pending,
+                                    f.hd_index,
+                                    f.bogo_seen,
+                                );
                                 (200, json!({"ok": true, "refunded": true}))
                             }
                             Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
@@ -2609,7 +2850,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 raw_hex: String,
             }
             let mut v = v;
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("deposit");
             }
             match serde_json::from_value::<DepositReq>(v.clone()) {
@@ -2621,17 +2866,17 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                         match opening {
                             Err(e) => (400, json!({"ok": false, "error": e})),
                             Ok(opening) => {
-                        let raw = opening.witness.raw.clone();
-                        if confirm_rail(d.rail, &raw).is_err() {
-                            (400, json!({"ok": false, "error": "observer unconfirmed"}))
-                        } else {
-                        let n = dregg::commit::nullifier(&opening);
-                        let c = dregg::commit::commit_deposit(&opening);
-                        let mut f = fed.lock().unwrap();
-                        if let Some(resp) = checkout_closed_http(&checkout_now(&f)) {
-                            resp
-                        } else {
-                        match require_qc_body(&f, &v, &sigs) {
+                                let raw = opening.witness.raw.clone();
+                                if confirm_rail(d.rail, &raw).is_err() {
+                                    (400, json!({"ok": false, "error": "observer unconfirmed"}))
+                                } else {
+                                    let n = dregg::commit::nullifier(&opening);
+                                    let c = dregg::commit::commit_deposit(&opening);
+                                    let mut f = fed.lock().unwrap();
+                                    if let Some(resp) = checkout_closed_http(&checkout_now(&f)) {
+                                        resp
+                                    } else {
+                                        match require_qc_body(&f, &v, &sigs) {
                             Ok(_) => match f.cell.apply(Turn::DepositSeen { opening }) {
                                 Ok(_) => {
                                     let (qty, batches) =
@@ -2655,8 +2900,8 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                             },
                             Err(e) => (401, json!({"ok": false, "error": e})),
                         }
-                        }
-                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -2674,7 +2919,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 rail_hex: String,
             }
             let mut v = v;
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("payout");
             }
             match serde_json::from_value::<Pay>(v.clone()) {
@@ -2693,7 +2942,13 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                         match require_qc_body(&f, &v, &sigs) {
                             Ok(_) => match f.books.apply(p.n_deposit, kind, raw) {
                                 Ok(()) => {
-                                    let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                                    let _ = f.durable.save(
+                                        &f.cell,
+                                        &f.books,
+                                        &f.pending,
+                                        f.hd_index,
+                                        f.bogo_seen,
+                                    );
                                     (200, json!({"ok": true, "payout": p.kind, "xor": true}))
                                 }
                                 Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
@@ -2717,7 +2972,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 session: [u8; 32],
             }
             let mut v = v;
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("entitle");
             }
             match serde_json::from_value::<EntitleReq>(v.clone()) {
@@ -2735,44 +2994,55 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     if let Some(resp) = checkout_closed_http(&checkout_now(&f)) {
                         resp
                     } else {
-                    match require_qc_body(&f, &v, &sigs) {
-                        Ok(_) => {
-                            let now = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .map(|d| d.as_secs())
-                                .unwrap_or(0);
-                            let _ = f.cell.apply(Turn::Tick { now });
-                            match f.cell.apply(Turn::MintEntitled {
-                            n_deposit: e.n_deposit,
-                            action,
-                        }) {
+                        match require_qc_body(&f, &v, &sigs) {
                             Ok(_) => {
-                                f.by_recipient.insert(recipient.clone(), n_ent);
-                                save_recipients(&f.recipients_path, &f.by_recipient);
-                                f.sessions.advance(&recipient, "entitled", "", 0, "");
-                                let qty = f.cell.qty(&n_ent).unwrap_or(1);
-                                let batches = checkout::mint_batches(
-                                    qty as u64,
-                                    checkout::mint_batch_size(),
-                                );
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
-                                (200, json!({
-                                    "ok": true,
-                                    "qty": qty,
-                                    "mint_batches": batches,
-                                }))
+                                let now = std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .map(|d| d.as_secs())
+                                    .unwrap_or(0);
+                                let _ = f.cell.apply(Turn::Tick { now });
+                                match f.cell.apply(Turn::MintEntitled {
+                                    n_deposit: e.n_deposit,
+                                    action,
+                                }) {
+                                    Ok(_) => {
+                                        f.by_recipient.insert(recipient.clone(), n_ent);
+                                        save_recipients(&f.recipients_path, &f.by_recipient);
+                                        f.sessions.advance(&recipient, "entitled", "", 0, "");
+                                        let qty = f.cell.qty(&n_ent).unwrap_or(1);
+                                        let batches = checkout::mint_batches(
+                                            qty as u64,
+                                            checkout::mint_batch_size(),
+                                        );
+                                        let _ = f.durable.save(
+                                            &f.cell,
+                                            &f.books,
+                                            &f.pending,
+                                            f.hd_index,
+                                            f.bogo_seen,
+                                        );
+                                        (
+                                            200,
+                                            json!({
+                                                "ok": true,
+                                                "qty": qty,
+                                                "mint_batches": batches,
+                                            }),
+                                        )
+                                    }
+                                    Err(dregg::cell::CellError::CheckoutClosed) => {
+                                        checkout_closed_http(&checkout_now(&f)).unwrap_or((
+                                            503,
+                                            json!({"ok": false, "checkout_ready": false}),
+                                        ))
+                                    }
+                                    Err(err) => {
+                                        (400, json!({"ok": false, "error": err.to_string()}))
+                                    }
+                                }
                             }
-                            Err(dregg::cell::CellError::CheckoutClosed) => {
-                                checkout_closed_http(&checkout_now(&f)).unwrap_or((
-                                    503,
-                                    json!({"ok": false, "checkout_ready": false}),
-                                ))
-                            }
-                            Err(err) => (400, json!({"ok": false, "error": err.to_string()})),
+                            Err(e) => (401, json!({"ok": false, "error": e})),
                         }
-                        }
-                        Err(e) => (401, json!({"ok": false, "error": e})),
-                    }
                     }
                 }
                 Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
@@ -2788,7 +3058,11 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 terp_tx: String,
             }
             let mut v = v;
-            if v.get("turn_tag").and_then(|x| x.as_str()).unwrap_or("").is_empty() {
+            if v.get("turn_tag")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .is_empty()
+            {
                 v["turn_tag"] = json!("settle");
             }
             match serde_json::from_value::<SettleReq>(v.clone()) {
@@ -2802,8 +3076,17 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                             receipt: ck.digest,
                         }) {
                             Ok(pkt) => {
-                                let _ = f.durable.save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
-                                (200, json!({"ok": true, "packet": pkt, "receipt": ck.digest}))
+                                let _ = f.durable.save(
+                                    &f.cell,
+                                    &f.books,
+                                    &f.pending,
+                                    f.hd_index,
+                                    f.bogo_seen,
+                                );
+                                (
+                                    200,
+                                    json!({"ok": true, "packet": pkt, "receipt": ck.digest}),
+                                )
                             }
                             Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
                         },
@@ -2813,16 +3096,14 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 Err(e) => (400, json!({"ok": false, "error": e.to_string()})),
             }
         }
-        ("POST", "/v1/sign") => {
-            match parse_digest_body(body) {
-                Ok(d) => {
-                    let f = fed.lock().unwrap();
-                    let sigs: Vec<_> = f.operators.iter().map(|kp| sign(kp, &d)).collect();
-                    (200, json!({"ok": true, "signatures": sigs}))
-                }
-                Err(e) => (400, json!({"ok": false, "error": e})),
+        ("POST", "/v1/sign") => match parse_digest_body(body) {
+            Ok(d) => {
+                let f = fed.lock().unwrap();
+                let sigs: Vec<_> = f.operators.iter().map(|kp| sign(kp, &d)).collect();
+                (200, json!({"ok": true, "signatures": sigs}))
             }
-        }
+            Err(e) => (400, json!({"ok": false, "error": e})),
+        },
         _ => (404, json!({"ok": false, "error": "not found"})),
     };
 

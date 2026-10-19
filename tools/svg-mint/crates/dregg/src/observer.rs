@@ -73,7 +73,13 @@ fn digest_witness(rail: Rail, raw: &[u8]) -> Result<[u8; 32], ObserverError> {
 }
 
 /// Bind a CosmWasm supply query blob into the observe-supply QC tag.
-pub fn wasm_supply_tag(collection: &str, minted: u64, max_supply: u64, height: u64, query_json: &[u8]) -> String {
+pub fn wasm_supply_tag(
+    collection: &str,
+    minted: u64,
+    max_supply: u64,
+    height: u64,
+    query_json: &[u8],
+) -> String {
     let qh = blake3::hash(query_json);
     format!(
         "observe-supply:{collection}:{height}:{minted}:{max_supply}:{}",

@@ -8,7 +8,7 @@
 use std::env;
 use std::process::ExitCode;
 
-use svg_mint_zrt::{self, dir_from_env, DONATION_UA};
+use svg_mint_zrt::{self, DONATION_UA, dir_from_env};
 
 fn die(msg: &str) -> ! {
     eprintln!("{msg}");
@@ -67,9 +67,7 @@ fn main() -> ExitCode {
             }
             Err(e) => die(&e),
         },
-        "sync" => die(
-            "compact scan is not linked in this build; the note ledger was not modified",
-        ),
+        "sync" => die("compact scan is not linked in this build; the note ledger was not modified"),
         "send" => cmd_send(&dir, &args),
         "lab-credit" => cmd_lab_credit(&dir, &args),
         "lab-commit-spend" => cmd_lab_commit(&dir, &args),
@@ -207,7 +205,10 @@ fn cmd_lab_send(dir: &std::path::Path, args: &[String]) -> ExitCode {
             Ok(()) => {
                 println!(
                     "{{\"ok\":true,\"broadcast\":false,\"to\":\"{}\",\"zat\":{},\"txid\":\"{}\",\"spent\":{}}}",
-                    addr, zat, txid, plan.nullifiers.len()
+                    addr,
+                    zat,
+                    txid,
+                    plan.nullifiers.len()
                 );
                 ExitCode::SUCCESS
             }
