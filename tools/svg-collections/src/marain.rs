@@ -4,38 +4,90 @@
 //! contract derives the SMIL values from the text at render time. Nothing is prepacked.
 use cw_svg::{RgbRange, VariableDef, VariableKind};
 
-pub use cw_svg::marain::{derived, transliterate, validate_text, GLYPHS, MAX_GLYPHS, MAX_TEXT_BYTES};
+pub use cw_svg::marain::{
+    GLYPHS, MAX_GLYPHS, MAX_TEXT_BYTES, derived, transliterate, validate_text,
+};
 pub const GLYPHS_JSON: &str = include_str!("../data/marain-glyphs.json");
 pub const THEMES_JSON: &str = include_str!("../data/marain-themes.json");
 /// Core-cell centres, row-major from top-left (matches bit order).
-pub const CELLS: [(i32, i32); 9] = [(-25, -25), (0, -25), (25, -25), (-25, 0), (0, 0), (25, 0), (-25, 25), (0, 25), (25, 25)];
+pub const CELLS: [(i32, i32); 9] = [
+    (-25, -25),
+    (0, -25),
+    (25, -25),
+    (-25, 0),
+    (0, 0),
+    (25, 0),
+    (-25, 25),
+    (0, 25),
+    (25, 25),
+];
 
 pub fn themes() -> Vec<String> {
     let v: serde_json::Value = serde_json::from_str(THEMES_JSON).unwrap();
-    v["themes"].as_array().unwrap().iter().map(|t| t.as_str().unwrap().to_string()).collect()
+    v["themes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t.as_str().unwrap().to_string())
+        .collect()
 }
 
 fn rr(r: (u8, u8), g: (u8, u8), b: (u8, u8)) -> RgbRange {
-    RgbRange { r_min: r.0, r_max: r.1, g_min: g.0, g_max: g.1, b_min: b.0, b_max: b.1 }
+    RgbRange {
+        r_min: r.0,
+        r_max: r.1,
+        g_min: g.0,
+        g_max: g.1,
+        b_min: b.0,
+        b_max: b.1,
+    }
 }
 fn range(n: &str, a: &str, b: &str, p: u32) -> VariableDef {
-    VariableDef { name: n.into(), kind: VariableKind::Range { min: a.into(), max: b.into(), precision: p } }
+    VariableDef {
+        name: n.into(),
+        kind: VariableKind::Range {
+            min: a.into(),
+            max: b.into(),
+            precision: p,
+        },
+    }
 }
 fn placeholder(n: String) -> VariableDef {
-    VariableDef { name: n, kind: VariableKind::Options(vec![String::new()]) }
+    VariableDef {
+        name: n,
+        kind: VariableKind::Options(vec![String::new()]),
+    }
 }
 
 pub fn variables(themes: &[String]) -> Vec<VariableDef> {
-    let mut v = vec![VariableDef { name: "scribe".into(), kind: VariableKind::Options(themes.to_vec()) }];
+    let mut v = vec![VariableDef {
+        name: "scribe".into(),
+        kind: VariableKind::Options(themes.to_vec()),
+    }];
     for c in 0..9 {
         v.push(placeholder(format!("scribe.c{c}")));
     }
     v.push(placeholder("scribe.dur".into()));
     v.extend([
-        VariableDef { name: "color-core".into(), kind: VariableKind::RgbStyled(vec![rr((250, 255), (235, 250), (190, 220))]) },
-        VariableDef { name: "color-rim".into(), kind: VariableKind::RgbStyled(vec![rr((220, 255), (150, 190), (60, 110)), rr((200, 240), (120, 160), (40, 80))]) },
-        VariableDef { name: "color-halo".into(), kind: VariableKind::RgbStyled(vec![rr((255, 255), (170, 210), (90, 130))]) },
-        VariableDef { name: "color-bg".into(), kind: VariableKind::RgbStyled(vec![rr((16, 28), (10, 18), (4, 10))]) },
+        VariableDef {
+            name: "color-core".into(),
+            kind: VariableKind::RgbStyled(vec![rr((250, 255), (235, 250), (190, 220))]),
+        },
+        VariableDef {
+            name: "color-rim".into(),
+            kind: VariableKind::RgbStyled(vec![
+                rr((220, 255), (150, 190), (60, 110)),
+                rr((200, 240), (120, 160), (40, 80)),
+            ]),
+        },
+        VariableDef {
+            name: "color-halo".into(),
+            kind: VariableKind::RgbStyled(vec![rr((255, 255), (170, 210), (90, 130))]),
+        },
+        VariableDef {
+            name: "color-bg".into(),
+            kind: VariableKind::RgbStyled(vec![rr((16, 28), (10, 18), (4, 10))]),
+        },
         range("opacity-glow", "0.40", "0.90", 2),
         range("blur-glow", "2.5", "6.0", 1),
         range("pulse-glow", "1.60", "3.20", 2),

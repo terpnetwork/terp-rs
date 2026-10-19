@@ -2,7 +2,10 @@ use cw_svg::{TokenParam, VariableDef};
 use sha2::{Digest, Sha256};
 
 pub fn sha256_hex(b: &[u8]) -> String {
-    Sha256::digest(b).iter().map(|x| format!("{:02x}", x)).collect()
+    Sha256::digest(b)
+        .iter()
+        .map(|x| format!("{:02x}", x))
+        .collect()
 }
 
 /// Same rule as cw721-svg `derive_entropy`.
@@ -46,7 +49,10 @@ pub struct BuildReport {
 }
 
 /// Run the on-chain checks, pack, round-trip, and estimate gas with the page's GAS_FIT.
-pub fn check_and_pack(template: &str, vars: &[VariableDef]) -> Result<(Vec<u8>, BuildReport), String> {
+pub fn check_and_pack(
+    template: &str,
+    vars: &[VariableDef],
+) -> Result<(Vec<u8>, BuildReport), String> {
     cw_svg::validate_variables(vars).map_err(|e| format!("vars: {e}"))?;
     let slots = cw_svg::compute_template_slots(template, vars);
     cw_svg::validate_template_slots(template, vars, &slots).map_err(|e| format!("slots: {e}"))?;
@@ -54,7 +60,11 @@ pub fn check_and_pack(template: &str, vars: &[VariableDef]) -> Result<(Vec<u8>, 
     cw_svg::links::validate_links(template, vars).map_err(|e| format!("links: {e}"))?;
     cw721_svg::contract::scribe_layout(vars).map_err(|e| format!("scribe: {e}"))?;
     if template.len() > cw_svg_pack::MAX_OUT {
-        return Err(format!("template {} > MAX_OUT {}", template.len(), cw_svg_pack::MAX_OUT));
+        return Err(format!(
+            "template {} > MAX_OUT {}",
+            template.len(),
+            cw_svg_pack::MAX_OUT
+        ));
     }
     let packed = cw_svg_pack::pack(template, vars).map_err(|e| format!("pack: {e:?}"))?;
     let (t2, v2) = cw_svg_pack::unpack(&packed).map_err(|e| format!("unpack: {e:?}"))?;
@@ -68,19 +78,27 @@ pub fn check_and_pack(template: &str, vars: &[VariableDef]) -> Result<(Vec<u8>, 
         "total":1000,"mint_start_time":null,"mint_end_time":null,"whitelist":null},
         "minter":null,"creator":null,"withdraw_address":null});
     let inst_len = serde_json::to_vec(&inst).unwrap().len();
-    let json_equiv = serde_json::to_vec(&serde_json::json!({"svg_template":template,"variables":vars})).unwrap().len();
-    Ok((packed.clone(), BuildReport {
-        template_bytes: template.len(),
-        packed_bytes: packed.len(),
-        packed_sha256: sha256_hex(&packed),
-        instantiate_msg_bytes: inst_len,
-        est_create_gas_fit: (207639.0 + 63.39 * inst_len as f64) as u64,
-        json_equiv_msg_bytes: json_equiv,
-        est_mint_gas_fit: (140757.0 + 4.01 * json_equiv as f64) as u64,
-        fit_note: "svp.js GAS_FIT (fit on 7 corpus templates up to ~15 KB); larger inputs are extrapolation, see measured numbers in REPORT.md",
-    }))
+    let json_equiv =
+        serde_json::to_vec(&serde_json::json!({"svg_template":template,"variables":vars}))
+            .unwrap()
+            .len();
+    Ok((
+        packed.clone(),
+        BuildReport {
+            template_bytes: template.len(),
+            packed_bytes: packed.len(),
+            packed_sha256: sha256_hex(&packed),
+            instantiate_msg_bytes: inst_len,
+            est_create_gas_fit: (207639.0 + 63.39 * inst_len as f64) as u64,
+            json_equiv_msg_bytes: json_equiv,
+            est_mint_gas_fit: (140757.0 + 4.01 * json_equiv as f64) as u64,
+            fit_note: "svp.js GAS_FIT (fit on 7 corpus templates up to ~15 KB); larger inputs are extrapolation, see measured numbers in REPORT.md",
+        },
+    ))
 }
 
 pub fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }

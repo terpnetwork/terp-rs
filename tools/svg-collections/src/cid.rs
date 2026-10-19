@@ -24,7 +24,10 @@ fn base32_lower(data: &[u8]) -> String {
 
 pub fn cid_v1_raw(bytes: &[u8]) -> Result<String, String> {
     if bytes.len() > MAX_SINGLE_BLOCK {
-        return Err(format!("{} bytes > {MAX_SINGLE_BLOCK}: would be chunked into a dag-pb root", bytes.len()));
+        return Err(format!(
+            "{} bytes > {MAX_SINGLE_BLOCK}: would be chunked into a dag-pb root",
+            bytes.len()
+        ));
     }
     let mut v = vec![0x01, 0x55, 0x12, 0x20];
     v.extend_from_slice(&Sha256::digest(bytes));
