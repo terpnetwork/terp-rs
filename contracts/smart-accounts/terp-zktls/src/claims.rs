@@ -5,9 +5,6 @@ use crate::{
     state::{Epoch, Witness},
 };
 use cosmwasm_schema::cw_serde;
-use k256::{
-    ecdsa::{RecoveryId, Signature, VerifyingKey}, // type aliases
-};
 use sha2::Sha256;
 use sha3::{Digest, Keccak256};
 
@@ -132,19 +129,16 @@ impl CompleteClaimData {
 impl SignedClaim {
     pub fn recover_signers_of_signed_claim(
         self,
-        _deps: DepsMut,
+        deps: DepsMut,
     ) -> Result<Vec<String>, ContractError> {
-        use crate::digest::Identity256;
-        use digest::Update;
-        // Create empty array
         let mut expected = vec![];
-        // Hash the signature
         let serialised_claim = self.claim.serialise();
-
         let bm = keccak256(serialised_claim.as_str());
-        let message_hash = bm.to_vec();
+        let message_hash: [u8; 32] = bm
+            .as_slice()
+            .try_into()
+            .map_err(|_| ContractError::Std(StdError::msg("keccak digest is not 32 bytes")))?;
 
-        // For each signature in the claim
         for mut complete_signature in self.signatures {
             complete_signature.remove(0);
             complete_signature.remove(0);
@@ -157,21 +151,28 @@ impl SignedClaim {
 
             let rec_dec = hex::decode(rec_param).unwrap();
             let rec_norm = rec_dec.first().unwrap() - 27;
+            if rec_norm > 1 {
+                return Err(ContractError::Std(StdError::msg("ayo lets go")));
+            }
             let r_s = hex::decode(mut_sig_str).unwrap();
+            if r_s.len() != 64 {
+                return Err(ContractError::Std(StdError::msg(
+                    "signature must be 64 bytes",
+                )));
+            }
 
-            let id = match rec_norm {
-                0 => RecoveryId::new(false, false),
-                1 => RecoveryId::new(true, false),
-                _ => return Err(ContractError::Std(StdError::msg("ayo lets go"))),
+            let pubkey = deps
+                .api
+                .secp256k1_recover_pubkey(&message_hash, &r_s, rec_norm)
+                .map_err(|e| {
+                    ContractError::Std(StdError::msg(format!("secp256k1_recover_pubkey: {e}")))
+                })?;
+            let key = if pubkey.len() == 65 && pubkey[0] == 0x04 {
+                &pubkey[1..]
+            } else {
+                pubkey.as_slice()
             };
-
-            let signature = Signature::from_bytes(r_s.as_slice().into()).unwrap();
-            let message_digest = Identity256::new().chain(&message_hash);
-
-            // Recover the public key
-            let verkey = VerifyingKey::recover_from_digest(message_digest, &signature, id).unwrap();
-            let key: Vec<u8> = verkey.to_encoded_point(false).as_bytes().into();
-            let hasher = Keccak256::new_with_prefix(&key[1..]);
+            let hasher = Keccak256::new_with_prefix(key);
 
             let hash = hasher.finalize().to_vec();
 
@@ -188,4 +189,39 @@ impl SignedClaim {
 pub struct Proof {
     pub claimInfo: ClaimInfo,
     pub signedClaim: SignedClaim,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::mock_dependencies;
+    use k256::ecdsa::SigningKey;
+
+    #[test]
+    fn host_recover_matches_ethereum_address() {
+        let sk = SigningKey::from_bytes((&[0x11u8; 32]).into()).unwrap();
+        let claim = CompleteClaimData {
+            identifier: "id".into(),
+            owner: "owner".into(),
+            epoch: 1,
+            timestampS: 2,
+        };
+        let hash = keccak256(&claim.serialise());
+        let (sig, recid) = sk.sign_prehash_recoverable(&hash).unwrap();
+        let mut body = hex::encode(sig.to_bytes());
+        body.push_str(&hex::encode([recid.to_byte() + 27]));
+        let signed = SignedClaim {
+            claim,
+            signatures: vec![format!("0x{body}")],
+        };
+        let vk = sk.verifying_key().to_encoded_point(false);
+        let addr_hash = Keccak256::digest(&vk.as_bytes()[1..]);
+        let expect = append_0x(&hex::encode(&addr_hash[12..]));
+
+        let mut deps = mock_dependencies();
+        let got = signed
+            .recover_signers_of_signed_claim(deps.as_mut())
+            .unwrap();
+        assert_eq!(got, vec![expect]);
+    }
 }

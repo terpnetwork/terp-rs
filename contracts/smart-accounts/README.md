@@ -1,5 +1,8 @@
 # Smart-account authenticators
 
+## TODO:
+- noise for proximity authenitcated: (in store /delegate proximity attestation)
+
 CosmWasm authenticators for Terp `x/smart-account`, with shared types in-tree:
 
 | Crate | Role |

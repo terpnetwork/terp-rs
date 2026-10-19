@@ -2,11 +2,11 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult}
 use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 
+use crate::TerpAccountBls;
 use crate::error::ContractError;
 use crate::msg::{BlsConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{BlsConfig, BLS_CONFIG};
+use crate::state::{BLS_CONFIG, BlsConfig};
 use crate::verify::validate_key;
-use crate::TerpAccountBls;
 
 const CONTRACT_NAME: &str = "crates.io:terp-bls";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

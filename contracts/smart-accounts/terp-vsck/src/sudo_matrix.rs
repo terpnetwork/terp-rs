@@ -3,8 +3,9 @@
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
+        Addr, Binary, MessageInfo,
         testing::{mock_dependencies, mock_env},
-        to_json_binary, Addr, Binary, MessageInfo,
+        to_json_binary,
     };
 
     use crate::msg::{
@@ -119,8 +120,8 @@ mod tests {
 
     #[test]
     fn sudo_vote_proof_fail_closed() {
-        let e = open_and_auth("v", payload("v", VsckRole::Voter, VsckCircuit::VoteProof))
-            .unwrap_err();
+        let e =
+            open_and_auth("v", payload("v", VsckRole::Voter, VsckCircuit::VoteProof)).unwrap_err();
         assert!(e.contains("not linked"), "{e}");
     }
 

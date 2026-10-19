@@ -174,7 +174,7 @@ pub mod vote_sdk_mirror {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{testing::mock_dependencies, Binary};
+    use cosmwasm_std::{Binary, testing::mock_dependencies};
 
     fn vks() -> CircuitVerifyingKeys {
         CircuitVerifyingKeys {
@@ -208,7 +208,12 @@ mod tests {
 
     fn check(role: VsckRole, circuit: VsckCircuit) -> Result<(), ContractError> {
         let deps = mock_dependencies();
-        DefaultVsckVerifier.verify(deps.as_ref(), &vks(), &session(true), &payload(role, circuit))
+        DefaultVsckVerifier.verify(
+            deps.as_ref(),
+            &vks(),
+            &session(true),
+            &payload(role, circuit),
+        )
     }
 
     #[test]

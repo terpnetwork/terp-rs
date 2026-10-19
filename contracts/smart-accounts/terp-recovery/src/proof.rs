@@ -12,9 +12,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Api, Binary};
 
+use crate::RecoveryConfig;
 use crate::error::ContractError;
 use crate::hash::rehash;
-use crate::RecoveryConfig;
 
 /// Circuit id for a proof whose first public bytes are the recovery challenge.
 pub const CIRCUIT_ID_RECOVERY_PREIMAGE: &str = "recovery.preimage.v1";
@@ -71,8 +71,11 @@ pub fn verify_preimage_proof(
         let zkid = proof.zkid.ok_or_else(|| ContractError::InvalidProof {
             reason: "zkid required for proof_instance_verify".into(),
         })?;
-        match api.proof_instance_verify(zkid, proof.proof.as_slice(), proof.public_inputs.as_slice())
-        {
+        match api.proof_instance_verify(
+            zkid,
+            proof.proof.as_slice(),
+            proof.public_inputs.as_slice(),
+        ) {
             Ok(true) => Ok(()),
             Ok(false) => Err(ContractError::InvalidProof {
                 reason: "proof_instance_verify returned false".into(),

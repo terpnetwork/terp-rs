@@ -9,9 +9,9 @@
 use cosmwasm_std::{Api, Binary};
 use sha2::{Digest, Sha256};
 
+use crate::PasskeyAuthPayload;
 use crate::error::ContractError;
 use crate::state::PasskeyRegistration;
-use crate::PasskeyAuthPayload;
 
 const AUTH_DATA_MIN: usize = 37;
 
@@ -86,11 +86,10 @@ pub fn verify_passkey(
     if client.origin != reg.origin {
         return Err(ContractError::Unauthorized {});
     }
-    let challenge = b64url_decode(&client.challenge).map_err(|_| {
-        ContractError::InvalidCredential {
+    let challenge =
+        b64url_decode(&client.challenge).map_err(|_| ContractError::InvalidCredential {
             reason: "challenge is not base64url".into(),
-        }
-    })?;
+        })?;
     if challenge.as_slice() != sign_mode_direct {
         return Err(ContractError::InvalidCredential {
             reason: "challenge does not match sign_mode_direct".into(),
@@ -255,8 +254,8 @@ fn b64url_decode(s: &str) -> Result<Vec<u8>, ()> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::MockApi;
-    use p256::ecdsa::signature::hazmat::PrehashSigner;
     use p256::ecdsa::SigningKey;
+    use p256::ecdsa::signature::hazmat::PrehashSigner;
 
     fn registration(pk: &[u8]) -> PasskeyRegistration {
         PasskeyRegistration {

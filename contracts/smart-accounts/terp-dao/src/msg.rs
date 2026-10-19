@@ -1,8 +1,8 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-   pub  dao_addr: String,
+    pub dao_addr: String,
 }
 
 #[cw_serde]

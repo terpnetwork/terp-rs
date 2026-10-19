@@ -68,10 +68,11 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountBls {
         req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
         let cfg = BLS_CONFIG.load(deps.storage)?;
-        let payload: BlsAuthPayload =
-            cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::InvalidSignature {
+        let payload: BlsAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
+            ContractError::InvalidSignature {
                 reason: format!("payload: {e}"),
-            })?;
+            }
+        })?;
         let sigs = &req.signature_data.signatures;
         if payload.key_indices.len() != sigs.len() || sigs.is_empty() {
             return Err(ContractError::InvalidSignature {
@@ -91,7 +92,13 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountBls {
                     reason: format!("key index {index} out of range"),
                 }
             })?;
-            verify::verify_one(deps.api, &cfg.variant, key.as_slice(), sig.as_slice(), message)?;
+            verify::verify_one(
+                deps.api,
+                &cfg.variant,
+                key.as_slice(),
+                sig.as_slice(),
+                message,
+            )?;
         }
         let got = seen.len() as u32;
         if got < cfg.threshold {

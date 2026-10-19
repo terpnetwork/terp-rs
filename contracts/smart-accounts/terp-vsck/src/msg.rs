@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Binary;
 
 /// DAO (or factory) registers this authenticator as a **voting module** for
@@ -30,9 +30,13 @@ pub enum ExecuteMsg {
         /// Optional metadata (proposal id on parent DAO).
         proposal_ref: Option<String>,
     },
-    CloseSession { session_id: String },
+    CloseSession {
+        session_id: String,
+    },
     UpdateCircuitVks(CircuitVerifyingKeys),
-    UpdateAdmin { admin: String },
+    UpdateAdmin {
+        admin: String,
+    },
 }
 
 #[cw_serde]

@@ -9,7 +9,7 @@ use crate::state::DAO;
 use terp_account::traits::default::TerpAccountTrait;
 
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw2::set_contract_version;
 use serde::{Deserialize, Serialize};
 

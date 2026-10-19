@@ -25,29 +25,29 @@ mod state;
 pub mod verify;
 
 pub use circom_codec::{
-    claim_is_sound, decode_circom_publics_be, decode_host_instances_bytes, encode_host_instances,
-    parse_public_json_array, CircomJwtPolicyClaim, CIRCOM_JWT_CODEC_V1, CIRCOM_JWT_MIN_POLICY_PUBLICS,
-    CIRCOM_JWT_N_PUBLIC, CLAIM_EVENT_SCHEMA_V1, MIN_SOUND_CLAIM_RICHNESS,
+    CIRCOM_JWT_CODEC_V1, CIRCOM_JWT_MIN_POLICY_PUBLICS, CIRCOM_JWT_N_PUBLIC, CLAIM_EVENT_SCHEMA_V1,
+    CircomJwtPolicyClaim, MIN_SOUND_CLAIM_RICHNESS, claim_is_sound, decode_circom_publics_be,
+    decode_host_instances_bytes, encode_host_instances, parse_public_json_array,
 };
 pub use error::ContractError;
 pub use instances::{
-    build_public_inputs, compute_msg_bind, parse_public_instances, JwtPublicInstances,
-    MIN_INSTANCES_LEN, WITH_INCLUSION_ROOT_LEN, WITH_ROOT_AND_MSG_BIND_LEN,
+    JwtPublicInstances, MIN_INSTANCES_LEN, WITH_INCLUSION_ROOT_LEN, WITH_ROOT_AND_MSG_BIND_LEN,
+    build_public_inputs, compute_msg_bind, parse_public_instances,
 };
 pub use msg::*;
 pub use state::Config;
-pub use verify::{circuit_ids, default_verifier, DefaultZkJwtVerifier, ZkJwtVerifier};
 #[cfg(feature = "zk-host")]
 pub use verify::HostZkJwtVerifier;
+pub use verify::{DefaultZkJwtVerifier, ZkJwtVerifier, circuit_ids, default_verifier};
 
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
 use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
-use crate::state::{Config as Cfg, CLAIMS, CONFIG, ISSUERS, NULLIFIERS};
+use crate::state::{CLAIMS, CONFIG, Config as Cfg, ISSUERS, NULLIFIERS};
 
 const CONTRACT_NAME: &str = "crates.io:terp-zkjwt";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -217,9 +217,8 @@ fn authenticate_payload(
 
     let (nf, claim_bytes, codec_attr): (Vec<u8>, Vec<u8>, &str) =
         if crate::circom_codec::is_circom_host_instances(payload.public_inputs.as_slice()) {
-            let claim = crate::circom_codec::decode_host_instances_bytes(
-                payload.public_inputs.as_slice(),
-            )?;
+            let claim =
+                crate::circom_codec::decode_host_instances_bytes(payload.public_inputs.as_slice())?;
             if payload.claim_commitment.as_slice() != claim.claim_commitment.as_slice() {
                 return Err(ContractError::InvalidProof {
                     reason: "claim_commitment does not match circom accountSalt".into(),
@@ -227,8 +226,7 @@ fn authenticate_payload(
             }
             if issuer.inclusion_set_root.is_some() {
                 return Err(ContractError::InvalidProof {
-                    reason: "inclusion_set_root issuer incompatible with circom-jwt-v1 PI"
-                        .into(),
+                    reason: "inclusion_set_root issuer incompatible with circom-jwt-v1 PI".into(),
                 });
             }
             (
@@ -380,11 +378,10 @@ impl TerpAccountTrait for ZkJwtAuthenticator {
         env: Env,
         req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
-        let payload: ZkJwtAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
-            ContractError::InvalidProof {
+        let payload: ZkJwtAuthPayload =
+            cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::InvalidProof {
                 reason: format!("payload decode: {e}"),
-            }
-        })?;
+            })?;
         authenticate_payload(
             deps,
             env,

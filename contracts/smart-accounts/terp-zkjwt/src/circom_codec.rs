@@ -31,9 +31,7 @@ use cosmwasm_std::Binary;
 use sha2::{Digest, Sha256};
 
 use crate::error::ContractError;
-use crate::instances::{
-    build_public_inputs, CLAIM_COMMITMENT_LEN, NULLIFIER_LEN,
-};
+use crate::instances::{CLAIM_COMMITMENT_LEN, NULLIFIER_LEN, build_public_inputs};
 
 /// Codec profile id (attrs / schema negotiation).
 pub const CIRCOM_JWT_CODEC_V1: &str = "circom-jwt-v1";
@@ -404,7 +402,10 @@ mod tests {
         use crate::fixtures::L2_PUBLIC_JSON;
         let full: Vec<String> = serde_json::from_str(FULL_CIRCOM_PUBLICS_JSON).unwrap();
         let l2: Vec<String> = serde_json::from_str(L2_PUBLIC_JSON).unwrap();
-        assert_eq!(full, l2, "full_circom_publics.json must match l2/public.json");
+        assert_eq!(
+            full, l2,
+            "full_circom_publics.json must match l2/public.json"
+        );
     }
 
     #[test]

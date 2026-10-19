@@ -92,7 +92,11 @@ fn hash_once(alg: RecoveryHashAlg, data: &[u8]) -> Vec<u8> {
 }
 
 /// Apply `alg` exactly `rounds` times (1..=64).
-pub fn rehash(alg: RecoveryHashAlg, preimage: &[u8], rounds: u32) -> Result<Vec<u8>, ContractError> {
+pub fn rehash(
+    alg: RecoveryHashAlg,
+    preimage: &[u8],
+    rounds: u32,
+) -> Result<Vec<u8>, ContractError> {
     if !(1..=64).contains(&rounds) {
         return Err(ContractError::InvalidRounds { got: rounds });
     }
@@ -149,7 +153,13 @@ pub fn break_glass_challenge(
     authenticator_id: &str,
     sign_mode_direct: &[u8],
 ) -> Result<Vec<u8>, ContractError> {
-    let pre = challenge_preimage(domain, chain_id, account, authenticator_id, sign_mode_direct);
+    let pre = challenge_preimage(
+        domain,
+        chain_id,
+        account,
+        authenticator_id,
+        sign_mode_direct,
+    );
     rehash(alg, &pre, rounds)
 }
 

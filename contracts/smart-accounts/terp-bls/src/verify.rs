@@ -10,7 +10,7 @@
 //! message are counted toward the threshold. Keys are not aggregated, so a
 //! caller cannot cancel a honest key with a rogue sum.
 
-use cosmwasm_std::{Api, HashFunction, BLS12_381_G1_GENERATOR, BLS12_381_G2_GENERATOR};
+use cosmwasm_std::{Api, BLS12_381_G1_GENERATOR, BLS12_381_G2_GENERATOR, HashFunction};
 
 use crate::error::ContractError;
 use crate::msg::BlsVariant;
@@ -27,11 +27,7 @@ pub fn verify_one(
 ) -> Result<(), ContractError> {
     if pubkey.len() != variant.pubkey_len() {
         return Err(ContractError::InvalidSignature {
-            reason: format!(
-                "pubkey len {} != {}",
-                pubkey.len(),
-                variant.pubkey_len()
-            ),
+            reason: format!("pubkey len {} != {}", pubkey.len(), variant.pubkey_len()),
         });
     }
     if signature.len() != variant.signature_len() {
@@ -57,21 +53,11 @@ pub fn verify_one(
     let ok = match variant {
         BlsVariant::MinPk => {
             let hashed = api.bls12_381_hash_to_g2(HashFunction::Sha256, message, DST_MIN_PK)?;
-            api.bls12_381_pairing_equality(
-                &BLS12_381_G1_GENERATOR,
-                signature,
-                pubkey,
-                &hashed,
-            )?
+            api.bls12_381_pairing_equality(&BLS12_381_G1_GENERATOR, signature, pubkey, &hashed)?
         }
         BlsVariant::MinSig => {
             let hashed = api.bls12_381_hash_to_g1(HashFunction::Sha256, message, DST_MIN_SIG)?;
-            api.bls12_381_pairing_equality(
-                signature,
-                &BLS12_381_G2_GENERATOR,
-                &hashed,
-                pubkey,
-            )?
+            api.bls12_381_pairing_equality(signature, &BLS12_381_G2_GENERATOR, &hashed, pubkey)?
         }
     };
     if ok {

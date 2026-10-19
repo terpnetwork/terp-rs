@@ -3,13 +3,13 @@
 //! Smart-account authenticator dual-use with the dregg B2 light client.
 //! Gates on **claim-limited settlement head** (height/root), never Discord/caps identity.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    StdResult, WasmQuery,
+    Addr, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response, StdResult, WasmQuery,
+    to_json_binary,
 };
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::{
     AuthSudoMsg, AuthenticationRequest, ConfirmExecutionRequest, OnAuthenticatorAddedRequest,
@@ -251,11 +251,7 @@ impl TerpAccountTrait for DreggAuthenticator {
             .add_attribute("proven_root", evidence.proven_root_key))
     }
 
-    fn on_auth_track(
-        _deps: DepsMut,
-        _env: Env,
-        _req: &TrackRequest,
-    ) -> Self::AuthProcessResult {
+    fn on_auth_track(_deps: DepsMut, _env: Env, _req: &TrackRequest) -> Self::AuthProcessResult {
         Ok(Response::default())
     }
 
@@ -274,9 +270,7 @@ impl TerpAccountTrait for DreggAuthenticator {
 
 fn parse_evidence(req: &AuthenticationRequest) -> Result<AuthEvidence, ContractError> {
     cosmwasm_std::from_json::<AuthEvidence>(&req.signature).map_err(|e| {
-        ContractError::AuthRejected(format!(
-            "signature must be AuthEvidence JSON: {e}"
-        ))
+        ContractError::AuthRejected(format!("signature must be AuthEvidence JSON: {e}"))
     })
 }
 
@@ -293,10 +287,7 @@ mod tests {
         }
     }
 
-    fn auth_req(
-        account: Addr,
-        evidence: &AuthEvidence,
-    ) -> Box<AuthenticationRequest> {
+    fn auth_req(account: Addr, evidence: &AuthEvidence) -> Box<AuthenticationRequest> {
         Box::new(AuthenticationRequest {
             authenticator_id: "1".into(),
             account: account.clone(),
@@ -372,12 +363,8 @@ mod tests {
             proven_height: 3,
         };
         let acct = deps.api.addr_make("acct");
-        DreggAuthenticator::on_auth_request(
-            deps.as_mut(),
-            mock_env(),
-            &auth_req(acct, &evidence),
-        )
-        .unwrap();
+        DreggAuthenticator::on_auth_request(deps.as_mut(), mock_env(), &auth_req(acct, &evidence))
+            .unwrap();
     }
 
     #[test]

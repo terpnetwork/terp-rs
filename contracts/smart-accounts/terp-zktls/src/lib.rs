@@ -1,20 +1,19 @@
 use crate::{
-    claims::{fetch_witness_for_claim, Proof},
-    state::{Config, Epoch, Witness, CONFIG, EPOCHS},
+    claims::{Proof, fetch_witness_for_claim},
+    state::{CONFIG, Config, EPOCHS, Epoch, Witness},
 };
-use terp_account::traits::default::TerpAccountTrait;
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{from_json, Addr, Event, Response, Uint128};
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Addr, Event, Response, Uint128, from_json};
 use serde::{Deserialize, Serialize};
+use terp_account::traits::default::TerpAccountTrait;
 
 pub use crate::error::ContractError;
 pub mod claims;
-pub mod digest;
 mod error;
 mod state;
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult, entry_point, to_json_binary,
 };
 
 // version info for migration info

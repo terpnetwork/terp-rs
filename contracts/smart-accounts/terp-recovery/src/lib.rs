@@ -24,14 +24,14 @@ pub mod proof;
 
 pub use error::ContractError;
 pub use hash::{
-    break_glass_challenge, challenge_preimage, rehash, RecoveryHashAlg, DEFAULT_DOMAIN,
+    DEFAULT_DOMAIN, RecoveryHashAlg, break_glass_challenge, challenge_preimage, rehash,
 };
-pub use proof::{verify_preimage_proof, PreimageProof, CIRCUIT_ID_RECOVERY_PREIMAGE};
+pub use proof::{CIRCUIT_ID_RECOVERY_PREIMAGE, PreimageProof, verify_preimage_proof};
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
@@ -91,18 +91,14 @@ impl RecoveryConfig {
             });
         }
         for g in &self.guardians {
-            api.addr_validate(&g.address).map_err(|e| {
-                ContractError::InvalidGuardian {
+            api.addr_validate(&g.address)
+                .map_err(|e| ContractError::InvalidGuardian {
                     reason: format!("{}: {e}", g.address),
-                }
-            })?;
+                })?;
             if let Some(pk) = &g.pubkey {
                 if pk.len() != ED25519_PK_LEN {
                     return Err(ContractError::InvalidGuardian {
-                        reason: format!(
-                            "{}: pubkey must be {ED25519_PK_LEN} bytes",
-                            g.address
-                        ),
+                        reason: format!("{}: pubkey must be {ED25519_PK_LEN} bytes", g.address),
                     });
                 }
             }
@@ -362,11 +358,10 @@ impl TerpAccountTrait for RecoveryAuthenticator {
         req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
         let cfg = CONFIG.load(deps.storage)?;
-        let payload: RecoveryAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
-            ContractError::HashAlg {
+        let payload: RecoveryAuthPayload =
+            cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::HashAlg {
                 reason: format!("payload decode: {e}"),
-            }
-        })?;
+            })?;
 
         // Client must echo the configured algorithm (prevents silent alg confusion).
         if payload.hash_alg != cfg.hash_alg {

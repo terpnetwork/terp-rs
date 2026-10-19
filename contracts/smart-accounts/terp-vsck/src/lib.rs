@@ -21,22 +21,20 @@
 mod error;
 mod msg;
 mod state;
-pub mod verify;
 #[cfg(test)]
 mod sudo_matrix;
+pub mod verify;
 
 pub use error::ContractError;
 pub use msg::*;
 pub use verify::{DefaultVsckVerifier, VsckVerifier};
 
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw2::set_contract_version;
 use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
-use crate::state::{Config, Session, CONFIG, NULLIFIERS, SESSIONS};
+use crate::state::{CONFIG, Config, NULLIFIERS, SESSIONS, Session};
 
 const CONTRACT_NAME: &str = "crates.io:terp-vsck";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -213,11 +211,10 @@ impl TerpAccountTrait for VsckAuthenticator {
         _env: Env,
         req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
-        let payload: VsckAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
-            ContractError::InvalidProof {
+        let payload: VsckAuthPayload =
+            cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::InvalidProof {
                 reason: format!("payload decode: {e}"),
-            }
-        })?;
+            })?;
 
         let session = SESSIONS
             .may_load(deps.storage, &payload.session_id)?

@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Binary;
 
 /// Contract admin configures trusted OIDC/JWT issuers and circuit binding.
@@ -51,7 +51,9 @@ pub struct IssuerConfig {
 #[cw_serde]
 pub enum ExecuteMsg {
     UpsertIssuer(IssuerConfig),
-    RemoveIssuer { issuer: String },
+    RemoveIssuer {
+        issuer: String,
+    },
     /// Rotate the inclusion-set root for an issuer (new membership epoch).
     RotateInclusionRoot {
         issuer: String,
@@ -62,7 +64,9 @@ pub enum ExecuteMsg {
         claim_commitment: Binary,
         issuer: String,
     },
-    UpdateAdmin { admin: String },
+    UpdateAdmin {
+        admin: String,
+    },
 }
 
 #[cw_serde]
