@@ -12,7 +12,7 @@ targets = ["wasm32-unknown-unknown"]
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# use library feature to disable all instantiate/execute/query exports
+
 default = []
 library = []
 interface = ["dep:cw-orch"]
