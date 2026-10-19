@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use cosmrs::proto::cosmos::base::v1beta1::Coin;
 use cosmrs::proto::cosmos::gov::v1::MsgSubmitProposal;
 use cosmrs::proto::cosmos::upgrade::v1beta1::{MsgSoftwareUpgrade, Plan};
@@ -24,22 +24,14 @@ fn main() -> Result<()> {
     if env_path.file_name().and_then(|s| s.to_str()) == Some(".env") {
         bail!("refusing {env_path:?}; use .env.v63-upgrade");
     }
-    let env = load_env(&env_path)?;
     let draft = read_draft()?;
     let height: i64 = draft.height.parse().context("draft height")?;
-    let env_height: i64 = env
-        .get("HEIGHT")
-        .context("HEIGHT missing from the env file")?
-        .parse()
-        .context("HEIGHT")?;
-    if env_height != height {
-        bail!("env HEIGHT {env_height} != draft {height}");
-    }
+    let cut = read_cut()?;
     if draft.deposit != EXPEDITED_DEPOSIT {
-        bail!("draft deposit {} is not the expedited minimum", draft.deposit);
-    }
-    if env.get("DEPOSIT").map(String::as_str) != Some(EXPEDITED_DEPOSIT) {
-        bail!("env DEPOSIT must be {EXPEDITED_DEPOSIT}");
+        bail!(
+            "draft deposit {} is not the expedited minimum",
+            draft.deposit
+        );
     }
     if !draft.expedited || draft.name != PLAN_NAME {
         bail!("draft must be expedited plan {PLAN_NAME}");
@@ -47,29 +39,46 @@ fn main() -> Result<()> {
     if draft.authority != GOV_MODULE {
         bail!("draft authority is not the gov module");
     }
-    if draft.info.contains("file://") || !draft.info.contains("4161cf4531f357ce") {
-        bail!("plan.info is not the published v6.3 checksum JSON");
+    if height != cut.halt_height {
+        bail!("draft height {height} != metadata halt {}", cut.halt_height);
+    }
+
+    let env = if env_path.is_file() {
+        load_env(&env_path)?
+    } else {
+        BTreeMap::new()
+    };
+    let broadcast = env.get("UPGRADE_BROADCAST").map(String::as_str) == Some("1");
+    println!(
+        "plan={PLAN_NAME} expedited=true height={height} halt={} submit_by={}",
+        cut.halt_time, cut.submit_by
+    );
+    println!(
+        "v6.3.0={} v6.4.0={} v6.4_height={}",
+        cut.v63_commit, cut.v64_commit, cut.v64_height
+    );
+    println!("deposit={EXPEDITED_DEPOSIT}");
+    println!("authority={GOV_MODULE}");
+    println!("title={}", draft.title);
+    println!("summary={}", draft.summary);
+    println!("info={}", draft.info);
+    if !broadcast {
+        println!(
+            "dry-run: read networks/upgrades/v6.3 and v6.4. UPGRADE_BROADCAST is not 1. nothing was signed or broadcast."
+        );
+        return Ok(());
     }
 
     let lcd = env
         .get("LCD")
         .map(String::as_str)
         .unwrap_or("http://192.168.10.101:1317");
-    let chain_id = env.get("CHAIN_ID").map(String::as_str).unwrap_or("morocco-1");
+    let chain_id = env
+        .get("CHAIN_ID")
+        .map(String::as_str)
+        .unwrap_or("morocco-1");
     if chain_id != "morocco-1" {
         bail!("CHAIN_ID must be morocco-1");
-    }
-    preflight(lcd, height)?;
-
-    let broadcast = env.get("UPGRADE_BROADCAST").map(String::as_str) == Some("1");
-    println!("plan={PLAN_NAME} expedited=true height={height} deposit={EXPEDITED_DEPOSIT}");
-    println!("authority={GOV_MODULE}");
-    println!("title={}", draft.title);
-    println!("summary={}", draft.summary);
-    println!("info={}", draft.info);
-    if !broadcast {
-        println!("dry-run: UPGRADE_BROADCAST is not 1. nothing was signed or broadcast.");
-        return Ok(());
     }
 
     let mnemonic = env
@@ -89,7 +98,7 @@ fn main() -> Result<()> {
     let daemon = daemon
         .handle(rt.handle())
         .grpc_url(grpc)
-        .gas(Some("uterp"), Some(0.05))
+        .gas(Some("uthiol"), Some(0.05))
         .mnemonic(mnemonic)
         .load_network(false)
         .is_test(true)
@@ -128,10 +137,113 @@ fn main() -> Result<()> {
         value: submit.encode_to_vec(),
     };
     let resp = rt
-        .block_on(daemon.sender().commit_tx_any(vec![any], Some("v6.3 expedited")))
+        .block_on(
+            daemon
+                .sender()
+                .commit_tx_any(vec![any], Some("v6.3 expedited")),
+        )
         .context("broadcast")?;
     println!("broadcast txhash={}", resp.txhash);
     Ok(())
+}
+
+struct Cut {
+    halt_height: i64,
+    halt_time: String,
+    submit_by: String,
+    v63_commit: String,
+    v64_commit: String,
+    v64_height: i64,
+}
+
+fn read_cut() -> Result<Cut> {
+    let root = repo_root().join("networks/upgrades");
+    let draft: Value = read_json(&root.join("v6.3/draft_proposal.json"))?;
+    let proposal: Value = read_json(&root.join("v6.3/proposal.json"))?;
+    if draft != proposal {
+        bail!("v6.3 proposal.json and draft_proposal.json differ");
+    }
+    let meta: Value = read_json(&root.join("v6.3/metadata.json"))?;
+    let v63: Value = read_json(&root.join("v6.3/cosmovisor.json"))?;
+    let v64: Value = read_json(&root.join("v6.4/cosmovisor.json"))?;
+    if read_json(&root.join("v6.3/binaries.json"))? != v63 {
+        bail!("v6.3/binaries.json is not v6.3/cosmovisor.json");
+    }
+    if read_json(&root.join("v6.4/binaries.json"))? != v64 {
+        bail!("v6.4/binaries.json is not v6.4/cosmovisor.json");
+    }
+    let info: Value =
+        serde_json::from_str(json_str(&draft["messages"][0]["plan"]["info"])?.as_str())
+            .context("draft plan.info")?;
+    if info != v63 {
+        bail!("draft plan.info is not v6.3/cosmovisor.json");
+    }
+    let halt_height = meta["halt"]["height"].as_i64().context("halt.height")?;
+    let v64_height = meta["next_plan"]["height"]
+        .as_i64()
+        .context("next_plan.height")?;
+    if v64_height != halt_height + 2 || meta["next_plan"]["name"] != "v6.4" {
+        bail!("metadata must arm v6.4 at halt + 2");
+    }
+    check_bins(&v63, &meta["v6_3_tarball_sha256"], "v6.3.0")?;
+    check_bins(&v64, &meta["v6_4_tarball_sha256"], "v6.4.0")?;
+    Ok(Cut {
+        halt_height,
+        halt_time: json_str(&meta["halt"]["time_utc"])?,
+        submit_by: json_str(&meta["submit_by_utc"])?,
+        v63_commit: json_str(&meta["binary_commits"]["v6.3.0"])?,
+        v64_commit: json_str(&meta["binary_commits"]["v6.4.0"])?,
+        v64_height,
+    })
+}
+
+fn read_json(path: &Path) -> Result<Value> {
+    let raw = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))
+}
+
+fn check_bins(cosmo: &Value, shas: &Value, tag: &str) -> Result<()> {
+    let bins = cosmo["binaries"].as_object().context("binaries")?;
+    if bins.len() != 2 {
+        bail!("{tag} cosmovisor.json must list only linux/amd64 and linux/arm64");
+    }
+    for arch in ["linux/amd64", "linux/arm64"] {
+        let url = bins[arch]
+            .as_str()
+            .with_context(|| format!("{tag} {arch}"))?;
+        let sha = shas[arch]
+            .as_str()
+            .with_context(|| format!("{tag} {arch} checksum"))?;
+        if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+            bail!("{tag} {arch} checksum is not 64 hex characters");
+        }
+        if url.contains("file://")
+            || url.contains("darwin")
+            || !url.starts_with(&format!(
+                "https://s3.terp.network/releases/terp-core/{tag}/"
+            ))
+            || !url.contains(&format!("checksum=sha256:{sha}"))
+        {
+            bail!("{tag} {arch} does not match metadata");
+        }
+    }
+    Ok(())
+}
+
+fn proposal_is_software_upgrade(proposal: &Value) -> bool {
+    let Some(messages) = proposal["messages"].as_array() else {
+        return false;
+    };
+    messages.iter().any(|msg| {
+        msg["@type"]
+            .as_str()
+            .unwrap_or("")
+            .contains("MsgSoftwareUpgrade")
+            || msg["type"]
+                .as_str()
+                .unwrap_or("")
+                .contains("MsgSoftwareUpgrade")
+    })
 }
 
 struct Draft {
@@ -207,10 +319,17 @@ fn preflight(lcd: &str, height: i64) -> Result<()> {
     ] {
         let url = format!("{lcd}/cosmos/gov/v1/proposals?proposal_status={status}");
         let body: Value = client.get(&url).send()?.error_for_status()?.json()?;
-        let n = body["proposals"].as_array().map(|a| a.len()).unwrap_or(0);
-        if n != 0 {
-            bail!("{n} proposal(s) in {status}; refusing to submit another");
+        let rows = body["proposals"].as_array().cloned().unwrap_or_default();
+        for proposal in &rows {
+            if proposal_is_software_upgrade(proposal) {
+                let id = proposal["id"].as_str().unwrap_or("?");
+                bail!("proposal {id} in {status} already carries MsgSoftwareUpgrade");
+            }
         }
+        println!(
+            "{status}: {} open proposal(s), none submit a software upgrade",
+            rows.len()
+        );
     }
     let plan: Value = client
         .get(format!("{lcd}/cosmos/upgrade/v1beta1/current_plan"))
@@ -221,17 +340,22 @@ fn preflight(lcd: &str, height: i64) -> Result<()> {
         bail!("a software upgrade is already planned: {plan}");
     }
     let status: Value = client
-        .get("https://rpc.terp.network/status")
+        .get(format!(
+            "{}/cosmos/base/tendermint/v1beta1/blocks/latest",
+            lcd.trim_end_matches('/')
+        ))
         .send()?
         .error_for_status()?
         .json()?;
-    let current: i64 = status["result"]["sync_info"]["latest_block_height"]
+    let current: i64 = status["block"]["header"]["height"]
         .as_str()
-        .context("height")?
+        .context("latest block height")?
         .parse()?;
     // Expedited voting is 86400s. At 3s/block that is 28800 blocks.
     if height - current < 28_800 {
-        bail!("height {height} is fewer than 28800 blocks ahead of {current}; the 24h vote would pass the halt");
+        bail!(
+            "height {height} is fewer than 28800 blocks ahead of {current}; the 24h vote would pass the halt"
+        );
     }
     let params: Value = client
         .get(format!("{lcd}/cosmos/gov/v1/params/deposit"))
