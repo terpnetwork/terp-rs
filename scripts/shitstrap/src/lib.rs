@@ -176,7 +176,6 @@ pub fn shit_deploy_data_full(admin: Addr) -> Option<CwShitstrapSuiteDeployData> 
     Some(dd)
 }
 
-
 pub fn tf_denom(creator: &Addr, subdenom: &str) -> String {
     format!("factory/{}/{}", creator, subdenom)
 }
@@ -272,11 +271,7 @@ pub fn new_default_ibc_set(admin: Addr) -> CwShitstrapSuiteDeployData {
         &um_on_osmosis,
         "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372"
     );
-    let um = ibc_denom_hash(
-        "channel-11",
-        "transfer",
-        "transfer/channel-79703/upenumbra",
-    );
+    let um = ibc_denom_hash("channel-11", "transfer", "transfer/channel-79703/upenumbra");
     assert_eq!(
         &um,
         "ibc/6B32258CACFCBB5486A47CB1EAF4B6F5AD76C9E372E5F3CB08B3D1C606F9F39E"
@@ -426,7 +421,6 @@ pub fn new_default_ibc_set(admin: Addr) -> CwShitstrapSuiteDeployData {
     dd.shit = shit;
     dd
 }
-
 
 // calc_rates: USD spot price → shit_rate at 1e18 precision.
 //
