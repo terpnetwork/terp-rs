@@ -33,7 +33,6 @@ pub enum CliSubcommand {
 #[command(name = "gen-tools", version, about, subcommand_required = false)]
 pub struct Cli {
     // ── Mode selector ───────────────────────────────────────────────
-
     /// Path to the CosmWasm workspace or library root.
     ///
     /// Ignored when `--config` is set (path comes from the config file).
@@ -74,7 +73,6 @@ pub struct Cli {
     pub steps: String,
 
     // ── Output dir overrides ─────────────────────────────────────────
-
     /// Base output directory root. Default: `{workspace_root}/generated/`
     #[arg(short = 'o', long)]
     pub output_dir: Option<PathBuf>,
@@ -108,7 +106,6 @@ pub struct Cli {
     pub openapi_out: Option<PathBuf>,
 
     // ── Misc ─────────────────────────────────────────────────────────
-
     /// Comma-separated proto modules to generate (e.g. terp,osmosis,ibc).
     #[arg(long, default_value = "terp,osmosis,ibc,cosmos")]
     pub proto_modules: String,
@@ -121,18 +118,18 @@ pub struct Cli {
     #[arg(short = 'v', long)]
     pub verbose: bool,
 
-    /// Generate ALL outputs into a single api/<lang>/ directory
+    /// Generate ALL outputs into a single terp-api/<lang>/ directory
     /// within the gen-tools crate root.
     ///
     /// When set:
-    ///   - ts-codegen → api/ts/<contract>/{types,client,message-composer}/
-    ///   - Python     → api/python/<contract>/
-    ///   - Zod        → api/ts/<contract>/zod/
-    ///   - Proto      → api/proto/<contract>/ plus api/proto/terp-proto/
-    ///   - Go         → api/go/<contract>/
-    ///   - OpenAPI    → api/openapi/<contract>/
-    ///   - TZ         → api/tz/
-    ///   - Readme     → api/readme/
+    ///   - ts-codegen → terp-api/ts/
+    ///   - Python     → terp-api/python/
+    ///   - Zod        → terp-api/zod/
+    ///   - Proto      → terp-api/proto/
+    ///   - Go         → terp-api/go/
+    ///   - OpenAPI    → terp-api/openapi/
+    ///   - TZ         → terp-api/tz/
+    ///   - Readme     → terp-api/readme/
     ///
     /// This flag overrides all per-project output dirs and consolidates
     /// all generated artifacts into one place. Compatible with justfile
@@ -228,7 +225,11 @@ impl ProjectConfigFile {
         let mut seen = std::collections::HashSet::new();
         for p in &config.projects {
             if !seen.insert(p.name.as_str()) {
-                anyhow::bail!("Duplicate project name '{}' in config file {:?}", p.name, path);
+                anyhow::bail!(
+                    "Duplicate project name '{}' in config file {:?}",
+                    p.name,
+                    path
+                );
             }
         }
 
@@ -249,12 +250,11 @@ impl ProjectConfigFile {
             })
             .unwrap_or_else(|| config_dir.to_path_buf());
 
-        let path = if entry.path.is_absolute() {
+        if entry.path.is_absolute() {
             entry.path.clone()
         } else {
             base.join(&entry.path)
-        };
-        path.canonicalize().unwrap_or(path)
+        }
     }
 
     /// Find a project by name.
@@ -297,7 +297,7 @@ pub struct GenerationContext {
     /// TensorZero heuristics file path (relative to workspace root).
     pub tz_heuristics_path: Option<PathBuf>,
 
-/// TensorZero episodes directory path (relative to workspace root).
+    /// TensorZero episodes directory path (relative to workspace root).
     pub tz_episodes_dir: Option<PathBuf>,
     /// TensorZero recipes directory path (relative to workspace root).
     pub tz_recipes_dir: Option<PathBuf>,
@@ -315,6 +315,17 @@ pub struct GenerationContext {
 
     /// Contract names found by scanning for CosmWasm entry points.
     pub contracts: Vec<ContractMeta>,
+}
+
+/// `{out}/{contract}` — one directory per contract under a language root.
+pub fn contract_api_dir(out: &Path, contract: &str) -> PathBuf {
+    out.join(contract)
+}
+
+/// `{ts_out}/{contract}/{variant}` — TypeScript client slice
+/// (`types`, `client`, `message-composer`, `zod`, `esbundles`, `filters`, `argus`).
+pub fn ts_variant_dir(ts_out: &Path, contract: &str, variant: &str) -> PathBuf {
+    ts_out.join(contract).join(variant)
 }
 
 /// Metadata about a single CosmWasm contract in the workspace.
@@ -360,7 +371,7 @@ pub struct ProjectOverrides {
     pub tz_profiles_dir: Option<PathBuf>,
     /// When true, all output dirs resolve against unified_base
     /// instead of workspace_root. All generated artifacts go into
-    /// a single api/<lang>/<contract>/ directory.
+    /// a single terp-api/<lang>/ directory.
     pub unified: bool,
     /// Base path for unified output dirs (the gen-tools crate root).
     pub unified_base: Option<PathBuf>,
@@ -408,40 +419,49 @@ pub fn build_context(
     // In unified mode, all output dirs resolve against unified_base
     // (the gen-tools crate root) instead of workspace_root.
     let root_for_output = if overrides.unified {
-        overrides
-            .unified_base
-            .as_deref()
-            .unwrap_or(workspace_root)
+        overrides.unified_base.as_deref().unwrap_or(workspace_root)
     } else {
         workspace_root
     };
 
     let output_dir = output_dir_override
         .clone()
-        .unwrap_or_else(|| root_for_output.join("api"));
+        .unwrap_or_else(|| root_for_output.join("terp-api"));
 
-    let ts_out = resolve_dir(overrides.ts_out.as_ref(), root_for_output, &["api", "ts"]);
+    let ts_out = resolve_dir(
+        overrides.ts_out.as_ref(),
+        root_for_output,
+        &["terp-api", "ts"],
+    );
     let py_out = resolve_dir(
         overrides.py_out.as_ref(),
         root_for_output,
-        &["api", "python"],
+        &["terp-api", "python"],
     );
-    let zod_out = resolve_dir(overrides.zod_out.as_ref(), root_for_output, &["api", "ts"]);
+    let zod_out = resolve_dir(
+        overrides.zod_out.as_ref(),
+        root_for_output,
+        &["terp-api", "ts"],
+    );
     let proto_out = resolve_dir(
         overrides.proto_out.as_ref(),
         root_for_output,
-        &["api", "proto"],
+        &["terp-api", "proto"],
     );
-    let go_out = resolve_dir(overrides.go_out.as_ref(), root_for_output, &["api", "go"]);
+    let go_out = resolve_dir(
+        overrides.go_out.as_ref(),
+        root_for_output,
+        &["terp-api", "go"],
+    );
     let rust_out = resolve_dir(
         overrides.rust_out.as_ref(),
         root_for_output,
-        &["api", "rust"],
+        &["terp-api", "rust"],
     );
     let openapi_out = resolve_dir(
         overrides.openapi_out.as_ref(),
         root_for_output,
-        &["api", "openapi"],
+        &["terp-api", "openapi"],
     );
 
     let tz_out = overrides
@@ -455,9 +475,9 @@ pub fn build_context(
             }
         })
         .or_else(|| {
-            // Default TZ outputs to api/tz (relative to root_for_output
+            // Default TZ outputs to terp-api/tz (relative to root_for_output
             // in unified mode, or workspace_root otherwise)
-            Some(root_for_output.join("api").join("tz"))
+            Some(root_for_output.join("terp-api").join("tz"))
         });
 
     let proto_modules: Vec<String> = overrides
@@ -498,18 +518,6 @@ pub fn build_context(
     })
 }
 
-/// Directory for one contract under `api/<lang>/<contract>/`.
-pub fn contract_api_dir(lang_root: &Path, contract: &str) -> PathBuf {
-    lang_root.join(contract)
-}
-
-/// TypeScript variant directory: `api/ts/<contract>/<variant>/`.
-/// Variants are `zod`, `esbundles`, `types`, `client`, `message-composer`,
-/// `filters`, and `argus`.
-pub fn ts_variant_dir(ts_root: &Path, contract: &str, variant: &str) -> PathBuf {
-    ts_root.join(contract).join(variant)
-}
-
 /// Resolve an output directory: use override if set, else default relative to workspace root.
 fn resolve_dir(
     override_dir: Option<&PathBuf>,
@@ -533,9 +541,7 @@ fn resolve_dir(
 // Workspace detection
 // ---------------------------------------------------------------------------
 
-fn detect_workspace(
-    root: &Path,
-) -> anyhow::Result<(Vec<String>, Vec<ContractMeta>, bool)> {
+fn detect_workspace(root: &Path) -> anyhow::Result<(Vec<String>, Vec<ContractMeta>, bool)> {
     use std::fs;
 
     let cargo_toml = root.join("Cargo.toml");
@@ -570,7 +576,7 @@ fn detect_workspace(
                     if let Some(pattern) = m.as_str() {
                         // Expand glob patterns (e.g. "contracts/proposal/*")
                         let full_pattern = root.join(pattern);
-if let Ok(expanded) = glob::glob(&full_pattern.to_string_lossy()) {
+                        if let Ok(expanded) = glob::glob(&full_pattern.to_string_lossy()) {
                             let mut found = false;
                             for entry in expanded.flatten() {
                                 workspace_members.push(
@@ -619,10 +625,7 @@ if let Ok(expanded) = glob::glob(&full_pattern.to_string_lossy()) {
     Ok((workspace_members, discovered_contracts, is_library))
 }
 
-fn inspect_contract(
-    dir: &Path,
-    manifest: PathBuf,
-) -> anyhow::Result<Option<ContractMeta>> {
+fn inspect_contract(dir: &Path, manifest: PathBuf) -> anyhow::Result<Option<ContractMeta>> {
     use std::fs;
 
     let content = fs::read_to_string(&manifest)?;
@@ -660,7 +663,18 @@ fn inspect_contract(
 pub fn parse_steps(steps: &str) -> (Vec<String>, Vec<String>) {
     if steps == "default" {
         let defaults = vec![
-"schema", "ts-codegen", "ts-bundles", "proto", "python", "zod", "go", "rust", "readme", "openapi", "vocs-docs", "tensorzero",
+            "schema",
+            "ts-codegen",
+            "ts-bundles",
+            "proto",
+            "python",
+            "zod",
+            "go",
+            "rust",
+            "readme",
+            "openapi",
+            "vocs-docs",
+            "tensorzero",
         ];
         return (defaults.iter().map(|s| s.to_string()).collect(), Vec::new());
     }
@@ -713,16 +727,19 @@ mod tests {
     fn test_config_file_parse() {
         let yaml = r#"
 projects:
-  - name: cw-infuser
-    path: crates/cw-infuser
+  - name: terp-rs
+    path: crates/terp-rs
   - name: dao-contracts
     path: crates/dao-contracts
     steps: schema,ts-codegen,no-zod
 "#;
         let config: ProjectConfigFile = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(config.projects.len(), 2);
-        assert_eq!(config.projects[0].name, "cw-infuser");
-        assert_eq!(config.projects[1].steps.as_deref(), Some("schema,ts-codegen,no-zod"));
+        assert_eq!(config.projects[0].name, "terp-rs");
+        assert_eq!(
+            config.projects[1].steps.as_deref(),
+            Some("schema,ts-codegen,no-zod")
+        );
     }
 
     #[test]
@@ -736,6 +753,9 @@ projects:
         let config: ProjectConfigFile = serde_yaml::from_str(yaml).unwrap();
         let config_dir = Path::new("/home/user/workspace");
         let resolved = config.resolve_project_path(config_dir, &config.projects[0]);
-        assert_eq!(resolved, PathBuf::from("/home/user/workspace/crates/my-contract"));
+        assert_eq!(
+            resolved,
+            PathBuf::from("/home/user/workspace/crates/my-contract")
+        );
     }
 }

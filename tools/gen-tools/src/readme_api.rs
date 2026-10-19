@@ -136,7 +136,10 @@ fn generate_contract_readme(
     output.push_str("> Auto-generated from CosmWasm schema\n\n");
 
     // Contract info
-    if let Some(info) = schemas.get("contract_info").or_else(|| schemas.get("ContractInfo")) {
+    if let Some(info) = schemas
+        .get("contract_info")
+        .or_else(|| schemas.get("ContractInfo"))
+    {
         output.push_str("## Contract Info\n\n");
         output.push_str(&format!(
             "```json\n{}\n```\n\n",
@@ -291,7 +294,11 @@ fn json_schema_type_to_markdown(schema: &serde_json::Value) -> String {
         let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
         return format!("[{}](#{})", pascal_case(ref_name), ref_name.to_lowercase());
     }
-    if schema.get("oneOf").or_else(|| schema.get("anyOf")).is_some() {
+    if schema
+        .get("oneOf")
+        .or_else(|| schema.get("anyOf"))
+        .is_some()
+    {
         return "union".to_string();
     }
     match schema.get("type").and_then(|v| v.as_str()) {
@@ -339,10 +346,7 @@ fn generate_fields_table(schema: &serde_json::Value) -> String {
                 .get("description")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            output.push_str(&format!(
-                "| `{}` | `{}` | {} | {} |\n",
-                name, ft, req, desc
-            ));
+            output.push_str(&format!("| `{}` | `{}` | {} | {} |\n", name, ft, req, desc));
         }
         output.push('\n');
     }

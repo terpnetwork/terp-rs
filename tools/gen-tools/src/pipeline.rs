@@ -1,19 +1,19 @@
 //! Pipeline orchestration — maps step names to generators and runs them.
 
-use crate::config::{parse_steps, GenerationContext};
+use crate::config::{GenerationContext, parse_steps};
 use crate::go_gen::GoGenGenerator;
-use crate::rust_gen::RustGenGenerator;
 use crate::openapi::OpenApiGenerator;
-use crate::vocs_docs::VocsDocsGenerator;
 use crate::placeholders::{IndexerGenerator, MermaidGenerator, TzEpisodesGenerator};
 use crate::proto_gen::ProtoGenGenerator;
 use crate::python_gen::PythonGenGenerator;
 use crate::readme_api::ReadmeApiGenerator;
+use crate::rust_gen::RustGenGenerator;
 use crate::schema::SchemaGenerator;
 use crate::tensorzero::TensorZeroGenerator;
 use crate::trailmark::TrailmarkGenerator;
 use crate::ts_bundles::TsBundlesGenerator;
 use crate::ts_codegen::TsCodegenGenerator;
+use crate::vocs_docs::VocsDocsGenerator;
 use crate::zod_gen::ZodGenGenerator;
 use crate::{GenerationResult, Generator};
 
@@ -59,13 +59,14 @@ impl Pipeline {
     }
 
     /// Return the filtered list of generators that should run.
-pub fn active_generators(&self) -> Vec<&dyn Generator> {
+    pub fn active_generators(&self) -> Vec<&dyn Generator> {
         self.generators
             .iter()
             .filter(|g| {
                 let name = g.name();
                 // If enabled list is non-empty, must be in it
-                let in_enabled = self.enabled.is_empty() || self.enabled.contains(&name.to_string());
+                let in_enabled =
+                    self.enabled.is_empty() || self.enabled.contains(&name.to_string());
                 // Must not be disabled
                 let not_disabled = !self.disabled.contains(&name.to_string());
                 in_enabled && not_disabled
@@ -101,7 +102,11 @@ pub fn active_generators(&self) -> Vec<&dyn Generator> {
     pub fn list_generators(&self) {
         println!("Available generators:");
         for g in &self.generators {
-            let default_label = if g.enabled_by_default() { " [default]" } else { " [opt-in]" };
+            let default_label = if g.enabled_by_default() {
+                " [default]"
+            } else {
+                " [opt-in]"
+            };
             println!("  {}{}", g.name(), default_label);
         }
     }
@@ -129,10 +134,7 @@ pub fn active_generators(&self) -> Vec<&dyn Generator> {
         for r in results {
             match r {
                 Ok(rr) => {
-                    let dir_label = rr
-                        .output_dir
-                        .as_deref()
-                        .unwrap_or("(no output)");
+                    let dir_label = rr.output_dir.as_deref().unwrap_or("(no output)");
                     println!(
                         "  ✓ {:20} {:>4} files  → {}",
                         rr.name, rr.files_generated, dir_label

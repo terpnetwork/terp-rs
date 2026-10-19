@@ -143,9 +143,7 @@ impl SourceResolver {
     ///
     /// Returns `(source_label, schemas)` where `source_label` is a human-readable
     /// description of which source was used (for diagnostics).
-    pub fn resolve(
-        ctx: &GenerationContext,
-    ) -> (String, BTreeMap<String, serde_json::Value>) {
+    pub fn resolve(ctx: &GenerationContext) -> (String, BTreeMap<String, serde_json::Value>) {
         let (label, grouped) = Self::resolve_grouped(ctx);
         // Merge all grouped maps into one flat map
         let mut merged = BTreeMap::new();
@@ -184,7 +182,10 @@ impl SourceResolver {
             };
         }
 
-        log::warn!("[resolver] No type sources found for {:?}", ctx.workspace_root);
+        log::warn!(
+            "[resolver] No type sources found for {:?}",
+            ctx.workspace_root
+        );
         (String::new(), Vec::new())
     }
 
@@ -357,7 +358,10 @@ fn parse_proto_content(content: &str, _path: &Path) -> BTreeMap<String, serde_js
                 msg_schema.as_object_mut().unwrap().insert(
                     "required".into(),
                     serde_json::Value::Array(
-                        required.into_iter().map(|s| serde_json::Value::String(s)).collect(),
+                        required
+                            .into_iter()
+                            .map(|s| serde_json::Value::String(s))
+                            .collect(),
                     ),
                 );
             }
@@ -418,10 +422,7 @@ fn parse_proto_content(content: &str, _path: &Path) -> BTreeMap<String, serde_js
 
 /// Parse a single proto field line into a JSON Schema property.
 /// Returns (field_name, schema_value, is_required).
-fn parse_proto_field(
-    line: &str,
-    field_num: &mut u32,
-) -> Option<(String, serde_json::Value, bool)> {
+fn parse_proto_field(line: &str, field_num: &mut u32) -> Option<(String, serde_json::Value, bool)> {
     let line = line.trim().trim_end_matches(';');
 
     // Skip empty lines, comments, and control statements
@@ -470,7 +471,11 @@ fn parse_proto_field(
         if after_map.is_empty() {
             return None;
         }
-        return Some((after_map.to_string(), proto_map_to_json_schema(map_type), true));
+        return Some((
+            after_map.to_string(),
+            proto_map_to_json_schema(map_type),
+            true,
+        ));
     } else {
         // type field_name
         (parts[0], parts[1])
@@ -494,7 +499,11 @@ fn parse_proto_field(
         }
     }
 
-    Some((field_name.to_string(), field_schema, !is_optional && !is_repeated))
+    Some((
+        field_name.to_string(),
+        field_schema,
+        !is_optional && !is_repeated,
+    ))
 }
 
 /// Convert a proto type name to a JSON Schema representation.
@@ -696,9 +705,9 @@ fn find_proto_dirs(root: &Path) -> Vec<PathBuf> {
 fn has_proto_files(dir: &Path) -> bool {
     std::fs::read_dir(dir)
         .map(|entries| {
-            entries.flatten().any(|e| {
-                e.path().extension().map_or(false, |ext| ext == "proto")
-            })
+            entries
+                .flatten()
+                .any(|e| e.path().extension().map_or(false, |ext| ext == "proto"))
         })
         .unwrap_or(false)
 }
@@ -707,7 +716,13 @@ fn has_proto_files(dir: &Path) -> bool {
 fn find_generated_dirs(root: &Path) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     // Check common output dirs
-    for candidate in &["generated", "scripts/ts/src", "scripts/python", "ts/zod", "docs/openapi"] {
+    for candidate in &[
+        "generated",
+        "scripts/ts/src",
+        "scripts/python",
+        "ts/zod",
+        "docs/openapi",
+    ] {
         let path = root.join(candidate);
         if path.exists() && path.is_dir() {
             // Only include if it has JSON or TS files
@@ -724,9 +739,10 @@ fn has_type_files(dir: &Path) -> bool {
     std::fs::read_dir(dir)
         .map(|entries| {
             entries.flatten().any(|e| {
-                e.path().extension().and_then(|ext| ext.to_str()).map_or(false, |ext| {
-                    matches!(ext, "json" | "ts" | "py" | "go")
-                })
+                e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .map_or(false, |ext| matches!(ext, "json" | "ts" | "py" | "go"))
             })
         })
         .unwrap_or(false)

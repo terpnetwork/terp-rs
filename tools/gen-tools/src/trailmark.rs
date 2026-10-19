@@ -32,13 +32,29 @@ impl Generator for TrailmarkGenerator {
 
         // Collect generated API type directories for trailmark/githem scan
         let mut api_dirs: Vec<PathBuf> = Vec::new();
-        if ctx.ts_out.exists() { api_dirs.push(ctx.ts_out.clone()); }
-        if ctx.py_out.exists() { api_dirs.push(ctx.py_out.clone()); }
-        if ctx.zod_out.exists() { api_dirs.push(ctx.zod_out.clone()); }
-        if ctx.proto_out.exists() { api_dirs.push(ctx.proto_out.clone()); }
-        if ctx.go_out.exists() { api_dirs.push(ctx.go_out.clone()); }
-        if ctx.openapi_out.exists() { api_dirs.push(ctx.openapi_out.clone()); }
-        if let Some(ref tz_out) = ctx.tz_out { if tz_out.exists() { api_dirs.push(tz_out.clone()); } }
+        if ctx.ts_out.exists() {
+            api_dirs.push(ctx.ts_out.clone());
+        }
+        if ctx.py_out.exists() {
+            api_dirs.push(ctx.py_out.clone());
+        }
+        if ctx.zod_out.exists() {
+            api_dirs.push(ctx.zod_out.clone());
+        }
+        if ctx.proto_out.exists() {
+            api_dirs.push(ctx.proto_out.clone());
+        }
+        if ctx.go_out.exists() {
+            api_dirs.push(ctx.go_out.clone());
+        }
+        if ctx.openapi_out.exists() {
+            api_dirs.push(ctx.openapi_out.clone());
+        }
+        if let Some(ref tz_out) = ctx.tz_out {
+            if tz_out.exists() {
+                api_dirs.push(tz_out.clone());
+            }
+        }
 
         // ── Phase 1: QMD probe (0-to-port) ─────────────────────────
         let qmd_state = probe_qmd();
@@ -47,10 +63,7 @@ impl Generator for TrailmarkGenerator {
         // Write a QMD status report
         let probe_path = out_dir.join("qmd-probe.json");
         std::fs::create_dir_all(&out_dir)?;
-        std::fs::write(
-            &probe_path,
-            serde_json::to_string_pretty(&qmd_state)?,
-        )?;
+        std::fs::write(&probe_path, serde_json::to_string_pretty(&qmd_state)?)?;
         total_files += 1;
 
         // If QMD is installed, check existing collections / index
@@ -73,12 +86,12 @@ impl Generator for TrailmarkGenerator {
         } else {
             // Write install instructions
             let install_path = out_dir.join("qmd-install.sh");
-            std::fs::write(
-                &install_path,
-                generate_qmd_install_script(),
-            )?;
+            std::fs::write(&install_path, generate_qmd_install_script())?;
             total_files += 1;
-            log::info!("[trailmark] QMD not found — wrote install script to {:?}", install_path);
+            log::info!(
+                "[trailmark] QMD not found — wrote install script to {:?}",
+                install_path
+            );
         }
 
         // ── Phase 2: Trailmark structural analysis ──────────────────
@@ -98,17 +111,18 @@ impl Generator for TrailmarkGenerator {
         let recipe = AgentRecipe {
             workspace: ctx.workspace_root.to_string_lossy().to_string(),
             project: ctx.project_name.clone(),
-            contracts: ctx.contracts.iter().map(|c| ContractSummary {
-                name: c.name.clone(),
-                schema_dir: c.schema_dir.to_string_lossy().to_string(),
-            }).collect(),
+            contracts: ctx
+                .contracts
+                .iter()
+                .map(|c| ContractSummary {
+                    name: c.name.clone(),
+                    schema_dir: c.schema_dir.to_string_lossy().to_string(),
+                })
+                .collect(),
             generated_dir: ctx.output_dir.to_string_lossy().to_string(),
             qmd_installed: qmd_state.installed,
             qmd_index: qmd_state.index_path.clone(),
-            tensorzero_output: ctx
-                .tz_out
-                .as_ref()
-                .map(|p| p.to_string_lossy().to_string()),
+            tensorzero_output: ctx.tz_out.as_ref().map(|p| p.to_string_lossy().to_string()),
             steps: vec![
                 StepGoal {
                     id: "mermaid-diagrams".into(),
@@ -134,7 +148,8 @@ impl Generator for TrailmarkGenerator {
                 },
                 StepGoal {
                     id: "tz-episodes".into(),
-                    description: "Generate temporal zone episode definitions from time-aware schemas".into(),
+                    description:
+                        "Generate temporal zone episode definitions from time-aware schemas".into(),
                     input_sources: vec![
                         "generated/*/schema/*.json".into(),
                         "generated/openapi/*.json".into(),
@@ -317,16 +332,9 @@ fn find_qmd_index() -> PathBuf {
 
 /// Get version info from a QMD binary.
 fn get_version(bin: &str) -> Option<String> {
-    if let Ok(out) = Command::new(bin)
-        .arg("--version")
-        .output()
-    {
+    if let Ok(out) = Command::new(bin).arg("--version").output() {
         if out.status.success() {
-            return Some(
-                String::from_utf8_lossy(&out.stdout)
-                    .trim()
-                    .to_string(),
-            );
+            return Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
         }
     }
     None
@@ -418,7 +426,9 @@ fn probe_qmd_index() -> Option<QmdIndexState> {
                     .output()
                 {
                     if count_out.status.success() {
-                        let count_str = String::from_utf8_lossy(&count_out.stdout).trim().to_string();
+                        let count_str = String::from_utf8_lossy(&count_out.stdout)
+                            .trim()
+                            .to_string();
                         if let Ok(n) = count_str.parse::<u64>() {
                             total_files += n;
                         }
@@ -490,7 +500,9 @@ fn run_qmd_index(root: &Path) -> anyhow::Result<usize> {
             }
         }
         None => {
-            log::info!("[trailmark] QMD not installed; skipping index (probe written to qmd-probe.json)");
+            log::info!(
+                "[trailmark] QMD not installed; skipping index (probe written to qmd-probe.json)"
+            );
             Ok(0)
         }
     }
@@ -505,7 +517,10 @@ fn run_trailmark(targets: &[PathBuf]) -> anyhow::Result<usize> {
     let trailmark_bin = find_trailmark_binary();
     match trailmark_bin {
         Some(bin) => {
-            log::info!("[trailmark] Running Trailmark analysis on {} targets", targets.len());
+            log::info!(
+                "[trailmark] Running Trailmark analysis on {} targets",
+                targets.len()
+            );
             let mut cmd = Command::new(&bin);
             cmd.args(["analyze", "--structural"]);
             for target in targets {
@@ -547,7 +562,10 @@ fn run_githem(targets: &[PathBuf]) -> anyhow::Result<usize> {
     let githem_bin = find_githem_binary();
     match githem_bin {
         Some(bin) => {
-            log::info!("[trailmark] Running Githem analysis on {} targets", targets.len());
+            log::info!(
+                "[trailmark] Running Githem analysis on {} targets",
+                targets.len()
+            );
             let mut cmd = Command::new(&bin);
             cmd.args(["graph", "--format", "json"]);
             for target in targets {

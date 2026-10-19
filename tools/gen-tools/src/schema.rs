@@ -84,7 +84,10 @@ impl Generator for SchemaGenerator {
                     .to_string_lossy()
                     .to_string(),
             ),
-            message: Some(format!("{} schema files found after generation", schema_files)),
+            message: Some(format!(
+                "{} schema files found after generation",
+                schema_files
+            )),
         })
     }
 }
@@ -154,7 +157,15 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
             log::warn!("[schema] `cargo schema` not available (not a CosmWasm contract?)");
             return Ok(0);
         }
-        let tail: String = stderr.lines().rev().take(25).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n");
+        let tail: String = stderr
+            .lines()
+            .rev()
+            .take(25)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join("\n");
         return Err(anyhow::anyhow!("cargo schema failed:\n{}", tail));
     }
 
@@ -164,10 +175,7 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
 
     // Count schema dirs created
     let schema_dirs = find_schema_dirs(dir);
-    let file_count: usize = schema_dirs
-        .iter()
-        .map(|d| count_json_files(d))
-        .sum();
+    let file_count: usize = schema_dirs.iter().map(|d| count_json_files(d)).sum();
 
     Ok(file_count)
 }
@@ -198,9 +206,7 @@ fn count_json_files(dir: &std::path::Path) -> usize {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path().extension().map_or(false, |ext| ext == "json")
-                })
+                .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
                 .count()
         })
         .unwrap_or(0)

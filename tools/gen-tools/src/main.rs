@@ -8,7 +8,7 @@
 //!   gen-tools deps switch local        # Switch forked deps to local mode
 
 use clap::Parser;
-use gen_tools::config::{build_context, parse_steps, Cli, ProjectConfigFile, ProjectOverrides};
+use gen_tools::config::{Cli, ProjectConfigFile, ProjectOverrides, build_context, parse_steps};
 use gen_tools::pipeline::Pipeline;
 
 mod deps_runner;
@@ -71,7 +71,10 @@ fn main() -> anyhow::Result<()> {
                 proto_out: entry.proto_out.clone().or_else(|| cli.proto_out.clone()),
                 go_out: entry.go_out.clone().or_else(|| cli.go_out.clone()),
                 rust_out: entry.rust_out.clone().or_else(|| cli.rust_out.clone()),
-                openapi_out: entry.openapi_out.clone().or_else(|| cli.openapi_out.clone()),
+                openapi_out: entry
+                    .openapi_out
+                    .clone()
+                    .or_else(|| cli.openapi_out.clone()),
                 tz_out: entry.tz_out.clone(),
                 tz_heuristics: entry.tz_heuristics.clone(),
                 tz_episodes: entry.tz_episodes.clone(),
@@ -85,11 +88,7 @@ fn main() -> anyhow::Result<()> {
                 },
             };
 
-            let project_steps = entry
-                .steps
-                .as_deref()
-                .unwrap_or(&cli.steps)
-                .to_string();
+            let project_steps = entry.steps.as_deref().unwrap_or(&cli.steps).to_string();
 
             match build_context(&ws_root, &overrides, cli.output_dir.clone()) {
                 Ok(ctx) => {

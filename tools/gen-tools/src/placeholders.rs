@@ -8,8 +8,8 @@
 //!   - indexer: Subgraph/GQL indexer formulas for event indexing
 //!   - tz-episodes: Temporal zone episode definitions for time-aware contracts
 
-use crate::{GenerationResult, Generator};
 use crate::config::GenerationContext;
+use crate::{GenerationResult, Generator};
 
 pub struct MermaidGenerator;
 
@@ -59,7 +59,10 @@ fn generate_mermaid_diagram(contract: &crate::config::ContractMeta) -> anyhow::R
 
     output.push_str("sequenceDiagram\n");
     output.push_str("    participant User\n");
-    output.push_str(&format!("    participant {}Contract\n", pascal_case(&contract.name)));
+    output.push_str(&format!(
+        "    participant {}Contract\n",
+        pascal_case(&contract.name)
+    ));
     output.push_str("    participant Blockchain\n\n");
 
     // Instantiate flow

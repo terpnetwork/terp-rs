@@ -2,7 +2,7 @@
 //!
 //! Each contract is a directory `api/rust/<contract>/` with `lib.rs` and `Cargo.toml`.
 
-use crate::config::{contract_api_dir, GenerationContext};
+use crate::config::{GenerationContext, contract_api_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use std::collections::{HashMap, HashSet};

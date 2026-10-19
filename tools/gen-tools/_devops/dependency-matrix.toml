@@ -16,6 +16,7 @@ repo_only = true
 [crates.abstract.git]
 url = "https://github.com/permissionlessweb/abstract"
 branch = "v3.1.0-zk.0"
+rev = "cd80e51b2b13556b743cfbfa7e380817633d14b5"
 
 [crates.abstract-cw-plus]
 description = "AbstractSDK's cw-plus fork with orchestrator interfaces"
@@ -36,6 +37,7 @@ consumers = ["terp-rs"]
 [crates.abstract-interface.git]
 url = "https://github.com/permissionlessweb/abstract"
 branch = "v3.1.0-zk.0"
+rev = "cd80e51b2b13556b743cfbfa7e380817633d14b5"
 
 [crates.abstract-interface.zk_git]
 url = "https://github.com/permissionlessweb/abstract"
@@ -50,6 +52,7 @@ consumers = ["terp-rs"]
 [crates.abstract-std.git]
 url = "https://github.com/permissionlessweb/abstract"
 branch = "v3.1.0-zk.0"
+rev = "cd80e51b2b13556b743cfbfa7e380817633d14b5"
 
 [crates.abstract-std.zk_git]
 url = "https://github.com/permissionlessweb/abstract"
@@ -153,6 +156,7 @@ consumers = ["cw-orchestrator", "dao-contracts"]
 [crates.clone-cw-multi-test.git]
 url = "https://github.com/permissionlessweb/cw-multi-test-fork"
 branch = "main"
+rev = "f9957d8e51a5b91adce826aea9f34200537a7f2d"
 
 [crates.clone-cw-multi-test.zk_git]
 branch = "v3.1.0-zk.0"
@@ -184,7 +188,7 @@ required_default_features_off = ["bme/climb"]
 
 [crates.cosmos-sdk-proto.git]
 url = "https://github.com/permissionlessweb/cosmos-rust"
-rev = "2a070ec1111a14a9e479e49b52c21bbf0093b117"
+rev = "877ee79b693760f7ffa97ef542f5788c26f537dd"
 
 [crates.cosmos-sdk-proto.required_features]
 "bme/climb" = ["std", "cosmwasm", "grpc"]
@@ -206,7 +210,7 @@ consumers = [
 
 [crates.cosmrs.git]
 url = "https://github.com/permissionlessweb/cosmos-rust"
-rev = "2a070ec1111a14a9e479e49b52c21bbf0093b117"
+rev = "877ee79b693760f7ffa97ef542f5788c26f537dd"
 [crates.cosmwasm-core]
 description = "Components of cosmwasm-std for no_std environments"
 stable = "3.0.4"
@@ -367,7 +371,7 @@ consumers = ["abstract", "cw-asset", "cw-packages"]
 [crates.cw-address-like.git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
 branch = "feat/mvp"
-rev = "5b3f80d8c4a9cc99e92bd214b49730efeb3032ec"
+rev = "2fa6fe3fdf5f0c929a0e3b504320ead4a0553c05"
 [crates.cw-address-like.zk_git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
 branch = "v3.1.0-zk.0"
@@ -381,6 +385,7 @@ consumers = ["abstract"]
 
 [crates.cw-asset.git]
 url = "https://github.com/permissionlessweb/cw-asset"
+rev = "94d5f527f47e630d06d7e5def9c1286f006ecacf"
 
 [crates.cw-blob]
 description = "CW blob contract for arbitrary data storage"
@@ -392,6 +397,7 @@ consumers = ["abstract"]
 [crates.cw-blob.git]
 url = "https://github.com/permissionlessweb/cw-packages"
 branch = "feat/cw3"
+rev = "63facc93bb2e142d02a44a3785750f9964d6f9be"
 
 [crates.cw-clearable]
 description = "Clearable wrapper type for CosmWasm storage"
@@ -403,6 +409,7 @@ consumers = ["abstract"]
 [crates.cw-clearable.git]
 url = "https://github.com/permissionlessweb/cw-packages"
 branch = "feat/cw3"
+rev = "63facc93bb2e142d02a44a3785750f9964d6f9be"
 
 [crates.cw-controllers]
 description = "Admin, hooks, and other common controllers for CosmWasm contracts"
@@ -413,7 +420,7 @@ consumers = ["abstract", "abstract-cw-plus", "dao-contracts"]
 
 [crates.cw-controllers.git]
 url = "https://github.com/permissionlessweb/cw-minus"
-rev = "c5c680ddc3d896cc746618d7ad9b93e0f8271461"
+rev = "14194672e846a56e5a37a4a3b449e375f6f2b496"
 
 [crates.cw-ica-controller]
 local = "cw-ica-controller"
@@ -461,7 +468,7 @@ consumers = [
 [crates.cw-multi-test_zk.git]
 url = "https://github.com/permissionlessweb/cw-multi-test-fork"
 branch = "bump/cw3/official-ibc-fork"
-rev = "cbf6c519e16840ba2454553ff117f482d539b4cd"
+rev = "2eb14e1f0b66caed897a3c4a69a4c57282b565c0"
 
 [crates.cw-multi-test_zk.zk_git]
 branch = "v3.1.0-zk.0"
@@ -476,7 +483,7 @@ consumers = ["dao-contracts", "bme/o-line", "ict-rs", "websites/terp.network/scr
 [crates.cw-orch.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
-rev = "ec4d693aad80ee70ddbd77c3b78c9807bedb6be0"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch.features]
 "." = ["daemon"]
@@ -491,6 +498,7 @@ consumers = ["abstract"]
 [crates.cw-orch-clone-testing.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-contract-derive]
 description = "Contract derive macros for cw-orchestrator"
@@ -502,6 +510,7 @@ patch_only = true
 [crates.cw-orch-contract-derive.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-core]
 description = "Core traits and types for cw-orchestrator"
@@ -513,6 +522,7 @@ consumers = ["abstract", "ict-rs"]
 [crates.cw-orch-core.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-daemon]
 description = "Daemon environment for cw-orchestrator"
@@ -524,6 +534,7 @@ consumers = ["abstract", "ict-rs"]
 [crates.cw-orch-daemon.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-fns-derive]
 description = "Function derive macros for cw-orchestrator"
@@ -535,6 +546,7 @@ patch_only = true
 [crates.cw-orch-fns-derive.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-interchain]
 description = "Interchain support for cw-orchestrator"
@@ -546,6 +558,7 @@ consumers = ["abstract"]
 [crates.cw-orch-interchain.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-interchain.features]
 "." = ["daemon"]
@@ -559,6 +572,7 @@ zk_local = "cw-orchestrator/packages/interchain/interchain-core"
 [crates.cw-orch-interchain-core.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-interchain-daemon]
 description = "Daemon support for cw-orchestrator interchain"
@@ -569,6 +583,7 @@ zk_local = "cw-orchestrator/packages/interchain/interchain-daemon"
 [crates.cw-orch-interchain-daemon.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-interchain-mock]
 description = "Mock support for cw-orchestrator interchain"
@@ -579,6 +594,7 @@ zk_local = "cw-orchestrator/packages/interchain/interchain-mock"
 [crates.cw-orch-interchain-mock.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-mock]
 description = "Mock environment for cw-orchestrator"
@@ -590,6 +606,7 @@ consumers = ["abstract"]
 [crates.cw-orch-mock.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-networks]
 description = "Network configurations for cw-orchestrator"
@@ -600,6 +617,7 @@ zk_local = "cw-orchestrator/packages/cw-orch-networks"
 [crates.cw-orch-networks.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-neutron-test-tube]
 description = "Neutron test-tube integration for cw-orchestrator"
@@ -610,6 +628,7 @@ zk_local = "cw-orchestrator/packages/cw-orch-neutron-test-tube"
 [crates.cw-orch-neutron-test-tube.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-osmosis-test-tube]
 description = "Osmosis test-tube integration for cw-orchestrator"
@@ -620,6 +639,7 @@ zk_local = "cw-orchestrator/packages/cw-orch-osmosis-test-tube"
 [crates.cw-orch-osmosis-test-tube.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-polytone]
 description = "cw-orch integration for polytone"
@@ -633,7 +653,7 @@ consumers = ["abstract", "dao-contracts"]
 [crates.cw-orch-polytone.git]
 url = "https://github.com/permissionlessweb/polytone"
 branch = "bump/cw3"
-rev = "82d67c471b9b728ed39be29de16ecd325dee7000"
+rev = "a7183f94fae77f91197faa417e6b181c259bfded"
 
 [crates.cw-orch-proto]
 description = "Protobuf support for cw-orchestrator interchain"
@@ -645,6 +665,7 @@ consumers = ["abstract"]
 [crates.cw-orch-proto.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-starship]
 description = "Starship integration for cw-orchestrator"
@@ -655,6 +676,7 @@ zk_local = "cw-orchestrator/packages/interchain/starship"
 [crates.cw-orch-starship.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-orch-traits]
 description = "Trait definitions for cw-orchestrator"
@@ -666,6 +688,7 @@ consumers = ["abstract", "ict-rs"]
 [crates.cw-orch-traits.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-ownable]
 description = "Utility for controlling ownership of CosmWasm smart contracts"
@@ -677,7 +700,7 @@ consumers = ["abstract", "dao-contracts"]
 [crates.cw-ownable.git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
 branch = "feat/mvp"
-rev = "5b3f80d8c4a9cc99e92bd214b49730efeb3032ec"
+rev = "2fa6fe3fdf5f0c929a0e3b504320ead4a0553c05"
 
 [crates.cw-ownable.zk_git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
@@ -693,7 +716,7 @@ consumers = ["abstract"]
 [crates.cw-paginate.git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
 branch = "feat/mvp"
-rev = "5b3f80d8c4a9cc99e92bd214b49730efeb3032ec"
+rev = "2fa6fe3fdf5f0c929a0e3b504320ead4a0553c05"
 [crates.cw-paginate.zk_git]
 url = "https://github.com/permissionlessweb/cw-plus-plus"
 branch = "v3.1.0-zk.0"
@@ -722,6 +745,7 @@ consumers = ["abstract"]
 [crates.cw-plus-orch.git]
 url = "https://github.com/permissionlessweb/cw-orchestrator"
 branch = "cw3"
+rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 
 [crates.cw-schema]
 description = "Dependency for CosmWasm contracts to generate schema files for their messages"
@@ -782,7 +806,7 @@ consumers = [
 [crates.cw-storage-plus.git]
 url = "https://github.com/permissionlessweb/cw-storage-plus"
 branch = "main"
-rev = "cf066f8ca57cc30a7cf8f50fca9cf6e18291d71a"
+rev = "b303f445113c95427b57fc825bc033fdf3e6fee0"
 
 [crates.cw-svg]
 description = "Helper library for building SVG NFT collection instantiation payloads"
@@ -816,7 +840,7 @@ consumers = [
 
 [crates.cw-utils.git]
 url = "https://github.com/permissionlessweb/cw-minus"
-rev = "c5c680ddc3d896cc746618d7ad9b93e0f8271461"
+rev = "14194672e846a56e5a37a4a3b449e375f6f2b496"
 
 [crates.cw1]
 description = "Definition and types for the CosmWasm-1 proxy interface"
@@ -827,7 +851,7 @@ consumers = ["abstract-cw-plus"]
 
 [crates.cw1.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw1-subkeys]
 description = "Implementation of cw1 with subkey/allowance support"
 stable = "3.0.0"
@@ -837,7 +861,7 @@ consumers = ["cw-orchestrator"]
 
 [crates.cw1-subkeys.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw1-subkeys.features]
 "." = ["library"]
 
@@ -856,7 +880,7 @@ consumers = [
 
 [crates.cw1-whitelist.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw2]
 description = "CosmWasm contract version and migration info storage"
@@ -877,7 +901,7 @@ consumers = [
 
 [crates.cw2.git]
 url = "https://github.com/permissionlessweb/cw-minus"
-rev = "c5c680ddc3d896cc746618d7ad9b93e0f8271461"
+rev = "14194672e846a56e5a37a4a3b449e375f6f2b496"
 
 [crates.cw20]
 description = "Definition and types for the CosmWasm-20 token interface"
@@ -895,7 +919,7 @@ consumers = [
 
 [crates.cw20.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw20-base]
 description = "Basic implementation of a CosmWasm-20 compliant token"
@@ -906,7 +930,7 @@ consumers = ["abstract", "abstract-cw-plus", "dao-contracts"]
 
 [crates.cw20-base.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw20-ics20]
 description = "IBC-enabled contract that receives CW20 tokens and sends them over ICS20"
@@ -917,7 +941,7 @@ consumers = ["cw-multi-test-fork", "clone-cw-multi-test", "abstract-cw-plus"]
 
 [crates.cw20-ics20.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw3]
 description = "CosmWasm-3 interface for on-chain multisig and voting contracts"
 stable = "3.0.0"
@@ -927,7 +951,7 @@ consumers = ["abstract-cw-plus", "dao-contracts"]
 
 [crates.cw3.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw3-fixed-multisig]
 description = "Fixed-weight multisig contract implementing cw3"
@@ -938,7 +962,7 @@ consumers = ["cw-orchestrator"]
 
 [crates.cw3-fixed-multisig.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw3-fixed-multisig.features]
 "." = ["library"]
 
@@ -951,7 +975,7 @@ consumers = ["cw-orchestrator"]
 
 [crates.cw3-flex-multisig.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw3-flex-multisig.features]
 "." = ["library"]
 
@@ -964,7 +988,7 @@ consumers = ["abstract-cw-plus", "dao-contracts"]
 
 [crates.cw4.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw4-group]
 description = "Simple cw4 implementation of group membership controlled by admin"
@@ -975,7 +999,7 @@ consumers = ["abstract-cw-plus", "dao-contracts"]
 
 [crates.cw4-group.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 
 [crates.cw4-group.features]
 "." = ["library"]
@@ -989,7 +1013,7 @@ consumers = ["cw-orchestrator"]
 
 [crates.cw4-stake.git]
 url = "https://github.com/permissionlessweb/cw-plus"
-rev = "f7ef1aaafd368d811f268cf47360a7d808e74102"
+rev = "f66883649c08d2671cc7d66cdf4f7f6abec4e44d"
 [crates.cw4-stake.features]
 "." = ["library"]
 
@@ -1003,7 +1027,7 @@ consumers = ["dao-contracts"]
 [crates.cw721.git]
 url = "https://github.com/permissionlessweb/cw-nfts"
 branch = "cw3"
-rev = "677860dc49599324bca781a569b973dcd6d85a12"
+rev = "cdc559e2e1afd2e0b4cbc4d073ba1d28e4dc91ec"
 origin = "mine"
 
 [crates.cw721.zk_git]
@@ -1021,7 +1045,7 @@ consumers = ["dao-contracts"]
 [crates.cw721-base.git]
 url = "https://github.com/permissionlessweb/cw-nfts"
 branch = "cw3"
-rev = "677860dc49599324bca781a569b973dcd6d85a12"
+rev = "cdc559e2e1afd2e0b4cbc4d073ba1d28e4dc91ec"
 origin = "mine"
 
 [crates.cw721-base.zk_git]
@@ -1039,7 +1063,7 @@ consumers = ["dao-contracts"]
 [crates.cw721-nips.git]
 url = "https://github.com/permissionlessweb/terp-rs"
 branch = "pin/cw721-nips"
-rev = "1575d44cb1b16a7fc42ec7b4c533ea716fa5b416"
+rev = "10f19e15daf9b8a0e0429c56e75854868103ea2e"
 
 [crates.cw721-svg]
 description = "CW721-SVG NFT contract with on-chain SVG template variables and rendering"
@@ -1065,6 +1089,7 @@ repo_only = true
 [crates.dao-contracts.git]
 url = "https://github.com/permissionlessweb/dao-contracts"
 branch = "cw3"
+rev = "773c2507c1709c0b52092b266cf2cf711bd08abd"
 
 [crates.dao-testing]
 description = "DAO DAO testing utilities"
@@ -1075,6 +1100,7 @@ consumers = ["websites/terp.network/scripts"]
 [crates.dao-testing.git]
 url = "https://github.com/permissionlessweb/dao-contracts"
 branch = "cw3"
+rev = "773c2507c1709c0b52092b266cf2cf711bd08abd"
 
 [crates.evm-note]
 description = "Polytone EVM note contract for cross-chain EVM messaging"
@@ -1165,7 +1191,8 @@ consumers = ["cw-orchestrator"]
 
 [crates.ibc-chain-registry.git]
 url = "https://github.com/permissionlessweb/hermes"
-branch = "master"
+branch = "feat/feature-gate"
+rev = "f636aa80a13623b55197ef63e8f980894354307b"
 
 [crates.ibc-core-channel]
 description = "IBC core channel module"
@@ -1279,6 +1306,7 @@ consumers = ["cw-orchestrator", "bme/climb"]
 
 [crates.ibc-proto.git]
 url = "https://github.com/permissionlessweb/ibc-proto-rs"
+rev = "6bb6236eef08c56b4c0490ed564864936b412151"
 
 [crates.ibc-proto.features]
 "." = ["serde"]
@@ -1302,7 +1330,8 @@ consumers = ["cw-orchestrator"]
 
 [crates.ibc-relayer-types.git]
 url = "https://github.com/permissionlessweb/hermes"
-branch = "master"
+branch = "feat/feature-gate"
+rev = "f636aa80a13623b55197ef63e8f980894354307b"
 
 [crates.ibc-testkit]
 description = "IBC testing toolkit"
@@ -1331,7 +1360,8 @@ consumers = ["ibc-proto-rs", "ict-rs", "namada", "neutron-std"]
 
 [crates.ics23.git]
 url = "https://github.com/permissionlessweb/ics23"
-branch = "stable"
+branch = "feat/blake3-dohash"
+rev = "a60a82d843d94f90a154ad2df390e1515546492e"
 
 [crates.informalsystems-pbjson]
 description = "Fork of pbjson for serde support in protobuf types"
@@ -1395,6 +1425,7 @@ consumers = ["hermes"]
 
 [crates.namada_sdk.git]
 url = "https://github.com/permissionlessweb/namada"
+rev = "0a550f8354e822a28de1d317f298b52e53e9bd96"
 
 [crates.namada_sdk.zk_git]
 branch = "main"
@@ -1409,6 +1440,7 @@ consumers = ["neutron-test-tube"]
 [crates.neutron-std.git]
 url = "https://github.com/permissionlessweb/neutron-std"
 branch = "feat/cw3"
+rev = "3335fdd33709f740d1fa4fd63fd705f2ed0221f5"
 
 [crates.neutron-test-tube]
 description = "CosmWasm integration testing for Neutron"
@@ -1434,7 +1466,7 @@ consumers = ["osmosis-test-tube", "cw-orchestrator", "dao-contracts"]
 [crates.osmosis-std.git]
 url = "https://github.com/permissionlessweb/osmosis-rust"
 branch = "cw3"
-rev = "cb7b4bc4892a8ad74eaaeeba56e634e119608d30"
+rev = "86104a5613296b8842ab1a97ef0026214fe817e3"
 
 [crates.osmosis-std-derive]
 description = "Derive macros for Osmosis standard types"
@@ -1447,7 +1479,7 @@ consumers = ["dao-contracts"]
 [crates.osmosis-std-derive.git]
 url = "https://github.com/permissionlessweb/osmosis-rust"
 branch = "cw3"
-rev = "cb7b4bc4892a8ad74eaaeeba56e634e119608d30"
+rev = "86104a5613296b8842ab1a97ef0026214fe817e3"
 
 [crates.osmosis-test-tube]
 description = "CosmWasm integration testing for Osmosis"
@@ -1462,7 +1494,7 @@ consumers = ["cw-orchestrator", "dao-contracts"]
 [crates.osmosis-test-tube.git]
 url = "https://github.com/permissionlessweb/osmosis-test-tube"
 branch = "cw3"
-rev = "601a8b1d2d50e2631daf2b1c86dc288fd9726773"
+rev = "5757d50922a222fe68a5d7dadf287bcd7fcc2de5"
 
 [crates.penumbra-sdk-custody]
 description = "Penumbra custody service"
@@ -1587,7 +1619,7 @@ consumers = ["abstract"]
 [crates.polytone.git]
 url = "https://github.com/permissionlessweb/polytone"
 branch = "bump/cw3"
-rev = "82d67c471b9b728ed39be29de16ecd325dee7000"
+rev = "a7183f94fae77f91197faa417e6b181c259bfded"
 [crates.polytone-evm]
 description = "Core interfaces for Polytone EVM Interchain accounts and queries"
 stable = "2.0.0"
@@ -1614,7 +1646,7 @@ consumers = ["abstract"]
 [crates.polytone-note.git]
 url = "https://github.com/permissionlessweb/polytone"
 branch = "bump/cw3"
-rev = "82d67c471b9b728ed39be29de16ecd325dee7000"
+rev = "a7183f94fae77f91197faa417e6b181c259bfded"
 [crates.polytone-proxy]
 description = "Polytone proxy contract for cross-chain account control"
 package = "abstract-polytone-proxy"
@@ -1627,7 +1659,7 @@ consumers = ["abstract"]
 [crates.polytone-proxy.git]
 url = "https://github.com/permissionlessweb/polytone"
 branch = "bump/cw3"
-rev = "82d67c471b9b728ed39be29de16ecd325dee7000"
+rev = "a7183f94fae77f91197faa417e6b181c259bfded"
 [crates.polytone-voice]
 description = "Polytone voice contract for cross-chain messaging"
 package = "abstract-polytone-voice"
@@ -1640,7 +1672,7 @@ consumers = ["abstract"]
 [crates.polytone-voice.git]
 url = "https://github.com/permissionlessweb/polytone"
 branch = "bump/cw3"
-rev = "82d67c471b9b728ed39be29de16ecd325dee7000"
+rev = "a7183f94fae77f91197faa417e6b181c259bfded"
 [crates.proxy-accounts]
 description = "MegaRockLabs proxy accounts"
 local = "proxy-accounts"
@@ -1704,7 +1736,7 @@ consumers = ["cosmos-rust", "namada", "bme/climb"]
 
 [crates.tendermint.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint.required_features]
 "bme/climb" = ["secp256k1"]
 "namada" = ["secp256k1"]
@@ -1721,7 +1753,7 @@ consumers = ["basecoin-rs"]
 
 [crates.tendermint-abci.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-config]
 description = "Tendermint configuration file loading and validation"
 stable = "0.40.4"
@@ -1731,7 +1763,7 @@ consumers = ["namada"]
 
 [crates.tendermint-config.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-light-client]
 description = "Implementation of the Tendermint Light Client Verification Protocol"
 stable = "0.40.4"
@@ -1741,7 +1773,7 @@ consumers = ["namada"]
 
 [crates.tendermint-light-client.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-light-client.features]
 "." = ["rpc-client", "secp256k1", "unstable"]
 
@@ -1754,7 +1786,7 @@ consumers = ["hermes"]
 
 [crates.tendermint-light-client-detector.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-light-client-verifier]
 description = "Tendermint light client verification logic"
 stable = "0.40.4"
@@ -1764,7 +1796,7 @@ consumers = ["hermes"]
 
 [crates.tendermint-light-client-verifier.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-proto]
 description = "Rust implementation of Tendermint proto structs"
 stable = "0.40.4"
@@ -1782,7 +1814,7 @@ required_default_features_off = ["bme/climb"]
 
 [crates.tendermint-proto.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-rpc]
 description = "Tendermint RPC client library"
 stable = "0.40.4"
@@ -1793,7 +1825,7 @@ required_default_features_off = ["bme/climb"]
 
 [crates.tendermint-rpc.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.tendermint-rpc.features]
 "." = ["http-client", "websocket-client"]
 
@@ -1806,7 +1838,7 @@ consumers = ["hermes"]
 
 [crates.tendermint-testgen.git]
 url = "https://github.com/permissionlessweb/tendermint-rs"
-rev = "664b02d82354edffdf788677a43d8fdd1199f974"
+rev = "c732393410cefadb53da98836a7620ef1a1ef8bb"
 [crates.test-tube]
 description = "Library for building integration testing environments for cosmos-sdk chains (osmosis variant)"
 native_tools = ["go"]
@@ -1820,7 +1852,7 @@ consumers = ["osmosis-test-tube"]
 [crates.test-tube.git]
 url = "https://github.com/permissionlessweb/osmosis-test-tube"
 branch = "cw3"
-rev = "601a8b1d2d50e2631daf2b1c86dc288fd9726773"
+rev = "5757d50922a222fe68a5d7dadf287bcd7fcc2de5"
 [crates.test-tube.required_features]
 "osmosis-test-tube" = ["module-wrappers"]
 
@@ -1958,7 +1990,7 @@ zk_local = "cosmwasm/packages/zk"
 [crates.zk-cosmwasm.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.zk-cosmwasm.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"

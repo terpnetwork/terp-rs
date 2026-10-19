@@ -97,19 +97,12 @@ pub fn generate_dot(matrix: &MatrixFile) -> String {
     dot.push_str("    rankdir=LR;\n");
     dot.push_str("    node [shape=box, style=rounded];\n");
 
-    let keys: Vec<&str> = matrix
-        .crates
-        .keys()
-        .map(|k| k.as_str())
-        .collect();
+    let keys: Vec<&str> = matrix.crates.keys().map(|k| k.as_str()).collect();
 
     for key in &keys {
         let safe = key.replace('-', "_");
         let label = key;
-        dot.push_str(&format!(
-            "    {} [label=\"{}\"];\n",
-            safe, label
-        ));
+        dot.push_str(&format!("    {} [label=\"{}\"];\n", safe, label));
     }
 
     for (key, entry) in &matrix.crates {
@@ -131,7 +124,10 @@ pub fn execute_update(matrix: &MatrixFile, dry_run: bool) -> anyhow::Result<Vec<
 
     for node in &order {
         if dry_run {
-            results.push(format!("[dry-run] cargo update -p {} (depth {})", node.key, node.depth));
+            results.push(format!(
+                "[dry-run] cargo update -p {} (depth {})",
+                node.key, node.depth
+            ));
         } else {
             let output = std::process::Command::new("cargo")
                 .args(["update", "-p", &node.key])
@@ -140,7 +136,11 @@ pub fn execute_update(matrix: &MatrixFile, dry_run: bool) -> anyhow::Result<Vec<
                 results.push(format!("✓ cargo update -p {}", node.key));
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                results.push(format!("✗ cargo update -p {}: {}", node.key, stderr.lines().next().unwrap_or("unknown")));
+                results.push(format!(
+                    "✗ cargo update -p {}: {}",
+                    node.key,
+                    stderr.lines().next().unwrap_or("unknown")
+                ));
             }
         }
     }
@@ -149,7 +149,11 @@ pub fn execute_update(matrix: &MatrixFile, dry_run: bool) -> anyhow::Result<Vec<
 }
 
 /// Git push order for all repos.
-pub fn execute_push(matrix: &MatrixFile, _mode: &str, dry_run: bool) -> anyhow::Result<Vec<String>> {
+pub fn execute_push(
+    matrix: &MatrixFile,
+    _mode: &str,
+    dry_run: bool,
+) -> anyhow::Result<Vec<String>> {
     let order = topo_push_order(matrix);
     let mut results = Vec::new();
 

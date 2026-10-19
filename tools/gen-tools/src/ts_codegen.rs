@@ -16,7 +16,7 @@
 //!     responses: { query_name: { title, type, properties, definitions } }
 //!   }
 
-use crate::config::{ts_variant_dir, GenerationContext};
+use crate::config::{GenerationContext, ts_variant_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde_json::Value;
@@ -60,7 +60,12 @@ impl Generator for TsCodegenGenerator {
 
             for (_type_key, schema_value) in schemas {
                 // schema_value is the full merged schema JSON for this contract
-                collect_types_and_defs(schema_value, &mut message_types, &mut response_types, &mut all_defs);
+                collect_types_and_defs(
+                    schema_value,
+                    &mut message_types,
+                    &mut response_types,
+                    &mut all_defs,
+                );
             }
 
             // Merge definitions found across all message and response schemas
@@ -126,7 +131,12 @@ impl Generator for TsCodegenGenerator {
 const MSG_KEYS: &[&str] = &["instantiate", "execute", "query", "migrate", "sudo"];
 
 /// Metadata keys to skip.
-const _SKIP_KEYS: &[&str] = &["contract_name", "contract_version", "idl_version", "$schema"];
+const _SKIP_KEYS: &[&str] = &[
+    "contract_name",
+    "contract_version",
+    "idl_version",
+    "$schema",
+];
 
 pub fn collect_types_and_defs(
     merged: &Value,
@@ -240,7 +250,11 @@ fn generate_types_file(
     // 4. Emit top-level contract type as union of all message types
     if !message_types.is_empty() {
         let msg_type_names: Vec<&str> = message_types.iter().map(|(t, _)| t.as_str()).collect();
-        output.push_str(&format!("export type {} = {};\n", cname, msg_type_names.join(" | ")));
+        output.push_str(&format!(
+            "export type {} = {};\n",
+            cname,
+            msg_type_names.join(" | ")
+        ));
     }
 
     Ok(output)
@@ -263,10 +277,18 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
                 let required = val
                     .get("required")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|r| r.as_str())
+                            .collect::<HashSet<_>>()
+                    })
                     .unwrap_or_default();
                 for (field_name, field_schema) in props {
-                    let opt = if !required.contains(field_name.as_str()) { "?" } else { "" };
+                    let opt = if !required.contains(field_name.as_str()) {
+                        "?"
+                    } else {
+                        ""
+                    };
                     let field_doc = field_schema.get("description").and_then(|v| v.as_str());
                     if let Some(doc) = field_doc {
                         out.push_str(&format!("  /** {} */\n", doc));
@@ -304,7 +326,10 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
             Some(out)
         }
         Some("array") => {
-            let inner = val.get("items").map(|i| json_schema_to_ts(i, all_defs)).unwrap_or_else(|| "unknown".to_string());
+            let inner = val
+                .get("items")
+                .map(|i| json_schema_to_ts(i, all_defs))
+                .unwrap_or_else(|| "unknown".to_string());
             out.push_str(&format!("export type {} = {}[];\n", pname, inner));
             Some(out)
         }
@@ -316,7 +341,11 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
             // oneOf/anyOf or allOf
             if val.get("oneOf").is_some() || val.get("anyOf").is_some() {
                 out.push_str(&format!("export type {} =\n", pname));
-                let arr = val.get("oneOf").or_else(|| val.get("anyOf")).and_then(|v| v.as_array()).unwrap();
+                let arr = val
+                    .get("oneOf")
+                    .or_else(|| val.get("anyOf"))
+                    .and_then(|v| v.as_array())
+                    .unwrap();
                 for (i, v) in arr.iter().enumerate() {
                     let t = json_schema_to_ts(v, all_defs);
                     let d = if i < arr.len() - 1 { "" } else { ";" };
@@ -397,12 +426,20 @@ fn variant_oneof_to_type(variant: &Value, all_defs: &HashMap<String, Value>) -> 
         let required = variant
             .get("required")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|r| r.as_str())
+                    .collect::<HashSet<_>>()
+            })
             .unwrap_or_default();
         let fields: Vec<String> = props
             .iter()
             .map(|(k, v)| {
-                let _opt = if !required.contains(k.as_str()) { "?" } else { "" };
+                let _opt = if !required.contains(k.as_str()) {
+                    "?"
+                } else {
+                    ""
+                };
                 format!("{}: {}", k, json_schema_to_ts(v, all_defs))
             })
             .collect();
@@ -442,12 +479,20 @@ fn schema_to_interface(
             let required = schema
                 .get("required")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|r| r.as_str())
+                        .collect::<HashSet<_>>()
+                })
                 .unwrap_or_default();
 
             out.push_str(&format!("export interface {} {{\n", pname));
             for (field_name, field_schema) in props {
-                let opt = if !required.contains(field_name.as_str()) { "?" } else { "" };
+                let opt = if !required.contains(field_name.as_str()) {
+                    "?"
+                } else {
+                    ""
+                };
                 let field_doc = field_schema.get("description").and_then(|v| v.as_str());
                 if let Some(doc) = field_doc {
                     out.push_str(&format!("  /** {} */\n", doc));
@@ -502,7 +547,11 @@ fn json_schema_to_ts(schema: &Value, all_defs: &HashMap<String, Value>) -> Strin
     }
 
     // oneOf / anyOf → union
-    if let Some(arr) = schema.get("oneOf").or_else(|| schema.get("anyOf")).and_then(|v| v.as_array()) {
+    if let Some(arr) = schema
+        .get("oneOf")
+        .or_else(|| schema.get("anyOf"))
+        .and_then(|v| v.as_array())
+    {
         let types: Vec<String> = arr.iter().map(|v| json_schema_to_ts(v, all_defs)).collect();
         return types.join(" | ");
     }
@@ -543,12 +592,20 @@ fn json_schema_to_ts(schema: &Value, all_defs: &HashMap<String, Value>) -> Strin
                 let required = schema
                     .get("required")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|r| r.as_str())
+                            .collect::<HashSet<_>>()
+                    })
                     .unwrap_or_default();
                 let fields: Vec<String> = props
                     .iter()
                     .map(|(k, v)| {
-                        let _opt = if !required.contains(k.as_str()) { "?" } else { "" };
+                        let _opt = if !required.contains(k.as_str()) {
+                            "?"
+                        } else {
+                            ""
+                        };
                         format!("{}: {}", k, json_schema_to_ts(v, all_defs))
                     })
                     .collect();
@@ -644,7 +701,10 @@ fn generate_client_file(
             .get(&method)
             .map(|s| s.clone())
             .unwrap_or_else(|| "unknown".to_string());
-        let param_type = format!("Extract<{}Type, {{ {}: unknown }}>['{}']", cname, variant, variant);
+        let param_type = format!(
+            "Extract<{}Type, {{ {}: unknown }}>['{}']",
+            cname, variant, variant
+        );
         out.push_str(&format!(
             "  {}(params: {}): Promise<{}>;\n",
             method, param_type, response_type
@@ -660,7 +720,10 @@ fn generate_client_file(
 
     for variant in &exec_variants {
         let method = camel_case(variant);
-        let param_type = format!("Extract<{}Type, {{ {}: unknown }}>['{}']", cname, variant, variant);
+        let param_type = format!(
+            "Extract<{}Type, {{ {}: unknown }}>['{}']",
+            cname, variant, variant
+        );
         out.push_str(&format!(
             "  {}(params: {}): Promise<string>;\n",
             method, param_type
@@ -681,7 +744,10 @@ fn generate_message_composer_file(
 ) -> anyhow::Result<String> {
     let mut out = String::new();
     out.push_str("// Auto-generated by gen-tools.\n");
-    out.push_str(&format!("import type {{ {} }} from './{}.types';\n", cname, cname));
+    out.push_str(&format!(
+        "import type {{ {} }} from './{}.types';\n",
+        cname, cname
+    ));
     out.push_str("import type { Coin } from '@cosmjs/amino';\n");
     out.push_str("import type { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';\n\n");
 
@@ -732,7 +798,10 @@ fn extract_oneof_variant_names(schema: &Value) -> Option<Vec<String>> {
         .filter_map(|v| {
             // Get the first required field — that's the discriminator
             let required = v.get("required").and_then(|v| v.as_array())?;
-            required.first().and_then(|r| r.as_str()).map(|s| s.to_string())
+            required
+                .first()
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string())
         })
         .collect();
     if names.is_empty() { None } else { Some(names) }
@@ -850,7 +919,12 @@ mod tests {
         let mut response_types = Vec::new();
         let mut all_defs = HashMap::new();
 
-        collect_types_and_defs(&merged, &mut message_types, &mut response_types, &mut all_defs);
+        collect_types_and_defs(
+            &merged,
+            &mut message_types,
+            &mut response_types,
+            &mut all_defs,
+        );
 
         assert_eq!(message_types.len(), 3); // instantiate, execute, query
         assert_eq!(response_types.len(), 1);

@@ -63,6 +63,9 @@ from dep_common import (
     extract_workspace_deps,
     find_section,
     git_dependency_urls,
+    SHA_RE,
+    _path_leaves_repo,
+    git_rev,
     is_repo_only,
     load_defaults,
     load_matrix,
@@ -76,14 +79,21 @@ from dep_common import (
 
 
 def _is_repo_only_by_name(name: str, crates: dict) -> bool:
-    """Check if a crate name found in a Cargo.toml corresponds to a repo_only matrix entry.
-    Looks up the name against matrix keys and package names."""
+    """True when ``name`` is only a repo-level matrix entry.
+
+    A repo_only key can share a string with a real package. ``cw-multi-test``
+    is repo metadata for permissionlessweb/cw-multi-test and also the clone's
+    published package name. The real package wins, so its patch line stays.
+    """
+    repo = False
     for key, info in crates.items():
-        if not is_repo_only(info):
+        if is_repo_only(info):
+            if key == name or info.get("package", key) == name:
+                repo = True
             continue
-        if key == name or info.get("package", key) == name:
-            return True
-    return False
+        if info.get("package", key) == name:
+            return False
+    return repo
 
 
 def validate_toml(path):
@@ -141,6 +151,331 @@ def resolve_projects(ws_filter=None, all_projects=False):
         if not matched:
             print(f"WARNING: workspace '{f}' not found, skipping")
     return result
+
+
+def order_projects_by_nest(projects):
+    """Dependencies first.
+
+    A path dependency or a ``[patch.crates-io]`` path selects another
+    workspace in this set. Cargo ignores that workspace's own ``[patch]``
+    when the parent resolves it, so the parent is rewritten after the
+    workspaces it names.
+    """
+    dirs = [(p.rel_path, (REPO_ROOT / p.rel_path).resolve()) for p in projects]
+
+    def owner(target):
+        try:
+            target = target.resolve()
+        except OSError:
+            return None
+        best = None
+        best_n = -1
+        for rel, directory in dirs:
+            try:
+                target.relative_to(directory)
+            except ValueError:
+                continue
+            if len(directory.parts) > best_n:
+                best = rel
+                best_n = len(directory.parts)
+        return best
+
+    edges = {p.rel_path: set() for p in projects}
+    for proj in projects:
+        cargo = REPO_ROOT / proj.rel_path / "Cargo.toml"
+        if not cargo.is_file():
+            continue
+        for rel in _path_targets(cargo.read_text()):
+            own = owner(cargo.parent / rel)
+            if own and own != proj.rel_path:
+                edges[proj.rel_path].add(own)
+
+    incoming = {rel: 0 for rel in edges}
+    for rel, deps in edges.items():
+        incoming[rel] = len(deps)
+    ready = sorted(rel for rel, count in incoming.items() if count == 0)
+    order = []
+    while ready:
+        rel = ready.pop(0)
+        order.append(rel)
+        for other, deps in edges.items():
+            if rel in deps:
+                incoming[other] -= 1
+                if incoming[other] == 0:
+                    ready.append(other)
+        ready.sort()
+    if len(order) != len(edges):
+        remaining = [rel for rel in edges if rel not in set(order)]
+        cyclic = _cyclic_rels(remaining, edges)
+        print("  [WARN] patch nest cycle among: " + ", ".join(cyclic or sorted(remaining)))
+        order.extend(sorted(remaining))
+    by_rel = {p.rel_path: p for p in projects}
+    return [by_rel[rel] for rel in order]
+
+
+def _cyclic_rels(remaining, edges):
+    """Rels in ``remaining`` that can reach themselves through dependency edges."""
+    rem = set(remaining)
+    graph = {rel: {dep for dep in edges.get(rel, ()) if dep in rem} for rel in rem}
+    cyclic = []
+    for start in sorted(rem):
+        stack = list(graph[start])
+        seen = set()
+        while stack:
+            node = stack.pop()
+            if node == start:
+                cyclic.append(start)
+                break
+            if node in seen:
+                continue
+            seen.add(node)
+            stack.extend(graph.get(node, ()))
+    return cyclic
+
+
+def _patch_names(lines):
+    names = set()
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        names.add(stripped.split("=", 1)[0].strip())
+    return names
+
+
+def _path_targets(text):
+    """Relative path values from dependency and patch tables."""
+    found = []
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("["):
+            continue
+        match = re.search(r'\bpath\s*=\s*"([^"]+)"', stripped)
+        if match:
+            found.append(match.group(1))
+    return found
+
+
+_EDGE_CACHE = {}
+
+
+def git_patch_refusal(info):
+    """Why a ``[patch.crates-io]`` git rev must not replace the local path.
+
+    None means the rev is safe to write: it is in the local checkout, its
+    resolved dependency lines are crate versions, and a remote already has it.
+    A checkout we cannot see is not refused here; callers without a git repo
+    keep today's rev behavior.
+    """
+    rev = git_rev(info, "git")
+    if not rev:
+        return None
+    local = info.get("local")
+    if not local or local == "N/A":
+        return None
+    repo = _git_toplevel(REPO_ROOT / local)
+    if repo is None:
+        return None
+    try:
+        package_rel = str((REPO_ROOT / local).resolve().relative_to(repo.resolve()))
+    except ValueError:
+        package_rel = ""
+    kind, detail = _checkout_edge_class(repo, rev, package_rel)
+    hint = _unpublished_head_hint(repo, rev, package_rel)
+    if kind == "missing":
+        return f"{rev[:12]} is not in {repo.name}"
+    if kind == "escaping":
+        return (
+            f"{rev[:12]} has a cross-repo edge ({detail}); "
+            "a parent [patch.crates-io] cannot replace it" + hint
+        )
+    if kind not in ("registry", "self-pinned"):
+        return f"{rev[:12]} could not be classified ({kind})"
+    # A full git rev is fetchable on its own. A branch, a tag, or a path that
+    # leaves the checkout is not, and stays on the local patch above.
+    shape = "registry-shaped" if kind == "registry" else "pinned by full git revs"
+    if not _rev_on_remote(repo, rev):
+        return f"{rev[:12]} is {shape} but not on a remote" + hint
+    if hint:
+        return (
+            f"{rev[:12]} is an older published tree" + hint
+        )
+    return None
+
+
+def _unpublished_head_hint(repo, rev, package_rel):
+    head = _head_commit(repo)
+    if not head or head == rev:
+        return ""
+    head_kind, _detail = _checkout_edge_class(repo, head, package_rel)
+    if head_kind != "registry" or _rev_on_remote(repo, head):
+        return ""
+    return f"; HEAD {head[:12]} is registry-shaped and is not on a remote"
+
+
+def _git_toplevel(start):
+    cur = start
+    if not cur.exists():
+        cur = cur.parent
+    while True:
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur or cur == REPO_ROOT:
+            return None
+        cur = cur.parent
+
+
+def _git_out(repo, args):
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True, text=True,
+    )
+
+
+def _head_commit(repo):
+    result = _git_out(repo, ["rev-parse", "HEAD"])
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _rev_on_remote(repo, rev):
+    result = _git_out(repo, ["branch", "-r", "--contains", rev])
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def _checkout_edge_class(repo, rev, package_rel):
+    """Classify the package at ``rev``, following only the deps Cargo would resolve.
+
+    Other packages in the same checkout, including examples that path out of
+    the repo, do not count. A dependency's dev-dependencies do not count.
+    """
+    key = (str(repo), rev, package_rel or ".")
+    if key in _EDGE_CACHE:
+        return _EDGE_CACHE[key]
+    present = _git_out(repo, ["cat-file", "-e", f"{rev}^{{commit}}"])
+    if present.returncode != 0:
+        result = ("missing", rev[:12])
+        _EDGE_CACHE[key] = result
+        return result
+    root_text = _file_at(repo, rev, "Cargo.toml")
+    ws_deps = {}
+    if root_text is not None:
+        try:
+            ws_deps = tomllib.loads(root_text).get("workspace", {}).get("dependencies") or {}
+        except Exception:
+            ws_deps = {}
+    start = "Cargo.toml" if package_rel in ("", ".") else package_rel.strip("/") + "/Cargo.toml"
+    if _file_at(repo, rev, start) is None:
+        result = ("missing", start)
+        _EDGE_CACHE[key] = result
+        return result
+    kind = "registry"
+    detail = ""
+    seen = set()
+    queue = [start]
+    while queue:
+        cargo_rel = queue.pop()
+        if cargo_rel in seen:
+            continue
+        seen.add(cargo_rel)
+        text = _file_at(repo, rev, cargo_rel)
+        if text is None:
+            continue
+        try:
+            data = tomllib.loads(text)
+        except Exception:
+            continue
+        for table in _resolved_tables(data):
+            for name, raw in table.items():
+                spec = _effective_spec(raw, name, ws_deps)
+                if not isinstance(spec, dict):
+                    continue
+                path = spec.get("path")
+                if isinstance(path, str):
+                    # workspace.dependencies paths are relative to the workspace
+                    # manifest. A member that says workspace = true does not
+                    # re-root them.
+                    path_base = "Cargo.toml" if _inherited_workspace_dep(raw) else cargo_rel
+                    if _path_leaves_repo(path_base, path):
+                        result = ("escaping", f"{cargo_rel}: path = \"{path}\"")
+                        _EDGE_CACHE[key] = result
+                        return result
+                    dest = _joined_dir(path_base, path)
+                    queue.append("Cargo.toml" if not dest else dest + "/Cargo.toml")
+                git_url = spec.get("git")
+                if isinstance(git_url, str):
+                    pinned = spec.get("rev") or spec.get("commit") or ""
+                    if isinstance(pinned, str) and SHA_RE.match(pinned):
+                        if kind == "registry":
+                            kind = "self-pinned"
+                            detail = cargo_rel
+                    else:
+                        result = ("escaping", f"{cargo_rel}: git edge is not a full rev")
+                        _EDGE_CACHE[key] = result
+                        return result
+    result = (kind, detail)
+    _EDGE_CACHE[key] = result
+    return result
+
+
+def _file_at(repo, rev, cargo_rel):
+    shown = _git_out(repo, ["show", f"{rev}:{cargo_rel}"])
+    if shown.returncode != 0:
+        return None
+    return shown.stdout
+
+
+def _resolved_tables(data):
+    tables = []
+    for key in ("dependencies", "build-dependencies"):
+        table = data.get(key)
+        if isinstance(table, dict):
+            tables.append(table)
+    target = data.get("target")
+    if isinstance(target, dict):
+        for cfg in target.values():
+            if not isinstance(cfg, dict):
+                continue
+            for key in ("dependencies", "build-dependencies"):
+                table = cfg.get(key)
+                if isinstance(table, dict):
+                    tables.append(table)
+    return tables
+
+
+def _inherited_workspace_dep(raw) -> bool:
+    return isinstance(raw, dict) and raw.get("workspace") is True and "path" not in raw
+
+
+def _effective_spec(raw, name, ws_deps):
+    if isinstance(raw, str):
+        return {"version": raw}
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("workspace") is True:
+        base = ws_deps.get(name, {})
+        if isinstance(base, str):
+            base = {"version": base}
+        elif not isinstance(base, dict):
+            base = {}
+        merged = dict(base)
+        for key, value in raw.items():
+            if key != "workspace":
+                merged[key] = value
+        return merged
+    return raw
+
+
+def _joined_dir(cargo_rel, rel):
+    parts = []
+    for part in (Path(cargo_rel).parent / rel).parts:
+        if part == "..":
+            if parts:
+                parts.pop()
+        elif part != ".":
+            parts.append(part)
+    return "/".join(parts)
 
 
 def resolve_crate_filter(crate_filter, crates):
@@ -249,6 +584,24 @@ def _patch_pkg_name(declared_name, lookup):
     return info.get("package", key), key, info
 
 
+def _patch_line_target(name, crates, lookup):
+    """Matrix entry for an existing ``[patch]`` key.
+
+    The key is a crates.io package name. A dependency alias must not override
+    a package that publishes under the same string. ``cw-multi-test`` is the
+    clone's package name and also an alias of ``abstract-cw-multi-test``.
+    """
+    for key, info in crates.items():
+        if is_repo_only(info):
+            continue
+        if info.get("package", key) == name:
+            return key, info
+    hit = lookup.get(name)
+    if not hit or is_repo_only(hit[1]):
+        return None
+    return hit
+
+
 def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None, ensure=False):
     """Update [patch.crates-io] for one workspace Cargo.toml.
 
@@ -290,32 +643,37 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         name = stripped.split("=", 1)[0].strip()
         if _is_repo_only_by_name(name, crates):
             continue  # drop repo-level entries (not real crates)
-        if name in known:
+        if name in known or _patch_line_target(name, crates, lookup):
             if crate_filter and name not in crate_filter:
                 static_lines.append(line)
                 continue
-            key, info = lookup[name]
+            hit = _patch_line_target(name, crates, lookup)
+            if not hit:
+                static_lines.append(line)
+                continue
+            key, info = hit
             # Self-referential: preserve as-is
             if _is_self_referential(ws_toml, info, mode):
                 static_lines.append(line)
             else:
                 val = build_entry(key, info, mode, ws_toml, defaults=defaults)
-                patch_name = name
-                if ensure:
-                    mapped = _patch_pkg_name(name, lookup)
-                    if mapped:
-                        patch_name = mapped[0]
-                if val:
+                patch_name = info.get("package", key)
+                refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+                if refusal:
+                    print(f"  [WARN] {ws_toml}: keep patch {patch_name}: {refusal}")
+                    static_lines.append(line)
+                elif val:
                     new_section.append(f"{patch_name} = {val}")
                 elif mode == "git-rev":
-                    print(f"  [WARN] {ws_toml}: skip patch {patch_name}: "
+                    print(f"  [WARN] {ws_toml}: keep patch {patch_name}: "
                           f"git.rev/git.commit is not a full 40-hex sha")
+                    static_lines.append(line)
         else:
             static_lines.append(line)
 
     # Also add NEW patch entries for matrix crates that are marked as
     # patch_only=true (transitive deps that need patching but aren't direct).
-    seen_names = {l.split("=", 1)[0].strip() for l in new_section[1:]}
+    seen_names = _patch_names(new_section[1:]) | _patch_names(static_lines)
     proj_name = str(Path(ws_toml).parent)
     for key, info in crates.items():
         if is_repo_only(info):
@@ -334,14 +692,17 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         if _is_self_referential(ws_toml, info, mode):
             continue
         val = build_entry(key, info, mode, ws_toml, defaults=defaults)
-        if val:
+        refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+        if refusal:
+            print(f"  [WARN] {ws_toml}: skip patch {pkg}: {refusal}")
+        elif val:
             new_section.append(f"{pkg} = {val}")
         elif mode == "git-rev":
             print(f"  [WARN] {ws_toml}: skip patch {pkg}: "
                   f"git.rev/git.commit is not a full 40-hex sha")
 
     if ensure:
-        seen_names = {l.split("=", 1)[0].strip() for l in new_section[1:] if "=" in l}
+        seen_names = _patch_names(new_section[1:]) | _patch_names(static_lines)
         for declared in sorted(_declared_matrix_names(ws_toml, crates)):
             mapped = _patch_pkg_name(declared, lookup)
             if not mapped:
@@ -354,7 +715,10 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
             if _is_self_referential(ws_toml, info, mode):
                 continue
             val = build_entry(key, info, mode, ws_toml, defaults=defaults)
-            if val:
+            refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+            if refusal:
+                print(f"  [WARN] {ws_toml}: skip patch {pkg}: {refusal}")
+            elif val:
                 new_section.append(f"{pkg} = {val}")
                 seen_names.add(pkg)
             elif mode == "git-rev":
@@ -794,7 +1158,14 @@ def _patch_source_ready(key, info, ws_toml, source_mode, defaults):
     """
     if not source_mode:
         return True
-    return build_entry(key, info, source_mode, ws_toml, defaults=defaults) is not None
+    if build_entry(key, info, source_mode, ws_toml, defaults=defaults) is None:
+        return False
+    # A refused git rev is not a patch we will write. Leaving the path or git
+    # dependency in place is what still resolves. A version line is unchanged
+    # because this returns before the rewrite.
+    if source_mode == "git-rev" and git_patch_refusal(info):
+        return False
+    return True
 
 
 def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None, require_source=None):
@@ -1663,6 +2034,11 @@ def cmd_switch(args):
         filter_desc += f" workspace={','.join(args.workspace)}"
     if args.crate:
         filter_desc += f" crate={','.join(args.crate)}"
+
+    if is_patch and len(projects) > 1:
+        projects = order_projects_by_nest(projects)
+        print("Patch order (dependencies first): " + ", ".join(p.rel_path for p in projects))
+        print()
 
     if is_dev:
         print(f"Switching to mode: {mode} (ws-deps/members={ws_dep_mode}, patches={patch_mode}, git-url-patches=local) | target: {TARGET_DESC[target]}{filter_desc}")

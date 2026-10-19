@@ -114,7 +114,9 @@ pub fn build_prompt_context(
 
     let instructions = match target {
         "mermaid" => "Generate a Mermaid sequence diagram showing the contract flow.".into(),
-        "indexer" => "Generate GraphQL indexer entities for all events emitted by this contract.".into(),
+        "indexer" => {
+            "Generate GraphQL indexer entities for all events emitted by this contract.".into()
+        }
         "tz-episodes" => {
             "Extract temporal semantics from the schema and generate episode definitions.".into()
         }

@@ -10,6 +10,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -40,6 +41,7 @@ from dep_common import (  # noqa: E402
     drop_unreferenced_git_patches,
     git_dependency_urls,
     lint_unused_patches,
+    manifest_edge_class,
     pin_floating_git_deps,
     pkg_to_matrix,
     registry_version_literal,
@@ -452,6 +454,481 @@ class UnusedPatchWarningTests(unittest.TestCase):
             unused_patch_warnings(stderr),
             [("cw-storage-plus", "/tmp/cw-storage-plus"), ("cw2", "/tmp/cw2")],
         )
+
+
+class NestHierarchyTests(unittest.TestCase):
+    def test_internal_path_stays_registry_and_a_sibling_path_escapes(self):
+        internal = "\n".join([
+            "[dependencies]",
+            'cw-storage-macro = { path = "macros" }',
+            "[patch.crates-io]",
+            'cosmwasm-std = { path = "../cosmwasm/packages/std" }',
+        ])
+        self.assertEqual(manifest_edge_class(internal, "Cargo.toml")[0], "registry")
+        sibling = '[dependencies]\ncosmwasm-std = { path = "../cosmwasm/packages/std" }\n'
+        kind, detail = manifest_edge_class(sibling, "Cargo.toml")
+        self.assertEqual(kind, "escaping")
+        self.assertIn("../cosmwasm/packages/std", detail)
+
+    def test_member_path_can_point_at_another_package_in_the_repo(self):
+        text = '[dependencies]\ncw20 = { path = "../../packages/cw20" }\n'
+        self.assertEqual(
+            manifest_edge_class(text, "contracts/cw20-base/Cargo.toml")[0],
+            "registry",
+        )
+
+    def test_git_rev_is_self_pinned_and_a_branch_escapes(self):
+        pinned = (
+            "[workspace.dependencies]\n"
+            f'cosmwasm-std = {{ git = "https://example.com/cosmwasm", rev = "{COS_REV}" }}\n'
+        )
+        self.assertEqual(manifest_edge_class(pinned, "Cargo.toml")[0], "self-pinned")
+        branch = '[dependencies]\ncosmwasm-std = { git = "https://example.com/cosmwasm", branch = "main" }\n'
+        self.assertEqual(manifest_edge_class(branch, "Cargo.toml")[0], "escaping")
+
+    def test_a_dev_dependency_git_edge_does_not_block_the_rev(self):
+        text = '[dev-dependencies]\ncosmwasm-std = { git = "https://example.com/cosmwasm", branch = "main" }\n'
+        self.assertEqual(manifest_edge_class(text, "Cargo.toml")[0], "registry")
+
+    def _commit(self, repo: Path, text: str) -> str:
+        repo.mkdir(parents=True, exist_ok=True)
+        (repo / "Cargo.toml").write_text(text)
+        env = ["git", "-C", str(repo), "-c", "user.email=t@example.com", "-c", "user.name=t"]
+        subprocess.run(env[:3] + ["init", "-q"], check=True)
+        subprocess.run(env + ["add", "Cargo.toml"], check=True)
+        subprocess.run(env + ["commit", "-q", "-m", "init"], check=True)
+        rev = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        return rev
+
+    def test_unpublished_registry_rev_keeps_the_local_patch(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            leaf = root / "cw-plus"
+            rev = self._commit(leaf, "[dependencies]\nserde = \"1\"\n")
+            ws = root / "dao-contracts"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                "\n".join([
+                    "[workspace]",
+                    "members = []",
+                    "",
+                    "[workspace.dependencies]",
+                    'cw1-whitelist = { path = "../cw-plus" }',
+                    "",
+                    "[patch.crates-io]",
+                    'cw1-whitelist = { path = "../cw-plus" }',
+                    "",
+                ])
+            )
+            crates = {
+                "cw1-whitelist": _crate(
+                    "3.0.0", "cw-plus", "https://github.com/permissionlessweb/cw-plus", rev,
+                ),
+            }
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                dep_switch.rewrite_patches("dao-contracts/Cargo.toml", crates, "git-rev", ensure=True)
+            with redirect_stdout(buf):
+                dep_switch.rewrite_ws_deps(
+                    "dao-contracts/Cargo.toml", crates, "registry",
+                    require_source="git-rev",
+                )
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn('path = "../cw-plus"', text)
+            self.assertNotIn(f'rev = "{rev}"', text)
+            self.assertNotIn('version = "3.0.0"', text)
+            self.assertIn("not on a remote", buf.getvalue())
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_workspace_path_is_relative_to_the_workspace_root(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        try:
+            repo = root / "terp-rs"
+            (repo / "crates" / "nips").mkdir(parents=True)
+            (repo / "Cargo.toml").write_text(
+                "\n".join([
+                    "[workspace]",
+                    'members = ["crates/nips"]',
+                    "",
+                    "[workspace.dependencies]",
+                    'cosmwasm-std = { path = "../cosmwasm/packages/std" }',
+                    "",
+                ])
+            )
+            (repo / "crates" / "nips" / "Cargo.toml").write_text(
+                "\n".join([
+                    "[package]",
+                    'name = "cw721-nips"',
+                    'version = "0.1.0"',
+                    'edition = "2024"',
+                    "",
+                    "[dependencies]",
+                    "cosmwasm-std = { workspace = true }",
+                    "",
+                ])
+            )
+            git = ["git", "-C", str(repo), "-c", "user.email=t@example.com", "-c", "user.name=t"]
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            subprocess.run(git + ["add", "."], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "init"], check=True)
+            rev = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True,
+            ).stdout.strip()
+            kind, detail = dep_switch._checkout_edge_class(repo, rev, "crates/nips")
+            self.assertEqual(kind, "escaping")
+            self.assertIn("../cosmwasm/packages/std", detail)
+        finally:
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_an_unrelated_package_path_does_not_block_the_crate(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            repo = root / "cosmwasm"
+            (repo / "packages" / "std").mkdir(parents=True)
+            (repo / "contracts" / "nested-contracts").mkdir(parents=True)
+            (repo / "Cargo.toml").write_text(
+                '[workspace]\nmembers = ["packages/*", "contracts/nested-contracts"]\n'
+            )
+            (repo / "packages" / "std" / "Cargo.toml").write_text(
+                '[package]\nname = "cosmwasm-std"\nversion = "4.0.0"\n\n[dependencies]\nserde = "1"\n'
+            )
+            (repo / "contracts" / "nested-contracts" / "Cargo.toml").write_text(
+                "\n".join([
+                    "[package]",
+                    'name = "nested"',
+                    'version = "0.1.0"',
+                    "",
+                    "[dependencies]",
+                    'cw-storage-plus = { path = "../../../cw-storage-plus" }',
+                    "",
+                ])
+            )
+            git = ["git", "-C", str(repo), "-c", "user.email=t@example.com", "-c", "user.name=t"]
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            subprocess.run(git + ["add", "."], check=True)
+            subprocess.run(git + ["commit", "-q", "-m", "init"], check=True)
+            rev = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True,
+            ).stdout.strip()
+            subprocess.run(
+                ["git", "-C", str(repo), "update-ref", "refs/remotes/origin/main", rev],
+                check=True,
+            )
+            ws = root / "dao-contracts"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                '[patch.crates-io]\ncosmwasm-std = { path = "../cosmwasm/packages/std" }\n'
+            )
+            crates = {
+                "cosmwasm-std": _crate(
+                    "3.0.4", "cosmwasm/packages/std",
+                    "https://github.com/permissionlessweb/cosmwasm", rev,
+                ),
+            }
+            with redirect_stdout(io.StringIO()):
+                dep_switch.rewrite_patches("dao-contracts/Cargo.toml", crates, "git-rev", ensure=True)
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn(f'rev = "{rev}"', text)
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_published_registry_rev_replaces_the_local_patch(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            leaf = root / "cw-plus"
+            rev = self._commit(leaf, "[dependencies]\nserde = \"1\"\n")
+            subprocess.run(
+                ["git", "-C", str(leaf), "update-ref", "refs/remotes/origin/main", rev],
+                check=True,
+            )
+            ws = root / "dao-contracts"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                "\n".join([
+                    "[workspace]",
+                    "members = []",
+                    "",
+                    "[patch.crates-io]",
+                    'cw1-whitelist = { path = "../cw-plus" }',
+                    "",
+                ])
+            )
+            crates = {
+                "cw1-whitelist": _crate(
+                    "3.0.0", "cw-plus", "https://github.com/permissionlessweb/cw-plus", rev,
+                ),
+            }
+            with redirect_stdout(io.StringIO()):
+                dep_switch.rewrite_patches("dao-contracts/Cargo.toml", crates, "git-rev", ensure=True)
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn(f'rev = "{rev}"', text)
+            self.assertNotIn("path =", text.split("[patch.crates-io]", 1)[1])
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_published_full_git_rev_replaces_the_local_patch(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            leaf = root / "cosmwasm"
+            leaf.mkdir()
+            rev = self._commit(
+                leaf,
+                "\n".join([
+                    "[dependencies]",
+                    'cw-storage-plus = { git = "https://github.com/permissionlessweb/cw-storage-plus", rev = "' + COS_REV + '" }',
+                    "",
+                ]),
+            )
+            subprocess.run(
+                ["git", "-C", str(leaf), "update-ref", "refs/remotes/origin/main", rev],
+                check=True,
+            )
+            ws = root / "dao-contracts"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                '[patch.crates-io]\ncosmwasm-std = { path = "../cosmwasm/packages/std" }\n'
+            )
+            crates = {
+                "cosmwasm-std": _crate(
+                    "3.0.4", "cosmwasm",
+                    "https://github.com/permissionlessweb/cosmwasm", rev,
+                ),
+            }
+            with redirect_stdout(io.StringIO()):
+                dep_switch.rewrite_patches("dao-contracts/Cargo.toml", crates, "git-rev", ensure=True)
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn(f'rev = "{rev}"', text)
+            self.assertNotIn("path =", text.split("[patch.crates-io]", 1)[1])
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_repo_only_name_keeps_the_clone_package_patch(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            clone = root / "clone-cw-multi-test"
+            clone_rev = self._commit(
+                clone,
+                '[dependencies]\ncosmos-sdk-proto = { path = "../cosmos-rust/cosmos-sdk-proto" }\n',
+            )
+            fork = root / "cw-multi-test-fork"
+            fork_rev = self._commit(fork, '[dependencies]\nserde = "1"\n')
+            subprocess.run(
+                ["git", "-C", str(fork), "update-ref", "refs/remotes/origin/zk-mvp", fork_rev],
+                check=True,
+            )
+            ws = root / "cw-orchestrator"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                "\n".join([
+                    "[patch.crates-io]",
+                    'abstract-cw-multi-test = { path = "../cw-multi-test-fork" }',
+                    'cw-multi-test = { path = "../clone-cw-multi-test" }',
+                    "",
+                ])
+            )
+            crates = {
+                "cw-multi-test": {
+                    "repo_only": True,
+                    "local": "cw-multi-test",
+                    "git": {"url": "https://github.com/permissionlessweb/cw-multi-test"},
+                },
+                "clone-cw-multi-test": _crate(
+                    "3.0.1", "clone-cw-multi-test",
+                    "https://github.com/permissionlessweb/cw-multi-test-fork", clone_rev,
+                    package="cw-multi-test", fork="3.0.0-rc",
+                    aliases=["clone-cw-multi-test"],
+                ),
+                "cw-multi-test_zk": _crate(
+                    "3.0.0-rc", "cw-multi-test-fork",
+                    "https://github.com/permissionlessweb/cw-multi-test-fork", fork_rev,
+                    package="abstract-cw-multi-test",
+                    aliases=["cw-multi-test"],
+                ),
+            }
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                dep_switch.rewrite_patches(
+                    "cw-orchestrator/Cargo.toml", crates, "git-rev", ensure=True,
+                )
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn('cw-multi-test = { path = "../clone-cw-multi-test" }', text)
+            self.assertIn(f'rev = "{fork_rev}"', text)
+            self.assertNotIn(clone_rev, text)
+            self.assertEqual(text.count("abstract-cw-multi-test"), 1)
+            self.assertIn("keep patch cw-multi-test", buf.getvalue())
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_release_and_local_round_trip_keeps_a_local_crate(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            published = root / "cw-plus"
+            rev = self._commit(published, '[dependencies]\nserde = "1"\n')
+            subprocess.run(
+                ["git", "-C", str(published), "update-ref", "refs/remotes/origin/main", rev],
+                check=True,
+            )
+            local_only = root / "local-only"
+            local_only.mkdir()
+            (local_only / "Cargo.toml").write_text(
+                '[package]\nname = "local-only"\nversion = "1.0.0"\n'
+            )
+            held = root / "ics23"
+            held_rev = self._commit(
+                held,
+                '[dependencies]\npbjson = { path = "../pbjson/pbjson" }\n',
+            )
+            subprocess.run(
+                ["git", "-C", str(held), "update-ref", "refs/remotes/origin/main", held_rev],
+                check=True,
+            )
+            ws = root / "dao-contracts"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                "\n".join([
+                    "[workspace]",
+                    "members = []",
+                    "",
+                    "[workspace.dependencies]",
+                    'cw1-whitelist = { version = "3.0.0" }',
+                    'ics23 = { path = "../ics23" }',
+                    'local-only = { path = "../local-only" }',
+                    "",
+                    "[patch.crates-io]",
+                    'cw1-whitelist = { path = "../cw-plus" }',
+                    'ics23 = { path = "../ics23" }',
+                    'local-only = { path = "../local-only" }',
+                    'manual-crate = { path = "../not-in-matrix" }',
+                    "",
+                ])
+            )
+            crates = {
+                "cw1-whitelist": _crate(
+                    "3.0.0", "cw-plus",
+                    "https://github.com/permissionlessweb/cw-plus", rev,
+                ),
+                "ics23": _crate(
+                    "0.12.0", "ics23",
+                    "https://github.com/permissionlessweb/ics23", held_rev,
+                ),
+                "local-only": _crate(
+                    "1.0.0", "local-only", "https://github.com/permissionlessweb/local-only",
+                ),
+            }
+            with redirect_stdout(io.StringIO()):
+                dep_switch.rewrite_patches(
+                    "dao-contracts/Cargo.toml", crates, "git-rev", ensure=True,
+                )
+                dep_switch.rewrite_ws_deps(
+                    "dao-contracts/Cargo.toml", crates, "registry",
+                    require_source="git-rev",
+                )
+            released = (ws / "Cargo.toml").read_text()
+            self.assertIn(f'rev = "{rev}"', released)
+            self.assertNotIn(held_rev, released)
+            self.assertIn('ics23 = { path = "../ics23" }', released)
+            self.assertIn('local-only = { path = "../local-only" }', released)
+            self.assertIn('manual-crate = { path = "../not-in-matrix" }', released)
+            self.assertIn('version = "3.0.0"', released)
+            self.assertNotIn('local-only = { version', released)
+            with redirect_stdout(io.StringIO()):
+                dep_switch.rewrite_patches(
+                    "dao-contracts/Cargo.toml", crates, "local", ensure=True,
+                )
+                dep_switch.rewrite_ws_deps(
+                    "dao-contracts/Cargo.toml", crates, "registry",
+                    require_source="local",
+                )
+            local = (ws / "Cargo.toml").read_text()
+            self.assertIn('cw1-whitelist = { path = "../cw-plus" }', local)
+            self.assertIn('ics23 = { path = "../ics23" }', local)
+            self.assertIn('local-only = { path = "../local-only" }', local)
+            self.assertIn('manual-crate = { path = "../not-in-matrix" }', local)
+            self.assertIn('version = "3.0.0"', local)
+            self.assertNotIn("rev =", local)
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_dependencies_are_switched_before_their_parents(self):
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old = dep_switch.REPO_ROOT
+        dep_switch.REPO_ROOT = root
+        try:
+            leaf = root / "cw-storage-plus"
+            parent = root / "dao-contracts"
+            leaf.mkdir()
+            parent.mkdir()
+            (leaf / "Cargo.toml").write_text("[workspace]\nmembers = []\n")
+            (parent / "Cargo.toml").write_text(
+                '[patch.crates-io]\ncw-storage-plus = { path = "../cw-storage-plus" }\n'
+            )
+            projects = [
+                dep_common.ProjectRoot("dao-contracts", "dao-contracts", parent / "Cargo.toml", True, [], False),
+                dep_common.ProjectRoot("cw-storage-plus", "cw-storage-plus", leaf / "Cargo.toml", True, [], False),
+            ]
+            ordered = dep_switch.order_projects_by_nest(projects)
+            self.assertEqual([p.rel_path for p in ordered], ["cw-storage-plus", "dao-contracts"])
+        finally:
+            dep_switch.REPO_ROOT = old
+            tmp.cleanup()
 
 
 if __name__ == "__main__":

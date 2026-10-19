@@ -12,7 +12,7 @@
 //!   gen-api --help
 
 use clap::Parser;
-use gen_tools::config::{build_context, ProjectConfigFile, ProjectOverrides};
+use gen_tools::config::{ProjectConfigFile, ProjectOverrides, build_context};
 use gen_tools::pipeline::Pipeline;
 use std::path::{Path, PathBuf};
 
@@ -179,11 +179,18 @@ fn main() -> anyhow::Result<()> {
                 // Check for failures
                 let failures: Vec<_> = results.iter().filter(|r| r.is_err()).collect();
                 if !failures.is_empty() {
-                    eprintln!("  warning: {} step(s) failed for '{}'", failures.len(), entry.name);
+                    eprintln!(
+                        "  warning: {} step(s) failed for '{}'",
+                        failures.len(),
+                        entry.name
+                    );
                 }
             }
             Err(e) => {
-                eprintln!("  error: failed to build context for '{}': {}", entry.name, e);
+                eprintln!(
+                    "  error: failed to build context for '{}': {}",
+                    entry.name, e
+                );
             }
         }
     }

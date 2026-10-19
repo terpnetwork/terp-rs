@@ -169,10 +169,7 @@ pub struct ModeChange {
 /// For each crate in the snapshot, updates the matrix entry's mode and source
 /// to match the current workspace state. This effectively "freezes" the current
 /// state as the new desired baseline.
-pub fn write_baseline(
-    matrix_path: &Path,
-    snapshot: &DependencySnapshot,
-) -> anyhow::Result<()> {
+pub fn write_baseline(matrix_path: &Path, snapshot: &DependencySnapshot) -> anyhow::Result<()> {
     // Read current matrix
     let content = std::fs::read_to_string(matrix_path)?;
     let mut toml_value: toml::Value = toml::from_str(&content)?;
@@ -190,10 +187,8 @@ pub fn write_baseline(
                 // Update based on mode
                 match entry.mode.as_str() {
                     "stable" => {
-                        crate_table.insert(
-                            "stable".into(),
-                            toml::Value::String(entry.source.clone()),
-                        );
+                        crate_table
+                            .insert("stable".into(), toml::Value::String(entry.source.clone()));
                     }
                     "local" | "zk_local" => {
                         crate_table.insert(
@@ -228,14 +223,8 @@ pub fn write_baseline(
                         .iter()
                         .map(|f| toml::Value::String(f.clone()))
                         .collect();
-                    features_map.insert(
-                        ".".into(),
-                        toml::Value::Array(features_val),
-                    );
-                    crate_table.insert(
-                        "features".into(),
-                        toml::Value::Table(features_map),
-                    );
+                    features_map.insert(".".into(), toml::Value::Array(features_val));
+                    crate_table.insert("features".into(), toml::Value::Table(features_map));
                 }
             }
         }

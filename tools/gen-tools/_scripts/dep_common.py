@@ -636,6 +636,64 @@ def drop_unreferenced_git_patches(text: str, referenced_urls: set) -> tuple:
     return "\n".join(result), dropped
 
 
+def manifest_edge_class(text: str, cargo_rel: str) -> tuple:
+    """Classify cross-repo edges in one manifest.
+
+    Returns ``(kind, detail)`` where kind is ``registry``, ``self-pinned``,
+    or ``escaping``. ``[patch]`` tables and dev-dependencies are ignored:
+    Cargo does not apply a dependency's own patch table, and it does not
+    resolve that dependency's dev-dependencies. A path that stays inside
+    the same git checkout is internal. A path that leaves the checkout, or
+    a git edge without a full rev, cannot be corrected by a parent
+    ``[patch.crates-io]``. A git edge with a full rev resolves on its own,
+    but it is not the version-line tree this switch publishes.
+    """
+    section = ""
+    kind = "registry"
+    detail = ""
+    rank = {"registry": 0, "self-pinned": 1, "escaping": 2}
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            section = stripped[1:-1].strip()
+            continue
+        if not _resolved_dep_section(section) or not stripped or stripped.startswith("#"):
+            continue
+        path_m = re.search(r'\bpath\s*=\s*"([^"]*)"', stripped)
+        if path_m and _path_leaves_repo(cargo_rel, path_m.group(1)):
+            return "escaping", f"{cargo_rel}: path = \"{path_m.group(1)}\""
+        if re.search(r'\bgit\s*=\s*"', stripped):
+            pinned = re.search(
+                r'\b(?:rev|commit)\s*=\s*"([0-9a-fA-F]{40})"', stripped
+            )
+            if pinned:
+                if rank[kind] < rank["self-pinned"]:
+                    kind = "self-pinned"
+                    detail = cargo_rel
+            else:
+                return "escaping", f"{cargo_rel}: git edge is not a full rev"
+    return kind, detail
+
+
+def _resolved_dep_section(section: str) -> bool:
+    if not section or section.startswith("patch"):
+        return False
+    leaf = section.split(".")[-1].strip().strip("'\"")
+    return leaf in ("dependencies", "build-dependencies")
+
+
+def _path_leaves_repo(cargo_rel: str, rel: str) -> bool:
+    parts = []
+    for part in (Path(cargo_rel).parent / rel).parts:
+        if part == "..":
+            if not parts:
+                return True
+            parts.pop()
+        elif part != ".":
+            parts.append(part)
+    return False
+
+
 def git_rev(info: dict, mode: str = "git") -> Optional[str]:
     """Full commit for a reproducible git patch.
 

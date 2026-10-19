@@ -159,9 +159,13 @@ entry. This is critical — without an explicit branch, Cargo defaults to the
 repo's default branch, which may not be your working branch.
 
 `patch-git` does not write that branch. It writes `rev` from `git.rev` or
-`git.commit`, and only when the value is a full 40-hex SHA. A missing or
-short rev is skipped with a warning. That pin is what makes a publish
-reproducible. The branch field stays in the matrix for `git` / `dev` mode.
+`git.commit` when that commit is on a remote and every cross-repo edge in it
+is a crate version or a git dependency with a full rev. A missing rev, a short
+rev, a branch, a tag, or a path that leaves the checkout keeps the current
+patch line and does not rewrite that dependency onto a crate version.
+`patch-local` puts the local path back. Version lines stay through both
+switches. A crate that only exists as a local checkout stays on that path.
+The branch field stays in the matrix for `git` / `dev` mode.
 
 The matrix branches must match the actual branches you push to. Use
 `dep-switch.py status` to verify, and check the matrix against local branches:

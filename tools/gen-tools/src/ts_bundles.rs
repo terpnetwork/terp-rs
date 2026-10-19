@@ -8,7 +8,7 @@
 //!   *.filters.ts        — Websocket subscription filter formula tables
 //!   *.argus.ts          — Argus indexer formula definitions
 
-use crate::config::{ts_variant_dir, GenerationContext};
+use crate::config::{GenerationContext, ts_variant_dir};
 use crate::resolver::SourceResolver;
 use crate::ts_codegen;
 use crate::{GenerationResult, Generator};
@@ -453,11 +453,7 @@ fn extract_variant_names(schema: &Value) -> Option<Vec<String>> {
                 .map(|s| s.to_string())
         })
         .collect();
-    if names.is_empty() {
-        None
-    } else {
-        Some(names)
-    }
+    if names.is_empty() { None } else { Some(names) }
 }
 
 fn pascal_case(s: &str) -> String {

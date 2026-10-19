@@ -3,7 +3,7 @@
 //! Converts CosmWasm JSON schema types into .proto definitions,
 //! enabling cross-language protobuf serialization of contract types.
 
-use crate::config::{contract_api_dir, GenerationContext};
+use crate::config::{GenerationContext, contract_api_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde_json::Value;
@@ -110,19 +110,23 @@ struct ProtoType {
 
 impl ProtoBuilder {
     fn emit_root(&mut self, schema: &Value) {
-        let merged = ["instantiate", "execute", "query", "migrate", "sudo", "responses"]
-            .iter()
-            .any(|key| schema.get(*key).is_some());
+        let merged = [
+            "instantiate",
+            "execute",
+            "query",
+            "migrate",
+            "sudo",
+            "responses",
+        ]
+        .iter()
+        .any(|key| schema.get(*key).is_some());
         if merged {
             for key in ["instantiate", "execute", "query", "migrate", "sudo"] {
                 if let Some(msg) = schema.get(key) {
                     if msg.is_null() {
                         continue;
                     }
-                    let name = msg
-                        .get("title")
-                        .and_then(|t| t.as_str())
-                        .unwrap_or(key);
+                    let name = msg.get("title").and_then(|t| t.as_str()).unwrap_or(key);
                     self.ensure(name, msg);
                 }
             }
@@ -239,11 +243,7 @@ impl ProtoBuilder {
                 } else {
                     ""
                 };
-                out.push_str(&format!(
-                    "  {label}{} {field} = {};\n",
-                    ty.ty,
-                    idx + 1
-                ));
+                out.push_str(&format!("  {label}{} {field} = {};\n", ty.ty, idx + 1));
             }
         } else if let Some(scalar) = scalar_newtype(schema) {
             out.push_str(&format!("  {scalar} value = 1;\n"));
@@ -322,19 +322,19 @@ impl ProtoBuilder {
         }
         if let Some(types) = schema.get("type").and_then(|v| v.as_array()) {
             if let Some(t) = types
-            .iter()
-            .find_map(|t| t.as_str().filter(|s| *s != "null"))
-        {
-            let mut single = schema.clone();
-            if let Some(obj) = single.as_object_mut() {
-                obj.insert("type".to_string(), Value::String(t.to_string()));
+                .iter()
+                .find_map(|t| t.as_str().filter(|s| *s != "null"))
+            {
+                let mut single = schema.clone();
+                if let Some(obj) = single.as_object_mut() {
+                    obj.insert("type".to_string(), Value::String(t.to_string()));
+                }
+                let mut ty = self.field_type(&single, parent, field);
+                if types.iter().any(|t| t.as_str() == Some("null")) && !ty.repeated {
+                    ty.optional = true;
+                }
+                return ty;
             }
-            let mut ty = self.field_type(&single, parent, field);
-            if types.iter().any(|t| t.as_str() == Some("null")) && !ty.repeated {
-                ty.optional = true;
-            }
-            return ty;
-        }
         }
 
         match schema.get("type").and_then(|v| v.as_str()) {
@@ -551,19 +551,27 @@ fn unit_variant_name(schema: &Value) -> Option<String> {
 }
 
 fn scalar_newtype(schema: &Value) -> Option<&'static str> {
-    if schema.get("enum").and_then(|v| v.as_array()).is_some_and(|v| v.len() > 1) {
+    if schema
+        .get("enum")
+        .and_then(|v| v.as_array())
+        .is_some_and(|v| v.len() > 1)
+    {
         return None;
     }
-    if schema.get("oneOf").is_some() || schema.get("anyOf").is_some() || schema.get("properties").is_some()
+    if schema.get("oneOf").is_some()
+        || schema.get("anyOf").is_some()
+        || schema.get("properties").is_some()
     {
         return None;
     }
     match schema.get("type").and_then(|v| v.as_str()) {
-        Some("string") => Some(if schema.get("format").and_then(|v| v.as_str()) == Some("byte") {
-            "bytes"
-        } else {
-            "string"
-        }),
+        Some("string") => Some(
+            if schema.get("format").and_then(|v| v.as_str()) == Some("byte") {
+                "bytes"
+            } else {
+                "string"
+            },
+        ),
         Some("integer") => Some(match schema.get("format").and_then(|v| v.as_str()) {
             Some("int64" | "int32") => "int64",
             Some("uint32") => "uint32",
@@ -597,10 +605,7 @@ fn enum_body(name: &str, schema: &Value) -> Option<String> {
     used.insert(format!("{prefix}_UNSPECIFIED"));
     for (idx, variant) in variants.iter().enumerate() {
         let raw = variant.as_str().unwrap_or("UNKNOWN");
-        let value = unique_ident(
-            &format!("{prefix}_{}", sanitize_enum_value(raw)),
-            &mut used,
-        );
+        let value = unique_ident(&format!("{prefix}_{}", sanitize_enum_value(raw)), &mut used);
         out.push_str(&format!("  {value} = {};\n", idx + 1));
     }
     out.push_str("}\n");
@@ -690,12 +695,32 @@ fn sanitize_field_name(raw: &str) -> String {
         out
     };
     const RESERVED: &[&str] = &[
-        "syntax", "import", "package", "option", "message", "enum", "service", "rpc", "repeated",
-        "optional", "required", "oneof", "map", "reserved", "returns", "stream", "to", "true",
-        "false", "public", "weak", "extensions", "extend", "group",
+        "syntax",
+        "import",
+        "package",
+        "option",
+        "message",
+        "enum",
+        "service",
+        "rpc",
+        "repeated",
+        "optional",
+        "required",
+        "oneof",
+        "map",
+        "reserved",
+        "returns",
+        "stream",
+        "to",
+        "true",
+        "false",
+        "public",
+        "weak",
+        "extensions",
+        "extend",
+        "group",
     ];
-    if RESERVED.contains(&out.as_str()) || out.chars().next().is_some_and(|c| c.is_ascii_digit())
-    {
+    if RESERVED.contains(&out.as_str()) || out.chars().next().is_some_and(|c| c.is_ascii_digit()) {
         format!("{out}_field")
     } else {
         out
@@ -781,7 +806,13 @@ fn vendor_chain_protos(proto_out: &Path, workspace_root: &Path) -> anyhow::Resul
 
     if let Some(chain_proto) = find_ancestor_file(workspace_root, &["proto", "terp", "drip", "v1"])
         .as_deref()
-        .and_then(|drip_v1| drip_v1.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+        .and_then(|drip_v1| {
+            drip_v1
+                .parent()?
+                .parent()?
+                .parent()
+                .map(|p| p.to_path_buf())
+        })
     {
         for module in ["terp", "osmosis", "gaia"] {
             let src = chain_proto.join(module);
@@ -957,12 +988,18 @@ mod tests {
         assert!(proto.contains("message InstantiateMsg"), "{proto}");
         assert!(proto.contains("message PasskeyRegistration"), "{proto}");
         assert!(proto.contains("message Binary"), "{proto}");
-        assert!(proto.contains("PasskeyRegistration registration = "), "{proto}");
+        assert!(
+            proto.contains("PasskeyRegistration registration = "),
+            "{proto}"
+        );
         assert!(proto.contains("optional string owner = "), "{proto}");
         assert!(proto.contains("message ExecuteMsg"), "{proto}");
         assert!(proto.contains("Action update_ownership = "), "{proto}");
         assert!(proto.contains("message Action"), "{proto}");
-        assert!(proto.contains("ActionTransferOwnership transfer_ownership = "), "{proto}");
+        assert!(
+            proto.contains("ActionTransferOwnership transfer_ownership = "),
+            "{proto}"
+        );
         assert!(proto.contains("accept_ownership = "), "{proto}");
         assert!(proto.contains("message Expiration"), "{proto}");
         assert!(proto.contains("uint64 at_height = "), "{proto}");

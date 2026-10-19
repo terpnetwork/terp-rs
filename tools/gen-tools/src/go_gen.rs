@@ -13,7 +13,7 @@
 //! migrate, sudo) and all definitions from a merged CosmWasm schema JSON,
 //! then generates Go code annotated with json tags.
 
-use crate::config::{contract_api_dir, GenerationContext};
+use crate::config::{GenerationContext, contract_api_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use std::collections::{HashMap, HashSet};
@@ -48,7 +48,8 @@ impl Generator for GoGenGenerator {
         for (contract_name, schemas) in &groups {
             for (_stem, merged) in schemas {
                 let _go_name = to_pascal_case(contract_name);
-                let pkg_name = contract_name.to_lowercase()
+                let pkg_name = contract_name
+                    .to_lowercase()
                     .replace('-', "")
                     .replace('.', "")
                     .replace('_', "");
@@ -66,7 +67,8 @@ impl Generator for GoGenGenerator {
                         if msg_val.is_null() {
                             continue;
                         }
-                        let title = msg_val.get("title")
+                        let title = msg_val
+                            .get("title")
                             .and_then(|v| v.as_str())
                             .unwrap_or(key)
                             .to_string();
@@ -80,7 +82,8 @@ impl Generator for GoGenGenerator {
                 let mut response_types: Vec<(String, serde_json::Value)> = Vec::new();
                 if let Some(responses) = merged.get("responses").and_then(|v| v.as_object()) {
                     for (qname, resp_schema) in responses {
-                        let title = resp_schema.get("title")
+                        let title = resp_schema
+                            .get("title")
                             .and_then(|v| v.as_str())
                             .unwrap_or(qname)
                             .to_string();
@@ -89,10 +92,9 @@ impl Generator for GoGenGenerator {
                     }
                 }
 
-// Skip writing if no types actually generated — avoids stub files
-                let has_content = !all_defs.is_empty()
-                    || !message_types.is_empty()
-                    || !response_types.is_empty();
+                // Skip writing if no types actually generated — avoids stub files
+                let has_content =
+                    !all_defs.is_empty() || !message_types.is_empty() || !response_types.is_empty();
                 if !has_content {
                     log::info!("[go] Skipping {:?} — no types in output", contract_name);
                     continue;
@@ -105,21 +107,21 @@ impl Generator for GoGenGenerator {
                     let schema = &all_defs[name];
                     let go_type = def_to_go_type(name, schema, &all_defs);
                     output.push_str(&go_type);
-output.push('\n');
+                    output.push('\n');
                 }
 
                 // Generate message types — these are oneOf enums, rendered as struct
                 for (title, schema) in &message_types {
                     let go_type = def_to_go_type(title, schema, &all_defs);
                     output.push_str(&go_type);
-output.push('\n');
+                    output.push('\n');
                 }
 
                 // Generate response types
                 for (title, schema) in &response_types {
                     let go_type = def_to_go_type(title, schema, &all_defs);
                     output.push_str(&go_type);
-output.push('\n');
+                    output.push('\n');
                 }
 
                 // Write file
@@ -129,8 +131,13 @@ output.push('\n');
                 let go_path = contract_dir.join(&go_file_name);
                 std::fs::write(&go_path, &output)?;
                 total_files += 1;
-                log::info!("[go] Wrote {:?} ({} defs + {} msgs + {} responses)",
-                    go_path, all_defs.len(), message_types.len(), response_types.len());
+                log::info!(
+                    "[go] Wrote {:?} ({} defs + {} msgs + {} responses)",
+                    go_path,
+                    all_defs.len(),
+                    message_types.len(),
+                    response_types.len()
+                );
             }
         }
 
@@ -161,8 +168,11 @@ fn collect_defs(schema: &serde_json::Value, all_defs: &mut HashMap<String, serde
 
 /// Convert a JSON Schema definition (or message type) to a Go type definition.
 /// Returns the complete Go type string including type declaration.
-fn def_to_go_type(name: &str, schema: &serde_json::Value,
-                  defs: &HashMap<String, serde_json::Value>) -> String {
+fn def_to_go_type(
+    name: &str,
+    schema: &serde_json::Value,
+    defs: &HashMap<String, serde_json::Value>,
+) -> String {
     let go_name = replace_acronyms(to_pascal_case(name));
 
     // oneOf -> rendered as struct with nullable pointer fields (enum pattern)
@@ -174,7 +184,8 @@ fn def_to_go_type(name: &str, schema: &serde_json::Value,
         Some("object") => {
             let mut out = format!("type {} struct {{\n", go_name);
             if let Some(props) = schema.get("properties").and_then(|v| v.as_object()) {
-                let required: HashSet<&str> = schema.get("required")
+                let required: HashSet<&str> = schema
+                    .get("required")
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect())
                     .unwrap_or_default();
@@ -213,26 +224,33 @@ fn def_to_go_type(name: &str, schema: &serde_json::Value,
             }
         }
         Some("array") => {
-            let inner = schema.get("items")
+            let inner = schema
+                .get("items")
                 .map(|i| resolve_go_type(i, defs, name, "items"))
                 .unwrap_or_else(|| "interface{}".to_string());
             format!("type {} = []{}\n", go_name, inner)
         }
         Some("integer") => {
-            let fmt = schema.get("format").and_then(|v| v.as_str()).unwrap_or("uint64");
+            let fmt = schema
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or("uint64");
             format!("type {} = {}\n", go_name, map_int_format(fmt))
         }
         _ => {
             // anyOf/type-less -> interface{}
-format!("type {} interface{}\n", go_name, "{ }")
+            format!("type {} interface{}\n", go_name, "{ }")
         }
     }
 }
 
 /// oneOf -> Go struct with nullable pointer fields (CosmWasm enum pattern).
-fn one_of_to_struct(name: &str, variants: &[serde_json::Value],
-                    parent_schema: &serde_json::Value,
-                    defs: &HashMap<String, serde_json::Value>) -> String {
+fn one_of_to_struct(
+    name: &str,
+    variants: &[serde_json::Value],
+    parent_schema: &serde_json::Value,
+    defs: &HashMap<String, serde_json::Value>,
+) -> String {
     let _docs = parent_schema
         .get("title")
         .and_then(|v| v.as_str())
@@ -242,7 +260,9 @@ fn one_of_to_struct(name: &str, variants: &[serde_json::Value],
     let mut out = format!("type {} struct {{\n", name);
     for (i, variant) in variants.iter().enumerate() {
         // Each variant is either a $ref or inline object with single property
-        let (field_name, field_type) = if let Some(ref_path) = variant.get("$ref").and_then(|v| v.as_str()) {
+        let (field_name, field_type) = if let Some(ref_path) =
+            variant.get("$ref").and_then(|v| v.as_str())
+        {
             let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
             let rt = replace_acronyms(to_pascal_case(ref_name));
             // The wrapper field is the variant's "title" or "wrapper"
@@ -254,9 +274,9 @@ fn one_of_to_struct(name: &str, variants: &[serde_json::Value],
                 (fn_name.clone(), ft)
             } else {
                 // inline struct - generate name from position
-                let inline_name = format!("{}{}", name, to_pascal_case( &format!("Variant{}", i)));
+                let inline_name = format!("{}{}", name, to_pascal_case(&format!("Variant{}", i)));
                 let ft = def_to_go_type(&inline_name, variant, defs);
-                out.insert_str(out.len()-3, &format!(";\n{}", ft.trim()));
+                out.insert_str(out.len() - 3, &format!(";\n{}", ft.trim()));
                 (format!("variant_{}", i), inline_name)
             }
         } else {
@@ -266,8 +286,13 @@ fn one_of_to_struct(name: &str, variants: &[serde_json::Value],
         // In cosmwasm enums in Go, each variant is a nullable pointer
         // with omitempty for the json tag where inner fields live
         let ptr = if field_type == "interface{}" { "" } else { "*" };
-        out.push_str(&format!("\t{}{} {} `json:\"{},omitempty\"`\n",
-            ptr, to_pascal_case(&field_name), field_type, field_name));
+        out.push_str(&format!(
+            "\t{}{} {} `json:\"{},omitempty\"`\n",
+            ptr,
+            to_pascal_case(&field_name),
+            field_type,
+            field_name
+        ));
     }
     out.push_str("}\n");
     out
@@ -275,10 +300,12 @@ fn one_of_to_struct(name: &str, variants: &[serde_json::Value],
 
 /// Resolve a JSON Schema to a Go type name, handling $ref, oneOf, allOf,
 /// anyOf (nullable), arrays, primitives, and inline objects.
-fn resolve_go_type(schema: &serde_json::Value,
-                   defs: &HashMap<String, serde_json::Value>,
-                   parent_name: &str,
-                   field_name: &str) -> String {
+fn resolve_go_type(
+    schema: &serde_json::Value,
+    defs: &HashMap<String, serde_json::Value>,
+    parent_name: &str,
+    field_name: &str,
+) -> String {
     // 1) Unwrap allOf wrapping — single-$ref allOf: [{$ref: "..."}]
     //    This is the nullability pattern schemars uses for option<addr> etc.
     if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array()) {
@@ -293,7 +320,8 @@ fn resolve_go_type(schema: &serde_json::Value,
     // 2) Unwrap anyOf with null (nullable pattern: anyOf: [{$ref: ...}, {type: "null"}])
     if let Some(anyof) = schema.get("anyOf").and_then(|v| v.as_array()) {
         // Filter out null variants
-        let non_null: Vec<&serde_json::Value> = anyof.iter()
+        let non_null: Vec<&serde_json::Value> = anyof
+            .iter()
             .filter(|v| v.get("type").and_then(|t| t.as_str()) != Some("null"))
             .collect();
         if non_null.len() == 1 {
@@ -311,10 +339,16 @@ fn resolve_go_type(schema: &serde_json::Value,
                 if type_str != "null" {
                     // Create a synthetic schema with just this type
                     let mut single = serde_json::Map::new();
-                    single.insert("type".to_string(), serde_json::Value::String(type_str.to_string()));
+                    single.insert(
+                        "type".to_string(),
+                        serde_json::Value::String(type_str.to_string()),
+                    );
                     // Preserve format for integers
                     if let Some(fmt) = schema.get("format").and_then(|v| v.as_str()) {
-                        single.insert("format".to_string(), serde_json::Value::String(fmt.to_string()));
+                        single.insert(
+                            "format".to_string(),
+                            serde_json::Value::String(fmt.to_string()),
+                        );
                     }
                     let syn = serde_json::Value::Object(single);
                     return resolve_go_type(&syn, defs, parent_name, field_name);
@@ -347,13 +381,17 @@ fn resolve_go_type(schema: &serde_json::Value,
             "string".to_string()
         }
         Some("integer") => {
-            let fmt = schema.get("format").and_then(|v| v.as_str()).unwrap_or("uint64");
+            let fmt = schema
+                .get("format")
+                .and_then(|v| v.as_str())
+                .unwrap_or("uint64");
             map_int_format(fmt)
         }
         Some("number") => "string".to_string(),
         Some("boolean") => "bool".to_string(),
         Some("array") => {
-            let inner = schema.get("items")
+            let inner = schema
+                .get("items")
                 .map(|i| resolve_go_type(i, defs, parent_name, field_name))
                 .unwrap_or_else(|| "interface{}".to_string());
             format!("[]{}", inner)
@@ -362,17 +400,29 @@ fn resolve_go_type(schema: &serde_json::Value,
         _ => {
             // Inline object (no explicit type but has properties)
             if let Some(props) = schema.get("properties").and_then(|v| v.as_object()) {
-                let struct_name = format!("{}{}", to_pascal_case(parent_name), to_pascal_case(field_name));
+                let struct_name = format!(
+                    "{}{}",
+                    to_pascal_case(parent_name),
+                    to_pascal_case(field_name)
+                );
                 let mut out = format!("type {} struct {{\n", struct_name);
-                let required: HashSet<&str> = schema.get("required")
+                let required: HashSet<&str> = schema
+                    .get("required")
                     .and_then(|v| v.as_array())
                     .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect())
                     .unwrap_or_default();
                 for (field_name, fv) in props {
                     let pascal = to_pascal_case(field_name);
                     let ft = resolve_go_type(fv, defs, &struct_name, field_name);
-                    let omit = if !required.contains(field_name.as_str()) { ",omitempty" } else { "" };
-                    out.push_str(&format!("\t{} {} `json:\"{}{}\"`\n", pascal, ft, field_name, omit));
+                    let omit = if !required.contains(field_name.as_str()) {
+                        ",omitempty"
+                    } else {
+                        ""
+                    };
+                    out.push_str(&format!(
+                        "\t{} {} `json:\"{}{}\"`\n",
+                        pascal, ft, field_name, omit
+                    ));
                 }
                 out.push_str("}\n");
                 return struct_name;
@@ -403,23 +453,29 @@ fn map_custom_type(name: &str) -> String {
         "Order" => "string",
         "VoteOption" => "voteOption",
         "ReplyOn" => "replyOn",
-        "Coin" => "Coin",           // reference to defined struct
+        "Coin" => "Coin", // reference to defined struct
         "CoinInfo" => "CoinInfo",
         "TokenInfo" => "TokenInfo",
         "" => "interface{}",
         _ => name, // pass through as type reference
-    }.to_string()
+    }
+    .to_string()
 }
 
 /// Format integer format strings.
 fn map_int_format(fmt: &str) -> String {
     match fmt {
-        "uint8" => "uint8", "int8" => "int8",
-        "uint16" => "uint16", "int16" => "int16",
-        "uint32" => "uint32", "int32" => "int32",
-        "uint64" => "uint64", "int64" => "int64",
+        "uint8" => "uint8",
+        "int8" => "int8",
+        "uint16" => "uint16",
+        "int16" => "int16",
+        "uint32" => "uint32",
+        "int32" => "int32",
+        "uint64" => "uint64",
+        "int64" => "int64",
         _ => "uint64",
-    }.to_string()
+    }
+    .to_string()
 }
 
 fn to_pascal_case(s: &str) -> String {
@@ -466,7 +522,7 @@ fn replace_word(s: &mut String, from: &str, to: &str) {
         match next_char {
             Some(c) if c.is_ascii_lowercase() => {}
             _ => {
-                s.replace_range(start+pos..end, to);
+                s.replace_range(start + pos..end, to);
             }
         }
         start = end;

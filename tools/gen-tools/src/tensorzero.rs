@@ -268,9 +268,8 @@ impl Generator for TensorZeroGenerator {
                 total_files += 1;
 
                 // system.minijinja
-                let system_content = build_system_prompt(
-                    &func_name, type_name, description, &tags, &heuristics,
-                );
+                let system_content =
+                    build_system_prompt(&func_name, type_name, description, &tags, &heuristics);
                 std::fs::write(func_dir.join("system.minijinja"), &system_content)?;
                 total_files += 1;
 
@@ -289,11 +288,7 @@ impl Generator for TensorZeroGenerator {
                     args_schema: format!("functions/{func_name}/args_schema.json"),
                 });
 
-                log::info!(
-                    "[tz] Generated function: {} ({})",
-                    func_name,
-                    description
-                );
+                log::info!("[tz] Generated function: {} ({})", func_name, description);
             }
         }
 
@@ -381,7 +376,10 @@ impl Generator for TensorZeroGenerator {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /// Convert a raw JSON schema value into an args_schema.json for TZ.
-fn schema_to_args_schema(schema: &serde_json::Value, heuristics: &TzHeuristics) -> serde_json::Value {
+fn schema_to_args_schema(
+    schema: &serde_json::Value,
+    heuristics: &TzHeuristics,
+) -> serde_json::Value {
     let mut properties = serde_json::Map::new();
     if let Some(props) = schema.get("properties").and_then(|p| p.as_object()) {
         for (key, val) in props {
@@ -506,8 +504,7 @@ fn generate_tensorzero_toml(
     lines.push(format!("[models.{}]", model_name));
     lines.push(format!(
         "routing = {}",
-        serde_json::to_string(&model.routing)
-            .unwrap_or_else(|_| "[\"default\"]".into())
+        serde_json::to_string(&model.routing).unwrap_or_else(|_| "[\"default\"]".into())
     ));
     lines.push(String::new());
 
@@ -516,10 +513,7 @@ fn generate_tensorzero_toml(
         .first()
         .map(|s| s.as_str())
         .unwrap_or("default");
-    lines.push(format!(
-        "[models.{}.providers.{}]",
-        model_name, routing_key
-    ));
+    lines.push(format!("[models.{}.providers.{}]", model_name, routing_key));
     lines.push(format!("type = \"{}\"", model.provider_type));
     if !model.model_name.is_empty() {
         lines.push(format!("model_name = \"{}\"", model.model_name));
@@ -543,10 +537,7 @@ fn generate_tensorzero_toml(
         ));
         lines.push(format!("args_schema = \"{}\"", fc.args_schema));
         lines.push(String::new());
-        lines.push(format!(
-            "[functions.{}.variants.default]",
-            fc.name
-        ));
+        lines.push(format!("[functions.{}.variants.default]", fc.name));
         lines.push(format!("type = \"chat\"",));
         lines.push(format!("model = \"{}\"", model_name));
         lines.push(format!("system_template = \"{}\"", fc.system_schema));
@@ -572,7 +563,8 @@ fn generate_tensorzero_toml(
     lines.push(String::new());
 
     // Datasets
-    lines.push("# ─── Datasets ────────────────────────────────────────────────────────────".into());
+    lines
+        .push("# ─── Datasets ────────────────────────────────────────────────────────────".into());
     lines.push(String::new());
     lines.push("[datasets]".into());
     lines.push(String::new());
@@ -763,7 +755,13 @@ fn parse_episode_md(path: &Path) -> anyhow::Result<Episode> {
             let cmd = line["Tool Call:".len()..].trim().to_string();
             let normalized: String = cmd
                 .chars()
-                .map(|c| if c.is_alphanumeric() || c == '_' { c } else { '_' })
+                .map(|c| {
+                    if c.is_alphanumeric() || c == '_' {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
                 .collect();
             if !tool_calls.contains(&normalized.to_lowercase()) {
                 tool_calls.push(normalized.to_lowercase());

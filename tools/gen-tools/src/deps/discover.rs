@@ -31,12 +31,25 @@ impl ProjectRoot {
 pub fn discover_projects(repo_root: &Path) -> anyhow::Result<Vec<ProjectRoot>> {
     let mut projects = Vec::new();
     let mut seen = HashSet::new();
-    let skip_dirs: HashSet<&str> =
-        [".git", "target", "_devops", "_scripts", ".claude", "node_modules"]
-            .into_iter()
-            .collect();
+    let skip_dirs: HashSet<&str> = [
+        ".git",
+        "target",
+        "_devops",
+        "_scripts",
+        ".claude",
+        "node_modules",
+    ]
+    .into_iter()
+    .collect();
 
-    _discover(repo_root, repo_root, &skip_dirs, &mut seen, &mut projects, 4)?;
+    _discover(
+        repo_root,
+        repo_root,
+        &skip_dirs,
+        &mut seen,
+        &mut projects,
+        4,
+    )?;
     Ok(projects)
 }
 
@@ -153,7 +166,7 @@ fn build_project(repo_root: &Path, cargo_toml: &Path) -> Option<ProjectRoot> {
         .and_then(|w| w.get("members"))
         .is_some();
 
-let member_tomls: Vec<PathBuf> = if is_workspace {
+    let member_tomls: Vec<PathBuf> = if is_workspace {
         data["workspace"]["members"]
             .as_array()
             .map(|arr| {

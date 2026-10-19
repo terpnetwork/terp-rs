@@ -3,7 +3,7 @@
 //! Generates an OpenAPI 3.0 specification from contract schema JSON files,
 //! enabling Swagger UI and code-first API documentation.
 
-use crate::config::{contract_api_dir, GenerationContext};
+use crate::config::{GenerationContext, contract_api_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde::Serialize;
@@ -190,7 +190,9 @@ fn generate_openapi_spec(
                                     "application/json".into(),
                                     MediaType {
                                         schema: SchemaRef {
-                                            ref_path: Some("#/components/schemas/InstantiateMsg".into()),
+                                            ref_path: Some(
+                                                "#/components/schemas/InstantiateMsg".into(),
+                                            ),
                                             type_field: None,
                                             items: None,
                                         },
@@ -281,7 +283,10 @@ fn generate_openapi_spec(
                                     r.insert(
                                         "200".into(),
                                         Response {
-                                            description: format!("{} response", pascal_case(field_name)),
+                                            description: format!(
+                                                "{} response",
+                                                pascal_case(field_name)
+                                            ),
                                             content: Some({
                                                 let mut c = BTreeMap::new();
                                                 c.insert(
@@ -398,9 +403,9 @@ fn schema_value_to_ref(schema: &serde_json::Value) -> SchemaRef {
         Some("array") => SchemaRef {
             ref_path: None,
             type_field: Some("array".into()),
-            items: schema.get("items").map(|items| {
-                Box::new(schema_value_to_ref(items))
-            }),
+            items: schema
+                .get("items")
+                .map(|items| Box::new(schema_value_to_ref(items))),
         },
         _ => SchemaRef {
             ref_path: None,

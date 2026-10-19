@@ -137,6 +137,8 @@ deps-switch mode="local":
     {{dep}} switch {{mode}}
 
 # Version lines stay. One [patch.crates-io] replacement.
+# patch-git writes a published rev. A crate whose rev cannot be fetched stays
+# on its current patch. patch-local puts the local path back.
 # A workspace is required so this does not rewrite the monorepo.
 deps-patch-local workspace:
     {{dep}} switch patch-local --workspace {{workspace}}

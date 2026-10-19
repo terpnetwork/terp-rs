@@ -189,7 +189,10 @@ fn scan_cargo_toml(
 fn extract_features(dep_value: &toml::Value) -> Vec<String> {
     if let toml::Value::Table(tbl) = dep_value {
         if let Some(toml::Value::Array(arr)) = tbl.get("features") {
-            return arr.iter().filter_map(|v| v.as_str().map(String::from)).collect();
+            return arr
+                .iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
         }
     }
     vec![]
@@ -214,9 +217,7 @@ fn detect_mode_str(dep_value: Option<&toml::Value>) -> String {
 }
 
 /// Check for inconsistencies in fork usage.
-pub fn validate_scrape(
-    result: &ScrapeResult,
-) -> Vec<String> {
+pub fn validate_scrape(result: &ScrapeResult) -> Vec<String> {
     let mut issues = Vec::new();
 
     // Group forked deps by package name
@@ -226,13 +227,9 @@ pub fn validate_scrape(
     }
 
     for (pkg, refs) in &by_pkg {
-        let modes: std::collections::HashSet<&str> =
-            refs.iter().map(|r| r.mode.as_str()).collect();
+        let modes: std::collections::HashSet<&str> = refs.iter().map(|r| r.mode.as_str()).collect();
         if modes.len() > 1 {
-            issues.push(format!(
-                "inconsistent mode for '{}': {:?}",
-                pkg, modes
-            ));
+            issues.push(format!("inconsistent mode for '{}': {:?}", pkg, modes));
         }
     }
 

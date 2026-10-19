@@ -1,7 +1,9 @@
 //! Vocs MDX + query-first OpenAPI from cw-schema IDLs.
 //!
-//! Runs `cw-infuser/tools/schema-docs` against **this** project's workspace
-//! so dao-contracts, abstract, cw-infuser, etc. all get the same curation.
+//! Runs `crates/terp-rs/tools/schema-docs` (moved out of the isolated
+//! `crates/cw-infuser` worktree) against **this** project's workspace so
+//! dao-contracts, abstract, and the in-tree infuser contracts all get the
+//! same curation.
 
 use crate::config::GenerationContext;
 use crate::{GenerationResult, Generator};
@@ -56,7 +58,11 @@ impl Generator for VocsDocsGenerator {
             success: true,
             files_generated: 1,
             output_dir: Some(vocs_out.to_string_lossy().to_string()),
-            message: Some(format!("curated {} → {}", ctx.project_name, vocs_out.display())),
+            message: Some(format!(
+                "curated {} → {}",
+                ctx.project_name,
+                vocs_out.display()
+            )),
         })
     }
 }
@@ -72,26 +78,20 @@ fn find_schema_docs_manifest(ctx: &GenerationContext) -> Option<PathBuf> {
     if local.exists() {
         return Some(local);
     }
-    // sibling cw-infuser in the crates/ tree
-    let sibling = ctx
-        .workspace_root
-        .parent()
-        .map(|p| p.join("cw-infuser/tools/schema-docs/Cargo.toml"));
-    if let Some(p) = sibling {
-        if p.exists() {
-            return Some(p);
-        }
-    }
-    // walk up a few levels from gen-tools itself
+    // walk up: prefer terp-rs (in-monorepo), then leftover isolated cw-infuser.
     let mut dir: Option<&Path> = Some(&ctx.workspace_root);
     for _ in 0..6 {
-        let p = dir?.join("cw-infuser/tools/schema-docs/Cargo.toml");
-        if p.exists() {
-            return Some(p);
-        }
-        let p2 = dir?.join("crates/cw-infuser/tools/schema-docs/Cargo.toml");
-        if p2.exists() {
-            return Some(p2);
+        let candidates = [
+            dir?.join("tools/schema-docs/Cargo.toml"),
+            dir?.join("crates/terp-rs/tools/schema-docs/Cargo.toml"),
+            dir?.join("terp-rs/tools/schema-docs/Cargo.toml"),
+            dir?.join("cw-infuser/tools/schema-docs/Cargo.toml"),
+            dir?.join("crates/cw-infuser/tools/schema-docs/Cargo.toml"),
+        ];
+        for p in candidates {
+            if p.exists() {
+                return Some(p);
+            }
         }
         dir = dir?.parent();
     }
