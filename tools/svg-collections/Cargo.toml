@@ -1,11 +1,10 @@
 [package]
 name = "svg-collections"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 publish = false
 description = "Off-chain builders for packed-only (SVP1) cw721-svg collections: Marain orb + Symbient ASCII"
 
-# Own workspace on purpose: keeps the terp-rs root Cargo.toml untouched.
 [workspace]
 
 [dependencies]
