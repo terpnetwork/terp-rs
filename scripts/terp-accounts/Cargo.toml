@@ -1,6 +1,6 @@
 [package]
 name = "terp-account-scripts"
-edition = "2021"
+edition = "2024"
 license = "BSD-3-Clause"
 repository = "https://github.com/terpofficial/terp-accounts"
 version  = { workspace = true }
@@ -11,47 +11,45 @@ name = "deploy"
 path = "src/bin/manual_deploy.rs"
 
 [dependencies]
-ecdsa                       = { version = "0.16.2" }
-k256                        = { version = "0.13.3", default-features = false, features = ["ecdsa"] }
-ripemd                      = { version = "0.1.3", default-features = false }
-# Cryptography & Signing
-sha2                        = { workspace = true }
-
-# CosmWasm & Cosmos Ecosystem
-cosmrs = { path = "../../../cosmos-rust/cosmrs" }
-cosmwasm-crypto             = { workspace = true }
-cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true, features = ["zk"] }
-cw-ownable                  = { workspace = true }
-
-# NFT & Account Contracts
-#dao-testing = { path = "../../dao-contracts/packages/dao-testing" }
-terp-account = { workspace = true, features = ["interface"] }
-terp-auth                   = { workspace = true }
-terp721-account             = { workspace = true, features = ["library", "interface"] }
-terp721-account-manifold    = { workspace = true, features = ["library", "interface"] }
 
 # Abstract & CW-Orchestrator
 abstract-interface                = { workspace = true }
 abstract-std = { workspace = true }
-cw-blob                     = { workspace = true }
-cw-orch                     = { workspace = true, features = ["daemon"] }
 
 # CLI & Utilities
-anyhow                        = { version = "1" }
-clap = { version = "4.0.32", features = ["derive"] }
+anyhow                        = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+
+# CosmWasm & Cosmos Ecosystem
+cosmrs = { workspace = true }
+cosmwasm-crypto             = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 csv                         = { version = "1.2" }
+cw-blob                     = { workspace = true }
+cw-orch                     = { workspace = true, features = ["daemon"] }
+cw-ownable                  = { workspace = true }
 cw721                       = { workspace = true }
 dirs                        = { version = "5.0.1" }
-dotenv                      = { version = "0.15.0" }
-env_logger                  = { version = "0.11.9" }
+dotenv                      = { workspace = true }
+ecdsa                       = { workspace = true }
+env_logger                  = { workspace = true, features = ["default"] }
+k256                        = { workspace = true, features = ["ecdsa"] }
 log                         = { version = "0.4.22" }
+ownership-verifier          = { workspace = true }
 pretty_env_logger           = { version = "0.5.0" }
 reqwest                     = { version = "0.11.9" }
-serde                       = { version = "1.0.140", default-features = false, features = ["derive"] }
+ripemd                      = { workspace = true }
+serde                       = { workspace = true }
 serde_json                  = { workspace = true }
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Cryptography & Signing
+sha2                        = { workspace = true }
 
-ownership-verifier          = { workspace = true }
+# NFT & Account Contracts
+terp-account = { workspace = true, features = ["interface"] }
+terp-auth                   = { workspace = true }
+terp721-account             = { workspace = true, features = ["library", "interface"] }
+terp721-account-manifold    = { workspace = true, features = ["library", "interface"] }
 tokio                       = { version = "1.39.3" }
+
 [dev-dependencies]
