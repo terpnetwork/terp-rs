@@ -6,10 +6,12 @@ Poseidon tags, and the verifying-key id below are the lock. The K=19
 ECDSA circuit remains a design variant at `vk_id` 1.
 
 This file is the registration, anchor, and claim statement. `072f694`
-locks the vk hash and the operator routes. The contract in this commit
-implements the tree. One successful `RegisterHeadstash` on the loopback
-chain used 398371 gas. That number is transaction `gas_used`, including
-the ante, written here in the same commit as the contract.
+locks the vk hash and the operator routes. The contract implements the
+tree. Loopback code id 10 serves the page queries. Its wasm sha256 is
+`1617a62c4e5977e3f649e6fd13fc89a0ae27ab408d2f5228cdbe3a2ce2003cda`.
+One `RegisterHeadstash` on that code used 403982 gas. Code id 9, the
+earlier wasm, used 398371 gas. Both numbers are transaction `gas_used`,
+including the ante.
 
 ## Locked parameters
 
@@ -320,10 +322,15 @@ A sidecar that sees the proof sees the public inputs and the proof bytes.
 ## Page queries
 
 The claim page polls these cw-headstash queries. CosmWasm JSON encodes
-each `Binary` as standard base64. Roots are 32 bytes. Code id 9 on the
-loopback chain is the earlier registration measurement. It returns
-`anchors` as base64 roots and has no path query. The shapes below are
-this contract.
+each `Binary` as standard base64. Roots are 32 bytes. On chain
+`headstash-epoch-e2e` the live contract is code id 10,
+`terp13we0myxwzlpx8l5ark8elw5gj5d59dl6cjkzmt80c5q5cv5rt54qw6thgf`.
+The wasm sha256 is
+`1617a62c4e5977e3f649e6fd13fc89a0ae27ab408d2f5228cdbe3a2ce2003cda`
+(978264 bytes). One registration, `AcceptAnchor`, and `registration_path`
+on that contract returned leaf count 1, one anchor with `leaf_count` 1,
+path index 0, amount 15, and 16 siblings. Code id 9 does not serve
+`registration_path`. The shapes below are code id 10.
 
 `{"registration_tree":{}}` returns:
 
@@ -403,6 +410,15 @@ wasm stored for that measurement is sha256
 code used 6296735, 274645, and 202779 gas. Those are not the
 registration figure. The query after the transaction reported leaf
 count 1. That code id does not serve `registration_path`.
+
+Code id 10
+(`terp13we0myxwzlpx8l5ark8elw5gj5d59dl6cjkzmt80c5q5cv5rt54qw6thgf`)
+is the path-query wasm, sha256
+`1617a62c4e5977e3f649e6fd13fc89a0ae27ab408d2f5228cdbe3a2ce2003cda`
+(978264 bytes). One `RegisterHeadstash` used 403982 gas and the
+following `AcceptAnchor` used 135673 gas. Both are `gas_used` from
+`tx wasm execute`, including the ante. The path query is not a
+transaction.
 
 The contract hash has to equal `key_commitment`, `membership_leaf`, and
 `poseidon_distro_crh` from the circuit crate on fixed inputs. The
