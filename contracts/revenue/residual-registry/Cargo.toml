@@ -26,7 +26,6 @@ path = "src/bin/schema.rs"
 doc  = false
 
 [features]
-# use library feature to disable all instantiate/execute/query exports
 library = []
 
 [dependencies]
