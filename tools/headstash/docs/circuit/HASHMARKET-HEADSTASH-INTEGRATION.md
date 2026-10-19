@@ -1220,25 +1220,25 @@ flowchart LR
 - The contract still does not run `do_proof_instance_verify`. The sidecar does. The chain checks that the hash the sidecar put in the attestation is the hash stored at creation.
 
 
-Ran on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-core:local-arm64`, publish host `127.0.0.1`) after the vote root matched that aggregate. Wasm is the code id that contains `vk is fixed` and `SweepUnclaimed`. `baseline_four_up` and `recovers_next_epoch` share one clock.
+Reran on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-core:local-arm64`, publish host `127.0.0.1`) from HEAD after `0129d04`, with the vote root still the aggregate of `batch_hash || vk_hash`. Wasm is the code id that contains `vk is fixed` and `SweepUnclaimed`. `baseline_four_up` and `recovers_next_epoch` share one clock.
 
 | Case | Result | Time | Evidence |
 |---|---|---|---|
-| mismatched_vk_hash_rejected | PASS | 225ms | operator campaign HTTP 400 `vk hash`; public claim HTTP 503 |
-| vk_hash_locked | PASS | 2415ms | second `SetEpochCampaign` returned `vk is fixed` |
-| unauthenticated_campaign_refused | PASS | 31ms | HTTP 401 |
-| operator_campaign_accepted | PASS | 115ms | HTTP 200 |
-| public_claim_succeeds | PASS | 1463ms | HTTP 200, no operator signature |
-| unauthenticated_seal_refused | PASS | 30ms | HTTP 401 |
-| operator_seal_accepted | PASS | 98ms | HTTP 200 |
-| one_sidecar_down_still_pays | PASS | 5640ms | count=3, escrow 999985 uterp |
-| two_sidecars_down_no_quorum | PASS | 12302ms | count stayed 3, height moved, escrow unchanged |
-| recovers_next_epoch | PASS | 71113ms | count=4 |
-| baseline_four_up | PASS | 71113ms | count=4 |
-| sidecar_restart_mid_epoch | PASS | 57257ms | count=4 |
-| wrong_root_outvoted | PASS | 60865ms | count=3 |
-| payout_vk_hash_rejected | PASS | 2666ms | `ApplyAcceptedBatch` with a flipped `vk_hash` left escrow at 999985 |
-| replayed_nullifier_across_epochs | PASS | 2405ms | second spend rejected (`nullifier already exists`) |
-| unclaimed_funds | PASS | 2666ms | height 312, escrow 999985 uterp to 0, tx code 0 |
+| mismatched_vk_hash_rejected | PASS | 208ms | operator campaign HTTP 400 `vk hash`; public claim HTTP 503 |
+| vk_hash_locked | PASS | 2403ms | second `SetEpochCampaign` returned `vk is fixed` |
+| unauthenticated_campaign_refused | PASS | 30ms | HTTP 401 |
+| operator_campaign_accepted | PASS | 97ms | HTTP 200 |
+| public_claim_succeeds | PASS | 1356ms | HTTP 200, no operator signature |
+| unauthenticated_seal_refused | PASS | 31ms | HTTP 401 |
+| operator_seal_accepted | PASS | 101ms | HTTP 200 |
+| one_sidecar_down_still_pays | PASS | 5468ms | count=3, escrow 999985 uterp |
+| two_sidecars_down_no_quorum | PASS | 12301ms | count stayed 3, height moved, escrow unchanged |
+| recovers_next_epoch | PASS | 77235ms | count=4 |
+| baseline_four_up | PASS | 77235ms | count=4 |
+| sidecar_restart_mid_epoch | PASS | 58958ms | count=4 |
+| wrong_root_outvoted | PASS | 61092ms | count=3 |
+| payout_vk_hash_rejected | PASS | 2655ms | `ApplyAcceptedBatch` with a flipped `vk_hash` left escrow at 999985 |
+| replayed_nullifier_across_epochs | PASS | 2390ms | second spend rejected (`nullifier already exists`) |
+| unclaimed_funds | PASS | 2676ms | height 316, escrow 999985 uterp to 0, tx code 0 |
 
 
