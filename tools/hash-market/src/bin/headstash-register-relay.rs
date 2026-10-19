@@ -38,6 +38,7 @@ const BODY_LIMIT: usize = 4096;
 struct Cfg {
     terpd: PathBuf,
     home: PathBuf,
+    contract: String,
 }
 
 struct App {
@@ -86,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
             std::env::var("TERPD").unwrap_or_else(|_| "/tmp/terpd-v6.4.0-abstain".into()),
         ),
         home: PathBuf::from(HOME),
+        contract: contract_from_env()?,
     };
     if !cfg.terpd.is_file() {
         anyhow::bail!("terpd missing");
@@ -117,6 +119,7 @@ async fn main() -> anyhow::Result<()> {
             prefix(&tree.root())
         );
     }
+    let contract = cfg.contract.clone();
     let app = Arc::new(App {
         cfg,
         ctx,
@@ -135,7 +138,11 @@ async fn main() -> anyhow::Result<()> {
     if !local.ip().is_loopback() || local.port() != 8791 {
         anyhow::bail!("listener is not 127.0.0.1:8791");
     }
-    println!("relay_up {bind} depth {depth} root_prefix {}", prefix(&chain_root));
+    println!(
+        "relay_up {bind} depth {depth} root_prefix {} contract {}",
+        prefix(&chain_root),
+        contract
+    );
     axum::serve(listener, router).await?;
     Ok(())
 }
@@ -285,7 +292,7 @@ fn submit(cfg: &Cfg, msg: &str, gas: u64) -> Result<String, Fail> {
         "tx",
         "wasm",
         "execute",
-        CONTRACT,
+        cfg.contract.as_str(),
         msg,
         "--from",
         FROM,
@@ -363,7 +370,7 @@ fn smart_query(cfg: &Cfg, query: &str) -> anyhow::Result<serde_json::Value> {
         "wasm",
         "contract-state",
         "smart",
-        CONTRACT,
+        cfg.contract.as_str(),
         query,
         "--node",
         NODE,
@@ -448,6 +455,21 @@ fn attr<'a>(attrs: &'a [serde_json::Value], key: &str) -> Option<&'a str> {
             None
         }
     })
+}
+
+fn contract_from_env() -> anyhow::Result<String> {
+    let raw = std::env::var("HEADSTASH_CONTRACT").unwrap_or_else(|_| CONTRACT.to_string());
+    parse_contract(&raw).map_err(|phrase| anyhow::anyhow!(phrase))
+}
+
+fn parse_contract(raw: &str) -> Result<String, &'static str> {
+    if raw.len() < 39 || raw.len() > 90 || !raw.starts_with("terp1") {
+        return Err("contract");
+    }
+    if !raw.chars().all(|ch| ch.is_ascii_alphanumeric()) {
+        return Err("contract");
+    }
+    Ok(raw.to_string())
 }
 
 fn check_bind(bind: &str) -> Result<(), &'static str> {
@@ -761,6 +783,14 @@ mod tests {
         let address = recover_address(&message, &signature).unwrap();
         assert_eq!(hex::encode(address), "2b5ad5c4795c026514f8317c7a215e218dccd6cf");
         assert_eq!(tree().index_of(&address, 15), Some(1));
+    }
+
+    #[test]
+    fn contract_override_stays_a_terp_address() {
+        assert_eq!(parse_contract(CONTRACT).as_deref(), Ok(CONTRACT));
+        assert!(parse_contract("").is_err());
+        assert!(parse_contract("cosmos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq").is_err());
+        assert!(parse_contract("terp1bad/path").is_err());
     }
 
     #[test]
