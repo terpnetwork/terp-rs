@@ -24,6 +24,11 @@ pub struct InstantiateMsg {
     pub circuit_id: Option<u64>,
 }
 
+/// One-shot admin migrate. The new code copies a still-zero genesis root
+/// from the campaign allocation root when that root is a registration anchor.
+#[cw_serde]
+pub struct MigrateMsg {}
+
 #[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
 #[cw_serde]
 pub enum ExecuteMsg {

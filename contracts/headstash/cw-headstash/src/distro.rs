@@ -156,6 +156,22 @@ pub fn register_eligibility_root(
     Ok(entry)
 }
 
+/// Replace a still-zero genesis root in place. The id stays 0 and the next-id
+/// counter is left alone. A nonzero genesis root cannot be rewritten.
+pub fn replace_genesis_root(storage: &mut dyn Storage, new_root: Binary) -> StdResult<()> {
+    let mut entry = require_root(storage, GENESIS_ROOT_ID)?;
+    if entry.root.as_slice().iter().any(|byte| *byte != 0) {
+        return Err(StdError::msg("genesis root is already set"));
+    }
+    validate_root_bytes(&new_root)?;
+    if new_root.as_slice().iter().all(|byte| *byte == 0) {
+        return Err(StdError::msg("allocation root"));
+    }
+    entry.root = new_root;
+    ELIGIBILITY_ROOTS.save(storage, GENESIS_ROOT_ID, &entry)?;
+    Ok(())
+}
+
 /// Load a registered root or error if unknown.
 pub fn require_root(storage: &dyn Storage, root_id: u64) -> StdResult<EligibilityRootEntry> {
     ELIGIBILITY_ROOTS
@@ -415,6 +431,29 @@ mod tests {
         assert_eq!(require_root(&storage, 1).unwrap().label.as_deref(), Some("batch-2"));
         let err = require_root(&storage, 7).unwrap_err();
         assert!(err.to_string().contains("unregistered"));
+    }
+
+    #[test]
+    fn replace_zero_genesis_root_once() {
+        let mut storage = MockStorage::new();
+        register_genesis_root(
+            &mut storage,
+            root32(0),
+            DistroHashDomain::PoseidonV1,
+            Some("headstash-k11-vk2".into()),
+        )
+        .unwrap();
+        assert_eq!(NEXT_ROOT_ID.load(&storage).unwrap(), 1);
+        replace_genesis_root(&mut storage, root32(0x11)).unwrap();
+        let entry = require_root(&storage, GENESIS_ROOT_ID).unwrap();
+        assert_eq!(entry.root, root32(0x11));
+        assert_eq!(entry.domain, DistroHashDomain::PoseidonV1);
+        assert_eq!(entry.label.as_deref(), Some("headstash-k11-vk2"));
+        assert_eq!(NEXT_ROOT_ID.load(&storage).unwrap(), 1);
+        let err = replace_genesis_root(&mut storage, root32(0x22)).unwrap_err();
+        assert!(err.to_string().contains("already set"));
+        let matched = assert_claim_root(&storage, 0, Some(&root32(0x11))).unwrap();
+        assert_eq!(matched.root, root32(0x11));
     }
 
     #[test]

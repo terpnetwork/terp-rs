@@ -143,6 +143,30 @@ pub fn set_campaign(
         .add_attribute("cutoff", campaign.cutoff_height.to_string()))
 }
 
+/// Allocation root to copy onto a still-zero genesis eligibility root.
+/// Writes nothing. The campaign must already point at root id 0, and that
+/// allocation root must already be a known registration anchor.
+pub fn replacement_for_zero_genesis(storage: &dyn Storage) -> StdResult<Binary> {
+    let campaign = EPOCH_CAMPAIGN
+        .may_load(storage)?
+        .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    if campaign.root_id != distro::GENESIS_ROOT_ID {
+        return Err(StdError::msg("campaign root id"));
+    }
+    let root = campaign.allocation_root;
+    if root.len() != 32 || root.as_slice().iter().all(|byte| *byte == 0) {
+        return Err(StdError::msg("allocation root"));
+    }
+    if !crate::registration::anchor_known(storage, root.as_slice())? {
+        return Err(StdError::msg("anchor"));
+    }
+    let genesis = distro::require_root(storage, distro::GENESIS_ROOT_ID)?;
+    if genesis.root.as_slice().iter().any(|byte| *byte != 0) {
+        return Err(StdError::msg("genesis root is already set"));
+    }
+    Ok(root)
+}
+
 /// Owner sends the campaign denom balance to the recipient stored on the
 /// campaign. The block must be past the cutoff, and a staged batch that
 /// has not been paid still owns its escrow.
