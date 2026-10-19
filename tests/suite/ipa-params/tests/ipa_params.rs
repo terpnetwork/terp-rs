@@ -4,8 +4,8 @@
 //! ```
 
 use terp_ipa_params::{
-    generate_k1_through_k20, generate_vesta_params, params_checksum, params_to_bytes,
-    validate_pinned_checksums, write_and_validate, NoopCircuit, K_MAX, K_MIN,
+    K_MAX, K_MIN, NoopCircuit, generate_k1_through_k20, generate_vesta_params, params_checksum,
+    params_to_bytes, validate_pinned_checksums, write_and_validate,
 };
 
 #[test]

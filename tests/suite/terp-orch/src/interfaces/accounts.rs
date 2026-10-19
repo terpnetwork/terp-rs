@@ -5,13 +5,25 @@
 
 use cosmwasm_std::Empty;
 use cw_orch::{interface, prelude::*};
-use polytone_any_proxy::{execute as poly_execute, instantiate as poly_instantiate, query as poly_query};
-use terp_dao::msg::{ExecuteMsg as DaoExecute, InstantiateMsg as DaoInstantiate, QueryMsg as DaoQuery};
+use polytone_any_proxy::{
+    execute as poly_execute, instantiate as poly_instantiate, query as poly_query,
+};
+use terp_bls::contract::{
+    execute as bls_execute, instantiate as bls_instantiate, query as bls_query,
+};
+use terp_bls::msg::{
+    ExecuteMsg as BlsExecute, InstantiateMsg as BlsInstantiate, QueryMsg as BlsQuery,
+};
+use terp_dao::msg::{
+    ExecuteMsg as DaoExecute, InstantiateMsg as DaoInstantiate, QueryMsg as DaoQuery,
+};
 use terp_dao::{execute as dao_execute, instantiate as dao_instantiate, query as dao_query};
-use terp_dregg::{execute as dregg_execute, instantiate as dregg_instantiate, query as dregg_query};
-use terp_frost::{execute as frost_execute, instantiate as frost_instantiate, query as frost_query};
-use terp_bls::contract::{execute as bls_execute, instantiate as bls_instantiate, query as bls_query};
-use terp_bls::msg::{ExecuteMsg as BlsExecute, InstantiateMsg as BlsInstantiate, QueryMsg as BlsQuery};
+use terp_dregg::{
+    execute as dregg_execute, instantiate as dregg_instantiate, query as dregg_query,
+};
+use terp_frost::{
+    execute as frost_execute, instantiate as frost_instantiate, query as frost_query,
+};
 use terp_zktls::{execute as tls_execute, instantiate as tls_instantiate, query as tls_query};
 
 use super::wasm_path::wasm;

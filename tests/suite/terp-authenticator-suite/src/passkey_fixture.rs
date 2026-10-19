@@ -1,11 +1,9 @@
 //! Deterministic P-256 passkey used by suite instantiate and authenticate tests.
 
 use cosmwasm_std::Binary;
-use p256::ecdsa::signature::hazmat::PrehashSigner;
 use p256::ecdsa::SigningKey;
-use terp_passkey::{
-    authenticator_data, client_data_json, PasskeyAuthPayload, PasskeyRegistration,
-};
+use p256::ecdsa::signature::hazmat::PrehashSigner;
+use terp_passkey::{PasskeyAuthPayload, PasskeyRegistration, authenticator_data, client_data_json};
 
 pub const PASSKEY_ORIGIN: &str = "https://app.terp.network";
 pub const PASSKEY_RP_ID: &str = "app.terp.network";

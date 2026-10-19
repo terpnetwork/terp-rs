@@ -15,7 +15,11 @@ macro_rules! uploadable {
                 wasm($artifact)
             }
             fn wrapper() -> Box<dyn MockContract<Empty>> {
-                Box::new(ContractWrapper::new_with_empty($execute, $instantiate, $query))
+                Box::new(ContractWrapper::new_with_empty(
+                    $execute,
+                    $instantiate,
+                    $query,
+                ))
             }
         }
     };
@@ -117,9 +121,21 @@ uploadable!(
     revenue_reserve_auction::query
 );
 
-#[interface(cw420::msg::InstantiateMsg, cw420::msg::ExecuteMsg, cw420::msg::QueryMsg, Empty, id = "cw420")]
+#[interface(
+    cw420::msg::InstantiateMsg,
+    cw420::msg::ExecuteMsg,
+    cw420::msg::QueryMsg,
+    Empty,
+    id = "cw420"
+)]
 pub struct Cw420;
-uploadable!(Cw420, "cw420", cw420::contract::execute, cw420::contract::instantiate, cw420::contract::query);
+uploadable!(
+    Cw420,
+    "cw420",
+    cw420::contract::execute,
+    cw420::contract::instantiate,
+    cw420::contract::query
+);
 
 #[interface(
     cw_ave_factory::msg::InstantiateMsg,
@@ -137,9 +153,21 @@ uploadable!(
     cw_ave_factory::contract::query
 );
 
-#[interface(cw_ave::msg::InstantiateMsg, cw_ave::msg::ExecuteMsg, cw_ave::msg::QueryMsg, Empty, id = "cw-ave")]
+#[interface(
+    cw_ave::msg::InstantiateMsg,
+    cw_ave::msg::ExecuteMsg,
+    cw_ave::msg::QueryMsg,
+    Empty,
+    id = "cw-ave"
+)]
 pub struct CwAve;
-uploadable!(CwAve, "cw_ave", cw_ave::contract::execute, cw_ave::contract::instantiate, cw_ave::contract::query);
+uploadable!(
+    CwAve,
+    "cw_ave",
+    cw_ave::contract::execute,
+    cw_ave::contract::instantiate,
+    cw_ave::contract::query
+);
 
 #[interface(
     cw_headstash::InstantiateMsg,
@@ -173,9 +201,21 @@ uploadable!(
     cw_headstash_manifold::contract::query
 );
 
-#[interface(cw_norick::InstantiateMsg, cw_norick::ExecuteMsg, cw_norick::QueryMsg, Empty, id = "cw-norick")]
+#[interface(
+    cw_norick::InstantiateMsg,
+    cw_norick::ExecuteMsg,
+    cw_norick::QueryMsg,
+    Empty,
+    id = "cw-norick"
+)]
 pub struct CwNorick;
-uploadable!(CwNorick, "cw_norick", cw_norick::execute, cw_norick::instantiate, cw_norick::query);
+uploadable!(
+    CwNorick,
+    "cw_norick",
+    cw_norick::execute,
+    cw_norick::instantiate,
+    cw_norick::query
+);
 
 #[interface(
     cw_nullifier_auth::msg::InstantiateMsg,
@@ -257,7 +297,13 @@ uploadable!(
     cw_reg_eligibility::contract::query
 );
 
-#[interface(svg_auction::InstantiateMsg, svg_auction::ExecuteMsg, svg_auction::QueryMsg, Empty, id = "svg-auction")]
+#[interface(
+    svg_auction::InstantiateMsg,
+    svg_auction::ExecuteMsg,
+    svg_auction::QueryMsg,
+    Empty,
+    id = "svg-auction"
+)]
 pub struct SvgAuction;
 uploadable!(
     SvgAuction,
@@ -274,7 +320,10 @@ use cw_headstash::wavs::generate_test_wavs_proof;
 pub fn shitstrap_msg(admin: &str) -> cw_shitstrap::contract::msg::InstantiateMsg {
     cw_shitstrap::contract::msg::InstantiateMsg {
         owner: Some(admin.to_string()),
-        accepted: vec![cw_shit_denom::PossibleShit::native_denom("uterp", 1_000_000_000_000_000_000)],
+        accepted: vec![cw_shit_denom::PossibleShit::native_denom(
+            "uterp",
+            1_000_000_000_000_000_000,
+        )],
         cutoff: Uint128::new(1),
         shitmos: cw_shit_denom::UncheckedDenom::Native("ushit".into()),
         title: "lab".into(),
@@ -290,7 +339,10 @@ pub fn headstash_msg() -> cw_headstash::InstantiateMsg {
         genesis_root: Binary::from([0u8; 32]),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new("existing_token".into())),
+        token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+            &cosmwasm_std::testing::MockApi::default(),
+            "existing_token".into(),
+        )),
         wavs: generate_test_wavs_proof(1),
         circuit_id: None,
     }

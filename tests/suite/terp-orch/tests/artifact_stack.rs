@@ -24,7 +24,9 @@ use terp_orch::TerpArtifactStack;
 /// message is tokenfactory MsgCreateDenom, which the mock router does not execute.
 const ARTIFACTS: usize = 42;
 
-fn assert_bound<Chain: CwEnv>(stack: &TerpArtifactStack<Chain>) -> Vec<(&'static str, u64, String)> {
+fn assert_bound<Chain: CwEnv>(
+    stack: &TerpArtifactStack<Chain>,
+) -> Vec<(&'static str, u64, String)> {
     let rows = stack.bound().expect("code ids and addresses");
     assert_eq!(rows.len(), ARTIFACTS, "{rows:?}");
     for (id, code_id, address) in &rows {
@@ -80,8 +82,8 @@ async fn live_local_terp_upload_and_instantiate() {
         .expect("local terp chain");
 
     // cw-orch's sync Daemon calls block_on. That panics on a tokio worker thread.
-    let mut builder = terp_orch::ict::daemon_builder(&chain, Some(LAB_MNEMONIC))
-        .expect("daemon builder");
+    let mut builder =
+        terp_orch::ict::daemon_builder(&chain, Some(LAB_MNEMONIC)).expect("daemon builder");
     builder.load_network(false);
     let deployed = std::thread::spawn(move || {
         let daemon = builder.build().expect("cw-orch daemon");

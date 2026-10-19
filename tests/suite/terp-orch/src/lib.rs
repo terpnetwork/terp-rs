@@ -17,6 +17,10 @@
 pub mod artifacts;
 #[cfg(feature = "bridge")]
 pub mod bridge;
+#[cfg(feature = "gov")]
+pub mod gov;
+#[cfg(feature = "headstash")]
+pub mod headstash;
 #[cfg(feature = "ict")]
 pub mod ict;
 pub mod interfaces;
@@ -24,10 +28,6 @@ pub mod orch;
 #[cfg(feature = "stack")]
 pub mod stack;
 pub mod suite;
-#[cfg(feature = "headstash")]
-pub mod headstash;
-#[cfg(feature = "gov")]
-pub mod gov;
 
 pub use artifacts::write_demo_circuit_artifacts;
 pub use interfaces::{CwZkVerifyDemo, FlockLigeritoCircuit, StwoSsleCircuit};
@@ -42,6 +42,8 @@ pub use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticato
 
 #[cfg(feature = "stack")]
 pub use stack::{TerpAccountSuite, TerpArtifactStack, TerpLightClientSuite};
+#[cfg(feature = "stack")]
+pub use terp_bounty_escrow::interface::TerpBountyEscrow;
 
 #[cfg(feature = "billboards")]
 pub use terp_account_scripts as billboards;
@@ -50,4 +52,4 @@ pub use terp_account_scripts as billboards;
 pub use cw_infuser_scripts as infuser;
 
 #[cfg(feature = "headstash")]
-pub use headstash::{run_headstash_claim, write_headstash_circuit, HeadstashClaimReport};
+pub use headstash::{HeadstashClaimReport, run_headstash_claim, write_headstash_circuit};

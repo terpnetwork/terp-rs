@@ -5,8 +5,8 @@ use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
-use terp_zkjwt::{circuit_ids, ZkJwtAuthPayload};
 use terp_vsck::{VsckAuthPayload, VsckCircuit, VsckRole};
+use terp_zkjwt::{ZkJwtAuthPayload, circuit_ids};
 
 fn deploy_suite() -> TerpAuthenticatorSuite<Mock> {
     let mock = Mock::new("admin");
@@ -39,10 +39,12 @@ fn zk_jwt_authenticate_with_proof_payload() {
     let acct = mock_account();
 
     // OnAuthAdded requires params
-    assert!(suite
-        .zk_jwt
-        .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "jwt-1", None))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "jwt-1", None))
+            .is_err()
+    );
 
     assert_action(
         &suite
@@ -85,15 +87,17 @@ fn zk_jwt_authenticate_with_proof_payload() {
     );
 
     // nullifier replay rejected on second Authenticate
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct.clone(),
-            "jwt-1",
-            sig,
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct.clone(),
+                "jwt-1",
+                sig,
+                None,
+            ))
+            .is_err()
+    );
 
     // empty proof rejected
     let bad = ZkJwtAuthPayload {
@@ -103,15 +107,17 @@ fn zk_jwt_authenticate_with_proof_payload() {
         issuer: "https://accounts.example.com".into(),
         circuit_id: circuit_ids::JWT_MEMBERSHIP.into(),
     };
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "jwt-1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "jwt-1",
+                to_json_binary(&bad).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]

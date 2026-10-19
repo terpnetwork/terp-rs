@@ -24,7 +24,7 @@
 //!
 //! Uses [`terp_authenticator_suite::fixtures`] + [`AuthenticatorSudoExt`]. Mock only.
 
-use cosmwasm_std::{to_json_binary, Binary};
+use cosmwasm_std::{Binary, to_json_binary};
 use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
@@ -32,11 +32,11 @@ use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSui
 use terp_ed25519::Ed25519AuthPayload;
 use terp_passkey::PasskeyAuthPayload;
 use terp_recovery::{
-    break_glass_challenge, rehash, GuardianApproval, RecoveryAuthPayload, RecoveryHashAlg,
-    DEFAULT_DOMAIN,
+    DEFAULT_DOMAIN, GuardianApproval, RecoveryAuthPayload, RecoveryHashAlg, break_glass_challenge,
+    rehash,
 };
 use terp_vsck::{VsckAuthPayload, VsckCircuit, VsckRole};
-use terp_zkjwt::{circuit_ids, compute_msg_bind, ZkJwtAuthPayload};
+use terp_zkjwt::{ZkJwtAuthPayload, circuit_ids, compute_msg_bind};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,9 +99,9 @@ fn five_lifecycle(
 }
 
 fn passkey_ok_payload() -> Binary {
-    to_json_binary(&terp_authenticator_suite::passkey_fixture::passkey_auth_payload(
-        b"sign-mode-direct",
-    ))
+    to_json_binary(
+        &terp_authenticator_suite::passkey_fixture::passkey_auth_payload(b"sign-mode-direct"),
+    )
     .unwrap()
 }
 
@@ -257,12 +257,14 @@ fn passkey_matrix_all_five_positive() {
                 .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "pk-1", None))
         },
         || {
-            suite.passkey.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "pk-1",
-                sig.clone(),
-                None,
-            ))
+            suite
+                .passkey
+                .sudo_authenticate(dummy_authentication_request(
+                    acct.clone(),
+                    "pk-1",
+                    sig.clone(),
+                    None,
+                ))
         },
         || {
             suite
@@ -287,10 +289,12 @@ fn passkey_matrix_all_five_positive() {
 #[test]
 fn passkey_neg_missing_on_auth_added_params() {
     let suite = deploy();
-    assert!(suite
-        .passkey
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "pk-n", None))
-        .is_err());
+    assert!(
+        suite
+            .passkey
+            .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "pk-n", None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -309,15 +313,17 @@ fn passkey_neg_empty_assertion_fields() {
         authenticator_data: Binary::from(b"ad"),
         client_data_json: Binary::from(b"{}"),
     };
-    assert!(suite
-        .passkey
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .passkey
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&bad).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -331,15 +337,17 @@ fn passkey_neg_credential_id_mismatch() {
         authenticator_data: Binary::from(b"ad"),
         client_data_json: Binary::from(b"{}"),
     };
-    assert!(suite
-        .passkey
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .passkey
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&bad).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -353,15 +361,17 @@ fn passkey_neg_origin_mismatch() {
         authenticator_data: Binary::from(b"ad"),
         client_data_json: Binary::from(b"{}"),
     };
-    assert!(suite
-        .passkey
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&bad).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .passkey
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&bad).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -394,11 +404,13 @@ fn recovery_matrix_all_five_sha256_break_glass() {
                 .sudo_track(dummy_track_request(acct.clone(), "rec-1", None))
         },
         || {
-            suite.recovery.sudo_confirm_execution(dummy_confirm_execution_request(
-                acct.clone(),
-                "rec-1",
-                None,
-            ))
+            suite
+                .recovery
+                .sudo_confirm_execution(dummy_confirm_execution_request(
+                    acct.clone(),
+                    "rec-1",
+                    None,
+                ))
         },
         [
             "recovery_on_auth_added",
@@ -413,10 +425,12 @@ fn recovery_matrix_all_five_sha256_break_glass() {
 #[test]
 fn recovery_neg_missing_on_auth_added_params() {
     let suite = deploy();
-    assert!(suite
-        .recovery
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
-        .is_err());
+    assert!(
+        suite
+            .recovery
+            .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -434,15 +448,17 @@ fn recovery_neg_wrong_hash_alg() {
             signature: Binary::from(b"unused"),
         }],
     };
-    assert!(suite
-        .recovery
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .recovery
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -455,15 +471,17 @@ fn recovery_neg_empty_approvals_below_threshold() {
         preimage_proof: None,
         approvals: vec![],
     };
-    assert!(suite
-        .recovery
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .recovery
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 /// Multi-guardian threshold: 2-of-3 address-only approvals succeed; 1-of-3 fails.
@@ -511,7 +529,8 @@ fn recovery_threshold_2_of_3() {
         )
         .unwrap();
 
-    let mut auth_req = dummy_authentication_request(acct.clone(), "rec-th", Binary::default(), None);
+    let mut auth_req =
+        dummy_authentication_request(acct.clone(), "rec-th", Binary::default(), None);
     auth_req.tx_data.chain_id = "terp-test-1".into();
     auth_req.account = acct.clone();
     let challenge = break_glass_challenge(
@@ -680,7 +699,7 @@ fn recovery_rehash_rounds_2() {
 /// Keccak-256 address-only break-glass (non-default hash algorithm).
 #[test]
 fn recovery_keccak256_hook() {
-    use terp_recovery::{ExecuteMsg, GuardianConfig, RecoveryConfig, DEFAULT_DOMAIN};
+    use terp_recovery::{DEFAULT_DOMAIN, ExecuteMsg, GuardianConfig, RecoveryConfig};
 
     let suite = deploy();
     let acct = mock_account();
@@ -745,8 +764,7 @@ fn recovery_keccak256_hook() {
 /// CosmWasm MockApi RFC-aligned fixtures (hex).
 const ED25519_MSG_HEX: &str = "72";
 const ED25519_SIG_HEX: &str = "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00";
-const ED25519_PUBKEY_HEX: &str =
-    "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c";
+const ED25519_PUBKEY_HEX: &str = "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c";
 
 #[test]
 fn ed25519_matrix_lifecycle_and_golden_auth() {
@@ -776,8 +794,7 @@ fn ed25519_matrix_lifecycle_and_golden_auth() {
         "ed25519_on_auth_added",
     );
 
-    let mut auth_req =
-        dummy_authentication_request(acct.clone(), "1", Binary::from(sig), None);
+    let mut auth_req = dummy_authentication_request(acct.clone(), "1", Binary::from(sig), None);
     auth_req.sign_mode_tx_data.sign_mode_direct = Binary::from(msg);
     assert_action(
         &suite.ed25519.sudo_authenticate(auth_req).unwrap(),
@@ -807,25 +824,29 @@ fn ed25519_neg_missing_on_auth_added_params() {
     let _ = suite
         .ed25519
         .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None));
-    assert!(suite
-        .ed25519
-        .sudo_on_auth_added(dummy_on_auth_added(acct, "1", None))
-        .is_err());
+    assert!(
+        suite
+            .ed25519
+            .sudo_on_auth_added(dummy_on_auth_added(acct, "1", None))
+            .is_err()
+    );
 }
 
 #[test]
 fn ed25519_neg_short_signature() {
     let suite = deploy();
     let acct = mock_account();
-    assert!(suite
-        .ed25519
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            Binary::from(b"short"),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .ed25519
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                Binary::from(b"short"),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 /// Batch multi-sig JSON shape through contract Authenticate (host batch_verify).
@@ -845,8 +866,7 @@ fn ed25519_neg_wrong_message() {
         Some(Binary::from(pk)),
     ));
     // Signature is over 0x72, not "sign-mode-direct"
-    let mut auth_req =
-        dummy_authentication_request(acct, "1", Binary::from(sig), None);
+    let mut auth_req = dummy_authentication_request(acct, "1", Binary::from(sig), None);
     auth_req.sign_mode_tx_data.sign_mode_direct = Binary::from(b"sign-mode-direct");
     assert!(suite.ed25519.sudo_authenticate(auth_req).is_err());
 }
@@ -868,8 +888,7 @@ fn ed25519_neg_wrong_key() {
         "1",
         Some(Binary::from(wrong_pk)),
     ));
-    let mut auth_req =
-        dummy_authentication_request(acct, "1", Binary::from(sig), None);
+    let mut auth_req = dummy_authentication_request(acct, "1", Binary::from(sig), None);
     auth_req.sign_mode_tx_data.sign_mode_direct = Binary::from(msg);
     assert!(suite.ed25519.sudo_authenticate(auth_req).is_err());
 }
@@ -897,12 +916,8 @@ fn ed25519_batch_payload_json_multi_sig() {
         signatures: vec![Binary::from(sig.clone()), Binary::from(sig)],
         public_keys: Some(vec![Binary::from(pk.clone()), Binary::from(pk)]),
     };
-    let mut auth_req = dummy_authentication_request(
-        acct,
-        "1",
-        to_json_binary(&batch).unwrap(),
-        None,
-    );
+    let mut auth_req =
+        dummy_authentication_request(acct, "1", to_json_binary(&batch).unwrap(), None);
     auth_req.sign_mode_tx_data.sign_mode_direct = Binary::from(msg);
     let res = suite.ed25519.sudo_authenticate(auth_req).unwrap();
     assert_action(&res, "ed25519_authenticate");
@@ -911,7 +926,11 @@ fn ed25519_batch_payload_json_multi_sig() {
             .iter()
             .any(|a| a.key == "verify" && a.value == "ed25519_batch_verify")
     });
-    assert!(batch_attr, "expected ed25519_batch_verify attr, events={:#?}", res.events);
+    assert!(
+        batch_attr,
+        "expected ed25519_batch_verify attr, events={:#?}",
+        res.events
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1032,24 +1051,28 @@ fn eth_golden_personal_sign_authenticates() {
 #[test]
 fn eth_neg_missing_on_auth_added_params() {
     let suite = deploy();
-    assert!(suite
-        .eth
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
-        .is_err());
+    assert!(
+        suite
+            .eth
+            .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
+            .is_err()
+    );
 }
 
 #[test]
 fn eth_neg_bad_signature_length() {
     let suite = deploy();
-    assert!(suite
-        .eth
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            Binary::from(b"not65bytes"),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .eth
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                Binary::from(b"not65bytes"),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1057,30 +1080,34 @@ fn eth_neg_65_byte_wrong_signer() {
     let suite = deploy();
     // Valid 65-byte personal_sign from a *different* secp256k1 key over the same message.
     // Recover succeeds; signer mismatch must reject (not just zero-byte recover failure).
-    assert!(suite
-        .eth
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            eth_other_signer_sig(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .eth
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                eth_other_signer_sig(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
 fn eth_neg_wrong_message() {
     let suite = deploy();
     // Signature from the registered key over a different message than sign_mode_direct.
-    assert!(suite
-        .eth
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            eth_wrong_msg_sig(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .eth
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                eth_wrong_msg_sig(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,11 +1150,13 @@ fn zk_jwt_matrix_all_five_positive() {
                 .sudo_track(dummy_track_request(acct.clone(), "jwt-m", None))
         },
         || {
-            suite.zk_jwt.sudo_confirm_execution(dummy_confirm_execution_request(
-                acct.clone(),
-                "jwt-m",
-                None,
-            ))
+            suite
+                .zk_jwt
+                .sudo_confirm_execution(dummy_confirm_execution_request(
+                    acct.clone(),
+                    "jwt-m",
+                    None,
+                ))
         },
         [
             "zkjwt_on_auth_added",
@@ -1142,10 +1171,12 @@ fn zk_jwt_matrix_all_five_positive() {
 #[test]
 fn zk_jwt_neg_missing_on_auth_added_params() {
     let suite = deploy();
-    assert!(suite
-        .zk_jwt
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "j", None))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "j", None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1153,10 +1184,12 @@ fn zk_jwt_neg_wrong_issuer() {
     let suite = deploy();
     let claim = [1u8; 32];
     let sig = zk_jwt_payload([9u8; 32], claim, b"p", "https://unknown.issuer", None);
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(mock_account(), "1", sig, None))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(mock_account(), "1", sig, None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1164,10 +1197,12 @@ fn zk_jwt_neg_empty_proof() {
     let suite = deploy();
     let claim = [1u8; 32];
     let sig = zk_jwt_payload([8u8; 32], claim, b"", "https://accounts.example.com", None);
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(mock_account(), "1", sig, None))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(mock_account(), "1", sig, None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1188,15 +1223,17 @@ fn zk_jwt_neg_claim_commitment_mismatch() {
         proof: Binary::from(b"proof"),
         circuit_id: circuit_ids::JWT_MEMBERSHIP.into(),
     };
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1230,12 +1267,8 @@ fn zk_jwt_msg_bind_positive_and_nullifier_replay() {
     let suite = deploy();
     let acct = mock_account();
     let claim = [5u8; 32];
-    let mut auth_req = dummy_authentication_request(
-        acct.clone(),
-        "jwt-ok",
-        Binary::default(),
-        None,
-    );
+    let mut auth_req =
+        dummy_authentication_request(acct.clone(), "jwt-ok", Binary::default(), None);
     let bind = compute_msg_bind(
         &auth_req.tx_data.chain_id,
         auth_req.account.as_str(),
@@ -1281,10 +1314,12 @@ fn vsck_matrix_all_five_voter() {
 #[test]
 fn vsck_neg_missing_on_auth_added_params() {
     let suite = deploy();
-    assert!(suite
-        .vsck
-        .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
-        .is_err());
+    assert!(
+        suite
+            .vsck
+            .sudo_on_auth_added(dummy_on_auth_added(mock_account(), "1", None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1307,10 +1342,12 @@ fn vsck_neg_closed_session() {
         VsckCircuit::VoteProof,
         b"nf-closed",
     );
-    assert!(suite
-        .vsck
-        .sudo_authenticate(dummy_authentication_request(acct, "1", payload, None))
-        .is_err());
+    assert!(
+        suite
+            .vsck
+            .sudo_authenticate(dummy_authentication_request(acct, "1", payload, None))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1327,15 +1364,17 @@ fn vsck_neg_empty_proof() {
         proof: Binary::default(),
         nullifier: Binary::from(b"nf"),
     };
-    assert!(suite
-        .vsck
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .vsck
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -1478,15 +1517,17 @@ fn vsck_neg_role_circuit_mismatch() {
         VsckCircuit::Delegation,
         b"nf-mm",
     );
-    assert!(suite
-        .vsck
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "1",
-            payload,
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .vsck
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "1",
+                payload,
+                None,
+            ))
+            .is_err()
+    );
 }
 
 /// Same nullifier tracked twice in a session → replay reject.
@@ -1524,8 +1565,10 @@ fn vsck_neg_nullifier_replay_on_track() {
             Some(payload.clone()),
         ))
         .unwrap();
-    assert!(suite
-        .vsck
-        .sudo_track(dummy_track_request(acct, "1", Some(payload)))
-        .is_err());
+    assert!(
+        suite
+            .vsck
+            .sudo_track(dummy_track_request(acct, "1", Some(payload)))
+            .is_err()
+    );
 }

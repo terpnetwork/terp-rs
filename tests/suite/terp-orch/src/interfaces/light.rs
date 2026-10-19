@@ -5,10 +5,11 @@
 //! path runs the same genesis checks as the guest, and uploads
 //! `cw_ics08_wasm_crosslink.wasm` on a live chain.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
 use cw_ics08_wasm_crosslink::msg::{
-    ExecuteMsg as CrosslinkExecute, InstantiateMsg as CrosslinkInstantiate, QueryMsg as CrosslinkQuery,
+    ExecuteMsg as CrosslinkExecute, InstantiateMsg as CrosslinkInstantiate,
+    QueryMsg as CrosslinkQuery,
 };
 use cw_orch::{interface, prelude::*};
 
@@ -147,7 +148,13 @@ fn zap1_query(_deps: Deps, _env: Env, msg: Zap1Query) -> StdResult<Binary> {
     }
 }
 
-#[interface(Zap1Instantiate, Zap1Execute, Zap1Query, Empty, id = "cw-ics08-wasm-zap1")]
+#[interface(
+    Zap1Instantiate,
+    Zap1Execute,
+    Zap1Query,
+    Empty,
+    id = "cw-ics08-wasm-zap1"
+)]
 pub struct CwIcs08WasmZap1;
 
 impl<Chain: TxHandler> Uploadable for CwIcs08WasmZap1<Chain> {

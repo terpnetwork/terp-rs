@@ -24,8 +24,8 @@ use cw_orch::prelude::*;
 use serde::Serialize;
 use zk_cosmwasm::CircuitFooter;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};
-use zk_headstash::suite::suite::HeadstashProofBuilder;
 use zk_headstash::suite::HeadstashCircuitSuite;
+use zk_headstash::suite::suite::HeadstashProofBuilder;
 
 const HEADSTASH_K: u32 = 18;
 
@@ -111,7 +111,8 @@ pub fn run_headstash_claim() -> Result<HeadstashClaimReport> {
     let e = zk_headstash::claim_auth::challenge_scalar_be(&digest);
     let genesis_root = Binary::from(anchor.to_bytes().to_vec());
     let denom = partial.token.clone();
-    let token = HeadstashTokenObject::new(denom.clone());
+    let token =
+        HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), denom.clone());
     let claim_value = partial.value;
     let rr = Binary::from(partial.recipient.to_vec());
 
@@ -178,8 +179,9 @@ pub fn run_headstash_claim() -> Result<HeadstashClaimReport> {
             verify_host_secs,
             gas_wanted: None,
             gas_used: None,
-            gas_note: "host prove only. The loopback harness broadcasts this proof. Mock was not run."
-                .into(),
+            gas_note:
+                "host prove only. The loopback harness broadcasts this proof. Mock was not run."
+                    .into(),
             claim_mock_verify: false,
             mint_denom: denom,
             claim_value,

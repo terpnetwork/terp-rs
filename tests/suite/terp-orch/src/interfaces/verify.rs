@@ -2,7 +2,7 @@
 
 use cosmwasm_std::Empty;
 use cw_orch::{interface, prelude::*};
-use cw_zk_verify_demo::{execute, instantiate, query, ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_zk_verify_demo::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
 
 pub const CONTRACT_ID: &str = "cw-zk-verify-demo";
 

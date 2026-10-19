@@ -4,9 +4,9 @@
 pub mod accounts;
 pub mod circuits;
 #[cfg(feature = "stack")]
-pub mod products;
-#[cfg(feature = "stack")]
 pub mod light;
+#[cfg(feature = "stack")]
+pub mod products;
 pub mod verify;
 pub mod wasm_path;
 

@@ -17,15 +17,17 @@ use hm_loyalty_whitelist::WhitelistConfig;
 use hm_nft_oracle::PricePolicy;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
 
-use crate::interfaces::accounts::{PolytoneAnyProxy, TerpBls, TerpDao, TerpDregg, TerpFrost, TerpZkTls};
-use crate::interfaces::products::{
-    ave_msg, headstash_msg, marketplace_msg, reserve_auction_msg, shitstrap_msg, svg_auction_msg, Cw420,
-    CwAve, CwAveFactory, CwHeadstash, CwHeadstashManifold, CwNorick, CwNullifierAuth, CwNullifierGate,
-    CwRegEligibility, CwShitstrap, CwShitstrapFactory, CwVoteAnchor, CwVoteCeremony, NftfiLoan, NftfiRaffle,
-    RevenueMarketplace, RevenueReserveAuction, SvgAuction,
+use crate::interfaces::accounts::{
+    PolytoneAnyProxy, TerpBls, TerpDao, TerpDregg, TerpFrost, TerpZkTls,
 };
 use crate::interfaces::light::{
     CwIcs08WasmCrosslink, CwIcs08WasmDregg, CwIcs08WasmTerp, CwIcs08WasmZap1,
+};
+use crate::interfaces::products::{
+    Cw420, CwAve, CwAveFactory, CwHeadstash, CwHeadstashManifold, CwNorick, CwNullifierAuth,
+    CwNullifierGate, CwRegEligibility, CwShitstrap, CwShitstrapFactory, CwVoteAnchor,
+    CwVoteCeremony, NftfiLoan, NftfiRaffle, RevenueMarketplace, RevenueReserveAuction, SvgAuction,
+    ave_msg, headstash_msg, marketplace_msg, reserve_auction_msg, shitstrap_msg, svg_auction_msg,
 };
 use crate::orch::{TerpOrchDeployData, TerpOrchSuite};
 
@@ -113,9 +115,7 @@ impl<Chain: CwEnv> TerpAccountSuite<Chain> {
             &[],
         )?;
         self.zktls.instantiate(
-            &terp_zktls::InstantiateMsg {
-                owner: admin_s,
-            },
+            &terp_zktls::InstantiateMsg { owner: admin_s },
             Some(admin),
             &[],
         )?;
@@ -163,8 +163,11 @@ impl<Chain: CwEnv> TerpLightClientSuite<Chain> {
             .instantiate(&dregg_instantiate(), Some(admin), &[])?;
         self.terp
             .instantiate(&terp_iavl_instantiate(), Some(admin), &[])?;
-        self.zap1
-            .instantiate(&crate::interfaces::light::Zap1Instantiate {}, Some(admin), &[])?;
+        self.zap1.instantiate(
+            &crate::interfaces::light::Zap1Instantiate {},
+            Some(admin),
+            &[],
+        )?;
         Ok(())
     }
 }
@@ -177,6 +180,10 @@ pub struct TerpProductSuite<Chain: CwEnv> {
     pub loan: NftfiLoan<Chain>,
     pub marketplace: RevenueMarketplace<Chain>,
     pub reserve_auction: RevenueReserveAuction<Chain>,
+    /// DEV/TEST ONLY bounty escrow + DAO DAO proposal module (contracts/revenue/bounty-escrow).
+    /// Not uploaded by upload() / instantiate_lab(): it is unaudited and refuses morocco-1.
+    /// Use it explicitly on Mock: suite.bounty_escrow.upload()?; then instantiate.
+    pub bounty_escrow: terp_bounty_escrow::interface::TerpBountyEscrow<Chain>,
     pub cw420: Cw420<Chain>,
     pub ave_factory: CwAveFactory<Chain>,
     pub ave: CwAve<Chain>,
@@ -207,6 +214,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
             loan: NftfiLoan::new(chain.clone()),
             marketplace: RevenueMarketplace::new(chain.clone()),
             reserve_auction: RevenueReserveAuction::new(chain.clone()),
+            bounty_escrow: terp_bounty_escrow::interface::TerpBountyEscrow::new(chain.clone()),
             cw420: Cw420::new(chain.clone()),
             ave_factory: CwAveFactory::new(chain.clone()),
             ave: CwAve::new(chain.clone()),
@@ -260,7 +268,8 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
 
     pub fn instantiate_lab(&self, admin: &Addr) -> Result<(), CwOrchError> {
         let admin_s = admin.to_string();
-        self.shitstrap.instantiate(&shitstrap_msg(&admin_s), Some(admin), &[])?;
+        self.shitstrap
+            .instantiate(&shitstrap_msg(&admin_s), Some(admin), &[])?;
         self.shitstrap_factory.instantiate(
             &cw_shitstrap_factory::msg::InstantiateMsg {
                 owner: Some(admin_s.clone()),
@@ -294,7 +303,8 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
             Some(admin),
             &[],
         )?;
-        self.marketplace.instantiate(&marketplace_msg(&admin_s), Some(admin), &[])?;
+        self.marketplace
+            .instantiate(&marketplace_msg(&admin_s), Some(admin), &[])?;
         self.reserve_auction
             .instantiate(&reserve_auction_msg(&admin_s), Some(admin), &[])?;
         self.cw420.instantiate(
@@ -332,14 +342,21 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
         // mock router rejects Any/tokenfactory messages. Upload still stores
         // the code; a chain with tokenfactory instantiates it.
         self.nullifier_auth.instantiate(
-            &cw_nullifier_auth::msg::InstantiateMsg { admin: Some(admin_s.clone()) },
+            &cw_nullifier_auth::msg::InstantiateMsg {
+                admin: Some(admin_s.clone()),
+            },
             Some(admin),
             &[],
         )?;
-        self.nullifier_gate
-            .instantiate(&cw_nullifier_gate::msg::InstantiateMsg {}, Some(admin), &[])?;
+        self.nullifier_gate.instantiate(
+            &cw_nullifier_gate::msg::InstantiateMsg {},
+            Some(admin),
+            &[],
+        )?;
         self.vote_anchor.instantiate(
-            &cw_vote_anchor::InstantiateMsg { admin: Some(admin_s.clone()) },
+            &cw_vote_anchor::InstantiateMsg {
+                admin: Some(admin_s.clone()),
+            },
             Some(admin),
             &[],
         )?;
@@ -452,58 +469,201 @@ impl<Chain: CwEnv> TerpArtifactStack<Chain> {
     /// `(contract id, code id, address)` after a successful [`Self::deploy_on`].
     pub fn bound(&self) -> Result<Vec<(&'static str, u64, String)>, CwOrchError> {
         let mut rows = Vec::new();
-        let mut push = |id: &'static str, code_id: Result<u64, CwOrchError>, addr: Result<String, CwOrchError>| -> Result<(), CwOrchError> {
+        let mut push = |id: &'static str,
+                        code_id: Result<u64, CwOrchError>,
+                        addr: Result<String, CwOrchError>|
+         -> Result<(), CwOrchError> {
             rows.push((id, code_id?, addr?));
             Ok(())
         };
-        push("cw-zk-verify-demo", self.orch.circuits.verify.code_id(), self.orch.circuits.verify.addr_str())?;
+        push(
+            "cw-zk-verify-demo",
+            self.orch.circuits.verify.code_id(),
+            self.orch.circuits.verify.addr_str(),
+        )?;
         if let Some(bridge) = &self.orch.bridge {
-            push("cw-private-dex", bridge.dex.code_id(), bridge.dex.addr_str())?;
+            push(
+                "cw-private-dex",
+                bridge.dex.code_id(),
+                bridge.dex.addr_str(),
+            )?;
         }
         let auth = &self.authenticators;
-        push("terp-passkey", auth.passkey.code_id(), auth.passkey.addr_str())?;
-        push("terp-recovery", auth.recovery.code_id(), auth.recovery.addr_str())?;
-        push("terp-ed25519", auth.ed25519.code_id(), auth.ed25519.addr_str())?;
+        push(
+            "terp-passkey",
+            auth.passkey.code_id(),
+            auth.passkey.addr_str(),
+        )?;
+        push(
+            "terp-recovery",
+            auth.recovery.code_id(),
+            auth.recovery.addr_str(),
+        )?;
+        push(
+            "terp-ed25519",
+            auth.ed25519.code_id(),
+            auth.ed25519.addr_str(),
+        )?;
         push("terp-eth", auth.eth.code_id(), auth.eth.addr_str())?;
         push("terp-zkjwt", auth.zk_jwt.code_id(), auth.zk_jwt.addr_str())?;
         push("terp-vsck", auth.vsck.code_id(), auth.vsck.addr_str())?;
         let accounts = &self.accounts;
         push("terp-dao", accounts.dao.code_id(), accounts.dao.addr_str())?;
-        push("terp-dregg", accounts.dregg.code_id(), accounts.dregg.addr_str())?;
-        push("terp-frost", accounts.frost.code_id(), accounts.frost.addr_str())?;
+        push(
+            "terp-dregg",
+            accounts.dregg.code_id(),
+            accounts.dregg.addr_str(),
+        )?;
+        push(
+            "terp-frost",
+            accounts.frost.code_id(),
+            accounts.frost.addr_str(),
+        )?;
         push("terp-bls", accounts.bls.code_id(), accounts.bls.addr_str())?;
-        push("terp-zktls", accounts.zktls.code_id(), accounts.zktls.addr_str())?;
-        push("polytone-any-proxy", accounts.polytone.code_id(), accounts.polytone.addr_str())?;
+        push(
+            "terp-zktls",
+            accounts.zktls.code_id(),
+            accounts.zktls.addr_str(),
+        )?;
+        push(
+            "polytone-any-proxy",
+            accounts.polytone.code_id(),
+            accounts.polytone.addr_str(),
+        )?;
         let light = &self.light_clients;
-        push("cw-ics08-wasm-crosslink", light.crosslink.code_id(), light.crosslink.addr_str())?;
-        push("cw-ics08-wasm-dregg", light.dregg.code_id(), light.dregg.addr_str())?;
-        push("cw-ics08-wasm-terp", light.terp.code_id(), light.terp.addr_str())?;
-        push("cw-ics08-wasm-zap1", light.zap1.code_id(), light.zap1.addr_str())?;
+        push(
+            "cw-ics08-wasm-crosslink",
+            light.crosslink.code_id(),
+            light.crosslink.addr_str(),
+        )?;
+        push(
+            "cw-ics08-wasm-dregg",
+            light.dregg.code_id(),
+            light.dregg.addr_str(),
+        )?;
+        push(
+            "cw-ics08-wasm-terp",
+            light.terp.code_id(),
+            light.terp.addr_str(),
+        )?;
+        push(
+            "cw-ics08-wasm-zap1",
+            light.zap1.code_id(),
+            light.zap1.addr_str(),
+        )?;
         let products = &self.products;
-        push("cw-shitstrap", products.shitstrap.code_id(), products.shitstrap.addr_str())?;
-        push("cw-shitstrap-factory", products.shitstrap_factory.code_id(), products.shitstrap_factory.addr_str())?;
-        push("nftfi-raffle", products.raffle.code_id(), products.raffle.addr_str())?;
-        push("nftfi-loan", products.loan.code_id(), products.loan.addr_str())?;
-        push("revenue-marketplace", products.marketplace.code_id(), products.marketplace.addr_str())?;
-        push("revenue-reserve-auction", products.reserve_auction.code_id(), products.reserve_auction.addr_str())?;
+        push(
+            "cw-shitstrap",
+            products.shitstrap.code_id(),
+            products.shitstrap.addr_str(),
+        )?;
+        push(
+            "cw-shitstrap-factory",
+            products.shitstrap_factory.code_id(),
+            products.shitstrap_factory.addr_str(),
+        )?;
+        push(
+            "nftfi-raffle",
+            products.raffle.code_id(),
+            products.raffle.addr_str(),
+        )?;
+        push(
+            "nftfi-loan",
+            products.loan.code_id(),
+            products.loan.addr_str(),
+        )?;
+        push(
+            "revenue-marketplace",
+            products.marketplace.code_id(),
+            products.marketplace.addr_str(),
+        )?;
+        push(
+            "revenue-reserve-auction",
+            products.reserve_auction.code_id(),
+            products.reserve_auction.addr_str(),
+        )?;
         push("cw420", products.cw420.code_id(), products.cw420.addr_str())?;
-        push("cw-ave-factory", products.ave_factory.code_id(), products.ave_factory.addr_str())?;
+        push(
+            "cw-ave-factory",
+            products.ave_factory.code_id(),
+            products.ave_factory.addr_str(),
+        )?;
         push("cw-ave", products.ave.code_id(), products.ave.addr_str())?;
-        push("cw-headstash", products.headstash.code_id(), products.headstash.addr_str())?;
-        push("cw-headstash-manifold", products.manifold.code_id(), products.manifold.addr_str())?;
-        push("cw-nullifier-auth", products.nullifier_auth.code_id(), products.nullifier_auth.addr_str())?;
-        push("cw-nullifier-gate", products.nullifier_gate.code_id(), products.nullifier_gate.addr_str())?;
-        push("cw-vote-anchor", products.vote_anchor.code_id(), products.vote_anchor.addr_str())?;
-        push("cw-vote-ceremony", products.vote_ceremony.code_id(), products.vote_ceremony.addr_str())?;
-        push("cw-reg-eligibility", products.reg_eligibility.code_id(), products.reg_eligibility.addr_str())?;
-        push("svg-auction", products.svg_auction.code_id(), products.svg_auction.addr_str())?;
-        push("cw-oracle-aggregator", products.oracle_aggregator.code_id(), products.oracle_aggregator.addr_str())?;
-        push("cw-oracle-twap-probe", products.oracle_twap_probe.code_id(), products.oracle_twap_probe.addr_str())?;
-        push("marketplace-mirror", products.marketplace_mirror.code_id(), products.marketplace_mirror.addr_str())?;
-        push("loyalty-verifier", products.loyalty_verifier.code_id(), products.loyalty_verifier.addr_str())?;
-        push("trusted-builder-sbt", products.trusted_builder.code_id(), products.trusted_builder.addr_str())?;
-        push("cw-cashu-registry", products.cashu_registry.code_id(), products.cashu_registry.addr_str())?;
-        push("hm-nft-minter", products.hm_nft_minter.code_id(), products.hm_nft_minter.addr_str())?;
+        push(
+            "cw-headstash",
+            products.headstash.code_id(),
+            products.headstash.addr_str(),
+        )?;
+        push(
+            "cw-headstash-manifold",
+            products.manifold.code_id(),
+            products.manifold.addr_str(),
+        )?;
+        push(
+            "cw-nullifier-auth",
+            products.nullifier_auth.code_id(),
+            products.nullifier_auth.addr_str(),
+        )?;
+        push(
+            "cw-nullifier-gate",
+            products.nullifier_gate.code_id(),
+            products.nullifier_gate.addr_str(),
+        )?;
+        push(
+            "cw-vote-anchor",
+            products.vote_anchor.code_id(),
+            products.vote_anchor.addr_str(),
+        )?;
+        push(
+            "cw-vote-ceremony",
+            products.vote_ceremony.code_id(),
+            products.vote_ceremony.addr_str(),
+        )?;
+        push(
+            "cw-reg-eligibility",
+            products.reg_eligibility.code_id(),
+            products.reg_eligibility.addr_str(),
+        )?;
+        push(
+            "svg-auction",
+            products.svg_auction.code_id(),
+            products.svg_auction.addr_str(),
+        )?;
+        push(
+            "cw-oracle-aggregator",
+            products.oracle_aggregator.code_id(),
+            products.oracle_aggregator.addr_str(),
+        )?;
+        push(
+            "cw-oracle-twap-probe",
+            products.oracle_twap_probe.code_id(),
+            products.oracle_twap_probe.addr_str(),
+        )?;
+        push(
+            "marketplace-mirror",
+            products.marketplace_mirror.code_id(),
+            products.marketplace_mirror.addr_str(),
+        )?;
+        push(
+            "loyalty-verifier",
+            products.loyalty_verifier.code_id(),
+            products.loyalty_verifier.addr_str(),
+        )?;
+        push(
+            "trusted-builder-sbt",
+            products.trusted_builder.code_id(),
+            products.trusted_builder.addr_str(),
+        )?;
+        push(
+            "cw-cashu-registry",
+            products.cashu_registry.code_id(),
+            products.cashu_registry.addr_str(),
+        )?;
+        push(
+            "hm-nft-minter",
+            products.hm_nft_minter.code_id(),
+            products.hm_nft_minter.addr_str(),
+        )?;
         Ok(rows)
     }
 }
@@ -621,10 +781,10 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
 /// inside that instance.
 pub fn wasmer_upload_and_instantiate(admin_label: &str) {
     use cosmwasm_std::ContractResult;
-    use cosmwasm_vm::testing::{
-        instantiate, mock_env, mock_info, mock_instance_with_options, MockApi, MockInstanceOptions,
-    };
     use cosmwasm_vm::CAP_BULK_MEMORY;
+    use cosmwasm_vm::testing::{
+        MockApi, MockInstanceOptions, instantiate, mock_env, mock_info, mock_instance_with_options,
+    };
 
     let admin = MockApi::default().addr_make(admin_label);
     fn init<M: serde::Serialize>(admin: &str, name: &str, msg: &M) {
@@ -714,7 +874,8 @@ pub fn wasmer_upload_and_instantiate(admin_label: &str) {
 
 fn crosslink_instantiate() -> cw_ics08_wasm_crosslink::msg::InstantiateMsg {
     use crosslink_light_client::{
-        Blake3Hash, ClientState, ConsensusState, FinalizerEntry, ZcashSerialize, PROTOTYPE_PARAMETERS,
+        Blake3Hash, ClientState, ConsensusState, FinalizerEntry, PROTOTYPE_PARAMETERS,
+        ZcashSerialize,
     };
     let client = ClientState::new(
         PROTOTYPE_PARAMETERS,
@@ -733,7 +894,9 @@ fn crosslink_instantiate() -> cw_ics08_wasm_crosslink::msg::InstantiateMsg {
 }
 
 fn dregg_instantiate() -> cw_ics08_wasm_dregg::msg::InstantiateMsg {
-    use cw_ics08_wasm_dregg::types::{ClaimCeiling, ClientState, ConsensusKind, ConsensusState, TrustLevel};
+    use cw_ics08_wasm_dregg::types::{
+        ClaimCeiling, ClientState, ConsensusKind, ConsensusState, TrustLevel,
+    };
     let lanes = vec![1, 2, 3, 4, 5, 6, 7, 8];
     cw_ics08_wasm_dregg::msg::InstantiateMsg {
         client_state: ClientState {

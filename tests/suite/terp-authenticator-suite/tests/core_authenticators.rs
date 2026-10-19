@@ -1,11 +1,11 @@
 //! Trait-workflow coverage for core priority authenticators.
 
-use cosmwasm_std::{to_json_binary, Binary};
+use cosmwasm_std::{Binary, to_json_binary};
 use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
+use terp_authenticator_suite::passkey_fixture::passkey_auth_payload;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
-use terp_authenticator_suite::passkey_fixture::passkey_auth_payload;
 
 fn deploy() -> TerpAuthenticatorSuite<Mock> {
     let mock = Mock::new("admin");
@@ -43,11 +43,26 @@ fn five_lifecycle(
     conf: impl FnOnce() -> Result<<Mock as TxHandler>::Response, CwOrchError>,
     actions: [&str; 5],
 ) {
-    assert_action(&add().unwrap_or_else(|e| panic!("{label} add: {e}")), actions[0]);
-    assert_action(&rem().unwrap_or_else(|e| panic!("{label} rem: {e}")), actions[1]);
-    assert_action(&auth().unwrap_or_else(|e| panic!("{label} auth: {e}")), actions[2]);
-    assert_action(&track().unwrap_or_else(|e| panic!("{label} track: {e}")), actions[3]);
-    assert_action(&conf().unwrap_or_else(|e| panic!("{label} conf: {e}")), actions[4]);
+    assert_action(
+        &add().unwrap_or_else(|e| panic!("{label} add: {e}")),
+        actions[0],
+    );
+    assert_action(
+        &rem().unwrap_or_else(|e| panic!("{label} rem: {e}")),
+        actions[1],
+    );
+    assert_action(
+        &auth().unwrap_or_else(|e| panic!("{label} auth: {e}")),
+        actions[2],
+    );
+    assert_action(
+        &track().unwrap_or_else(|e| panic!("{label} track: {e}")),
+        actions[3],
+    );
+    assert_action(
+        &conf().unwrap_or_else(|e| panic!("{label} conf: {e}")),
+        actions[4],
+    );
 }
 
 #[test]
@@ -57,10 +72,12 @@ fn passkey_trait_workflow() {
     let payload = passkey_auth_payload(b"sign-mode-direct");
     let sig = to_json_binary(&payload).unwrap();
 
-    assert!(suite
-        .passkey
-        .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "1", None))
-        .is_err());
+    assert!(
+        suite
+            .passkey
+            .sudo_on_auth_added(dummy_on_auth_added(acct.clone(), "1", None))
+            .is_err()
+    );
 
     five_lifecycle(
         "passkey",
@@ -71,17 +88,31 @@ fn passkey_trait_workflow() {
                 Some(Binary::from(b"p")),
             ))
         },
-        || suite.passkey.sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None)),
         || {
-            suite.passkey.sudo_authenticate(dummy_authentication_request(
-                acct.clone(),
-                "1",
-                sig.clone(),
-                None,
-            ))
+            suite
+                .passkey
+                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None))
         },
-        || suite.passkey.sudo_track(dummy_track_request(acct.clone(), "1", None)),
-        || suite.passkey.sudo_confirm_execution(dummy_confirm_execution_request(acct.clone(), "1", None)),
+        || {
+            suite
+                .passkey
+                .sudo_authenticate(dummy_authentication_request(
+                    acct.clone(),
+                    "1",
+                    sig.clone(),
+                    None,
+                ))
+        },
+        || {
+            suite
+                .passkey
+                .sudo_track(dummy_track_request(acct.clone(), "1", None))
+        },
+        || {
+            suite
+                .passkey
+                .sudo_confirm_execution(dummy_confirm_execution_request(acct.clone(), "1", None))
+        },
         [
             "passkey_on_auth_added",
             "passkey_on_auth_removed",
@@ -95,8 +126,8 @@ fn passkey_trait_workflow() {
 #[test]
 fn recovery_trait_workflow() {
     use terp_recovery::{
-        break_glass_challenge, rehash, GuardianApproval, RecoveryAuthPayload, RecoveryHashAlg,
-        DEFAULT_DOMAIN,
+        DEFAULT_DOMAIN, GuardianApproval, RecoveryAuthPayload, RecoveryHashAlg,
+        break_glass_challenge, rehash,
     };
 
     let suite = deploy();
@@ -143,9 +174,17 @@ fn recovery_trait_workflow() {
                 Some(Binary::from(b"p")),
             ))
         },
-        || suite.recovery.sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None)),
+        || {
+            suite
+                .recovery
+                .sudo_on_auth_removed(dummy_on_auth_removed(acct.clone(), "1", None))
+        },
         || suite.recovery.sudo_authenticate(auth_req.clone()),
-        || suite.recovery.sudo_track(dummy_track_request(acct.clone(), "1", None)),
+        || {
+            suite
+                .recovery
+                .sudo_track(dummy_track_request(acct.clone(), "1", None))
+        },
         || {
             suite
                 .recovery
@@ -164,8 +203,8 @@ fn recovery_trait_workflow() {
 #[test]
 fn recovery_keccak256_break_glass() {
     use terp_recovery::{
-        break_glass_challenge, rehash, ExecuteMsg, GuardianApproval, GuardianConfig,
-        RecoveryAuthPayload, RecoveryConfig, RecoveryHashAlg, DEFAULT_DOMAIN,
+        DEFAULT_DOMAIN, ExecuteMsg, GuardianApproval, GuardianConfig, RecoveryAuthPayload,
+        RecoveryConfig, RecoveryHashAlg, break_glass_challenge, rehash,
     };
 
     let suite = deploy();
@@ -274,15 +313,17 @@ fn ed25519_lifecycle_without_valid_sig() {
         "ed25519_confirm",
     );
     // bad signature length → error (host never called)
-    assert!(suite
-        .ed25519
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            Binary::from(b"short"),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .ed25519
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                Binary::from(b"short"),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 /// Golden single-sig using cosmwasm-std RFC fixtures (host `ed25519_verify`).
@@ -301,13 +342,7 @@ fn ed25519_host_verify_golden_single() {
 
     let deps = mock_dependencies();
     verify_single(deps.as_ref().api, &msg, &sig, &pk).unwrap();
-    verify_batch(
-        deps.as_ref().api,
-        &[&msg],
-        &[&sig, &sig],
-        &[&pk, &pk],
-    )
-    .unwrap();
+    verify_batch(deps.as_ref().api, &[&msg], &[&sig, &sig], &[&pk, &pk]).unwrap();
 }
 
 #[test]
@@ -340,15 +375,17 @@ fn eth_lifecycle_structural() {
             .unwrap(),
         "eth_on_auth_removed",
     );
-    assert!(suite
-        .eth
-        .sudo_authenticate(dummy_authentication_request(
-            acct.clone(),
-            "1",
-            Binary::from(b"not65bytes"),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .eth
+            .sudo_authenticate(dummy_authentication_request(
+                acct.clone(),
+                "1",
+                Binary::from(b"not65bytes"),
+                None,
+            ))
+            .is_err()
+    );
     assert_action(
         &suite
             .eth

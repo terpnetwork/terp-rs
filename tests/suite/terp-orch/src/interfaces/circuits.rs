@@ -13,7 +13,10 @@ pub struct StwoSsleCircuit;
 
 impl<Chain: ChainState> CircuitFooterSpec for StwoSsleCircuit<Chain> {
     fn summary_json_path() -> &'static str {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/artifacts/stwo_ssle_summary.json")
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/artifacts/stwo_ssle_summary.json"
+        )
     }
 }
 

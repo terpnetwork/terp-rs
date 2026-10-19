@@ -1,13 +1,13 @@
-use cosmwasm_std::{coin, coins, Timestamp};
 use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::{Timestamp, coin, coins};
+use cw_orch::{anyhow, mock::MockBech32, prelude::*};
+use cw_svg::dao::{YIN_YANG_SVG_TEMPLATE, dao_variables};
+use cw_svg::*;
 use cw721::msg::{CollectionInfoAndExtensionResponse, NumTokensResponse};
 use cw721_svg::Cw721SvgContractSuite;
 use cw721_svg::SvgQueryMsgExt::SvgTokenUri;
-use cw721_svg::{contract::*, SvgCollectionMetadata, SvgMetadata};
 use cw721_svg::{ExecuteMsg, InstantiateMsg, QueryMsg, SvgExecuteMsgExt, SvgQueryMsgExt};
-use cw_orch::{anyhow, mock::MockBech32, prelude::*};
-use cw_svg::dao::{dao_variables, YIN_YANG_SVG_TEMPLATE};
-use cw_svg::*;
+use cw721_svg::{SvgCollectionMetadata, SvgMetadata, contract::*};
 use rs_merkle::MerkleTree;
 use whitelist_mtree::interface::WhitelistMerkleTree;
 use whitelist_mtree::tests::{hasher::SortingBlake3Hasher, test_helpers::hash_and_build_tree};

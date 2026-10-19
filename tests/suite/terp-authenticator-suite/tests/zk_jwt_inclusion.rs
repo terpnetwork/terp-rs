@@ -6,12 +6,12 @@
 //! - Mismatch / missing root → reject; match + structural proof → accept
 //! - Nullifier replay still enforced
 
-use cosmwasm_std::{to_json_binary, Binary};
+use cosmwasm_std::{Binary, to_json_binary};
 use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
-use terp_zkjwt::{build_public_inputs, circuit_ids, ZkJwtAuthPayload};
+use terp_zkjwt::{ZkJwtAuthPayload, build_public_inputs, circuit_ids};
 
 fn deploy_suite() -> TerpAuthenticatorSuite<Mock> {
     deploy_suite_with(false)
@@ -111,15 +111,17 @@ fn zk_jwt_inclusion_root_mismatch_rejected() {
         Some(Binary::from(b"p")),
     ));
 
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "jwt-1",
-            to_json_binary(&p).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "jwt-1",
+                to_json_binary(&p).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -144,15 +146,17 @@ fn zk_jwt_missing_inclusion_root_when_issuer_requires_it() {
         Some(Binary::from(b"p")),
     ));
 
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "jwt-1",
-            to_json_binary(&p).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "jwt-1",
+                to_json_binary(&p).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 #[test]
@@ -184,15 +188,17 @@ fn zk_jwt_rotate_inclusion_root_then_old_root_fails() {
 
     // old root fails
     let p_old = payload(claim, nf, Some(old), b"proof");
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct.clone(),
-            "jwt-1",
-            to_json_binary(&p_old).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct.clone(),
+                "jwt-1",
+                to_json_binary(&p_old).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 
     // new root ok
     let p_new = payload(claim, [6u8; 32], Some(new_root), b"proof");
@@ -303,7 +309,12 @@ fn zk_jwt_require_registered_claim_e2e() {
 
     // unregistered claim → UnregisteredClaim
     let unregistered = [0xBBu8; 32];
-    let p_unreg = payload(unregistered, [0x03u8; 32], Some(suite_root()), b"proof-unreg");
+    let p_unreg = payload(
+        unregistered,
+        [0x03u8; 32],
+        Some(suite_root()),
+        b"proof-unreg",
+    );
     let err_unreg = suite
         .zk_jwt
         .sudo_authenticate(dummy_authentication_request(

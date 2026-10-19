@@ -6,7 +6,7 @@
 //! ibc-go v11 has no message that deletes a light client. Halted-chain drafts are
 //! a public "do not recover" notice, not a close.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use cosmos_sdk_proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal;
@@ -222,7 +222,9 @@ pub fn build_submit(
                 if !client_id_well_formed(&subject.client_id) {
                     bail!("bad client id {}", subject.client_id);
                 }
-                if subject.connection_id.is_some() && subject.closure.as_deref() != Some("STATE_CLOSED") {
+                if subject.connection_id.is_some()
+                    && subject.closure.as_deref() != Some("STATE_CLOSED")
+                {
                     bail!(
                         "connection {} must be recorded STATE_CLOSED in the retire proposal",
                         subject.connection_id.as_deref().unwrap_or("")
@@ -337,7 +339,11 @@ pub fn build_submit(
     })
 }
 
-fn substitute_for(draft: &Draft, subject: &Subject, allow_stand_in: bool) -> Result<(String, bool)> {
+fn substitute_for(
+    draft: &Draft,
+    subject: &Subject,
+    allow_stand_in: bool,
+) -> Result<(String, bool)> {
     let chosen = subject
         .substitute_client_id
         .clone()
@@ -438,12 +444,17 @@ fn http_get(url: &str) -> Result<String> {
     let mut buf = Vec::new();
     stream.read_to_end(&mut buf)?;
     let raw = String::from_utf8_lossy(&buf);
-    let (head, body) = raw.split_once("\r\n\r\n").context("HTTP response headers")?;
+    let (head, body) = raw
+        .split_once("\r\n\r\n")
+        .context("HTTP response headers")?;
     let status = head.lines().next().unwrap_or("");
     if !status.contains(" 200 ") {
         bail!("{status} for {url}");
     }
-    if head.to_ascii_lowercase().contains("transfer-encoding: chunked") {
+    if head
+        .to_ascii_lowercase()
+        .contains("transfer-encoding: chunked")
+    {
         return decode_chunks(body);
     }
     Ok(body.trim_end_matches('\0').to_string())
@@ -474,7 +485,8 @@ fn lcd_json(base: &str, path: &str) -> Result<serde_json::Value> {
         path.trim_start_matches('/')
     );
     let body = http_get(&url)?;
-    serde_json::from_str(&body).with_context(|| format!("json from {url}: {}", &body[..body.len().min(180)]))
+    serde_json::from_str(&body)
+        .with_context(|| format!("json from {url}: {}", &body[..body.len().min(180)]))
 }
 
 fn gov_authority(lcd: &str) -> Result<String> {
@@ -496,7 +508,10 @@ fn gov_authority(lcd: &str) -> Result<String> {
 }
 
 fn client_height(lcd: &str, client_id: &str) -> Result<u128> {
-    let state = lcd_json(lcd, &format!("/ibc/core/client/v1/client_states/{client_id}"))?;
+    let state = lcd_json(
+        lcd,
+        &format!("/ibc/core/client/v1/client_states/{client_id}"),
+    )?;
     let rev = state
         .pointer("/client_state/latest_height/revision_number")
         .and_then(|v| v.as_str())
@@ -511,13 +526,19 @@ fn client_height(lcd: &str, client_id: &str) -> Result<u128> {
 }
 
 fn live_client(lcd: &str, client_id: &str) -> Result<(String, String)> {
-    let state = lcd_json(lcd, &format!("/ibc/core/client/v1/client_states/{client_id}"))?;
+    let state = lcd_json(
+        lcd,
+        &format!("/ibc/core/client/v1/client_states/{client_id}"),
+    )?;
     let chain_id = state
         .pointer("/client_state/chain_id")
         .and_then(|v| v.as_str())
         .context("client state chain_id")?
         .to_string();
-    let status = lcd_json(lcd, &format!("/ibc/core/client/v1/client_status/{client_id}"))?;
+    let status = lcd_json(
+        lcd,
+        &format!("/ibc/core/client/v1/client_status/{client_id}"),
+    )?;
     let status = status
         .get("status")
         .and_then(|v| v.as_str())
@@ -573,10 +594,16 @@ fn preflight(lcd: &str, draft: &Draft) -> Result<()> {
             if sub_id != SUBSTITUTE_STAND_IN {
                 let (sub_chain, sub_status) = live_client(lcd, sub_id)?;
                 if sub_status != "Active" {
-                    bail!("substitute {sub_id} for {} is {sub_status}, not Active", subject.client_id);
+                    bail!(
+                        "substitute {sub_id} for {} is {sub_status}, not Active",
+                        subject.client_id
+                    );
                 }
                 if sub_chain != chain_id {
-                    bail!("substitute {sub_id} is {sub_chain}, subject {} is {chain_id}", subject.client_id);
+                    bail!(
+                        "substitute {sub_id} is {sub_chain}, subject {} is {chain_id}",
+                        subject.client_id
+                    );
                 }
                 let subject_height = client_height(lcd, &subject.client_id)?;
                 let sub_height = client_height(lcd, sub_id)?;
@@ -633,7 +660,9 @@ fn uterp_balance(lcd: &str, address: &str) -> Result<String> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SimClass {
     /// Node simulation accepted the submit, including the deposit debit.
-    SubmitValid { gas: u64 },
+    SubmitValid {
+        gas: u64,
+    },
     /// Inner messages and the gov signer were accepted. The account cannot pay the deposit.
     SubmitValidUnfunded,
     Unsound,
@@ -887,7 +916,10 @@ pub fn run() -> Result<()> {
         .unwrap_or_else(|| "http://192.168.10.101:1317".into());
     let gov = gov_authority(&lcd)?;
     println!("chain_id: {}", chain.chain_id);
-    println!("grpc: {}", chain.grpc_urls.first().unwrap_or(&String::new()));
+    println!(
+        "grpc: {}",
+        chain.grpc_urls.first().unwrap_or(&String::new())
+    );
     println!("lcd: {lcd}");
     println!("gov module: {gov}");
 
@@ -922,7 +954,9 @@ pub fn run() -> Result<()> {
     println!("proposer uterp: {balance}");
     if args.broadcast {
         if std::env::var("TERP_GOV_BROADCAST").ok().as_deref() != Some("1") {
-            bail!("refusing broadcast. Set TERP_GOV_BROADCAST=1 only when a deposit should be spent.");
+            bail!(
+                "refusing broadcast. Set TERP_GOV_BROADCAST=1 only when a deposit should be spent."
+            );
         }
     } else {
         println!("mode: simulate only (no deposit is spent)");
@@ -947,7 +981,9 @@ pub fn run() -> Result<()> {
             println!("note: {}", draft.note);
         }
         if draft.kind == DraftKind::Text {
-            println!("no client check. This draft ratifies a document and does not read IBC state.");
+            println!(
+                "no client check. This draft ratifies a document and does not read IBC state."
+            );
         } else {
             preflight(&lcd, &draft)?;
         }
@@ -977,7 +1013,9 @@ pub fn run() -> Result<()> {
         );
         let any = submit_any(&built.submit);
         if args.broadcast {
-            if built.used_substitute_stand_in || built.kind != DraftKind::Recover && built.message_count != 0 {
+            if built.used_substitute_stand_in
+                || built.kind != DraftKind::Recover && built.message_count != 0
+            {
                 bail!("broadcast refused for {}", path.display());
             }
             let resp = daemon.rt_handle.block_on(
@@ -1077,7 +1115,10 @@ mod tests {
         let built = build_submit(&draft, "terp1proposer", "terp1gov", true).unwrap();
         assert!(built.used_substitute_stand_in);
         assert_eq!(built.message_count, 2);
-        assert_eq!(built.submit.messages[0].type_url, "/ibc.core.client.v1.MsgRecoverClient");
+        assert_eq!(
+            built.submit.messages[0].type_url,
+            "/ibc.core.client.v1.MsgRecoverClient"
+        );
         let msg = MsgRecoverClient::decode(built.submit.messages[0].value.as_slice()).unwrap();
         assert_eq!(msg.signer, "terp1gov");
         assert_eq!(msg.substitute_client_id, SUBSTITUTE_STAND_IN);

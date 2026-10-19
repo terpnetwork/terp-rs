@@ -18,8 +18,7 @@ use terp_authenticator_suite::{ETH_GOLDEN_SIGNER, TerpAuthenticatorSuite};
 
 fn main() -> anyhow::Result<()> {
     let _ = dotenvy::from_filename(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../.env"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../.env"),
     );
     env_logger::init();
     rustls::crypto::ring::default_provider()
@@ -40,7 +39,10 @@ fn main() -> anyhow::Result<()> {
     let mut chain: ChainInfoOwned = TERP_MAINNET.into();
     chain.grpc_urls = vec![grpc.clone()];
 
-    eprintln!("chain={} grpc={} (mnemonic not logged)", chain.chain_id, grpc);
+    eprintln!(
+        "chain={} grpc={} (mnemonic not logged)",
+        chain.chain_id, grpc
+    );
 
     let daemon = DaemonBuilder::new(chain)
         .mnemonic(mnemonic)
@@ -100,9 +102,25 @@ fn main() -> anyhow::Result<()> {
         &[],
     )?;
 
-    println!("terp-passkey  code_id={} addr={}", suite.passkey.code_id()?, suite.passkey.addr_str()?);
-    println!("terp-recovery code_id={} addr={}", suite.recovery.code_id()?, suite.recovery.addr_str()?);
-    println!("terp-ed25519  code_id={} addr={}", suite.ed25519.code_id()?, suite.ed25519.addr_str()?);
-    println!("terp-eth      code_id={} addr={}", suite.eth.code_id()?, suite.eth.addr_str()?);
+    println!(
+        "terp-passkey  code_id={} addr={}",
+        suite.passkey.code_id()?,
+        suite.passkey.addr_str()?
+    );
+    println!(
+        "terp-recovery code_id={} addr={}",
+        suite.recovery.code_id()?,
+        suite.recovery.addr_str()?
+    );
+    println!(
+        "terp-ed25519  code_id={} addr={}",
+        suite.ed25519.code_id()?,
+        suite.ed25519.addr_str()?
+    );
+    println!(
+        "terp-eth      code_id={} addr={}",
+        suite.eth.code_id()?,
+        suite.eth.addr_str()?
+    );
     Ok(())
 }

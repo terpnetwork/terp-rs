@@ -11,8 +11,8 @@ use cw_orch::core::circuits::circuit_interface_traits::{
 };
 use cw_orch::prelude::*;
 use terp_orch::{
-    write_demo_circuit_artifacts, FlockLigeritoCircuit, StwoSsleCircuit, TerpCircuitDemoDeployData,
-    TerpCircuitDemoSuite,
+    FlockLigeritoCircuit, StwoSsleCircuit, TerpCircuitDemoDeployData, TerpCircuitDemoSuite,
+    write_demo_circuit_artifacts,
 };
 use zk_cosmwasm::curves::verify_stwo_proof;
 use zk_cosmwasm::{prove_flock, verify_flock_proof};
@@ -116,7 +116,9 @@ fn stwo_registered_host_accepts_and_dummy_dstw_rejected() {
         .unwrap_err();
     let msg = format!("{err}");
     assert!(
-        msg.contains("host verifier") || msg.contains("proof_instance_verify") || msg.contains("DSTW"),
+        msg.contains("host verifier")
+            || msg.contains("proof_instance_verify")
+            || msg.contains("DSTW"),
         "expected dummy DSTW reject, got: {msg}"
     );
     clear_test_circuits();

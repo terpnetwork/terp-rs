@@ -10,15 +10,15 @@
 //! Path A Groth16 (L2 crypto) remains in cosmwasm-vm bn254 golden tests.
 //! Live Headscale join (L3) remains o-line `just test gateway chain hs`.
 
-use cosmwasm_std::{to_json_binary, Binary};
+use cosmwasm_std::{Binary, to_json_binary};
 use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
 use terp_zkjwt::{
-    circuit_ids, claim_is_sound, decode_circom_publics_be, parse_public_json_array,
-    CircomJwtPolicyClaim, ZkJwtAuthPayload, CIRCOM_JWT_CODEC_V1, CLAIM_EVENT_SCHEMA_V1,
-    MIN_SOUND_CLAIM_RICHNESS,
+    CIRCOM_JWT_CODEC_V1, CLAIM_EVENT_SCHEMA_V1, CircomJwtPolicyClaim, MIN_SOUND_CLAIM_RICHNESS,
+    ZkJwtAuthPayload, circuit_ids, claim_is_sound, decode_circom_publics_be,
+    parse_public_json_array,
 };
 
 fn deploy_no_inclusion_root() -> TerpAuthenticatorSuite<Mock> {
@@ -157,15 +157,17 @@ fn l1_codec_nullifier_replay() {
             None,
         ))
         .unwrap();
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "jwt-circom-2",
-            to_json_binary(&p).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "jwt-circom-2",
+                to_json_binary(&p).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 }
 
 /// Bridge-facing surface: nullifier_hex + schema for AccessGrant-style merge.
@@ -174,7 +176,10 @@ fn l1_claim_maps_to_bridge_nullifier_hex() {
     let claim = full_claim();
     claim_is_sound(&claim).unwrap();
     // o-line AccessGrant.nullifier_hex is lowercase hex
-    assert_eq!(claim.nullifier_hex, claim.nullifier_hex.to_ascii_lowercase());
+    assert_eq!(
+        claim.nullifier_hex,
+        claim.nullifier_hex.to_ascii_lowercase()
+    );
     assert_eq!(claim.schema, "v1");
     // principal hint is opaque hex of salt (never a raw email in logs)
     assert_eq!(claim.principal_hint_hex.len(), 64);
@@ -184,15 +189,13 @@ fn l1_claim_maps_to_bridge_nullifier_hex() {
 /// Crypto verify runs via `node terp-zkjwt/scripts/l2_snarkjs_verify.mjs`.
 #[test]
 fn l2_real_snarkjs_publics_are_production_layout() {
-    let signals: Vec<String> =
-        serde_json::from_str(terp_zkjwt::fixtures::L2_PUBLIC_JSON).unwrap();
+    let signals: Vec<String> = serde_json::from_str(terp_zkjwt::fixtures::L2_PUBLIC_JSON).unwrap();
     assert_eq!(signals.len(), 40, "demo-18-12-2024 jwt-auth nPublic");
     let claim = full_claim();
     claim_is_sound(&claim).unwrap();
     // known nullifier from this fixture run (idx 4)
     assert!(
-        claim.nullifier_hex.starts_with("1753a470")
-            || claim.nullifier != [0u8; 32],
+        claim.nullifier_hex.starts_with("1753a470") || claim.nullifier != [0u8; 32],
         "expected real nullifier from snarkjs fixture"
     );
 }

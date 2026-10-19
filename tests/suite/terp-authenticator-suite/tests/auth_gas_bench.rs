@@ -20,36 +20,41 @@ mod bench {
 
     use cosmwasm_std::testing::{message_info, mock_env};
     use cosmwasm_std::{Addr, Binary, Coin, ContractResult, Empty, Env};
-    use cosmwasm_vm::testing::{mock_instance_with_options, MockApi, MockInstanceOptions};
-    use cosmwasm_vm::{call_execute, call_instantiate, call_sudo, GasReport, Instance, VmResult, CAP_BULK_MEMORY};
-    use cw721_svg::{ExecuteMsg, InstantiateMsg, SvgCollectionMetadata, SvgExecuteMsgExt};
+    use cosmwasm_vm::testing::{MockApi, MockInstanceOptions, mock_instance_with_options};
+    use cosmwasm_vm::{
+        CAP_BULK_MEMORY, GasReport, Instance, VmResult, call_execute, call_instantiate, call_sudo,
+    };
     use cw_orch::prelude::*;
     use cw_svg::{MintMsg, VariableDef, VariableKind};
+    use cw721_svg::{ExecuteMsg, InstantiateMsg, SvgCollectionMetadata, SvgExecuteMsgExt};
     use ed25519_zebra::SigningKey;
     use k256::ecdsa::SigningKey as EthSigningKey;
     use serde::Serialize;
     use sha2::{Digest, Sha256};
     use sha3::Keccak256;
+    use terp_auth::{
+        Any, AuthSudoMsg, AuthenticationRequest, SignModeTxData, SignatureData, TxData,
+    };
     use terp_authenticator_suite::fixtures::{dummy_on_auth_added, dummy_on_auth_removed};
+    use terp_authenticator_suite::passkey_fixture::{passkey_auth_payload, passkey_registration};
     use terp_authenticator_suite::traits::AuthenticatorSudoExt;
     use terp_authenticator_suite::{
-        TerpAuthenticatorDeployData, TerpAuthenticatorSuite, ETH_GOLDEN_SIGNER,
+        ETH_GOLDEN_SIGNER, TerpAuthenticatorDeployData, TerpAuthenticatorSuite,
     };
-    use terp_auth::{Any, AuthenticationRequest, AuthSudoMsg, SignModeTxData, SignatureData, TxData};
-    use terp_authenticator_suite::passkey_fixture::{passkey_auth_payload, passkey_registration};
     use terp_recovery::{
-        break_glass_challenge, rehash, GuardianApproval, GuardianConfig, RecoveryAuthPayload,
-        RecoveryConfig, RecoveryHashAlg, DEFAULT_DOMAIN,
+        DEFAULT_DOMAIN, GuardianApproval, GuardianConfig, RecoveryAuthPayload, RecoveryConfig,
+        RecoveryHashAlg, break_glass_challenge, rehash,
     };
     use terp_vsck::{ExecuteMsg as VsckExecuteMsg, VsckAuthPayload, VsckCircuit, VsckRole};
-    use terp_zkjwt::{build_public_inputs, circuit_ids, compute_msg_bind, ZkJwtAuthPayload};
+    use terp_zkjwt::{ZkJwtAuthPayload, build_public_inputs, circuit_ids, compute_msg_bind};
 
     const SCHEMA: &str = "terp-auth-gas-bench/v1";
     const CHAIN_ID: &str = "terp-test-1";
     const AUTH_ID: &str = "1";
     const GAS_LIMIT: u64 = 4_000_000_000;
     const ANVIL0_PRIV: &str = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-    const SVG_TEMPLATE: &str = "<svg xmlns='http://www.w3.org/2000/svg'><circle fill='${color}'/></svg>";
+    const SVG_TEMPLATE: &str =
+        "<svg xmlns='http://www.w3.org/2000/svg'><circle fill='${color}'/></svg>";
     const SESSION_ID: &str = "bench-session";
 
     #[derive(Serialize)]
@@ -184,17 +189,29 @@ mod bench {
         }
     }
 
-    fn metered_instance(wasm: &[u8]) -> Instance<MockApi, cosmwasm_vm::testing::MockStorage, cosmwasm_vm::testing::MockQuerier> {
+    fn metered_instance(
+        wasm: &[u8],
+    ) -> Instance<MockApi, cosmwasm_vm::testing::MockStorage, cosmwasm_vm::testing::MockQuerier>
+    {
         let mut options = MockInstanceOptions {
             gas_limit: GAS_LIMIT,
             ..Default::default()
         };
         // Guest artifacts are built with bulk memory. The VM mock set does not advertise it.
-        options.available_capabilities.insert(CAP_BULK_MEMORY.to_string());
+        options
+            .available_capabilities
+            .insert(CAP_BULK_MEMORY.to_string());
         mock_instance_with_options(wasm, options)
     }
 
-    fn vm_sudo(wasm: &[u8], contract: &str, admin: &str, init: &[u8], setup: Option<&[u8]>, sudo: &[u8]) -> Meter {
+    fn vm_sudo(
+        wasm: &[u8],
+        contract: &str,
+        admin: &str,
+        init: &[u8],
+        setup: Option<&[u8]>,
+        sudo: &[u8],
+    ) -> Meter {
         let mut instance = metered_instance(wasm);
         let env = vm_env(contract);
         let info = message_info(&Addr::unchecked(admin), &[]);
@@ -248,7 +265,12 @@ mod bench {
         }
     }
 
-    fn auth_request(account: Addr, fee_payer: Addr, signature: Binary, mint: &[u8]) -> AuthenticationRequest {
+    fn auth_request(
+        account: Addr,
+        fee_payer: Addr,
+        signature: Binary,
+        mint: &[u8],
+    ) -> AuthenticationRequest {
         let msg = Any {
             type_url: "/cosmwasm.wasm.v1.MsgExecuteContract".into(),
             value: Binary::from(mint.to_vec()),
@@ -316,7 +338,9 @@ mod bench {
 
     fn eth_signature(mint: &[u8]) -> Vec<u8> {
         let sk = EthSigningKey::from_slice(&hex::decode(ANVIL0_PRIV).unwrap()).unwrap();
-        let (sig, recid) = sk.sign_prehash_recoverable(&eth_personal_hash(mint)).unwrap();
+        let (sig, recid) = sk
+            .sign_prehash_recoverable(&eth_personal_hash(mint))
+            .unwrap();
         let mut out = sig.to_bytes().as_slice().to_vec();
         out.push(recid.to_byte());
         out
@@ -353,7 +377,13 @@ mod bench {
         cosmwasm_std::to_json_binary(&passkey_auth_payload(mint)).unwrap()
     }
 
-    fn jwt_signature(account: &str, mint: &[u8], nullifier: [u8; 32], with_bind: bool, proof: &[u8]) -> Binary {
+    fn jwt_signature(
+        account: &str,
+        mint: &[u8],
+        nullifier: [u8; 32],
+        with_bind: bool,
+        proof: &[u8],
+    ) -> Binary {
         let claim = [0x11u8; 32];
         let root = [0xABu8; 32];
         let bind = with_bind.then(|| compute_msg_bind(CHAIN_ID, account, AUTH_ID, 0, mint));
@@ -557,7 +587,12 @@ mod bench {
 
         // ed25519
         {
-            let good = auth_request(account.clone(), fee.clone(), Binary::from(ed_sig.clone()), &mint);
+            let good = auth_request(
+                account.clone(),
+                fee.clone(),
+                Binary::from(ed_sig.clone()),
+                &mint,
+            );
             let probe = mock_probe(&suite.ed25519, good);
             let vm_init = cosmwasm_std::to_json_vec(&terp_ed25519::InstantiateMsg {
                 owner: Some(vm_admin.clone()),
@@ -594,7 +629,12 @@ mod bench {
         // eth
         {
             let sig = eth_signature(&mint);
-            let good = auth_request(account.clone(), fee.clone(), Binary::from(sig.clone()), &mint);
+            let good = auth_request(
+                account.clone(),
+                fee.clone(),
+                Binary::from(sig.clone()),
+                &mint,
+            );
             let probe = mock_probe(&suite.eth, good);
             let vm_init = cosmwasm_std::to_json_vec(&terp_eth::InstantiateMsg {
                 owner: Some(vm_admin.clone()),
@@ -624,7 +664,8 @@ mod bench {
                 probe,
                 meter,
                 dispatched,
-                "EIP-191 personal_sign over sign_mode_direct (the mint JSON), Anvil account 0".into(),
+                "EIP-191 personal_sign over sign_mode_direct (the mint JSON), Anvil account 0"
+                    .into(),
             ));
         }
 
@@ -649,7 +690,12 @@ mod bench {
                 },
             })
             .unwrap();
-            let vm_req = auth_request(Addr::unchecked(&vm_account), Addr::unchecked(&vm_fee), vm_sig, &mint);
+            let vm_req = auth_request(
+                Addr::unchecked(&vm_account),
+                Addr::unchecked(&vm_fee),
+                vm_sig,
+                &mint,
+            );
             let meter = vm_sudo(
                 &artifact_wasm("terp_recovery"),
                 &vm_contract,
@@ -724,12 +770,24 @@ mod bench {
 
         // zk-jwt structural envelope. Omitted msg_bind still authenticates.
         {
-            let omitted = jwt_signature(account.as_str(), &mint, [0x01u8; 32], false, b"envelope-proof");
+            let omitted = jwt_signature(
+                account.as_str(),
+                &mint,
+                [0x01u8; 32],
+                false,
+                b"envelope-proof",
+            );
             let omitted_ok = suite
                 .zk_jwt
                 .sudo_authenticate(auth_request(account.clone(), fee.clone(), omitted, &mint))
                 .is_ok();
-            let bound = jwt_signature(account.as_str(), &mint, [0x02u8; 32], true, b"envelope-proof");
+            let bound = jwt_signature(
+                account.as_str(),
+                &mint,
+                [0x02u8; 32],
+                true,
+                b"envelope-proof",
+            );
             let good = auth_request(account.clone(), fee.clone(), bound, &mint);
             let probe = mock_probe(&suite.zk_jwt, good);
             let empty_rejected = suite

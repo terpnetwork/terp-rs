@@ -6,7 +6,7 @@
 #![cfg(feature = "bridge")]
 
 use cw_orch::prelude::*;
-use terp_orch::{write_demo_circuit_artifacts, TerpBridgeDeployData, TerpBridgeSuite};
+use terp_orch::{TerpBridgeDeployData, TerpBridgeSuite, write_demo_circuit_artifacts};
 
 #[test]
 fn private_dex_lab_mock_verify_deploys() {

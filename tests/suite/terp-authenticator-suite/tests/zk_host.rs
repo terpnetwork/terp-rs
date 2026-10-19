@@ -14,14 +14,14 @@
 #![cfg(feature = "zk-host")]
 
 use cosmwasm_std::testing::{clear_test_circuits, register_test_circuit};
-use cosmwasm_std::{to_json_binary, Binary};
+use cosmwasm_std::{Binary, to_json_binary};
 use cw_orch::prelude::*;
 use terp_authenticator_suite::fixtures::*;
 use terp_authenticator_suite::traits::AuthenticatorSudoExt;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
 use terp_zkjwt::{
-    build_public_inputs, circuit_ids, default_verifier, HostZkJwtVerifier, ExecuteMsg,
-    IssuerConfig, ZkJwtAuthPayload, ZkJwtVerifier,
+    ExecuteMsg, HostZkJwtVerifier, IssuerConfig, ZkJwtAuthPayload, ZkJwtVerifier,
+    build_public_inputs, circuit_ids, default_verifier,
 };
 
 fn deploy() -> TerpAuthenticatorSuite<Mock> {
@@ -152,9 +152,7 @@ fn zk_host_authenticate_happy_with_registered_circuit() {
     register_test_circuit(
         42,
         "bn254-square-mock",
-        Box::new(move |proof, instances| {
-            Ok(proof == ep.as_slice() && instances == epi.as_slice())
-        }),
+        Box::new(move |proof, instances| Ok(proof == ep.as_slice() && instances == epi.as_slice())),
     );
 
     let suite = deploy();
@@ -216,9 +214,7 @@ fn zk_host_authenticate_happy_with_registered_circuit() {
 #[test]
 fn zk_host_e2e_snarkjs_jwt_auth_authenticate() {
     use terp_zkjwt::{claim_is_sound, decode_circom_publics_be, parse_public_json_array};
-    use zk_cosmwasm::{
-        convert_snarkjs_public_json, verify_snarkjs_fixtures,
-    };
+    use zk_cosmwasm::{convert_snarkjs_public_json, verify_snarkjs_fixtures};
 
     clear_test_circuits();
 
@@ -318,7 +314,11 @@ fn zk_host_e2e_snarkjs_jwt_auth_authenticate() {
             .iter()
             .any(|a| a.key == "verify" && a.value == "proof_instance_verify")
     });
-    assert!(codec_ok, "expected codec=circom-jwt-v1, events={:#?}", res.events);
+    assert!(
+        codec_ok,
+        "expected codec=circom-jwt-v1, events={:#?}",
+        res.events
+    );
     assert!(verify_ok, "expected verify=proof_instance_verify");
 
     assert!(
@@ -339,9 +339,7 @@ fn zk_host_e2e_snarkjs_jwt_auth_authenticate() {
     bad.proof = Binary::from(b"{\"pi_a\":[\"1\",\"2\",\"1\"],\"pi_b\":[[[\"1\",\"0\"],[\"1\",\"0\"],[\"1\",\"0\"]],[[\"1\",\"0\"],[\"1\",\"0\"],[\"1\",\"0\"]],[[\"1\",\"0\"],[\"1\",\"0\"],[\"1\",\"0\"]]],\"pi_c\":[\"1\",\"2\",\"1\"],\"protocol\":\"groth16\",\"curve\":\"bn128\"}");
     // Need unused nullifier — use different public would fail instance match.
     // Offline: corrupted proof fails verify_snarkjs_fixtures
-    assert!(
-        verify_snarkjs_fixtures(&vkey_json, "not-json", &public_json).is_err()
-    );
+    assert!(verify_snarkjs_fixtures(&vkey_json, "not-json", &public_json).is_err());
     let _ = bad;
 
     clear_test_circuits();
@@ -424,15 +422,17 @@ fn zk_host_e2e_snarkjs_require_registered_claim() {
         proof: Binary::from(proof_json.as_bytes()),
         circuit_id: circuit_ids::JWT_MEMBERSHIP.into(),
     };
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            owner.clone(),
-            "jwt-rc",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                owner.clone(),
+                "jwt-rc",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 
     suite
         .zk_jwt
@@ -460,15 +460,17 @@ fn zk_host_e2e_snarkjs_require_registered_claim() {
     // fails claim ownership (and would also hit nullifier replay). Use wrong account first after
     // re-deploy is heavy; claim ownership is checked after crypto, so register again on fresh suite:
     // For this suite instance nullifier is spent — wrong account still fails (replay or ownership).
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            mock_account(),
-            "jwt-rc",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                mock_account(),
+                "jwt-rc",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
 
     clear_test_circuits();
 }
@@ -523,15 +525,17 @@ fn zk_host_e2e_snarkjs_claim_field_mismatch() {
         proof: Binary::from(proof_json.as_bytes()),
         circuit_id: circuit_ids::JWT_MEMBERSHIP.into(),
     };
-    assert!(suite
-        .zk_jwt
-        .sudo_authenticate(dummy_authentication_request(
-            acct,
-            "1",
-            to_json_binary(&payload).unwrap(),
-            None,
-        ))
-        .is_err());
+    assert!(
+        suite
+            .zk_jwt
+            .sudo_authenticate(dummy_authentication_request(
+                acct,
+                "1",
+                to_json_binary(&payload).unwrap(),
+                None,
+            ))
+            .is_err()
+    );
     clear_test_circuits();
 }
 
@@ -539,11 +543,7 @@ fn zk_host_e2e_snarkjs_claim_field_mismatch() {
 #[test]
 fn zk_host_authenticate_rejects_bad_proof_when_registered() {
     clear_test_circuits();
-    register_test_circuit(
-        42,
-        "bn254-strict",
-        Box::new(|_proof, _instances| Ok(false)),
-    );
+    register_test_circuit(42, "bn254-strict", Box::new(|_proof, _instances| Ok(false)));
 
     let suite = deploy();
     suite

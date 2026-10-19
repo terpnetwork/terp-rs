@@ -1,7 +1,7 @@
 use cosmwasm_std::Empty;
 use cw_orch::{interface, prelude::*};
 use terp_auth::AuthSudoMsg;
-use terp_eth::{execute, instantiate, query, sudo, ExecuteMsg, InstantiateMsg, QueryMsg};
+use terp_eth::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query, sudo};
 
 use crate::traits::AuthSudoContract;
 
