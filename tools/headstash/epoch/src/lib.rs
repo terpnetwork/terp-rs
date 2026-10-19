@@ -18,7 +18,8 @@ pub use zk_headstash::circuit::{
 };
 pub use zk_headstash::toy_host::{toy_vk_proof, toy_vk_proof_offset};
 pub use zk_headstash::no_ecdsa::{
-    membership_circuit_blob, membership_host_proof, membership_vk_hash, MEMBERSHIP_VK_ID,
+    membership_circuit_blob, membership_host_proof, membership_public_inputs, membership_vk_hash,
+    MEMBERSHIP_VK_ID,
 };
 
 /// Campaign id of the epoch circuit blob. Not the Pasta curve id.

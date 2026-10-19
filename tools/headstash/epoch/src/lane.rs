@@ -526,23 +526,36 @@ impl<const D: usize> Campaign<D> {
         {
             return Err(IngressError::Vk);
         }
-        let mut recipient = [0u8; 32];
-        recipient[..20].copy_from_slice(&raw);
         self.verifies.fetch_add(1, Ordering::Relaxed);
-        let statement = zk_headstash::circuit::EpochStatement {
-            ctx: parsed.ctx,
-            root: parsed.root,
-            nullifier: parsed.nullifier,
-            destination: parsed.destination.clone(),
-            amount: parsed.amount,
-            recipient,
+        // vk id 2 is the K=11 membership circuit: six field limbs.
+        // vk id 1 stays the K=19 epoch statement, including its trailing limb.
+        let instances = if item.vk_id == crate::MEMBERSHIP_VK_ID {
+            zk_headstash::no_ecdsa::membership_public_inputs(
+                &parsed.ctx,
+                &parsed.root,
+                &parsed.nullifier,
+                &parsed.destination,
+                parsed.amount,
+            )
+            .map_err(|_| IngressError::Public)?
+        } else {
+            let mut recipient = [0u8; 32];
+            recipient[..20].copy_from_slice(&raw);
+            let statement = zk_headstash::circuit::EpochStatement {
+                ctx: parsed.ctx,
+                root: parsed.root,
+                nullifier: parsed.nullifier,
+                destination: parsed.destination.clone(),
+                amount: parsed.amount,
+                recipient,
+            };
+            zk_headstash::circuit::host_public_inputs(&statement).map_err(|err| {
+                match err {
+                    zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
+                    zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
+                }
+            })?
         };
-        let instances = zk_headstash::circuit::host_public_inputs(&statement).map_err(|err| {
-            match err {
-                zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
-                zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
-            }
-        })?;
         crate::host::verify_with_host(item.vk_id, &item.proof, &instances)
             .map_err(|_| IngressError::Proof)?;
         Ok(Prepared {

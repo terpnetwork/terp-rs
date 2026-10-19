@@ -436,6 +436,33 @@ pub fn membership_vk_hash() -> Result<[u8; 32], String> {
     Ok(checksum32(&membership_circuit_blob()?))
 }
 
+/// Six 32-byte little-endian limbs the K=11 host reads: ctx, root,
+/// nullifier, destination_lo, destination_hi, amount. The first three are
+/// the `to_repr` bytes already stored in the claim message.
+pub fn membership_public_inputs(
+    ctx: &[u8; 32],
+    root: &[u8; 32],
+    nullifier: &[u8; 32],
+    destination: &str,
+    amount: u64,
+) -> Result<Vec<u8>, String> {
+    let ctx = canon_field(ctx)?;
+    let root = canon_field(root)?;
+    let nullifier = canon_field(nullifier)?;
+    let (dest_lo, dest_hi) = pack_destination(destination)?;
+    let amount = pallas::Base::from(amount);
+    let mut out = Vec::with_capacity(32 * 6);
+    for limb in [ctx, root, nullifier, dest_lo, dest_hi, amount] {
+        out.extend_from_slice(limb.to_repr().as_ref());
+    }
+    Ok(out)
+}
+
+fn canon_field(bytes: &[u8; 32]) -> Result<pallas::Base, String> {
+    let value = Option::from(pallas::Base::from_repr(*bytes)).ok_or("field")?;
+    Ok(value)
+}
+
 
 /// Blob, proof, and the 6x32-byte public limbs the host verifier reads.
 #[derive(Clone, Debug)]
@@ -547,6 +574,32 @@ mod tests {
     }
 
     #[test]
+    fn membership_public_inputs_follow_the_claim_message() {
+        let ctx = pallas::Base::from(3u64);
+        let root = pallas::Base::from(4u64);
+        let nullifier = pallas::Base::from(5u64);
+        let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
+        let amount = 15u64;
+        let (dest_lo, dest_hi) = pack_destination(destination).unwrap();
+        let mut ctx_b = [0u8; 32];
+        let mut root_b = [0u8; 32];
+        let mut nullifier_b = [0u8; 32];
+        ctx_b.copy_from_slice(ctx.to_repr().as_ref());
+        root_b.copy_from_slice(root.to_repr().as_ref());
+        nullifier_b.copy_from_slice(nullifier.to_repr().as_ref());
+        let inputs = membership_public_inputs(&ctx_b, &root_b, &nullifier_b, destination, amount)
+            .unwrap();
+        assert_eq!(inputs.len(), 192);
+        assert_eq!(&inputs[0..32], ctx_b.as_slice());
+        assert_eq!(&inputs[32..64], root_b.as_slice());
+        assert_eq!(&inputs[64..96], nullifier_b.as_slice());
+        assert_eq!(&inputs[96..128], dest_lo.to_repr().as_ref());
+        assert_eq!(&inputs[128..160], dest_hi.to_repr().as_ref());
+        assert_eq!(&inputs[160..192], pallas::Base::from(amount).to_repr().as_ref());
+        let body = canonical_body(ctx, root, nullifier, destination, amount);
+        assert!(body.contains(&hex::encode(ctx_b)));
+    }
+
     fn membership_vk_hash_is_the_footer_blob() {
         let blob = membership_circuit_blob().expect("blob");
         let hash = checksum32(&blob);
