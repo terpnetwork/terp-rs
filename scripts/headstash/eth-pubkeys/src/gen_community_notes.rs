@@ -17,19 +17,20 @@ use ff::{Field, PrimeField};
 use pasta_curves::pallas;
 use rand::RngExt;
 use rayon::prelude::*;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use zk_headstash::FIXED_AMOUNTS;
 use zk_headstash::circuit::gadget::secp256k1_chip::secp_coord_be_to_pallas_base;
 use zk_headstash::distro_poseidon::{poseidon_distro_crh, poseidon_distro_leaf};
 use zk_headstash::keys::EligiblePk;
 use zk_headstash::value::NoteDenom;
-use zk_headstash::FIXED_AMOUNTS;
 
 fn communities_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tools/headstash/headstash/communities")
 }
 
 fn out_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tools/headstash/artifacts/community-notes")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../tools/headstash/artifacts/community-notes")
 }
 
 struct Row {
@@ -97,7 +98,9 @@ fn split_denoms(v: u64) -> Vec<u64> {
 }
 
 /// Circuit `epk = esk·G` natives: same `EligiblePk::xy()` the prover must witness.
-fn epk_for_proof(compressed_hex: &str) -> anyhow::Result<([u8; 32], [u8; 32], pallas::Base, pallas::Base, String)> {
+fn epk_for_proof(
+    compressed_hex: &str,
+) -> anyhow::Result<([u8; 32], [u8; 32], pallas::Base, pallas::Base, String)> {
     let raw = hex::decode(compressed_hex.trim_start_matches("0x"))?;
     anyhow::ensure!(raw.len() == 33, "elig_pk compressed must be 33 bytes");
     let pk = EligiblePk::from(&raw);
@@ -256,8 +259,14 @@ fn main() -> anyhow::Result<()> {
         "supersedes_root": "0x6bb155b7a04eb34410bb32f5790e6c6735940dcb08964397bfb91caff8b3272b",
         "threads": rayon::current_num_threads(),
     });
-    fs::write(out.join("merkle_output.json"), serde_json::to_vec_pretty(&merkle)?)?;
-    fs::write(out.join("notes.json"), serde_json::to_vec_pretty(&json!({ "notes": notes }))?)?;
+    fs::write(
+        out.join("merkle_output.json"),
+        serde_json::to_vec_pretty(&merkle)?,
+    )?;
+    fs::write(
+        out.join("notes.json"),
+        serde_json::to_vec_pretty(&json!({ "notes": notes }))?,
+    )?;
     eprintln!("✅ genesis notes {}  root={root_hex}", notes.len());
     eprintln!("📁 {}", out.display());
     Ok(())

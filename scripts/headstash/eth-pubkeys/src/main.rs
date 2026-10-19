@@ -12,8 +12,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use alloy_primitives::{B256, U256};
@@ -23,7 +23,7 @@ use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use reqwest::Client; // ToEncodedPoint used by VerifyingKey::to_encoded_point
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::{Mutex, Semaphore};
 
 const DEFAULT_PUBLIC_RPCS: &[&str] = &[
@@ -244,7 +244,10 @@ impl RpcPool {
     }
 
     /// One round-trip: getCode[i] then getTransactionCount[i] for each addr.
-    async fn batch_code_and_nonce(&self, addrs: &[String]) -> Result<(Vec<Option<Value>>, Vec<Option<Value>>)> {
+    async fn batch_code_and_nonce(
+        &self,
+        addrs: &[String],
+    ) -> Result<(Vec<Option<Value>>, Vec<Option<Value>>)> {
         let mut calls = Vec::with_capacity(addrs.len() * 2);
         for a in addrs {
             calls.push(("eth_getCode".into(), json!([a, "latest"])));
@@ -292,14 +295,21 @@ async fn explorer_get(client: &Client, url: &str) -> Result<reqwest::Response, (
 async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B256>, ()> {
     let extras: Vec<String> = std::env::var("ETH_EXPLORER_URLS")
         .ok()
-        .map(|s| s.split(',').map(|x| x.trim().to_string()).filter(|s| !s.is_empty()).collect())
+        .map(|s| {
+            s.split(',')
+                .map(|x| x.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
         .unwrap_or_default();
     let bases: Vec<String> = if extras.is_empty() {
         DEFAULT_EXPLORERS.iter().map(|s| s.to_string()).collect()
     } else {
         extras
     };
-    let key = std::env::var("ETHERSCAN_API_KEY").or_else(|_| std::env::var("ETHERSCAN_KEY")).unwrap_or_default();
+    let key = std::env::var("ETHERSCAN_API_KEY")
+        .or_else(|_| std::env::var("ETHERSCAN_KEY"))
+        .unwrap_or_default();
     let addr_lc = address.to_ascii_lowercase();
     let mut saw_empty = false;
     let mut busy = false;
@@ -336,7 +346,11 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
             continue;
         };
         if is_bs_v2 {
-            let items = v.get("items").and_then(|x| x.as_array()).cloned().unwrap_or_default();
+            let items = v
+                .get("items")
+                .and_then(|x| x.as_array())
+                .cloned()
+                .unwrap_or_default();
             for t in items {
                 let from = t
                     .pointer("/from/hash")
@@ -345,7 +359,11 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
                     .unwrap_or("")
                     .to_ascii_lowercase();
                 if from == addr_lc {
-                    if let Some(h) = t.get("hash").or_else(|| t.get("transaction_hash")).and_then(|x| x.as_str()) {
+                    if let Some(h) = t
+                        .get("hash")
+                        .or_else(|| t.get("transaction_hash"))
+                        .and_then(|x| x.as_str())
+                    {
                         if let Ok(b) = h.parse::<B256>() {
                             return Ok(Some(b));
                         }
@@ -357,7 +375,11 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
         }
         if let Some(rows) = v.get("result").and_then(|x| x.as_array()) {
             for t in rows {
-                let from = t.get("from").and_then(|x| x.as_str()).unwrap_or("").to_ascii_lowercase();
+                let from = t
+                    .get("from")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .to_ascii_lowercase();
                 if from == addr_lc {
                     if let Some(h) = t.get("hash").and_then(|x| x.as_str()) {
                         if let Ok(b) = h.parse::<B256>() {
@@ -367,7 +389,11 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
                 }
             }
             saw_empty = true;
-        } else if v.get("result").and_then(|x| x.as_str()).is_some_and(|s| s.to_ascii_lowercase().contains("rate")) {
+        } else if v
+            .get("result")
+            .and_then(|x| x.as_str())
+            .is_some_and(|s| s.to_ascii_lowercase().contains("rate"))
+        {
             busy = true;
         } else {
             saw_empty = true;
@@ -403,7 +429,8 @@ fn recover_pubkeys(tx_json: &Value) -> Option<(String, String, String)> {
 }
 
 fn same_addr(a: &str, b: &str) -> bool {
-    a.trim_start_matches("0x").eq_ignore_ascii_case(b.trim_start_matches("0x"))
+    a.trim_start_matches("0x")
+        .eq_ignore_ascii_case(b.trim_start_matches("0x"))
 }
 
 fn parse_hex_u64(v: &Value) -> Option<u64> {
@@ -419,12 +446,18 @@ fn is_contract_code(v: &Value) -> bool {
 }
 
 fn rpc_mode() -> String {
-    std::env::var("ETH_RPC_MODE").unwrap_or_else(|_| "auto".into()).to_ascii_lowercase()
+    std::env::var("ETH_RPC_MODE")
+        .unwrap_or_else(|_| "auto".into())
+        .to_ascii_lowercase()
 }
 
 fn rpc_urls() -> Vec<String> {
     if let Ok(list) = std::env::var("ETH_RPC_URLS") {
-        let v: Vec<String> = list.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        let v: Vec<String> = list
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         if !v.is_empty() {
             return v;
         }
@@ -500,7 +533,11 @@ fn yaml_path() -> PathBuf {
     }
     let here = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let c = here.join("../../../tools/headstash/circuit/headstash.yaml");
-    if c.exists() { c } else { here.join("../../../tools/headstash/headstash.yaml") }
+    if c.exists() {
+        c
+    } else {
+        here.join("../../../tools/headstash/headstash.yaml")
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -612,22 +649,28 @@ fn enrich_community_csvs(map_path: &Path, dead_path: &Path) -> Result<usize> {
     let mut grand_keyed = 0usize;
     let mut grand_all = 0usize;
     for (name, src) in community_csvs()? {
-        if src.file_name().and_then(|s| s.to_str()).is_some_and(|s| s.contains(".enriched.")) {
+        if src
+            .file_name()
+            .and_then(|s| s.to_str())
+            .is_some_and(|s| s.contains(".enriched."))
+        {
             continue;
         }
         let dest = src.with_file_name(format!(
             "{}.enriched.csv",
-            src.file_stem().and_then(|s| s.to_str()).unwrap_or("community")
+            src.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("community")
         ));
-        let mut rdr = csv::Reader::from_path(&src)
-            .with_context(|| format!("read {}", src.display()))?;
+        let mut rdr =
+            csv::Reader::from_path(&src).with_context(|| format!("read {}", src.display()))?;
         let orig_headers: Vec<String> = rdr.headers()?.iter().map(|s| s.to_string()).collect();
         if orig_headers.iter().any(|h| h == "pubkey_compressed") {
             eprintln!("[enrich] skip already-keyed {}", src.display());
             continue;
         }
-        let mut wtr = csv::Writer::from_path(&dest)
-            .with_context(|| format!("write {}", dest.display()))?;
+        let mut wtr =
+            csv::Writer::from_path(&dest).with_context(|| format!("write {}", dest.display()))?;
         let mut headers = orig_headers.clone();
         headers.extend(extra.iter().map(|s| s.to_string()));
         wtr.write_record(&headers)?;
@@ -635,7 +678,9 @@ fn enrich_community_csvs(map_path: &Path, dead_path: &Path) -> Result<usize> {
         let mut rows = 0usize;
         let burn_path = src.with_file_name(format!(
             "{}.unallocated.csv",
-            src.file_stem().and_then(|s| s.to_str()).unwrap_or("community")
+            src.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("community")
         ));
         let mut burn = csv::Writer::from_path(&burn_path)?;
         burn.write_record(["addr", "amount", "class", "reason", "community"])?;
@@ -670,8 +715,10 @@ fn enrich_community_csvs(map_path: &Path, dead_path: &Path) -> Result<usize> {
                     out.push(String::new());
                     out.push(String::new());
                     out.push(k.status.clone());
-                    let class = if matches!(k.status.as_str(), "contract" | "never-sent" | "recover-mismatch")
-                    {
+                    let class = if matches!(
+                        k.status.as_str(),
+                        "contract" | "never-sent" | "recover-mismatch"
+                    ) {
                         "dead"
                     } else {
                         "blind"
@@ -788,8 +835,12 @@ fn resolve_csv(yaml: &Path, rel: &str) -> Option<PathBuf> {
         yaml_dir.join(rel),
         crate_dir.join(rel),
         crate_dir.join("../../../tools/headstash").join(rel),
-        yaml_dir.join("headstash").join(rel.rsplit('/').next().unwrap_or(rel)),
-        crate_dir.join("../../../tools/headstash/docs/circuit").join(rel),
+        yaml_dir
+            .join("headstash")
+            .join(rel.rsplit('/').next().unwrap_or(rel)),
+        crate_dir
+            .join("../../../tools/headstash/docs/circuit")
+            .join(rel),
     ];
     roots.into_iter().find(|p| p.exists())
 }
@@ -857,7 +908,9 @@ async fn main() -> Result<()> {
     let http = pool.client.clone();
     let sem = Arc::new(Semaphore::new(conc));
     let map_file = Arc::new(Mutex::new(OpenOptions::new().append(true).open(&map_path)?));
-    let dead_file = Arc::new(Mutex::new(OpenOptions::new().append(true).open(&dead_path)?));
+    let dead_file = Arc::new(Mutex::new(
+        OpenOptions::new().append(true).open(&dead_path)?,
+    ));
 
     let t0 = Instant::now();
     let n_contract = Arc::new(AtomicUsize::new(0));
@@ -886,7 +939,10 @@ async fn main() -> Result<()> {
             let mut df = dead_file.lock().await;
             let mut lv = live.lock().await;
             for (i, addr) in chunk.iter().enumerate() {
-                let contract = codes.get(i).and_then(|c| c.as_ref()).is_some_and(is_contract_code);
+                let contract = codes
+                    .get(i)
+                    .and_then(|c| c.as_ref())
+                    .is_some_and(is_contract_code);
                 let nonce = nonces
                     .get(i)
                     .and_then(|c| c.as_ref())
@@ -1024,7 +1080,10 @@ async fn main() -> Result<()> {
         "map": map_path,
         "dead": dead_path,
     });
-    fs::write(dir.join("pubkey_scrape_progress.json"), serde_json::to_vec_pretty(&summary)?)?;
+    fs::write(
+        dir.join("pubkey_scrape_progress.json"),
+        serde_json::to_vec_pretty(&summary)?,
+    )?;
     eprintln!("✅ rust scrape {summary}");
     match enrich_community_csvs(&map_path, &dead_path) {
         Ok(n) => eprintln!("[enrich] wrote {n} *.enriched.csv (original community CSVs unchanged)"),
