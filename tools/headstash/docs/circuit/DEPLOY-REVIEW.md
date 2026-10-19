@@ -194,3 +194,14 @@ not been rerun on that commit. Epoch RPC `127.0.0.1:36667` did
 not answer, and the e2e script would re-init the chain home after
 a failed status check. The halo2-base port is `e8b9230`
 on this branch. Its measured `epoch_vk_hash` prefix is `9f809a09`.
+
+
+## Epoch vk hash prefix
+
+`160bf6e0` and `9f809a09` are checksums of different bytes. The circuit constraints were not what changed.
+
+`build_and_write` on the wasm branch writes params, the post-synthesis constraint system, the verifying key, and an 80-byte footer. The footer's own `vk_hash` field is SHA-256 of the constraint system concatenated with the verifying key. That field is the unchanged `160bf6e0` figure. The wasm writer sets the footer's public-input count to 8.
+
+`epoch_vk_hash` is SHA-256 of that whole buffer, footer included. `pasta_circuit_blob` fills the epoch footer with public-input count 9, because the host passes nine 32-byte limbs and the ninth limb is zero. That one footer byte changes the whole-blob digest and leaves the constraint-system checksum alone. The epoch digest is `9f809a095159b494b9810ee240bfc555bebc26219cc3ce02e3a91ac7c55a34f6`.
+
+The chain-home backup taken before the restart has a campaign file from 07:42 on Oct 18 whose `vk_hash` already starts with `9f809a09`. `e8b9230` landed at 19:17 that day. The in-crate field port did not produce a new epoch digest.
