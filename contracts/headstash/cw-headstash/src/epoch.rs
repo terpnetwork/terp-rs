@@ -22,7 +22,7 @@ use sha2::{Digest, Sha256};
 use crate::distro::{self, nullifier_storage_key};
 use crate::headstash::verify_nullifier_stateful;
 use crate::tokenfactory::TokenStrategy;
-use crate::{msg_mint, HEADSTASH_CFG, NULLIFIERS};
+use crate::{HEADSTASH_CFG, NULLIFIERS, msg_mint};
 use pasta_curves::group::GroupEncoding;
 
 pub const CHAIN_UID: &str = "headstash-claim";
@@ -208,9 +208,7 @@ pub fn attested_root(batch_hash: &[u8; 32]) -> [u8; 32] {
 
 /// Message an ed25519 custody key signs for the fixed headstash attestation.
 pub fn custody_message(value: &[u8]) -> Vec<u8> {
-    let domain = sha256(
-        format!("hashmerchant/custody/{BATCH_SCOPE}/{BATCH_SOURCE_ID}").as_bytes(),
-    );
+    let domain = sha256(format!("hashmerchant/custody/{BATCH_SCOPE}/{BATCH_SOURCE_ID}").as_bytes());
     let mut payload = Vec::with_capacity(32 + value.len() + 16);
     payload.extend_from_slice(&domain);
     payload.extend_from_slice(value);
@@ -349,13 +347,7 @@ pub fn apply_accepted_batch(
         let strategy = strategy_for(&cfg.ts, &row.denom)?;
         let hex = hex::encode(&row.nullifier);
         verify_nullifier_stateful(deps.storage, nullifier_storage_key(root_id, &hex))?;
-        res = push_credit(
-            res,
-            &env,
-            strategy,
-            &row.destination,
-            row.amount,
-        )?;
+        res = push_credit(res, &env, strategy, &row.destination, row.amount)?;
     }
     Ok(res.add_attribute("paid", rows.len().to_string()))
 }
@@ -381,9 +373,7 @@ pub fn apply_public_batch(
         let amount = *table
             .get(row.index as usize)
             .ok_or_else(|| StdError::msg("denomination index out of range"))?;
-        let blind: [u8; 32] = require_32(&row.blind, "blind")?
-            .try_into()
-            .expect("32");
+        let blind: [u8; 32] = require_32(&row.blind, "blind")?.try_into().expect("32");
         let commitment: [u8; 32] = require_32(&row.commitment, "commitment")?
             .try_into()
             .expect("32");
@@ -396,7 +386,10 @@ pub fn apply_public_batch(
             return Err(StdError::msg("missing ethereum log"));
         }
         let log_key = format!("{}:{}", row.tx_hash, row.log_index);
-        if PUBLIC_LOGS.may_load(deps.storage, log_key.as_str())?.is_some() {
+        if PUBLIC_LOGS
+            .may_load(deps.storage, log_key.as_str())?
+            .is_some()
+        {
             return Err(StdError::msg("ethereum log already paid"));
         }
         require_32(&row.nullifier, "nullifier")?;
@@ -432,12 +425,10 @@ fn push_credit(
                 Uint128::new(amount as u128),
                 denom.clone(),
             )?;
-            Ok(res
-                .add_message(mint)
-                .add_message(BankMsg::Send {
-                    to_address: destination.to_string(),
-                    amount: vec![Coin::new(amount as u128, denom)],
-                }))
+            Ok(res.add_message(mint).add_message(BankMsg::Send {
+                to_address: destination.to_string(),
+                amount: vec![Coin::new(amount as u128, denom)],
+            }))
         }
         TokenStrategy::ExistingFungible(_) => Ok(res.add_message(BankMsg::Send {
             to_address: destination.to_string(),
@@ -460,7 +451,9 @@ fn check_row(row: &EpochPayout) -> StdResult<()> {
     require_32(&row.nullifier, "nullifier")?;
     require_32(&row.denom, "denom")?;
     if row.destination.is_empty() || row.amount == 0 {
-        return Err(StdError::msg("payout needs a destination and a positive amount"));
+        return Err(StdError::msg(
+            "payout needs a destination and a positive amount",
+        ));
     }
     if row.destination.len() > 128 {
         return Err(StdError::msg("destination is too long"));
@@ -529,7 +522,7 @@ mod tests {
     use super::*;
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::tokenfactory::{
-        derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig,
+        DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig, derive_nd,
     };
     use crate::wavs::generate_test_wavs_proof;
     use crate::{execute, instantiate};
@@ -548,7 +541,7 @@ mod tests {
     }
 
     fn denom() -> Binary {
-        derive_nd("cht")
+        derive_nd(&cosmwasm_std::testing::MockApi::default(), "cht")
     }
 
     fn row(byte: u8, dest: &str, amount: u64, denom: Binary) -> EpochPayout {
@@ -575,24 +568,36 @@ mod tests {
     fn lane_keeps_a_reject_out_of_the_accepted_root() {
         let mut lane = ClaimLane::default();
         let denom = denom();
-        lane.submit(b"proof-ok", Some(row(1, "terp1a", 5, denom.clone())), Verdict::Accept, &HashSet::new())
-            .unwrap();
+        lane.submit(
+            b"proof-ok",
+            Some(row(1, "terp1a", 5, denom.clone())),
+            Verdict::Accept,
+            &HashSet::new(),
+        )
+        .unwrap();
         lane.submit(b"proof-bad", None, Verdict::Reject, &HashSet::new())
             .unwrap();
         assert_eq!(lane.rows().len(), 1);
-        assert!(lane
-            .submit(b"proof-ok", Some(row(3, "terp1c", 5, denom.clone())), Verdict::Accept, &HashSet::new())
-            .is_err());
+        assert!(
+            lane.submit(
+                b"proof-ok",
+                Some(row(3, "terp1c", 5, denom.clone())),
+                Verdict::Accept,
+                &HashSet::new()
+            )
+            .is_err()
+        );
         let mut reserved = HashSet::new();
         reserved.insert(nf(4).to_vec());
-        assert!(lane
-            .submit(
+        assert!(
+            lane.submit(
                 b"proof-public",
                 Some(row(4, "terp1d", 5, denom)),
                 Verdict::Accept,
                 &reserved
             )
-            .is_err());
+            .is_err()
+        );
         assert_eq!(lane.pending.len(), 2);
     }
 
@@ -615,7 +620,10 @@ mod tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("cht".into()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "cht".into(),
+                ),
                 metadata: Metadata {
                     description: None,
                     denom_units: vec![DenomUnit {
@@ -666,7 +674,12 @@ mod tests {
         };
         let stored = sudo(deps.as_mut(), sudo_msg).unwrap();
         assert_eq!(
-            stored.attributes.iter().find(|a| a.key == "minted").unwrap().value,
+            stored
+                .attributes
+                .iter()
+                .find(|a| a.key == "minted")
+                .unwrap()
+                .value,
             "0"
         );
         assert!(NULLIFIERS.is_empty(deps.as_ref().storage));
@@ -724,7 +737,12 @@ mod tests {
                 rows: vec![payout],
             },
         );
-        assert!(again.unwrap_err().to_string().contains("nullifier already exists"));
+        assert!(
+            again
+                .unwrap_err()
+                .to_string()
+                .contains("nullifier already exists")
+        );
     }
 
     #[test]
@@ -832,7 +850,12 @@ mod tests {
             info,
             ExecuteMsg::ApplyPublicBatch { rows: vec![bad] },
         );
-        assert!(unreserved.unwrap_err().to_string().contains("not on the public path"));
+        assert!(
+            unreserved
+                .unwrap_err()
+                .to_string()
+                .contains("not on the public path")
+        );
     }
 
     #[test]

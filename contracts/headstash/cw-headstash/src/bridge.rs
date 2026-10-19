@@ -431,12 +431,10 @@ pub fn authorize_bridge_mint_pure(
         .map_err(|_| BridgeMintError::StaleBurnRoot)?;
     let pool_root = require_hash32(&snapshot.pool_root, "pool_root")
         .map_err(|_| BridgeMintError::StalePoolRoot)?;
-    let source_burn =
-        require_hash32(&claim.source_burn_root, "source_burn_root")
-            .map_err(|_| BridgeMintError::StaleBurnRoot)?;
-    let source_pool =
-        require_hash32(&claim.source_pool_root, "source_pool_root")
-            .map_err(|_| BridgeMintError::StalePoolRoot)?;
+    let source_burn = require_hash32(&claim.source_burn_root, "source_burn_root")
+        .map_err(|_| BridgeMintError::StaleBurnRoot)?;
+    let source_pool = require_hash32(&claim.source_pool_root, "source_pool_root")
+        .map_err(|_| BridgeMintError::StalePoolRoot)?;
 
     if source_burn != burn_root {
         return Err(BridgeMintError::StaleBurnRoot);
@@ -462,8 +460,7 @@ pub fn authorize_bridge_mint_pure(
 
     let tacit = require_hash32(&claim.tacit_asset_id, "tacit_asset_id")
         .map_err(|_| BridgeMintError::UnmappedAsset)?;
-    let terp_asset =
-        terp_asset_id_from_tacit(&claim.source_chain_tag, &tacit, claim.unit_scale);
+    let terp_asset = terp_asset_id_from_tacit(&claim.source_chain_tag, &tacit, claim.unit_scale);
 
     let entry = asset.ok_or(BridgeMintError::UnmappedAsset)?;
     let entry_id =
@@ -476,8 +473,8 @@ pub fn authorize_bridge_mint_pure(
         return Err(BridgeMintError::AssetNotActive);
     }
 
-    let dest_domain =
-        require_hash32(&claim.dest_domain, "dest_domain").map_err(|_| BridgeMintError::DomainMismatch)?;
+    let dest_domain = require_hash32(&claim.dest_domain, "dest_domain")
+        .map_err(|_| BridgeMintError::DomainMismatch)?;
     let expected_dest = require_hash32(&cfg.dest_domain, "cfg.dest_domain")
         .map_err(|_| BridgeMintError::DomainMismatch)?;
     if dest_domain != expected_dest {
@@ -501,8 +498,8 @@ pub fn authorize_bridge_mint_pure(
         .map_err(|_| BridgeMintError::ClaimIdMismatch)?;
     let expected_claim =
         derive_claim_id_with_dest(&dest_domain, &dest_cm, &nu, &tacit, claim.value_u64);
-    let presented_claim =
-        require_hash32(&claim.claim_id, "claim_id").map_err(|_| BridgeMintError::ClaimIdMismatch)?;
+    let presented_claim = require_hash32(&claim.claim_id, "claim_id")
+        .map_err(|_| BridgeMintError::ClaimIdMismatch)?;
     if presented_claim != expected_claim {
         return Err(BridgeMintError::ClaimIdMismatch);
     }
@@ -528,8 +525,8 @@ pub fn authorize_bridge_mint_pure(
         return Err(BridgeMintError::DomainBindingMismatch);
     }
 
-    let cm_public =
-        require_hash32(&claim.cm_public, "cm_public").map_err(|_| BridgeMintError::ValueMismatch)?;
+    let cm_public = require_hash32(&claim.cm_public, "cm_public")
+        .map_err(|_| BridgeMintError::ValueMismatch)?;
     let pool_domain = require_hash32(&claim.pool_domain, "pool_domain")
         .map_err(|_| BridgeMintError::DomainMismatch)?;
 
@@ -553,7 +550,9 @@ pub fn authorize_bridge_mint_pure(
         nullifier_domain: NF_BRIDGE_BURN,
         provenance_anchor: Binary::from(source_burn.to_vec()),
         claim_id: Binary::from(presented_claim.to_vec()),
-        source_chain_tag_hash: Binary::from(hash_source_chain_tag(&claim.source_chain_tag).to_vec()),
+        source_chain_tag_hash: Binary::from(
+            hash_source_chain_tag(&claim.source_chain_tag).to_vec(),
+        ),
         rcm: Binary::from(rcm.to_vec()),
         rcm_flag,
         pool_domain: Binary::from(pool_domain.to_vec()),
@@ -714,21 +713,14 @@ pub fn execute_bridge_mint_note(
 
     // Resolve asset from internal registry (external query hook later).
     let tacit = require_hash32(&claim.tacit_asset_id, "tacit_asset_id")?;
-    let terp_asset =
-        terp_asset_id_from_tacit(&claim.source_chain_tag, &tacit, claim.unit_scale);
+    let terp_asset = terp_asset_id_from_tacit(&claim.source_chain_tag, &tacit, claim.unit_scale);
     let mut asset = ASSET_REGISTRY.may_load(deps.storage, &asset_id_key(&terp_asset))?;
     if asset.is_none() {
         asset = ASSET_REGISTRY.may_load(deps.storage, &asset_id_key(&tacit))?;
     }
 
     // Pure gates first (includes H-1 spent-only).
-    let note = authorize_bridge_mint_pure(
-        &snapshot,
-        &cfg,
-        &claim,
-        already,
-        asset.as_ref(),
-    )?;
+    let note = authorize_bridge_mint_pure(&snapshot, &cfg, &claim, already, asset.as_ref())?;
 
     // Mock / stub proof verify (Round 2).
     mock_verify_bridge_proof(cfg.mock_verify, &claim, &proof)
@@ -818,13 +810,7 @@ pub fn happy_bridge_mint_world() -> (
     let dst_chain = dest;
     let lc_client = hash32_label("lc-client-reflection-0");
     let domain_binding = derive_domain_binding(
-        &src_chain,
-        &dst_chain,
-        &lc_client,
-        &tacit,
-        &nu,
-        height,
-        &burn_root,
+        &src_chain, &dst_chain, &lc_client, &tacit, &nu, height, &burn_root,
     );
     let rcm = hash32_label("rcm-hinge-happy");
 
@@ -891,8 +877,8 @@ pub fn mock_bridge_proof_bytes() -> Binary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Addr;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     fn fixture() -> (
         ReflectionSnapshot,
@@ -1071,15 +1057,19 @@ mod tests {
 
         let nu = require_hash32(&claim.nullifier, "nullifier").unwrap();
         let key = bridge_claim_storage_key(&nu);
-        assert!(BRIDGE_MINTED
-            .may_load(&deps.storage, &key)
-            .unwrap()
-            .is_some());
+        assert!(
+            BRIDGE_MINTED
+                .may_load(&deps.storage, &key)
+                .unwrap()
+                .is_some()
+        );
         // Registered asset still present; mint did not invent a new balance path via registry.
-        assert!(ASSET_REGISTRY
-            .may_load(&deps.storage, &asset_id_key(&terp_asset))
-            .unwrap()
-            .is_some());
+        assert!(
+            ASSET_REGISTRY
+                .may_load(&deps.storage, &asset_id_key(&terp_asset))
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]

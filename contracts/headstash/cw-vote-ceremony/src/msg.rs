@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 
 use cosmwasm_std::Binary;
 
@@ -71,10 +71,7 @@ pub enum ExecuteMsg {
         leaf_commit: String,
     },
     /// Admin can toggle registration window.
-    SetRegistrationOpen {
-        session_id: String,
-        open: bool,
-    },
+    SetRegistrationOpen { session_id: String, open: bool },
 }
 
 fn default_true() -> bool {
@@ -130,10 +127,7 @@ pub enum QueryMsg {
     },
 
     #[returns(IsRegisteredResponse)]
-    IsRegistered {
-        session_id: String,
-        addr: String,
-    },
+    IsRegistered { session_id: String, addr: String },
 
     /// Documented raw key bytes for ante raw-query consumers (V2).
     #[returns(RawSpentKeyResponse)]

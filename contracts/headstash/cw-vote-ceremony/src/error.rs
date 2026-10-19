@@ -57,5 +57,3 @@ pub enum ContractError {
     #[error("leaf already consumed by {addr}")]
     LeafConsumed { addr: String },
 }
-
-

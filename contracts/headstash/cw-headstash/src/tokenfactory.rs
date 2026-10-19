@@ -1,5 +1,7 @@
 // src/tokenfactory.rs
-use cosmwasm_std::{Addr, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins, to_json_binary};
+use cosmwasm_std::{
+    Addr, Api, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins, to_json_binary,
+};
 
 // Hardcoded protobuf type URLs for tokenfactory messages
 const MSG_MINT_TYPE_URL: &str = "/osmosis.tokenfactory.v1beta1.MsgMint";
@@ -123,18 +125,17 @@ pub struct InitialMint {
     pub amount: Uint128,
 }
 
-pub fn derive_nd(raw: &str) -> Binary {
-    // Same as `NoteDenom::new_for_proof`: blake3 then clear high bits of the
-    // last byte so the 32-byte value is a canonical pallas::Base.
-    let hash = blake3::hash(raw.as_bytes());
-    let mut hash_bytes = *hash.as_bytes();
+pub fn derive_nd(api: &dyn Api, raw: &str) -> Binary {
+    // Same as `NoteDenom::new_for_proof`: BLAKE3-256, then clear high bits of
+    // the last byte so the 32-byte value is a canonical pallas::Base.
+    let mut hash_bytes = api.blake3_256(raw.as_bytes());
     hash_bytes[31] &= 0x1F;
     hash_bytes.into()
 }
 impl HeadstashTokenObject {
-    pub fn new(raw: String) -> Self {
+    pub fn new(api: &dyn Api, raw: String) -> Self {
         Self {
-            proof: derive_nd(&raw),
+            proof: derive_nd(api, &raw),
             raw,
         }
     }
@@ -142,10 +143,12 @@ impl HeadstashTokenObject {
 impl TokenStrategy {
     /// ## TokenStrategy
     /// ### validates tokens proof representation is within spec defined for headstash proof inputs
-    pub fn validate(&self) -> StdResult<()> {
+    pub fn validate(&self, api: &dyn Api) -> StdResult<()> {
         if !match self {
-            TokenStrategy::NewFungible(cfg) => derive_nd(&cfg.subdenom.raw) == cfg.subdenom.proof,
-            TokenStrategy::ExistingFungible(denom) => derive_nd(&denom.raw) == denom.proof,
+            TokenStrategy::NewFungible(cfg) => {
+                derive_nd(api, &cfg.subdenom.raw) == cfg.subdenom.proof
+            }
+            TokenStrategy::ExistingFungible(denom) => derive_nd(api, &denom.raw) == denom.proof,
         } {
             return Err(cosmwasm_std::StdError::msg("bad token params"));
         }
@@ -229,6 +232,25 @@ impl TokenStrategy {
 
     pub fn requires_prefund(&self) -> bool {
         matches!(self, TokenStrategy::ExistingFungible(_))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::derive_nd;
+    use cosmwasm_std::testing::MockApi;
+
+    /// Stored note-denom proofs were `blake3::hash` then `byte[31] &= 0x1F`.
+    /// `Api::blake3_256` must keep those bytes.
+    #[test]
+    fn derive_nd_matches_unkeyed_blake3() {
+        let api = MockApi::default();
+        for raw in ["", "test", "uterp", "factory/terp1abc/headstash", "uosmo"] {
+            let mut guest = *blake3::hash(raw.as_bytes()).as_bytes();
+            guest[31] &= 0x1F;
+            let host = derive_nd(&api, raw);
+            assert_eq!(host.as_slice(), &guest, "{raw}");
+        }
     }
 }
 

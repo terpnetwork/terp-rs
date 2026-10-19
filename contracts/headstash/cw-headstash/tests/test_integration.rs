@@ -181,7 +181,10 @@ pub fn mock_metadata() -> Metadata {
 
 pub fn mock_token_strategy_new() -> TokenStrategy {
     TokenStrategy::NewFungible(NewTokenConfig {
-        subdenom: HeadstashTokenObject::new("headstash".to_string()),
+        subdenom: HeadstashTokenObject::new(
+            &cosmwasm_std::testing::MockApi::default(),
+            "headstash".to_string(),
+        ),
         metadata: mock_metadata(),
         initial_mint: Some(vec![InitialMint {
             to_address: "test_account_0".to_string(),
@@ -193,7 +196,10 @@ pub fn mock_token_strategy_new() -> TokenStrategy {
 }
 
 pub fn mock_token_strategy_existing() -> TokenStrategy {
-    TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uosmo".to_string()))
+    TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+        &cosmwasm_std::testing::MockApi::default(),
+        "uosmo".to_string(),
+    ))
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
@@ -365,8 +371,10 @@ fn test_integration_multiple_creations() {
         if let cw_headstash::tokenfactory::TokenStrategy::NewFungible(ref mut cfg) =
             instantiate_msg.token_strategy
         {
-            cfg.subdenom =
-                cw_headstash::tokenfactory::HeadstashTokenObject::new(format!("headstash{}", i));
+            cfg.subdenom = cw_headstash::tokenfactory::HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
+                format!("headstash{}", i),
+            );
         }
 
         let create_msg = FactoryExecuteMsg::CreateHeadstash {

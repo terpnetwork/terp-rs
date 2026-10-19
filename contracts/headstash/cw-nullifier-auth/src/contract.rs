@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
 
 use crate::auth_types::{
@@ -13,7 +13,7 @@ use crate::msg::{
     AuthenticatorParams, AuthenticatorSudoMsg, ConfigResponse, ExecuteMsg, InstantiateMsg,
     IsSpentResponse, NullifierAuthPayload, QueryMsg,
 };
-use crate::state::{spent_key, Config, CONFIG, SPENT};
+use crate::state::{CONFIG, Config, SPENT, spent_key};
 
 pub const DEFAULT_MAX_NULLIFIERS: u32 = 8;
 
@@ -67,7 +67,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, _env: Env, msg: AuthenticatorSudoMsg) -> Result<Response, ContractError> {
+pub fn sudo(
+    deps: DepsMut,
+    _env: Env,
+    msg: AuthenticatorSudoMsg,
+) -> Result<Response, ContractError> {
     match msg {
         AuthenticatorSudoMsg::OnAuthenticatorAdded(req) => on_authenticator_added(deps, req),
         AuthenticatorSudoMsg::OnAuthenticatorRemoved(req) => on_authenticator_removed(deps, req),
@@ -129,7 +133,9 @@ fn confirm_execution(
 
 pub fn validate_params(params: &AuthenticatorParams) -> Result<(), ContractError> {
     if params.domain.is_empty() {
-        return Err(ContractError::InvalidParams("domain must be non-empty".into()));
+        return Err(ContractError::InvalidParams(
+            "domain must be non-empty".into(),
+        ));
     }
     if params.max_nullifiers_per_tx == 0 {
         return Err(ContractError::InvalidParams(
@@ -150,7 +156,9 @@ pub fn validate_params(params: &AuthenticatorParams) -> Result<(), ContractError
 
 pub fn parse_params(raw: Option<&Binary>) -> Result<AuthenticatorParams, ContractError> {
     let Some(bz) = raw else {
-        return Err(ContractError::InvalidParams("missing authenticator_params".into()));
+        return Err(ContractError::InvalidParams(
+            "missing authenticator_params".into(),
+        ));
     };
     cosmwasm_std::from_json(bz).map_err(|e| ContractError::InvalidParams(e.to_string()))
 }
@@ -263,7 +271,7 @@ mod tests {
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
         message_info(&Addr::unchecked(sender), funds)
     }
-    use cosmwasm_std::{from_json, Binary};
+    use cosmwasm_std::{Binary, from_json};
 
     fn params(domain: &str, session: Option<&str>) -> AuthenticatorParams {
         AuthenticatorParams {
@@ -337,13 +345,7 @@ mod tests {
         let auth_params = params_bin(&p);
 
         // first authenticate ok
-        check_nullifiers_fresh(
-            deps.as_ref(),
-            &p,
-            "s1",
-            &pl.nullifiers,
-        )
-        .unwrap();
+        check_nullifiers_fresh(deps.as_ref(), &p, "s1", &pl.nullifiers).unwrap();
 
         // spend via ConfirmExecution logic
         spend_nullifiers(deps.as_mut(), &p, "s1", &pl.nullifiers).unwrap();

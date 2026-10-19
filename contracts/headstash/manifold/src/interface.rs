@@ -1,7 +1,16 @@
-use crate::{contract::{execute, instantiate, migrate, query},msg::*};
+use crate::{
+    contract::{execute, instantiate, migrate, query},
+    msg::*,
+};
 use cw_orch::prelude::*;
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "cw_headstash_manifold")]
+#[cw_orch::interface(
+    InstantiateMsg,
+    ExecuteMsg,
+    QueryMsg,
+    Empty,
+    id = "cw_headstash_manifold"
+)]
 pub struct CwHeadstashManifold;
 
 impl<Chain: CwEnv> Uploadable for CwHeadstashManifold<Chain> {

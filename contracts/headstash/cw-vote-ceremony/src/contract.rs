@@ -1,17 +1,19 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
 
 use crate::error::ContractError;
 use crate::msg::{
     CeremonyInfo, CeremonyResponse, CeremonyStatus, ConfigResponse, ExecuteMsg, InstantiateMsg,
-    RegistrationGate,
-    IsRegisteredResponse, IsSpentResponse, QueryMsg, RawSpentKeyResponse, SudoMsg,
+    IsRegisteredResponse, IsSpentResponse, QueryMsg, RawSpentKeyResponse, RegistrationGate,
+    SudoMsg,
 };
 use crate::raw_keys::SPENT_NAMESPACE;
-use crate::state::{spent_key, Ceremony, ClerkLeaf, Config, CEREMONIES, CLERK_LEAVES, CONFIG, REGISTRATIONS, SPENT};
+use crate::state::{
+    CEREMONIES, CLERK_LEAVES, CONFIG, Ceremony, ClerkLeaf, Config, REGISTRATIONS, SPENT, spent_key,
+};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -253,9 +255,12 @@ fn register(
         RegistrationGate::Open => {}
         RegistrationGate::PrePropose => return Err(ContractError::PreProposeUnwired),
         RegistrationGate::VmProof => {
-            let verifier = c.vm_verifier.as_ref().ok_or_else(|| ContractError::GateDenied {
-                reason: "vm_verifier not set".into(),
-            })?;
+            let verifier = c
+                .vm_verifier
+                .as_ref()
+                .ok_or_else(|| ContractError::GateDenied {
+                    reason: "vm_verifier not set".into(),
+                })?;
             let proof = proof.ok_or_else(|| ContractError::GateDenied {
                 reason: "proof required for vm_proof gate".into(),
             })?;
@@ -280,12 +285,11 @@ fn register(
                     proof: &proof,
                 },
             };
-            let ans: Vr = deps
-                .querier
-                .query_wasm_smart(verifier, &q)
-                .map_err(|_| ContractError::GateDenied {
+            let ans: Vr = deps.querier.query_wasm_smart(verifier, &q).map_err(|_| {
+                ContractError::GateDenied {
                     reason: "vm verifier query failed".into(),
-                })?;
+                }
+            })?;
             if !ans.ok {
                 return Err(ContractError::GateDenied {
                     reason: "min-holders proof rejected".into(),
@@ -310,11 +314,12 @@ fn register(
             }
         }
         RegistrationGate::DaoMember => {
-            let module = c.membership_module.as_ref().ok_or_else(|| {
-                ContractError::GateDenied {
+            let module = c
+                .membership_module
+                .as_ref()
+                .ok_or_else(|| ContractError::GateDenied {
                     reason: "membership_module not set".into(),
-                }
-            })?;
+                })?;
             // Query site for voting power — fail closed if the module is missing.
             #[derive(serde::Serialize)]
             struct VpQuery<'a> {
@@ -329,8 +334,7 @@ fn register(
                     address: info.sender.as_str(),
                 },
             };
-            let raw: Result<cosmwasm_std::Binary, _> =
-                deps.querier.query_wasm_smart(module, &q);
+            let raw: Result<cosmwasm_std::Binary, _> = deps.querier.query_wasm_smart(module, &q);
             if raw.is_err() {
                 return Err(ContractError::GateDenied {
                     reason: "membership query failed".into(),
@@ -505,7 +509,7 @@ pub fn is_spent(deps: Deps, domain: &str, session_id: &str, nullifier: &[u8]) ->
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, Addr, Coin, MessageInfo};
+    use cosmwasm_std::{Addr, Coin, MessageInfo, from_json};
 
     fn human(label: &str) -> String {
         cosmwasm_std::testing::MockApi::default()
@@ -517,11 +521,13 @@ mod tests {
         message_info(&Addr::unchecked(human(sender)), funds)
     }
 
-    fn setup() -> (cosmwasm_std::OwnedDeps<
-        cosmwasm_std::testing::MockStorage,
-        cosmwasm_std::testing::MockApi,
-        cosmwasm_std::testing::MockQuerier,
-    >,) {
+    fn setup() -> (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::testing::MockStorage,
+            cosmwasm_std::testing::MockApi,
+            cosmwasm_std::testing::MockQuerier,
+        >,
+    ) {
         let mut deps = mock_dependencies();
         instantiate(
             deps.as_mut(),
@@ -582,8 +588,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1voter", &[]),
-            ExecuteMsg::Register { session_id: "round-1".into(), leaf_commit: None,
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "round-1".into(),
+                leaf_commit: None,
+                proof: None,
+            },
         )
         .unwrap();
 
@@ -792,8 +801,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1voter", &[]),
-            ExecuteMsg::Register { session_id: "s-clerk".into(), leaf_commit: Some("leaf-a".into()),
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "s-clerk".into(),
+                leaf_commit: Some("leaf-a".into()),
+                proof: None,
+            },
         )
         .unwrap_err();
         assert!(matches!(err, ContractError::GateDenied { .. }));
@@ -813,8 +825,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1voter", &[]),
-            ExecuteMsg::Register { session_id: "s-clerk".into(), leaf_commit: Some("leaf-a".into()),
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "s-clerk".into(),
+                leaf_commit: Some("leaf-a".into()),
+                proof: None,
+            },
         )
         .unwrap();
 
@@ -822,8 +837,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1other", &[]),
-            ExecuteMsg::Register { session_id: "s-clerk".into(), leaf_commit: Some("leaf-a".into()),
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "s-clerk".into(),
+                leaf_commit: Some("leaf-a".into()),
+                proof: None,
+            },
         )
         .unwrap_err();
         assert!(matches!(err, ContractError::LeafConsumed { .. }));
@@ -852,8 +870,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1voter", &[]),
-            ExecuteMsg::Register { session_id: "s-dao".into(), leaf_commit: None,
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "s-dao".into(),
+                leaf_commit: None,
+                proof: None,
+            },
         )
         .unwrap_err();
         assert!(matches!(err, ContractError::GateDenied { .. }));
@@ -882,8 +903,11 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("terp1voter", &[]),
-            ExecuteMsg::Register { session_id: "s-pp".into(), leaf_commit: None,
-                proof: None },
+            ExecuteMsg::Register {
+                session_id: "s-pp".into(),
+                leaf_commit: None,
+                proof: None,
+            },
         )
         .unwrap_err();
         assert!(matches!(err, ContractError::PreProposeUnwired));
@@ -921,5 +945,4 @@ mod tests {
         .unwrap_err();
         assert!(matches!(err, ContractError::GateDenied { .. }));
     }
-
 }

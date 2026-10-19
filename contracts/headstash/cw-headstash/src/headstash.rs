@@ -116,11 +116,7 @@ pub struct HeadstashCoin {
 }
 
 /// Add `amount` once. `or_insert(amount) += amount` stored the first payout twice.
-pub(crate) fn add_credit<K: Eq + std::hash::Hash>(
-    map: &mut HashMap<K, u64>,
-    key: K,
-    amount: u64,
-) {
+pub(crate) fn add_credit<K: Eq + std::hash::Hash>(map: &mut HashMap<K, u64>, key: K, amount: u64) {
     *map.entry(key).or_insert(0) += amount;
 }
 
@@ -189,11 +185,7 @@ pub fn process_headstash(
             }
             let ok = deps
                 .api
-                .proof_instance_verify(
-                    cfg.cid.into(),
-                    &claim.p,
-                    &inst.to_vm_public_inputs(),
-                )
+                .proof_instance_verify(cfg.cid.into(), &claim.p, &inst.to_vm_public_inputs())
                 .map_err(|e| StdError::msg(e.to_string()))?;
             if !ok {
                 return Err(StdError::msg("invalid headstash proof"));

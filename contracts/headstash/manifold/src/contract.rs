@@ -262,8 +262,8 @@ pub fn migrate(
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Binary;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cw_headstash::distro::DistroHashDomain;
 
     use super::*;
@@ -398,7 +398,9 @@ mod tests {
         )
         .unwrap();
 
-        let r1 = MANIFOLD_ROOTS.load(deps.as_ref().storage, (&hs, 1)).unwrap();
+        let r1 = MANIFOLD_ROOTS
+            .load(deps.as_ref().storage, (&hs, 1))
+            .unwrap();
         assert_eq!(r1.root, Binary::from(vec![2u8; 32]));
         assert_eq!(r1.domain, DistroHashDomain::PoseidonV1);
     }
@@ -470,10 +472,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         } => query_eligibility_roots(deps, headstash, start_after, limit),
-        QueryMsg::EligibilityRoot {
-            headstash,
-            root_id,
-        } => query_eligibility_root(deps, headstash, root_id),
+        QueryMsg::EligibilityRoot { headstash, root_id } => {
+            query_eligibility_root(deps, headstash, root_id)
+        }
     }
 }
 

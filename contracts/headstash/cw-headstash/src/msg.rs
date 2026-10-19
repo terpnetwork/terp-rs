@@ -59,7 +59,6 @@ pub enum ExecuteMsg {
     // -------------------------------------------------------------------------
     // Private-bridge mint surface (cw-headstash is the mint router — CLARITY)
     // -------------------------------------------------------------------------
-
     /// Advance reflection / LC attested roots (owner/operator).
     UpdateReflection {
         pool_root: Binary,

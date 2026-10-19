@@ -22,7 +22,7 @@ use cosmwasm_std::{
 use cw_storage_plus::Map;
 use sha2::{Digest, Sha256};
 
-use crate::bridge::{require_hash32, BridgeCfg, Hash32, BRIDGE_CFG};
+use crate::bridge::{BRIDGE_CFG, BridgeCfg, Hash32, require_hash32};
 
 // ---------------------------------------------------------------------------
 // Domain labels / instance encoding
@@ -222,7 +222,9 @@ fn push_bytes32(out: &mut Vec<u8>, b: &Binary) {
 /// - value > 0; 32B fields non-zero where required
 /// - `owner_binding` == `dest_commitment` (G4 corridor product)
 /// - public nullifier == `egress_nullifier(cm, rcm)`
-pub fn validate_egress_burn_statement(statement: &EgressBurnStatement) -> Result<(), EgressBurnError> {
+pub fn validate_egress_burn_statement(
+    statement: &EgressBurnStatement,
+) -> Result<(), EgressBurnError> {
     if statement.value == 0 {
         return Err(EgressBurnError::BadAmount);
     }
@@ -236,10 +238,11 @@ pub fn validate_egress_burn_statement(statement: &EgressBurnStatement) -> Result
         return Err(EgressBurnError::BadAmount);
     }
 
-    let cm = require_hash32(&statement.cm_spent, "cm_spent").map_err(|_| EgressBurnError::BadSchema)?;
+    let cm =
+        require_hash32(&statement.cm_spent, "cm_spent").map_err(|_| EgressBurnError::BadSchema)?;
     let rcm = require_hash32(&statement.rcm, "rcm").map_err(|_| EgressBurnError::BadSchema)?;
-    let nu =
-        require_hash32(&statement.nullifier, "nullifier").map_err(|_| EgressBurnError::BadSchema)?;
+    let nu = require_hash32(&statement.nullifier, "nullifier")
+        .map_err(|_| EgressBurnError::BadSchema)?;
     let dest = require_hash32(&statement.dest_commitment, "dest_commitment")
         .map_err(|_| EgressBurnError::BadSchema)?;
     let owner = require_hash32(&statement.owner_binding, "owner_binding")
@@ -380,16 +383,22 @@ pub fn execute_bridge_egress_burn(
         .add_attribute("nullifier", hex::encode(nu))
         .add_attribute("spent_key", spent_key)
         .add_attribute("cm_spent", hex::encode(cm))
-        .add_attribute("dest_commitment", hex::encode(require_hash32(
-            &statement.dest_commitment,
+        .add_attribute(
             "dest_commitment",
-        )?))
+            hex::encode(require_hash32(
+                &statement.dest_commitment,
+                "dest_commitment",
+            )?),
+        )
         .add_attribute("value", statement.value.to_string())
         .add_attribute("proof_mode", proof_mode)
-        .add_attribute("dest_kind", match statement.dest_kind {
-            DestKind::Transparent => "transparent",
-            DestKind::Shielded => "shielded",
-        })
+        .add_attribute(
+            "dest_kind",
+            match statement.dest_kind {
+                DestKind::Transparent => "transparent",
+                DestKind::Shielded => "shielded",
+            },
+        )
         .add_attribute("burn_evidence", evidence_bin.to_base64()))
 }
 
@@ -442,23 +451,26 @@ pub fn happy_egress_statement() -> EgressBurnStatement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Addr;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     use crate::bridge::{
-        hash32_label, AssetEntry, AssetStatus, BridgeCfg, BRIDGE_CFG, ASSET_REGISTRY,
-        DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+        ASSET_REGISTRY, AssetEntry, AssetStatus, BRIDGE_CFG, BridgeCfg, DEFAULT_CONFIRMATIONS_K,
+        DEFAULT_MAX_LC_LAG, hash32_label,
     };
 
     fn bin32(h: Hash32) -> Binary {
         Binary::from(h.to_vec())
     }
 
-    fn seed_cfg(deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::testing::MockStorage,
-        cosmwasm_std::testing::MockApi,
-        cosmwasm_std::testing::MockQuerier,
-    >, mock_verify: bool) {
+    fn seed_cfg(
+        deps: &mut cosmwasm_std::OwnedDeps<
+            cosmwasm_std::testing::MockStorage,
+            cosmwasm_std::testing::MockApi,
+            cosmwasm_std::testing::MockQuerier,
+        >,
+        mock_verify: bool,
+    ) {
         let owner = deps.api.addr_make("owner");
         cw_ownable::initialize_owner(&mut deps.storage, &deps.api, Some(owner.as_str())).unwrap();
         let dest = hash32_label("terp-chain-1");
@@ -473,11 +485,14 @@ mod tests {
         BRIDGE_CFG.save(&mut deps.storage, &cfg).unwrap();
     }
 
-    fn register_asset(deps: &mut cosmwasm_std::OwnedDeps<
-        cosmwasm_std::testing::MockStorage,
-        cosmwasm_std::testing::MockApi,
-        cosmwasm_std::testing::MockQuerier,
-    >, asset_id: Hash32) {
+    fn register_asset(
+        deps: &mut cosmwasm_std::OwnedDeps<
+            cosmwasm_std::testing::MockStorage,
+            cosmwasm_std::testing::MockApi,
+            cosmwasm_std::testing::MockQuerier,
+        >,
+        asset_id: Hash32,
+    ) {
         let entry = AssetEntry {
             asset_id: bin32(asset_id),
             local_denom: "uzec".into(),
@@ -562,21 +577,25 @@ mod tests {
         )
         .expect("happy burn");
 
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "action" && a.value == "bridge_egress_burn"));
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "proof_mode" && a.value == "mock_verify_lab"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "action" && a.value == "bridge_egress_burn")
+        );
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "proof_mode" && a.value == "mock_verify_lab")
+        );
 
         let nu = require_hash32(&s.nullifier, "nullifier").unwrap();
         let key = egress_spent_storage_key(&nu);
-        assert!(EGRESS_SPENT
-            .may_load(&deps.storage, &key)
-            .unwrap()
-            .is_some());
+        assert!(
+            EGRESS_SPENT
+                .may_load(&deps.storage, &key)
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]

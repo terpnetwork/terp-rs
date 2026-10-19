@@ -1,4 +1,4 @@
-use crate::{execute, instantiate, query, reply, sudo, msg::*};
+use crate::{execute, instantiate, msg::*, query, reply, sudo};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 

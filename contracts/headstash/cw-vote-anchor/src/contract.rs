@@ -1,14 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 
 use crate::error::ContractError;
 use crate::msg::{
     AnchorResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, LatestResponse, QueryMsg,
 };
-use crate::state::{Config, SessionMeta, ANCHORS, CONFIG, ROOT_LEN, SESSION_META};
+use crate::state::{ANCHORS, CONFIG, Config, ROOT_LEN, SESSION_META, SessionMeta};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -49,10 +47,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let cfg = CONFIG.load(deps.storage)?;
             to_json_binary(&ConfigResponse { admin: cfg.admin })
         }
-        QueryMsg::GetAnchorAtHeight {
-            session_id,
-            height,
-        } => {
+        QueryMsg::GetAnchorAtHeight { session_id, height } => {
             let root = ANCHORS
                 .may_load(deps.storage, (&session_id, height))?
                 .map(|b| b);
@@ -97,10 +92,7 @@ pub fn set_anchor(
         return Err(ContractError::BadRootLen { got: root.len() });
     }
     if ANCHORS.has(deps.storage, (&session_id, height)) {
-        return Err(ContractError::AnchorExists {
-            session_id,
-            height,
-        });
+        return Err(ContractError::AnchorExists { session_id, height });
     }
     ANCHORS.save(deps.storage, (&session_id, height), &root)?;
 
@@ -152,7 +144,7 @@ pub fn anchors_match(stored: Option<&[u8]>, pi_root: &[u8]) -> bool {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, Addr, Coin, MessageInfo};
+    use cosmwasm_std::{Addr, Coin, MessageInfo, from_json};
 
     fn human(label: &str) -> String {
         cosmwasm_std::testing::MockApi::default()

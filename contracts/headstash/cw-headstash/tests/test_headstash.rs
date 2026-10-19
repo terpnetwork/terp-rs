@@ -183,7 +183,10 @@ pub fn mock_metadata() -> Metadata {
 
 pub fn mock_token_strategy_new() -> TokenStrategy {
     TokenStrategy::NewFungible(NewTokenConfig {
-        subdenom: HeadstashTokenObject::new("headstash".to_string()),
+        subdenom: HeadstashTokenObject::new(
+            &cosmwasm_std::testing::MockApi::default(),
+            "headstash".to_string(),
+        ),
         metadata: mock_metadata(),
         initial_mint: Some(vec![InitialMint {
             to_address: "test_account_0".to_string(),
@@ -195,7 +198,10 @@ pub fn mock_token_strategy_new() -> TokenStrategy {
 }
 
 pub fn mock_token_strategy_existing() -> TokenStrategy {
-    TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uosmo".to_string()))
+    TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+        &cosmwasm_std::testing::MockApi::default(),
+        "uosmo".to_string(),
+    ))
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
@@ -316,7 +322,11 @@ fn test_token_strategy_validation() {
     let strategy = mock_token_strategy_new();
 
     // Valid strategy should pass
-    assert!(strategy.validate().is_ok());
+    assert!(
+        strategy
+            .validate(&cosmwasm_std::testing::MockApi::default())
+            .is_ok()
+    );
 
     // Test invalid strategy (tamper with proof)
     let mut invalid_strategy = strategy.clone();
@@ -324,7 +334,11 @@ fn test_token_strategy_validation() {
         cfg.subdenom.proof = Binary::from(vec![0, 0, 0]); // Invalid proof
     }
 
-    assert!(invalid_strategy.validate().is_err());
+    assert!(
+        invalid_strategy
+            .validate(&cosmwasm_std::testing::MockApi::default())
+            .is_err()
+    );
 }
 
 // Test WAVS proof validation

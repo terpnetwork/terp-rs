@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-    WasmMsg,
+    Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
+    to_json_binary,
 };
 
 use crate::auth_types::{
@@ -14,7 +14,7 @@ use crate::msg::{
     AuthenticatorParams, AuthenticatorSudoMsg, CeremonyExecuteProxy, GateInfoResponse,
     InstantiateMsg, NullifierAuthPayload, QueryMsg,
 };
-use crate::state::{Config, CONFIG};
+use crate::state::{CONFIG, Config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -58,7 +58,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, _env: Env, msg: AuthenticatorSudoMsg) -> Result<Response, ContractError> {
+pub fn sudo(
+    deps: DepsMut,
+    _env: Env,
+    msg: AuthenticatorSudoMsg,
+) -> Result<Response, ContractError> {
     match msg {
         AuthenticatorSudoMsg::OnAuthenticatorAdded(req) => on_authenticator_added(deps, req),
         AuthenticatorSudoMsg::OnAuthenticatorRemoved(req) => on_authenticator_removed(deps, req),
@@ -179,7 +183,9 @@ pub fn validate_params(params: &AuthenticatorParams) -> Result<(), ContractError
         return Err(ContractError::MissingCeremonyModule);
     }
     if params.domain.is_empty() {
-        return Err(ContractError::InvalidParams("domain must be non-empty".into()));
+        return Err(ContractError::InvalidParams(
+            "domain must be non-empty".into(),
+        ));
     }
     if params.max_nullifiers_per_tx == 0 {
         return Err(ContractError::InvalidParams(
@@ -191,7 +197,9 @@ pub fn validate_params(params: &AuthenticatorParams) -> Result<(), ContractError
 
 pub fn parse_params(raw: Option<&Binary>) -> Result<AuthenticatorParams, ContractError> {
     let Some(bz) = raw else {
-        return Err(ContractError::InvalidParams("missing authenticator_params".into()));
+        return Err(ContractError::InvalidParams(
+            "missing authenticator_params".into(),
+        ));
     };
     cosmwasm_std::from_json(bz).map_err(|e| ContractError::InvalidParams(e.to_string()))
 }
@@ -294,7 +302,7 @@ fn query_is_spent(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{
-        message_info, mock_dependencies, mock_env, MockQuerierCustomHandlerResult,
+        MockQuerierCustomHandlerResult, message_info, mock_dependencies, mock_env,
     };
     use cosmwasm_std::{Addr, Coin, MessageInfo};
 
@@ -302,7 +310,7 @@ mod tests {
         message_info(&Addr::unchecked(sender), funds)
     }
     use cosmwasm_std::{
-        from_json, ContractResult, OwnedDeps, QuerierResult, SystemError, SystemResult, WasmQuery,
+        ContractResult, OwnedDeps, QuerierResult, SystemError, SystemResult, WasmQuery, from_json,
     };
     use std::collections::HashSet;
     use std::sync::{Arc, Mutex};
@@ -336,7 +344,9 @@ mod tests {
     }
 
     /// Mock querier: answers IsSpent against in-memory set (simulates ceremony).
-    fn deps_with_spent(spent: SpentSet) -> OwnedDeps<
+    fn deps_with_spent(
+        spent: SpentSet,
+    ) -> OwnedDeps<
         cosmwasm_std::testing::MockStorage,
         cosmwasm_std::testing::MockApi,
         cosmwasm_std::testing::MockQuerier,
@@ -344,7 +354,10 @@ mod tests {
         let mut deps = mock_dependencies();
         let spent_q = spent.clone();
         deps.querier.update_wasm(move |query| match query {
-            WasmQuery::Smart { contract_addr: _, msg } => {
+            WasmQuery::Smart {
+                contract_addr: _,
+                msg,
+            } => {
                 #[derive(serde::Deserialize)]
                 struct Outer {
                     is_spent: Inner,
@@ -401,11 +414,10 @@ mod tests {
     #[test]
     fn authenticate_rejects_spent_via_query() {
         let spent: SpentSet = Arc::new(Mutex::new(HashSet::new()));
-        spent.lock().unwrap().insert((
-            "terp.vote.v1".into(),
-            "s1".into(),
-            b"nf1".to_vec(),
-        ));
+        spent
+            .lock()
+            .unwrap()
+            .insert(("terp.vote.v1".into(), "s1".into(), b"nf1".to_vec()));
         let mut deps = deps_with_spent(spent);
 
         let p = params("terp1ceremony", "terp.vote.v1", Some("s1"));
@@ -530,10 +542,11 @@ mod tests {
         )
         .unwrap();
         assert_eq!(res.messages.len(), 1);
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "action" && a.value == "confirm_execution"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "action" && a.value == "confirm_execution")
+        );
     }
 
     #[test]

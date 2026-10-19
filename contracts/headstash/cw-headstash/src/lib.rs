@@ -1,3 +1,7 @@
+/// Chain must advertise `hash_blake`. Note-denom proofs use `Api::blake3_256`.
+#[unsafe(no_mangle)]
+extern "C" fn requires_hash_blake() {}
+
 pub mod bridge;
 pub mod distro;
 pub mod egress;
@@ -200,7 +204,7 @@ pub fn instantiate(
     // set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
     msg.wavs.verify()?;
-    msg.token_strategy.validate()?;
+    msg.token_strategy.validate(deps.api)?;
     let ts = msg.token_strategy;
     let c = env.contract.address.clone();
     let domain = msg.distro_hash_domain;
@@ -679,7 +683,7 @@ mod instantiate_tests {
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
                 subdenom: HeadstashTokenObject {
-                    proof: derive_nd("test"),
+                    proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), "test"),
                     raw: "test".into(),
                 },
                 metadata: mock_metadata(),
@@ -745,7 +749,7 @@ mod instantiate_tests {
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
                 subdenom: HeadstashTokenObject {
-                    proof: derive_nd(&"test"),
+                    proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), &"test"),
                     raw: "test".into(),
                 },
                 metadata: mock_metadata(),
@@ -806,6 +810,7 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
                 "existing_token".to_string(),
             )),
             wavs: valid_wavs_proof(1),
@@ -838,6 +843,7 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
                 "test".to_string(),
             )),
             wavs: valid_wavs_proof(1),
@@ -868,7 +874,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -903,7 +912,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -934,7 +946,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -972,7 +987,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -998,7 +1016,10 @@ mod instantiate_tests {
             distro_hash_domain: DistroHashDomain::PoseidonV1,
             genesis_label: Some("drop-0".into()),
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -1045,7 +1066,10 @@ mod instantiate_tests {
             distro_hash_domain: DistroHashDomain::PoseidonV1,
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -1083,7 +1107,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new("test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,

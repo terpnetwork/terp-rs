@@ -180,7 +180,10 @@ pub fn mock_metadata() -> Metadata {
 
 pub fn mock_token_strategy_new() -> TokenStrategy {
     TokenStrategy::NewFungible(NewTokenConfig {
-        subdenom: HeadstashTokenObject::new("headstash".to_string()),
+        subdenom: HeadstashTokenObject::new(
+            &cosmwasm_std::testing::MockApi::default(),
+            "headstash".to_string(),
+        ),
         metadata: mock_metadata(),
         initial_mint: Some(vec![InitialMint {
             to_address: "test_account_0".to_string(),
@@ -192,7 +195,10 @@ pub fn mock_token_strategy_new() -> TokenStrategy {
 }
 
 pub fn mock_token_strategy_existing() -> TokenStrategy {
-    TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uosmo".to_string()))
+    TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+        &cosmwasm_std::testing::MockApi::default(),
+        "uosmo".to_string(),
+    ))
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {

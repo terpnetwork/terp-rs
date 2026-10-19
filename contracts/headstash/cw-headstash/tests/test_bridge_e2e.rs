@@ -14,10 +14,10 @@
 
 use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw_headstash::bridge::{
-    AssetEntry, AssetStatus, BridgeCfg, BridgeMintClaimPublic, NoteOutResult, ReflectionSnapshot,
-    DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, ORIGIN_BRIDGE_MINT, NF_BRIDGE_BURN,
-    derive_claim_id_with_dest, derive_domain_binding, hash32_label, terp_asset_id_from_tacit,
-    Hash32,
+    AssetEntry, AssetStatus, BridgeCfg, BridgeMintClaimPublic, DEFAULT_CONFIRMATIONS_K,
+    DEFAULT_MAX_LC_LAG, Hash32, NF_BRIDGE_BURN, NoteOutResult, ORIGIN_BRIDGE_MINT,
+    ReflectionSnapshot, derive_claim_id_with_dest, derive_domain_binding, hash32_label,
+    terp_asset_id_from_tacit,
 };
 use cw_headstash::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
@@ -38,9 +38,7 @@ fn valid_wavs_proof_one() -> WavsProofOfOwnership {
     use ark_ec::AffineRepr;
     use ark_ff::{PrimeField, Zero};
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-    use cosmwasm_std::{
-        testing::MockApi, Api, BLS12_381_G2_GENERATOR as G2, HashFunction,
-    };
+    use cosmwasm_std::{Api, BLS12_381_G2_GENERATOR as G2, HashFunction, testing::MockApi};
 
     let api = MockApi::default();
     // Fixed non-zero scalar — no OsRng; keeps e2e deterministic and dep-light.
@@ -100,13 +98,7 @@ fn bridge_fixture() -> (
     let dst_chain = dest;
     let lc_client = hash32_label("lc-client-reflection-0");
     let domain_binding = derive_domain_binding(
-        &src_chain,
-        &dst_chain,
-        &lc_client,
-        &tacit,
-        &nu,
-        height,
-        &burn_root,
+        &src_chain, &dst_chain, &lc_client, &tacit, &nu, height, &burn_root,
     );
     let rcm = hash32_label("rcm-hinge-happy");
 
@@ -219,6 +211,7 @@ impl BridgeEnv {
             distro_hash_domain: Default::default(),
             genesis_label: Some("bridge-e2e".into()),
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
                 "ubridge".into(),
             )),
             wavs: valid_wavs_proof_one(),
@@ -328,7 +321,10 @@ fn e2e_bridge_mint_happy_path_is_minted() {
         "expected bridge_mint_note action attr, events={:?}",
         res.events
     );
-    assert!(attr("dex_consumable", "true"), "expected dex_consumable=true");
+    assert!(
+        attr("dex_consumable", "true"),
+        "expected dex_consumable=true"
+    );
     assert!(attr("rcm_flag", "1"), "expected rcm_flag=1");
 
     // Decode note_out payload when present (base64 JSON NoteOutResult).

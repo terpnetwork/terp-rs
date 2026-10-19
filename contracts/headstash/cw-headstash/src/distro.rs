@@ -296,12 +296,9 @@ mod tests {
         let err = validate_root_bytes(&Binary::default()).unwrap_err();
         assert!(err.to_string().contains("empty"));
 
-        let err = DistroRegistry::new_with_genesis(
-            Binary::default(),
-            DistroHashDomain::PoseidonV1,
-            None,
-        )
-        .unwrap_err();
+        let err =
+            DistroRegistry::new_with_genesis(Binary::default(), DistroHashDomain::PoseidonV1, None)
+                .unwrap_err();
         assert!(err.to_string().contains("empty"));
     }
 
@@ -386,9 +383,8 @@ mod tests {
 
     #[test]
     fn claim_unregistered_root_rejected() {
-        let reg =
-            DistroRegistry::new_with_genesis(root32(1), DistroHashDomain::PoseidonV1, None)
-                .unwrap();
+        let reg = DistroRegistry::new_with_genesis(root32(1), DistroHashDomain::PoseidonV1, None)
+            .unwrap();
         let err = reg.require_root(99).unwrap_err();
         assert!(err.to_string().contains("unregistered eligibility root_id"));
     }
@@ -412,7 +408,10 @@ mod tests {
         .unwrap();
         assert_eq!(e2.root_id, 1);
         assert_eq!(require_root(&storage, 0).unwrap().root, root32(0x11));
-        assert_eq!(require_root(&storage, 1).unwrap().label.as_deref(), Some("batch-2"));
+        assert_eq!(
+            require_root(&storage, 1).unwrap().label.as_deref(),
+            Some("batch-2")
+        );
         let err = require_root(&storage, 7).unwrap_err();
         assert!(err.to_string().contains("unregistered"));
     }

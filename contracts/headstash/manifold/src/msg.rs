@@ -84,10 +84,7 @@ pub enum QueryMsg {
     },
 
     #[returns(EligibilityRootRecord)]
-    EligibilityRoot {
-        headstash: String,
-        root_id: u64,
-    },
+    EligibilityRoot { headstash: String, root_id: u64 },
 }
 
 #[cw_serde]

@@ -1,11 +1,9 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
 };
 
-use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VerifyResponse,
-};
-use crate::state::{Config, CONFIG};
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VerifyResponse};
+use crate::state::{CONFIG, Config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -75,7 +73,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, Addr, Binary, Coin, MessageInfo};
+    use cosmwasm_std::{Addr, Binary, Coin, MessageInfo, from_json};
 
     fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
         message_info(&Addr::unchecked(sender), funds)

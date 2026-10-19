@@ -5,16 +5,16 @@
 //! denomination table, and the same nullifier is refused on the Halo2 batch.
 //! This runner does not start Docker and does not verify a Halo2 proof.
 
-use cosmwasm_std::testing::MockApi;
-use cosmwasm_std::{Binary, Coin, Uint256};
 use crate::epoch::{
-    accepted_root, attested_root, pedersen_commit, root_b64, EpochPayout, HashMerchantSudoMsg,
-    HashMerchantSudoPayload, PublicOpen, ALGO_ACCEPTED, ALGO_PENDING, CHAIN_UID,
+    ALGO_ACCEPTED, ALGO_PENDING, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
+    HashMerchantSudoPayload, PublicOpen, accepted_root, attested_root, pedersen_commit, root_b64,
 };
 use crate::interface::HeadstashContract;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::tokenfactory::HeadstashTokenObject;
 use crate::wavs::generate_test_wavs_proof;
+use cosmwasm_std::testing::MockApi;
+use cosmwasm_std::{Binary, Coin, Uint256};
 use cw_orch::prelude::*;
 
 const DENOM: &str = "cht";
@@ -26,7 +26,8 @@ fn nf(byte: u8) -> Binary {
 fn payout(byte: u8, dest: &str, amount: u64) -> EpochPayout {
     EpochPayout {
         nullifier: nf(byte),
-        denom: HeadstashTokenObject::new(DENOM.into()).proof,
+        denom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), DENOM.into())
+            .proof,
         destination: dest.into(),
         amount,
     }
@@ -57,7 +58,7 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             distro_hash_domain: Default::default(),
             genesis_label: Some("epoch".into()),
             token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
-                HeadstashTokenObject::new(DENOM.into()),
+                HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), DENOM.into()),
             ),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
@@ -69,7 +70,11 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
     hs
 }
 
-fn wasm_sudo(mock: &Mock, addr: &cosmwasm_std::Addr, msg: &HashMerchantSudoMsg) -> Result<(), String> {
+fn wasm_sudo(
+    mock: &Mock,
+    addr: &cosmwasm_std::Addr,
+    msg: &HashMerchantSudoMsg,
+) -> Result<(), String> {
     mock.app
         .borrow_mut()
         .wasm_sudo(addr.clone(), msg)
@@ -100,9 +105,11 @@ mod tests {
                 oracle_sources: vec![],
             },
         };
-        assert!(wasm_sudo(&mock, &addr, &wrong_chain)
-            .unwrap_err()
-            .contains("chain_uid"));
+        assert!(
+            wasm_sudo(&mock, &addr, &wrong_chain)
+                .unwrap_err()
+                .contains("chain_uid")
+        );
 
         wasm_sudo(&mock, &addr, &sudo_msg(ALGO_PENDING, &[9u8; 32], 2)).unwrap();
         let early = hs.execute(
@@ -165,10 +172,12 @@ mod tests {
             },
             &[],
         );
-        assert!(replay
-            .unwrap_err()
-            .to_string()
-            .contains("nullifier already exists"));
+        assert!(
+            replay
+                .unwrap_err()
+                .to_string()
+                .contains("nullifier already exists")
+        );
         assert_eq!(
             mock.query_balance(&dest, DENOM).unwrap(),
             Uint256::from(15u64)
@@ -221,17 +230,19 @@ mod tests {
             log_index: 2,
             nullifier: nf(4),
         };
-        hs.execute(&ExecuteMsg::ApplyPublicBatch { rows: vec![open.clone()] }, &[])
-            .expect("public credit");
+        hs.execute(
+            &ExecuteMsg::ApplyPublicBatch {
+                rows: vec![open.clone()],
+            },
+            &[],
+        )
+        .expect("public credit");
         assert_eq!(
             mock.query_balance(&dest, DENOM).unwrap(),
             Uint256::from(35u64)
         );
 
-        let again = hs.execute(
-            &ExecuteMsg::ApplyPublicBatch { rows: vec![open] },
-            &[],
-        );
+        let again = hs.execute(&ExecuteMsg::ApplyPublicBatch { rows: vec![open] }, &[]);
         assert!(again.unwrap_err().to_string().contains("already"));
 
         let other = MockApi::default().addr_make("other");
@@ -244,14 +255,13 @@ mod tests {
             log_index: 0,
             nullifier: nf(5),
         };
-        let unreserved = hs.execute(
-            &ExecuteMsg::ApplyPublicBatch { rows: vec![bad] },
-            &[],
+        let unreserved = hs.execute(&ExecuteMsg::ApplyPublicBatch { rows: vec![bad] }, &[]);
+        assert!(
+            unreserved
+                .unwrap_err()
+                .to_string()
+                .contains("not on the public path")
         );
-        assert!(unreserved
-            .unwrap_err()
-            .to_string()
-            .contains("not on the public path"));
         assert_eq!(
             mock.query_balance(&dest, DENOM).unwrap(),
             Uint256::from(35u64)

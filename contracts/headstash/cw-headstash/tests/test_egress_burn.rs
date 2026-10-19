@@ -13,11 +13,11 @@
 
 use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw_headstash::bridge::{
-    hash32_label, AssetStatus, BridgeCfg, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, Hash32,
+    AssetStatus, BridgeCfg, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, Hash32, hash32_label,
 };
 use cw_headstash::egress::{
-    egress_nullifier, happy_egress_statement, mock_egress_proof_bytes, DestKind,
-    EgressBurnStatement,
+    DestKind, EgressBurnStatement, egress_nullifier, happy_egress_statement,
+    mock_egress_proof_bytes,
 };
 use cw_headstash::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
@@ -34,7 +34,7 @@ fn valid_wavs_proof_one() -> WavsProofOfOwnership {
     use ark_ec::AffineRepr;
     use ark_ff::{PrimeField, Zero};
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-    use cosmwasm_std::{testing::MockApi, Api, BLS12_381_G2_GENERATOR as G2, HashFunction};
+    use cosmwasm_std::{Api, BLS12_381_G2_GENERATOR as G2, HashFunction, testing::MockApi};
 
     let api = MockApi::default();
     let sk = Fr::from_be_bytes_mod_order(&[0x42; 32]);
@@ -119,10 +119,11 @@ impl EgressEnv {
             distro_hash_domain: Default::default(),
             genesis_label: Some("egress-e2e".into()),
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
                 "ubridge".into(),
             )),
             wavs: valid_wavs_proof_one(),
-        
+
             circuit_id: None,
         };
 
@@ -151,10 +152,7 @@ impl EgressEnv {
             .expect("owner execute");
     }
 
-    fn exec_user(
-        &mut self,
-        msg: &ExecuteMsg,
-    ) -> Result<cw_multi_test::AppResponse, anyhow::Error> {
+    fn exec_user(&mut self, msg: &ExecuteMsg) -> Result<cw_multi_test::AppResponse, anyhow::Error> {
         self.app
             .execute_contract(self.user.clone(), self.headstash.clone(), msg, &[])
             .map_err(|e| anyhow::anyhow!(e.to_string()))
@@ -237,9 +235,10 @@ fn e2e_egress_burn_happy_path_is_spent() {
     assert!(spent_after, "IsEgressSpent must be true after happy burn");
 
     // burn_evidence payload present
-    let has_evidence = res.events.iter().any(|e| {
-        e.attributes.iter().any(|a| a.key == "burn_evidence")
-    });
+    let has_evidence = res
+        .events
+        .iter()
+        .any(|e| e.attributes.iter().any(|a| a.key == "burn_evidence"));
     assert!(has_evidence, "expected burn_evidence attribute");
 }
 
