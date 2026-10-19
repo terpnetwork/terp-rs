@@ -1,0 +1,21 @@
+[package]
+name = "dao-scripts"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "foundation_delegate"
+path = "src/bin/foundation_delegate.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+cw-orch = { workspace = true, features = ["daemon"] }
+dao-cw-orch = { workspace = true }
+dao-testing = { workspace = true }
+dotenv = { workspace = true }
+env_logger = { workspace = true, features = ["default"] }
+rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
+serde_json = { workspace = true }
