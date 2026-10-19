@@ -1,25 +1,25 @@
-use crate::suite::TerpAccountDeployData;
 use crate::TerpAccountExecuteFns;
-use ::terp721_account::{commands::transcode, ContractError};
+use crate::suite::TerpAccountDeployData;
+use ::terp721_account::{ContractError, commands::transcode};
 use cosmwasm_std::testing::mock_dependencies;
-use cosmwasm_std::{from_json, Api, Binary};
+use cosmwasm_std::{Api, Binary, from_json};
 use cw_orch::prelude::CallAs;
 use cw_orch::{anyhow, mock::MockBech32, prelude::*};
 
+use terp_account::verify_generic::{
+    CosmosArbitrary, TestCosmosArb, preamble_msg_arb_036, pubkey_to_address,
+};
+use terp_account::{Metadata, NFT, TERP_PREFIX, TextRecord};
 use terp721_account::msg::Terp721AccountsQueryMsgFns;
 use terp721_account::state::REVERSE_MAP_KEY;
-use terp_account::verify_generic::{
-    preamble_msg_arb_036, pubkey_to_address, CosmosArbitrary, TestCosmosArb,
-};
-use terp_account::{Metadata, TextRecord, NFT, TERP_PREFIX};
 
 use crate::TerpAccountSuite;
 use ecdsa::signature::rand_core::OsRng;
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 // use serde::Deserialize;
-use sha2::digest::Update;
 use sha2::Digest;
 use sha2::Sha256;
+use sha2::digest::Update;
 
 #[test]
 fn init() -> anyhow::Result<()> {
@@ -119,12 +119,14 @@ fn mint_and_update() -> anyhow::Result<()> {
         };
         if i == max_record_count {
             let res = suite.nft.update_text_record(token_id, new_record);
-            assert!(res.unwrap_err().to_string().contains(
-                &ContractError::TooManyRecords {
-                    max: max_record_count
-                }
-                .to_string()
-            ));
+            assert!(
+                res.unwrap_err().to_string().contains(
+                    &ContractError::TooManyRecords {
+                        max: max_record_count
+                    }
+                    .to_string()
+                )
+            );
             break;
         } else {
             suite.nft.update_text_record(token_id, new_record)?;
@@ -148,12 +150,14 @@ fn mint_and_update() -> anyhow::Result<()> {
         .call_as(&not_minter)
         .add_text_record(token_id, new_record.clone())
         .unwrap_err();
-    assert!(err.to_string().contains(
-        &ContractError::Cw721(cw721::error::Cw721ContractError::Ownership(
-            cw_ownable::OwnershipError::NotOwner
-        ))
-        .to_string()
-    ));
+    assert!(
+        err.to_string().contains(
+            &ContractError::Cw721(cw721::error::Cw721ContractError::Ownership(
+                cw_ownable::OwnershipError::NotOwner
+            ))
+            .to_string()
+        )
+    );
     // passes
     suite.nft.add_text_record(token_id, new_record)?;
     assert_eq!(suite.nft.nft_info(token_id)?.extension.records.len(), 1);
@@ -173,12 +177,14 @@ fn mint_and_update() -> anyhow::Result<()> {
         value: "testtesttest".to_string(),
         verified: None,
     };
-    assert!(suite
-        .nft
-        .add_text_record(token_id, record.clone())
-        .unwrap_err()
-        .to_string()
-        .contains(&ContractError::RecordAccountAlreadyExists {}.to_string()));
+    assert!(
+        suite
+            .nft
+            .add_text_record(token_id, record.clone())
+            .unwrap_err()
+            .to_string()
+            .contains(&ContractError::RecordAccountAlreadyExists {}.to_string())
+    );
     // update txt record
     suite.nft.update_text_record(token_id, record.clone())?;
     let res = suite.nft.nft_info(token_id)?;
@@ -200,12 +206,14 @@ fn test_query_accounts() -> anyhow::Result<()> {
 
     let addr = mock.addr_make("babber");
 
-    assert!(suite
-        .nft
-        .account(addr.clone().to_string())
-        .unwrap_err()
-        .to_string()
-        .contains(&format!("No account associated with address {}", addr)));
+    assert!(
+        suite
+            .nft
+            .account(addr.clone().to_string())
+            .unwrap_err()
+            .to_string()
+            .contains(&format!("No account associated with address {}", addr))
+    );
     Ok(())
 }
 
@@ -264,12 +272,14 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
 
         let signature: Signature = secret_key.sign_prehash_recoverable(&msg_hash).unwrap().0;
 
-        assert!(cosmwasm_crypto::secp256k1_verify(
-            &msg_hash,
-            signature.to_bytes().as_slice(),
-            public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
+        assert!(
+            cosmwasm_crypto::secp256k1_verify(
+                &msg_hash,
+                signature.to_bytes().as_slice(),
+                public_key.to_encoded_point(false).as_bytes()
+            )
+            .unwrap()
+        );
 
         let cosmosarb = CosmosArbitrary {
             pubkey: Binary::from(public_key.to_encoded_point(false).as_bytes()),
@@ -325,9 +335,10 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
             .call_as(&minter)
             .update_my_reverse_map_key(vec![carbs[i as usize].clone().carb], vec![])
             .unwrap_err();
-        assert!(err
-            .to_string()
-            .contains(&ContractError::AccountNotFound {}.to_string()))
+        assert!(
+            err.to_string()
+                .contains(&ContractError::AccountNotFound {}.to_string())
+        )
     }
     // owner tries to set more than limit of associated addresses in recursion
     for i in 0..10 {
@@ -336,10 +347,11 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
             .update_my_reverse_map_key(vec![carbs[i as usize].clone().carb], vec![]);
         if i == 10 {
             assert!(res.is_err());
-            assert!(res
-                .unwrap_err()
-                .to_string()
-                .contains(&ContractError::TooManyReverseMaps { max: 10, have: 11 }.to_string()))
+            assert!(
+                res.unwrap_err()
+                    .to_string()
+                    .contains(&ContractError::TooManyReverseMaps { max: 10, have: 11 }.to_string())
+            )
         } else {
             println!("i: {:#?}", i);
             println!("res: {:#?}", res);
@@ -392,9 +404,10 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
         )
         .unwrap_err();
 
-    assert!(err
-        .to_string()
-        .contains(&ContractError::CannotRemoveMoreThanWillExists {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::CannotRemoveMoreThanWillExists {}.to_string())
+    );
 
     // try to remove more than exists via recusion
 
@@ -404,9 +417,10 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
         .call_as(&notminter)
         .update_my_reverse_map_key(vec![], vec![fifth_carb.carb.pubkey.to_string()])
         .unwrap_err();
-    assert!(err
-        .to_string()
-        .contains(&ContractError::AccountNotFound {}.to_string()));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::AccountNotFound {}.to_string())
+    );
 
     // owner tries to set more than limit of associated addresses in recursion
     for i in 0..10 {
@@ -415,10 +429,11 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
             .update_my_reverse_map_key(vec![], vec![carbs[i as usize].carb.pubkey.to_string()]);
         if i == 10 {
             assert!(res.is_err());
-            assert!(res
-                .unwrap_err()
-                .to_string()
-                .contains(&ContractError::TooManyReverseMaps { max: 10, have: 0 }.to_string()))
+            assert!(
+                res.unwrap_err()
+                    .to_string()
+                    .contains(&ContractError::TooManyReverseMaps { max: 10, have: 0 }.to_string())
+            )
         } else {
             println!("i: {:#?}", i);
             println!("res: {:#?}", res);

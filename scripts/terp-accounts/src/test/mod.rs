@@ -4,8 +4,8 @@ pub mod minter;
 pub mod smart_accounts;
 
 use cosmwasm_std::{
-    coin, coins, instantiate2_address, CanonicalAddr, Decimal, Instantiate2AddressError,
-    StakingMsg, Uint128, Uint256,
+    CanonicalAddr, Decimal, Instantiate2AddressError, StakingMsg, Uint128, Uint256, coin, coins,
+    instantiate2_address,
 };
 use cw_orch::{
     anyhow,

@@ -2,14 +2,14 @@ pub mod suite;
 pub use suite::TerpAccountSuite;
 
 // re-export contract cw-orch functions & entrypoint types
-pub use terp721_account::msg::{
-    AsyncTerp721AccountsQueryMsgFns, ExecuteMsg as Bs721AccountExecuteMsgTypes,
-    ExecuteMsgFns as TerpAccountExecuteFns, Terp721AccountsQueryMsg, Terp721AccountsQueryMsgFns,
-};
 pub use terp_account::manifold::{
     AsyncQueryMsgFns as TerpAccountMinterAsyncQueryMsgFns,
     ExecuteMsg as Bs721AccountMinterExecuteMsgTypes, ExecuteMsgFns as TerpAccountMinterExecuteFns,
     QueryMsg as TerpAccountMinterQueryMsgTypes, QueryMsgFns as TerpAccountMinterQueryMsgFns,
+};
+pub use terp721_account::msg::{
+    AsyncTerp721AccountsQueryMsgFns, ExecuteMsg as Bs721AccountExecuteMsgTypes,
+    ExecuteMsgFns as TerpAccountExecuteFns, Terp721AccountsQueryMsg, Terp721AccountsQueryMsgFns,
 };
 // pub use cw721_base::msg::{
 //     AsyncQueryMsgFns as TerpAccountMinterAsyncQueryMsgFn, ExecuteMsgFns as Terp721BaseExecuteFns,

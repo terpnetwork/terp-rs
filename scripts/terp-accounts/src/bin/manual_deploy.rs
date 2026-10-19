@@ -1,8 +1,8 @@
 use clap::Parser;
 use cw_orch::{
     daemon::{
-        networks::{TERP_LOCALNET, TERP_MAINNET, TERP_TESTNET},
         DaemonBuilder,
+        networks::{TERP_LOCALNET, TERP_MAINNET, TERP_TESTNET},
     },
     prelude::*,
 };

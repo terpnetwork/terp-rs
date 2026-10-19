@@ -7,14 +7,14 @@ use crate::{
     TerpAccountMarketExecuteFns, TerpAccountMarketQueryFns, TerpAccountSuite,
 };
 
-use cosmwasm_std::{coins, to_json_binary, Decimal};
+use cosmwasm_std::{Decimal, coins, to_json_binary};
 use cosmwasm_std::{Uint128, Uint256};
 use cw_orch::mock::cw_multi_test::{SudoMsg, WasmSudo};
 
-use cosmwasm_std::{coin, Attribute, Binary, Event};
-use terp721_account_manifold::ContractError as MinterContractError;
-use terp_account::{manifold::ExecuteMsg, Ask, Bid, PendingBid};
+use cosmwasm_std::{Attribute, Binary, Event, coin};
+use terp_account::{Ask, Bid, PendingBid, manifold::ExecuteMsg};
 use terp_account::{DEPLOYMENT_DAO, TERP_PREFIX};
+use terp721_account_manifold::ContractError as MinterContractError;
 
 const BID_AMOUNT: u128 = 1_000_000_000;
 #[test]
@@ -279,20 +279,24 @@ mod execute {
             .unwrap_err();
 
         // ask only removed by minter
-        assert!(suite
-            .manifold
-            .remove_ask(token_id.to_string())
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::Unauthorized {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .remove_ask(token_id.to_string())
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::Unauthorized {}.to_string())
+        );
 
-        assert!(suite
-            .manifold
-            .call_as(&suite.nft.address()?)
-            .remove_ask(token_id.to_string())
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::ExistingBids {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .call_as(&suite.nft.address()?)
+                .remove_ask(token_id.to_string())
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::ExistingBids {}.to_string())
+        );
 
         // user (owner) starts off with 0 internet funny money
         assert_eq!(
@@ -300,12 +304,14 @@ mod execute {
             Uint256::zero()
         );
 
-        assert!(suite
-            .manifold
-            .update_ask(bidder.to_string(), token_id.to_string(),)
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::Unauthorized {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .update_ask(bidder.to_string(), token_id.to_string(),)
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::Unauthorized {}.to_string())
+        );
         assert_eq!(
             suite.manifold.bids(token_id.to_string(), None, None)?,
             vec![Bid {
@@ -335,13 +341,15 @@ mod execute {
             }],
         );
 
-        assert!(suite
-            .manifold
-            .call_as(&bidder)
-            .accept_bid(bidder.clone(), token_id.into())
-            .unwrap_err()
-            .to_string()
-            .contains("UnauthorizedOwner"));
+        assert!(
+            suite
+                .manifold
+                .call_as(&bidder)
+                .accept_bid(bidder.clone(), token_id.into())
+                .unwrap_err()
+                .to_string()
+                .contains("UnauthorizedOwner")
+        );
         suite.manifold.accept_bid(bidder.clone(), token_id.into())?;
 
         mock.wait_seconds(60)?;
@@ -351,10 +359,12 @@ mod execute {
             .finalize_bid(token_id.to_string())?;
 
         // check if bid is removed
-        assert!(suite
-            .manifold
-            .bid(bidder.to_string(), token_id.into())?
-            .is_none());
+        assert!(
+            suite
+                .manifold
+                .bid(bidder.to_string(), token_id.into())?
+                .is_none()
+        );
         // verify that the bidder is the new owner
         assert_eq!(suite.owner_of(token_id.into())?, bidder.to_string());
         // check if user got the bid amount
@@ -684,87 +694,103 @@ mod execute {
                 unlock_time: mock.block_info()?.time.plus_seconds(50)
             })
         );
-        assert!(suite.nft.burn(account).unwrap_err().to_string().contains(
-            &terp721_account::ContractError::AccountCannotBeTransfered {
-                reason: "Account is in cooldown".to_string()
-            }
-            .to_string()
-        ));
-        assert!(suite
-            .nft
-            .transfer_nft(bidder.clone(), account)
-            .unwrap_err()
-            .to_string()
-            .contains(
+        assert!(
+            suite.nft.burn(account).unwrap_err().to_string().contains(
                 &terp721_account::ContractError::AccountCannotBeTransfered {
                     reason: "Account is in cooldown".to_string()
                 }
                 .to_string()
-            ));
-        assert!(suite
-            .nft
-            .send_nft(suite.manifold.address()?, Binary::default(), account)
-            .unwrap_err()
-            .to_string()
-            .contains(
-                &terp721_account::ContractError::AccountCannotBeTransfered {
-                    reason: "Account is in cooldown".to_string()
-                }
+            )
+        );
+        assert!(
+            suite
+                .nft
+                .transfer_nft(bidder.clone(), account)
+                .unwrap_err()
                 .to_string()
-            ));
+                .contains(
+                    &terp721_account::ContractError::AccountCannotBeTransfered {
+                        reason: "Account is in cooldown".to_string()
+                    }
+                    .to_string()
+                )
+        );
+        assert!(
+            suite
+                .nft
+                .send_nft(suite.manifold.address()?, Binary::default(), account)
+                .unwrap_err()
+                .to_string()
+                .contains(
+                    &terp721_account::ContractError::AccountCannotBeTransfered {
+                        reason: "Account is in cooldown".to_string()
+                    }
+                    .to_string()
+                )
+        );
 
         // cannot finalize until cooldown period is over
 
-        assert!(mock.block_info()?.time.seconds().lt(&suite
-            .manifold
-            .cooldown(account.to_string())?
-            .unwrap()
-            .unlock_time
-            .seconds()));
-        assert!(suite
-            .manifold
-            .finalize_bid(account.to_string())
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::InvalidDuration {}.to_string()));
+        assert!(
+            mock.block_info()?.time.seconds().lt(&suite
+                .manifold
+                .cooldown(account.to_string())?
+                .unwrap()
+                .unlock_time
+                .seconds())
+        );
+        assert!(
+            suite
+                .manifold
+                .finalize_bid(account.to_string())
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::InvalidDuration {}.to_string())
+        );
 
         mock.wait_seconds(50)?;
         // cannot cancel after cooldown completes
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::CancelCooldown {
-                    token_id: account.to_string(),
-                },
-                &[coin(500_000_000, "uthiol")],
-            )
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::InvalidDuration {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::CancelCooldown {
+                        token_id: account.to_string(),
+                    },
+                    &[coin(500_000_000, "uthiol")],
+                )
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::InvalidDuration {}.to_string())
+        );
         // token id doesnt exists
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::CancelCooldown {
-                    token_id: "babber".to_string(),
-                },
-                &[coin(500_000_000, "uthiol")],
-            )
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::AskNotFound {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::CancelCooldown {
+                        token_id: "babber".to_string(),
+                    },
+                    &[coin(500_000_000, "uthiol")],
+                )
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::AskNotFound {}.to_string())
+        );
         // token id doesnt exists
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::FinalizeBid {
-                    token_id: "babber".to_string(),
-                },
-                &[coin(500_000_000, "uthiol")],
-            )
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::AskNotFound {}.to_string()));
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::FinalizeBid {
+                        token_id: "babber".to_string(),
+                    },
+                    &[coin(500_000_000, "uthiol")],
+                )
+                .unwrap_err()
+                .to_string()
+                .contains(&MinterContractError::AskNotFound {}.to_string())
+        );
 
         suite
             .manifold
@@ -814,52 +840,60 @@ mod execute {
             })
         );
         mock.wait_seconds(49)?;
-        assert!(suite
-            .manifold
-            .call_as(&bidder)
-            .cancel_cooldown(account.to_string())
-            .unwrap_err()
-            .to_string()
-            .contains(&MinterContractError::Unauthorized {}.to_string()));
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::CancelCooldown {
-                    token_id: account.to_string()
-                },
-                &[]
-            )
-            .unwrap_err()
-            .to_string()
-            .contains("No funds sent"));
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::CancelCooldown {
-                    token_id: account.to_string()
-                },
-                &[coin(499_000_000, "uthiol")]
-            )
-            .unwrap_err()
-            .to_string()
-            .contains(
-                &MinterContractError::IncorrectPayment {
-                    got: 499_000_000u128.into(),
-                    expected: 500_000_000u128.into()
-                }
+        assert!(
+            suite
+                .manifold
+                .call_as(&bidder)
+                .cancel_cooldown(account.to_string())
+                .unwrap_err()
                 .to_string()
-            ));
-        assert!(suite
-            .manifold
-            .execute(
-                &ExecuteMsg::CancelCooldown {
-                    token_id: account.to_string()
-                },
-                &[coin(499_000_000, "uthiol")]
-            )
-            .unwrap_err()
-            .to_string()
-            .contains("Incorrect payment, got: 499000000, expected 500000000"));
+                .contains(&MinterContractError::Unauthorized {}.to_string())
+        );
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::CancelCooldown {
+                        token_id: account.to_string()
+                    },
+                    &[]
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("No funds sent")
+        );
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::CancelCooldown {
+                        token_id: account.to_string()
+                    },
+                    &[coin(499_000_000, "uthiol")]
+                )
+                .unwrap_err()
+                .to_string()
+                .contains(
+                    &MinterContractError::IncorrectPayment {
+                        got: 499_000_000u128.into(),
+                        expected: 500_000_000u128.into()
+                    }
+                    .to_string()
+                )
+        );
+        assert!(
+            suite
+                .manifold
+                .execute(
+                    &ExecuteMsg::CancelCooldown {
+                        token_id: account.to_string()
+                    },
+                    &[coin(499_000_000, "uthiol")]
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("Incorrect payment, got: 499000000, expected 500000000")
+        );
         suite.manifold.execute(
             &ExecuteMsg::CancelCooldown {
                 token_id: account.to_string(),
@@ -926,17 +960,19 @@ mod execute {
         let user3_insufficient = mock.addr_make("user3_insufficient");
         mock.add_balance(&user3_insufficient, vec![coin(10000440u128, "uthiol")])?;
         suite.delegate_to_val(mock.clone(), user3_insufficient.clone(), 10000440u128)?;
-        assert!(suite
-            .mint_and_list(mock.clone(), id_6, &user3_insufficient)
-            .unwrap_err()
-            .to_string()
-            .contains(
-                &MinterContractError::IncorrectDelegation {
-                    got: 10000440u128.into(),
-                    expected: base_delegation.u128()
-                }
+        assert!(
+            suite
+                .mint_and_list(mock.clone(), id_6, &user3_insufficient)
+                .unwrap_err()
                 .to_string()
-            ));
+                .contains(
+                    &MinterContractError::IncorrectDelegation {
+                        got: 10000440u128.into(),
+                        expected: base_delegation.u128()
+                    }
+                    .to_string()
+                )
+        );
 
         Ok(())
     }
@@ -984,8 +1020,8 @@ mod admin {
     }
 }
 mod query {
-    use cosmwasm_std::{coin, Attribute, Event};
-    use terp_account::{manifold::BidOffset, Bid};
+    use cosmwasm_std::{Attribute, Event, coin};
+    use terp_account::{Bid, manifold::BidOffset};
 
     use super::*;
 

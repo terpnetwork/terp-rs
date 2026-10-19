@@ -1,11 +1,11 @@
 use abstract_interface::{AbstractIbc, AnsHost, ModuleFactory, Registry};
 use abstract_std::{ANS_HOST, MODULE_FACTORY, REGISTRY};
-use cosmwasm_std::{coin, Uint128};
+use cosmwasm_std::{Uint128, coin};
 use cw_orch::prelude::*;
 // use dao_testing::DaoDaoSuite;
-use terp721_account::{interface::TerpAccountCollection, ACCOUNT_CONTRACT};
+use terp_account::{CURRENT_BASE_PRICE, CURRENT_COOLDOWN_FEE, CURRENT_MINIMUM_BID_PRICE, Metadata};
+use terp721_account::{ACCOUNT_CONTRACT, interface::TerpAccountCollection};
 use terp721_account_manifold::{contract::ACCOUNT_MANIFOLD_CONTRACT, interface::TerpAccountMinter};
-use terp_account::{Metadata, CURRENT_BASE_PRICE, CURRENT_COOLDOWN_FEE, CURRENT_MINIMUM_BID_PRICE};
 
 #[derive(Clone, Debug)]
 pub struct TerpAccountDeployData {
