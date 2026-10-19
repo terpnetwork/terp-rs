@@ -10,11 +10,11 @@ pub mod msg;
 pub use error::ContractError;
 pub use msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cw2::set_contract_version;
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:cw-zk-verify-demo";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
