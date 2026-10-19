@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, HexBinary};
 use cw4::Member;
 
@@ -49,7 +49,7 @@ pub enum ExecuteMsg {
         homie_addr: String,
     },
     UpdateTicketAddress {
-        /// Optional value to update your own. Left empty 
+        /// Optional value to update your own. Left empty
         new_ticket_addr: Option<String>,
         replace_homies_ticket: Vec<ReplaceHomieTicket>,
     },

@@ -1,20 +1,20 @@
 use av_event_helpers::get_license_addr;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_json_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    Response, StdResult, SubMsg, WasmMsg,
-};
 use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::{
+    BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdResult,
+    SubMsg, WasmMsg, to_json_binary,
+};
 
-use cw2::set_contract_version;
 use cw_ave::msg::InstantiateMsg as AvEventInstantiateMsg;
 use cw_storage_plus::Bound;
 use cw_utils::parse_instantiate_response_data;
+use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{avevent_contracts, AvEventContract, AVEVENT_CODE_ID, TMP_INSTANTIATOR_INFO};
+use crate::state::{AVEVENT_CODE_ID, AvEventContract, TMP_INSTANTIATOR_INFO, avevent_contracts};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-ave-factory";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

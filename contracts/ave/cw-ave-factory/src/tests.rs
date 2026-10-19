@@ -1,17 +1,17 @@
 use av_event_helpers::LICENSE_CANONICAL_ADDR;
 use cosmwasm_std::testing::mock_dependencies;
-use cosmwasm_std::{coins, Addr, Api, CanonicalAddr, Coin, Empty, Timestamp, Uint128};
-use cw4::Member;
+use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, Empty, Timestamp, Uint128, coins};
+use cw_ave::ContractError as CwAveContractError;
 use cw_ave::msg::InstantiateMsg as AvEventInstantiateMsg;
 use cw_ave::state::{EventSegment, EventSegmentAccessType, GuestDetails};
-use cw_ave::ContractError as CwAveContractError;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_ownable::OwnershipError;
+use cw4::Member;
 
 use crate::{
+    ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::AvEventContract,
-    ContractError,
 };
 
 use easy_addr::addr;
@@ -412,9 +412,10 @@ fn test_unauthorized_update_code_id() {
         .execute_contract(Addr::unchecked(BOB), factory_addr, &update_msg, &[])
         .unwrap_err();
 
-    assert!(err.to_string().contains(
-        &ContractError::Ownable(OwnershipError::NotOwner).to_string()
-    ));
+    assert!(
+        err.to_string()
+            .contains(&ContractError::Ownable(OwnershipError::NotOwner).to_string())
+    );
 }
 
 #[test]

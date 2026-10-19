@@ -1,19 +1,22 @@
 use crate::error::ContractError;
-use crate::msg::{EventSegmentRes, ExecuteMsg, GuestRootResponse, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{
-    generate_instantiate_salt2, preamble_msg_arb_036, sha256, CheckInDetails, CheckInSignatureData,
-    Config, GuestDetails, RegisteringEventAddressAndPayment, RegisteringGuest, ReplaceHomieTicket,
-    TicketPaymentOption, ATTENDANCE_RECORD, CONFIG, EVENT_STAGES, GUEST_DETAILS, HOMIE_TICKETS,
-    LICENSE_ADDR, NULLIFIERS, RESERVED_TICKETS, TOTAL_RESERVED_BY_GUEST_TYPE,
+use crate::msg::{
+    EventSegmentRes, ExecuteMsg, GuestRootResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
-use av_event_helpers::{get_license_addr, LICENSE_CANONICAL_ADDR};
+use crate::state::{
+    ATTENDANCE_RECORD, CONFIG, CheckInDetails, CheckInSignatureData, Config, EVENT_STAGES,
+    GUEST_DETAILS, GuestDetails, HOMIE_TICKETS, LICENSE_ADDR, NULLIFIERS, RESERVED_TICKETS,
+    RegisteringEventAddressAndPayment, RegisteringGuest, ReplaceHomieTicket,
+    TOTAL_RESERVED_BY_GUEST_TYPE, TicketPaymentOption, generate_instantiate_salt2,
+    preamble_msg_arb_036, sha256,
+};
+use av_event_helpers::{LICENSE_CANONICAL_ADDR, get_license_addr};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    coin, from_json, instantiate2_address, to_json_binary, Addr, BankMsg, Binary, CanonicalAddr,
-    Coin, CosmosMsg, Deps, DepsMut, Env, HexBinary, MessageInfo, Order, Response, StdError,
-    StdResult, Storage, WasmMsg,
+    Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut, Env, HexBinary,
+    MessageInfo, Order, Response, StdError, StdResult, Storage, WasmMsg, coin, from_json,
+    instantiate2_address, to_json_binary,
 };
 use cw2::set_contract_version;
 use cw4::{Cw4QueryMsg, Member, MemberResponse};
@@ -477,9 +480,7 @@ fn count_tickets_and_remainder(
 
 fn msg_has_funds_or_is_not_empty_bank(msg: &CosmosMsg) -> bool {
     match msg {
-        CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
-            amount.iter().any(|c| !c.amount.is_zero())
-        }
+        CosmosMsg::Bank(BankMsg::Send { amount, .. }) => amount.iter().any(|c| !c.amount.is_zero()),
         _ => true,
     }
 }
@@ -709,7 +710,6 @@ pub fn perform_update_ticket_wallet(
     }
 }
 
-
 fn query_is_usher(deps: Deps, addr: String) -> StdResult<bool> {
     let cfg = CONFIG.load(deps.storage)?;
     let wallet = deps.api.addr_validate(&addr)?;
@@ -732,8 +732,7 @@ pub fn perform_verify_consume(
     event_id: HexBinary,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    if check_if_cw420_member(deps.as_ref(), &cfg.event_usher_contract, &info.sender)?.is_none()
-    {
+    if check_if_cw420_member(deps.as_ref(), &cfg.event_usher_contract, &info.sender)?.is_none() {
         return Err(ContractError::NotAnEventUsher {});
     }
     let root = cfg.guest_root.ok_or(ContractError::GuestRootNotSet {})?;

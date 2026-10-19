@@ -1,14 +1,14 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_json, Addr, Api, DepsMut, OwnedDeps, Querier, Storage, SubMsg};
-use cw4::{member_key, Member, MemberChangedHookMsg, MemberDiff, TOTAL_KEY};
+use cosmwasm_std::{Addr, Api, DepsMut, OwnedDeps, Querier, Storage, SubMsg, from_json};
 use cw_controllers::{AdminError, HookError};
+use cw4::{Member, MemberChangedHookMsg, MemberDiff, TOTAL_KEY, member_key};
 
+use crate::ContractError;
 use crate::contract::{
     execute, instantiate, query_list_members, query_member, query_total_weight, update_members,
 };
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{ADMIN, HOOKS};
-use crate::ContractError;
 
 use easy_addr::addr;
 

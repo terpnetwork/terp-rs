@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, to_json_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, SubMsg, Uint64,
+    Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, SubMsg, Uint64,
+    attr, to_json_binary,
 };
+use cw_storage_plus::Bound;
+use cw_utils::maybe_addr;
 use cw2::set_contract_version;
 use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw_storage_plus::Bound;
-use cw_utils::maybe_addr;
 
 use crate::error::ContractError;
 use crate::helpers::validate_unique_members;

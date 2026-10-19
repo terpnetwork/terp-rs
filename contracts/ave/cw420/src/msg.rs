@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cw4::Member;
 
 #[cw_serde]

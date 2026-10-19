@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cw_ownable::cw_ownable_execute;
 
 use cw_ave::msg::InstantiateMsg as AvEventInstantiateMsg;

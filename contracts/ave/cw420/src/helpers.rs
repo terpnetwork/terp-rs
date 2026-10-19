@@ -1,10 +1,10 @@
 use std::ops::Deref;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_json_binary, Addr, CosmosMsg, StdResult, WasmMsg};
+use cosmwasm_std::{Addr, CosmosMsg, StdResult, WasmMsg, to_json_binary};
 use cw4::{Cw4Contract, Member};
 
-use crate::{msg::ExecuteMsg, ContractError};
+use crate::{ContractError, msg::ExecuteMsg};
 
 /// Cw4GroupContract is a wrapper around Cw4Contract that provides a lot of helpers
 /// for working with cw4-group contracts.
