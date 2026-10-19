@@ -271,11 +271,7 @@ impl Tag {
 
     /// Get additional elements after the value
     pub fn additional(&self) -> &[String] {
-        if self.0.len() > 2 {
-            &self.0[2..]
-        } else {
-            &[]
-        }
+        if self.0.len() > 2 { &self.0[2..] } else { &[] }
     }
 
     pub fn into_inner(self) -> Vec<String> {

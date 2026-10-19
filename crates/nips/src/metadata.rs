@@ -12,8 +12,8 @@
 //! The [`NostrExt`] trait is what CosmWasm contracts bind against in their
 //! generic type parameters, instead of depending directly on cosmwasm_std.
 
-use crate::error::NipResult;
 use crate::RawNostrEvent;
+use crate::error::NipResult;
 
 /// Interface for Nostr metadata in NFT/collection extensions.
 ///
@@ -290,10 +290,12 @@ mod tests {
             .unwrap();
         assert_eq!(event.content, "QmCID");
         assert_eq!(event.kind, 1);
-        assert!(event
-            .tags
-            .iter()
-            .any(|t| t.first() == Some(&"gateway".to_string())));
+        assert!(
+            event
+                .tags
+                .iter()
+                .any(|t| t.first() == Some(&"gateway".to_string()))
+        );
     }
 
     #[test]

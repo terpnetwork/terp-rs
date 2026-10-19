@@ -49,7 +49,7 @@ pub trait Nip73Ext: crate::NipMetadata {
             tags.push(k_tag);
 
             if let Some(hint) = ext.url_hint {
-                 tags.push(Tag(vec!["i".to_string(), hint]));
+                tags.push(Tag(vec!["i".to_string(), hint]));
             }
         }
         tags

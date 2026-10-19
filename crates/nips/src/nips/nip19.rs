@@ -16,7 +16,13 @@ fn char_to_value(c: u8) -> Option<u8> {
 }
 
 // Generator coefficients for bech32 BCH checksum
-const GEN: [u32; 5] = [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_33dd, 0x2a14_62e3];
+const GEN: [u32; 5] = [
+    0x3b6a_57b2,
+    0x2650_8e6d,
+    0x1ea1_19fa,
+    0x3d42_33dd,
+    0x2a14_62e3,
+];
 
 fn polymod(values: &[u8]) -> u32 {
     let mut chk = 1u32;
@@ -115,16 +121,22 @@ pub fn encode_bech32(hrp: &str, data: &[u8]) -> String {
 pub fn decode_bech32(s: &str) -> NipResult<(String, Vec<u8>)> {
     // Validate characters
     if s.len() > 5000 {
-        return Err(NipError::Validation("bech32 string exceeds 5000 chars".into()));
+        return Err(NipError::Validation(
+            "bech32 string exceeds 5000 chars".into(),
+        ));
     }
     if s.len() < 8 {
         return Err(NipError::Validation("bech32 string too short".into()));
     }
 
     // Find separator '1'
-    let sep = s.rfind('1').ok_or_else(|| NipError::Validation("bech32: no separator '1'".into()))?;
+    let sep = s
+        .rfind('1')
+        .ok_or_else(|| NipError::Validation("bech32: no separator '1'".into()))?;
     if sep < 1 || sep + 7 > s.len() {
-        return Err(NipError::Validation("bech32: invalid separator position".into()));
+        return Err(NipError::Validation(
+            "bech32: invalid separator position".into(),
+        ));
     }
 
     let hrp = &s[..sep];
@@ -202,11 +214,21 @@ impl Nip19Entity {
                 let tlv = encode_tlv_profile(pubkey, relays);
                 encode_bech32("nprofile", &tlv)
             }
-            Self::Nevent { event_id, relays, author, kind } => {
+            Self::Nevent {
+                event_id,
+                relays,
+                author,
+                kind,
+            } => {
                 let tlv = encode_tlv_event(event_id, relays, author, kind);
                 encode_bech32("nevent", &tlv)
             }
-            Self::Naddr { identifier, pubkey, kind, relays } => {
+            Self::Naddr {
+                identifier,
+                pubkey,
+                kind,
+                relays,
+            } => {
                 let tlv = encode_tlv_addr(identifier, pubkey, *kind, relays);
                 encode_bech32("naddr", &tlv)
             }
@@ -218,40 +240,63 @@ impl Nip19Entity {
         let (hrp, data) = decode_bech32(s)?;
         match hrp.as_str() {
             "npub" => {
-                let bytes: [u8; 32] = data.try_into().map_err(|_| NipError::Validation("npub: expected 32 bytes".into()))?;
+                let bytes: [u8; 32] = data
+                    .try_into()
+                    .map_err(|_| NipError::Validation("npub: expected 32 bytes".into()))?;
                 Ok(Self::Npub(bytes))
             }
             "nsec" => {
-                let bytes: [u8; 32] = data.try_into().map_err(|_| NipError::Validation("nsec: expected 32 bytes".into()))?;
+                let bytes: [u8; 32] = data
+                    .try_into()
+                    .map_err(|_| NipError::Validation("nsec: expected 32 bytes".into()))?;
                 Ok(Self::Nsec(bytes))
             }
             "note" => {
-                let bytes: [u8; 32] = data.try_into().map_err(|_| NipError::Validation("note: expected 32 bytes".into()))?;
+                let bytes: [u8; 32] = data
+                    .try_into()
+                    .map_err(|_| NipError::Validation("note: expected 32 bytes".into()))?;
                 Ok(Self::Note(bytes))
             }
             "nprofile" => {
                 let tlv = decode_tlv(&data)?;
-                let pubkey = tlv_get_32(&tlv, 0).ok_or_else(|| NipError::Validation("nprofile: missing pubkey TLV".into()))?;
+                let pubkey = tlv_get_32(&tlv, 0)
+                    .ok_or_else(|| NipError::Validation("nprofile: missing pubkey TLV".into()))?;
                 let relays = tlv_get_all_strings(&tlv, 1);
                 Ok(Self::Nprofile { pubkey, relays })
             }
             "nevent" => {
                 let tlv = decode_tlv(&data)?;
-                let event_id = tlv_get_32(&tlv, 0).ok_or_else(|| NipError::Validation("nevent: missing event_id TLV".into()))?;
+                let event_id = tlv_get_32(&tlv, 0)
+                    .ok_or_else(|| NipError::Validation("nevent: missing event_id TLV".into()))?;
                 let relays = tlv_get_all_strings(&tlv, 1);
                 let author = tlv_get_32(&tlv, 2);
                 let kind = tlv_get_u32(&tlv, 3);
-                Ok(Self::Nevent { event_id, relays, author, kind })
+                Ok(Self::Nevent {
+                    event_id,
+                    relays,
+                    author,
+                    kind,
+                })
             }
             "naddr" => {
                 let tlv = decode_tlv(&data)?;
                 let identifier = tlv_get_string(&tlv, 0).unwrap_or_default();
                 let relays = tlv_get_all_strings(&tlv, 1);
-                let pubkey = tlv_get_32(&tlv, 2).ok_or_else(|| NipError::Validation("naddr: missing pubkey TLV".into()))?;
-                let kind = tlv_get_u32(&tlv, 3).ok_or_else(|| NipError::Validation("naddr: missing kind TLV".into()))?;
-                Ok(Self::Naddr { identifier, pubkey, kind, relays })
+                let pubkey = tlv_get_32(&tlv, 2)
+                    .ok_or_else(|| NipError::Validation("naddr: missing pubkey TLV".into()))?;
+                let kind = tlv_get_u32(&tlv, 3)
+                    .ok_or_else(|| NipError::Validation("naddr: missing kind TLV".into()))?;
+                Ok(Self::Naddr {
+                    identifier,
+                    pubkey,
+                    kind,
+                    relays,
+                })
             }
-            other => Err(NipError::Validation(format!("Unknown bech32 prefix: {}", other))),
+            other => Err(NipError::Validation(format!(
+                "Unknown bech32 prefix: {}",
+                other
+            ))),
         }
     }
 
@@ -321,7 +366,12 @@ fn encode_tlv_profile(pubkey: &[u8; 32], relays: &[String]) -> Vec<u8> {
 }
 
 /// Encode TLV data for an event (nevent).
-fn encode_tlv_event(event_id: &[u8; 32], relays: &[String], author: &Option<[u8; 32]>, kind: &Option<u32>) -> Vec<u8> {
+fn encode_tlv_event(
+    event_id: &[u8; 32],
+    relays: &[String],
+    author: &Option<[u8; 32]>,
+    kind: &Option<u32>,
+) -> Vec<u8> {
     let mut out = Vec::new();
     // TLV type 0: event_id (32 bytes)
     out.push(0);
@@ -598,7 +648,8 @@ mod tests {
 
     #[test]
     fn test_invalid_hrp() {
-        let result = Nip19Entity::decode("nope1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
+        let result =
+            Nip19Entity::decode("nope1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq");
         assert!(result.is_err());
     }
 

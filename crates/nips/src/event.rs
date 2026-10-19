@@ -10,7 +10,7 @@
 //! The leading `0` is the NIP-01 protocol version marker. Tags are serialized
 //! as JSON arrays of strings. The resulting 32-byte hash is hex-encoded.
 
-use crate::{error::NipResult, RawNostrEvent};
+use crate::{RawNostrEvent, error::NipResult};
 use sha2::Digest;
 
 /// Build a NIP-01 event with the given fields and compute its canonical ID.
@@ -76,7 +76,10 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(event.pubkey, "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459f");
+        assert_eq!(
+            event.pubkey,
+            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459f"
+        );
         assert_eq!(event.created_at, 1644272765);
         assert_eq!(event.kind, 1);
         assert_eq!(event.content, "hello world");

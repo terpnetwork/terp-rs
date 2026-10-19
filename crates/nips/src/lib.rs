@@ -26,24 +26,29 @@
 //! The [`NostrExt`] trait and [`NostrExtension`] enum provide a unified
 //! interface for on-chain vs off-chain Nostr metadata — see [`metadata`].
 
+pub mod buds;
+/// DAO text-record / storage registration for mesh + NIP heuristics.
+pub mod dao_record;
 pub mod encoding;
 pub mod error;
 pub mod event;
 pub mod metadata;
 pub mod nips;
-pub mod buds;
 /// Cashu NUT sketches — off by default (`--features nuts`). NUT-02 stays a stub.
 #[cfg(feature = "nuts")]
 pub mod nuts;
 pub mod tags;
 pub mod types;
-/// DAO text-record / storage registration for mesh + NIP heuristics.
-pub mod dao_record;
 
 #[cfg(feature = "cw")]
 pub mod cw;
 
 // Re-exports
+pub use dao_record::{
+    DAO_MESH_RECORD_KEY, DaoRecordAction, DaoRecordWasmHint, MeshDescriptorV1,
+    MeshMarketplacePatch, Nip15PlaneMode, NipDaoPlane, NipNamespacedRecord, NostrFilterHeuristic,
+    WasmExecuteHint, nip15_filter_heuristic, place_bid_wasm_hint, purchase_wasm_hint,
+};
 pub use error::{NipError, NipResult};
 pub use event::*;
 pub use metadata::{EmptyNostrExtension, NostrExt, NostrExtension};
@@ -51,13 +56,8 @@ use schemars::JsonSchema;
 use sha2::Digest as _;
 pub use tags::TagBuilder;
 pub use types::*;
-pub use dao_record::{
-    place_bid_wasm_hint, purchase_wasm_hint, nip15_filter_heuristic, DaoRecordAction,
-    DaoRecordWasmHint, MeshDescriptorV1, MeshMarketplacePatch, Nip15PlaneMode, NipDaoPlane,
-    NipNamespacedRecord, NostrFilterHeuristic, WasmExecuteHint, DAO_MESH_RECORD_KEY,
-};
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 use crate::nips::nip73::Nip73Ext as _;
 

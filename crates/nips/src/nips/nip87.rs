@@ -3,8 +3,8 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/87.md>
 
 use crate::{
-    error::{NipError, NipResult},
     NipKind, NipMetadata, RawNostrEvent, Tag,
+    error::{NipError, NipResult},
 };
 
 use schemars::JsonSchema;
