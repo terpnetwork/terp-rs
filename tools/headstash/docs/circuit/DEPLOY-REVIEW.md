@@ -67,24 +67,36 @@ feature it returns an error. With `zk-api` it calls
 
 ## Gaps
 
-1. **The chain does not check the verifying key at payout.** `sudo` stores
-   the root and the height after checking `chain_uid` and the algo name.
-   `settle` never reads `vk_id` or `vk_hash`. A campaign can record one
-   hash while the sidecar cache holds another. The sudo still pays when
-   the attestation matches the staged batch. The contract owner can set
-   any non-zero halo2 id and any 32-byte hash until a batch is staged or
-   the epoch is marked paid. There is no on-chain list of blobs and no
-   admin of one. The registry admin is whoever starts the process.
-   This one is a design call. It is unchanged.
+1. **Closed in `072f694`.** `SetEpochCampaign` stores `vk_id` and
+   `vk_hash`. After the first successful write, a later owner message
+   that changes either field returns `vk is fixed`, including when
+   nothing is staged and the epoch is not paid. A halo2 hash of 32 zero
+   bytes is refused at creation. When the stored hash is not all zeros,
+   settle reads the `headstash-batch` oracle value, requires 64 bytes,
+   and requires the last 32 to equal the stored hash before it pays. A
+   mismatch returns `vk hash` and pays nothing. The check runs after a
+   root match and before the nullifier write. `ApplyAcceptedBatch`
+   checks `vk_hash` before credits. Flock may still store 32 zero
+   bytes, and a zero stored hash skips the check. Stock terpd 6.4.0 has
+   no vk field on the sudo JSON, so the hash rides in the existing
+   oracle value. cw-headstash `epoch::tests` passed 15, including
+   `halo2_vk_is_immutable_and_zero_is_refused`. The loopback 17/17 was
+   not rerun. Epoch RPC `127.0.0.1:36667` did not answer, and the e2e
+   script would re-init the chain home after a failed status check.
 
-2. **`/ve/headstash/campaign`, `/claims`, and `/seal` have no authenticator.**
-   Any client that can open the port can install a campaign whose hash
-   matches the cache, submit claims, and seal. Loopback is the control.
-   `allow_public_bind` or `HASH_MARKET_ALLOW_PUBLIC_BIND` on
-   `hash-market-server` publishes those routes with the rest of the
-   router. A second install with the same vk can still replace the
-   allocation root, the cutoff, and the amount caps until the first
-   claim is stored. This one is a design call. It is unchanged.
+2. **Closed in `072f694`.** `POST /ve/headstash/campaign` and
+   `POST /ve/headstash/seal` require `x-hash-market-pubkey` and
+   `x-hash-market-signature` over the tree-write challenge on the raw
+   body. secp256k1 uses the ADR-36 document. ed25519 signs SHA-256 of
+   the same challenge string and the 32-byte key must be listed in
+   `operator_pubkeys`. `POST /ve/headstash/claims` stays unsigned. A
+   missing signature is 401. A signature from a different key is 403.
+   A repeated signature is 401. A second campaign POST returns 409
+   `campaign already exists` as soon as a campaign is stored, before
+   any claim. hash-market passed
+   `operator_challenge_matches_the_tree_write_string` and
+   `admin_routes_reject_unsigned_wrong_key_replay_and_reinstall`.
+   The loopback 17/17 was not rerun on this commit.
 
 3. **Closed.** `Campaign::open` returns `Params` for a halo2 campaign
    whose `vk_hash` is 32 zero bytes. `evaluate_halo2` compares the
@@ -177,7 +189,8 @@ Leave `HASH_MARKET_ALLOW_PUBLIC_BIND` unset and do not set
 bridge `mock_verify`. Do not add a grpc provider on a public address.
 Store the sweep wasm as a new code id when the target chain should
 sweep, and point the campaign `vk_hash` at the sidecar's
-`install_epoch_host` output. Gaps 1 and 2 are the design decisions
-still open: chain-side vk enforcement at payout, and authentication
-on the three `/ve/headstash` routes. The halo2-base port is `e8b9230`
+`install_epoch_host` output. Gaps 1 and 2 are closed in `072f694`. The loopback 17/17 has
+not been rerun on that commit. Epoch RPC `127.0.0.1:36667` did
+not answer, and the e2e script would re-init the chain home after
+a failed status check. The halo2-base port is `e8b9230`
 on this branch. Its measured `epoch_vk_hash` prefix is `9f809a09`.

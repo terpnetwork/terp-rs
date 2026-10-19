@@ -7,6 +7,8 @@ operators may run that same process with different membership. Dev binds
 
 The deploy read of `c8fd4ec` is [DEPLOY-REVIEW.md](DEPLOY-REVIEW.md).
 
+The registration tree is locked in [REGISTRATION-TREE.md](REGISTRATION-TREE.md). Depth is 16 and the Poseidon tags are the ones the K=11 circuit already uses. That circuit is unchanged. Registration itself is not in `072f694`.
+
 `tools/hash-market/docs/headstash.md` is a different feature (encrypted
 notes and circuit keys). This note does not change those routes.
 `ProcessHeadstash` stays in cw-headstash as a retained on-chain Halo2
@@ -1144,6 +1146,8 @@ Reproduced on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-co
 ## Chain vk and operator routes
 
 Decided for this branch. The chain stores the verifying key the sidecar used, and it refuses a payout under a different hash. Campaign install and seal require an operator signature. Claims stay public.
+
+Implemented in `072f694`. cw-headstash `epoch::tests` passed 15, including `halo2_vk_is_immutable_and_zero_is_refused`. hash-market passed `operator_challenge_matches_the_tree_write_string`, `admin_routes_reject_unsigned_wrong_key_replay_and_reinstall`, `vote_json_is_one_headstash_batch_attestation`, and `two_registered_keys_select_and_reject`. headstash-epoch lib tests passed 15. `headstash-epoch-e2e` typechecked. The loopback 17/17 was not rerun: epoch RPC `127.0.0.1:36667` did not answer, and the e2e script would re-init the chain home after a failed status check.
 
 ### Chain
 
