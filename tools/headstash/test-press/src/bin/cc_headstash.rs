@@ -57,16 +57,12 @@ fn main() -> Result<(), anyhow::Error> {
 
     let mnemonic = env::var("MNEMONIC").unwrap_or_default();
     if mnemonic.is_empty() {
-        anyhow::bail!(
-            "--upload requires MNEMONIC in the environment (never commit mnemonics)."
-        );
+        anyhow::bail!("--upload requires MNEMONIC in the environment (never commit mnemonics).");
     }
 
     let chain_id = env::var("CHAIN").unwrap_or_else(|_| "testnet".into());
     let network = match chain_id.as_str() {
-        "local" | "localterp" | "localnet" => {
-            cw_orch::daemon::networks::TERP_LOCALNET.clone()
-        }
+        "local" | "localterp" | "localnet" => cw_orch::daemon::networks::TERP_LOCALNET.clone(),
         _ => cw_orch::daemon::networks::TERP_TESTNET.clone(),
     };
 
@@ -97,9 +93,7 @@ fn main() -> Result<(), anyhow::Error> {
     }
 
     eprintln!("uploading circuit blob to chain…");
-    hs.circuit
-        .upload_circuit()
-        .context("upload_circuit")?;
+    hs.circuit.upload_circuit().context("upload_circuit")?;
     eprintln!("upload_circuit ok");
 
     Ok(())

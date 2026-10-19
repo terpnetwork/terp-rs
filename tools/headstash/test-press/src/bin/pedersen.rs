@@ -1,8 +1,8 @@
 use ff::PrimeField;
+use pasta_curves::Fq;
 use pasta_curves::arithmetic::CurveExt;
 use pasta_curves::group::Curve;
 use pasta_curves::pallas::{Point, Scalar};
-use pasta_curves::Fq;
 use std::u64;
 
 fn string_to_fq(str_bytes: &str) -> Fq {

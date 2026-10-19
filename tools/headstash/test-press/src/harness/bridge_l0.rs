@@ -4,8 +4,8 @@
 //! CW bridge-mint on `cw-headstash` (CLARITY) may wire the same assertions later.
 
 use terp_seams::bridge::{
-    authorize_bridge_mint, authorize_bridge_mint_apply, hinge_happy_fixture, BridgeMintError,
-    NoteOutSketch, ORIGIN_BRIDGE_MINT, NF_BRIDGE_BURN,
+    BridgeMintError, NF_BRIDGE_BURN, NoteOutSketch, ORIGIN_BRIDGE_MINT, authorize_bridge_mint,
+    authorize_bridge_mint_apply, hinge_happy_fixture,
 };
 
 /// L0 harness error (stringly for suite → CwOrchError mapping).
@@ -61,9 +61,7 @@ pub fn assert_h1_spent_only_reject() -> Result<(), L0Error> {
     claim.spent_only = true;
     match authorize_bridge_mint(&snapshot, &claim, &minted, &registry) {
         Err(BridgeMintError::NotInBurnSet) => Ok(()),
-        other => Err(L0Error(format!(
-            "H-1 expected NotInBurnSet, got {other:?}"
-        ))),
+        other => Err(L0Error(format!("H-1 expected NotInBurnSet, got {other:?}"))),
     }
 }
 
@@ -88,9 +86,7 @@ pub fn compose_bridge_mint_to_seam_bytes() -> Result<NoteOutSketch, L0Error> {
         return Err(L0Error(format!("seam bytes len {}", bytes.len())));
     }
     if note.rcm_flag == 1 && !note.is_dex_consumable() {
-        return Err(L0Error(
-            "rcm_flag=1 but is_dex_consumable=false".into(),
-        ));
+        return Err(L0Error("rcm_flag=1 but is_dex_consumable=false".into()));
     }
     // Optional cross-crate decode when seam_note_out is linked.
     #[cfg(feature = "l0-seams")]

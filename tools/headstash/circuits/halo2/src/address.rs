@@ -6,7 +6,7 @@ use subtle::CtOption;
 
 use crate::{
     keys::{DiversifiedTransmissionKey, Diversifier},
-    spec::{diversify_hash, diversify_hash_headstash, NonIdentityPallasPoint},
+    spec::{NonIdentityPallasPoint, diversify_hash, diversify_hash_headstash},
 };
 
 /// A shielded payment address.
@@ -77,8 +77,8 @@ pub mod testing {
     use crate::{
         address::RecpAddr,
         keys::{
-            testing::{arb_diversifier_index, arb_spending_key},
             FullViewingKey, Scope,
+            testing::{arb_diversifier_index, arb_spending_key},
         },
         value::testing::arb_scalar,
     };

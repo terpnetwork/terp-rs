@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 use terp_seams::bridge::{
-    authorize_bridge_mint, derive_claim_id_with_dest, derive_domain_binding, label_hash,
-    terp_asset_id_from_tacit, AssetRegistry, BridgeMintClaim, BridgeMintPublic, Hash32, MintedSet,
-    ReflectionSnapshot, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+    AssetRegistry, BridgeMintClaim, BridgeMintPublic, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+    Hash32, MintedSet, ReflectionSnapshot, authorize_bridge_mint, derive_claim_id_with_dest,
+    derive_domain_binding, label_hash, terp_asset_id_from_tacit,
 };
 
 /// Provisional corridor deposit nullifier domain (not Tacit LC burn ν).
@@ -269,7 +269,11 @@ fn parse_hash32_hex(s: &str) -> Result<Hash32, ()> {
 }
 
 fn is_placeholder_dest_hex(hex_s: &str) -> bool {
-    let h = hex_s.trim().strip_prefix("0x").unwrap_or(hex_s.trim()).to_ascii_lowercase();
+    let h = hex_s
+        .trim()
+        .strip_prefix("0x")
+        .unwrap_or(hex_s.trim())
+        .to_ascii_lowercase();
     if h.len() != 64 {
         return false;
     }
@@ -471,7 +475,10 @@ pub fn try_claim_from_env(
     };
     let addr = std::env::var("CORRIDOR_DEPOSIT_ADDR").unwrap_or_else(|_| "lab-deposit-addr".into());
     let vout = match std::env::var("CORRIDOR_DEPOSIT_VOUT") {
-        Ok(s) if !s.trim().is_empty() => Some(s.parse::<u32>().map_err(|_| ClaimFromDepositError::MissingVout)?),
+        Ok(s) if !s.trim().is_empty() => Some(
+            s.parse::<u32>()
+                .map_err(|_| ClaimFromDepositError::MissingVout)?,
+        ),
         _ => None,
     };
     let min_amount = std::env::var("CORRIDOR_WATCH_MIN_AMOUNT_SATS")
@@ -550,7 +557,10 @@ mod tests {
     #[test]
     fn t2_domain_tag_exact_bytes() {
         assert_eq!(TERP_BTC_DEPOSIT_NU_V0, b"terp-btc-deposit-nu-v0");
-        assert_eq!(TERP_BTC_DEPOSIT_NU_V0.len(), b"terp-btc-deposit-nu-v0".len());
+        assert_eq!(
+            TERP_BTC_DEPOSIT_NU_V0.len(),
+            b"terp-btc-deposit-nu-v0".len()
+        );
     }
 
     #[test]
@@ -586,7 +596,10 @@ mod tests {
         let policy = CorridorLabMintPolicy::corridor_lab_default();
         let claim = claim_from_deposit_watch(&obs, &watch, &policy).expect("claim");
         assert_eq!(claim.value_u64, 20_000);
-        assert_eq!(claim.dest_commitment, parse_hash32_hex(&sample_dest_hex()).unwrap());
+        assert_eq!(
+            claim.dest_commitment,
+            parse_hash32_hex(&sample_dest_hex()).unwrap()
+        );
         assert_eq!(claim.burn_dest_commitment, claim.dest_commitment);
         assert_eq!(
             claim.nullifier,
@@ -638,8 +651,12 @@ mod tests {
     fn t4_missing_txid() {
         let mut obs = sample_obs();
         obs.txid = "".into();
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::MissingTxid);
     }
 
@@ -647,8 +664,12 @@ mod tests {
     fn t4_invalid_txid_hex() {
         let mut obs = sample_obs();
         obs.txid = "deadbeef".into();
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::InvalidTxidHex);
     }
 
@@ -656,8 +677,12 @@ mod tests {
     fn t5_missing_amount() {
         let mut obs = sample_obs();
         obs.amount_sats = 0;
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::MissingAmount);
     }
 
@@ -665,8 +690,12 @@ mod tests {
     fn t6_missing_dest() {
         let mut watch = sample_watch();
         watch.dest_owner_binding = "".into();
-        let err = claim_from_deposit_watch(&sample_obs(), &watch, &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &sample_obs(),
+            &watch,
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::MissingDest);
     }
 
@@ -674,8 +703,12 @@ mod tests {
     fn t6_invalid_dest_hex() {
         let mut watch = sample_watch();
         watch.dest_owner_binding = "zz".into();
-        let err = claim_from_deposit_watch(&sample_obs(), &watch, &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &sample_obs(),
+            &watch,
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::InvalidDestHex);
     }
 
@@ -683,8 +716,12 @@ mod tests {
     fn t7_amount_below_watch_min() {
         let mut obs = sample_obs();
         obs.amount_sats = 100;
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::AmountBelowWatchMin);
     }
 
@@ -692,8 +729,12 @@ mod tests {
     fn t8_intent_mismatch() {
         let mut obs = sample_obs();
         obs.intent_id = "other".into();
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::IntentMismatch);
     }
 
@@ -701,8 +742,12 @@ mod tests {
     fn t8_addr_mismatch() {
         let mut obs = sample_obs();
         obs.btc_deposit_addr = "other".into();
-        let err = claim_from_deposit_watch(&obs, &sample_watch(), &CorridorLabMintPolicy::corridor_lab_default())
-            .unwrap_err();
+        let err = claim_from_deposit_watch(
+            &obs,
+            &sample_watch(),
+            &CorridorLabMintPolicy::corridor_lab_default(),
+        )
+        .unwrap_err();
         assert_eq!(err, ClaimFromDepositError::AddrMismatch);
     }
 

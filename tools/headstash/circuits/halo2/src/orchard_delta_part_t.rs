@@ -13,14 +13,12 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
+use crate::os_rng;
 use halo2_proofs::{circuit::Value, dev::MockProver};
 use pasta_curves::pallas;
 use rand_core::Rng;
-use crate::os_rng;
 
-use crate::circuit::gadget::secp256k1_chip::{
-    secp_coord_be_to_pallas_base, secp_fp_from_coord_be,
-};
+use crate::circuit::gadget::secp256k1_chip::{secp_coord_be_to_pallas_base, secp_fp_from_coord_be};
 use crate::circuit::{Circuit, Instance, K};
 use crate::distro_poseidon::poseidon_distro_leaf;
 use crate::note::Note;
@@ -172,7 +170,11 @@ fn h1_valid_claim() {
     let (circuit, instance) = valid_claim_pair(os_rng());
     let public = public_columns(&instance);
     let prover = MockProver::run(K, &circuit, public).expect("H1: MockProver must construct");
-    assert_eq!(instance.to_bytes().len(), 200, "H1: public instance wire size");
+    assert_eq!(
+        instance.to_bytes().len(),
+        200,
+        "H1: public instance wire size"
+    );
     assert_eq!(
         prover.verify(),
         Ok(()),
@@ -185,8 +187,8 @@ fn h1_valid_claim() {
 #[test]
 #[cfg(feature = "interface")]
 fn h1_suite_backed_multi_leaf_claim() {
-    use crate::suite::suite::HeadstashProofBuilder;
     use crate::suite::HeadstashCircuitSuite;
+    use crate::suite::suite::HeadstashProofBuilder;
     use cw_orch::mock::Mock;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
@@ -214,8 +216,8 @@ fn h1_suite_backed_multi_leaf_claim() {
 #[test]
 #[cfg(feature = "interface")]
 fn h1_batch_two_claims_verify() {
-    use crate::suite::suite::HeadstashProofBuilder;
     use crate::suite::HeadstashCircuitSuite;
+    use crate::suite::suite::HeadstashProofBuilder;
     use cw_orch::mock::Mock;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
@@ -241,8 +243,8 @@ fn h1_batch_two_claims_verify() {
 #[test]
 #[cfg(feature = "interface")]
 fn claim_surface_poseidon_root_and_instance_bytes() {
-    use crate::suite::suite::HeadstashProofBuilder;
     use crate::suite::HeadstashCircuitSuite;
+    use crate::suite::suite::HeadstashProofBuilder;
     use cosmwasm_std::Binary;
     use cw_orch::mock::Mock;
 

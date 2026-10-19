@@ -20,7 +20,7 @@ pub use gadget::secp256k1_chip::{
 
 use group::Curve;
 use halo2_proofs::{
-    circuit::{floor_planner, Layouter, Value},
+    circuit::{Layouter, Value, floor_planner},
     plonk::{
         self, Advice, BatchVerifier, Column, Instance as InstanceColumn, SingleVerifier,
         TableColumn,
@@ -36,12 +36,12 @@ use self::gadget::add_chip::{AddChip, AddConfig};
 use crate::{
     address::RecpAddr,
     builder::SpendInfo,
-    constants::{OrchardFixedBases, MERKLE_DEPTH_ORCHARD},
+    constants::{MERKLE_DEPTH_ORCHARD, OrchardFixedBases},
     keys::NullifierDerivingKey,
     note::{
+        ExtractedNoteCommitment, Note, Rho,
         commitment::{NoteCommitTrapdoor, NoteCommitment},
         nullifier::Nullifier,
-        ExtractedNoteCommitment, Note, Rho,
     },
     tree::{Anchor, MerkleHashOrchard},
     value::{NoteDenom, NoteValue},
@@ -49,10 +49,10 @@ use crate::{
 use ff::{Field, PrimeField};
 use halo2_gadgets::{
     ecc::{
-        chip::{EccChip, EccConfig},
         Point,
+        chip::{EccChip, EccConfig},
     },
-    poseidon::{primitives as poseidon, Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig},
+    poseidon::{Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig, primitives as poseidon},
     utilities::{
         cond_swap::{CondSwapChip, CondSwapConfig},
         lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
@@ -64,9 +64,9 @@ pub mod distro_poseidon_gadget;
 pub mod gadget;
 pub mod headstash_merkle_tree;
 mod note_commit;
-pub mod note_poseidon_gadget;
 #[cfg(test)]
 mod note_commit_bit_tests;
+pub mod note_poseidon_gadget;
 
 pub use crate::Proof;
 
@@ -138,7 +138,6 @@ impl From<Circuit> for zk_cosmwasm::CosmwasmCircuit<Circuit> {
         zk_cosmwasm::CosmwasmCircuit::new(c)
     }
 }
-
 
 /// Load [0, 2^{10}) into the shared lookup column used by ECC / secp256k1 range checks.
 /// Product A no longer configures Sinsemilla, so this replaces `SinsemillaChip::load`.
@@ -234,8 +233,8 @@ impl Circuit {
     /// The signed body is `keccak256` of the 168-byte instance with the
     /// challenge bytes still zero. `instance.e` becomes the reduced scalar.
     pub fn attach_personal_sign(&mut self, instance: &mut Instance, secret_be: &[u8; 32]) {
-        use crate::claim_auth::{keccak256, sign_personal_claim};
         use crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be;
+        use crate::claim_auth::{keccak256, sign_personal_claim};
 
         let prefix = instance.to_bytes();
         let body = keccak256(&prefix[..168]);
@@ -338,8 +337,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
         let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check.clone());
 
         // CondSwap for Poseidon-v1 distro Merkle path (node/sibling ordering).
-        let cond_swap_config =
-            CondSwapChip::configure(meta, advices[0..5].try_into().unwrap());
+        let cond_swap_config = CondSwapChip::configure(meta, advices[0..5].try_into().unwrap());
 
         Config {
             primary,
@@ -681,7 +679,7 @@ impl ProvingKey {
                 zk_cosmwasm::CircuitType::Plonkish,
                 zk_cosmwasm::curves::CurveType::Pasta,
                 K as u8,
-                8,   // i — anchor, nd, v, recp, nf, cmx, challenge lo, challenge hi
+                8, // i — anchor, nd, v, recp, nf, cmx, challenge lo, challenge hi
                 paramlen as u32,
                 cslen as u32,
                 vklen as u32,
@@ -913,13 +911,13 @@ mod tests {
     use alloc::vec::Vec;
     use core::iter;
 
+    use crate::os_rng;
     use ff::PrimeField;
     use halo2_proofs::{circuit::Value, dev::MockProver};
     use pasta_curves::pallas;
     use rand_core::RngCore;
-    use crate::os_rng;
 
-    use super::{Circuit, Instance, Proof, ProvingKey, VerifyingKey, K};
+    use super::{Circuit, Instance, K, Proof, ProvingKey, VerifyingKey};
     use crate::{
         circuit::gadget::secp256k1_chip::{secp_coord_be_to_pallas_base, secp_fp_from_coord_be},
         distro_poseidon::poseidon_distro_leaf,
@@ -1225,11 +1223,11 @@ mod tests {
     #[test]
     #[cfg(feature = "interface")]
     fn test_genesis_merkle_tree_with_generated_data() {
+        use crate::suite::HeadstashCircuitSuite;
         /// Product A integration: suite multi-leaf Poseidon tree + matching claim note.
         /// Uses [`HeadstashProofBuilder::suite_backed_claim_pair`] so eligibility leaf,
         /// depth-32 path/anchor, and private cmx/nf are consistent with synthesize.
         use crate::suite::suite::{HeadstashProofBuilder, MerkleTestDataBuilder};
-        use crate::suite::HeadstashCircuitSuite;
         use cw_orch::mock::Mock;
 
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));

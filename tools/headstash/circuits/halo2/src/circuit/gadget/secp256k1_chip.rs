@@ -1617,10 +1617,7 @@ impl Secp256k1Chip {
         hi: &AssignedCell<pallas::Base, pallas::Base>,
     ) -> Result<AssignedCell<pallas::Base, pallas::Base>, PlonkError> {
         let two64 = pallas::Base::from_u128(1u128 << 64);
-        let packed_val = lo
-            .value()
-            .zip(hi.value())
-            .map(|(lo, hi)| *lo + *hi * two64);
+        let packed_val = lo.value().zip(hi.value()).map(|(lo, hi)| *lo + *hi * two64);
         let advice = self.fq.config.advices;
         layouter.assign_region(
             || "pack u128",
@@ -2676,9 +2673,12 @@ impl Secp256k1Chip {
         let e = self.fq.load_private(layouter.namespace(|| "e"), e)?;
         let r = self.fq.load_private(layouter.namespace(|| "r"), r)?;
         let s = self.fq.load_private(layouter.namespace(|| "s"), s)?;
-        self.fq.range_check_limbs(layouter.namespace(|| "rc e"), &e)?;
-        self.fq.range_check_limbs(layouter.namespace(|| "rc r"), &r)?;
-        self.fq.range_check_limbs(layouter.namespace(|| "rc s"), &s)?;
+        self.fq
+            .range_check_limbs(layouter.namespace(|| "rc e"), &e)?;
+        self.fq
+            .range_check_limbs(layouter.namespace(|| "rc r"), &r)?;
+        self.fq
+            .range_check_limbs(layouter.namespace(|| "rc s"), &s)?;
 
         let one = self.load_pinned_fq(layouter.namespace(|| "one"), Secp256k1Fq::from(1u64))?;
         let s_inv = self.fq.div(layouter.namespace(|| "s inverse"), &one, &s)?;
@@ -2687,10 +2687,8 @@ impl Secp256k1Chip {
 
         let r_g = self.scalar_mul_glv(layouter.namespace(|| "u1·G"), &u1)?;
         let q = (
-            self.fp
-                .load_private(layouter.namespace(|| "Q.x"), qx)?,
-            self.fp
-                .load_private(layouter.namespace(|| "Q.y"), qy)?,
+            self.fp.load_private(layouter.namespace(|| "Q.x"), qx)?,
+            self.fp.load_private(layouter.namespace(|| "Q.y"), qy)?,
         );
         self.fp
             .range_check_limbs(layouter.namespace(|| "rc Q.x"), &q.0)?;
@@ -2749,8 +2747,7 @@ impl Secp256k1Chip {
 
         let beta = self.load_pinned_fp(layouter.namespace(|| "beta"), glv_beta_fp())?;
         let psi = (
-            self.fp
-                .mul(layouter.namespace(|| "β·x"), &beta, &base.0)?,
+            self.fp.mul(layouter.namespace(|| "β·x"), &beta, &base.0)?,
             base.1.clone(),
         );
         let base_pow = self.double_times(layouter.namespace(|| "2^128·P"), base, 128)?;
@@ -2771,12 +2768,7 @@ impl Secp256k1Chip {
             &sign1,
         )?;
         let b2 = self.select_point(layouter.namespace(|| "±ψP"), &psi_neg, &psi, &sign2)?;
-        let c2 = self.select_point(
-            layouter.namespace(|| "±corr ψ"),
-            &c_psi_neg,
-            &c_psi,
-            &sign2,
-        )?;
+        let c2 = self.select_point(layouter.namespace(|| "±corr ψ"), &c_psi_neg, &c_psi, &sign2)?;
         let p1 = self.scalar_mul_128(
             layouter.namespace(|| "k1·P"),
             &b1,
@@ -2827,9 +2819,7 @@ impl Secp256k1Chip {
             let y = y.to_biguint().expect("y >= 0");
             be32_to_fp(&biguint_to_be32(&(secp_p() - y)))
         });
-        let y_neg = self
-            .fp
-            .load_private(layouter.namespace(|| "-y"), y_neg_v)?;
+        let y_neg = self.fp.load_private(layouter.namespace(|| "-y"), y_neg_v)?;
         let (sum, cout) = self.carry_add_limbs(
             layouter.namespace(|| "y + -y"),
             &point.1.truncation.limbs,

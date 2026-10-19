@@ -21,9 +21,8 @@ use zk_test_press::suites::no_rick::interface::NoRickSuite;
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mnemonic = env::var("MNEMONIC").context(
-        "MNEMONIC env required (funded testnet wallet, never commit secrets)",
-    )?;
+    let mnemonic = env::var("MNEMONIC")
+        .context("MNEMONIC env required (funded testnet wallet, never commit secrets)")?;
 
     let chain_info = match env::var("CHAIN").as_deref() {
         Ok("local") | Ok("LOCAL") => TERP_TESTNET_LOCAL.clone(),
@@ -35,9 +34,7 @@ fn main() -> anyhow::Result<()> {
         chain_info.chain_id, chain_info.grpc_urls
     );
 
-    let daemon = Daemon::builder(chain_info)
-        .mnemonic(&mnemonic)
-        .build()?;
+    let daemon = Daemon::builder(chain_info).mnemonic(&mnemonic).build()?;
 
     let suite = NoRickSuite::new(daemon.clone());
 

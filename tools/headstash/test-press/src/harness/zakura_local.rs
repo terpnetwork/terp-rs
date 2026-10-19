@@ -18,7 +18,7 @@
 //! Funded-stack sidecar ports (host network): RPC **18232**, P2P **18233**, metrics **19901**.
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::env;
 use std::io::{Read, Write};
@@ -127,11 +127,7 @@ pub fn soft_validate_dest_prefix(dest_display: &str) -> bool {
     if s.starts_with("zs1") || s.starts_with("ztestsapling1") {
         return s.len() >= 50;
     }
-    if s.starts_with("t1")
-        || s.starts_with("t3")
-        || s.starts_with("tm")
-        || s.starts_with("tex1")
-    {
+    if s.starts_with("t1") || s.starts_with("t3") || s.starts_with("tm") || s.starts_with("tex1") {
         return s.len() >= 30;
     }
     if s.starts_with("u1sim_") || s.contains("diversified_zec") || s.starts_with("demo_zec_") {
@@ -173,7 +169,11 @@ pub enum GoldenDestError {
     Io(String),
     Json(String),
     DomainMismatch(String),
-    SampleMismatch { id: String, expected: String, got: String },
+    SampleMismatch {
+        id: String,
+        expected: String,
+        got: String,
+    },
     MissingPrimary,
 }
 
@@ -310,7 +310,10 @@ impl SealedDestSource {
 pub enum DestSealError {
     EmptyDest,
     PlaceholderBinding(String),
-    BadHexWidth { got: usize, want: usize },
+    BadHexWidth {
+        got: usize,
+        want: usize,
+    },
     SoftValidateFailed(String),
     Golden(String),
     RpcRequiredButDown(String),
@@ -460,7 +463,9 @@ fn env_truthy_dest(key: &str) -> bool {
 ///    `CORRIDOR_REQUIRE_ZAKURA_RPC=1` and RPC down / invalid.
 /// 4. If `CORRIDOR_DEST_OWNER_BINDING` set, must equal sealed hex (no silent invent).
 pub fn seal_funded_dest(cfg: &ZakuraLocalConfig) -> Result<SealedDestV0, DestSealError> {
-    let env_override = env::var("ZAKURA_DEST_ADDR").ok().filter(|s| !s.trim().is_empty());
+    let env_override = env::var("ZAKURA_DEST_ADDR")
+        .ok()
+        .filter(|s| !s.trim().is_empty());
     let (dest_display, mut source) = if let Some(addr) = env_override {
         reject_empty_dest_seal(&addr)?;
         if !soft_validate_dest_prefix(&addr) {
@@ -599,7 +604,10 @@ fn parse_http_url(url: &str) -> Result<(String, u16, String), ZakuraLocalError> 
 
 /// True if `getblockchaininfo` returns a result object.
 pub fn rpc_ready(cfg: &ZakuraLocalConfig) -> bool {
-    matches!(json_rpc_call(cfg, "getblockchaininfo", json!([])), Ok(Value::Object(_)))
+    matches!(
+        json_rpc_call(cfg, "getblockchaininfo", json!([])),
+        Ok(Value::Object(_))
+    )
 }
 
 pub fn get_blockchain_info(cfg: &ZakuraLocalConfig) -> Result<Value, ZakuraLocalError> {
@@ -663,7 +671,7 @@ pub fn fetch_corridor_dest_require_rpc(
 mod tests {
     use super::*;
     use crate::harness::cashapp_zec_corridor::{
-        run_cashapp_zec_corridor_w0_w7, CorridorAssetBackend, CorridorScenario,
+        CorridorAssetBackend, CorridorScenario, run_cashapp_zec_corridor_w0_w7,
     };
 
     #[test]
@@ -721,7 +729,10 @@ mod tests {
         let d = fetch_corridor_dest(&cfg);
         assert!(!d.rpc_ready);
         assert!(!d.rpc_validated);
-        assert_eq!(d.owner_binding, owner_binding_from_dest_display(&d.dest_display));
+        assert_eq!(
+            d.owner_binding,
+            owner_binding_from_dest_display(&d.dest_display)
+        );
         // Default dest is primary golden when env unset
         if env::var("ZAKURA_DEST_ADDR").is_err() {
             assert_eq!(d.dest_display, REGTEST_MINER_DEST);
@@ -781,10 +792,7 @@ mod tests {
         let out = run_cashapp_zec_corridor_w0_w7(&mut backend, &scenario)
             .expect("W0–W7 with Zakura-derived dest_owner_binding");
         assert_eq!(out.mint_note.owner_binding, d.owner_binding);
-        assert_eq!(
-            out.receipt.dest_owner_binding_hex,
-            d.owner_binding_hex
-        );
+        assert_eq!(out.receipt.dest_owner_binding_hex, d.owner_binding_hex);
     }
 
     /// Offline W0–W7 using primary golden dest binding (funded-profile dest film).
@@ -800,7 +808,10 @@ mod tests {
         let out = run_cashapp_zec_corridor_w0_w7(&mut backend, &scenario)
             .expect("W0–W7 with golden dest_owner_binding");
         assert_eq!(out.mint_note.owner_binding, d.owner_binding);
-        assert_eq!(out.receipt.dest_owner_binding_hex, REGTEST_MINER_OWNER_BINDING_HEX);
+        assert_eq!(
+            out.receipt.dest_owner_binding_hex,
+            REGTEST_MINER_OWNER_BINDING_HEX
+        );
     }
 
     /// T2: seal_funded_dest → primary golden when ZAKURA_DEST_ADDR unset.
@@ -842,21 +853,23 @@ mod tests {
         assert!(reject_placeholder_binding_hex(&"a".repeat(64)).is_err());
         assert!(reject_placeholder_binding_hex(&"c".repeat(64)).is_err());
         assert!(is_placeholder_owner_binding_hex(&"b".repeat(64)));
-        assert!(!is_placeholder_owner_binding_hex(REGTEST_MINER_OWNER_BINDING_HEX));
+        assert!(!is_placeholder_owner_binding_hex(
+            REGTEST_MINER_OWNER_BINDING_HEX
+        ));
         assert!(require_binding_hex_width("abcd").is_err());
         assert!(require_binding_hex_width(REGTEST_MINER_OWNER_BINDING_HEX).is_ok());
-        assert!(assert_dest_binding_equal(
-            REGTEST_MINER_OWNER_BINDING_HEX,
-            REGTEST_MINER_OWNER_BINDING_HEX,
-            "self"
-        )
-        .is_ok());
-        assert!(assert_dest_binding_equal(
-            REGTEST_MINER_OWNER_BINDING_HEX,
-            &"b".repeat(64),
-            "watch"
-        )
-        .is_err());
+        assert!(
+            assert_dest_binding_equal(
+                REGTEST_MINER_OWNER_BINDING_HEX,
+                REGTEST_MINER_OWNER_BINDING_HEX,
+                "self"
+            )
+            .is_ok()
+        );
+        assert!(
+            assert_dest_binding_equal(REGTEST_MINER_OWNER_BINDING_HEX, &"b".repeat(64), "watch")
+                .is_err()
+        );
     }
 
     /// Funded film: seal → scenario → receipt equality (T9 shape).

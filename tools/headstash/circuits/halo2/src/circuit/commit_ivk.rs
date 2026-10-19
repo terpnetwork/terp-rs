@@ -10,9 +10,9 @@ use pasta_curves::pallas;
 
 use crate::constants::{OrchardCommitDomains, OrchardFixedBases, OrchardHashDomains, T_P};
 use halo2_gadgets::{
-    ecc::{chip::EccChip, ScalarFixed, X},
-    sinsemilla::{chip::SinsemillaChip, CommitDomain, Message, MessagePiece},
-    utilities::{bool_check, RangeConstrained},
+    ecc::{ScalarFixed, X, chip::EccChip},
+    sinsemilla::{CommitDomain, Message, MessagePiece, chip::SinsemillaChip},
+    utilities::{RangeConstrained, bool_check},
 };
 
 #[derive(Clone, Debug)]
@@ -229,8 +229,8 @@ impl CommitIvkChip {
 
 pub(in crate::circuit) mod gadgets {
     use halo2_gadgets::utilities::{
-        lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
         RangeConstrained,
+        lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
     };
     use halo2_proofs::circuit::Chip;
 
@@ -666,24 +666,24 @@ struct GateCells {
 mod tests {
     use core::iter;
 
-    use super::{gadgets, CommitIvkChip, CommitIvkConfig};
+    use super::{CommitIvkChip, CommitIvkConfig, gadgets};
     use crate::constants::{
-        fixed_bases::COMMIT_IVK_PERSONALIZATION, OrchardCommitDomains, OrchardFixedBases,
-        OrchardHashDomains, L_ORCHARD_BASE, T_Q,
+        L_ORCHARD_BASE, OrchardCommitDomains, OrchardFixedBases, OrchardHashDomains, T_Q,
+        fixed_bases::COMMIT_IVK_PERSONALIZATION,
     };
     use group::ff::{Field, PrimeField, PrimeFieldBits};
     use halo2_gadgets::{
         ecc::{
-            chip::{EccChip, EccConfig},
             ScalarFixed,
+            chip::{EccChip, EccConfig},
         },
         sinsemilla::{
             chip::{SinsemillaChip, SinsemillaConfig},
             primitives::CommitDomain,
         },
         utilities::{
-            lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
             UtilitiesInstructions,
+            lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
         },
     };
     use halo2_proofs::{

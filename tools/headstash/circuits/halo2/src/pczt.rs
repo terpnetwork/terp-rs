@@ -11,6 +11,7 @@ use zcash_note_encryption::OutgoingCipherKey;
 use zip32::ChildIndex;
 
 use crate::{
+    Address, Anchor, Proof,
     address::RecpAddr,
     bundle::Flags,
     keys::{EligibleSk, FullViewingKey, SpendingKey},
@@ -18,7 +19,6 @@ use crate::{
     primitives::redpallas::{self, Binding, SpendAuth},
     tree::MerklePath,
     value::{NoteDenom, NoteValue, ValueCommitTrapdoor, ValueCommitment, ValueSum},
-    Address, Anchor, Proof,
 };
 
 mod parse;
@@ -346,15 +346,16 @@ impl Zip32Derivation {
 
 #[cfg(test)]
 mod tests {
+    use crate::OsRng;
     use cosmwasm_std::Api;
     use ff::{Field, PrimeField};
     use incrementalmerkletree::{Marking, Retention};
     use pasta_curves::pallas;
-    use crate::OsRng;
     use secp256k1::SecretKey;
-    use shardtree::{store::memory::MemoryShardStore, ShardTree};
+    use shardtree::{ShardTree, store::memory::MemoryShardStore};
 
     use crate::{
+        Note,
         address::RecpAddr,
         builder::{Builder, BundleType},
         circuit::ProvingKey,
@@ -362,9 +363,8 @@ mod tests {
         keys::{EligibleSk, FullViewingKey, Scope, SpendAuthorizingKey, SpendingKey},
         note::{ExtractedNoteCommitment, RandomSeed, Rho},
         pczt::Zip32Derivation,
-        tree::{MerkleHashOrchard, EMPTY_ROOTS},
+        tree::{EMPTY_ROOTS, MerkleHashOrchard},
         value::{NoteDenom, NoteValue},
-        Note,
     };
 
     #[test]

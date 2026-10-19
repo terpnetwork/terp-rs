@@ -6,12 +6,13 @@ use core::fmt;
 use blake2b_simd::{Hash, Params};
 use group::ff::PrimeField;
 use zcash_note_encryption::{
-    BatchDomain, Domain, EphemeralKeyBytes, NotePlaintextBytes, OutPlaintextBytes,
-    OutgoingCipherKey, ShieldedOutput, COMPACT_NOTE_SIZE, ENC_CIPHERTEXT_SIZE, NOTE_PLAINTEXT_SIZE,
-    OUT_PLAINTEXT_SIZE,
+    BatchDomain, COMPACT_NOTE_SIZE, Domain, ENC_CIPHERTEXT_SIZE, EphemeralKeyBytes,
+    NOTE_PLAINTEXT_SIZE, NotePlaintextBytes, OUT_PLAINTEXT_SIZE, OutPlaintextBytes,
+    OutgoingCipherKey, ShieldedOutput,
 };
 
 use crate::{
+    Address, Note,
     action::Action,
     keys::{
         DiversifiedTransmissionKey, Diversifier, EphemeralPublicKey, EphemeralSecretKey,
@@ -19,7 +20,6 @@ use crate::{
     },
     note::{ExtractedNoteCommitment, Nullifier, RandomSeed, Rho},
     value::{NoteValue, ValueCommitment},
-    Address, Note,
 };
 
 const PRF_OCK_ORCHARD_PERSONALIZATION: &[u8; 16] = b"Zcash_Orchardock";
@@ -369,10 +369,10 @@ pub mod testing {
     use zcash_note_encryption::Domain;
 
     use crate::{
+        Address, Note,
         keys::OutgoingViewingKey,
         note::{ExtractedNoteCommitment, Nullifier, RandomSeed, Rho},
         value::NoteValue,
-        Address, Note,
     };
 
     use super::{CompactAction, OrchardDomain, OrchardNoteEncryption};
@@ -420,12 +420,13 @@ pub mod testing {
 mod tests {
     use crate::OsRng;
     use zcash_note_encryption::{
-        try_compact_note_decryption, try_note_decryption, try_output_recovery_with_ovk,
-        EphemeralKeyBytes,
+        EphemeralKeyBytes, try_compact_note_decryption, try_note_decryption,
+        try_output_recovery_with_ovk,
     };
 
-    use super::{prf_ock_orchard, CompactAction, OrchardDomain, OrchardNoteEncryption};
+    use super::{CompactAction, OrchardDomain, OrchardNoteEncryption, prf_ock_orchard};
     use crate::{
+        Address, Note,
         action::Action,
         keys::{
             DiversifiedTransmissionKey, Diversifier, EphemeralSecretKey, IncomingViewingKey,
@@ -434,7 +435,6 @@ mod tests {
         note::{ExtractedNoteCommitment, Nullifier, RandomSeed, Rho, TransmittedNoteCiphertext},
         primitives::redpallas,
         value::{NoteValue, ValueCommitment},
-        Address, Note,
     };
 
     #[test]

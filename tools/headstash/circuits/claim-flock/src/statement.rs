@@ -19,7 +19,11 @@ use headstash_wire::{recover_pubkey_x, sign_personal};
 pub const PRIVATE_SIGN_PREFIX: &str = "headstash-private-claim-v1:";
 
 /// Message the holder signs. MetaMask applies the EIP-191 prefix on top.
-pub fn private_sign_message(root: &[u32; 8], nullifier: &[u32; 8], payout_com: &[u32; 8]) -> Vec<u8> {
+pub fn private_sign_message(
+    root: &[u32; 8],
+    nullifier: &[u32; 8],
+    payout_com: &[u32; 8],
+) -> Vec<u8> {
     let mut body = Vec::with_capacity(PRIVATE_SIGN_PREFIX.len() + 64 * 3);
     body.extend_from_slice(PRIVATE_SIGN_PREFIX.as_bytes());
     push_hex(&mut body, root);

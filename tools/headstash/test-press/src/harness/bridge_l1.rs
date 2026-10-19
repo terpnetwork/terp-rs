@@ -8,8 +8,9 @@
 
 use cosmwasm_std::Binary;
 use cw_headstash::bridge::{
-    happy_bridge_mint_world, mock_bridge_proof_bytes, AssetEntry, AssetStatus, BridgeCfg,
-    BridgeMintClaimPublic, Hash32, ReflectionSnapshot, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+    AssetEntry, AssetStatus, BridgeCfg, BridgeMintClaimPublic, DEFAULT_CONFIRMATIONS_K,
+    DEFAULT_MAX_LC_LAG, Hash32, ReflectionSnapshot, happy_bridge_mint_world,
+    mock_bridge_proof_bytes,
 };
 use terp_seams::bridge::{label_hash, terp_asset_id_from_tacit};
 
@@ -167,11 +168,8 @@ impl BridgeL1World {
     /// Lab membership flags on claim are labeled mock under `mock_verify`.
     pub fn from_deposit_claim(claim: &BridgeMintClaimPure, policy: &CorridorLabMintPolicy) -> Self {
         let unit_scale = policy.unit_scale;
-        let terp_asset = terp_asset_id_from_tacit(
-            &policy.source_chain_tag,
-            &policy.tacit_asset_id,
-            unit_scale,
-        );
+        let terp_asset =
+            terp_asset_id_from_tacit(&policy.source_chain_tag, &policy.tacit_asset_id, unit_scale);
         let spent_root = label_hash("spent-root-1");
         let height = claim.source_height;
         let tip = height + DEFAULT_CONFIRMATIONS_K;

@@ -135,8 +135,8 @@ mod packing_tests {
     use super::*;
     use crate::note::Note;
     use crate::note_poseidon::{lift_note_cmx, poseidon_note_cmx, rcm_to_base};
-    use group::Curve;
     use crate::os_rng;
+    use group::Curve;
 
     #[test]
     fn derive_matches_poseidon_ssot_for_dummy_note() {
@@ -203,6 +203,9 @@ mod packing_tests {
         // Guest-safe reduction: BE secret_bytes → BigUint → pallas (matches Fq LE limbs).
         let sk_big = num_bigint::BigUint::from_bytes_be(&esk.secret_bytes());
         let via_big = crate::spec::biguint_to_fe_simple(&sk_big);
-        assert_eq!(via_derive, via_big, "CRT-style native must match derive_pallas");
+        assert_eq!(
+            via_derive, via_big,
+            "CRT-style native must match derive_pallas"
+        );
     }
 }

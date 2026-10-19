@@ -465,7 +465,9 @@ impl ProvingKey {
 
     /// build and write the provingkey and verifying key, as defined by the terp-ADR that specifies how we serialize our proving keys for on-chain compatibility.
     /// path - the path to the artifacts directory.
-    pub fn build_and_write(vkpath: PathBuf) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn build_and_write(
+        vkpath: PathBuf,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let mut vkw = BufWriter::new(File::create(&vkpath)?);
         let pk: ProvingKey = Self::build();
         let vk = pk.pk.get_vk();

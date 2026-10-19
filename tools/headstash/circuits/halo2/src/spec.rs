@@ -17,8 +17,8 @@ use pasta_curves::{
 use subtle::{ConditionallySelectable, CtOption};
 
 use crate::constants::{
-    fixed_bases::COMMIT_IVK_PERSONALIZATION, util::gen_const_array, DST_HKDF,
-    KEY_DIVERSIFICATION_PERSONALIZATION, L_ORCHARD_BASE,
+    DST_HKDF, KEY_DIVERSIFICATION_PERSONALIZATION, L_ORCHARD_BASE,
+    fixed_bases::COMMIT_IVK_PERSONALIZATION, util::gen_const_array,
 };
 
 pub(crate) use zcash_spec::PrfExpand;
@@ -447,11 +447,11 @@ pub fn to_native_out_of_circuit<F: PrimeField>(f: &F) -> pallas::Base {
 mod tests {
     use super::{i2lebsp, lebs2ip};
 
+    use crate::os_rng;
     use group::Group;
     use halo2_proofs::arithmetic::CurveExt;
     use pasta_curves::pallas;
     use rand_core::RngCore;
-    use crate::os_rng;
 
     #[test]
     fn diversify_hash_substitution() {

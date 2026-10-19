@@ -143,7 +143,11 @@ impl AccountRegistry {
 
     pub fn require(&self, chain: ChainKind, role: AccountRole) -> Result<&SeededAccount, String> {
         self.get(chain, role).ok_or_else(|| {
-            format!("missing curated account {}/{}", chain.as_str(), role.as_str())
+            format!(
+                "missing curated account {}/{}",
+                chain.as_str(),
+                role.as_str()
+            )
         })
     }
 
@@ -251,7 +255,13 @@ pub fn curate_lab_accounts() -> AccountRegistry {
     });
 
     // Tokenfactory demo assets (mirror deploy_private_dex_testnet subdenoms)
-    for sub in ["pdexalpha", "pdexbeta", "pdexgamma", "bridgedbtc", "bridgedzec"] {
+    for sub in [
+        "pdexalpha",
+        "pdexbeta",
+        "pdexgamma",
+        "bridgedbtc",
+        "bridgedzec",
+    ] {
         reg.tokenfactory
             .push(TokenFactoryDenomPlan::new(&issuer, sub, LAB_TF_MINT));
     }
@@ -271,8 +281,7 @@ pub fn credit_tokenfactory_holding(
         .iter()
         .position(|a| a.chain == ChainKind::Terp && a.role == role)
         .ok_or_else(|| format!("no terp account for {}", role.as_str()))?;
-    let can_merge =
-        reg.accounts[idx].asset_tag == plan.denom || reg.accounts[idx].balance == 0;
+    let can_merge = reg.accounts[idx].asset_tag == plan.denom || reg.accounts[idx].balance == 0;
     if can_merge {
         reg.accounts[idx].asset_tag = plan.denom.clone();
         reg.accounts[idx].balance = reg.accounts[idx].balance.saturating_add(amount);
@@ -301,9 +310,10 @@ mod tests {
         assert!(reg.get(ChainKind::Bitcoin, AccountRole::Lp).is_some());
         assert!(reg.get(ChainKind::Zcash, AccountRole::Escrow).is_some());
         assert!(reg.get(ChainKind::Terp, AccountRole::DexAdmin).is_some());
-        assert!(reg
-            .get(ChainKind::Terp, AccountRole::TokenFactoryIssuer)
-            .is_some());
+        assert!(
+            reg.get(ChainKind::Terp, AccountRole::TokenFactoryIssuer)
+                .is_some()
+        );
         assert!(reg.tokenfactory.len() >= 5);
         let alpha = reg.tokenfactory_by_subdenom("pdexalpha").unwrap();
         assert!(alpha.denom.starts_with("factory/"));

@@ -5,7 +5,7 @@
 use std::time::Instant;
 
 use headstash_claim::tree::{self, SecretNote};
-use headstash_claim::{prove_claim, verify_claim, Opening, DEPTH};
+use headstash_claim::{DEPTH, Opening, prove_claim, verify_claim};
 
 const NOTES: usize = 51_807;
 const INDEX: usize = 1_000;
@@ -27,7 +27,9 @@ fn note(i: u32) -> SecretNote {
 
 fn main() {
     flock_prover::init_perf_thread_pool();
-    let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
     assert_eq!(tree::depth_for(NOTES), DEPTH as u32, "production depth");
     let t_tree = Instant::now();
     let notes: Vec<SecretNote> = (0..NOTES as u32).map(note).collect();

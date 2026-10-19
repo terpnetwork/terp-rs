@@ -6,8 +6,8 @@
 //! One module for harness CI: `cargo test -p zk-test-press --lib harness::compose_l0`.
 
 use terp_seams::compose::{
-    run_product_path_burn_to_swap_oracle_zec, run_product_path_burn_to_swap_sketch,
-    ProductPathOracleZecOutcome, ProductPathOutcome,
+    ProductPathOracleZecOutcome, ProductPathOutcome, run_product_path_burn_to_swap_oracle_zec,
+    run_product_path_burn_to_swap_sketch,
 };
 
 use super::bridge_l0::L0Error;
@@ -25,9 +25,9 @@ pub fn assert_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracle
 
 // Re-export G2 types for harness consumers.
 pub use terp_seams::compose::{
+    CorridorSwapSpendParams, MintSpendEvidence, SwapStatementPublicView,
     mint_evidence_to_swap_action, seam_note_out_to_swap_action, seam_note_out_to_swap_openings,
-    swap_action_public_to_statement, CorridorSwapSpendParams, MintSpendEvidence,
-    SwapStatementPublicView,
+    swap_action_public_to_statement,
 };
 
 #[cfg(test)]
@@ -51,13 +51,14 @@ mod tests {
             out.action.witness.notes_in[0].cm_public,
             out.mint_note.cm_public
         );
-        assert!(out
-            .action
-            .public
-            .oracle_params
-            .as_ref()
-            .map(|p| p.require_oracle)
-            .unwrap_or(false));
+        assert!(
+            out.action
+                .public
+                .oracle_params
+                .as_ref()
+                .map(|p| p.require_oracle)
+                .unwrap_or(false)
+        );
         assert_eq!(out.statement.asset_out.len(), 32);
     }
 }

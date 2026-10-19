@@ -21,14 +21,14 @@ use crate::{
     value::NoteValue,
 };
 use halo2_gadgets::{
-    ecc::{chip::EccChip, CircuitVersion, Point, ScalarFixed},
+    ecc::{CircuitVersion, Point, ScalarFixed, chip::EccChip},
     sinsemilla::{
-        chip::{SinsemillaChip, SinsemillaConfig},
         CommitDomain, Message, MessagePiece,
+        chip::{SinsemillaChip, SinsemillaConfig},
     },
     utilities::{
-        lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
         FieldValue, RangeConstrained,
+        lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
     },
 };
 
@@ -114,7 +114,7 @@ impl DecomposeB {
         // Constrain b_0 to be 5 bits
         let b0 = RangeConstrained::witness_short(lc, lo.namespace(|| "b_0"), nd.value(), 250..255)?;
         let b1 = RangeConstrained::bitrange_of(value_val.value(), 0..55); // 55 v
-                                                                          // println!("b: {:#?}", (b0.num_bits(), b1.num_bits()));
+        // println!("b: {:#?}", (b0.num_bits(), b1.num_bits()));
         let b = MessagePiece::from_subpieces(
             chip.clone(),
             lo.namespace(|| "piece_b: nd[250..255) || v[0..55)"),
@@ -183,10 +183,7 @@ impl DecomposeC {
             // NOT a boolean — do not bool_check it (that broke suite leaves with fdi > 1).
             let decomposition_check = c - (c0 + c1 * two_pow_9);
 
-            Constraints::with_selector(
-                q_notecommit_c,
-                [("decomposition", decomposition_check)],
-            )
+            Constraints::with_selector(q_notecommit_c, [("decomposition", decomposition_check)])
         });
 
         Self {
@@ -216,7 +213,7 @@ impl DecomposeC {
         let (c, c0, c1) = {
             let c0 = RangeConstrained::bitrange_of(value_val.value(), 55..64); // 9 v
             let c1 = RangeConstrained::bitrange_of(fdi.value(), 0..51); // 51 fdi
-                                                                        // println!("c: {:#?}", (c0.num_bits(), c1.num_bits()));
+            // println!("c: {:#?}", (c0.num_bits(), c1.num_bits()));
             (
                 MessagePiece::from_subpieces(
                     chip.clone(),
@@ -1749,39 +1746,39 @@ pub(in crate::circuit) mod gadgets {
         // Piece a: nd[0..250) = 250 bits = 25 ten-bit words → zs[0] has 26 elements
         let z13_a = zs[0][13].clone(); // Midpoint check for nd's low 250 bits
         let z25_a = zs[0][24].clone(); // End of piece a
-                                       // ===== VALUE CANONICITY (piece b, c) =====
-                                       // Piece b: nd[250..255) || v[0..55) = 60 bits = 6 words → zs[1] has 7 elements
+        // ===== VALUE CANONICITY (piece b, c) =====
+        // Piece b: nd[250..255) || v[0..55) = 60 bits = 6 words → zs[1] has 7 elements
         let z1_b = zs[1][1].clone(); // After first word boundary in piece b
         let z6_b = zs[1][5].clone(); // End of piece b (end of v's low 55 bits)
-                                     // Piece c: v[55..64) || fdi[0..51) = 60 bits = 6 words → zs[2] has 7 elements
+        // Piece c: v[55..64) || fdi[0..51) = 60 bits = 6 words → zs[2] has 7 elements
         let z1_c = zs[2][1].clone(); // After v[55..64) completes (9 bits → in first word)
         let z6_c = zs[2][5].clone(); // End of piece c
-                                     // ===== FDI CANONICITY (piece c, d) =====
-                                     // Piece d: fdi[51..64) || recp[0..7) = 20 bits = 2 words → zs[3] has 3 elements
+        // ===== FDI CANONICITY (piece c, d) =====
+        // Piece d: fdi[51..64) || recp[0..7) = 20 bits = 2 words → zs[3] has 3 elements
         let z1_d = zs[3][0].clone(); // After fdi[51..64) completes (13 bits → in second word)
         let z2_d = zs[3][1].clone(); // End of piece d
-                                     // ===== RECP CANONICITY (piece d, e, f) =====
-                                     // Piece e: recp[7..247) = 240 bits = 24 words → zs[4] has 25 elements
+        // ===== RECP CANONICITY (piece d, e, f) =====
+        // Piece e: recp[7..247) = 240 bits = 24 words → zs[4] has 25 elements
         let z13_e = zs[4][13].clone(); // Midpoint check for recp middle bits
         let z24_e = zs[4][23].clone(); // End of piece e
-                                       // Piece f: recp[247..255) || esk[0..2) = 10 bits = 1 word → zs[5] has 2 elements
+        // Piece f: recp[247..255) || esk[0..2) = 10 bits = 1 word → zs[5] has 2 elements
         let z1_f = zs[5][0].clone(); // End of piece f (completes recp high 8 bits)
-                                     // ===== ESK CANONICITY (piece f, g, h) =====
-                                     // Piece g: esk[2..247) = 245 bits = 24.5 words → zs[6] has 25 or 26 elements (check actual)
+        // ===== ESK CANONICITY (piece f, g, h) =====
+        // Piece g: esk[2..247) = 245 bits = 24.5 words → zs[6] has 25 or 26 elements (check actual)
         let z13_g = zs[6][13].clone(); // Midpoint check for esk middle bits
         let z24_g = zs[6][24].clone(); // Near end of piece g
-                                       // Piece h: esk[247..255) || rho[0..2) = 10 bits = 1 word → zs[7] has 2 elements
+        // Piece h: esk[247..255) || rho[0..2) = 10 bits = 1 word → zs[7] has 2 elements
         let z1_h = zs[7][0].clone(); // End of piece h (completes esk high 8 bits)
-                                     // ===== RHO CANONICITY (piece h, i, j) =====
-                                     // Piece i: rho[2..252) = 250 bits = 25 words → zs[8] has 26 elements
+        // ===== RHO CANONICITY (piece h, i, j) =====
+        // Piece i: rho[2..252) = 250 bits = 25 words → zs[8] has 26 elements
         let z13_i = zs[8][13].clone(); // Midpoint check for rho middle bits
         let z25_i = zs[8][23].clone(); // End of piece i
-                                       // Piece j: rho[252..255) || psi[0..7) = 10 bits = 1 word → zs[9] has 2 elements
+        // Piece j: rho[252..255) || psi[0..7) = 10 bits = 1 word → zs[9] has 2 elements
         let z1_j = zs[9][0].clone(); // End of piece j (completes rho high 3 bits)
-                                     // Piece k: psi[7..247) = 240 bits = 24 words → zs[10] has 25 elements
+        // Piece k: psi[7..247) = 240 bits = 24 words → zs[10] has 25 elements
         let z13_k = zs[10][13].clone(); // Midpoint check for psi middle bits
         let z24_k = zs[10][24].clone(); // End of piece k
-                                        // Piece l: psi[247..255) || padding(2) = 10 bits = 1 word → zs[11] has 2 elements
+        // Piece l: psi[247..255) || padding(2) = 10 bits = 1 word → zs[11] has 2 elements
         let z1_l = zs[11][0].clone(); // End of piece l (completes psi high 8 bits)
 
         // println!("Running sums:");
@@ -2161,18 +2158,18 @@ mod tests {
     use crate::{
         circuit::{
             gadget::assign_free_advice,
-            note_commit::{gadgets, NoteCommitChip},
+            note_commit::{NoteCommitChip, gadgets},
         },
         constants::{
-            fixed_bases::NOTE_COMMITMENT_PERSONALIZATION, OrchardCommitDomains, OrchardFixedBases,
-            OrchardHashDomains, L_ORCHARD_BASE, L_VALUE, T_Q,
+            L_ORCHARD_BASE, L_VALUE, OrchardCommitDomains, OrchardFixedBases, OrchardHashDomains,
+            T_Q, fixed_bases::NOTE_COMMITMENT_PERSONALIZATION,
         },
         value::NoteValue,
     };
     use halo2_gadgets::{
         ecc::{
-            chip::{EccChip, EccConfig},
             NonIdentityPoint, ScalarFixed,
+            chip::{EccChip, EccConfig},
         },
         sinsemilla::{chip::SinsemillaChip, primitives::CommitDomain},
         utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},

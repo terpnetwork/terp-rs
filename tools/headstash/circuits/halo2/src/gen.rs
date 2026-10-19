@@ -27,14 +27,14 @@
 
 //     /// metamask snap-n-pull types
 //     pub mod snp {
-//         /// v1  
+//         /// v1
 //         pub mod v1 {
 //             include!("gen/headstash.snp.v1.rs");
 //         }
 //     }
 //     /// Top-level structures for the Penumbra application.
 //     pub mod types {
-//         /// v1  
+//         /// v1
 //         pub mod v1 {
 //             include!("gen/headstash.types.v1.rs");
 //         }

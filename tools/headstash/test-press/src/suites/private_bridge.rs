@@ -30,10 +30,10 @@ use cw_orch::prelude::*;
 
 use super::headstash::{HeadstashDeployData, HeadstashSuite};
 use crate::harness::{
-    self, authorize_from_bridge_mint_fixture, build_happy_bridge_mint_fixture,
+    self, BridgeL1World, BridgeMintFixtureDoc, ClaimFixture, L0Error,
+    authorize_from_bridge_mint_fixture, build_happy_bridge_mint_fixture,
     build_policy_claim_fixture, load_bridge_mint_fixture, load_claim_fixture,
-    load_or_build_happy_bridge_mint_fixture, BridgeL1World, BridgeMintFixtureDoc, ClaimFixture,
-    L0Error,
+    load_or_build_happy_bridge_mint_fixture,
 };
 
 /// Optional mock light-client hinge for L4 wiring tests.
@@ -220,9 +220,7 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
         };
         if let Some(cfg) = self.lc_mock.as_ref() {
             let inclusion = doc.snapshot.source_height;
-            let now = cfg
-                .tip_height
-                .max(inclusion + cfg.confirmations_required);
+            let now = cfg.tip_height.max(inclusion + cfg.confirmations_required);
             if !self.lc_mock_allows_mint(inclusion, now) {
                 return Err(CwOrchError::StdErr(
                     "lc_mock_allows_mint rejected (frozen / immature / tip)".into(),
@@ -244,7 +242,9 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
 
     /// DEMO CashApp→ZEC corridor W0–W7 L0 (Simulated backend). See
     /// [`crate::harness::cashapp_zec_corridor`].
-    pub fn e2e_cashapp_zec_corridor_happy(&self) -> Result<harness::CorridorReceiptV0, CwOrchError> {
+    pub fn e2e_cashapp_zec_corridor_happy(
+        &self,
+    ) -> Result<harness::CorridorReceiptV0, CwOrchError> {
         let mut backend = harness::CorridorAssetBackend::simulated();
         let scenario = harness::CorridorScenario::default();
         let out = harness::run_cashapp_zec_corridor_w0_w7(&mut backend, &scenario)
@@ -255,8 +255,7 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
     /// E2E-13: oracle path must not mint balances (pure seams).
     pub fn assert_oracle_cannot_mint(&self) -> Result<(), CwOrchError> {
         Err(CwOrchError::StdErr(
-            "assert_oracle_cannot_mint: run private_dex_seams via demo-e2e-l0 (E2E-13 L0)"
-                .into(),
+            "assert_oracle_cannot_mint: run private_dex_seams via demo-e2e-l0 (E2E-13 L0)".into(),
         ))
     }
 
@@ -299,6 +298,7 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             distro_hash_domain: Default::default(),
             genesis_label: Some("bridge-l1".into()),
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
+                &cosmwasm_std::testing::MockApi::default(),
                 denom.into(),
             )),
             wavs: generate_test_wavs_proof(1),
@@ -315,14 +315,9 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
     pub fn upload_and_instantiate_mint(&mut self, funds: &[Coin]) -> Result<(), CwOrchError> {
         self.headstash.headstash.upload()?;
         let msg = Self::bridge_l1_instantiate_msg(
-            funds
-                .first()
-                .map(|c| c.denom.as_str())
-                .unwrap_or("uterp"),
+            funds.first().map(|c| c.denom.as_str()).unwrap_or("uterp"),
         );
-        self.headstash
-            .headstash
-            .instantiate(&msg, None, funds)?;
+        self.headstash.headstash.instantiate(&msg, None, funds)?;
         Ok(())
     }
 
@@ -344,8 +339,7 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             load_or_build_happy_bridge_mint_fixture()
                 .map_err(|e| CwOrchError::StdErr(e.to_string()))?
         };
-        let world = BridgeL1World::from_fixture_doc(&doc)
-            .map_err(|e| CwOrchError::StdErr(e))?;
+        let world = BridgeL1World::from_fixture_doc(&doc).map_err(|e| CwOrchError::StdErr(e))?;
         self.configure_bridge(&world, true)?;
         self.execute_bridge_mint(world.claim.clone(), world.proof.clone())?;
         let minted = self.query_is_bridge_minted(world.nullifier_bin())?;
@@ -398,10 +392,9 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
         claim: BridgeMintClaimPublic,
         proof: Binary,
     ) -> Result<<Chain as TxHandler>::Response, CwOrchError> {
-        self.headstash.headstash.execute(
-            &ExecuteMsg::BridgeMintNote { claim, proof },
-            &[],
-        )
+        self.headstash
+            .headstash
+            .execute(&ExecuteMsg::BridgeMintNote { claim, proof }, &[])
     }
 
     /// Query whether bridge burn ν has minted.
@@ -429,10 +422,9 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             },
             &[],
         );
-        self.headstash.headstash.execute(
-            &ExecuteMsg::BridgeEgressBurn { statement, proof },
-            &[],
-        )
+        self.headstash
+            .headstash
+            .execute(&ExecuteMsg::BridgeEgressBurn { statement, proof }, &[])
     }
 
     /// Query whether egress ν is spent (`IsEgressSpent`).
@@ -619,9 +611,7 @@ mod tests {
     fn l0_suite_methods_on_mock_chain() {
         let chain = Mock::new("sender");
         let suite = PrivateBridgeSuite::new(chain);
-        suite
-            .assert_policy_bridge_mint_happy()
-            .expect("E2E-01 L0");
+        suite.assert_policy_bridge_mint_happy().expect("E2E-01 L0");
         suite.assert_h1_spent_only_reject().expect("E2E-03 L0");
         suite.assert_double_mint_reject().expect("E2E-02 L0");
         suite.compose_bridge_mint_to_seam().expect("compose L0");
@@ -684,17 +674,13 @@ mod tests {
     #[test]
     fn l1_e2e_bridge_double_mint_reject() {
         let suite = deployed_suite();
-        suite
-            .e2e_bridge_double_mint_reject()
-            .expect("E2E-02 L1");
+        suite.e2e_bridge_double_mint_reject().expect("E2E-02 L1");
     }
 
     #[test]
     fn l1_e2e_unregistered_asset_reject() {
         let suite = deployed_suite();
-        suite
-            .e2e_unregistered_asset_reject()
-            .expect("E2E-06 L1");
+        suite.e2e_unregistered_asset_reject().expect("E2E-06 L1");
     }
 
     #[test]

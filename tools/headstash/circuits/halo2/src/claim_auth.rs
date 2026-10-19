@@ -403,7 +403,14 @@ mod tests {
         );
         assert_ne!(
             leaf,
-            crate::distro_poseidon::poseidon_distro_leaf(x, y, nd, v, fdi, claim_rseed_com(lo_b, hi_b)),
+            crate::distro_poseidon::poseidon_distro_leaf(
+                x,
+                y,
+                nd,
+                v,
+                fdi,
+                claim_rseed_com(lo_b, hi_b)
+            ),
             "a second note random is a different leaf"
         );
         assert_ne!(leaf, leaf_other);

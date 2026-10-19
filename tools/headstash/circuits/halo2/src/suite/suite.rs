@@ -18,27 +18,27 @@ use cw_orch::environment::ZkCwEnv;
 #[cfg(feature = "multicore")]
 use rayon::prelude::*;
 
+use crate::os_rng;
 use crate::{
+    Anchor, FIXED_AMOUNTS, LEAF_PERSONALIZATION, MERKLE_CRH_PERSONALIZATION, Proof,
     address::RecpAddr,
     builder::SpendInfo,
     circuit::{Circuit, ProvingKey},
     distro_poseidon::{
-        poseidon_distro_crh, poseidon_distro_leaf, DistroHashDomain, DISTRO_HASH_DOMAIN_POSEIDON_V1,
+        DISTRO_HASH_DOMAIN_POSEIDON_V1, DistroHashDomain, poseidon_distro_crh, poseidon_distro_leaf,
     },
     keys::{EligibleSk, FullViewingKey, NullifierDerivingKey, SpendingKey},
     note::{ExtractedNoteCommitment, Note, RandomSeed, Rho},
     tree::MerklePath,
     value::{HeadstashValue, NoteDenom, NoteValue},
-    Anchor, Proof, FIXED_AMOUNTS, LEAF_PERSONALIZATION, MERKLE_CRH_PERSONALIZATION,
 };
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use ff::{Field, FromUniformBytes, PrimeField, PrimeFieldBits};
 use hex::decode;
 use pasta_curves::pallas::Base;
-use pasta_curves::{arithmetic::CurveAffine, group::Curve, pallas, Fp};
+use pasta_curves::{Fp, arithmetic::CurveAffine, group::Curve, pallas};
 use rand_core::RngCore;
-use crate::os_rng;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sinsemilla::HashDomain;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -97,7 +97,10 @@ pub fn build_headstash_keys_to(
     let pk = crate::circuit::ProvingKey::build_and_write(path.to_path_buf())?;
     let blob = fs::read(path)?;
     validate_store_circuit_blob(&blob)?;
-    eprintln!("  wrote store-circuit blob (params||cs||vk||footer) {} bytes", blob.len());
+    eprintln!(
+        "  wrote store-circuit blob (params||cs||vk||footer) {} bytes",
+        blob.len()
+    );
     Ok(pk)
 }
 
@@ -116,18 +119,17 @@ fn validate_store_circuit_blob(bytes: &[u8]) -> Result<(), BoxError> {
     {
         return Err(format!(
             "footer meta expected Plonkish/Pasta/K={}/i=8, got prover={} curve={} k={} i={}",
-            crate::circuit::K, footer.prover_id, footer.curve_id, footer.k, footer.i
+            crate::circuit::K,
+            footer.prover_id,
+            footer.curve_id,
+            footer.k,
+            footer.i
         )
         .into());
     }
     let expect = footer.param_len as usize + footer.cs_len as usize + footer.vk_len as usize + FOOT;
     if bytes.len() != expect {
-        return Err(format!(
-            "blob len {} != param+cs+vk+footer {}",
-            bytes.len(),
-            expect
-        )
-        .into());
+        return Err(format!("blob len {} != param+cs+vk+footer {}", bytes.len(), expect).into());
     }
     let param = &bytes[..footer.param_len as usize];
     let vk_body = &bytes[footer.param_len as usize..bytes.len() - FOOT];
@@ -324,8 +326,11 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
                     .and_then(|s| s.parse::<u64>().ok())
                     .unwrap();
 
-                let (lidxh, raw_leaves) =
-                    self.derive_leaf_sinsemilla_legacy(addr.as_str(), &token["name"].to_string(), v)?;
+                let (lidxh, raw_leaves) = self.derive_leaf_sinsemilla_legacy(
+                    addr.as_str(),
+                    &token["name"].to_string(),
+                    v,
+                )?;
                 {
                     token
                         .as_object_mut()
@@ -668,10 +673,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
 
         let addr_bytes: [u8; 32] = match addr.starts_with("0x") {
             true => decode(addr.trim_start_matches("0x"))?.try_into().unwrap(),
-            false => general_purpose::STANDARD
-                .decode(addr)?
-                .try_into()
-                .unwrap(),
+            false => general_purpose::STANDARD.decode(addr)?.try_into().unwrap(),
         };
 
         #[cfg(feature = "multicore")]
@@ -1064,10 +1066,7 @@ impl MerkleAuthPath {
     /// Extends a variable-depth suite path with `ZERO` siblings to 32 layers and
     /// recomputes the root via [`poseidon_distro_path_root`]. Publish this root as
     /// `genesis_root` / claim `anchor` when using the Halo2 claim circuit.
-    pub fn to_circuit_path_and_root_poseidon_v1(
-        &self,
-        leaf: Fp,
-    ) -> (MerklePath, Anchor) {
+    pub fn to_circuit_path_and_root_poseidon_v1(&self, leaf: Fp) -> (MerklePath, Anchor) {
         use crate::constants::MERKLE_DEPTH_ORCHARD;
         use crate::distro_poseidon::poseidon_distro_path_root;
         use crate::tree::MerkleHashOrchard;
@@ -1075,9 +1074,8 @@ impl MerkleAuthPath {
         let path_fp: [Fp; MERKLE_DEPTH_ORCHARD] = self.to_auth_path_array();
         let position = self.position();
         let root_fp = poseidon_distro_path_root(leaf, position, &path_fp);
-        let auth_path = path_fp.map(|fp| {
-            MerkleHashOrchard::from_bytes(&fp.to_repr()).expect("canonical path node")
-        });
+        let auth_path = path_fp
+            .map(|fp| MerkleHashOrchard::from_bytes(&fp.to_repr()).expect("canonical path node"));
         (
             MerklePath::from_parts(position, auth_path),
             Anchor::from(root_fp),
@@ -1376,8 +1374,9 @@ pub trait MerkleTestDataBuilder: HeadstashSinsemillaTree {
             for chunk in current_level.chunks(2) {
                 let left = chunk[0];
                 let right = if chunk.len() > 1 { chunk[1] } else { Fp::ZERO };
-                let parent =
-                    <Self as HeadstashSinsemillaTree>::merkle_crh_sinsemilla_legacy(layer, left, right);
+                let parent = <Self as HeadstashSinsemillaTree>::merkle_crh_sinsemilla_legacy(
+                    layer, left, right,
+                );
                 next_level.push(parent);
             }
             if next_level.len() > 1 && next_level.len() % 2 != 0 {
@@ -1725,8 +1724,8 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let recp = RecpAddr::new(leaf_data.raw_addr);
         let note = Note::from_parts(hv, recp, esk, rho, rseed).expect("correct note parts");
 
-        let spend_info = SpendInfo::new(fvk, note.clone(), merkle_path)
-            .ok_or("SpendInfo creation failed")?;
+        let spend_info =
+            SpendInfo::new(fvk, note.clone(), merkle_path).ok_or("SpendInfo creation failed")?;
 
         let nf = note.nullifier();
         let cmx = ExtractedNoteCommitment::from(note.commitment());
@@ -2404,12 +2403,17 @@ mod test {
     fn test_poseidon_v1_leaf_differs_from_sinsemilla_legacy() {
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
         let data = suite.generate_leaf_data(&[7u8; 32], "uterp", 1_000_000, 0);
-        let sin = suite.compute_leaf_from_data_sinsemilla_legacy(&data).unwrap();
+        let sin = suite
+            .compute_leaf_from_data_sinsemilla_legacy(&data)
+            .unwrap();
         let pos = suite.compute_leaf_from_data_poseidon_v1(&data);
         assert_ne!(sin, pos, "domains must not collide");
         // Default compute path is Poseidon-v1.
         assert_eq!(suite.compute_leaf_from_data(&data).unwrap(), pos);
-        assert_eq!(DistroHashDomain::default().as_str(), DISTRO_HASH_DOMAIN_POSEIDON_V1);
+        assert_eq!(
+            DistroHashDomain::default().as_str(),
+            DISTRO_HASH_DOMAIN_POSEIDON_V1
+        );
     }
 
     #[test]
@@ -2521,10 +2525,7 @@ mod test {
             anchor2.to_bytes(),
             "CircuitTestData.circuit_anchor must match to_circuit_path_and_root_poseidon_v1"
         );
-        assert_eq!(
-            mp2.position(),
-            circuit_data.circuit_merkle_path.position()
-        );
+        assert_eq!(mp2.position(), circuit_data.circuit_merkle_path.position());
         // When suite depth < 32, shallow root ≠ circuit anchor (pad layers).
         if circuit_data.tree_depth < 32 {
             assert_ne!(
@@ -2543,8 +2544,7 @@ mod test {
         // Independent OsRng trees share Product A tooling shape, not the same root.
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
         let data = suite.generate_circuit_test_data(8, 2).unwrap();
-        let (circuit, instance, anchor, partial) =
-            suite.suite_backed_claim_pair(8, 2).unwrap();
+        let (circuit, instance, anchor, partial) = suite.suite_backed_claim_pair(8, 2).unwrap();
 
         assert_eq!(instance.anchor.to_bytes(), anchor.to_bytes());
         assert_eq!(instance.to_bytes().len(), 168);

@@ -5,8 +5,8 @@ use core::iter;
 
 use crate::{
     constants::{
-        sinsemilla::{i2lebsp_k, L_ORCHARD_MERKLE, MERKLE_CRH_PERSONALIZATION},
         MERKLE_DEPTH_ORCHARD,
+        sinsemilla::{L_ORCHARD_MERKLE, MERKLE_CRH_PERSONALIZATION, i2lebsp_k},
     },
     note::commitment::ExtractedNoteCommitment,
 };
@@ -314,8 +314,8 @@ impl<'de> Deserialize<'de> for MerkleHashOrchard {
 pub mod testing {
     use ff::Field;
     use rand::{
-        distributions::{Distribution, Standard},
         RngCore,
+        distributions::{Distribution, Standard},
     };
 
     use super::MerkleHashOrchard;
@@ -342,7 +342,7 @@ mod tests {
     use {
         crate::{
             constants::MERKLE_DEPTH_ORCHARD,
-            tree::{MerkleHashOrchard, MerklePath, EMPTY_ROOTS, UNCOMMITTED_DISTRO},
+            tree::{EMPTY_ROOTS, MerkleHashOrchard, MerklePath, UNCOMMITTED_DISTRO},
         },
         group::ff::{Field, PrimeField},
         incrementalmerkletree::{Hashable, Level},
@@ -416,8 +416,8 @@ mod tests {
     mod sinsemilla_legacy {
         use super::*;
         use crate::tree::UNCOMMITTED_ORCHARD_LEGACY;
-        use incrementalmerkletree::{frontier::Frontier, Level, Marking, MerklePath, Retention};
-        use shardtree::{store::memory::MemoryShardStore, ShardTree};
+        use incrementalmerkletree::{Level, Marking, MerklePath, Retention, frontier::Frontier};
+        use shardtree::{ShardTree, store::memory::MemoryShardStore};
         use subtle::{Choice, ConditionallySelectable};
 
         /// Sinsemilla-legacy digest for Orchard ZIP recovery tests only.
@@ -465,8 +465,7 @@ mod tests {
 
         #[test]
         fn orchard_zip_empty_roots_sinsemilla_legacy() {
-            let tv_empty_roots =
-                crate::test_vectors::commitment_tree::test_vectors().empty_roots;
+            let tv_empty_roots = crate::test_vectors::commitment_tree::test_vectors().empty_roots;
             assert_eq!(
                 MerkleHashSinsemillaLegacy::empty_leaf().0,
                 pallas::Base::from(2)
@@ -483,8 +482,7 @@ mod tests {
 
         #[test]
         fn empty_roots_incremental_sinsemilla_legacy() {
-            let tv_empty_roots =
-                crate::test_vectors::commitment_tree::test_vectors().empty_roots;
+            let tv_empty_roots = crate::test_vectors::commitment_tree::test_vectors().empty_roots;
             for (level, tv_root) in tv_empty_roots.iter().enumerate() {
                 assert_eq!(
                     MerkleHashSinsemillaLegacy::empty_root(Level::from(level as u8))
@@ -499,8 +497,7 @@ mod tests {
 
         #[test]
         fn test_vectors_sinsemilla_legacy() {
-            let tv_empty_roots =
-                crate::test_vectors::commitment_tree::test_vectors().empty_roots;
+            let tv_empty_roots = crate::test_vectors::commitment_tree::test_vectors().empty_roots;
             for (height, root) in EMPTY_ROOTS_SINSEMILLA_LEGACY.iter().enumerate() {
                 assert_eq!(tv_empty_roots[height], root.0.to_repr());
             }
@@ -512,9 +509,8 @@ mod tests {
                 .enumerate()
             {
                 let checkpoint_id = u32::try_from(i).unwrap();
-                let cmx = MerkleHashSinsemillaLegacy(
-                    pallas::Base::from_repr(tv.leaves[i]).unwrap(),
-                );
+                let cmx =
+                    MerkleHashSinsemillaLegacy(pallas::Base::from_repr(tv.leaves[i]).unwrap());
                 tree.append(
                     cmx,
                     Retention::Checkpoint {
@@ -585,9 +581,7 @@ mod tests {
 
             let mut frontier: Frontier<MerkleHashSinsemillaLegacy, 32> = Frontier::empty();
             for commitment in commitments.iter() {
-                let cmx = MerkleHashSinsemillaLegacy(
-                    pallas::Base::from_repr(*commitment).unwrap(),
-                );
+                let cmx = MerkleHashSinsemillaLegacy(pallas::Base::from_repr(*commitment).unwrap());
                 frontier.append(cmx);
             }
             assert_eq!(

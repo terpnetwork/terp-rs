@@ -10,15 +10,15 @@
 //! Pure host recompute via `private_dex_seams` (no Docker). Multi-net accounts can
 //! later overwrite curated addresses without changing route logic.
 
-use terp_seams::dex::{
-    apply_egress_burn, apply_swap, build_egress_burn_from_settle, quote_exact_in,
-    settle_opening_from_note_fields, AssetId, DestKind, EgressSeamState, NoteIn, OracleMid,
-    Pool, PoolStatus, SeamState, SwapPublic, ABSTRACT_LEAF_LABEL,
-};
 use sha2::{Digest, Sha256};
+use terp_seams::dex::{
+    ABSTRACT_LEAF_LABEL, AssetId, DestKind, EgressSeamState, NoteIn, OracleMid, Pool, PoolStatus,
+    SeamState, SwapPublic, apply_egress_burn, apply_swap, build_egress_burn_from_settle,
+    quote_exact_in, settle_opening_from_note_fields,
+};
 
 use super::account_curation::{
-    curate_lab_accounts, AccountRegistry, AccountRole, ChainKind, TokenFactoryDenomPlan,
+    AccountRegistry, AccountRole, ChainKind, TokenFactoryDenomPlan, curate_lab_accounts,
 };
 
 /// Demo fee params (997/1000).
@@ -206,14 +206,14 @@ impl MultiCycleWorld {
 
         let note = self.notes[note_idx].clone();
         let pool = self.pool(pool_id)?.clone();
-        let (r_in, r_out) = if pool.asset_a == asset_in.as_enum() && pool.asset_b == asset_out.as_enum()
-        {
-            (pool.r_a, pool.r_b)
-        } else if pool.asset_b == asset_in.as_enum() && pool.asset_a == asset_out.as_enum() {
-            (pool.r_b, pool.r_a)
-        } else {
-            return Err("pool legs mismatch".into());
-        };
+        let (r_in, r_out) =
+            if pool.asset_a == asset_in.as_enum() && pool.asset_b == asset_out.as_enum() {
+                (pool.r_a, pool.r_b)
+            } else if pool.asset_b == asset_in.as_enum() && pool.asset_a == asset_out.as_enum() {
+                (pool.r_b, pool.r_a)
+            } else {
+                return Err("pool legs mismatch".into());
+            };
 
         let delta_out = quote_exact_in(r_in, r_out, delta_in, pool.gamma, pool.gamma_den)
             .map_err(|e| format!("quote: {e:?}"))?;
@@ -261,10 +261,20 @@ impl MultiCycleWorld {
         // Change note if any
         if note.value > delta_in {
             let change = note.value - delta_in;
-            self.mint_note(owner, asset_in, change, 0xC0u8.wrapping_add(self.cycle as u8))?;
+            self.mint_note(
+                owner,
+                asset_in,
+                change,
+                0xC0u8.wrapping_add(self.cycle as u8),
+            )?;
         }
         // Output note
-        self.mint_note(owner, asset_out, delta_out, 0xD0u8.wrapping_add(self.cycle as u8))?;
+        self.mint_note(
+            owner,
+            asset_out,
+            delta_out,
+            0xD0u8.wrapping_add(self.cycle as u8),
+        )?;
 
         let pool = &self.pools[pool_idx];
         let (r_in_after, r_out_after) =
@@ -277,12 +287,7 @@ impl MultiCycleWorld {
         self.cycle += 1;
         Ok(CycleReceipt {
             cycle: self.cycle,
-            route: format!(
-                "{}→{}@pool{}",
-                asset_in.tag(),
-                asset_out.tag(),
-                pool_id
-            ),
+            route: format!("{}→{}@pool{}", asset_in.tag(), asset_out.tag(), pool_id),
             asset_in,
             asset_out,
             delta_in,
@@ -387,10 +392,7 @@ pub fn route_corridor_btc_to_zec(w: &mut MultiCycleWorld) -> Result<Vec<CycleRec
 pub fn route_tokenfactory_into_corridor(
     w: &mut MultiCycleWorld,
 ) -> Result<Vec<CycleReceipt>, String> {
-    let plan = w
-        .tf_plan("pdexalpha")
-        .ok_or("pdexalpha plan")?
-        .clone();
+    let plan = w.tf_plan("pdexalpha").ok_or("pdexalpha plan")?.clone();
     // "Mint" TF coins to user then bridge-mint as SEAM
     super::account_curation::credit_tokenfactory_holding(
         &mut w.accounts,
@@ -458,7 +460,13 @@ mod tests {
         assert_eq!(receipts.len(), 1);
         assert_eq!(receipts[0].asset_in, SeamAsset::Btc);
         assert_eq!(receipts[0].asset_out, SeamAsset::Zec);
-        assert!(w.accounts.require(ChainKind::Zcash, AccountRole::User).unwrap().balance > 0);
+        assert!(
+            w.accounts
+                .require(ChainKind::Zcash, AccountRole::User)
+                .unwrap()
+                .balance
+                > 0
+        );
         // User BTC note partially spent / changed
         assert!(w.cycle >= 1);
     }
@@ -477,14 +485,8 @@ mod tests {
     #[test]
     fn multi_cycle_rebalance_two_swaps() {
         let mut w = MultiCycleWorld::seed_lab();
-        let r = route_multi_cycle_rebalance(
-            &mut w,
-            1,
-            SeamAsset::Btc,
-            SeamAsset::Zec,
-            100_000,
-        )
-        .unwrap();
+        let r = route_multi_cycle_rebalance(&mut w, 1, SeamAsset::Btc, SeamAsset::Zec, 100_000)
+            .unwrap();
         assert_eq!(r.len(), 2);
         assert_eq!(r[0].route.contains("BTC→ZEC"), true);
         assert_eq!(r[1].asset_in, SeamAsset::Zec);
@@ -514,12 +516,21 @@ mod tests {
     #[test]
     fn curated_accounts_seed_all_chains() {
         let w = MultiCycleWorld::seed_lab();
-        assert!(w.accounts.get(ChainKind::Bitcoin, AccountRole::Lp).is_some());
-        assert!(w.accounts.get(ChainKind::Zcash, AccountRole::Escrow).is_some());
-        assert!(w
-            .accounts
-            .get(ChainKind::Terp, AccountRole::TokenFactoryIssuer)
-            .is_some());
+        assert!(
+            w.accounts
+                .get(ChainKind::Bitcoin, AccountRole::Lp)
+                .is_some()
+        );
+        assert!(
+            w.accounts
+                .get(ChainKind::Zcash, AccountRole::Escrow)
+                .is_some()
+        );
+        assert!(
+            w.accounts
+                .get(ChainKind::Terp, AccountRole::TokenFactoryIssuer)
+                .is_some()
+        );
         assert_eq!(w.pools.len(), 3);
     }
 }

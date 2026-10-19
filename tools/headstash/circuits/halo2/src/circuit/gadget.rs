@@ -8,12 +8,12 @@ use crate::constants::{
 };
 use halo2_gadgets::{
     ecc::{
-        chip::EccChip, CircuitVersion, EccInstructions, FixedPoint, FixedPointBaseField,
-        FixedPointShort, Point, ScalarFixed, ScalarFixedShort, X,
+        CircuitVersion, EccInstructions, FixedPoint, FixedPointBaseField, FixedPointShort, Point,
+        ScalarFixed, ScalarFixedShort, X, chip::EccChip,
     },
     poseidon::{
-        primitives::{self as poseidon, ConstantLength},
         Hash as PoseidonHash, PoseidonSpongeInstructions, Pow5Chip as PoseidonChip,
+        primitives::{self as poseidon, ConstantLength},
     },
 };
 use halo2_proofs::{
@@ -81,10 +81,10 @@ where
 /// [Section 5.4.8.3 Homomorphic Pedersen commitments (Sapling and Orchard)]: https://zips.z.cash/protocol/protocol.pdf#concretehomomorphiccommit
 pub(in crate::circuit) fn value_commit_orchard<
     EccChip: EccInstructions<
-        pallas::Affine,
-        FixedPoints = OrchardFixedBases,
-        Var = AssignedCell<pallas::Base, pallas::Base>,
-    >,
+            pallas::Affine,
+            FixedPoints = OrchardFixedBases,
+            Var = AssignedCell<pallas::Base, pallas::Base>,
+        >,
 >(
     mut layouter: impl Layouter<pallas::Base>,
     ecc_chip: EccChip,
@@ -119,10 +119,10 @@ pub(in crate::circuit) fn derive_nullifier<
     PoseidonChip: PoseidonSpongeInstructions<pallas::Base, poseidon::P128Pow5T3, ConstantLength<2>, 3, 2>,
     AddChip: AddInstruction<pallas::Base>,
     EccChip: EccInstructions<
-        pallas::Affine,
-        FixedPoints = OrchardFixedBases,
-        Var = AssignedCell<pallas::Base, pallas::Base>,
-    >,
+            pallas::Affine,
+            FixedPoints = OrchardFixedBases,
+            Var = AssignedCell<pallas::Base, pallas::Base>,
+        >,
 >(
     mut layouter: impl Layouter<pallas::Base>,
     poseidon_chip: PoseidonChip,
@@ -156,7 +156,8 @@ pub(in crate::circuit) fn derive_nullifier<
     // `product` = [poseidon_hash(nk, rho) + psi] NullifierK.
     //
     let product = {
-        let nullifier_k = FixedPointBaseField::from_inner(ecc_chip, OrchardFixedBasesBase::NullifierK);
+        let nullifier_k =
+            FixedPointBaseField::from_inner(ecc_chip, OrchardFixedBasesBase::NullifierK);
         nullifier_k.mul(
             layouter.namespace(|| "[poseidon_output + psi] NullifierK"),
             scalar,

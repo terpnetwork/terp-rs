@@ -83,3 +83,5 @@ artifacts/blake3-tree/
 *.swp
 .env
 out
+
+tools/headstash/artifacts/community-notes/notes.json

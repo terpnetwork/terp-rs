@@ -7,8 +7,8 @@ use super::{L_ORCHARD_SCALAR, L_VALUE};
 
 #[cfg(feature = "circuit")]
 use halo2_gadgets::ecc::{
-    chip::{BaseFieldElem, FixedPoint, FullScalar, ShortScalar},
     FixedPoints,
+    chip::{BaseFieldElem, FixedPoint, FullScalar, ShortScalar},
 };
 
 #[cfg(feature = "circuit")]

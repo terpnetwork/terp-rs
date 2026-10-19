@@ -23,21 +23,22 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use terp_seams::bridge::{
-    authorize_bridge_mint_apply, derive_claim_id_with_dest, derive_domain_binding,
-    label_hash, terp_asset_id_from_tacit, AssetRegistry, BridgeMintClaim, BridgeMintPublic,
-    MintedSet, NoteOutSketch, ReflectionSnapshot, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
-    ORIGIN_BRIDGE_MINT,
-};
-use terp_seams::compose::{
-    mint_evidence_to_swap_action, apply_swap_action, AssetOrigin, AssetRecord, AssetRegistryView,
-    AssetStatus, CorridorSwapSpendParams, MintSpendEvidence, Pool, PoolStatus, SwapSeamState,
-};
-use terp_seams::dex::{
-    implied_price, quote_exact_in, AssetId, OracleBoundParams, OracleMid as DexOracleMid, PRICE_SCALE,
-};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use terp_seams::bridge::{
+    AssetRegistry, BridgeMintClaim, BridgeMintPublic, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+    MintedSet, NoteOutSketch, ORIGIN_BRIDGE_MINT, ReflectionSnapshot, authorize_bridge_mint_apply,
+    derive_claim_id_with_dest, derive_domain_binding, label_hash, terp_asset_id_from_tacit,
+};
+use terp_seams::compose::{
+    AssetOrigin, AssetRecord, AssetRegistryView, AssetStatus, CorridorSwapSpendParams,
+    MintSpendEvidence, Pool, PoolStatus, SwapSeamState, apply_swap_action,
+    mint_evidence_to_swap_action,
+};
+use terp_seams::dex::{
+    AssetId, OracleBoundParams, OracleMid as DexOracleMid, PRICE_SCALE, implied_price,
+    quote_exact_in,
+};
 
 use super::bridge_l0::L0Error;
 
@@ -410,7 +411,11 @@ pub fn apply_slip_ceiling(expected: u128, max_slippage_bps: u16) -> u128 {
 }
 
 /// Oracle never mints (bound_only).
-pub fn oracle_mint_forbidden(_mid: &OracleMid, _asset: &Hash32, _amount: u64) -> Result<(), CorridorError> {
+pub fn oracle_mint_forbidden(
+    _mid: &OracleMid,
+    _asset: &Hash32,
+    _amount: u64,
+) -> Result<(), CorridorError> {
     Err(CorridorError::OracleDisabledMint)
 }
 
@@ -532,12 +537,8 @@ pub fn sim_deposit(
         }
         CorridorAssetBackend::LightClient { mode, btc_lc, .. } => match mode {
             LcMode::MockAttestation => {
-                let burn_id = derive_sim_burn_id(
-                    &btc_lc.burn_root,
-                    &intent.btc_deposit_addr,
-                    amount,
-                    nonce,
-                );
+                let burn_id =
+                    derive_sim_burn_id(&btc_lc.burn_root, &intent.btc_deposit_addr, amount, nonce);
                 Ok(DepositObservation {
                     burn_id,
                     deposit_addr: intent.btc_deposit_addr.clone(),
@@ -771,13 +772,7 @@ pub fn run_cashapp_zec_corridor_w0_w7(
         amount_in: scenario.amount_in,
         require_oracle: true,
     };
-    intent_allows_swap(
-        &intent,
-        oracle_mid.as_ref(),
-        amount_out,
-        &check_owner,
-        &ctx,
-    )?;
+    intent_allows_swap(&intent, oracle_mid.as_ref(), amount_out, &check_owner, &ctx)?;
 
     // Mint note must still carry preauth dest when no override
     if scenario.mint_owner_override.is_none()
@@ -1058,8 +1053,10 @@ fn run_oracle_bound_swap(
         ..Default::default()
     };
 
-    let delta_out = apply_swap_action(&mut pool, &mut state, &action, /* asset_in_is_a */ true)
-        .map_err(|e| CorridorError::Swap(format!("{e:?}")))?;
+    let delta_out = apply_swap_action(
+        &mut pool, &mut state, &action, /* asset_in_is_a */ true,
+    )
+    .map_err(|e| CorridorError::Swap(format!("{e:?}")))?;
 
     if delta_out != curve_out {
         return Err(CorridorError::Swap("curve mismatch after apply".into()));
@@ -1079,11 +1076,9 @@ fn run_oracle_bound_swap(
 /// Local store by default; `NOTES_BASE` → HTTP + PIR recover (PIR-3).
 #[cfg(feature = "l0-seams")]
 pub fn try_persist_mint_note(note: &NoteOutSketch) -> Result<(), CorridorError> {
-    use super::note_persist_client::{
-        put_and_film_recover_after_mint, NotesPersistConfig,
-    };
-    use terp_seams::dex::note::SeamNoteOutV0;
+    use super::note_persist_client::{NotesPersistConfig, put_and_film_recover_after_mint};
     use std::time::{SystemTime, UNIX_EPOCH};
+    use terp_seams::dex::note::SeamNoteOutV0;
 
     let bytes = note.to_seam_bytes();
     let seam =
@@ -1098,8 +1093,8 @@ pub fn try_persist_mint_note(note: &NoteOutSketch) -> Result<(), CorridorError> 
         .unwrap_or(0);
     let dir = std::env::temp_dir().join(format!("corridor-note-persist-{n}"));
     std::fs::create_dir_all(&dir).map_err(|e| CorridorError::Io(e.to_string()))?;
-    let cfg = NotesPersistConfig::from_env_or_local(dir.clone())
-        .map_err(|e| CorridorError::Io(e.0))?;
+    let cfg =
+        NotesPersistConfig::from_env_or_local(dir.clone()).map_err(|e| CorridorError::Io(e.0))?;
     put_and_film_recover_after_mint(&seam, &cfg)
         .map_err(|e| CorridorError::Io(format!("put_and_film_recover: {e}")))?;
     // Only wipe local lab dir (never wipe remote notes host).
@@ -1157,9 +1152,7 @@ pub fn put_and_recover_after_mint(
     owner_key: [u8; 32],
     data_dir: &Path,
 ) -> Result<super::note_persist_client::NotePersistReceipt, CorridorError> {
-    use super::note_persist_client::{
-        put_and_film_recover_after_mint, NotesPersistConfig,
-    };
+    use super::note_persist_client::{NotesPersistConfig, put_and_film_recover_after_mint};
 
     std::fs::create_dir_all(data_dir).map_err(|e| CorridorError::Io(e.to_string()))?;
 
@@ -1184,9 +1177,8 @@ pub fn put_and_recover_after_mint(
     } else {
         "local+direct"
     };
-    let receipt = put_and_film_recover_after_mint(note, &cfg).map_err(|e| {
-        CorridorError::Io(format!("put_and_film_recover ({via}): {e}"))
-    })?;
+    let receipt = put_and_film_recover_after_mint(note, &cfg)
+        .map_err(|e| CorridorError::Io(format!("put_and_film_recover ({via}): {e}")))?;
     Ok(receipt)
 }
 
@@ -1242,8 +1234,8 @@ mod tests {
             ..CorridorScenario::default()
         };
 
-        let out = run_cashapp_zec_corridor_w0_w7(&mut backend, &scenario)
-            .expect("W0–W7 happy Simulated");
+        let out =
+            run_cashapp_zec_corridor_w0_w7(&mut backend, &scenario).expect("W0–W7 happy Simulated");
 
         assert_eq!(out.deposit.backend_kind, "simulated");
         assert_eq!(out.mint_note.owner_binding, scenario.dest_owner_binding);

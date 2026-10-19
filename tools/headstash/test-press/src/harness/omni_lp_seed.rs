@@ -12,16 +12,16 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use terp_seams::dex::{
-    asset_id_b, asset_id_hub, authorize_create_pool_reserves, bootstrap_omni_liquidity_pure,
-    reject_magic_pool_under_bridged_policy, DualHomePrepV0, EscrowLiabilityV0, LpBridgeMintV0,
-    LpSeedError, LpSeedReceiptV0, PoolSeedPolicy, LP_SEED_SOURCE_BRIDGED_NOTES,
-    LP_SEED_SOURCE_MAGIC_LAB, OMNI_LP_BTC, OMNI_LP_ZEC, OMNI_USER_BTC,
-};
 use serde::{Deserialize, Serialize};
+use terp_seams::dex::{
+    DualHomePrepV0, EscrowLiabilityV0, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
+    LpBridgeMintV0, LpSeedError, LpSeedReceiptV0, OMNI_LP_BTC, OMNI_LP_ZEC, OMNI_USER_BTC,
+    PoolSeedPolicy, asset_id_b, asset_id_hub, authorize_create_pool_reserves,
+    bootstrap_omni_liquidity_pure, reject_magic_pool_under_bridged_policy,
+};
 
 use super::lab_pay_zec::is_product_profile;
-use super::mint_evidence::{hex32, PROOF_MODE_MOCK_VERIFY_LAB};
+use super::mint_evidence::{PROOF_MODE_MOCK_VERIFY_LAB, hex32};
 use super::swap_statement_cw::{LAB_GAMMA, LAB_GAMMA_DEN, LAB_POOL_ID, LAB_R_IN, LAB_R_OUT};
 
 // ---------------------------------------------------------------------------
@@ -480,7 +480,9 @@ pub fn refuse_magic_pool_if_bridged_policy(
         return Err(OmniLpError::MissingReceipt);
     };
     // Detect magic lab constants used as if they were product reserves
-    if r_btc == LAB_R_IN && r_zec == LAB_R_OUT && (boot.r_btc != LAB_R_IN || boot.r_zec != LAB_R_OUT)
+    if r_btc == LAB_R_IN
+        && r_zec == LAB_R_OUT
+        && (boot.r_btc != LAB_R_IN || boot.r_zec != LAB_R_OUT)
     {
         return Err(OmniLpError::MagicPoolForbidden);
     }
@@ -605,10 +607,7 @@ mod tests {
         assert_eq!(boot.r_btc, OMNI_LP_BTC);
         assert_eq!(boot.r_zec, OMNI_LP_ZEC);
         assert_eq!(boot.receipt.source, LP_SEED_SOURCE_BRIDGED_NOTES);
-        assert_eq!(
-            boot.liability.outstanding_zec_claims,
-            boot.prep.lp_zec_zats
-        );
+        assert_eq!(boot.liability.outstanding_zec_claims, boot.prep.lp_zec_zats);
         assert!(boot.prep.escrow_balance_zats >= boot.liability.outstanding_zec_claims);
     }
 
@@ -628,7 +627,8 @@ mod tests {
             (LAB_R_IN, LAB_R_OUT),
             "fixture LP reserves must differ from magic lab constants"
         );
-        let err = refuse_magic_pool_if_bridged_policy(LAB_R_IN, LAB_R_OUT, Some(&boot)).unwrap_err();
+        let err =
+            refuse_magic_pool_if_bridged_policy(LAB_R_IN, LAB_R_OUT, Some(&boot)).unwrap_err();
         match err {
             OmniLpError::MagicPoolForbidden | OmniLpError::ReservesMismatch { .. } => {}
             other => panic!("unexpected {other:?}"),
@@ -739,16 +739,18 @@ mod tests {
         .unwrap_or(false);
 
         let boot = bootstrap_omni_liquidity().expect("bootstrap_omni_liquidity");
-        boot.assert_product_green().expect("bridged_notes product shape");
+        boot.assert_product_green()
+            .expect("bridged_notes product shape");
         boot.write_omni_run_pack(&run_dir, multi_net)
             .expect("write_omni_run_pack");
 
         assert!(run_dir.join("05-lp-seed-pool.json").is_file());
         assert!(run_dir.join("03-lp-mint-btc.json").is_file());
         assert!(run_dir.join("04-lp-mint-zec.json").is_file());
-        let seed: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(run_dir.join("05-lp-seed-pool.json")).unwrap())
-                .unwrap();
+        let seed: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(run_dir.join("05-lp-seed-pool.json")).unwrap(),
+        )
+        .unwrap();
         assert_eq!(seed["lp_seed"]["source"], "bridged_notes");
         assert_eq!(
             seed["lp_seed"]["r_btc"].as_u64().unwrap(),

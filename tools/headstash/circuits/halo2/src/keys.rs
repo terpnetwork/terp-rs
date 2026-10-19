@@ -8,8 +8,8 @@ use aes::Aes256;
 use blake2b_simd::{Hash as Blake2bHash, Params};
 use fpe::ff1::{BinaryNumeralString, FF1};
 use group::{
-    ff::{Field, PrimeField},
     Curve, Group, GroupEncoding,
+    ff::{Field, PrimeField},
 };
 use pasta_curves::pallas;
 use rand_core::Rng;
@@ -22,9 +22,9 @@ use crate::{
     address::Address,
     primitives::redpallas::{self, SpendAuth},
     spec::{
-        commit_ivk, diversify_hash, extract_p, ka_orchard, ka_orchard_prepared, prf_nf, to_base,
-        to_scalar, NonIdentityPallasPoint, NonZeroPallasBase, NonZeroPallasScalar,
-        PreparedNonIdentityBase, PreparedNonZeroScalar, PrfExpand,
+        NonIdentityPallasPoint, NonZeroPallasBase, NonZeroPallasScalar, PreparedNonIdentityBase,
+        PreparedNonZeroScalar, PrfExpand, commit_ivk, diversify_hash, extract_p, ka_orchard,
+        ka_orchard_prepared, prf_nf, to_base, to_scalar,
     },
     zip32::{self, ExtendedSpendingKey},
 };

@@ -22,12 +22,11 @@ use crate::{
     value::NoteValue,
 };
 use halo2_gadgets::{
-    ecc::{chip::EccChip, NonIdentityPoint},
-    sinsemilla::{chip::SinsemillaChip, HashDomain, Message, MessagePiece},
+    ecc::{NonIdentityPoint, chip::EccChip},
+    sinsemilla::{HashDomain, Message, MessagePiece, chip::SinsemillaChip},
     utilities::{
-        bool_check,
+        RangeConstrained, bool_check,
         lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
-        RangeConstrained,
     },
 };
 

@@ -5,7 +5,7 @@
 //! builder and is not a field on the published leaf. Callers that write the
 //! tree to disk serialize [`PublicLeaf`] only.
 
-use crate::{compress, merkle_leaf, node_message, rseed_message, FLAG_NODE, FLAG_RSEED};
+use crate::{FLAG_NODE, FLAG_RSEED, compress, merkle_leaf, node_message, rseed_message};
 
 /// Zero digest used to pad the tree up to `2^depth`. It is not a leaf preimage.
 const EMPTY: [u32; 8] = [0u32; 8];
@@ -213,7 +213,8 @@ mod tests {
             return;
         };
         let file = std::fs::File::open(&path).expect("open community notes");
-        let value: serde_json::Value = serde_json::from_reader(file).expect("parse community notes");
+        let value: serde_json::Value =
+            serde_json::from_reader(file).expect("parse community notes");
         let raw = value["notes"].as_array().expect("notes array");
         assert_eq!(raw.len(), 51_807);
         let mut notes = Vec::with_capacity(raw.len());

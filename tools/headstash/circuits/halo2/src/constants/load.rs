@@ -1,4 +1,4 @@
-use crate::constants::{self, compute_lagrange_coeffs, H, NUM_WINDOWS, NUM_WINDOWS_SHORT};
+use crate::constants::{self, H, NUM_WINDOWS, NUM_WINDOWS_SHORT, compute_lagrange_coeffs};
 use group::ff::PrimeField;
 use pasta_curves::pallas;
 

@@ -59,31 +59,29 @@ use ict_rs::runtime::{DockerConfig, DockerImage, IctRuntime};
 use ict_rs::spec::builtin_chain_config;
 use ict_rs_cw_orch::daemon_builder_from_chain;
 use tokio::runtime::Runtime;
+use zk_test_press::harness::swap_statement_cw::{LAB_R_IN, LAB_R_OUT};
 use zk_test_press::harness::{
-    self, allow_lab_inventory_residual, apply_pure_egress_burn_labeled, assert_dest_binding_equal,
-    assert_lab_degrade_labels, assert_mint_handoff_continuous, assert_product_release_mode,
-    bootstrap_omni_liquidity, build_swap_spend_handoff_from_mint_with_reserves,
-    confirm_open_at_sealed_dest_with_cfg, corridor_allow_happy_fixture, corridor_pool_seed_policy,
-    corridor_profile, cw_egress_statement_from_opening, dual_home_prep_path,
-    egress_burn_evidence_path, is_placeholder_owner_binding_hex, is_product_profile,
-    lab_mock_egress_proof, lab_pay_zec_after_burn, load_dual_home_prep, lp_mint_log_line,
-    lp_seed_receipt_path, mint_evidence_from_claim_fields, mint_evidence_path,
-    peek_last_threshold_auth_meta, product_celebrate_forbidden, refuse_magic_pool_if_bridged_policy,
+    self, BURN_SURFACE_CW_BRIDGE_EGRESS, BURN_SURFACE_PURE_RECORD_LAB, BridgeL1World,
+    COMMITTEE_CRYPTO_LAB_T_OF_N, CorridorLabMintPolicy, ESCROW_SIGN_PATH_P_LAB,
+    EgressBurnEvidenceJson, EgressBurnPublicJson, MODE_THRESHOLD_ESCROW_RELEASE,
+    MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED, MintEvidenceV0, OmniLiquidityBootstrap,
+    PROOF_MODE_MOCK_VERIFY_LAB, ProofModeLabel, SettleReceiptV0, ZakuraLocalConfig,
+    ZecEgressReceiptJson, ZecReleasePolicy, allow_lab_inventory_residual,
+    apply_pure_egress_burn_labeled, assert_dest_binding_equal, assert_lab_degrade_labels,
+    assert_mint_handoff_continuous, assert_product_release_mode, bootstrap_omni_liquidity,
+    build_swap_spend_handoff_from_mint_with_reserves, confirm_open_at_sealed_dest_with_cfg,
+    corridor_allow_happy_fixture, corridor_pool_seed_policy, corridor_profile,
+    cw_egress_statement_from_opening, dual_home_prep_path, egress_burn_evidence_path,
+    is_placeholder_owner_binding_hex, is_product_profile, lab_mock_egress_proof,
+    lab_pay_zec_after_burn, load_dual_home_prep, lp_mint_log_line, lp_seed_receipt_path,
+    mint_evidence_from_claim_fields, mint_evidence_path, peek_last_threshold_auth_meta,
+    product_celebrate_forbidden, refuse_magic_pool_if_bridged_policy,
     reject_funder_only_as_product, require_bridged_lp_seed, resolve_pool_reserves,
     sealed_dest_for_option_d, settle_opening_from_handoff, settle_receipt_path, try_claim_from_env,
     wallet_rpc_available, zec_egress_d_enabled, zec_egress_receipt_path, zec_release_policy,
-    BridgeL1World, BURN_SURFACE_CW_BRIDGE_EGRESS, BURN_SURFACE_PURE_RECORD_LAB,
-    COMMITTEE_CRYPTO_LAB_T_OF_N, CorridorLabMintPolicy, EgressBurnEvidenceJson,
-    EgressBurnPublicJson, ESCROW_SIGN_PATH_P_LAB, MintEvidenceV0, MODE_THRESHOLD_ESCROW_RELEASE,
-    MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED, OmniLiquidityBootstrap, ProofModeLabel,
-    SettleReceiptV0, ZakuraLocalConfig, ZecEgressReceiptJson, ZecReleasePolicy,
-    PROOF_MODE_MOCK_VERIFY_LAB,
 };
-use zk_test_press::harness::swap_statement_cw::{LAB_R_IN, LAB_R_OUT};
 #[cfg(feature = "l0-seams")]
-use zk_test_press::harness::{
-    put_and_recover_after_mint, seam_note_from_mint_openings,
-};
+use zk_test_press::harness::{put_and_recover_after_mint, seam_note_from_mint_openings};
 use zk_test_press::suites::private_bridge::PrivateBridgeSuite;
 use zk_test_press::suites::private_dex::PrivateDexSuite;
 
@@ -179,7 +177,11 @@ fn wasm_bytes_contain(path: &std::path::Path, needle: &[u8]) -> bool {
     }
 }
 
-fn require_wasm_surface(path: &std::path::Path, labels: &[&[u8]], what: &str) -> Result<(), String> {
+fn require_wasm_surface(
+    path: &std::path::Path,
+    labels: &[&[u8]],
+    what: &str,
+) -> Result<(), String> {
     if labels.iter().any(|n| wasm_bytes_contain(path, n)) {
         return Ok(());
     }
@@ -368,8 +370,7 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
     );
     if env_truthy("CORRIDOR_ALLOW_SETTLE_WITHOUT_MINT") {
         return Err(
-            "FAIL closed: CORRIDOR_ALLOW_SETTLE_WITHOUT_MINT is forbidden on funded profile"
-                .into(),
+            "FAIL closed: CORRIDOR_ALLOW_SETTLE_WITHOUT_MINT is forbidden on funded profile".into(),
         );
     }
     if zec_egress_d_gate() && !chain_settle_enabled() {
@@ -552,9 +553,10 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
         // RECOVERY-4: post-mint put_note + recover when client openings present
         #[cfg(feature = "l0-seams")]
         {
-            if let (Some(rcm_hex), Some(owner_hex)) =
-                (evidence.rcm_hex.as_ref(), evidence.owner_binding_hex.as_ref())
-            {
+            if let (Some(rcm_hex), Some(owner_hex)) = (
+                evidence.rcm_hex.as_ref(),
+                evidence.owner_binding_hex.as_ref(),
+            ) {
                 match (
                     hex::decode(evidence.cm_public_hex.trim()),
                     hex::decode(rcm_hex.trim()),
@@ -601,7 +603,9 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                             &note_dir,
                         )
                         .map_err(|e| format!("FAIL closed: post-mint note put/recover: {e}"))?;
-                        let film = if std::env::var("NOTES_BASE").map(|s| !s.is_empty()).unwrap_or(false)
+                        let film = if std::env::var("NOTES_BASE")
+                            .map(|s| !s.is_empty())
+                            .unwrap_or(false)
                         {
                             "NOTES_BASE+PIR"
                         } else {
@@ -612,7 +616,10 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                             receipt.addr, receipt.store_path
                         );
                         // Local temp only — do not rm when using remote NOTES_BASE.
-                        if std::env::var("NOTES_BASE").map(|s| s.is_empty()).unwrap_or(true) {
+                        if std::env::var("NOTES_BASE")
+                            .map(|s| s.is_empty())
+                            .unwrap_or(true)
+                        {
                             let _ = std::fs::remove_dir_all(&note_dir);
                         }
                     }
@@ -633,12 +640,12 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
 
         if chain_settle_enabled() {
             println!("\n--- [5/8] chain SettleSwap (cw-private-dex, mock_verify lab) ---");
-            println!("  proof_mode={PROOF_MODE_MOCK_VERIFY_LAB} halo2_swap=false skip_ibc_post_swap=false");
+            println!(
+                "  proof_mode={PROOF_MODE_MOCK_VERIFY_LAB} halo2_swap=false skip_ibc_post_swap=false"
+            );
 
             evidence.require_settle_openings().map_err(|e| {
-                format!(
-                    "FAIL closed: mint openings missing — cannot build SwapStatement: {e}"
-                )
+                format!("FAIL closed: mint openings missing — cannot build SwapStatement: {e}")
             })?;
 
             // Phases 1–3: dual-home + LP bridge mints + seed pool from bridged notes
@@ -665,12 +672,10 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                         dual_path.display()
                     );
                 }
-                let boot = bootstrap_omni_liquidity().map_err(|e| {
-                    format!("FAIL closed: bootstrap_omni_liquidity: {e}")
-                })?;
-                boot.assert_product_green().map_err(|e| {
-                    format!("FAIL closed: lp seed product green: {e}")
-                })?;
+                let boot = bootstrap_omni_liquidity()
+                    .map_err(|e| format!("FAIL closed: bootstrap_omni_liquidity: {e}"))?;
+                boot.assert_product_green()
+                    .map_err(|e| format!("FAIL closed: lp seed product green: {e}"))?;
                 println!("  {}", lp_mint_log_line("btc", &boot.lp_btc_mint));
                 println!("  {}", lp_mint_log_line("zec", &boot.lp_zec_mint));
                 println!(
@@ -726,15 +731,16 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                 format!("FAIL closed: build SwapSpendHandoffV0 from mint openings: {e}")
             })?;
             // Evidence glue (MintEvidenceV0 → settle spend openings); also enforced inside builder.
-            assert_mint_handoff_continuous(&evidence, &handoff).map_err(|e| {
-                format!("FAIL closed: mint↔settle openings continuity: {e}")
-            })?;
+            assert_mint_handoff_continuous(&evidence, &handoff)
+                .map_err(|e| format!("FAIL closed: mint↔settle openings continuity: {e}"))?;
             if let Some(ref dest) = evidence.owner_binding_hex {
                 let out = hex::encode(handoff.action.witness.note_out.owner_binding);
-                assert_dest_binding_equal(dest, &out, "settle.note_out.owner").map_err(|e| {
-                    format!("FAIL closed: single dest seal mint→settle: {e}")
-                })?;
-                println!("  dest seal continuous mint→settle {}", &dest[..16.min(dest.len())]);
+                assert_dest_binding_equal(dest, &out, "settle.note_out.owner")
+                    .map_err(|e| format!("FAIL closed: single dest seal mint→settle: {e}"))?;
+                println!(
+                    "  dest seal continuous mint→settle {}",
+                    &dest[..16.min(dest.len())]
+                );
             }
             println!(
                 "  handoff pool_id={} delta_in={} delta_out={} r_in_before={} r_out_before={} nullifiers={} proof_mode={}",
@@ -748,7 +754,11 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
             );
             println!(
                 "  pool_nf[0]={} (≠ bridge ν {})",
-                handoff.pool_nullifiers_hex.first().cloned().unwrap_or_default(),
+                handoff
+                    .pool_nullifiers_hex
+                    .first()
+                    .cloned()
+                    .unwrap_or_default(),
                 evidence.bridge_nullifier_hex
             );
 
@@ -758,7 +768,10 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
             let dex_addr = dex
                 .address_string()
                 .map_err(|e| format!("private-dex address: {e}"))?;
-            println!("  private_dex={dex_addr} mock_verify={}", mock_verify_flag());
+            println!(
+                "  private_dex={dex_addr} mock_verify={}",
+                mock_verify_flag()
+            );
             private_dex_contract = Some(dex_addr.clone());
 
             // CreatePool AFTER lp seed: R must equal bridged LP values (not invent).
@@ -811,9 +824,9 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                 &settle_s[..settle_s.len().min(400)]
             );
 
-            let (r_in_after, r_out_after) = dex.assert_settle_ok(&handoff).map_err(|e| {
-                format!("FAIL closed: post-settle query asserts: {e}")
-            })?;
+            let (r_in_after, r_out_after) = dex
+                .assert_settle_ok(&handoff)
+                .map_err(|e| format!("FAIL closed: post-settle query asserts: {e}"))?;
             println!(
                 "  Pool reserves r_in_after={r_in_after} r_out_after={r_out_after}; nullifiers spent ✓"
             );
@@ -868,9 +881,7 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                 .write_json(&receipt_path)
                 .map_err(|e| format!("write SettleReceiptV0: {e}"))?;
             println!("  SettleReceiptV0 → {}", receipt_path.display());
-            println!(
-                "  export PRIVATE_DEX_CONTRACT={dex_addr} HEADSTASH_CONTRACT={contract}"
-            );
+            println!("  export PRIVATE_DEX_CONTRACT={dex_addr} HEADSTASH_CONTRACT={contract}");
             settle_receipt = Some(receipt);
             settle_handoff = Some(handoff);
         } else {
@@ -904,9 +915,8 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                 sealed.source.as_wire_str()
             );
 
-            let opening = settle_opening_from_handoff(handoff, &sealed).map_err(|e| {
-                format!("FAIL closed: settle_opening_from_handoff: {e}")
-            })?;
+            let opening = settle_opening_from_handoff(handoff, &sealed)
+                .map_err(|e| format!("FAIL closed: settle_opening_from_handoff: {e}"))?;
             let settle_ref = Some(format!(
                 "pool_id={};delta_out={};cm0={}",
                 receipt.pool_id,
@@ -936,12 +946,9 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     println!("  IsEgressSpent=true ✓");
                     // Continuity evidence for lab pay (pure shape from openings).
-                    let (ev, _) = apply_pure_egress_burn_labeled(
-                        &opening,
-                        &sealed,
-                        settle_ref.clone(),
-                    )
-                    .map_err(|e| format!("local evidence after CW burn: {e}"))?;
+                    let (ev, _) =
+                        apply_pure_egress_burn_labeled(&opening, &sealed, settle_ref.clone())
+                            .map_err(|e| format!("local evidence after CW burn: {e}"))?;
                     Ok((ev, BURN_SURFACE_CW_BRIDGE_EGRESS.to_string()))
                 })();
                 match try_cw {
@@ -951,11 +958,7 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
                             "  CW BridgeEgressBurn unavailable ({e}) — pure_record_lab residual"
                         );
                         apply_pure_egress_burn_labeled(&opening, &sealed, settle_ref).map_err(
-                            |e| {
-                                format!(
-                                    "FAIL closed: pure egress burn after CW residual: {e}"
-                                )
-                            },
+                            |e| format!("FAIL closed: pure egress burn after CW residual: {e}"),
                         )?
                     }
                 }
@@ -1175,9 +1178,7 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         if zec_egress_d_gate() {
-            println!(
-                "  option_d=OK burn_surface=pure_record_lab (CW residual) lab_pay=gated"
-            );
+            println!("  option_d=OK burn_surface=pure_record_lab (CW residual) lab_pay=gated");
         }
         println!("  chain_id={}", chain.chain_id());
         println!("  grpc={grpc}");

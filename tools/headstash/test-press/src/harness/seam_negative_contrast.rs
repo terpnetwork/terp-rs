@@ -6,21 +6,21 @@
 //!
 //! SSOT: `DESIGN-HARNESS-NEGATIVE-CONTRAST-2026-07-22.md`
 
-use terp_seams::dex::{
-    apply_egress_burn, apply_swap, authorize_escrow_release, build_egress_burn_from_settle,
-    check_oracle_bound, oracle_mint_note, oracle_update_reserves, quote_exact_in,
-    settle_opening_from_note_fields, AssetId, DestKind, EgressBurnEvidenceV0, NoteIn, OracleBoundParams,
-    OracleMid, Pool, PoolStatus, SeamError, SeamState, SwapPublic, ThresholdEscrowAuth,
-    MODE_FROST_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE,
-};
-use terp_seams::dex::{
-    authorize_create_pool_reserves, mint_lp_zec_note, DualHomePrepV0, EscrowLiabilityV0,
-    LpSeedReceiptV0, PoolSeedPolicy, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
-};
 use sha2::{Digest, Sha256};
+use terp_seams::dex::{
+    AssetId, DestKind, EgressBurnEvidenceV0, MODE_FROST_ESCROW_RELEASE,
+    MODE_THRESHOLD_ESCROW_RELEASE, NoteIn, OracleBoundParams, OracleMid, Pool, PoolStatus,
+    SeamError, SeamState, SwapPublic, ThresholdEscrowAuth, apply_egress_burn, apply_swap,
+    authorize_escrow_release, build_egress_burn_from_settle, check_oracle_bound, oracle_mint_note,
+    oracle_update_reserves, quote_exact_in, settle_opening_from_note_fields,
+};
+use terp_seams::dex::{
+    DualHomePrepV0, EscrowLiabilityV0, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
+    LpSeedReceiptV0, PoolSeedPolicy, authorize_create_pool_reserves, mint_lp_zec_note,
+};
 
-use super::account_curation::{curate_lab_accounts, AccountRole, ChainKind};
-use super::seam_multi_cycle::{MultiCycleWorld, SeamAsset, CYCLE_GAMMA, CYCLE_GAMMA_DEN};
+use super::account_curation::{AccountRole, ChainKind, curate_lab_accounts};
+use super::seam_multi_cycle::{CYCLE_GAMMA, CYCLE_GAMMA_DEN, MultiCycleWorld, SeamAsset};
 
 // ---------------------------------------------------------------------------
 // Catalog: contrast id → product goal contrasted
@@ -187,7 +187,7 @@ fn nf_u64(tag: u8) -> u64 {
 mod tests {
     use super::*;
     use terp_seams::dex::reject_funder_only_as_product;
-    use threshold_committee::{lab_sign_with_threshold, LabCommittee};
+    use threshold_committee::{LabCommittee, lab_sign_with_threshold};
 
     #[test]
     fn catalog_covers_core_product_goals() {
@@ -275,7 +275,8 @@ mod tests {
         let mut state = SeamState::default();
         let nu = nf_u64(3);
         let delta_in = 10_000u128;
-        let fair = quote_exact_in(pool.r_a, pool.r_b, delta_in, pool.gamma, pool.gamma_den).unwrap();
+        let fair =
+            quote_exact_in(pool.r_a, pool.r_b, delta_in, pool.gamma, pool.gamma_den).unwrap();
         let notes = [NoteIn {
             asset_id: AssetId::Hub,
             value: delta_in,
@@ -387,7 +388,8 @@ mod tests {
         );
         let burn = build_egress_burn_from_settle(&opening).unwrap();
         let mut st = terp_seams::dex::EgressSeamState::default();
-        let err = apply_egress_burn(&mut st, &burn.public, &burn.witness, Some(&wrong)).unwrap_err();
+        let err =
+            apply_egress_burn(&mut st, &burn.public, &burn.witness, Some(&wrong)).unwrap_err();
         assert!(matches!(err, terp_seams::dex::EgressError::ErrDestMismatch));
     }
 
@@ -412,7 +414,10 @@ mod tests {
         let mut st = terp_seams::dex::EgressSeamState::default();
         apply_egress_burn(&mut st, &burn.public, &burn.witness, Some(&dest)).unwrap();
         let err = apply_egress_burn(&mut st, &burn.public, &burn.witness, Some(&dest)).unwrap_err();
-        assert!(matches!(err, terp_seams::dex::EgressError::ErrNullifierExists));
+        assert!(matches!(
+            err,
+            terp_seams::dex::EgressError::ErrNullifierExists
+        ));
     }
 
     #[test]
@@ -453,9 +458,7 @@ mod tests {
         };
         // Happy sanity
         let ok = authorize_escrow_release(&evidence, &dest, &auth).unwrap();
-        assert!(
-            ok.mode == MODE_THRESHOLD_ESCROW_RELEASE || ok.mode == MODE_FROST_ESCROW_RELEASE
-        );
+        assert!(ok.mode == MODE_THRESHOLD_ESCROW_RELEASE || ok.mode == MODE_FROST_ESCROW_RELEASE);
 
         // No burn
         let mut empty = evidence.clone();
@@ -483,12 +486,8 @@ mod tests {
     #[test]
     fn nc_magic_pool_and_escrow_underfund() {
         // Magic reserves under bridged_lp without bridged receipt
-        let err = authorize_create_pool_reserves(
-            PoolSeedPolicy::BridgedLp,
-            1_000_000,
-            2_000_000,
-            None,
-        );
+        let err =
+            authorize_create_pool_reserves(PoolSeedPolicy::BridgedLp, 1_000_000, 2_000_000, None);
         assert!(err.is_err());
 
         // Receipt source magic under bridged policy
@@ -519,8 +518,17 @@ mod tests {
         // Escrow underfund LP ZEC mint
         let mut liab = EscrowLiabilityV0::new(1); // only 1 zat escrow
         let asset = [0x5Au8; 32];
-        assert!(mint_lp_zec_note(asset, 1000, [1u8; 32], [2u8; 32], &mut liab, "mock_verify_lab")
-            .is_err());
+        assert!(
+            mint_lp_zec_note(
+                asset,
+                1000,
+                [1u8; 32],
+                [2u8; 32],
+                &mut liab,
+                "mock_verify_lab"
+            )
+            .is_err()
+        );
         let _ = DualHomePrepV0::omni_fixture(); // still part of dual-home SSOT surface
     }
 
@@ -541,15 +549,18 @@ mod tests {
         assert!(reject_funder_only_as_product("lab_inventory_pay_simulated"));
         assert!(reject_funder_only_as_product("ops_funder"));
         assert!(reject_funder_only_as_product("host_pay"));
-        assert!(!reject_funder_only_as_product(MODE_THRESHOLD_ESCROW_RELEASE));
+        assert!(!reject_funder_only_as_product(
+            MODE_THRESHOLD_ESCROW_RELEASE
+        ));
         assert!(!reject_funder_only_as_product("frost_escrow_spend"));
 
         let reg = curate_lab_accounts();
         // Bitcoin has no DexAdmin
-        assert!(reg
-            .require(ChainKind::Bitcoin, AccountRole::DexAdmin)
-            .unwrap_err()
-            .contains("missing curated account"));
+        assert!(
+            reg.require(ChainKind::Bitcoin, AccountRole::DexAdmin)
+                .unwrap_err()
+                .contains("missing curated account")
+        );
     }
 
     #[test]

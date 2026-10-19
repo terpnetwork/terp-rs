@@ -8,13 +8,13 @@ use cw_private_dex::msg::{
     OracleBoundParams as CwOracleBoundParams, OracleMid as CwOracleMid, SwapStatementPublic,
 };
 use terp_seams::dex::{
-    asset_id_b, build_swap_action_from_seam_notes, quote_exact_in, synthetic_pool_spend_nf,
-    AssetId32, AssetMap, CM_ABSTRACT_LEAF_V0, SeamNoteSketch, SwapActionPublic, SwapActionV0,
-    SwapFromSeamParams, SwapActionError,
+    AssetId32, AssetMap, CM_ABSTRACT_LEAF_V0, SeamNoteSketch, SwapActionError, SwapActionPublic,
+    SwapActionV0, SwapFromSeamParams, asset_id_b, build_swap_action_from_seam_notes,
+    quote_exact_in, synthetic_pool_spend_nf,
 };
 
 use super::mint_evidence::{
-    decode_hex32, hex32, MintEvidenceError, MintEvidenceV0, PROOF_MODE_MOCK_VERIFY_LAB,
+    MintEvidenceError, MintEvidenceV0, PROOF_MODE_MOCK_VERIFY_LAB, decode_hex32, hex32,
 };
 
 /// Lab mock swap proof under `Config.mock_verify=true` (honest label — not Halo2).
@@ -129,8 +129,10 @@ pub fn seam_sketch_from_mint_evidence(
     let asset_id = decode_hex32(&mint.asset_id_hex, "asset_id_hex")?;
     let cm_public = decode_hex32(&mint.cm_public_hex, "cm_public_hex")?;
     let rcm = decode_hex32(mint.rcm_hex.as_ref().unwrap(), "rcm_hex")?;
-    let owner_binding =
-        decode_hex32(mint.owner_binding_hex.as_ref().unwrap(), "owner_binding_hex")?;
+    let owner_binding = decode_hex32(
+        mint.owner_binding_hex.as_ref().unwrap(),
+        "owner_binding_hex",
+    )?;
     let lineage = decode_hex32(&mint.bridge_nullifier_hex, "bridge_nullifier_hex")?;
     Ok(SeamNoteSketch {
         origin: 0x02, // ORIGIN_BRIDGE_MINT
@@ -156,13 +158,7 @@ pub fn lab_swap_from_seam_params(
     out_rcm: [u8; 32],
 ) -> SwapFromSeamParams {
     lab_swap_from_seam_params_with_reserves(
-        asset_in,
-        asset_out,
-        delta_in,
-        out_owner,
-        out_rcm,
-        LAB_R_IN,
-        LAB_R_OUT,
+        asset_in, asset_out, delta_in, out_owner, out_rcm, LAB_R_IN, LAB_R_OUT,
     )
 }
 
@@ -303,7 +299,11 @@ pub fn build_swap_spend_handoff_from_mint_with_reserves(
     // Cap delta_in so virtual reserves stay healthy; residual → change note.
     // Omni pools have large R; still cap tiny lab user mints relative to full value.
     let full_value = mint.value_u64 as u128;
-    let delta_in = full_value.min(10_000).min(r_in_before / 10).max(1).min(full_value);
+    let delta_in = full_value
+        .min(10_000)
+        .min(r_in_before / 10)
+        .max(1)
+        .min(full_value);
     if delta_in == 0 {
         return Err(SwapHandoffError::Other("delta_in=0".into()));
     }
@@ -488,8 +488,8 @@ mod tests {
     fn missing_rcm_fail_closed() {
         let mut mint = fixture_mint();
         mint.rcm_hex = None;
-        let err = build_swap_spend_handoff_from_mint(&mint, ProofModeLabel::MockVerifyLab)
-            .unwrap_err();
+        let err =
+            build_swap_spend_handoff_from_mint(&mint, ProofModeLabel::MockVerifyLab).unwrap_err();
         assert!(err.to_string().contains("rcm") || err.to_string().contains("openings"));
     }
 

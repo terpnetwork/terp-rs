@@ -10,7 +10,7 @@ use cw_private_dex::msg::{
 };
 
 use crate::harness::swap_statement_cw::{
-    lab_allowed_root, LAB_GAMMA, LAB_GAMMA_DEN, LAB_R_IN, LAB_R_OUT, SwapSpendHandoffV0,
+    LAB_GAMMA, LAB_GAMMA_DEN, LAB_R_IN, LAB_R_OUT, SwapSpendHandoffV0, lab_allowed_root,
 };
 
 /// Thin suite around one `cw-private-dex` instance.
@@ -49,10 +49,7 @@ impl<Chain: CwEnv> PrivateDexSuite<Chain> {
 
     /// Lab defaults: mock_verify + fixed root `[7;32]`.
     pub fn upload_and_instantiate_lab(&mut self, mock_verify: bool) -> Result<(), CwOrchError> {
-        self.upload_and_instantiate(
-            mock_verify,
-            Some(Binary::from(lab_allowed_root().to_vec())),
-        )
+        self.upload_and_instantiate(mock_verify, Some(Binary::from(lab_allowed_root().to_vec())))
     }
 
     pub fn create_pool(
@@ -120,10 +117,8 @@ impl<Chain: CwEnv> PrivateDexSuite<Chain> {
         statement: SwapStatementPublic,
         proof: Binary,
     ) -> Result<<Chain as TxHandler>::Response, CwOrchError> {
-        self.dex.execute(
-            &ExecuteMsg::SettleSwap { statement, proof },
-            &[],
-        )
+        self.dex
+            .execute(&ExecuteMsg::SettleSwap { statement, proof }, &[])
     }
 
     pub fn settle_handoff(
@@ -159,7 +154,10 @@ impl<Chain: CwEnv> PrivateDexSuite<Chain> {
     }
 
     /// Post-settle asserts: reserves + nullifiers (fail-closed).
-    pub fn assert_settle_ok(&self, handoff: &SwapSpendHandoffV0) -> Result<(u128, u128), CwOrchError> {
+    pub fn assert_settle_ok(
+        &self,
+        handoff: &SwapSpendHandoffV0,
+    ) -> Result<(u128, u128), CwOrchError> {
         let st = &handoff.statement;
         let pool = self.query_pool(st.pool_id)?;
         let r_in_after = st.r_in_before.u128() + st.delta_r_in.u128();
@@ -226,9 +224,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for PrivateDexSuite<Chain> {
 mod tests {
     use super::*;
     use crate::harness::mint_evidence::mint_evidence_from_claim_fields;
-    use crate::harness::swap_statement_cw::{
-        build_swap_spend_handoff_from_mint, ProofModeLabel,
-    };
+    use crate::harness::swap_statement_cw::{ProofModeLabel, build_swap_spend_handoff_from_mint};
 
     fn fixture_mint() -> crate::harness::MintEvidenceV0 {
         let mut asset_in = [0u8; 32];

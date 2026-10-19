@@ -96,9 +96,7 @@ impl ClaimFixture {
     /// Structural policy checks (no prove): root/anchor present, instance size contract.
     pub fn validate_policy(&self) -> Result<(), ClaimFixtureError> {
         if self.distro_hash_domain.is_empty() {
-            return Err(ClaimFixtureError::Schema(
-                "distro_hash_domain empty".into(),
-            ));
+            return Err(ClaimFixtureError::Schema("distro_hash_domain empty".into()));
         }
         if self.instance_bytes_len != CLAIM_INSTANCE_BYTES_LEN {
             return Err(ClaimFixtureError::Schema(format!(
@@ -163,8 +161,8 @@ pub fn build_suite_backed_claim_fixture(
 ) -> Result<ClaimFixture, ClaimFixtureError> {
     use cw_orch::prelude::Mock;
     use ff::PrimeField;
-    use zk_headstash::suite::suite::HeadstashProofBuilder;
     use zk_headstash::suite::HeadstashCircuitSuite;
+    use zk_headstash::suite::suite::HeadstashProofBuilder;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
     let (_circuit, instance, anchor, partial) = suite
@@ -260,7 +258,10 @@ pub fn build_policy_claim_fixture(leaf_index: u64, value: u64) -> ClaimFixture {
 
 fn normalize_hex(s: &str) -> String {
     let t = s.trim();
-    let t = t.strip_prefix("0x").or_else(|| t.strip_prefix("0X")).unwrap_or(t);
+    let t = t
+        .strip_prefix("0x")
+        .or_else(|| t.strip_prefix("0X"))
+        .unwrap_or(t);
     t.to_ascii_lowercase()
 }
 
@@ -271,10 +272,7 @@ fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     }
     (0..t.len())
         .step_by(2)
-        .map(|i| {
-            u8::from_str_radix(&t[i..i + 2], 16)
-                .map_err(|e| format!("hex parse at {i}: {e}"))
-        })
+        .map(|i| u8::from_str_radix(&t[i..i + 2], 16).map_err(|e| format!("hex parse at {i}: {e}")))
         .collect()
 }
 

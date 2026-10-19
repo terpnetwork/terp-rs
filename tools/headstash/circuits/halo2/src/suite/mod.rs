@@ -9,4 +9,4 @@
 pub mod suite;
 pub mod unit;
 
-pub use suite::{build_headstash_keys_to, HeadstashCircuitSuite};
+pub use suite::{HeadstashCircuitSuite, build_headstash_keys_to};

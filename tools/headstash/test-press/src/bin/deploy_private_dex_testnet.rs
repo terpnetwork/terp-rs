@@ -27,7 +27,7 @@ use prost::Message;
 use prost_types::Any;
 use sha2::{Digest, Sha256};
 use zk_test_press::harness::swap_statement_cw::{
-    lab_allowed_root, LAB_GAMMA, LAB_GAMMA_DEN, LAB_R_IN, LAB_R_OUT,
+    LAB_GAMMA, LAB_GAMMA_DEN, LAB_R_IN, LAB_R_OUT, lab_allowed_root,
 };
 use zk_test_press::suites::private_dex::PrivateDexSuite;
 
@@ -46,9 +46,8 @@ fn asset_id_from_denom(denom: &str) -> [u8; 32] {
 fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let mnemonic = env::var("MNEMONIC").context(
-        "MNEMONIC env required (funded testnet wallet, never commit secrets)",
-    )?;
+    let mnemonic = env::var("MNEMONIC")
+        .context("MNEMONIC env required (funded testnet wallet, never commit secrets)")?;
 
     let chain_info = match env::var("CHAIN").as_deref() {
         Ok("local") | Ok("LOCAL") => TERP_TESTNET_LOCAL.clone(),
@@ -64,9 +63,7 @@ fn main() -> anyhow::Result<()> {
         chain_info.chain_id, chain_info.grpc_urls
     );
 
-    let daemon = Daemon::builder(chain_info)
-        .mnemonic(&mnemonic)
-        .build()?;
+    let daemon = Daemon::builder(chain_info).mnemonic(&mnemonic).build()?;
 
     let sender = daemon.sender_addr().to_string();
 
@@ -108,10 +105,7 @@ fn main() -> anyhow::Result<()> {
     // ── 2) Deploy private-dex (lab mock_verify by default) ──────────────────
     let mut suite = PrivateDexSuite::new(daemon.clone());
     eprintln!("upload + instantiate cw-private-dex…");
-    suite.upload_and_instantiate(
-        mock_verify,
-        Some(Binary::from(lab_allowed_root().to_vec())),
-    )?;
+    suite.upload_and_instantiate(mock_verify, Some(Binary::from(lab_allowed_root().to_vec())))?;
 
     let dex_addr = suite.dex.addr_str()?;
     let code_id = suite.dex.code_id().ok();

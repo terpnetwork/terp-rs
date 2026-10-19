@@ -1,6 +1,3 @@
-
- 
-
 // use ff::PrimeField;
 // use group::cofactor::CofactorCurveAffine;
 // use group::Group;

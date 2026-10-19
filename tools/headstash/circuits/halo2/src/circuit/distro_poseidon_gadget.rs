@@ -7,8 +7,8 @@
 
 use halo2_gadgets::{
     poseidon::{
-        primitives::{ConstantLength, P128Pow5T3},
         Hash as PoseidonHash, Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig,
+        primitives::{ConstantLength, P128Pow5T3},
     },
     utilities::cond_swap::{CondSwapChip, CondSwapInstructions},
 };

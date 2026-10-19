@@ -21,9 +21,9 @@
 //!
 //! Feature `l0-seams` required (links `terp_seams::dex::note` + compose helpers).
 
+use super::L0Error;
 #[cfg(feature = "l0-seams")]
 use super::note_persist_l0::{MiniNoteStore, NoteEnvelope as LocalEnvelope};
-use super::L0Error;
 use std::path::PathBuf;
 
 /// Mint-client note persistence config (`notes_base` + keys).
@@ -146,9 +146,7 @@ pub fn put_note_after_mint(
     cfg: &NotesPersistConfig,
     addr_override: Option<&str>,
 ) -> Result<NotePersistReceipt, L0Error> {
-    use terp_seams::dex::note::{
-        note_addr_cm, persist_plan_from_seam_note_opts, EncryptNoteOpts,
-    };
+    use terp_seams::dex::note::{EncryptNoteOpts, note_addr_cm, persist_plan_from_seam_note_opts};
 
     let addr_owned;
     let addr = if let Some(a) = addr_override {
@@ -183,8 +181,14 @@ pub fn put_note_after_mint(
                 .iter()
                 .map(|(k, v)| (k.as_str(), v.as_str()))
                 .collect();
-            terp_seams::dex::note::put_note_envelope(base, &plan.hs_id, &plan.addr, &plan.envelope, &headers)
-                .map_err(|e| L0Error(format!("put_note_envelope: {e:?}")))?;
+            terp_seams::dex::note::put_note_envelope(
+                base,
+                &plan.hs_id,
+                &plan.addr,
+                &plan.envelope,
+                &headers,
+            )
+            .map_err(|e| L0Error(format!("put_note_envelope: {e:?}")))?;
         }
         #[cfg(not(feature = "note-http"))]
         {
@@ -194,9 +198,10 @@ pub fn put_note_after_mint(
             ));
         }
     } else {
-        let dir = cfg.data_dir.as_ref().ok_or_else(|| {
-            L0Error("NotesPersistConfig: set notes_base or data_dir".into())
-        })?;
+        let dir = cfg
+            .data_dir
+            .as_ref()
+            .ok_or_else(|| L0Error("NotesPersistConfig: set notes_base or data_dir".into()))?;
         let store = MiniNoteStore::new(dir).map_err(|e| L0Error(e.0))?;
         let json = plan
             .envelope
@@ -221,7 +226,7 @@ pub fn get_and_decrypt_note(
     cfg: &NotesPersistConfig,
     addr: &str,
 ) -> Result<terp_seams::dex::note::SeamNoteOutV0, L0Error> {
-    use terp_seams::dex::note::{decrypt_note_out, NoteEnvelope};
+    use terp_seams::dex::note::{NoteEnvelope, decrypt_note_out};
 
     let env = if let Some(base) = cfg.notes_base.as_ref() {
         #[cfg(feature = "note-http")]
@@ -242,9 +247,10 @@ pub fn get_and_decrypt_note(
             ));
         }
     } else {
-        let dir = cfg.data_dir.as_ref().ok_or_else(|| {
-            L0Error("NotesPersistConfig: set notes_base or data_dir".into())
-        })?;
+        let dir = cfg
+            .data_dir
+            .as_ref()
+            .ok_or_else(|| L0Error("NotesPersistConfig: set notes_base or data_dir".into()))?;
         let store = MiniNoteStore::new(dir).map_err(|e| L0Error(e.0))?;
         let local = store
             .get_note(&cfg.hs_id, addr)
@@ -279,9 +285,10 @@ pub fn l2_smoke_put_get_decrypt(
 /// Snap recover UX: list note addrs under `hs_id` (HTTP only).
 #[cfg(all(feature = "l0-seams", feature = "note-http"))]
 pub fn list_note_addrs(cfg: &NotesPersistConfig) -> Result<Vec<String>, L0Error> {
-    let base = cfg.notes_base.as_ref().ok_or_else(|| {
-        L0Error("list_note_addrs requires notes_base (live host)".into())
-    })?;
+    let base = cfg
+        .notes_base
+        .as_ref()
+        .ok_or_else(|| L0Error("list_note_addrs requires notes_base (live host)".into()))?;
     let headers: Vec<(&str, &str)> = cfg
         .auth_headers
         .iter()
@@ -298,9 +305,10 @@ pub fn recover_note_via_pir(
     addr: &str,
 ) -> Result<terp_seams::dex::note::SeamNoteOutV0, L0Error> {
     use terp_seams::dex::note::decrypt_note_out;
-    let base = cfg.notes_base.as_ref().ok_or_else(|| {
-        L0Error("recover_note_via_pir requires notes_base".into())
-    })?;
+    let base = cfg
+        .notes_base
+        .as_ref()
+        .ok_or_else(|| L0Error("recover_note_via_pir requires notes_base".into()))?;
     let headers: Vec<(&str, &str)> = cfg
         .auth_headers
         .iter()
@@ -364,8 +372,8 @@ pub fn put_and_film_recover_after_mint(
 mod tests {
     use super::*;
     use crate::harness::compose_bridge_mint_to_seam_bytes;
-    use terp_seams::dex::note::SeamNoteOutV0;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use terp_seams::dex::note::SeamNoteOutV0;
 
     fn tmp() -> PathBuf {
         let n = SystemTime::now()
@@ -385,11 +393,12 @@ mod tests {
         let cfg = NotesPersistConfig::local_season("season-1", [7u8; 32], dir.clone());
         let receipt = l2_smoke_put_get_decrypt(&note, &cfg).expect("L2 smoke");
         assert!(receipt.store_path.starts_with("notes/season-1/cm."));
-        assert!(dir
-            .join("notes")
-            .join("season-1")
-            .join(format!("{}.json", receipt.addr))
-            .is_file());
+        assert!(
+            dir.join("notes")
+                .join("season-1")
+                .join(format!("{}.json", receipt.addr))
+                .is_file()
+        );
         let recovered = recover_note(&cfg, &receipt.addr).expect("recover");
         assert_eq!(recovered.to_bytes(), note.to_bytes());
         let _ = std::fs::remove_dir_all(&dir);

@@ -1,8 +1,8 @@
 use crate::{
+    Note,
     keys::{FullViewingKey, SpendValidatingKey},
     note::{ExtractedNoteCommitment, Rho},
     value::ValueCommitment,
-    Note,
 };
 
 impl super::Action {

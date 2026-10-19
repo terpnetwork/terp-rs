@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use terp_seams::bridge::{
-    authorize_bridge_mint_apply, derive_claim_id_with_dest, derive_domain_binding,
-    hinge_happy_fixture, label_hash, terp_asset_id_from_tacit, AssetRegistry, BridgeMintClaim,
-    BridgeMintPublic, MintedSet, NoteOutSketch, ReflectionSnapshot, DEFAULT_CONFIRMATIONS_K,
-    DEFAULT_MAX_LC_LAG,
+    AssetRegistry, BridgeMintClaim, BridgeMintPublic, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
+    MintedSet, NoteOutSketch, ReflectionSnapshot, authorize_bridge_mint_apply,
+    derive_claim_id_with_dest, derive_domain_binding, hinge_happy_fixture, label_hash,
+    terp_asset_id_from_tacit,
 };
 
 #[derive(Debug, Error)]
@@ -174,8 +174,7 @@ impl BridgeMintFixtureDoc {
             ));
         }
 
-        let expect_claim =
-            derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit, c.value_u64);
+        let expect_claim = derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit, c.value_u64);
         if expect_claim != claim_id {
             return Err(BridgeMintFixtureError::Schema(
                 "claim_id re-derive mismatch (Domain B A14)".into(),
@@ -197,8 +196,7 @@ impl BridgeMintFixtureDoc {
         }
 
         // Asset map pin
-        let expect_asset =
-            terp_asset_id_from_tacit(&c.source_chain_tag, &tacit, c.unit_scale);
+        let expect_asset = terp_asset_id_from_tacit(&c.source_chain_tag, &tacit, c.unit_scale);
         let asset_id = parse_hash32(&self.asset.asset_id, "asset.asset_id")?;
         if expect_asset != asset_id {
             return Err(BridgeMintFixtureError::Schema(
@@ -300,7 +298,9 @@ impl BridgeMintFixtureDoc {
 }
 
 /// Load golden/emitted JSON and validate policy layout.
-pub fn load_bridge_mint_fixture(path: &Path) -> Result<BridgeMintFixtureDoc, BridgeMintFixtureError> {
+pub fn load_bridge_mint_fixture(
+    path: &Path,
+) -> Result<BridgeMintFixtureDoc, BridgeMintFixtureError> {
     let raw = std::fs::read_to_string(path)?;
     let fix: BridgeMintFixtureDoc = serde_json::from_str(&raw)?;
     fix.validate_policy()?;
@@ -325,22 +325,14 @@ pub fn build_happy_bridge_mint_fixture() -> BridgeMintFixtureDoc {
     let dst_chain = dest;
     let lc_client = label_hash("lc-client-reflection-0");
     let domain_binding = derive_domain_binding(
-        &src_chain,
-        &dst_chain,
-        &lc_client,
-        &tacit,
-        &nu,
-        height,
-        &burn_root,
+        &src_chain, &dst_chain, &lc_client, &tacit, &nu, height, &burn_root,
     );
     let rcm = label_hash("rcm-hinge-happy");
 
     BridgeMintFixtureDoc {
         schema: "bridge-mint-claim-public-v1".into(),
         version: 1,
-        description: Some(
-            "Synthetic hinge-happy BridgeMintClaimPublic packet (mock LC)".into(),
-        ),
+        description: Some("Synthetic hinge-happy BridgeMintClaimPublic packet (mock LC)".into()),
         source: Some(serde_json::json!({
             "kind": "synthetic-hinge-happy",
             "hash_fn": "sha256(label_utf8)",
@@ -405,9 +397,8 @@ pub fn authorize_from_bridge_mint_fixture(
     let mut registry = AssetRegistry::new();
     registry.register(terp_asset);
     let mut minted = MintedSet::new();
-    authorize_bridge_mint_apply(&snapshot, &claim, &mut minted, &registry).map_err(|e| {
-        BridgeMintFixtureError::Schema(format!("authorize_bridge_mint: {e:?}"))
-    })
+    authorize_bridge_mint_apply(&snapshot, &claim, &mut minted, &registry)
+        .map_err(|e| BridgeMintFixtureError::Schema(format!("authorize_bridge_mint: {e:?}")))
 }
 
 /// Path helper: spectrum fixtures dir relative to workspace when CWD is crates/headstash.
@@ -426,8 +417,8 @@ pub fn default_golden_bridge_mint_path() -> std::path::PathBuf {
 /// If the on-disk golden fails policy (stale digests), falls back to
 /// [`build_happy_bridge_mint_fixture`] so harness CI still greens — re-emit with
 /// `emit_bridge_mint_fixture.sh --regenerate` to refresh the file.
-pub fn load_or_build_happy_bridge_mint_fixture() -> Result<BridgeMintFixtureDoc, BridgeMintFixtureError>
-{
+pub fn load_or_build_happy_bridge_mint_fixture()
+-> Result<BridgeMintFixtureDoc, BridgeMintFixtureError> {
     let path = default_golden_bridge_mint_path();
     if path.is_file() {
         match load_bridge_mint_fixture(&path) {
@@ -498,9 +489,7 @@ fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     }
     (0..t.len())
         .step_by(2)
-        .map(|i| {
-            u8::from_str_radix(&t[i..i + 2], 16).map_err(|e| format!("hex parse at {i}: {e}"))
-        })
+        .map(|i| u8::from_str_radix(&t[i..i + 2], 16).map_err(|e| format!("hex parse at {i}: {e}")))
         .collect()
 }
 

@@ -75,10 +75,14 @@ impl MintEvidenceV0 {
             return Err(MintEvidenceError::OpeningsMissing("value_u64=0".into()));
         }
         if self.cm_public_hex.trim().is_empty() {
-            return Err(MintEvidenceError::OpeningsMissing("cm_public_hex empty".into()));
+            return Err(MintEvidenceError::OpeningsMissing(
+                "cm_public_hex empty".into(),
+            ));
         }
         if self.asset_id_hex.trim().is_empty() {
-            return Err(MintEvidenceError::OpeningsMissing("asset_id_hex empty".into()));
+            return Err(MintEvidenceError::OpeningsMissing(
+                "asset_id_hex empty".into(),
+            ));
         }
         match &self.rcm_hex {
             None => {
@@ -109,7 +113,10 @@ impl MintEvidenceV0 {
         decode_hex32(&self.cm_public_hex, "cm_public_hex")?;
         decode_hex32(&self.asset_id_hex, "asset_id_hex")?;
         decode_hex32(self.rcm_hex.as_ref().unwrap(), "rcm_hex")?;
-        decode_hex32(self.owner_binding_hex.as_ref().unwrap(), "owner_binding_hex")?;
+        decode_hex32(
+            self.owner_binding_hex.as_ref().unwrap(),
+            "owner_binding_hex",
+        )?;
         Ok(())
     }
 
@@ -253,10 +260,8 @@ mod tests {
 
     #[test]
     fn roundtrip_mint_and_receipt_json() {
-        let dir = std::env::temp_dir().join(format!(
-            "corridor-evidence-test-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("corridor-evidence-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let mint_path = dir.join("mint.json");

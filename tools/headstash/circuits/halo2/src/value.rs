@@ -612,7 +612,7 @@ pub mod testing {
 
     use crate::value::NoteDenom;
 
-    use super::{NoteValue, ValueCommitTrapdoor, ValueSum, MAX_NOTE_VALUE, VALUE_SUM_RANGE};
+    use super::{MAX_NOTE_VALUE, NoteValue, VALUE_SUM_RANGE, ValueCommitTrapdoor, ValueSum};
 
     prop_compose! {
         /// Generate an arbitrary Pallas scalar.
@@ -690,8 +690,8 @@ mod tests {
     use ff::Field;
 
     use super::{
+        MAX_NOTE_VALUE, OverflowError, ValueCommitTrapdoor, ValueCommitment, ValueSum,
         testing::{arb_note_value_bounded, arb_trapdoor, arb_value_sum_bounded},
-        OverflowError, ValueCommitTrapdoor, ValueCommitment, ValueSum, MAX_NOTE_VALUE,
     };
     use crate::primitives::redpallas;
     use pasta_curves::group::ff::PrimeField;

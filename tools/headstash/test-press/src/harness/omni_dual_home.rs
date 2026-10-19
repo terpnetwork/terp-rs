@@ -15,12 +15,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use terp_seams::dex::{DualHomePrepV0, OMNI_LP_BTC, OMNI_LP_ZEC, OMNI_USER_BTC};
 use serde::{Deserialize, Serialize};
+use terp_seams::dex::{DualHomePrepV0, OMNI_LP_BTC, OMNI_LP_ZEC, OMNI_USER_BTC};
 
 use super::lab_pay_zec::{try_getbalance_zat, try_getreceivedbyaddress_zat, wallet_rpc_available};
 use super::omni_lp_seed::OmniLpError;
-use super::zakura_local::{json_rpc_call, rpc_ready, ZakuraLocalConfig, ZakuraLocalError};
+use super::zakura_local::{ZakuraLocalConfig, ZakuraLocalError, json_rpc_call, rpc_ready};
 
 // ---------------------------------------------------------------------------
 // Env
@@ -276,12 +276,11 @@ pub fn resolve_dual_home_for_bootstrap() -> Result<DualHomePrepV0, OmniDualHomeE
             });
         }
         let pure = multi.to_pure_prep();
-        pure.assert_escrow_covers_lp_zec().map_err(|_| {
-            OmniDualHomeError::EscrowUnderfunded {
+        pure.assert_escrow_covers_lp_zec()
+            .map_err(|_| OmniDualHomeError::EscrowUnderfunded {
                 balance: multi.escrow_balance_zats,
                 need: multi.lp_zec_zats,
-            }
-        })?;
+            })?;
         return Ok(pure);
     }
 
@@ -336,9 +335,7 @@ pub fn observe_escrow_balance(
     let received_by_addr_zat = try_getreceivedbyaddress_zat(cfg, escrow_addr)
         .ok()
         .flatten();
-    let observed = wallet_balance_zat
-        .or(received_by_addr_zat)
-        .unwrap_or(0);
+    let observed = wallet_balance_zat.or(received_by_addr_zat).unwrap_or(0);
     let need = OMNI_LP_ZEC as u64;
     Ok(EscrowObserveV0 {
         rpc_ready: true,
@@ -540,11 +537,7 @@ pub fn dual_home_supports_multinet_lp(prep: &DualHomeMultiNetPrepV0) -> bool {
 
 /// Default amounts for shell/rust (keep aligned with pure fixtures).
 pub fn fixture_amounts() -> (u64, u64, u64) {
-    (
-        OMNI_LP_BTC as u64,
-        OMNI_USER_BTC as u64,
-        OMNI_LP_ZEC as u64,
-    )
+    (OMNI_LP_BTC as u64, OMNI_USER_BTC as u64, OMNI_LP_ZEC as u64)
 }
 
 #[cfg(test)]

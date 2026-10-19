@@ -229,11 +229,7 @@ pub fn poseidon_distro_leaf(
 /// ```
 ///
 /// `layer`: `0` when combining two leaves; increments toward the root (suite convention).
-pub fn poseidon_distro_crh(
-    layer: u32,
-    left: pallas::Base,
-    right: pallas::Base,
-) -> pallas::Base {
+pub fn poseidon_distro_crh(layer: u32, left: pallas::Base, right: pallas::Base) -> pallas::Base {
     poseidon::Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([
         distro_crh_tag(),
         pallas::Base::from(u64::from(layer)),
@@ -302,7 +298,15 @@ mod tests {
     use super::*;
     use ff::Field;
 
-    fn sample_leaf_inputs(seed: u64) -> (pallas::Base, pallas::Base, pallas::Base, pallas::Base, pallas::Base) {
+    fn sample_leaf_inputs(
+        seed: u64,
+    ) -> (
+        pallas::Base,
+        pallas::Base,
+        pallas::Base,
+        pallas::Base,
+        pallas::Base,
+    ) {
         (
             pallas::Base::from(seed),
             pallas::Base::from(seed + 1),
@@ -343,18 +347,61 @@ mod tests {
     fn leaf_hash_changes_with_any_field() {
         let (x, y, nd, v, fdi) = sample_leaf_inputs(11);
         let base = poseidon_distro_leaf(x, y, nd, v, fdi, pallas::Base::from(1u64));
-        assert_ne!(base, poseidon_distro_leaf(x + pallas::Base::ONE, y, nd, v, fdi, pallas::Base::from(1u64)));
-        assert_ne!(base, poseidon_distro_leaf(x, y + pallas::Base::ONE, nd, v, fdi, pallas::Base::from(1u64)));
-        assert_ne!(base, poseidon_distro_leaf(x, y, nd + pallas::Base::ONE, v, fdi, pallas::Base::from(1u64)));
-        assert_ne!(base, poseidon_distro_leaf(x, y, nd, v + pallas::Base::ONE, fdi, pallas::Base::from(1u64)));
-        assert_ne!(base, poseidon_distro_leaf(
-            x,
-            y,
-            nd,
-            v,
-            fdi + pallas::Base::ONE,
-            pallas::Base::from(1u64),
-        ));
+        assert_ne!(
+            base,
+            poseidon_distro_leaf(
+                x + pallas::Base::ONE,
+                y,
+                nd,
+                v,
+                fdi,
+                pallas::Base::from(1u64)
+            )
+        );
+        assert_ne!(
+            base,
+            poseidon_distro_leaf(
+                x,
+                y + pallas::Base::ONE,
+                nd,
+                v,
+                fdi,
+                pallas::Base::from(1u64)
+            )
+        );
+        assert_ne!(
+            base,
+            poseidon_distro_leaf(
+                x,
+                y,
+                nd + pallas::Base::ONE,
+                v,
+                fdi,
+                pallas::Base::from(1u64)
+            )
+        );
+        assert_ne!(
+            base,
+            poseidon_distro_leaf(
+                x,
+                y,
+                nd,
+                v + pallas::Base::ONE,
+                fdi,
+                pallas::Base::from(1u64)
+            )
+        );
+        assert_ne!(
+            base,
+            poseidon_distro_leaf(
+                x,
+                y,
+                nd,
+                v,
+                fdi + pallas::Base::ONE,
+                pallas::Base::from(1u64),
+            )
+        );
     }
 
     #[test]
@@ -389,10 +436,7 @@ mod tests {
     fn crh_is_order_sensitive() {
         let a = pallas::Base::from(1u64);
         let b = pallas::Base::from(2u64);
-        assert_ne!(
-            poseidon_distro_crh(0, a, b),
-            poseidon_distro_crh(0, b, a)
-        );
+        assert_ne!(poseidon_distro_crh(0, a, b), poseidon_distro_crh(0, b, a));
     }
 
     #[test]

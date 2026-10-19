@@ -4,10 +4,10 @@ use halo2_proofs::plonk;
 use rand::{CryptoRng, RngCore};
 
 use crate::{
+    Note, Proof,
     builder::SpendInfo,
     circuit::{Circuit, Instance, ProvingKey},
     note::Rho,
-    Note, Proof,
 };
 
 impl super::Bundle {

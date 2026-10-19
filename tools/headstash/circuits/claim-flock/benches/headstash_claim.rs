@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use headstash_claim::{self, Opening, DEPTH};
+use headstash_claim::{self, DEPTH, Opening};
 
 fn sample() -> Opening<DEPTH> {
     let mut siblings = [[0u32; 8]; DEPTH];

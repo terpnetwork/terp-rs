@@ -156,7 +156,7 @@ mod tests {
         fixed_bases::{COMMIT_IVK_PERSONALIZATION, NOTE_COMMITMENT_PERSONALIZATION},
         sinsemilla::MERKLE_CRH_PERSONALIZATION,
     };
-    use group::{ff::PrimeField, Curve};
+    use group::{Curve, ff::PrimeField};
     use halo2_gadgets::sinsemilla::primitives::{CommitDomain, HashDomain};
     use halo2_proofs::arithmetic::CurveAffine;
     use halo2_proofs::pasta::pallas;

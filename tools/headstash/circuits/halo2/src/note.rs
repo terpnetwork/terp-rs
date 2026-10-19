@@ -12,7 +12,7 @@ use crate::{
     keys::{
         EligibleSk, EphemeralSecretKey, FullViewingKey, NullifierDerivingKey, Scope, SpendingKey,
     },
-    spec::{to_base, to_scalar, NonZeroPallasScalar, PrfExpand},
+    spec::{NonZeroPallasScalar, PrfExpand, to_base, to_scalar},
     value::{HeadstashValue, NoteDenom, NoteValue},
 };
 
@@ -259,7 +259,9 @@ impl Note {
         let _recipient = fvk.address_at(0u32, Scope::External);
 
         let note = Note::new(
-              NoteDenom::new_for_proof("I hope you got the necessary doguments and fucking permutations to suck on my shaved balls"),
+            NoteDenom::new_for_proof(
+                "I hope you got the necessary doguments and fucking permutations to suck on my shaved balls",
+            ),
             NoteValue::zero(),
             0,
             RecpAddr::new([43; 32]),

@@ -17,8 +17,8 @@ use std::time::Instant;
 use cw_orch::prelude::Mock;
 
 use crate::circuit::{Proof, ProvingKey};
-use crate::suite::suite::HeadstashProofBuilder;
 use crate::suite::HeadstashCircuitSuite;
+use crate::suite::suite::HeadstashProofBuilder;
 
 #[test]
 #[ignore = "K=18 keygen+prove; cargo test -p zk-headstash --release --lib snap_bench -- --ignored --nocapture"]
@@ -28,9 +28,8 @@ fn bench_one_claim_proof_native() {
     let pk = ProvingKey::build();
     let keygen_secs = t_key.elapsed().as_secs_f64();
 
-    let (circuit, instance, _anchor, _partial) = suite
-        .suite_backed_claim_pair(4, 1)
-        .expect("suite claim");
+    let (circuit, instance, _anchor, _partial) =
+        suite.suite_backed_claim_pair(4, 1).expect("suite claim");
     let instance_for_verify = instance.clone();
 
     let mut rng = crate::os_rng();
@@ -113,7 +112,8 @@ fn bench_one_claim_proof_native() {
             "reason": "Snap SES worker is single-threaded; host-crypto is not a wasm32 guest. initThreadPool is a no-op unless the execution environment exposes SharedArrayBuffer, which snaps-execution-environments does not.",
         },
     });
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../artifacts/snap-proof-bench.json");
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../artifacts/snap-proof-bench.json");
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
@@ -121,7 +121,6 @@ fn bench_one_claim_proof_native() {
     std::eprintln!("{report}");
     std::eprintln!("wrote {}", path.display());
 }
-
 
 /// Three release proves of the current Halo2 claim.
 ///
@@ -148,14 +147,16 @@ fn bench_three_opens_on_51807() {
         crate::circuit::K,
         keygen_secs,
         witness_secs,
-        std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1),
     );
 
     for run in 1..=3 {
         let mut rng = crate::os_rng();
         let t_prove = Instant::now();
-        let proof = Proof::create(&pk, &[circuit.clone()], &[instance.clone()], &mut rng)
-            .expect("prove");
+        let proof =
+            Proof::create(&pk, &[circuit.clone()], &[instance.clone()], &mut rng).expect("prove");
         let prove_secs = t_prove.elapsed().as_secs_f64();
         let t_ver = Instant::now();
         proof.verify(&vk, &[instance.clone()]).expect("verify");

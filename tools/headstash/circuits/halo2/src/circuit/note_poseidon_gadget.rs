@@ -3,21 +3,18 @@
 //! Pure off-circuit SSOT: [`crate::note_poseidon`].
 //! ADR: `docs/plans/spectrum/ADR-POSEIDON-NOTE-COMMIT.md` (option A lift).
 
+use ff::PrimeField;
 use halo2_gadgets::{
-    ecc::{
-        chip::EccChip,
-        FixedPointBaseField, Point,
-    },
+    ecc::{FixedPointBaseField, Point, chip::EccChip},
     poseidon::{
-        primitives::{ConstantLength, P128Pow5T3},
         Hash as PoseidonHash, Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig,
+        primitives::{ConstantLength, P128Pow5T3},
     },
 };
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
     plonk::{Advice, Column, Error},
 };
-use ff::PrimeField;
 use pasta_curves::pallas;
 
 use crate::constants::{OrchardFixedBases, OrchardFixedBasesBase};
@@ -203,10 +200,7 @@ pub fn lift_note_cmx_gadget(
 ) -> Result<Point<pallas::Affine, EccChip<OrchardFixedBases>>, Error> {
     let note_commit_r =
         FixedPointBaseField::from_inner(ecc_chip, OrchardFixedBasesBase::NoteCommitR);
-    note_commit_r.mul(
-        layouter.namespace(|| "[cmx] NoteCommitR"),
-        cmx,
-    )
+    note_commit_r.mul(layouter.namespace(|| "[cmx] NoteCommitR"), cmx)
 }
 
 /// Full private note commitment: Poseidon `cmx` + lift to point.

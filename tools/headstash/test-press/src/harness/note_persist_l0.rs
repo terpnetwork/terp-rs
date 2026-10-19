@@ -15,7 +15,9 @@
 //! cargo test -p zk-test-press --lib harness::note_persist_l0
 //! ```
 
-use super::bridge_l0::{assert_policy_bridge_mint_happy, compose_bridge_mint_to_seam_bytes, L0Error};
+use super::bridge_l0::{
+    L0Error, assert_policy_bridge_mint_happy, compose_bridge_mint_to_seam_bytes,
+};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -319,8 +321,8 @@ mod tests {
     #[test]
     fn note_persist_l0_seams_encrypt_store_decrypt_roundtrip() {
         use terp_seams::dex::note::{
-            decrypt_note_out, encrypt_note_out, note_addr_cm, persist_plan_from_seam_note,
-            SeamNoteOutV0,
+            SeamNoteOutV0, decrypt_note_out, encrypt_note_out, note_addr_cm,
+            persist_plan_from_seam_note,
         };
         let note_sketch = compose_bridge_mint_to_seam_bytes().expect("compose");
         let bytes = note_sketch.to_seam_bytes();
@@ -328,7 +330,10 @@ mod tests {
         let key = [0x42u8; 32]; // test-only key; production is wallet-derived
         let hs = "season-1";
         let addr = note_addr_cm(&seam.cm_public);
-        assert_eq!(addr, bridge_note_addr_from_cm_public(&note_sketch.cm_public));
+        assert_eq!(
+            addr,
+            bridge_note_addr_from_cm_public(&note_sketch.cm_public)
+        );
 
         let plan = persist_plan_from_seam_note(&seam, &key, hs, &addr).expect("plan");
         assert_eq!(plan.store_path, format!("notes/{hs}/{addr}"));

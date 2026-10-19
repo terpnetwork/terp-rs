@@ -214,11 +214,11 @@ pub fn note_cmx_from_bytes(bytes: [u8; 32]) -> Option<pallas::Base> {
 mod tests {
     use super::*;
     use crate::distro_poseidon::{
-        distro_leaf_tag, poseidon_distro_leaf, POSEIDON_DISTRO_CRH_PERSONALIZATION,
-        POSEIDON_DISTRO_LEAF_PERSONALIZATION,
+        POSEIDON_DISTRO_CRH_PERSONALIZATION, POSEIDON_DISTRO_LEAF_PERSONALIZATION, distro_leaf_tag,
+        poseidon_distro_leaf,
     };
     use ff::Field;
-    use group::{ff::PrimeField, Group};
+    use group::{Group, ff::PrimeField};
 
     fn sample_note_fields(
         seed: u64,
