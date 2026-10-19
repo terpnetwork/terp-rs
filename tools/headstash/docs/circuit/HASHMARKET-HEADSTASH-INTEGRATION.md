@@ -1241,4 +1241,16 @@ Reran on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-core:lo
 | replayed_nullifier_across_epochs | PASS | 2390ms | second spend rejected (`nullifier already exists`) |
 | unclaimed_funds | PASS | 2676ms | height 316, escrow 999985 uterp to 0, tx code 0 |
 
+## Pending registration cases
+
+Not run. The registration contract is not on this branch yet, so this list is the behavior to prove on the next fresh 4-validator chain (`127.0.0.1` only). It does not name routes, message fields, or error strings. Those stay unset until that contract is committed. The signature domain under test is `headstash-register-v1`.
+
+| Case | Expected |
+|---|---|
+| bad_or_wrong_address_signature | A registration whose signature is missing, malformed, or signed for a different address than `headstash-register-v1` is refused. No registration is stored. |
+| ineligible_address | An address that is not in the eligible set cannot register. |
+| second_registration_same_address | The first registration of an eligible address is accepted. A second registration of that same address is refused. |
+| claim_root_below_minimum_leaves | A claim against a root whose leaf count is below the minimum is refused. |
+| claim_root_aged_out | A claim against a root that has left the root history is refused. |
+| relayer_is_not_eligible_address | A relayer that is not the eligible address can submit the claim, and the payout still goes to the eligible address. |
 
