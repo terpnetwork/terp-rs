@@ -1,4 +1,4 @@
-# DEPRECATED launchpad-style e2e. Docker IBC authenticity is CI Heavy → just scripts-ibc-harness.
+# DEPRECATED launchpad-style e2e. Docker IBC authenticity is CI Heavy → just core scripts-ibc-harness.
 name: E2E Integration Tests (deprecated)
 
 on:
@@ -20,7 +20,7 @@ jobs:
         run: |
           echo "This workflow is deprecated (CosmWasm launchpad gas-report e2e)."
           echo "Use: Actions → CI Heavy → Run workflow (Docker multihop harness)."
-          echo "Or: just scripts-ibc-harness"
+          echo "Or: just core scripts-ibc-harness"
           if [[ "${{ inputs.acknowledge }}" != "use-ci-heavy" ]]; then
             exit 1
           fi

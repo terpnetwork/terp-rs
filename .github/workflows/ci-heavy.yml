@@ -131,6 +131,6 @@ jobs:
       - name: Multihop harness (ignored tests)
         # Image tags may need org secrets / pre-pulled images in a follow-up.
         # Fail closed so heavy CI is honest when harness is broken.
-        run: just scripts-ibc-harness
+        run: just core scripts-ibc-harness
         env:
           RUST_LOG: info

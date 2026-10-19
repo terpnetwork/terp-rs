@@ -52,13 +52,13 @@ jobs:
         uses: extractions/setup-just@v2
 
       - name: Preflight offline
-        run: just scripts-ibc-preflight offline
+        run: just ibc scripts-ibc-preflight offline
 
       - name: Offline IBC tests + rebuild-from-public
-        run: just scripts-ibc-offline
+        run: just ibc scripts-ibc-offline
 
       - name: Validate public/ (RunReport JSON)
-        run: just scripts-ibc-validate
+        run: just ibc scripts-ibc-validate
 
       - name: Assert validate ok via jq
         run: |
