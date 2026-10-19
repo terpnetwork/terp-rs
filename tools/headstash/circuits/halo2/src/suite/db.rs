@@ -1,5 +1,3 @@
-
-
 // /// Database trait for headstash wallet storage
 // ///
 // /// This trait abstracts the storage backend. Implementations could use:
@@ -91,68 +89,43 @@
 //     // }
 // }
 
-    /// Store a note in the wallet database
-    ///
-    /// # Arguments
-    ///
-    /// * `headstash_id` - Contract address of the headstash
-    /// * `esk_hex` - Secret key in hex format (from MetaMask)
-    /// * `rho_hex` - Randomness value in hex
-    /// * `fdi` - Fixed denomination index (leaf position in tree)
-    /// * `recp_hex` - Recipient address in hex
-    /// * `value_amount` - Note value amount
-    /// * `value_denom` - Denomination (e.g., "uterp")
-    /// * `rseed_hex` - Random seed in hex
-    ///
-    /// # Examples
-    ///
-    /// ```javascript
-    /// await wallet.gen_claim(
-    ///     "terp1contract123",
-    ///     esk_hex,
-    ///     rho_hex,
-    ///     0,
-    ///     recp_hex,
-    ///     1000,
-    ///     "uterp",
-    ///     rseed_hex
-    /// );
-    /// ```
-    // pub async fn gen_claim(
-    //     &self,
-    //     headstash_id: String,
-    //     esk_hex: String,
-    //     rho_hex: String,
-    //     fdi: u64,
-    //     recp_hex: String,
-    //     value_amount: u64,
-    //     value_denom: String,
-    //     rseed_hex: String,
-    // ) -> Result<(), Error> {
-    //     let esk = EligibleSk::from_hex(&esk_hex);
-    //     let rho_bytes = hex::decode(&rho_hex)
-    //         .map_err(|e| Error::KeyDecoding(format!("Invalid rho hex: {}", e)))?;
-    //     let rho = Rho::from_bytes(
-    //         rho_bytes
-    //             .as_slice()
-    //             .try_into()
-    //             .map_err(|_| Error::KeyDecoding("Invalid rho length".into()))?,
-    //     )
-    //     .expect("rho from bytes");
+// Store a note in the wallet database.
+// The function below is commented out with the rest of this impl.
+// pub async fn gen_claim(
+//     &self,
+//     headstash_id: String,
+//     esk_hex: String,
+//     rho_hex: String,
+//     fdi: u64,
+//     recp_hex: String,
+//     value_amount: u64,
+//     value_denom: String,
+//     rseed_hex: String,
+// ) -> Result<(), Error> {
+//     let esk = EligibleSk::from_hex(&esk_hex);
+//     let rho_bytes = hex::decode(&rho_hex)
+//         .map_err(|e| Error::KeyDecoding(format!("Invalid rho hex: {}", e)))?;
+//     let rho = Rho::from_bytes(
+//         rho_bytes
+//             .as_slice()
+//             .try_into()
+//             .map_err(|_| Error::KeyDecoding("Invalid rho length".into()))?,
+//     )
+//     .expect("rho from bytes");
 
-    //     let recp_bytes = hex::decode(&recp_hex)
-    //         .map_err(|e| Error::KeyDecoding(format!("Invalid recp hex: {}", e)))?;
+//     let recp_bytes = hex::decode(&recp_hex)
+//         .map_err(|e| Error::KeyDecoding(format!("Invalid recp hex: {}", e)))?;
 
-    //     let hv = HeadstashValue::from_raw(value_amount, &value_denom)
-    //         .map_err(|e| Error::KeyDecoding(format!("Invalid value: {:?}", e)))?;
+//     let hv = HeadstashValue::from_raw(value_amount, &value_denom)
+//         .map_err(|e| Error::KeyDecoding(format!("Invalid value: {:?}", e)))?;
 
-    //     let rseed_bytes: [u8; 32] = hex::decode(&rseed_hex)
-    //         .map_err(|e| Error::KeyDecoding(format!("Invalid rseed hex: {}", e)))?
-    //         .as_slice()
-    //         .try_into()
-    //         .map_err(|_| Error::KeyDecoding("Invalid rseed length".into()))?;
+//     let rseed_bytes: [u8; 32] = hex::decode(&rseed_hex)
+//         .map_err(|e| Error::KeyDecoding(format!("Invalid rseed hex: {}", e)))?
+//         .as_slice()
+//         .try_into()
+//         .map_err(|_| Error::KeyDecoding("Invalid rseed length".into()))?;
 
-    //     self.inner
-    //         .gen_claim(headstash_id, esk, rho, fdi, &recp_bytes, hv, rseed_bytes)
-    //         .await
-    // }
+//     self.inner
+//         .gen_claim(headstash_id, esk, rho, fdi, &recp_bytes, hv, rseed_bytes)
+//         .await
+// }

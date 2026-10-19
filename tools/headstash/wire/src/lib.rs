@@ -62,10 +62,15 @@ pub fn sign_batch(secret: &[u8; 32], message: &[u8]) -> [u8; 64] {
     sig.to_bytes().into()
 }
 
-pub fn verify_batch(public: &[u8; 33], message: &[u8], signature: &[u8; 64]) -> Result<(), WireError> {
+pub fn verify_batch(
+    public: &[u8; 33],
+    message: &[u8],
+    signature: &[u8; 64],
+) -> Result<(), WireError> {
     let key = VerifyingKey::from_sec1_bytes(public).map_err(|_| WireError::BatchSignature)?;
     let sig = Signature::from_slice(signature).map_err(|_| WireError::BatchSignature)?;
-    key.verify(message, &sig).map_err(|_| WireError::BatchSignature)
+    key.verify(message, &sig)
+        .map_err(|_| WireError::BatchSignature)
 }
 
 /// EIP-191 `personal_sign` digest.
@@ -81,7 +86,10 @@ pub fn personal_sign_hash(message: &[u8]) -> [u8; 32] {
 pub fn registration_message(eligible_address: &str, y_hex: &str) -> Vec<u8> {
     format!(
         "headstash-register-v1:{}:{y_hex}",
-        eligible_address.trim().trim_start_matches("0x").to_ascii_lowercase()
+        eligible_address
+            .trim()
+            .trim_start_matches("0x")
+            .to_ascii_lowercase()
     )
     .into_bytes()
 }
@@ -90,7 +98,9 @@ pub fn registration_message(eligible_address: &str, y_hex: &str) -> Vec<u8> {
 pub fn sign_personal(secret: &[u8; 32], message: &[u8]) -> Result<[u8; 65], WireError> {
     let key = batch_key(secret)?;
     let hash = personal_sign_hash(message);
-    let (sig, id) = key.sign_prehash_recoverable(&hash).map_err(|_| WireError::Recover)?;
+    let (sig, id) = key
+        .sign_prehash_recoverable(&hash)
+        .map_err(|_| WireError::Recover)?;
     let mut out = [0u8; 65];
     out[..64].copy_from_slice(&sig.to_bytes());
     out[64] = 27 + id.to_byte();
@@ -194,7 +204,7 @@ fn keccak_f(a: &mut [u64; 25]) {
     const PIL: [usize; 24] = [
         10, 7, 11, 17, 18, 3, 5, 16, 8, 21, 24, 4, 15, 23, 19, 13, 12, 2, 20, 14, 22, 9, 6, 1,
     ];
-    for round in 0..24 {
+    for rc in RC {
         let mut c = [0u64; 5];
         for x in 0..5 {
             c[x] = a[x] ^ a[x + 5] ^ a[x + 10] ^ a[x + 15] ^ a[x + 20];
@@ -224,7 +234,7 @@ fn keccak_f(a: &mut [u64; 25]) {
                 a[x + 5 * y] = lane[x] ^ (!lane[(x + 1) % 5] & lane[(x + 2) % 5]);
             }
         }
-        a[0] ^= RC[round];
+        a[0] ^= rc;
     }
 }
 

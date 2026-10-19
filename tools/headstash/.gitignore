@@ -1,8 +1,0 @@
-target
-.env
-data
-community-notes/notes.json
-artifacts/community-notes/notes.json
-artifacts/blake3-tree/
-**/*rseed*secret*
-*/node_modules

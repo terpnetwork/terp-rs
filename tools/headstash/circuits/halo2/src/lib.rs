@@ -56,7 +56,7 @@ pub mod keys;
 pub mod note;
 // pub mod note_encryption;
 // pub mod pczt;
-pub mod gen;
+pub mod r#gen;
 pub mod primitives;
 mod spec;
 
@@ -80,12 +80,17 @@ pub mod claim_auth;
 #[cfg(feature = "interface")]
 pub mod suite;
 
-#[cfg(test)]
-mod test_vectors;
 #[cfg(all(test, feature = "circuit"))]
 mod orchard_delta_part_t;
-#[cfg(all(test, feature = "circuit", feature = "host-crypto", feature = "interface"))]
+#[cfg(all(
+    test,
+    feature = "circuit",
+    feature = "host-crypto",
+    feature = "interface"
+))]
 mod snap_bench;
+#[cfg(test)]
+mod test_vectors;
 pub mod tree;
 pub mod value;
 pub mod zip32;
@@ -93,9 +98,9 @@ pub use action::Action;
 pub use address::Address;
 // pub use bundle::Bundle;
 pub use constants::{
-    fixed_bases::{OrchardFixedBases, FIXED_AMOUNTS},
-    sinsemilla::{OrchardCommitDomains, LEAF_PERSONALIZATION, MERKLE_CRH_PERSONALIZATION},
-    OrchardHashDomains, MERKLE_DEPTH_ORCHARD as NOTE_COMMITMENT_TREE_DEPTH,
+    MERKLE_DEPTH_ORCHARD as NOTE_COMMITMENT_TREE_DEPTH, OrchardHashDomains,
+    fixed_bases::{FIXED_AMOUNTS, OrchardFixedBases},
+    sinsemilla::{LEAF_PERSONALIZATION, MERKLE_CRH_PERSONALIZATION, OrchardCommitDomains},
 };
 pub use note::Note;
 pub use spec::{

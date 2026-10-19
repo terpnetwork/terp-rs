@@ -3,7 +3,7 @@ authors = [
     "ERGORS Agent Team",
     "Generated from ergors and ho-std packages",
 ]
-edition = "2021"
+edition = "2024"
 name = "ergors-proto"
 description = "Protocol buffer definitions for Ergors storage and orchestration layers"
 version     = { workspace = true }
