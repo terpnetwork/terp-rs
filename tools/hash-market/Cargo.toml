@@ -60,6 +60,11 @@ name = "headstash-epoch-e2e"
 path = "src/bin/headstash-epoch-e2e.rs"
 required-features = ["headstash"]
 
+[[bin]]
+name = "headstash-register-relay"
+path = "src/bin/headstash-register-relay.rs"
+required-features = ["server", "pallas"]
+
 [features]
 # Default: Nostr + Blossom/BUD + Merkle trees (NFT whitelist host).
 # Vote extensions are OFF by default — enable with --features ve for validator sidecar.

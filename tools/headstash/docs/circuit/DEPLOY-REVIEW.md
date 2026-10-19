@@ -48,6 +48,11 @@ that id, also before the counter moves. The host call is
 | `hash-market-relay` | Default `127.0.0.1:9444` (`c8fd4ec`). Same `inspect_bind` opt-in as the server. The process does not open a socket yet. The guard runs before it waits. |
 | `headstash-halo2-failure-modes.sh` | Sets `HASH_MARKET_BIND` to `127.0.0.1` and `ICT_PUBLISH_HOST=127.0.0.1`. A node that is not `tcp://127.0.0.1` exits. Not edited here. |
 
+## Deploy checklist
+
+- Loopback LCD `enabled-unsafe-cors` answers `Access-Control-Allow-Origin: *` when the request has an Origin. That `*` header is dev-only. Production must use the one nginx with an origin allowlist. Do not start a second proxy.
+- `headstash-register-relay` listens on `127.0.0.1:8791` only. It echoes `Access-Control-Allow-Origin` for `http://127.0.0.1:3921` and does not use `*`. `hash-market-relay` on `9444` is the Nostr stub and is not this register route.
+
 **Secrets in the epoch bins.** No `.env` or seed file is committed under
 `contracts/headstash`, `tools/headstash`, or `tools/hash-market`. The e2e
 reads `CUSTODY_SEED_FILE`, requires 32 bytes, and zeroes that buffer
