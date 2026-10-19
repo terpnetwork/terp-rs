@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as B64};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -90,12 +90,17 @@ fn make_create_options(
     display_name: &str,
     challenge_b64: &str,
 ) -> Result<CreateOptions, String> {
-    B64.decode(challenge_b64).map_err(|e| format!("bad challenge: {e}"))?;
-    B64.decode(user_id_b64).map_err(|e| format!("bad user_id: {e}"))?;
+    B64.decode(challenge_b64)
+        .map_err(|e| format!("bad challenge: {e}"))?;
+    B64.decode(user_id_b64)
+        .map_err(|e| format!("bad user_id: {e}"))?;
 
     Ok(CreateOptions {
         challenge: challenge_b64.to_string(),
-        rp: RpEntity { name: rp_name.to_string(), id: rp_id.to_string() },
+        rp: RpEntity {
+            name: rp_name.to_string(),
+            id: rp_id.to_string(),
+        },
         user: UserEntity {
             id: user_id_b64.to_string(),
             name: user_name.to_string(),
@@ -120,30 +125,41 @@ fn make_get_options(
     challenge_b64: &str,
     allowed_cred_ids_json: &str,
 ) -> Result<GetOptions, String> {
-    B64.decode(challenge_b64).map_err(|e| format!("bad challenge: {e}"))?;
+    B64.decode(challenge_b64)
+        .map_err(|e| format!("bad challenge: {e}"))?;
     let cred_ids: Vec<String> =
         serde_json::from_str(allowed_cred_ids_json).map_err(|e| e.to_string())?;
 
     Ok(GetOptions {
         challenge: challenge_b64.to_string(),
         rp_id: rp_id.to_string(),
-        allow_credentials: cred_ids.into_iter().map(|id| AllowCredential {
-            cred_type: "public-key".to_string(),
-            id,
-        }).collect(),
+        allow_credentials: cred_ids
+            .into_iter()
+            .map(|id| AllowCredential {
+                cred_type: "public-key".to_string(),
+                id,
+            })
+            .collect(),
         user_verification: "required".to_string(),
         timeout: 60000,
     })
 }
 
-fn make_attestation_encoded(attestation_object: &[u8], client_data_json: &[u8]) -> AttestationEncoded {
+fn make_attestation_encoded(
+    attestation_object: &[u8],
+    client_data_json: &[u8],
+) -> AttestationEncoded {
     AttestationEncoded {
         attestation_b64: B64.encode(attestation_object),
         client_data_b64: B64.encode(client_data_json),
     }
 }
 
-fn make_assertion_encoded(authenticator_data: &[u8], client_data_json: &[u8], signature: &[u8]) -> AssertionEncoded {
+fn make_assertion_encoded(
+    authenticator_data: &[u8],
+    client_data_json: &[u8],
+    signature: &[u8],
+) -> AssertionEncoded {
     AssertionEncoded {
         authenticator_data_b64: B64.encode(authenticator_data),
         client_data_b64: B64.encode(client_data_json),
@@ -172,8 +188,15 @@ pub fn build_create_options(
     display_name: &str,
     challenge_b64: &str,
 ) -> Result<JsValue, JsError> {
-    let opts = make_create_options(rp_id, rp_name, user_id_b64, user_name, display_name, challenge_b64)
-        .map_err(|e| JsError::new(&e))?;
+    let opts = make_create_options(
+        rp_id,
+        rp_name,
+        user_id_b64,
+        user_name,
+        display_name,
+        challenge_b64,
+    )
+    .map_err(|e| JsError::new(&e))?;
     serde_wasm_bindgen::to_value(&opts).map_err(|e| JsError::new(&e.to_string()))
 }
 
@@ -192,7 +215,10 @@ pub fn build_get_options(
 
 /// Encode raw attestation response buffers to base64 for sending to the server.
 #[wasm_bindgen]
-pub fn encode_attestation(attestation_object: &[u8], client_data_json: &[u8]) -> Result<JsValue, JsError> {
+pub fn encode_attestation(
+    attestation_object: &[u8],
+    client_data_json: &[u8],
+) -> Result<JsValue, JsError> {
     let encoded = make_attestation_encoded(attestation_object, client_data_json);
     serde_wasm_bindgen::to_value(&encoded).map_err(|e| JsError::new(&e.to_string()))
 }
@@ -225,7 +251,15 @@ mod tests {
     fn create_options_validates_and_serializes() {
         let challenge = B64.encode(b"test-challenge-32-bytes-padding!");
         let user_id = B64.encode(b"user123");
-        let opts = make_create_options("localhost", "Test RP", &user_id, "testuser", "Test User", &challenge).unwrap();
+        let opts = make_create_options(
+            "localhost",
+            "Test RP",
+            &user_id,
+            "testuser",
+            "Test User",
+            &challenge,
+        )
+        .unwrap();
         assert_eq!(opts.rp.id, "localhost");
         assert_eq!(opts.attestation, "direct");
         assert!(opts.authenticator_selection.require_resident_key);
@@ -244,7 +278,8 @@ mod tests {
     #[test]
     fn get_options_parses_cred_ids() {
         let challenge = B64.encode(b"test-challenge-32-bytes-padding!");
-        let creds = serde_json::to_string(&vec![B64.encode(b"cred1"), B64.encode(b"cred2")]).unwrap();
+        let creds =
+            serde_json::to_string(&vec![B64.encode(b"cred1"), B64.encode(b"cred2")]).unwrap();
         let opts = make_get_options("localhost", &challenge, &creds).unwrap();
         assert_eq!(opts.allow_credentials.len(), 2);
         assert_eq!(opts.user_verification, "required");
@@ -262,8 +297,14 @@ mod tests {
     #[test]
     fn assertion_encoding_round_trips() {
         let encoded = make_assertion_encoded(b"auth-data", b"client-data", b"sig-data");
-        assert_eq!(B64.decode(&encoded.authenticator_data_b64).unwrap(), b"auth-data");
-        assert_eq!(B64.decode(&encoded.client_data_b64).unwrap(), b"client-data");
+        assert_eq!(
+            B64.decode(&encoded.authenticator_data_b64).unwrap(),
+            b"auth-data"
+        );
+        assert_eq!(
+            B64.decode(&encoded.client_data_b64).unwrap(),
+            b"client-data"
+        );
         assert_eq!(B64.decode(&encoded.signature_b64).unwrap(), b"sig-data");
     }
 }

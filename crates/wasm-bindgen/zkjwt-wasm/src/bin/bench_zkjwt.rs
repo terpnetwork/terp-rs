@@ -2,7 +2,7 @@
 //!   cargo run --release --offline --bin bench_zkjwt
 use std::time::Instant;
 use zkjwt_wasm::{
-    circuit_config_debug, dummy_witness, prove_passkey, verify_passkey, warmup_keys, K,
+    K, circuit_config_debug, dummy_witness, prove_passkey, verify_passkey, warmup_keys,
 };
 
 fn median(mut v: Vec<u128>) -> u128 {

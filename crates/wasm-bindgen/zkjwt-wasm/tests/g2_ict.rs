@@ -14,11 +14,11 @@ use halo2_base::halo2_proofs::arithmetic::CurveAffine;
 use halo2_base::halo2_proofs::halo2curves::ff::Field;
 use halo2_base::halo2_proofs::halo2curves::secp256r1::{Fq, Secp256r1Affine};
 use halo2_base::utils::{biguint_to_fe, fe_to_biguint, modulus};
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 use zkjwt_wasm::{
-    CIRCUIT_ID, claim_from_pk, compute_msg_bind, encode_instances, fr_to_bytes, prove_passkey,
-    verify_passkey, write_store_full_circuit_files, PasskeyWitness,
+    CIRCUIT_ID, PasskeyWitness, claim_from_pk, compute_msg_bind, encode_instances, fr_to_bytes,
+    prove_passkey, verify_passkey, write_store_full_circuit_files,
 };
 
 fn require_ict() {
@@ -86,7 +86,10 @@ fn prepare_artifacts() -> PathBuf {
     let msg_bind = compute_msg_bind("ict-zkjwt-g2", "terp1alice", "0", 0, sign_mode_direct);
     let w = signed_witness(msg_bind);
     let inst = encode_instances(&w);
-    assert_eq!(&inst[96..128], &zkjwt_wasm::fr_to_bytes(zkjwt_wasm::public_frs(&w)[3])[..]);
+    assert_eq!(
+        &inst[96..128],
+        &zkjwt_wasm::fr_to_bytes(zkjwt_wasm::public_frs(&w)[3])[..]
+    );
     let proof = prove_passkey(&w).expect("prove");
     assert!(verify_passkey(&proof, &w).unwrap());
     let mut bad = w.clone();
@@ -110,20 +113,15 @@ fn prepare_artifacts() -> PathBuf {
 }
 
 fn spawn_ict_rs(dir: &PathBuf) {
-    let ict_manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../ict-rs/ict-rs/Cargo.toml");
+    let ict_manifest =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ict-rs/ict-rs/Cargo.toml");
     assert!(
         ict_manifest.exists(),
         "ict-rs Cargo.toml missing at {}",
         ict_manifest.display()
     );
     let status = Command::new("cargo")
-        .args([
-            "test",
-            "--release",
-            "--offline",
-            "--manifest-path",
-        ])
+        .args(["test", "--release", "--offline", "--manifest-path"])
         .arg(&ict_manifest)
         .args([
             "--features",
@@ -137,7 +135,13 @@ fn spawn_ict_rs(dir: &PathBuf) {
         ])
         .env("ICT_ZKJWT", "1")
         .env("ZKJWT_G2_DIR", dir)
-        .env("PATH", format!("/usr/local/bin:{}", std::env::var("PATH").unwrap_or_default()))
+        .env(
+            "PATH",
+            format!(
+                "/usr/local/bin:{}",
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
         .status()
         .expect("spawn ict-rs g2");
     assert!(status.success(), "ict-rs zkjwt_passkey_g2 failed: {status}");

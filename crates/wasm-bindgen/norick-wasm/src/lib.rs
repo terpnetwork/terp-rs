@@ -2,7 +2,10 @@ use ff::PrimeField;
 use group::ff::Field;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    plonk::{self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector, SingleVerifier},
+    plonk::{
+        self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector,
+        SingleVerifier,
+    },
     poly::Rotation,
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
@@ -34,13 +37,20 @@ struct Number<F: PrimeField>(AssignedCell<F, F>);
 impl<F: Field> Chip<F> for FieldChip<F> {
     type Config = FieldConfig;
     type Loaded = ();
-    fn config(&self) -> &Self::Config { &self.config }
-    fn loaded(&self) -> &Self::Loaded { &() }
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn loaded(&self) -> &Self::Loaded {
+        &()
+    }
 }
 
 impl<F: PrimeField> FieldChip<F> {
     fn construct(config: FieldConfig) -> Self {
-        Self { config, _marker: PhantomData }
+        Self {
+            config,
+            _marker: PhantomData,
+        }
     }
 
     fn configure(
@@ -62,23 +72,44 @@ impl<F: PrimeField> FieldChip<F> {
             let s_mul = meta.query_selector(s_mul);
             vec![s_mul * (lhs * rhs - out)]
         });
-        FieldConfig { advice, instance, s_mul }
+        FieldConfig {
+            advice,
+            instance,
+            s_mul,
+        }
     }
 
-    fn load_private(&self, mut layouter: impl Layouter<F>, value: Value<F>) -> Result<Number<F>, Error> {
+    fn load_private(
+        &self,
+        mut layouter: impl Layouter<F>,
+        value: Value<F>,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "load private",
             |mut region| {
-                region.assign_advice(|| "private input", self.config.advice[0], 0, || value).map(Number)
+                region
+                    .assign_advice(|| "private input", self.config.advice[0], 0, || value)
+                    .map(Number)
             },
         )
     }
 
-    fn load_constant(&self, mut layouter: impl Layouter<F>, constant: F) -> Result<Number<F>, Error> {
+    fn load_constant(
+        &self,
+        mut layouter: impl Layouter<F>,
+        constant: F,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "load constant",
             |mut region| {
-                region.assign_advice_from_constant(|| "constant value", self.config.advice[0], 0, constant).map(Number)
+                region
+                    .assign_advice_from_constant(
+                        || "constant value",
+                        self.config.advice[0],
+                        0,
+                        constant,
+                    )
+                    .map(Number)
             },
         )
     }
@@ -87,12 +118,25 @@ impl<F: PrimeField> FieldChip<F> {
         layouter.assign_region(
             || "load public",
             |mut region| {
-                region.assign_advice_from_instance(|| "public input", self.config.instance, row, self.config.advice[0], 0).map(Number)
+                region
+                    .assign_advice_from_instance(
+                        || "public input",
+                        self.config.instance,
+                        row,
+                        self.config.advice[0],
+                        0,
+                    )
+                    .map(Number)
             },
         )
     }
 
-    fn mul(&self, mut layouter: impl Layouter<F>, a: Number<F>, b: Number<F>) -> Result<Number<F>, Error> {
+    fn mul(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: Number<F>,
+        b: Number<F>,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "mul",
             |mut region: Region<'_, F>| {
@@ -100,12 +144,19 @@ impl<F: PrimeField> FieldChip<F> {
                 a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], 0)?;
                 b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], 0)?;
                 let value = a.0.value().copied() * b.0.value();
-                region.assign_advice(|| "lhs * rhs", self.config.advice[0], 1, || value).map(Number)
+                region
+                    .assign_advice(|| "lhs * rhs", self.config.advice[0], 1, || value)
+                    .map(Number)
             },
         )
     }
 
-    fn constrain_equal(&self, mut layouter: impl Layouter<F>, a: &AssignedCell<F, F>, b: &AssignedCell<F, F>) -> Result<(), Error> {
+    fn constrain_equal(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: &AssignedCell<F, F>,
+        b: &AssignedCell<F, F>,
+    ) -> Result<(), Error> {
         layouter.assign_region(
             || "constrain equal",
             |mut region| region.constrain_equal(a.cell(), b.cell()),
@@ -124,7 +175,9 @@ struct NoRickCircuit<F: PrimeField> {
 
 impl<F: PrimeField> Default for NoRickCircuit<F> {
     fn default() -> Self {
-        Self { priv_input: vec![Value::unknown(); 20] }
+        Self {
+            priv_input: vec![Value::unknown(); 20],
+        }
     }
 }
 
@@ -132,7 +185,9 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;
 
-    fn without_witnesses(&self) -> Self { Self::default() }
+    fn without_witnesses(&self) -> Self {
+        Self::default()
+    }
 
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
         let advice = [meta.advice_column(), meta.advice_column()];
@@ -141,7 +196,11 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
         FieldChip::configure(meta, advice, instance, constant)
     }
 
-    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<F>) -> Result<(), Error> {
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<F>,
+    ) -> Result<(), Error> {
         let chip = FieldChip::<F>::construct(config);
 
         let pow_256_1 = F::from(256u64);
@@ -172,7 +231,8 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
                 + c3.0.value().copied() * Value::known(pow_256_3);
 
             let diff_val = packed_val - rick_constant.0.value().copied();
-            let diff = chip.load_private(layouter.namespace(|| format!("diff {}", idx)), diff_val)?;
+            let diff =
+                chip.load_private(layouter.namespace(|| format!("diff {}", idx)), diff_val)?;
             conditions.push(diff);
         }
 
@@ -243,7 +303,8 @@ fn setup_keys() -> Result<
     let params = halo2_proofs::poly::commitment::Params::new(K);
     let empty_circuit: NoRickCircuit<pallas::Base> = Default::default();
     let vk = plonk::keygen_vk(&params, &empty_circuit).map_err(|e| format!("keygen_vk: {e}"))?;
-    let pk = plonk::keygen_pk(&params, vk, &empty_circuit).map_err(|e| format!("keygen_pk: {e}"))?;
+    let pk =
+        plonk::keygen_pk(&params, vk, &empty_circuit).map_err(|e| format!("keygen_pk: {e}"))?;
     Ok((params, pk))
 }
 

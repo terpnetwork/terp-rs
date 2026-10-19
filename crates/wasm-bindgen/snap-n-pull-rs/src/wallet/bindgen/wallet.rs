@@ -1,5 +1,5 @@
-use crate::wallet::wallet::HeadstashMetadata;
 use crate::wallet::HeadstashWallet;
+use crate::wallet::wallet::HeadstashMetadata;
 use crate::{Error, Network};
 
 use serde::{Deserialize, Serialize};

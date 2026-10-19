@@ -13,14 +13,14 @@
 
 #![allow(clippy::too_many_arguments)]
 
-use halo2_base::halo2_proofs::arithmetic::CurveAffine;
-use halo2_base::halo2_proofs::halo2curves::ff::{Field, PrimeField};
-use halo2_base::gates::circuit::{builder::BaseCircuitBuilder, CircuitBuilderStage};
 use halo2_base::gates::RangeChip;
+use halo2_base::gates::circuit::{CircuitBuilderStage, builder::BaseCircuitBuilder};
+use halo2_base::halo2_proofs::arithmetic::CurveAffine;
 use halo2_base::halo2_proofs::halo2curves::bn256::{Bn256, Fr, G1Affine};
+use halo2_base::halo2_proofs::halo2curves::ff::{Field, PrimeField};
 use halo2_base::halo2_proofs::halo2curves::secp256r1::{Fp, Fq, Secp256r1Affine};
 use halo2_base::halo2_proofs::plonk::{
-    create_proof, keygen_pk, keygen_vk, verify_proof, ProvingKey, VerifyingKey,
+    ProvingKey, VerifyingKey, create_proof, keygen_pk, keygen_vk, verify_proof,
 };
 use halo2_base::halo2_proofs::poly::commitment::ParamsProver;
 use halo2_base::halo2_proofs::poly::kzg::{
@@ -33,9 +33,9 @@ use halo2_base::halo2_proofs::transcript::{
 };
 use halo2_base::utils::{biguint_to_fe, fe_to_biguint, modulus};
 use halo2_base::{AssignedValue, Context};
+use halo2_ecc::ecc::EccChip;
 use halo2_ecc::ecc::ecdsa::ecdsa_verify_no_pubkey_check;
 use halo2_ecc::ecc::with_weierstrass_a;
-use halo2_ecc::ecc::EccChip;
 use halo2_ecc::fields::FieldChip;
 use halo2_ecc::secp256r1::{FpChip, FqChip};
 use num_bigint::BigUint;
@@ -53,7 +53,6 @@ pub const CIRCUIT_ID: &str = "zkjwt.passkey.p256.v1";
 pub const CLAIM_DOMAIN: &[u8] = b"terp-zkjwt/pk/v1";
 pub const NF_DOMAIN: &[u8] = b"terp-zkjwt/nf/v1";
 pub const MSG_BIND_DOMAIN: &[u8] = b"terp-auth/zkjwt/v1";
-
 
 fn p256_a_le() -> [u8; 32] {
     let a = -Fp::from(3u64);
@@ -181,19 +180,13 @@ fn assign_passkey(
     ecdsa_verify_no_pubkey_check::<Fr, Fp, Fq, Secp256r1Affine>(&ecc, ctx, pk, r, s, m, 4, 4)
 }
 
-fn populate_builder(
-    builder: &mut BaseCircuitBuilder<Fr>,
-    w: &PasskeyWitness,
-) {
+fn populate_builder(builder: &mut BaseCircuitBuilder<Fr>, w: &PasskeyWitness) {
     with_weierstrass_a(-3, || {
-    populate_builder_inner(builder, w);
+        populate_builder_inner(builder, w);
     });
 }
 
-fn populate_builder_inner(
-    builder: &mut BaseCircuitBuilder<Fr>,
-    w: &PasskeyWitness,
-) {
+fn populate_builder_inner(builder: &mut BaseCircuitBuilder<Fr>, w: &PasskeyWitness) {
     builder.set_lookup_bits(LOOKUP_BITS);
     builder.set_instance_columns(1);
     let range = RangeChip::new(LOOKUP_BITS, builder.lookup_manager().clone());
@@ -338,7 +331,14 @@ pub fn prove_passkey(w: &PasskeyWitness) -> Result<Vec<u8>, String> {
         _,
         Blake2bWrite<Vec<u8>, G1Affine, Challenge255<G1Affine>>,
         _,
-    >(&keys.params, &keys.pk, &[builder], &[inst_ref], OsRng, &mut transcript)
+    >(
+        &keys.params,
+        &keys.pk,
+        &[builder],
+        &[inst_ref],
+        OsRng,
+        &mut transcript,
+    )
     .map_err(|e| format!("create_proof: {e:?}"))?;
     Ok(transcript.finalize())
 }
@@ -523,7 +523,7 @@ mod tests {
         let k_inv = k.invert().unwrap();
         let r_pt = Secp256r1Affine::from(Secp256r1Affine::generator() * k);
         let xy = r_pt.coordinates().unwrap();
-    let x = xy.x();
+        let x = xy.x();
         let r = biguint_to_fe::<Fq>(&(fe_to_biguint(x) % modulus::<Fq>()));
         let mut s = k_inv * (msghash + (r * sk));
         if bad_s {
@@ -574,7 +574,10 @@ mod tests {
         let mb = compute_msg_bind("c", "a", "id", 1, b"tx");
         assert_eq!(mb.len(), 32);
         let w = signed_witness(false, false);
-        assert_eq!(w.msg_bind, compute_msg_bind("terp-test", "terp1alice", "zkjwt", 0, b"sign-bytes"));
+        assert_eq!(
+            w.msg_bind,
+            compute_msg_bind("terp-test", "terp1alice", "zkjwt", 0, b"sign-bytes")
+        );
     }
 
     #[test]
