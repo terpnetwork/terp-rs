@@ -1,12 +1,12 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, DepsMut, QuerierWrapper,
-    Response, StdResult, Storage, Timestamp, Uint256, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, DepsMut, QuerierWrapper, Response, StdResult,
+    Storage, Timestamp, Uint256, WasmMsg, ensure, to_json_binary,
 };
 use serde::Deserialize;
 
-use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
 use crate::ContractError;
+use crate::state::{Auction, Config, HaltManager, MIN_RESERVE_PRICES, auctions};
 
 pub fn validate_reserve(storage: &dyn Storage, price: &Coin) -> Result<(), ContractError> {
     let minimum = MIN_RESERVE_PRICES.may_load(storage, price.denom.clone())?;
@@ -82,7 +82,12 @@ pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> StdR
     })
 }
 
-pub fn fair_burn(amount: Uint256, denom: &str, burn_bps: u64, fee_manager: &Addr) -> Vec<CosmosMsg> {
+pub fn fair_burn(
+    amount: Uint256,
+    denom: &str,
+    burn_bps: u64,
+    fee_manager: &Addr,
+) -> Vec<CosmosMsg> {
     if amount.is_zero() {
         return vec![];
     }

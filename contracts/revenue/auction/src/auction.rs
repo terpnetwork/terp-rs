@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    coin, to_json_binary, Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction,
-    MessageInfo, Response, Uint128, WasmMsg,
+    Addr, BankMsg, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Response,
+    Uint128, WasmMsg, coin, to_json_binary,
 };
 use terp_marketplace_utils::auction::{AuctionType, Bid, ExecuteMsg, Royalty};
 
@@ -8,8 +8,8 @@ use crate::contract::AuctionCw721ExecuteMsg;
 use crate::error::ContractError;
 use crate::querier::query_nft_owner;
 use crate::state::{
-    Auction, AUCTIONS, AUCTION_ID_BY_AMOUNT, AUCTION_ID_BY_BIDDER, AUCTION_ID_BY_ENDTIME,
-    AUCTION_ID_BY_SELLER, BID_COUNT_BY_AUCTION_ID, BID_HISTORY_BY_AUCTION_ID, CONFIG,
+    AUCTION_ID_BY_AMOUNT, AUCTION_ID_BY_BIDDER, AUCTION_ID_BY_ENDTIME, AUCTION_ID_BY_SELLER,
+    AUCTIONS, Auction, BID_COUNT_BY_AUCTION_ID, BID_HISTORY_BY_AUCTION_ID, CONFIG,
     NFT_AUCTION_MAPS, NOT_STARTED_AUCTION, ROYALTIES, ROYALTY_ADMINS, STATE,
 };
 
@@ -45,7 +45,7 @@ pub fn create_auction(
         Some(_) => {
             return Err(ContractError::InvalidAuction(
                 "auction is duplicated".to_string(),
-            ))
+            ));
         }
         None => {}
     };
@@ -334,7 +334,7 @@ pub fn place_bid(
                         }
                     }
                     None => {
-                        return Err(ContractError::InvalidAuction("unknown bidder".to_string()))
+                        return Err(ContractError::InvalidAuction("unknown bidder".to_string()));
                     }
                 };
 

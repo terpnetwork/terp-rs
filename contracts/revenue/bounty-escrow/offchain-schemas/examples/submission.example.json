@@ -1,0 +1,40 @@
+{
+  "schema": "terp-bounty-submission/v1",
+  "bounty_ref": "cat-docs-001",
+  "escrow": {
+    "chain_id": "terp-local-1",
+    "contract": "terp1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqw39a47",
+    "bounty_id": 1
+  },
+  "submitter": "terp1xtm4qfz4z62082w9jk32fr05s7cumxz0c6xah6",
+  "summary": "Guide merged in docs/governance/quick-start.md with 6 annotated screenshots.",
+  "evidence": [
+    {
+      "kind": "pr",
+      "uri": "https://github.com/terpnetwork/docs/pull/1"
+    },
+    {
+      "kind": "url",
+      "uri": "https://docs.terp.network/governance/quick-start"
+    }
+  ],
+  "acceptance": [
+    {
+      "criterion": "Covers propose, deposit, vote and tally",
+      "met": true,
+      "evidence": [
+        0,
+        1
+      ]
+    },
+    {
+      "criterion": "Reviewed by a docs maintainer",
+      "met": true,
+      "evidence": [
+        0
+      ]
+    }
+  ],
+  "details_hash": "88dad0bbf6beb7e4e4ad104e5bd03b9846422a28a6fc3c7c3a62c0146ee08977",
+  "submitted_at": "2026-10-18T12:00:00Z"
+}

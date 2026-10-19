@@ -1,9 +1,9 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Coin, Uint128};
 
+use crate::ContractError;
 use crate::orders::{Ask, Bid, CollectionBid, OrderTerms};
 use crate::state::{Config, Denom, OrderId, TokenId};
-use crate::ContractError;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -246,4 +246,3 @@ pub enum QueryMsg {
         query_options: Option<QueryOptions<String>>,
     },
 }
-

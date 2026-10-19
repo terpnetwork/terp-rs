@@ -1,16 +1,16 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    ensure, ensure_eq, to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, Env, QuerierWrapper,
-    Response, StdResult, Storage, Timestamp, Uint128, Uint256, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, Env, QuerierWrapper, Response, StdResult,
+    Storage, Timestamp, Uint128, Uint256, WasmMsg, ensure, ensure_eq, to_json_binary,
 };
 use cw_storage_plus::Bound;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+use crate::ContractError;
 use crate::msg::{BoundOffset, PriceOffset};
 use crate::orders::{Ask, MatchingBid};
-use crate::state::{Config, COLLECTION_DENOMS, MAX_BASIS_POINTS};
-use crate::ContractError;
+use crate::state::{COLLECTION_DENOMS, Config, MAX_BASIS_POINTS};
 
 pub fn collection_token_index(collection: &str, token_id: &str) -> String {
     format!("{collection}/{token_id}")
@@ -109,10 +109,7 @@ enum NftQuery {
 
 #[cw_serde]
 enum NftExec {
-    TransferNft {
-        recipient: String,
-        token_id: String,
-    },
+    TransferNft { recipient: String, token_id: String },
 }
 
 #[derive(Deserialize)]
@@ -240,7 +237,12 @@ pub fn only_tradable(
     Ok(())
 }
 
-pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr, response: Response) -> StdResult<Response> {
+pub fn transfer_nft(
+    collection: &Addr,
+    token_id: &str,
+    recipient: &Addr,
+    response: Response,
+) -> StdResult<Response> {
     Ok(response.add_message(WasmMsg::Execute {
         contract_addr: collection.to_string(),
         msg: to_json_binary(&NftExec::TransferNft {
@@ -306,7 +308,12 @@ pub struct Payment {
     pub funds: Coin,
 }
 
-pub fn fair_burn(amount: Uint256, denom: &str, burn_bps: u64, fee_manager: &Addr) -> Vec<CosmosMsg> {
+pub fn fair_burn(
+    amount: Uint256,
+    denom: &str,
+    burn_bps: u64,
+    fee_manager: &Addr,
+) -> Vec<CosmosMsg> {
     if amount.is_zero() {
         return vec![];
     }
@@ -387,7 +394,11 @@ pub fn finalize_sale(
         }
         if protocol_left > Decimal::zero() {
             let fee_amt = sale_price.amount.mul_ceil(protocol_left);
-            let fee_amt = if fee_amt > remaining { remaining } else { fee_amt };
+            let fee_amt = if fee_amt > remaining {
+                remaining
+            } else {
+                fee_amt
+            };
             remaining = remaining.checked_sub(fee_amt)?;
             let burn_msgs = fair_burn(fee_amt, denom, config.burn_bps, &config.fee_manager);
             response = response.add_messages(burn_msgs);
@@ -399,9 +410,18 @@ pub fn finalize_sale(
         }
     }
 
-    if let Some(royalty) = load_royalty(deps.as_ref(), config, &ask.collection, &env.contract.address)? {
+    if let Some(royalty) = load_royalty(
+        deps.as_ref(),
+        config,
+        &ask.collection,
+        &env.contract.address,
+    )? {
         let cap = Decimal::bps(config.max_royalty_fee_bps.min(MAX_BASIS_POINTS));
-        let share = if royalty.share > cap { cap } else { royalty.share };
+        let share = if royalty.share > cap {
+            cap
+        } else {
+            royalty.share
+        };
         push_fee(
             &mut payments,
             &mut remaining,

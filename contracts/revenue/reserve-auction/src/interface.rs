@@ -1,8 +1,14 @@
-use crate::{execute, instantiate, query, sudo, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query, sudo};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "revenue_reserve_auction")]
+#[cw_orch::interface(
+    InstantiateMsg,
+    ExecuteMsg,
+    QueryMsg,
+    Empty,
+    id = "revenue_reserve_auction"
+)]
 pub struct RevenueReserveAuction;
 
 impl<Chain: CwEnv> Uploadable for RevenueReserveAuction<Chain> {

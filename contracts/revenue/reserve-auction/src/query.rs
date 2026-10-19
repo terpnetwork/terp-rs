@@ -1,7 +1,7 @@
 use cosmwasm_std::{Deps, Env, StdResult};
 
 use crate::msg::QueryMsg;
-use crate::state::{auctions, CONFIG, HALT_MANAGER};
+use crate::state::{CONFIG, HALT_MANAGER, auctions};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Binary> {
@@ -13,10 +13,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<cosmwasm_std::Bi
             token_id,
         } => {
             let collection = deps.api.addr_validate(&collection)?;
-            cosmwasm_std::to_json_binary(&auctions().may_load(
-                deps.storage,
-                (collection, token_id),
-            )?)
+            cosmwasm_std::to_json_binary(
+                &auctions().may_load(deps.storage, (collection, token_id))?,
+            )
         }
     }
 }

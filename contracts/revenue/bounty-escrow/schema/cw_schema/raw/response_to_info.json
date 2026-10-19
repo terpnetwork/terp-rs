@@ -1,0 +1,33 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "dao_interface_voting_InfoResponse",
+      "type": "struct",
+      "properties": {
+        "info": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cw2_ContractVersion",
+      "type": "struct",
+      "properties": {
+        "contract": {
+          "description": "contract is the crate name of the implementing contract, e.g. `crate:cw20-base`\nwe will use other prefixes for other languages, and their standard global namespacing",
+          "value": 2
+        },
+        "version": {
+          "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\".\nor semantic version on release tags \"v0.7.0\", or some custom feature flag list.\nthe only code that needs to understand the version parsing is code that knows how to\nmigrate from the given contract (and is tied to its implementation somehow)",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

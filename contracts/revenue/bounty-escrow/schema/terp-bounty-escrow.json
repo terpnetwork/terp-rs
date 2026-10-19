@@ -1,0 +1,3545 @@
+{
+  "contract_name": "terp-bounty-escrow",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "allow_partial_payouts",
+      "approver",
+      "denoms",
+      "fee_bps",
+      "gate",
+      "max_duration_secs",
+      "min_duration_secs",
+      "min_submit_stake",
+      "min_upload_stake",
+      "owner",
+      "params_placeholder",
+      "params_version"
+    ],
+    "properties": {
+      "allow_partial_payouts": {
+        "type": "boolean"
+      },
+      "approver": {
+        "type": "string"
+      },
+      "creation_gate": {
+        "description": "Creation gate while no pre-propose module is installed. Default `ProposerGate {}` (legacy).",
+        "default": null,
+        "anyOf": [
+          {
+            "$ref": "#/definitions/CreationGate"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "dao": {
+        "description": "DAO DAO core address. Default: the instantiator (a DAO core instantiates its proposal modules, exactly like dao-proposal-single, which uses `info.sender`).",
+        "default": null,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "denoms": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/DenomRule"
+        }
+      },
+      "fee_bps": {
+        "type": "integer",
+        "format": "uint16",
+        "minimum": 0.0
+      },
+      "fee_collector": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "gate": {
+        "$ref": "#/definitions/ProposerGateMsg"
+      },
+      "initial_allowlist": {
+        "default": [],
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "max_duration_secs": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "min_duration_secs": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "min_submit_stake": {
+        "description": "Required: minimum bonded stake (bond denom) of the assignee to submit work; \"0\" disables. No default.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint256"
+          }
+        ]
+      },
+      "min_upload_stake": {
+        "description": "Required: minimum bonded stake (bond denom) to upload documents through the CID storage service (checked off chain via `can_upload`); \"0\" disables. No default.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint256"
+          }
+        ]
+      },
+      "owner": {
+        "type": "string"
+      },
+      "params_placeholder": {
+        "description": "Required: true while the values are unvoted placeholders.",
+        "type": "boolean"
+      },
+      "params_version": {
+        "description": "Required label of this parameter set; no default.",
+        "type": "string"
+      },
+      "pre_propose_info": {
+        "description": "dao-voting pre-propose config. Default `AnyoneMayPropose {}` (then `creation_gate` applies). `ModuleMayPropose { info }` instantiates the module (admin = dao) and gives it exclusive creation rights once its instantiate reply arrives (fails open to Anyone until then, as upstream).",
+        "default": null,
+        "anyOf": [
+          {
+            "$ref": "#/definitions/PreProposeInfo"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Admin": {
+        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
+        "oneOf": [
+          {
+            "description": "Set the admin to a specified address.",
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "required": [
+                  "addr"
+                ],
+                "properties": {
+                  "addr": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Sets the admin as the core module address.",
+            "type": "object",
+            "required": [
+              "core_module"
+            ],
+            "properties": {
+              "core_module": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreationGate": {
+        "description": "Who may create a bounty while the creation policy is `Anyone {}` (no pre-propose module). When a pre-propose module is installed (`ProposalCreationPolicy::Module`), that module is the gate and this setting is not consulted.",
+        "oneOf": [
+          {
+            "description": "Legacy behaviour: the `ProposerGate` (allowlist / min_stake / cw4, any passes).",
+            "type": "object",
+            "required": [
+              "proposer_gate"
+            ],
+            "properties": {
+              "proposer_gate": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(a) Anyone may deposit and create a bounty. Listing still needs the approver.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(b) The sender's bonded stake in the chain bond denom (same `bonded()` check as `ProposerGate.min_stake` and the submit/upload gates) must be >= `amount`. `amount` > 0.",
+            "type": "object",
+            "required": [
+              "min_stake"
+            ],
+            "properties": {
+              "min_stake": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "#/definitions/Uint256"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(c) TODO, NOT IMPLEMENTED: a sound, private proof that the proposer deposited into an escrow on a counterparty chain (e.g. Zcash shielded) without revealing the deposit details. See DESIGN.md §9. Instantiate/update_config reject it and create would fail with `Unimplemented`.",
+            "type": "object",
+            "required": [
+              "counterparty_escrow_proof"
+            ],
+            "properties": {
+              "counterparty_escrow_proof": {
+                "type": "object",
+                "required": [
+                  "chain"
+                ],
+                "properties": {
+                  "chain": {
+                    "description": "Counterparty chain id, e.g. \"zcash-mainnet\".",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DenomRule": {
+        "type": "object",
+        "required": [
+          "denom",
+          "max_amount",
+          "min_amount"
+        ],
+        "properties": {
+          "denom": {
+            "type": "string"
+          },
+          "max_amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "min_amount": {
+            "$ref": "#/definitions/Uint256"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleInstantiateInfo": {
+        "description": "Information needed to instantiate a module.",
+        "type": "object",
+        "required": [
+          "code_id",
+          "label",
+          "msg"
+        ],
+        "properties": {
+          "admin": {
+            "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Admin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code_id": {
+            "description": "Code ID of the contract to be instantiated.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "funds": {
+            "description": "Funds to be sent to the instantiated contract.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "label": {
+            "description": "Label for the instantiated contract.",
+            "type": "string"
+          },
+          "msg": {
+            "description": "Instantiate message to be used to create the contract.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "salt": {
+            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PreProposeInfo": {
+        "oneOf": [
+          {
+            "description": "Anyone may create a proposal free of charge.",
+            "type": "object",
+            "required": [
+              "anyone_may_propose"
+            ],
+            "properties": {
+              "anyone_may_propose": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The module specified in INFO has exclusive rights to proposal creation.",
+            "type": "object",
+            "required": [
+              "module_may_propose"
+            ],
+            "properties": {
+              "module_may_propose": {
+                "type": "object",
+                "required": [
+                  "info"
+                ],
+                "properties": {
+                  "info": {
+                    "$ref": "#/definitions/ModuleInstantiateInfo"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProposerGateMsg": {
+        "type": "object",
+        "required": [
+          "use_allowlist"
+        ],
+        "properties": {
+          "cw4_group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "min_stake": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Uint256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "use_allowlist": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Uint256": {
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Whitelisted proposer only. `info.funds` must be exactly `[reward]`. Creates a Pending bounty. `summary` <= 280 bytes UTF-8 (no control chars); `details_hash` = sha256 hex of the canonical terp-bounty-details/v1 doc; `details_cid` = optional IPFS CID of it.",
+        "type": "object",
+        "required": [
+          "create_bounty"
+        ],
+        "properties": {
+          "create_bounty": {
+            "type": "object",
+            "required": [
+              "bounty_ref",
+              "details_hash",
+              "expires_at",
+              "reward",
+              "summary",
+              "title"
+            ],
+            "properties": {
+              "bounty_ref": {
+                "type": "string"
+              },
+              "details_cid": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "details_hash": {
+                "type": "string"
+              },
+              "expires_at": {
+                "$ref": "#/definitions/Timestamp"
+              },
+              "proposer": {
+                "description": "Must be set if and only if the sender is the installed pre-propose module (it then names the real proposer, who receives refunds). Same rule as dao-proposal-single `propose.proposer`.",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reward": {
+                "$ref": "#/definitions/Coin"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Approver: Pending -> Open.",
+        "type": "object",
+        "required": [
+          "approve"
+        ],
+        "properties": {
+          "approve": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Approver: Pending -> Refunded (full refund to proposer).",
+        "type": "object",
+        "required": [
+          "reject"
+        ],
+        "properties": {
+          "reject": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Proposer (Pending/Open) or approver (Pending/Open/Assigned) -> Cancelled (full refund).",
+        "type": "object",
+        "required": [
+          "cancel"
+        ],
+        "properties": {
+          "cancel": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Proposer or approver: Open -> Assigned.",
+        "type": "object",
+        "required": [
+          "assign"
+        ],
+        "properties": {
+          "assign": {
+            "type": "object",
+            "required": [
+              "assignee",
+              "id"
+            ],
+            "properties": {
+              "assignee": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Proposer or approver: Assigned -> Open.",
+        "type": "object",
+        "required": [
+          "unassign"
+        ],
+        "properties": {
+          "unassign": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Assignee only, before expiry, with bonded stake >= min_submit_stake: Assigned -> Submitted. `cid` = IPFS CID of the terp-bounty-submission/v1 doc; `submission_hash` = sha256 hex of its bytes.",
+        "type": "object",
+        "required": [
+          "submit"
+        ],
+        "properties": {
+          "submit": {
+            "type": "object",
+            "required": [
+              "cid",
+              "id",
+              "submission_hash"
+            ],
+            "properties": {
+              "cid": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "submission_hash": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Proposer or approver: Submitted -> Assigned.",
+        "type": "object",
+        "required": [
+          "request_changes"
+        ],
+        "properties": {
+          "request_changes": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Approver: Submitted -> Accepted.",
+        "type": "object",
+        "required": [
+          "accept"
+        ],
+        "properties": {
+          "accept": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Approver: release `amount` (default: everything remaining) to the assignee. Accepted -> Paid when nothing remains; partial amounts need allow_partial_payouts.",
+        "type": "object",
+        "required": [
+          "payout"
+        ],
+        "properties": {
+          "payout": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "amount": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Approver: after a partial payout, refund what is left to the proposer. Accepted -> Paid.",
+        "type": "object",
+        "required": [
+          "settle_remainder"
+        ],
+        "properties": {
+          "settle_remainder": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Anyone, once block time >= expires_at: Pending/Open/Assigned -> Expired (full refund).",
+        "type": "object",
+        "required": [
+          "expire"
+        ],
+        "properties": {
+          "expire": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Owner only (governance). Changing any governance parameter (approver, gate, denoms/caps, partial payouts, fee, fee_collector, duration window) requires a new `params_version`.",
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "properties": {
+              "allow_partial_payouts": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "approver": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "creation_gate": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/CreationGate"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "denoms": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/definitions/DenomRule"
+                }
+              },
+              "fee_bps": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint16",
+                "minimum": 0.0
+              },
+              "fee_collector": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "gate": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/ProposerGateMsg"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "max_duration_secs": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "min_duration_secs": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "min_submit_stake": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "min_upload_stake": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "params_placeholder": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "params_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Owner only.",
+        "type": "object",
+        "required": [
+          "update_allowlist"
+        ],
+        "properties": {
+          "update_allowlist": {
+            "type": "object",
+            "required": [
+              "add",
+              "remove"
+            ],
+            "properties": {
+              "add": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "remove": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "DAO only (dao-proposal-single shape): replace the pre-propose module config.",
+        "type": "object",
+        "required": [
+          "update_pre_propose_info"
+        ],
+        "properties": {
+          "update_pre_propose_info": {
+            "type": "object",
+            "required": [
+              "info"
+            ],
+            "properties": {
+              "info": {
+                "$ref": "#/definitions/PreProposeInfo"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "DAO only: register a dao-hooks proposal hook receiver.",
+        "type": "object",
+        "required": [
+          "add_proposal_hook"
+        ],
+        "properties": {
+          "add_proposal_hook": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "DAO only: remove a proposal hook receiver.",
+        "type": "object",
+        "required": [
+          "remove_proposal_hook"
+        ],
+        "properties": {
+          "remove_proposal_hook": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Admin": {
+        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
+        "oneOf": [
+          {
+            "description": "Set the admin to a specified address.",
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "required": [
+                  "addr"
+                ],
+                "properties": {
+                  "addr": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Sets the admin as the core module address.",
+            "type": "object",
+            "required": [
+              "core_module"
+            ],
+            "properties": {
+              "core_module": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreationGate": {
+        "description": "Who may create a bounty while the creation policy is `Anyone {}` (no pre-propose module). When a pre-propose module is installed (`ProposalCreationPolicy::Module`), that module is the gate and this setting is not consulted.",
+        "oneOf": [
+          {
+            "description": "Legacy behaviour: the `ProposerGate` (allowlist / min_stake / cw4, any passes).",
+            "type": "object",
+            "required": [
+              "proposer_gate"
+            ],
+            "properties": {
+              "proposer_gate": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(a) Anyone may deposit and create a bounty. Listing still needs the approver.",
+            "type": "object",
+            "required": [
+              "anyone"
+            ],
+            "properties": {
+              "anyone": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(b) The sender's bonded stake in the chain bond denom (same `bonded()` check as `ProposerGate.min_stake` and the submit/upload gates) must be >= `amount`. `amount` > 0.",
+            "type": "object",
+            "required": [
+              "min_stake"
+            ],
+            "properties": {
+              "min_stake": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "$ref": "#/definitions/Uint256"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "(c) TODO, NOT IMPLEMENTED: a sound, private proof that the proposer deposited into an escrow on a counterparty chain (e.g. Zcash shielded) without revealing the deposit details. See DESIGN.md §9. Instantiate/update_config reject it and create would fail with `Unimplemented`.",
+            "type": "object",
+            "required": [
+              "counterparty_escrow_proof"
+            ],
+            "properties": {
+              "counterparty_escrow_proof": {
+                "type": "object",
+                "required": [
+                  "chain"
+                ],
+                "properties": {
+                  "chain": {
+                    "description": "Counterparty chain id, e.g. \"zcash-mainnet\".",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DenomRule": {
+        "type": "object",
+        "required": [
+          "denom",
+          "max_amount",
+          "min_amount"
+        ],
+        "properties": {
+          "denom": {
+            "type": "string"
+          },
+          "max_amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "min_amount": {
+            "$ref": "#/definitions/Uint256"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleInstantiateInfo": {
+        "description": "Information needed to instantiate a module.",
+        "type": "object",
+        "required": [
+          "code_id",
+          "label",
+          "msg"
+        ],
+        "properties": {
+          "admin": {
+            "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Admin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code_id": {
+            "description": "Code ID of the contract to be instantiated.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "funds": {
+            "description": "Funds to be sent to the instantiated contract.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "label": {
+            "description": "Label for the instantiated contract.",
+            "type": "string"
+          },
+          "msg": {
+            "description": "Instantiate message to be used to create the contract.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              }
+            ]
+          },
+          "salt": {
+            "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PreProposeInfo": {
+        "oneOf": [
+          {
+            "description": "Anyone may create a proposal free of charge.",
+            "type": "object",
+            "required": [
+              "anyone_may_propose"
+            ],
+            "properties": {
+              "anyone_may_propose": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The module specified in INFO has exclusive rights to proposal creation.",
+            "type": "object",
+            "required": [
+              "module_may_propose"
+            ],
+            "properties": {
+              "module_may_propose": {
+                "type": "object",
+                "required": [
+                  "info"
+                ],
+                "properties": {
+                  "info": {
+                    "$ref": "#/definitions/ModuleInstantiateInfo"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProposerGateMsg": {
+        "type": "object",
+        "required": [
+          "use_allowlist"
+        ],
+        "properties": {
+          "cw4_group": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "min_stake": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Uint256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "use_allowlist": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint256": {
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "bounty"
+        ],
+        "properties": {
+          "bounty": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "bounty_by_ref"
+        ],
+        "properties": {
+          "bounty_by_ref": {
+            "type": "object",
+            "required": [
+              "bounty_ref"
+            ],
+            "properties": {
+              "bounty_ref": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "bounties"
+        ],
+        "properties": {
+          "bounties": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "proposer": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "start_after": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/BountyStatus"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "submissions"
+        ],
+        "properties": {
+          "submissions": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_eligible"
+        ],
+        "properties": {
+          "is_eligible": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Whether `address` passes the submission stake gate (min_submit_stake).",
+        "type": "object",
+        "required": [
+          "can_submit"
+        ],
+        "properties": {
+          "can_submit": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Whether `address` passes the upload stake gate (min_upload_stake) of the CID storage service.",
+        "type": "object",
+        "required": [
+          "can_upload"
+        ],
+        "properties": {
+          "can_upload": {
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "allowlist"
+        ],
+        "properties": {
+          "allowlist": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "cw2 contract name and version.",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "The DAO core this module belongs to.",
+        "type": "object",
+        "required": [
+          "dao"
+        ],
+        "properties": {
+          "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "A bounty as a proposal.",
+        "type": "object",
+        "required": [
+          "proposal"
+        ],
+        "properties": {
+          "proposal": {
+            "type": "object",
+            "required": [
+              "proposal_id"
+            ],
+            "properties": {
+              "proposal_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Bounties as proposals, ascending by id.",
+        "type": "object",
+        "required": [
+          "list_proposals"
+        ],
+        "properties": {
+          "list_proposals": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Bounties as proposals, descending by id.",
+        "type": "object",
+        "required": [
+          "reverse_proposals"
+        ],
+        "properties": {
+          "reverse_proposals": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "start_before": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Number of bounties ever created.",
+        "type": "object",
+        "required": [
+          "proposal_count"
+        ],
+        "properties": {
+          "proposal_count": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Id the next bounty will get.",
+        "type": "object",
+        "required": [
+          "next_proposal_id"
+        ],
+        "properties": {
+          "next_proposal_id": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Who may create bounties (Anyone or a pre-propose module).",
+        "type": "object",
+        "required": [
+          "proposal_creation_policy"
+        ],
+        "properties": {
+          "proposal_creation_policy": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Registered proposal hook receivers.",
+        "type": "object",
+        "required": [
+          "proposal_hooks"
+        ],
+        "properties": {
+          "proposal_hooks": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "BountyStatus": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "assigned",
+              "submitted",
+              "paid",
+              "cancelled",
+              "refunded",
+              "expired"
+            ]
+          },
+          {
+            "description": "Funded, waiting for the approver to list it.",
+            "type": "string",
+            "enum": [
+              "pending"
+            ]
+          },
+          {
+            "description": "Listed (approved); accepting applications off-chain.",
+            "type": "string",
+            "enum": [
+              "open"
+            ]
+          },
+          {
+            "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+            "type": "string",
+            "enum": [
+              "accepted"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "migrate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MigrateMsg",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "sudo": null,
+  "responses": {
+    "allowlist": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AllowlistResponse",
+      "type": "object",
+      "required": [
+        "addresses"
+      ],
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bounties": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BountiesResponse",
+      "type": "object",
+      "required": [
+        "bounties"
+      ],
+      "properties": {
+        "bounties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Bounty"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Bounty": {
+          "type": "object",
+          "required": [
+            "bounty_ref",
+            "created_at",
+            "created_height",
+            "details_hash",
+            "expires_at",
+            "id",
+            "paid",
+            "params_version",
+            "proposer",
+            "refunded",
+            "reward",
+            "status",
+            "submission_count",
+            "summary",
+            "title",
+            "updated_at"
+          ],
+          "properties": {
+            "assignee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bounty_ref": {
+              "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+              "type": "string"
+            },
+            "created_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "created_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "details_cid": {
+              "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "details_hash": {
+              "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "paid": {
+              "description": "Gross amount released so far (fees included).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            },
+            "params_version": {
+              "description": "Config.params_version in force when the bounty was created.",
+              "type": "string"
+            },
+            "proposer": {
+              "$ref": "#/definitions/Addr"
+            },
+            "refunded": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "reward": {
+              "$ref": "#/definitions/Coin"
+            },
+            "status": {
+              "$ref": "#/definitions/BountyStatus"
+            },
+            "submission_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "summary": {
+              "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "updated_at": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "bounty": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bounty",
+      "type": "object",
+      "required": [
+        "bounty_ref",
+        "created_at",
+        "created_height",
+        "details_hash",
+        "expires_at",
+        "id",
+        "paid",
+        "params_version",
+        "proposer",
+        "refunded",
+        "reward",
+        "status",
+        "submission_count",
+        "summary",
+        "title",
+        "updated_at"
+      ],
+      "properties": {
+        "assignee": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bounty_ref": {
+          "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "created_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "details_cid": {
+          "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "details_hash": {
+          "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+          "type": "string"
+        },
+        "expires_at": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "paid": {
+          "description": "Gross amount released so far (fees included).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        },
+        "params_version": {
+          "description": "Config.params_version in force when the bounty was created.",
+          "type": "string"
+        },
+        "proposer": {
+          "$ref": "#/definitions/Addr"
+        },
+        "refunded": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "reward": {
+          "$ref": "#/definitions/Coin"
+        },
+        "status": {
+          "$ref": "#/definitions/BountyStatus"
+        },
+        "submission_count": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "summary": {
+          "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "bounty_by_ref": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bounty",
+      "type": "object",
+      "required": [
+        "bounty_ref",
+        "created_at",
+        "created_height",
+        "details_hash",
+        "expires_at",
+        "id",
+        "paid",
+        "params_version",
+        "proposer",
+        "refunded",
+        "reward",
+        "status",
+        "submission_count",
+        "summary",
+        "title",
+        "updated_at"
+      ],
+      "properties": {
+        "assignee": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bounty_ref": {
+          "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+          "type": "string"
+        },
+        "created_at": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "created_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "details_cid": {
+          "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "details_hash": {
+          "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+          "type": "string"
+        },
+        "expires_at": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "paid": {
+          "description": "Gross amount released so far (fees included).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        },
+        "params_version": {
+          "description": "Config.params_version in force when the bounty was created.",
+          "type": "string"
+        },
+        "proposer": {
+          "$ref": "#/definitions/Addr"
+        },
+        "refunded": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "reward": {
+          "$ref": "#/definitions/Coin"
+        },
+        "status": {
+          "$ref": "#/definitions/BountyStatus"
+        },
+        "submission_count": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "summary": {
+          "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updated_at": {
+          "$ref": "#/definitions/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "can_submit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SubmitEligibilityResponse",
+      "type": "object",
+      "required": [
+        "bond_denom",
+        "eligible",
+        "min_submit_stake",
+        "staked"
+      ],
+      "properties": {
+        "bond_denom": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "min_submit_stake": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "staked": {
+          "description": "Bonded-denom delegation total of `address`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        }
+      }
+    },
+    "can_upload": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UploadEligibilityResponse",
+      "type": "object",
+      "required": [
+        "bond_denom",
+        "eligible",
+        "min_upload_stake",
+        "staked"
+      ],
+      "properties": {
+        "bond_denom": {
+          "type": "string"
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "min_upload_stake": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "staked": {
+          "description": "Bonded-denom delegation total of `address`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Config",
+      "type": "object",
+      "required": [
+        "allow_partial_payouts",
+        "approver",
+        "denoms",
+        "fee_bps",
+        "gate",
+        "max_duration_secs",
+        "min_duration_secs",
+        "min_submit_stake",
+        "owner",
+        "params_placeholder",
+        "params_version"
+      ],
+      "properties": {
+        "allow_partial_payouts": {
+          "type": "boolean"
+        },
+        "approver": {
+          "description": "The only address that can approve listings, accept work and release payouts. A human admin key in dev; a cw3 multisig or DAO-DAO core in prod. Never automatic.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "creation_gate": {
+          "description": "Creation gate applied when no pre-propose module is installed. `serde(default)` = ProposerGate {}.",
+          "default": {
+            "proposer_gate": {}
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/CreationGate"
+            }
+          ]
+        },
+        "denoms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DenomRule"
+          }
+        },
+        "fee_bps": {
+          "description": "Fee taken from each payout, in basis points. Hard-capped at 1000 (10%).",
+          "type": "integer",
+          "format": "uint16",
+          "minimum": 0.0
+        },
+        "fee_collector": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gate": {
+          "$ref": "#/definitions/ProposerGate"
+        },
+        "max_duration_secs": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_duration_secs": {
+          "description": "expires_at must be within [now + min_duration_secs, now + max_duration_secs].",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_submit_stake": {
+          "description": "Submission stake gate: the assignee's bonded-denom delegations must be >= this to `submit`. 0 disables the gate. Governance parameter (placeholder until voted).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        },
+        "min_upload_stake": {
+          "description": "Upload stake gate for the off-chain CID storage service (terp-bounty-details/v1 and terp-bounty-submission/v1 documents): the uploader's bonded-denom delegations must be >= this. The contract does not see uploads; it is the governance source of the threshold and of the `can_upload` check the service calls. 0 disables. Placeholder until voted. `serde(default)` keeps configs stored by older code readable after a migrate.",
+          "default": "0",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            }
+          ]
+        },
+        "owner": {
+          "description": "Can change config and the allowlist. DAO core address in prod.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "params_placeholder": {
+          "description": "true while the parameters are PLACEHOLDERS that governance has not voted.",
+          "type": "boolean"
+        },
+        "params_version": {
+          "description": "Label of the governance parameter set in force (e.g. escrow/params/escrow.params.json `params_version`). Stamped on every bounty and on create/update_config events.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "CreationGate": {
+          "description": "Who may create a bounty while the creation policy is `Anyone {}` (no pre-propose module). When a pre-propose module is installed (`ProposalCreationPolicy::Module`), that module is the gate and this setting is not consulted.",
+          "oneOf": [
+            {
+              "description": "Legacy behaviour: the `ProposerGate` (allowlist / min_stake / cw4, any passes).",
+              "type": "object",
+              "required": [
+                "proposer_gate"
+              ],
+              "properties": {
+                "proposer_gate": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "(a) Anyone may deposit and create a bounty. Listing still needs the approver.",
+              "type": "object",
+              "required": [
+                "anyone"
+              ],
+              "properties": {
+                "anyone": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "(b) The sender's bonded stake in the chain bond denom (same `bonded()` check as `ProposerGate.min_stake` and the submit/upload gates) must be >= `amount`. `amount` > 0.",
+              "type": "object",
+              "required": [
+                "min_stake"
+              ],
+              "properties": {
+                "min_stake": {
+                  "type": "object",
+                  "required": [
+                    "amount"
+                  ],
+                  "properties": {
+                    "amount": {
+                      "$ref": "#/definitions/Uint256"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "description": "(c) TODO, NOT IMPLEMENTED: a sound, private proof that the proposer deposited into an escrow on a counterparty chain (e.g. Zcash shielded) without revealing the deposit details. See DESIGN.md §9. Instantiate/update_config reject it and create would fail with `Unimplemented`.",
+              "type": "object",
+              "required": [
+                "counterparty_escrow_proof"
+              ],
+              "properties": {
+                "counterparty_escrow_proof": {
+                  "type": "object",
+                  "required": [
+                    "chain"
+                  ],
+                  "properties": {
+                    "chain": {
+                      "description": "Counterparty chain id, e.g. \"zcash-mainnet\".",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "DenomRule": {
+          "type": "object",
+          "required": [
+            "denom",
+            "max_amount",
+            "min_amount"
+          ],
+          "properties": {
+            "denom": {
+              "type": "string"
+            },
+            "max_amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "min_amount": {
+              "$ref": "#/definitions/Uint256"
+            }
+          },
+          "additionalProperties": false
+        },
+        "ProposerGate": {
+          "description": "Who may propose (create) a bounty. A sender is eligible if ANY enabled gate passes.",
+          "type": "object",
+          "required": [
+            "use_allowlist"
+          ],
+          "properties": {
+            "cw4_group": {
+              "description": "cw4 group contract; sender must be a member with weight > 0.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "min_stake": {
+              "description": "Sum of the sender's delegations in the chain bond denom (StakingQuery::AllDelegations + BondedDenom) must be >= this. Must be > 0 when set.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "use_allowlist": {
+              "description": "Admin-managed allowlist (ALLOWLIST map) is consulted.",
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        }
+      }
+    },
+    "dao": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "info": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfoResponse",
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/ContractVersion"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "ContractVersion": {
+          "type": "object",
+          "required": [
+            "contract",
+            "version"
+          ],
+          "properties": {
+            "contract": {
+              "description": "contract is the crate name of the implementing contract, e.g. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
+              "type": "string"
+            },
+            "version": {
+              "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to its implementation somehow)",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "is_eligible": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EligibilityResponse",
+      "type": "object",
+      "required": [
+        "eligible"
+      ],
+      "properties": {
+        "eligible": {
+          "type": "boolean"
+        },
+        "staked": {
+          "description": "Bonded-denom delegation total (only computed when min_stake is enabled).",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "via": {
+          "description": "\"allowlist\" | \"min_stake\" | \"cw4\" when eligible.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        }
+      }
+    },
+    "list_proposals": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BountyProposalListResponse",
+      "description": "Mirrors dao-proposal-single `ProposalListResponse { proposals }`.",
+      "type": "object",
+      "required": [
+        "proposals"
+      ],
+      "properties": {
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BountyProposalResponse"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Bounty": {
+          "type": "object",
+          "required": [
+            "bounty_ref",
+            "created_at",
+            "created_height",
+            "details_hash",
+            "expires_at",
+            "id",
+            "paid",
+            "params_version",
+            "proposer",
+            "refunded",
+            "reward",
+            "status",
+            "submission_count",
+            "summary",
+            "title",
+            "updated_at"
+          ],
+          "properties": {
+            "assignee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bounty_ref": {
+              "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+              "type": "string"
+            },
+            "created_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "created_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "details_cid": {
+              "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "details_hash": {
+              "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "paid": {
+              "description": "Gross amount released so far (fees included).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            },
+            "params_version": {
+              "description": "Config.params_version in force when the bounty was created.",
+              "type": "string"
+            },
+            "proposer": {
+              "$ref": "#/definitions/Addr"
+            },
+            "refunded": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "reward": {
+              "$ref": "#/definitions/Coin"
+            },
+            "status": {
+              "$ref": "#/definitions/BountyStatus"
+            },
+            "submission_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "summary": {
+              "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "updated_at": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyProposalResponse": {
+          "description": "Mirrors dao-proposal-single `ProposalResponse { id, proposal }`.",
+          "type": "object",
+          "required": [
+            "id",
+            "proposal"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "proposal": {
+              "$ref": "#/definitions/Bounty"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "next_proposal_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "uint64",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "proposal": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BountyProposalResponse",
+      "description": "Mirrors dao-proposal-single `ProposalResponse { id, proposal }`.",
+      "type": "object",
+      "required": [
+        "id",
+        "proposal"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "proposal": {
+          "$ref": "#/definitions/Bounty"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Bounty": {
+          "type": "object",
+          "required": [
+            "bounty_ref",
+            "created_at",
+            "created_height",
+            "details_hash",
+            "expires_at",
+            "id",
+            "paid",
+            "params_version",
+            "proposer",
+            "refunded",
+            "reward",
+            "status",
+            "submission_count",
+            "summary",
+            "title",
+            "updated_at"
+          ],
+          "properties": {
+            "assignee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bounty_ref": {
+              "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+              "type": "string"
+            },
+            "created_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "created_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "details_cid": {
+              "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "details_hash": {
+              "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "paid": {
+              "description": "Gross amount released so far (fees included).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            },
+            "params_version": {
+              "description": "Config.params_version in force when the bounty was created.",
+              "type": "string"
+            },
+            "proposer": {
+              "$ref": "#/definitions/Addr"
+            },
+            "refunded": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "reward": {
+              "$ref": "#/definitions/Coin"
+            },
+            "status": {
+              "$ref": "#/definitions/BountyStatus"
+            },
+            "submission_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "summary": {
+              "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "updated_at": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "proposal_count": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "uint64",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "proposal_creation_policy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProposalCreationPolicy",
+      "description": "The policy configured in a proposal module that determines whether or not a pre-propose module is in use. If so, only the module can create new proposals. Otherwise, there is no restriction on proposal creation.",
+      "oneOf": [
+        {
+          "description": "Anyone may create a proposal, free of charge.",
+          "type": "object",
+          "required": [
+            "anyone"
+          ],
+          "properties": {
+            "anyone": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Only ADDR may create proposals. It is expected that ADDR is a pre-propose module, though we only require that it is a valid address.",
+          "type": "object",
+          "required": [
+            "module"
+          ],
+          "properties": {
+            "module": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
+    "proposal_hooks": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "HooksResponse",
+      "type": "object",
+      "required": [
+        "hooks"
+      ],
+      "properties": {
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reverse_proposals": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BountyProposalListResponse",
+      "description": "Mirrors dao-proposal-single `ProposalListResponse { proposals }`.",
+      "type": "object",
+      "required": [
+        "proposals"
+      ],
+      "properties": {
+        "proposals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BountyProposalResponse"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Bounty": {
+          "type": "object",
+          "required": [
+            "bounty_ref",
+            "created_at",
+            "created_height",
+            "details_hash",
+            "expires_at",
+            "id",
+            "paid",
+            "params_version",
+            "proposer",
+            "refunded",
+            "reward",
+            "status",
+            "submission_count",
+            "summary",
+            "title",
+            "updated_at"
+          ],
+          "properties": {
+            "assignee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bounty_ref": {
+              "description": "Off-chain board id (zec-bounties DB Bounty.id). Unique.",
+              "type": "string"
+            },
+            "created_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "created_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "details_cid": {
+              "description": "Optional IPFS CID of that document (CIDv0 Qm… or CIDv1 base32 b…).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "details_hash": {
+              "description": "sha256 (hex) of the canonical terp-bounty-details/v1 JSON document (the full details).",
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "paid": {
+              "description": "Gross amount released so far (fees included).",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                }
+              ]
+            },
+            "params_version": {
+              "description": "Config.params_version in force when the bounty was created.",
+              "type": "string"
+            },
+            "proposer": {
+              "$ref": "#/definitions/Addr"
+            },
+            "refunded": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "reward": {
+              "$ref": "#/definitions/Coin"
+            },
+            "status": {
+              "$ref": "#/definitions/BountyStatus"
+            },
+            "submission_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "summary": {
+              "description": "Short public summary, at most SUMMARY_MAX_BYTES (280) bytes of UTF-8. Full details live off chain.",
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "updated_at": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyProposalResponse": {
+          "description": "Mirrors dao-proposal-single `ProposalResponse { id, proposal }`.",
+          "type": "object",
+          "required": [
+            "id",
+            "proposal"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "proposal": {
+              "$ref": "#/definitions/Bounty"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BountyStatus": {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "submitted",
+                "paid",
+                "cancelled",
+                "refunded",
+                "expired"
+              ]
+            },
+            {
+              "description": "Funded, waiting for the approver to list it.",
+              "type": "string",
+              "enum": [
+                "pending"
+              ]
+            },
+            {
+              "description": "Listed (approved); accepting applications off-chain.",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            {
+              "description": "Work accepted by the approver; awaiting (or partially through) payout.",
+              "type": "string",
+              "enum": [
+                "accepted"
+              ]
+            }
+          ]
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "submissions": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SubmissionsResponse",
+      "type": "object",
+      "required": [
+        "submissions"
+      ],
+      "properties": {
+        "submissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Submission"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Submission": {
+          "type": "object",
+          "required": [
+            "bounty_id",
+            "cid",
+            "hash",
+            "height",
+            "seq",
+            "submitted_at",
+            "submitter"
+          ],
+          "properties": {
+            "bounty_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "cid": {
+              "description": "IPFS CID of that doc (CIDv0 Qm… or CIDv1 base32 b…), validated on chain (cid.rs).",
+              "type": "string"
+            },
+            "hash": {
+              "description": "sha256 (hex) of the exact bytes of the terp-bounty-submission/v1 JSON doc; the backend re-hashes to verify.",
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "seq": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "submitted_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "submitter": {
+              "$ref": "#/definitions/Addr"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

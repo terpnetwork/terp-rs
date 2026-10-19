@@ -1,10 +1,10 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Storage, Uint256};
+use cosmwasm_std::{Addr, Storage, Uint256, ensure};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
+use crate::ContractError;
 use crate::helpers::collection_token_index;
 use crate::orders::{Ask, Bid, CollectionBid};
-use crate::ContractError;
 
 pub type OrderId = String;
 pub type TokenId = String;

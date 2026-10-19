@@ -1,6 +1,6 @@
 //! cw-orch interface. Host-only (`interface` feature). Artifact label `revenue_marketplace`.
 
-use crate::{execute, instantiate, query, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 

@@ -1,10 +1,10 @@
 use cosmwasm_std::{Addr, DepsMut, Env, Order, Response, StdResult};
 use cw_storage_plus::Bound;
 
+use crate::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
-use crate::state::{auctions, Auction, HaltWindow, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES};
-use crate::ContractError;
+use crate::state::{Auction, CONFIG, HALT_MANAGER, HaltWindow, MIN_RESERVE_PRICES, auctions};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
@@ -67,8 +67,8 @@ fn end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractError> {
         .map(|(_, auction)| auction)
         .collect();
 
-    let mut response =
-        Response::new().add_event(cosmwasm_std::Event::new("sudo-end-block").add_attribute("action", "settle"));
+    let mut response = Response::new()
+        .add_event(cosmwasm_std::Event::new("sudo-end-block").add_attribute("action", "settle"));
     for auction in due {
         response = settle_auction(
             deps.branch(),

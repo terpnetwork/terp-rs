@@ -1,13 +1,13 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Attribute, Coin, Deps};
 
+use crate::ContractError;
 use crate::helpers::generate_id;
 use crate::msg::{BoundOffset, PriceOffset, QueryOptions};
 use crate::query::{
     query_asks_by_collection_denom, query_bids_by_token_price, query_collection_bids_by_price,
 };
-use crate::state::{asks, bids, collection_bids, TokenId};
-use crate::ContractError;
+use crate::state::{TokenId, asks, bids, collection_bids};
 
 #[cw_serde]
 pub struct OrderTerms {
@@ -31,12 +31,7 @@ pub struct Ask {
 }
 
 impl Ask {
-    pub fn new(
-        creator: Addr,
-        collection: Addr,
-        token_id: TokenId,
-        terms: OrderTerms,
-    ) -> Self {
+    pub fn new(creator: Addr, collection: Addr, token_id: TokenId, terms: OrderTerms) -> Self {
         Self {
             id: generate_id(&[collection.as_bytes(), token_id.as_bytes()]),
             creator,

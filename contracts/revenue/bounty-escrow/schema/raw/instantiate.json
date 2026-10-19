@@ -1,0 +1,419 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "allow_partial_payouts",
+    "approver",
+    "denoms",
+    "fee_bps",
+    "gate",
+    "max_duration_secs",
+    "min_duration_secs",
+    "min_submit_stake",
+    "min_upload_stake",
+    "owner",
+    "params_placeholder",
+    "params_version"
+  ],
+  "properties": {
+    "allow_partial_payouts": {
+      "type": "boolean"
+    },
+    "approver": {
+      "type": "string"
+    },
+    "creation_gate": {
+      "description": "Creation gate while no pre-propose module is installed. Default `ProposerGate {}` (legacy).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CreationGate"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dao": {
+      "description": "DAO DAO core address. Default: the instantiator (a DAO core instantiates its proposal modules, exactly like dao-proposal-single, which uses `info.sender`).",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "denoms": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/DenomRule"
+      }
+    },
+    "fee_bps": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "fee_collector": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "gate": {
+      "$ref": "#/definitions/ProposerGateMsg"
+    },
+    "initial_allowlist": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "max_duration_secs": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_duration_secs": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_submit_stake": {
+      "description": "Required: minimum bonded stake (bond denom) of the assignee to submit work; \"0\" disables. No default.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "min_upload_stake": {
+      "description": "Required: minimum bonded stake (bond denom) to upload documents through the CID storage service (checked off chain via `can_upload`); \"0\" disables. No default.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "params_placeholder": {
+      "description": "Required: true while the values are unvoted placeholders.",
+      "type": "boolean"
+    },
+    "params_version": {
+      "description": "Required label of this parameter set; no default.",
+      "type": "string"
+    },
+    "pre_propose_info": {
+      "description": "dao-voting pre-propose config. Default `AnyoneMayPropose {}` (then `creation_gate` applies). `ModuleMayPropose { info }` instantiates the module (admin = dao) and gives it exclusive creation rights once its instantiate reply arrives (fails open to Anyone until then, as upstream).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PreProposeInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Admin": {
+      "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
+      "oneOf": [
+        {
+          "description": "Set the admin to a specified address.",
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Sets the admin as the core module address.",
+          "type": "object",
+          "required": [
+            "core_module"
+          ],
+          "properties": {
+            "core_module": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CreationGate": {
+      "description": "Who may create a bounty while the creation policy is `Anyone {}` (no pre-propose module). When a pre-propose module is installed (`ProposalCreationPolicy::Module`), that module is the gate and this setting is not consulted.",
+      "oneOf": [
+        {
+          "description": "Legacy behaviour: the `ProposerGate` (allowlist / min_stake / cw4, any passes).",
+          "type": "object",
+          "required": [
+            "proposer_gate"
+          ],
+          "properties": {
+            "proposer_gate": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(a) Anyone may deposit and create a bounty. Listing still needs the approver.",
+          "type": "object",
+          "required": [
+            "anyone"
+          ],
+          "properties": {
+            "anyone": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(b) The sender's bonded stake in the chain bond denom (same `bonded()` check as `ProposerGate.min_stake` and the submit/upload gates) must be >= `amount`. `amount` > 0.",
+          "type": "object",
+          "required": [
+            "min_stake"
+          ],
+          "properties": {
+            "min_stake": {
+              "type": "object",
+              "required": [
+                "amount"
+              ],
+              "properties": {
+                "amount": {
+                  "$ref": "#/definitions/Uint256"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(c) TODO, NOT IMPLEMENTED: a sound, private proof that the proposer deposited into an escrow on a counterparty chain (e.g. Zcash shielded) without revealing the deposit details. See DESIGN.md §9. Instantiate/update_config reject it and create would fail with `Unimplemented`.",
+          "type": "object",
+          "required": [
+            "counterparty_escrow_proof"
+          ],
+          "properties": {
+            "counterparty_escrow_proof": {
+              "type": "object",
+              "required": [
+                "chain"
+              ],
+              "properties": {
+                "chain": {
+                  "description": "Counterparty chain id, e.g. \"zcash-mainnet\".",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DenomRule": {
+      "type": "object",
+      "required": [
+        "denom",
+        "max_amount",
+        "min_amount"
+      ],
+      "properties": {
+        "denom": {
+          "type": "string"
+        },
+        "max_amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "min_amount": {
+          "$ref": "#/definitions/Uint256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModuleInstantiateInfo": {
+      "description": "Information needed to instantiate a module.",
+      "type": "object",
+      "required": [
+        "code_id",
+        "label",
+        "msg"
+      ],
+      "properties": {
+        "admin": {
+          "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Admin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code_id": {
+          "description": "Code ID of the contract to be instantiated.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "funds": {
+          "description": "Funds to be sent to the instantiated contract.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "label": {
+          "description": "Label for the instantiated contract.",
+          "type": "string"
+        },
+        "msg": {
+          "description": "Instantiate message to be used to create the contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "salt": {
+          "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "PreProposeInfo": {
+      "oneOf": [
+        {
+          "description": "Anyone may create a proposal free of charge.",
+          "type": "object",
+          "required": [
+            "anyone_may_propose"
+          ],
+          "properties": {
+            "anyone_may_propose": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The module specified in INFO has exclusive rights to proposal creation.",
+          "type": "object",
+          "required": [
+            "module_may_propose"
+          ],
+          "properties": {
+            "module_may_propose": {
+              "type": "object",
+              "required": [
+                "info"
+              ],
+              "properties": {
+                "info": {
+                  "$ref": "#/definitions/ModuleInstantiateInfo"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ProposerGateMsg": {
+      "type": "object",
+      "required": [
+        "use_allowlist"
+      ],
+      "properties": {
+        "cw4_group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "min_stake": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "use_allowlist": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}

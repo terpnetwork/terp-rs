@@ -3,7 +3,8 @@
 //! This cw-multi-test fork does not meter wasm gas (`gas_used` is 0). The gas bench prints
 //! event and attribute counts instead of inventing gas units.
 
-use cosmwasm_std::{coins, to_json_binary, Addr, Coin, Decimal, Empty, Uint128, Uint256};
+use cosmwasm_std::{Addr, Coin, Decimal, Empty, Uint128, Uint256, coins, to_json_binary};
+use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 use cw721::error::Cw721ContractError;
 use cw721::extension::Cw721OnchainExtensions;
 use cw721::msg::{
@@ -15,7 +16,6 @@ use cw721::{
     DefaultOptionalCollectionExtension, DefaultOptionalCollectionExtensionMsg,
     DefaultOptionalNftExtension, DefaultOptionalNftExtensionMsg,
 };
-use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 
 use crate::msg::{ExecuteMsg, HookMsg, InstantiateMsg, OrderDetails, QueryMsg};
 use crate::state::Config;
@@ -97,9 +97,11 @@ fn world(royalty_share: Option<Decimal>) -> World {
             .unwrap();
     });
 
-    let cw721_id = app.store_code(Box::new(
-        ContractWrapper::new(cw721_execute, cw721_instantiate, cw721_query),
-    ));
+    let cw721_id = app.store_code(Box::new(ContractWrapper::new(
+        cw721_execute,
+        cw721_instantiate,
+        cw721_query,
+    )));
     let extension = royalty_share.map(|share| CollectionExtensionMsg {
         description: Some("revenue test".into()),
         image: Some("https://example.invalid/img.png".into()),
@@ -131,7 +133,9 @@ fn world(royalty_share: Option<Decimal>) -> World {
         .unwrap();
 
     let market_id = app.store_code(Box::new(ContractWrapper::new_with_empty(
-        execute, instantiate, query,
+        execute,
+        instantiate,
+        query,
     )));
     let marketplace = app
         .instantiate_contract(

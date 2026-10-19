@@ -1,9 +1,9 @@
-use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
+use cosmwasm_std::{Addr, Binary, Deps, Env, StdResult, to_json_binary};
 
 use crate::helpers::{id_bound, price_bound};
 use crate::msg::QueryMsg;
 use crate::orders::{Ask, Bid, CollectionBid};
-use crate::state::{asks, bids, collection_bids, Denom, OrderId, COLLECTION_DENOMS, CONFIG};
+use crate::state::{COLLECTION_DENOMS, CONFIG, Denom, OrderId, asks, bids, collection_bids};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -214,4 +214,3 @@ pub fn query_collection_bids_by_creator_collection(
         .map(|item| item.map(|(_, bid)| bid))
         .collect()
 }
-

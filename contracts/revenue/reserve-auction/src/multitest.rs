@@ -1,6 +1,7 @@
 //! Reserve-auction flows. Gas is unmetered in this multi-test fork; the bench prints event counts.
 
-use cosmwasm_std::{coins, to_json_binary, Addr, Coin, Decimal, Empty, Uint128, Uint256};
+use cosmwasm_std::{Addr, Coin, Decimal, Empty, Uint128, Uint256, coins, to_json_binary};
+use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 use cw721::error::Cw721ContractError;
 use cw721::extension::Cw721OnchainExtensions;
 use cw721::msg::{
@@ -12,7 +13,6 @@ use cw721::{
     DefaultOptionalCollectionExtension, DefaultOptionalCollectionExtensionMsg,
     DefaultOptionalNftExtension, DefaultOptionalNftExtensionMsg,
 };
-use cw_multi_test::{App, AppResponse, ContractWrapper, Executor};
 
 use crate::msg::{ExecuteMsg, HookMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::state::Auction;
@@ -217,7 +217,12 @@ impl World {
         res
     }
 
-    fn bid(&mut self, sender: &Addr, token_id: &str, value: u128) -> Result<AppResponse, cosmwasm_std::StdError> {
+    fn bid(
+        &mut self,
+        sender: &Addr,
+        token_id: &str,
+        value: u128,
+    ) -> Result<AppResponse, cosmwasm_std::StdError> {
         let sender = sender.clone();
         let auction = self.auction.clone();
         let collection = self.collection.to_string();
@@ -287,7 +292,10 @@ fn bid_outbid_settle_cancel_and_royalty() {
     assert_eq!(w.owner("1"), w.auction.to_string());
 
     let seller_bid = w.bid(&w.seller.clone(), "1", 10_000).unwrap_err();
-    assert!(seller_bid.to_string().contains("seller cannot bid"), "{seller_bid}");
+    assert!(
+        seller_bid.to_string().contains("seller cannot bid"),
+        "{seller_bid}"
+    );
 
     let low = w.bid(&w.buyer.clone(), "1", 9_000).unwrap_err();
     assert!(low.to_string().contains("bid below"), "{low}");
@@ -400,10 +408,7 @@ fn instant_sale_hook_and_end_block() {
     note("receive-nft", &sent);
     assert_eq!(w.owner("9"), w.auction.to_string());
     let over = w.bid(&w.buyer.clone(), "9", 4_001).unwrap_err();
-    assert!(
-        over.to_string().contains("equal the reserve"),
-        "{over}"
-    );
+    assert!(over.to_string().contains("equal the reserve"), "{over}");
     let bought = w.bid(&w.buyer.clone(), "9", 4_000).unwrap();
     note("instant-settle", &bought);
     assert_eq!(w.owner("9"), w.buyer.to_string());

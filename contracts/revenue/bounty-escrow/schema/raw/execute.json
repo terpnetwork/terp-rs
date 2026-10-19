@@ -1,0 +1,891 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Whitelisted proposer only. `info.funds` must be exactly `[reward]`. Creates a Pending bounty. `summary` <= 280 bytes UTF-8 (no control chars); `details_hash` = sha256 hex of the canonical terp-bounty-details/v1 doc; `details_cid` = optional IPFS CID of it.",
+      "type": "object",
+      "required": [
+        "create_bounty"
+      ],
+      "properties": {
+        "create_bounty": {
+          "type": "object",
+          "required": [
+            "bounty_ref",
+            "details_hash",
+            "expires_at",
+            "reward",
+            "summary",
+            "title"
+          ],
+          "properties": {
+            "bounty_ref": {
+              "type": "string"
+            },
+            "details_cid": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "details_hash": {
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "proposer": {
+              "description": "Must be set if and only if the sender is the installed pre-propose module (it then names the real proposer, who receives refunds). Same rule as dao-proposal-single `propose.proposer`.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reward": {
+              "$ref": "#/definitions/Coin"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Approver: Pending -> Open.",
+      "type": "object",
+      "required": [
+        "approve"
+      ],
+      "properties": {
+        "approve": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Approver: Pending -> Refunded (full refund to proposer).",
+      "type": "object",
+      "required": [
+        "reject"
+      ],
+      "properties": {
+        "reject": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Proposer (Pending/Open) or approver (Pending/Open/Assigned) -> Cancelled (full refund).",
+      "type": "object",
+      "required": [
+        "cancel"
+      ],
+      "properties": {
+        "cancel": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Proposer or approver: Open -> Assigned.",
+      "type": "object",
+      "required": [
+        "assign"
+      ],
+      "properties": {
+        "assign": {
+          "type": "object",
+          "required": [
+            "assignee",
+            "id"
+          ],
+          "properties": {
+            "assignee": {
+              "type": "string"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Proposer or approver: Assigned -> Open.",
+      "type": "object",
+      "required": [
+        "unassign"
+      ],
+      "properties": {
+        "unassign": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Assignee only, before expiry, with bonded stake >= min_submit_stake: Assigned -> Submitted. `cid` = IPFS CID of the terp-bounty-submission/v1 doc; `submission_hash` = sha256 hex of its bytes.",
+      "type": "object",
+      "required": [
+        "submit"
+      ],
+      "properties": {
+        "submit": {
+          "type": "object",
+          "required": [
+            "cid",
+            "id",
+            "submission_hash"
+          ],
+          "properties": {
+            "cid": {
+              "type": "string"
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "submission_hash": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Proposer or approver: Submitted -> Assigned.",
+      "type": "object",
+      "required": [
+        "request_changes"
+      ],
+      "properties": {
+        "request_changes": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Approver: Submitted -> Accepted.",
+      "type": "object",
+      "required": [
+        "accept"
+      ],
+      "properties": {
+        "accept": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Approver: release `amount` (default: everything remaining) to the assignee. Accepted -> Paid when nothing remains; partial amounts need allow_partial_payouts.",
+      "type": "object",
+      "required": [
+        "payout"
+      ],
+      "properties": {
+        "payout": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "amount": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Approver: after a partial payout, refund what is left to the proposer. Accepted -> Paid.",
+      "type": "object",
+      "required": [
+        "settle_remainder"
+      ],
+      "properties": {
+        "settle_remainder": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Anyone, once block time >= expires_at: Pending/Open/Assigned -> Expired (full refund).",
+      "type": "object",
+      "required": [
+        "expire"
+      ],
+      "properties": {
+        "expire": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Owner only (governance). Changing any governance parameter (approver, gate, denoms/caps, partial payouts, fee, fee_collector, duration window) requires a new `params_version`.",
+      "type": "object",
+      "required": [
+        "update_config"
+      ],
+      "properties": {
+        "update_config": {
+          "type": "object",
+          "properties": {
+            "allow_partial_payouts": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "approver": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "creation_gate": {
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CreationGate"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "denoms": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/DenomRule"
+              }
+            },
+            "fee_bps": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "minimum": 0.0
+            },
+            "fee_collector": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gate": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ProposerGateMsg"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max_duration_secs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_duration_secs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_submit_stake": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "min_upload_stake": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "owner": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "params_placeholder": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "params_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Owner only.",
+      "type": "object",
+      "required": [
+        "update_allowlist"
+      ],
+      "properties": {
+        "update_allowlist": {
+          "type": "object",
+          "required": [
+            "add",
+            "remove"
+          ],
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "DAO only (dao-proposal-single shape): replace the pre-propose module config.",
+      "type": "object",
+      "required": [
+        "update_pre_propose_info"
+      ],
+      "properties": {
+        "update_pre_propose_info": {
+          "type": "object",
+          "required": [
+            "info"
+          ],
+          "properties": {
+            "info": {
+              "$ref": "#/definitions/PreProposeInfo"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "DAO only: register a dao-hooks proposal hook receiver.",
+      "type": "object",
+      "required": [
+        "add_proposal_hook"
+      ],
+      "properties": {
+        "add_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "DAO only: remove a proposal hook receiver.",
+      "type": "object",
+      "required": [
+        "remove_proposal_hook"
+      ],
+      "properties": {
+        "remove_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Admin": {
+      "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
+      "oneOf": [
+        {
+          "description": "Set the admin to a specified address.",
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Sets the admin as the core module address.",
+          "type": "object",
+          "required": [
+            "core_module"
+          ],
+          "properties": {
+            "core_module": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CreationGate": {
+      "description": "Who may create a bounty while the creation policy is `Anyone {}` (no pre-propose module). When a pre-propose module is installed (`ProposalCreationPolicy::Module`), that module is the gate and this setting is not consulted.",
+      "oneOf": [
+        {
+          "description": "Legacy behaviour: the `ProposerGate` (allowlist / min_stake / cw4, any passes).",
+          "type": "object",
+          "required": [
+            "proposer_gate"
+          ],
+          "properties": {
+            "proposer_gate": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(a) Anyone may deposit and create a bounty. Listing still needs the approver.",
+          "type": "object",
+          "required": [
+            "anyone"
+          ],
+          "properties": {
+            "anyone": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(b) The sender's bonded stake in the chain bond denom (same `bonded()` check as `ProposerGate.min_stake` and the submit/upload gates) must be >= `amount`. `amount` > 0.",
+          "type": "object",
+          "required": [
+            "min_stake"
+          ],
+          "properties": {
+            "min_stake": {
+              "type": "object",
+              "required": [
+                "amount"
+              ],
+              "properties": {
+                "amount": {
+                  "$ref": "#/definitions/Uint256"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "(c) TODO, NOT IMPLEMENTED: a sound, private proof that the proposer deposited into an escrow on a counterparty chain (e.g. Zcash shielded) without revealing the deposit details. See DESIGN.md §9. Instantiate/update_config reject it and create would fail with `Unimplemented`.",
+          "type": "object",
+          "required": [
+            "counterparty_escrow_proof"
+          ],
+          "properties": {
+            "counterparty_escrow_proof": {
+              "type": "object",
+              "required": [
+                "chain"
+              ],
+              "properties": {
+                "chain": {
+                  "description": "Counterparty chain id, e.g. \"zcash-mainnet\".",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DenomRule": {
+      "type": "object",
+      "required": [
+        "denom",
+        "max_amount",
+        "min_amount"
+      ],
+      "properties": {
+        "denom": {
+          "type": "string"
+        },
+        "max_amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "min_amount": {
+          "$ref": "#/definitions/Uint256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ModuleInstantiateInfo": {
+      "description": "Information needed to instantiate a module.",
+      "type": "object",
+      "required": [
+        "code_id",
+        "label",
+        "msg"
+      ],
+      "properties": {
+        "admin": {
+          "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Admin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code_id": {
+          "description": "Code ID of the contract to be instantiated.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "funds": {
+          "description": "Funds to be sent to the instantiated contract.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "label": {
+          "description": "Label for the instantiated contract.",
+          "type": "string"
+        },
+        "msg": {
+          "description": "Instantiate message to be used to create the contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "salt": {
+          "description": "Salt to use with instantiate2, if defined. Otherwise uses normal instantiate.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "PreProposeInfo": {
+      "oneOf": [
+        {
+          "description": "Anyone may create a proposal free of charge.",
+          "type": "object",
+          "required": [
+            "anyone_may_propose"
+          ],
+          "properties": {
+            "anyone_may_propose": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The module specified in INFO has exclusive rights to proposal creation.",
+          "type": "object",
+          "required": [
+            "module_may_propose"
+          ],
+          "properties": {
+            "module_may_propose": {
+              "type": "object",
+              "required": [
+                "info"
+              ],
+              "properties": {
+                "info": {
+                  "$ref": "#/definitions/ModuleInstantiateInfo"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "ProposerGateMsg": {
+      "type": "object",
+      "required": [
+        "use_allowlist"
+      ],
+      "properties": {
+        "cw4_group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "min_stake": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "use_allowlist": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Timestamp": {
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint64"
+        }
+      ]
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
+    }
+  }
+}

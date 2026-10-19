@@ -3,7 +3,7 @@ use crate::{
     instantiate::{CONTRACT_NAME, CONTRACT_VERSION},
 };
 
-use cosmwasm_std::{ensure, DepsMut, Empty, Env, Event, Response, StdError};
+use cosmwasm_std::{DepsMut, Empty, Env, Event, Response, StdError, ensure};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;

@@ -3,7 +3,7 @@ use cw2::set_contract_version;
 
 use crate::msg::InstantiateMsg;
 use crate::state::{Config, NONCE};
-use crate::{ContractError, CONTRACT_NAME, CONTRACT_VERSION};
+use crate::{CONTRACT_NAME, CONTRACT_VERSION, ContractError};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(

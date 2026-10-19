@@ -1,10 +1,11 @@
 use cosmwasm_std::{
-    ensure, ensure_eq, from_json, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response,
-    Uint256,
+    Addr, Coin, DepsMut, Env, MessageInfo, Response, Uint256, ensure, ensure_eq, from_json,
+    has_coins,
 };
-use cw_utils::{nonpayable, one_coin, NativeBalance};
+use cw_utils::{NativeBalance, nonpayable, one_coin};
 use std::ops::{Add, Sub};
 
+use crate::ContractError;
 use crate::helpers::{
     assert_transfer_approval, fair_burn, finalize_sale, generate_id, only_contract_admin,
     only_owner, only_tradable, only_valid_price, transfer_nft,
@@ -12,10 +13,9 @@ use crate::helpers::{
 use crate::msg::{Cw721ReceiveMsg, ExecuteMsg, HookMsg, InstantiateMsg, OrderDetails};
 use crate::orders::{Ask, Bid, CollectionBid, MatchingBid, OrderTerms};
 use crate::state::{
-    asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-    LISTING_FEES, NONCE,
+    COLLECTION_DENOMS, CONFIG, Config, Denom, LISTING_FEES, NONCE, OrderId, TokenId, asks, bids,
+    collection_bids,
 };
-use crate::ContractError;
 
 const ORDER_KEYS: &[&str] = &[
     "id",
@@ -276,7 +276,8 @@ fn set_ask(
     only_tradable(&deps.querier, env.block.time, &collection)?;
     let config = CONFIG.load(deps.storage)?;
     only_valid_price(deps.storage, &config, &collection, &terms.price, None)?;
-    let mut response = charge_listing_fee(&deps, &info, &terms.price.denom, &config, Response::new())?;
+    let mut response =
+        charge_listing_fee(&deps, &info, &terms.price.denom, &config, Response::new())?;
     let ask = Ask::new(creator, collection, token_id, terms);
     if let Some(matching) = ask.match_with_bid(deps.as_ref())? {
         response = finalize_sale(
@@ -293,7 +294,12 @@ fn set_ask(
         return Err(ContractError::NoMatchFound);
     } else {
         if escrowed_by_missing(&info, &ask) {
-            response = transfer_nft(&ask.collection, &ask.token_id, &env.contract.address, response)?;
+            response = transfer_nft(
+                &ask.collection,
+                &ask.token_id,
+                &env.contract.address,
+                response,
+            )?;
         }
         response = response.add_event(
             cosmwasm_std::Event::new("set-ask").add_attributes(ask.event_attrs(ORDER_KEYS)),
@@ -331,7 +337,16 @@ fn update_ask(
     ask.terms = terms;
     let mut response = Response::new();
     if let Some(matching) = ask.match_with_bid(deps.as_ref())? {
-        response = finalize_sale(deps, &env, &ask, &config, &matching, false, "update-ask", response)?;
+        response = finalize_sale(
+            deps,
+            &env,
+            &ask,
+            &config,
+            &matching,
+            false,
+            "update-ask",
+            response,
+        )?;
     } else {
         ask.save(deps.storage)?;
         response = response.add_event(
@@ -359,7 +374,11 @@ fn remove_ask(deps: DepsMut, info: MessageInfo, id: OrderId) -> Result<Response,
     )?;
     ask.remove(deps.storage)?;
     Ok(response.add_event(
-        cosmwasm_std::Event::new("remove-ask").add_attributes(ask.event_attrs(&["id", "collection", "token_id"])),
+        cosmwasm_std::Event::new("remove-ask").add_attributes(ask.event_attrs(&[
+            "id",
+            "collection",
+            "token_id",
+        ])),
     ))
 }
 
@@ -553,8 +572,11 @@ fn remove_bid(deps: DepsMut, info: MessageInfo, id: OrderId) -> Result<Response,
             amount: vec![refund],
         })
         .add_event(
-            cosmwasm_std::Event::new("remove-bid")
-                .add_attributes(bid.event_attrs(&["id", "collection", "token_id"])),
+            cosmwasm_std::Event::new("remove-bid").add_attributes(bid.event_attrs(&[
+                "id",
+                "collection",
+                "token_id",
+            ])),
         ))
 }
 
@@ -573,7 +595,14 @@ fn accept_bid(
         has_coins(&[bid.terms.price.clone()], &terms.price),
         ContractError::InvalidInput("min output is greater than bid price".into())
     );
-    let ask = existing_or_new_ask(deps.as_ref(), &info, &env, &bid.collection, &bid.token_id, terms)?;
+    let ask = existing_or_new_ask(
+        deps.as_ref(),
+        &info,
+        &env,
+        &bid.collection,
+        &bid.token_id,
+        terms,
+    )?;
     let config = CONFIG.load(deps.storage)?;
     finalize_sale(
         deps,
@@ -601,7 +630,13 @@ fn set_collection_bid(
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
     let nonce = next_nonce(deps.storage)?;
-    let collection_bid = CollectionBid::new(info.sender.clone(), collection, terms, env.block.height, nonce);
+    let collection_bid = CollectionBid::new(
+        info.sender.clone(),
+        collection,
+        terms,
+        env.block.height,
+        nonce,
+    );
     let mut response = Response::new();
     if let Some(ask) = collection_bid.match_with_ask(deps.as_ref())? {
         funds = funds
@@ -627,14 +662,16 @@ fn set_collection_bid(
             cosmwasm_std::Event::new("set-collection-bid")
                 .add_attributes(collection_bid.event_attrs(ORDER_KEYS)),
         );
-        collection_bids().update(deps.storage, collection_bid.id.clone(), |existing| {
-            match existing {
+        collection_bids().update(
+            deps.storage,
+            collection_bid.id.clone(),
+            |existing| match existing {
                 Some(_) => Err(ContractError::InternalError(
                     "collection bid id collision".into(),
                 )),
                 None => Ok(collection_bid),
-            }
-        })?;
+            },
+        )?;
     }
     if !funds.is_empty() {
         response = response.add_message(cosmwasm_std::BankMsg::Send {

@@ -1,12 +1,14 @@
 use cosmwasm_std::{
-    ensure, from_json, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response, Uint256,
+    Addr, Coin, DepsMut, Env, MessageInfo, Response, Uint256, ensure, from_json, has_coins,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable, one_coin};
 
-use crate::helpers::{assert_approval, fair_burn, only_owner, settle_auction, transfer_nft, validate_reserve};
-use crate::msg::{Cw721ReceiveMsg, ExecuteMsg, HookMsg};
-use crate::state::{auctions, Auction, HighBid, CONFIG, HALT_MANAGER};
 use crate::ContractError;
+use crate::helpers::{
+    assert_approval, fair_burn, only_owner, settle_auction, transfer_nft, validate_reserve,
+};
+use crate::msg::{Cw721ReceiveMsg, ExecuteMsg, HookMsg};
+use crate::state::{Auction, CONFIG, HALT_MANAGER, HighBid, auctions};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
@@ -122,10 +124,7 @@ fn create_auction(
         nonpayable(&info)?;
     } else {
         let paid = one_coin(&info)?;
-        ensure!(
-            paid == config.create_auction_fee,
-            ContractError::WrongFee
-        );
+        ensure!(paid == config.create_auction_fee, ContractError::WrongFee);
         response = response.add_messages(fair_burn(
             paid.amount,
             &paid.denom,
@@ -152,7 +151,8 @@ fn create_auction(
         &auction,
     )?;
     if !already_escrowed {
-        response = response.add_message(transfer_nft(&collection, &token_id, &env.contract.address)?);
+        response =
+            response.add_message(transfer_nft(&collection, &token_id, &env.contract.address)?);
     }
     Ok(response.add_event(
         cosmwasm_std::Event::new("create-auction")
@@ -174,7 +174,10 @@ fn update_reserve(
     nonpayable(&info)?;
     let mut auction = auctions().load(deps.storage, (collection, token_id))?;
     ensure!(auction.seller == info.sender, ContractError::Unauthorized);
-    ensure!(auction.first_bid_time.is_none(), ContractError::AuctionStarted);
+    ensure!(
+        auction.first_bid_time.is_none(),
+        ContractError::AuctionStarted
+    );
     ensure!(
         auction.reserve_price.denom == reserve_price.denom,
         ContractError::InvalidInput("reserve denom cannot change".into())
@@ -200,7 +203,10 @@ fn cancel(
     nonpayable(&info)?;
     let auction = auctions().load(deps.storage, (collection.clone(), token_id.clone()))?;
     ensure!(auction.seller == info.sender, ContractError::Unauthorized);
-    ensure!(auction.first_bid_time.is_none(), ContractError::AuctionStarted);
+    ensure!(
+        auction.first_bid_time.is_none(),
+        ContractError::AuctionStarted
+    );
     auctions().remove(deps.storage, (collection.clone(), token_id.clone()))?;
     Ok(Response::new()
         .add_message(transfer_nft(&collection, &token_id, &auction.seller)?)
@@ -220,7 +226,10 @@ fn place_bid(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut auction = auctions().load(deps.storage, (collection, token_id))?;
-    ensure!(auction.seller != info.sender, ContractError::SellerShouldNotBid);
+    ensure!(
+        auction.seller != info.sender,
+        ContractError::SellerShouldNotBid
+    );
     let now = env.block.time;
     if let Some(end) = auction.end_time {
         ensure!(end.seconds() > now.seconds(), ContractError::AuctionEnded);
@@ -228,7 +237,10 @@ fn place_bid(
     let paid = must_pay(&info, &auction.denom())?;
     let min = auction.min_bid_amount(config.min_bid_increment_percent);
     ensure!(
-        has_coins(&[Coin::new(paid, &auction.denom())], &Coin::new(min, &auction.denom())),
+        has_coins(
+            &[Coin::new(paid, &auction.denom())],
+            &Coin::new(min, &auction.denom())
+        ),
         ContractError::BidTooLow
     );
 
@@ -294,7 +306,14 @@ fn settle(
     let config = CONFIG.load(deps.storage)?;
     let halt = HALT_MANAGER.load(deps.storage)?;
     let auction = auctions().load(deps.storage, (collection, token_id))?;
-    settle_auction(deps, env.block.time, auction, &config, &halt, Response::new())
+    settle_auction(
+        deps,
+        env.block.time,
+        auction,
+        &config,
+        &halt,
+        Response::new(),
+    )
 }
 
 fn receive_nft(

@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128,
+    Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    entry_point, from_json, to_json_binary,
 };
 use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg};
 use cw721::receiver::Cw721ReceiveMsg;
@@ -20,7 +20,7 @@ use crate::querier::{
     query_calculate_price, query_config, query_nft_auction_map, query_not_started_auctions,
     query_royalty_admin, query_royalty_fee, query_state,
 };
-use crate::state::{Config, State, CONFIG, STATE};
+use crate::state::{CONFIG, Config, STATE, State};
 
 pub type AuctionCw721ExecuteMsg = Cw721ExecuteMsg<Empty, Empty, Empty>;
 pub type AuctionCw721QueryMsg = Cw721QueryMsg<Empty, Empty, Empty>;

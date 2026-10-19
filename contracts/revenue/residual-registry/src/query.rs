@@ -1,12 +1,12 @@
 use crate::{
     msg::{QueryMsg, ResidualPaymentResponse},
     state::{
-        Config, ResidualDefault, ResidualProtocol, ResidualProtocolKey, CONFIG, RESIDUAL_DEFAULT,
-        ROYALTY_PROTOCOLS,
+        CONFIG, Config, RESIDUAL_DEFAULT, ROYALTY_PROTOCOLS, ResidualDefault, ResidualProtocol,
+        ResidualProtocolKey,
     },
 };
 
-use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
+use cosmwasm_std::{Addr, Binary, Deps, Env, StdResult, to_json_binary};
 use cw_utils::maybe_addr;
 use terp_index_query::{QueryOptions, QueryOptionsInternal};
 

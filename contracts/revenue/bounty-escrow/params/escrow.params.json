@@ -1,0 +1,87 @@
+{
+  "schema": "terp-bounty-escrow-params/v1",
+  "params_version": "escrow-params/2026-10-18.2-draft.r3+catalog-757b50439015",
+  "params_placeholder": true,
+  "label": "PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value.",
+  "derived_from": {
+    "catalog": "catalog/bounties.json",
+    "catalog_sha256": "757b50439015823da2207b4229feb1bd0668f079072cb679ca5805290d11b8e9",
+    "pricing_params": "catalog/pricing.params.json",
+    "pricing_params_version": "2026-10-18.2-draft",
+    "budget_scale": "0.364881",
+    "script": "escrow/params/derive_params.py"
+  },
+  "instantiate": {
+    "gate": {
+      "use_allowlist": true,
+      "min_stake": "1000000000",
+      "cw4_group": null,
+      "_label": "min_stake 1,000 TERP bonded (uterp): PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value."
+    },
+    "denoms": [
+      {
+        "denom": "uterp",
+        "min_amount": "1000000",
+        "max_amount": "95242000000",
+        "_derivation": {
+          "catalog_max_micro": "76193248259",
+          "catalog_max_id": "TB-SEC-002",
+          "pricing_grid_max_micro": "95241560324",
+          "pricing_grid_max_at": "T5/P0",
+          "rule": "max_amount = ceil to whole token of max(catalog max, pricing grid max); min_amount = 1 token",
+          "label": "PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value."
+        }
+      },
+      {
+        "denom": "uthiol",
+        "min_amount": "1000000",
+        "max_amount": "202545000000",
+        "_derivation": {
+          "catalog_max_micro": "162035970394",
+          "catalog_max_id": "TB-SEC-002",
+          "pricing_grid_max_micro": "202544962993",
+          "pricing_grid_max_at": "T5/P0",
+          "rule": "max_amount = ceil to whole token of max(catalog max, pricing grid max); min_amount = 1 token",
+          "label": "PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value."
+        }
+      }
+    ],
+    "allow_partial_payouts": false,
+    "fee_bps": 0,
+    "fee_collector": null,
+    "min_duration_secs": 86400,
+    "max_duration_secs": 7776000,
+    "_label_durations": "deadline window 1 to 90 days: PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value.",
+    "_label_fee": "fee 0 bps, partial payouts off: PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value.",
+    "min_submit_stake": "100000000",
+    "_label_min_submit_stake": "submission stake gate: the assignee needs 100 TERP bonded (uterp) to submit, a tenth of the proposer gate; sybil/spam friction, not collateral (nothing is slashed or locked): PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value.",
+    "min_upload_stake": "10000000",
+    "_label_min_upload_stake": "upload stake gate of the CID storage service (details + submission documents): 10 TERP bonded (uterp), a tenth of min_submit_stake so anyone who may submit may also upload; storage-spam friction, checked off chain through the contract's can_upload query, nothing locked: PLACEHOLDER, pending governance vote (DESIGN.md \u00a76). Not a voted value."
+  },
+  "limits": {
+    "_label": "Contract CONSTANTS (src/contract.rs, src/cid.rs), not governance params: changing them needs a code migration.",
+    "summary_max_bytes": 280,
+    "title_max_chars": 140,
+    "cid_max_len": 128,
+    "cid": "CIDv0 Qm\u2026 (46 base58btc chars, sha2-256) or CIDv1 multibase base32 lower b\u2026 (codec raw/dag-pb/dag-cbor/dag-json/json; sha2-256 or blake3, 32-byte digest)",
+    "schemas": {
+      "details": "terp-bounty-details/v1",
+      "submission": "terp-bounty-submission/v1"
+    },
+    "doc_max_bytes": 262144,
+    "_label_doc_max_bytes": "CID storage service document cap (canonical JSON bytes) = one kubo chunk (size-262144), so every document is a single raw block: CIDv1 raw sha2-256."
+  },
+  "roles": {
+    "_label": "owner (config admin) and approver (payout authority) are set per chain by governance. No default exists for any real chain.",
+    "terp-local-1": {
+      "owner": "terp1de5ww6kt79e7mqlzkr3578y52ucx7nqqk4ukqv",
+      "approver": "terp1de5ww6kt79e7mqlzkr3578y52ucx7nqqk4ukqv",
+      "_label": "TEST KEY (localnet/keys/approver), dev only"
+    },
+    "morocco-1": {
+      "owner": null,
+      "approver": null,
+      "_label": "UNSET: a governance decision (DAO-DAO core / cw3). The dev-chain-guard build refuses morocco-1 anyway."
+    }
+  }
+}

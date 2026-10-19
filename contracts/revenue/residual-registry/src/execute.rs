@@ -3,17 +3,17 @@ use crate::{
     external::only_collection_creator,
     msg::ExecuteMsg,
     state::{
-        ResidualDefault, ResidualEntry, ResidualProtocol, ResidualProtocolKey, CONFIG,
-        RESIDUAL_DEFAULT, ROYALTY_PROTOCOLS,
+        CONFIG, RESIDUAL_DEFAULT, ROYALTY_PROTOCOLS, ResidualDefault, ResidualEntry,
+        ResidualProtocol, ResidualProtocolKey,
     },
 };
 
 use cosmwasm_std::{
-    attr, ensure, Addr, Decimal, DepsMut, Empty, Env, Event, MessageInfo, Response,
+    Addr, Decimal, DepsMut, Empty, Env, Event, MessageInfo, Response, attr, ensure,
 };
+use cw_utils::{maybe_addr, nonpayable};
 use cw721::msg::CollectionInfoAndExtensionResponse;
 use cw721_base::msg::QueryMsg as cw721QueryMsg;
-use cw_utils::{maybe_addr, nonpayable};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;

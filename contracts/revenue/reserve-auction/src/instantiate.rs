@@ -1,9 +1,9 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
-use crate::msg::InstantiateMsg;
-use crate::state::{Config, HaltManager, HALT_MANAGER, MIN_RESERVE_PRICES};
 use crate::ContractError;
+use crate::msg::InstantiateMsg;
+use crate::state::{Config, HALT_MANAGER, HaltManager, MIN_RESERVE_PRICES};
 use crate::{CONTRACT_NAME, CONTRACT_VERSION};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]

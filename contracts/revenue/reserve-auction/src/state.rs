@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint256};
+use cosmwasm_std::{Addr, Coin, Decimal, Storage, Timestamp, Uint256, ensure};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
 use crate::ContractError;

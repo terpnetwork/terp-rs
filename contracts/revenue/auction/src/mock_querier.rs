@@ -1,7 +1,7 @@
-use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR, MockApi, MockQuerier, MockStorage};
 use cosmwasm_std::{
-    from_json, to_json_binary, Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult,
-    QueryRequest, SystemError, SystemResult, WasmQuery,
+    Coin, ContractResult, Empty, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError,
+    SystemResult, WasmQuery, from_json, to_json_binary,
 };
 use cw721::msg::{Cw721QueryMsg, OwnerOfResponse};
 use std::collections::HashMap;
@@ -50,7 +50,7 @@ impl Querier for WasmMockQuerier {
                 return SystemResult::Err(SystemError::InvalidRequest {
                     error: format!("Parsing query request: {}", e),
                     request: bin_request.into(),
-                })
+                });
             }
         };
         self.handle_query(&request)
