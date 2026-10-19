@@ -40,7 +40,7 @@ crates/terp-seams   # dex + bridge + corridor + compose + domain tags
 cd crates/terp-rs
 cargo test -p terp-seams --lib
 
-cd ../headstash
+cd tools/headstash   # circuits and test-press; contracts are `cargo test -p cw-headstash` from the repo root
 just preflight-corridor-local
 just demo-corridor-ict-egress-d
 ```

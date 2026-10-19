@@ -79,7 +79,7 @@ The engine follows two core chain-registry specifications:
 The engine uses `cw-orchestrator`'s `DaemonState` for persistence:
 
 ```
-~/.cw-orchestrator/state.json
+~/.cw-orch/state.json
 ├── morocco-1/                    # Terp chain state
 │   ├── assets/                   # Native + derived IBC assets
 │   │   ├── ""                    # Native sdk.coin assets

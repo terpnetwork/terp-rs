@@ -166,8 +166,9 @@ Found by reading, not by a gate. None of these break a build.
   return `Ok(())` unconditionally — the second with a literal
   `// SILENT ERROR` comment. It is not a workspace member. Worth deciding
   whether a fails-open verifier should exist at all.
-- `terp-dao`, `terp-bls`, and `terp-zktls` are workspace members.
-  `terp-wavs` was renamed to `terp-bls`.
+- `contracts/smart-accounts/terp-dao/Cargo.toml` uses
+  `version = { workspace = true }` but `terp-dao` is not in the root `members`
+  list, so it cannot build standalone. `terp-wavs` and `terp-zktls` share this.
 - `contracts/smart-accounts/terp-zktls/src/lib.rs` still uses a bare
   `#[entry_point]` on one export while its siblings are
   `#[cfg_attr(not(feature = "library"), entry_point)]`.
@@ -196,10 +197,9 @@ Found by reading, not by a gate. None of these break a build.
 - `tests/README.md` architecture tree omits `tests/e2e/` and `tests/suite/`,
   and its feature table says `default = docker, nostr` where `tests/Cargo.toml`
   says `["docker", "nostr", "hash-market"]`. The manifest is right.
-- `tools/onboard-authz/MOVED.md` says the crate "now lives in
-  `crates/cw-infuser/tools/onboard-authz`". That path does not exist here, and
-  the crate is still referenced by `tools/hash-market/Cargo.toml`,
-  `scripts/ci/ci-combo.sh` and the root justfile. Read it as a pointer stub.
+- `tools/onboard-authz` stays in this repo (`crates/terp-rs/tools/onboard-authz`).
+  Infuser contracts live at `contracts/infuser/`; leftover `crates/cw-infuser`
+  is an isolated worktree, not the workspace. `MOVED.md` now says that.
 - `crates/terp-seams/src/dex/note/../README.md` and ~14 other docs still point
   at `docs/plans/spectrum/fixtures/private_dex_seams` for the seam math SSOT;
   the source of truth is now `crates/terp-seams`.
