@@ -1,5 +1,8 @@
 //! Dependency switching — rewrite Cargo.toml files between stable/local/git modes.
 //!
+//! `patch-local` and `patch-git` (version lines, one `[patch.crates-io]`
+//! replacement) live in `dep.py` only. This Rust switch does not emit them.
+//!
 //! Mirrors `dep-switch.py`. Edits three target levels:
 //!   - `patches`:  [patch.crates-io] in workspace root
 //!   - `ws-deps`:  [workspace.dependencies] entries

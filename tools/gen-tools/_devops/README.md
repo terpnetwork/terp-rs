@@ -19,6 +19,10 @@ just deps-local          # switch → path deps
 just deps-git            # switch → git remotes
 just deps-stable         # switch → crates.io
 just deps-dev            # git identity + local path patches
+just deps-patch-local dao-contracts   # version lines + path patch
+just deps-patch-git dao-contracts     # version lines + git rev patch
+just deps-pin-revs neutron-std        # matrix branch -> full rev
+just deps-lint-patches dao-contracts  # drop unused [patch] entries
 just deps-verify local   # cargo metadata source check
 just deps-scrape         # full scan + diagnostics
 just deps-overview       # OVERVIEW.md dashboard
@@ -71,7 +75,8 @@ consumers = ["cw-plus", "abstract/framework", "cw-orchestrator"]
 | Field         | Purpose                                                        |
 |---------------|----------------------------------------------------------------|
 | `stable`      | crates.io version used in release builds                       |
-| `git`         | Forked git repo URL + branch for CI / remote builds            |
+| `fork_version`| Exact fork version when it differs from `stable` (`=4.0.0-zk`) |
+| `git`         | Forked git repo URL + branch. `rev` or `commit` is the full SHA `patch-git` writes |
 | `local`       | Path relative to monorepo root for local development           |
 | `zk_git`      | ZK variant git source, falls back to `git` if absent           |
 | `zk_local`    | ZK variant local path, falls back to `local` if absent         |
@@ -102,6 +107,10 @@ workspaces. Handles three levels of dependency declaration:
 | `git`      | `git = "...", branch = "..."` (from matrix)         |
 | `zk_local` | ZK fork local paths, falls back to `local`          |
 | `zk_git`   | ZK fork git URLs, falls back to `git`               |
+| `patch-local` | Version lines stay. `[patch.crates-io]` is the local path |
+| `patch-git` | Version lines stay. `[patch.crates-io]` is `git` + a full `rev` |
+
+`patch-git` does not add `[patch.'<git-url>']`. Cargo keeps a crates.io→git replacement and will not chain a path over that same edge. `patch-local` is the unified shape: crate versions in the dependency line, local paths only in `[patch.crates-io]`. It drops a git-url section once the path graph no longer depends on that URL. `patch-git` still leaves an existing git-url section in place. `dev` remains the mode that puts git in the dependency line and a path in `[patch.'<url>']`.
 
 ### Targets
 
@@ -148,6 +157,11 @@ Every git dep in the matrix includes an explicit `branch = "..."`. When
 switching to git mode, dep-switch writes this branch into every Cargo.toml
 entry. This is critical — without an explicit branch, Cargo defaults to the
 repo's default branch, which may not be your working branch.
+
+`patch-git` does not write that branch. It writes `rev` from `git.rev` or
+`git.commit`, and only when the value is a full 40-hex SHA. A missing or
+short rev is skipped with a warning. That pin is what makes a publish
+reproducible. The branch field stays in the matrix for `git` / `dev` mode.
 
 The matrix branches must match the actual branches you push to. Use
 `dep-switch.py status` to verify, and check the matrix against local branches:

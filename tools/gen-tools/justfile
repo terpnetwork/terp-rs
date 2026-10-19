@@ -109,6 +109,7 @@ deps-git-status:
 deps-test:
     python3 _scripts/test_dep_probe.py
     python3 _scripts/test_dep_html.py
+    python3 _scripts/test_dep_patch_mode.py
 
 # Self-contained HTML status report (one file, no CDN, works from file://)
 deps-html:
@@ -131,9 +132,50 @@ deps-status:
 
 
 # Switch forked deps (fail-closed if matrix dirty)
-# modes: stable|local|git|zk_local|zk_git|dev|zk_dev
+# modes: stable|local|git|zk_local|zk_git|dev|zk_dev|patch-local|patch-git
 deps-switch mode="local":
     {{dep}} switch {{mode}}
+
+# Version lines stay. One [patch.crates-io] replacement.
+# A workspace is required so this does not rewrite the monorepo.
+deps-patch-local workspace:
+    {{dep}} switch patch-local --workspace {{workspace}}
+
+deps-patch-git workspace:
+    {{dep}} switch patch-git --workspace {{workspace}}
+
+deps-patch-local-dry-run workspace:
+    {{dep}} switch patch-local --workspace {{workspace}} --dry-run
+
+deps-patch-git-dry-run workspace:
+    {{dep}} switch patch-git --workspace {{workspace}} --dry-run
+
+# Known core workspaces only. Does not walk the rest of the monorepo.
+deps-patch-local-core:
+    {{dep}} switch patch-local --core
+
+deps-patch-git-core:
+    {{dep}} switch patch-git --core
+
+deps-patch-local-core-dry-run:
+    {{dep}} switch patch-local --core --dry-run
+
+deps-patch-git-core-dry-run:
+    {{dep}} switch patch-git --core --dry-run
+
+# Replace a matrix git branch with that package's full rev.
+deps-pin-revs workspace:
+    {{dep}} pin-revs --workspace {{workspace}}
+
+deps-pin-revs-dry-run workspace:
+    {{dep}} pin-revs --workspace {{workspace}} --dry-run
+
+# Drop [patch] entries Cargo reported unused. Used entries stay in order.
+deps-lint-patches workspace:
+    {{dep}} lint-patches --workspace {{workspace}}
+
+deps-lint-patches-dry-run workspace:
+    {{dep}} lint-patches --workspace {{workspace}} --dry-run
 
 deps-local:
     {{dep}} switch local

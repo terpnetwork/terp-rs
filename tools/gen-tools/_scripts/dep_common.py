@@ -33,13 +33,27 @@ DEVOPS_DIR = TOOLING_ROOT / "_devops"
 CONFIG_PATH = DEVOPS_DIR / "dep-config.toml"
 MIGRATION_PATH = DEVOPS_DIR / "migration-progress.yaml"
 
-VALID_MODES = ("stable", "local", "git", "zk_local", "zk_git", "dev", "zk_dev")
+VALID_MODES = (
+    "stable", "local", "git", "zk_local", "zk_git", "dev", "zk_dev",
+    "patch-local", "patch-git",
+)
 
 # Composite mode decomposition: (ws_dep_mode, patch_mode, local_key)
 DEV_MODE_MAP = {
     "dev":    ("git",    "local",    "local"),
     "zk_dev": ("zk_git", "zk_local", "zk_local"),
 }
+
+# Version lines stay. One [patch.crates-io] replacement. These do not stack:
+# a crates.io→git patch is the source Cargo keeps, so a second patch on that
+# git URL never selects the local tree. (ws_dep_mode, patch_mode)
+PATCH_MODE_MAP = {
+    "patch-local": ("registry", "local"),
+    "patch-git": ("registry", "git-rev"),
+}
+
+# patch-git refuses branches and short SHAs. Cargo rev must be the full commit.
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 SKIP_DIRS = {
     ".git", "target", "_devops", "_scripts", ".claude", "node_modules",
@@ -158,6 +172,17 @@ KNOWN_WORKSPACE_ROOTS = [
     "polytone/Cargo.toml",
     "cw-multi-test-fork/Cargo.toml",
     "clone-cw-multi-test/Cargo.toml",
+    # Nested forks whose git edges used to require a root [patch.'<git-url>'].
+    "cw-storage-plus/Cargo.toml",
+    "cw-plus-plus/Cargo.toml",
+    "cw-nfts/Cargo.toml",
+    "osmosis-rust/Cargo.toml",
+    "osmosis-test-tube/Cargo.toml",
+    "cosmos-rust/Cargo.toml",
+    "tendermint-rs/Cargo.toml",
+    "pbjson/Cargo.toml",
+    "neutron-std/Cargo.toml",
+    "ict-rs/Cargo.toml",
 ]
 
 
@@ -293,6 +318,362 @@ def resolve_git_source(info: dict, mode: str, defaults: dict) -> tuple:
         return (url, branch)
 
     return (None, None)
+
+
+def _rev_from_git_table(table: dict) -> tuple:
+    """Return (rev, present).
+
+    present is True when rev or commit is set to something other than N/A.
+    A short or non-hex value is present but unusable (rev is None). A full
+    40-hex SHA is returned. Branch is never a substitute.
+    """
+    if not isinstance(table, dict):
+        return None, False
+    for field in ("rev", "commit"):
+        raw = table.get(field)
+        if not isinstance(raw, str) or not raw or raw == "N/A":
+            continue
+        if SHA_RE.match(raw):
+            return raw, True
+        return None, True
+    return None, False
+
+
+_GIT_DEP_RE = re.compile(
+    r"""^(?P<indent>\s*)(?P<name>[A-Za-z0-9_-]+)\s*=\s*\{(?P<body>[^{}]*)\}(?P<trail>\s*)$"""
+)
+_PATCH_HEADER_RE = re.compile(r"""^\[patch\.(?:'([^']+)'|"([^"]+)")\]\s*$""")
+_GIT_URL_RE = re.compile(r"""\bgit\s*=\s*["']([^"']+)["']""")
+_BRANCH_RE = re.compile(r"""\bbranch\s*=\s*["']([^"']+)["']""")
+_REV_FIELD_RE = re.compile(r"""\brev\s*=\s*["']([^"']+)["']""")
+_PKG_FIELD_RE = re.compile(r"""\bpackage\s*=\s*["']([^"']+)["']""")
+
+
+def _normalize_git_url(url: str) -> str:
+    return url.rstrip("/").removesuffix(".git")
+
+
+def pin_floating_git_deps(text: str, crates: dict) -> tuple:
+    """Replace matrix git branches with the matrix full rev.
+
+    A branch is not a reproducible pin. When the dependency names a matrix
+    package and that package has a full rev, the branch is rewritten to that
+    rev. Packages the matrix does not know, and packages with no full rev,
+    are left in place and reported.
+
+    Returns (new_text, changes, warnings). changes are human-readable.
+    """
+    lookup = pkg_to_matrix(crates)
+    changes = []
+    warnings = []
+    out = []
+    for line in text.split("\n"):
+        match = _GIT_DEP_RE.match(line)
+        if not match or "git" not in match.group("body"):
+            out.append(line)
+            continue
+        body = match.group("body")
+        url_m = _GIT_URL_RE.search(body)
+        if not url_m:
+            out.append(line)
+            continue
+        url = url_m.group(1)
+        pkg_m = _PKG_FIELD_RE.search(body)
+        dep_name = pkg_m.group(1) if pkg_m else match.group("name")
+        found = lookup.get(dep_name)
+        if not found:
+            out.append(line)
+            continue
+        _key, info = found
+        gi = info.get("git") if isinstance(info.get("git"), dict) else {}
+        matrix_url = gi.get("url") or ""
+        if not matrix_url or _normalize_git_url(matrix_url) != _normalize_git_url(url):
+            out.append(line)
+            continue
+        rev = git_rev(info, "git")
+        branch_m = _BRANCH_RE.search(body)
+        rev_m = _REV_FIELD_RE.search(body)
+        current = rev_m.group(1) if rev_m else ""
+        if not rev:
+            if branch_m or not SHA_RE.match(current):
+                warnings.append(
+                    f"{dep_name}: matrix has no full rev for {url}"
+                )
+            out.append(line)
+            continue
+        if current == rev and not branch_m:
+            out.append(line)
+            continue
+        new_body = _BRANCH_RE.sub("", body)
+        if _REV_FIELD_RE.search(new_body):
+            new_body = _REV_FIELD_RE.sub(f'rev = "{rev}"', new_body)
+        else:
+            new_body = _GIT_URL_RE.sub(
+                lambda m: f'{m.group(0)}, rev = "{rev}"', new_body, count=1
+            )
+        new_body = re.sub(r"\s+,", ",", new_body)
+        new_body = re.sub(r",\s*,", ", ", new_body)
+        new_body = re.sub(r",\s*$", "", new_body)
+        new_body = re.sub(r"\s+", " ", new_body).strip()
+        new_line = (
+            f"{match.group('indent')}{match.group('name')} = {{ {new_body} }}"
+            f"{match.group('trail')}"
+        )
+        label = branch_m.group(1) if branch_m else (current or "missing")
+        changes.append(f"{dep_name}: {label} -> {rev}")
+        out.append(new_line)
+    return "\n".join(out), changes, warnings
+
+
+def same_source_git_patches(text: str) -> list:
+    """Patch entries whose git URL is the section URL.
+
+    Cargo rejects these: a patch must point at a different source, so a
+    crates.io edge can be replaced with a git rev, but a git URL cannot be
+    replaced with another rev of itself.
+    """
+    found = []
+    section_url = None
+    for line in text.split("\n"):
+        header = _PATCH_HEADER_RE.match(line.strip())
+        if header:
+            section_url = header.group(1) or header.group(2)
+            continue
+        if line.strip().startswith("["):
+            section_url = None
+            continue
+        if not section_url or section_url == "crates-io":
+            continue
+        url_m = _GIT_URL_RE.search(line)
+        if url_m and _normalize_git_url(url_m.group(1)) == _normalize_git_url(section_url):
+            name = line.split("=", 1)[0].strip()
+            found.append(f"{name} patches {section_url} with the same git URL")
+    return found
+
+
+_UNUSED_PATCH_RE = re.compile(
+    r"(?:warning: )?patch `(\S+) \S+ \(([^)]*)\)` was not used",
+    re.IGNORECASE,
+)
+_PATH_FIELD_RE = re.compile(r"""\bpath\s*=\s*["']([^"']+)["']""")
+
+
+def unused_patch_warnings(stderr: str) -> list:
+    """Cargo's unused-patch warnings as (package name, source) pairs.
+
+    One warning is one patch entry. The same name and path can appear twice
+    when two sections patch it and neither is selected.
+    """
+    return [(match.group(1), match.group(2)) for match in _UNUSED_PATCH_RE.finditer(stderr or "")]
+
+
+def _patch_header(line: str):
+    stripped = line.strip()
+    if stripped in ("[patch.crates-io]", '[patch."crates-io"]', "[patch.'crates-io']"):
+        return "crates-io"
+    header = _PATCH_HEADER_RE.match(stripped)
+    if header:
+        return header.group(1) or header.group(2)
+    return None
+
+
+def _patch_entry_name(line: str):
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in stripped:
+        return None
+    return stripped.split("=", 1)[0].strip()
+
+
+def _warning_matches_entry(line: str, workspace_dir: Path, warn_source: str) -> bool:
+    path_match = _PATH_FIELD_RE.search(line)
+    if path_match:
+        resolved = str((workspace_dir / path_match.group(1)).resolve())
+        try:
+            return str(Path(warn_source).resolve()) == resolved
+        except OSError:
+            return warn_source == resolved
+    url_match = _GIT_URL_RE.search(line)
+    if not url_match:
+        return False
+    url = _normalize_git_url(url_match.group(1))
+    if _normalize_git_url(warn_source).startswith(url) or url in warn_source:
+        rev_match = _REV_FIELD_RE.search(line)
+        if rev_match and rev_match.group(1) not in warn_source:
+            return False
+        return True
+    return False
+
+
+def lint_unused_patches(text: str, workspace_dir: Path, warnings: list) -> tuple:
+    """Drop patch entries Cargo reported as unused.
+
+    Remaining entries stay in their original order. A patch section left with
+    no entries is removed, including a comment directly above its header.
+    Duplicate names that Cargo still selects are kept: those cover two sources.
+    """
+    pending = list(warnings)
+    removed = []
+    in_patch = False
+    section = None
+    out = []
+    for line in text.split("\n"):
+        header = _patch_header(line)
+        if header is not None:
+            in_patch = True
+            section = header
+            out.append(line)
+            continue
+        if in_patch and line.strip().startswith("["):
+            in_patch = False
+            section = None
+            out.append(line)
+            continue
+        if not in_patch:
+            out.append(line)
+            continue
+        name = _patch_entry_name(line)
+        if name is None:
+            out.append(line)
+            continue
+        drop_at = None
+        for index, (warn_name, warn_source) in enumerate(pending):
+            if warn_name == name and _warning_matches_entry(line, workspace_dir, warn_source):
+                drop_at = index
+                break
+        if drop_at is None:
+            out.append(line)
+            continue
+        pending.pop(drop_at)
+        removed.append(f"{name} from [{section}]")
+    cleaned, dropped_sections = _drop_empty_patch_sections(out)
+    return "\n".join(cleaned), removed, dropped_sections, pending
+
+
+def _drop_empty_patch_sections(lines: list) -> tuple:
+    """Remove patch headers that no longer have an entry. Keep other text."""
+    dropped = []
+    result = []
+    index = 0
+    while index < len(lines):
+        header = _patch_header(lines[index])
+        if header is None:
+            result.append(lines[index])
+            index += 1
+            continue
+        end = index + 1
+        has_entry = False
+        while end < len(lines) and not lines[end].strip().startswith("["):
+            if _patch_entry_name(lines[end]):
+                has_entry = True
+            end += 1
+        if has_entry:
+            result.extend(lines[index:end])
+            index = end
+            continue
+        dropped.append(header)
+        # Drop a single comment sitting directly above the header.
+        if result and result[-1].strip().startswith("#"):
+            result.pop()
+        while result and result[-1].strip() == "":
+            result.pop()
+            break
+        index = end
+        if index < len(lines) and lines[index].strip() == "" and result and result[-1].strip() == "":
+            index += 1
+    return result, dropped
+
+
+def git_dependency_urls(text: str) -> set:
+    """Git URLs named by dependency lines. Patch tables are not dependencies."""
+    urls = set()
+    in_patch = False
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("["):
+            in_patch = _patch_header(line) is not None
+            continue
+        if in_patch or stripped.startswith("#"):
+            continue
+        match = _GIT_URL_RE.search(line)
+        if match:
+            urls.add(match.group(1).rstrip("/"))
+    return urls
+
+
+def drop_unreferenced_git_patches(text: str, referenced_urls: set) -> tuple:
+    """Remove `[patch.'<git-url>']` sections whose URL no dependency line names.
+
+    `[patch.crates-io]` stays. A comment directly above a removed header goes
+    with it. Entries inside a kept section stay in order.
+    """
+    keep = {url.rstrip("/") for url in referenced_urls}
+    lines = text.split("\n")
+    dropped = []
+    result = []
+    index = 0
+    while index < len(lines):
+        header = _patch_header(lines[index])
+        if header is None or header == "crates-io":
+            result.append(lines[index])
+            index += 1
+            continue
+        end = index + 1
+        while end < len(lines) and not lines[end].strip().startswith("["):
+            end += 1
+        if header.rstrip("/") in keep:
+            result.extend(lines[index:end])
+            index = end
+            continue
+        dropped.append(header)
+        if result and result[-1].strip().startswith("#"):
+            result.pop()
+        while result and result[-1].strip() == "":
+            result.pop()
+            break
+        index = end
+        if index < len(lines) and lines[index].strip() == "" and result and result[-1].strip() == "":
+            index += 1
+    return "\n".join(result), dropped
+
+
+def git_rev(info: dict, mode: str = "git") -> Optional[str]:
+    """Full commit for a reproducible git patch.
+
+    zk_git reads zk_git.rev/commit first and falls back to git only when the
+    zk table has no rev field. A short SHA is a hard miss, not a branch.
+    """
+    tables = []
+    if mode == "zk_git":
+        tables.append(info.get("zk_git"))
+    tables.append(info.get("git"))
+    for table in tables:
+        rev, present = _rev_from_git_table(table)
+        if present:
+            return rev
+    return None
+
+
+def registry_version_literal(info: dict) -> Optional[str]:
+    """crates.io requirement for registry / patch-* dependency lines.
+
+    fork_version wins over stable. A pre-release, build metadata, or an
+    explicit fork_version is emitted exact (`=1.2.3-zk`) so Cargo does not
+    select a different published release.
+    """
+    fork = info.get("fork_version")
+    stable = info.get("stable")
+    exact = False
+    if isinstance(fork, str) and fork and fork != "N/A":
+        ver = fork
+        exact = True
+    elif isinstance(stable, str) and stable and stable != "N/A":
+        ver = stable
+        exact = ("-" in ver) or ("+" in ver)
+    else:
+        return None
+    if exact:
+        return f"={ver}"
+    return ver
 
 
 def is_repo_only(info: dict) -> bool:
@@ -718,9 +1099,20 @@ def rewrite_section(lines: list, start: int, end: int, new_lines: list) -> list:
 # ── Path Utilities ───────────────────────────────────────────────────────────
 
 def rel_path(ws_toml: str, local: str) -> str:
-    """Relative path from workspace Cargo.toml dir to a dependency."""
+    """Relative path from workspace Cargo.toml dir to a dependency.
+
+    A symlink that leaves the monorepo stays as the matrix path. Resolving it
+    would write a machine-local checkout, such as a cargo git cache, into the
+    manifest.
+    """
     ws_dir = (REPO_ROOT / ws_toml).parent
-    dep = (REPO_ROOT / local).resolve()
+    lexical = REPO_ROOT / local
+    resolved = lexical.resolve()
+    try:
+        resolved.relative_to(REPO_ROOT.resolve())
+        dep = resolved
+    except ValueError:
+        dep = lexical
     return os.path.relpath(dep, ws_dir).replace("\\", "/")
 
 
@@ -744,6 +1136,14 @@ def build_entry(key: str, info: dict, mode: str, ws: str, defaults: dict = None)
         if not url:
             return None
         return f'{{ git = "{url}", branch = "{branch}" }}'
+
+    if mode == "git-rev":
+        gi = info.get("git") if isinstance(info.get("git"), dict) else {}
+        url = gi.get("url")
+        rev = git_rev(info, "git")
+        if not url or url == "N/A" or not rev:
+            return None
+        return f'{{ git = "{url}", rev = "{rev}" }}'
 
     if mode == "zk_local":
         zl = info.get("zk_local")
@@ -769,7 +1169,7 @@ def build_ws_dep_entry(key: str, info: dict, mode: str, ws_toml: str,
     Args:
         key: matrix key
         info: matrix info dict
-        mode: stable/local/git/zk_local/zk_git
+        mode: stable/local/git/zk_local/zk_git/registry
         ws_toml: workspace Cargo.toml relative path
         existing_spec: the existing parsed dependency spec dict
         consumer_name: project/consumer name for required_features lookup
@@ -781,6 +1181,11 @@ def build_ws_dep_entry(key: str, info: dict, mode: str, ws_toml: str,
     if mode == "stable":
         version = info.get("stable", "N/A")
         if version == "N/A":
+            return None
+        parts = [f'version = "{version}"']
+    elif mode == "registry":
+        version = registry_version_literal(info)
+        if not version:
             return None
         parts = [f'version = "{version}"']
     elif mode == "local":
@@ -2080,6 +2485,13 @@ def write_healed_matrix(matrix: dict, path: Path = None) -> Path:
             lines.append(f'url = "{gi["url"]}"')
         if gi.get("branch"):
             lines.append(f'branch = "{gi["branch"]}"')
+        # Keep rev and commit as authored. patch-git reads either, and only
+        # writes a full 40-hex SHA into Cargo.toml.
+        for field in ("rev", "commit"):
+            raw = gi.get(field)
+            if isinstance(raw, str) and raw and raw != "N/A":
+                esc = raw.replace("\\", "\\\\").replace('"', '\\"')
+                lines.append(f'{field} = "{esc}"')
         if gi.get("origin"):
             lines.append(f'origin = "{gi["origin"]}"')
         lines.append("")
@@ -2092,7 +2504,7 @@ def write_healed_matrix(matrix: dict, path: Path = None) -> Path:
 
         # Scalar / simple fields in stable order
         order = [
-            "description", "package", "stable", "local", "zk_local",
+            "description", "package", "stable", "fork_version", "local", "zk_local",
             "repo_only", "patch_only",
         ]
         for field in order:
@@ -2264,10 +2676,15 @@ def verify_workspace_resolution(
 
     # Determine expected source kind for mode
     is_dev = mode in DEV_MODE_MAP
+    is_patch = mode in PATCH_MODE_MAP
     if is_dev:
         ws_mode, _patch_mode, _ = DEV_MODE_MAP[mode]
         # overlay: path wins for resolved packages that are matrix-managed
         expect_kind = "path"  # local patch should win
+    elif is_patch:
+        _ws_mode, patch_mode = PATCH_MODE_MAP[mode]
+        ws_mode = "git" if patch_mode == "git-rev" else "local"
+        expect_kind = "git" if patch_mode == "git-rev" else "path"
     else:
         ws_mode = mode
         if mode in ("local", "zk_local"):
@@ -2331,6 +2748,13 @@ def verify_workspace_resolution(
                             errors.append(
                                 f"{workspace_dir.name}: '{name}' git source '{src}' "
                                 f"does not match matrix url '{url}'"
+                            )
+                    if mode == "patch-git":
+                        rev = git_rev(info, "git")
+                        if rev and rev not in (src or ""):
+                            errors.append(
+                                f"{workspace_dir.name}: '{name}' git source '{src}' "
+                                f"does not contain matrix rev '{rev}'"
                             )
             elif expect_kind == "registry":
                 if kind not in ("registry", "path"):

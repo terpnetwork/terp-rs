@@ -10,6 +10,7 @@ Usage:
     python3 _scripts/dep.py heal [--dry-run]
     python3 _scripts/dep.py status
     python3 _scripts/dep.py switch <mode> [options]
+    python3 _scripts/dep.py pin-revs --workspace PATH [--dry-run]
     python3 _scripts/dep.py verify [--mode MODE] [--workspace PATH]
     python3 _scripts/dep.py ensure-branches <mode> [--force]
     python3 _scripts/dep.py branch-check [--mode MODE] [--refresh] [--all]
@@ -45,7 +46,12 @@ from dep_common import (
     MATRIX_PATH,
     REPO_ROOT,
     TOOLING_ROOT,
+    KNOWN_WORKSPACE_ROOTS,
     VALID_MODES,
+    pin_floating_git_deps,
+    same_source_git_patches,
+    lint_unused_patches,
+    unused_patch_warnings,
     heal_matrix_locals,
     load_active_mode,
     load_defaults,
@@ -150,6 +156,162 @@ def cmd_heal(args):
             print(f"    {e}")
 
 
+def _workspace_manifests(root: Path):
+    """Root manifest plus concrete workspace members. Excludes are skipped."""
+    import tomllib
+
+    root_toml = root / "Cargo.toml"
+    if not root_toml.is_file():
+        return
+    yield root_toml
+    with root_toml.open("rb") as handle:
+        data = tomllib.load(handle)
+    workspace = data.get("workspace") or {}
+    excluded = set()
+    for pattern in workspace.get("exclude") or []:
+        for match in root.glob(pattern):
+            excluded.add(match.resolve())
+    for pattern in workspace.get("members") or []:
+        for match in root.glob(pattern):
+            if match.resolve() in excluded:
+                continue
+            cargo = match / "Cargo.toml"
+            if cargo.is_file():
+                yield cargo
+
+
+def cmd_pin_revs(args):
+    """Rewrite matrix git branches to the matrix full rev."""
+    if args.core and args.workspace:
+        print("REFUSING pin-revs: pass either --core or --workspace.")
+        sys.exit(1)
+    if not args.core and not args.workspace:
+        print("REFUSING pin-revs: pass --workspace or --core.")
+        sys.exit(1)
+
+    crates = load_matrix()
+    if args.core:
+        roots = [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    else:
+        roots = []
+        for name in args.workspace:
+            candidate = REPO_ROOT / name
+            if not (candidate / "Cargo.toml").is_file():
+                candidate = Path(name)
+            if not (candidate / "Cargo.toml").is_file():
+                print(f"SKIP {name}: no Cargo.toml")
+                continue
+            roots.append(candidate)
+
+    wrote = 0
+    same_source = []
+    if args.dry_run:
+        print("[DRY RUN]")
+    for root in roots:
+        for cargo in _workspace_manifests(root):
+            text = cargo.read_text()
+            new_text, changes, warnings = pin_floating_git_deps(text, crates)
+            rel = cargo
+            try:
+                rel = cargo.relative_to(REPO_ROOT)
+            except ValueError:
+                pass
+            for warning in warnings:
+                print(f"  [WARN] {rel}: {warning}")
+            for hit in same_source_git_patches(new_text):
+                message = f"{rel}: {hit}"
+                same_source.append(message)
+                print(f"  [ERROR] {message}")
+            if not changes:
+                continue
+            print(f"  {rel}")
+            for change in changes:
+                print(f"    {change}")
+            if not args.dry_run:
+                cargo.write_text(new_text)
+                wrote += 1
+    if same_source:
+        print(f"pin-revs: {len(same_source)} same-source patch(es); Cargo will reject them")
+        sys.exit(1)
+    if args.dry_run:
+        print("pin-revs: dry-run wrote nothing")
+    else:
+        print(f"pin-revs: updated {wrote} manifest(s)")
+
+
+def _lint_workspace_roots(args):
+    if args.core and args.workspace:
+        print("REFUSING lint-patches: pass either --core or --workspace.")
+        sys.exit(1)
+    if not args.core and not args.workspace:
+        print("REFUSING lint-patches: pass --workspace or --core.")
+        sys.exit(1)
+    if args.core:
+        return [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    roots = []
+    for name in args.workspace:
+        candidate = REPO_ROOT / name
+        if not (candidate / "Cargo.toml").is_file():
+            candidate = Path(name)
+        if not (candidate / "Cargo.toml").is_file():
+            print(f"SKIP {name}: no Cargo.toml")
+            continue
+        roots.append(candidate)
+    return roots
+
+
+def cmd_lint_patches(args):
+    """Drop patch entries Cargo reports as unused. Keep the rest in order."""
+    import subprocess
+
+    roots = _lint_workspace_roots(args)
+    if args.dry_run:
+        print("[DRY RUN]")
+    wrote = 0
+    for root in roots:
+        cargo = root / "Cargo.toml"
+        proc = subprocess.run(
+            ["cargo", "metadata", "--format-version", "1"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        rel = cargo
+        try:
+            rel = cargo.relative_to(REPO_ROOT)
+        except ValueError:
+            pass
+        if proc.returncode != 0:
+            err = (proc.stderr or "").strip().splitlines()
+            tail = err[-1] if err else "cargo metadata failed"
+            print(f"  [ERROR] {rel}: {tail}")
+            sys.exit(1)
+        warnings = unused_patch_warnings(proc.stderr or "")
+        if not warnings:
+            print(f"  {rel}: no unused patches")
+            continue
+        new_text, removed, dropped_sections, unmatched = lint_unused_patches(
+            cargo.read_text(), root, warnings
+        )
+        print(f"  {rel}")
+        for item in removed:
+            print(f"    remove {item}")
+        for section in dropped_sections:
+            print(f"    drop empty [{section}]")
+        for name, source in unmatched:
+            print(f"    [WARN] unused patch not matched: {name} ({source})")
+        if new_text == cargo.read_text():
+            continue
+        if not args.dry_run:
+            cargo.write_text(new_text)
+            wrote += 1
+    if args.dry_run:
+        print("lint-patches: dry-run wrote nothing")
+    else:
+        print(f"lint-patches: updated {wrote} manifest(s)")
+
+
 def cmd_verify(args):
     matrix = load_matrix()
     mode = args.mode or load_active_mode() or "local"
@@ -196,6 +358,11 @@ def cmd_verify(args):
 
 def cmd_switch(args):
     # Fail closed on dirty matrix unless --force
+    if args.core:
+        if args.workspace:
+            print("REFUSING switch: pass either --core or --workspace.")
+            sys.exit(1)
+        args.workspace = [str(Path(path).parent) for path in KNOWN_WORKSPACE_ROOTS]
     matrix = load_matrix()
     ok, errors, warns = matrix_is_clean(matrix, mode=args.mode)
     if not ok and not args.force:
@@ -415,6 +582,11 @@ def main():
     p.add_argument("mode", choices=list(VALID_MODES))
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the switch to the known core workspaces (not the whole monorepo)",
+    )
     p.add_argument("--crate", action="append")
     p.add_argument(
         "--target",
@@ -426,6 +598,32 @@ def main():
     p.add_argument("--verify-limit", type=int, default=10)
     p.add_argument("-v", "--verbose", action="store_true")
     p.set_defaults(func=cmd_switch)
+
+    p = sub.add_parser(
+        "pin-revs",
+        help="Replace matrix git branches with the matrix full rev",
+    )
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the rewrite to the known core workspaces",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_pin_revs)
+
+    p = sub.add_parser(
+        "lint-patches",
+        help="Remove unused [patch] entries Cargo ignored, keeping order",
+    )
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the lint to the known core workspaces",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_lint_patches)
 
     p = sub.add_parser("verify", help="Assert cargo metadata sources match mode")
     p.add_argument("--mode", choices=list(VALID_MODES), default=None)
