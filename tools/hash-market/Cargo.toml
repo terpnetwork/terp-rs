@@ -165,3 +165,38 @@ cosmwasm-vm = { path = "../../../cosmwasm/packages/vm", optional = true, default
 cosmwasm-std = { path = "../../../cosmwasm/packages/std", optional = true, default-features = false, features = ["std", "iterator", "zk"] }
 wat = { version = "=1.259.0", optional = true }
 wasmer = { version = "=7.4.2", default-features = false, features = ["singlepass"], optional = true }
+
+# Own workspace: cw721, cw-orch, and cosmrs name these by crates.io version.
+# Their workspaces' patches do not apply here. The lock already records the
+# local forks (no registry source).
+[patch.crates-io]
+cosmwasm-schema = { path = "../../../cosmwasm/packages/schema" }
+cosmwasm-schema-derive = { path = "../../../cosmwasm/packages/schema-derive" }
+cosmwasm-std = { path = "../../../cosmwasm/packages/std" }
+cosmwasm-vm = { path = "../../../cosmwasm/packages/vm" }
+cosmwasm-vm-derive = { path = "../../../cosmwasm/packages/vm-derive" }
+cosmwasm-core = { path = "../../../cosmwasm/packages/core" }
+cosmwasm-crypto = { path = "../../../cosmwasm/packages/crypto" }
+cosmwasm-derive = { path = "../../../cosmwasm/packages/derive" }
+cw-schema = { path = "../../../cosmwasm/packages/cw-schema" }
+cw-schema-derive = { path = "../../../cosmwasm/packages/cw-schema-derive" }
+zk-cosmwasm = { path = "../../../cosmwasm/packages/zk" }
+cosmrs = { path = "../../../cosmos-rust/cosmrs" }
+cosmos-sdk-proto = { path = "../../../cosmos-rust/cosmos-sdk-proto" }
+tendermint = { path = "../../../tendermint-rs/tendermint" }
+tendermint-proto = { path = "../../../tendermint-rs/proto" }
+tendermint-rpc = { path = "../../../tendermint-rs/rpc" }
+tendermint-config = { path = "../../../tendermint-rs/config" }
+ibc-proto = { path = "../../../ibc-proto-rs" }
+ics23 = { path = "../../../ics23/rust" }
+cw-ownable = { path = "../../../cw-plus-plus/packages/ownable" }
+cw-ownable-derive = { path = "../../../cw-plus-plus/packages/ownable/derive" }
+cw-address-like = { path = "../../../cw-plus-plus/packages/address-like" }
+cw-storage-plus = { path = "../../../cw-storage-plus" }
+cw-utils = { path = "../../../cw-minus/packages/cw-utils" }
+cw2 = { path = "../../../cw-minus/packages/cw2" }
+cw20 = { path = "../../../cw-plus/packages/cw20" }
+cw20-ics20 = { path = "../../../cw-plus/contracts/cw20-ics20" }
+cw-controllers = { path = "../../../cw-minus/packages/controllers" }
+informalsystems-pbjson = { path = "../../../pbjson/pbjson" }
+abstract-cw-multi-test = { path = "../../../cw-multi-test-fork" }
