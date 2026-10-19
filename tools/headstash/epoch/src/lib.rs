@@ -26,6 +26,6 @@ pub use lane::{
 pub use roots::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, BATCH_SCOPE,
     BATCH_SOURCE_ID, CHAIN_UID, PayoutRow, SealedVote, accepted_root, attestation_value,
-    attested_root, custody_message, pending_root, pending_root_unsorted, receipt_message, sha256,
+    aggregate_root, attested_root, custody_message, pending_root, pending_root_unsorted, receipt_message, sha256,
     verify_custody,
 };

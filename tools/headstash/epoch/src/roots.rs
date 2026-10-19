@@ -118,12 +118,16 @@ pub fn accepted_root(allocation_root: &[u8; 32], rows: &[PayoutRow]) -> [u8; 32]
 }
 
 /// SHA-256 of `source_id || batch_hash || height_le` for the one attestation.
-pub fn attested_root(batch_hash: &[u8; 32]) -> [u8; 32] {
-    let mut pre = Vec::with_capacity(BATCH_SOURCE_ID.len() + 32 + 8);
+pub fn aggregate_root(value: &[u8]) -> [u8; 32] {
+    let mut pre = Vec::with_capacity(BATCH_SOURCE_ID.len() + value.len() + 8);
     pre.extend_from_slice(BATCH_SOURCE_ID.as_bytes());
-    pre.extend_from_slice(batch_hash);
+    pre.extend_from_slice(value);
     pre.extend_from_slice(&BATCH_ATTEST_HEIGHT.to_le_bytes());
     sha256(&pre)
+}
+
+pub fn attested_root(batch_hash: &[u8; 32]) -> [u8; 32] {
+    aggregate_root(batch_hash)
 }
 
 /// Message the OracleSource ed25519 key signs. Timestamp is not in the aggregate.

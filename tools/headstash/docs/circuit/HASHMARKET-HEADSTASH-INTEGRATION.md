@@ -1155,7 +1155,7 @@ Implemented in `072f694`. cw-headstash `epoch::tests` passed 15, including `halo
 
 A halo2 campaign with `vk_hash` of 32 zero bytes is refused at creation. The error text contains `vk hash`. Halo2 `vk_id` 0 stays refused. Flock may still store 32 zero bytes. That zero is the unbound flock fixture, not a halo2 key. Settle applies the hash check only when the stored hash is not all zeros.
 
-Stock `terpd` 6.4.0 does not grow a `vk_hash` field on the sudo JSON. The sudo it sends is `chain_uid`, `algo`, `height`, `root`, `attestation_count`, `block_time`, and `oracle_sources`. Each oracle source is `source_id`, `value`, `height`. The registered source is `headstash-batch`. `value` is the bytes the sidecar signed. The quorum `root` is still `attested_root` of the 32-byte batch hash. The wasm on the loopback chain ignores `oracle_sources`, so a longer value does not change that payout.
+Stock `terpd` 6.4.0 does not grow a `vk_hash` field on the sudo JSON. The sudo it sends is `chain_uid`, `algo`, `height`, `root`, `attestation_count`, `block_time`, and `oracle_sources`. Each oracle source is `source_id`, `value`, `height`. The registered source is `headstash-batch`. `value` is the bytes the sidecar signed. The quorum `root` is the module aggregate of `source_id || value || height`. When `vk_hash` is non-zero, `value` is `batch_hash || vk_hash`, so the root is that aggregate and not the aggregate of the 32-byte batch alone. Stock terpd rejects a vote whose `root` does not match. The wasm on the loopback chain ignores `oracle_sources`, so a longer value does not change that payout.
 
 The sidecar attestation value becomes `batch_hash || vk_hash` (64 bytes). Custody signs those 64 bytes. The vote's `root` field stays `attested_root(batch_hash)`.
 
@@ -1217,5 +1217,27 @@ flowchart LR
 - Replay protection is per process. It stops a repeated request. It does not survive a restart. Pair it with an expiry when the operator wants a time bound.
 - Flock's zero hash is not a halo2 key. The settle check does not treat that zero as a match for a halo2 campaign.
 - The contract still does not run `do_proof_instance_verify`. The sidecar does. The chain checks that the hash the sidecar put in the attestation is the hash stored at creation.
+
+
+Ran on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-core:local-arm64`, publish host `127.0.0.1`) after the vote root matched that aggregate. Wasm is the code id that contains `vk is fixed` and `SweepUnclaimed`. `baseline_four_up` and `recovers_next_epoch` share one clock.
+
+| Case | Result | Time | Evidence |
+|---|---|---|---|
+| mismatched_vk_hash_rejected | PASS | 225ms | operator campaign HTTP 400 `vk hash`; public claim HTTP 503 |
+| vk_hash_locked | PASS | 2415ms | second `SetEpochCampaign` returned `vk is fixed` |
+| unauthenticated_campaign_refused | PASS | 31ms | HTTP 401 |
+| operator_campaign_accepted | PASS | 115ms | HTTP 200 |
+| public_claim_succeeds | PASS | 1463ms | HTTP 200, no operator signature |
+| unauthenticated_seal_refused | PASS | 30ms | HTTP 401 |
+| operator_seal_accepted | PASS | 98ms | HTTP 200 |
+| one_sidecar_down_still_pays | PASS | 5640ms | count=3, escrow 999985 uterp |
+| two_sidecars_down_no_quorum | PASS | 12302ms | count stayed 3, height moved, escrow unchanged |
+| recovers_next_epoch | PASS | 71113ms | count=4 |
+| baseline_four_up | PASS | 71113ms | count=4 |
+| sidecar_restart_mid_epoch | PASS | 57257ms | count=4 |
+| wrong_root_outvoted | PASS | 60865ms | count=3 |
+| payout_vk_hash_rejected | PASS | 2666ms | `ApplyAcceptedBatch` with a flipped `vk_hash` left escrow at 999985 |
+| replayed_nullifier_across_epochs | PASS | 2405ms | second spend rejected (`nullifier already exists`) |
+| unclaimed_funds | PASS | 2666ms | height 312, escrow 999985 uterp to 0, tx code 0 |
 
 

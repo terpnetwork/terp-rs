@@ -285,8 +285,8 @@ pub async fn seal(
     let mut sealed = campaign.seal(body.height, signer);
     if lab_lie_root() {
         sealed.batch_hash[0] ^= 0x5a;
-        sealed.attested = headstash_epoch::attested_root(&sealed.batch_hash);
         let value = sealed.attestation_value();
+        sealed.attested = headstash_epoch::aggregate_root(&value);
         sealed.custody_signature = ed25519_dalek::Signer::sign(
             signer,
             &headstash_epoch::custody_message(&value),

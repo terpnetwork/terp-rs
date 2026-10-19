@@ -19,7 +19,7 @@ use headstash_claim::{
 
 use crate::roots::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, PayoutRow,
-    SealedVote, accepted_root, attestation_value, attested_root, receipt_message, sha256,
+    SealedVote, accepted_root, aggregate_root, attestation_value, attested_root, receipt_message, sha256,
     sign_custody,
     verify_ed25519,
 };
@@ -339,7 +339,7 @@ impl<const D: usize> Campaign<D> {
             algo: algo.to_string(),
             batch_hash,
             vk_hash: self.vk_hash,
-            attested: attested_root(&batch_hash),
+            attested: aggregate_root(&value),
             custody_signature: sign_custody(custody, &value),
             custody_public: custody.verifying_key().to_bytes(),
             attestation_height: BATCH_ATTEST_HEIGHT,
@@ -592,7 +592,7 @@ impl<const D: usize> Campaign<D> {
 mod tests {
     use super::*;
     use crate::{
-        ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, attested_root, receipt_message, sha256,
+        ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, aggregate_root, attested_root, receipt_message, sha256,
     };
     use ed25519_dalek::{Signer, SigningKey};
     use headstash_claim::statement::{canonical_claim_message, canonical_sign_message, pack_words};
@@ -1158,7 +1158,7 @@ mod tests {
         let pending = campaign.seal(49, &custody);
         assert_eq!(pending.algo, ALGO_PENDING);
         assert_eq!(pending.batch_hash, campaign.pending_root());
-        assert_eq!(pending.attested, attested_root(&pending.batch_hash));
+        assert_eq!(pending.attested, aggregate_root(&pending.attestation_value()));
         assert_eq!(pending.attestation_height, 1);
         assert_eq!(pending.foreign_height, 49);
         assert!(pending.custody_ok());

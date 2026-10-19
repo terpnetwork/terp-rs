@@ -355,11 +355,25 @@ pub fn accepted_root(allocation_root: &[u8], rows: &[EpochPayout]) -> StdResult<
 /// One attestation, so sort-and-dedupe does not change the digest. Timestamp
 /// is a custody input only.
 pub fn attested_root(batch_hash: &[u8; 32]) -> [u8; 32] {
-    let mut pre = Vec::with_capacity(BATCH_SOURCE_ID.len() + 32 + 8);
+    attested_of(batch_hash)
+}
+
+fn attested_of(value: &[u8]) -> [u8; 32] {
+    let mut pre = Vec::with_capacity(BATCH_SOURCE_ID.len() + value.len() + 8);
     pre.extend_from_slice(BATCH_SOURCE_ID.as_bytes());
-    pre.extend_from_slice(batch_hash);
+    pre.extend_from_slice(value);
     pre.extend_from_slice(&BATCH_ATTEST_HEIGHT.to_le_bytes());
     sha256(&pre)
+}
+
+fn stored_root_for(batch_hash: &[u8; 32], vk_hash: &[u8]) -> [u8; 32] {
+    if vk_hash.len() == 32 && vk_hash.iter().any(|byte| *byte != 0) {
+        let mut value = Vec::with_capacity(64);
+        value.extend_from_slice(batch_hash);
+        value.extend_from_slice(vk_hash);
+        return attested_of(&value);
+    }
+    attested_root(batch_hash)
 }
 
 /// Message an ed25519 custody key signs for the fixed headstash attestation.
@@ -485,7 +499,8 @@ pub fn apply_accepted_batch(
     rows: Vec<EpochPayout>,
     vk_hash: Binary,
 ) -> Result<Response, StdError> {
-    if let Some(campaign) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
+    let campaign = EPOCH_CAMPAIGN.may_load(deps.storage)?;
+    if let Some(campaign) = campaign.as_ref() {
         if campaign.vk_hash.iter().any(|byte| *byte != 0) {
             let presented = vk_hash.as_slice();
             if presented.len() != 32
@@ -500,7 +515,10 @@ pub fn apply_accepted_batch(
         .may_load(deps.storage, ALGO_ACCEPTED)?
         .ok_or_else(|| StdError::msg("no accepted root"))?;
     let batch = accepted_root(allocation_root.as_slice(), &rows)?;
-    let got = attested_root(&batch);
+    let got = match campaign.as_ref() {
+        Some(campaign) => stored_root_for(&batch, campaign.vk_hash.as_slice()),
+        None => attested_root(&batch),
+    };
     if stored.as_slice() != got {
         return Err(StdError::msg("batch does not match the accepted root"));
     }
@@ -735,7 +753,7 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
             "staged batch does not match its accepted root",
         ));
     }
-    if stored.as_slice() != attested_root(&batch) {
+    if stored.as_slice() != stored_root_for(&batch, campaign.vk_hash.as_slice()) {
         return Ok(empty());
     }
     if campaign.vk_hash.iter().any(|byte| *byte != 0) {

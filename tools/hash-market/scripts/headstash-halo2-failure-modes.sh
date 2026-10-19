@@ -124,18 +124,22 @@ stop_lane() {
 
 post_json() {
   local port="$1" path="$2" body="$3" out="$4" auth="${5:-public}"
-  local -a auth_hdr=()
   if [ "$auth" = "operator" ]; then
     local sig pubhex
     sig=$(python3 "$WT/tools/hash-market/scripts/headstash-operator-sign.py" \
       --key "$WORK/op.seed" --method POST --path "$path" --body "$body" \
       --domain "${HEADSTASH_AUTH_DOMAIN:-hash-market.tree-write.v1}")
     pubhex=$(cat "$WORK/op.pub")
-    auth_hdr=(-H "x-hash-market-pubkey: ${pubhex}" -H "x-hash-market-signature: ${sig}")
+    curl -sS --max-time 900 -o "$out" -w "%{http_code}" \
+      -H 'content-type: application/json' \
+      -H "x-hash-market-pubkey: ${pubhex}" \
+      -H "x-hash-market-signature: ${sig}" \
+      -X POST "http://127.0.0.1:${port}${path}" \
+      --data-binary @"$body"
+    return
   fi
   curl -sS --max-time 900 -o "$out" -w "%{http_code}" \
     -H 'content-type: application/json' \
-    "${auth_hdr[@]}" \
     -X POST "http://127.0.0.1:${port}${path}" \
     --data-binary @"$body"
 }
