@@ -61,64 +61,56 @@ crosslink-e2e = ["dep:zebra-crosslink", "dep:zebra-chain"]
 zakura-live = ["ict-rs/zakura"]
 
 [dependencies]
-anyhow = "1.0"
+anyhow = { workspace = true }
 async-trait = "0.1.89"
-axum = { version = "0.7" }
-clap = { version = "4", features = ["derive"] }
-cosmwasm-schema = { path = "../../cosmwasm/packages/schema" }
-cosmwasm-std = { path = "../../cosmwasm/packages/std" }
+axum = { workspace = true, features = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"] }
+clap = { workspace = true, features = ["derive"] }
+cosmos-sdk-proto = { workspace = true }
+cosmrs = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+crosslink-light-client = { workspace = true }
 csv = "1.4.0"
+cw-ics08-wasm-crosslink = { workspace = true, features = ["interface"] }
 cw-orch = { workspace = true, features = ["daemon"] }
 cw-orch-interchain = { workspace = true, features = ["daemon"] }
-cw-orch-polytone = { package = "abstract-cw-orch-polytone", path = "../../polytone/packages/cw-orch-polytone", default-features = false }
-dotenv = "0.15"
-env_logger = "0.11"
-hash-market = { path = "../tools/hash-market", features = ["server", "client", "ve", "blossom", "nostr", "frost", "noise", "privval"], optional = true }
-tower = { version = "0.5", default-features = false, features = ["util"] }
-
-hex = "0.4"
-zk-test-press = { path = "../tools/headstash/test-press", features = ["interface"], optional = true }
-ict-rs = { path = "../../ict-rs/ict-rs", features = ["docker", "terp", "testing", "nostr"] }
-k256 = "0.13.4"
-log = "0.4.30"
-reqwest = { version = "0.13.4", features = ["json"] }
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-# Stay on workspace sha2 0.10. Wasmer 7.4.2 (wasmvm) requires stable sha2 0.11.0,
-# and a caret on 0.11.0-pre.4 unifies with that and then fights bip32's exact pre pin.
-sha2 = { workspace = true }
-tempfile = "3.27.0"
-terp-rs  = { path = "../crates/sdk" }
-terp-authenticator-suite = { path = "suite/terp-authenticator-suite", optional = true }
-terp-orch = { path = "suite/terp-orch", optional = true }
-terp-vsck = { path = "../contracts/smart-accounts/terp-vsck", features = ["library"], optional = true }
-terp-auth = { path = "../crates/terp-auth", optional = true }
-tokio = { version = "1", features = ["full"] }
-toml = "1.1.2"
-tracing = "0.1"
-tracing-subscriber = "0.3.23"
-which = "8.0.2"
-cosmos-sdk-proto  = { path = "../../cosmos-rust/cosmos-sdk-proto", default-features = false }
-cosmrs  = { path = "../../cosmos-rust/cosmrs", default-features = false }
-crosslink-light-client = { path = "../crates/crosslink/light-client" }
-# Force halo2_proofs/multicore in this graph. zk-cosmwasm disables it for wasm;
-# feature-unification then leaves maybe-rayon/threads on and host rustc fails
-# (the_best_reduce / IndexedParallelIterator). Isolated norick-wasm stays
-# default-features=false in its own workspace.
-halo2_proofs = { package = "zakura-halo2-proofs", path = "../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch", "multicore"] }
-cw-ics08-wasm-crosslink = {path = "../contracts/light-clients/cw-ics08-wasm-crosslink", features = ["interface"]}
-ed25519-zebra = { version = "4.2", default-features = false }
+cw-orch-polytone = { workspace = true }
+dotenv = { workspace = true }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+ed25519-zebra = { workspace = true }
+env_logger = { workspace = true, features = ["default"] }
 frost-ed25519 = { version = "2.2", default-features = false, features = ["std", "serialization"] }
-kms-shard = { path = "../../kms-shard" }
-snow = "0.9"
+halo2_proofs = { workspace = true, features = ["multicore"] }
+hash-market = { workspace = true, optional = true, features = ["server", "client", "ve", "blossom", "nostr", "frost", "noise", "privval"] }
+hex = { workspace = true, features = ["std"] }
+ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing", "nostr"] }
+k256 = { workspace = true, features = ["ecdsa", "std"] }
+kms-shard = { workspace = true }
+log = "0.4.30"
 prost = "0.13"
 prost-types = "0.13"
 rand = "0.8"
-
-zebra-crosslink = { path = "../../zebra-crosslink/zebra-crosslink", optional = true }
-zebra-chain = { path = "../../zebra-crosslink/zebra-chain", optional = true }
+reqwest = { version = "0.13.4", features = ["json"] }
+rustls = { workspace = true, features = ["ring", "std"] }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+snow = "0.9"
+tempfile = "3.27.0"
+terp-auth = { workspace = true, optional = true }
+terp-authenticator-suite = { workspace = true, optional = true }
+terp-orch = { workspace = true, optional = true }
+terp-rs = { workspace = true, features = ["default"] }
+terp-vsck = { workspace = true, features = ["library"], optional = true }
+tokio = { version = "1", features = ["full"] }
+toml = "1.1.2"
+tower = { version = "0.5", default-features = false, features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = "0.3.23"
+which = "8.0.2"
+zebra-chain = { workspace = true, optional = true }
+zebra-crosslink = { workspace = true, optional = true }
+zk-test-press = { workspace = true, optional = true, features = ["interface"] }
 
 [dev-dependencies]
 rand_core = "0.6.4"

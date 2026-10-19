@@ -27,9 +27,12 @@ vote-sdk = []
 #   cargo test -p terp-authenticator-suite --features zk-host --test zk_host
 # Real snarkjs jwt-auth e2e also needs zk-cosmwasm bn254 (ark convert + verify):
 #   cargo test -p terp-authenticator-suite --features zk-host --test zk_host jwt_auth
-zk-host = ["terp-zkjwt/zk-host", "cosmwasm-std/zk", "dep:zk-cosmwasm", "zk-cosmwasm/bn254"]
-# Host gas meter for tests/auth_gas_bench.rs. cosmwasm-vm needs rustc 1.95.
-#   rustup run 1.95.0 cargo test -p terp-authenticator-suite --features gas-bench --test auth_gas_bench
+zk-host = [
+    "terp-zkjwt/zk-host",
+    "cosmwasm-std/zk",
+    "dep:zk-cosmwasm",
+    "zk-cosmwasm/bn254",
+]
 gas-bench = [
     "dep:cosmwasm-vm",
     "dep:cw721-svg",
@@ -41,34 +44,32 @@ gas-bench = [
 ]
 
 [dependencies]
-anyhow = "1.0"
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
-cosmwasm-std = { workspace = true, features = ["zk"] }
+anyhow = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cosmwasm-vm = { workspace = true, optional = true, features = ["iterator", "staking", "zk", "hash-blake", "hash-poseidon", "bn254", "redpallas"] }
 cw-orch = { workspace = true }
+cw-svg = { workspace = true, optional = true }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 dotenvy = "0.15"
+ed25519-zebra = { workspace = true, optional = true }
 env_logger = "0.11"
+k256 = { workspace = true, optional = true, features = ["ecdsa", "std"] }
+p256 = { workspace = true, features = ["ecdsa", "std"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 serde = { workspace = true }
-thiserror = { workspace = true }
-terp-auth = { workspace = true }
+sha2 = { workspace = true, optional = true }
+sha3 = { workspace = true, optional = true }
 terp-account = { workspace = true }
-terp-zkjwt = { workspace = true, features = ["library"] }
-terp-vsck = { workspace = true, features = ["library"] }
-terp-passkey = { workspace = true, features = ["library"] }
-terp-recovery = { workspace = true, features = ["library"] }
+terp-auth = { workspace = true }
 terp-ed25519 = { workspace = true, features = ["library"] }
 terp-eth = { workspace = true, features = ["library"] }
-# Optional: snarkjs→ark conversion for real jwt-auth e2e under zk-host
-zk-cosmwasm = { path = "../../../../cosmwasm/packages/zk", optional = true, default-features = false }
-# gas-bench only. Kept off the default lib so `cargo check -p terp-authenticator-suite` stays off Wasmer.
-cosmwasm-vm = { path = "../../../../cosmwasm/packages/vm", optional = true, default-features = false, features = ["iterator", "staking", "zk", "hash-blake", "hash-poseidon", "bn254", "redpallas"] }
-cw721-svg = { workspace = true, optional = true, features = ["interface"] }
-cw-svg = { workspace = true, optional = true }
-k256 = { version = "0.13", optional = true, features = ["ecdsa"] }
-sha3 = { version = "0.10", optional = true }
-ed25519-zebra = { workspace = true, optional = true }
-sha2 = { workspace = true, optional = true }
-p256 = { version = "0.13", features = ["ecdsa"] }
+terp-passkey = { workspace = true, features = ["library"] }
+terp-recovery = { workspace = true, features = ["library"] }
+terp-vsck = { workspace = true, features = ["library"] }
+terp-zkjwt = { workspace = true, features = ["library"] }
+thiserror = { workspace = true }
+zk-cosmwasm = { workspace = true, optional = true }
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }
