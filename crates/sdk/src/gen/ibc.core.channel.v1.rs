@@ -2,8 +2,7 @@
 /// Channel defines pipeline for exactly-once packet delivery between specific
 /// modules on separate blockchains, which has at least one end capable of
 /// sending packets and one end capable of receiving packets.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Channel {
     /// current state of the channel end
     #[prost(enumeration = "State", tag = "1")]
@@ -34,8 +33,7 @@ impl ::prost::Name for Channel {
 }
 /// IdentifiedChannel defines a channel with additional port and channel
 /// identifier fields.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IdentifiedChannel {
     /// current state of the channel end
     #[prost(enumeration = "State", tag = "1")]
@@ -71,8 +69,7 @@ impl ::prost::Name for IdentifiedChannel {
     }
 }
 /// Counterparty defines a channel end counterparty
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Counterparty {
     /// port on the counterparty chain which owns the other end of the channel.
     #[prost(string, tag = "1")]
@@ -92,8 +89,7 @@ impl ::prost::Name for Counterparty {
     }
 }
 /// Packet defines a type that carries data across different chains through IBC
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Packet {
     /// number corresponds to the order of sends and receives, where a Packet
     /// with an earlier sequence number must be sent and received before a Packet
@@ -136,8 +132,7 @@ impl ::prost::Name for Packet {
 /// packet commitments, acknowledgements, and receipts.
 /// Caller is responsible for knowing the context necessary to interpret this
 /// state as a commitment, acknowledgement, or a receipt.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PacketState {
     /// channel port identifier.
     #[prost(string, tag = "1")]
@@ -165,8 +160,7 @@ impl ::prost::Name for PacketState {
 /// PacketId is an identifier for a unique Packet
 /// Source chains refer to packets by source port/channel
 /// Destination chains refer to packets by destination port/channel
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PacketId {
     /// channel port identifier
     #[prost(string, tag = "1")]
@@ -195,8 +189,7 @@ impl ::prost::Name for PacketId {
 /// The first byte of any message with this format will be the non-ASCII values
 /// `0xaa` (result) or `0xb2` (error). Implemented as defined by ICS:
 /// <https://github.com/cosmos/ibc/tree/master/spec/core/ics-004-channel-and-packet-semantics#acknowledgement-envelope>
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Acknowledgement {
     /// response contains either a result or an error and must be non-empty
     #[prost(oneof = "acknowledgement::Response", tags = "21, 22")]
@@ -205,8 +198,7 @@ pub struct Acknowledgement {
 /// Nested message and enum types in `Acknowledgement`.
 pub mod acknowledgement {
     /// response contains either a result or an error and must be non-empty
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Response {
         #[prost(bytes, tag = "21")]
         Result(::prost::alloc::vec::Vec<u8>),
@@ -227,8 +219,9 @@ impl ::prost::Name for Acknowledgement {
 /// Timeout defines an execution deadline structure for 04-channel handlers.
 /// This includes packet lifecycle handlers.
 /// A valid Timeout contains either one or both of a timestamp and block height (sequence).
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct Timeout {
     /// block height after which the packet times out
     #[prost(message, optional, tag = "1")]
@@ -249,8 +242,19 @@ impl ::prost::Name for Timeout {
 }
 /// State defines if a channel is in one of the following states:
 /// CLOSED, INIT, TRYOPEN, OPEN, or UNINITIALIZED.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum State {
     /// Default State
@@ -293,8 +297,19 @@ impl State {
     }
 }
 /// Order defines if a channel is ORDERED or UNORDERED
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum Order {
     /// zero-value for channel ordering
@@ -328,8 +343,7 @@ impl Order {
     }
 }
 /// GenesisState defines the ibc channel submodule's genesis state.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct GenesisState {
     #[prost(message, repeated, tag = "1")]
     pub channels: ::prost::alloc::vec::Vec<IdentifiedChannel>,
@@ -361,8 +375,7 @@ impl ::prost::Name for GenesisState {
 }
 /// PacketSequence defines the genesis type necessary to retrieve and store
 /// next send and receive sequences.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PacketSequence {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -383,8 +396,7 @@ impl ::prost::Name for PacketSequence {
 }
 /// MsgChannelOpenInit defines an sdk.Msg to initialize a channel handshake. It
 /// is called by a relayer on Chain A.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenInit {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -404,8 +416,7 @@ impl ::prost::Name for MsgChannelOpenInit {
     }
 }
 /// MsgChannelOpenInitResponse defines the Msg/ChannelOpenInit response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenInitResponse {
     #[prost(string, tag = "1")]
     pub channel_id: ::prost::alloc::string::String,
@@ -425,8 +436,7 @@ impl ::prost::Name for MsgChannelOpenInitResponse {
 /// MsgChannelOpenInit defines a msg sent by a Relayer to try to open a channel
 /// on Chain B. The version field within the Channel field has been deprecated. Its
 /// value will be ignored by core IBC.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenTry {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -457,8 +467,7 @@ impl ::prost::Name for MsgChannelOpenTry {
     }
 }
 /// MsgChannelOpenTryResponse defines the Msg/ChannelOpenTry response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenTryResponse {
     #[prost(string, tag = "1")]
     pub version: ::prost::alloc::string::String,
@@ -477,8 +486,7 @@ impl ::prost::Name for MsgChannelOpenTryResponse {
 }
 /// MsgChannelOpenAck defines a msg sent by a Relayer to Chain A to acknowledge
 /// the change of channel state to TRYOPEN on Chain B.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenAck {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -506,8 +514,9 @@ impl ::prost::Name for MsgChannelOpenAck {
     }
 }
 /// MsgChannelOpenAckResponse defines the Msg/ChannelOpenAck response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgChannelOpenAckResponse {}
 impl ::prost::Name for MsgChannelOpenAckResponse {
     const NAME: &'static str = "MsgChannelOpenAckResponse";
@@ -521,8 +530,7 @@ impl ::prost::Name for MsgChannelOpenAckResponse {
 }
 /// MsgChannelOpenConfirm defines a msg sent by a Relayer to Chain B to
 /// acknowledge the change of channel state to OPEN on Chain A.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelOpenConfirm {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -547,8 +555,9 @@ impl ::prost::Name for MsgChannelOpenConfirm {
 }
 /// MsgChannelOpenConfirmResponse defines the Msg/ChannelOpenConfirm response
 /// type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgChannelOpenConfirmResponse {}
 impl ::prost::Name for MsgChannelOpenConfirmResponse {
     const NAME: &'static str = "MsgChannelOpenConfirmResponse";
@@ -562,8 +571,7 @@ impl ::prost::Name for MsgChannelOpenConfirmResponse {
 }
 /// MsgChannelCloseInit defines a msg sent by a Relayer to Chain A
 /// to close a channel with Chain B.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelCloseInit {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -583,8 +591,9 @@ impl ::prost::Name for MsgChannelCloseInit {
     }
 }
 /// MsgChannelCloseInitResponse defines the Msg/ChannelCloseInit response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgChannelCloseInitResponse {}
 impl ::prost::Name for MsgChannelCloseInitResponse {
     const NAME: &'static str = "MsgChannelCloseInitResponse";
@@ -598,8 +607,7 @@ impl ::prost::Name for MsgChannelCloseInitResponse {
 }
 /// MsgChannelCloseConfirm defines a msg sent by a Relayer to Chain B
 /// to acknowledge the change of channel state to CLOSED on Chain A.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChannelCloseConfirm {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -624,8 +632,9 @@ impl ::prost::Name for MsgChannelCloseConfirm {
 }
 /// MsgChannelCloseConfirmResponse defines the Msg/ChannelCloseConfirm response
 /// type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgChannelCloseConfirmResponse {}
 impl ::prost::Name for MsgChannelCloseConfirmResponse {
     const NAME: &'static str = "MsgChannelCloseConfirmResponse";
@@ -638,8 +647,7 @@ impl ::prost::Name for MsgChannelCloseConfirmResponse {
     }
 }
 /// MsgRecvPacket receives incoming IBC packet
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgRecvPacket {
     #[prost(message, optional, tag = "1")]
     pub packet: ::core::option::Option<Packet>,
@@ -661,8 +669,9 @@ impl ::prost::Name for MsgRecvPacket {
     }
 }
 /// MsgRecvPacketResponse defines the Msg/RecvPacket response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgRecvPacketResponse {
     #[prost(enumeration = "ResponseResultType", tag = "1")]
     pub result: i32,
@@ -678,8 +687,7 @@ impl ::prost::Name for MsgRecvPacketResponse {
     }
 }
 /// MsgTimeout receives timed-out packet
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgTimeout {
     #[prost(message, optional, tag = "1")]
     pub packet: ::core::option::Option<Packet>,
@@ -703,8 +711,9 @@ impl ::prost::Name for MsgTimeout {
     }
 }
 /// MsgTimeoutResponse defines the Msg/Timeout response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgTimeoutResponse {
     #[prost(enumeration = "ResponseResultType", tag = "1")]
     pub result: i32,
@@ -720,8 +729,7 @@ impl ::prost::Name for MsgTimeoutResponse {
     }
 }
 /// MsgTimeoutOnClose timed-out packet upon counterparty channel closure.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgTimeoutOnClose {
     #[prost(message, optional, tag = "1")]
     pub packet: ::core::option::Option<Packet>,
@@ -747,8 +755,9 @@ impl ::prost::Name for MsgTimeoutOnClose {
     }
 }
 /// MsgTimeoutOnCloseResponse defines the Msg/TimeoutOnClose response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgTimeoutOnCloseResponse {
     #[prost(enumeration = "ResponseResultType", tag = "1")]
     pub result: i32,
@@ -764,8 +773,7 @@ impl ::prost::Name for MsgTimeoutOnCloseResponse {
     }
 }
 /// MsgAcknowledgement receives incoming IBC acknowledgement
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgAcknowledgement {
     #[prost(message, optional, tag = "1")]
     pub packet: ::core::option::Option<Packet>,
@@ -789,8 +797,9 @@ impl ::prost::Name for MsgAcknowledgement {
     }
 }
 /// MsgAcknowledgementResponse defines the Msg/Acknowledgement response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgAcknowledgementResponse {
     #[prost(enumeration = "ResponseResultType", tag = "1")]
     pub result: i32,
@@ -806,8 +815,19 @@ impl ::prost::Name for MsgAcknowledgementResponse {
     }
 }
 /// ResponseResultType defines the possible outcomes of the execution of a message
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum ResponseResultType {
     /// Default zero value enumeration
@@ -851,10 +871,10 @@ pub mod msg_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Msg defines the ibc/channel Msg service.
     #[derive(Debug, Clone)]
     pub struct MsgClient<T> {
@@ -886,22 +906,18 @@ pub mod msg_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> MsgClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> MsgClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             MsgClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -940,47 +956,33 @@ pub mod msg_client {
         pub async fn channel_open_init(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChannelOpenInit>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenInitResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenInitResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/ChannelOpenInit",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/ChannelOpenInit");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelOpenInit"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Msg",
+                "ChannelOpenInit",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// ChannelOpenTry defines a rpc handler method for MsgChannelOpenTry.
         pub async fn channel_open_try(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChannelOpenTry>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenTryResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenTryResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/ChannelOpenTry",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/ChannelOpenTry");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelOpenTry"));
@@ -990,22 +992,14 @@ pub mod msg_client {
         pub async fn channel_open_ack(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChannelOpenAck>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenAckResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenAckResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/ChannelOpenAck",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/ChannelOpenAck");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelOpenAck"));
@@ -1015,52 +1009,38 @@ pub mod msg_client {
         pub async fn channel_open_confirm(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChannelOpenConfirm>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenConfirmResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenConfirmResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/ChannelOpenConfirm",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/ChannelOpenConfirm");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelOpenConfirm"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Msg",
+                "ChannelOpenConfirm",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// ChannelCloseInit defines a rpc handler method for MsgChannelCloseInit.
         pub async fn channel_close_init(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChannelCloseInit>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelCloseInitResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelCloseInitResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/ChannelCloseInit",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/ChannelCloseInit");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelCloseInit"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Msg",
+                "ChannelCloseInit",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// ChannelCloseConfirm defines a rpc handler method for
@@ -1072,45 +1052,31 @@ pub mod msg_client {
             tonic::Response<super::MsgChannelCloseConfirmResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Msg/ChannelCloseConfirm",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Msg", "ChannelCloseConfirm"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Msg",
+                "ChannelCloseConfirm",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// RecvPacket defines a rpc handler method for MsgRecvPacket.
         pub async fn recv_packet(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgRecvPacket>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgRecvPacketResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgRecvPacketResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/RecvPacket",
-            );
+            let path = http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/RecvPacket");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "RecvPacket"));
@@ -1120,22 +1086,13 @@ pub mod msg_client {
         pub async fn timeout(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgTimeout>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTimeoutResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgTimeoutResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/Timeout",
-            );
+            let path = http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/Timeout");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "Timeout"));
@@ -1145,22 +1102,14 @@ pub mod msg_client {
         pub async fn timeout_on_close(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgTimeoutOnClose>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTimeoutOnCloseResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgTimeoutOnCloseResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/TimeoutOnClose",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/TimeoutOnClose");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "TimeoutOnClose"));
@@ -1170,25 +1119,19 @@ pub mod msg_client {
         pub async fn acknowledgement(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgAcknowledgement>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgAcknowledgementResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgAcknowledgementResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Msg/Acknowledgement",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Msg/Acknowledgement");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.core.channel.v1.Msg", "Acknowledgement"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Msg",
+                "Acknowledgement",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -1201,7 +1144,7 @@ pub mod msg_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with MsgServer.
@@ -1211,42 +1154,27 @@ pub mod msg_server {
         async fn channel_open_init(
             &self,
             request: tonic::Request<super::MsgChannelOpenInit>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenInitResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenInitResponse>, tonic::Status>;
         /// ChannelOpenTry defines a rpc handler method for MsgChannelOpenTry.
         async fn channel_open_try(
             &self,
             request: tonic::Request<super::MsgChannelOpenTry>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenTryResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenTryResponse>, tonic::Status>;
         /// ChannelOpenAck defines a rpc handler method for MsgChannelOpenAck.
         async fn channel_open_ack(
             &self,
             request: tonic::Request<super::MsgChannelOpenAck>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenAckResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenAckResponse>, tonic::Status>;
         /// ChannelOpenConfirm defines a rpc handler method for MsgChannelOpenConfirm.
         async fn channel_open_confirm(
             &self,
             request: tonic::Request<super::MsgChannelOpenConfirm>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelOpenConfirmResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelOpenConfirmResponse>, tonic::Status>;
         /// ChannelCloseInit defines a rpc handler method for MsgChannelCloseInit.
         async fn channel_close_init(
             &self,
             request: tonic::Request<super::MsgChannelCloseInit>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChannelCloseInitResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChannelCloseInitResponse>, tonic::Status>;
         /// ChannelCloseConfirm defines a rpc handler method for
         /// MsgChannelCloseConfirm.
         async fn channel_close_confirm(
@@ -1260,34 +1188,22 @@ pub mod msg_server {
         async fn recv_packet(
             &self,
             request: tonic::Request<super::MsgRecvPacket>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgRecvPacketResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgRecvPacketResponse>, tonic::Status>;
         /// Timeout defines a rpc handler method for MsgTimeout.
         async fn timeout(
             &self,
             request: tonic::Request<super::MsgTimeout>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTimeoutResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgTimeoutResponse>, tonic::Status>;
         /// TimeoutOnClose defines a rpc handler method for MsgTimeoutOnClose.
         async fn timeout_on_close(
             &self,
             request: tonic::Request<super::MsgTimeoutOnClose>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTimeoutOnCloseResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgTimeoutOnCloseResponse>, tonic::Status>;
         /// Acknowledgement defines a rpc handler method for MsgAcknowledgement.
         async fn acknowledgement(
             &self,
             request: tonic::Request<super::MsgAcknowledgement>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgAcknowledgementResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgAcknowledgementResponse>, tonic::Status>;
     }
     /// Msg defines the ibc/channel Msg service.
     #[derive(Debug)]
@@ -1311,10 +1227,7 @@ pub mod msg_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -1369,21 +1282,16 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelOpenInit" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelOpenInitSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenInit>
-                    for ChannelOpenInitSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenInit> for ChannelOpenInitSvc<T> {
                         type Response = super::MsgChannelOpenInitResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelOpenInit>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::channel_open_init(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::channel_open_init(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1412,21 +1320,16 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelOpenTry" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelOpenTrySvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenTry>
-                    for ChannelOpenTrySvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenTry> for ChannelOpenTrySvc<T> {
                         type Response = super::MsgChannelOpenTryResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelOpenTry>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::channel_open_try(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::channel_open_try(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1455,21 +1358,16 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelOpenAck" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelOpenAckSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenAck>
-                    for ChannelOpenAckSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenAck> for ChannelOpenAckSvc<T> {
                         type Response = super::MsgChannelOpenAckResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelOpenAck>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::channel_open_ack(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::channel_open_ack(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1498,15 +1396,11 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelOpenConfirm" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelOpenConfirmSvc<T: Msg>(pub Arc<T>);
-                    impl<
-                        T: Msg,
-                    > tonic::server::UnaryService<super::MsgChannelOpenConfirm>
-                    for ChannelOpenConfirmSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelOpenConfirm>
+                        for ChannelOpenConfirmSvc<T>
+                    {
                         type Response = super::MsgChannelOpenConfirmResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelOpenConfirm>,
@@ -1543,13 +1437,9 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelCloseInit" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelCloseInitSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelCloseInit>
-                    for ChannelCloseInitSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelCloseInit> for ChannelCloseInitSvc<T> {
                         type Response = super::MsgChannelCloseInitResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelCloseInit>,
@@ -1586,15 +1476,11 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/ChannelCloseConfirm" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelCloseConfirmSvc<T: Msg>(pub Arc<T>);
-                    impl<
-                        T: Msg,
-                    > tonic::server::UnaryService<super::MsgChannelCloseConfirm>
-                    for ChannelCloseConfirmSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChannelCloseConfirm>
+                        for ChannelCloseConfirmSvc<T>
+                    {
                         type Response = super::MsgChannelCloseConfirmResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChannelCloseConfirm>,
@@ -1631,21 +1517,15 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/RecvPacket" => {
                     #[allow(non_camel_case_types)]
                     struct RecvPacketSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgRecvPacket>
-                    for RecvPacketSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgRecvPacket> for RecvPacketSvc<T> {
                         type Response = super::MsgRecvPacketResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgRecvPacket>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::recv_packet(&inner, request).await
-                            };
+                            let fut = async move { <T as Msg>::recv_packet(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1674,21 +1554,15 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/Timeout" => {
                     #[allow(non_camel_case_types)]
                     struct TimeoutSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgTimeout>
-                    for TimeoutSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgTimeout> for TimeoutSvc<T> {
                         type Response = super::MsgTimeoutResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgTimeout>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::timeout(&inner, request).await
-                            };
+                            let fut = async move { <T as Msg>::timeout(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1717,21 +1591,16 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/TimeoutOnClose" => {
                     #[allow(non_camel_case_types)]
                     struct TimeoutOnCloseSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgTimeoutOnClose>
-                    for TimeoutOnCloseSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgTimeoutOnClose> for TimeoutOnCloseSvc<T> {
                         type Response = super::MsgTimeoutOnCloseResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgTimeoutOnClose>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::timeout_on_close(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::timeout_on_close(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1760,21 +1629,16 @@ pub mod msg_server {
                 "/ibc.core.channel.v1.Msg/Acknowledgement" => {
                     #[allow(non_camel_case_types)]
                     struct AcknowledgementSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgAcknowledgement>
-                    for AcknowledgementSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgAcknowledgement> for AcknowledgementSvc<T> {
                         type Response = super::MsgAcknowledgementResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgAcknowledgement>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::acknowledgement(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::acknowledgement(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1800,25 +1664,19 @@ pub mod msg_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -1841,8 +1699,7 @@ pub mod msg_server {
     }
 }
 /// QueryChannelRequest is the request type for the Query/Channel RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryChannelRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -1864,8 +1721,7 @@ impl ::prost::Name for QueryChannelRequest {
 /// QueryChannelResponse is the response type for the Query/Channel RPC method.
 /// Besides the Channel end, it includes a proof and the height from which the
 /// proof was retrieved.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryChannelResponse {
     /// channel associated with the request identifiers
     #[prost(message, optional, tag = "1")]
@@ -1888,8 +1744,7 @@ impl ::prost::Name for QueryChannelResponse {
     }
 }
 /// QueryChannelsRequest is the request type for the Query/Channels RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryChannelsRequest {
     /// pagination request
     #[prost(message, optional, tag = "1")]
@@ -1908,8 +1763,7 @@ impl ::prost::Name for QueryChannelsRequest {
     }
 }
 /// QueryChannelsResponse is the response type for the Query/Channels RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryChannelsResponse {
     /// list of stored channels of the chain.
     #[prost(message, repeated, tag = "1")]
@@ -1935,8 +1789,7 @@ impl ::prost::Name for QueryChannelsResponse {
 }
 /// QueryConnectionChannelsRequest is the request type for the
 /// Query/QueryConnectionChannels RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryConnectionChannelsRequest {
     /// connection unique identifier
     #[prost(string, tag = "1")]
@@ -1959,8 +1812,7 @@ impl ::prost::Name for QueryConnectionChannelsRequest {
 }
 /// QueryConnectionChannelsResponse is the Response type for the
 /// Query/QueryConnectionChannels RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryConnectionChannelsResponse {
     /// list of channels associated with a connection.
     #[prost(message, repeated, tag = "1")]
@@ -1986,8 +1838,7 @@ impl ::prost::Name for QueryConnectionChannelsResponse {
 }
 /// QueryChannelClientStateRequest is the request type for the Query/ClientState
 /// RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryChannelClientStateRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2008,14 +1859,12 @@ impl ::prost::Name for QueryChannelClientStateRequest {
 }
 /// QueryChannelClientStateResponse is the Response type for the
 /// Query/QueryChannelClientState RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryChannelClientStateResponse {
     /// client state associated with the channel
     #[prost(message, optional, tag = "1")]
-    pub identified_client_state: ::core::option::Option<
-        super::super::client::v1::IdentifiedClientState,
-    >,
+    pub identified_client_state:
+        ::core::option::Option<super::super::client::v1::IdentifiedClientState>,
     /// merkle proof of existence
     #[prost(bytes = "vec", tag = "2")]
     pub proof: ::prost::alloc::vec::Vec<u8>,
@@ -2035,8 +1884,7 @@ impl ::prost::Name for QueryChannelClientStateResponse {
 }
 /// QueryChannelConsensusStateRequest is the request type for the
 /// Query/ConsensusState RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryChannelConsensusStateRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2063,8 +1911,7 @@ impl ::prost::Name for QueryChannelConsensusStateRequest {
 }
 /// QueryChannelClientStateResponse is the Response type for the
 /// Query/QueryChannelClientState RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryChannelConsensusStateResponse {
     /// consensus state associated with the channel
     #[prost(message, optional, tag = "1")]
@@ -2091,8 +1938,7 @@ impl ::prost::Name for QueryChannelConsensusStateResponse {
 }
 /// QueryPacketCommitmentRequest is the request type for the
 /// Query/PacketCommitment RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketCommitmentRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2117,8 +1963,7 @@ impl ::prost::Name for QueryPacketCommitmentRequest {
 /// QueryPacketCommitmentResponse defines the client query response for a packet
 /// which also includes a proof and the height from which the proof was
 /// retrieved
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketCommitmentResponse {
     /// packet associated with the request fields
     #[prost(bytes = "vec", tag = "1")]
@@ -2142,8 +1987,7 @@ impl ::prost::Name for QueryPacketCommitmentResponse {
 }
 /// QueryPacketCommitmentsRequest is the request type for the
 /// Query/QueryPacketCommitments RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryPacketCommitmentsRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2169,8 +2013,7 @@ impl ::prost::Name for QueryPacketCommitmentsRequest {
 }
 /// QueryPacketCommitmentsResponse is the request type for the
 /// Query/QueryPacketCommitments RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryPacketCommitmentsResponse {
     #[prost(message, repeated, tag = "1")]
     pub commitments: ::prost::alloc::vec::Vec<PacketState>,
@@ -2195,8 +2038,7 @@ impl ::prost::Name for QueryPacketCommitmentsResponse {
 }
 /// QueryPacketReceiptRequest is the request type for the
 /// Query/PacketReceipt RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketReceiptRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2221,8 +2063,7 @@ impl ::prost::Name for QueryPacketReceiptRequest {
 /// QueryPacketReceiptResponse defines the client query response for a packet
 /// receipt which also includes a proof, and the height from which the proof was
 /// retrieved
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketReceiptResponse {
     /// success flag for if receipt exists
     #[prost(bool, tag = "2")]
@@ -2246,8 +2087,7 @@ impl ::prost::Name for QueryPacketReceiptResponse {
 }
 /// QueryPacketAcknowledgementRequest is the request type for the
 /// Query/PacketAcknowledgement RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketAcknowledgementRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2272,8 +2112,7 @@ impl ::prost::Name for QueryPacketAcknowledgementRequest {
 /// QueryPacketAcknowledgementResponse defines the client query response for a
 /// packet which also includes a proof and the height from which the
 /// proof was retrieved
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryPacketAcknowledgementResponse {
     /// packet associated with the request fields
     #[prost(bytes = "vec", tag = "1")]
@@ -2297,8 +2136,7 @@ impl ::prost::Name for QueryPacketAcknowledgementResponse {
 }
 /// QueryPacketAcknowledgementsRequest is the request type for the
 /// Query/QueryPacketCommitments RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryPacketAcknowledgementsRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2327,8 +2165,7 @@ impl ::prost::Name for QueryPacketAcknowledgementsRequest {
 }
 /// QueryPacketAcknowledgemetsResponse is the request type for the
 /// Query/QueryPacketAcknowledgements RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryPacketAcknowledgementsResponse {
     #[prost(message, repeated, tag = "1")]
     pub acknowledgements: ::prost::alloc::vec::Vec<PacketState>,
@@ -2353,8 +2190,7 @@ impl ::prost::Name for QueryPacketAcknowledgementsResponse {
 }
 /// QueryUnreceivedPacketsRequest is the request type for the
 /// Query/UnreceivedPackets RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryUnreceivedPacketsRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2378,8 +2214,7 @@ impl ::prost::Name for QueryUnreceivedPacketsRequest {
 }
 /// QueryUnreceivedPacketsResponse is the response type for the
 /// Query/UnreceivedPacketCommitments RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryUnreceivedPacketsResponse {
     /// list of unreceived packet sequences
     #[prost(uint64, repeated, tag = "1")]
@@ -2400,8 +2235,7 @@ impl ::prost::Name for QueryUnreceivedPacketsResponse {
 }
 /// QueryUnreceivedAcks is the request type for the
 /// Query/UnreceivedAcks RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryUnreceivedAcksRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2425,8 +2259,7 @@ impl ::prost::Name for QueryUnreceivedAcksRequest {
 }
 /// QueryUnreceivedAcksResponse is the response type for the
 /// Query/UnreceivedAcks RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryUnreceivedAcksResponse {
     /// list of unreceived acknowledgement sequences
     #[prost(uint64, repeated, tag = "1")]
@@ -2447,8 +2280,7 @@ impl ::prost::Name for QueryUnreceivedAcksResponse {
 }
 /// QueryNextSequenceReceiveRequest is the request type for the
 /// Query/QueryNextSequenceReceiveRequest RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryNextSequenceReceiveRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2469,8 +2301,7 @@ impl ::prost::Name for QueryNextSequenceReceiveRequest {
 }
 /// QuerySequenceResponse is the response type for the
 /// Query/QueryNextSequenceReceiveResponse RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryNextSequenceReceiveResponse {
     /// next sequence receive number
     #[prost(uint64, tag = "1")]
@@ -2494,8 +2325,7 @@ impl ::prost::Name for QueryNextSequenceReceiveResponse {
 }
 /// QueryNextSequenceSendRequest is the request type for the
 /// Query/QueryNextSequenceSend RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryNextSequenceSendRequest {
     /// port unique identifier
     #[prost(string, tag = "1")]
@@ -2516,8 +2346,7 @@ impl ::prost::Name for QueryNextSequenceSendRequest {
 }
 /// QueryNextSequenceSendResponse is the request type for the
 /// Query/QueryNextSequenceSend RPC method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryNextSequenceSendResponse {
     /// next sequence send number
     #[prost(uint64, tag = "1")]
@@ -2547,10 +2376,10 @@ pub mod query_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Query provides defines the gRPC querier service
     #[derive(Debug, Clone)]
     pub struct QueryClient<T> {
@@ -2590,14 +2419,13 @@ pub mod query_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             QueryClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2636,22 +2464,13 @@ pub mod query_client {
         pub async fn channel(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryChannelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryChannelResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryChannelResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/Channel",
-            );
+            let path = http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/Channel");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Query", "Channel"));
@@ -2661,22 +2480,13 @@ pub mod query_client {
         pub async fn channels(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryChannelsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryChannelsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryChannelsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/Channels",
-            );
+            let path = http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/Channels");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("ibc.core.channel.v1.Query", "Channels"));
@@ -2691,23 +2501,18 @@ pub mod query_client {
             tonic::Response<super::QueryConnectionChannelsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/ConnectionChannels",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "ConnectionChannels"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "ConnectionChannels",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// ChannelClientState queries for the client state for the channel associated
@@ -2719,23 +2524,18 @@ pub mod query_client {
             tonic::Response<super::QueryChannelClientStateResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/ChannelClientState",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "ChannelClientState"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "ChannelClientState",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// ChannelConsensusState queries for the consensus state for the channel
@@ -2747,50 +2547,37 @@ pub mod query_client {
             tonic::Response<super::QueryChannelConsensusStateResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/ChannelConsensusState",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "ChannelConsensusState"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "ChannelConsensusState",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// PacketCommitment queries a stored packet commitment hash.
         pub async fn packet_commitment(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryPacketCommitmentRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryPacketCommitmentResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryPacketCommitmentResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/PacketCommitment",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/PacketCommitment");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "PacketCommitment"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "PacketCommitment",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// PacketCommitments returns all the packet commitments hashes associated
@@ -2802,23 +2589,18 @@ pub mod query_client {
             tonic::Response<super::QueryPacketCommitmentsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/PacketCommitments",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "PacketCommitments"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "PacketCommitments",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// PacketReceipt queries if a given packet sequence has been received on the
@@ -2826,25 +2608,19 @@ pub mod query_client {
         pub async fn packet_receipt(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryPacketReceiptRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryPacketReceiptResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryPacketReceiptResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/PacketReceipt",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/PacketReceipt");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.core.channel.v1.Query", "PacketReceipt"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "PacketReceipt",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// PacketAcknowledgement queries a stored packet acknowledgement hash.
@@ -2855,23 +2631,18 @@ pub mod query_client {
             tonic::Response<super::QueryPacketAcknowledgementResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/PacketAcknowledgement",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "PacketAcknowledgement"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "PacketAcknowledgement",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// PacketAcknowledgements returns all the packet acknowledgements associated
@@ -2883,26 +2654,18 @@ pub mod query_client {
             tonic::Response<super::QueryPacketAcknowledgementsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/PacketAcknowledgements",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "ibc.core.channel.v1.Query",
-                        "PacketAcknowledgements",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "PacketAcknowledgements",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// UnreceivedPackets returns all the unreceived IBC packets associated with a
@@ -2914,23 +2677,18 @@ pub mod query_client {
             tonic::Response<super::QueryUnreceivedPacketsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/UnreceivedPackets",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "UnreceivedPackets"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "UnreceivedPackets",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// UnreceivedAcks returns all the unreceived IBC acknowledgements associated
@@ -2938,25 +2696,19 @@ pub mod query_client {
         pub async fn unreceived_acks(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryUnreceivedAcksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryUnreceivedAcksResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryUnreceivedAcksResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/UnreceivedAcks",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/UnreceivedAcks");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.core.channel.v1.Query", "UnreceivedAcks"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "UnreceivedAcks",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// NextSequenceReceive returns the next receive sequence for a given channel.
@@ -2967,50 +2719,37 @@ pub mod query_client {
             tonic::Response<super::QueryNextSequenceReceiveResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.core.channel.v1.Query/NextSequenceReceive",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "NextSequenceReceive"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "NextSequenceReceive",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// NextSequenceSend returns the next send sequence for a given channel.
         pub async fn next_sequence_send(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryNextSequenceSendRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryNextSequenceSendResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryNextSequenceSendResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.core.channel.v1.Query/NextSequenceSend",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.core.channel.v1.Query/NextSequenceSend");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.core.channel.v1.Query", "NextSequenceSend"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.core.channel.v1.Query",
+                "NextSequenceSend",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -3023,7 +2762,7 @@ pub mod query_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with QueryServer.
@@ -3033,18 +2772,12 @@ pub mod query_server {
         async fn channel(
             &self,
             request: tonic::Request<super::QueryChannelRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryChannelResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryChannelResponse>, tonic::Status>;
         /// Channels queries all the IBC channels of a chain.
         async fn channels(
             &self,
             request: tonic::Request<super::QueryChannelsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryChannelsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryChannelsResponse>, tonic::Status>;
         /// ConnectionChannels queries all the channels associated with a connection
         /// end.
         async fn connection_channels(
@@ -3076,10 +2809,7 @@ pub mod query_server {
         async fn packet_commitment(
             &self,
             request: tonic::Request<super::QueryPacketCommitmentRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryPacketCommitmentResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryPacketCommitmentResponse>, tonic::Status>;
         /// PacketCommitments returns all the packet commitments hashes associated
         /// with a channel.
         async fn packet_commitments(
@@ -3094,10 +2824,7 @@ pub mod query_server {
         async fn packet_receipt(
             &self,
             request: tonic::Request<super::QueryPacketReceiptRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryPacketReceiptResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryPacketReceiptResponse>, tonic::Status>;
         /// PacketAcknowledgement queries a stored packet acknowledgement hash.
         async fn packet_acknowledgement(
             &self,
@@ -3129,10 +2856,7 @@ pub mod query_server {
         async fn unreceived_acks(
             &self,
             request: tonic::Request<super::QueryUnreceivedAcksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryUnreceivedAcksResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryUnreceivedAcksResponse>, tonic::Status>;
         /// NextSequenceReceive returns the next receive sequence for a given channel.
         async fn next_sequence_receive(
             &self,
@@ -3145,10 +2869,7 @@ pub mod query_server {
         async fn next_sequence_send(
             &self,
             request: tonic::Request<super::QueryNextSequenceSendRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryNextSequenceSendResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryNextSequenceSendResponse>, tonic::Status>;
     }
     /// Query provides defines the gRPC querier service
     #[derive(Debug)]
@@ -3172,10 +2893,7 @@ pub mod query_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -3230,23 +2948,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/Channel" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryChannelRequest>
-                    for ChannelSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryChannelRequest> for ChannelSvc<T> {
                         type Response = super::QueryChannelResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryChannelRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::channel(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::channel(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -3275,23 +2985,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/Channels" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelsSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryChannelsRequest>
-                    for ChannelsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryChannelsRequest> for ChannelsSvc<T> {
                         type Response = super::QueryChannelsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryChannelsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::channels(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::channels(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -3320,20 +3022,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/ConnectionChannels" => {
                     #[allow(non_camel_case_types)]
                     struct ConnectionChannelsSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryConnectionChannelsRequest>
-                    for ConnectionChannelsSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryConnectionChannelsRequest>
+                        for ConnectionChannelsSvc<T>
+                    {
                         type Response = super::QueryConnectionChannelsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryConnectionChannelsRequest,
-                            >,
+                            request: tonic::Request<super::QueryConnectionChannelsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3367,20 +3064,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/ChannelClientState" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelClientStateSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryChannelClientStateRequest>
-                    for ChannelClientStateSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryChannelClientStateRequest>
+                        for ChannelClientStateSvc<T>
+                    {
                         type Response = super::QueryChannelClientStateResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryChannelClientStateRequest,
-                            >,
+                            request: tonic::Request<super::QueryChannelClientStateRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3414,21 +3106,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/ChannelConsensusState" => {
                     #[allow(non_camel_case_types)]
                     struct ChannelConsensusStateSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<
-                        super::QueryChannelConsensusStateRequest,
-                    > for ChannelConsensusStateSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryChannelConsensusStateRequest>
+                        for ChannelConsensusStateSvc<T>
+                    {
                         type Response = super::QueryChannelConsensusStateResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryChannelConsensusStateRequest,
-                            >,
+                            request: tonic::Request<super::QueryChannelConsensusStateRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3462,15 +3148,11 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/PacketCommitment" => {
                     #[allow(non_camel_case_types)]
                     struct PacketCommitmentSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryPacketCommitmentRequest>
-                    for PacketCommitmentSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryPacketCommitmentRequest>
+                        for PacketCommitmentSvc<T>
+                    {
                         type Response = super::QueryPacketCommitmentResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryPacketCommitmentRequest>,
@@ -3507,15 +3189,11 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/PacketCommitments" => {
                     #[allow(non_camel_case_types)]
                     struct PacketCommitmentsSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryPacketCommitmentsRequest>
-                    for PacketCommitmentsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryPacketCommitmentsRequest>
+                        for PacketCommitmentsSvc<T>
+                    {
                         type Response = super::QueryPacketCommitmentsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryPacketCommitmentsRequest>,
@@ -3552,23 +3230,18 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/PacketReceipt" => {
                     #[allow(non_camel_case_types)]
                     struct PacketReceiptSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryPacketReceiptRequest>
-                    for PacketReceiptSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryPacketReceiptRequest>
+                        for PacketReceiptSvc<T>
+                    {
                         type Response = super::QueryPacketReceiptResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryPacketReceiptRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::packet_receipt(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Query>::packet_receipt(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -3597,21 +3270,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/PacketAcknowledgement" => {
                     #[allow(non_camel_case_types)]
                     struct PacketAcknowledgementSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<
-                        super::QueryPacketAcknowledgementRequest,
-                    > for PacketAcknowledgementSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryPacketAcknowledgementRequest>
+                        for PacketAcknowledgementSvc<T>
+                    {
                         type Response = super::QueryPacketAcknowledgementResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryPacketAcknowledgementRequest,
-                            >,
+                            request: tonic::Request<super::QueryPacketAcknowledgementRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3645,21 +3312,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/PacketAcknowledgements" => {
                     #[allow(non_camel_case_types)]
                     struct PacketAcknowledgementsSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<
-                        super::QueryPacketAcknowledgementsRequest,
-                    > for PacketAcknowledgementsSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryPacketAcknowledgementsRequest>
+                        for PacketAcknowledgementsSvc<T>
+                    {
                         type Response = super::QueryPacketAcknowledgementsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryPacketAcknowledgementsRequest,
-                            >,
+                            request: tonic::Request<super::QueryPacketAcknowledgementsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3693,15 +3354,11 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/UnreceivedPackets" => {
                     #[allow(non_camel_case_types)]
                     struct UnreceivedPacketsSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryUnreceivedPacketsRequest>
-                    for UnreceivedPacketsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryUnreceivedPacketsRequest>
+                        for UnreceivedPacketsSvc<T>
+                    {
                         type Response = super::QueryUnreceivedPacketsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryUnreceivedPacketsRequest>,
@@ -3738,23 +3395,18 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/UnreceivedAcks" => {
                     #[allow(non_camel_case_types)]
                     struct UnreceivedAcksSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryUnreceivedAcksRequest>
-                    for UnreceivedAcksSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryUnreceivedAcksRequest>
+                        for UnreceivedAcksSvc<T>
+                    {
                         type Response = super::QueryUnreceivedAcksResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryUnreceivedAcksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::unreceived_acks(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Query>::unreceived_acks(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -3783,20 +3435,15 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/NextSequenceReceive" => {
                     #[allow(non_camel_case_types)]
                     struct NextSequenceReceiveSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryNextSequenceReceiveRequest>
-                    for NextSequenceReceiveSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryNextSequenceReceiveRequest>
+                        for NextSequenceReceiveSvc<T>
+                    {
                         type Response = super::QueryNextSequenceReceiveResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryNextSequenceReceiveRequest,
-                            >,
+                            request: tonic::Request<super::QueryNextSequenceReceiveRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -3830,15 +3477,11 @@ pub mod query_server {
                 "/ibc.core.channel.v1.Query/NextSequenceSend" => {
                     #[allow(non_camel_case_types)]
                     struct NextSequenceSendSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryNextSequenceSendRequest>
-                    for NextSequenceSendSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryNextSequenceSendRequest>
+                        for NextSequenceSendSvc<T>
+                    {
                         type Response = super::QueryNextSequenceSendResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryNextSequenceSendRequest>,
@@ -3872,25 +3515,19 @@ pub mod query_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }

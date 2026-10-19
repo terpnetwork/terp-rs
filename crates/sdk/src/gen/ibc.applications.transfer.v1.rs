@@ -3,8 +3,9 @@
 /// NOTE: To prevent a single token from being transferred, set the
 /// TransfersEnabled parameter to true and then set the bank module's SendEnabled
 /// parameter for the denomination to false.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct Params {
     /// send_enabled enables or disables all cross-chain token transfers from this
     /// chain.
@@ -27,8 +28,7 @@ impl ::prost::Name for Params {
 }
 /// Hop defines a port ID, channel ID pair specifying where tokens must be forwarded
 /// next in a multihop transfer.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Hop {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -48,8 +48,7 @@ impl ::prost::Name for Hop {
 /// MsgTransfer defines a msg to transfer fungible tokens (i.e Coins) between
 /// ICS20 enabled chains. See ICS Spec here:
 /// <https://github.com/cosmos/ibc/tree/master/spec/app/ics-020-fungible-token-transfer#data-structures>
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgTransfer {
     /// the port on which the packet will be sent
     #[prost(string, tag = "1")]
@@ -59,9 +58,7 @@ pub struct MsgTransfer {
     pub source_channel: ::prost::alloc::string::String,
     /// token to be transferred
     #[prost(message, optional, tag = "3")]
-    pub token: ::core::option::Option<
-        super::super::super::super::cosmos::base::v1beta1::Coin,
-    >,
+    pub token: ::core::option::Option<super::super::super::super::cosmos::base::v1beta1::Coin>,
     /// the sender address
     #[prost(string, tag = "4")]
     pub sender: ::prost::alloc::string::String,
@@ -72,9 +69,7 @@ pub struct MsgTransfer {
     /// If you are sending with IBC v1 protocol, either timeout_height or timeout_timestamp must be set.
     /// If you are sending with IBC v2 protocol, timeout_timestamp must be set, and timeout_height must be omitted.
     #[prost(message, optional, tag = "6")]
-    pub timeout_height: ::core::option::Option<
-        super::super::super::core::client::v1::Height,
-    >,
+    pub timeout_height: ::core::option::Option<super::super::super::core::client::v1::Height>,
     /// Timeout timestamp in absolute nanoseconds since unix epoch.
     /// If you are sending with IBC v1 protocol, either timeout_height or timeout_timestamp must be set.
     /// If you are sending with IBC v2 protocol, timeout_timestamp must be set.
@@ -98,8 +93,9 @@ impl ::prost::Name for MsgTransfer {
     }
 }
 /// MsgTransferResponse defines the Msg/Transfer response type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgTransferResponse {
     /// sequence number of the transfer packet sent
     #[prost(uint64, tag = "1")]
@@ -116,8 +112,7 @@ impl ::prost::Name for MsgTransferResponse {
     }
 }
 /// MsgUpdateParams is the Msg/UpdateParams request type.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgUpdateParams {
     /// signer address
     #[prost(string, tag = "1")]
@@ -140,8 +135,9 @@ impl ::prost::Name for MsgUpdateParams {
 }
 /// MsgUpdateParamsResponse defines the response structure for executing a
 /// MsgUpdateParams message.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgUpdateParamsResponse {}
 impl ::prost::Name for MsgUpdateParamsResponse {
     const NAME: &'static str = "MsgUpdateParamsResponse";
@@ -161,10 +157,10 @@ pub mod msg_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Msg defines the ibc/transfer Msg service.
     #[derive(Debug, Clone)]
     pub struct MsgClient<T> {
@@ -196,22 +192,18 @@ pub mod msg_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> MsgClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> MsgClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             MsgClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -250,52 +242,39 @@ pub mod msg_client {
         pub async fn transfer(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgTransfer>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTransferResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgTransferResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.applications.transfer.v1.Msg/Transfer",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.applications.transfer.v1.Msg/Transfer");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.applications.transfer.v1.Msg", "Transfer"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Msg",
+                "Transfer",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// UpdateParams defines a rpc handler for MsgUpdateParams.
         pub async fn update_params(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgUpdateParams>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgUpdateParamsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgUpdateParamsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.applications.transfer.v1.Msg/UpdateParams",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.applications.transfer.v1.Msg", "UpdateParams"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Msg",
+                "UpdateParams",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -308,7 +287,7 @@ pub mod msg_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with MsgServer.
@@ -318,18 +297,12 @@ pub mod msg_server {
         async fn transfer(
             &self,
             request: tonic::Request<super::MsgTransfer>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgTransferResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgTransferResponse>, tonic::Status>;
         /// UpdateParams defines a rpc handler for MsgUpdateParams.
         async fn update_params(
             &self,
             request: tonic::Request<super::MsgUpdateParams>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgUpdateParamsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgUpdateParamsResponse>, tonic::Status>;
     }
     /// Msg defines the ibc/transfer Msg service.
     #[derive(Debug)]
@@ -353,10 +326,7 @@ pub mod msg_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -411,21 +381,15 @@ pub mod msg_server {
                 "/ibc.applications.transfer.v1.Msg/Transfer" => {
                     #[allow(non_camel_case_types)]
                     struct TransferSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgTransfer>
-                    for TransferSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgTransfer> for TransferSvc<T> {
                         type Response = super::MsgTransferResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgTransfer>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::transfer(&inner, request).await
-                            };
+                            let fut = async move { <T as Msg>::transfer(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -454,21 +418,16 @@ pub mod msg_server {
                 "/ibc.applications.transfer.v1.Msg/UpdateParams" => {
                     #[allow(non_camel_case_types)]
                     struct UpdateParamsSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgUpdateParams>
-                    for UpdateParamsSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgUpdateParams> for UpdateParamsSvc<T> {
                         type Response = super::MsgUpdateParamsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgUpdateParams>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::update_params(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::update_params(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -494,25 +453,19 @@ pub mod msg_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -536,8 +489,7 @@ pub mod msg_server {
 }
 /// DenomTrace contains the base denomination for ICS20 fungible tokens and the
 /// source tracing information path.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DenomTrace {
     /// path defines the chain of port/channel identifiers used for tracing the
     /// source of the fungible token.
@@ -558,8 +510,7 @@ impl ::prost::Name for DenomTrace {
     }
 }
 /// Token defines a struct which represents a token to be transferred.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct Token {
     /// the token denomination
     #[prost(message, optional, tag = "1")]
@@ -579,8 +530,7 @@ impl ::prost::Name for Token {
     }
 }
 /// Denom holds the base denom of a Token and a trace of the chains it was sent through.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct Denom {
     /// the base token denomination
     #[prost(string, tag = "1")]
@@ -602,8 +552,7 @@ impl ::prost::Name for Denom {
 /// FungibleTokenPacketData defines a struct for the packet payload
 /// See FungibleTokenPacketData spec:
 /// <https://github.com/cosmos/ibc/tree/master/spec/app/ics-020-fungible-token-transfer#data-structures>
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FungibleTokenPacketData {
     /// the token denomination to be transferred
     #[prost(string, tag = "1")]
@@ -632,8 +581,9 @@ impl ::prost::Name for FungibleTokenPacketData {
     }
 }
 /// QueryParamsRequest is the request type for the Query/Params RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct QueryParamsRequest {}
 impl ::prost::Name for QueryParamsRequest {
     const NAME: &'static str = "QueryParamsRequest";
@@ -646,8 +596,9 @@ impl ::prost::Name for QueryParamsRequest {
     }
 }
 /// QueryParamsResponse is the response type for the Query/Params RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct QueryParamsResponse {
     /// params defines the parameters of the module.
     #[prost(message, optional, tag = "1")]
@@ -665,8 +616,7 @@ impl ::prost::Name for QueryParamsResponse {
 }
 /// QueryDenomRequest is the request type for the Query/Denom RPC
 /// method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomRequest {
     /// hash (in hex format) or denom (full denom with ibc prefix) of the on chain denomination.
     #[prost(string, tag = "1")]
@@ -684,8 +634,7 @@ impl ::prost::Name for QueryDenomRequest {
 }
 /// QueryDenomResponse is the response type for the Query/Denom RPC
 /// method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryDenomResponse {
     /// denom returns the requested denomination.
     #[prost(message, optional, tag = "1")]
@@ -703,8 +652,7 @@ impl ::prost::Name for QueryDenomResponse {
 }
 /// QueryDenomsRequest is the request type for the Query/Denoms RPC
 /// method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryDenomsRequest {
     /// pagination defines an optional pagination for the request.
     #[prost(message, optional, tag = "1")]
@@ -724,8 +672,7 @@ impl ::prost::Name for QueryDenomsRequest {
 }
 /// QueryDenomsResponse is the response type for the Query/Denoms RPC
 /// method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryDenomsResponse {
     /// denoms returns all denominations.
     #[prost(message, repeated, tag = "1")]
@@ -748,8 +695,7 @@ impl ::prost::Name for QueryDenomsResponse {
 }
 /// QueryDenomHashRequest is the request type for the Query/DenomHash RPC
 /// method
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomHashRequest {
     /// The denomination trace (\[port_id\]/\[channel_id\])+/\[denom\]
     #[prost(string, tag = "1")]
@@ -767,8 +713,7 @@ impl ::prost::Name for QueryDenomHashRequest {
 }
 /// QueryDenomHashResponse is the response type for the Query/DenomHash RPC
 /// method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomHashResponse {
     /// hash (in hex format) of the denomination trace information.
     #[prost(string, tag = "1")]
@@ -785,8 +730,7 @@ impl ::prost::Name for QueryDenomHashResponse {
     }
 }
 /// QueryEscrowAddressRequest is the request type for the EscrowAddress RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryEscrowAddressRequest {
     /// unique port identifier
     #[prost(string, tag = "1")]
@@ -806,8 +750,7 @@ impl ::prost::Name for QueryEscrowAddressRequest {
     }
 }
 /// QueryEscrowAddressResponse is the response type of the EscrowAddress RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryEscrowAddressResponse {
     /// the escrow account address
     #[prost(string, tag = "1")]
@@ -824,8 +767,7 @@ impl ::prost::Name for QueryEscrowAddressResponse {
     }
 }
 /// QueryTotalEscrowForDenomRequest is the request type for TotalEscrowForDenom RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryTotalEscrowForDenomRequest {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,
@@ -841,13 +783,10 @@ impl ::prost::Name for QueryTotalEscrowForDenomRequest {
     }
 }
 /// QueryTotalEscrowForDenomResponse is the response type for TotalEscrowForDenom RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryTotalEscrowForDenomResponse {
     #[prost(message, optional, tag = "1")]
-    pub amount: ::core::option::Option<
-        super::super::super::super::cosmos::base::v1beta1::Coin,
-    >,
+    pub amount: ::core::option::Option<super::super::super::super::cosmos::base::v1beta1::Coin>,
 }
 impl ::prost::Name for QueryTotalEscrowForDenomResponse {
     const NAME: &'static str = "QueryTotalEscrowForDenomResponse";
@@ -867,10 +806,10 @@ pub mod query_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Query provides defines the gRPC querier service.
     #[derive(Debug, Clone)]
     pub struct QueryClient<T> {
@@ -910,14 +849,13 @@ pub mod query_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             QueryClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -956,132 +894,97 @@ pub mod query_client {
         pub async fn params(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryParamsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryParamsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryParamsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.applications.transfer.v1.Query/Params",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.applications.transfer.v1.Query/Params");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.applications.transfer.v1.Query", "Params"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "Params",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Denoms queries all denominations
         pub async fn denoms(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDenomsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.applications.transfer.v1.Query/Denoms",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.applications.transfer.v1.Query/Denoms");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.applications.transfer.v1.Query", "Denoms"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "Denoms",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Denom queries a denomination
         pub async fn denom(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDenomRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/ibc.applications.transfer.v1.Query/Denom",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/ibc.applications.transfer.v1.Query/Denom");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("ibc.applications.transfer.v1.Query", "Denom"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "Denom",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// DenomHash queries a denomination hash information.
         pub async fn denom_hash(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDenomHashRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomHashResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomHashResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.applications.transfer.v1.Query/DenomHash",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("ibc.applications.transfer.v1.Query", "DenomHash"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "DenomHash",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// EscrowAddress returns the escrow address for a particular port and channel id.
         pub async fn escrow_address(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryEscrowAddressRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryEscrowAddressResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryEscrowAddressResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.applications.transfer.v1.Query/EscrowAddress",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "ibc.applications.transfer.v1.Query",
-                        "EscrowAddress",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "EscrowAddress",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// TotalEscrowForDenom returns the total amount of tokens in escrow based on the denom.
@@ -1092,26 +995,18 @@ pub mod query_client {
             tonic::Response<super::QueryTotalEscrowForDenomResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/ibc.applications.transfer.v1.Query/TotalEscrowForDenom",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "ibc.applications.transfer.v1.Query",
-                        "TotalEscrowForDenom",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "ibc.applications.transfer.v1.Query",
+                "TotalEscrowForDenom",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -1124,7 +1019,7 @@ pub mod query_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with QueryServer.
@@ -1134,42 +1029,27 @@ pub mod query_server {
         async fn params(
             &self,
             request: tonic::Request<super::QueryParamsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryParamsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryParamsResponse>, tonic::Status>;
         /// Denoms queries all denominations
         async fn denoms(
             &self,
             request: tonic::Request<super::QueryDenomsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomsResponse>, tonic::Status>;
         /// Denom queries a denomination
         async fn denom(
             &self,
             request: tonic::Request<super::QueryDenomRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomResponse>, tonic::Status>;
         /// DenomHash queries a denomination hash information.
         async fn denom_hash(
             &self,
             request: tonic::Request<super::QueryDenomHashRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryDenomHashResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryDenomHashResponse>, tonic::Status>;
         /// EscrowAddress returns the escrow address for a particular port and channel id.
         async fn escrow_address(
             &self,
             request: tonic::Request<super::QueryEscrowAddressRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryEscrowAddressResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryEscrowAddressResponse>, tonic::Status>;
         /// TotalEscrowForDenom returns the total amount of tokens in escrow based on the denom.
         async fn total_escrow_for_denom(
             &self,
@@ -1201,10 +1081,7 @@ pub mod query_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -1259,21 +1136,15 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/Params" => {
                     #[allow(non_camel_case_types)]
                     struct ParamsSvc<T: Query>(pub Arc<T>);
-                    impl<T: Query> tonic::server::UnaryService<super::QueryParamsRequest>
-                    for ParamsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryParamsRequest> for ParamsSvc<T> {
                         type Response = super::QueryParamsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryParamsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::params(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::params(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1302,21 +1173,15 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/Denoms" => {
                     #[allow(non_camel_case_types)]
                     struct DenomsSvc<T: Query>(pub Arc<T>);
-                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomsRequest>
-                    for DenomsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomsRequest> for DenomsSvc<T> {
                         type Response = super::QueryDenomsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryDenomsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::denoms(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::denoms(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1345,21 +1210,15 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/Denom" => {
                     #[allow(non_camel_case_types)]
                     struct DenomSvc<T: Query>(pub Arc<T>);
-                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomRequest>
-                    for DenomSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomRequest> for DenomSvc<T> {
                         type Response = super::QueryDenomResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryDenomRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::denom(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::denom(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1388,23 +1247,16 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/DenomHash" => {
                     #[allow(non_camel_case_types)]
                     struct DenomHashSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryDenomHashRequest>
-                    for DenomHashSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomHashRequest> for DenomHashSvc<T> {
                         type Response = super::QueryDenomHashResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryDenomHashRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::denom_hash(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Query>::denom_hash(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1433,23 +1285,18 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/EscrowAddress" => {
                     #[allow(non_camel_case_types)]
                     struct EscrowAddressSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryEscrowAddressRequest>
-                    for EscrowAddressSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryEscrowAddressRequest>
+                        for EscrowAddressSvc<T>
+                    {
                         type Response = super::QueryEscrowAddressResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryEscrowAddressRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::escrow_address(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Query>::escrow_address(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1478,20 +1325,15 @@ pub mod query_server {
                 "/ibc.applications.transfer.v1.Query/TotalEscrowForDenom" => {
                     #[allow(non_camel_case_types)]
                     struct TotalEscrowForDenomSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryTotalEscrowForDenomRequest>
-                    for TotalEscrowForDenomSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryTotalEscrowForDenomRequest>
+                        for TotalEscrowForDenomSvc<T>
+                    {
                         type Response = super::QueryTotalEscrowForDenomResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryTotalEscrowForDenomRequest,
-                            >,
+                            request: tonic::Request<super::QueryTotalEscrowForDenomRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1522,25 +1364,19 @@ pub mod query_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -1563,8 +1399,7 @@ pub mod query_server {
     }
 }
 /// Allocation defines the spend limit for a particular port and channel
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct Allocation {
     /// the port on which the packet will be sent
     #[prost(string, tag = "1")]
@@ -1574,9 +1409,8 @@ pub struct Allocation {
     pub source_channel: ::prost::alloc::string::String,
     /// spend limitation on the channel
     #[prost(message, repeated, tag = "3")]
-    pub spend_limit: ::prost::alloc::vec::Vec<
-        super::super::super::super::cosmos::base::v1beta1::Coin,
-    >,
+    pub spend_limit:
+        ::prost::alloc::vec::Vec<super::super::super::super::cosmos::base::v1beta1::Coin>,
     /// allow list of receivers, an empty allow list permits any receiver address
     #[prost(string, repeated, tag = "4")]
     pub allow_list: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -1597,8 +1431,7 @@ impl ::prost::Name for Allocation {
 }
 /// TransferAuthorization allows the grantee to spend up to spend_limit coins from
 /// the granter's account for ibc transfer on a specific channel
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct TransferAuthorization {
     /// port and channel amounts
     #[prost(message, repeated, tag = "1")]
@@ -1615,8 +1448,7 @@ impl ::prost::Name for TransferAuthorization {
     }
 }
 /// GenesisState defines the ibc-transfer genesis state
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct GenesisState {
     #[prost(string, tag = "1")]
     pub port_id: ::prost::alloc::string::String,
@@ -1627,9 +1459,8 @@ pub struct GenesisState {
     /// total_escrowed contains the total amount of tokens escrowed
     /// by the transfer module
     #[prost(message, repeated, tag = "4")]
-    pub total_escrowed: ::prost::alloc::vec::Vec<
-        super::super::super::super::cosmos::base::v1beta1::Coin,
-    >,
+    pub total_escrowed:
+        ::prost::alloc::vec::Vec<super::super::super::super::cosmos::base::v1beta1::Coin>,
 }
 impl ::prost::Name for GenesisState {
     const NAME: &'static str = "GenesisState";

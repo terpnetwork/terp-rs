@@ -2,8 +2,7 @@
 /// DenomAuthorityMetadata specifies metadata for addresses that have specific
 /// capabilities over a token factory denom. Right now there is only one Admin
 /// permission, but is planned to be extended to the future.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DenomAuthorityMetadata {
     /// Can be empty for no admin, or a valid osmosis address
     #[prost(string, tag = "1")]
@@ -20,13 +19,11 @@ impl ::prost::Name for DenomAuthorityMetadata {
     }
 }
 /// Params defines the parameters for the tokenfactory module.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct Params {
     #[prost(message, repeated, tag = "1")]
-    pub denom_creation_fee: ::prost::alloc::vec::Vec<
-        super::super::super::cosmos::base::v1beta1::Coin,
-    >,
+    pub denom_creation_fee:
+        ::prost::alloc::vec::Vec<super::super::super::cosmos::base::v1beta1::Coin>,
     /// if denom_creation_fee is an empty array, then this field is used to add
     /// more gas consumption to the base cost.
     /// <https://github.com/CosmWasm/token-factory/issues/11>
@@ -52,8 +49,7 @@ impl ::prost::Name for Params {
 /// \<factory/{creatorAddress}/{subdenom}>. The resulting denom's admin is
 /// originally set to be the creator, but this can be changed later. The token
 /// denom does not indicate the current admin.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgCreateDenom {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -73,8 +69,7 @@ impl ::prost::Name for MsgCreateDenom {
 }
 /// MsgCreateDenomResponse is the return value of MsgCreateDenom
 /// It returns the full string of the newly created denom
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgCreateDenomResponse {
     #[prost(string, tag = "1")]
     pub new_token_denom: ::prost::alloc::string::String,
@@ -91,8 +86,7 @@ impl ::prost::Name for MsgCreateDenomResponse {
 }
 /// MsgMint is the sdk.Msg type for allowing an admin account to mint
 /// more of a token.  For now, we only support minting to the sender account
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgMint {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -111,8 +105,9 @@ impl ::prost::Name for MsgMint {
         "/osmosis.tokenfactory.v1beta1.MsgMint".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgMintResponse {}
 impl ::prost::Name for MsgMintResponse {
     const NAME: &'static str = "MsgMintResponse";
@@ -126,8 +121,7 @@ impl ::prost::Name for MsgMintResponse {
 }
 /// MsgBurn is the sdk.Msg type for allowing an admin account to burn
 /// a token.  For now, we only support burning from the sender account.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgBurn {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -146,8 +140,9 @@ impl ::prost::Name for MsgBurn {
         "/osmosis.tokenfactory.v1beta1.MsgBurn".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgBurnResponse {}
 impl ::prost::Name for MsgBurnResponse {
     const NAME: &'static str = "MsgBurnResponse";
@@ -161,8 +156,7 @@ impl ::prost::Name for MsgBurnResponse {
 }
 /// MsgChangeAdmin is the sdk.Msg type for allowing an admin account to reassign
 /// adminship of a denom to a new account
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgChangeAdmin {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -183,8 +177,9 @@ impl ::prost::Name for MsgChangeAdmin {
 }
 /// MsgChangeAdminResponse defines the response structure for an executed
 /// MsgChangeAdmin message.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgChangeAdminResponse {}
 impl ::prost::Name for MsgChangeAdminResponse {
     const NAME: &'static str = "MsgChangeAdminResponse";
@@ -198,15 +193,12 @@ impl ::prost::Name for MsgChangeAdminResponse {
 }
 /// MsgSetDenomMetadata is the sdk.Msg type for allowing an admin account to set
 /// the denom's bank metadata
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct MsgSetDenomMetadata {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<
-        super::super::super::cosmos::bank::v1beta1::Metadata,
-    >,
+    pub metadata: ::core::option::Option<super::super::super::cosmos::bank::v1beta1::Metadata>,
 }
 impl ::prost::Name for MsgSetDenomMetadata {
     const NAME: &'static str = "MsgSetDenomMetadata";
@@ -220,8 +212,9 @@ impl ::prost::Name for MsgSetDenomMetadata {
 }
 /// MsgSetDenomMetadataResponse defines the response structure for an executed
 /// MsgSetDenomMetadata message.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgSetDenomMetadataResponse {}
 impl ::prost::Name for MsgSetDenomMetadataResponse {
     const NAME: &'static str = "MsgSetDenomMetadataResponse";
@@ -233,8 +226,7 @@ impl ::prost::Name for MsgSetDenomMetadataResponse {
         "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadataResponse".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MsgForceTransfer {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
@@ -255,8 +247,9 @@ impl ::prost::Name for MsgForceTransfer {
         "/osmosis.tokenfactory.v1beta1.MsgForceTransfer".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgForceTransferResponse {}
 impl ::prost::Name for MsgForceTransferResponse {
     const NAME: &'static str = "MsgForceTransferResponse";
@@ -271,8 +264,7 @@ impl ::prost::Name for MsgForceTransferResponse {
 /// MsgUpdateParams is the Msg/UpdateParams request type.
 ///
 /// Since: cosmos-sdk 0.47
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct MsgUpdateParams {
     /// sender is the address of the governance account.
     #[prost(string, tag = "1")]
@@ -297,8 +289,9 @@ impl ::prost::Name for MsgUpdateParams {
 /// MsgUpdateParams message.
 ///
 /// Since: cosmos-sdk 0.47
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct MsgUpdateParamsResponse {}
 impl ::prost::Name for MsgUpdateParamsResponse {
     const NAME: &'static str = "MsgUpdateParamsResponse";
@@ -318,10 +311,10 @@ pub mod msg_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Msg defines the tokefactory module's gRPC message service.
     #[derive(Debug, Clone)]
     pub struct MsgClient<T> {
@@ -353,22 +346,18 @@ pub mod msg_client {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> MsgClient<InterceptedService<T, F>>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> MsgClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             MsgClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -406,48 +395,32 @@ pub mod msg_client {
         pub async fn create_denom(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgCreateDenom>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgCreateDenomResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgCreateDenomResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Msg/CreateDenom",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "CreateDenom"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Msg",
+                "CreateDenom",
+            ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn mint(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgMint>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgMintResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgMintResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/osmosis.tokenfactory.v1beta1.Msg/Mint",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/osmosis.tokenfactory.v1beta1.Msg/Mint");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "Mint"));
@@ -456,22 +429,13 @@ pub mod msg_client {
         pub async fn burn(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgBurn>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgBurnResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgBurnResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/osmosis.tokenfactory.v1beta1.Msg/Burn",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/osmosis.tokenfactory.v1beta1.Msg/Burn");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "Burn"));
@@ -480,82 +444,58 @@ pub mod msg_client {
         pub async fn change_admin(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgChangeAdmin>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChangeAdminResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgChangeAdminResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Msg/ChangeAdmin",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "ChangeAdmin"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Msg",
+                "ChangeAdmin",
+            ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn set_denom_metadata(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgSetDenomMetadata>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgSetDenomMetadataResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgSetDenomMetadataResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Msg/SetDenomMetadata",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "osmosis.tokenfactory.v1beta1.Msg",
-                        "SetDenomMetadata",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Msg",
+                "SetDenomMetadata",
+            ));
             self.inner.unary(req, path, codec).await
         }
         pub async fn force_transfer(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgForceTransfer>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgForceTransferResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgForceTransferResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Msg/ForceTransfer",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "ForceTransfer"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Msg",
+                "ForceTransfer",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// UpdateParams defines a governance operation for updating the x/mint module
@@ -565,27 +505,20 @@ pub mod msg_client {
         pub async fn update_params(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgUpdateParams>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgUpdateParamsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::MsgUpdateParamsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Msg/UpdateParams",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("osmosis.tokenfactory.v1beta1.Msg", "UpdateParams"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Msg",
+                "UpdateParams",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -598,7 +531,7 @@ pub mod msg_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with MsgServer.
@@ -607,10 +540,7 @@ pub mod msg_server {
         async fn create_denom(
             &self,
             request: tonic::Request<super::MsgCreateDenom>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgCreateDenomResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgCreateDenomResponse>, tonic::Status>;
         async fn mint(
             &self,
             request: tonic::Request<super::MsgMint>,
@@ -622,24 +552,15 @@ pub mod msg_server {
         async fn change_admin(
             &self,
             request: tonic::Request<super::MsgChangeAdmin>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgChangeAdminResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgChangeAdminResponse>, tonic::Status>;
         async fn set_denom_metadata(
             &self,
             request: tonic::Request<super::MsgSetDenomMetadata>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgSetDenomMetadataResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgSetDenomMetadataResponse>, tonic::Status>;
         async fn force_transfer(
             &self,
             request: tonic::Request<super::MsgForceTransfer>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgForceTransferResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgForceTransferResponse>, tonic::Status>;
         /// UpdateParams defines a governance operation for updating the x/mint module
         /// parameters. The authority is hard-coded to the x/gov module account.
         ///
@@ -647,10 +568,7 @@ pub mod msg_server {
         async fn update_params(
             &self,
             request: tonic::Request<super::MsgUpdateParams>,
-        ) -> std::result::Result<
-            tonic::Response<super::MsgUpdateParamsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::MsgUpdateParamsResponse>, tonic::Status>;
     }
     /// Msg defines the tokefactory module's gRPC message service.
     #[derive(Debug)]
@@ -674,10 +592,7 @@ pub mod msg_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -732,21 +647,16 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/CreateDenom" => {
                     #[allow(non_camel_case_types)]
                     struct CreateDenomSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgCreateDenom>
-                    for CreateDenomSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgCreateDenom> for CreateDenomSvc<T> {
                         type Response = super::MsgCreateDenomResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgCreateDenom>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::create_denom(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::create_denom(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -775,21 +685,15 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/Mint" => {
                     #[allow(non_camel_case_types)]
                     struct MintSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgMint>
-                    for MintSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgMint> for MintSvc<T> {
                         type Response = super::MsgMintResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgMint>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::mint(&inner, request).await
-                            };
+                            let fut = async move { <T as Msg>::mint(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -818,21 +722,15 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/Burn" => {
                     #[allow(non_camel_case_types)]
                     struct BurnSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgBurn>
-                    for BurnSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgBurn> for BurnSvc<T> {
                         type Response = super::MsgBurnResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgBurn>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::burn(&inner, request).await
-                            };
+                            let fut = async move { <T as Msg>::burn(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -861,21 +759,16 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/ChangeAdmin" => {
                     #[allow(non_camel_case_types)]
                     struct ChangeAdminSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgChangeAdmin>
-                    for ChangeAdminSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgChangeAdmin> for ChangeAdminSvc<T> {
                         type Response = super::MsgChangeAdminResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgChangeAdmin>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::change_admin(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::change_admin(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -904,13 +797,9 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/SetDenomMetadata" => {
                     #[allow(non_camel_case_types)]
                     struct SetDenomMetadataSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgSetDenomMetadata>
-                    for SetDenomMetadataSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgSetDenomMetadata> for SetDenomMetadataSvc<T> {
                         type Response = super::MsgSetDenomMetadataResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgSetDenomMetadata>,
@@ -947,21 +836,16 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/ForceTransfer" => {
                     #[allow(non_camel_case_types)]
                     struct ForceTransferSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgForceTransfer>
-                    for ForceTransferSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgForceTransfer> for ForceTransferSvc<T> {
                         type Response = super::MsgForceTransferResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgForceTransfer>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::force_transfer(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::force_transfer(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -990,21 +874,16 @@ pub mod msg_server {
                 "/osmosis.tokenfactory.v1beta1.Msg/UpdateParams" => {
                     #[allow(non_camel_case_types)]
                     struct UpdateParamsSvc<T: Msg>(pub Arc<T>);
-                    impl<T: Msg> tonic::server::UnaryService<super::MsgUpdateParams>
-                    for UpdateParamsSvc<T> {
+                    impl<T: Msg> tonic::server::UnaryService<super::MsgUpdateParams> for UpdateParamsSvc<T> {
                         type Response = super::MsgUpdateParamsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::MsgUpdateParams>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Msg>::update_params(&inner, request).await
-                            };
+                            let fut =
+                                async move { <T as Msg>::update_params(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1030,25 +909,19 @@ pub mod msg_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -1071,8 +944,9 @@ pub mod msg_server {
     }
 }
 /// QueryParamsRequest is the request type for the Query/Params RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct QueryParamsRequest {}
 impl ::prost::Name for QueryParamsRequest {
     const NAME: &'static str = "QueryParamsRequest";
@@ -1085,8 +959,7 @@ impl ::prost::Name for QueryParamsRequest {
     }
 }
 /// QueryParamsResponse is the response type for the Query/Params RPC method.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct QueryParamsResponse {
     /// params defines the parameters of the module.
     #[prost(message, optional, tag = "1")]
@@ -1104,8 +977,7 @@ impl ::prost::Name for QueryParamsResponse {
 }
 /// QueryDenomAuthorityMetadataRequest defines the request structure for the
 /// DenomAuthorityMetadata gRPC query.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomAuthorityMetadataRequest {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,
@@ -1122,8 +994,7 @@ impl ::prost::Name for QueryDenomAuthorityMetadataRequest {
 }
 /// QueryDenomAuthorityMetadataResponse defines the response structure for the
 /// DenomAuthorityMetadata gRPC query.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomAuthorityMetadataResponse {
     #[prost(message, optional, tag = "1")]
     pub authority_metadata: ::core::option::Option<DenomAuthorityMetadata>,
@@ -1140,8 +1011,7 @@ impl ::prost::Name for QueryDenomAuthorityMetadataResponse {
 }
 /// QueryDenomsFromCreatorRequest defines the request structure for the
 /// DenomsFromCreator gRPC query.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomsFromCreatorRequest {
     #[prost(string, tag = "1")]
     pub creator: ::prost::alloc::string::String,
@@ -1158,8 +1028,7 @@ impl ::prost::Name for QueryDenomsFromCreatorRequest {
 }
 /// QueryDenomsFromCreatorRequest defines the response structure for the
 /// DenomsFromCreator gRPC query.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct QueryDenomsFromCreatorResponse {
     #[prost(string, repeated, tag = "1")]
     pub denoms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -1182,10 +1051,10 @@ pub mod query_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Query defines the gRPC querier service.
     #[derive(Debug, Clone)]
     pub struct QueryClient<T> {
@@ -1225,14 +1094,13 @@ pub mod query_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             QueryClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1272,25 +1140,19 @@ pub mod query_client {
         pub async fn params(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryParamsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryParamsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryParamsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/osmosis.tokenfactory.v1beta1.Query/Params",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/osmosis.tokenfactory.v1beta1.Query/Params");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("osmosis.tokenfactory.v1beta1.Query", "Params"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Query",
+                "Params",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// DenomAuthorityMetadata defines a gRPC query method for fetching
@@ -1302,26 +1164,18 @@ pub mod query_client {
             tonic::Response<super::QueryDenomAuthorityMetadataResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Query/DenomAuthorityMetadata",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "osmosis.tokenfactory.v1beta1.Query",
-                        "DenomAuthorityMetadata",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Query",
+                "DenomAuthorityMetadata",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// DenomsFromCreator defines a gRPC query method for fetching all
@@ -1333,26 +1187,18 @@ pub mod query_client {
             tonic::Response<super::QueryDenomsFromCreatorResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/osmosis.tokenfactory.v1beta1.Query/DenomsFromCreator",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "osmosis.tokenfactory.v1beta1.Query",
-                        "DenomsFromCreator",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "osmosis.tokenfactory.v1beta1.Query",
+                "DenomsFromCreator",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -1365,7 +1211,7 @@ pub mod query_server {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
     use tonic::codegen::*;
     /// Generated trait containing gRPC methods that should be implemented for use with QueryServer.
@@ -1376,10 +1222,7 @@ pub mod query_server {
         async fn params(
             &self,
             request: tonic::Request<super::QueryParamsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryParamsResponse>,
-            tonic::Status,
-        >;
+        ) -> std::result::Result<tonic::Response<super::QueryParamsResponse>, tonic::Status>;
         /// DenomAuthorityMetadata defines a gRPC query method for fetching
         /// DenomAuthorityMetadata for a particular denom.
         async fn denom_authority_metadata(
@@ -1421,10 +1264,7 @@ pub mod query_server {
                 max_encoding_message_size: None,
             }
         }
-        pub fn with_interceptor<F>(
-            inner: T,
-            interceptor: F,
-        ) -> InterceptedService<Self, F>
+        pub fn with_interceptor<F>(inner: T, interceptor: F) -> InterceptedService<Self, F>
         where
             F: tonic::service::Interceptor,
         {
@@ -1479,21 +1319,15 @@ pub mod query_server {
                 "/osmosis.tokenfactory.v1beta1.Query/Params" => {
                     #[allow(non_camel_case_types)]
                     struct ParamsSvc<T: Query>(pub Arc<T>);
-                    impl<T: Query> tonic::server::UnaryService<super::QueryParamsRequest>
-                    for ParamsSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryParamsRequest> for ParamsSvc<T> {
                         type Response = super::QueryParamsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryParamsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as Query>::params(&inner, request).await
-                            };
+                            let fut = async move { <T as Query>::params(&inner, request).await };
                             Box::pin(fut)
                         }
                     }
@@ -1522,26 +1356,19 @@ pub mod query_server {
                 "/osmosis.tokenfactory.v1beta1.Query/DenomAuthorityMetadata" => {
                     #[allow(non_camel_case_types)]
                     struct DenomAuthorityMetadataSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<
-                        super::QueryDenomAuthorityMetadataRequest,
-                    > for DenomAuthorityMetadataSvc<T> {
+                    impl<T: Query>
+                        tonic::server::UnaryService<super::QueryDenomAuthorityMetadataRequest>
+                        for DenomAuthorityMetadataSvc<T>
+                    {
                         type Response = super::QueryDenomAuthorityMetadataResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::QueryDenomAuthorityMetadataRequest,
-                            >,
+                            request: tonic::Request<super::QueryDenomAuthorityMetadataRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as Query>::denom_authority_metadata(&inner, request)
-                                    .await
+                                <T as Query>::denom_authority_metadata(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1571,15 +1398,11 @@ pub mod query_server {
                 "/osmosis.tokenfactory.v1beta1.Query/DenomsFromCreator" => {
                     #[allow(non_camel_case_types)]
                     struct DenomsFromCreatorSvc<T: Query>(pub Arc<T>);
-                    impl<
-                        T: Query,
-                    > tonic::server::UnaryService<super::QueryDenomsFromCreatorRequest>
-                    for DenomsFromCreatorSvc<T> {
+                    impl<T: Query> tonic::server::UnaryService<super::QueryDenomsFromCreatorRequest>
+                        for DenomsFromCreatorSvc<T>
+                    {
                         type Response = super::QueryDenomsFromCreatorResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryDenomsFromCreatorRequest>,
@@ -1613,25 +1436,19 @@ pub mod query_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(
-                            tonic::body::Body::default(),
-                        );
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(tonic::body::Body::default());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }
@@ -1654,8 +1471,7 @@ pub mod query_server {
     }
 }
 /// GenesisState defines the tokenfactory module's genesis state.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct GenesisState {
     /// params defines the paramaters of the module.
     #[prost(message, optional, tag = "1")]
@@ -1676,8 +1492,7 @@ impl ::prost::Name for GenesisState {
 /// GenesisDenom defines a tokenfactory denom that is defined within genesis
 /// state. The structure contains DenomAuthorityMetadata which defines the
 /// denom's admin.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GenesisDenom {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,

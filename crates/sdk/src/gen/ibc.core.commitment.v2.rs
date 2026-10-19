@@ -30,8 +30,7 @@
 /// consensus state down to the ICS24 provable store. The IBC handler retrieves the counterparty key path to the ICS24
 /// provable store from the MerklePath and appends the ICS24 path to get the final key path to the value being verified
 /// by the client against the root hash in the client's consensus state.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MerklePath {
     #[prost(bytes = "vec", repeated, tag = "1")]
     pub key_path: ::prost::alloc::vec::Vec<::prost::alloc::vec::Vec<u8>>,
