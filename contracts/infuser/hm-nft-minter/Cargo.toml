@@ -2,7 +2,7 @@
 name = "hm-nft-minter"
 version.workspace = true
 authors.workspace = true
-edition = "2021"
+edition = "2024"
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
