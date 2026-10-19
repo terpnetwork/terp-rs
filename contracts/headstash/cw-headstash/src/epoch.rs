@@ -85,6 +85,9 @@ pub struct EpochCampaignParams {
     /// Empty disables the sweep. The sweep message does not carry an address.
     #[serde(default)]
     pub sweep_recipient: String,
+    /// Append-only registration window. Absent keeps today's single pay.
+    #[serde(default)]
+    pub registration: Option<crate::registration::RegistrationConfig>,
 }
 
 #[cw_serde]
@@ -109,12 +112,20 @@ pub fn set_campaign(
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     validate_campaign(&campaign)?;
+    if let Some(cfg) = campaign.registration.as_ref() {
+        crate::registration::validate_config(cfg, campaign.ctx.as_slice())?;
+    }
     if !campaign.sweep_recipient.is_empty() {
         deps.api.addr_validate(&campaign.sweep_recipient)?;
     }
     if let Some(existing) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
         if existing.vk_id != campaign.vk_id || existing.vk_hash != campaign.vk_hash {
             return Err(StdError::msg("vk is fixed"));
+        }
+        if crate::registration::leaf_count(deps.storage)? > 0
+            && existing.registration != campaign.registration
+        {
+            return Err(StdError::msg("registration"));
         }
     }
     if EPOCH_STAGE.may_load(deps.storage)?.is_some()
@@ -123,6 +134,9 @@ pub fn set_campaign(
         return Err(StdError::msg("campaign is already staged"));
     }
     EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
+    if let Some(cfg) = campaign.registration.as_ref() {
+        crate::registration::prepare_window(deps.storage, cfg)?;
+    }
     Ok(Response::new()
         .add_attribute("action", "set_epoch_campaign")
         .add_attribute("backend", campaign.backend)
@@ -179,12 +193,14 @@ pub fn stage_batch(
     rows: Vec<EpochPayout>,
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    if EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
-        return Err(StdError::msg("epoch batch already paid"));
-    }
     let campaign = EPOCH_CAMPAIGN
         .may_load(deps.storage)?
         .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    // A registration campaign pays more than one batch. The single flag would
+    // block the next stage. Repeated quorum roots are refused in settle.
+    if campaign.registration.is_none() && EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
+        return Err(StdError::msg("epoch batch already paid"));
+    }
     let staged = validate_stage(&campaign, &digests, &rows)?;
     for row in &rows {
         deps.api.addr_validate(&row.destination)?;
@@ -211,6 +227,9 @@ pub struct EpochPayout {
     pub denom: Binary,
     pub destination: String,
     pub amount: u64,
+    /// 32-byte accepted registration root. Empty when the campaign has no registration.
+    #[serde(default)]
+    pub anchor: Binary,
 }
 
 #[cw_serde]
@@ -331,6 +350,16 @@ pub fn pending_root(digests: &[[u8; 32]]) -> [u8; 32] {
 }
 
 pub fn accepted_root(allocation_root: &[u8], rows: &[EpochPayout]) -> StdResult<[u8; 32]> {
+    accepted_batch(allocation_root, rows, false)
+}
+
+/// Same preimage as [`accepted_root`]. A registration batch appends the 32-byte
+/// anchor after the amount. Campaigns without registration keep the old bytes.
+pub fn accepted_batch(
+    allocation_root: &[u8],
+    rows: &[EpochPayout],
+    registration: bool,
+) -> StdResult<[u8; 32]> {
     if allocation_root.len() != 32 {
         return Err(StdError::msg("allocation root must be 32 bytes"));
     }
@@ -348,6 +377,12 @@ pub fn accepted_root(allocation_root: &[u8], rows: &[EpochPayout]) -> StdResult<
         pre.extend_from_slice(&(dest.len() as u16).to_le_bytes());
         pre.extend_from_slice(dest);
         pre.extend_from_slice(&row.amount.to_le_bytes());
+        if registration {
+            if row.anchor.len() != 32 {
+                return Err(StdError::msg("anchor"));
+            }
+            pre.extend_from_slice(&row.anchor);
+        }
     }
     Ok(sha256(&pre))
 }
@@ -519,13 +554,28 @@ pub fn apply_accepted_batch(
     let stored = EPOCH_ROOTS
         .may_load(deps.storage, ALGO_ACCEPTED)?
         .ok_or_else(|| StdError::msg("no accepted root"))?;
-    let batch = accepted_root(allocation_root.as_slice(), &rows)?;
+    let registration = campaign
+        .as_ref()
+        .is_some_and(|item| item.registration.is_some());
+    let batch = accepted_batch(allocation_root.as_slice(), &rows, registration)?;
     let got = match campaign.as_ref() {
         Some(campaign) => stored_root_for(&batch, campaign.vk_hash.as_slice()),
         None => attested_root(&batch),
     };
     if stored.as_slice() != got {
         return Err(StdError::msg("batch does not match the accepted root"));
+    }
+    if registration {
+        for row in &rows {
+            if row.anchor.len() != 32
+                || !crate::registration::anchor_known(deps.storage, row.anchor.as_slice())?
+            {
+                return Err(StdError::msg("anchor"));
+            }
+        }
+        if crate::registration::batch_already_paid(deps.storage, stored.as_slice())? {
+            return Err(StdError::msg("epoch batch already paid"));
+        }
     }
     distro::assert_claim_root(deps.storage, root_id, Some(&allocation_root))?;
     let mut seen = HashSet::new();
@@ -544,6 +594,9 @@ pub fn apply_accepted_batch(
         deps.api.addr_validate(&row.destination)?;
     }
     let cfg = HEADSTASH_CFG.load(deps.storage)?;
+    if registration {
+        crate::registration::note_paid_batch(deps.storage, stored.as_slice())?;
+    }
     let mut res = Response::new().add_attribute("action", "apply_accepted_batch");
     for row in &rows {
         let strategy = strategy_for(&cfg.ts, &row.denom)?;
@@ -716,7 +769,11 @@ fn validate_stage(
         *count += 1;
     }
     let pending = pending_root_sorted(&raw_digests);
-    let accepted = accepted_root(campaign.allocation_root.as_slice(), rows)?;
+    let accepted = accepted_batch(
+        campaign.allocation_root.as_slice(),
+        rows,
+        campaign.registration.is_some(),
+    )?;
     let mut ordered: Vec<Binary> = raw_digests
         .into_iter()
         .map(|word| Binary::from(word.to_vec()))
@@ -752,7 +809,12 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
     if height < campaign.cutoff_height {
         return Ok(empty());
     }
-    let batch = accepted_root(campaign.allocation_root.as_slice(), &stage.rows)?;
+    let registration = campaign.registration.is_some();
+    let batch = accepted_batch(
+        campaign.allocation_root.as_slice(),
+        &stage.rows,
+        registration,
+    )?;
     if stage.accepted.as_slice() != batch {
         return Err(StdError::msg(
             "staged batch does not match its accepted root",
@@ -773,6 +835,18 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
             return Err(StdError::msg("vk hash"));
         }
     }
+    if registration {
+        for row in &stage.rows {
+            if row.anchor.len() != 32
+                || !crate::registration::anchor_known(deps.storage, row.anchor.as_slice())?
+            {
+                return Ok(empty());
+            }
+        }
+        if crate::registration::batch_already_paid(deps.storage, stored.as_slice())? {
+            return Err(StdError::msg("epoch batch already paid"));
+        }
+    }
     distro::assert_claim_root(
         deps.storage,
         campaign.root_id,
@@ -786,8 +860,22 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
         {
             return Err(StdError::msg("note is on the public path"));
         }
+        if NULLIFIERS
+            .may_load(
+                deps.storage,
+                nullifier_storage_key(campaign.root_id, &hex),
+            )?
+            .is_some()
+        {
+            return Err(StdError::msg("nullifier already exists"));
+        }
     }
-    EPOCH_PAID.save(deps.storage, &true)?;
+    if registration {
+        crate::registration::note_paid_batch(deps.storage, stored.as_slice())?;
+        EPOCH_STAGE.remove(deps.storage);
+    } else {
+        EPOCH_PAID.save(deps.storage, &true)?;
+    }
     let mut res = Response::new();
     let cfg = HEADSTASH_CFG.load(deps.storage)?;
     for row in &stage.rows {
@@ -976,6 +1064,7 @@ mod tests {
             denom,
             destination: dest.into(),
             amount,
+            anchor: Binary::default(),
         }
     }
 
@@ -1590,6 +1679,7 @@ mod tests {
             vk_id: 0,
             vk_hash: Binary::from([0u8; 32].to_vec()),
             sweep_recipient: String::new(),
+            registration: None,
         }
     }
 

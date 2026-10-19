@@ -29,6 +29,7 @@ fn payout(byte: u8, dest: &str, amount: u64) -> EpochPayout {
         denom: HeadstashTokenObject::new(DENOM.into()).proof,
         destination: dest.into(),
         amount,
+        anchor: Binary::default(),
     }
 }
 

@@ -142,6 +142,16 @@ pub enum ExecuteMsg {
     ApplyPublicBatch {
         rows: Vec<crate::epoch::PublicOpen>,
     },
+    /// Anyone may relay a registration. The eligible address is the recovered signer.
+    RegisterHeadstash {
+        key_com: Binary,
+        amount: u64,
+        signature: Binary,
+        eligibility_index: u32,
+        eligibility_path: Vec<Binary>,
+    },
+    /// Permissionless. Stores the current registration root when the window is open.
+    AcceptAnchor {},
 }
 
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
@@ -196,6 +206,9 @@ pub enum QueryMsg {
     /// Creator campaign, including the sidecar `vk_id` and blob hash.
     #[returns(crate::epoch::EpochCampaignParams)]
     EpochCampaign {},
+    /// Registration frontier, root, and accepted anchors.
+    #[returns(crate::registration::RegistrationTreeResponse)]
+    RegistrationTree {},
 }
 
 #[cw_serde]

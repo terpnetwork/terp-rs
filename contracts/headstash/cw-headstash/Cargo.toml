@@ -50,6 +50,7 @@ zk-headstash = { workspace = true }
 [dev-dependencies]
 cw-headstash-manifold = { workspace = true }
 cw-multi-test = { workspace = true }
+k256 = { workspace = true, features = ["ecdsa"] }
 
 [[example]]
 name = "print_wavs"

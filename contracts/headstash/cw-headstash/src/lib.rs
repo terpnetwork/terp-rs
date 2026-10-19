@@ -2,6 +2,7 @@ pub mod bridge;
 pub mod distro;
 pub mod egress;
 pub mod epoch;
+pub mod registration;
 pub mod headstash;
 pub mod msg;
 pub mod tokenfactory;
@@ -352,6 +353,28 @@ pub fn execute(
             vk_hash,
         } => epoch::apply_accepted_batch(deps, env, allocation_root, root_id, rows, vk_hash),
         ExecuteMsg::ApplyPublicBatch { rows } => epoch::apply_public_batch(deps, env, rows),
+        ExecuteMsg::RegisterHeadstash {
+            key_com,
+            amount,
+            signature,
+            eligibility_index,
+            eligibility_path,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::register(
+                deps,
+                &campaign,
+                key_com,
+                amount,
+                signature,
+                eligibility_index,
+                eligibility_path,
+            )
+        }
+        ExecuteMsg::AcceptAnchor {} => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::accept_anchor(deps, &env, &campaign)
+        }
     }
 }
 
@@ -387,6 +410,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
         QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
+        QueryMsg::RegistrationTree {} => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            let cfg = campaign
+                .registration
+                .ok_or_else(|| StdError::msg("registration"))?;
+            to_json_binary(&registration::query_tree(deps.storage, &cfg)?)
+        }
     }
 }
 

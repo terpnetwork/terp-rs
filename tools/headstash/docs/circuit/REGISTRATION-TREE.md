@@ -6,10 +6,10 @@ Poseidon tags, and the verifying-key id below are the lock. The K=19
 ECDSA circuit remains a design variant at `vk_id` 1.
 
 This file is the registration, anchor, and claim statement. `072f694`
-locks the vk hash and the operator routes. It does not implement this
-tree. Gas is not stated here. The registration unit test measures one
-successful registration, and that number is written into this file in
-the same commit as the test.
+locks the vk hash and the operator routes. The contract in this commit
+implements the tree. One successful `RegisterHeadstash` on the loopback
+chain used 398371 gas. That number is transaction `gas_used`, including
+the ante, written here in the same commit as the contract.
 
 ## Locked parameters
 
@@ -325,6 +325,18 @@ SHA-256 node hashes, one leaf Poseidon, and 16 distro CRH Poseidons.
 The Poseidon hashes dominate. This file does not guess the gas. A failed
 check does not write the frontier.
 
+On chain `headstash-epoch-e2e` at `127.0.0.1:36667`, code id 9
+(`terp1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqkzx4sf`)
+stored this contract and one successful `RegisterHeadstash` used 398371
+gas. `gas_wanted` was 200000000. The figure is `gas_used` from
+`tx wasm execute`, including the ante. The wasm stored for that
+measurement is sha256
+`cadb3ea3aa5a0508ec8fbb912c7776a21ac25e7a99b4f01ec708fc9e487064e4`
+(965535 bytes). Store, instantiate, and `SetEpochCampaign` on the same
+code used 6296735, 274645, and 202779 gas. Those are not the
+registration figure. The query after the transaction reported leaf
+count 1.
+
 The contract hash has to equal `key_commitment`, `membership_leaf`, and
 `poseidon_distro_crh` from the circuit crate on fixed inputs. The
 registration test includes those vectors. The implementation adds that
@@ -369,9 +381,11 @@ Contract unit tests, before any loopback run:
 - a claim under an older accepted root paying
 - the same nullifier under a later accepted root returning
   `nullifier already exists` and paying nothing
-- the gas used by one successful registration, written into this file
+- one successful registration used 398371 gas, recorded under Gas
 
-The loopback 17/17 stays blocked while epoch RPC `127.0.0.1:36667` does
-not answer. The e2e script re-inits the chain home after a failed status
-check. That run waits until the RPC answers. The 4-validator Docker
-suite is a later handoff. It is not started from this spec.
+Loopback RPC `127.0.0.1:36667` answers on chain `headstash-epoch-e2e`.
+The wrapper rerun recorded `E2E_RESULT passed=17 failed=0` in `8aac6f9`
+on code id 8. This registration work does not rerun that suite and does
+not replace that wasm. The e2e script re-inits the chain home after a
+failed status check, so it stays unused. The 4-validator Docker suite
+is a later handoff. It is not started from this spec.
