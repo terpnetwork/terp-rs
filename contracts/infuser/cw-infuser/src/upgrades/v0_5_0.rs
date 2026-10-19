@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, Addr, Fraction, Storage};
+use cosmwasm_std::{Addr, Fraction, Storage, coin};
 use cw_infusions::{
     nfts::{InfusedCollection, RoyaltyInfoResponse},
     state::{EligibleNFTCollection, InfusionParamState, InfusionState},

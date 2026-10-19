@@ -1,9 +1,11 @@
 //! SVP1 packed-only tests: render parity, storage layout, corruption rejection.
-use crate::contract::{SvgTemplateResponse, SvgTokenUriResponse, SVG_COLLECTION, SVG_PACKED_KEY};
+use crate::contract::{SVG_COLLECTION, SVG_PACKED_KEY, SvgTemplateResponse, SvgTokenUriResponse};
 use crate::entry::{execute, instantiate, query};
-use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, SvgCollectionMetadata, SvgExecuteMsgExt, SvgQueryMsgExt};
+use crate::{
+    ExecuteMsg, InstantiateMsg, QueryMsg, SvgCollectionMetadata, SvgExecuteMsgExt, SvgQueryMsgExt,
+};
 use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-use cosmwasm_std::{from_json, Binary, Storage};
+use cosmwasm_std::{Binary, Storage, from_json};
 use cw_svg::VariableDef;
 
 #[derive(serde::Deserialize)]
@@ -13,7 +15,10 @@ struct Fx {
 }
 
 fn fixture() -> Fx {
-    from_json(include_str!("../../../../crates/svg-codec/fixtures/corpus/ex-shield-amber.json")).unwrap()
+    from_json(include_str!(
+        "../../../../crates/svg-codec/fixtures/corpus/ex-shield-amber.json"
+    ))
+    .unwrap()
 }
 
 fn msg(packed: Vec<u8>) -> InstantiateMsg {
@@ -48,27 +53,70 @@ fn run(packed: Vec<u8>) -> Result<Out, String> {
     let mut deps = mock_dependencies();
     let env = mock_env();
     let creator = deps.api.addr_make("creator");
-    instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg(packed.clone()))
-        .map_err(|e| e.to_string())?;
+    instantiate(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&creator, &[]),
+        msg(packed.clone()),
+    )
+    .map_err(|e| e.to_string())?;
     let mint = ExecuteMsg::UpdateExtension {
-        msg: SvgExecuteMsgExt::Mint(cw_svg::MintMsg { alloc: 0, amnt: 1, proof_hashes: vec![], ext: None }),
+        msg: SvgExecuteMsgExt::Mint(cw_svg::MintMsg {
+            alloc: 0,
+            amnt: 1,
+            proof_hashes: vec![],
+            ext: None,
+        }),
     };
-    execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), mint).map_err(|e| e.to_string())?;
-    let q = |m: SvgQueryMsgExt| query(deps.as_ref(), env.clone(), QueryMsg::Extension { msg: m }).unwrap();
+    execute(
+        deps.as_mut(),
+        env.clone(),
+        message_info(&creator, &[]),
+        mint,
+    )
+    .map_err(|e| e.to_string())?;
+    let q = |m: SvgQueryMsgExt| {
+        query(deps.as_ref(), env.clone(), QueryMsg::Extension { msg: m }).unwrap()
+    };
     let t: SvgTemplateResponse = from_json(q(SvgQueryMsgExt::SvgTemplate {})).unwrap();
-    let u: SvgTokenUriResponse = from_json(q(SvgQueryMsgExt::SvgTokenUri { token_id: "0".into() })).unwrap();
+    let u: SvgTokenUriResponse = from_json(q(SvgQueryMsgExt::SvgTokenUri {
+        token_id: "0".into(),
+    }))
+    .unwrap();
     let p: Binary = from_json(q(SvgQueryMsgExt::SvgPacked {})).unwrap();
     // Packed bytes live once, raw; config copies carry none.
     assert_eq!(deps.storage.get(SVG_PACKED_KEY).unwrap(), packed);
-    assert!(SVG_COLLECTION.load(&deps.storage).unwrap().packed.is_empty());
+    assert!(
+        SVG_COLLECTION
+            .load(&deps.storage)
+            .unwrap()
+            .packed
+            .is_empty()
+    );
     for k in [b"svg_template".as_slice(), b"template_slots", b"variables"] {
         assert!(deps.storage.get(k).is_none());
     }
-    let info: cw721::msg::CollectionInfoAndExtensionResponse<SvgCollectionMetadata> =
-        from_json(query(deps.as_ref(), env.clone(), QueryMsg::GetCollectionInfoAndExtension {}).unwrap()).unwrap();
+    let info: cw721::msg::CollectionInfoAndExtensionResponse<SvgCollectionMetadata> = from_json(
+        query(
+            deps.as_ref(),
+            env.clone(),
+            QueryMsg::GetCollectionInfoAndExtension {},
+        )
+        .unwrap(),
+    )
+    .unwrap();
     assert!(info.extension.packed.is_empty());
-    let tok = crate::Cw721SvgContract::default().config.nft_info.load(&deps.storage, "0").unwrap();
-    Ok(Out { template: t.template, token0: u.svg, params0: tok.extension.params, packed_query: p })
+    let tok = crate::Cw721SvgContract::default()
+        .config
+        .nft_info
+        .load(&deps.storage, "0")
+        .unwrap();
+    Ok(Out {
+        template: t.template,
+        token0: u.svg,
+        params0: tok.extension.params,
+        packed_query: p,
+    })
 }
 
 #[test]
@@ -108,7 +156,11 @@ fn rejects_corruption() {
         b[i] ^= 0x5a;
         let _ = run(b); // must not panic
     }
-    assert!(run(vec![0u8; crate::contract::MAX_SVG_SIZE + 1]).unwrap_err().contains("exceeds max size"));
+    assert!(
+        run(vec![0u8; crate::contract::MAX_SVG_SIZE + 1])
+            .unwrap_err()
+            .contains("exceeds max size")
+    );
 }
 
 #[test]
@@ -122,12 +174,18 @@ fn rejects_undefined_placeholder_in_literal() {
 #[test]
 fn runs_animated_paint_validator() {
     // Live DAO template: <circle> animates fill with no static fill.
-    let f: Fx = from_json(include_str!("../../../../crates/svg-codec/fixtures/corpus/ex-dao-live.json")).unwrap();
+    let f: Fx = from_json(include_str!(
+        "../../../../crates/svg-codec/fixtures/corpus/ex-dao-live.json"
+    ))
+    .unwrap();
     assert!(cw_svg::validate_animated_paint(&f.svg_template).is_err());
     let e = run(cw_svg_pack::pack(&f.svg_template, &f.variables).unwrap()).unwrap_err();
     assert!(e.contains("animates"), "{e}");
     // The fixed DAO template passes.
-    let f: Fx = from_json(include_str!("../../../../crates/svg-codec/fixtures/corpus/ex-dao-fixed.json")).unwrap();
+    let f: Fx = from_json(include_str!(
+        "../../../../crates/svg-codec/fixtures/corpus/ex-dao-fixed.json"
+    ))
+    .unwrap();
     run(cw_svg_pack::pack(&f.svg_template, &f.variables).unwrap()).unwrap();
 }
 

@@ -36,31 +36,17 @@ pub struct InstantiateMsg {
 #[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Register a new infusion recipe and its collection.
-    CreateInfusion {
-        infusions: Vec<Infusion>,
-    },
+    CreateInfusion { infusions: Vec<Infusion> },
     /// Oracle/WAVS callback when the infusion is driven off-chain.
-    WavsEntryPoint {
-        infusions: Vec<WavsBundle>,
-    },
+    WavsEntryPoint { infusions: Vec<WavsBundle> },
     /// Submit an eligible NFT bundle and receive the infused token.
-    Infuse {
-        id: u64,
-        bundle: Vec<Bundle>,
-    },
+    Infuse { id: u64, bundle: Vec<Bundle> },
     /// Close a recipe so no further infuses succeed.
-    EndInfusion {
-        id: u64,
-    },
+    EndInfusion { id: u64 },
     /// Set metadata base URI for an infusion.
-    UpdateInfusionBaseUri {
-        id: u64,
-        base_uri: String,
-    },
+    UpdateInfusionBaseUri { id: u64, base_uri: String },
     /// Global infuser config (contract owner).
-    UpdateConfig {
-        config: UpdatingConfig,
-    },
+    UpdateConfig { config: UpdatingConfig },
     /// Change which collections or bundle shape a recipe accepts.
     UpdateInfusionsEligibleCollectionsOrBundleType {
         id: u64,
@@ -69,19 +55,11 @@ pub enum ExecuteMsg {
         bundle_type: BundleType,
     },
     /// Fee charged per infuse.
-    UpdateInfusionMintFee {
-        id: u64,
-        mint_fee: Option<Coin>,
-    },
+    UpdateInfusionMintFee { id: u64, mint_fee: Option<Coin> },
     /// Other recipe parameters.
-    UpdateInfusionParams {
-        id: u64,
-        params: UpdateInfusion,
-    },
+    UpdateInfusionParams { id: u64, params: UpdateInfusion },
     /// Randomize remaining order when the recipe uses shuffle.
-    Shuffle {
-        id: u64,
-    },
+    Shuffle { id: u64 },
 }
 
 #[cw_serde]

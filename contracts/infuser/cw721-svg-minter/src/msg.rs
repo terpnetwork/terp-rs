@@ -1,6 +1,6 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cw721_svg::InstantiateMsg as SvgInstantiateMsg;
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cw_ownable::cw_ownable_execute;
+use cw721_svg::InstantiateMsg as SvgInstantiateMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -40,9 +40,7 @@ pub enum ExecuteMsg {
     UpdateCodeId { code_id: u64 },
 
     /// DREGG runtime submits a commitment packet (same bytes as IBC recv).
-    RecvDreggPacket {
-        packet: crate::ibc::MintPacket,
-    },
+    RecvDreggPacket { packet: crate::ibc::MintPacket },
 
     /// Bind IBC channel/port after handshake (also used by migrate).
     BindDreggChannel { channel: String, port: String },

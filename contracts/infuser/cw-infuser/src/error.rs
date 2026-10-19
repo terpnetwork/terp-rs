@@ -33,7 +33,9 @@ pub enum ContractError {
     #[error("NftIsNotEligible: {col}")]
     NftIsNotEligible { col: String },
 
-    #[error("Bundle of type {bun_type} povided does not contain any nfts for collection: {col}. wavs_enabled: {wavs}, min_req: {min_req}")]
+    #[error(
+        "Bundle of type {bun_type} povided does not contain any nfts for collection: {col}. wavs_enabled: {wavs}, min_req: {min_req}"
+    )]
     BundleCollectionNotEligilbe {
         bun_type: i32,
         col: String,
@@ -77,7 +79,9 @@ pub enum ContractError {
     #[error("FeeSubNotProvided: {col}, want: {want}")]
     FeeSubNotProvided { col: String, want: Coin },
 
-    #[error("payment substitute is enabled for collection {col}, but did not recieve tokens or payment. Have: {have}. Want: {want}")]
+    #[error(
+        "payment substitute is enabled for collection {col}, but did not recieve tokens or payment. Have: {have}. Want: {want}"
+    )]
     PaymentSubstituteNotProvided { col: String, have: Coin, want: Coin },
 
     #[error("Too many NFT collections being set for infusion. Have: {have}.  Max: {max}")]
@@ -100,19 +104,25 @@ pub enum ContractError {
     #[error("The max_bundles being set is greater than possible. Current hard-coded at 5.")]
     MaxBundleError,
 
-    #[error("You are attempting to create more bundles than possible. Current hard-coded limit set at 2")]
+    #[error(
+        "You are attempting to create more bundles than possible. Current hard-coded limit set at 2"
+    )]
     MaxInfusionErrror,
 
     #[error("New infusion require a minimum fee of {min} to be created.")]
     InfusionFeeLessThanMinimumRequired { min: Coin },
 
-    #[error("RequirednfusionFeeError: New infusion fee of {fee} required not sent. Retry infusion creation with correct funds.")]
+    #[error(
+        "RequirednfusionFeeError: New infusion fee of {fee} required not sent. Retry infusion creation with correct funds."
+    )]
     RequirednfusionFeeError { fee: Coin },
 
     #[error("contract: {addr} is not an cw721 nft collection.")]
     AddrIsNotNFTCol { addr: String },
 
-    #[error("You cannot set the infusion fee as 0. Omit this value from the create_infsuion message to disable infusion fee requirements.")]
+    #[error(
+        "You cannot set the infusion fee as 0. Omit this value from the create_infsuion message to disable infusion fee requirements."
+    )]
     InfusionFeeCannotbeZero,
 
     #[error("Cannot set infused collection as sg.")]
@@ -133,7 +143,9 @@ pub enum ContractError {
     #[error("MigrationError")]
     MigrationError,
 
-    #[error("you have found a contract feature currently unimplemented! dm me with the words `eretskableret - jroc`.")]
+    #[error(
+        "you have found a contract feature currently unimplemented! dm me with the words `eretskableret - jroc`."
+    )]
     UnImplemented,
 }
 

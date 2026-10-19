@@ -5,7 +5,9 @@ pub use state::*;
 
 /// Off-chain helper: SVP1-pack a template + variables for `packed`.
 pub fn pack_svg(template: &str, variables: &[cw_svg::VariableDef]) -> cosmwasm_std::Binary {
-    cw_svg_pack::pack(template, variables).expect("svp pack").into()
+    cw_svg_pack::pack(template, variables)
+        .expect("svp pack")
+        .into()
 }
 
 pub const CONTRACT_NAME: &str = "cw721_svg";
@@ -33,13 +35,11 @@ pub type Cw721SvgContract<'a> = cw721::extension::Cw721Extensions<
 
 pub mod entry {
     use super::*;
+    use crate::contract::{MAX_SVG_SIZE, MAX_TOTAL_SUPPLY, SVG_COLLECTION, SVG_PACKED_KEY};
     use crate::contract::{MigrateMsg, SvgTemplateResponse, SvgTokenUriResponse};
-    use crate::contract::{
-        MAX_SVG_SIZE, MAX_TOTAL_SUPPLY, SVG_COLLECTION, SVG_PACKED_KEY,
-    };
     use cosmwasm_std::{
-        from_json, to_json_binary, Binary, Deps, DepsMut, Env, Event, MessageInfo, Response,
-        StdError, StdResult, Timestamp,
+        Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError, StdResult, Timestamp,
+        to_json_binary,
     };
     use cw721::msg::Cw721InstantiateMsg;
     use cw721::traits::{Cw721Execute, Cw721Query};
@@ -156,14 +156,40 @@ pub mod entry {
                 SvgExecuteMsgExt::UpdateWhitelist { address } => {
                     execute_update_whitelist(deps, info, env, address)
                 }
-                SvgExecuteMsgExt::ConfigureScribing { epoch_blocks, min_fee, owner_bps, max_proposals, shield_token_id } => {
-                    crate::scribing::configure(deps, env, info, epoch_blocks, min_fee, owner_bps, max_proposals, shield_token_id)
+                SvgExecuteMsgExt::ConfigureScribing {
+                    epoch_blocks,
+                    min_fee,
+                    owner_bps,
+                    max_proposals,
+                    shield_token_id,
+                } => crate::scribing::configure(
+                    deps,
+                    env,
+                    info,
+                    epoch_blocks,
+                    min_fee,
+                    owner_bps,
+                    max_proposals,
+                    shield_token_id,
+                ),
+                SvgExecuteMsgExt::Propose { token_id, text } => {
+                    crate::scribing::propose(deps, env, info, token_id, text)
                 }
-                SvgExecuteMsgExt::Propose { token_id, text } => crate::scribing::propose(deps, env, info, token_id, text),
-                SvgExecuteMsgExt::Select { token_id, epoch, index } => crate::scribing::select(deps, env, info, token_id, epoch, index),
-                SvgExecuteMsgExt::Settle { token_id, epoch } => crate::scribing::settle(deps, env, token_id, epoch),
-                SvgExecuteMsgExt::ClaimParticipation { token_id, epoch } => crate::scribing::claim(deps, env, info, token_id, epoch),
-                SvgExecuteMsgExt::SetSpeed { token_id, speed_pct } => crate::scribing::set_speed(deps, info, token_id, speed_pct),
+                SvgExecuteMsgExt::Select {
+                    token_id,
+                    epoch,
+                    index,
+                } => crate::scribing::select(deps, env, info, token_id, epoch, index),
+                SvgExecuteMsgExt::Settle { token_id, epoch } => {
+                    crate::scribing::settle(deps, env, token_id, epoch)
+                }
+                SvgExecuteMsgExt::ClaimParticipation { token_id, epoch } => {
+                    crate::scribing::claim(deps, env, info, token_id, epoch)
+                }
+                SvgExecuteMsgExt::SetSpeed {
+                    token_id,
+                    speed_pct,
+                } => crate::scribing::set_speed(deps, info, token_id, speed_pct),
             },
             ExecuteMsg::Mint { .. } => Err(ContractError::IncorrectEntrypoint),
             _ => Cw721SvgContract::default()
@@ -214,14 +240,34 @@ pub mod entry {
                     let count = whitelist_mint_count(deps, &addr);
                     to_json_binary(&MintCountResponse { address, count })
                 }
-                SvgQueryMsgExt::Scribed { token_id } => to_json_binary(&crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?),
-                SvgQueryMsgExt::ScribeEpoch {} => to_json_binary(&crate::scribing::q_epoch(deps, &env)),
-                SvgQueryMsgExt::Proposals { token_id, epoch } => to_json_binary(&crate::scribing::q_proposals(deps, token_id, epoch).map_err(|e| StdError::msg(e.to_string()))?),
-                SvgQueryMsgExt::EpochPot { token_id, epoch } => to_json_binary(&crate::scribing::q_pot(deps, token_id, epoch).map_err(|e| StdError::msg(e.to_string()))?),
-                SvgQueryMsgExt::ScribeHistory { token_id } => to_json_binary(&crate::scribing::q_history(deps, token_id).map_err(|e| StdError::msg(e.to_string()))?),
-                SvgQueryMsgExt::Participants { epoch, limit } => to_json_binary(&crate::scribing::q_participants(deps, epoch, limit).map_err(|e| StdError::msg(e.to_string()))?),
-                SvgQueryMsgExt::Speed { token_id } => to_json_binary(&crate::scribing::SPEED.may_load(deps.storage, &token_id)?),
-                SvgQueryMsgExt::OriginalMinter { token_id } => to_json_binary(&crate::scribing::ORIGIN.may_load(deps.storage, &token_id)?),
+                SvgQueryMsgExt::Scribed { token_id } => {
+                    to_json_binary(&crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?)
+                }
+                SvgQueryMsgExt::ScribeEpoch {} => {
+                    to_json_binary(&crate::scribing::q_epoch(deps, &env))
+                }
+                SvgQueryMsgExt::Proposals { token_id, epoch } => to_json_binary(
+                    &crate::scribing::q_proposals(deps, token_id, epoch)
+                        .map_err(|e| StdError::msg(e.to_string()))?,
+                ),
+                SvgQueryMsgExt::EpochPot { token_id, epoch } => to_json_binary(
+                    &crate::scribing::q_pot(deps, token_id, epoch)
+                        .map_err(|e| StdError::msg(e.to_string()))?,
+                ),
+                SvgQueryMsgExt::ScribeHistory { token_id } => to_json_binary(
+                    &crate::scribing::q_history(deps, token_id)
+                        .map_err(|e| StdError::msg(e.to_string()))?,
+                ),
+                SvgQueryMsgExt::Participants { epoch, limit } => to_json_binary(
+                    &crate::scribing::q_participants(deps, epoch, limit)
+                        .map_err(|e| StdError::msg(e.to_string()))?,
+                ),
+                SvgQueryMsgExt::Speed { token_id } => {
+                    to_json_binary(&crate::scribing::SPEED.may_load(deps.storage, &token_id)?)
+                }
+                SvgQueryMsgExt::OriginalMinter { token_id } => {
+                    to_json_binary(&crate::scribing::ORIGIN.may_load(deps.storage, &token_id)?)
+                }
                 SvgQueryMsgExt::CurrentPriceTier {} => {
                     let c = Cw721SvgContract::default();
                     let mc = c.config.token_count(deps.storage)?;
@@ -281,14 +327,14 @@ pub mod state {
 
     use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{
-        from_json, to_json_binary, Binary, Deps, Env, MessageInfo, StdError, Timestamp,
-    };
-    use cw721::{
-        error::Cw721ContractError,
-        traits::{Contains, Cw721CustomMsg, Cw721State, StateFactory},
-        Attribute,
+        Binary, Deps, Env, MessageInfo, StdError, Timestamp, from_json, to_json_binary,
     };
     use cw_svg::TokenParam;
+    use cw721::{
+        Attribute,
+        error::Cw721ContractError,
+        traits::{Contains, Cw721CustomMsg, Cw721State, StateFactory},
+    };
 
     use crate::PriceTier;
     // ── Trait impls required by Cw721Extensions ──────────────────────────────────
@@ -434,7 +480,9 @@ mod error {
         #[error("Minting is paused")]
         MintingPaused {},
 
-        #[error("Please wrap the SvgExecuteMsgExt::Mint inside the default ExecuteMsg::UpdateExtension option.")]
+        #[error(
+            "Please wrap the SvgExecuteMsgExt::Mint inside the default ExecuteMsg::UpdateExtension option."
+        )]
         IncorrectEntrypoint,
 
         #[error("Minting has not started yet")]
@@ -448,9 +496,9 @@ mod error {
 
         #[error("Unauthorized")]
         Unauthorized {},
-        
+
         #[error("GenericMsg: {m}")]
-        GenericMsg {m: String},
+        GenericMsg { m: String },
 
         #[error("SVG template exceeds max size of {max} bytes (got {got})")]
         SvgTemplateTooLarge { max: usize, got: usize },
@@ -497,6 +545,6 @@ mod error {
 }
 
 #[cfg(test)]
-mod svp_tests;
-#[cfg(test)]
 mod scribe_tests;
+#[cfg(test)]
+mod svp_tests;

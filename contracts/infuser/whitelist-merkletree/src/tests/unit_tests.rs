@@ -17,9 +17,8 @@ mod tests {
     use std::vec;
 
     use cosmwasm_std::{
-        coin,
+        Addr, BlockInfo, DepsMut, Env, Timestamp, coin,
         testing::{message_info, mock_dependencies, mock_env},
-        Addr, BlockInfo, DepsMut, Env, Timestamp,
     };
 
     const ADMIN: &str = "cosmwasm1ye63jpm474yfrq02nyplrspyw75y82tpd2shys";

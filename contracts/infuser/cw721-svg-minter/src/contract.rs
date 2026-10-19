@@ -1,19 +1,19 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    instantiate2_address, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, WasmMsg,
+    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, WasmMsg,
+    instantiate2_address, to_json_binary,
 };
-use cw2::set_contract_version;
 use cw_storage_plus::Bound;
+use cw2::set_contract_version;
 use sha2::{Digest, Sha256};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::msg::MigrateMsg;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    svg_collections, SvgCollection, COLLECTION_NONCE, DREGG_CHANNEL, DREGG_IBC_ONLY, DREGG_PORT,
-    RUNTIME_MINTERS, SVG_CODE_ID,
+    COLLECTION_NONCE, DREGG_CHANNEL, DREGG_IBC_ONLY, DREGG_PORT, RUNTIME_MINTERS, SVG_CODE_ID,
+    SvgCollection, svg_collections,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "cw-svg-minter";

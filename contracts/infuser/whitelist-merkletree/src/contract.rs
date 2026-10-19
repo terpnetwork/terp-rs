@@ -7,14 +7,14 @@ use crate::{
         ExecuteMsg, HasMemberResponse, InstantiateMsg, MerkleRootResponse, MerkleTreeURIResponse,
         QueryMsg,
     },
-    state::{AdminList, ADMIN_LIST, MERKLE_ROOT, MERKLE_TREE_URI},
+    state::{ADMIN_LIST, AdminList, MERKLE_ROOT, MERKLE_TREE_URI},
 };
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, Event, MessageInfo, Response, StdError,
-    StdResult,
+    Binary, Deps, DepsMut, Empty, Env, Event, MessageInfo, Response, StdError, StdResult,
+    to_json_binary,
 };
 use cw2::set_contract_version;
 use mtree_tooling::helpers::{
@@ -123,29 +123,25 @@ pub fn query_has_member(
     proof_hashes: Vec<String>,
 ) -> StdResult<HasMemberResponse> {
     let merkle_root = MERKLE_ROOT.load(deps.storage)?;
-    let member_init_hash_slice = blake3::hash(composite_key.as_bytes());
-    let final_hash = proof_hashes.into_iter().try_fold(
-        member_init_hash_slice,
-        |accum_hash_slice, new_proof_hashstring| {
-            valid_hash_string(&new_proof_hashstring)?;
-
-            let mut hash_bytes = [
-                *accum_hash_slice.as_bytes(),
-                *string_to_hash(&new_proof_hashstring)?.as_bytes(),
-            ];
-            hash_bytes.sort_unstable();
-            Result::<blake3::Hash, StdError>::Ok(blake3::hash(&hash_bytes.concat()))
-        },
-    );
-
-    if final_hash.is_err() {
-        return Err(cosmwasm_std::StdError::msg(
-            "Invalid Merkle Proof".to_string(),
-        ));
+    let mut current = deps.api.blake3_256(composite_key.as_bytes());
+    for proof in proof_hashes {
+        if valid_hash_string(&proof).is_err() {
+            return Err(StdError::msg("Invalid Merkle Proof".to_string()));
+        }
+        let sibling = match string_to_hash(&proof) {
+            Ok(hash) => *hash.as_bytes(),
+            Err(_) => return Err(StdError::msg("Invalid Merkle Proof".to_string())),
+        };
+        let mut pair = [current, sibling];
+        pair.sort_unstable();
+        let mut buf = [0u8; 64];
+        buf[..32].copy_from_slice(&pair[0]);
+        buf[32..].copy_from_slice(&pair[1]);
+        current = deps.api.blake3_256(&buf);
     }
 
     Ok(HasMemberResponse {
-        has_member: merkle_root == hex::encode(final_hash.unwrap().as_bytes()),
+        has_member: merkle_root == hex::encode(current),
     })
 }
 

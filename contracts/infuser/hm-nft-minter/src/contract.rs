@@ -1,14 +1,14 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128, WasmMsg,
+    BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Uint128, WasmMsg, to_json_binary,
 };
 use cw2::set_contract_version;
-use hm_loyalty_whitelist::{assert_eligible, validate_root_hex, CODEC_V1};
+use hm_loyalty_whitelist::{CODEC_V1, assert_eligible, validate_root_hex};
 use hm_nft_oracle::{
-    apply_sudo_price, assert_oracle_cannot_modify_supply, assert_payment, resolve_bound,
-    HashMerchantSudoMsg, MintPriceBound, OracleMid, PricePolicy, PriceSyncMode,
+    HashMerchantSudoMsg, MintPriceBound, OracleMid, PricePolicy, PriceSyncMode, apply_sudo_price,
+    assert_oracle_cannot_modify_supply, assert_payment, resolve_bound,
 };
 
 use crate::error::ContractError;
@@ -16,7 +16,7 @@ use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, IsEligibleResponse, NextTokenIdResponse,
     OracleMidResponse, QueryMsg, WhitelistRootResponse,
 };
-use crate::state::{Config, RootMeta, CONFIG, LAST_ROOT_META, ORACLE_MID};
+use crate::state::{CONFIG, Config, LAST_ROOT_META, ORACLE_MID, RootMeta};
 
 pub const CONTRACT_NAME: &str = "crates.io:hm-nft-minter";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -135,11 +135,7 @@ pub fn execute_mint(
         .ok_or(ContractError::CollectionNotLinked {})?;
 
     // 1) Whitelist (eligibility) — orthogonal to price.
-    assert_eligible(
-        &config.whitelist,
-        info.sender.as_str(),
-        proof.as_ref(),
-    )?;
+    assert_eligible(&config.whitelist, info.sender.as_str(), proof.as_ref())?;
 
     // 2) Price bound from oracle / fallback.
     let mid = ORACLE_MID.may_load(deps.storage)?;
@@ -147,11 +143,9 @@ pub fn execute_mint(
     let paid = assert_payment(&bound, &info.funds)?;
 
     let token_id = config.next_token_id;
-    let uri = token_uri.unwrap_or_else(|| {
-        match &config.token_uri_prefix {
-            Some(p) => format!("{p}{token_id}"),
-            None => token_id.to_string(),
-        }
+    let uri = token_uri.unwrap_or_else(|| match &config.token_uri_prefix {
+        Some(p) => format!("{p}{token_id}"),
+        None => token_id.to_string(),
     });
 
     // Advance supply BEFORE emitting mint (fail closed on double-mint races in same block is N/A for CW).
@@ -180,12 +174,14 @@ pub fn execute_mint(
         },
     };
 
-    let mut msgs: Vec<CosmosMsg> = vec![WasmMsg::Execute {
-        contract_addr: cw721.to_string(),
-        msg: to_json_binary(&mint_msg)?,
-        funds: vec![],
-    }
-    .into()];
+    let mut msgs: Vec<CosmosMsg> = vec![
+        WasmMsg::Execute {
+            contract_addr: cw721.to_string(),
+            msg: to_json_binary(&mint_msg)?,
+            funds: vec![],
+        }
+        .into(),
+    ];
 
     // Forward payment to proceeds (if any).
     if !paid.is_zero() {
@@ -479,8 +475,8 @@ fn query_oracle_mid(deps: Deps) -> StdResult<OracleMidResponse> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_json, Addr, Timestamp};
-    use hm_loyalty_whitelist::{LoyaltyProof, WhitelistConfig, CODEC_V1};
+    use cosmwasm_std::{Addr, Timestamp, coins, from_json};
+    use hm_loyalty_whitelist::{CODEC_V1, LoyaltyProof, WhitelistConfig};
     use hm_nft_oracle::{
         HashMerchantSudoOracleAttestation, HashMerchantSudoPayload, MintPriceBound, PricePolicy,
         PriceSyncMode,
@@ -803,16 +799,18 @@ mod tests {
 
         let anyone = deps.api.addr_make("anyone");
         let minter = message_info(&anyone, &coins(1, "uterp"));
-        assert!(execute(
-            deps.as_mut(),
-            mock_env(),
-            minter,
-            ExecuteMsg::Mint {
-                proof: None,
-                token_uri: None,
-            },
-        )
-        .is_err());
+        assert!(
+            execute(
+                deps.as_mut(),
+                mock_env(),
+                minter,
+                ExecuteMsg::Mint {
+                    proof: None,
+                    token_uri: None,
+                },
+            )
+            .is_err()
+        );
 
         let minter = message_info(&anyone, &coins(500, "uterp"));
         execute(
@@ -836,15 +834,17 @@ mod tests {
         let mut p = alice_proof();
         p.codec = "hm-loyalty/v0".into();
         let minter = message_info(&Addr::unchecked(ALICE), &coins(1_000_000, "uterp"));
-        assert!(execute(
-            deps.as_mut(),
-            mock_env(),
-            minter,
-            ExecuteMsg::Mint {
-                proof: Some(p),
-                token_uri: None,
-            },
-        )
-        .is_err());
+        assert!(
+            execute(
+                deps.as_mut(),
+                mock_env(),
+                minter,
+                ExecuteMsg::Mint {
+                    proof: Some(p),
+                    token_uri: None,
+                },
+            )
+            .is_err()
+        );
     }
 }

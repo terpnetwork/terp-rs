@@ -1,14 +1,14 @@
 use crate::{ContractError, Cw721SvgContract, SvgMetadata};
 
 use cosmwasm_std::{
-    ensure, Addr, BankMsg, Coin, CustomMsg, Deps, DepsMut, Env, Event, MessageInfo, Response,
-    Uint256,
+    Addr, BankMsg, Coin, CustomMsg, Deps, DepsMut, Env, Event, MessageInfo, Response, Uint256,
+    ensure,
 };
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 
-use cw721::traits::{Cw721CustomMsg, Cw721Execute, Cw721Query};
 use cw_storage_plus::{Item, Map};
+use cw721::traits::{Cw721CustomMsg, Cw721Execute, Cw721Query};
 
 use sha2::{Digest, Sha256};
 
@@ -20,9 +20,7 @@ pub const PAUSED: Item<()> = Item::new("svg_paused");
 pub const SVG_PACKED_KEY: &[u8] = b"svg_packed";
 
 /// Decode SVP1 bytes; maps codec errors to a contract error (never panics).
-pub fn decode_packed(
-    bytes: &[u8],
-) -> Result<(String, Vec<cw_svg::VariableDef>), ContractError> {
+pub fn decode_packed(bytes: &[u8]) -> Result<(String, Vec<cw_svg::VariableDef>), ContractError> {
     cw_svg_pack::unpack(bytes).map_err(|e| ContractError::GenericMsg { m: e.to_string() })
 }
 
@@ -44,11 +42,12 @@ pub fn scan_slots(
                     reason: format!("unclosed placeholder at {i}"),
                 })?;
             let name = &template[i + 2..j];
-            let var_idx = variables.iter().position(|v| v.name == name).ok_or_else(|| {
-                ContractError::InvalidTemplatePlaceholder {
+            let var_idx = variables
+                .iter()
+                .position(|v| v.name == name)
+                .ok_or_else(|| ContractError::InvalidTemplatePlaceholder {
                     reason: format!("undefined variable '{name}'"),
-                }
-            })?;
+                })?;
             slots.push(cw_svg::TemplateSlot {
                 start: i as u32,
                 end: (j + 1) as u32,
@@ -65,7 +64,9 @@ pub fn scan_slots(
 fn packed_bytes(storage: &dyn cosmwasm_std::Storage) -> Result<Vec<u8>, ContractError> {
     storage
         .get(SVG_PACKED_KEY)
-        .ok_or_else(|| ContractError::GenericMsg { m: "no packed template stored".into() })
+        .ok_or_else(|| ContractError::GenericMsg {
+            m: "no packed template stored".into(),
+        })
 }
 
 /// Template, slots and variables for rendering, decoded from the packed bytes.
@@ -114,12 +115,16 @@ pub fn scribe_layout(vars: &[cw_svg::VariableDef]) -> Result<Option<ScribeLayout
     let find = |n: &str| vars.iter().position(|v| v.name == n);
     let Some(text) = find(SCRIBE_VAR) else {
         if vars.iter().any(|v| v.name.starts_with("scribe.")) {
-            return Err(ContractError::InvalidVariableDef { reason: "scribe.* without scribe".into() });
+            return Err(ContractError::InvalidVariableDef {
+                reason: "scribe.* without scribe".into(),
+            });
         }
         return Ok(None);
     };
     let need = |n: String| {
-        find(&n).ok_or_else(|| ContractError::InvalidVariableDef { reason: format!("scribe slot needs variable '{n}'") })
+        find(&n).ok_or_else(|| ContractError::InvalidVariableDef {
+            reason: format!("scribe slot needs variable '{n}'"),
+        })
     };
     let mut cells = [0usize; 9];
     for (i, c) in cells.iter_mut().enumerate() {
@@ -128,13 +133,16 @@ pub fn scribe_layout(vars: &[cw_svg::VariableDef]) -> Result<Option<ScribeLayout
     let dur = need("scribe.dur".into())?;
     for idx in cells.iter().chain([text, dur].iter()) {
         if !matches!(vars[*idx].kind, cw_svg::VariableKind::Options(_)) {
-            return Err(ContractError::InvalidVariableDef { reason: format!("'{}' must be an options variable", vars[*idx].name) });
+            return Err(ContractError::InvalidVariableDef {
+                reason: format!("'{}' must be an options variable", vars[*idx].name),
+            });
         }
     }
     if let cw_svg::VariableKind::Options(themes) = &vars[text].kind {
         for t in themes {
-            cw_svg::marain::validate_text(t)
-                .map_err(|e| ContractError::InvalidVariableDef { reason: format!("theme {t:?}: {e}") })?;
+            cw_svg::marain::validate_text(t).map_err(|e| ContractError::InvalidVariableDef {
+                reason: format!("theme {t:?}: {e}"),
+            })?;
         }
     }
     Ok(Some(ScribeLayout { text, cells, dur }))
@@ -152,7 +160,12 @@ pub fn render_params(
     // The seeded theme stays in params forever; the animation spells the selected message, else the theme.
     let derived = layout.map(|l| {
         let (cells, dur) = cw_svg::marain::derived(message.unwrap_or(&params[l.text].value));
-        (cells, speed_pct.map(|sp| crate::scribing::scale_dur(&dur, sp)).unwrap_or(dur))
+        (
+            cells,
+            speed_pct
+                .map(|sp| crate::scribing::scale_dur(&dur, sp))
+                .unwrap_or(dur),
+        )
     });
     let mut out = String::with_capacity(template.len() + 2048);
     let mut cursor = 0usize;
@@ -248,11 +261,11 @@ pub fn execute_mint(
                     m: "invalid auth nonce".into(),
                 }
             );
-            let recovered = e.verify_return_readable(deps.api).map_err(|err| {
-                ContractError::GenericMsg {
-                    m: format!("auth verify failed: {err}"),
-                }
-            })?;
+            let recovered =
+                e.verify_return_readable(deps.api)
+                    .map_err(|err| ContractError::GenericMsg {
+                        m: format!("auth verify failed: {err}"),
+                    })?;
             // Signer derived from pubkey must be the tx sender (no relay of foreign auth).
             ensure!(
                 recovered == info.sender.as_str(),
@@ -272,7 +285,9 @@ pub fn execute_mint(
         false => false,
     };
     let is_dregg_runtime = DREGG_RUNTIME_MINTERS.has(deps.storage, &info.sender);
-    if DREGG_IBC_ONLY.may_load(deps.storage)?.unwrap_or(false) && !is_dregg_runtime && !is_whitelisted
+    if DREGG_IBC_ONLY.may_load(deps.storage)?.unwrap_or(false)
+        && !is_dregg_runtime
+        && !is_whitelisted
     {
         return Err(ContractError::Unauthorized {});
     }
@@ -429,17 +444,39 @@ pub enum WhitelistHasMemberMsg {
 pub enum SvgExecuteMsgExt {
     Mint(cw_svg::MintMsg),
     /// Collection admin (creator owner): scribing epochs, fee, split and shield orb.
-    ConfigureScribing { epoch_blocks: u64, min_fee: Coin, owner_bps: u16, max_proposals: u32, shield_token_id: String },
+    ConfigureScribing {
+        epoch_blocks: u64,
+        min_fee: Coin,
+        owner_bps: u16,
+        max_proposals: u32,
+        shield_token_id: String,
+    },
     /// Anyone: pay >= min_fee to propose a Marain line for an orb in the current epoch.
-    Propose { token_id: String, text: String },
+    Propose {
+        token_id: String,
+        text: String,
+    },
     /// Shield-orb owner: pick one proposal of an ended epoch (window = the following epoch).
-    Select { token_id: String, epoch: u64, index: u32 },
+    Select {
+        token_id: String,
+        epoch: u64,
+        index: u32,
+    },
     /// Anyone, after the selection window: pay out an unselected epoch (no message change).
-    Settle { token_id: String, epoch: u64 },
+    Settle {
+        token_id: String,
+        epoch: u64,
+    },
     /// Proposer: claim the participant record for (epoch, orb) once.
-    ClaimParticipation { token_id: String, epoch: u64 },
+    ClaimParticipation {
+        token_id: String,
+        epoch: u64,
+    },
     /// Orb owner: default flash speed in percent (25..=400; None = as derived).
-    SetSpeed { token_id: String, speed_pct: Option<u16> },
+    SetSpeed {
+        token_id: String,
+        speed_pct: Option<u16>,
+    },
     Pause {
         pause: bool,
     },
@@ -684,7 +721,14 @@ pub fn query_svg_token_uri(
 
     let msg = crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?;
     let speed = crate::scribing::SPEED.may_load(deps.storage, &token_id)?;
-    Ok(render_params(&template, &slots, &token.extension.params, scribe_layout(&vars)?, msg.as_ref().map(|m| m.text.as_str()), speed))
+    Ok(render_params(
+        &template,
+        &slots,
+        &token.extension.params,
+        scribe_layout(&vars)?,
+        msg.as_ref().map(|m| m.text.as_str()),
+        speed,
+    ))
 }
 
 pub fn query_svg_placeholder(
@@ -706,7 +750,14 @@ pub fn query_svg_placeholder(
         })
         .collect();
 
-    Ok(render_params(&template, &slots, &params, scribe_layout(&variables)?, None, None))
+    Ok(render_params(
+        &template,
+        &slots,
+        &params,
+        scribe_layout(&variables)?,
+        None,
+        None,
+    ))
 }
 
 pub fn query_config(
@@ -787,8 +838,9 @@ pub use interface::Cw721SvgContractSuite;
 #[cfg(feature = "interface")]
 mod interface {
     pub use crate::{
+        CONTRACT_NAME as CW721_SVG_CONTRACT_NAME,
         entry::{execute, instantiate, query},
-        CONTRACT_NAME as CW721_SVG_CONTRACT_NAME, *,
+        *,
     };
     use cw_orch::prelude::*;
 

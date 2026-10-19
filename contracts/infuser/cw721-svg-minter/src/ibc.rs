@@ -5,14 +5,14 @@
 //! (source/dest client + app data) — here the app data is the mint commitment.
 
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, Binary, DepsMut, Env, IbcBasicResponse,
-    IbcChannelCloseMsg, IbcChannelConnectMsg, IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder,
-    IbcPacketAckMsg, IbcPacketReceiveMsg, IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError,
-    StdResult, WasmMsg,
+    Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
+    IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult, WasmMsg, entry_point,
+    from_json, to_json_binary,
 };
 
-use crate::state::{DREGG_CHANNEL, DREGG_PORT, SPENT_NULLIFIERS};
 use crate::ContractError;
+use crate::state::{DREGG_CHANNEL, DREGG_PORT, SPENT_NULLIFIERS};
 
 const IBC_VERSION: &str = "svgmint-dregg-v1";
 
@@ -110,7 +110,10 @@ fn spend_nullifier(deps: DepsMut, pkt: &MintPacket) -> Result<(), ContractError>
     Ok(())
 }
 
-fn recv_inner(mut deps: DepsMut, msg: IbcPacketReceiveMsg) -> Result<IbcReceiveResponse, ContractError> {
+fn recv_inner(
+    mut deps: DepsMut,
+    msg: IbcPacketReceiveMsg,
+) -> Result<IbcReceiveResponse, ContractError> {
     let bound = DREGG_CHANNEL
         .may_load(deps.storage)?
         .ok_or(ContractError::Unauthorized {})?;

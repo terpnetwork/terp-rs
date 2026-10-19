@@ -1,5 +1,5 @@
 use crate::{
-    contract::{execute, instantiate, query, WLIST_MERKLETREE},
+    contract::{WLIST_MERKLETREE, execute, instantiate, query},
     msg::*,
 };
 use cw_orch::prelude::*;

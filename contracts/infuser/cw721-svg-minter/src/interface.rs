@@ -1,5 +1,5 @@
 use crate::{
-    contract::{execute, instantiate, query, CONTRACT_NAME},
+    contract::{CONTRACT_NAME, execute, instantiate, query},
     msg::*,
 };
 use cw_orch::prelude::*;

@@ -1,3 +1,7 @@
+/// Chain must advertise `hash_blake`. Membership hashes go through `Api::blake3_256`.
+#[no_mangle]
+extern "C" fn requires_hash_blake() {}
+
 pub mod admin;
 pub mod contract;
 pub mod error;
