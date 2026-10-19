@@ -2,7 +2,7 @@
   "propose": {
     "msg": {
       "propose": {
-        "description": "'Say Fuck It And Begin'. A forward deployment subdao for Terp Network Foundation, deploying and interacting with Terp Network's ecosystem in a minimally constrained structure. Allows us to curate data points, and reflect for improving the stewardship and collaborative support of growth.\n\nThis DAO stays admin. Seed 1,000,000 uterp and 1,000,000 uthiol. One member.",
+        "description": "'Say Fuck It And Begin'. A forward deployment subdao for Terp Network Foundation, deploying and interacting with Terp Network's ecosystem in a minimally constrained structure. Allows us to curate data points, and reflect for improving the stewardship and collaborative support of growth.\n\nThis DAO stays admin. The instantiate attaches 1000000000000uterp and 1000000000000uthiol (1,000,000 TERP and 1,000,000 THIOL). One member.",
         "msgs": [
           {
             "wasm": {
@@ -11,11 +11,11 @@
                 "code_id": 23,
                 "funds": [
                   {
-                    "amount": "1000000",
+                    "amount": "1000000000000",
                     "denom": "uterp"
                   },
                   {
-                    "amount": "1000000",
+                    "amount": "1000000000000",
                     "denom": "uthiol"
                   }
                 ],
