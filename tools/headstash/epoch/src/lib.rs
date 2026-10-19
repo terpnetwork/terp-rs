@@ -12,10 +12,12 @@ mod roots;
 pub use headstash_claim::DEPTH;
 pub use host::{halo2_vk_hash, install_halo2_host, verify_with_host, Halo2Host, HostVerifyError};
 pub use zk_headstash::circuit::{
+    EpochStatement,
     epoch_circuit_blob, epoch_vk_hash, host_public_inputs, prepare_halo2_verifier,
     prove_epoch_claim, EpochClaimBundle,
 };
 pub use zk_headstash::toy_host::{toy_vk_proof, toy_vk_proof_offset};
+pub use zk_headstash::no_ecdsa::{membership_host_proof, membership_vk_hash, MEMBERSHIP_VK_ID};
 
 /// Campaign id of the epoch circuit blob. Not the Pasta curve id.
 pub const EPOCH_VK_ID: u64 = 1;

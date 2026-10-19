@@ -661,6 +661,54 @@ mod tests {
     }
 
     #[test]
+    fn membership_and_epoch_keys_select_and_reject() {
+        use headstash_epoch::{
+            epoch_circuit_blob, host_public_inputs, membership_host_proof, prove_epoch_claim,
+            EpochStatement, EPOCH_VK_ID, MEMBERSHIP_VK_ID,
+        };
+
+        let membership = membership_host_proof().expect("membership");
+        let recipient = [0u8; 32];
+        let ctx = [0x11u8; 32];
+        let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
+        let bundle = prove_epoch_claim(destination, recipient, 15, ctx).expect("epoch");
+        let statement = EpochStatement {
+            ctx: bundle.ctx,
+            root: bundle.root,
+            nullifier: bundle.nullifier,
+            destination: bundle.destination.clone(),
+            amount: bundle.amount,
+            recipient,
+        };
+        let epoch_instances = host_public_inputs(&statement).expect("instances");
+        let epoch_blob = epoch_circuit_blob();
+        let vm = VmVerifier::open().expect("vm");
+        let epoch_hash = vm.register(EPOCH_VK_ID, epoch_blob).expect("reg epoch");
+        let membership_hash = vm
+            .register(MEMBERSHIP_VK_ID, &membership.blob)
+            .expect("reg membership");
+        assert_eq!(&epoch_hash[..4], &[0x9f, 0x80, 0x9a, 0x09]);
+        assert_eq!(&membership_hash[..4], &[0x94, 0xd4, 0x32, 0x61]);
+        assert_eq!(
+            vm.check(MEMBERSHIP_VK_ID, &membership.proof, &membership.instances),
+            HostOutcome::Valid
+        );
+        assert_eq!(
+            vm.check(EPOCH_VK_ID, &bundle.proof, &epoch_instances),
+            HostOutcome::Valid
+        );
+        let mut padded = membership.instances.clone();
+        padded.extend_from_slice(&[0u8; 32 * 3]);
+        assert_eq!(
+            vm.check(EPOCH_VK_ID, &membership.proof, &padded),
+            HostOutcome::Rejected
+        );
+        assert_eq!(
+            vm.check(MEMBERSHIP_VK_ID, &bundle.proof, &epoch_instances[..32 * 6]),
+            HostOutcome::Rejected
+        );
+    }
+
     fn host_api_round_trips_terp_addresses() {
         let api = HostApi::new();
         let zeros = [0u8; 20];
