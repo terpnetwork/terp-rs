@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use cosmwasm_std::{from_json, StdError};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use cosmwasm_std::{StdError, from_json};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 use crate::AccountAuthenticator;
@@ -25,7 +25,6 @@ impl PartialEq for CompositeAuthenticatorError {
         }
     }
 }
-
 
 impl CompositeAuthenticatorError {
     pub fn invalid_composite_id(composite_id: &str) -> Self {

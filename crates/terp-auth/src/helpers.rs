@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_json_binary, StdResult};
+use cosmwasm_std::{StdResult, to_json_binary};
 use sha2::{Digest, Sha256};
 
 use crate::{Any, MsgAddAuthenticator};

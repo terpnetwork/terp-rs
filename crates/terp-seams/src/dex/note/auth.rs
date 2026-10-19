@@ -34,7 +34,7 @@ pub fn snap_auth_message(timestamp: &str, pubkey_hex: &str) -> String {
 pub fn snap_secp_auth_headers(
     secret_key_hex: &str,
 ) -> Result<Vec<(String, String)>, NotePersistError> {
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, Signature, SigningKey};
+    use k256::ecdsa::{Signature, SigningKey, signature::hazmat::PrehashSigner};
     use sha2::{Digest, Sha256};
 
     let sk_bytes = hex::decode(secret_key_hex.trim()).map_err(|_| NotePersistError::BadHex)?;
@@ -43,7 +43,8 @@ pub fn snap_secp_auth_headers(
             "secp secret must be 32-byte hex".into(),
         ));
     }
-    let sk = SigningKey::from_slice(&sk_bytes).map_err(|e| NotePersistError::Auth(e.to_string()))?;
+    let sk =
+        SigningKey::from_slice(&sk_bytes).map_err(|e| NotePersistError::Auth(e.to_string()))?;
     let pubkey_hex = hex::encode(sk.verifying_key().to_sec1_bytes());
     let timestamp = now_timestamp_secs();
     let msg = snap_auth_message(&timestamp, &pubkey_hex);
@@ -111,7 +112,7 @@ pub fn auth_headers_from_env() -> Result<Vec<(String, String)>, NotePersistError
 #[cfg(all(test, feature = "auth"))]
 mod tests {
     use super::*;
-    use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, SigningKey, VerifyingKey};
+    use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::hazmat::PrehashVerifier};
     use sha2::{Digest, Sha256};
 
     #[test]

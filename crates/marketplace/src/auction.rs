@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw721::receiver::Cw721ReceiveMsg;
 use std::fmt;

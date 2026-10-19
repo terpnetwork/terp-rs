@@ -4,8 +4,12 @@
 //! so the light client can verify TFL finality.
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use cosmwasm_std::Api;
 
-use crate::types::{BftBlock, Blake3Hash, FatPointerToBftBlock2, PowHeader, SerializationError, ZcashDeserialize, ZcashSerialize};
+use crate::types::{
+    BftBlock, Blake3Hash, FatPointerToBftBlock2, PowHeader, SerializationError, ZcashDeserialize,
+    ZcashSerialize,
+};
 
 /// The client update message payload.
 ///
@@ -26,8 +30,8 @@ pub struct CrosslinkHeader {
 impl CrosslinkHeader {
     /// Hash of the BFT block in this header.
     #[must_use]
-    pub fn block_hash(&self) -> Blake3Hash {
-        self.bft_block.blake3_hash()
+    pub fn block_hash(&self, api: &dyn Api) -> Blake3Hash {
+        self.bft_block.blake3_hash(api)
     }
 
     /// The PoW anchor block (finalization candidate) from the BFT block.
@@ -38,8 +42,8 @@ impl CrosslinkHeader {
 
     /// Verify the fat pointer's block hash matches the BFT block hash.
     #[must_use]
-    pub fn validate_block_commitment(&self) -> bool {
-        let block_hash = self.block_hash();
+    pub fn validate_block_commitment(&self, api: &dyn Api) -> bool {
+        let block_hash = self.block_hash(api);
         let pointed_hash = self.fat_pointer.points_at_block_hash();
         block_hash == pointed_hash
     }

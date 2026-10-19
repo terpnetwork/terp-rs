@@ -45,7 +45,7 @@ pub fn verify_header(
     }
 
     // 4. Validate the fat pointer block hash matches the BFT block hash
-    if !header.validate_block_commitment() {
+    if !header.validate_block_commitment(api) {
         return Err(CrosslinkIBCError::HeaderVerificationFailed(
             "fat pointer block hash does not match BFT block hash".into(),
         ));
@@ -79,6 +79,7 @@ pub fn verify_header(
 ///
 /// Returns [`CrosslinkIBCError`] if the header cannot be checked.
 pub fn check_for_misbehaviour(
+    api: &dyn Api,
     client_state: &ClientState,
     consensus_state: &ConsensusState,
     header: &CrosslinkHeader,
@@ -97,7 +98,7 @@ pub fn check_for_misbehaviour(
         return Ok(false);
     }
     let candidate = header.finalization_candidate();
-    let conflicts = header.block_hash() != client_state.latest_bft_block_hash
+    let conflicts = header.block_hash(api) != client_state.latest_bft_block_hash
         || candidate.hash != client_state.latest_finalized_pow_hash
         || candidate.hash != consensus_state.pow_anchor_hash;
     Ok(conflicts)
@@ -190,7 +191,7 @@ mod tests {
             fat_pointer: FatPointerToBftBlock2::null(),
         };
         // Null fat pointer has all-zero hash, which won't match the BFT block hash
-        assert!(!header.validate_block_commitment());
+        assert!(!header.validate_block_commitment(&mock_dependencies().api));
     }
 
     #[test]
@@ -254,7 +255,15 @@ mod tests {
             },
             fat_pointer: FatPointerToBftBlock2::null(),
         };
-        assert!(check_for_misbehaviour(&client_state, &consensus_state, &header).unwrap());
+        assert!(
+            check_for_misbehaviour(
+                &mock_dependencies().api,
+                &client_state,
+                &consensus_state,
+                &header
+            )
+            .unwrap()
+        );
     }
 
     #[test]
@@ -279,6 +288,14 @@ mod tests {
             },
             fat_pointer: FatPointerToBftBlock2::null(),
         };
-        assert!(check_for_misbehaviour(&client_state, &consensus_state, &header).is_err());
+        assert!(
+            check_for_misbehaviour(
+                &mock_dependencies().api,
+                &client_state,
+                &consensus_state,
+                &header
+            )
+            .is_err()
+        );
     }
 }

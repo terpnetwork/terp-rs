@@ -125,7 +125,7 @@ pub enum AuthSudoMsg {
 #[cfg(test)]
 mod tests {
     use cosmwasm_schema::schemars::JsonSchema;
-    use serde_json::{from_str, to_string, to_value, Value};
+    use serde_json::{Value, from_str, to_string, to_value};
 
     use super::*;
 

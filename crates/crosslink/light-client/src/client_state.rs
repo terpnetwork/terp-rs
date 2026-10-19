@@ -113,9 +113,7 @@ impl ZcashSerialize for ClientState {
 }
 
 impl ZcashDeserialize for ClientState {
-    fn zcash_deserialize<R: std::io::Read>(
-        mut reader: R,
-    ) -> Result<Self, SerializationError> {
+    fn zcash_deserialize<R: std::io::Read>(mut reader: R) -> Result<Self, SerializationError> {
         let mut one = [0u8; 8];
         let mut two = [0u8; 8];
         let mut three = [0u8; 4];

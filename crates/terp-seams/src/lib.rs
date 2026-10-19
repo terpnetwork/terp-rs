@@ -12,14 +12,14 @@
 
 #![deny(unsafe_code)]
 
-pub mod domain;
 #[cfg(feature = "bridge")]
 pub mod bridge;
+#[cfg(feature = "compose")]
+pub mod compose;
 #[cfg(feature = "corridor")]
 pub mod corridor;
 #[cfg(feature = "dex")]
 pub mod dex;
-#[cfg(feature = "compose")]
-pub mod compose;
+pub mod domain;
 
 pub use domain::*;

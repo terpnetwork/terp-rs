@@ -3,6 +3,8 @@
 //! After a header is verified, this module derives the new consensus
 //! state and optionally updates the client state.
 
+use cosmwasm_std::Api;
+
 use crate::client_state::ClientState;
 use crate::consensus_state::ConsensusState;
 use crate::error::CrosslinkIBCError;
@@ -23,6 +25,7 @@ use crate::header::CrosslinkHeader;
 ///
 /// Returns [`CrosslinkIBCError`] if the update logic fails.
 pub fn update_consensus_state(
+    api: &dyn Api,
     _consensus_state: ConsensusState,
     client_state: ClientState,
     header: &CrosslinkHeader,
@@ -40,7 +43,7 @@ pub fn update_consensus_state(
     );
 
     let mut new_client_state = client_state;
-    new_client_state.latest_bft_block_hash = header.block_hash();
+    new_client_state.latest_bft_block_hash = header.block_hash(api);
     new_client_state.latest_bft_height = new_bft_height;
     new_client_state.latest_finalized_pow_height = new_consensus_state.pow_anchor_height;
     new_client_state.latest_finalized_pow_hash = new_consensus_state.pow_anchor_hash;
@@ -53,7 +56,7 @@ pub fn update_consensus_state(
 mod tests {
     use super::*;
     use crate::types::{
-        BftBlock, Blake3Hash, FatPointerToBftBlock2, PowHeader, PROTOTYPE_PARAMETERS,
+        BftBlock, Blake3Hash, FatPointerToBftBlock2, PROTOTYPE_PARAMETERS, PowHeader,
         ZcashDeserialize, ZcashSerialize,
     };
 
@@ -91,7 +94,12 @@ mod tests {
             fat_pointer: FatPointerToBftBlock2::null(),
         };
 
-        let result = update_consensus_state(consensus_state, client_state, &crosslink_header);
+        let result = update_consensus_state(
+            &cosmwasm_std::testing::MockApi::default(),
+            consensus_state,
+            client_state,
+            &crosslink_header,
+        );
         assert!(result.is_ok());
 
         let (new_height, new_consensus, updated_client) = result.unwrap();

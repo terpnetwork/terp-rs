@@ -1,5 +1,5 @@
 // condensed from: https://github.com/MegaRockLabs/smart-account-auth
-use cosmwasm_std::{ensure, Api, Binary, StdError};
+use cosmwasm_std::{Api, Binary, StdError, ensure};
 
 use bech32::{Bech32, Hrp};
 use ripemd::Ripemd160;
@@ -77,7 +77,7 @@ impl CosmosArbitrary {
 /// inject the data to be signed within the json struct
 pub fn preamble_msg_arb_036(signer: &str, data: &str) -> String {
     format!(
-        "{{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{{\"amount\":[],\"gas\":\"0\"}},\"memo\":\"\",\"msgs\":[{{\"type\":\"sign/MsgSignData\",\"value\":{{\"data\":\"{}\",\"signer\":\"{}\"}}}}],\"sequence\":\"0\"}}", 
+        "{{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{{\"amount\":[],\"gas\":\"0\"}},\"memo\":\"\",\"msgs\":[{{\"type\":\"sign/MsgSignData\",\"value\":{{\"data\":\"{}\",\"signer\":\"{}\"}}}}],\"sequence\":\"0\"}}",
         data, signer
     )
 }
@@ -107,17 +107,17 @@ pub fn ripemd160(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::StdError;
-    use cosmwasm_std::{testing::mock_dependencies, Binary};
+    use cosmwasm_std::{Binary, testing::mock_dependencies};
 
     use ecdsa::signature::rand_core::OsRng;
 
     use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
     // use serde::Deserialize;
-    use sha2::digest::Update;
     use sha2::Digest;
     use sha2::Sha256;
+    use sha2::digest::Update;
 
-    use crate::verify_generic::{preamble_msg_arb_036, pubkey_to_address, CosmosArbitrary};
+    use crate::verify_generic::{CosmosArbitrary, preamble_msg_arb_036, pubkey_to_address};
 
     // "Cosmos" secp256k1 signature verification. Matches tendermint/PubKeySecp256k1 pubkey.
     // const COSMOS_SECP256K1_PUBKEY_HEX: &str =
@@ -150,20 +150,24 @@ mod tests {
         let signature: Signature = secret_key.sign_prehash_recoverable(&msg_hash).unwrap().0;
 
         // Verification (uncompressed public key)
-        assert!(cosmwasm_crypto::secp256k1_verify(
-            &msg_hash,
-            signature.to_bytes().as_slice(),
-            public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
+        assert!(
+            cosmwasm_crypto::secp256k1_verify(
+                &msg_hash,
+                signature.to_bytes().as_slice(),
+                public_key.to_encoded_point(false).as_bytes()
+            )
+            .unwrap()
+        );
 
         // Verification (compressed public key)
-        assert!(cosmwasm_crypto::secp256k1_verify(
-            &msg_hash,
-            signature.to_bytes().as_slice(),
-            public_key.to_encoded_point(true).as_bytes()
-        )
-        .unwrap());
+        assert!(
+            cosmwasm_crypto::secp256k1_verify(
+                &msg_hash,
+                signature.to_bytes().as_slice(),
+                public_key.to_encoded_point(true).as_bytes()
+            )
+            .unwrap()
+        );
 
         let hrp = "cosmos";
 

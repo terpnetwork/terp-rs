@@ -2,7 +2,7 @@ use cosmwasm_std::StdError;
 use terp_code_controllers::{HookError, Hooks};
 
 // re-export the proc macros
-pub use terp_mint_hooks_derive::{terp_mint_hooks_execute, sg_mint_hooks_query};
+pub use terp_mint_hooks_derive::{sg_mint_hooks_query, terp_mint_hooks_execute};
 
 pub const PREMINT_HOOKS: Hooks = Hooks::new("premint-hooks");
 pub const POSTMINT_HOOKS: Hooks = Hooks::new("postmint-hooks");
@@ -36,9 +36,11 @@ pub fn handle_reply(reply_id: u64) -> Result<(), MintHookError> {
 }
 
 pub mod pre {
+    use crate::{MintHookError, PREMINT_HOOK_REPLY_ID, PREMINT_HOOKS};
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, DepsMut, Response, StdResult, SubMsg, WasmMsg};
-     use crate::{MintHookError, PREMINT_HOOKS, PREMINT_HOOK_REPLY_ID};
+    use cosmwasm_std::{
+        Addr, Binary, Deps, DepsMut, Response, StdResult, SubMsg, WasmMsg, to_json_binary,
+    };
 
     #[cw_serde]
     pub struct PreMintHookMsg {
@@ -108,9 +110,11 @@ pub mod pre {
 
 pub mod post {
     use cosmwasm_schema::cw_serde;
-    use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, DepsMut, Response, StdResult, SubMsg, WasmMsg};
+    use cosmwasm_std::{
+        Addr, Binary, Deps, DepsMut, Response, StdResult, SubMsg, WasmMsg, to_json_binary,
+    };
 
-    use crate::{MintHookError, POSTMINT_HOOKS, POSTMINT_HOOK_REPLY_ID};
+    use crate::{MintHookError, POSTMINT_HOOK_REPLY_ID, POSTMINT_HOOKS};
 
     #[cw_serde]
     pub struct PostMintHookMsg {

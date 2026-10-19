@@ -25,41 +25,42 @@
 use std::collections::HashMap;
 
 use crate::bridge::{
-    authorize_bridge_mint, terp_asset_id_from_tacit, AssetRegistry, BridgeMintClaim,
-    BridgeMintError, MintedSet, NoteOutSketch, ReflectionSnapshot,
-};
-use crate::dex::{
-    build_swap_action_from_seam_notes, AssetRegistryView as DexAssetRegistryView, SeamNoteSketch,
+    AssetRegistry, BridgeMintClaim, BridgeMintError, MintedSet, NoteOutSketch, ReflectionSnapshot,
+    authorize_bridge_mint, terp_asset_id_from_tacit,
 };
 use crate::dex::note::{
-    is_dex_consumable, validate_seam_note_out_v0, SeamError, CM_ABSTRACT_LEAF_V0,
-    DOMAIN_TAG_NOTE_OUT, VERSION_V0,
+    CM_ABSTRACT_LEAF_V0, DOMAIN_TAG_NOTE_OUT, SeamError, VERSION_V0, is_dex_consumable,
+    validate_seam_note_out_v0,
+};
+use crate::dex::{
+    AssetRegistryView as DexAssetRegistryView, SeamNoteSketch, build_swap_action_from_seam_notes,
 };
 
 // Single import+re-export surface for product path consumers (C1–C4 + apply).
 // These names are also used by compose APIs in this crate.
-pub use crate::dex::{
-    abstract_leaf_cm, apply_reserves, apply_swap_action, asset_id_hub,
-    build_swap_action_from_seam_notes as dex_build_swap_action_from_seam_notes, implied_price,
-    oracle_mint_note, quote_exact_in, spend_opening_from_seam_sketch, synthetic_pool_spend_nf,
-    validate_swap_action, AssetId as DexPoolAssetId, AssetId32, AssetMap,
-    AssetRegistryView as DexAssetRegistryViewTrait, OracleBoundParams, OracleMid, Pool, PoolStatus,
-    SeamNoteSketch as DexSeamNoteSketch, SpendNoteOpening, SwapActionError, SwapActionPublic,
-    SwapActionV0, SwapFromSeamParams, SwapSeamState, PRICE_SCALE,
+pub use crate::bridge::{
+    BridgeMintClaim as HingeClaim, BridgeMintError as HingeBridgeMintError,
+    BridgeMintPublic as HingeBridgeMintPublic, MintedSet as HingeMintedSet,
+    NoteOutSketch as HingeNoteOutSketch, ReflectionSnapshot as HingeSnapshot,
+    authorize_bridge_mint as hinge_authorize_bridge_mint,
+    authorize_bridge_mint_apply as hinge_authorize_bridge_mint_apply,
+    terp_asset_id_from_tacit as hinge_terp_asset_id_from_tacit,
 };
 pub use crate::dex::note::{
-    decrypt_note_out, encrypt_note_out, is_dex_consumable as seam_is_dex_consumable,
-    note_addr_claim, note_addr_cm, note_addr_pk, persist_plan_from_seam_note,
-    to_dex_spend_inputs, NoteEnvelope, NotePersistError, NotePersistPlan, SeamNoteOutV0,
-    CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, NF_BRIDGE_BURN, ORIGIN_BRIDGE_MINT,
-    SCHEME_XCHACHA20POLY1305,
+    CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, NF_BRIDGE_BURN, NoteEnvelope, NotePersistError,
+    NotePersistPlan, ORIGIN_BRIDGE_MINT, SCHEME_XCHACHA20POLY1305, SeamNoteOutV0, decrypt_note_out,
+    encrypt_note_out, is_dex_consumable as seam_is_dex_consumable, note_addr_claim, note_addr_cm,
+    note_addr_pk, persist_plan_from_seam_note, to_dex_spend_inputs,
 };
-pub use crate::bridge::{
-    authorize_bridge_mint as hinge_authorize_bridge_mint,
-    authorize_bridge_mint_apply as hinge_authorize_bridge_mint_apply, BridgeMintClaim as HingeClaim,
-    BridgeMintError as HingeBridgeMintError, BridgeMintPublic as HingeBridgeMintPublic,
-    MintedSet as HingeMintedSet, NoteOutSketch as HingeNoteOutSketch,
-    ReflectionSnapshot as HingeSnapshot, terp_asset_id_from_tacit as hinge_terp_asset_id_from_tacit,
+pub use crate::dex::{
+    AssetId as DexPoolAssetId, AssetId32, AssetMap, AssetRegistryView as DexAssetRegistryViewTrait,
+    OracleBoundParams, OracleMid, PRICE_SCALE, Pool, PoolStatus,
+    SeamNoteSketch as DexSeamNoteSketch, SpendNoteOpening, SwapActionError, SwapActionPublic,
+    SwapActionV0, SwapFromSeamParams, SwapSeamState, abstract_leaf_cm, apply_reserves,
+    apply_swap_action, asset_id_hub,
+    build_swap_action_from_seam_notes as dex_build_swap_action_from_seam_notes, implied_price,
+    oracle_mint_note, quote_exact_in, spend_opening_from_seam_sketch, synthetic_pool_spend_nf,
+    validate_swap_action,
 };
 
 // =============================================================================
@@ -367,8 +368,7 @@ pub fn authorize_bridge_mint_to_seam_note_out_apply(
     registry: &AssetRegistryView,
     openings: &NoteOpenings,
 ) -> Result<SeamNoteOutV0, ComposeError> {
-    let note =
-        authorize_bridge_mint_to_seam_note_out(snapshot, claim, minted, registry, openings)?;
+    let note = authorize_bridge_mint_to_seam_note_out(snapshot, claim, minted, registry, openings)?;
     minted.mark(claim.public.nullifier);
     Ok(note)
 }
@@ -582,12 +582,7 @@ pub fn mint_evidence_to_swap_action(
     params: &CorridorSwapSpendParams,
     registry: &AssetRegistryView,
 ) -> Result<SwapActionV0, ComposeError> {
-    seam_note_out_to_swap_action(
-        &evidence.note,
-        params,
-        registry,
-        evidence.path_position,
-    )
+    seam_note_out_to_swap_action(&evidence.note, params, registry, evidence.path_position)
 }
 
 /// Host DTO mirroring CW `SwapStatementPublic` field layout (no cosmwasm dep).
@@ -676,11 +671,11 @@ pub struct ProductPathOutcome {
 /// ```
 pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, ComposeError> {
     use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
-    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
     use crate::dex::{
-        apply_swap_action, asset_id_hub, quote_exact_in, AssetId, Pool, PoolStatus, SwapSeamState,
+        AssetId, Pool, PoolStatus, SwapSeamState, apply_swap_action, asset_id_hub, quote_exact_in,
         validate_swap_action,
     };
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
     use sha2::{Digest, Sha256};
 
     fn label_hash(label: &str) -> Hash32 {
@@ -724,8 +719,7 @@ pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, Comp
     let height = 100u64;
     let tip = height + DEFAULT_CONFIRMATIONS_K;
     let mint_value = 1_000_000u64;
-    let claim_id =
-        derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, mint_value);
+    let claim_id = derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, mint_value);
     let src_chain = label_hash("src-bitcoin-mainnet");
     let dst_chain = dest;
     let lc_client = label_hash("lc-client-reflection-0");
@@ -801,9 +795,8 @@ pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, Comp
     let gamma = 997u64;
     let gamma_den = 1000u64;
     let delta_in = note.value as u128;
-    let expected_out =
-        quote_exact_in(r_in_before, r_out_before, delta_in, gamma, gamma_den)
-            .map_err(|_| ComposeError::SwapSketch("quote_exact_in failed"))?;
+    let expected_out = quote_exact_in(r_in_before, r_out_before, delta_in, gamma, gamma_den)
+        .map_err(|_| ComposeError::SwapSketch("quote_exact_in failed"))?;
 
     let params = SwapFromSeamParams {
         pool_id: 1,
@@ -865,8 +858,10 @@ pub fn run_product_path_burn_to_swap_sketch() -> Result<ProductPathOutcome, Comp
         allowed_root: Some(action.public.root),
         ..Default::default()
     };
-    let got = apply_swap_action(&mut pool, &mut state, &action, /* asset_in_is_a */ false)
-        .map_err(ComposeError::from)?;
+    let got = apply_swap_action(
+        &mut pool, &mut state, &action, /* asset_in_is_a */ false,
+    )
+    .map_err(ComposeError::from)?;
     if got != expected_out {
         return Err(ComposeError::SwapSketch("apply returned unexpected Δ_out"));
     }
@@ -919,14 +914,14 @@ pub struct ProductPathOracleZecOutcome {
 /// with **oracle required** + **registered sim-ZEC `asset_out`** → `apply_swap_action`.
 ///
 /// Asserts openings.cm/rcm == mint note; pool ν ≠ bridge ingress ν.
-pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZecOutcome, ComposeError>
-{
+pub fn run_product_path_burn_to_swap_oracle_zec()
+-> Result<ProductPathOracleZecOutcome, ComposeError> {
     use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
-    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
     use crate::dex::{
-        apply_swap_action, implied_price, quote_exact_in, AssetId, Pool, PoolStatus, SwapSeamState,
-        validate_swap_action, OracleBoundParams, OracleMid,
+        AssetId, OracleBoundParams, OracleMid, Pool, PoolStatus, SwapSeamState, apply_swap_action,
+        implied_price, quote_exact_in, validate_swap_action,
     };
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
     use sha2::{Digest, Sha256};
 
     fn label_hash(label: &str) -> Hash32 {
@@ -970,8 +965,7 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
     let height = 100u64;
     let tip = height + DEFAULT_CONFIRMATIONS_K;
     let mint_value = 1_000_000u64;
-    let claim_id =
-        derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, mint_value);
+    let claim_id = derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, mint_value);
     let src_chain = label_hash("src-bitcoin-mainnet");
     let dst_chain = dest;
     let lc_client = label_hash("lc-client-reflection-0");
@@ -1046,9 +1040,8 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
     let gamma = 997u64;
     let gamma_den = 1000u64;
     let delta_in = note.value as u128;
-    let expected_out =
-        quote_exact_in(r_in_before, r_out_before, delta_in, gamma, gamma_den)
-            .map_err(|_| ComposeError::SwapSketch("quote_exact_in failed"))?;
+    let expected_out = quote_exact_in(r_in_before, r_out_before, delta_in, gamma, gamma_den)
+        .map_err(|_| ComposeError::SwapSketch("quote_exact_in failed"))?;
     let mid = implied_price(delta_in, expected_out)
         .map_err(|_| ComposeError::SwapSketch("implied_price failed"))?;
 
@@ -1093,9 +1086,17 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
         ));
     }
     if action.public.asset_out != zec {
-        return Err(ComposeError::SwapSketch("asset_out must be corridor ZEC id"));
+        return Err(ComposeError::SwapSketch(
+            "asset_out must be corridor ZEC id",
+        ));
     }
-    if action.public.oracle_params.as_ref().map(|p| p.require_oracle) != Some(true) {
+    if action
+        .public
+        .oracle_params
+        .as_ref()
+        .map(|p| p.require_oracle)
+        != Some(true)
+    {
         return Err(ComposeError::SwapSketch("oracle required on product path"));
     }
 
@@ -1108,7 +1109,9 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
     {
         let expect_nf = synthetic_pool_spend_nf(&opening.cm_public, &opening.rcm);
         if *pub_nf != expect_nf {
-            return Err(ComposeError::SwapSketch("pool ν != synthetic_pool_spend_nf"));
+            return Err(ComposeError::SwapSketch(
+                "pool ν != synthetic_pool_spend_nf",
+            ));
         }
         if *pub_nf == opening.ingress_nullifier_lineage || *pub_nf == nu {
             return Err(ComposeError::SwapSketch(
@@ -1132,8 +1135,10 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
         allowed_root: Some(action.public.root),
         ..Default::default()
     };
-    let got = apply_swap_action(&mut pool, &mut state, &action, /* asset_in_is_a */ false)
-        .map_err(ComposeError::from)?;
+    let got = apply_swap_action(
+        &mut pool, &mut state, &action, /* asset_in_is_a */ false,
+    )
+    .map_err(ComposeError::from)?;
     if got != expected_out {
         return Err(ComposeError::SwapSketch("apply returned unexpected Δ_out"));
     }
@@ -1170,9 +1175,9 @@ pub fn run_product_path_burn_to_swap_oracle_zec() -> Result<ProductPathOracleZec
 mod tests {
     use super::*;
     use crate::bridge::{derive_claim_id_with_dest, derive_domain_binding};
-    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
-    use crate::dex::{quote_exact_in, synthetic_pool_spend_nf, validate_swap_action};
     use crate::dex::note::{is_dex_consumable, to_dex_spend_inputs, validate_seam_note_out_v0};
+    use crate::dex::{quote_exact_in, synthetic_pool_spend_nf, validate_swap_action};
+    use crate::domain::{DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG};
     use sha2::{Digest, Sha256};
 
     fn h(label: &str) -> Hash32 {
@@ -1204,8 +1209,7 @@ mod tests {
         let burn_root = h("burn-root-1");
         let height = 100u64;
         let tip = height + DEFAULT_CONFIRMATIONS_K;
-        let claim_id =
-            derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, 1_000_000);
+        let claim_id = derive_claim_id_with_dest(&dest, &dest_cm, &nu, &tacit_asset, 1_000_000);
         let src_chain = h("src-bitcoin-mainnet");
         let dst_chain = dest;
         let lc_client = h("lc-client-reflection-0");
@@ -1337,11 +1341,7 @@ mod tests {
         claim.spent_only = true;
 
         let err = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry,
-            &openings,
+            &snapshot, &claim, &minted, &registry, &openings,
         )
         .expect_err("spent-only must reject");
 
@@ -1362,11 +1362,7 @@ mod tests {
 
         // Registered: asset on note equals registry Terp id.
         let note = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry,
-            &openings,
+            &snapshot, &claim, &minted, &registry, &openings,
         )
         .expect("registered");
         assert_eq!(note.asset_id, terp_asset);
@@ -1378,14 +1374,9 @@ mod tests {
 
         // Empty registry → UnregisteredAsset at compose SSOT (before / instead of hinge).
         let empty = AssetRegistryView::new();
-        let err = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &empty,
-            &openings,
-        )
-        .expect_err("unregistered");
+        let err =
+            authorize_bridge_mint_to_seam_note_out(&snapshot, &claim, &minted, &empty, &openings)
+                .expect_err("unregistered");
         assert_eq!(err, ComposeError::UnregisteredAsset);
 
         // Registry with only hub (wrong asset) → reject.
@@ -1397,14 +1388,9 @@ mod tests {
             origin: AssetOrigin::Native,
             status: AssetStatus::Active,
         });
-        let err2 = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &wrong,
-            &openings,
-        )
-        .expect_err("wrong asset");
+        let err2 =
+            authorize_bridge_mint_to_seam_note_out(&snapshot, &claim, &minted, &wrong, &openings)
+                .expect_err("wrong asset");
         assert_eq!(err2, ComposeError::UnregisteredAsset);
     }
 
@@ -1483,13 +1469,8 @@ mod tests {
             oracle_params: None,
         };
 
-        let action = sketch_swap_action_from_seam_notes(
-            &[note1, note2],
-            &registry,
-            &params,
-            0,
-        )
-        .expect("swap sketch");
+        let action = sketch_swap_action_from_seam_notes(&[note1, note2], &registry, &params, 0)
+            .expect("swap sketch");
 
         assert_eq!(action.public.asset_in, terp_asset);
         assert_eq!(action.public.asset_out, asset_out);
@@ -1560,11 +1541,7 @@ mod tests {
             recompute_abstract_cm: true,
         };
         let note = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry,
-            &openings,
+            &snapshot, &claim, &minted, &registry, &openings,
         )
         .expect("sketch rcm sufficient");
         assert_eq!(note.rcm, claim.public.rcm);
@@ -1577,16 +1554,12 @@ mod tests {
     fn bridge_mint_persist_plan_roundtrip() {
         let (snapshot, claim, minted, registry, _, openings) = compose_fixture();
         let note = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry,
-            &openings,
+            &snapshot, &claim, &minted, &registry, &openings,
         )
         .expect("mint note");
         let key = h("note-persist-key");
-        let plan = persist_plan_after_bridge_mint(&note, &key, "season-demo", None)
-            .expect("persist plan");
+        let plan =
+            persist_plan_after_bridge_mint(&note, &key, "season-demo", None).expect("persist plan");
         assert!(plan.addr.starts_with("cm."));
         assert_eq!(plan.store_path, format!("notes/season-demo/{}", plan.addr));
         assert_eq!(plan.envelope.scheme, SCHEME_XCHACHA20POLY1305);
@@ -1626,7 +1599,10 @@ mod tests {
         assert_ne!(base.pool_nullifiers[0], base.bridge_minted_nullifiers[0]);
         assert_eq!(base.asset_out, h("sim-ZEC"));
         assert_ne!(base.asset_out, crate::dex::asset_id_hub());
-        assert_eq!(out.action.witness.notes_in[0].cm_public, out.mint_note.cm_public);
+        assert_eq!(
+            out.action.witness.notes_in[0].cm_public,
+            out.mint_note.cm_public
+        );
         assert_eq!(out.action.witness.notes_in[0].rcm, out.mint_note.rcm);
         let opening = &out.action.witness.notes_in[0];
         let pool_nf = synthetic_pool_spend_nf(&opening.cm_public, &opening.rcm);
@@ -1634,7 +1610,11 @@ mod tests {
         assert_ne!(pool_nf, opening.ingress_nullifier_lineage);
         assert_ne!(pool_nf, out.mint_note.nullifier_lineage);
         assert_eq!(
-            out.action.public.oracle_params.as_ref().map(|p| p.require_oracle),
+            out.action
+                .public
+                .oracle_params
+                .as_ref()
+                .map(|p| p.require_oracle),
             Some(true)
         );
         // Statement map widths (G3 collab T8 pure half)
@@ -1659,23 +1639,15 @@ mod tests {
             recompute_abstract_cm: true,
         };
         let err = authorize_bridge_mint_to_seam_note_out(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry,
-            &openings,
+            &snapshot, &claim, &minted, &registry, &openings,
         )
         .unwrap_err();
         assert_eq!(err, ComposeError::MissingOpenings);
 
         // Sketch path with rcm_flag=0
-        let sketch = hinge_authorize_bridge_mint(
-            &snapshot,
-            &claim,
-            &minted,
-            &registry.to_bridge_registry(),
-        )
-        .expect("hinge ok without rcm");
+        let sketch =
+            hinge_authorize_bridge_mint(&snapshot, &claim, &minted, &registry.to_bridge_registry())
+                .expect("hinge ok without rcm");
         assert_eq!(sketch.rcm_flag, 0);
         let err = MintSpendEvidence::from_note_out_sketch(&sketch, 0).unwrap_err();
         assert_eq!(err, ComposeError::MissingOpenings);

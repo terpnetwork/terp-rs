@@ -3,7 +3,7 @@
 //! Feature: `http` (reqwest + rustls). Does **not** implement a second blob
 //! store — only auth-gated `/notes/{hs_id}/...` against hash-market.
 
-use super::{validate_id, NoteEnvelope, NotePersistError};
+use super::{NoteEnvelope, NotePersistError, validate_id};
 
 /// PUT envelope JSON to hash-market HeadstashStore notes route.
 ///
@@ -229,6 +229,10 @@ pub fn pir_get_note_envelope(
     selector[idx] = 1;
     let blob = pir_fetch_note_blob(base_url, hs_id, &selector, headers)?;
     // Strip trailing NUL pad from equal-length PIR blobs.
-    let end = blob.iter().rposition(|&b| b != 0).map(|i| i + 1).unwrap_or(0);
+    let end = blob
+        .iter()
+        .rposition(|&b| b != 0)
+        .map(|i| i + 1)
+        .unwrap_or(0);
     NoteEnvelope::from_json_bytes(&blob[..end])
 }

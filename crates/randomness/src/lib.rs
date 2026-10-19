@@ -69,7 +69,7 @@ fn get_timing_jitter() -> [u8; 32] {
 
 /// Extra process/system noise
 fn get_process_noise() -> [u8; 32] {
-    let  _buf = [0u8; 32];
+    let _buf = [0u8; 32];
     let mut hasher = Hasher::new();
 
     // Current time

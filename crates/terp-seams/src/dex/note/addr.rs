@@ -61,14 +61,8 @@ mod tests {
         validate_id("terp1abcdefghijklmnopqrstuvwxyz012345").unwrap();
         validate_id("0x0123456789abcdef0123456789abcdef01234567").unwrap();
         validate_id(&note_addr_cm(&[0xAB; 32])).unwrap();
-        assert_eq!(
-            note_addr_cm(&[0x0A; 32]),
-            format!("cm.{}", "0a".repeat(32))
-        );
-        assert_eq!(
-            note_addr_pk(&[0xDE, 0xAD]).unwrap(),
-            "pk.dead"
-        );
+        assert_eq!(note_addr_cm(&[0x0A; 32]), format!("cm.{}", "0a".repeat(32)));
+        assert_eq!(note_addr_pk(&[0xDE, 0xAD]).unwrap(), "pk.dead");
     }
 
     #[test]

@@ -22,14 +22,14 @@
 //! (BUD dual-index pointer). Primary fetch remains auth-gated `/notes/...`.
 
 use chacha20poly1305::{
-    aead::{Aead, AeadCore, KeyInit, Payload},
     XChaCha20Poly1305, XNonce,
+    aead::{Aead, AeadCore, KeyInit, Payload},
 };
 use rand_core06::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use super::{validate_id, NotePersistError, SeamNoteOutV0, SEAM_NOTE_OUT_V0_LEN};
+use super::{NotePersistError, SEAM_NOTE_OUT_V0_LEN, SeamNoteOutV0, validate_id};
 
 /// AEAD scheme identifier written into every envelope.
 pub use crate::domain::SCHEME_XCHACHA20POLY1305;
@@ -168,13 +168,7 @@ pub fn decrypt_note_out(
 
     let cipher = XChaCha20Poly1305::new(key.into());
     let pt = cipher
-        .decrypt(
-            nonce,
-            Payload {
-                msg: &ct,
-                aad: b"",
-            },
-        )
+        .decrypt(nonce, Payload { msg: &ct, aad: b"" })
         .map_err(|_| NotePersistError::Decrypt)?;
 
     if pt.len() != SEAM_NOTE_OUT_V0_LEN {
@@ -230,8 +224,8 @@ pub fn persist_plan_from_seam_note_opts(
 mod tests {
     use super::*;
     use crate::dex::note::{
-        from_bridge_mint, from_headstash_instance, note_addr_claim, note_addr_cm, BridgeMintPublic,
-        HeadstashInstanceBytes, CM_TACIT_KECCAK_LEAF, SEAM_NOTE_OUT_V0_LEN,
+        BridgeMintPublic, CM_TACIT_KECCAK_LEAF, HeadstashInstanceBytes, SEAM_NOTE_OUT_V0_LEN,
+        from_bridge_mint, from_headstash_instance, note_addr_claim, note_addr_cm,
     };
 
     fn arr32(seed: u8) -> [u8; 32] {
@@ -325,20 +319,20 @@ mod tests {
             from_headstash_instance(&fixture_claim_instance(), arr32(0x01), Some(arr32(0x02)));
         let bridge = from_bridge_mint(&fixture_bridge_mint(), 42_000).unwrap();
 
-        let claim_addr =
-            note_addr_claim("terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsr2pd5").unwrap();
+        let claim_addr = note_addr_claim("terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsr2pd5").unwrap();
         let plan = persist_plan_from_seam_note(&claim, &key, "season-1", &claim_addr).unwrap();
-        assert_eq!(
-            plan.store_path,
-            format!("notes/season-1/{claim_addr}")
-        );
+        assert_eq!(plan.store_path, format!("notes/season-1/{claim_addr}"));
         assert_eq!(decrypt_note_out(&plan.envelope, &key).unwrap(), claim);
 
         let cm_addr = note_addr_cm(&bridge.cm_public);
         assert!(cm_addr.starts_with("cm."));
-        let plan_b =
-            persist_plan_from_seam_note(&bridge, &key, "terp1contractxxxxxxxxxxxxxxxxxxxx", &cm_addr)
-                .unwrap();
+        let plan_b = persist_plan_from_seam_note(
+            &bridge,
+            &key,
+            "terp1contractxxxxxxxxxxxxxxxxxxxx",
+            &cm_addr,
+        )
+        .unwrap();
         assert!(plan_b.store_path.starts_with("notes/"));
         assert_eq!(decrypt_note_out(&plan_b.envelope, &key).unwrap(), bridge);
     }

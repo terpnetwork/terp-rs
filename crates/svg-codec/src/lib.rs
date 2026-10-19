@@ -264,7 +264,11 @@ fn enc_vars(out: &mut Vec<u8>, vars: &[VariableDef]) {
                     wstr(out, s);
                 }
             }
-            VariableKind::Range { min, max, precision } => match (num_pack(min), num_pack(max)) {
+            VariableKind::Range {
+                min,
+                max,
+                precision,
+            } => match (num_pack(min), num_pack(max)) {
                 (Some(a), Some(b)) => {
                     out.push(1);
                     wv(out, *precision as u128);
@@ -311,7 +315,11 @@ fn dec_vars(r: &mut Rd) -> Result<Vec<VariableDef>, PackError> {
                 let min = num_unpack(h, m)?;
                 let (h, m) = (r.v()?, r.v()?);
                 let max = num_unpack(h, m)?;
-                VariableKind::Range { min, max, precision }
+                VariableKind::Range {
+                    min,
+                    max,
+                    precision,
+                }
             }
             2 => VariableKind::Rgb,
             3 => {
@@ -319,7 +327,14 @@ fn dec_vars(r: &mut Rd) -> Result<Vec<VariableDef>, PackError> {
                 let mut v = Vec::with_capacity(c.min(1024));
                 for _ in 0..c {
                     let x = r.bytes(6)?;
-                    v.push(RgbRange { r_min: x[0], r_max: x[1], g_min: x[2], g_max: x[3], b_min: x[4], b_max: x[5] });
+                    v.push(RgbRange {
+                        r_min: x[0],
+                        r_max: x[1],
+                        g_min: x[2],
+                        g_max: x[3],
+                        b_min: x[4],
+                        b_max: x[5],
+                    });
                 }
                 VariableKind::RgbStyled(v)
             }
@@ -327,7 +342,11 @@ fn dec_vars(r: &mut Rd) -> Result<Vec<VariableDef>, PackError> {
                 let precision = r.n()? as u32;
                 let min = r.str()?;
                 let max = r.str()?;
-                VariableKind::Range { min, max, precision }
+                VariableKind::Range {
+                    min,
+                    max,
+                    precision,
+                }
             }
             _ => return Err(PackError("bad var kind")),
         };
@@ -382,7 +401,10 @@ pub fn pack(template: &str, vars: &[VariableDef]) -> Result<Vec<u8>, PackError> 
                 return Err(PackError("unclosed placeholder"));
             }
             let name = &template[i + 2..j];
-            let idx = vars.iter().position(|v| v.name == name).ok_or(PackError("undefined variable"))?;
+            let idx = vars
+                .iter()
+                .position(|v| v.name == name)
+                .ok_or(PackError("undefined variable"))?;
             flush(&mut out, &mut lit);
             out.push(VAR);
             wv(&mut out, idx as u128);
@@ -405,7 +427,10 @@ pub fn pack(template: &str, vars: &[VariableDef]) -> Result<Vec<u8>, PackError> 
         }
         let nl = num_at(src, i);
         if nl > 0 {
-            if let Some((h, m)) = core::str::from_utf8(&src[i..i + nl]).ok().and_then(num_pack) {
+            if let Some((h, m)) = core::str::from_utf8(&src[i..i + nl])
+                .ok()
+                .and_then(num_pack)
+            {
                 let sv = nl as isize - (1 + vlen(h) + vlen(m)) as isize;
                 if sv > best_save {
                     best_save = sv;
@@ -499,7 +524,9 @@ pub fn unpack(bytes: &[u8]) -> Result<(String, Vec<VariableDef>), PackError> {
                 out.extend_from_slice(s);
             }
             DICTOP => {
-                let w = DICT.get(r.u8()? as usize).ok_or(PackError("bad dict idx"))?;
+                let w = DICT
+                    .get(r.u8()? as usize)
+                    .ok_or(PackError("bad dict idx"))?;
                 room!(w.len());
                 out.extend_from_slice(w.as_bytes());
             }

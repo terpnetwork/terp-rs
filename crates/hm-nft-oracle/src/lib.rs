@@ -188,9 +188,7 @@ pub fn resolve_bound(
     now: Timestamp,
 ) -> Result<MintPriceBound, OracleError> {
     if !policy.enabled {
-        let unit = policy
-            .fallback_unit_price
-            .ok_or(OracleError::MidMissing)?;
+        let unit = policy.fallback_unit_price.ok_or(OracleError::MidMissing)?;
         return Ok(MintPriceBound {
             denom: policy.denom.clone(),
             min: unit,
@@ -290,8 +288,8 @@ pub fn decode_price_value(
     policy: &PricePolicy,
     value: &[u8],
 ) -> Result<(Uint128, Option<String>), OracleError> {
-    let v: serde_json::Value = serde_json::from_slice(value)
-        .map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
+    let v: serde_json::Value =
+        serde_json::from_slice(value).map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
 
     if let Some(expected) = &policy.asset_id {
         if let Some(asset) = v.get("asset").and_then(|x| x.as_str()) {
@@ -319,8 +317,8 @@ pub fn decode_price_value(
             } else {
                 continue;
             };
-            let mid = Uint128::from_str(&s)
-                .map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
+            let mid =
+                Uint128::from_str(&s).map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
             return Ok((mid, asset_id));
         }
     }
@@ -559,9 +557,7 @@ mod tests {
             block_time: 1,
             oracle_sources: vec![],
         };
-        assert!(apply_sudo_price(&policy, &payload, 10)
-            .unwrap()
-            .is_none());
+        assert!(apply_sudo_price(&policy, &payload, 10).unwrap().is_none());
     }
 
     #[test]

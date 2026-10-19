@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Coin};
 
-use crate::{bundles::BundleType, nfts::InfusedCollection, BurnParams};
+use crate::{BurnParams, bundles::BundleType, nfts::InfusedCollection};
 
 #[cosmwasm_schema::cw_serde]
 pub struct UpdateInfusion {

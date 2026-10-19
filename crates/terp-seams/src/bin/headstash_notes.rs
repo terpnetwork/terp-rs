@@ -13,14 +13,14 @@
 //! Env: `NOTES_BASE`, `NOTES_BEARER_TOKEN`, `NOTES_SECP_SK`, `NOTES_OWNER_KEY`.
 
 use clap::{Parser, Subcommand};
-use terp_seams::dex::note::{
-    auth_headers_from_env, bearer_auth_headers, decrypt_note_out, get_note_envelope,
-    list_note_keys, note_addr_cm, persist_plan_from_seam_note_opts, pir_get_note_envelope,
-    put_note_envelope, EncryptNoteOpts, SeamNoteOutV0,
-};
+use std::path::PathBuf;
 #[cfg(feature = "auth")]
 use terp_seams::dex::note::snap_secp_auth_headers;
-use std::path::PathBuf;
+use terp_seams::dex::note::{
+    EncryptNoteOpts, SeamNoteOutV0, auth_headers_from_env, bearer_auth_headers, decrypt_note_out,
+    get_note_envelope, list_note_keys, note_addr_cm, persist_plan_from_seam_note_opts,
+    pir_get_note_envelope, put_note_envelope,
+};
 
 #[derive(Parser)]
 #[command(
@@ -161,10 +161,7 @@ fn header_refs(headers: &[(String, String)]) -> Vec<(&str, &str)> {
         .collect()
 }
 
-fn load_seam(
-    seam_json: Option<&PathBuf>,
-    seam_hex: Option<&str>,
-) -> Result<SeamNoteOutV0, String> {
+fn load_seam(seam_json: Option<&PathBuf>, seam_hex: Option<&str>) -> Result<SeamNoteOutV0, String> {
     if let Some(hex_s) = seam_hex {
         let b = hex::decode(hex_s.trim()).map_err(|e| e.to_string())?;
         return SeamNoteOutV0::from_bytes(&b).map_err(|e| format!("{e:?}"));
@@ -243,7 +240,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             let headers = resolve_headers(auth_bearer.as_deref(), auth_secp_sk.as_deref())?;
             let hrefs = header_refs(&headers);
-            let env = get_note_envelope(&base, &hs_id, &addr, &hrefs).map_err(|e| format!("{e:?}"))?;
+            let env =
+                get_note_envelope(&base, &hs_id, &addr, &hrefs).map_err(|e| format!("{e:?}"))?;
             println!("{}", serde_json::to_string_pretty(&env)?);
         }
         Cmd::Recover {
@@ -258,7 +256,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let headers = resolve_headers(auth_bearer.as_deref(), auth_secp_sk.as_deref())?;
             let hrefs = header_refs(&headers);
             let key = parse_owner_key(&owner_key)?;
-            let env = get_note_envelope(&base, &hs_id, &addr, &hrefs).map_err(|e| format!("{e:?}"))?;
+            let env =
+                get_note_envelope(&base, &hs_id, &addr, &hrefs).map_err(|e| format!("{e:?}"))?;
             let note = decrypt_note_out(&env, &key).map_err(|e| format!("{e:?}"))?;
             let hex_out = hex::encode(note.to_bytes());
             if let Some(p) = out {
@@ -303,8 +302,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let headers = resolve_headers(auth_bearer.as_deref(), auth_secp_sk.as_deref())?;
             let hrefs = header_refs(&headers);
             let key = parse_owner_key(&owner_key)?;
-            let env =
-                pir_get_note_envelope(&base, &hs_id, &addr, &hrefs).map_err(|e| format!("{e:?}"))?;
+            let env = pir_get_note_envelope(&base, &hs_id, &addr, &hrefs)
+                .map_err(|e| format!("{e:?}"))?;
             let note = decrypt_note_out(&env, &key).map_err(|e| format!("{e:?}"))?;
             println!(
                 "{}",

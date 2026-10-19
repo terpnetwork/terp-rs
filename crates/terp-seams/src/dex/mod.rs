@@ -21,11 +21,11 @@ mod egress;
 pub mod note;
 
 pub use egress::{
-    apply_egress_burn, build_egress_burn_from_settle, egress_nullifier, hex32,
+    DEPOSIT_NU_LABEL, DestKind, EGRESS_NF_LABEL, EgressBurnEvidenceV0, EgressBurnPublic,
+    EgressBurnV0, EgressBurnWitness, EgressError, EgressResult, EgressSeamState, SettleLikeOpening,
+    ZecEgressReceiptV0, apply_egress_burn, build_egress_burn_from_settle, egress_nullifier, hex32,
     lab_receipt_after_burn, settle_opening_from_note_fields, synthetic_deposit_nu,
-    validate_egress_burn, DestKind, EgressBurnEvidenceV0, EgressBurnPublic, EgressBurnV0,
-    EgressBurnWitness, EgressError, EgressResult, EgressSeamState, SettleLikeOpening,
-    ZecEgressReceiptV0, DEPOSIT_NU_LABEL, EGRESS_NF_LABEL,
+    validate_egress_burn,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -80,8 +80,6 @@ pub struct OracleBoundParams {
     pub max_slippage_bps: u32,
     pub require_oracle: bool,
 }
-
-
 
 /// Normative error codes (SPEC §2.4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -191,9 +189,7 @@ pub fn apply_reserves(
     delta_in: u128,
     delta_out: u128,
 ) -> SeamResult<(u128, u128)> {
-    let r_in2 = r_in
-        .checked_add(delta_in)
-        .ok_or(SeamError::ErrBadAmount)?;
+    let r_in2 = r_in.checked_add(delta_in).ok_or(SeamError::ErrBadAmount)?;
     if delta_out >= r_out {
         return Err(SeamError::ErrInsufficientReserve);
     }
@@ -509,7 +505,6 @@ pub enum SwapActionError {
 
 pub type SwapActionResult<T> = Result<T, SwapActionError>;
 
-
 /// Demo asset bytes for hub / B / C (deterministic **test helpers only**).
 ///
 /// Prefer resolving 32-byte ids through [`AssetMap`] / [`AssetRegistryView`]
@@ -609,7 +604,6 @@ impl AssetRegistryView for AssetMap {
 // SEAM-NOTE-OUT → SwapActionV0 pure compose (ROUND2-SWAP)
 // ---------------------------------------------------------------------------
 
-
 /// SEAM-shaped note sketch consumed by DEX pure compose.
 ///
 /// Field roles match SEAM-NOTE-OUT §1.1 / §4.2 (spend subset). Full
@@ -679,9 +673,7 @@ pub fn is_dex_consumable_sketch(n: &SeamNoteSketch) -> bool {
 }
 
 /// Map a DEX-consumable SEAM sketch → spend opening (uses sketch `cm_public` as-is).
-pub fn spend_opening_from_seam_sketch(
-    n: &SeamNoteSketch,
-) -> SwapActionResult<SpendNoteOpening> {
+pub fn spend_opening_from_seam_sketch(n: &SeamNoteSketch) -> SwapActionResult<SpendNoteOpening> {
     if !is_dex_consumable_sketch(n) {
         return Err(SwapActionError::ErrNotDexConsumable);
     }
@@ -828,12 +820,7 @@ pub fn build_swap_action_from_seam_notes(
         Some(OutputNoteStub {
             asset_id: params.asset_in,
             value: residual as u64,
-            cm_public: abstract_leaf_cm(
-                &params.asset_in,
-                residual as u64,
-                &owner_ch,
-                &rcm_ch,
-            ),
+            cm_public: abstract_leaf_cm(&params.asset_in, residual as u64, &owner_ch, &rcm_ch),
             owner_binding: owner_ch,
             rcm: rcm_ch,
         })
@@ -946,7 +933,11 @@ pub fn check_note_conservation(w: &SwapActionWitness) -> SwapActionResult<()> {
         .try_fold(0u128, |a, b| a.checked_add(b))
         .ok_or(SwapActionError::ErrBadAmount)?;
     let change = w.note_change.as_ref().map(|c| c.value as u128).unwrap_or(0);
-    if sum_in != w.delta_in.checked_add(change).ok_or(SwapActionError::ErrBadAmount)? {
+    if sum_in
+        != w.delta_in
+            .checked_add(change)
+            .ok_or(SwapActionError::ErrBadAmount)?
+    {
         return Err(SwapActionError::ErrConservation);
     }
     if w.note_out.value as u128 == 0 {
@@ -1120,8 +1111,8 @@ pub fn apply_swap_action(
         return Err(SwapActionError::ErrCurveMismatch);
     }
 
-    let (r_in2, r_out2) = apply_reserves(r_in, r_out, action.public.delta_r_in, delta_out)
-        .map_err(map_seam_err)?;
+    let (r_in2, r_out2) =
+        apply_reserves(r_in, r_out, action.public.delta_r_in, delta_out).map_err(map_seam_err)?;
     if asset_in_is_a {
         pool.r_a = r_in2;
         pool.r_b = r_out2;
@@ -1191,14 +1182,8 @@ mod tests {
         let delta_in = 10_000u128;
 
         // B → Hub: r_in = R_B, r_out = R_A
-        let expected = quote_exact_in(
-            pool.r_b,
-            pool.r_a,
-            delta_in,
-            pool.gamma,
-            pool.gamma_den,
-        )
-        .expect("quote");
+        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
+            .expect("quote");
 
         let notes = [note(AssetId::AssetB, delta_in, 42)];
         let public = base_public(delta_in, expected, vec![42]);
@@ -1230,8 +1215,8 @@ mod tests {
         let mut pool = demo_pool();
         let mut state = SeamState::default();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         let r_a = pool.r_a;
         let r_b = pool.r_b;
@@ -1253,8 +1238,8 @@ mod tests {
         let mut pool = demo_pool();
         let mut state = SeamState::default();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         // Implied mid matching the trade so only staleness fails
         let mid_price = implied_price(delta_in, expected).unwrap();
@@ -1287,8 +1272,8 @@ mod tests {
         let mut pool = demo_pool();
         let mut state = SeamState::default();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         let notes = [note(AssetId::AssetB, delta_in, 100)];
         let mut public = base_public(delta_in, expected, vec![100]);
@@ -1378,8 +1363,8 @@ mod tests {
         let mut pool = demo_pool();
         let mut state = SeamState::default();
         let delta_in = 5_000u128;
-        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         let notes = [note(AssetId::AssetB, delta_in, 777)];
         let public = base_public(delta_in, expected, vec![777]);
@@ -1389,8 +1374,8 @@ mod tests {
         let r_b_after_first = pool.r_b;
 
         // Reuse same nullifier / note
-        let expected2 = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected2 =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
         let public2 = base_public(delta_in, expected2, vec![777]);
         let err = apply_swap(&mut pool, &mut state, &notes, &public2).unwrap_err();
         assert_eq!(err, SeamError::ErrNullifierExists);
@@ -1405,8 +1390,8 @@ mod tests {
         let mut pool = demo_pool();
         let mut state = SeamState::default();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den)
-            .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         // Note is AssetX, but public claims AssetB → Hub
         let notes = [note(AssetId::AssetX, delta_in, 3)];
@@ -1520,12 +1505,7 @@ mod tests {
             Some(OutputNoteStub {
                 asset_id: asset_id_b(),
                 value: change_value as u64,
-                cm_public: abstract_leaf_cm(
-                    &asset_id_b(),
-                    change_value as u64,
-                    &owner_ch,
-                    &rcm_ch,
-                ),
+                cm_public: abstract_leaf_cm(&asset_id_b(), change_value as u64, &owner_ch, &rcm_ch),
                 owner_binding: owner_ch,
                 rcm: rcm_ch,
             })
@@ -1563,11 +1543,7 @@ mod tests {
             note_change,
             delta_in,
         };
-        (
-            pool,
-            SwapActionV0 { public, witness },
-            expected,
-        )
+        (pool, SwapActionV0 { public, witness }, expected)
     }
 
     #[test]
@@ -1585,8 +1561,7 @@ mod tests {
         // Pool nullifier ≠ ingress claim/bridge lineage
         let n0 = &action.witness.notes_in[0];
         assert_ne!(
-            action.public.nullifiers[0],
-            n0.ingress_nullifier_lineage,
+            action.public.nullifiers[0], n0.ingress_nullifier_lineage,
             "pool-spend ν must not reuse ingress lineage (SEAM-NOTE-OUT NE-4)"
         );
 
@@ -1627,7 +1602,12 @@ mod tests {
         assert_eq!(state.tree_leaves, 2); // out + change
 
         // Conservation: note_in = delta_in + change
-        let sum: u128 = action.witness.notes_in.iter().map(|n| n.value as u128).sum();
+        let sum: u128 = action
+            .witness
+            .notes_in
+            .iter()
+            .map(|n| n.value as u128)
+            .sum();
         let ch = action.witness.note_change.as_ref().unwrap().value as u128;
         assert_eq!(sum, action.witness.delta_in + ch);
     }
@@ -1640,9 +1620,7 @@ mod tests {
         action.public.nullifiers[0] = lineage;
         let err = validate_swap_action(&action).unwrap_err();
         // Fails schema (derived ≠ public) before or as domain error
-        assert!(
-            err == SwapActionError::ErrSchema || err == SwapActionError::ErrNullifierDomain
-        );
+        assert!(err == SwapActionError::ErrSchema || err == SwapActionError::ErrNullifierDomain);
     }
 
     #[test]
@@ -1676,8 +1654,7 @@ mod tests {
         // (statement still has old r_*_before). Prefer checking nullifier after fixing
         // statement to current reserves would still hit ErrNullifierExists.
         assert!(
-            err == SwapActionError::ErrNullifierExists
-                || err == SwapActionError::ErrCurveMismatch
+            err == SwapActionError::ErrNullifierExists || err == SwapActionError::ErrCurveMismatch
         );
 
         // Explicit: insert same nf again with fresh curve statement
@@ -1727,7 +1704,9 @@ mod tests {
         lineage_seed: u8,
         pos: u64,
     ) -> SeamNoteSketch {
-        let asset_id = registry.resolve_label(asset_label).expect("label registered");
+        let asset_id = registry
+            .resolve_label(asset_label)
+            .expect("label registered");
         seam_sketch_abstract_leaf(
             asset_id,
             value,
@@ -1774,14 +1753,8 @@ mod tests {
         let registry = AssetMap::demo_hub_b_c();
         let pool = demo_pool();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(
-            pool.r_b,
-            pool.r_a,
-            delta_in,
-            pool.gamma,
-            pool.gamma_den,
-        )
-        .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         let note = fixture_seam_spend_note(&registry, "b", delta_in as u64, 0xB2, 0xC3, 7);
         assert!(is_dex_consumable_sketch(&note));
@@ -1819,14 +1792,8 @@ mod tests {
         let registry = AssetMap::demo_hub_b_c();
         let pool = demo_pool();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(
-            pool.r_b,
-            pool.r_a,
-            delta_in,
-            pool.gamma,
-            pool.gamma_den,
-        )
-        .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         // Note holds asset C, but swap params demand B → hub
         let note = fixture_seam_spend_note(&registry, "c", delta_in as u64, 0xB2, 0xC3, 1);
@@ -1841,14 +1808,8 @@ mod tests {
         let registry = AssetMap::demo_hub_b_c();
         let pool = demo_pool();
         let delta_in = 10_000u128;
-        let expected = quote_exact_in(
-            pool.r_b,
-            pool.r_a,
-            delta_in,
-            pool.gamma,
-            pool.gamma_den,
-        )
-        .unwrap();
+        let expected =
+            quote_exact_in(pool.r_b, pool.r_a, delta_in, pool.gamma, pool.gamma_den).unwrap();
 
         let mut note = fixture_seam_spend_note(&registry, "b", delta_in as u64, 0xB2, 0xC3, 7);
         // Phase-0 egress without openings: not DEX-consumable
@@ -1954,7 +1915,8 @@ mod tests {
             oracle_mid: None,
             oracle_params: None,
         };
-        let action = build_swap_action_from_seam_notes(&[note], &params, &registry).expect("custom");
+        let action =
+            build_swap_action_from_seam_notes(&[note], &params, &registry).expect("custom");
         assert_eq!(action.public.asset_in, custom_in);
         assert_eq!(action.public.asset_out, custom_out);
         assert_eq!(action.public.delta_r_out, expected);

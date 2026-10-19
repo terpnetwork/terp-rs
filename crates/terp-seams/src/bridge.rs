@@ -15,8 +15,8 @@ use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
 pub use crate::domain::{
-    CM_ABSTRACT_LEAF_V0, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, DOMAIN_TAG_NOTE_OUT,
-    Hash32, NF_BRIDGE_BURN, ORIGIN_BRIDGE_MINT, TERP_ASSET_DOMAIN_TAG, TERP_BRIDGE_CLAIM_V1,
+    CM_ABSTRACT_LEAF_V0, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, DOMAIN_TAG_NOTE_OUT, Hash32,
+    NF_BRIDGE_BURN, ORIGIN_BRIDGE_MINT, TERP_ASSET_DOMAIN_TAG, TERP_BRIDGE_CLAIM_V1,
     TERP_PRIVATE_BRIDGE_DOMAIN_TAG,
 };
 
@@ -933,9 +933,7 @@ pub enum ExecuteMsgSketch {
         status: String, // "active" | "paused" | "frozen"
     },
     /// Optional external registry contract address.
-    SetExternalAssetRegistry {
-        addr: Option<String>,
-    },
+    SetExternalAssetRegistry { addr: Option<String> },
     /// One-shot bridge mint → SEAM-NOTE-OUT note append (proof bytes opaque / mock).
     BridgeMintNote {
         public: BridgeMintPublic,
@@ -950,7 +948,9 @@ pub enum ExecuteMsgSketch {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum QueryMsgSketch {
     ReflectionTip {},
-    IsMinted { nullifier: Hash32 },
+    IsMinted {
+        nullifier: Hash32,
+    },
     AssetMapped {
         source_chain_tag: String,
         tacit_asset_id: Hash32,
@@ -971,5 +971,3 @@ pub struct LcIngressCertificateSketch {
     pub proof_kind: String, // "BurnSetMembership" | "ReflectionReceipt"
     pub value: Vec<u8>,
 }
-
-

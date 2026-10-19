@@ -340,10 +340,9 @@ impl BftBlock {
             .expect("BftBlock headers should never be empty")
     }
 
-    /// Compute the BLAKE3 hash of this BFT block.
+    /// BLAKE3-256 of this BFT block via the host import.
     #[must_use]
-    pub fn blake3_hash(&self) -> Blake3Hash {
-        let mut hasher = blake3::Hasher::new();
+    pub fn blake3_hash(&self, api: &dyn Api) -> Blake3Hash {
         let mut buf = Vec::new();
         buf.extend_from_slice(&self.version.to_le_bytes());
         buf.extend_from_slice(&self.height.to_le_bytes());
@@ -366,8 +365,7 @@ impl BftBlock {
             buf.extend_from_slice(&h.height.to_le_bytes());
             buf.extend_from_slice(&h.commitment_bytes);
         }
-        hasher.update(&buf);
-        Blake3Hash(hasher.finalize().into())
+        Blake3Hash(api.blake3_256(&buf))
     }
 }
 
@@ -535,11 +533,11 @@ mod tests {
             },
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0xcc; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0xcc; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
         let mut buf = Vec::new();
         block.zcash_serialize(&mut buf).unwrap();
@@ -550,11 +548,11 @@ mod tests {
     #[test]
     fn test_pow_header_roundtrip() {
         let hdr = PowHeader {
-                    hash: [0xdd; 32],
-                    timestamp: 1_600_000_000,
-                    height: 50,
-                    commitment_bytes: [0u8; 32],
-                };
+            hash: [0xdd; 32],
+            timestamp: 1_600_000_000,
+            height: 50,
+            commitment_bytes: [0u8; 32],
+        };
         let mut buf = Vec::new();
         hdr.zcash_serialize(&mut buf).unwrap();
         let decoded = PowHeader::zcash_deserialize(&buf[..]).unwrap();
@@ -610,15 +608,15 @@ mod tests {
             },
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0u8; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0u8; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
 
         let zebra_hash = zebra_block.blake3_hash();
-        let our_hash = our_block.blake3_hash();
+        let our_hash = our_block.blake3_hash(&cosmwasm_std::testing::MockApi::default());
 
         assert_eq!(
             our_hash.0, zebra_hash.0,
@@ -647,11 +645,11 @@ mod tests {
             previous_block_fat_ptr: our_fp,
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0xbb; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0xbb; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
 
         let zebra_fp = ZebraFatPtr {

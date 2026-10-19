@@ -12,7 +12,7 @@ use std::collections::HashSet;
 
 use sha2::{Digest, Sha256};
 
-use crate::dex::{synthetic_pool_spend_nf, AssetId32, Cm32, PoolNullifier32, ABSTRACT_LEAF_LABEL};
+use crate::dex::{ABSTRACT_LEAF_LABEL, AssetId32, Cm32, PoolNullifier32, synthetic_pool_spend_nf};
 
 // ---------------------------------------------------------------------------
 // Domain labels
@@ -282,9 +282,7 @@ pub fn apply_egress_burn(
 /// Build [`EgressBurnV0`] from settle-like openings (cm, rcm, value, dest seal).
 ///
 /// Fail-closed if openings are zeroed or dest seal is empty.
-pub fn build_egress_burn_from_settle(
-    opening: &SettleLikeOpening,
-) -> EgressResult<EgressBurnV0> {
+pub fn build_egress_burn_from_settle(opening: &SettleLikeOpening) -> EgressResult<EgressBurnV0> {
     if opening.value == 0 {
         return Err(EgressError::ErrBadAmount);
     }
@@ -408,7 +406,7 @@ pub fn lab_receipt_after_burn(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dex::{asset_id_hub, abstract_leaf_cm, POOL_NF_LABEL};
+    use crate::dex::{POOL_NF_LABEL, abstract_leaf_cm, asset_id_hub};
 
     fn arr32(fill: u8) -> [u8; 32] {
         [fill; 32]
@@ -520,8 +518,8 @@ mod tests {
         assert!(state.burned_cms.contains(&burn.public.cm_spent));
 
         // Double egress reject
-        let err = apply_egress_burn(&mut state, &burn.public, &burn.witness, Some(&dest))
-            .unwrap_err();
+        let err =
+            apply_egress_burn(&mut state, &burn.public, &burn.witness, Some(&dest)).unwrap_err();
         assert_eq!(err, EgressError::ErrNullifierExists);
     }
 

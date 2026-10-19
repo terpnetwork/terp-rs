@@ -13,6 +13,8 @@
 //! ZIP-222 application-state proofs will switch the root to
 //! [`ConsensusState::app_state_commitment`] once that field is populated.
 
+use cosmwasm_std::Api;
+
 use crate::client_state::ClientState;
 use crate::consensus_state::ConsensusState;
 use crate::error::CrosslinkIBCError;
@@ -146,12 +148,12 @@ impl PoolRootExistenceProof {
 
     /// Compute the commitment root for this existence proof under the pool-root
     /// BLAKE3 leaf/inner ops.
-    pub fn calculate_root(&self) -> Result<[u8; 32], CrosslinkIBCError> {
-        let mut h = leaf_hash(&self.key, &self.value);
+    pub fn calculate_root(&self, api: &dyn Api) -> Result<[u8; 32], CrosslinkIBCError> {
+        let mut h = leaf_hash(api, &self.key, &self.value);
         for step in &self.path {
             h = match step.side {
-                0 => inner_hash(&step.sibling, &h), // sibling left, current right
-                1 => inner_hash(&h, &step.sibling), // current left, sibling right
+                0 => inner_hash(api, &step.sibling, &h), // sibling left, current right
+                1 => inner_hash(api, &h, &step.sibling), // current left, sibling right
                 other => return Err(fail(format!("invalid side {other}"))),
             };
         }
@@ -170,6 +172,7 @@ impl PoolRootExistenceProof {
 /// invalid, the path is empty, or the calculated root does not match
 /// `consensus_state.shielded_commitment`.
 pub fn verify_membership(
+    api: &dyn Api,
     consensus_state: ConsensusState,
     _client_state: ClientState,
     proof: Vec<u8>,
@@ -187,7 +190,7 @@ pub fn verify_membership(
         return Err(fail("proof value does not match provided value"));
     }
 
-    let root = exist.calculate_root()?;
+    let root = exist.calculate_root(api)?;
     if root != consensus_state.shielded_commitment {
         return Err(fail(
             "calculated root does not match shielded pool commitment",
@@ -214,6 +217,7 @@ pub fn verify_membership(
 ///
 /// Returns [`CrosslinkIBCError::MembershipVerificationFailed`] if verification fails.
 pub fn verify_non_membership(
+    api: &dyn Api,
     consensus_state: ConsensusState,
     _client_state: ClientState,
     proof: Vec<u8>,
@@ -226,7 +230,7 @@ pub fn verify_non_membership(
             "non-membership neighbour key must differ from claimed absent key",
         ));
     }
-    let root = neighbour.calculate_root()?;
+    let root = neighbour.calculate_root(api)?;
     if root != consensus_state.shielded_commitment {
         return Err(fail(
             "neighbour existence root does not match shielded pool commitment",
@@ -240,25 +244,23 @@ pub fn verify_non_membership(
 
 // ─── Hash helpers ───────────────────────────────────────────────────────────
 
-fn leaf_hash(key: &[u8], value: &[u8]) -> [u8; 32] {
-    let mut hasher = blake3::Hasher::new();
-    hasher.update(&[POOL_ROOT_LEAF_PREFIX]);
-    // length-prefixed key/value (varproto-style u32 le) for domain separation
-    hasher.update(&(key.len() as u32).to_le_bytes());
-    hasher.update(key);
-    hasher.update(&(value.len() as u32).to_le_bytes());
-    hasher.update(value);
-    *hasher.finalize().as_bytes()
+fn leaf_hash(api: &dyn Api, key: &[u8], value: &[u8]) -> [u8; 32] {
+    let mut buf = Vec::with_capacity(1 + 4 + key.len() + 4 + value.len());
+    buf.push(POOL_ROOT_LEAF_PREFIX);
+    buf.extend_from_slice(&(key.len() as u32).to_le_bytes());
+    buf.extend_from_slice(key);
+    buf.extend_from_slice(&(value.len() as u32).to_le_bytes());
+    buf.extend_from_slice(value);
+    api.blake3_256(&buf)
 }
 
-fn inner_hash(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
-    let mut hasher = blake3::Hasher::new();
-    // Encode ordered pair with a single prefix; left-then-right order is fixed.
-    hasher.update(&[POOL_ROOT_INNER_LEFT]);
-    hasher.update(left);
-    hasher.update(&[POOL_ROOT_INNER_RIGHT]);
-    hasher.update(right);
-    *hasher.finalize().as_bytes()
+fn inner_hash(api: &dyn Api, left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+    let mut buf = Vec::with_capacity(66);
+    buf.push(POOL_ROOT_INNER_LEFT);
+    buf.extend_from_slice(left);
+    buf.push(POOL_ROOT_INNER_RIGHT);
+    buf.extend_from_slice(right);
+    api.blake3_256(&buf)
 }
 
 fn deepest_key(merkle_path: &[Vec<u8>]) -> Result<Vec<u8>, CrosslinkIBCError> {
@@ -313,8 +315,8 @@ pub fn encode_merkle_proof(proof: &PoolRootExistenceProof) -> Vec<u8> {
 /// Leaf commitment root for a singleton tree — store as
 /// `ConsensusState.shielded_commitment` in tests.
 #[must_use]
-pub fn leaf_commitment_root(key: &[u8], value: &[u8]) -> [u8; 32] {
-    leaf_hash(key, value)
+pub fn leaf_commitment_root(api: &dyn Api, key: &[u8], value: &[u8]) -> [u8; 32] {
+    leaf_hash(api, key, value)
 }
 
 #[cfg(test)]
@@ -322,6 +324,10 @@ mod tests {
     use super::*;
     use crate::client_state::ClientState;
     use crate::types::{Blake3Hash, PROTOTYPE_PARAMETERS};
+
+    fn api() -> cosmwasm_std::testing::MockApi {
+        cosmwasm_std::testing::MockApi::default()
+    }
 
     fn dummy_client() -> ClientState {
         ClientState::new(
@@ -347,13 +353,14 @@ mod tests {
     fn leaf_membership_against_shielded_commitment() {
         let key = b"ibc/packet/channel-0/1".to_vec();
         let value = b"packet-commitment-bytes".to_vec();
-        let root = leaf_commitment_root(&key, &value);
+        let root = leaf_commitment_root(&api(), &key, &value);
 
         let consensus = ConsensusState::v1(1, 100, [0xab; 32], 1_700_000_000, root);
         let client = dummy_client();
         let proof = encode_merkle_proof(&leaf_existence_proof(&key, &value));
 
         verify_membership(
+            &api(),
             consensus.clone(),
             client.clone(),
             proof.clone(),
@@ -362,28 +369,32 @@ mod tests {
         )
         .expect("membership should succeed");
 
-        assert!(verify_membership(
-            consensus.clone(),
-            client.clone(),
-            proof.clone(),
-            vec![key.clone()],
-            b"wrong".to_vec(),
-        )
-        .is_err());
+        assert!(
+            verify_membership(
+                &api(),
+                consensus.clone(),
+                client.clone(),
+                proof.clone(),
+                vec![key.clone()],
+                b"wrong".to_vec(),
+            )
+            .is_err()
+        );
 
         let bad = ConsensusState::v1(1, 100, [0xab; 32], 1_700_000_000, [0xff; 32]);
-        assert!(verify_membership(bad, client, proof, vec![key], value).is_err());
+        assert!(verify_membership(&api(), bad, client, proof, vec![key], value).is_err());
     }
 
     #[test]
     fn path_with_prefix_uses_deepest_key() {
         let key = b"leaf-key".to_vec();
         let value = b"v".to_vec();
-        let root = leaf_commitment_root(&key, &value);
+        let root = leaf_commitment_root(&api(), &key, &value);
         let consensus = ConsensusState::v1(0, 0, [0u8; 32], 0, root);
         let proof = encode_merkle_proof(&leaf_existence_proof(&key, &value));
 
         verify_membership(
+            &api(),
             consensus,
             dummy_client(),
             proof,
@@ -397,22 +408,20 @@ mod tests {
     fn existence_with_one_sibling() {
         let key = b"k".to_vec();
         let value = b"v".to_vec();
-        let leaf = leaf_hash(&key, &value);
+        let leaf = leaf_hash(&api(), &key, &value);
         let sibling = [0x11; 32];
-        let root = inner_hash(&leaf, &sibling); // current left, sibling right
+        let root = inner_hash(&api(), &leaf, &sibling); // current left, sibling right
 
         let proof = PoolRootExistenceProof {
             key: key.clone(),
             value: value.clone(),
-            path: vec![SiblingStep {
-                side: 1,
-                sibling,
-            }],
+            path: vec![SiblingStep { side: 1, sibling }],
         };
-        assert_eq!(proof.calculate_root().unwrap(), root);
+        assert_eq!(proof.calculate_root(&api()).unwrap(), root);
 
         let consensus = ConsensusState::v1(0, 0, [0u8; 32], 0, root);
         verify_membership(
+            &api(),
             consensus,
             dummy_client(),
             proof.encode(),
@@ -426,15 +435,20 @@ mod tests {
     fn empty_path_or_proof_rejected() {
         let consensus = ConsensusState::v1(0, 0, [0u8; 32], 0, [0u8; 32]);
         let client = dummy_client();
-        assert!(verify_membership(
-            consensus.clone(),
-            client.clone(),
-            vec![],
-            vec![b"k".to_vec()],
-            vec![1],
-        )
-        .is_err());
-        assert!(verify_membership(consensus, client, vec![1, 2, 3], vec![], vec![1]).is_err());
+        assert!(
+            verify_membership(
+                &api(),
+                consensus.clone(),
+                client.clone(),
+                vec![],
+                vec![b"k".to_vec()],
+                vec![1],
+            )
+            .is_err()
+        );
+        assert!(
+            verify_membership(&api(), consensus, client, vec![1, 2, 3], vec![], vec![1]).is_err()
+        );
     }
 
     #[test]
@@ -442,15 +456,21 @@ mod tests {
         let key = b"absent".to_vec();
         let other = b"present".to_vec();
         let value = b"v".to_vec();
-        let root = leaf_commitment_root(&other, &value);
+        let root = leaf_commitment_root(&api(), &other, &value);
         let consensus = ConsensusState::v1(0, 0, [0u8; 32], 0, root);
         let client = dummy_client();
 
         let ok_proof = encode_merkle_proof(&leaf_existence_proof(&other, &value));
-        verify_non_membership(consensus.clone(), client.clone(), ok_proof, vec![key.clone()])
-            .expect("neighbour under same root");
+        verify_non_membership(
+            &api(),
+            consensus.clone(),
+            client.clone(),
+            ok_proof,
+            vec![key.clone()],
+        )
+        .expect("neighbour under same root");
 
         let bad = encode_merkle_proof(&leaf_existence_proof(&key, &value));
-        assert!(verify_non_membership(consensus, client, bad, vec![key]).is_err());
+        assert!(verify_non_membership(&api(), consensus, client, bad, vec![key]).is_err());
     }
 }

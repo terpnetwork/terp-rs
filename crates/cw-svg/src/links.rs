@@ -24,8 +24,12 @@ fn cid_path_ok(s: &str) -> bool {
         && cid.bytes().all(|c| matches!(c, b'a'..=b'z' | b'2'..=b'7'));
     let path_ok = path.is_empty()
         || (path.split('/').skip(1).all(|seg| {
-            !seg.is_empty() && seg != "." && seg != ".."
-                && seg.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
+            !seg.is_empty()
+                && seg != "."
+                && seg != ".."
+                && seg
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-'))
         }) && path.len() <= 128);
     cid_ok && path_ok
 }
@@ -33,7 +37,10 @@ fn cid_path_ok(s: &str) -> bool {
 /// One fully expanded link value.
 pub fn link_ok(v: &str) -> bool {
     if let Some(id) = v.strip_prefix('#') {
-        return !id.is_empty() && id.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'.' | b':' | b'-'));
+        return !id.is_empty()
+            && id
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'.' | b':' | b'-'));
     }
     if let Some(rest) = v.strip_prefix("ipfs://") {
         return cid_path_ok(rest);
@@ -55,15 +62,25 @@ fn check_value(raw: &str, vars: &[VariableDef]) -> Result<(), SvgError> {
         if i > 0 {
             parts.push(vec![&rest[..i]]);
         }
-        let j = rest[i..].find('}').ok_or_else(|| err(format!("unclosed placeholder in link {raw:?}")))? + i;
+        let j = rest[i..]
+            .find('}')
+            .ok_or_else(|| err(format!("unclosed placeholder in link {raw:?}")))?
+            + i;
         let name = &rest[i + 2..j];
-        let var = vars.iter().find(|v| v.name == name).ok_or_else(|| err(format!("undefined variable {name:?} in link")))?;
+        let var = vars
+            .iter()
+            .find(|v| v.name == name)
+            .ok_or_else(|| err(format!("undefined variable {name:?} in link")))?;
         match &var.kind {
             VariableKind::Options(o) => {
                 combos = combos.saturating_mul(o.len().max(1));
                 parts.push(o.iter().map(|s| s.as_str()).collect());
             }
-            _ => return Err(err(format!("link variable {name:?} must be an options variable"))),
+            _ => {
+                return Err(err(format!(
+                    "link variable {name:?} must be an options variable"
+                )));
+            }
         }
         rest = &rest[j + 1..];
     }
@@ -71,13 +88,17 @@ fn check_value(raw: &str, vars: &[VariableDef]) -> Result<(), SvgError> {
         parts.push(vec![rest]);
     }
     if combos > MAX_LINK_COMBOS {
-        return Err(err(format!("link {raw:?} expands to {combos} values (max {MAX_LINK_COMBOS})")));
+        return Err(err(format!(
+            "link {raw:?} expands to {combos} values (max {MAX_LINK_COMBOS})"
+        )));
     }
     let mut idx = vec![0usize; parts.len()];
     loop {
         let s: String = parts.iter().zip(&idx).map(|(p, i)| p[*i]).collect();
         if !link_ok(&s) {
-            return Err(err(format!("link {s:?} is not #id, ipfs:// or an allowlisted https gateway")));
+            return Err(err(format!(
+                "link {s:?} is not #id, ipfs:// or an allowlisted https gateway"
+            )));
         }
         let mut k = 0;
         loop {
@@ -123,17 +144,25 @@ pub fn validate_links(template: &str, vars: &[VariableDef]) -> Result<(), SvgErr
             continue;
         }
         let mut j = at + 4;
-        while j < b.len() && b[j].is_ascii_whitespace() { j += 1; }
+        while j < b.len() && b[j].is_ascii_whitespace() {
+            j += 1;
+        }
         if j >= b.len() || b[j] != b'=' {
             continue;
         }
         j += 1;
-        while j < b.len() && b[j].is_ascii_whitespace() { j += 1; }
+        while j < b.len() && b[j].is_ascii_whitespace() {
+            j += 1;
+        }
         let q = *b.get(j).ok_or_else(|| err("dangling href".into()))?;
         if q != b'"' && q != b'\'' {
             return Err(err("unquoted href".into()));
         }
-        let end = lower[j + 1..].find(q as char).ok_or_else(|| err("unterminated href".into()))? + j + 1;
+        let end = lower[j + 1..]
+            .find(q as char)
+            .ok_or_else(|| err("unterminated href".into()))?
+            + j
+            + 1;
         check_value(&template[j + 1..end], vars)?;
         i = end;
     }
@@ -145,17 +174,26 @@ mod tests {
     use super::*;
     const CID: &str = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
     fn opt(n: &str, v: &[&str]) -> VariableDef {
-        VariableDef { name: n.into(), kind: VariableKind::Options(v.iter().map(|s| s.to_string()).collect()) }
+        VariableDef {
+            name: n.into(),
+            kind: VariableKind::Options(v.iter().map(|s| s.to_string()).collect()),
+        }
     }
     #[test]
     fn allows_ipfs_gateway_and_same_doc() {
         let vars = vec![opt("cid", &[CID]), opt("gw", &["ipfs.io", "dweb.link"])];
-        let t = format!("<svg><a href=\"ipfs://${{cid}}\"><text>x</text></a><a href=\"https://${{gw}}/ipfs/${{cid}}/index.html\"/><use xlink:href=\"#p\"/></svg>");
+        let t = format!(
+            "<svg><a href=\"ipfs://${{cid}}\"><text>x</text></a><a href=\"https://${{gw}}/ipfs/${{cid}}/index.html\"/><use xlink:href=\"#p\"/></svg>"
+        );
         validate_links(&t, &vars).unwrap();
     }
     #[test]
     fn rejects_bad_links() {
-        let vars = vec![opt("gw", &["ipfs.io", "evil.example"]), opt("r", &["1"]), opt("cid", &[CID])];
+        let vars = vec![
+            opt("gw", &["ipfs.io", "evil.example"]),
+            opt("r", &["1"]),
+            opt("cid", &[CID]),
+        ];
         for t in [
             "<a href=\"javascript:alert(1)\"/>".to_string(),
             "<a href=\"JaVaScRiPt:alert(1)\"/>".to_string(),
@@ -171,7 +209,10 @@ mod tests {
         ] {
             assert!(validate_links(&t, &vars).is_err(), "{t}");
         }
-        let rng = vec![VariableDef { name: "n".into(), kind: VariableKind::Rgb }];
+        let rng = vec![VariableDef {
+            name: "n".into(),
+            kind: VariableKind::Rgb,
+        }];
         assert!(validate_links("<a href=\"ipfs://${n}\"/>", &rng).is_err());
         let js = vec![opt("x", &["javascript:alert(1)"])];
         assert!(validate_links("<text>${x}</text>", &js).is_err());

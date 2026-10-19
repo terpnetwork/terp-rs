@@ -436,7 +436,11 @@ pub fn apply_slip_ceiling(expected: u128, max_slippage_bps: u16) -> u128 {
 }
 
 /// Hard rule: oracle mid alone never credits balances / mints notes.
-pub fn oracle_mint_forbidden(_mid: &OracleMid, _asset: &Hash32, _amount: u64) -> CorridorResult<()> {
+pub fn oracle_mint_forbidden(
+    _mid: &OracleMid,
+    _asset: &Hash32,
+    _amount: u64,
+) -> CorridorResult<()> {
     Err(CorridorError::OracleDisabledMint)
 }
 
@@ -588,7 +592,8 @@ pub fn sim_deposit(
 
     match backend {
         CorridorAssetBackend::Simulated { btc_faucet, .. } => {
-            let burn_id = derive_sim_burn_id(&intent.domain_bind, &intent.btc_deposit_addr, amount, nonce);
+            let burn_id =
+                derive_sim_burn_id(&intent.domain_bind, &intent.btc_deposit_addr, amount, nonce);
             btc_faucet.credits.push(SimCredit {
                 addr: intent.btc_deposit_addr.clone(),
                 asset_id: intent.asset_in_id,
@@ -606,12 +611,8 @@ pub fn sim_deposit(
         CorridorAssetBackend::LightClient { mode, btc_lc, .. } => match mode {
             LcMode::MockAttestation => {
                 // Mock: attestation fixture under tip — synthetic burn id pinned to root.
-                let burn_id = derive_sim_burn_id(
-                    &btc_lc.burn_root,
-                    &intent.btc_deposit_addr,
-                    amount,
-                    nonce,
-                );
+                let burn_id =
+                    derive_sim_burn_id(&btc_lc.burn_root, &intent.btc_deposit_addr, amount, nonce);
                 Ok(DepositObservation {
                     burn_id,
                     deposit_addr: intent.btc_deposit_addr.clone(),
@@ -626,12 +627,7 @@ pub fn sim_deposit(
 }
 
 /// Deterministic sim burn / deposit id.
-pub fn derive_sim_burn_id(
-    pin: &Hash32,
-    addr: &str,
-    amount: u64,
-    nonce: &[u8],
-) -> Hash32 {
+pub fn derive_sim_burn_id(pin: &Hash32, addr: &str, amount: u64, nonce: &[u8]) -> Hash32 {
     let mut hasher = Sha256::new();
     hasher.update(SIM_BURN_DOMAIN_TAG);
     hasher.update(pin);
@@ -672,14 +668,14 @@ pub fn hash_tag(tag: &str) -> Hash32 {
 
 /// Fresh sim BTC deposit address string for suite isolation.
 pub fn fresh_btc_deposit_addr(suite_label: &str, index: u64) -> String {
-    format!("sim-btc-{}", &hex_prefix(&hash_tag(&format!("{suite_label}:{index}")), 16))
+    format!(
+        "sim-btc-{}",
+        &hex_prefix(&hash_tag(&format!("{suite_label}:{index}")), 16)
+    )
 }
 
 fn hex_prefix(h: &Hash32, n: usize) -> String {
-    h.iter()
-        .take(n / 2)
-        .map(|b| format!("{b:02x}"))
-        .collect()
+    h.iter().take(n / 2).map(|b| format!("{b:02x}")).collect()
 }
 
 // =============================================================================

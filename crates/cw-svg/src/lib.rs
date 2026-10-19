@@ -381,7 +381,8 @@ pub fn validate_animated_paint(template: &str) -> Result<(), SvgError> {
             continue;
         }
 
-        let fill = paint_from_tag(&tag.attrs, "fill").or_else(|| parent.and_then(|p| p.fill.clone()));
+        let fill =
+            paint_from_tag(&tag.attrs, "fill").or_else(|| parent.and_then(|p| p.fill.clone()));
         let stroke =
             paint_from_tag(&tag.attrs, "stroke").or_else(|| parent.and_then(|p| p.stroke.clone()));
         if !tag.self_closing {
@@ -442,7 +443,11 @@ fn take_tag(s: &str) -> Option<Tag> {
     let inner = s[1..i].trim();
     let self_closing = inner.ends_with('/');
     let closing = inner.starts_with('/');
-    let body = if closing { inner[1..].trim_start() } else { inner };
+    let body = if closing {
+        inner[1..].trim_start()
+    } else {
+        inner
+    };
     let body = body.trim_end_matches('/').trim_end();
     let (name, attrs) = parse_tag_body(body);
     Some(Tag {
@@ -668,7 +673,9 @@ mod animated_paint_tests {
                 panic!("{}: {e}", path.display());
             });
             crate::links::validate_links(text, &[]).unwrap_or_else(|e| {
-                if !e.to_string().contains("undefined variable") { panic!("{}: {e}", path.display()); }
+                if !e.to_string().contains("undefined variable") {
+                    panic!("{}: {e}", path.display());
+                }
             });
         });
         assert!(seen > 10, "expected the interchain svg tree, saw {seen}");

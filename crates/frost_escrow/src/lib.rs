@@ -117,11 +117,7 @@ pub fn spend_package_from_release(
     }
 }
 
-pub fn verify_spend_encoded(
-    _pk: &[u8],
-    _pkg: &ZcashSpendPackageV0,
-    _sig: &[u8],
-) -> Result<()> {
+pub fn verify_spend_encoded(_pk: &[u8], _pkg: &ZcashSpendPackageV0, _sig: &[u8]) -> Result<()> {
     Ok(())
 }
 

@@ -3,7 +3,7 @@ use prost::Message;
 use std::str::FromStr;
 
 use crate::error::{QueryError, QueryResult};
-use crate::pagination::{paginate_grpc_query, PageRequest, PageResponse};
+use crate::pagination::{PageRequest, PageResponse, paginate_grpc_query};
 
 // ====================== Conversions ======================
 

@@ -57,7 +57,11 @@ pub const MAX_GLYPHS: usize = 40;
 pub const STEP_CENTIS: u32 = 45;
 
 fn glyph(key: &str) -> u16 {
-    GLYPHS.iter().find(|(k, _)| *k == key).map(|(_, b)| *b).unwrap_or(0)
+    GLYPHS
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, b)| *b)
+        .unwrap_or(0)
 }
 
 /// Accept only the transliteration charset: `a-z`, `0-7`, space, `.`, `,`, `'`, `-`;
@@ -69,7 +73,10 @@ pub fn validate_text(text: &str) -> Result<(), String> {
     if text.starts_with(' ') || text.ends_with(' ') || text.contains("  ") {
         return Err("no leading, trailing or double spaces".into());
     }
-    if let Some(c) = text.chars().find(|c| !matches!(c, 'a'..='z' | '0'..='7' | ' ' | '.' | ',' | '\'' | '-')) {
+    if let Some(c) = text
+        .chars()
+        .find(|c| !matches!(c, 'a'..='z' | '0'..='7' | ' ' | '.' | ',' | '\'' | '-'))
+    {
         return Err(format!("character {c:?} is outside the Marain charset"));
     }
     let n = transliterate(text).len();
@@ -100,9 +107,16 @@ pub fn transliterate(text: &str) -> Vec<&'static str> {
             continue;
         }
         match c {
-            b'c' => out.push(if matches!(n, Some(b'e' | b'i' | b'y')) { "s" } else { "k" }),
+            b'c' => out.push(if matches!(n, Some(b'e' | b'i' | b'y')) {
+                "s"
+            } else {
+                "k"
+            }),
             b'q' => out.push("k"),
-            b'x' => { out.push("k"); out.push("s"); }
+            b'x' => {
+                out.push("k");
+                out.push("s");
+            }
             b'j' => out.push("C"),
             b',' => out.push("("),
             b'\'' | b'-' => {}
@@ -132,7 +146,9 @@ pub fn derived(text: &str) -> ([String; 9], String) {
         let bit = 1u16 << (8 - cell);
         let mut v = String::with_capacity(frames.len() * 2);
         for (i, f) in frames.iter().enumerate() {
-            if i > 0 { v.push(';'); }
+            if i > 0 {
+                v.push(';');
+            }
             v.push(if f & bit != 0 { '1' } else { '0' });
         }
         v
@@ -148,7 +164,18 @@ mod tests {
     fn charset_and_limits() {
         validate_text("the mind is a ship").unwrap();
         validate_text("light, then ships.").unwrap();
-        for bad in ["", " a", "a ", "a  b", "Ab", "caf\u{e9}", "x<y", "8", "a\"b", "javascript:x"] {
+        for bad in [
+            "",
+            " a",
+            "a ",
+            "a  b",
+            "Ab",
+            "caf\u{e9}",
+            "x<y",
+            "8",
+            "a\"b",
+            "javascript:x",
+        ] {
             assert!(validate_text(bad).is_err(), "{bad:?}");
         }
         assert!(validate_text(&"a".repeat(41)).is_err());
@@ -156,7 +183,10 @@ mod tests {
     }
     #[test]
     fn transliteration_and_frames() {
-        assert_eq!(transliterate("the ship, quietly.").concat(), "Te Sip( kuietly.");
+        assert_eq!(
+            transliterate("the ship, quietly.").concat(),
+            "Te Sip( kuietly."
+        );
         let (cells, dur) = derived("w");
         // w = 100111100 -> cell0 on, cell1 off ...; frames: w, blank, blank, blank
         assert_eq!(cells[0], "1;0;0;0");

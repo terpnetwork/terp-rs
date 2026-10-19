@@ -1,6 +1,6 @@
-use cosmwasm_std::{coins, Empty, Uint256};
-use cw20::Cw20Coin;
+use cosmwasm_std::{Empty, Uint256, coins};
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
+use cw20::Cw20Coin;
 
 pub fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(

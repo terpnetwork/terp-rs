@@ -1,4 +1,4 @@
-use cosmwasm_std::{coin, Addr, Coin, StdResult};
+use cosmwasm_std::{Addr, Coin, StdResult, coin};
 
 pub const LICENSE_CANONICAL_ADDR: &str = "58855806243FE9F4FB4023C8D149DF9AF1C3891E";
 
@@ -39,11 +39,9 @@ pub fn get_license_addr(chain_id: &str) -> StdResult<Addr> {
             "bitsong1schul8k23ryty6ar324mzee0axjx0rxec5t6hk",
         )),
         // terp bech32 of LICENSE_CANONICAL_ADDR (same 20-byte payload as juno1tzz4…)
-        "cw-ave-lab" | "local-1" | "testing" | "testnet-1" | "240u-2" | "itl-cashapp-1" => {
-            Ok(Addr::unchecked(
-                "terp1tzz4sp3y8l5lf76qy0ydzjwlntcu8zg76zmkhg",
-            ))
-        }
+        "cw-ave-lab" | "local-1" | "testing" | "testnet-1" | "240u-2" | "itl-cashapp-1" => Ok(
+            Addr::unchecked("terp1tzz4sp3y8l5lf76qy0ydzjwlntcu8zg76zmkhg"),
+        ),
         _ => Err(cosmwasm_std::StdError::msg(
             "no license address for this chain ",
         )),

@@ -20,8 +20,8 @@
 pub use crate::domain::{
     CLEARTEXT_LAYOUT_SEAM_NOTE_OUT_V0, CM_ABSTRACT_LEAF_V0, CM_ORCHARD_CMX, CM_TACIT_KECCAK_LEAF,
     CM_UNSPECIFIED, DOMAIN_TAG_NOTE_OUT, NF_BRIDGE_BURN, NF_HEADSTASH_CLAIM, NF_POOL_SPEND,
-    NF_UNSPECIFIED, NOTE_ID_MAX_LEN, ORIGIN_BRIDGE_MINT, ORIGIN_HEADSTASH, SCHEME_XCHACHA20POLY1305,
-    SEAM_NOTE_OUT_V0_LEN, VERSION_V0,
+    NF_UNSPECIFIED, NOTE_ID_MAX_LEN, ORIGIN_BRIDGE_MINT, ORIGIN_HEADSTASH,
+    SCHEME_XCHACHA20POLY1305, SEAM_NOTE_OUT_V0_LEN, VERSION_V0,
 };
 
 mod addr;
@@ -32,21 +32,22 @@ mod envelope;
 mod http;
 
 pub use addr::{note_addr_claim, note_addr_cm, note_addr_pk, validate_id};
+#[cfg(feature = "auth")]
+pub use auth::snap_secp_auth_headers;
 pub use auth::{
     auth_headers_from_env, bearer_auth_headers, merge_auth_headers, now_timestamp_secs,
     snap_auth_message,
 };
-#[cfg(feature = "auth")]
-pub use auth::snap_secp_auth_headers;
 pub use envelope::{
-    ciphertext_sha256_hex, decrypt_note_out, encrypt_note_out, encrypt_note_out_opts,
-    persist_plan_from_seam_note, persist_plan_from_seam_note_opts, EncryptNoteOpts, NoteEnvelope,
-    NotePersistPlan,
+    EncryptNoteOpts, NoteEnvelope, NotePersistPlan, ciphertext_sha256_hex, decrypt_note_out,
+    encrypt_note_out, encrypt_note_out_opts, persist_plan_from_seam_note,
+    persist_plan_from_seam_note_opts,
 };
 
 #[cfg(feature = "http")]
 pub use http::{
-    get_note_envelope, list_note_keys, pir_fetch_note_blob, pir_get_note_envelope, put_note_envelope,
+    get_note_envelope, list_note_keys, pir_fetch_note_blob, pir_get_note_envelope,
+    put_note_envelope,
 };
 
 use sha2::{Digest, Sha256};
@@ -77,11 +78,7 @@ pub enum NotePersistError {
 // Constants
 // ---------------------------------------------------------------------------
 
-
 /// ASCII `terp-note-out-v0` + NUL pad to 16.
-
-
-
 
 // ---------------------------------------------------------------------------
 // Types
@@ -470,10 +467,7 @@ pub fn source_chain_tag_hash(tag: &str) -> [u8; 32] {
 
 /// Map bridge mint public → SeamNoteOutV0 (§3.3).
 /// `v_burn` used for companion conservation check (must equal value_u64 for accept).
-pub fn from_bridge_mint(
-    m: &BridgeMintPublic,
-    v_burn: u64,
-) -> Result<SeamNoteOutV0, SeamError> {
+pub fn from_bridge_mint(m: &BridgeMintPublic, v_burn: u64) -> Result<SeamNoteOutV0, SeamError> {
     if m.value_u64 != v_burn {
         return Err(SeamError::ConservationBreak);
     }
@@ -630,7 +624,8 @@ mod tests {
     /// SEAM-N1 — Layout widths and version
     #[test]
     fn seam_n1_layout_widths_and_version() {
-        let claim = from_headstash_instance(&fixture_claim_instance(), arr32(0x01), Some(arr32(0x02)));
+        let claim =
+            from_headstash_instance(&fixture_claim_instance(), arr32(0x01), Some(arr32(0x02)));
         let bridge = from_bridge_mint(&fixture_bridge_mint(), 42_000).unwrap();
 
         for n in [&claim, &bridge] {
@@ -658,7 +653,8 @@ mod tests {
     /// SEAM-N2 — Origin / nullifier_domain pairing
     #[test]
     fn seam_n2_origin_nullifier_pairing() {
-        let mut base = from_headstash_instance(&fixture_claim_instance(), arr32(0x01), Some(arr32(0x02)));
+        let mut base =
+            from_headstash_instance(&fixture_claim_instance(), arr32(0x01), Some(arr32(0x02)));
         // good claim
         base.origin = ORIGIN_HEADSTASH;
         base.nullifier_domain = NF_HEADSTASH_CLAIM;

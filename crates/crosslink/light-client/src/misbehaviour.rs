@@ -3,6 +3,8 @@
 //! Detects equivocation: two conflicting fat pointers at the same BFT height
 //! signed by the same finalizer set.
 
+use cosmwasm_std::Api;
+
 use crate::client_state::ClientState;
 use crate::consensus_state::ConsensusState;
 use crate::error::CrosslinkIBCError;
@@ -11,14 +13,18 @@ use crate::header::CrosslinkHeader;
 /// Two headers at the same BFT height with a different BFT hash or PoW
 /// finalization candidate are equivocation evidence.
 #[must_use]
-pub fn headers_equivocate(header_1: &CrosslinkHeader, header_2: &CrosslinkHeader) -> bool {
+pub fn headers_equivocate(
+    api: &dyn Api,
+    header_1: &CrosslinkHeader,
+    header_2: &CrosslinkHeader,
+) -> bool {
     if header_1.bft_block.height != header_2.bft_block.height {
         return false;
     }
     if header_1.bft_block.headers.is_empty() || header_2.bft_block.headers.is_empty() {
         return false;
     }
-    header_1.block_hash() != header_2.block_hash()
+    header_1.block_hash(api) != header_2.block_hash(api)
         || header_1.finalization_candidate().hash != header_2.finalization_candidate().hash
 }
 
@@ -34,6 +40,7 @@ pub fn headers_equivocate(header_1: &CrosslinkHeader, header_2: &CrosslinkHeader
 /// Returns [`CrosslinkIBCError::MisbehaviourDetected`] if misbehaviour is confirmed,
 /// or [`CrosslinkIBCError::HeaderVerificationFailed`] if the pair cannot be compared.
 pub fn verify_misbehaviour(
+    api: &dyn Api,
     _client_state: &ClientState,
     _consensus_state: &ConsensusState,
     header_1: &CrosslinkHeader,
@@ -50,7 +57,7 @@ pub fn verify_misbehaviour(
             header_1.bft_block.height, header_2.bft_block.height
         )));
     }
-    if headers_equivocate(header_1, header_2) {
+    if headers_equivocate(api, header_1, header_2) {
         return Err(CrosslinkIBCError::MisbehaviourDetected);
     }
     Ok(())
@@ -59,7 +66,9 @@ pub fn verify_misbehaviour(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{BftBlock, Blake3Hash, FatPointerToBftBlock2, PROTOTYPE_PARAMETERS, PowHeader};
+    use crate::types::{
+        BftBlock, Blake3Hash, FatPointerToBftBlock2, PROTOTYPE_PARAMETERS, PowHeader,
+    };
 
     fn header(height: u32, pow_hash: u8) -> CrosslinkHeader {
         CrosslinkHeader {
@@ -94,6 +103,7 @@ mod tests {
     #[test]
     fn same_height_different_pow_is_misbehaviour() {
         let err = verify_misbehaviour(
+            &cosmwasm_std::testing::MockApi::default(),
             &client(),
             &ConsensusState::v1(1, 10, [1u8; 32], 0, [0u8; 32]),
             &header(1, 0xaa),
@@ -107,6 +117,7 @@ mod tests {
     fn same_headers_are_not_misbehaviour() {
         let h = header(1, 0xaa);
         verify_misbehaviour(
+            &cosmwasm_std::testing::MockApi::default(),
             &client(),
             &ConsensusState::v1(1, 10, [0xaa; 32], 0, [0u8; 32]),
             &h,
@@ -118,12 +129,16 @@ mod tests {
     #[test]
     fn different_heights_fail_closed() {
         let err = verify_misbehaviour(
+            &cosmwasm_std::testing::MockApi::default(),
             &client(),
             &ConsensusState::v1(1, 10, [1u8; 32], 0, [0u8; 32]),
             &header(1, 0xaa),
             &header(2, 0xbb),
         )
         .unwrap_err();
-        assert!(matches!(err, CrosslinkIBCError::HeaderVerificationFailed(_)));
+        assert!(matches!(
+            err,
+            CrosslinkIBCError::HeaderVerificationFailed(_)
+        ));
     }
 }
