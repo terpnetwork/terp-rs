@@ -4,15 +4,15 @@
 //! One proposal: native delegations + FIAB-SUBDAO instantiate.
 
 use cosmwasm_std::{
-    testing::mock_env, to_json_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Uint256, Validator,
-    WasmMsg,
+    Addr, Coin, CosmosMsg, Decimal, Empty, Uint256, Validator, WasmMsg, testing::mock_env,
+    to_json_binary,
 };
-use cw4::Member;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw4::Member;
 use dao_foundation_suite::ibc_ops::{
-    execute_proposal_msg, instantiate_subdao_msg, terp_100k, vote_yes_msg, NativeDelegationPlan,
     DELEGATION_DESCRIPTION, DELEGATION_TITLE, FIAB_DESCRIPTION, FIAB_NAME, FOUNDATION_DESCRIPTION,
-    FOUNDATION_TITLE, GAS_DENOM,
+    FOUNDATION_TITLE, GAS_DENOM, NativeDelegationPlan, execute_proposal_msg,
+    instantiate_subdao_msg, terp_100k, vote_yes_msg,
 };
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_voting::{

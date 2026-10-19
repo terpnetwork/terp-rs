@@ -20,12 +20,12 @@ pub mod actions;
 
 use std::str::FromStr;
 
-use cosmwasm_std::{to_json_binary, Addr, Binary, CosmosMsg, Empty, Uint256, WasmMsg};
-use cw20::Cw20Coin;
+use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty, Uint256, WasmMsg, to_json_binary};
 use cw_multi_test::{AppResponse, Executor};
 use cw_orch::mock::Mock;
 use cw_orch::prelude::*;
 use cw_utils::Duration;
+use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_testing::DaoDaoSuite;
 
@@ -199,13 +199,15 @@ pub fn voting_module(
                         withdraw_address: None,
                     })
                     .unwrap(),
-                    initial_nfts: vec![to_json_binary(&cw721_base::msg::ExecuteMsg::Mint {
-                        token_id: "1".to_string(),
-                        owner: member.to_string(),
-                        token_uri: None,
-                        extension: Some(Empty {}),
-                    })
-                    .unwrap()],
+                    initial_nfts: vec![
+                        to_json_binary(&cw721_base::msg::ExecuteMsg::Mint {
+                            token_id: "1".to_string(),
+                            owner: member.to_string(),
+                            token_uri: None,
+                            extension: Some(Empty {}),
+                        })
+                        .unwrap(),
+                    ],
                 },
                 unstaking_duration: None,
                 active_threshold: None,

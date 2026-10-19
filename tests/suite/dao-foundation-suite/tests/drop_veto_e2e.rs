@@ -4,11 +4,11 @@
 //! veto, pre-propose). Applies the exact UpdateConfig body (dao = this core),
 //! then proposes / votes / executes again with veto off.
 
-use cosmwasm_std::{to_json_binary, Addr, Empty, Uint256};
-use cw4::Member;
+use cosmwasm_std::{Addr, Empty, Uint256, to_json_binary};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw4::Member;
 use dao_foundation_suite::ibc_ops::{
-    drop_veto_msg_for, drop_veto_update_config, execute_proposal_msg, vote_yes_msg, PARENT_CORE,
+    PARENT_CORE, drop_veto_msg_for, drop_veto_update_config, execute_proposal_msg, vote_yes_msg,
 };
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_proposal_single::query::ProposalResponse;

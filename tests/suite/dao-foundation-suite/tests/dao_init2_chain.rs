@@ -6,7 +6,7 @@
 //! instantiate2. The child must exist, and its creator must be the voting module.
 //!
 //! ```text
-//! TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 ICT_DAO_INIT2=1 \
+//! ICT_DAO_INIT2=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION \
 //!   cargo test -p dao-foundation-suite --test dao_init2_chain -- --ignored --nocapture
 //! ```
 //!
@@ -21,7 +21,7 @@ use cosmwasm_std::Binary;
 use ict_rs::chain::{Chain, GenesisStyle};
 use ict_rs::testing::{TestChain, TestChainConfig, TestEnv};
 use ict_rs::tx::WalletAmount;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 const KINDS: &[&str] = &[
     "cw4",
@@ -72,11 +72,11 @@ struct Child {
 }
 
 #[tokio::test]
-#[ignore = "docker: TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 ICT_DAO_INIT2=1"]
+#[ignore = "docker: ICT_DAO_INIT2=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION"]
 async fn nested_subdaos_instantiate2_on_terp() {
     if std::env::var("ICT_DAO_INIT2").ok().as_deref() != Some("1") {
         panic!(
-            "set ICT_DAO_INIT2=1 TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 \
+            "set ICT_DAO_INIT2=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION \
              before running this ignored test"
         );
     }

@@ -145,6 +145,348 @@ pub fn gov_deposit_any_msg(
     })
 }
 
+fn proto_key(buf: &mut Vec<u8>, field: u32, wire: u32) {
+    proto_varint(buf, u64::from((field << 3) | wire));
+}
+
+fn proto_int64(buf: &mut Vec<u8>, field: u32, v: i64) {
+    proto_key(buf, field, 0);
+    proto_varint(buf, v as u64);
+}
+
+fn encode_any(type_url: &str, value: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    proto_string(&mut out, 1, type_url);
+    proto_ld(&mut out, 2, value);
+    out
+}
+
+/// `/cosmos.upgrade.v1beta1.Plan` without the deprecated time and client fields.
+pub fn encode_upgrade_plan(name: &str, height: i64, info: &str) -> Vec<u8> {
+    let mut plan = Vec::new();
+    proto_string(&mut plan, 1, name);
+    proto_int64(&mut plan, 3, height);
+    proto_string(&mut plan, 4, info);
+    plan
+}
+
+/// `/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade`. `authority` is the gov module.
+pub fn encode_msg_software_upgrade(
+    authority: &str,
+    name: &str,
+    height: i64,
+    info: &str,
+) -> Vec<u8> {
+    let mut msg = Vec::new();
+    proto_string(&mut msg, 1, authority);
+    proto_ld(&mut msg, 2, &encode_upgrade_plan(name, height, info));
+    msg
+}
+
+/// Prepared expedited software-upgrade draft. v6.4 is not a second message.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UpgradeDraft {
+    pub authority: String,
+    pub plan_name: String,
+    pub height: i64,
+    pub info: String,
+    pub metadata: String,
+    pub title: String,
+    pub summary: String,
+    pub deposit_amount: Uint256,
+    pub deposit_denom: String,
+}
+
+pub fn v63_upgrade_draft_path() -> std::path::PathBuf {
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../../../networks/upgrades/v6.3/draft_proposal.json")
+}
+
+pub fn load_upgrade_draft(path: &std::path::Path) -> Result<UpgradeDraft, String> {
+    let raw =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|err| format!("parse {}: {err}", path.display()))?;
+    if value.get("expedited").and_then(|v| v.as_bool()) != Some(true) {
+        return Err("draft expedited must be true".into());
+    }
+    let messages = value
+        .get("messages")
+        .and_then(|v| v.as_array())
+        .ok_or("draft messages")?;
+    if messages.len() != 1 {
+        return Err("draft must contain exactly one message".into());
+    }
+    let msg = &messages[0];
+    let type_url = msg.get("@type").and_then(|v| v.as_str()).unwrap_or("");
+    if type_url != "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade" {
+        return Err(format!("draft message is {type_url}"));
+    }
+    let authority = msg
+        .get("authority")
+        .and_then(|v| v.as_str())
+        .ok_or("draft authority")?
+        .to_string();
+    let plan = msg.get("plan").ok_or("draft plan")?;
+    if plan.get("upgraded_client_state").map(|v| !v.is_null()) == Some(true) {
+        return Err("draft plan.upgraded_client_state must stay empty".into());
+    }
+    let time = plan.get("time").and_then(|v| v.as_str()).unwrap_or("");
+    if !time.is_empty() && time != "0001-01-01T00:00:00Z" {
+        return Err("draft plan.time is not the empty sentinel; refusing to drop it".into());
+    }
+    let plan_name = plan
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or("draft plan.name")?
+        .to_string();
+    let height = plan
+        .get("height")
+        .and_then(|v| v.as_str())
+        .ok_or("draft plan.height")?
+        .parse::<i64>()
+        .map_err(|_| "draft plan.height".to_string())?;
+    let info = plan
+        .get("info")
+        .and_then(|v| v.as_str())
+        .ok_or("draft plan.info")?
+        .to_string();
+    let metadata = value
+        .get("metadata")
+        .and_then(|v| v.as_str())
+        .ok_or("draft metadata")?
+        .to_string();
+    let title = value
+        .get("title")
+        .and_then(|v| v.as_str())
+        .ok_or("draft title")?
+        .to_string();
+    let summary = value
+        .get("summary")
+        .and_then(|v| v.as_str())
+        .ok_or("draft summary")?
+        .to_string();
+    let deposit = value
+        .get("deposit")
+        .and_then(|v| v.as_str())
+        .ok_or("draft deposit")?;
+    let split = deposit
+        .find(|c: char| !c.is_ascii_digit())
+        .ok_or("draft deposit needs a denom")?;
+    let deposit_amount = deposit[..split]
+        .parse::<u128>()
+        .map(Uint256::from)
+        .map_err(|_| "draft deposit amount".to_string())?;
+    let deposit_denom = deposit[split..].to_string();
+    if metadata.len() > 255 || title.is_empty() || title.len() > 255 || summary.is_empty() {
+        return Err("draft title, metadata, or summary is outside the gov length limits".into());
+    }
+    Ok(UpgradeDraft {
+        authority,
+        plan_name,
+        height,
+        info,
+        metadata,
+        title,
+        summary,
+        deposit_amount,
+        deposit_denom,
+    })
+}
+
+/// The v6.3 submit plus the v6.4 checksum file it must stay aligned with.
+/// Every field is read from `networks/upgrades/`. Nothing here is a second copy.
+#[derive(Clone, Debug)]
+pub struct UpgradeCut {
+    pub draft: UpgradeDraft,
+    pub halt_time_utc: String,
+    pub v64_height: i64,
+    pub submit_by_utc: String,
+    pub v63_commit: String,
+    pub v64_commit: String,
+}
+
+pub fn load_upgrade_cut(draft_path: &std::path::Path) -> Result<UpgradeCut, String> {
+    let draft = load_upgrade_draft(draft_path)?;
+    let dir = draft_path.parent().ok_or("draft has no directory")?;
+    let draft_json = read_json(draft_path)?;
+    let proposal_json = read_json(&dir.join("proposal.json"))?;
+    if draft_json != proposal_json {
+        return Err("networks/upgrades/v6.3/proposal.json and draft_proposal.json differ".into());
+    }
+    let meta = read_json(&dir.join("metadata.json"))?;
+    let v63_bins = read_json(&dir.join("cosmovisor.json"))?;
+    let v64_bins = read_json(&dir.join("../v6.4/cosmovisor.json"))?;
+    if read_json(&dir.join("binaries.json"))? != v63_bins {
+        return Err("v6.3/binaries.json is not v6.3/cosmovisor.json".into());
+    }
+    if read_json(&dir.join("../v6.4/binaries.json"))? != v64_bins {
+        return Err("v6.4/binaries.json is not v6.4/cosmovisor.json".into());
+    }
+    let halt_height = meta
+        .pointer("/halt/height")
+        .and_then(|v| v.as_i64())
+        .ok_or("metadata halt.height")?;
+    if halt_height != draft.height {
+        return Err(format!(
+            "metadata halt.height {halt_height} != draft {}",
+            draft.height
+        ));
+    }
+    let halt_time_utc = json_string(&meta, "/halt/time_utc")?;
+    let v64_height = meta
+        .pointer("/next_plan/height")
+        .and_then(|v| v.as_i64())
+        .ok_or("metadata next_plan.height")?;
+    if v64_height != draft.height + 2 {
+        return Err(format!(
+            "v6.4 height {v64_height} is not draft height {} + 2",
+            draft.height
+        ));
+    }
+    if json_string(&meta, "/next_plan/name")? != "v6.4" || json_string(&meta, "/plan")? != "v6.3" {
+        return Err("metadata plan names must be v6.3 then v6.4".into());
+    }
+    let deposit = format!("{}{}", draft.deposit_amount, draft.deposit_denom);
+    if json_string(&meta, "/deposit")? != deposit {
+        return Err("metadata deposit != draft deposit".into());
+    }
+    let info: serde_json::Value = serde_json::from_str(&draft.info)
+        .map_err(|err| format!("draft plan.info is not JSON: {err}"))?;
+    if info != v63_bins {
+        return Err("draft plan.info is not networks/upgrades/v6.3/cosmovisor.json".into());
+    }
+    let v63_commit = json_string(&meta, "/binary_commits/v6.3.0")?;
+    let v64_commit = json_string(&meta, "/binary_commits/v6.4.0")?;
+    if !is_git_sha(&v63_commit) || !is_git_sha(&v64_commit) {
+        return Err("metadata binary_commits must be 40 hex characters".into());
+    }
+    check_published_bins(
+        &v63_bins,
+        meta.pointer("/v6_3_tarball_sha256")
+            .ok_or("v6.3 checksums")?,
+        "v6.3.0",
+    )?;
+    check_published_bins(
+        &v64_bins,
+        meta.pointer("/v6_4_tarball_sha256")
+            .ok_or("v6.4 checksums")?,
+        "v6.4.0",
+    )?;
+    Ok(UpgradeCut {
+        draft,
+        halt_time_utc,
+        v64_height,
+        submit_by_utc: json_string(&meta, "/submit_by_utc")?,
+        v63_commit,
+        v64_commit,
+    })
+}
+
+fn read_json(path: &std::path::Path) -> Result<serde_json::Value, String> {
+    let raw =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    serde_json::from_str(&raw).map_err(|err| format!("parse {}: {err}", path.display()))
+}
+
+fn json_string(value: &serde_json::Value, pointer: &str) -> Result<String, String> {
+    value
+        .pointer(pointer)
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| format!("missing {pointer}"))
+}
+
+fn is_git_sha(s: &str) -> bool {
+    s.len() == 40 && s.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+fn check_published_bins(
+    cosmo: &serde_json::Value,
+    shas: &serde_json::Value,
+    tag: &str,
+) -> Result<(), String> {
+    let bins = cosmo
+        .get("binaries")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("{tag} cosmovisor.json has no binaries"))?;
+    if bins.len() != 2 || !bins.contains_key("linux/amd64") || !bins.contains_key("linux/arm64") {
+        return Err(format!(
+            "{tag} cosmovisor.json must list linux/amd64 and linux/arm64 only"
+        ));
+    }
+    for (arch, url) in bins {
+        let url = url.as_str().ok_or_else(|| format!("{tag} {arch} url"))?;
+        if url.contains("file://") || url.contains("darwin") {
+            return Err(format!("{tag} {arch} is not a public linux tarball"));
+        }
+        let sha = shas
+            .get(arch)
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("metadata checksum for {tag} {arch}"))?;
+        if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(format!("{tag} {arch} checksum is not 64 hex characters"));
+        }
+        let prefix = format!("https://s3.terp.network/releases/terp-core/{tag}/");
+        if !url.starts_with(&prefix) || !url.contains(&format!("checksum=sha256:{sha}")) {
+            return Err(format!("{tag} {arch} url does not match metadata"));
+        }
+    }
+    Ok(())
+}
+
+/// `/cosmos.gov.v1.MsgSubmitProposal` carrying one software-upgrade message.
+/// `proposer` is the account that signs, which for a DAO execution is the DAO.
+pub fn encode_msg_submit_upgrade(proposer: &str, draft: &UpgradeDraft) -> Vec<u8> {
+    let upgrade = encode_msg_software_upgrade(
+        &draft.authority,
+        &draft.plan_name,
+        draft.height,
+        &draft.info,
+    );
+    let upgrade_any = encode_any("/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade", &upgrade);
+    let mut coin = Vec::new();
+    proto_string(&mut coin, 1, &draft.deposit_denom);
+    proto_string(&mut coin, 2, &draft.deposit_amount.to_string());
+    let mut msg = Vec::new();
+    proto_ld(&mut msg, 1, &upgrade_any);
+    proto_ld(&mut msg, 2, &coin);
+    proto_string(&mut msg, 3, proposer);
+    // Field 4 (metadata) stays empty, matching tools/v63-upgrade.
+    proto_string(&mut msg, 5, &draft.title);
+    proto_string(&mut msg, 6, &draft.summary);
+    proto_key(&mut msg, 7, 0);
+    proto_varint(&mut msg, 1);
+    msg
+}
+
+pub fn gov_submit_upgrade_any_msg(proposer: impl Into<String>, draft: &UpgradeDraft) -> CosmosMsg {
+    let proposer = proposer.into();
+    CosmosMsg::Any(AnyMsg {
+        type_url: "/cosmos.gov.v1.MsgSubmitProposal".into(),
+        value: Binary::from(encode_msg_submit_upgrade(&proposer, draft)),
+    })
+}
+
+/// `/cosmos.gov.v1.MsgVote` with `VOTE_OPTION_YES`. `voter` must be the DAO.
+pub fn encode_msg_vote_yes(proposal_id: u64, voter: &str) -> Vec<u8> {
+    let mut msg = Vec::new();
+    proto_key(&mut msg, 1, 0);
+    proto_varint(&mut msg, proposal_id);
+    proto_string(&mut msg, 2, voter);
+    proto_key(&mut msg, 3, 0);
+    proto_varint(&mut msg, 1);
+    msg
+}
+
+pub fn gov_vote_yes_any_msg(voter: impl Into<String>, proposal_id: u64) -> CosmosMsg {
+    let voter = voter.into();
+    CosmosMsg::Any(AnyMsg {
+        type_url: "/cosmos.gov.v1.MsgVote".into(),
+        value: Binary::from(encode_msg_vote_yes(proposal_id, &voter)),
+    })
+}
+
 /// dao-voting `does_vote_count_pass` for a percent quorum (`votes >= total * percent`).
 /// `quorum_percent` is a decimal string such as `"0.2"`.
 pub fn quorum_met(votes: u128, total_power: u128, quorum_percent: &str) -> Result<bool, String> {
@@ -206,17 +548,17 @@ pub struct GovDepositSpec {
 }
 
 pub fn parse_gov_deposit(spec: &str) -> Result<GovDepositSpec, String> {
-    let (id, rest) = spec.split_once(':').ok_or_else(|| {
-        format!("deposit must look like 60:5000000000uterp, got {spec}")
-    })?;
-    let proposal_id: u64 = id
-        .parse()
-        .map_err(|_| format!("proposal id {id}"))?;
+    let (id, rest) = spec
+        .split_once(':')
+        .ok_or_else(|| format!("deposit must look like 60:5000000000uterp, got {spec}"))?;
+    let proposal_id: u64 = id.parse().map_err(|_| format!("proposal id {id}"))?;
     let split = rest
         .find(|c: char| c.is_ascii_alphabetic())
         .ok_or_else(|| format!("deposit {spec} needs a denom"))?;
     if split == 0 || !rest[..split].chars().all(|c| c.is_ascii_digit()) {
-        return Err(format!("deposit amount must be an integer before the denom, got {spec}"));
+        return Err(format!(
+            "deposit amount must be an integer before the denom, got {spec}"
+        ));
     }
     let amount: u128 = rest[..split]
         .parse()
@@ -576,6 +918,66 @@ mod tests {
         assert!(early_majority(1999, 2999));
         assert!(early_majority(2000, 2999));
         assert!(!executes_when_quorum_met(2999, "0.2").unwrap());
+    }
+
+    #[test]
+    fn expedited_upgrade_draft_is_v63_only() {
+        let path = v63_upgrade_draft_path();
+        let cut = load_upgrade_cut(&path).unwrap();
+        let draft = &cut.draft;
+        assert_eq!(draft.plan_name, "v6.3");
+        assert_ne!(cut.v63_commit, cut.v64_commit);
+        assert_eq!(cut.v64_height, draft.height + 2);
+        assert!(!cut.halt_time_utc.is_empty());
+        assert!(!cut.submit_by_utc.is_empty());
+        let info: serde_json::Value = serde_json::from_str(&draft.info).unwrap();
+        let bins = info["binaries"].as_object().unwrap();
+        assert_eq!(bins.len(), 2);
+        assert_eq!(
+            draft.authority,
+            "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
+        );
+        assert_eq!(draft.deposit_amount, Uint256::from(100_000_000_000u128));
+        assert_eq!(draft.deposit_denom, "uterp");
+        assert!(draft.info.contains("linux/amd64"));
+        assert!(draft.info.contains("linux/arm64"));
+        assert!(!draft.info.contains("darwin"));
+        let raw = encode_msg_submit_upgrade(PARENT_CORE, &draft);
+        let text = String::from_utf8_lossy(&raw);
+        assert!(text.contains(&draft.height.to_string()));
+        for url in bins.values() {
+            let sha = url
+                .as_str()
+                .unwrap()
+                .split_once("checksum=sha256:")
+                .unwrap()
+                .1;
+            assert_eq!(sha.len(), 64);
+            assert!(text.contains(sha));
+        }
+        assert!(text.contains(PARENT_CORE));
+        assert!(text.contains(&draft.authority));
+        assert!(text.contains("v6.3"));
+        assert!(!text.contains(&draft.metadata));
+        assert_eq!(
+            text.matches("/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade")
+                .count(),
+            1
+        );
+        assert_eq!(*raw.last().unwrap(), 1);
+        match gov_submit_upgrade_any_msg(PARENT_CORE, &draft) {
+            CosmosMsg::Any(any) => assert_eq!(any.type_url, "/cosmos.gov.v1.MsgSubmitProposal"),
+            other => panic!("{other:?}"),
+        }
+        let vote = encode_msg_vote_yes(62, PARENT_CORE);
+        assert_eq!(vote[0], 0x08);
+        assert_eq!(vote[1], 62);
+        let vote_text = String::from_utf8_lossy(&vote);
+        assert!(vote_text.contains(PARENT_CORE));
+        match gov_vote_yes_any_msg(PARENT_CORE, 62) {
+            CosmosMsg::Any(any) => assert_eq!(any.type_url, "/cosmos.gov.v1.MsgVote"),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

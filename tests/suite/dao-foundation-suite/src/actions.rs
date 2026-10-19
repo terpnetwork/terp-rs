@@ -8,7 +8,9 @@
 
 use std::path::PathBuf;
 
-use cosmwasm_std::{to_json_binary, Addr, Binary, Coin, CosmosMsg, Empty, Uint128, Uint256, WasmMsg};
+use cosmwasm_std::{
+    Addr, Binary, Coin, CosmosMsg, Empty, Uint128, Uint256, WasmMsg, to_json_binary,
+};
 use cw_orch::prelude::*;
 use cw_utils::Duration;
 use dao_interface::query::GetItemResponse;
@@ -17,16 +19,14 @@ use dao_testing::DaoDaoSuite;
 use dao_voting::multiple_choice::{
     MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
 };
-use dao_voting::pre_propose::{
-    PreProposeInfo, PreProposeSubmissionPolicy, ProposalCreationPolicy,
-};
+use dao_voting::pre_propose::{PreProposeInfo, PreProposeSubmissionPolicy, ProposalCreationPolicy};
 use dao_voting::proposal::SingleChoiceProposeMsg;
 use dao_voting::status::Status;
 use dao_voting::threshold::PercentageThreshold;
 use dao_voting::voting::Vote;
 
 use super::{
-    assert_voting_child, instantiate_msg, voting_addr, voting_module, Codes, VotingKind, ROOT,
+    Codes, ROOT, VotingKind, assert_voting_child, instantiate_msg, voting_addr, voting_module,
 };
 
 #[test]
@@ -67,7 +67,14 @@ pub fn run_primitive_actions<Chain: CwEnv>(
     exercise_distributions(&suite, chain, &member, &root);
     exercise_gauges(&suite, chain, &member, &root);
 
-    let cw20 = spawn(chain, &root, "cw20-subdao", &codes, VotingKind::Cw20Staked, &member);
+    let cw20 = spawn(
+        chain,
+        &root,
+        "cw20-subdao",
+        &codes,
+        VotingKind::Cw20Staked,
+        &member,
+    );
     exercise_stake_and_rewards(&suite, chain, &member, &cw20);
     let cw721 = spawn(
         chain,
@@ -109,8 +116,16 @@ pub fn run_primitive_actions<Chain: CwEnv>(
 
 fn upload_exercised<Chain: CwEnv>(suite: &DaoDaoSuite<Chain>, chain: &Chain) -> Codes {
     suite.dao_core.upload().expect("dao core");
-    suite.proposal.prop_single.upload().expect("proposal single");
-    suite.proposal.prop_multiple.upload().expect("proposal multiple");
+    suite
+        .proposal
+        .prop_single
+        .upload()
+        .expect("proposal single");
+    suite
+        .proposal
+        .prop_multiple
+        .upload()
+        .expect("proposal multiple");
     suite
         .proposal
         .pre_prop_suite
@@ -137,14 +152,22 @@ fn upload_exercised<Chain: CwEnv>(suite: &DaoDaoSuite<Chain>, chain: &Chain) -> 
     suite.staking.cw20_stake.upload().expect("cw20 stake");
     suite.external.cw721_roles.upload().expect("cw721 roles");
     suite.delegation.vote.upload().expect("vote delegation");
-    suite.distribution.fund_distr.upload().expect("fund distributor");
+    suite
+        .distribution
+        .fund_distr
+        .upload()
+        .expect("fund distributor");
     suite
         .distribution
         .reward_distr
         .upload()
         .expect("rewards distributor");
     suite.gauges.adapter.upload().expect("gauge adapter");
-    suite.gauges.orchestrator.upload().expect("gauge orchestrator");
+    suite
+        .gauges
+        .orchestrator
+        .upload()
+        .expect("gauge orchestrator");
     suite
         .staking
         .external_rewards
@@ -155,8 +178,16 @@ fn upload_exercised<Chain: CwEnv>(suite: &DaoDaoSuite<Chain>, chain: &Chain) -> 
         .rewards_distributor
         .upload()
         .expect("reward distributor");
-    suite.external.admin_factory.upload().expect("admin factory");
-    suite.external.payroll_factory.upload().expect("payroll factory");
+    suite
+        .external
+        .admin_factory
+        .upload()
+        .expect("admin factory");
+    suite
+        .external
+        .payroll_factory
+        .upload()
+        .expect("payroll factory");
     suite.external.cw_tokenswap.upload().expect("token swap");
     let vesting = store(chain, &VestingNoStaking);
     suite.external.cw_vesting.set_code_id(vesting);
@@ -300,7 +331,9 @@ fn proposal_single<Chain: CwEnv>(chain: &Chain, dao: &Addr, codes: &Codes) -> Ad
         .unwrap();
     modules
         .into_iter()
-        .find(|module| super::contract_info(chain, &module.address).code_id == codes.proposal_single)
+        .find(|module| {
+            super::contract_info(chain, &module.address).code_id == codes.proposal_single
+        })
         .unwrap_or_else(|| panic!("{dao} has no proposal-single"))
         .address
 }
@@ -520,14 +553,16 @@ fn exercise_distributions<Chain: CwEnv>(
     exec(
         chain,
         &rewards,
-        &dao_rewards_distributor::msg::ExecuteMsg::Create(dao_rewards_distributor::msg::CreateMsg {
-            denom: cw20::UncheckedDenom::Native("utest".into()),
-            emission_rate: dao_rewards_distributor::state::EmissionRate::Immediate {},
-            vp_contract: voting.to_string(),
-            hook_caller: voting.to_string(),
-            open_funding: Some(true),
-            withdraw_destination: None,
-        }),
+        &dao_rewards_distributor::msg::ExecuteMsg::Create(
+            dao_rewards_distributor::msg::CreateMsg {
+                denom: cw20::UncheckedDenom::Native("utest".into()),
+                emission_rate: dao_rewards_distributor::state::EmissionRate::Immediate {},
+                vp_contract: voting.to_string(),
+                hook_caller: voting.to_string(),
+                open_funding: Some(true),
+                withdraw_destination: None,
+            },
+        ),
         &[],
     );
     let distribution: dao_rewards_distributor::state::DistributionState = chain
@@ -743,10 +778,7 @@ fn exercise_token_staked<Chain: CwEnv>(
     assert_eq!(info.admin.as_ref(), Some(parent));
     assert_eq!(info.code_id, codes.core);
     let voting = voting_addr(chain, &child);
-    assert_eq!(
-        super::contract_info(chain, &voting).code_id,
-        voting_code
-    );
+    assert_eq!(super::contract_info(chain, &voting).code_id, voting_code);
     let denom: dao_interface::voting::DenomResponse = chain
         .query(&serde_json::json!({ "denom": {} }), &voting)
         .unwrap();
@@ -1069,11 +1101,12 @@ fn dao_named<Chain: CwEnv>(chain: &Chain, resp: &impl IndexResponse, name: &str)
         .map(|attr| attr.value)
         .find_map(|addr| {
             let addr = Addr::unchecked(addr);
-            let config: Result<dao_interface::state::Config, _> = chain.query(
-                &dao_interface::msg::QueryMsg::Config {},
-                &addr,
-            );
-            config.ok().filter(|config| config.name == name).map(|_| addr)
+            let config: Result<dao_interface::state::Config, _> =
+                chain.query(&dao_interface::msg::QueryMsg::Config {}, &addr);
+            config
+                .ok()
+                .filter(|config| config.name == name)
+                .map(|_| addr)
         })
         .unwrap_or_else(|| panic!("DAO {name} was not instantiated"))
 }

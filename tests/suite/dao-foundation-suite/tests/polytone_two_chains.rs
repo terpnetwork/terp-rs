@@ -5,7 +5,7 @@
 //! `polytone-1` channel between `wasm.{note}` and `wasm.{voice}`.
 //!
 //! ```text
-//! TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 ICT_POLYTONE=1 \
+//! ICT_POLYTONE=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION \
 //!   POLYTONE_ARTIFACTS=/path/to/wasm \
 //!   cargo test -p dao-foundation-suite --test polytone_two_chains -- --ignored --nocapture
 //! ```
@@ -20,7 +20,7 @@ use ict_rs::chain::cosmos::CosmosChain;
 use ict_rs::chain::{Chain, GenesisStyle, TestContext};
 use ict_rs::cosmwasm::CosmWasmExt;
 use ict_rs::ibc::{ChannelOptions, ChannelOrdering, ClientOptions};
-use ict_rs::relayer::{build_relayer, Relayer, RelayerType};
+use ict_rs::relayer::{Relayer, RelayerType, build_relayer};
 use ict_rs::runtime::DockerConfig;
 use ict_rs::runtime::RuntimeBackend;
 use ict_rs::testing::TestEnv;
@@ -35,11 +35,11 @@ const WASM: [&str; 3] = [
 ];
 
 #[tokio::test]
-#[ignore = "docker: TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 ICT_POLYTONE=1"]
+#[ignore = "docker: ICT_POLYTONE=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION"]
 async fn polytone_remote_account_on_two_terp_networks() {
     if std::env::var("ICT_POLYTONE").ok().as_deref() != Some("1") {
         panic!(
-            "set ICT_POLYTONE=1 TERP_IMAGE_REPO=terp-core TERP_IMAGE_VERSION=v630-arm64 \
+            "set ICT_POLYTONE=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION \
              POLYTONE_ARTIFACTS=... before running this ignored test"
         );
     }
@@ -78,14 +78,9 @@ async fn connect(
     runtime: Arc<dyn RuntimeBackend>,
     artifacts: &Path,
 ) -> Result<(), String> {
-    let relayer = build_relayer(
-        RelayerType::CosmosRly,
-        runtime,
-        "polytone",
-        NETWORK,
-    )
-    .await
-    .map_err(|err| err.to_string())?;
+    let relayer = build_relayer(RelayerType::CosmosRly, runtime, "polytone", NETWORK)
+        .await
+        .map_err(|err| err.to_string())?;
 
     fund_member(chain_a).await?;
     fund_member(chain_b).await?;
@@ -159,7 +154,12 @@ async fn configure_relayer(
         let chain_id = chain.chain_id();
         let key = format!("relayer-rly-{chain_id}");
         relayer
-            .add_chain_configuration(chain.config(), &key, chain.rpc_address(), chain.grpc_address())
+            .add_chain_configuration(
+                chain.config(),
+                &key,
+                chain.rpc_address(),
+                chain.grpc_address(),
+            )
             .await
             .map_err(|err| format!("relayer config {chain_id}: {err}"))?;
         let wallet = relayer
@@ -281,48 +281,11 @@ async fn instantiate_voice(
 }
 
 async fn store(chain: &CosmosChain, path: &str) -> Result<u64, String> {
-    let before = code_ids(chain).await?;
-    let opts = chain.default_tx_opts().from("member").gas_adjustment(2.5);
-    let out = chain
-        .chain_exec_tx_with(&["tx", "wasm", "store", path], opts)
+    let id = chain
+        .store_code("member", path)
         .await
         .map_err(|err| format!("store {path}: {err}"))?;
-    if out.exit_code != 0 {
-        return Err(format!("store {path}: {}", out.stderr_str()));
-    }
-    let after = code_ids(chain).await?;
-    let id = after
-        .into_iter()
-        .find(|id| !before.contains(id))
-        .ok_or_else(|| format!("no new code id after {path}"))?;
     id.parse().map_err(|err| format!("code id {id}: {err}"))
-}
-
-async fn code_ids(chain: &CosmosChain) -> Result<Vec<String>, String> {
-    let out = chain
-        .chain_exec(&["query", "wasm", "list-code", "--output", "json"])
-        .await
-        .map_err(|err| err.to_string())?;
-    if out.exit_code != 0 {
-        return Err(out.stderr_str());
-    }
-    let value: serde_json::Value = serde_json::from_str(out.stdout_str().trim())
-        .map_err(|err| format!("list-code: {err}"))?;
-    Ok(value
-        .get("code_infos")
-        .and_then(|rows| rows.as_array())
-        .map(|rows| {
-            rows.iter()
-                .filter_map(|row| {
-                    row.get("code_id").and_then(|id| {
-                        id.as_str()
-                            .map(str::to_string)
-                            .or_else(|| id.as_u64().map(|n| n.to_string()))
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default())
 }
 
 fn terp_config(chain_id: &str) -> ict_rs::chain::ChainConfig {

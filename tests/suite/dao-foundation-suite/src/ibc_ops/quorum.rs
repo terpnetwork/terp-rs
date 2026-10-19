@@ -110,10 +110,9 @@ impl std::fmt::Display for QuorumError {
         match self {
             Self::EmptyDest => write!(f, "destination operator is empty"),
             Self::Overflow => write!(f, "stake amount overflowed u128"),
-            Self::SendExceedsLiquid { amount, liquid } => write!(
-                f,
-                "bank send {amount} exceeds liquid {liquid}"
-            ),
+            Self::SendExceedsLiquid { amount, liquid } => {
+                write!(f, "bank send {amount} exceeds liquid {liquid}")
+            }
             Self::UnknownOperator(op) => write!(f, "operator {op} is not in the book"),
             Self::BadTarget => write!(f, "target share must be between 1 and 10000 basis points"),
             Self::Short {
@@ -562,6 +561,46 @@ pub fn assert_phase_signers(
     Ok(())
 }
 
+/// Every message is a foundation `MsgBeginRedelegate` with a distinct source
+/// and destination. The rebalance broadcaster refuses anything else.
+pub fn assert_foundation_redelegations(
+    tx: &serde_json::Value,
+    foundation: &str,
+) -> Result<(), String> {
+    let messages = tx
+        .pointer("/body/messages")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| "rebalance tx has no messages".to_string())?;
+    if messages.is_empty() {
+        return Err("rebalance tx has no messages".into());
+    }
+    for msg in messages {
+        let kind = msg.get("@type").and_then(|v| v.as_str()).unwrap_or("");
+        if !kind.ends_with("MsgBeginRedelegate") {
+            return Err(format!("rebalance tx message is {kind}"));
+        }
+        let from = msg
+            .get("delegator_address")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if from != foundation {
+            return Err(format!("redelegate signer {from} is not {foundation}"));
+        }
+        let src = msg
+            .get("validator_src_address")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let dst = msg
+            .get("validator_dst_address")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if src.is_empty() || dst.is_empty() || src == dst {
+            return Err("redelegate is missing a distinct validator".into());
+        }
+    }
+    Ok(())
+}
+
 /// CLI file for `terpd tx staking create-validator`. Strict field set.
 /// The signer is the new operator, not the foundation delegator.
 pub fn create_validator_file(
@@ -894,17 +933,29 @@ pub fn plan_share_rebalance(
     })
 }
 
-/// Redelegations this cut will sign. The hub share design stays on the plan
-/// and is not included, even when those moves are already unlocked.
-pub fn executable_rebalance(plan: &RebalancePlan, empty_src: &str) -> Vec<StakeMove> {
-    plan.ready
-        .iter()
-        .filter(|mv| mv.src == empty_src)
-        .cloned()
-        .collect()
+/// Redelegations legal to sign on this cut. Hub moves are included once the
+/// source lock has ended. Deferred moves stay out.
+pub fn executable_rebalance(plan: &RebalancePlan) -> Vec<StakeMove> {
+    plan.ready.clone()
 }
 
-/// Hub outflow kept for a later cut. Not an unsigned transaction.
+/// Why `--broadcast` must stop. `None` means at least one move can be signed.
+pub fn rebalance_broadcast_block(plan: &RebalancePlan) -> Option<String> {
+    if !plan.ready.is_empty() {
+        return None;
+    }
+    if plan.deferred_until.is_empty() {
+        Some("no redelegation is legal".to_string())
+    } else {
+        Some(format!(
+            "no redelegation is legal until {}",
+            plan.deferred_until
+        ))
+    }
+}
+
+/// Hub outflow, including moves that are still locked. Ready hub moves are
+/// also returned by [`executable_rebalance`].
 pub fn hub_share_design(plan: &RebalancePlan, hub: &str) -> Vec<StakeMove> {
     plan.ready
         .iter()
@@ -1300,12 +1351,14 @@ mod tests {
         assert_eq!(cmds[0][2], "bank");
         assert_eq!(cmds[0][5], FOUNDATION_DAO);
         for cmd in &cmds {
-            assert!(cmd
-                .iter()
-                .all(|c| c != "--yes" && c != "-y" && c != "--node" && c != "auto"));
-            assert!(cmd
-                .windows(2)
-                .any(|w| w[0] == "--gas" && w[1] == gas.to_string()));
+            assert!(
+                cmd.iter()
+                    .all(|c| c != "--yes" && c != "-y" && c != "--node" && c != "auto")
+            );
+            assert!(
+                cmd.windows(2)
+                    .any(|w| w[0] == "--gas" && w[1] == gas.to_string())
+            );
             assert!(cmd.iter().any(|c| c == "--generate-only"));
         }
         let msgs = next_block_messages(FOUNDATION_DELEGATOR, "dest", "uterp", Some(&send), &plan);
@@ -1518,8 +1571,10 @@ mod tests {
         assert_eq!(plan.hub_after, target);
         assert!(plan.hub_after * 10_000 / plan.total_after <= 2_200);
         assert_eq!(plan.deferred_until, "2026-10-22T18:49:31.326921063Z");
-        let executable = executable_rebalance(&plan, SERGO_OPERATOR);
+        let executable = executable_rebalance(&plan);
         assert_eq!(executable, plan.ready);
+        assert!(executable.iter().all(|mv| mv.src != TERPZ_OPERATOR));
+        assert!(rebalance_broadcast_block(&plan).is_none());
         let design = hub_share_design(&plan, TERPZ_OPERATOR);
         assert_eq!(design, plan.deferred);
         let msgs = stake_move_messages(FOUNDATION_DELEGATOR, "uterp", &executable);
@@ -1551,13 +1606,24 @@ mod tests {
         assert!(plan.deferred.is_empty());
         assert_eq!(plan.deferred_until, "");
         assert_eq!(plan.ready.len(), 6);
-        let executable = executable_rebalance(&plan, SERGO_OPERATOR);
-        assert_eq!(executable.len(), 1);
-        assert_eq!(executable[0].src, SERGO_OPERATOR);
+        let executable = executable_rebalance(&plan);
+        assert_eq!(executable, plan.ready);
+        assert_eq!(
+            executable
+                .iter()
+                .filter(|mv| mv.src == TERPZ_OPERATOR)
+                .count(),
+            5
+        );
         assert_eq!(hub_share_design(&plan, TERPZ_OPERATOR).len(), 5);
         assert_eq!(plan.ready[0].src, SERGO_OPERATOR);
         assert!(plan.ready[1..].iter().all(|mv| mv.src == TERPZ_OPERATOR));
         assert_eq!(plan.hub_after, plan.total_after * 2_200 / 10_000);
+        let msgs = stake_move_messages(FOUNDATION_DELEGATOR, "uterp", &executable);
+        assert_eq!(msgs.len(), 6);
+        assert_foundation_redelegations(&unsigned_tx(&msgs, 1, 1, "uthiol"), FOUNDATION_DELEGATOR)
+            .unwrap();
+        assert!(rebalance_broadcast_block(&plan).is_none());
     }
 
     #[test]

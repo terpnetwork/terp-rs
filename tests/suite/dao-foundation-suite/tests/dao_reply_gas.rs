@@ -1,5 +1,5 @@
 //! Instantiate gas for the reply voting module and the instantiate2 voting
-//! module, on the recut `v6.4.0` image, through the cw-orch `DaoDaoSuite`.
+//! module, on `TERP_IMAGE_REPO`:`TERP_IMAGE_VERSION`, through the cw-orch `DaoDaoSuite`.
 //!
 //! ict-rs starts terpd. `daemon_builder_from_chain` is the same connection
 //! `dao_actions_chain` uses. Each framework is uploaded with
@@ -19,7 +19,7 @@ use std::process::Command;
 use cosmwasm_std::Addr;
 use cw_orch::daemon::CosmTxResponse;
 use cw_orch::prelude::*;
-use dao_foundation_suite::{instantiate_msg, voting_module, Codes, VotingKind};
+use dao_foundation_suite::{Codes, VotingKind, instantiate_msg, voting_module};
 use dao_interface::msg::QueryMsg;
 use dao_testing::DaoDaoSuite;
 use dao_voting_cw4::msg::QueryMsg as Cw4Query;
@@ -29,10 +29,7 @@ use ict_rs::testing::{TestChain, TestChainConfig, TestEnv};
 use ict_rs::tx::WalletAmount;
 use ict_rs::wallet::KeyWallet;
 use ict_rs_cw_orch::daemon_builder_from_chain;
-use serde_json::{json, Value};
-
-const IMAGE_REPO: &str = "registry.terp.network/terp-core";
-const IMAGE_VERSION: &str = "v6.4.0";
+use serde_json::{Value, json};
 
 const REPLY_VOTING: &str = "84e520f80fc115a2079357dfada5ebbaf4564df8d618f1ba5c3e0e1ad0966be8";
 const INIT2_VOTING: &str = "668b2966d37f6eea7e544b6bc584443965a2a05cfed8b5a70e65c11fcf43c23b";
@@ -45,7 +42,7 @@ struct GasRow {
 }
 
 #[tokio::test]
-#[ignore = "docker: registry.terp.network/terp-core:v6.4.0 ICT_DAO_GAS=1"]
+#[ignore = "docker: ICT_DAO_GAS=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION"]
 async fn reply_vs_instantiate2_gas() {
     if std::env::var("ICT_DAO_GAS").ok().as_deref() != Some("1") {
         panic!("set ICT_DAO_GAS=1 before this ignored test");
@@ -53,19 +50,16 @@ async fn reply_vs_instantiate2_gas() {
     if std::env::var("ICT_MOCK").ok().as_deref() == Some("1") {
         panic!("ICT_MOCK does not run wasmd");
     }
-    // Latest recut. Ambient TERP_IMAGE_VERSION must not select an older image.
-    unsafe {
-        std::env::set_var("TERP_IMAGE_REPO", IMAGE_REPO);
-        std::env::set_var("TERP_IMAGE_VERSION", IMAGE_VERSION);
-    }
+    let image_repo = std::env::var("TERP_IMAGE_REPO").expect("set TERP_IMAGE_REPO");
+    let image_version = std::env::var("TERP_IMAGE_VERSION").expect("set TERP_IMAGE_VERSION");
     assert!(
-        !image_has_allowlist(IMAGE_REPO, IMAGE_VERSION),
-        "{IMAGE_REPO}:{IMAGE_VERSION} still contains filterWasmReplyEvents"
+        !image_has_allowlist(&image_repo, &image_version),
+        "{image_repo}:{image_version} still contains filterWasmReplyEvents"
     );
 
     let reply_dir = stage_reply_dir();
-    let init2_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../dao-contracts/artifacts/init2");
+    let init2_dir =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../dao-contracts/artifacts/init2");
     assert_sha(&reply_dir.join("dao_voting_cw4.wasm"), REPLY_VOTING);
     assert_sha(&init2_dir.join("dao_voting_cw4.wasm"), INIT2_VOTING);
     println!("image {IMAGE_REPO}:{IMAGE_VERSION}");
@@ -186,7 +180,11 @@ fn framework(daemon: &Daemon, design: &'static str, artifacts: &Path) -> GasRow 
     }
     let suite = DaoDaoSuite::new(daemon.clone());
     suite.dao_core.upload().expect("upload dao core");
-    suite.proposal.prop_single.upload().expect("upload proposal");
+    suite
+        .proposal
+        .prop_single
+        .upload()
+        .expect("upload proposal");
     suite.voting.voting_cw4.upload().expect("upload voting cw4");
     suite.voting.cw4_group.upload().expect("upload cw4 group");
     let codes = Codes {
@@ -222,7 +220,10 @@ fn framework(daemon: &Daemon, design: &'static str, artifacts: &Path) -> GasRow 
         .wasm_querier()
         .contract_info(&voting)
         .unwrap_or_else(|err| panic!("{design} voting info: {err}"));
-    assert_eq!(voting_info.code_id, codes.voting_cw4, "{design} voting code");
+    assert_eq!(
+        voting_info.code_id, codes.voting_cw4,
+        "{design} voting code"
+    );
     assert_eq!(voting_info.creator, dao, "{design} voting creator");
     let group: Addr = daemon
         .query(&Cw4Query::GroupContract {}, &voting)
@@ -255,7 +256,10 @@ fn dao_named(daemon: &Daemon, resp: &CosmTxResponse, name: &str) -> Addr {
             let addr = Addr::unchecked(addr);
             let config: Result<dao_interface::state::Config, _> =
                 daemon.query(&QueryMsg::Config {}, &addr);
-            config.ok().filter(|config| config.name == name).map(|_| addr)
+            config
+                .ok()
+                .filter(|config| config.name == name)
+                .map(|_| addr)
         })
         .unwrap_or_else(|| panic!("DAO {name} was not instantiated"))
 }
@@ -270,7 +274,8 @@ fn stage_reply_dir() -> PathBuf {
         ("cw4_group.wasm", "cw4_group.wasm"),
         ("dao_voting_cw4_reply.wasm", "dao_voting_cw4.wasm"),
     ] {
-        std::fs::copy(src.join(from), dir.join(to)).unwrap_or_else(|err| panic!("copy {from}: {err}"));
+        std::fs::copy(src.join(from), dir.join(to))
+            .unwrap_or_else(|err| panic!("copy {from}: {err}"));
     }
     dir
 }

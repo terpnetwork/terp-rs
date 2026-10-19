@@ -6,7 +6,7 @@
 //!
 //! Nested subDAOs use the reply voting modules in `dao-contracts/artifacts`.
 //! `salt` is `None`, so each child is `WasmMsg::Instantiate` and the module
-//! reads the instantiate event. This pins `registry.terp.network/terp-core:v6.4.0`.
+//! reads the instantiate event. Image is `TERP_IMAGE_REPO`:`TERP_IMAGE_VERSION`.
 //!
 //! ```text
 //! ICT_DAO_ACTIONS=1 cargo test -p dao-foundation-suite --test dao_actions_chain \
@@ -23,10 +23,10 @@ use ict_rs::testing::{TestChain, TestChainConfig, TestEnv};
 use ict_rs::tx::WalletAmount;
 use ict_rs::wallet::KeyWallet;
 use ict_rs_cw_orch::daemon_builder_from_chain;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[tokio::test]
-#[ignore = "docker: ICT_DAO_ACTIONS=1 on registry.terp.network/terp-core:v6.4.0"]
+#[ignore = "docker: ICT_DAO_ACTIONS=1 TERP_IMAGE_REPO TERP_IMAGE_VERSION"]
 async fn dao_modules_initialize_on_terp() {
     if std::env::var("ICT_DAO_ACTIONS").ok().as_deref() != Some("1") {
         panic!("set ICT_DAO_ACTIONS=1 before running this ignored test");
@@ -34,17 +34,18 @@ async fn dao_modules_initialize_on_terp() {
     if std::env::var("ICT_MOCK").ok().as_deref() == Some("1") {
         panic!("ICT_MOCK does not exercise terpd");
     }
-    // The recut that restored wasm reply events. An ambient older tag must not win.
+    for key in ["TERP_IMAGE_REPO", "TERP_IMAGE_VERSION"] {
+        if std::env::var(key).is_err() {
+            panic!("set {key}");
+        }
+    }
     unsafe {
-        std::env::set_var("TERP_IMAGE_REPO", "registry.terp.network/terp-core");
-        std::env::set_var("TERP_IMAGE_VERSION", "v6.4.0");
         std::env::remove_var("ARTIFACTS_DIR");
     }
     assert_reply_voting_artifacts();
 
     let mnemonic = generate_mnemonic();
-    let member = KeyWallet::from_mnemonic("member", &mnemonic, "terp", 118)
-        .expect("member wallet");
+    let member = KeyWallet::from_mnemonic("member", &mnemonic, "terp", 118).expect("member wallet");
     let vestee = funded_addr("vestee");
     let counterparty = funded_addr("swap-two");
 
