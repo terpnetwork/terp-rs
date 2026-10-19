@@ -72,7 +72,12 @@ pub fn select_ticket(seed: &[u8; 32], raffle_id: u64, salt: u32, ticket_count: u
 }
 
 /// `winners` distinct ticket indexes. Capped at `ticket_count`.
-pub fn select_tickets(seed: &[u8; 32], raffle_id: u64, ticket_count: u32, winners: u32) -> Vec<u32> {
+pub fn select_tickets(
+    seed: &[u8; 32],
+    raffle_id: u64,
+    ticket_count: u32,
+    winners: u32,
+) -> Vec<u32> {
     let picks = winners.min(ticket_count) as usize;
     let mut pool: Vec<u32> = (0..ticket_count).collect();
     let mut out = Vec::with_capacity(picks);
@@ -99,6 +104,9 @@ mod tests {
         sorted.dedup();
         assert_eq!(sorted.len(), 4);
         assert!(once.iter().all(|i| *i < 10));
-        assert_ne!(select_tickets(&seed, 4, 10, 4), select_tickets(&[3u8; 32], 4, 10, 4));
+        assert_ne!(
+            select_tickets(&seed, 4, 10, 4),
+            select_tickets(&[3u8; 32], 4, 10, 4)
+        );
     }
 }

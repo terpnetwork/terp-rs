@@ -1,12 +1,12 @@
-use cosmwasm_std::{coin, coins, to_json_binary, Addr, Binary, Coin, Decimal, Empty, Uint256};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, Empty, Uint256, coin, coins, to_json_binary};
+use cw_multi_test::{BankSudo, BasicApp, ContractWrapper, Executor, SudoMsg};
 use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw_multi_test::{BasicApp, BankSudo, ContractWrapper, Executor, SudoMsg};
 use nftfi_raffle::msg::{
     ExecuteMsg, InstantiateMsg, QueryMsg, RaffleOptionsMsg, RaffleResponse, TicketResponse,
 };
-use nftfi_randomness::{select_tickets, RandomnessSourceMsg, VerifierExecuteMsg};
-use nftfi_utils::mock::InstantiateMsg as NftInit;
+use nftfi_randomness::{RandomnessSourceMsg, VerifierExecuteMsg, select_tickets};
 use nftfi_utils::AssetInfo;
+use nftfi_utils::svg::{self, SvgDrop};
 
 const DENOM: &str = "uterp";
 
@@ -23,7 +23,10 @@ fn fund(app: &mut BasicApp, addr: &Addr, amount: u128) {
 }
 
 fn bal(app: &BasicApp, addr: &Addr) -> Uint256 {
-    app.wrap().query_balance(addr.as_str(), DENOM).unwrap().amount
+    app.wrap()
+        .query_balance(addr.as_str(), DENOM)
+        .unwrap()
+        .amount
 }
 
 fn owner_of(app: &BasicApp, nft: &Addr, token_id: &str) -> String {
@@ -49,9 +52,10 @@ struct World {
     fee: Addr,
     nft: Addr,
     raffle: Addr,
+    next_token: u64,
 }
 
-fn world(randomness: RandomnessSourceMsg, creation: u128, fee_pct: u64) -> World {
+fn world(randomness: RandomnessSourceMsg, creation: u128, fee_pct: u64, drop: &SvgDrop) -> World {
     let mut app = app();
     let owner = app.api().addr_make("owner");
     let alice = app.api().addr_make("alice");
@@ -62,16 +66,14 @@ fn world(randomness: RandomnessSourceMsg, creation: u128, fee_pct: u64) -> World
     fund(&mut app, &alice, 500);
     fund(&mut app, &bob, 500);
 
-    let nft_id = app.store_code(nftfi_utils::mock::contract());
+    let nft_id = app.store_code(svg::contract());
     let nft = app
         .instantiate_contract(
             nft_id,
             owner.clone(),
-            &NftInit {
-                minter: owner.to_string(),
-            },
+            &drop.instantiate_msg(owner.as_str()),
             &[],
-            "cw721",
+            "cw721-svg",
             None,
         )
         .unwrap();
@@ -116,23 +118,18 @@ fn world(randomness: RandomnessSourceMsg, creation: u128, fee_pct: u64) -> World
         fee,
         nft,
         raffle,
+        next_token: 0,
     }
 }
 
-fn mint(w: &mut World, token_id: &str, to: &Addr) {
+/// Mints to `to`. The id is the next cw721-svg sequence number.
+fn mint(w: &mut World, to: &Addr) -> String {
+    let token_id = w.next_token.to_string();
+    w.next_token += 1;
     w.app
-        .execute_contract(
-            w.owner.clone(),
-            w.nft.clone(),
-            &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-                token_id: token_id.to_string(),
-                owner: to.to_string(),
-                token_uri: None,
-                extension: Empty {},
-            },
-            &[],
-        )
+        .execute_contract(to.clone(), w.nft.clone(), &svg::mint_msg(1), &[])
         .unwrap();
+    token_id
 }
 
 fn approve(w: &mut World, from: &Addr, token_id: &str) {
@@ -219,7 +216,13 @@ fn close(w: &mut World) {
 
 #[test]
 fn create_buy_draw_claim() {
-    let mut w = world(RandomnessSourceMsg::Seed { provider: None }, 100, 10);
+    for drop in svg::lab() {
+        create_buy_draw_claim_on(&drop);
+    }
+}
+
+fn create_buy_draw_claim_on(drop: &SvgDrop) {
+    let mut w = world(RandomnessSourceMsg::Seed { provider: None }, 100, 10, drop);
     // addr_make("beacon") is not the string "beacon". Use the real address.
     w.app
         .execute_contract(
@@ -241,10 +244,10 @@ fn create_buy_draw_claim() {
         .unwrap();
 
     let owner = w.owner.clone();
-    mint(&mut w, "1", &owner);
-    approve(&mut w, &owner, "1");
-    let id = create(&mut w, "1", 10, None, 100);
-    assert_eq!(owner_of(&w.app, &w.nft, "1"), w.raffle.to_string());
+    let token = mint(&mut w, &owner);
+    approve(&mut w, &owner, &token);
+    let id = create(&mut w, &token, 10, None, 100);
+    assert_eq!(owner_of(&w.app, &w.nft, &token), w.raffle.to_string());
 
     let early = w.app.execute_contract(
         w.beacon.clone(),
@@ -294,7 +297,7 @@ fn create_buy_draw_claim() {
             },
         )
         .unwrap();
-    assert_eq!(owner_of(&w.app, &w.nft, "1"), ticket.owner);
+    assert_eq!(owner_of(&w.app, &w.nft, &token), ticket.owner);
     // 1000 - 100 creation + 18 of the 20 ticket pot (10% fee).
     assert_eq!(bal(&w.app, &w.owner), Uint256::from(918u128));
     assert_eq!(bal(&w.app, &w.fee), Uint256::from(102u128));
@@ -311,15 +314,17 @@ fn create_buy_draw_claim() {
 
 #[test]
 fn cancel_before_sale() {
-    let mut w = world(
-        RandomnessSourceMsg::Seed { provider: None },
-        100,
-        10,
-    );
+    for drop in svg::lab() {
+        cancel_before_sale_on(&drop);
+    }
+}
+
+fn cancel_before_sale_on(drop: &SvgDrop) {
+    let mut w = world(RandomnessSourceMsg::Seed { provider: None }, 100, 10, drop);
     let owner = w.owner.clone();
-    mint(&mut w, "1", &owner);
-    approve(&mut w, &owner, "1");
-    let id = create(&mut w, "1", 10, None, 100);
+    let token = mint(&mut w, &owner);
+    approve(&mut w, &owner, &token);
+    let id = create(&mut w, &token, 10, None, 100);
     w.app
         .execute_contract(
             w.owner.clone(),
@@ -328,19 +333,25 @@ fn cancel_before_sale() {
             &[],
         )
         .unwrap();
-    assert_eq!(owner_of(&w.app, &w.nft, "1"), w.owner.to_string());
+    assert_eq!(owner_of(&w.app, &w.nft, &token), w.owner.to_string());
     assert_eq!(bal(&w.app, &w.owner), Uint256::from(900u128));
     assert_eq!(bal(&w.app, &w.fee), Uint256::from(100u128));
 }
 
 #[test]
 fn refund_when_below_min() {
-    let mut w = world(RandomnessSourceMsg::Seed { provider: None }, 0, 10);
+    for drop in svg::lab() {
+        refund_when_below_min_on(&drop);
+    }
+}
+
+fn refund_when_below_min_on(drop: &SvgDrop) {
+    let mut w = world(RandomnessSourceMsg::Seed { provider: None }, 0, 10, drop);
     let owner = w.owner.clone();
     let alice = w.alice.clone();
-    mint(&mut w, "1", &owner);
-    approve(&mut w, &owner, "1");
-    let id = create(&mut w, "1", 10, Some(2), 0);
+    let token = mint(&mut w, &owner);
+    approve(&mut w, &owner, &token);
+    let id = create(&mut w, &token, 10, Some(2), 0);
     buy(&mut w, &alice, id, 1, 10);
     close(&mut w);
     w.app
@@ -351,7 +362,7 @@ fn refund_when_below_min() {
             &[],
         )
         .unwrap();
-    assert_eq!(owner_of(&w.app, &w.nft, "1"), w.owner.to_string());
+    assert_eq!(owner_of(&w.app, &w.nft, &token), w.owner.to_string());
     assert_eq!(bal(&w.app, &w.alice), Uint256::from(500u128));
 }
 
@@ -362,16 +373,15 @@ fn callback_draw() {
     let alice = app.api().addr_make("alice");
     let fee = app.api().addr_make("fee");
     fund(&mut app, &alice, 100);
-    let nft_id = app.store_code(nftfi_utils::mock::contract());
+    let drop = SvgDrop::two_tone("callback", "CB");
+    let nft_id = app.store_code(svg::contract());
     let nft = app
         .instantiate_contract(
             nft_id,
             owner.clone(),
-            &NftInit {
-                minter: owner.to_string(),
-            },
+            &drop.instantiate_msg(owner.as_str()),
             &[],
-            "cw721",
+            "cw721-svg",
             None,
         )
         .unwrap();
@@ -381,14 +391,7 @@ fn callback_draw() {
         verifier_query,
     )));
     let verifier = app
-        .instantiate_contract(
-            verifier_id,
-            owner.clone(),
-            &Empty {},
-            &[],
-            "verifier",
-            None,
-        )
+        .instantiate_contract(verifier_id, owner.clone(), &Empty {}, &[], "verifier", None)
         .unwrap();
     let raffle_id = app.store_code(Box::new(
         ContractWrapper::new_with_empty(
@@ -419,24 +422,14 @@ fn callback_draw() {
             None,
         )
         .unwrap();
-    app.execute_contract(
-        owner.clone(),
-        nft.clone(),
-        &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-            token_id: "1".into(),
-            owner: owner.to_string(),
-            token_uri: None,
-            extension: Empty {},
-        },
-        &[],
-    )
-    .unwrap();
+    app.execute_contract(owner.clone(), nft.clone(), &svg::mint_msg(1), &[])
+        .unwrap();
     app.execute_contract(
         owner.clone(),
         nft.clone(),
         &Cw721ExecuteMsg::<Empty, Empty, Empty>::Approve {
             spender: raffle.to_string(),
-            token_id: "1".into(),
+            token_id: "0".into(),
             expires: None,
         },
         &[],
@@ -447,7 +440,7 @@ fn callback_draw() {
         raffle.clone(),
         &ExecuteMsg::CreateRaffle {
             owner: None,
-            assets: vec![AssetInfo::cw721(nft.as_str(), "1")],
+            assets: vec![AssetInfo::cw721(nft.as_str(), "0")],
             raffle_options: options(None),
             raffle_ticket_price: AssetInfo::coin(10, DENOM),
         },
@@ -482,7 +475,7 @@ fn callback_draw() {
         &[],
     )
     .unwrap();
-    assert_eq!(owner_of(&app, &nft, "1"), alice.to_string());
+    assert_eq!(owner_of(&app, &nft, "0"), alice.to_string());
     assert_eq!(bal(&app, &owner), Uint256::from(9u128));
     assert_eq!(bal(&app, &fee), Uint256::from(1u128));
 }
@@ -499,7 +492,10 @@ fn cw721_svg_messages_match() {
         recipient: recipient.clone(),
         token_id: token_id.clone(),
     };
-    assert_eq!(to_json_binary(&plain).unwrap(), to_json_binary(&svg).unwrap());
+    assert_eq!(
+        to_json_binary(&plain).unwrap(),
+        to_json_binary(&svg).unwrap()
+    );
     let q_plain = Cw721QueryMsg::<Empty, Empty, Empty>::OwnerOf {
         token_id: token_id.clone(),
         include_expired: Some(true),
@@ -508,7 +504,10 @@ fn cw721_svg_messages_match() {
         token_id,
         include_expired: Some(true),
     };
-    assert_eq!(to_json_binary(&q_plain).unwrap(), to_json_binary(&q_svg).unwrap());
+    assert_eq!(
+        to_json_binary(&q_plain).unwrap(),
+        to_json_binary(&q_svg).unwrap()
+    );
     let _ = recipient;
 }
 

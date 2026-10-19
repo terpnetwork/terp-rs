@@ -2,15 +2,15 @@ use cosmwasm_std::{
     Addr, BankMsg, Coin, Coins, Decimal, DepsMut, Env, MessageInfo, Response, StdError,
 };
 use nftfi_utils::{
-    all_unique, assert_can_pull, is_valid_comment, is_valid_name, take_one_of, transfer_nft_msg,
-    AssetInfo,
+    AssetInfo, all_unique, assert_can_pull, is_valid_comment, is_valid_name, take_one_of,
+    transfer_nft_msg,
 };
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
 use crate::state::{
-    active_offer, is_defaulted, load_collateral, load_offer, CollateralInfo, Config, LoanState,
-    LoanTerms, OfferInfo, OfferState, BORROWER, COLLATERAL, CONFIG, OFFERS,
+    BORROWER, COLLATERAL, CONFIG, CollateralInfo, Config, LoanState, LoanTerms, OFFERS, OfferInfo,
+    OfferState, active_offer, is_defaulted, load_collateral, load_offer,
 };
 
 pub fn instantiate(
@@ -62,13 +62,24 @@ pub fn execute(
             terms,
             comment,
             on_behalf_of,
-        } => make_offer(deps, env, info, borrower, loan_id, terms, comment, on_behalf_of),
+        } => make_offer(
+            deps,
+            env,
+            info,
+            borrower,
+            loan_id,
+            terms,
+            comment,
+            on_behalf_of,
+        ),
         ExecuteMsg::CancelOffer { global_offer_id } => cancel_offer(deps, info, global_offer_id),
         ExecuteMsg::RefuseOffer { global_offer_id } => refuse_offer(deps, info, global_offer_id),
         ExecuteMsg::WithdrawRefusedOffer { global_offer_id } => {
             withdraw_refused(deps, info, global_offer_id)
         }
-        ExecuteMsg::AcceptOffer { global_offer_id } => accept_offer(deps, env, info, global_offer_id),
+        ExecuteMsg::AcceptOffer { global_offer_id } => {
+            accept_offer(deps, env, info, global_offer_id)
+        }
         ExecuteMsg::AcceptLoan {
             borrower,
             loan_id,
@@ -177,9 +188,11 @@ fn list(
         )?;
     }
 
-    let mut sent: Coins = info.funds.clone().try_into().map_err(|e| {
-        ContractError::Std(StdError::msg(format!("funds: {e}")))
-    })?;
+    let mut sent: Coins = info
+        .funds
+        .clone()
+        .try_into()
+        .map_err(|e| ContractError::Std(StdError::msg(format!("funds: {e}"))))?;
     let mut messages = Vec::new();
     if !cfg.listing_fee_coins.is_empty() {
         let fee = take_one_of(&mut sent, &cfg.listing_fee_coins)

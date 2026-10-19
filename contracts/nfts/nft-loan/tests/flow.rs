@@ -1,11 +1,11 @@
-use cosmwasm_std::{coin, coins, Addr, Decimal, Empty, Uint256};
+use cosmwasm_std::{Addr, Decimal, Empty, Uint256, coin, coins};
+use cw_multi_test::{BankSudo, BasicApp, ContractWrapper, Executor, SudoMsg};
 use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw_multi_test::{BasicApp, BankSudo, ContractWrapper, Executor, SudoMsg};
 use nftfi_loan::msg::{CollateralResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use nftfi_loan::state::LoanState;
-use nftfi_utils::mock::InstantiateMsg as NftInit;
-use nftfi_utils::AssetInfo;
 use nftfi_loan::state::LoanTerms;
+use nftfi_utils::AssetInfo;
+use nftfi_utils::svg::{self, SvgDrop};
 
 const DENOM: &str = "uterp";
 
@@ -18,7 +18,7 @@ struct World {
     loan: Addr,
 }
 
-fn world(listing_fee: u128) -> World {
+fn world(listing_fee: u128, drop: &SvgDrop) -> World {
     let mut app = BasicApp::default();
     let borrower = app.api().addr_make("borrower");
     let lender = app.api().addr_make("lender");
@@ -31,31 +31,20 @@ fn world(listing_fee: u128) -> World {
         }))
         .unwrap();
     }
-    let nft_id = app.store_code(nftfi_utils::mock::contract());
+    let nft_id = app.store_code(svg::contract());
     let nft = app
         .instantiate_contract(
             nft_id,
-            minter.clone(),
-            &NftInit {
-                minter: minter.to_string(),
-            },
+            borrower.clone(),
+            &drop.instantiate_msg(borrower.as_str()),
             &[],
-            "cw721",
+            "cw721-svg",
             None,
         )
         .unwrap();
-    app.execute_contract(
-        minter,
-        nft.clone(),
-        &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-            token_id: "1".into(),
-            owner: borrower.to_string(),
-            token_uri: None,
-            extension: Empty {},
-        },
-        &[],
-    )
-    .unwrap();
+    // Sender owns the token. cw721-svg assigns ids from 0.
+    app.execute_contract(borrower.clone(), nft.clone(), &svg::mint_msg(1), &[])
+        .unwrap();
     let loan_id = app.store_code(Box::new(ContractWrapper::new_with_empty(
         nftfi_loan::execute,
         nftfi_loan::instantiate,
@@ -87,7 +76,7 @@ fn world(listing_fee: u128) -> World {
         nft.clone(),
         &Cw721ExecuteMsg::<Empty, Empty, Empty>::Approve {
             spender: loan.to_string(),
-            token_id: "1".into(),
+            token_id: "0".into(),
             expires: None,
         },
         &[],
@@ -109,7 +98,7 @@ fn owner_of(app: &BasicApp, nft: &Addr) -> String {
         .query_wasm_smart(
             nft.to_string(),
             &Cw721QueryMsg::<Empty, Empty, Empty>::OwnerOf {
-                token_id: "1".into(),
+                token_id: "0".into(),
                 include_expired: None,
             },
         )
@@ -118,7 +107,10 @@ fn owner_of(app: &BasicApp, nft: &Addr) -> String {
 }
 
 fn bal(app: &BasicApp, addr: &Addr) -> Uint256 {
-    app.wrap().query_balance(addr.as_str(), DENOM).unwrap().amount
+    app.wrap()
+        .query_balance(addr.as_str(), DENOM)
+        .unwrap()
+        .amount
 }
 
 fn terms(principal: u128, interest: u128, blocks: u64) -> LoanTerms {
@@ -140,7 +132,7 @@ fn list(w: &mut World, ask: Option<LoanTerms>, fee: u128) {
             w.borrower.clone(),
             w.loan.clone(),
             &ExecuteMsg::ListCollaterals {
-                tokens: vec![AssetInfo::cw721(w.nft.as_str(), "1")],
+                tokens: vec![AssetInfo::cw721(w.nft.as_str(), "0")],
                 terms: ask,
                 comment: None,
             },
@@ -151,7 +143,13 @@ fn list(w: &mut World, ask: Option<LoanTerms>, fee: u128) {
 
 #[test]
 fn offer_accept_repay() {
-    let mut w = world(50);
+    for drop in svg::lab() {
+        offer_accept_repay_on(&drop);
+    }
+}
+
+fn offer_accept_repay_on(drop: &SvgDrop) {
+    let mut w = world(50, drop);
     list(&mut w, None, 50);
     assert_eq!(owner_of(&w.app, &w.nft), w.borrower.to_string());
     w.app
@@ -212,7 +210,13 @@ fn offer_accept_repay() {
 
 #[test]
 fn accept_loan_then_default() {
-    let mut w = world(0);
+    for drop in svg::lab() {
+        accept_loan_then_default_on(&drop);
+    }
+}
+
+fn accept_loan_then_default_on(drop: &SvgDrop) {
+    let mut w = world(0, drop);
     list(&mut w, Some(terms(1_000, 100, 5)), 0);
     w.app
         .execute_contract(
@@ -254,7 +258,13 @@ fn accept_loan_then_default() {
 
 #[test]
 fn withdraw_listing_and_refused_offer() {
-    let mut w = world(0);
+    for drop in svg::lab() {
+        withdraw_listing_and_refused_offer_on(&drop);
+    }
+}
+
+fn withdraw_listing_and_refused_offer_on(drop: &SvgDrop) {
+    let mut w = world(0, drop);
     list(&mut w, None, 0);
     w.app
         .execute_contract(

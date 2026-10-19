@@ -110,7 +110,10 @@ pub fn seed_bytes(drawn: &DrawnRandomness) -> StdResult<[u8; 32]> {
 
 /// Native coin amount still held for this raffle's prizes (not ticket sales).
 pub fn prize_coins(info: &RaffleInfo) -> Vec<Coin> {
-    info.assets.iter().filter_map(|a| a.as_coin().cloned()).collect()
+    info.assets
+        .iter()
+        .filter_map(|a| a.as_coin().cloned())
+        .collect()
 }
 
 pub fn ticket_pot(info: &RaffleInfo) -> Result<Uint256, ContractError> {

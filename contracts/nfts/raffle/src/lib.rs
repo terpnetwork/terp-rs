@@ -5,7 +5,7 @@ pub mod msg;
 pub mod query;
 pub mod state;
 
-pub use contract::{execute, instantiate, query, reply, sudo, CONTRACT_NAME};
+pub use contract::{CONTRACT_NAME, execute, instantiate, query, reply, sudo};
 pub use error::ContractError;
 pub use msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 

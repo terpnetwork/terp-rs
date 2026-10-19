@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{coin, Api, Coin, StdError, StdResult, Uint256};
+use cosmwasm_std::{Api, Coin, StdError, StdResult, Uint256, coin};
 
 /// One cw721 token. `address` is stored in the form `Api::addr_validate` returns.
 #[cw_serde]
@@ -53,9 +53,7 @@ impl AssetInfo {
     pub fn overlaps(&self, other: &AssetInfo) -> bool {
         match (self, other) {
             (Self::Coin(a), Self::Coin(b)) => a.denom == b.denom,
-            (Self::Cw721(a), Self::Cw721(b)) => {
-                a.address == b.address && a.token_id == b.token_id
-            }
+            (Self::Cw721(a), Self::Cw721(b)) => a.address == b.address && a.token_id == b.token_id,
             _ => false,
         }
     }

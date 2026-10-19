@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Coin, Decimal, Timestamp};
 use nftfi_randomness::RandomnessSourceMsg;
 use nftfi_utils::AssetInfo;

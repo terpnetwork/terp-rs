@@ -6,13 +6,13 @@
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_json_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
-    StdResult,
+    Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult,
+    to_json_binary,
 };
-use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OperatorResponse, OwnerOfResponse};
-use cw721::{Approval, Expiration};
 use cw_multi_test::{Contract, ContractWrapper};
 use cw_storage_plus::{Item, Map};
+use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OperatorResponse, OwnerOfResponse};
+use cw721::{Approval, Expiration};
 
 use crate::Cw721Token;
 
@@ -129,7 +129,9 @@ pub fn execute(
                 .add_attribute("recipient", token.owner)
                 .add_attribute("token_id", token_id))
         }
-        _ => Err(StdError::msg("cw721 message is not implemented in the test double")),
+        _ => Err(StdError::msg(
+            "cw721 message is not implemented in the test double",
+        )),
     }
 }
 
@@ -172,7 +174,9 @@ pub fn query(deps: Deps, env: Env, msg: Cw721QueryMsg<Empty, Empty, Empty>) -> S
                 },
             })
         }
-        _ => Err(StdError::msg("cw721 query is not implemented in the test double")),
+        _ => Err(StdError::msg(
+            "cw721 query is not implemented in the test double",
+        )),
     }
 }
 

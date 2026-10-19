@@ -5,20 +5,20 @@
 //! byte of key and value, write 2000 + 30 per byte, delete 1000. The figure
 //! is the whole transaction, including bank and wasm-keeper writes.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use cosmwasm_std::testing::MockStorage;
-use cosmwasm_std::{coin, coins, Addr, Binary, Decimal, Empty, Order, Record, Storage, Uint256};
-use cw721::msg::Cw721ExecuteMsg;
+use cosmwasm_std::{Addr, Binary, Decimal, Empty, Order, Record, Storage, Uint256, coin, coins};
 use cw_multi_test::{AppBuilder, BankSudo, ContractWrapper, Executor, SudoMsg};
+use cw721::msg::Cw721ExecuteMsg;
 use nftfi_loan::msg::ExecuteMsg as LoanMsg;
 use nftfi_loan::msg::InstantiateMsg as LoanInit;
 use nftfi_loan::state::LoanTerms;
 use nftfi_raffle::msg::{ExecuteMsg, InstantiateMsg, RaffleOptionsMsg};
 use nftfi_randomness::RandomnessSourceMsg;
-use nftfi_utils::mock::InstantiateMsg as NftInit;
 use nftfi_utils::AssetInfo;
+use nftfi_utils::svg;
 
 const DENOM: &str = "uterp";
 
@@ -97,32 +97,22 @@ fn mock_gas_bench() {
         .unwrap();
     }
 
-    let nft_id = app.store_code(nftfi_utils::mock::contract());
+    let drop = svg::SvgDrop::two_tone("gas", "GAS");
+    let nft_id = app.store_code(svg::contract());
     let nft = app
         .instantiate_contract(
             nft_id,
             owner.clone(),
-            &NftInit {
-                minter: owner.to_string(),
-            },
+            &drop.instantiate_msg(owner.as_str()),
             &[],
-            "cw721",
+            "cw721-svg",
             None,
         )
         .unwrap();
-    for (id, to) in [("1", &owner), ("2", &owner), ("3", &alice)] {
-        app.execute_contract(
-            owner.clone(),
-            nft.clone(),
-            &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-                token_id: id.into(),
-                owner: to.to_string(),
-                token_uri: None,
-                extension: Empty {},
-            },
-            &[],
-        )
-        .unwrap();
+    // Ids 0 and 1 belong to the owner. Id 2 belongs to alice.
+    for to in [&owner, &owner, &alice] {
+        app.execute_contract(to.clone(), nft.clone(), &svg::mint_msg(1), &[])
+            .unwrap();
     }
 
     let mut rows = Vec::new();
@@ -160,12 +150,12 @@ fn mock_gas_bench() {
         gas: take(&counter),
     });
 
+    approve(&mut app, &owner, &nft, &raffle, "0");
     approve(&mut app, &owner, &nft, &raffle, "1");
-    approve(&mut app, &owner, &nft, &raffle, "2");
     rows.push(Row {
         action: "raffle create",
         gas: act(&counter, || {
-            create(&mut app, &owner, &raffle, &nft, "1", 100);
+            create(&mut app, &owner, &raffle, &nft, "0", 100);
         }),
     });
     rows.push(Row {
@@ -219,7 +209,7 @@ fn mock_gas_bench() {
     app.update_block(|b| {
         b.time = b.time.plus_seconds(1);
     });
-    create(&mut app, &owner, &raffle, &nft, "2", 100);
+    create(&mut app, &owner, &raffle, &nft, "1", 100);
     rows.push(Row {
         action: "raffle cancel",
         gas: act(&counter, || {
@@ -260,34 +250,14 @@ fn mock_gas_bench() {
         gas: take(&counter),
     });
 
+    approve(&mut app, &alice, &nft, &loan, "2");
+    // Two more tokens for the borrower so list / default / withdraw each have one.
+    app.execute_contract(alice.clone(), nft.clone(), &svg::mint_msg(1), &[])
+        .unwrap();
     approve(&mut app, &alice, &nft, &loan, "3");
-    // Mint a second token for the borrower so list / default / withdraw each have a token.
-    app.execute_contract(
-        owner.clone(),
-        nft.clone(),
-        &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-            token_id: "4".into(),
-            owner: alice.to_string(),
-            token_uri: None,
-            extension: Empty {},
-        },
-        &[],
-    )
-    .unwrap();
+    app.execute_contract(alice.clone(), nft.clone(), &svg::mint_msg(1), &[])
+        .unwrap();
     approve(&mut app, &alice, &nft, &loan, "4");
-    app.execute_contract(
-        owner.clone(),
-        nft.clone(),
-        &Cw721ExecuteMsg::<Empty, Empty, Empty>::Mint {
-            token_id: "5".into(),
-            owner: alice.to_string(),
-            token_uri: None,
-            extension: Empty {},
-        },
-        &[],
-    )
-    .unwrap();
-    approve(&mut app, &alice, &nft, &loan, "5");
 
     let ask = LoanTerms {
         principle: coin(1_000, DENOM),
@@ -297,7 +267,7 @@ fn mock_gas_bench() {
     rows.push(Row {
         action: "loan list",
         gas: act(&counter, || {
-            list(&mut app, &alice, &loan, &nft, "3", Some(ask.clone()), 50);
+            list(&mut app, &alice, &loan, &nft, "2", Some(ask.clone()), 50);
         }),
     });
     rows.push(Row {
@@ -345,7 +315,7 @@ fn mock_gas_bench() {
         }),
     });
 
-    list(&mut app, &alice, &loan, &nft, "4", Some(ask.clone()), 50);
+    list(&mut app, &alice, &loan, &nft, "3", Some(ask.clone()), 50);
     app.execute_contract(
         lender.clone(),
         loan.clone(),
@@ -377,7 +347,7 @@ fn mock_gas_bench() {
         }),
     });
 
-    list(&mut app, &alice, &loan, &nft, "5", None, 50);
+    list(&mut app, &alice, &loan, &nft, "4", None, 50);
     rows.push(Row {
         action: "loan withdraw",
         gas: act(&counter, || {
@@ -405,6 +375,10 @@ for the transaction, including bank and wasm-keeper writes, not wasmd opcode gas
         body.push_str(&format!("| {} | {} |\n", row.action, row.gas));
     }
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../.herdr/gas.md");
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .unwrap_or_else(|err| panic!("mkdir {}: {err}", parent.display()));
+    }
     std::fs::write(&path, body).unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
 }
 
@@ -414,7 +388,13 @@ fn act(gas: &AtomicU64, run: impl FnOnce()) -> u64 {
     take(gas)
 }
 
-fn approve(app: &mut impl Executor<Empty>, from: &Addr, nft: &Addr, spender: &Addr, token_id: &str) {
+fn approve(
+    app: &mut impl Executor<Empty>,
+    from: &Addr,
+    nft: &Addr,
+    spender: &Addr,
+    token_id: &str,
+) {
     app.execute_contract(
         from.clone(),
         nft.clone(),

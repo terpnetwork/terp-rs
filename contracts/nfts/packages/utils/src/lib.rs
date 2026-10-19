@@ -8,12 +8,15 @@ pub mod asset;
 pub mod nft;
 pub mod payment;
 
-pub use asset::{all_unique, is_valid_comment, is_valid_name, AssetInfo, Cw721Token};
-pub use nft::{assert_can_pull, transfer_nft_msg, PullError};
+pub use asset::{AssetInfo, Cw721Token, all_unique, is_valid_comment, is_valid_name};
+pub use nft::{PullError, assert_can_pull, transfer_nft_msg};
 pub use payment::take_one_of;
 
 #[cfg(feature = "testing")]
 pub mod mock;
+
+#[cfg(feature = "svg")]
+pub mod svg;
 
 use cosmwasm_schema::cw_serde;
 

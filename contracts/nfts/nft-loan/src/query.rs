@@ -1,7 +1,7 @@
-use cosmwasm_std::{to_json_binary, Binary, Deps, Env, StdResult};
+use cosmwasm_std::{Binary, Deps, Env, StdResult, to_json_binary};
 
 use crate::msg::{CollateralResponse, OfferResponse, QueryMsg};
-use crate::state::{load_collateral, load_offer, CONFIG};
+use crate::state::{CONFIG, load_collateral, load_offer};
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {

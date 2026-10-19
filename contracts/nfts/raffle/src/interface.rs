@@ -1,4 +1,4 @@
-use crate::contract::{execute, instantiate, query, reply, CONTRACT_NAME};
+use crate::contract::{CONTRACT_NAME, execute, instantiate, query, reply};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use cw_orch::prelude::*;
 

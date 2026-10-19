@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdError, StdResult, entry_point,
 };
 use cw2::set_contract_version;
 

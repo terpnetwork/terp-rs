@@ -7,9 +7,7 @@ pub fn take_one_of(sent: &mut Coins, accepted: &[Coin]) -> StdResult<Coin> {
         .iter()
         .find(|c| !c.amount.is_zero() && sent.amount_of(&c.denom) >= c.amount)
         .cloned()
-        .ok_or_else(|| {
-            StdError::msg(format!("missing fee, accepted {accepted:?}, sent {sent}"))
-        })?;
+        .ok_or_else(|| StdError::msg(format!("missing fee, accepted {accepted:?}, sent {sent}")))?;
     sent.sub(fee.clone())?;
     Ok(fee)
 }

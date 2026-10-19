@@ -1,4 +1,4 @@
-use cosmwasm_std::{wasm_execute, CosmosMsg, Deps, Empty, Env, StdError, StdResult};
+use cosmwasm_std::{CosmosMsg, Deps, Empty, Env, StdError, StdResult, wasm_execute};
 use cw721::msg::{Cw721ExecuteMsg, Cw721QueryMsg, OperatorResponse, OwnerOfResponse};
 
 use crate::Cw721Token;
@@ -57,10 +57,7 @@ pub fn assert_can_pull(
     }
 }
 
-pub fn transfer_nft_msg(
-    token: &Cw721Token,
-    recipient: impl Into<String>,
-) -> StdResult<CosmosMsg> {
+pub fn transfer_nft_msg(token: &Cw721Token, recipient: impl Into<String>) -> StdResult<CosmosMsg> {
     let msg = Cw721ExecuteMsg::<Empty, Empty, Empty>::TransferNft {
         recipient: recipient.into(),
         token_id: token.token_id.clone(),

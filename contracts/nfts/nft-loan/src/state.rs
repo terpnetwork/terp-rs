@@ -110,7 +110,9 @@ pub fn active_offer(
     storage: &dyn Storage,
     collateral: &CollateralInfo,
 ) -> Result<OfferInfo, ContractError> {
-    let id = collateral.active_offer.ok_or(ContractError::OfferNotFound)?;
+    let id = collateral
+        .active_offer
+        .ok_or(ContractError::OfferNotFound)?;
     load_offer(storage, id)
 }
 

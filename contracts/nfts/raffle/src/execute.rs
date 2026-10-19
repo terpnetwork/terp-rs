@@ -1,20 +1,20 @@
 use std::collections::BTreeMap;
 
 use cosmwasm_std::{
-    ensure, wasm_execute, Addr, BankMsg, Binary, Coin, Coins, Decimal, DepsMut, Env, Event,
-    MessageInfo, Response, StdError, StdResult, SubMsg, Uint256,
+    Addr, BankMsg, Binary, Coin, Coins, Decimal, DepsMut, Env, Event, MessageInfo, Response,
+    StdError, StdResult, SubMsg, Uint256, ensure, wasm_execute,
 };
-use nftfi_randomness::{select_tickets, RandomnessSource, VerifierExecuteMsg};
+use nftfi_randomness::{RandomnessSource, VerifierExecuteMsg, select_tickets};
 use nftfi_utils::{
-    all_unique, assert_can_pull, is_valid_comment, is_valid_name, take_one_of, transfer_nft_msg,
-    AssetInfo,
+    AssetInfo, all_unique, assert_can_pull, is_valid_comment, is_valid_name, take_one_of,
+    transfer_nft_msg,
 };
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, RaffleOptionsMsg, SudoMsg};
 use crate::state::{
-    load_raffle, raffle_state, seed_bytes, ticket_pot, Config, DrawnRandomness, RaffleInfo,
-    RaffleOptions, RaffleState, CONFIG, RAFFLES, TICKETS, USER_TICKETS,
+    CONFIG, Config, DrawnRandomness, RAFFLES, RaffleInfo, RaffleOptions, RaffleState, TICKETS,
+    USER_TICKETS, load_raffle, raffle_state, seed_bytes, ticket_pot,
 };
 
 pub const DRAW_REPLY_ID: u64 = 1;
@@ -62,7 +62,15 @@ pub fn execute(
             assets,
             raffle_options,
             raffle_ticket_price,
-        } => create_raffle(deps, env, info, owner, assets, raffle_options, raffle_ticket_price),
+        } => create_raffle(
+            deps,
+            env,
+            info,
+            owner,
+            assets,
+            raffle_options,
+            raffle_ticket_price,
+        ),
         ExecuteMsg::CancelRaffle { raffle_id } => cancel_raffle(deps, env, info, raffle_id),
         ExecuteMsg::BuyTicket {
             raffle_id,
@@ -149,13 +157,15 @@ fn create_raffle(
         return Err(ContractError::DuplicateAssets);
     }
 
-    let mut sent: Coins = info.funds.clone().try_into().map_err(|e| {
-        ContractError::Std(StdError::msg(format!("funds: {e}")))
-    })?;
+    let mut sent: Coins = info
+        .funds
+        .clone()
+        .try_into()
+        .map_err(|e| ContractError::Std(StdError::msg(format!("funds: {e}"))))?;
     let mut messages = Vec::new();
     if !cfg.creation_coins.is_empty() {
-        let fee = take_one_of(&mut sent, &cfg.creation_coins)
-            .map_err(|_| ContractError::InvalidFee)?;
+        let fee =
+            take_one_of(&mut sent, &cfg.creation_coins).map_err(|_| ContractError::InvalidFee)?;
         messages.push(bank(cfg.fee_addr.to_string(), fee));
     }
     for asset in &assets {
@@ -295,11 +305,7 @@ fn buy_ticket(
         }
     }
     for n in 0..ticket_count {
-        TICKETS.save(
-            deps.storage,
-            (raffle_id, raffle.ticket_count + n),
-            &buyer,
-        )?;
+        TICKETS.save(deps.storage, (raffle_id, raffle.ticket_count + n), &buyer)?;
     }
     USER_TICKETS.update(
         deps.storage,
@@ -387,11 +393,14 @@ pub fn reply_draw(deps: DepsMut, env: Env, events: &[Event]) -> Result<Response,
         .ok_or(ContractError::BadDrawReply)?
         .parse::<u64>()
         .map_err(|_| ContractError::BadDrawReply)?;
-    let randomness = Binary::from_base64(attr(events, "randomness").ok_or(ContractError::BadDrawReply)?)?;
+    let randomness =
+        Binary::from_base64(attr(events, "randomness").ok_or(ContractError::BadDrawReply)?)?;
     if randomness.len() != 32 {
         return Err(ContractError::InvalidSeed);
     }
-    let provider = deps.api.addr_validate(attr(events, "owner").ok_or(ContractError::BadDrawReply)?)?;
+    let provider = deps
+        .api
+        .addr_validate(attr(events, "owner").ok_or(ContractError::BadDrawReply)?)?;
     save_draw(
         deps,
         &env,
@@ -478,7 +487,10 @@ fn claim(deps: DepsMut, env: Env, raffle_id: u64) -> Result<Response, ContractEr
         .add_attribute("winners", winner_list))
 }
 
-fn pay_pot(cfg: &Config, raffle: &RaffleInfo) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
+fn pay_pot(
+    cfg: &Config,
+    raffle: &RaffleInfo,
+) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
     let pot = ticket_pot(raffle)?;
     let fee = pot
         .checked_mul_floor(cfg.raffle_fee)
@@ -500,7 +512,10 @@ fn pay_pot(cfg: &Config, raffle: &RaffleInfo) -> Result<Vec<cosmwasm_std::Cosmos
     Ok(msgs)
 }
 
-fn pay_prizes(env: &Env, raffle: &RaffleInfo) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
+fn pay_prizes(
+    env: &Env,
+    raffle: &RaffleInfo,
+) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
     let winners = &raffle.winners;
     ensure!(!winners.is_empty(), ContractError::NoTickets);
     let mut msgs = Vec::new();
@@ -554,7 +569,12 @@ fn refund_tickets(
     Ok(totals
         .into_iter()
         .filter(|(_, amount)| !amount.is_zero())
-        .map(|(buyer, amount)| bank(buyer.to_string(), Coin::new(amount, raffle.ticket_price.denom.clone())))
+        .map(|(buyer, amount)| {
+            bank(
+                buyer.to_string(),
+                Coin::new(amount, raffle.ticket_price.denom.clone()),
+            )
+        })
         .collect())
 }
 
