@@ -11,16 +11,16 @@ pub mod interface;
 use crate::msg::MigrateMsg;
 use commands::{manifest::*, queries::*, sudo_update_params, transcode};
 use cosmwasm_std::{
-    to_json_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult,
+    Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, to_json_binary,
 };
 
-use cw721::{
-    traits::{Cw721Execute, Cw721Query},
-    DefaultOptionalCollectionExtension, DefaultOptionalCollectionExtensionMsg,
-};
 use cw_utils::maybe_addr;
+use cw721::{
+    DefaultOptionalCollectionExtension, DefaultOptionalCollectionExtensionMsg,
+    traits::{Cw721Execute, Cw721Query},
+};
 use msg::{InstantiateMsg, SudoMsg, Terp721AccountsQueryMsg};
-use state::{SudoParams, ACCOUNT_MANIFOLD, SUDO_PARAMS, VERIFIER};
+use state::{ACCOUNT_MANIFOLD, SUDO_PARAMS, SudoParams, VERIFIER};
 use terp_account::Metadata;
 
 // version info for migration info

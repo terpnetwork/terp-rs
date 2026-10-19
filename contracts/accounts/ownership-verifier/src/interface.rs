@@ -1,6 +1,6 @@
 use cw_orch::{interface, prelude::*};
 
-use crate::{execute, instantiate, query, ExecuteMsg, InstantiateMsg, QueryMsg, CONTRACT_NAME};
+use crate::{CONTRACT_NAME, ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
 
 /// Uploadable trait for terp721_account_manifold & use with cw-orchestrator library
 #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]

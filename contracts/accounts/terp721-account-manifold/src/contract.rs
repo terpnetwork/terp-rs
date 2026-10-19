@@ -1,21 +1,21 @@
 use cosmwasm_std::{
-    instantiate2_address, to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128, WasmMsg,
+    Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
+    WasmMsg, instantiate2_address, to_json_binary,
 };
 use cw2::set_contract_version;
 use cw721::msg::{CollectionExtensionMsg, RoyaltyInfoResponse};
 use terp_account::manifold::{MigrateMsg, SudoParams};
 
-use terp721_account::msg::Terp721InstantiateMsg;
 use terp_account::manifold::{Config, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use terp721_account::msg::Terp721InstantiateMsg;
 // use cw2::set_contract_version;
 
 use crate::commands::*;
 use crate::error::ContractError;
 
 use crate::state::{
-    ask_key, ACCOUNT_COLLECTION, ASK_HOOKS, BID_HOOKS, CONFIG, COOLDOWN_BID, MAX_FEE_BPS, PAUSED,
-    SALE_HOOKS, SUDO_PARAMS,
+    ACCOUNT_COLLECTION, ASK_HOOKS, BID_HOOKS, CONFIG, COOLDOWN_BID, MAX_FEE_BPS, PAUSED,
+    SALE_HOOKS, SUDO_PARAMS, ask_key,
 };
 
 // version info for migration info
@@ -275,7 +275,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coin, Addr, MessageInfo, Uint256};
+    use cosmwasm_std::{Addr, MessageInfo, Uint256, coin};
     use terp_account::CURRENT_BASE_PRICE;
 
     use crate::commands::{validate_account, validate_payment};
@@ -293,18 +293,22 @@ mod tests {
         assert!(validate_account("bo", min, max).is_err());
         assert!(validate_account("b", min, max).is_err());
         assert!(validate_account("bob", min, max).is_ok());
-        assert!(validate_account(
-            "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobo",
-            min,
-            max
-        )
-        .is_ok());
-        assert!(validate_account(
-            "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobob",
-            min,
-            max
-        )
-        .is_err());
+        assert!(
+            validate_account(
+                "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobo",
+                min,
+                max
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_account(
+                "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobob",
+                min,
+                max
+            )
+            .is_err()
+        );
         assert!(validate_account("0123456789", min, max).is_ok());
         assert!(validate_account("😬", min, max).is_err());
         assert!(validate_account("BOBO", min, max).is_err());

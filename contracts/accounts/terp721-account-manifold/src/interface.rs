@@ -1,6 +1,6 @@
 use cw_orch::{interface, prelude::*};
 
-use crate::contract::{execute, instantiate, query, sudo, ACCOUNT_MANIFOLD_CONTRACT};
+use crate::contract::{ACCOUNT_MANIFOLD_CONTRACT, execute, instantiate, query, sudo};
 use crate::hooks::reply;
 use terp_account::manifold::{ExecuteMsg, InstantiateMsg, QueryMsg};
 /// Uploadable trait for terp721_account_manifold & use with cw-orchestrator library

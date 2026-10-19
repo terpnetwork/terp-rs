@@ -1,8 +1,8 @@
 use abstract_std::objects::gov_type::GovernanceDetails;
 use abstract_std::objects::ownership::{self, Ownership};
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, entry_point,
 };
 use cw_storage_plus::Item;
 use thiserror::Error;

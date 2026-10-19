@@ -1,13 +1,13 @@
 use terp_account::{
-    manifold::hooks::{AskHookMsg, BidHookMsg, HookAction, SaleHookMsg},
     Ask, Bid,
+    manifold::hooks::{AskHookMsg, BidHookMsg, HookAction, SaleHookMsg},
 };
 
 use cosmwasm_std::{
     Addr, DepsMut, Env, Reply, Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
 
-use crate::{state::*, ContractError};
+use crate::{ContractError, state::*};
 
 enum HookReply {
     Ask = 1,
@@ -29,21 +29,9 @@ impl From<u64> for HookReply {
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match HookReply::from(msg.id) {
-        HookReply::Ask => {
-            return Err(ContractError::Std(StdError::msg(
-                msg.result.unwrap_err(),
-            )))
-        }
-        HookReply::Sale => {
-            return Err(ContractError::Std(StdError::msg(
-                msg.result.unwrap_err(),
-            )))
-        }
-        HookReply::Bid => {
-            return Err(ContractError::Std(StdError::msg(
-                msg.result.unwrap_err(),
-            )))
-        }
+        HookReply::Ask => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
+        HookReply::Sale => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
+        HookReply::Bid => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
     }
 }
 

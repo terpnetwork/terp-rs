@@ -2,13 +2,13 @@ use crate::commands::{payout, query_asks_by_seller, query_bids_by_bidder};
 use crate::contract::{execute, instantiate};
 #[cfg(test)]
 use crate::state::*;
+use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Response, Timestamp, Uint128, coin, coins};
 use terp_account::manifold::{Ask, Bid};
 use terp_account::{
-    market::{ExecuteMsg, MarketplaceInstantiateMsg},
     NATIVE_DENOM,
+    market::{ExecuteMsg, MarketplaceInstantiateMsg},
 };
-use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-use cosmwasm_std::{coin, coins, Addr, Decimal, DepsMut, Response, Timestamp, Uint128};
 
 const CREATOR: &str = "creator";
 const TOKEN_ID: &str = "account";

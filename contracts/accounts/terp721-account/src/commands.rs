@@ -1,21 +1,21 @@
-use cw721::msg::Cw721ExecuteMsg;
 use cw721::DefaultOptionalCollectionExtensionMsg;
+use cw721::msg::Cw721ExecuteMsg;
 
 use crate::{
+    Terp721AccountContract,
     error::ContractError,
     msg::Terp721AccountsQueryMsg,
-    state::{SudoParams, ACCOUNT_MANIFOLD, REVERSE_MAP, REVERSE_MAP_KEY, SUDO_PARAMS, VERIFIER},
-    Terp721AccountContract,
+    state::{ACCOUNT_MANIFOLD, REVERSE_MAP, REVERSE_MAP_KEY, SUDO_PARAMS, SudoParams, VERIFIER},
 };
 use cosmwasm_std::{
-    ensure, Addr, Binary, CanonicalAddr, ContractInfoResponse, Deps, DepsMut, Empty, Env, Event,
-    MessageInfo, Response, StdError, StdResult,
+    Addr, Binary, CanonicalAddr, ContractInfoResponse, Deps, DepsMut, Empty, Env, Event,
+    MessageInfo, Response, StdError, StdResult, ensure,
 };
 use cw_ownable::Ownership;
 use cw_utils::nonpayable;
 
 use terp_account::{
-    verify_generic::CosmosArbitrary, Metadata, PendingBid, TextRecord, MAX_TEXT_LENGTH, NFT,
+    MAX_TEXT_LENGTH, Metadata, NFT, PendingBid, TextRecord, verify_generic::CosmosArbitrary,
 };
 
 pub mod manifest {
@@ -24,10 +24,10 @@ pub mod manifest {
         gov_type::GovernanceDetails,
         ownership::{self, Ownership},
     };
-    use cosmwasm_std::{to_json_binary, Attribute, CosmosMsg, SubMsg, WasmMsg};
+    use cosmwasm_std::{Attribute, CosmosMsg, SubMsg, WasmMsg, to_json_binary};
+    use cw721::Expiration;
     use cw721::state::NftInfo;
     use cw721::traits::Cw721Execute;
-    use cw721::Expiration;
 
     use crate::state::{REVERSE_MAP_KEY, REVMAP_LIMIT};
 
@@ -896,7 +896,7 @@ pub mod manifest {
             Some(_) => {
                 return Err(ContractError::AccountCannotBeTransfered {
                     reason: "Account is in cooldown".to_string(),
-                })
+                });
             }
             None => Ok(()),
         }

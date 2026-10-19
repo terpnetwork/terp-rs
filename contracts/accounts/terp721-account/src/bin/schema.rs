@@ -2,8 +2,8 @@
 use cosmwasm_schema::write_api;
 
 use terp721_account::{
-    msg::{ExecuteMsg, InstantiateMsg},
     QueryMsg,
+    msg::{ExecuteMsg, InstantiateMsg},
 };
 
 fn main() {

@@ -1,24 +1,24 @@
 use crate::{
+    ContractError,
     hooks::{prepare_ask_hook, prepare_bid_hook, prepare_sale_hook},
     state::*,
     state::{ACCOUNT_COLLECTION, CONFIG, PAUSED, SUDO_PARAMS},
-    ContractError,
 };
 use cosmwasm_std::{
-    coin, to_json_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, Fraction,
-    MessageInfo, Order, Response, StdError, StdResult, Storage, SubMsg, Uint128, Uint256, WasmMsg,
+    Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, Fraction, MessageInfo, Order,
+    Response, StdError, StdResult, Storage, SubMsg, Uint128, Uint256, WasmMsg, coin,
+    to_json_binary,
 };
-use cw721::msg::{NftInfoResponse, OwnerOfResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{must_pay, nonpayable};
-use terp721_account::{
-    helpers::Terp721Account, msg::ExecuteMsg as Bs721AccountExecuteMsg, QueryMsg,
-};
+use cw721::msg::{NftInfoResponse, OwnerOfResponse};
 use terp_account::{
-    charge_fees,
+    Ask, AskKey, Bid, BidKey, Bidder, DEFAULT_QUERY_LIMIT, DEPLOYMENT_DAO, Id, MAX_QUERY_LIMIT,
+    Metadata, NATIVE_DENOM, PendingBid, TokenId, charge_fees,
     manifold::{hooks::HookAction, *},
-    Ask, AskKey, Bid, BidKey, Bidder, Id, Metadata, PendingBid, TokenId,
-    DEFAULT_QUERY_LIMIT, DEPLOYMENT_DAO, MAX_QUERY_LIMIT, NATIVE_DENOM,
+};
+use terp721_account::{
+    QueryMsg, helpers::Terp721Account, msg::ExecuteMsg as Bs721AccountExecuteMsg,
 };
 
 pub fn execute_mint_and_list(
@@ -986,11 +986,7 @@ pub fn query_highest_bid(deps: Deps, token_id: TokenId) -> StdResult<Option<Bid>
         .range(deps.storage, None, None, Order::Descending)
         .filter_map(|item| {
             let (key, bid) = item.unwrap();
-            if key.0 == token_id {
-                Some(bid)
-            } else {
-                None
-            }
+            if key.0 == token_id { Some(bid) } else { None }
         })
         .take(1)
         .collect::<Vec<_>>()
@@ -1093,7 +1089,7 @@ pub fn manage_hooks(
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coin, Addr, MessageInfo, Uint256};
+    use cosmwasm_std::{Addr, MessageInfo, Uint256, coin};
     use terp_account::CURRENT_BASE_PRICE;
 
     use crate::commands::{validate_account, validate_payment};
@@ -1111,18 +1107,22 @@ mod tests {
         assert!(validate_account("bo", min, max).is_err());
         assert!(validate_account("b", min, max).is_err());
         assert!(validate_account("bob", min, max).is_ok());
-        assert!(validate_account(
-            "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobo",
-            min,
-            max
-        )
-        .is_ok());
-        assert!(validate_account(
-            "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobob",
-            min,
-            max
-        )
-        .is_err());
+        assert!(
+            validate_account(
+                "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobo",
+                min,
+                max
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_account(
+                "bobobobobobobobobobobobobobobobobobobobobobobobobobobobobobobob",
+                min,
+                max
+            )
+            .is_err()
+        );
         assert!(validate_account("0123456789", min, max).is_ok());
         assert!(validate_account("😬", min, max).is_err());
         assert!(validate_account("BOBO", min, max).is_err());

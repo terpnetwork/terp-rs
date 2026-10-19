@@ -1,8 +1,8 @@
 use cw_orch::{interface, prelude::*};
 
+use crate::ACCOUNT_CONTRACT;
 use crate::entry::{execute, instantiate, query, sudo};
 use crate::msg::{ExecuteMsg, InstantiateMsg, Terp721AccountsQueryMsg as QueryMsg};
-use crate::ACCOUNT_CONTRACT;
 use terp_account::Metadata;
 
 /// Uploadable trait for terp721_account & use with cw-orchestrator library
