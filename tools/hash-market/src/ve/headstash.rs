@@ -114,6 +114,10 @@ pub struct CampaignBody {
     /// Flock may omit it.
     #[serde(default)]
     pub vk_hash_hex: String,
+    /// 64 lowercase hex characters. The accepted registration root.
+    /// Empty keeps the preimage used by campaigns without registration.
+    #[serde(default)]
+    pub registration_anchor_hex: String,
 }
 
 #[derive(Deserialize)]
@@ -366,7 +370,16 @@ fn params_from(body: &CampaignBody) -> Result<CampaignParams, HttpError> {
             .collect::<Result<Vec<_>, _>>()?,
         vk_id,
         vk_hash,
+        registration_anchor: registration_anchor_from(body)?,
     })
+}
+
+fn registration_anchor_from(body: &CampaignBody) -> Result<Option<[u8; 32]>, HttpError> {
+    let text = body.registration_anchor_hex.trim();
+    if text.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(decode_32(text)?))
 }
 
 fn vk_from_body(body: &CampaignBody, backend: Backend) -> Result<(u64, [u8; 32]), HttpError> {
@@ -627,6 +640,52 @@ mod tests {
         let (id, hash) = super::vk_from_body(&flock, headstash_epoch::Backend::Flock).unwrap();
         assert_eq!(id, 0);
         assert_eq!(hash, [0u8; 32]);
+    }
+
+    #[test]
+    fn registration_anchor_matches_the_contract_accepted_preimage() {
+        // Same vector as cw_headstash::epoch::accepted_batch(..., registration = true):
+        // allocation root 0x07, anchor 0x03, nullifier 0x01, denom 0x09,
+        // destination "terp1a", amount 5.
+        let root = [7u8; 32];
+        let anchor = [3u8; 32];
+        let row = headstash_epoch::PayoutRow {
+            nullifier: [1u8; 32],
+            denom: [9u8; 32],
+            destination: "terp1a".into(),
+            amount: 5,
+        };
+        let bare = headstash_epoch::accepted_root(&root, &[row.clone()]);
+        let with = headstash_epoch::accepted_root_anchored(&root, &[row], Some(&anchor));
+        assert_ne!(bare, with);
+        let mut pre = b"terp-headstash-accepted-v1".to_vec();
+        pre.extend_from_slice(&root);
+        pre.extend_from_slice(&1u32.to_le_bytes());
+        pre.extend_from_slice(&[1u8; 32]);
+        pre.extend_from_slice(&[9u8; 32]);
+        let dest = b"terp1a";
+        pre.extend_from_slice(&(dest.len() as u16).to_le_bytes());
+        pre.extend_from_slice(dest);
+        pre.extend_from_slice(&5u64.to_le_bytes());
+        assert_eq!(bare, headstash_epoch::sha256(&pre));
+        pre.extend_from_slice(&anchor);
+        assert_eq!(with, headstash_epoch::sha256(&pre));
+    }
+
+    #[test]
+    fn registration_anchor_hex_is_optional_and_32_bytes() {
+        let body = campaign_json("flock", 0, "");
+        assert!(super::params_from(&body).unwrap().registration_anchor.is_none());
+        let mut anchored = body;
+        anchored.registration_anchor_hex = "ab".repeat(32);
+        let got = super::params_from(&anchored)
+            .unwrap()
+            .registration_anchor
+            .unwrap();
+        assert_eq!(got[0], 0xab);
+        assert_eq!(got[31], 0xab);
+        anchored.registration_anchor_hex = "aa".into();
+        assert!(super::params_from(&anchored).is_err());
     }
 
     fn campaign_json(backend: &str, vk_id: u64, vk_hash_hex: &str) -> super::CampaignBody {

@@ -1069,6 +1069,38 @@ mod tests {
     }
 
     #[test]
+    fn registration_anchor_matches_the_sidecar_accepted_preimage() {
+        // Same vector as headstash_epoch::roots::accepted_root_anchored:
+        // allocation root 0x07, anchor 0x03, nullifier 0x01, denom 0x09,
+        // destination "terp1a", amount 5.
+        let root = [7u8; 32];
+        let anchor = [3u8; 32];
+        let row = EpochPayout {
+            nullifier: Binary::from(vec![1u8; 32]),
+            denom: Binary::from(vec![9u8; 32]),
+            destination: "terp1a".into(),
+            amount: 5,
+            anchor: Binary::from(anchor.to_vec()),
+        };
+        let with_anchor = accepted_batch(&root, &[row.clone()], true).unwrap();
+        let without = accepted_batch(&root, &[row], false).unwrap();
+        assert_ne!(with_anchor, without);
+
+        let mut pre = ACCEPTED_DOMAIN.to_vec();
+        pre.extend_from_slice(&root);
+        pre.extend_from_slice(&1u32.to_le_bytes());
+        pre.extend_from_slice(&[1u8; 32]);
+        pre.extend_from_slice(&[9u8; 32]);
+        let dest = b"terp1a";
+        pre.extend_from_slice(&(dest.len() as u16).to_le_bytes());
+        pre.extend_from_slice(dest);
+        pre.extend_from_slice(&5u64.to_le_bytes());
+        assert_eq!(without, sha256(&pre));
+        pre.extend_from_slice(&anchor);
+        assert_eq!(with_anchor, sha256(&pre));
+    }
+
+    #[test]
     fn row_order_does_not_change_the_accepted_root() {
         let root = [7u8; 32];
         let denom = denom();

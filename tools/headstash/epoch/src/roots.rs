@@ -4,6 +4,8 @@
 //! later sudo must sort before it hashes or it will disagree with this
 //! signature. `accepted_root` matches `epoch::accepted_root`: the destination
 //! is the UTF-8 bech32 string, with a little-endian `u16` length.
+//! A registration campaign also appends the 32-byte anchor, matching
+//! `epoch::accepted_batch` when registration is set.
 
 use sha2::{Digest, Sha256};
 
@@ -100,6 +102,17 @@ fn hash_pending(digests: &[[u8; 32]]) -> [u8; 32] {
 }
 
 pub fn accepted_root(allocation_root: &[u8; 32], rows: &[PayoutRow]) -> [u8; 32] {
+    accepted_root_anchored(allocation_root, rows, None)
+}
+
+/// Same preimage as [`accepted_root`]. `anchor` is the registration root
+/// `cw_headstash::epoch::accepted_batch` appends when the campaign has one.
+/// Campaigns without registration pass `None` and keep the old bytes.
+pub fn accepted_root_anchored(
+    allocation_root: &[u8; 32],
+    rows: &[PayoutRow],
+    anchor: Option<&[u8; 32]>,
+) -> [u8; 32] {
     let mut ordered = rows.to_vec();
     ordered.sort_by(|a, b| a.nullifier.cmp(&b.nullifier));
     let mut pre = Vec::new();
@@ -113,6 +126,9 @@ pub fn accepted_root(allocation_root: &[u8; 32], rows: &[PayoutRow]) -> [u8; 32]
         pre.extend_from_slice(&(dest.len() as u16).to_le_bytes());
         pre.extend_from_slice(dest);
         pre.extend_from_slice(&row.amount.to_le_bytes());
+        if let Some(anchor) = anchor {
+            pre.extend_from_slice(anchor);
+        }
     }
     sha256(&pre)
 }
@@ -227,9 +243,19 @@ mod tests {
         pre.extend_from_slice(&(dest.len() as u16).to_le_bytes());
         pre.extend_from_slice(dest);
         pre.extend_from_slice(&5u64.to_le_bytes());
-        assert_eq!(accepted_root(&root, &[row]), sha256(&pre));
+        assert_eq!(accepted_root(&root, &[row.clone()]), sha256(&pre));
+        let bare = sha256(&pre);
 
-        let mut raw20 = pre.clone();
+        let anchor = [3u8; 32];
+        let mut anchored = pre.clone();
+        anchored.extend_from_slice(&anchor);
+        assert_eq!(
+            accepted_root_anchored(&root, &[row.clone()], Some(&anchor)),
+            sha256(&anchored)
+        );
+        assert_ne!(bare, sha256(&anchored));
+
+        let mut raw20 = pre;
         // A 20-byte address encoding is a different preimage.
         raw20.truncate(ACCEPTED_DOMAIN.len() + 32 + 4 + 32 + 32);
         raw20.extend_from_slice(&20u16.to_le_bytes());

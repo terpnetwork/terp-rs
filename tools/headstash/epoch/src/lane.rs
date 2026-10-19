@@ -19,9 +19,8 @@ use headstash_claim::{
 
 use crate::roots::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, PayoutRow,
-    SealedVote, accepted_root, aggregate_root, attestation_value, attested_root, receipt_message, sha256,
-    sign_custody,
-    verify_ed25519,
+    SealedVote, accepted_root_anchored, aggregate_root, attestation_value, receipt_message, sha256,
+    sign_custody, verify_ed25519,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,6 +101,9 @@ pub struct CampaignParams {
     /// hash. A real campaign hash is checked against the cached blob
     /// before the host runs.
     pub vk_hash: [u8; 32],
+    /// Accepted registration root. Appended to each accepted-row preimage.
+    /// `None` keeps the preimage used by campaigns without registration.
+    pub registration_anchor: Option<[u8; 32]>,
 }
 
 #[derive(Clone, Debug)]
@@ -161,6 +163,7 @@ pub struct Campaign<const D: usize> {
     verifies: AtomicU64,
     vk_id: u64,
     vk_hash: [u8; 32],
+    registration_anchor: Option<[u8; 32]>,
     /// True only for the in-process fixture. `open` never sets this.
     unbound_fixture: bool,
 }
@@ -219,6 +222,7 @@ impl<const D: usize> Campaign<D> {
             verifies: AtomicU64::new(0),
             vk_id: params.vk_id,
             vk_hash: params.vk_hash,
+            registration_anchor: params.registration_anchor,
             unbound_fixture,
         }
     }
@@ -279,7 +283,11 @@ impl<const D: usize> Campaign<D> {
     }
 
     pub fn accepted_root(&self) -> [u8; 32] {
-        accepted_root(&self.allocation_root, &self.rows)
+        accepted_root_anchored(
+            &self.allocation_root,
+            &self.rows,
+            self.registration_anchor.as_ref(),
+        )
     }
 
     /// Insert items that pass. Report the others. A bad item does not roll
@@ -772,6 +780,7 @@ mod tests {
             reserved,
             vk_id: 0,
             vk_hash: [0u8; 32],
+            registration_anchor: None,
         })
         .unwrap()
     }
@@ -806,6 +815,7 @@ mod tests {
             reserved: Vec::new(),
             vk_id: 1,
             vk_hash,
+            registration_anchor: None,
         };
         if vk_hash == [0u8; 32] {
             Campaign::open_unbound_fixture(params).unwrap()
@@ -984,6 +994,7 @@ mod tests {
             reserved: Vec::new(),
             vk_id: 1,
             vk_hash: [0u8; 32],
+            registration_anchor: None,
         };
         assert_eq!(
             Campaign::<FIXTURE_DEPTH>::open(params).err(),
@@ -1228,6 +1239,7 @@ mod tests {
             reserved: Vec::new(),
             vk_id: 0,
             vk_hash: [0u8; 32],
+            registration_anchor: None,
         })
         .unwrap();
         let report = campaign.accept_batch(&[item], Some(&local_key()));
