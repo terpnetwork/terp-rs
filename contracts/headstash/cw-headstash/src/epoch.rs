@@ -1397,7 +1397,7 @@ mod tests {
         assert!(mismatch.unwrap_err().to_string().contains("vk hash"));
 
         let hash = accepted_root(root.as_slice(), &[row(1, &dest, 15, denom())]).unwrap();
-        let attested = attested_root(&hash);
+        let attested = stored_root_for(&hash, &[9u8; 32]);
         execute(
             deps.as_mut(),
             env.clone(),

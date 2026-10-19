@@ -151,9 +151,14 @@ fn accepted_root(
     sha256(&pre)
 }
 
-fn attested_root(batch: &[u8; 32]) -> [u8; 32] {
+/// Quorum root stock terpd stores: source id, the attestation value, height.
+/// A non-zero vk hash makes that value `batch || vk`.
+fn quorum_root(batch: &[u8; 32], vk: &[u8; 32]) -> [u8; 32] {
     let mut pre = b"headstash-batch".to_vec();
     pre.extend_from_slice(batch);
+    if vk.iter().any(|byte| *byte != 0) {
+        pre.extend_from_slice(vk);
+    }
     pre.extend_from_slice(&1u64.to_le_bytes());
     sha256(&pre)
 }
@@ -571,7 +576,7 @@ async fn run() -> anyhow::Result<Report> {
         &claim.destination,
         claim.amount,
     );
-    let real_attested = attested_root(&real_accepted);
+    let real_attested = quorum_root(&real_accepted, &vk_hash);
 
     let mut custody_seed = load_custody_seed()?;
     let custody = SigningKey::from_bytes(&custody_seed);
@@ -1014,7 +1019,7 @@ async fn run() -> anyhow::Result<Report> {
             && pending_value
                 == format!("{}{}", hex_bytes(&real_pending), hex_bytes(&vk_hash))
             && stored_pending.0 == PENDING_HEIGHT
-            && stored_pending.1 == b64(&attested_root(&real_pending))
+            && stored_pending.1 == b64(&quorum_root(&real_pending, &vk_hash))
             && same_balance(baseline, after),
         format!("height {} bal {after}", stored_pending.0),
     );

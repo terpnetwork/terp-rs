@@ -427,11 +427,10 @@ The epoch path pays inside the accepted sudo:
   `oracle_sources[0].value`. Paying those rows is the step-3 sudo change.
 - A batch above `max_rows` is not signed, so it never reaches sudo.
 
-`ApplyAcceptedBatch` is not on this path. The attestation `value` above
-is the 32-byte batch hash on the wasm already stored on the loopback
-chain. The decision in "Chain vk and operator routes" appends the
-verifying-key hash for a new code id. The quorum root stays
-`attested_root` of the 32-byte batch hash.
+`ApplyAcceptedBatch` is not on this path. A zero `vk_hash` keeps the
+32-byte batch hash as the attestation value. A halo2 campaign publishes
+`batch_hash || vk_hash`, and the quorum root is the aggregate of that
+value. See "Chain vk and operator routes".
 
 ## Allocation set
 
@@ -1147,7 +1146,7 @@ Reproduced on a fresh 4-validator Docker chain (`headstash-fm-1`, image `terp-co
 
 Decided for this branch. The chain stores the verifying key the sidecar used, and it refuses a payout under a different hash. Campaign install and seal require an operator signature. Claims stay public.
 
-Implemented in `072f694`. cw-headstash `epoch::tests` passed 15, including `halo2_vk_is_immutable_and_zero_is_refused`. hash-market passed `operator_challenge_matches_the_tree_write_string`, `admin_routes_reject_unsigned_wrong_key_replay_and_reinstall`, `vote_json_is_one_headstash_batch_attestation`, and `two_registered_keys_select_and_reject`. headstash-epoch lib tests passed 15. `headstash-epoch-e2e` typechecked. The loopback 17/17 was not rerun: epoch RPC `127.0.0.1:36667` did not answer, and the e2e script would re-init the chain home after a failed status check.
+Implemented in `072f694`. cw-headstash `epoch::tests` passed 15, including `halo2_vk_is_immutable_and_zero_is_refused`. hash-market passed `operator_challenge_matches_the_tree_write_string`, `admin_routes_reject_unsigned_wrong_key_replay_and_reinstall`, `vote_json_is_one_headstash_batch_attestation`, and `two_registered_keys_select_and_reject`. headstash-epoch lib tests passed 15. `headstash-epoch-e2e` typechecked. A loopback rerun after the RPC restart failed before this correction: stock terpd logged `sidecar root does not match sorted aggregate`, and the driver reported `epoch root headstash-pending did not arrive`. The chain home was not re-inited. The e2e script still re-inits after a failed status check, so the rerun used a wrapper that stops when RPC is down.
 
 ### Chain
 
@@ -1155,9 +1154,9 @@ Implemented in `072f694`. cw-headstash `epoch::tests` passed 15, including `halo
 
 A halo2 campaign with `vk_hash` of 32 zero bytes is refused at creation. The error text contains `vk hash`. Halo2 `vk_id` 0 stays refused. Flock may still store 32 zero bytes. That zero is the unbound flock fixture, not a halo2 key. Settle applies the hash check only when the stored hash is not all zeros.
 
-Stock `terpd` 6.4.0 does not grow a `vk_hash` field on the sudo JSON. The sudo it sends is `chain_uid`, `algo`, `height`, `root`, `attestation_count`, `block_time`, and `oracle_sources`. Each oracle source is `source_id`, `value`, `height`. The registered source is `headstash-batch`. `value` is the bytes the sidecar signed. The quorum `root` is the module aggregate of `source_id || value || height`. When `vk_hash` is non-zero, `value` is `batch_hash || vk_hash`, so the root is that aggregate and not the aggregate of the 32-byte batch alone. Stock terpd rejects a vote whose `root` does not match. The wasm on the loopback chain ignores `oracle_sources`, so a longer value does not change that payout.
+Stock `terpd` 6.4.0 does not grow a `vk_hash` field on the sudo JSON. The sudo it sends is `chain_uid`, `algo`, `height`, `root`, `attestation_count`, `block_time`, and `oracle_sources`. Each oracle source is `source_id`, `value`, `height`. The registered source is `headstash-batch`. `value` is the bytes the sidecar signed. The quorum `root` is the module aggregate of `source_id || value || height`. When `vk_hash` is non-zero, `value` is `batch_hash || vk_hash`, so the root is that aggregate and not the aggregate of the 32-byte batch alone. Stock terpd rejects a vote whose `root` does not match. The wasm stored on the loopback chain before this correction ignores `oracle_sources`. A code id built from this tree compares the quorum root with the aggregate of `batch_hash || vk_hash` when that hash is not all zeros, then checks the oracle value.
 
-The sidecar attestation value becomes `batch_hash || vk_hash` (64 bytes). Custody signs those 64 bytes. The vote's `root` field stays `attested_root(batch_hash)`.
+The sidecar attestation value is `batch_hash || vk_hash` (64 bytes) when the hash is not all zeros. Custody signs those bytes. The vote `root` is the module aggregate of that value. A zero `vk_hash` keeps the 32-byte value and `attested_root(batch_hash)`.
 
 On a new code id, `settle` of an accepted sudo does this when the stored hash is not all zeros:
 
