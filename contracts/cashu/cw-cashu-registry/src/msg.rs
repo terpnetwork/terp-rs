@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Addr;
 use std::collections::BTreeMap;
 
@@ -60,10 +60,7 @@ pub enum ExecuteMsg {
     },
 
     /// Admin only: set discovery status.
-    SetStatus {
-        mint_id: String,
-        status: MintStatus,
-    },
+    SetStatus { mint_id: String, status: MintStatus },
 
     /// Admin only: soft-revoke (status = revoked). Keeps row for audit.
     RemoveMint { mint_id: String },

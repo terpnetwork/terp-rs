@@ -1,5 +1,5 @@
-use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
-use cosmwasm_std::{from_json, Addr};
+use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, from_json};
 
 use crate::contract::{
     execute, instantiate, mint_id_from_url, normalize_url, query, validate_mint_id,
@@ -267,14 +267,16 @@ fn remove_mint_soft_revokes() {
         },
     )
     .unwrap();
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "action" && a.value == "remove"));
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "status" && a.value == "revoked"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "action" && a.value == "remove")
+    );
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "status" && a.value == "revoked")
+    );
 
     let bin = query(
         deps.as_ref(),

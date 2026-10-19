@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, entry_point,
+    to_json_binary,
 };
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -24,9 +24,7 @@ pub fn normalize_url(url: &str) -> String {
         let scheme = s[..scheme_end].to_ascii_lowercase();
         let rest = &s[scheme_end + 3..];
         // Split host (incl. port / userinfo) from path/query/fragment.
-        let split_at = rest
-            .find(['/', '?', '#'])
-            .unwrap_or(rest.len());
+        let split_at = rest.find(['/', '?', '#']).unwrap_or(rest.len());
         let host = rest[..split_at].to_ascii_lowercase();
         let path = &rest[split_at..];
         format!("{scheme}://{host}{path}")
@@ -83,10 +81,7 @@ fn metadata_size(meta: &BTreeMap<String, String>) -> usize {
     meta.iter().map(|(k, v)| k.len() + v.len()).sum()
 }
 
-fn check_metadata(
-    meta: &BTreeMap<String, String>,
-    max: u32,
-) -> Result<(), ContractError> {
+fn check_metadata(meta: &BTreeMap<String, String>, max: u32) -> Result<(), ContractError> {
     let got = metadata_size(meta);
     if got > max as usize {
         return Err(ContractError::MetadataTooLarge { got, max });
@@ -116,9 +111,7 @@ pub fn instantiate(
         Some(a) => deps.api.addr_validate(&a)?,
         None => info.sender.clone(),
     };
-    let max_metadata_bytes = msg
-        .max_metadata_bytes
-        .unwrap_or(DEFAULT_MAX_METADATA_BYTES);
+    let max_metadata_bytes = msg.max_metadata_bytes.unwrap_or(DEFAULT_MAX_METADATA_BYTES);
 
     CONFIG.save(
         deps.storage,
@@ -300,11 +293,12 @@ fn execute_update(
     metadata: Option<BTreeMap<String, String>>,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     if info.sender != cfg.admin && info.sender != desc.registrar {
         return Err(ContractError::Unauthorized {});
@@ -369,11 +363,12 @@ fn execute_set_status(
     let cfg = CONFIG.load(deps.storage)?;
     assert_admin(&info, &cfg)?;
 
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     desc.status = status.clone();
     desc.updated_at = env.block.time.seconds();
@@ -397,11 +392,12 @@ fn execute_remove(
     let cfg = CONFIG.load(deps.storage)?;
     assert_admin(&info, &cfg)?;
 
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     desc.status = MintStatus::Revoked;
     desc.updated_at = env.block.time.seconds();
@@ -491,16 +487,14 @@ fn query_list_mints(
     // Default filter: active only.
     let want = status_filter.unwrap_or(MintStatus::Active);
 
-    let start = start_after.as_deref().map(cw_storage_plus::Bound::exclusive);
+    let start = start_after
+        .as_deref()
+        .map(cw_storage_plus::Bound::exclusive);
     let mints: Vec<MintDescriptor> = MINTS
         .range(deps.storage, start, None, Order::Ascending)
         .filter_map(|item| {
             let (_k, v) = item.ok()?;
-            if v.status == want {
-                Some(v)
-            } else {
-                None
-            }
+            if v.status == want { Some(v) } else { None }
         })
         .take(limit)
         .collect();
