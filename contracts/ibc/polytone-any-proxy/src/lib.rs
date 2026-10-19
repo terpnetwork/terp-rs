@@ -4,12 +4,12 @@
 //! This contract is invoked via `WasmMsg::Execute` from the ICA proxy, then
 //! emits `CosmosMsg::Any` so wasmd runs protobuf `MsgExecuteContract` (circuits).
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    to_json_binary, AnyMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    AnyMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:polytone-any-proxy";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -167,7 +167,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{from_json, Addr};
+    use cosmwasm_std::{Addr, from_json};
 
     #[test]
     fn proto_execute_round_fields() {
@@ -194,9 +194,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             message_info(&owner, &[]),
-            InstantiateMsg {
-                unrestricted: None,
-            },
+            InstantiateMsg { unrestricted: None },
         )
         .unwrap();
 
@@ -226,19 +224,19 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             message_info(&owner, &[]),
-            InstantiateMsg {
-                unrestricted: None,
-            },
+            InstantiateMsg { unrestricted: None },
         )
         .unwrap();
-        let packet = wasm_execute_any("ica", "norick", br#"{"proove":{"cid":1,"forbidden":"rick","proof":"AA=="}}"#);
+        let packet = wasm_execute_any(
+            "ica",
+            "norick",
+            br#"{"proove":{"cid":1,"forbidden":"rick","proof":"AA=="}}"#,
+        );
         let resp = execute(
             deps.as_mut(),
             mock_env(),
             message_info(&owner, &[]),
-            ExecuteMsg::Dispatch {
-                msgs: vec![packet],
-            },
+            ExecuteMsg::Dispatch { msgs: vec![packet] },
         )
         .unwrap();
         assert_eq!(resp.messages.len(), 1);
@@ -256,9 +254,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             message_info(&owner, &[]),
-            InstantiateMsg {
-                unrestricted: None,
-            },
+            InstantiateMsg { unrestricted: None },
         )
         .unwrap();
         let bin = query(deps.as_ref(), mock_env(), QueryMsg::Instantiator {}).unwrap();
