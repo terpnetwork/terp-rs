@@ -591,7 +591,7 @@
                 "version": "ics20-1"
               }
             ],
-            "client_status": "Active"
+            "client_status": "Expired"
           },
           "terp_channel_id": "channel-9"
         },
@@ -697,7 +697,7 @@
                 "version": "ics20-1"
               }
             ],
-            "client_status": "Active"
+            "client_status": "Expired"
           },
           "terp_channel_id": "channel-10"
         },
@@ -1092,7 +1092,7 @@
                 "version": "ics20-1"
               }
             ],
-            "client_status": "Active"
+            "client_status": "Expired"
           },
           "terp_channel_id": "channel-11"
         }
@@ -1226,7 +1226,7 @@
             "version": "ics20-1"
           }
         ],
-        "client_status": "Active"
+        "client_status": "Expired"
       },
       "atomone": {
         "$schema": "../ibc_data.schema.json",
@@ -1260,7 +1260,7 @@
             "version": "ics20-1"
           }
         ],
-        "client_status": "Active"
+        "client_status": "Expired"
       },
       "osmosis": {
         "$schema": "../ibc_data.schema.json",
@@ -1310,7 +1310,7 @@
             "version": "ics20-1"
           }
         ],
-        "client_status": "Active"
+        "client_status": "Expired"
       },
       "evmos": {
         "$schema": "../ibc_data.schema.json",
@@ -1409,7 +1409,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Expired"
       },
       "omniflix": {
         "$schema": "../ibc_data.schema.json",
@@ -1491,7 +1492,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Expired"
       },
       "stargaze": {
         "$schema": "../ibc_data.schema.json",
@@ -1526,6 +1528,64 @@
           }
         ]
       }
+    },
+    "ibc_denoms": {
+      "as_of": "2026-10-08",
+      "hash": "ibc/ + uppercase SHA-256 of the one-hop trace path",
+      "note": "One-hop ICS-20 denoms for the open morocco-1 transfer channels. Hermes polls morocco-1 at http://127.0.0.1:26657/block_results and relays transfer/channel-0 (Juno), channel-7 and channel-8 (Secret), plus channel-9, channel-10, and channel-11. The clients on these channels are Expired. Stargaze, Evmos, and OmniFlix are halted, so those denoms are recorded and not relayed. No new AtomOne or Penumbra client has been created. Temporary mint denoms, including Osmosis-routed UM, ETH, ZEC, and BTC, are in temp_mint_denoms and do not replace this table. The daemon copy of this file is ~/.cw-orch/state.json.",
+      "on_terp": [
+        {"chain": "akash", "symbol": "AKT", "base": "uakt", "trace": "transfer/channel-9/uakt", "denom": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF", "client_id": "07-tendermint-32", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "akash", "symbol": "AKT", "base": "uakt", "trace": "transfer/channel-6/uakt", "denom": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389", "client_id": "07-tendermint-25", "hermes_allow": false, "client_status": "Expired"},
+        {"chain": "osmosis", "symbol": "OSMO", "base": "uosmo", "trace": "transfer/channel-11/uosmo", "denom": "ibc/4646A60D9F2EC44B281852B38FE269E2D0870DA7A3BBD805DB5F9CD7AF0D6280", "client_id": "07-tendermint-33", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "osmosis", "symbol": "OSMO", "base": "uosmo", "trace": "transfer/channel-1/uosmo", "denom": "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B", "client_id": "07-tendermint-3", "hermes_allow": false, "client_status": "Expired"},
+        {"chain": "atomone", "symbol": "ATONE", "base": "uatone", "trace": "transfer/channel-10/uatone", "denom": "ibc/AF34593540E81B06145CD80BDBB2149BE068A9B495086284DFD0FB3017AB5254", "client_id": "07-tendermint-34", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "juno", "symbol": "JUNO", "base": "ujuno", "trace": "transfer/channel-0/ujuno", "denom": "ibc/04F5F501207C3626A2C14BFEF654D51C2E0B8F7CA578AB8ED272A66FE4E48097", "client_id": "07-tendermint-2", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "secret", "symbol": "SCRT", "base": "uscrt", "trace": "transfer/channel-7/uscrt", "denom": "ibc/7AFA98F39ADA06C3E6C1A552EDAB5E81D2E9B99C637D0C6A806D3BE32904F369", "client_id": "07-tendermint-28", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "secret", "symbol": "SCRT", "base": "uscrt", "trace": "transfer/channel-8/uscrt", "denom": "ibc/2D47E29F57D254F8A21B8F6B1BC2198AE54EE44DF680CB3A74EC6B1A2B4B0809", "client_id": "07-tendermint-31", "hermes_allow": true, "client_status": "Expired"},
+        {"chain": "gitopia", "symbol": "LORE", "base": "ulore", "trace": "transfer/channel-4/ulore", "denom": "ibc/FDAB2B35641FE7010DEAFCEE7992C2D8AADDA86A13F30C4D38813BDD18E75DA3", "client_id": "07-tendermint-16", "hermes_allow": false, "client_status": "Expired"},
+        {"chain": "stargaze", "symbol": "STARS", "base": "ustars", "trace": "transfer/channel-2/ustars", "denom": "ibc/C6469BA9DC791E65B3C1596CD2005941324C00659E2DF90D5E08D86B82E7E08B", "client_id": "07-tendermint-13", "hermes_allow": false, "client_status": "Expired", "halted": true},
+        {"chain": "omniflix", "symbol": "FLIX", "base": "uflix", "trace": "transfer/channel-3/uflix", "denom": "ibc/CD5AED12FB7802B1DEE669C5080F795A74FFE3B3AD02A53804187C7F11676816", "client_id": "07-tendermint-15", "hermes_allow": false, "client_status": "Expired", "halted": true},
+        {"chain": "evmos", "symbol": "EVMOS", "base": "aevmos", "trace": "transfer/channel-5/aevmos", "denom": "ibc/B249D1E86F588286FEA286AA8364FFCE69EC65604BD7869D824ADE40F00FA25B", "client_id": "07-tendermint-23", "hermes_allow": false, "client_status": "Expired", "halted": true}
+      ],
+      "terp_on_counterparty": [
+        {"chain": "akash", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-139/uterp", "denom": "ibc/25026C21BD8A1BE658581553FAC5844F344270EFFCC59B673584D6C445006C0B", "hermes_allow": true},
+        {"chain": "akash", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-139/uthiol", "denom": "ibc/EA1305661ED048B1FD81E326E4C65D12A4333D3D4709F6CCB8A09E82AD968584", "hermes_allow": true},
+        {"chain": "akash", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-115/uterp", "denom": "ibc/C716B1F3652237C4B4AA7D600FD841B8C160AE10982D4BD8126125F54303DEA9", "hermes_allow": false},
+        {"chain": "akash", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-115/uthiol", "denom": "ibc/518135424C702F65319C4A5DC1102D868BFDB62CEE78648E51B4712A3D4A7296", "hermes_allow": false},
+        {"chain": "osmosis", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-110258/uterp", "denom": "ibc/448408EAC3AEDE3F1EC2261D72B8BAF323098D8489AC033DB614C4BAF221F598", "hermes_allow": true},
+        {"chain": "osmosis", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-110258/uthiol", "denom": "ibc/F31D4D773FB7A38971C0C7E99B813F8AD34156D366A40570B558C44BB910BE93", "hermes_allow": true},
+        {"chain": "osmosis", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-6738/uterp", "denom": "ibc/E55272EEA953113178D0EB241B65C2837BA251F01E8DC13C4B8613BD2854C69F", "hermes_allow": false},
+        {"chain": "osmosis", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-6738/uthiol", "denom": "ibc/9624E0ABDCA8AF05D05C5CB37326897E4379B030D172E53D5378325925A84D27", "hermes_allow": false},
+        {"chain": "atomone", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-13/uterp", "denom": "ibc/65F0CFBA8C3A907DFED26BF41AEDA7935166347BDA64E7D2F8F56F4518BBB523", "hermes_allow": true},
+        {"chain": "atomone", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-13/uthiol", "denom": "ibc/4E87F0043C9E3CBF85BEC7104B35E3E6FD9974C9086092921D08E7BC8695B601", "hermes_allow": true},
+        {"chain": "juno", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-393/uterp", "denom": "ibc/2578547913C40B0DEBAB7E458F191491DE6288A01E1000E9BAE34103DEB189D3", "hermes_allow": true},
+        {"chain": "juno", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-393/uthiol", "denom": "ibc/055F223602B754BF34FE269B729837A02BDF79E069F2387AEEA9CD28DE961BE7", "hermes_allow": true},
+        {"chain": "secret", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-100/uterp", "denom": "ibc/7EC6ECD828BABB512D46F6DB8B95E1082F3546EA83D7F10B66B56E6CC4A9BAFC", "hermes_allow": true},
+        {"chain": "secret", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-100/uthiol", "denom": "ibc/C7064921E583E2DE58BC62E95D7FF11997E9FC8460CF4DA00F925CED40621931", "hermes_allow": true},
+        {"chain": "secret", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-165/uterp", "denom": "ibc/AF840D44CC92103AD006850542368B888D29C4D4FFE24086E767F161FBDDCE76", "hermes_allow": true},
+        {"chain": "secret", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-165/uthiol", "denom": "ibc/7477828AC3E19352BA2D63352EA6D0680E3F29C126B87ACBDC27858CF7AF3A64", "hermes_allow": true},
+        {"chain": "gitopia", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-1/uterp", "denom": "ibc/4AEA7A5C89B744156996AEE30DAB3CCDCD7039A5625D89C8B7178E6D4C068D57", "hermes_allow": false},
+        {"chain": "gitopia", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-1/uthiol", "denom": "ibc/869FC01C559DDC2DC2CD241FBF99115CA60FE7AFC7C56EF0B382CA7B0E1CB5B1", "hermes_allow": false},
+        {"chain": "stargaze", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-235/uterp", "denom": "ibc/E552E64943BD9869EDC59C456AC8E6DBD56150EFE887E7EF0BC27DFBB78A4004", "hermes_allow": false, "halted": true},
+        {"chain": "stargaze", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-235/uthiol", "denom": "ibc/A33D9BB00512256156879103BA1426EF39236C9CCB1415C5AD35B5B740D53E72", "hermes_allow": false, "halted": true},
+        {"chain": "omniflix", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-33/uterp", "denom": "ibc/159F6BA84F3EA775A015C81E8B0A7C66E38AAFF75F7407DC654F0C365CDF722E", "hermes_allow": false, "halted": true},
+        {"chain": "omniflix", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-33/uthiol", "denom": "ibc/0EC361789CFCD850904998126FF47D6AB5D16C3B1ADDFCB4C3C89B2BDBF0B4EE", "hermes_allow": false, "halted": true},
+        {"chain": "evmos", "symbol": "TERP", "base": "uterp", "trace": "transfer/channel-101/uterp", "denom": "ibc/3A61569885ED9FA1B7076AB1773CD91FB8EBF88DDC20CF553543CACABBB3EF54", "hermes_allow": false, "halted": true},
+        {"chain": "evmos", "symbol": "THIOL", "base": "uthiol", "trace": "transfer/channel-101/uthiol", "denom": "ibc/9EF5C9E824DB3E21009D52B70EDA142B0679AA8D03584224C6E41CEE3D1DEA2F", "hermes_allow": false, "halted": true}
+      ]
+    },
+    "temp_mint_denoms": {
+      "as_of": "2026-10-08",
+      "role": "Temporary accepted options for shitstrap and svg mints while the older canonical channels are reopened. These rows extend on_terp. They do not replace it.",
+      "hash": "ibc/ + uppercase SHA-256 of the full trace",
+      "assets": [
+        {"symbol": "AKT", "temporary": true, "base": "uakt", "trace": "transfer/channel-9/uakt", "denom": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF", "client_id": "07-tendermint-32", "connection_id": "connection-11", "terp_channel_id": "channel-9", "counterparty_channel_id": "channel-139", "canonical_trace": "transfer/channel-6/uakt", "canonical_denom": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389", "canonical_client_id": "07-tendermint-25", "client_status": "Expired", "hop_count": 1},
+        {"symbol": "OSMO", "temporary": true, "base": "uosmo", "trace": "transfer/channel-11/uosmo", "denom": "ibc/4646A60D9F2EC44B281852B38FE269E2D0870DA7A3BBD805DB5F9CD7AF0D6280", "client_id": "07-tendermint-33", "connection_id": "connection-13", "terp_channel_id": "channel-11", "counterparty_channel_id": "channel-110258", "canonical_trace": "transfer/channel-1/uosmo", "canonical_denom": "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B", "canonical_client_id": "07-tendermint-3", "client_status": "Expired", "hop_count": 1},
+        {"symbol": "UM", "temporary": true, "base": "upenumbra", "trace": "transfer/channel-11/transfer/channel-79703/upenumbra", "denom": "ibc/6B32258CACFCBB5486A47CB1EAF4B6F5AD76C9E372E5F3CB08B3D1C606F9F39E", "osmosis_trace": "transfer/channel-79703/upenumbra", "osmosis_denom": "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372", "client_id": "07-tendermint-33", "connection_id": "connection-13", "terp_channel_id": "channel-11", "counterparty_channel_id": "channel-110258", "penumbra_channel_id": "channel-4", "canonical_trace": null, "client_status": "Expired", "hop_count": 2, "note": "No Penumbra client on morocco-1. UM is identified on the existing Osmosis channel."},
+        {"symbol": "ETH", "temporary": true, "base": "factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH", "trace": "transfer/channel-11/factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH", "denom": "ibc/0F92AF0DAD1FA5CBC4D8FDF9F5BF9F7F5BE36DF268B1E115DB82E1A71BE9CB31", "client_id": "07-tendermint-33", "connection_id": "connection-13", "terp_channel_id": "channel-11", "counterparty_channel_id": "channel-110258", "canonical_trace": "transfer/channel-1/factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH", "canonical_denom": "ibc/D7B7D0835B5CAACA52109939CEB064D81EBC098B4E2C3FD71106FEFFC06CC308", "canonical_client_id": "07-tendermint-3", "client_status": "Expired", "hop_count": 1},
+        {"symbol": "ZEC", "temporary": true, "base": "factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC", "trace": "transfer/channel-11/factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC", "denom": "ibc/BC072FE6C12FD02688EA5DE89857BB269584E6DD378170080C3E1463825B9F81", "client_id": "07-tendermint-33", "connection_id": "connection-13", "terp_channel_id": "channel-11", "counterparty_channel_id": "channel-110258", "canonical_trace": "transfer/channel-1/factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC", "canonical_denom": "ibc/910DBA7D901A0A4985457CFF8C0C54BF7DE14D59B9A91D3FF1E926906C5B1DF1", "canonical_client_id": "07-tendermint-3", "client_status": "Expired", "hop_count": 1},
+        {"symbol": "BTC", "temporary": true, "base": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC", "trace": "transfer/channel-11/factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC", "denom": "ibc/9FC418778218616ADEC741B8E402C856EBF2AADAD93A8D7EA322F798480F641C", "client_id": "07-tendermint-33", "connection_id": "connection-13", "terp_channel_id": "channel-11", "counterparty_channel_id": "channel-110258", "canonical_trace": "transfer/channel-1/factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC", "canonical_denom": "ibc/2E13104D0924DDB574E98CF01E1FD2D8913779BCB5B514B6468C6EC6037A15DC", "canonical_client_id": "07-tendermint-3", "client_status": "Expired", "hop_count": 1}
+      ]
     },
     "installers": {
       "get/terp-installer.py": "26ae711cdcc64ef86bfbbc19734de5ffab026f321d75ce6fd9cc10b39a2f4105",
