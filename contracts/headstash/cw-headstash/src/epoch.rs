@@ -488,10 +488,20 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
         return Err(StdError::msg(format!("unexpected algo {}", payload.algo)));
     }
     let root = decode_root(&payload.root)?;
-    EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
-    EPOCH_HEIGHTS.save(deps.storage, payload.algo.as_str(), &payload.height)?;
-    if payload.algo == ALGO_ACCEPTED {
-        record_attested_vk(deps.storage, &payload.oracle_sources)?;
+    // An accepted seal with no rows still has a root. Writing it before
+    // settle replaces a root the owner can stage against, and settle then
+    // mints 0. Keep the stored root, its height, and the attested vk.
+    let keep_existing = payload.algo == ALGO_ACCEPTED
+        && EPOCH_ROOTS
+            .may_load(deps.storage, ALGO_ACCEPTED)?
+            .is_some()
+        && accepted_seal_has_no_payable_rows(deps.storage, &payload.oracle_sources)?;
+    if !keep_existing {
+        EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
+        EPOCH_HEIGHTS.save(deps.storage, payload.algo.as_str(), &payload.height)?;
+        if payload.algo == ALGO_ACCEPTED {
+            record_attested_vk(deps.storage, &payload.oracle_sources)?;
+        }
     }
     let (paid, n) = if payload.algo == ALGO_ACCEPTED {
         settle(deps, env, &payload.oracle_sources)?
@@ -983,6 +993,37 @@ fn require_32<'a>(bytes: &'a Binary, name: &str) -> StdResult<&'a [u8]> {
         return Err(StdError::msg(format!("{name} must be 32 bytes")));
     }
     Ok(bytes.as_slice())
+}
+
+/// True when the headstash-batch attestation is the zero-row accepted preimage.
+/// The value is the batch hash, or that hash followed by the vk hash.
+/// Campaigns that are not set, and attestations that are not that value,
+/// stay on the ordinary store path.
+fn accepted_seal_has_no_payable_rows(
+    storage: &dyn Storage,
+    oracle: &[OracleHint],
+) -> StdResult<bool> {
+    let Some(campaign) = EPOCH_CAMPAIGN.may_load(storage)? else {
+        return Ok(false);
+    };
+    let Some(hint) = oracle
+        .iter()
+        .find(|hint| hint.source_id == BATCH_SOURCE_ID)
+    else {
+        return Ok(false);
+    };
+    let Ok(bytes) = Binary::from_base64(&hint.value) else {
+        return Ok(false);
+    };
+    if bytes.len() != 32 && bytes.len() != 64 {
+        return Ok(false);
+    }
+    let empty = accepted_batch(
+        campaign.allocation_root.as_slice(),
+        &[],
+        campaign.registration.is_some(),
+    )?;
+    Ok(bytes[..32] == empty)
 }
 
 fn record_attested_vk(storage: &mut dyn Storage, oracle: &[OracleHint]) -> StdResult<()> {
@@ -1647,6 +1688,97 @@ mod tests {
                 .value,
             "1"
         );
+    }
+
+    #[test]
+    fn empty_accepted_seal_keeps_a_stored_epoch_root() {
+        let (mut deps, env, allocation) = setup();
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
+        let mut params = campaign(&allocation);
+        params.backend = "halo2".into();
+        params.vk_id = 2;
+        params.vk_hash = Binary::from([9u8; 32].to_vec());
+        params.registration = Some(crate::registration::RegistrationConfig {
+            eligibility_root: Binary::from([4u8; 32].to_vec()),
+            eligibility_depth: 1,
+            min_anonymity_set: 1,
+            anchor_start_height: 1,
+            anchor_interval: 1,
+        });
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap();
+
+        let empty_hash = accepted_batch(allocation.as_slice(), &[], true).unwrap();
+        let empty_attested = stored_root_for(&empty_hash, &[9u8; 32]);
+        let mut empty_value = empty_hash.to_vec();
+        empty_value.extend_from_slice(&[9u8; 32]);
+        let stored_empty = sudo(
+            deps.as_mut(),
+            &env,
+            accepted_sudo(&empty_attested, &empty_value, 11),
+        )
+        .unwrap();
+        assert_eq!(minted_of(&stored_empty), "0");
+        let empty_root = query_root(deps.as_ref().storage, ALGO_ACCEPTED.into()).unwrap();
+        assert_eq!(empty_root.root.as_slice(), empty_attested.as_slice());
+        assert_eq!(empty_root.height, 11);
+
+        let dest = deps.api.addr_make("dest").to_string();
+        let mut payout = row(1, &dest, 15, denom());
+        payout.anchor = Binary::from([3u8; 32].to_vec());
+        let hash = accepted_batch(allocation.as_slice(), &[payout], true).unwrap();
+        assert_ne!(hash, empty_hash);
+        let attested = stored_root_for(&hash, &[9u8; 32]);
+        let mut value = hash.to_vec();
+        value.extend_from_slice(&[9u8; 32]);
+        let stored_pay = sudo(deps.as_mut(), &env, accepted_sudo(&attested, &value, 20)).unwrap();
+        assert_eq!(minted_of(&stored_pay), "0");
+        let paid_root = query_root(deps.as_ref().storage, ALGO_ACCEPTED.into()).unwrap();
+        assert_eq!(paid_root.root.as_slice(), attested.as_slice());
+        assert_eq!(paid_root.height, 20);
+
+        let kept = sudo(
+            deps.as_mut(),
+            &env,
+            accepted_sudo(&empty_attested, &empty_value, 50),
+        )
+        .unwrap();
+        assert_eq!(minted_of(&kept), "0");
+        let still = query_root(deps.as_ref().storage, ALGO_ACCEPTED.into()).unwrap();
+        assert_eq!(still.root.as_slice(), attested.as_slice());
+        assert_eq!(still.height, 20);
+    }
+
+    fn accepted_sudo(root: &[u8; 32], value: &[u8], height: u64) -> HashMerchantSudoMsg {
+        HashMerchantSudoMsg {
+            hash_merchant: HashMerchantSudoPayload {
+                chain_uid: CHAIN_UID.into(),
+                algo: ALGO_ACCEPTED.into(),
+                height,
+                root: root_b64(root),
+                attestation_count: 1,
+                block_time: 1,
+                oracle_sources: vec![OracleHint {
+                    source_id: BATCH_SOURCE_ID.into(),
+                    value: Binary::from(value.to_vec()).to_base64(),
+                    height: 1,
+                }],
+            },
+        }
+    }
+
+    fn minted_of(res: &Response) -> &str {
+        &res.attributes
+            .iter()
+            .find(|attr| attr.key == "minted")
+            .unwrap()
+            .value
     }
 
     #[test]
