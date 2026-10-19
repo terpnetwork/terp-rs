@@ -27,7 +27,8 @@ use sha2::{Digest, Sha256};
 use wasmer::{imports, FunctionEnv, FunctionEnvMut, Instance, Module, Store, Value};
 
 use headstash_epoch::{
-    epoch_circuit_blob, epoch_vk_hash, install_halo2_host, Halo2Host, HostVerifyError, EPOCH_VK_ID,
+    epoch_circuit_blob, epoch_vk_hash, install_halo2_host, membership_circuit_blob, Halo2Host,
+    HostVerifyError, EPOCH_VK_ID, MEMBERSHIP_VK_ID,
 };
 
 /// Refill before each claim. An epoch proof is about 5.7e9 gas.
@@ -226,14 +227,28 @@ impl Halo2Host for VmVerifier {
     }
 }
 
-/// Build the epoch blob, cache it under [`EPOCH_VK_ID`], and install the host.
+/// Whole-blob SHA-256 of the locked K=11 membership key. `membership_vk_hash`
+/// rebuilds that blob, so startup compares the registered bytes to this digest.
+const MEMBERSHIP_BLOB_HASH: [u8; 32] = [
+    0x94, 0xd4, 0x32, 0x61, 0x08, 0xe2, 0x84, 0x51, 0x82, 0x9b, 0x68, 0xd6, 0x4d, 0xf5, 0x8c, 0xf9,
+    0x75, 0xfa, 0xfd, 0xb8, 0x74, 0xa5, 0xa5, 0x54, 0xf3, 0xcb, 0xe8, 0x93, 0x1e, 0xef, 0xed, 0x11,
+];
+
+/// Cache vk id 1 and vk id 2, then install the host. Returns the epoch blob hash.
 pub fn install_epoch_host() -> Result<[u8; 32], String> {
     if let Some(hash) = headstash_epoch::halo2_vk_hash(EPOCH_VK_ID) {
+        if headstash_epoch::halo2_vk_hash(MEMBERSHIP_VK_ID).is_none() {
+            return Err("vk id".into());
+        }
         return Ok(hash);
     }
     let vm = VmVerifier::open()?;
     let hash = vm.register(EPOCH_VK_ID, epoch_circuit_blob())?;
     if hash != epoch_vk_hash() {
+        return Err("vk hash".into());
+    }
+    let membership = vm.register(MEMBERSHIP_VK_ID, &membership_circuit_blob()?)?;
+    if membership != MEMBERSHIP_BLOB_HASH {
         return Err("vk hash".into());
     }
     install_halo2_host(Arc::new(vm));

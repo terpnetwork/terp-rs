@@ -17,7 +17,9 @@ pub use zk_headstash::circuit::{
     prove_epoch_claim, EpochClaimBundle,
 };
 pub use zk_headstash::toy_host::{toy_vk_proof, toy_vk_proof_offset};
-pub use zk_headstash::no_ecdsa::{membership_host_proof, membership_vk_hash, MEMBERSHIP_VK_ID};
+pub use zk_headstash::no_ecdsa::{
+    membership_circuit_blob, membership_host_proof, membership_vk_hash, MEMBERSHIP_VK_ID,
+};
 
 /// Campaign id of the epoch circuit blob. Not the Pasta curve id.
 pub const EPOCH_VK_ID: u64 = 1;
