@@ -308,6 +308,12 @@ pub fn anchor_known(storage: &dyn Storage, anchor: &[u8]) -> StdResult<bool> {
     Ok(anchors.iter().any(|item| item.root.as_slice() == anchor))
 }
 
+pub(crate) fn has_accepted_anchor(storage: &dyn Storage) -> StdResult<bool> {
+    Ok(ANCHORS
+        .may_load(storage)?
+        .is_some_and(|anchors| !anchors.is_empty()))
+}
+
 pub fn batch_already_paid(storage: &dyn Storage, attested: &[u8]) -> StdResult<bool> {
     Ok(PAID_BATCH
         .may_load(storage, hex::encode(attested).as_str())?
@@ -463,6 +469,7 @@ fn sha256(bytes: &[u8]) -> [u8; 32] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::distro::{self, NEXT_ROOT_ID};
     use crate::epoch::{
         attested_root, root_b64, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload,
         OracleHint, ALGO_ACCEPTED, BATCH_SOURCE_ID, CHAIN_UID,
@@ -587,6 +594,55 @@ mod tests {
                 anchor_interval: 1,
             }),
         }
+    }
+
+    #[test]
+    fn campaign_creation_uses_an_accepted_anchor_and_refuses_a_stranger() {
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let eligibility = [4u8; 32];
+        let (mut deps, env) = setup();
+        let anchor = Binary::from([0x11u8; 32].to_vec());
+        ANCHORS
+            .save(
+                deps.as_mut().storage,
+                &vec![AcceptedAnchor {
+                    root: anchor.clone(),
+                    leaf_count: 1,
+                }],
+            )
+            .unwrap();
+        let creator = deps.api.addr_make("creator");
+        let mut stranger = campaign_with(&ctx, eligibility, 1);
+        stranger.allocation_root = Binary::from([0x22u8; 32].to_vec());
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: stranger },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("anchor"));
+        assert!(distro::require_root(deps.as_ref().storage, 0)
+            .unwrap()
+            .root
+            .as_slice()
+            .iter()
+            .all(|byte| *byte == 0));
+
+        let mut params = campaign_with(&ctx, eligibility, 1);
+        params.allocation_root = anchor.clone();
+        execute(
+            deps.as_mut(),
+            env,
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap();
+        assert_eq!(
+            distro::require_root(deps.as_ref().storage, 0).unwrap().root,
+            anchor
+        );
+        assert_eq!(NEXT_ROOT_ID.load(deps.as_ref().storage).unwrap(), 1);
     }
 
     fn install(deps: DepsMut, env: &cosmwasm_std::Env, params: EpochCampaignParams) {

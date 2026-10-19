@@ -276,16 +276,10 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, StdError> {
-    let root = epoch::replacement_for_zero_genesis(deps.storage)?;
-    distro::replace_genesis_root(deps.storage, root.clone())?;
-    let mut cfg = HEADSTASH_CFG.load(deps.storage)?;
-    cfg.gr = root.clone();
-    HEADSTASH_CFG.save(deps.storage, &cfg)?;
-    GENESIS_TREE_ROOT.save(deps.storage, &root)?;
-    Ok(Response::new()
-        .add_attribute("action", "migrate_zero_genesis")
-        .add_attribute("root_id", "0"))
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, StdError> {
+    // Campaign creation binds the eligibility root. A code upgrade must not
+    // copy one on afterwards.
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]

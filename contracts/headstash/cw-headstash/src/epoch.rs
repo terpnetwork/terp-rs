@@ -133,6 +133,7 @@ pub fn set_campaign(
     {
         return Err(StdError::msg("campaign is already staged"));
     }
+    bind_campaign_eligibility(deps.storage, &campaign)?;
     EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
     if let Some(cfg) = campaign.registration.as_ref() {
         crate::registration::prepare_window(deps.storage, cfg)?;
@@ -143,28 +144,40 @@ pub fn set_campaign(
         .add_attribute("cutoff", campaign.cutoff_height.to_string()))
 }
 
-/// Allocation root to copy onto a still-zero genesis eligibility root.
-/// Writes nothing. The campaign must already point at root id 0, and that
-/// allocation root must already be a known registration anchor.
-pub fn replacement_for_zero_genesis(storage: &dyn Storage) -> StdResult<Binary> {
-    let campaign = EPOCH_CAMPAIGN
-        .may_load(storage)?
-        .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+/// Write the campaign allocation root into the eligibility registry in this
+/// call. A zero genesis root is filled from the campaign message, or from an
+/// accepted anchor when that history already exists. Migrate does not copy it.
+fn bind_campaign_eligibility(
+    storage: &mut dyn Storage,
+    campaign: &EpochCampaignParams,
+) -> StdResult<()> {
     if campaign.root_id != distro::GENESIS_ROOT_ID {
-        return Err(StdError::msg("campaign root id"));
-    }
-    let root = campaign.allocation_root;
-    if root.len() != 32 || root.as_slice().iter().all(|byte| *byte == 0) {
-        return Err(StdError::msg("allocation root"));
-    }
-    if !crate::registration::anchor_known(storage, root.as_slice())? {
-        return Err(StdError::msg("anchor"));
+        let entry = distro::require_root(storage, campaign.root_id)?;
+        if entry.root.as_slice() != campaign.allocation_root.as_slice() {
+            return Err(StdError::msg("allocation root"));
+        }
+        return Ok(());
     }
     let genesis = distro::require_root(storage, distro::GENESIS_ROOT_ID)?;
+    if genesis.root.as_slice() == campaign.allocation_root.as_slice() {
+        return Ok(());
+    }
     if genesis.root.as_slice().iter().any(|byte| *byte != 0) {
         return Err(StdError::msg("genesis root is already set"));
     }
-    Ok(root)
+    if campaign.registration.is_some()
+        && crate::registration::has_accepted_anchor(storage)?
+        && !crate::registration::anchor_known(storage, campaign.allocation_root.as_slice())?
+    {
+        return Err(StdError::msg("anchor"));
+    }
+    let root = campaign.allocation_root.clone();
+    distro::replace_genesis_root(storage, root.clone())?;
+    let mut cfg = HEADSTASH_CFG.load(storage)?;
+    cfg.gr = root.clone();
+    HEADSTASH_CFG.save(storage, &cfg)?;
+    crate::GENESIS_TREE_ROOT.save(storage, &root)?;
+    Ok(())
 }
 
 /// Owner sends the campaign denom balance to the recipient stored on the
@@ -1057,12 +1070,12 @@ pub fn root_b64(root: &[u8; 32]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::msg::{ExecuteMsg, InstantiateMsg};
+    use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg};
     use crate::tokenfactory::{
         derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig,
     };
     use crate::wavs::generate_test_wavs_proof;
-    use crate::{execute, instantiate, query};
+    use crate::{execute, instantiate, migrate, query};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::{coins, Addr, CosmosMsg, Empty, OwnedDeps, Uint256};
     use cw_multi_test::{App, BankSudo, ContractWrapper, Executor, SudoMsg};
@@ -1737,6 +1750,71 @@ mod tests {
             sweep_recipient: String::new(),
             registration: None,
         }
+    }
+
+    #[test]
+    fn set_campaign_binds_a_zero_genesis_root_and_migrate_leaves_it() {
+        let (mut deps, env, _zero) = setup();
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
+        let allocation = Binary::from([0x11u8; 32].to_vec());
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign {
+                campaign: campaign(&allocation),
+            },
+        )
+        .unwrap();
+        let entry = distro::require_root(deps.as_ref().storage, distro::GENESIS_ROOT_ID).unwrap();
+        assert_eq!(entry.root, allocation);
+        assert_eq!(entry.label, None);
+        assert_eq!(distro::NEXT_ROOT_ID.load(deps.as_ref().storage).unwrap(), 1);
+        assert_eq!(
+            HEADSTASH_CFG.load(deps.as_ref().storage).unwrap().gr,
+            allocation
+        );
+        assert_eq!(
+            crate::GENESIS_TREE_ROOT
+                .load(deps.as_ref().storage)
+                .unwrap(),
+            allocation
+        );
+
+        let migrated = migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap();
+        assert_eq!(
+            migrated
+                .attributes
+                .iter()
+                .find(|attr| attr.key == "action")
+                .unwrap()
+                .value,
+            "migrate"
+        );
+        assert_eq!(
+            distro::require_root(deps.as_ref().storage, distro::GENESIS_ROOT_ID)
+                .unwrap()
+                .root,
+            allocation
+        );
+
+        let err = execute(
+            deps.as_mut(),
+            env,
+            info,
+            ExecuteMsg::SetEpochCampaign {
+                campaign: campaign(&Binary::from([0x22u8; 32].to_vec())),
+            },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("already set"));
+        assert_eq!(
+            distro::require_root(deps.as_ref().storage, distro::GENESIS_ROOT_ID)
+                .unwrap()
+                .root,
+            allocation
+        );
     }
 
     #[test]
