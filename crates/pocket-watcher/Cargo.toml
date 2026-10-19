@@ -1,7 +1,7 @@
 [package]
 name = "pocket-watcher"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Generic pagination helpers for gRPC/Stargate module queries (bank, staking, etc.) — drop-in replacement for removed BankQuery::AllBalances in cosmwasm-std v3"
 license = "Apache-2.0"
 

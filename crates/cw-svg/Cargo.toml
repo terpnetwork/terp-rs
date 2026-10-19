@@ -3,7 +3,7 @@ name = "cw-svg"
 authors = ["hard-nett <hardnettt@proton.me>"]
 description = "Helper library for building SVG NFT collection instantiation payloads."
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["rlib"]
@@ -12,5 +12,5 @@ crate-type = ["rlib"]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["zk"] }
 sha2 = { workspace = true }
-thiserror = { workspace = true }
 terp-account = { workspace = true, features = ["full"] }
+thiserror = { workspace = true }

@@ -20,25 +20,31 @@ traits-only = []
 market-hooks = []
 manifold = []
 # Full NFT/account-token surface (requires cw721 stack)
-full = ["dep:cw721", "dep:bech32", "dep:cw-ownable", "dep:cw-controllers", "dep:ripemd"]
+full = [
+    "dep:cw721",
+    "dep:bech32",
+    "dep:cw-ownable",
+    "dep:cw-controllers",
+    "dep:ripemd",
+]
 abstract = ["full", "dep:abstract-std"]
 interface = ["dep:cw-orch"]
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["zk"] }
+abstract-std = { workspace = true, optional = true }
+bech32 = { workspace = true, optional = true, features = ["alloc"] }
 cosmwasm-schema = { workspace = true }
-terp-auth = { workspace = true }
-sha2 = { workspace = true }
-serde = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-controllers = { workspace = true, optional = true }
 
 # Optional heavy deps for full marketplace package
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true, optional = true }
-abstract-std = { workspace = true, optional = true }
 cw721 = { workspace = true, optional = true }
-bech32 = { workspace = true, optional = true, features = ["alloc"] }
-cw-controllers = { workspace = true, optional = true }
 ripemd = { workspace = true, optional = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+terp-auth = { workspace = true }
 
 [dev-dependencies]
 # Host tests verify secp256k1. The guest uses Api::secp256k1_verify.

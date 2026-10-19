@@ -1,7 +1,7 @@
 [package]
 name = "cw-svg-pack"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "SVP1 compact SVG template codec (deterministic decoder for cw721-svg)"
 
 [dependencies]

@@ -1,12 +1,17 @@
 [package]
 name = "terp-seams"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Unified L0 seams: private DEX, bridge mint, Cash App→ZEC corridor, compose glue, domain tags"
 publish = false
 
 [lib]
 path = "src/lib.rs"
+
+[[bin]]
+name = "headstash-notes"
+path = "src/bin/headstash_notes.rs"
+required-features = ["cli"]
 
 [features]
 default = ["dex", "bridge", "corridor", "compose"]
@@ -18,18 +23,13 @@ http = ["dep:reqwest"]
 auth = ["dep:k256"]
 cli = ["http", "auth", "dep:clap"]
 
-[[bin]]
-name = "headstash-notes"
-path = "src/bin/headstash_notes.rs"
-required-features = ["cli"]
-
 [dependencies]
-sha2 = { workspace = true, features = ["std"] }
 chacha20poly1305 = { workspace = true }
-rand_core06 = { workspace = true, features = ["getrandom"] }
+clap = { workspace = true, optional = true, features = ["derive", "env"] }
 hex = { workspace = true, features = ["std"] }
+k256 = { workspace = true, optional = true, features = ["arithmetic", "ecdsa", "pkcs8", "precomputed-tables", "schnorr", "std", "sha256"] }
+rand_core06 = { workspace = true, features = ["getrandom"] }
+reqwest = { workspace = true, optional = true, features = ["blocking", "json", "rustls-tls"] }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
-reqwest = { workspace = true, optional = true, features = ["blocking", "json", "rustls-tls"] }
-k256 = { workspace = true, optional = true, features = ["arithmetic", "ecdsa", "pkcs8", "precomputed-tables", "schnorr", "std", "sha256"] }
-clap = { workspace = true, optional = true, features = ["derive", "env"] }
+sha2 = { workspace = true, features = ["std"] }

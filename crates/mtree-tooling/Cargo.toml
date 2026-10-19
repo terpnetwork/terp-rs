@@ -1,7 +1,7 @@
 [package]
 name = "mtree-tooling"
 repository.workspace = true
-edition = "2021"
+edition = "2024"
 homepage.workspace = true
 version.workspace = true
 authors.workspace = true

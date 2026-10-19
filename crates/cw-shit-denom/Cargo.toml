@@ -6,12 +6,12 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
-cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-schema = { workspace = true }
-
-thiserror = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
 cw20 = { workspace = true }
 
+thiserror = { workspace = true }
+
 [dev-dependencies]
-cw20-base = { workspace = true }
 cw-multi-test = { workspace = true, features = ["cosmwasm_3_0"] }
+cw20-base = { workspace = true }

@@ -3,7 +3,7 @@ name = "cw-infusions"
 authors.workspace = true
 description = "Rust definition of name service metadata, used by Bitsong Accounts."
 version.workspace = true 
-edition = "2021"
+edition = "2024"
 
 exclude = [
     # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.

@@ -3,20 +3,20 @@
 //! Bridge between Nostr NIP metadata and cw721 NFT extensions.
 //! Provides binary-encoded, schema-agnostic metadata storage with blanket trait implementations.
 
-use cosmwasm_std::{to_json_binary, Binary, StdError, StdResult};
+use cosmwasm_std::{Binary, StdError, StdResult, to_json_binary};
+use cw721::Attribute;
 use cw721::error::Cw721ContractError;
 use cw721::traits::{
     Contains, Cw721CustomMsg, Cw721State, FromAttributesState, StateFactory, ToAttributesState,
 };
-use cw721::Attribute;
-use schemars::gen::SchemaGenerator;
-use schemars::schema::{InstanceType, ObjectValidation, Schema, SchemaObject};
 use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use schemars::r#gen::SchemaGenerator;
+use schemars::schema::{InstanceType, ObjectValidation, Schema, SchemaObject};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
-use crate::{nips, NipKind, NipMetadata, RawNostrEvent};
+use crate::{NipKind, NipMetadata, RawNostrEvent, nips};
 
 /// Core trait for Nostr-compatible cw721 extensions.
 ///

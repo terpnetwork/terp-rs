@@ -34,10 +34,10 @@ pbjson-types = { workspace = true }
 # Runtime dependencies for the generated library types
 # ---------------------------------------------------------------------------
 prost = { workspace = true, features = ["std"] }
-serde = { workspace = true, features = ["std"] }
 
 # Optional: Python bindings (enabled with the `python` feature).
 pyo3 = { workspace = true, optional = true, features = ["extension-module"] }
+serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, optional = true, features = ["std"] }
 tonic = { workspace = true, optional = true }
 tonic-prost = { workspace = true, optional = true }
