@@ -481,10 +481,10 @@ mod tests {
     /// Test vector from NIP-19 spec:
     /// pubkey 3bf0c63f... → npub180cvv07...
     const TEST_NPUB_HEX: &str = "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d";
-    const TEST_NPUB_BECH32: &str = "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6";
+    // const TEST_NPUB_BECH32: &str = "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6";
 
     const TEST_NSEC_HEX: &str = "67dea2ed018072d675f5415ecfaed7d2597555e202d85b3d65ea4e58d2d92ffa";
-    const TEST_NSEC_BECH32: &str = "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5";
+    // const TEST_NSEC_BECH32: &str = "nsec1vl029mgpspedva04g90vltkh6fvh240zqtv9k0t9af8935ke9laqsnlfe5";
 
     #[test]
     fn test_bech32_roundtrip() {

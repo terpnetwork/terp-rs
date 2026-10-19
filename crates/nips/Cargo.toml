@@ -12,7 +12,7 @@ nip15 = []
 nip52 = []
 nip77 = []
 nip44 = [
-    "dep:rand_core",
+    "dep:rand_core06",
     "dep:hmac",
     "dep:hkdf",
     "dep:constant_time_eq",
@@ -21,6 +21,9 @@ nip44 = [
 ]
 cw = ["dep:cosmwasm-std", "dep:cw721"]
 full = ["cw", "nip01", "nip15", "nip52", "nip77"]
+# Opt-in Cashu NUT sketches. `nut02` remains a documented stub (no keyset crypto).
+nuts = ["nut02"]
+nut02 = []
 
 [dependencies]
 axum = { version = "0.7", default-features = false, features = ["json"] }
@@ -28,14 +31,14 @@ axum = { version = "0.7", default-features = false, features = ["json"] }
 base64 = { version = "0.22", optional = true }
 chacha20 = { version = "0.9", optional = true }
 constant_time_eq = { version = "0.3", optional = true }
-cosmwasm-std = { path = "../../../cosmwasm/packages/std", optional = true }
-cw721 = { path = "../../../cw-nfts/packages/cw721", optional = true }
-hex = "0.4"
+cosmwasm-std = { git = "https://github.com/permissionlessweb/cosmwasm", rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a", optional = true, default-features = false, features = ["exports", "iterator", "std", "zk"] }
+cw721 = { git = "https://github.com/permissionlessweb/cw-nfts", rev = "677860dc49599324bca781a569b973dcd6d85a12", optional = true }
+hex = { version = "0.4", default-features = false, features = ["std"] }
 hkdf = { version = "0.12", optional = true }
 hmac = { version = "0.12", optional = true }
-rand_core = { version = "0.6", features = ["getrandom"], optional = true }
-schemars = "0.8.22"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha2 = "0.11.0-pre.4"
-thiserror = "1.0"
+rand_core06 = { package = "rand_core", version = "0.6", optional = true, default-features = false, features = ["getrandom"] }
+schemars = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+sha2 = { version = "0.10.8", default-features = false }
+thiserror = { version = "2.0", default-features = false }
