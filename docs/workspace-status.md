@@ -171,7 +171,7 @@ Found by reading, not by a gate. None of these break a build.
   list, so it cannot build standalone. `terp-wavs` and `terp-zktls` share this.
 - `contracts/smart-accounts/terp-zktls/src/lib.rs` still uses a bare
   `#[entry_point]` on one export while its siblings are
-  `#[cfg_attr(not(feature = "library"), entry_point)]`.
+  `#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]`.
 - `crates/crosslink/light-client/README.md` still documents a `sigverify`
   feature that `Cargo.toml` no longer declares.
 - `contracts/smart-accounts/terp-eth/Readme.md` documents an

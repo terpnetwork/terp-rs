@@ -38,7 +38,7 @@ Build scripts: `scripts/build/build-crosslink-wasm.sh`, `build-ics08-wasm-terp.s
 
 - Limiter crate: `nam-wasm-instrument` fork `0.5.3-terp.2` (git rev `248ac2796903fe39977f31cb9bdef54c77ccf7a0`), features `sign_ext`, `bulk`, `simd`.
 - `MAX_WASM_STACK_HEIGHT` is 4096.
-- `memory.copy` is allowed. Its metered base cost is 4_500_000 gas. Do not strip bulk-memory for this wasmvm. `wasm-opt` on these artifacts keeps it (`--enable-bulk-memory`). The stock `cosmwasm/optimizer:0.17.0` wasm-opt is version 116 and cannot `--llvm-memory-copy-fill-lowering`.
+- `memory.copy` is allowed. Its metered base cost is 4_500_000 gas. Do not strip bulk-memory for this wasmvm. `wasm-opt` on these artifacts keeps it (`--enable-bulk-memory`). The stock `terpnetwork/optimizer:0.17.0` wasm-opt is version 116 and cannot `--llvm-memory-copy-fill-lowering`.
 - The accept test is `packages/check` (`cosmwasm_vm::internals::compile_module`), not raw singlepass.
 
 Wasmer 7.4.2 on `zk-cosmwasm` is host-only (`cfg(not(target_arch = "wasm32"))`). `wasmer-types` 7.4.2 is edition 2024, `rust-version` 1.95, so the guest compile must not build it. `cw-orch` is the same: host target only.
