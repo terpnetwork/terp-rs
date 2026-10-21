@@ -21,7 +21,7 @@ use cw_shitstrap::contract::msg::ExecuteMsg as ShitstrapExecuteMsg;
 // use ict_rs::runtime::{DockerConfig, IctRuntime};
 // use ict_rs::testing::TestEnv;
 // use ict_rs::tx::WalletAmount;
-use shit_scripts::{CwShitstrapSuite, CwShitstrapSuiteDeployData, ShitInitMsg, UncheckedDenom};
+use terp_orch::{CwShitstrapSuite, CwShitstrapSuiteDeployData, ShitInitMsg, UncheckedDenom};
 use tracing::info;
 
 // fn mk_config(chain_id: &str) -> ict_rs::chain::ChainConfig {

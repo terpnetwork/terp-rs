@@ -5,17 +5,56 @@ license.workspace = true
 repository.workspace = true
 version.workspace = true
 
+autobins = false
+
+[[bin]]
+name = "dao-scripts"
+path = "src/main.rs"
+
 [[bin]]
 name = "foundation_delegate"
 path = "src/bin/foundation_delegate.rs"
 
+[[bin]]
+name = "delegations"
+path = "src/bin/dels.rs"
+
+[[bin]]
+name = "terp-ibc"
+path = "src/bin/ibc_info.rs"
+
+[[bin]]
+name = "create_val"
+path = "src/bin/create_val.rs"
+
+[[bin]]
+name = "polytone_migrate"
+path = "src/bin/polytone_migrate.rs"
+
+[[bin]]
+name = "dao_upload"
+path = "src/bin/dao_upload.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true }
+cosmrs = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+csv = "1.4.0"
 cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-kms = { path = "../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-orch-polytone = { workspace = true }
 dao-cw-orch = { workspace = true }
 dao-testing = { workspace = true }
 dotenv = { workspace = true }
 env_logger = { workspace = true, features = ["default"] }
+log = "0.4.30"
 rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
 serde_json = { workspace = true }
+terp-rs = { workspace = true, features = ["default"] }
+terp-scripts = { workspace = true, features = ["hash-market"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"

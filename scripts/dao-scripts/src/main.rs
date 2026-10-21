@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     dao.distribution.upload_if_needed()?;
     dao.external.upload_if_needed()?;
     dao.gauges.upload_if_needed()?;
-    dao.polytone.upload_if_needed()?;
+    dao.polytone.upload()?;
 
     let id = terp.state().get_all_code_ids()?;
     println!("{:#?}", id);

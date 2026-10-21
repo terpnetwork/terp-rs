@@ -53,7 +53,7 @@ fn workflow(network: ChainInfoOwned) -> anyhow::Result<()> {
             &tmp.mtree.addr_str()?,
         )?,
     )?;
-    suite.shit = shit_scripts::CwShitstrapSuite::new(chain.clone());
+    suite.shit = terp_orch::CwShitstrapSuite::new(chain.clone());
     Ok(())
 }
 
@@ -115,6 +115,6 @@ fn svg_deploy_data(sender: Addr, _chain_id: &str, w: &str) -> Result<Option<CwSv
         infuse: None,
         admin: Some(sender.clone()),
         infuse_coins: vec![],
-        shit: Some(shit_scripts::new_default_ibc_set(sender)),
+        shit: Some(terp_orch::new_default_ibc_set(sender)),
     }))
 }

@@ -7,7 +7,7 @@
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use dao_testing::suite::modules::native_delegation::{
+use dao_testing::suite::native_delegation::{
     NEW_VALIDATOR_ACCOUNT, NEW_VALIDATOR_OPERATOR, NativeDelegationPlan, vote_yes_msg,
 };
 
