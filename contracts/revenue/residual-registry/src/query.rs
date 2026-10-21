@@ -13,7 +13,7 @@ use terp_index_query::{QueryOptions, QueryOptionsInternal};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
 

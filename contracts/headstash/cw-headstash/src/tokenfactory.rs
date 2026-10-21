@@ -175,9 +175,9 @@ impl TokenStrategy {
         }
     }
 
-    pub fn initial_mint_msgs(&self, contract_addr: &Addr) -> StdResult<Vec<CosmosMsg>> {
+    pub fn initial_mint_msgs(&self, _contract_addr: &Addr) -> StdResult<Vec<CosmosMsg>> {
         match self {
-            TokenStrategy::NewFungible(cfg) => {
+            TokenStrategy::NewFungible(_cfg) => {
                 // For new fungible tokens, initial minting happens after denom creation
                 // via the reply handler. For now, return empty vec since denom creation is async.
                 Ok(vec![])

@@ -39,7 +39,7 @@ const MAX_LIMIT: u32 = 100;
 
 // ---------------------------------------------------------------- instantiate
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -197,7 +197,7 @@ fn validate_config(cfg: &Config) -> Result<(), ContractError> {
 
 // ---------------------------------------------------------------- execute
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     mut deps: DepsMut,
     env: Env,
@@ -1069,7 +1069,7 @@ pub fn eligibility(deps: Deps, cfg: &Config, who: &Addr) -> StdResult<Eligibilit
 
 // ---------------------------------------------------------------- query
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
@@ -1195,12 +1195,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     dao::reply(deps, msg)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     // Instances stored before the DAO module: the owner (DAO core in prod) becomes `dao`, creation stays open.

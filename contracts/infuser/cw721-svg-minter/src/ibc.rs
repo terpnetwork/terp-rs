@@ -7,7 +7,7 @@
 use cosmwasm_std::{
     Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
     IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult, WasmMsg, entry_point,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult, WasmMsg,
     from_json, to_json_binary,
 };
 
@@ -29,7 +29,7 @@ pub struct MintPacket {
     pub collection: String,
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_channel_open(
     _deps: DepsMut,
     _env: Env,
@@ -47,7 +47,7 @@ pub fn ibc_channel_open(
     }))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_channel_connect(
     deps: DepsMut,
     _env: Env,
@@ -62,7 +62,7 @@ pub fn ibc_channel_connect(
         .add_attribute("port", chan.endpoint.port_id.clone()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_channel_close(
     _deps: DepsMut,
     _env: Env,
@@ -71,7 +71,7 @@ pub fn ibc_channel_close(
     Ok(IbcBasicResponse::new().add_attribute("action", "ibc_close"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_packet_receive(
     deps: DepsMut,
     _env: Env,
@@ -137,7 +137,7 @@ fn recv_inner(
         .add_attribute("recipient", pkt.token_recipient))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_packet_ack(
     _deps: DepsMut,
     _env: Env,
@@ -146,7 +146,7 @@ pub fn ibc_packet_ack(
     Ok(IbcBasicResponse::new().add_attribute("action", "ibc_ack"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc_packet_timeout(
     _deps: DepsMut,
     _env: Env,

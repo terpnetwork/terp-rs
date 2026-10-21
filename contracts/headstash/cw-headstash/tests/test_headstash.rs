@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, Binary, Coin, Empty, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw_headstash::msg::{
-    ExecuteMsg as HeadstashExecuteMsg, InstantiateMsg as HeadstashInstantiateMsg,
+    InstantiateMsg as HeadstashInstantiateMsg,
 };
 use cw_headstash::tokenfactory::{
     DenomUnit, HeadstashTokenObject, InitialMint, Metadata, NewTokenConfig,
@@ -8,10 +8,10 @@ use cw_headstash::tokenfactory::{
 use cw_headstash::wavs::WavsProofOfOwnership;
 use cw_headstash::{QueryMsg as HeadstashQueryMsg, tokenfactory::TokenStrategy};
 use cw_headstash_manifold::msg::{
-    ExecuteMsg as FactoryExecuteMsg, HeadstashContract, InstantiateMsg as FactoryInitMsg,
+    InstantiateMsg as FactoryInitMsg,
     QueryMsg as FactoryQueryMsg,
 };
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, ContractWrapper, Executor};
 use cw_ownable::Ownership;
 use std::collections::HashMap;
 

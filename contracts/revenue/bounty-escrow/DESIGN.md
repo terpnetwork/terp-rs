@@ -249,3 +249,7 @@ Design sketch (not built):
 4. **Lock and release.** The deposit must stay spendable only under the escrow policy (a FROST threshold or a time-locked script), so a payout or refund on Terp is mirrored by a counterparty spend. That is a bridge-grade problem, and it is the real reason this is a TODO.
 5. **Replay.** Store the bounty binding and a deposit-specific tag (not the nullifier) so one deposit cannot fund two bounties.
 Until all five are specified and audited, `CounterpartyEscrowProof` stays an erroring stub.
+
+### 9c. Decisions recorded (2026-10-20)
+- **Creation min stake:** `CreationGate::MinStake { amount }` (like `min_submit_stake` and `min_upload_stake`) stays a **governance-set placeholder**. Its value is set and changed only through `update_config` by the owner, with a new `params_version`. No value is hardcoded or treated as final.
+- **v1 payouts come from escrow funds only.** `payout` and `settle_remainder` release only the deposit held by this contract (`BankMsg` from escrow custody). v1 sends **no DAO core treasury messages**: no `ExecuteProposalHook { msgs }` and no `completion_msgs`. The DAO controls payout only as (or through) the `approver`. Treasury-funded top-ups are out of scope for v1.

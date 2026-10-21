@@ -21,7 +21,7 @@ use crate::state::{CONFIG, Config, LAST_ROOT_META, ORACLE_MID, RootMeta};
 pub const CONTRACT_NAME: &str = "crates.io:hm-nft-minter";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -75,7 +75,7 @@ pub fn instantiate(
         .add_attribute("max_tokens", config.max_tokens.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -344,7 +344,7 @@ fn execute_withdraw(
         .add_attribute("amount", send_amount))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: HashMerchantSudoMsg) -> Result<Response, ContractError> {
     // Hard invariant: never touch max_tokens / supply from oracle path.
     assert_oracle_cannot_modify_supply()?;
@@ -390,7 +390,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: HashMerchantSudoMsg) -> Result<Respons
     Ok(Response::new().add_attributes(attrs))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),

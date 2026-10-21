@@ -1,15 +1,15 @@
 // Tests for cw-headstash and cw-headstash-manifold contracts using cw-multi-test
 // Focus on auxiliary functions and tokenfactory interactions
 
-use cosmwasm_std::{Addr, Binary, Coin, Empty, Uint128};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cosmwasm_std::{Addr, Binary, Coin, Uint128};
+use cw_multi_test::{App, ContractWrapper, Executor};
 use cw_ownable::Ownership;
 use hex;
 use std::collections::HashMap;
 
 // Import contract messages
 use cw_headstash::msg::{
-    ExecuteMsg as HeadstashExecuteMsg, InstantiateMsg as HeadstashInstantiateMsg,
+    InstantiateMsg as HeadstashInstantiateMsg,
     QueryMsg as HeadstashQueryMsg,
 };
 use cw_headstash::tokenfactory::{
@@ -244,7 +244,7 @@ pub fn mock_wavs_proof() -> WavsProofOfOwnership {
 }
 
 pub fn mock_wavs_proof_with_operators(count: usize) -> WavsProofOfOwnership {
-    use cosmwasm_std::{BLS12_381_G1_GENERATOR as G1, BLS12_381_G2_GENERATOR as G2};
+    use cosmwasm_std::BLS12_381_G1_GENERATOR as G1;
 
     // Generate mock BLS keypairs and proofs for testing
     let mut poos = vec![];

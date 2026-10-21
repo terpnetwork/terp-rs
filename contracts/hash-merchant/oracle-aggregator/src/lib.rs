@@ -3,7 +3,7 @@
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, entry_point,
+    Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
     to_json_binary,
 };
 use cw_oracle_registry::msg::{HistoryResponse, QueryMsg as RegistryQuery};
@@ -42,7 +42,7 @@ pub struct ViewResponse {
 
 pub const REGISTRY: Item<cosmwasm_std::Addr> = Item::new("reg");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -55,7 +55,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate_oracle_aggregator"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -71,7 +71,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Registry {} => to_json_binary(&REGISTRY.load(deps.storage)?),

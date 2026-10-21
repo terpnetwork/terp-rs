@@ -8,7 +8,7 @@ use cosmwasm_schema::serde::Serialize;
 use cosmwasm_std::{
     Addr, Attribute, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
     Fraction, HexBinary, MessageInfo, MigrateInfo, QuerierWrapper, QueryRequest, Response,
-    StdError, StdResult, Storage, Uint256, WasmMsg, WasmQuery, entry_point, instantiate2_address,
+    StdError, StdResult, Storage, Uint256, WasmMsg, WasmQuery, instantiate2_address,
     to_json_binary,
 };
 use cw2::set_contract_version;
@@ -40,7 +40,7 @@ use url::Url;
 pub(crate) const CONTRACT_NAME: &str = "cw-infuser";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -107,7 +107,7 @@ pub fn instantiate(
     Ok(Response::new())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -143,7 +143,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Infusion { addr, id } => to_json_binary(&query_infusion(deps, addr, id)?),
@@ -157,7 +157,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
+// #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 // pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
 //     match msg.id {
 //         INFUSION_COLLECTION_INIT_MSG_ID => Ok(Response::new()),
@@ -1640,7 +1640,7 @@ pub fn execute_shuffle(
 }
 
 // //  source: https://github.com/public-awesome/launchpad/blob/main/contracts/minters/vending-minter/src/contract.rs#L1371
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(
     deps: DepsMut,
     _env: Env,

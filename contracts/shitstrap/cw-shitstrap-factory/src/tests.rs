@@ -79,7 +79,7 @@ pub fn test_instantiate_native_payroll_contract() {
     .unwrap();
 
     let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+    let _unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     let instantiate_payroll_msg = ExecuteMsg::CreateNativeShitStrapContract {
         instantiate_msg: ShitstrapInstantiateMsg {
@@ -206,7 +206,7 @@ pub fn test_instantiate_native_payroll_contract() {
 pub fn test_instantiate_cw20_payroll_contract() {
     let mut app = App::default();
     let a = app.api().addr_make(ALICE);
-    let b = app.api().addr_make(BOB);
+    let _b = app.api().addr_make(BOB);
     let c: Addr = app.api().addr_make(CREATOR);
     let code_id = app.store_code(factory_contract());
     let cw20_code_id = app.store_code(cw20_contract());
@@ -259,7 +259,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     .unwrap();
 
     let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+    let _unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
 
     let instantiate_payroll_msg = ShitstrapInstantiateMsg {
         owner: Some(a.to_string()),
@@ -316,14 +316,14 @@ pub fn test_instantiate_cw20_payroll_contract() {
 fn test_instantiate_wrong_ownership_native() {
     let mut app = App::default();
     let a = app.api().addr_make(ALICE);
-    let b = app.api().addr_make(BOB);
+    let _b = app.api().addr_make(BOB);
     let c: Addr = app.api().addr_make(CREATOR);
     let e: Addr = app.api().addr_make("ekez");
     let code_id = app.store_code(factory_contract());
     let cw_vesting_code_id = app.store_code(cw_vesting_contract());
 
     let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+    let _unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -393,7 +393,7 @@ fn test_update_vesting_code_id() {
     let a = app.api().addr_make(ALICE);
     let b = app.api().addr_make(BOB);
     let c: Addr = app.api().addr_make(CREATOR);
-    let e: Addr = app.api().addr_make("ekez");
+    let _e: Addr = app.api().addr_make("ekez");
     let code_id = app.store_code(factory_contract());
     let cw_vesting_code_id = app.store_code(cw_vesting_contract());
     let cw_vesting_code_two = app.store_code(cw_vesting_contract());
@@ -442,7 +442,7 @@ fn test_update_vesting_code_id() {
     .unwrap();
 
     let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+    let _unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     let instantiate_payroll_msg = ExecuteMsg::CreateNativeShitStrapContract {
         instantiate_msg: ShitstrapInstantiateMsg {

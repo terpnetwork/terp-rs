@@ -86,14 +86,14 @@ pub struct WavsOpAuth {
     pub poo: String,
 }
 
-impl WavsOperatorSet {
-    fn handle_key_rotation(&self) -> StdResult<()> {
-        // validate key rotating is in current set & has a valid signature for key rotation
-        // update state to replace old pubkey with new pubkey
-        // calculate new aggregated pk
-        Ok(())
-    }
-}
+// impl WavsOperatorSet {
+//     fn handle_key_rotation(&self) -> StdResult<()> {
+//         // validate key rotating is in current set & has a valid signature for key rotation
+//         // update state to replace old pubkey with new pubkey
+//         // calculate new aggregated pk
+//         Ok(())
+//     }
+// }
 
 /// Generate a real BLS12-381 PoP set for multi-test / cw-orch Mock instantiate.
 ///
@@ -177,7 +177,7 @@ mod tests {
     }
 
     // Helper to create a key pair and proof of possession
-    fn create_operator(c: &Addr, api: &dyn Api, secret_key: &Fr) -> (WavsOpAuth, G2Affine) {
+    fn create_operator(_c: &Addr, api: &dyn Api, secret_key: &Fr) -> (WavsOpAuth, G2Affine) {
         // Generate public key in G1: pk = sk * G1_generator
         let public_key: G1Affine = (G1Affine::generator() * secret_key).into();
         let pk_bytes = serialize_g1(&public_key);
@@ -231,7 +231,7 @@ mod tests {
         let pk_bytes = hex::decode(&wauth.key).unwrap();
         let key = wauth.key.clone();
 
-        let wavs = WavsOperatorSet {
+        let _wavs = WavsOperatorSet {
             c: "cosmos1test".to_string(),
             keys: vec![key],
             msg: WavsAuthMetadata {
@@ -324,7 +324,7 @@ mod tests {
             .fold(G1Projective::default(), |acc, pk| acc + pk)
             .into();
 
-        let wavs = WavsOperatorSet {
+        let _wavs = WavsOperatorSet {
             c: "cosmos1test".to_string(),
             keys: operators.iter().map(|e| e.key.clone()).collect(),
             msg: WavsAuthMetadata {

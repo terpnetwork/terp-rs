@@ -23,11 +23,11 @@ Path: `contracts/revenue/bounty-escrow` (was `contracts/bounties/terp-bounty-esc
 - `src/dao.rs`: DAO DAO proposal-module queries, pre-propose reply handling and hooks
 - `params/escrow.params.json`: PLACEHOLDER governance params; `params/catalog-rewards.json`: catalog reward amounts used to check the caps
 - `offchain-schemas/`: the JSON Schemas (draft 2020-12) for the off-chain docs, with examples
-- cw-orch suite: `scripts/bounty-escrow` (`bounty-escrow-scripts`), Mock tests in `tests/suite.rs`
+- cw-orch suite: `terp_orch::suites::bounties` (`BountyEscrowSuite`). Mock tests: `tests/tests/bounties_e2e.rs` (`--features orch-suite`).
 
 ```text
 cargo test -p terp-bounty-escrow
-cargo test -p bounty-escrow-scripts
+cargo test -p terp-scripts --features orch-suite --test bounties_e2e
 cargo run -p terp-bounty-escrow --bin schema     # run in this directory -> schema/
 cargo build -p terp-bounty-escrow --lib --release --target wasm32-unknown-unknown
 ```
@@ -36,7 +36,7 @@ The amounts are `Uint256`, because `Coin::amount` is `Uint256` in this workspace
 
 ## cw-orch interface (feature `interface`)
 ```toml
-terp-bounty-escrow = { workspace = true, features = ["interface"] }   # as in scripts/bounty-escrow
+terp-bounty-escrow = { workspace = true, features = ["interface"] }   # terp-orch stack feature
 # tests/suite/terp-orch registers it under the `stack` feature as TerpProductSuite.bounty_escrow
 ```
 ```rust

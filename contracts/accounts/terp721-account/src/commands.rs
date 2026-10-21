@@ -36,7 +36,7 @@ pub mod manifest {
     pub fn associate_address(
         deps: DepsMut,
         info: MessageInfo,
-        oca: Addr,
+        _oca: Addr,
         account: String,
         address: Option<String>,
     ) -> Result<Response, ContractError> {
@@ -249,7 +249,7 @@ pub mod manifest {
     /// Enables, updates, or disables Abstract Account linkage safely.
     pub fn execute_update_abstract_account_support(
         deps: DepsMut,
-        env: Env,
+        _env: Env,
         info: MessageInfo,
         account: &String,
         abs_account: Option<String>,
@@ -449,16 +449,16 @@ pub mod manifest {
     /// Remove all text records, diables abstract-account features
     fn reset_token_metadata_and_reverse_map(
         deps: &mut DepsMut,
-        contract_addr: Addr,
+        _contract_addr: Addr,
         account: &str,
     ) -> StdResult<()> {
-        let mut extension = Metadata::default();
+        let extension = Metadata::default();
         let token = Terp721AccountContract::default()
             .config
             .nft_info
             .load(deps.storage, account)?;
 
-        if let Some(tokenuri) = token.token_uri.clone() {
+        if let Some(_tokenuri) = token.token_uri.clone() {
             #[cfg(feature = "abstract")]
             if token.extension.account_ownership {
                 // confirm this token is still set as owner of account

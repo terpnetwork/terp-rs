@@ -304,7 +304,7 @@ impl ShitSuite {
 
 #[test]
 fn test_bad_init() -> TestResult {
-    let mut app = App::default();
+    let app = App::default();
     let mut possible = vec![
         PossibleShit::native_denom("uatom", 1_000_000u128),
         PossibleShit::native_denom("uatom", 1_000_000u128),
@@ -449,7 +449,7 @@ fn test_bad_init() -> TestResult {
 
 #[test]
 fn test_shitstrap() -> TestResult {
-    let mut app = App::default();
+    let app = App::default();
     // create default testing suite
     let mut shit = default_init(
         app,
@@ -649,7 +649,7 @@ fn test_fee_destination() -> TestResult {
 
     let shitstrap = shit.shitstrap.clone();
     let s1 = shit.shitters[0].clone(); // atom
-    let s2 = shit.shitters[1].clone(); //shit
+    let _s2 = shit.shitters[1].clone(); //shit
     shit.setup_default_funds(shitstrap.clone())?;
     let dec = Decimal::from_atomics(atom_shit_ratio, MAX_DEC_PRECISION)?;
     let first = Uint128::new(first_deposit).multiply_ratio(dec.numerator(), dec.denominator());

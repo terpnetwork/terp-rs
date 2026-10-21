@@ -1,5 +1,9 @@
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{Addr, Api, DepsMut, OwnedDeps, Querier, Storage, SubMsg, from_json};
+use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, Api, Coin, DepsMut, MessageInfo, OwnedDeps, Querier, Storage, SubMsg, from_json};
+
+fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
+    message_info(&Addr::unchecked(sender), funds)
+}
 use cw_controllers::{AdminError, HookError};
 use cw4::{Member, MemberChangedHookMsg, MemberDiff, TOTAL_KEY, member_key};
 
@@ -90,12 +94,10 @@ fn duplicate_members_instantiation() {
     };
     let info = mock_info("creator", &[]);
     let err = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-    assert_eq!(
+    assert!(matches!(
         err,
-        ContractError::DuplicateMember {
-            member: USER1.to_string()
-        }
-    );
+        ContractError::DuplicateMember { ref member } if member == USER1
+    ));
 }
 
 #[test]
@@ -125,12 +127,10 @@ fn duplicate_members_execution() {
     )
     .unwrap_err();
 
-    assert_eq!(
+    assert!(matches!(
         err,
-        ContractError::DuplicateMember {
-            member: USER3.to_string()
-        }
-    );
+        ContractError::DuplicateMember { ref member } if member == USER3
+    ));
 }
 
 fn assert_users<S: Storage, A: Api, Q: Querier>(
@@ -187,7 +187,7 @@ fn add_new_remove_old_member() {
         remove.clone(),
     )
     .unwrap_err();
-    assert_eq!(err, AdminError::NotAdmin {}.into());
+    assert!(matches!(err, ContractError::Admin(AdminError::NotAdmin {})));
 
     // Test the values from instantiate
     assert_users(&deps, Some(11), Some(6), None, None);
@@ -296,7 +296,10 @@ fn add_remove_hooks() {
         add_msg.clone(),
     )
     .unwrap_err();
-    assert_eq!(err, HookError::Admin(AdminError::NotAdmin {}).into());
+    assert!(matches!(
+        err,
+        ContractError::Hook(HookError::Admin(AdminError::NotAdmin {}))
+    ));
 
     // admin can add it, and it appears in the query
     let admin_info = mock_info(INIT_ADMIN, &[]);
@@ -315,7 +318,7 @@ fn add_remove_hooks() {
         addr: contract2.clone(),
     };
     let err = execute(deps.as_mut(), mock_env(), admin_info.clone(), remove_msg).unwrap_err();
-    assert_eq!(err, HookError::HookNotRegistered {}.into());
+    assert!(matches!(err, ContractError::Hook(HookError::HookNotRegistered {})));
 
     // add second contract
     let add_msg2 = ExecuteMsg::AddHook {
@@ -327,12 +330,18 @@ fn add_remove_hooks() {
 
     // cannot re-add an existing contract
     let err = execute(deps.as_mut(), mock_env(), admin_info.clone(), add_msg).unwrap_err();
-    assert_eq!(err, HookError::HookAlreadyRegistered {}.into());
+    assert!(matches!(
+        err,
+        ContractError::Hook(HookError::HookAlreadyRegistered {})
+    ));
 
     // non-admin cannot remove
     let remove_msg = ExecuteMsg::RemoveHook { addr: contract1 };
     let err = execute(deps.as_mut(), mock_env(), user_info, remove_msg.clone()).unwrap_err();
-    assert_eq!(err, HookError::Admin(AdminError::NotAdmin {}).into());
+    assert!(matches!(
+        err,
+        ContractError::Hook(HookError::Admin(AdminError::NotAdmin {}))
+    ));
 
     // remove the original
     let _ = execute(deps.as_mut(), mock_env(), admin_info, remove_msg).unwrap();

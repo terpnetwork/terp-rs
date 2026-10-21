@@ -39,7 +39,7 @@ pub mod entry {
     use crate::contract::{MigrateMsg, SvgTemplateResponse, SvgTokenUriResponse};
     use cosmwasm_std::{
         Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError, StdResult, Timestamp,
-        to_json_binary,
+        from_json, to_json_binary,
     };
     use cw721::msg::Cw721InstantiateMsg;
     use cw721::traits::{Cw721Execute, Cw721Query};
@@ -313,7 +313,7 @@ pub mod entry {
     /// After the stack limiter adds a branch per block, that body no longer
     /// fits an arm64 relocation. This export is not a CosmWasm entry point.
     #[cfg(target_arch = "wasm32")]
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn cw721_svg_fn_split() -> usize {
         let bytes: &[u8] = b"{}";
         let execute = from_json::<ExecuteMsg>(bytes).is_err() as usize;

@@ -16,7 +16,7 @@ pub use crate::entry_points::*;
 #[cfg(not(feature = "library"))]
 mod entry_points {
     use cosmwasm_std::{
-        Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, entry_point,
+        Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
     };
 
     use crate::error::ContractError;

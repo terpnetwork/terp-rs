@@ -9,13 +9,13 @@ use crate::state::{
     TOTAL_RESERVED_BY_GUEST_TYPE, TicketPaymentOption, generate_instantiate_salt2,
     preamble_msg_arb_036, sha256,
 };
-use av_event_helpers::{LICENSE_CANONICAL_ADDR, get_license_addr};
+use av_event_helpers::get_license_addr;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut, Env, HexBinary,
-    MessageInfo, Order, Response, StdError, StdResult, Storage, WasmMsg, coin, from_json,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, HexBinary,
+    MessageInfo, Order, Response, StdError, StdResult, Storage, WasmMsg, from_json,
     instantiate2_address, to_json_binary,
 };
 use cw2::set_contract_version;
@@ -28,11 +28,11 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const NAMESPACE: &[u8] = b"aves";
 pub const CHARACTER_LIMIT: usize = 128;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     LICENSE_ADDR.save(deps.storage, &get_license_addr(&env.block.chain_id)?)?;
@@ -163,7 +163,7 @@ pub fn instantiate(
     Ok(Response::new().add_messages(vec![usher_msg, guest_msg]))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -195,7 +195,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
@@ -249,7 +249,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
     Ok(Response::new())
 }

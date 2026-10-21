@@ -11,7 +11,7 @@ use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
     Binary, CosmosMsg, Deps, DepsMut, Env, Ibc2Msg, Ibc2PacketAckMsg, Ibc2PacketReceiveMsg,
     Ibc2PacketSendMsg, Ibc2PacketTimeoutMsg, Ibc2Payload, IbcBasicResponse, IbcReceiveResponse,
-    MessageInfo, Response, StdAck, StdResult, Timestamp, entry_point, from_json, to_json_binary,
+    MessageInfo, Response, StdAck, StdResult, Timestamp, from_json, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use thiserror::Error;
@@ -161,9 +161,9 @@ const CONFIG: Item<Config> = Item::new("config");
 const BY_ETH: Map<&str, Token> = Map::new("by_eth");
 const COMMIT: Map<&str, Commitment> = Map::new("commit");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
@@ -184,7 +184,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -413,7 +413,7 @@ fn write_token(
         .add_attribute("eth", eth))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
@@ -430,7 +430,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 /// Permissionless send check: only the pending committer (or admin) may emit
 /// an Australge packet from this contract's IBC-v2 port.
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_send(
     deps: DepsMut,
     _env: Env,
@@ -462,7 +462,7 @@ pub fn ibc2_packet_send(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_receive(
     deps: DepsMut,
     env: Env,
@@ -496,7 +496,7 @@ pub fn ibc2_packet_receive(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_ack(
     _deps: DepsMut,
     _env: Env,
@@ -505,7 +505,7 @@ pub fn ibc2_packet_ack(
     Ok(IbcBasicResponse::new().add_attribute("action", "ibc2_ack"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_timeout(
     deps: DepsMut,
     _env: Env,
@@ -610,7 +610,7 @@ mod tests {
 
     #[test]
     fn sane_commit_then_ibc2_receive_mints() {
-        let (mut deps, admin) = setup();
+        let (mut deps, _admin) = setup();
         let user = deps.api.addr_make("user");
         execute(
             deps.as_mut(),

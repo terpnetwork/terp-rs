@@ -9,7 +9,7 @@ use cw_headstash_manifold::msg::{
     ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInitMsg, QueryMsg as FactoryQueryMsg,
 };
 
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, ContractWrapper, Executor};
 use cw_ownable::Ownership;
 use std::collections::HashMap;
 

@@ -1,11 +1,11 @@
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,   to_json_binary,
 };
 
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VerifyResponse};
 use crate::state::{CONFIG, Config};
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -25,7 +25,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate_reg_eligibility"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -46,7 +46,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {

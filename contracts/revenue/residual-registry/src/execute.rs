@@ -18,7 +18,7 @@ use cw721_base::msg::QueryMsg as cw721QueryMsg;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,

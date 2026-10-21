@@ -1,4 +1,4 @@
-use crate::{execute, instantiate, msg::*, query, reply, sudo};
+use crate::{execute, instantiate, msg::*, query, reply, sudo,CONTRACT_NAME};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 
@@ -18,14 +18,14 @@ use cw_orch::prelude::*;
 /// let headstash = HeadstashContract::new(app);
 /// headstash.upload()?;
 /// ```
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "cw_headstash")]
+#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_NAME)]
 pub struct HeadstashContract;
 
 impl<Chain: CwEnv> Uploadable for HeadstashContract<Chain> {
     /// Path to the compiled wasm artifact (used with Daemon).
     fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
         artifacts_dir_from_workspace!()
-            .find_wasm_path_from_crates_label("cw_headstash")
+            .find_wasm_path_from_crates_label(CONTRACT_NAME)
             .unwrap()
     }
 

@@ -1,5 +1,5 @@
 // ── Memo Construction Tests ──
-use cosmwasm_std::{Addr, Coin, CosmosMsg, Uint128, Uint256, WasmMsg, coin, coins};
+use cosmwasm_std::{Addr, CosmosMsg, Uint256, WasmMsg, coin};
 use cw_shit_denom::AssetUnchecked;
 use cw_shitstrap::contract::msg::{ExecuteMsg, ShitstrapMemoAdr08};
 

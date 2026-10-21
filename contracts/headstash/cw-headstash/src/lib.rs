@@ -572,7 +572,7 @@ impl terp_auth::TerpAccountTrait for CwHeadstash {
     // recomposes aggregated key and signature to enforce threshold minimums
     fn on_auth_request(
         deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
+        _env: cosmwasm_std::Env,
         req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
         let cfg = HEADSTASH_CFG.load(deps.storage)?;
@@ -608,11 +608,11 @@ impl terp_auth::TerpAccountTrait for CwHeadstash {
     }
 
     fn on_auth_confirm(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
         req: &terp_auth::ConfirmExecutionRequest,
     ) -> Self::AuthProcessResult {
-        let auth_data: wavs::BlsThresholdAuthData =
+        let _auth_data: wavs::BlsThresholdAuthData =
             from_json(&req.authenticator_params.clone().expect("cw-auth params"))?;
 
         // verifies circuit proofs, reverts any stateful change if errors.
@@ -620,7 +620,7 @@ impl terp_auth::TerpAccountTrait for CwHeadstash {
         Ok(Response::default())
     }
 
-    fn on_hooks(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env) -> Self::AuthProcessResult {
+    fn on_hooks(_deps: cosmwasm_std::DepsMut, _env: cosmwasm_std::Env) -> Self::AuthProcessResult {
         Ok(Response::default())
     }
 }
@@ -668,7 +668,7 @@ mod instantiate_tests {
     use super::*;
     use crate::tokenfactory::{DenomUnit, Metadata};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{Addr, Api, HashFunction, Uint128};
+    use cosmwasm_std::Uint128;
 
     #[test]
     fn minimal_test() {
@@ -779,7 +779,7 @@ mod instantiate_tests {
         match &res.messages[0] {
             SubMsg { msg, reply_on, .. } => {
                 match msg {
-                    CosmosMsg::Stargate { type_url, value } => {
+                    CosmosMsg::Stargate { type_url, value: _ } => {
                         // This should be the CreateDenom message
                         assert!(type_url.contains("tokenfactory"));
                     }
@@ -800,7 +800,7 @@ mod instantiate_tests {
     fn instantiate_existing_fungible_with_funds_success() {
         let mut deps = mock_dependencies();
         let creator = deps.api.addr_make("creator");
-        let contract = deps.api.addr_make("contract");
+        let _contract = deps.api.addr_make("contract");
 
         let env = mock_env();
         let info = message_info(&creator, &[Coin::new(Uint128::new(1000), "existing_token")]);
@@ -926,7 +926,7 @@ mod instantiate_tests {
             circuit_id: None,
         };
 
-        let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
+        let _err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
         // println!("{:#?}", err);
         // assert!(err.to_string().contains("proof of ownership failed"));
     }

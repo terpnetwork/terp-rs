@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, entry_point,
+    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
     to_json_binary,
 };
 use sha2::{Digest, Sha256};
@@ -100,7 +100,7 @@ fn assert_admin(info: &MessageInfo, cfg: &Config) -> Result<(), ContractError> {
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -136,7 +136,7 @@ pub fn instantiate(
 // Execute
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -446,7 +446,7 @@ fn execute_update_config(
 // Query
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {

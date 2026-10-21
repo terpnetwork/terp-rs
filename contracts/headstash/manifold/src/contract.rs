@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     Addr, Binary, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Order, Reply, Response,
-    StdResult, SubMsg, WasmMsg, entry_point, to_json_binary,
+    StdResult, SubMsg, WasmMsg, to_json_binary,
 };
 use cw_headstash::distro::DistroHashDomain;
 use cw_ownable::initialize_owner;
@@ -30,10 +30,10 @@ pub struct PendingInstantiation {
 
 const INSTANTIATE_HEADSTASH_REPLY_ID: u64 = 1;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> ContractResult<Response> {
@@ -51,7 +51,7 @@ pub fn instantiate(
         .add_attribute("headstash_code_id", msg.headstash_code_id.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -250,7 +250,7 @@ fn validate_funding(
     Ok(())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(
     _deps: DepsMut,
     _env: Env,
@@ -456,8 +456,8 @@ fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> ContractResult<Respons
         .add_attribute("root_id", "0"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::ContractsByInstantiator {
@@ -532,7 +532,7 @@ fn query_eligibility_root(deps: Deps, headstash: String, root_id: u64) -> StdRes
     to_json_binary(&rec)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> ContractResult<Response> {
     match msg.id {
         INSTANTIATE_HEADSTASH_REPLY_ID => handle_instantiate_reply(deps, msg),

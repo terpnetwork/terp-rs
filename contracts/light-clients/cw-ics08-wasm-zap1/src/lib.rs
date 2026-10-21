@@ -9,7 +9,7 @@
 //! is message-only and is not a substitute. Guest `simd128` stays off.
 
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, entry_point,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
     to_json_binary,
 };
 use cw_storage_plus::Map;
@@ -172,7 +172,7 @@ pub fn verify_zap1_ibcv2(
     Ok(expect)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     _deps: DepsMut,
     _env: Env,
@@ -182,7 +182,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("client", "08-zap1-ibcv2"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -254,7 +254,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Accepted {

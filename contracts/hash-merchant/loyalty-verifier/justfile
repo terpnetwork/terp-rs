@@ -28,7 +28,7 @@ wasm:
         elif docker image inspect terpnetwork/optimizer-arm64:0.17.0 >/dev/null 2>&1; then
           IMG="terpnetwork/optimizer-arm64:0.17.0"
         else
-          IMG="cosmwasm/optimizer-arm64:0.17.0"
+          IMG="terpnetwork/optimizer-arm64:0.17.0"
         fi
         ;;
       *)
@@ -37,7 +37,7 @@ wasm:
         elif docker image inspect terpnetwork/optimizer:0.17.0 >/dev/null 2>&1; then
           IMG="terpnetwork/optimizer:0.17.0"
         else
-          IMG="cosmwasm/optimizer:0.17.0"
+          IMG="terpnetwork/optimizer:0.17.0"
         fi
         ;;
     esac

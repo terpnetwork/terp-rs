@@ -3,7 +3,7 @@
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
 use cw_storage_plus::Item;
 
@@ -35,7 +35,7 @@ pub struct TwapResponse {
 
 pub const MID: Item<String> = Item::new("mid");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -47,7 +47,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate_twap_probe"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -62,7 +62,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::ArithmeticTwap { pool_id } => {

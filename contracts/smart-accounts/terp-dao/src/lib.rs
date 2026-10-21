@@ -23,14 +23,14 @@ pub struct TerpAccountDaoStructs {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerpAccountDao {}
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    InstantiateMsg { dao_addr }: InstantiateMsg,
+    InstantiateMsg { dao_addr: _ }: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let mut submsg = vec![];
+    let submsg = vec![];
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new()
@@ -39,24 +39,24 @@ pub fn instantiate(
         .add_attribute("smart_account", info.sender))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {}
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetDao {} => to_json_binary(&DAO.load(deps.storage)?),
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
     deps: DepsMut,
     env: Env,
@@ -89,16 +89,16 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     }
 
     fn extended_authenticate(
-        deps: cosmwasm_std::DepsMut,
-        auth: Self::AuthMethodStructs,
+        _deps: cosmwasm_std::DepsMut,
+        _auth: Self::AuthMethodStructs,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn on_auth_added(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::OnAuthenticatorAddedRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::OnAuthenticatorAddedRequest,
     ) -> Self::AuthProcessResult {
         /// check if dao member
         ///
@@ -107,17 +107,17 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     }
 
     fn on_auth_removed(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::OnAuthenticatorRemovedRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::OnAuthenticatorRemovedRequest,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn on_auth_request(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &Box<terp_auth::AuthenticationRequest>,
     ) -> Self::AuthProcessResult {
         // ensure still dao-member (raw-request)
 
@@ -127,24 +127,24 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     }
 
     fn on_auth_track(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::TrackRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::TrackRequest,
     ) -> Self::AuthProcessResult {
         // ?
         todo!()
     }
 
     fn on_auth_confirm(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::ConfirmExecutionRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::ConfirmExecutionRequest,
     ) -> Self::AuthProcessResult {
         // ?
         todo!()
     }
 
-    fn on_hooks(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env) -> Self::AuthProcessResult {
+    fn on_hooks(_deps: cosmwasm_std::DepsMut, _env: cosmwasm_std::Env) -> Self::AuthProcessResult {
         todo!()
     }
 }

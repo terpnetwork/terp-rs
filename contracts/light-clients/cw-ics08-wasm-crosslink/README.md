@@ -57,7 +57,7 @@ Future detection will cover **equivocation**: two valid but conflicting fat poin
 
 - Rust (2021 edition or later)
 - `cargo` + `wasm32-unknown-unknown` target
-- Docker (for optimized builds via `cosmwasm/optimizer`)
+- Docker (for optimized builds via `terpnetwork/optimizer`)
 
 ```bash
 # MSRV for published CosmWasm artifacts: Rust **1.86 only** (Docker optimizer).

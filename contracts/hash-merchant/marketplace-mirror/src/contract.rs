@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order as IterOrder,
-    Response, StdResult, Uint128, entry_point, to_json_binary,
+    Response, StdResult, Uint128, to_json_binary,
 };
 
 use crate::error::ContractError;
@@ -11,7 +11,7 @@ use crate::state::*;
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -60,7 +60,7 @@ pub fn instantiate(
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::HashMerchant {
@@ -99,7 +99,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 // Execute
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -417,7 +417,7 @@ fn execute_set_auto_execute_ingress(
 // Query
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {

@@ -11,7 +11,7 @@
 use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
     Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, Event, MessageInfo, Order,
-    Response, StdResult, Timestamp, Uint128, WasmMsg, entry_point, from_json, to_json_binary,
+    Response, StdResult, Timestamp, Uint128, WasmMsg, from_json, to_json_binary,
 };
 use cw_storage_plus::{Bound, Item, Map};
 
@@ -133,7 +133,7 @@ const BY_CONTRACT: Map<(&Addr, u64), ()> = Map::new("by_contract");
 const BIDS: Map<(u64, u32), Bid> = Map::new("bids");
 const NBIDS: Map<u64, u32> = Map::new("nbids");
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -214,7 +214,7 @@ fn paid(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
         .map_err(|_| ContractError::Msg("amount too large".into()))?)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -395,7 +395,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),

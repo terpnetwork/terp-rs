@@ -592,7 +592,7 @@ pub fn execute_finalize_bid(
     let pending = COOLDOWN_BID.may_load(deps.storage, cd_key)?;
     let mut res = Response::default();
     match pending {
-        Some(mut p) => {
+        Some(p) => {
             // check if pending bid is ready to be finalized
             if env.block.time < p.unlock_time {
                 return Err(ContractError::InvalidDuration {});
@@ -615,28 +615,28 @@ pub fn execute_finalize_bid(
                     )?));
             };
 
-            let token: NftInfoResponse<Metadata> =
+            let _token: NftInfoResponse<Metadata> =
                 Terp721Account(collection.clone()).nft_info(&deps.querier, token_id)?;
 
             // get the associated abstract account we expect to exist
-            #[cfg(feature = "abstract")]
-            if token.extension.account_ownership
-                && terp_account::validate_aa_ownership(
-                    deps.as_ref(),
-                    &token.token_uri.expect(
-                        "should never have aa support enabled and not have account associated",
-                    ),
-                    token_id,
-                    &collection.clone(),
-                    true,
-                )
-                .is_err()
-            {
-                // abstract account does not use this token for its ownership method.
-                // we refund the bidder by setting their address in the current ask, and still transfer the token to the bidder.
-                // this penalizes the original owner for changing ownership of their account during the cooldown phase.
-                p.ask.seller = p.new_owner.clone();
-            }
+            // #[cfg(feature = "abstract")]
+            // if token.extension.account_ownership
+            //     && terp_account::validate_aa_ownership(
+            //         deps.as_ref(),
+            //         &token.token_uri.expect(
+            //             "should never have aa support enabled and not have account associated",
+            //         ),
+            //         token_id,
+            //         &collection.clone(),
+            //         true,
+            //     )
+            //     .is_err()
+            // {
+            //     // abstract account does not use this token for its ownership method.
+            //     // we refund the bidder by setting their address in the current ask, and still transfer the token to the bidder.
+            //     // this penalizes the original owner for changing ownership of their account during the cooldown phase.
+            //     p.ask.seller = p.new_owner.clone();
+            // }
 
             // Transfer funds and NFT
             finalize_sale(

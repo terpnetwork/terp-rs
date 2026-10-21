@@ -13,7 +13,7 @@
 
 use cosmwasm_std::{
     BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, Uint128, Uint256, entry_point, to_json_binary,
+    StdResult, Uint128, Uint256, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use sha2::{Digest, Sha256};
@@ -70,7 +70,7 @@ const MINT_CFG: Item<MintConfig> = Item::new("mint_cfg");
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -95,7 +95,7 @@ pub fn instantiate(
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
     match msg {
         SudoMsg::HashMerchant {
@@ -132,7 +132,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
 // Execute
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -376,7 +376,7 @@ fn verify_proof(leaf_hex: &str, proof: &[ProofStep], expected_root_hex: &str) ->
 // Query
 // ---------------------------------------------------------------------------
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetRoot { chain_uid, algo } => {

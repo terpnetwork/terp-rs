@@ -14,7 +14,7 @@ pub use error::ContractError;
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point, to_json_binary,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
 use cw_storage_plus::Item;
 use cw2::set_contract_version;
@@ -174,7 +174,7 @@ fn seat_of(cfg: &Config, admin: &str) -> bool {
     cfg.seats.iter().any(|s| s == admin)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -210,7 +210,7 @@ pub fn instantiate(
         .add_attribute("group_vk", cfg.group_vk))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     _env: Env,
@@ -488,7 +488,7 @@ fn add_share(
         .add_attribute("share_count", share_n.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GroupVk {} => {
@@ -520,7 +520,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
     deps: DepsMut,
     env: Env,
