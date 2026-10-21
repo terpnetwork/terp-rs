@@ -12,4 +12,7 @@ schema = "run --bin schema"
 rustflags = [
     "-C", "link-arg=--allow-undefined",
     "-C", "target-feature=-simd128",
+    # rand 0.10 `sys_rng` pulls getrandom 0.4. wasm32-unknown-unknown has no
+    # OS entropy. Fail those calls at runtime instead of requiring wasm_js.
+    "--cfg", "getrandom_backend=\"unsupported\"",
 ]
