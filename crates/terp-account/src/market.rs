@@ -1,6 +1,6 @@
 //! NFT marketplace types for account billboards. Compiled only with `full`.
 
-use cosmwasm_std::{Addr, Coin, Deps, Env, MessageInfo, StdError, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Deps, Env, MessageInfo, Timestamp, Uint128};
 use cw721::error::Cw721ContractError;
 use cw721::traits::{Contains, Cw721CustomMsg, Cw721State, StateFactory};
 

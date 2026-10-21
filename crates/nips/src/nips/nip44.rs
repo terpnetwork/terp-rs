@@ -46,7 +46,7 @@ use chacha20::ChaCha20;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
-use rand_core06::{OsRng, RngCore};
+use rand_core06::{OsRng, Rng};
 use secp256k1::{Parity, PublicKey, SecretKey, XOnlyPublicKey, ecdh::shared_secret_point};
 use sha2::Sha256;
 use std::convert::TryInto;

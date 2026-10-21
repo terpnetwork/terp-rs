@@ -270,7 +270,7 @@ impl fmt::Display for CheckedDenom {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
-        Addr, ContractResult, QuerierResult, StdError, SystemError, Uint128, WasmQuery,
+        Addr, ContractResult, QuerierResult, StdError, SystemError, WasmQuery,
         testing::{MockApi, MockQuerier, mock_dependencies},
         to_json_binary,
     };

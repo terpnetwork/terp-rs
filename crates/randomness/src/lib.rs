@@ -1,6 +1,5 @@
 use blake3::Hasher;
-use rand::rngs::OsRng;
-use rand_core::RngCore;
+use rand::{RngCore, rngs::OsRng};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// High-quality 32-byte entropy generator with multiple independent sources.
