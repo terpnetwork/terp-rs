@@ -1,14 +1,7 @@
 //! The Orchard Action circuit implementation.
-use std::{
-    fs::File,
-    io::{self, BufWriter, Write},
-    path::PathBuf,
-    string::ToString,
-};
 
 use alloc::vec::Vec;
 
-use cosmwasm_std::Checksum;
 #[cfg(feature = "interface")]
 use cw_orch::anyhow::{self, anyhow};
 // Re-export types needed for test circuits
@@ -18,7 +11,6 @@ pub use gadget::secp256k1_chip::{
     Secp256k1FpChip, Secp256k1Fq, Secp256k1FqChip,
 };
 
-use group::Curve;
 use halo2_proofs::{
     circuit::{Layouter, Value, floor_planner},
     plonk::{
@@ -29,8 +21,7 @@ use halo2_proofs::{
 };
 
 use pasta_curves::{pallas, vesta};
-use rand_core::RngCore;
-use tracing::info;
+use rand_core::Rng;
 
 use self::gadget::add_chip::{AddChip, AddConfig};
 use crate::{
@@ -48,10 +39,7 @@ use crate::{
 };
 use ff::{Field, PrimeField};
 use halo2_gadgets::{
-    ecc::{
-        Point,
-        chip::{EccChip, EccConfig},
-    },
+    ecc::chip::{EccChip, EccConfig},
     poseidon::{Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig, primitives as poseidon},
     utilities::{
         cond_swap::{CondSwapChip, CondSwapConfig},
@@ -850,7 +838,7 @@ impl Proof {
         pk: &ProvingKey,
         circuits: &[Circuit],
         instances: &[Instance],
-        mut rng: impl RngCore,
+        mut rng: impl Rng,
     ) -> Result<Self, plonk::Error> {
         let instances: Vec<_> = instances.iter().map(|i| i.to_halo2_instance()).collect();
         let instances: Vec<Vec<_>> = instances
@@ -915,7 +903,7 @@ mod tests {
     use ff::PrimeField;
     use halo2_proofs::{circuit::Value, dev::MockProver};
     use pasta_curves::pallas;
-    use rand_core::RngCore;
+    use rand_core::Rng;
 
     use super::{Circuit, Instance, K, Proof, ProvingKey, VerifyingKey};
     use crate::{
@@ -932,7 +920,7 @@ mod tests {
     /// [`note_poseidon_gadget::note_commit_poseidon`].
     ///
     /// Sinsemilla leaf (`LEAF_PERSONALIZATION`) is recovery-only — not used here.
-    fn generate_circuit_instance<R: RngCore>(mut rng: R) -> (Circuit, Instance) {
+    fn generate_circuit_instance<R: Rng>(mut rng: R) -> (Circuit, Instance) {
         let (_sk, _fvk, esk, spent_note) = Note::dummy(&mut rng, None);
         let (epkx_be, epky_be) = esk.epk().xy();
         // BE host encodings → LE halo2curves fields (matches prove_key_pairing / G load).

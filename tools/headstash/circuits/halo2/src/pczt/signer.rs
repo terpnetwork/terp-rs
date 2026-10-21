@@ -1,4 +1,4 @@
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 
 use crate::{keys::SpendAuthorizingKey, primitives::redpallas};
 
@@ -8,7 +8,7 @@ impl super::Action {
     /// It is the caller's responsibility to perform any semantic validity checks on the
     /// PCZT (for example, comfirming that the change amounts are correct) before calling
     /// this method.
-    pub fn sign<R: RngCore + CryptoRng>(
+    pub fn sign<R: Rng + CryptoRng>(
         &mut self,
         sighash: [u8; 32],
         ask: &SpendAuthorizingKey,

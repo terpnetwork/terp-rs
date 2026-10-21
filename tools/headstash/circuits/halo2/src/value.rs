@@ -52,7 +52,6 @@ use pasta_curves::{
     pallas,
 };
 use rand::Rng;
-use rand_core::RngCore;
 use subtle::CtOption;
 
 use crate::{

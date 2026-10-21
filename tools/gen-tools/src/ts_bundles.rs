@@ -348,7 +348,7 @@ fn generate_transact_client(
 // 4) Websocket subscription filter tables
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn generate_filter_table(cname: &str, message_types: &[(String, Value)]) -> String {
+fn generate_filter_table(_cname: &str, message_types: &[(String, Value)]) -> String {
     let mut out = String::new();
     out.push_str("// Websocket subscription filter tables\n");
     out.push_str("// Use with CosmJS WebsocketClient or StargateClient\n\n");

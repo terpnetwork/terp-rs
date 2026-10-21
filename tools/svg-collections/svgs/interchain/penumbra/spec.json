@@ -1,0 +1,227 @@
+{
+  "version": "1",
+  "collection": "penumbra",
+  "description": "Mystical Penumbra logo with living radial gradient orb. The central penumbra form is a single compound path of concentric rings filled by an animated radialGradient. Each of the four color band stops animates independently with staggered timings — inner/core beats on pulse-core, mid-band on pulse-mid, outer accent on pulse-outer, and edge glow on pulse-edge. These independent rhythms create the illusion the rings themselves are breathing, without any geometry changes. A slow gradientTransform rotation (drift-spin) makes the focal hotspot drift like celestial light. A glow filter (blur-glow, opacity-glow) adds luminous depth beneath the rings. The whole orb fades on pulse-core as the ambient breath envelope. Text holds crisp and warm with a hair-thin blur halo.",
+
+  "palette_groups": [
+    {
+      "id": "core",
+      "note": "Deep cosmic purple — innermost ring band. Canonical #563c70. Tight entropy: keeps the dark mystical gravity of the center.",
+      "entropy": "tight",
+      "anchor": "color-core",
+      "members": [],
+      "ranges": [
+        { "r_min": 70, "r_max": 100, "g_min": 45, "g_max": 72, "b_min": 90, "b_max": 125 }
+      ]
+    },
+    {
+      "id": "warm",
+      "note": "Rich amber-orange transition band. Canonical #e1813b. Low entropy: warm ember arc.",
+      "entropy": "low",
+      "anchor": "color-warm",
+      "members": [],
+      "ranges": [
+        { "r_min": 200, "r_max": 240, "g_min": 105, "g_max": 148, "b_min": 40, "b_max": 80 }
+      ]
+    },
+    {
+      "id": "accent",
+      "note": "Bright fiery orange outer ring peak. Canonical #ff902f. Low entropy: stays within vivid solar orange.",
+      "entropy": "low",
+      "anchor": "color-accent",
+      "members": [],
+      "ranges": [
+        { "r_min": 240, "r_max": 255, "g_min": 128, "g_max": 168, "b_min": 30, "b_max": 70 }
+      ]
+    },
+    {
+      "id": "glow",
+      "note": "Electric teal-cyan outer edge and glow filter. Canonical #8be4d9. Medium entropy: can drift cooler (mint) or warmer (aquamarine).",
+      "entropy": "medium",
+      "anchor": "color-glow",
+      "members": [],
+      "ranges": [
+        { "r_min": 100, "r_max": 165, "g_min": 205, "g_max": 245, "b_min": 195, "b_max": 235 }
+      ]
+    },
+    {
+      "id": "text",
+      "note": "Crisp warm-white metallic for logo text. Very tight — must stay near-white for legibility.",
+      "entropy": "tight",
+      "anchor": "color-text",
+      "members": [],
+      "ranges": [
+        { "r_min": 245, "r_max": 255, "g_min": 245, "g_max": 255, "b_min": 245, "b_max": 255 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "core-breath",
+      "note": "Primary breath envelope — drives both the inner stop color cycle AND the overall orb opacity animate. Slowest rhythm: sets the big cosmic inhale/exhale.",
+      "members": ["pulse-core"],
+      "min": "8.0",
+      "max": "18.0",
+      "precision": 1
+    },
+    {
+      "id": "mid-breath",
+      "note": "Mid-band stop color cycle — color-warm ↔ color-accent. Slightly faster than core so rings appear to ripple inward/outward at different rates.",
+      "members": ["pulse-mid"],
+      "min": "5.5",
+      "max": "13.0",
+      "precision": 1
+    },
+    {
+      "id": "outer-breath",
+      "note": "Outer accent + 81% stop color/opacity cycle — color-accent ↔ color-glow. Faster still: the bright outer ring crackles with most life.",
+      "members": ["pulse-outer"],
+      "min": "3.5",
+      "max": "9.0",
+      "precision": 1
+    },
+    {
+      "id": "edge-breath",
+      "note": "Edge glow stop cycle — color-glow ↔ color-core. Runs at its own rate so the teal halo fades in and out independently of the orange bands.",
+      "members": ["pulse-edge"],
+      "min": "6.0",
+      "max": "16.0",
+      "precision": 1
+    },
+    {
+      "id": "phase-offset",
+      "note": "begin offset (seconds) applied to mid and outer stop animations so they start out of phase with core — prevents all bands from peaking simultaneously and creates the organic ripple feel.",
+      "members": ["pulse-offset"],
+      "min": "1.0",
+      "max": "6.0",
+      "precision": 1
+    },
+    {
+      "id": "gradient-drift",
+      "note": "Full period (seconds) of the gradientTransform rotation — makes the radial focal point orbit the orb center, causing the light source to appear to drift cosmically across the rings.",
+      "members": ["drift-spin"],
+      "min": "18.0",
+      "max": "60.0",
+      "precision": 1
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-core",
+      "note": "Deep cosmic purple. Inner 0% and 13% gradient stops. Also used as exchange target in pulse-edge animation (glow ↔ core).",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 70, "r_max": 100, "g_min": 45, "g_max": 72, "b_min": 90, "b_max": 125 }
+        ]
+      }
+    },
+    {
+      "name": "color-warm",
+      "note": "Amber-orange transition. 33% stop. Cycles toward color-accent during pulse-mid.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 200, "r_max": 240, "g_min": 105, "g_max": 148, "b_min": 40, "b_max": 80 }
+        ]
+      }
+    },
+    {
+      "name": "color-accent",
+      "note": "Bright fiery orange. 75% and 81% stops. Also start value for core-breath cycle (color-core ↔ color-warm).",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 240, "r_max": 255, "g_min": 128, "g_max": 168, "b_min": 30, "b_max": 70 }
+        ]
+      }
+    },
+    {
+      "name": "color-glow",
+      "note": "Electric teal-cyan. 94% and 100% edge stops, and feFlood color in glow filter. Cycles toward color-core during pulse-edge.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 100, "r_max": 165, "g_min": 205, "g_max": 245, "b_min": 195, "b_max": 235 }
+        ]
+      }
+    },
+    {
+      "name": "color-text",
+      "note": "Warm near-white for logo letterforms. Kept tight to preserve legibility at all times.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 245, "r_max": 255, "g_min": 245, "g_max": 255, "b_min": 245, "b_max": 255 }
+        ]
+      }
+    },
+    {
+      "name": "blur-glow",
+      "note": "feGaussianBlur stdDeviation on the orb glow filter. Low = tight halo; high = diffuse cosmic bloom.",
+      "kind": {
+        "range": { "min": "4.0", "max": "18.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "opacity-glow",
+      "note": "feFlood flood-opacity in glow filter. Controls how intensely the teal halo radiates beneath the rings.",
+      "kind": {
+        "range": { "min": "0.20", "max": "0.65", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-lo",
+      "note": "Orb opacity at exhale trough — the 'from' value of the orb breath animate. Keeps the rings visible even at minimum.",
+      "kind": {
+        "range": { "min": "0.82", "max": "0.94", "precision": 2 }
+      }
+    },
+    {
+      "name": "opacity-hi",
+      "note": "Orb opacity at inhale peak — the 'to' value. Full presence.",
+      "kind": {
+        "range": { "min": "0.97", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "pulse-core",
+      "note": "Period (seconds) of inner stop color cycle AND overall orb opacity breath. The master heartbeat. Template appends 's'.",
+      "kind": {
+        "range": { "min": "8.0", "max": "18.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "pulse-mid",
+      "note": "Period of 33% mid-band stop color animation. Should differ from pulse-core for ripple effect. Template appends 's'.",
+      "kind": {
+        "range": { "min": "5.5", "max": "13.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "pulse-outer",
+      "note": "Period of 75%/81% outer stop color + opacity animation. Fastest band — outer ring has most visible life. Template appends 's'.",
+      "kind": {
+        "range": { "min": "3.5", "max": "9.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "pulse-edge",
+      "note": "Period of 94%/100% edge glow stop color + opacity animation. Independent from orange bands. Template appends 's'.",
+      "kind": {
+        "range": { "min": "6.0", "max": "16.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "pulse-offset",
+      "note": "begin delay (seconds) for mid and outer stop animations — creates phase offset so bands don't all peak together. Template appends 's'.",
+      "kind": {
+        "range": { "min": "1.0", "max": "6.0", "precision": 1 }
+      }
+    },
+    {
+      "name": "drift-spin",
+      "note": "Full rotation period (seconds) of gradientTransform animateTransform on the radial gradient. Makes the focal light source orbit the orb center. Very slow feels celestial; faster feels energetic. Template appends 's'.",
+      "kind": {
+        "range": { "min": "18.0", "max": "60.0", "precision": 1 }
+      }
+    }
+  ]
+}

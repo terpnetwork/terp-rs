@@ -6,7 +6,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 
 /// 32-byte compressed Ristretto commitment (payment memo body).
 pub type Commit = [u8; 32];
@@ -30,12 +30,12 @@ fn msg_scalar(terp: &str, session: &[u8]) -> Scalar {
     Scalar::from_bytes_mod_order(*h.finalize().as_bytes())
 }
 
-pub fn commit<R: RngCore + CryptoRng>(terp: &str, rng: &mut R) -> (Commit, [u8; 32]) {
+pub fn commit<R: Rng + CryptoRng>(terp: &str, rng: &mut R) -> (Commit, [u8; 32]) {
     commit_session(terp, &[], rng)
 }
 
 /// `session` is per checkout instance. Same address, new session, different memo.
-pub fn commit_session<R: RngCore + CryptoRng>(
+pub fn commit_session<R: Rng + CryptoRng>(
     terp: &str,
     session: &[u8],
     rng: &mut R,

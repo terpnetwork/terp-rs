@@ -3,7 +3,7 @@
 use core::cmp::{Ord, Ordering, PartialOrd};
 
 use pasta_curves::pallas;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, Rng};
 
 #[cfg(feature = "std")]
 pub use reddsa::batch;
@@ -57,7 +57,7 @@ impl SigningKey<SpendAuth> {
 
 impl<T: SigType> SigningKey<T> {
     /// Creates a signature of type `T` on `msg` using this `SigningKey`.
-    pub fn sign<R: RngCore + CryptoRng>(&self, mut rng: R, msg: &[u8]) -> Signature<T> {
+    pub fn sign<R: Rng + CryptoRng>(&self, mut rng: R, msg: &[u8]) -> Signature<T> {
         Signature(self.0.sign(&mut rng, msg))
     }
 }

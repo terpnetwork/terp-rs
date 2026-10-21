@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use halo2_proofs::plonk;
 use pasta_curves::vesta;
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 use tracing::debug;
 
 use super::{Authorized, Bundle};
@@ -51,7 +51,7 @@ impl BatchValidator {
     /// Batch-validate queued proofs (and RedPallas signatures if any).
     ///
     /// Empty batches are valid (no-op). Returns `true` iff all items verify.
-    pub fn validate<R: RngCore + CryptoRng>(self, vk: &VerifyingKey, mut rng: R) -> bool {
+    pub fn validate<R: Rng + CryptoRng>(self, vk: &VerifyingKey, mut rng: R) -> bool {
         if !self.signatures.is_empty() {
             let mut validator = redpallas::batch::Verifier::new();
             for sig in self.signatures.iter() {

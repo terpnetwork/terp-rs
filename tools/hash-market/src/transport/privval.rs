@@ -168,7 +168,7 @@ async fn sign_gated(
 ) -> Result<[u8; 64]> {
     let msg = hex::decode(req.msg_hex.trim())?;
     if let Some(lock) = hrs {
-        let mut g = lock.lock().await;
+        let g = lock.lock().await;
         if let Some(cached) = g.check(req.height, req.round, req.step)? {
             let mut out = [0u8; 64];
             anyhow::ensure!(cached.len() == 64, "cached sig");

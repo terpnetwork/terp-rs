@@ -251,7 +251,7 @@ fn issue_pay_target(
     let qty = qty.clamp(checkout::QTY_MIN, checkout::QTY_MAX);
     let mut rng = rand::rngs::OsRng;
     let mut session = [0u8; 32];
-    rand::RngCore::fill_bytes(&mut rng, &mut session);
+    rand::Rng::fill_bytes(&mut rng, &mut session);
     let (c, r) = pedersen::commit_session(terp, &session, &mut rng);
     let mut f = fed.lock().unwrap();
     let st = checkout_now(&f);
@@ -2210,7 +2210,7 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
         }
         ("GET", "/v1/admin/challenge") => {
             let mut nonce = [0u8; 32];
-            use rand::RngCore;
+            use rand::Rng;
             rand::rngs::OsRng.fill_bytes(&mut nonce);
             let challenge = hex::encode(nonce);
             let now = std::time::SystemTime::now()

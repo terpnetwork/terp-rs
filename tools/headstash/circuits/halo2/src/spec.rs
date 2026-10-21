@@ -451,7 +451,7 @@ mod tests {
     use group::Group;
     use halo2_proofs::arithmetic::CurveExt;
     use pasta_curves::pallas;
-    use rand_core::RngCore;
+    use rand_core::Rng;
 
     #[test]
     fn diversify_hash_substitution() {

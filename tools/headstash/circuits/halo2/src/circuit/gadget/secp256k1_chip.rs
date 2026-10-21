@@ -27,7 +27,7 @@ use pasta_curves::pallas;
 use secp256k1::constants::{GENERATOR_X, GENERATOR_Y};
 
 use crate::spec::{
-    biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_for_field, fe_to_biguint_simple,
+    biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_simple,
 };
 
 use halo2_base::utils::BigPrimeField;
@@ -463,7 +463,7 @@ pub fn modulus_simple_pallas() -> BigUint {
 
 pub fn modulus_simple_secp_fp() -> BigUint {
     let neg_one = {
-        use halo2_base::halo2_proofs::halo2curves::ff::Field;
+        
         -Fp::one()
     };
     BigUint::from_bytes_le(<Secp256k1Fp as AxiomPrimeField>::to_repr(&neg_one).as_ref()) + 1u64

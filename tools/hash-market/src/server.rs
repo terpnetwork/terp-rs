@@ -21,7 +21,7 @@ use axum::{
     extract::{Path, State},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{get, post},
 };
 use cw721_nips::buds::{self, BlossomState};
 use std::collections::HashMap;

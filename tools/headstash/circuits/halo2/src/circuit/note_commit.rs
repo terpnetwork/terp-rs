@@ -5,23 +5,14 @@
 // we keep track of each n bounds coordiates (start,end) in set of ∫
 // generate circuits to automatically of decompose sections based on unique ∫n
 
-use core::iter;
-// use std::println;
-
-use group::ff::PrimeField;
-use halo2_proofs::{
-    circuit::{AssignedCell, Layouter, Value},
-    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Expression, Selector},
-    poly::Rotation,
-};
-use pasta_curves::pallas;
-
 use crate::{
     constants::{OrchardCommitDomains, OrchardFixedBases, OrchardHashDomains, T_P},
     value::NoteValue,
 };
+use core::iter;
+use group::ff::PrimeField;
 use halo2_gadgets::{
-    ecc::{CircuitVersion, Point, ScalarFixed, chip::EccChip},
+    ecc::{Point, ScalarFixed, chip::EccChip},
     sinsemilla::{
         CommitDomain, Message, MessagePiece,
         chip::{SinsemillaChip, SinsemillaConfig},
@@ -31,6 +22,12 @@ use halo2_gadgets::{
         lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
     },
 };
+use halo2_proofs::{
+    circuit::{AssignedCell, Layouter, Value},
+    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Expression, Selector},
+    poly::Rotation,
+};
+use pasta_curves::pallas;
 
 type NoteCommitPiece = MessagePiece<
     pallas::Affine,
@@ -753,8 +750,8 @@ impl NdCanonicity {
             // a is bits 0-249 of nd (250 bits)
             let a = meta.query_advice(col_r, Rotation::cur());
             let a_prime = meta.query_advice(col_r, Rotation::next());
-            let z13_a = meta.query_advice(col_z, Rotation::cur());
-            let z13_a_prime = meta.query_advice(col_z, Rotation::next());
+            let _z13_a = meta.query_advice(col_z, Rotation::cur());
+            let _z13_a_prime = meta.query_advice(col_z, Rotation::next());
             // Decomposition: nd = a + b0 * 2^250
             let decomposition_check = a.clone() + b0.clone() * two_pow_250 - nd;
 
@@ -791,7 +788,7 @@ impl NdCanonicity {
         nd: &AssignedCell<pallas::Base, pallas::Base>,
         a: NoteCommitPiece,
         b0: RangeConstrained<pallas::Base, AssignedCell<pallas::Base, pallas::Base>>,
-        b1: AssignedCell<pallas::Base, pallas::Base>,
+        _b1: AssignedCell<pallas::Base, pallas::Base>,
         a_prime: AssignedCell<pallas::Base, pallas::Base>,
         z13_a: AssignedCell<pallas::Base, pallas::Base>,
         z13_a_prime: AssignedCell<pallas::Base, pallas::Base>,
@@ -853,7 +850,7 @@ impl ValueCanonicity {
             // c0 (top 9 bits of v, bits 55..64) - constrained to 9 bits in DecomposeC
             let c0 = meta.query_advice(col_r, Rotation::cur());
             let b1_c0_prime = meta.query_advice(col_z, Rotation::cur());
-            let z6_b1_c0_prime = meta.query_advice(col_z, Rotation::next());
+            let _z6_b1_c0_prime = meta.query_advice(col_z, Rotation::next());
 
             // value = b1 + 2^55 * c0
             let value_check = b1.clone() + c0.clone() * two_pow_55 - value;
@@ -944,7 +941,7 @@ impl FdiCanonicity {
             let c1_d0_prime = meta.query_advice(col_z, Rotation::cur());
 
             // Row 1
-            let z6_c1_d0_prime = meta.query_advice(col_z, Rotation::next());
+            let _z6_c1_d0_prime = meta.query_advice(col_z, Rotation::next());
 
             // Decomposition check: fdi = c1 + d0 * 2^51
             let fdi_check = c1.clone() + d0.clone() * two_pow_51 - fdi;
@@ -1140,7 +1137,7 @@ impl EskCanonicity {
 
             // Row 1
             let h0 = meta.query_advice(col_m, Rotation::next());
-            let z26_f1_g_h0_prime = meta.query_advice(col_z, Rotation::next());
+            let _z26_f1_g_h0_prime = meta.query_advice(col_z, Rotation::next());
 
             // Decomposition check: esk = f1 + g * 2^2 + h0 * 2^252
             let esk_check = f1.clone() + g.clone() * two_pow_2 + h0.clone() * two_pow_252 - esk;
@@ -1245,7 +1242,7 @@ impl RhoCanonicity {
             let j0 = meta.query_advice(col_m, Rotation::next());
 
             // Row 1
-            let z26_h1_i_j0_prime = meta.query_advice(col_z, Rotation::next());
+            let _z26_h1_i_j0_prime = meta.query_advice(col_z, Rotation::next());
 
             // Decomposition check: rho = h1 + i * 2^7 + j0 * 2^247
             let rho_check = h1.clone() + i.clone() * two_pow_7 + j0.clone() * two_pow_247 - rho;
@@ -1347,7 +1344,7 @@ impl PsiCanonicity {
             let j1_k_l0_prime = meta.query_advice(col_z, Rotation::cur());
 
             let l0 = meta.query_advice(col_m, Rotation::next()); // bits 252..255 (3 bits, from DecomposeL)
-            let z26_j1_k_l0_prime = meta.query_advice(col_z, Rotation::next());
+            let _z26_j1_k_l0_prime = meta.query_advice(col_z, Rotation::next());
 
             // Decomposition check: psi = j1 + k * 2^2 + l0 * 2^252
             let psi_check = j1.clone() + k.clone() * two_pow_2 + l0.clone() * two_pow_252 - psi;
@@ -1598,7 +1595,7 @@ impl NoteCommitChip {
 }
 
 pub(in crate::circuit) mod gadgets {
-    use halo2_gadgets::sinsemilla::HashDomain;
+
     use halo2_proofs::circuit::{Chip, Value};
 
     use super::*;
@@ -1745,41 +1742,41 @@ pub(in crate::circuit) mod gadgets {
         // ===== ND CANONICITY (piece a, b) =====
         // Piece a: nd[0..250) = 250 bits = 25 ten-bit words → zs[0] has 26 elements
         let z13_a = zs[0][13].clone(); // Midpoint check for nd's low 250 bits
-        let z25_a = zs[0][24].clone(); // End of piece a
+        let _z25_a = zs[0][24].clone(); // End of piece a
         // ===== VALUE CANONICITY (piece b, c) =====
         // Piece b: nd[250..255) || v[0..55) = 60 bits = 6 words → zs[1] has 7 elements
-        let z1_b = zs[1][1].clone(); // After first word boundary in piece b
-        let z6_b = zs[1][5].clone(); // End of piece b (end of v's low 55 bits)
+        let _z1_b = zs[1][1].clone(); // After first word boundary in piece b
+        let _z6_b = zs[1][5].clone(); // End of piece b (end of v's low 55 bits)
         // Piece c: v[55..64) || fdi[0..51) = 60 bits = 6 words → zs[2] has 7 elements
-        let z1_c = zs[2][1].clone(); // After v[55..64) completes (9 bits → in first word)
-        let z6_c = zs[2][5].clone(); // End of piece c
+        let _z1_c = zs[2][1].clone(); // After v[55..64) completes (9 bits → in first word)
+        let _z6_c = zs[2][5].clone(); // End of piece c
         // ===== FDI CANONICITY (piece c, d) =====
         // Piece d: fdi[51..64) || recp[0..7) = 20 bits = 2 words → zs[3] has 3 elements
         let z1_d = zs[3][0].clone(); // After fdi[51..64) completes (13 bits → in second word)
-        let z2_d = zs[3][1].clone(); // End of piece d
+        let _z2_d = zs[3][1].clone(); // End of piece d
         // ===== RECP CANONICITY (piece d, e, f) =====
         // Piece e: recp[7..247) = 240 bits = 24 words → zs[4] has 25 elements
-        let z13_e = zs[4][13].clone(); // Midpoint check for recp middle bits
-        let z24_e = zs[4][23].clone(); // End of piece e
+        let _z13_e = zs[4][13].clone(); // Midpoint check for recp middle bits
+        let _z24_e = zs[4][23].clone(); // End of piece e
         // Piece f: recp[247..255) || esk[0..2) = 10 bits = 1 word → zs[5] has 2 elements
-        let z1_f = zs[5][0].clone(); // End of piece f (completes recp high 8 bits)
+        let _z1_f = zs[5][0].clone(); // End of piece f (completes recp high 8 bits)
         // ===== ESK CANONICITY (piece f, g, h) =====
         // Piece g: esk[2..247) = 245 bits = 24.5 words → zs[6] has 25 or 26 elements (check actual)
-        let z13_g = zs[6][13].clone(); // Midpoint check for esk middle bits
-        let z24_g = zs[6][24].clone(); // Near end of piece g
+        let _z13_g = zs[6][13].clone(); // Midpoint check for esk middle bits
+        let _z24_g = zs[6][24].clone(); // Near end of piece g
         // Piece h: esk[247..255) || rho[0..2) = 10 bits = 1 word → zs[7] has 2 elements
-        let z1_h = zs[7][0].clone(); // End of piece h (completes esk high 8 bits)
+        let _z1_h = zs[7][0].clone(); // End of piece h (completes esk high 8 bits)
         // ===== RHO CANONICITY (piece h, i, j) =====
         // Piece i: rho[2..252) = 250 bits = 25 words → zs[8] has 26 elements
-        let z13_i = zs[8][13].clone(); // Midpoint check for rho middle bits
-        let z25_i = zs[8][23].clone(); // End of piece i
+        let _z13_i = zs[8][13].clone(); // Midpoint check for rho middle bits
+        let _z25_i = zs[8][23].clone(); // End of piece i
         // Piece j: rho[252..255) || psi[0..7) = 10 bits = 1 word → zs[9] has 2 elements
-        let z1_j = zs[9][0].clone(); // End of piece j (completes rho high 3 bits)
+        let _z1_j = zs[9][0].clone(); // End of piece j (completes rho high 3 bits)
         // Piece k: psi[7..247) = 240 bits = 24 words → zs[10] has 25 elements
-        let z13_k = zs[10][13].clone(); // Midpoint check for psi middle bits
-        let z24_k = zs[10][24].clone(); // End of piece k
+        let _z13_k = zs[10][13].clone(); // Midpoint check for psi middle bits
+        let _z24_k = zs[10][24].clone(); // End of piece k
         // Piece l: psi[247..255) || padding(2) = 10 bits = 1 word → zs[11] has 2 elements
-        let z1_l = zs[11][0].clone(); // End of piece l (completes psi high 8 bits)
+        let _z1_l = zs[11][0].clone(); // End of piece l (completes psi high 8 bits)
 
         // println!("Running sums:");
         // // ===== ND CANONICITY =====
@@ -1874,7 +1871,7 @@ pub(in crate::circuit) mod gadgets {
         let [f0, f1] = cfg.f.assign(&mut lo, f, [f0, f1])?;
         let [h0, h1] = cfg.h.assign(&mut lo, h, [h0, h1])?;
         let [j0, j1] = cfg.j.assign(&mut lo, j, [j0, j1])?;
-        let [l0, l1] = cfg.l.assign(&mut lo, l, [l0, l1])?;
+        let [l0, _l1] = cfg.l.assign(&mut lo, l, [l0, l1])?;
 
         cfg.nd
             .assign(&mut lo, &nd, a, b0, b_1, a_prime, z13_a, z13_a_prime)?;

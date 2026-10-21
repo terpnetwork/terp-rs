@@ -69,6 +69,3 @@ proptest  = { workspace = true }
 shardtree = { workspace = true }
 zcash_note_encryption  = { workspace = true }
 
-[[example]]
-name = "curate_keys"
-required-features = ["interface", "host-crypto"]

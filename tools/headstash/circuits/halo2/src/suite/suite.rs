@@ -37,7 +37,7 @@ use ff::{Field, FromUniformBytes, PrimeField, PrimeFieldBits};
 use hex::decode;
 use pasta_curves::pallas::Base;
 use pasta_curves::{Fp, arithmetic::CurveAffine, group::Curve, pallas};
-use rand_core::RngCore;
+use rand_core::Rng;
 use serde_json::{Value, json};
 use sinsemilla::HashDomain;
 use std::error::Error;

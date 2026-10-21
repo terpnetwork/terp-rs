@@ -139,7 +139,7 @@ impl MerklePath {
 **Changes**:
 
 ```rust
-fn generate_circuit_instance<R: RngCore>(mut rng: R) -> (Circuit, Instance) {
+fn generate_circuit_instance<R: Rng>(mut rng: R) -> (Circuit, Instance) {
     let (_, fvk, esk, spent_note) = Note::dummy(&mut rng, None);
     let (epkx, epky) = esk.epk().xy();
 

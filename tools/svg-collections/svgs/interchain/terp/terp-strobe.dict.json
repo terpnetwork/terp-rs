@@ -1,0 +1,123 @@
+{
+  "version": "1",
+  "collection": "terp-strobe",
+  "description": "13-orb neon-green strobe grid on a translucent black field. Each orb has an independent slow breath-pulse and a fast strobe-flicker, all sharing a single neon-glow filter. Colors are subtle gradients and shades of vibrant neon green (lime → mint family) for a unified, electric cyber aesthetic that directly matches the original SVG's classic #cfffcf / #e8ffdb energy.",
+
+  "palette_groups": [
+    {
+      "id": "orb",
+      "note": "All 13 orb fill colors plus the shared glow filter. Constrained exclusively to bright neon-green / lime / mint shades with high brightness and subtle natural variation — no cyan/magenta/yellow hues.",
+      "entropy": "medium",
+      "anchor": "glow-color",
+      "members": [
+        "color-a", "color-b", "color-c", "color-d", "color-e",
+        "color-f", "color-g", "color-h", "color-i", "color-j",
+        "color-k", "color-l", "color-m"
+      ],
+      "ranges": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "breath",
+      "note": "Slow neon breath pulse — each orb expands and contracts at its own chaotic rate. Range matches the original SVG timings (1.39s–4.07s). Unit is appended by the template (${pulse-a}s).",
+      "members": [
+        "pulse-a", "pulse-b", "pulse-c", "pulse-d", "pulse-e",
+        "pulse-f", "pulse-g", "pulse-h", "pulse-i", "pulse-j",
+        "pulse-k", "pulse-l", "pulse-m"
+      ],
+      "min": "1.2",
+      "max": "4.5",
+      "precision": 2
+    },
+    {
+      "id": "strobe",
+      "note": "Fast strobe flicker — each orb blinks at its own frequency for a chaotic strobe field. Range matches the original SVG timings (0.11s–0.46s). Unit is appended by the template (${flicker-a}s).",
+      "members": [
+        "flicker-a", "flicker-b", "flicker-c", "flicker-d", "flicker-e",
+        "flicker-f", "flicker-g", "flicker-h", "flicker-i", "flicker-j",
+        "flicker-k", "flicker-l", "flicker-m"
+      ],
+      "min": "0.08",
+      "max": "0.50",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    { "name": "glow-color", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+
+    { "name": "color-a", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-b", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-c", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-d", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-e", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-f", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-g", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-h", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-i", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-j", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-k", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-l", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+    { "name": "color-m", "kind": { "rgb_styled": [
+        { "r_min": 160, "r_max": 255, "g_min": 240, "g_max": 255, "b_min": 160, "b_max": 255 }
+    ]}},
+
+    { "name": "pulse-a",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-b",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-c",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-d",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-e",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-f",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-g",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-h",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-i",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-j",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-k",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-l",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+    { "name": "pulse-m",   "kind": { "range": { "min": "1.2", "max": "4.5", "precision": 2 } } },
+
+    { "name": "flicker-a", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-b", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-c", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-d", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-e", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-f", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-g", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-h", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-i", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-j", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-k", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-l", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } },
+    { "name": "flicker-m", "kind": { "range": { "min": "0.08", "max": "0.50", "precision": 2 } } }
+  ]
+}

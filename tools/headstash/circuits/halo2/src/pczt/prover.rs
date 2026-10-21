@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use halo2_proofs::plonk;
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 
 use crate::{
     Note, Proof,
@@ -12,7 +12,7 @@ use crate::{
 
 impl super::Bundle {
     /// Adds a proof to this PCZT bundle.
-    pub fn create_proof<R: RngCore + CryptoRng>(
+    pub fn create_proof<R: Rng + CryptoRng>(
         &mut self,
         pk: &ProvingKey,
         rng: R,

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 
 use crate::{
     keys::SpendAuthorizingKey,
@@ -12,7 +12,7 @@ use super::SignerError;
 
 impl super::Bundle {
     /// Finalizes the IO for this bundle.
-    pub fn finalize_io<R: RngCore + CryptoRng>(
+    pub fn finalize_io<R: Rng + CryptoRng>(
         &mut self,
         sighash: [u8; 32],
         mut rng: R,

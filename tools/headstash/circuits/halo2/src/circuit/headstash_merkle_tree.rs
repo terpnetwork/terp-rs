@@ -91,13 +91,13 @@ impl LeafHashChip {
 
             let epk_x = meta.query_advice(config.advices[0], Rotation::cur());
             let nd = meta.query_advice(config.advices[2], Rotation::cur());
-            let v = meta.query_advice(config.advices[3], Rotation::cur());
-            let fdi = meta.query_advice(config.advices[4], Rotation::cur());
+            let _v = meta.query_advice(config.advices[3], Rotation::cur());
+            let _fdi = meta.query_advice(config.advices[4], Rotation::cur());
 
             let b0 = meta.query_advice(config.advices[5], Rotation::cur());
-            let z13_a = meta.query_advice(config.advices[6], Rotation::cur());
+            let _z13_a = meta.query_advice(config.advices[6], Rotation::cur());
             let a_prime = meta.query_advice(config.advices[7], Rotation::cur());
-            let z13_a_prime = meta.query_advice(config.advices[8], Rotation::cur());
+            let _z13_a_prime = meta.query_advice(config.advices[8], Rotation::cur());
 
             let two_pow_250 = pallas::Base::from_u128(1u128 << 125).square();
             let epk_x_decomposition = {
@@ -114,9 +114,9 @@ impl LeafHashChip {
             };
 
             let d0 = meta.query_advice(config.advices[5], Rotation::next());
-            let z13_d = meta.query_advice(config.advices[6], Rotation::next());
+            let _z13_d = meta.query_advice(config.advices[6], Rotation::next());
             let nd_prime = meta.query_advice(config.advices[7], Rotation::next());
-            let z13_nd_prime = meta.query_advice(config.advices[8], Rotation::next());
+            let _z13_nd_prime = meta.query_advice(config.advices[8], Rotation::next());
 
             let two_pow_4 = pallas::Base::from(1 << 4);
             let two_pow_254 = two_pow_250 * pallas::Base::from(1 << 4);

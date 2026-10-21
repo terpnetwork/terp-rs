@@ -137,8 +137,8 @@ prost = { version = "0.13", optional = true }
 prost-types = { version = "0.13", optional = true }
 # Poseidon-v1 distro CRH (feature `pir` only). Path crates stay in their own workspace.
 ff = { version = "0.14", optional = true }
-pasta_curves = { package = "zakura-pasta-curves", path = "../../../../crates/zakura-common/crates/pasta_curves", default-features = false, features = ["default"], optional = true }
-halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../../crates/zakura-common/crates/halo2_gadgets", default-features = false, optional = true }
-halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../../crates/zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"], optional = true }
+pasta_curves = { package = "zakura-pasta-curves", path = "../../../zakura-common/crates/pasta_curves", default-features = false, features = ["default"], optional = true }
+halo2_gadgets = { package = "zakura-halo2-gadgets", path = "../../../zakura-common/crates/halo2_gadgets", default-features = false, optional = true }
+halo2_proofs = { package = "zakura-halo2-proofs", path = "../../../zakura-common/crates/halo2_proofs", default-features = false, features = ["batch"], optional = true }
 rand = { version = "0.10", default-features = false, features = ["sys_rng", "thread_rng"], optional = true }
 sha3 = { version = "0.10", optional = true }

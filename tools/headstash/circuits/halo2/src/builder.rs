@@ -241,7 +241,7 @@ impl SpendInfo {
     ///
     /// [orcharddummynotes]: https://zips.z.cash/protocol/nu5.pdf#orcharddummynotes
     fn dummy(rng: &mut impl Rng) -> Self {
-        let (sk, fvk, esk, note) = Note::dummy(rng, None);
+        let (sk, fvk, _esk, note) = Note::dummy(rng, None);
         let merkle_path = MerklePath::dummy(rng);
 
         SpendInfo {
@@ -269,7 +269,7 @@ impl SpendInfo {
             {
                 use crate::circuit::gadget::secp256k1_chip::secp_coord_be_to_pallas_base;
                 use crate::distro_poseidon::poseidon_distro_leaf;
-                use ff::PrimeField;
+                
                 let (epk_x_be, epk_y_be) = self.note.elig_sk().epk().xy();
                 use crate::claim_auth::{claim_rseed_com, rseed_halves};
                 let (lo, hi) = rseed_halves(self.note.rseed().as_bytes());
@@ -369,7 +369,7 @@ impl OutputInfo {
     ///
     /// [orcharddummynotes]: https://zips.z.cash/protocol/nu5.pdf#orcharddummynotes
     pub fn dummy(rng: &mut impl Rng) -> Self {
-        let fvk: FullViewingKey = (&SpendingKey::random(rng)).into();
+        let _fvk: FullViewingKey = (&SpendingKey::random(rng)).into();
         // let recipient = fvk.address_at(0u32, Scope::External);
         let recipient = RecpAddr::new([0; 32]);
         let nd = NoteDenom::new_for_proof("denom");
@@ -386,8 +386,8 @@ impl OutputInfo {
         &self,
         // cv_net: &ValueCommitment,
         nf_old: Nullifier,
-        v: NoteValue,
-        nd: NoteDenom,
+        _v: NoteValue,
+        _nd: NoteDenom,
         mut rng: impl Rng,
     ) -> (Note, ExtractedNoteCommitment) {
         // TransmittedNoteCiphertext

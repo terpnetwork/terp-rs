@@ -18,7 +18,6 @@ use sinsemilla::HashDomain;
 use ff::{Field, PrimeField, PrimeFieldBits};
 use lazy_static::lazy_static;
 use rand::Rng;
-use rand_core::RngCore;
 use serde::de::{Deserializer, Error};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -314,7 +313,7 @@ impl<'de> Deserialize<'de> for MerkleHashOrchard {
 pub mod testing {
     use ff::Field;
     use rand::{
-        RngCore,
+        Rng,
         distributions::{Distribution, Standard},
     };
 
@@ -322,7 +321,7 @@ pub mod testing {
 
     impl MerkleHashOrchard {
         /// Return a random fake `MerkleHashOrchard`.
-        pub fn random(rng: &mut impl RngCore) -> Self {
+        pub fn random(rng: &mut impl Rng) -> Self {
             Standard.sample(rng)
         }
     }

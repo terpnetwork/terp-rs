@@ -365,7 +365,7 @@ impl CompactAction {
 /// Utilities for constructing test data.
 #[cfg(feature = "test-dependencies")]
 pub mod testing {
-    use rand_core::RngCore;
+    use rand_core::Rng;
     use zcash_note_encryption::Domain;
 
     use crate::{
@@ -380,7 +380,7 @@ pub mod testing {
     /// Creates a fake `CompactAction` paying the given recipient the specified value.
     ///
     /// Returns the `CompactAction` and the new note.
-    pub fn fake_compact_action<R: RngCore>(
+    pub fn fake_compact_action<R: Rng>(
         rng: &mut R,
         nf_old: Nullifier,
         recipient: Address,

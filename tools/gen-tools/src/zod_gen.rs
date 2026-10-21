@@ -166,7 +166,7 @@ fn generate_zod_file(
             // Otherwise fall back to z.union
             let union_type = if let Some(var0) = variants.first() {
                 if let Some(ref_path) = var0.get("$ref").and_then(|v| v.as_str()) {
-                    let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
+                    let _ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
                     format!("z.union([{}])", var_types.join(", "))
                 } else {
                     format!("z.union([{}])", var_types.join(", "))
@@ -327,7 +327,7 @@ fn json_type_to_zod(
         }
         _ => {
             // Inline object
-            if let Some(props) = schema.get("properties").and_then(|v| v.as_object()) {
+            if let Some(_props) = schema.get("properties").and_then(|v| v.as_object()) {
                 inline_variant_to_zod(schema, all_defs)
             } else {
                 "z.unknown()".to_string()
