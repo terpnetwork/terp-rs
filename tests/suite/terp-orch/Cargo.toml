@@ -9,6 +9,7 @@ homepage = { workspace = true }
 documentation = { workspace = true }
 authors = { workspace = true }
 rust-version = { workspace = true }
+autobins = false
 
 # The gov bin is cfg-gated. Without required-features, `cargo test --features headstash`
 # still tries to compile it and fails with `cannot find gov`.
@@ -16,6 +17,26 @@ rust-version = { workspace = true }
 name = "terp_gov_proposal"
 path = "src/bin/terp_gov_proposal.rs"
 required-features = ["gov"]
+
+[[bin]]
+name = "cw-ave-deploy"
+path = "src/bin/cw_ave_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "nftfi-deploy"
+path = "src/bin/nftfi_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "shitstrap-deploy"
+path = "src/bin/shitstrap_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "shitstrap-upload"
+path = "src/bin/shitstrap_upload.rs"
+required-features = ["deploy-bins"]
 
 [features]
 default = ["zk-host", "bridge"]
@@ -37,8 +58,18 @@ auth = ["dep:terp-authenticator-suite"]
 ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
 # Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
 headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+# Live deploy commands (Daemon). Off for library tests.
+deploy-bins = [
+    "stack",
+    "cw-orch/daemon",
+    "dep:dotenv",
+    "dep:env_logger",
+    "dep:av-event-helpers",
+]
 # Every published artifact: accounts, light clients, and the product contracts.
 stack = [
+    "dep:abstract-interface",
+    "dep:abstract-std",
     "dep:terp-authenticator-suite",
     "dep:terp-dao",
     "dep:terp-dregg",
@@ -73,7 +104,16 @@ stack = [
     "dep:cw-reg-eligibility",
     "dep:svg-auction",
     "dep:cw-oracle-aggregator",
+    "dep:cw-oracle-registry",
     "dep:cw-oracle-twap-probe",
+    "dep:cw-infuser",
+    "dep:cw721-svg",
+    "dep:cw-svg-minter",
+    "dep:whitelist-mtree",
+    "dep:terp-account",
+    "dep:terp721-account",
+    "dep:terp721-account-manifold",
+    "dep:ownership-verifier",
     "dep:marketplace-mirror",
     "dep:loyalty-verifier",
     "dep:trusted-builder-sbt",
@@ -82,10 +122,16 @@ stack = [
     "dep:hm-loyalty-whitelist",
     "dep:hm-nft-oracle",
     "dep:cosmwasm-vm",
+    "dep:dao-testing",
+    "dep:nftfi-utils",
+    "dep:sha2",
 ]
 
 [dependencies]
+abstract-interface = { workspace = true, optional = true }
+abstract-std = { workspace = true, optional = true }
 anyhow = { workspace = true }
+av-event-helpers = { workspace = true, optional = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-vm = { workspace = true, optional = true, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }
@@ -102,36 +148,49 @@ cw-ics08-wasm-zap1 = { workspace = true, optional = true, features = ["library"]
 cw-norick = { workspace = true, optional = true, features = ["library"] }
 cw-nullifier-auth = { workspace = true, optional = true, features = ["library"] }
 cw-nullifier-gate = { workspace = true, optional = true, features = ["library"] }
+cw-infuser = { workspace = true, optional = true, features = ["interface"] }
 cw-oracle-aggregator = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-oracle-registry = { workspace = true, optional = true, features = ["library", "interface"] }
 cw-oracle-twap-probe = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 cw-orch = { workspace = true }
 cw-private-dex = { workspace = true, optional = true }
 cw-reg-eligibility = { workspace = true, optional = true, features = ["library"] }
 cw-shit-denom = { workspace = true, optional = true }
-cw-shitstrap = { workspace = true, optional = true, features = ["library"] }
-cw-shitstrap-factory = { workspace = true, optional = true, features = ["library"] }
+cw-shitstrap = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-shitstrap-factory = { workspace = true, optional = true, features = ["library", "interface"] }
 cw-vote-anchor = { workspace = true, optional = true, features = ["library"] }
 cw-vote-ceremony = { workspace = true, optional = true, features = ["library"] }
 cw-zk-verify-demo = { workspace = true, features = ["library"] }
 cw420 = { workspace = true, optional = true, features = ["library"] }
+dao-testing = { workspace = true, optional = true }
+dotenv = { workspace = true, optional = true }
+env_logger = { workspace = true, optional = true }
 hm-loyalty-whitelist = { workspace = true, optional = true }
 hm-nft-minter = { workspace = true, optional = true, features = ["library", "interface"] }
 hm-nft-oracle = { workspace = true, optional = true }
 ict-rs = { workspace = true, optional = true, features = ["docker", "terp", "testing"] }
 ict-rs-cw-orch = { workspace = true, optional = true }
 loyalty-verifier = { workspace = true, optional = true, features = ["library", "interface"] }
+ownership-verifier = { workspace = true, optional = true }
 marketplace-mirror = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-loan = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-raffle = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-randomness = { workspace = true, optional = true }
+nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
 polytone-any-proxy = { workspace = true, optional = true, features = ["library"] }
 rand = { version = "0.10", optional = true, features = ["std", "sys_rng"] }
 revenue-marketplace = { workspace = true, optional = true, features = ["library"] }
 revenue-reserve-auction = { workspace = true, optional = true, features = ["library"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true, optional = true, features = ["std"] }
 svg-auction = { workspace = true, optional = true, features = ["library"] }
+terp-account = { workspace = true, optional = true, features = ["full", "interface"] }
 terp-authenticator-suite = { workspace = true, optional = true }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 terp-bls = { workspace = true, optional = true, features = ["library"] }
 terp-bounty-escrow = { workspace = true, optional = true, features = ["library", "interface", "dev-chain-guard"] }
 terp-dao = { workspace = true, optional = true, features = ["library"] }
@@ -139,6 +198,7 @@ terp-dregg = { workspace = true, optional = true, features = ["library"] }
 terp-frost = { workspace = true, optional = true, features = ["library"] }
 terp-zktls = { workspace = true, optional = true, features = ["library"] }
 trusted-builder-sbt = { workspace = true, optional = true, features = ["library", "interface"] }
+whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
 zk-cosmwasm = { workspace = true, optional = true }
 zk-headstash = { workspace = true, optional = true, features = ["interface", "host-crypto", "multicore"] }
 

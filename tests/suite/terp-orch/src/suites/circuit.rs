@@ -1,4 +1,4 @@
-//! Path A circuit bag (Stwo / Flock). Nested under [`crate::TerpOrchSuite`].
+//! Path A circuit bag (Stwo / Flock). Field `circuits` on `TerpArtifactStack`.
 
 use cosmwasm_std::Addr;
 use cw_orch::prelude::*;
@@ -6,24 +6,24 @@ use cw_orch::prelude::*;
 use crate::interfaces::{CwZkVerifyDemo, FlockLigeritoCircuit, StwoSsleCircuit};
 
 #[derive(Clone, Debug)]
-pub struct TerpCircuitDemoDeployData {
+pub struct CircuitDemoDeployData {
     pub admin: Addr,
     pub zkid: u64,
 }
 
-impl From<Addr> for TerpCircuitDemoDeployData {
+impl From<Addr> for CircuitDemoDeployData {
     fn from(admin: Addr) -> Self {
         Self { admin, zkid: 7 }
     }
 }
 
-pub struct TerpCircuitDemoSuite<Chain: CwEnv> {
+pub struct CircuitDemoSuite<Chain: CwEnv> {
     pub verify: CwZkVerifyDemo<Chain>,
     pub stwo: StwoSsleCircuit<Chain>,
     pub flock: FlockLigeritoCircuit<Chain>,
 }
 
-impl<Chain: CwEnv> TerpCircuitDemoSuite<Chain> {
+impl<Chain: CwEnv> CircuitDemoSuite<Chain> {
     pub fn new(chain: Chain) -> Self {
         Self {
             verify: CwZkVerifyDemo::new(chain.clone()),
@@ -33,9 +33,9 @@ impl<Chain: CwEnv> TerpCircuitDemoSuite<Chain> {
     }
 }
 
-impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpCircuitDemoSuite<Chain> {
+impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CircuitDemoSuite<Chain> {
     type Error = CwOrchError;
-    type DeployData = TerpCircuitDemoDeployData;
+    type DeployData = CircuitDemoDeployData;
 
     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
         let suite = Self::new(chain);

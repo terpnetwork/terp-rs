@@ -4,35 +4,8 @@ version = "0.0.2"
 edition = "2024"
 description = "Terp Network orchestration, IBC data pipeline, and integration harness (path: tests/)"
 
-[[bin]]
-name = "delegations"
-path = "bin/dels.rs"
-
-[[bin]]
-name = "e2e"
-path = "bin/e2e.rs"
-
-# Canonical IBC automation CLI (agent catalog / just recipes)
-[[bin]]
-name = "terp-ibc"
-path = "bin/ibc_info.rs"
-
-# Deprecated alias — prefer terp-ibc; remove after one release cycle
-[[bin]]
-name = "ibc"
-path = "bin/ibc_info.rs"
-
-[[bin]]
-name = "testnet"
-path = "bin/testnet.rs"
-
-[[bin]]
-name = "create_val"
-path = "bin/create_val.rs"
-
-[[bin]]
-name = "polytone_migrate"
-path = "bin/polytone_migrate.rs"
+# IBC, delegation, validator, and polytone CLIs live on `dao-scripts`.
+# `e2e` and `testnet` bins were removed with their sources.
 
 [[bin]]
 name = "suite_coverage"
@@ -54,7 +27,33 @@ account = []
 auth-suite = ["dep:terp-vsck", "dep:terp-auth"]
 auth-suite-full = ["auth-suite", "dep:terp-authenticator-suite"]
 circuit-demo-suite = ["orch-suite"]
-orch-suite = ["dep:terp-orch"]
+# One manifold: circuits, bridge, authenticators, accounts, light clients, products.
+orch-suite = [
+    "dep:terp-orch",
+    "terp-orch/stack",
+    "dep:cw-infuser",
+    "dep:cw-infusions",
+    "dep:cw-multi-test",
+    "dep:cw-svg",
+    "dep:cosmwasm-crypto",
+    "dep:cw-ownable",
+    "dep:cw721",
+    "dep:cw721-base",
+    "dep:cw721-svg",
+    "dep:ecdsa",
+    "dep:nftfi-loan",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
+    "dep:nftfi-utils",
+    "dep:rs_merkle",
+    "dep:terp-account",
+    "dep:terp-bounty-escrow",
+    "dep:terp721-account",
+    "dep:terp721-account-manifold",
+    "dep:whitelist-mtree",
+    "dep:cw-shitstrap",
+    "dep:cw-shit-denom",
+]
 # zebra-* need protoc; keep off default so --test no_rick does not require protobuf.
 crosslink-e2e = ["dep:zebra-crosslink", "dep:zebra-chain"]
 # Live zakurad TFL RPC → CrosslinkHeader (not synthetic ed25519).
@@ -68,10 +67,22 @@ clap = { workspace = true, features = ["derive"] }
 cosmos-sdk-proto = { workspace = true }
 cosmrs = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cosmwasm-crypto = { workspace = true, optional = true }
 cosmwasm-std = { workspace = true }
 crosslink-light-client = { workspace = true }
 csv = "1.4.0"
 cw-ics08-wasm-crosslink = { workspace = true, features = ["interface"] }
+cw-infuser = { workspace = true, optional = true, features = ["interface"] }
+cw-infusions = { workspace = true, optional = true }
+cw-multi-test = { workspace = true, optional = true }
+cw-ownable = { workspace = true, optional = true }
+cw-shit-denom = { workspace = true, optional = true }
+cw-shitstrap = { workspace = true, optional = true, features = ["interface"] }
+cw-svg = { workspace = true, optional = true }
+cw721 = { workspace = true, optional = true }
+cw721-base = { workspace = true, optional = true }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
+ecdsa = { workspace = true, optional = true }
 cw-orch = { workspace = true, features = ["daemon"] }
 cw-orch-interchain = { workspace = true, features = ["daemon"] }
 cw-orch-polytone = { workspace = true }
@@ -87,9 +98,14 @@ ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing",
 k256 = { workspace = true, features = ["ecdsa", "std"] }
 kms-shard = { workspace = true }
 log = "0.4.30"
+nftfi-loan = { workspace = true, optional = true, features = ["interface"] }
+nftfi-raffle = { workspace = true, optional = true, features = ["interface"] }
+nftfi-randomness = { workspace = true, optional = true }
+nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
 prost = "0.13"
 prost-types = "0.13"
 rand = "0.8"
+rs_merkle = { workspace = true, optional = true, features = ["std"] }
 reqwest = { version = "0.13.4", features = ["json"] }
 rustls = { workspace = true, features = ["ring", "std"] }
 serde = { workspace = true, features = ["std"] }
@@ -99,7 +115,11 @@ snow = "0.9"
 tempfile = "3.27.0"
 terp-auth = { workspace = true, optional = true }
 terp-authenticator-suite = { workspace = true, optional = true }
+terp-account = { workspace = true, optional = true, features = ["full"] }
+terp-bounty-escrow = { workspace = true, optional = true, features = ["interface"] }
 terp-orch = { workspace = true, optional = true }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 terp-rs = { workspace = true, features = ["default"] }
 terp-vsck = { workspace = true, features = ["library"], optional = true }
 tokio = { version = "1", features = ["full"] }
@@ -108,6 +128,7 @@ tower = { version = "0.5", default-features = false, features = ["util"] }
 tracing = "0.1"
 tracing-subscriber = "0.3.23"
 which = "8.0.2"
+whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
 zebra-chain = { workspace = true, optional = true }
 zebra-crosslink = { workspace = true, optional = true }
 zk-test-press = { workspace = true, optional = true, features = ["interface"] }

@@ -1,12 +1,11 @@
-//! Deploy data for TerpNetworkSuite.
+//! Attach flags for sidecar deploy.
 //!
-//! Intentionally small: infuser / shitstrap / in-script DAO composites stay
-//! in their own crates. This file compiles. Do not resurrect the fully
-//! commented website-suite blob until those path deps are first-class again.
+//! The contract manifold is [`terp_orch::TerpArtifactStack`] under `--features orch-suite`.
+//! Contract e2e cases live next to the contract, not in another suite crate.
 
 use cosmwasm_std::Addr;
 
-/// What to attach or deploy when building [`crate::suite::contracts::TerpNetworkSuite`].
+/// What to attach when a caller still drives auth or private-dex beside the artifact stack.
 #[derive(Clone, Debug, Default)]
 pub struct TerpNetworkDeployData {
     pub admin: Option<Addr>,

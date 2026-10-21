@@ -62,7 +62,7 @@ async fn reply_vs_instantiate2_gas() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../dao-contracts/artifacts/init2");
     assert_sha(&reply_dir.join("dao_voting_cw4.wasm"), REPLY_VOTING);
     assert_sha(&init2_dir.join("dao_voting_cw4.wasm"), INIT2_VOTING);
-    println!("image {IMAGE_REPO}:{IMAGE_VERSION}");
+    println!("image {image_repo}:{image_version}");
     println!("reply voting sha256 {REPLY_VOTING} morocco-1 code 56");
     println!("init2 voting sha256 {INIT2_VOTING} artifacts/init2 (not a morocco code id)");
 

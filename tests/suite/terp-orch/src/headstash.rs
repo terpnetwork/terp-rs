@@ -20,7 +20,7 @@ use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
 use cw_headstash::wavs::generate_test_wavs_proof;
 use cw_orch::prelude::*;
 // Same rand_core 0.10 that zk-headstash's Proof::create bound uses.
-// rand 0.8 OsRng does not implement that RngCore.
+// rand 0.8 OsRng does not implement that Rng.
 use serde::Serialize;
 use zk_cosmwasm::CircuitFooter;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};

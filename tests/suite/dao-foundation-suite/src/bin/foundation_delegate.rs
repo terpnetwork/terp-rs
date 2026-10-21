@@ -91,7 +91,7 @@ fn write_bounty(args: &Args, out_dir: &PathBuf) -> Result<()> {
     }
     let bounty_module = ModuleInstantiateInfo {
         code_id,
-        msg: cosmwasm_std::to_json_binary(&init_json)?,
+        msg: cosmwasm_std::to_json_binary(&init_json).map_err(anyhow::Error::msg)?,
         admin: Some(Admin::CoreModule {}),
         funds: None,
         label: "bounty-bounties".into(),

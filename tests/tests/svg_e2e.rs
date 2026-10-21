@@ -1,3 +1,4 @@
+#![cfg(feature = "orch-suite")]
 use cosmwasm_std::{Addr, Binary};
 use cosmwasm_std::{Timestamp, coin, coins};
 use cw_orch::{anyhow, mock::MockBech32, prelude::*};
@@ -239,7 +240,7 @@ impl CwSvgSuite<MockBech32> {
         let wlist = WhitelistMerkleTree::new(mock.clone());
         wlist.upload()?;
 
-        let now = mock.block_info()?.time;
+        let _now = mock.block_info()?.time;
         let wl_init = whitelist_mtree::msg::InstantiateMsg {
             merkle_root: root,
             merkle_tree_uri: None,
@@ -1030,7 +1031,7 @@ fn test_no_mint_end_time() -> anyhow::Result<()> {
 fn test_price_tier_single_tier() -> anyhow::Result<()> {
     let mock = MockBech32::new("mock");
     let admin = mock.addr_make("admin");
-    let treasury = mock.addr_make("treasury");
+    let _treasury = mock.addr_make("treasury");
     let minter = mock.addr_make_with_balance("minter", coins(10_000_000_000, "uterp"))?;
 
     let svg = Cw721SvgContractSuite::new(mock.clone());
@@ -1083,7 +1084,7 @@ fn test_price_tier_single_tier() -> anyhow::Result<()> {
 fn test_price_tier_batch_mint_cost() -> anyhow::Result<()> {
     let mock = MockBech32::new("mock");
     let admin = mock.addr_make("admin");
-    let treasury = mock.addr_make("treasury");
+    let _treasury = mock.addr_make("treasury");
     let minter = mock.addr_make_with_balance("minter", coins(100_000_000_000, "uterp"))?;
 
     let svg = Cw721SvgContractSuite::new(mock.clone());

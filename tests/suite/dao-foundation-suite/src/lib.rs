@@ -21,7 +21,7 @@ pub mod actions;
 use std::str::FromStr;
 
 use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty, Uint256, WasmMsg, to_json_binary};
-use cw_multi_test::{AppResponse, Executor};
+use cw_multi_test::AppResponse;
 use cw_orch::mock::Mock;
 use cw_orch::prelude::*;
 use cw_utils::Duration;

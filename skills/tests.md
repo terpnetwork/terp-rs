@@ -5,11 +5,12 @@
 | Layer | Package / path | Is |
 |-------|----------------|-----|
 | SDK | `terp-rs` (`crates/sdk`) | protos + clients |
-| Scripts | **`terp-scripts`** (`tests/`) | orchestration + bins + lib |
+| Scripts | **`terp-scripts`** (`tests/`) | orchestration lib + integration tests |
+| CLIs | **`dao-scripts`** (`scripts/dao-scripts`) | `terp-ibc`, `delegations`, `create_val`, `polytone_migrate`, `foundation_delegate` |
 | Harness | `ict-rs` (sibling crate) | Docker multi-chain framework |
 
-**Stable names (current):** package `terp-scripts`, bin `terp-ibc`.  
-Deprecated alias: `--bin ibc` still builds the same binary for one transition window.
+**Stable names (current):** library `terp-scripts`, binary `cargo run -p dao-scripts --bin terp-ibc`.  
+The old `--bin ibc` alias is gone.
 
 ## Capability modes
 
@@ -60,7 +61,7 @@ Local act (Hermes profile `ci-act-tester`): CWD `/Users/returniflost/abstract/te
 ### ibc.preflight.offline
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- preflight --mode offline --format json
+cargo run -p dao-scripts --bin terp-ibc -- preflight --mode offline --format json
 ```
 
 - **mode:** offline  
@@ -71,7 +72,7 @@ cargo run -p terp-scripts --bin terp-ibc -- preflight --mode offline --format js
 ### ibc.preflight.live-tx
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- preflight --mode live-tx --format json
+cargo run -p dao-scripts --bin terp-ibc -- preflight --mode live-tx --format json
 ```
 
 - **mode:** live-tx  
@@ -81,7 +82,7 @@ cargo run -p terp-scripts --bin terp-ibc -- preflight --mode live-tx --format js
 ### ibc.validate
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- validate --format json --out /abs/path/to/public
+cargo run -p dao-scripts --bin terp-ibc -- validate --format json --out /abs/path/to/public
 # default --out: repo-root public/ via CARGO_MANIFEST_DIR
 ```
 
@@ -93,8 +94,8 @@ cargo run -p terp-scripts --bin terp-ibc -- validate --format json --out /abs/pa
 ### ibc.compare
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- compare --format json
-cargo run -p terp-scripts --bin terp-ibc -- compare --format json --snapshot path/to/snapshot.json --strict
+cargo run -p dao-scripts --bin terp-ibc -- compare --format json
+cargo run -p dao-scripts --bin terp-ibc -- compare --format json --snapshot path/to/snapshot.json --strict
 ```
 
 - **mode:** offline (fixture golden or local snapshot)  
@@ -103,7 +104,7 @@ cargo run -p terp-scripts --bin terp-ibc -- compare --format json --snapshot pat
 ### ibc.rebuild-from-public
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- rebuild-from-public --format json --out /abs/path/to/public
+cargo run -p dao-scripts --bin terp-ibc -- rebuild-from-public --format json --out /abs/path/to/public
 ```
 
 - **mode:** offline  
@@ -115,7 +116,7 @@ cargo run -p terp-scripts --bin terp-ibc -- rebuild-from-public --format json --
 ### ibc.generate
 
 ```sh
-cargo run -p terp-scripts --bin terp-ibc -- generate --mode live-query
+cargo run -p dao-scripts --bin terp-ibc -- generate --mode live-query
 # default subcommand is generate
 ```
 
@@ -157,7 +158,7 @@ cargo test -p terp-scripts --test ibc_multihop_harness -- --ignored --nocapture
 
 ## Do not
 
-- `cargo run --bin terp-ibc` without `-p terp-scripts` from random CWD  
+- `cargo run --bin terp-ibc` without `-p dao-scripts` from random CWD  
 - Treat unit green as mainnet authentic  
 - Edit goldens silently without audited vs synthetic labels  
 - Invent cargo flags when a `just scripts-ibc-*` target exists  

@@ -43,8 +43,8 @@ pub use sidecar::{
     SidecarRegistry, SubprocessConfig, SubprocessSidecar,
 };
 
-pub use contracts::TerpNetworkSuite;
-pub use contracts::TerpNetworkSuite as DeploySuite;
+#[cfg(feature = "orch-suite")]
+pub use contracts::TerpArtifactStack;
 
 pub use hashmerchant::{HashMerchantSuite, MerkleServerSuite};
 pub use hashmerchant_client::HashMerchantClient;
@@ -310,7 +310,7 @@ impl SidecarFleet {
         }
 
         // Start sidecars in dependency order
-        let start_order: Vec<&mut dyn TerpSidecar> = vec![
+        let _start_order: Vec<&mut dyn TerpSidecar> = vec![
             // Tier 0: no deps
             // MinIO-IPFS and Nostr are Docker-sidecars handled via suite ops
         ];

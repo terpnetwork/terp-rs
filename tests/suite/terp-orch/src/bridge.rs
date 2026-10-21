@@ -3,12 +3,11 @@
 //! Lab still allows `mock_verify`. Production path: instantiate with `zkid` +
 //! [`FlockLigeritoCircuit`] footer (same Path A as circuit demos).
 
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::{Addr, Binary};
 use cw_orch::prelude::*;
-use cw_private_dex::interface::CwPrivateDexContract;
-use cw_private_dex::msg::{ExecuteMsg, InstantiateMsg};
 
 use crate::interfaces::FlockLigeritoCircuit;
+use crate::suites::private_dex::PrivateDexSuite;
 
 #[derive(Clone, Debug)]
 pub struct TerpBridgeDeployData {
@@ -32,30 +31,20 @@ impl From<Addr> for TerpBridgeDeployData {
 
 /// Corridor settle + spend-circuit handle.
 pub struct TerpBridgeSuite<Chain: CwEnv> {
-    pub dex: CwPrivateDexContract<Chain>,
+    pub dex: PrivateDexSuite<Chain>,
     pub spend: FlockLigeritoCircuit<Chain>,
 }
 
 impl<Chain: CwEnv> TerpBridgeSuite<Chain> {
     pub fn new(chain: Chain) -> Self {
         Self {
-            dex: CwPrivateDexContract::new(chain.clone()),
+            dex: PrivateDexSuite::new(chain.clone()),
             spend: FlockLigeritoCircuit::new(chain),
         }
     }
 
     pub fn create_lab_pool(&self) -> Result<<Chain as TxHandler>::Response, CwOrchError> {
-        self.dex.execute(
-            &ExecuteMsg::CreatePool {
-                asset_a: Binary::from(vec![1u8; 32]),
-                asset_b: Binary::from(vec![2u8; 32]),
-                r_a: Uint128::new(1_000_000),
-                r_b: Uint128::new(1_000_000),
-                gamma: 997,
-                gamma_den: 1000,
-            },
-            &[],
-        )
+        self.dex.create_lab_pool()
     }
 }
 
@@ -70,7 +59,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpBridgeSuite<Chain> {
     }
 
     fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
-        vec![Box::new(&mut self.dex)]
+        vec![Box::new(&mut self.dex.dex)]
     }
 
     fn load_from(chain: Chain) -> Result<Self, Self::Error> {
@@ -79,15 +68,9 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpBridgeSuite<Chain> {
 
     fn deploy_on(chain: Chain, data: Self::DeployData) -> Result<Self, Self::Error> {
         let suite = Self::store_on(chain)?;
-        suite.dex.instantiate(
-            &InstantiateMsg {
-                mock_verify: data.mock_verify,
-                zkid: data.zkid,
-                allowed_root: data.allowed_root,
-            },
-            Some(&data.admin),
-            &[],
-        )?;
+        suite
+            .dex
+            .instantiate(data.mock_verify, data.zkid, data.allowed_root, &data.admin)?;
         Ok(suite)
     }
 }

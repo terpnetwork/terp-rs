@@ -18,7 +18,7 @@ use cw_orch::prelude::*;
 use ict_rs::prelude::*;
 use ict_rs::testing::env::TestEnv;
 use terp_scripts::suite::sidecar::TerpSidecar;
-use terp_scripts::suite::{HashMerchantClient, HashMerchantSuite, SidecarRegistry};
+use terp_scripts::suite::{HashMerchantSuite, SidecarRegistry};
 
 const ICT_GATE: &str = "ICT_HASHMERCHANT";
 const BIND: &str = "127.0.0.1:19190";

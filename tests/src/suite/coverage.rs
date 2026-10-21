@@ -1,7 +1,7 @@
 //! What terp-scripts can actually reach today.
 //!
 //! Product suite *logic* lives in the listed crates. This table is the honest
-//! inclusion map for `SidecarFleet` / `TerpNetworkSuite` / feature flags.
+//! inclusion map for `SidecarFleet` / `TerpArtifactStack` / feature flags.
 //! Keep in sync with Hermes `t_d3c747da` (SUITE-CYCLE) and event-ops `t_7aa13966`.
 
 /// How a product suite is wired into terp-scripts.
@@ -9,7 +9,7 @@
 pub enum Inclusion {
     /// Re-exported and constructable from terp-scripts under this feature.
     Wired,
-    /// Types re-exported only; no TerpNetworkSuite / SidecarFleet field.
+    /// Types re-exported only; no TerpArtifactStack / SidecarFleet field.
     ReexportOnly,
     /// Exists in-tree; terp-scripts does not compile it in.
     External,
@@ -47,7 +47,7 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
         crate_path: "terp-rs/tests/suite/terp-authenticator-suite",
         feature: "auth-suite-full",
         inclusion: Inclusion::Wired,
-        resumable: "TerpNetworkSuite.auth via auth-suite-full; upload_if_needed",
+        resumable: "TerpArtifactStack.auth via auth-suite-full; upload_if_needed",
     },
     SuiteCoverage {
         id: "auth-dao",
@@ -89,7 +89,7 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
         crate_path: "headstash/test-press suites/private_dex + terp-rs/contracts/revenue/private-dex",
         feature: "zk (zk-test-press)",
         inclusion: Inclusion::Wired,
-        resumable: "TerpNetworkSuite.pdex via zk; upload_if_needed",
+        resumable: "TerpArtifactStack.pdex via zk; upload_if_needed",
     },
     SuiteCoverage {
         id: "private-bridge",
@@ -107,10 +107,10 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
     },
     SuiteCoverage {
         id: "billboards",
-        crate_path: "terp-account-scripts TerpAccountSuite",
+        crate_path: "terp-orch suites/accounts TerpAccountSuite",
         feature: "account",
         inclusion: Inclusion::Wired,
-        resumable: "only if TerpNetworkSuite::deploy_on + data.terp_billboards",
+        resumable: "only if TerpArtifactStack::deploy_on + data.terp_billboards",
     },
     SuiteCoverage {
         id: "infuser / shitstrap / dao-in-terp-scripts",
@@ -128,14 +128,14 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
     },
     SuiteCoverage {
         id: "billboards",
-        crate_path: "terp-rs/contracts/accounts + scripts/terp-accounts",
+        crate_path: "terp-rs/contracts/accounts + terp-orch suites/accounts",
         feature: "terp-orch billboards",
         inclusion: Inclusion::External,
         resumable: "cargo check -p terp-orch --features billboards",
     },
     SuiteCoverage {
         id: "cw-infuser",
-        crate_path: "terp-rs/contracts/infuser + scripts/cw-infuser + tests/suite/cw-infuser-suite",
+        crate_path: "terp-rs/contracts/infuser + scripts/cw-infuser + terp-orch suites/svg",
         feature: "terp-orch infuser",
         inclusion: Inclusion::External,
         resumable: "cargo check -p terp-orch --features infuser",

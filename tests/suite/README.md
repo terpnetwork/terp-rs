@@ -15,16 +15,13 @@ cargo test -p terp-orch --test bridge_lab
 cargo test -p terp-orch --features stack --test artifact_stack
 ```
 
-`stack` composes the authenticator suite, the verify demo, private-dex, the account contracts, and the light clients, then uploads `crates/terp-rs/artifacts/*.wasm`. `cw-ics08-wasm-zap1` stays off the Rust dependency graph (crates.io cosmwasm-std 1.5); the live test still uploads its wasm.
+`stack` is `TerpArtifactStack`: authenticators, the verify demo, private-dex, account contracts, light clients, product contracts, the infuser, and the terp721 billboards. It uploads `crates/terp-rs/artifacts/*.wasm`.
 
-Account billboards and cw-infuser live in this workspace. Their cw-orch bags are opt-in:
+Contract end-to-end cases live in `<contract>/e2e` and construct that suite. `cargo test -p cw-ave-e2e` is the ave case. A field check for every other contract is `<contract>-e2e`.
 
 ```text
-cargo test -p terp-orch --features billboards
-cargo test -p terp-orch --features infuser
-# deploy binary also links shitstrap: --features shitstrap
-cargo test -p cw-infuser-suite
-cargo test -p terp-account-scripts
+cargo test -p terp-orch --features stack --test manifold_fields
+cargo test -p cw-ave-e2e
 ```
 
 Live chain (local image, not the running validator):

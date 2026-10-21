@@ -1,4 +1,4 @@
-//! Core sidecar traits for the TerpNetworkSuite.
+//! Core sidecar traits for the TerpArtifactStack.
 //!
 //! Three runtime modes unified under one abstraction:
 //! - `DockerSidecar` — full process isolation (relayer, minio-ipfs, Postgres)
@@ -44,7 +44,7 @@ pub type SidecarId = String;
 
 /// A sidecar that can be started, stopped, and queried.
 ///
-/// Every sidecar in a `TerpNetworkSuite` implements this. The `start()` method
+/// Every sidecar in a `TerpArtifactStack` implements this. The `start()` method
 /// receives a reference to any already-running sidecars for dependency resolution.
 #[async_trait]
 pub trait TerpSidecar: Send + Sync {
@@ -444,7 +444,7 @@ impl DockerSidecar {
     /// `host_ports` maps container_port -> host_port for endpoint registration.
     pub fn from_container(
         id: impl Into<String>,
-        container_id: ContainerId,
+        _container_id: ContainerId,
         host_ports: &[(u16, u16)],
         runtime: Arc<dyn RuntimeBackend>,
     ) -> Self {

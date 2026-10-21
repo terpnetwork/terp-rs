@@ -126,7 +126,7 @@ add more sibling packages here — add a module to `terp-orch` instead.
 The authenticator contracts are consumed with `features = ["library"]` so the
 rlib links without duplicate `#[no_mangle]` entry points. A contract that is
 newly moved into a suite needs that feature and
-`#[cfg_attr(not(feature = "library"), entry_point)]` on its exports.
+`#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]` on its exports.
 
 ## Two places a test can live
 

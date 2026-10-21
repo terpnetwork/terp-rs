@@ -64,7 +64,6 @@ fn build_ibc_transfer_msg<T: Into<Uint256>>(
         timeout_timestamp: Timestamp::from_seconds(timeout_timestamp_seconds).nanos(),
         memo: memo.to_string(),
         encoding: String::default(),
-        use_aliasing: false,
     };
     Ok(Any::from_msg(&msg)?)
 }

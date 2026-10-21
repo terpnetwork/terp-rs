@@ -26,6 +26,7 @@ fn private_dex_lab_mock_verify_deploys() {
     suite.create_lab_pool().expect("create lab pool");
     let cfg: cw_private_dex::msg::ConfigResponse = suite
         .dex
+        .dex
         .query(&cw_private_dex::msg::QueryMsg::Config {})
         .expect("config");
     assert!(cfg.mock_verify);

@@ -129,45 +129,70 @@ uploadable!(
     id = "cw420"
 )]
 pub struct Cw420;
-uploadable!(
-    Cw420,
-    "cw420",
-    cw420::contract::execute,
-    cw420::contract::instantiate,
-    cw420::contract::query
-);
+
+impl<Chain: TxHandler> Uploadable for Cw420<Chain> {
+    fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
+        wasm("cw420")
+    }
+    fn wrapper() -> Box<dyn MockContract<Empty>> {
+        Box::new(ContractWrapper::new_with_empty(
+            cw420::contract::execute,
+            cw420::contract::instantiate,
+            cw420::contract::query,
+        ))
+    }
+}
 
 #[interface(
     cw_ave_factory::msg::InstantiateMsg,
     cw_ave_factory::msg::ExecuteMsg,
     cw_ave_factory::msg::QueryMsg,
-    Empty,
-    id = "cw-ave-factory"
+    cw_ave_factory::msg::MigrateMsg,
+    id = "cw_ave_factory"
 )]
 pub struct CwAveFactory;
-uploadable!(
-    CwAveFactory,
-    "cw_ave_factory",
-    cw_ave_factory::contract::execute,
-    cw_ave_factory::contract::instantiate,
-    cw_ave_factory::contract::query
-);
+
+impl<Chain: TxHandler> Uploadable for CwAveFactory<Chain> {
+    fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
+        wasm("cw_ave_factory")
+    }
+    fn wrapper() -> Box<dyn MockContract<Empty>> {
+        Box::new(
+            ContractWrapper::new_with_empty(
+                cw_ave_factory::contract::execute,
+                cw_ave_factory::contract::instantiate,
+                cw_ave_factory::contract::query,
+            )
+            .with_migrate(|deps, env, msg, _info| cw_ave_factory::contract::migrate(deps, env, msg))
+            .with_reply(cw_ave_factory::contract::reply),
+        )
+    }
+}
 
 #[interface(
     cw_ave::msg::InstantiateMsg,
     cw_ave::msg::ExecuteMsg,
     cw_ave::msg::QueryMsg,
-    Empty,
-    id = "cw-ave"
+    cw_ave::msg::MigrateMsg,
+    id = "cw_ave"
 )]
 pub struct CwAve;
-uploadable!(
-    CwAve,
-    "cw_ave",
-    cw_ave::contract::execute,
-    cw_ave::contract::instantiate,
-    cw_ave::contract::query
-);
+
+impl<Chain: TxHandler> Uploadable for CwAve<Chain> {
+    fn wasm(_chain: &ChainInfoOwned) -> WasmPath {
+        wasm("cw_ave")
+    }
+    fn wrapper() -> Box<dyn MockContract<Empty>> {
+        Box::new(
+            ContractWrapper::new_with_empty(
+                cw_ave::contract::execute,
+                cw_ave::contract::instantiate,
+                cw_ave::contract::query,
+            )
+            .with_migrate(|deps, env, msg, _info| cw_ave::contract::migrate(deps, env, msg)),
+        )
+    }
+}
 
 #[interface(
     cw_headstash::InstantiateMsg,
@@ -311,6 +336,22 @@ uploadable!(
     svg_auction::execute,
     svg_auction::instantiate,
     svg_auction::query
+);
+
+#[interface(
+    cw_oracle_registry::msg::InstantiateMsg,
+    cw_oracle_registry::msg::ExecuteMsg,
+    cw_oracle_registry::msg::QueryMsg,
+    Empty,
+    id = "cw-oracle-registry"
+)]
+pub struct CwOracleRegistry;
+uploadable!(
+    CwOracleRegistry,
+    "cw_oracle_registry",
+    cw_oracle_registry::contract::execute,
+    cw_oracle_registry::contract::instantiate,
+    cw_oracle_registry::contract::query
 );
 
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};

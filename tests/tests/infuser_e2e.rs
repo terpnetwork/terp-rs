@@ -1,3 +1,4 @@
+#![cfg(feature = "orch-suite")]
 use anyhow::anyhow;
 use cosmwasm_std::{Decimal, Event, Fraction, HexBinary, Uint128, coin, coins};
 use cw_infuser::{
@@ -13,7 +14,7 @@ use cw_infusions::{
 };
 use cw_multi_test::{Contract, ContractWrapper};
 use cw721::EmptyOptionalCollectionExtension;
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
 // Use prelude to get all the necessary imports
 use cw_infuser::interface::CwInfuser;
 use cw_orch::{anyhow, prelude::*};
@@ -203,7 +204,7 @@ impl<Chain: CwEnv> InfuserTestSuite<Chain> {
 
     fn setup_fee_suite(
         bundle_type: BundleType,
-        nft_owners: Vec<Addr>,
+        _nft_owners: Vec<Addr>,
         wavs_public_key: bool,
     ) -> anyhow::Result<InfuserTestSuite<MockBech32>> {
         // setup infuser with admin fees
@@ -687,7 +688,7 @@ fn test_allof_infuse_multiple_collections_in_bundle() -> anyhow::Result<()> {
     env.chain.wait_blocks(1)?;
 
     // good infusion
-    let res = app.infuse(
+    let _res = app.infuse(
         vec![
             Bundle {
                 nfts: vec![
@@ -760,7 +761,7 @@ fn test_allof_infuse_multiple_collections_in_bundle() -> anyhow::Result<()> {
 fn test_allof_eligible_nft_collections() -> anyhow::Result<()> {
     // setup infuser with admin fees
     let env = InfuserTestSuite::<MockBech32>::setup()?;
-    let app = env.infuser.clone();
+    let _app = env.infuser.clone();
     let not_nft = env.chain.addr_make("mock-nft");
     println!("{:#?}", not_nft);
     let bad_nfts = vec![
@@ -785,7 +786,7 @@ fn test_allof_eligible_nft_collections() -> anyhow::Result<()> {
         wavs_enabled: true,
     };
 
-    let infusion = Infusion {
+    let _infusion = Infusion {
         collections: bad_nfts.clone(),
         infused_collection: good_infused.clone(),
         infusion_params: good_infusion_params,
@@ -1022,8 +1023,8 @@ fn test_allof_infusion_fee() -> anyhow::Result<()> {
         InfuserTestSuite::<MockBech32>::setup_fee_suite(BundleType::AllOf {}, vec![], false)?;
     let app = env.infuser;
     let nft1 = env.nfts[0].clone();
-    let nft2 = env.nfts[1].clone();
-    let nft3 = env.nfts[2].clone();
+    let _nft2 = env.nfts[1].clone();
+    let _nft3 = env.nfts[2].clone();
 
     // update infusion bundle type
 
@@ -2485,7 +2486,7 @@ fn test_wavs_record_anyof() -> anyhow::Result<()> {
     let not_wavs = env.chain.addr_make("not-wavs");
 
     let nft1 = env.nfts[0].clone();
-    let nft2 = env.nfts[1].clone();
+    let _nft2 = env.nfts[1].clone();
 
     // with/without payment substitute
     // with 0 nfts sent in bundle

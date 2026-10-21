@@ -211,7 +211,7 @@
 //     //     da.wait_blocks(1)?;
 //     //     //  deploy main app-layer suite
 //     //     let dao_data = TerpNetworkDeployData::local_default(da.sender_addr(), &[])?;
-//     //     let suite = terp_scripts::suite::DeploySuite::deploy_on(da.clone(), dao_data)?;
+//     //     let suite = terp_scripts::suite::TerpArtifactStack::deploy_on(da.clone(), dao_data)?;
 //     //     Ok((da, db, suite))
 //     // })
 //     // .await??;

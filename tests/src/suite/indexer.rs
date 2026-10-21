@@ -243,7 +243,7 @@ impl TerpSidecar for IndexerSuite {
         &self.id
     }
 
-    async fn start(&mut self, deps: &SidecarRegistry) -> Result<EndpointMap> {
+    async fn start(&mut self, _deps: &SidecarRegistry) -> Result<EndpointMap> {
         if self.started {
             return Ok(self.endpoints.clone());
         }

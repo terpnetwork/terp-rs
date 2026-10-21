@@ -17,6 +17,8 @@ use hm_loyalty_whitelist::WhitelistConfig;
 use hm_nft_oracle::PricePolicy;
 use terp_authenticator_suite::{TerpAuthenticatorDeployData, TerpAuthenticatorSuite};
 
+#[cfg(feature = "bridge")]
+use crate::bridge::{TerpBridgeDeployData, TerpBridgeSuite};
 use crate::interfaces::accounts::{
     PolytoneAnyProxy, TerpBls, TerpDao, TerpDregg, TerpFrost, TerpZkTls,
 };
@@ -25,11 +27,13 @@ use crate::interfaces::light::{
 };
 use crate::interfaces::products::{
     Cw420, CwAve, CwAveFactory, CwHeadstash, CwHeadstashManifold, CwNorick, CwNullifierAuth,
-    CwNullifierGate, CwRegEligibility, CwShitstrap, CwShitstrapFactory, CwVoteAnchor,
-    CwVoteCeremony, NftfiLoan, NftfiRaffle, RevenueMarketplace, RevenueReserveAuction, SvgAuction,
-    ave_msg, headstash_msg, marketplace_msg, reserve_auction_msg, shitstrap_msg, svg_auction_msg,
+    CwNullifierGate, CwOracleRegistry, CwRegEligibility, CwShitstrap, CwShitstrapFactory,
+    CwVoteAnchor, CwVoteCeremony, NftfiLoan, NftfiRaffle, RevenueMarketplace,
+    RevenueReserveAuction, SvgAuction, ave_msg, headstash_msg, marketplace_msg,
+    reserve_auction_msg, shitstrap_msg, svg_auction_msg,
 };
-use crate::orch::{TerpOrchDeployData, TerpOrchSuite};
+use crate::suites::circuit::{CircuitDemoDeployData, CircuitDemoSuite};
+use dao_testing::DaoDaoSuite;
 
 #[derive(Clone, Debug)]
 pub struct TerpArtifactStackDeployData {
@@ -203,6 +207,7 @@ pub struct TerpProductSuite<Chain: CwEnv> {
     pub trusted_builder: trusted_builder_sbt::TrustedBuilderSbt<Chain>,
     pub cashu_registry: cw_cashu_registry::CwCashuRegistry<Chain>,
     pub hm_nft_minter: hm_nft_minter::HmNftMinter<Chain>,
+    pub oracle_registry: CwOracleRegistry<Chain>,
 }
 
 impl<Chain: CwEnv> TerpProductSuite<Chain> {
@@ -233,7 +238,8 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
             loyalty_verifier: loyalty_verifier::LoyaltyVerifier::new(chain.clone()),
             trusted_builder: trusted_builder_sbt::TrustedBuilderSbt::new(chain.clone()),
             cashu_registry: cw_cashu_registry::CwCashuRegistry::new(chain.clone()),
-            hm_nft_minter: hm_nft_minter::HmNftMinter::new(chain),
+            hm_nft_minter: hm_nft_minter::HmNftMinter::new(chain.clone()),
+            oracle_registry: CwOracleRegistry::new(chain),
         }
     }
 
@@ -263,6 +269,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
         self.trusted_builder.upload()?;
         self.cashu_registry.upload()?;
         self.hm_nft_minter.upload()?;
+        self.oracle_registry.upload()?;
         Ok(())
     }
 
@@ -446,23 +453,97 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
     }
 }
 
-/// Every optimized artifact: authenticators, verify demo, private dex, accounts, light clients, products.
+/// Infuser, the svg collection, its minter, and the merkle whitelist.
+pub struct TerpInfuserSuite<Chain: CwEnv> {
+    pub infuser: cw_infuser::interface::CwInfuser<Chain>,
+    pub svg: cw721_svg::Cw721SvgContractSuite<Chain>,
+    pub minter: cw_svg_minter::interface::Cw721SvgMinter<Chain>,
+    pub whitelist: whitelist_mtree::interface::WhitelistMerkleTree<Chain>,
+}
+
+impl<Chain: CwEnv> TerpInfuserSuite<Chain> {
+    pub fn new(chain: Chain) -> Self {
+        Self {
+            infuser: cw_infuser::interface::CwInfuser::new(chain.clone()),
+            svg: cw721_svg::Cw721SvgContractSuite::new(chain.clone()),
+            minter: cw_svg_minter::interface::Cw721SvgMinter::new(chain.clone()),
+            whitelist: whitelist_mtree::interface::WhitelistMerkleTree::new(chain),
+        }
+    }
+
+    pub fn upload(&self) -> Result<(), CwOrchError> {
+        self.infuser.upload()?;
+        self.svg.upload()?;
+        self.minter.upload()?;
+        self.whitelist.upload()?;
+        Ok(())
+    }
+}
+
+/// terp721 collection, its minter, and the ownership verifier.
+pub struct TerpBillboardSuite<Chain: CwEnv> {
+    pub collection:
+        terp721_account::interface::TerpAccountCollection<Chain, terp_account::Metadata>,
+    pub minter: terp721_account_manifold::interface::TerpAccountMinter<Chain>,
+    pub ownership: ownership_verifier::interface::TestingOwnershipVerifier<Chain>,
+}
+
+impl<Chain: CwEnv> TerpBillboardSuite<Chain> {
+    pub fn new(chain: Chain) -> Self {
+        Self {
+            collection: terp721_account::interface::TerpAccountCollection::new(
+                terp721_account::ACCOUNT_CONTRACT,
+                chain.clone(),
+            ),
+            minter: terp721_account_manifold::interface::TerpAccountMinter::new(
+                terp721_account_manifold::contract::ACCOUNT_MANIFOLD_CONTRACT,
+                chain.clone(),
+            ),
+            ownership: ownership_verifier::interface::TestingOwnershipVerifier::new(
+                ownership_verifier::CONTRACT_NAME,
+                chain,
+            ),
+        }
+    }
+
+    pub fn upload(&self) -> Result<(), CwOrchError> {
+        self.collection.upload()?;
+        self.minter.upload()?;
+        self.ownership.upload()?;
+        Ok(())
+    }
+}
+
+/// Every contract interface: circuits, DAO DAO, bridge, authenticators, accounts,
+/// light clients, products, infuser, and billboards.
+///
+/// This is the cw-orch manifold. Script crates call these fields.
 pub struct TerpArtifactStack<Chain: CwEnv> {
-    pub orch: TerpOrchSuite<Chain>,
+    pub circuits: CircuitDemoSuite<Chain>,
+    pub dao: DaoDaoSuite<Chain>,
+    #[cfg(feature = "bridge")]
+    pub bridge: Option<TerpBridgeSuite<Chain>>,
     pub authenticators: TerpAuthenticatorSuite<Chain>,
     pub accounts: TerpAccountSuite<Chain>,
     pub light_clients: TerpLightClientSuite<Chain>,
     pub products: TerpProductSuite<Chain>,
+    pub infuser: TerpInfuserSuite<Chain>,
+    pub billboards: TerpBillboardSuite<Chain>,
 }
 
 impl<Chain: CwEnv> TerpArtifactStack<Chain> {
     pub fn new(chain: Chain) -> Self {
         Self {
-            orch: TerpOrchSuite::new(chain.clone()),
+            circuits: CircuitDemoSuite::new(chain.clone()),
+            dao: DaoDaoSuite::new(chain.clone()),
+            #[cfg(feature = "bridge")]
+            bridge: Some(TerpBridgeSuite::new(chain.clone())),
             authenticators: TerpAuthenticatorSuite::new(chain.clone()),
             accounts: TerpAccountSuite::new(chain.clone()),
             light_clients: TerpLightClientSuite::new(chain.clone()),
-            products: TerpProductSuite::new(chain),
+            products: TerpProductSuite::new(chain.clone()),
+            infuser: TerpInfuserSuite::new(chain.clone()),
+            billboards: TerpBillboardSuite::new(chain),
         }
     }
 
@@ -478,10 +559,11 @@ impl<Chain: CwEnv> TerpArtifactStack<Chain> {
         };
         push(
             "cw-zk-verify-demo",
-            self.orch.circuits.verify.code_id(),
-            self.orch.circuits.verify.addr_str(),
+            self.circuits.verify.code_id(),
+            self.circuits.verify.addr_str(),
         )?;
-        if let Some(bridge) = &self.orch.bridge {
+        #[cfg(feature = "bridge")]
+        if let Some(bridge) = &self.bridge {
             push(
                 "cw-private-dex",
                 bridge.dex.code_id(),
@@ -674,26 +756,40 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
 
     fn store_on(chain: Chain) -> Result<Self, Self::Error> {
         let stack = Self::new(chain);
-        stack.orch.circuits.verify.upload()?;
-        if let Some(bridge) = &stack.orch.bridge {
+        stack.dao.upload()?;
+        stack.circuits.verify.upload()?;
+        #[cfg(feature = "bridge")]
+        if let Some(bridge) = &stack.bridge {
             bridge.dex.upload()?;
         }
         stack.authenticators.upload_all()?;
         stack.accounts.upload()?;
         stack.light_clients.upload()?;
         stack.products.upload()?;
+        stack.infuser.upload()?;
+        stack.billboards.upload()?;
         Ok(stack)
     }
 
     fn get_contracts_mut(&mut self) -> Vec<Box<&mut dyn ContractInstance<Chain>>> {
         let TerpArtifactStack {
-            orch,
+            dao,
+            circuits,
+            #[cfg(feature = "bridge")]
+            bridge,
             authenticators,
             accounts,
             light_clients,
             products,
+            infuser,
+            billboards,
         } = self;
-        let mut v = orch.get_contracts_mut();
+        let mut v = circuits.get_contracts_mut();
+        v.extend(dao.get_contracts_mut());
+        #[cfg(feature = "bridge")]
+        if let Some(bridge) = bridge {
+            v.extend(bridge.get_contracts_mut());
+        }
         v.extend(authenticators.get_contracts_mut());
         let rest: Vec<Box<&mut dyn ContractInstance<Chain>>> = vec![
             Box::new(&mut accounts.dao),
@@ -731,6 +827,14 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
             Box::new(&mut products.trusted_builder),
             Box::new(&mut products.cashu_registry),
             Box::new(&mut products.hm_nft_minter),
+            Box::new(&mut products.oracle_registry),
+            Box::new(&mut infuser.infuser),
+            Box::new(&mut infuser.svg),
+            Box::new(&mut infuser.minter),
+            Box::new(&mut infuser.whitelist),
+            Box::new(&mut billboards.collection),
+            Box::new(&mut billboards.minter),
+            Box::new(&mut billboards.ownership),
         ];
         v.extend(rest);
         v
@@ -742,16 +846,25 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
 
     fn deploy_on(chain: Chain, data: Self::DeployData) -> Result<Self, Self::Error> {
         let admin = data.admin.clone();
-        let orch = TerpOrchSuite::deploy_on(
+        let dao = DaoDaoSuite::new(chain.clone());
+        dao.upload()?;
+        let circuits = CircuitDemoSuite::deploy_on(
             chain.clone(),
-            TerpOrchDeployData {
+            CircuitDemoDeployData {
                 admin: admin.clone(),
-                circuit_zkid: 7,
-                attach_bridge: true,
-                bridge_mock_verify: true,
-                bridge_zkid: None,
+                zkid: 7,
             },
         )?;
+        #[cfg(feature = "bridge")]
+        let bridge = Some(TerpBridgeSuite::deploy_on(
+            chain.clone(),
+            TerpBridgeDeployData {
+                admin: admin.clone(),
+                mock_verify: true,
+                zkid: None,
+                allowed_root: Some(Binary::from(vec![7u8; 32])),
+            },
+        )?);
         let authenticators = TerpAuthenticatorSuite::deploy_on(
             chain.clone(),
             TerpAuthenticatorDeployData::from(admin.clone()),
@@ -762,15 +875,24 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
         let light_clients = TerpLightClientSuite::new(chain.clone());
         light_clients.upload()?;
         light_clients.instantiate_lab(&admin)?;
-        let products = TerpProductSuite::new(chain);
+        let products = TerpProductSuite::new(chain.clone());
         products.upload()?;
         products.instantiate_lab(&admin)?;
+        let infuser = TerpInfuserSuite::new(chain.clone());
+        infuser.upload()?;
+        let billboards = TerpBillboardSuite::new(chain);
+        billboards.upload()?;
         Ok(Self {
-            orch,
+            dao,
+            circuits,
+            #[cfg(feature = "bridge")]
+            bridge,
             authenticators,
             accounts,
             light_clients,
             products,
+            infuser,
+            billboards,
         })
     }
 }

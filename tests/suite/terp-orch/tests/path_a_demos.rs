@@ -11,18 +11,17 @@ use cw_orch::core::circuits::circuit_interface_traits::{
 };
 use cw_orch::prelude::*;
 use terp_orch::{
-    FlockLigeritoCircuit, StwoSsleCircuit, TerpCircuitDemoDeployData, TerpCircuitDemoSuite,
+    CircuitDemoDeployData, CircuitDemoSuite, FlockLigeritoCircuit, StwoSsleCircuit,
     write_demo_circuit_artifacts,
 };
 use zk_cosmwasm::curves::verify_stwo_proof;
 use zk_cosmwasm::{prove_flock, verify_flock_proof};
 
-fn deploy(zkid: u64) -> TerpCircuitDemoSuite<Mock> {
+fn deploy(zkid: u64) -> CircuitDemoSuite<Mock> {
     write_demo_circuit_artifacts().expect("write circuit artifacts");
     let mock = Mock::new("admin");
     let admin = mock.sender_addr();
-    TerpCircuitDemoSuite::deploy_on(mock, TerpCircuitDemoDeployData { admin, zkid })
-        .expect("deploy")
+    CircuitDemoSuite::deploy_on(mock, CircuitDemoDeployData { admin, zkid }).expect("deploy")
 }
 
 #[test]
