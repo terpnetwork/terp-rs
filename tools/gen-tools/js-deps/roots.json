@@ -1,0 +1,12 @@
+{
+  "$comment": "Roots for gen-js-deps.mjs: Terp front ends. Paths: ${VAR} or ${VAR:-default} expand from the environment; relative paths resolve against this file's directory (default: terp-core/websites). Each root needs a package.json; the lockfile (pnpm-lock.yaml v9 or package-lock.json v2/v3) is found next to it. `url` is the public site or repo shown in the graph.",
+  "roots": [
+    { "id": "terp-network", "label": "terp.network", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/terp.network", "url": "https://terp.network" },
+    { "id": "permissionless", "label": "permissionless.money", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/permissionless.money", "url": "https://permissionless.money" },
+    { "id": "dao-dao-ui", "label": "DAO DAO UI", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/dao-dao-ui", "url": "https://github.com/hard-nett/dao-dao-ui" },
+    { "id": "terp-docs", "label": "Terp docs", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/terp-docs", "url": "" },
+    { "id": "permissionless-docs", "label": "Permissionless docs", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/permissionless-docs", "url": "" },
+    { "id": "steward", "label": "Steward", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/steward", "url": "" },
+    { "id": "wd-colours", "label": "WD colours", "path": "${TERP_WEBSITES_DIR:-../../../../../websites}/color-study", "url": "" }
+  ]
+}

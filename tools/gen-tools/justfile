@@ -389,3 +389,11 @@ dev: check test build
     @echo "✅ Dev cycle complete"
 
 #end
+
+# Rust dependency graph JSON (see rust-deps/README.md)
+gen-deps out="../../target/gen-deps/rust-crates.json" *args="":
+    node rust-deps/gen-deps.mjs --out {{out}} {{args}}
+
+# Front-end JS dependency graph JSON (see js-deps/README.md)
+gen-js-deps out="../../target/gen-deps/js-deps.json" *args="":
+    node js-deps/gen-js-deps.mjs --out {{out}} {{args}}

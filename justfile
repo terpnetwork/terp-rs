@@ -126,3 +126,8 @@ scripts-ibc-offline:
 [private]
 scripts-ibc-validate:
     just ibc scripts-ibc-validate
+
+# Rust dependency graph JSON (shortcut for `just gen deps`). Relative paths are
+# from the terp-rs root.
+gen-deps out="target/gen-deps/rust-crates.json" *args="":
+    just gen deps {{out}} {{args}}
