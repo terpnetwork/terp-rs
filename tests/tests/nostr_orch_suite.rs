@@ -173,13 +173,16 @@ async fn l1_mock_backend_relay_lifecycle() {
 // ---------------------------------------------------------------------------
 
 async fn try_connect_nostr(url: &str) -> Option<ict_rs::nostr::NostrClient> {
-    match ict_rs::nostr::NostrClient::connect(url).await {
-        Ok(c) => Some(c),
-        Err(e) => {
-            eprintln!("Skipping: cannot connect to {url}: {e}");
-            None
+    // relay container needs a moment after start (no readiness probe in NostrRelayerManager)
+    let mut last = None;
+    for _ in 0..40 {
+        match ict_rs::nostr::NostrClient::connect(url).await {
+            Ok(c) => return Some(c),
+            Err(e) => { last = Some(e); tokio::time::sleep(Duration::from_millis(250)).await; }
         }
     }
+    eprintln!("Skipping: cannot connect to {url}: {}", last.unwrap());
+    None
 }
 
 /// Full lifecycle: NostrTestEnv + content-plane off-chain bind + NIP-52 publish/subscribe.
@@ -191,8 +194,8 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
     let _ = env_logger::try_init();
 
     let chain_info = terp_scripts::environments::nostr::NostrTestEnv::local_terp_chain_info(
-        "terp-test-1",
-        "http://127.0.0.1:9090",
+        &std::env::var("NOSTR_E2E_CHAIN_ID").unwrap_or_else(|_| "terp-test-1".into()),
+        &std::env::var("NOSTR_E2E_GRPC").unwrap_or_else(|_| "http://127.0.0.1:9090".into()),
         "uterp",
     );
 
