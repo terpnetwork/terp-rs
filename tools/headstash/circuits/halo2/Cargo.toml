@@ -98,5 +98,9 @@ name = "membership_key_com"
 required-features = ["circuit", "std"]
 
 [[example]]
+name = "bench_note_proofs"
+required-features = ["circuit", "std"]
+
+[[example]]
 name = "prove_note_witness"
 required-features = ["circuit", "std"]

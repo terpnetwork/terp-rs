@@ -340,6 +340,16 @@ def main():
     R["negatives"]["wrong_class_amount"] = {"lane_swapped_class": wa, "prover_non_denomination": err_bad or "proved"}
     step("neg_wrong_class_amount", (r.status_code >= 400 or "error" in r.text or "rejected" in r.text) and pr_bad is None,
          json.dumps(R["negatives"]["wrong_class_amount"])[:300])
+    # NEG: same-set amount swap: a proven 1 TERP note body re-claimed as 2 TERP (both in the campaign set)
+    one = [pr for pr in proofs if pr["body"].split(":")[5] == str(1_000_000)]
+    if one and 2_000_000 in [int(a["amount"]) for a in amounts]:
+        parts = one[0]["body"].split(":"); parts[5] = str(2_000_000)
+        r = claim(one[0]["proof_hex"], ":".join(parts))
+        R["negatives"]["same_set_amount_swap"] = "%d %s" % (r.status_code, r.text[:200])
+        step("neg_same_set_amount_swap", r.status_code >= 400 or "error" in r.text or "rejected" in r.text,
+             R["negatives"]["same_set_amount_swap"])
+    else:
+        step("neg_same_set_amount_swap", False, "no 1 TERP proof or 2 TERP not in campaign amounts")
     before = {w: bal(w) for w in wallets}
     for j, pr in enumerate(proofs):
         r = claim(pr["proof_hex"], pr["body"])

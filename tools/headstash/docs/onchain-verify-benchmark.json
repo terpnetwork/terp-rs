@@ -1,0 +1,357 @@
+{
+ "zkid": 1,
+ "runs": [
+  {
+   "name": "baseline_1",
+   "n": 1,
+   "code": 0,
+   "gas_used": 157718,
+   "height": "3723",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "1",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "baseline_2",
+   "n": 2,
+   "code": 0,
+   "gas_used": 197318,
+   "height": "3724",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "2",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "baseline_4",
+   "n": 4,
+   "code": 0,
+   "gas_used": 276520,
+   "height": "3725",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "4",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "baseline_8",
+   "n": 8,
+   "code": 0,
+   "gas_used": 434997,
+   "height": "3726",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "8",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "baseline_16",
+   "n": 16,
+   "code": 0,
+   "gas_used": 751823,
+   "height": "3728",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "16",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "baseline_32",
+   "n": 32,
+   "code": 0,
+   "gas_used": 1385524,
+   "height": "3729",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "baseline",
+    "n": "32",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "verify_1",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192625,
+   "height": "3730",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "verify_1_repeat",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192625,
+   "height": "3731",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_1",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192902,
+   "height": "3733",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "1",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_2",
+   "n": 2,
+   "code": 0,
+   "gas_used": 266190,
+   "height": "3734",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "2",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_4",
+   "n": 4,
+   "code": 0,
+   "gas_used": 412767,
+   "height": "3735",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "4",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_8",
+   "n": 8,
+   "code": 0,
+   "gas_used": 705994,
+   "height": "3736",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "8",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_16",
+   "n": 16,
+   "code": 0,
+   "gas_used": 1292322,
+   "height": "3737",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "16",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "batch_32",
+   "n": 32,
+   "code": 0,
+   "gas_used": 2465023,
+   "height": "3739",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "32",
+    "ok": "true",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_forged_proof",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192626,
+   "height": "3740",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_wrong_root",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192626,
+   "height": "3741",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_amount_1to2_terp",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192626,
+   "height": "3742",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_wrong_nullifier",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192626,
+   "height": "3744",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_proof_swapped",
+   "n": 1,
+   "code": 0,
+   "gas_used": 192626,
+   "height": "3745",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "verify",
+    "n": "1",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_batch8_one_forged",
+   "n": 8,
+   "code": 0,
+   "gas_used": 705995,
+   "height": "3746",
+   "attrs": {
+    "_contract_address": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk",
+    "kind": "batch",
+    "n": "8",
+    "ok": "false",
+    "err": "",
+    "msg_index": "0"
+   },
+   "raw_log": "",
+   "tx_bytes": null
+  },
+  {
+   "name": "neg_unknown_zkid",
+   "n": 1,
+   "code": 29,
+   "gas_used": 191274,
+   "height": "3747",
+   "attrs": {},
+   "raw_log": "failed to execute message; message index: 0: Error calling the VM: Error executing Wasm: Wasmer runtime error: RuntimeError: Generic error: CircuitInfo system error: No such code: 999: wasmvm error",
+   "tx_bytes": null
+  }
+ ],
+ "store_code_gas": 1878506,
+ "contract": "terp17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgszwv9gk"
+}
