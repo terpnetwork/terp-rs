@@ -593,9 +593,9 @@ mod tests {
         assert_eq!(&inputs[0..32], ctx_b.as_slice());
         assert_eq!(&inputs[32..64], root_b.as_slice());
         assert_eq!(&inputs[64..96], nullifier_b.as_slice());
-        assert_eq!(&inputs[96..128], dest_lo.to_repr().as_ref());
-        assert_eq!(&inputs[128..160], dest_hi.to_repr().as_ref());
-        assert_eq!(&inputs[160..192], pallas::Base::from(amount).to_repr().as_ref());
+        assert_eq!(&inputs[96..128], dest_lo.to_repr().as_slice());
+        assert_eq!(&inputs[128..160], dest_hi.to_repr().as_slice());
+        assert_eq!(&inputs[160..192], pallas::Base::from(amount).to_repr().as_slice());
         let body = canonical_body(ctx, root, nullifier, destination, amount);
         assert!(body.contains(&hex::encode(ctx_b)));
     }
