@@ -88,3 +88,57 @@ zk-headstash = { path = "circuits/halo2", default-features = false, features = [
 zk-test-press = { path = "test-press" }
 
 # Halo2 stack is zakura-common (path). Do not patch permissionlessweb/halo2 here.
+
+# Mirror of the terp-rs root [patch.crates-io] (local forks), paths relative to tools/headstash.
+[patch.crates-io]
+zk-cosmwasm = { path = "../../../cosmwasm/packages/zk" }
+cw721-nips = { path = "../../crates/nips" }
+cw4-group = { path = "../../../cw-plus/contracts/cw4-group" }
+abstract-cw-multi-test = { path = "../../../cw-multi-test-fork" }
+cw1-whitelist = { path = "../../../cw-plus/contracts/cw1-whitelist" }
+cw1 = { path = "../../../cw-plus/packages/cw1" }
+cw20 = { path = "../../../cw-plus/packages/cw20" }
+cw20-base = { path = "../../../cw-plus/contracts/cw20-base" }
+cw4 = { path = "../../../cw-plus/packages/cw4" }
+cw-ownable = { path = "../../../cw-plus-plus/packages/ownable" }
+cw-paginate = { path = "../../../cw-plus-plus/packages/paginate" }
+cosmos-sdk-proto = { path = "../../../cosmos-rust/cosmos-sdk-proto" }
+cw-address-like = { path = "../../../cw-plus-plus/packages/address-like" }
+cw-orch = { path = "../../../cw-orchestrator/cw-orch" }
+cw20-ics20 = { path = "../../../cw-plus/contracts/cw20-ics20" }
+cosmrs = { path = "../../../cosmos-rust/cosmrs" }
+ibc-chain-registry = { path = "../../../hermes/crates/chain-registry" }
+ibc-relayer = { path = "../../../hermes/crates/relayer" }
+ibc-relayer-types = { path = "../../../hermes/crates/relayer-types" }
+ibc-proto = { path = "../../../ibc-proto-rs" }
+ics23 = { path = "../../../ics23/rust" }
+tendermint = { path = "../../../tendermint-rs/tendermint" }
+tendermint-config = { path = "../../../tendermint-rs/config" }
+tendermint-light-client = { path = "../../../tendermint-rs/light-client" }
+tendermint-light-client-detector = { path = "../../../tendermint-rs/light-client-detector" }
+tendermint-light-client-verifier = { path = "../../../tendermint-rs/light-client-verifier" }
+tendermint-proto = { path = "../../../tendermint-rs/proto" }
+tendermint-rpc = { path = "../../../tendermint-rs/rpc" }
+informalsystems-pbjson = { path = "../../../pbjson/pbjson" }
+informalsystems-pbjson-types = { path = "../../../pbjson/pbjson-types" }
+informalsystems-pbjson-build = { path = "../../../pbjson/pbjson-build" }
+cosmwasm-core = { path = "../../../cosmwasm/packages/core" }
+cosmwasm-crypto = { path = "../../../cosmwasm/packages/crypto" }
+cosmwasm-derive = { path = "../../../cosmwasm/packages/derive" }
+cosmwasm-schema = { path = "../../../cosmwasm/packages/schema" }
+cosmwasm-schema-derive = { path = "../../../cosmwasm/packages/schema-derive" }
+cosmwasm-std = { path = "../../../cosmwasm/packages/std" }
+cw-schema = { path = "../../../cosmwasm/packages/cw-schema" }
+cw-schema-derive = { path = "../../../cosmwasm/packages/cw-schema-derive" }
+cw-storage-plus = { path = "../../../cw-storage-plus" }
+cw-utils = { path = "../../../cw-minus/packages/cw-utils" }
+cw2 = { path = "../../../cw-minus/packages/cw2" }
+cw-controllers = { path = "../../../cw-minus/packages/controllers" }
+cw-orch-core = { path = "../../../cw-orchestrator/packages/cw-orch-core" }
+cw-orch-interchain = { path = "../../../cw-orchestrator/cw-orch-interchain" }
+cw-orch-interchain-core = { path = "../../../cw-orchestrator/packages/interchain/interchain-core" }
+cw-orch-interchain-daemon = { path = "../../../cw-orchestrator/packages/interchain/interchain-daemon" }
+cw-orch-interchain-mock = { path = "../../../cw-orchestrator/packages/interchain/interchain-mock" }
+cw-orch-mock = { path = "../../../cw-orchestrator/packages/cw-orch-mock" }
+cw-orch-starship = { path = "../../../cw-orchestrator/packages/interchain/starship" }
+cw-orch-traits = { path = "../../../cw-orchestrator/packages/cw-orch-traits" }

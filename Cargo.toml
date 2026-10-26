@@ -263,6 +263,37 @@ zebra-crosslink = { path = "../zebra-crosslink/zebra-crosslink" }
 # Prevents re-resolve of abstract → cw-asset → permissionlessweb/cw-minus without cosmwasm-schema.
 
 [patch.crates-io]
+zk-cosmwasm = { path = "../cosmwasm/packages/zk" }
+cw721-nips = { path = "crates/nips" }
+cw4-group = { path = "../cw-plus/contracts/cw4-group" }
+abstract-cw-multi-test = { path = "../cw-multi-test-fork" }
+cw1-whitelist = { path = "../cw-plus/contracts/cw1-whitelist" }
+cw1 = { path = "../cw-plus/packages/cw1" }
+cw20 = { path = "../cw-plus/packages/cw20" }
+cw20-base = { path = "../cw-plus/contracts/cw20-base" }
+cw4 = { path = "../cw-plus/packages/cw4" }
+cw-ownable = { path = "../cw-plus-plus/packages/ownable" }
+cw-paginate = { path = "../cw-plus-plus/packages/paginate" }
+cosmos-sdk-proto = { path = "../cosmos-rust/cosmos-sdk-proto" }
+cw-address-like = { path = "../cw-plus-plus/packages/address-like" }
+cw-orch = { path = "../cw-orchestrator/cw-orch" }
+cw20-ics20 = { path = "../cw-plus/contracts/cw20-ics20" }
+cosmrs = { path = "../cosmos-rust/cosmrs" }
+ibc-chain-registry = { path = "../hermes/crates/chain-registry" }
+ibc-relayer = { path = "../hermes/crates/relayer" }
+ibc-relayer-types = { path = "../hermes/crates/relayer-types" }
+ibc-proto = { path = "../ibc-proto-rs" }
+ics23 = { path = "../ics23/rust" }
+tendermint = { path = "../tendermint-rs/tendermint" }
+tendermint-config = { path = "../tendermint-rs/config" }
+tendermint-light-client = { path = "../tendermint-rs/light-client" }
+tendermint-light-client-detector = { path = "../tendermint-rs/light-client-detector" }
+tendermint-light-client-verifier = { path = "../tendermint-rs/light-client-verifier" }
+tendermint-proto = { path = "../tendermint-rs/proto" }
+tendermint-rpc = { path = "../tendermint-rs/rpc" }
+informalsystems-pbjson = { path = "../pbjson/pbjson" }
+informalsystems-pbjson-types = { path = "../pbjson/pbjson-types" }
+informalsystems-pbjson-build = { path = "../pbjson/pbjson-build" }
 cosmwasm-core = { path = "../cosmwasm/packages/core" }
 cosmwasm-crypto = { path = "../cosmwasm/packages/crypto" }
 cosmwasm-derive = { path = "../cosmwasm/packages/derive" }
