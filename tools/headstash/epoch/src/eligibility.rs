@@ -226,3 +226,115 @@ mod tests {
         assert_eq!(decode_sol(&bs58::encode(off).into_string()).unwrap_err(), SolDrop::OffCurve);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Exact decimal amounts -> minimal denom, and floor-rounded uterp allocation.
+// ---------------------------------------------------------------------------
+
+/// Parse an exact decimal string (`12.5`, `7`, `0.000000000000000001`) into
+/// integer base units with `decimals` fractional digits. No floats. Rejects
+/// signs, exponents, empty parts, non-digits, more fractional digits than
+/// `decimals`, and u128 overflow. Surrounding whitespace (incl. CR) is trimmed.
+pub fn parse_base_units(s: &str, decimals: u32) -> Result<u128, String> {
+    let s = s.trim();
+    if s.is_empty() { return Err("empty".into()); }
+    let (int, frac) = match s.split_once('.') { Some((i, f)) => (i, f), None => (s, "") };
+    if int.is_empty() || (s.contains('.') && frac.is_empty()) { return Err(format!("malformed: {s}")); }
+    if !int.bytes().all(|b| b.is_ascii_digit()) || !frac.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(format!("malformed: {s}"));
+    }
+    let frac_t = frac.trim_end_matches('0');
+    if frac_t.len() as u32 > decimals { return Err(format!("more than {decimals} fractional digits: {s}")); }
+    let scale = 10u128.checked_pow(decimals).ok_or("decimals too large")?;
+    let mut iv: u128 = 0;
+    for b in int.bytes() { iv = iv.checked_mul(10).and_then(|v| v.checked_add((b - b'0') as u128)).ok_or(format!("overflow: {s}"))?; }
+    let mut fv: u128 = 0;
+    for b in frac_t.bytes() { fv = fv * 10 + (b - b'0') as u128; }
+    fv *= 10u128.pow(decimals - frac_t.len() as u32);
+    iv.checked_mul(scale).and_then(|v| v.checked_add(fv)).ok_or(format!("overflow: {s}"))
+}
+
+/// floor(a * b / d) without overflow for any u128 inputs where the true result fits u128.
+pub fn mul_div_floor(a: u128, b: u128, d: u128) -> Option<u128> {
+    if d == 0 { return None; }
+    if let Some(p) = a.checked_mul(b) { return Some(p / d); }
+    // Exact 256-bit product (hi, lo), then bitwise long division by d.
+    const M: u128 = u64::MAX as u128;
+    let (a0, a1, b0, b1) = (a & M, a >> 64, b & M, b >> 64);
+    let (ll, lh, hl, hh) = (a0 * b0, a0 * b1, a1 * b0, a1 * b1);
+    let mid = (ll >> 64) + (lh & M) + (hl & M);
+    let lo = (ll & M) | (mid << 64);
+    let hi = hh + (lh >> 64) + (hl >> 64) + (mid >> 64);
+    if hi >= d { return None; } // quotient would not fit u128
+    let (mut r, mut q) = (hi, 0u128);
+    for i in (0..128).rev() {
+        let carry = r >> 127;
+        r = (r << 1) | ((lo >> i) & 1);
+        q <<= 1;
+        if carry == 1 || r >= d { r = r.wrapping_sub(d); q |= 1; }
+    }
+    Some(q)
+}
+
+/// Pro-rata split of `budget` uterp over `balances` (base units), floor rounded.
+/// Returns per-holder u64 amounts (same order) and the undistributed dust.
+/// Deterministic: depends only on the inputs, not their order of evaluation.
+pub fn allocate_floor(balances: &[u128], budget: u64) -> Result<(Vec<u64>, u64), String> {
+    let total = balances.iter().try_fold(0u128, |a, b| a.checked_add(*b)).ok_or("total overflow")?;
+    if total == 0 { return Ok((vec![0; balances.len()], budget)); }
+    let mut out = Vec::with_capacity(balances.len());
+    let mut given: u128 = 0;
+    for &bal in balances {
+        let v = mul_div_floor(budget as u128, bal, total).ok_or("mul_div overflow")?;
+        given += v;
+        out.push(u64::try_from(v).map_err(|_| "allocation exceeds u64")?);
+    }
+    Ok((out, (budget as u128 - given) as u64))
+}
+
+#[cfg(test)]
+mod amount_tests {
+    use super::*;
+
+    #[test]
+    fn fractional_parsing() {
+        assert_eq!(parse_base_units("12.5", 18).unwrap(), 12_500_000_000_000_000_000);
+        assert_eq!(parse_base_units("0.000000000000000001", 18).unwrap(), 1);
+        assert_eq!(parse_base_units("1.2300", 2).unwrap(), 123);
+        assert_eq!(parse_base_units("52230931.14\r", 18).unwrap(), 52_230_931_140_000_000_000_000_000);
+        assert_eq!(parse_base_units("42", 0).unwrap(), 42);
+        assert_eq!(parse_base_units("42", 6).unwrap(), 42_000_000);
+        assert_eq!(parse_base_units("7.000", 0).unwrap(), 7);
+    }
+
+    #[test]
+    fn invalid_values() {
+        for bad in ["", "-1", "+1", "1e5", "1.", ".5", "1.2.3", "abc", "1,5", " 1 2"] {
+            assert!(parse_base_units(bad, 18).is_err(), "{bad:?}");
+        }
+        assert!(parse_base_units("0.001", 2).is_err());
+        assert!(parse_base_units("340282366920938463463374607431768211456", 0).is_err());
+    }
+
+    #[test]
+    fn eighteen_decimal_overflow() {
+        // 52M tokens at 18 decimals does not fit u64 but fits u128.
+        let bal = parse_base_units("52230931.14", 18).unwrap();
+        assert!(u64::try_from(bal).is_err());
+        // budget * balance overflows u128; mul_div must still be exact.
+        let big = u128::MAX / 3;
+        assert_eq!(mul_div_floor(big, u64::MAX as u128, big).unwrap(), u64::MAX as u128);
+        let (a, dust) = allocate_floor(&[bal, bal], u64::MAX).unwrap();
+        assert_eq!(a[0] as u128 * 2 + dust as u128, u64::MAX as u128);
+        assert!(parse_base_units("400000000000000000000.0", 18).is_err());
+    }
+
+    #[test]
+    fn rounding_is_floor_and_deterministic() {
+        let (a, dust) = allocate_floor(&[1, 1, 1], 10).unwrap();
+        assert_eq!((a.clone(), dust), (vec![3, 3, 3], 1));
+        assert_eq!(allocate_floor(&[1, 1, 1], 10).unwrap(), (a, dust));
+        let (b, d) = allocate_floor(&[2, 1], 100).unwrap();
+        assert_eq!((b, d), (vec![66, 33], 1));
+    }
+}
