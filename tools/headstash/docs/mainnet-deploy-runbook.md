@@ -99,4 +99,20 @@ WAVS operator set; lane custody key and public lane URL; upgrade to the VE fix; 
 privacy approach (review H3); path delivery (H2); proposal timing and proposer/deposit.
 
 ## Verification evidence
-Filled in from this job's runs; see the final report.
+Runs on groot-wan, 2026-10-26 (local times UTC-4).
+
+- **cw-headstash lib tests**: 86 passed, 0 failed (`cargo test --release --features testwavs --lib`,
+  standalone copy with commit 4a6b4ca sources), including `update_ownership_two_step_and_no_renounce`.
+  The `tests/` integration suite needs `cw-headstash-manifold` and was not run.
+- **Dev wasm** (nightly 1.98 + `wasm-opt -Os`, NOT the publishable artifact):
+  sha256 `ba451cded17b3b74d0416453f0e472e7abed5dc7b540599d27625dd9bb291019`, 972,253 bytes.
+  Publish only the cosmwasm/optimizer (Rust 1.91) build and record its sha in `{{WASM_SHA256}}`.
+- **Wasm prover -> native verifier parity: PASS.** Deterministic witness (ctx 0x7e49, amount
+  1,500,000, index 5). wasm `membership_key_com_hex` = native key_com `ca79849d...4bd39a07`;
+  wasm proof (k=11, vk_id 2, 2,752 bytes, 4.4 s in node) verified natively in 291 ms; body root
+  `0cac7380...9c811a1b` and nullifier `1289ce73...282ef312` equal the native values; public
+  input order ctx, root, nullifier, dest_lo, dest_hi, amount; tampered proof rejected.
+  vk_hash `94d43261...1eefed11` matches the contract config.
+- **warm_verify_stays_under_one_second: FAIL under load** (epoch-claim circuit, 4.041 s warm
+  verify, load average ~30 during the run; key build 78.8 s). Rerun on an idle host before
+  relying on it; the membership verify path above took 0.29 s.
