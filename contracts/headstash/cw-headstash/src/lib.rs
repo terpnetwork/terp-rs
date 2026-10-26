@@ -350,6 +350,14 @@ pub fn execute(
         }
         ExecuteMsg::SetEpochCampaign { campaign } => epoch::set_campaign(deps, info, campaign),
         ExecuteMsg::SweepUnclaimed {} => epoch::sweep_unclaimed(deps, env, info),
+        ExecuteMsg::UpdateOwnership(action) => {
+            if matches!(action, cw_ownable::Action::RenounceOwnership) {
+                return Err(StdError::msg("renounce_ownership is disabled"));
+            }
+            let o = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)
+                .map_err(|e| StdError::msg(e.to_string()))?;
+            Ok(Response::new().add_attributes(o.into_attributes()))
+        }
         ExecuteMsg::StageEpochBatch { digests, rows } => {
             epoch::stage_batch(deps, &env, info, digests, rows)
         }
@@ -775,6 +783,33 @@ mod instantiate_tests {
                 .map(|a| a.value.as_str()),
             Some("poseidon-v1")
         );
+    }
+
+    #[test]
+    fn update_ownership_two_step_and_no_renounce() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = deps.api.addr_make("owner");
+        let dao = deps.api.addr_make("dao");
+        let eve = deps.api.addr_make("eve");
+        let api = deps.api;
+        cw_ownable::initialize_owner(deps.as_mut().storage, &api, Some(owner.as_str())).unwrap();
+        let propose = ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+            new_owner: dao.to_string(),
+            expiry: None,
+        });
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), propose.clone()).is_err());
+        execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), propose).unwrap();
+        let accept = ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership);
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), accept.clone()).is_err());
+        execute(deps.as_mut(), env.clone(), message_info(&dao, &[]), accept).unwrap();
+        let o = cw_ownable::get_ownership(deps.as_ref().storage).unwrap();
+        assert_eq!(o.owner, Some(dao.clone()));
+        assert!(cw_ownable::assert_owner(deps.as_ref().storage, &owner).is_err());
+        let renounce = ExecuteMsg::UpdateOwnership(cw_ownable::Action::RenounceOwnership);
+        let err = execute(deps.as_mut(), env, message_info(&dao, &[]), renounce).unwrap_err();
+        assert!(err.to_string().contains("renounce_ownership is disabled"));
+        assert_eq!(cw_ownable::get_ownership(deps.as_ref().storage).unwrap().owner, Some(dao));
     }
 
     // Helper: real BLS PoP for instantiate (see wavs::generate_test_wavs_proof).

@@ -127,6 +127,9 @@ pub enum ExecuteMsg {
     /// Owner: send leftover escrow of the campaign denom to `sweep_recipient`.
     /// The block height must be past the cutoff. This message carries no address.
     SweepUnclaimed {},
+    /// Owner: two-step ownership transfer (propose, then the new owner accepts).
+    /// `renounce_ownership` is rejected so the campaign can never be orphaned.
+    UpdateOwnership(cw_ownable::Action),
     /// Owner: the rows and proof digests an accepted sudo can pay.
     StageEpochBatch {
         digests: Vec<Binary>,

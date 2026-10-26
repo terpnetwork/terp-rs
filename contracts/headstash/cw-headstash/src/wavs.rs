@@ -18,7 +18,7 @@ pub struct WavsParams {
 #[cosmwasm_schema::cw_serde]
 pub struct WavsAuthMetadata {
     pub aggregate_key: String,
-    // if 0, disable threshold assertions & allow single aggregate signature to be provided for authetnication
+    /// Minimum operator signatures required. Must be in 1..=total_operators; 0 is rejected by verify().
     pub threshold: usize,
     pub total_operators: usize,
     pub nonce: u64,
@@ -37,8 +37,8 @@ impl WavsProofOfOwnership {
         if self.poos.len() != self.msg.total_operators || self.poos.is_empty() {
             return Err(StdError::msg(format!(
                 "invalid amount of operators defined. got: {}. want: {}",
-                self.msg.total_operators,
-                self.poos.len()
+                self.poos.len(),
+                self.msg.total_operators
             )));
         }
 
