@@ -462,6 +462,17 @@ pub fn minimal_note_k(circuit: &NoteMembershipCircuit, public: &[pallas::Base]) 
 mod tests {
     use super::*;
 
+    #[test]
+    fn contract_leaf_helper_matches_circuit_leaf() {
+        let k = pallas::Base::from(77u64);
+        for amount in DENOMS_UTERP {
+            assert_eq!(
+                note_leaf(k, amount),
+                crate::distro_poseidon::note_registration_leaf(k, amount)
+            );
+        }
+    }
+
     const DEST: &str = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
 
     fn fixture(amount: u64) -> (NoteMembershipCircuit, Vec<pallas::Base>, pallas::Base, pallas::Base) {

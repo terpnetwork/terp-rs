@@ -259,6 +259,16 @@ pub fn registration_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
     ])
 }
 
+/// vk_id 3 note claim leaf `Poseidon(terp-hs-note-leaf-v2, key_com, amount)`.
+/// Must equal `note_membership::note_leaf` (checked in its tests).
+pub fn note_registration_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
+    poseidon::Hash::<_, P128Pow5T3, ConstantLength<3>, 3, 2>::init().hash([
+        personalization_to_fp("terp-hs-note-leaf-v2"),
+        key_com,
+        pallas::Base::from(amount),
+    ])
+}
+
 /// Canonical 32-byte LE encoding of a distro tree root / node digest.
 #[inline]
 pub fn distro_digest_to_bytes(digest: pallas::Base) -> [u8; 32] {

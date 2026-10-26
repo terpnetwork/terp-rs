@@ -13,8 +13,37 @@ use zk_headstash::distro_poseidon::{
     poseidon_distro_crh, registration_key_commitment, registration_leaf,
 };
 
-const DEPTH: usize = 16;
-const MAX_LEAVES: u32 = 1 << DEPTH;
+/// Claim tree depth of the legacy (vk_id 2 / flock) registration window.
+pub const LEGACY_DEPTH: usize = 16;
+/// Claim tree depth of a vk_id 3 note campaign (spec rev 5).
+pub const NOTE_DEPTH: usize = 17;
+/// Largest claim tree depth this contract stores.
+pub const MAX_DEPTH: usize = NOTE_DEPTH;
+#[cfg(test)]
+const DEPTH: usize = LEGACY_DEPTH;
+
+/// Tree depth chosen when the window opened. Missing means the legacy depth.
+const TREE_DEPTH: Item<u8> = Item::new("reg_depth");
+
+fn max_leaves(depth: usize) -> u32 {
+    1u32 << depth
+}
+
+pub fn tree_depth(storage: &dyn Storage) -> StdResult<usize> {
+    Ok(TREE_DEPTH
+        .may_load(storage)?
+        .map(|d| d as usize)
+        .unwrap_or(LEGACY_DEPTH))
+}
+
+/// Depth a campaign's claim tree uses: 17 for vk_id 3 note campaigns, else 16.
+pub fn depth_for(campaign: &EpochCampaignParams) -> usize {
+    if campaign.vk_id == crate::notes::NOTE_VK_ID {
+        NOTE_DEPTH
+    } else {
+        LEGACY_DEPTH
+    }
+}
 
 const FRONTIER: Item<Vec<Binary>> = Item::new("reg_frontier");
 const COUNT: Item<u32> = Item::new("reg_count");
@@ -70,14 +99,14 @@ pub struct RegistrationPathResponse {
     pub siblings: Vec<String>,
 }
 
-pub fn validate_config(cfg: &RegistrationConfig, ctx: &[u8]) -> StdResult<()> {
+pub fn validate_config(cfg: &RegistrationConfig, ctx: &[u8], depth: usize) -> StdResult<()> {
     if cfg.eligibility_root.len() != 32 {
         return Err(StdError::msg("eligibility"));
     }
-    if !(1..=DEPTH as u32).contains(&cfg.eligibility_depth) {
+    if !(1..=depth as u32).contains(&cfg.eligibility_depth) {
         return Err(StdError::msg("eligibility"));
     }
-    if cfg.min_anonymity_set == 0 || cfg.min_anonymity_set > MAX_LEAVES {
+    if cfg.min_anonymity_set == 0 || cfg.min_anonymity_set > max_leaves(depth) {
         return Err(StdError::msg("anonymity set"));
     }
     if cfg.anchor_interval == 0 {
@@ -89,12 +118,26 @@ pub fn validate_config(cfg: &RegistrationConfig, ctx: &[u8]) -> StdResult<()> {
     Ok(())
 }
 
-pub fn prepare_window(storage: &mut dyn Storage, cfg: &RegistrationConfig) -> StdResult<()> {
+pub fn prepare_window(
+    storage: &mut dyn Storage,
+    cfg: &RegistrationConfig,
+    depth: usize,
+) -> StdResult<()> {
     if COUNT.may_load(storage)?.unwrap_or(0) > 0 {
+        if tree_depth(storage)? != depth {
+            return Err(StdError::msg("registration depth"));
+        }
         return Ok(());
     }
+    if FRONTIER
+        .may_load(storage)?
+        .is_some_and(|frontier| frontier.len() != depth)
+    {
+        FRONTIER.remove(storage);
+    }
     if FRONTIER.may_load(storage)?.is_none() {
-        FRONTIER.save(storage, &vec![Binary::from(vec![0u8; 32]); DEPTH])?;
+        TREE_DEPTH.save(storage, &(depth as u8))?;
+        FRONTIER.save(storage, &vec![Binary::from(vec![0u8; 32]); depth])?;
         COUNT.save(storage, &0)?;
         ROOT.save(storage, &Binary::from(vec![0u8; 32]))?;
         ANCHORS.save(storage, &Vec::new())?;
@@ -145,8 +188,9 @@ pub fn query_path(
     }
     let n = matched.leaf_count;
     let leaf = load_leaf(storage, record.index)?;
-    let mut siblings = Vec::with_capacity(DEPTH);
-    for level in 0..DEPTH {
+    let depth = tree_depth(storage)?;
+    let mut siblings = Vec::with_capacity(depth);
+    for level in 0..depth {
         let sibling_at = (record.index >> level) ^ 1;
         let bytes = match node_at(storage, level, sibling_at, n)? {
             Some(node) => node.to_repr(),
@@ -255,6 +299,7 @@ pub fn register(
     eligibility_path: Vec<Binary>,
 ) -> Result<Response, StdError> {
     let cfg = registration_cfg(campaign)?;
+    legacy_only(campaign)?;
     precheck(deps.storage, amount)?;
     parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
     let message = register_message(campaign.ctx.as_slice(), key_com.as_slice(), amount);
@@ -288,6 +333,7 @@ pub fn register_sol(
     eligibility_path: Vec<Binary>,
 ) -> Result<Response, StdError> {
     let cfg = registration_cfg(campaign)?;
+    legacy_only(campaign)?;
     precheck(deps.storage, amount)?;
     parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
     let pk: [u8; 32] = pubkey
@@ -319,15 +365,23 @@ pub fn register_sol(
     )
 }
 
-fn registration_cfg(campaign: &EpochCampaignParams) -> StdResult<&RegistrationConfig> {
+/// Single-amount registrations do not exist on a vk_id 3 note campaign.
+fn legacy_only(campaign: &EpochCampaignParams) -> StdResult<()> {
+    if campaign.vk_id == crate::notes::NOTE_VK_ID {
+        return Err(StdError::msg("note campaign: use register_notes"));
+    }
+    Ok(())
+}
+
+pub(crate) fn registration_cfg(campaign: &EpochCampaignParams) -> StdResult<&RegistrationConfig> {
     campaign
         .registration
         .as_ref()
         .ok_or_else(|| StdError::msg("registration"))
 }
 
-fn precheck(storage: &dyn Storage, amount: u64) -> StdResult<()> {
-    if leaf_count(storage)? >= MAX_LEAVES {
+pub(crate) fn precheck(storage: &dyn Storage, amount: u64) -> StdResult<()> {
+    if leaf_count(storage)? >= max_leaves(tree_depth(storage)?) {
         return Err(StdError::msg("tree full"));
     }
     if amount == 0 {
@@ -363,7 +417,6 @@ fn insert_registration(
     eligibility_path: &[Binary],
     kind: &str,
 ) -> Result<Response, StdError> {
-    let count = leaf_count(deps.storage)?;
     let key_fp = parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
     let path = path_bytes(eligibility_path)?;
     let opened = open_eligibility_leaf(
@@ -378,45 +431,66 @@ fn insert_registration(
     if ADDRESSES.may_load(deps.storage, identity)?.is_some() {
         return Err(StdError::msg("already registered"));
     }
+    let leaf_fp = registration_leaf(key_fp, amount);
+    let (count, leaf) = append_claim_leaf(deps.storage, &key_com, leaf_fp, amount)?;
+    ADDRESSES.save(deps.storage, identity, &())?;
+    Ok(Response::new()
+        .add_attribute("action", "register_headstash")
+        .add_attribute("kind", kind)
+        .add_attribute("index", count.to_string())
+        .add_attribute("leaf", hex::encode(leaf)))
+}
+
+/// Append one claim leaf for `key_com` (globally unique, N6) and return its index.
+pub(crate) fn append_claim_leaf(
+    storage: &mut dyn Storage,
+    key_com: &Binary,
+    leaf_fp: pallas::Base,
+    amount: u64,
+) -> StdResult<(u32, [u8; 32])> {
+    let count = leaf_count(storage)?;
+    if count >= max_leaves(tree_depth(storage)?) {
+        return Err(StdError::msg("tree full"));
+    }
     let key_hex = hex::encode(key_com.as_slice());
-    if KEYS.may_load(deps.storage, key_hex.as_str())?.is_some() {
+    if KEYS.may_load(storage, key_hex.as_str())?.is_some() {
         return Err(StdError::msg("key commitment"));
     }
-    let leaf_fp = registration_leaf(key_fp, amount);
     let leaf = leaf_fp.to_repr();
-    let mut frontier = load_frontier(deps.storage)?;
+    let mut frontier = load_frontier(storage)?;
     let mut done: Vec<(u8, u32, pallas::Base)> = Vec::new();
     let root = append_leaf_with(&mut frontier, count, leaf, |l, j, node| {
         done.push((l, j, *node));
         Ok(())
     })?;
     for (l, j, node) in done {
-        NODES.save(deps.storage, (l, j), &Binary::from(node.to_repr().to_vec()))?;
+        NODES.save(storage, (l, j), &Binary::from(node.to_repr().to_vec()))?;
     }
     FRONTIER.save(
-        deps.storage,
+        storage,
         &frontier
             .iter()
             .map(|node| Binary::from(node.to_vec()))
             .collect(),
     )?;
-    COUNT.save(deps.storage, &(count + 1))?;
-    ROOT.save(deps.storage, &Binary::from(root.to_vec()))?;
-    ADDRESSES.save(deps.storage, identity, &())?;
-    LEAVES.save(deps.storage, count, &Binary::from(leaf.to_vec()))?;
+    COUNT.save(storage, &(count + 1))?;
+    ROOT.save(storage, &Binary::from(root.to_vec()))?;
+    LEAVES.save(storage, count, &Binary::from(leaf.to_vec()))?;
     KEYS.save(
-        deps.storage,
+        storage,
         key_hex.as_str(),
         &RegisteredKey {
             index: count,
             amount,
         },
     )?;
-    Ok(Response::new()
-        .add_attribute("action", "register_headstash")
-        .add_attribute("kind", kind)
-        .add_attribute("index", count.to_string())
-        .add_attribute("leaf", hex::encode(leaf)))
+    Ok((count, leaf))
+}
+
+pub(crate) fn key_com_used(storage: &dyn Storage, key_com: &[u8]) -> StdResult<bool> {
+    Ok(KEYS
+        .may_load(storage, hex::encode(key_com).as_str())?
+        .is_some())
 }
 
 pub fn accept_anchor(
@@ -529,7 +603,7 @@ fn eip191(message: &str) -> Vec<u8> {
     out
 }
 
-fn path_bytes(path: &[Binary]) -> StdResult<Vec<[u8; 32]>> {
+pub(crate) fn path_bytes(path: &[Binary]) -> StdResult<Vec<[u8; 32]>> {
     path.iter()
         .map(|sibling| {
             sibling
@@ -547,7 +621,7 @@ pub fn open_eligibility(
     path: &[[u8; 32]],
     depth: u32,
 ) -> StdResult<[u8; 32]> {
-    if depth == 0 || depth > DEPTH as u32 || path.len() != depth as usize {
+    if depth == 0 || depth > MAX_DEPTH as u32 || path.len() != depth as usize {
         return Err(StdError::msg("eligibility"));
     }
     if index >= 1u32 << depth {
@@ -563,7 +637,7 @@ pub fn open_eligibility_leaf(
     path: &[[u8; 32]],
     depth: u32,
 ) -> StdResult<[u8; 32]> {
-    if depth == 0 || depth > DEPTH as u32 || path.len() != depth as usize {
+    if depth == 0 || depth > MAX_DEPTH as u32 || path.len() != depth as usize {
         return Err(StdError::msg("eligibility"));
     }
     if index >= 1u32 << depth {
@@ -612,7 +686,7 @@ pub fn eligibility_node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 }
 
 pub fn append_leaf(
-    frontier: &mut [[u8; 32]; DEPTH],
+    frontier: &mut [[u8; 32]],
     index: u32,
     leaf: [u8; 32],
 ) -> StdResult<[u8; 32]> {
@@ -622,14 +696,14 @@ pub fn append_leaf(
 /// [`append_leaf`] that also reports each subtree completed by this leaf as
 /// (level, node index, root), level >= 1.
 fn append_leaf_with(
-    frontier: &mut [[u8; 32]; DEPTH],
+    frontier: &mut [[u8; 32]],
     index: u32,
     leaf: [u8; 32],
     mut completed: impl FnMut(u8, u32, &pallas::Base) -> StdResult<()>,
 ) -> StdResult<[u8; 32]> {
     let mut current = parse_fp(&leaf)?;
     let mut cursor = index;
-    for level in 0..DEPTH {
+    for level in 0..frontier.len() {
         if cursor & 1 == 0 {
             frontier[level] = current.to_repr();
             current = poseidon_distro_crh(level as u32, current, pallas::Base::ZERO);
@@ -645,14 +719,15 @@ fn append_leaf_with(
     Ok(current.to_repr())
 }
 
-fn load_frontier(storage: &dyn Storage) -> StdResult<[[u8; 32]; DEPTH]> {
+fn load_frontier(storage: &dyn Storage) -> StdResult<Vec<[u8; 32]>> {
+    let depth = tree_depth(storage)?;
     let stored = FRONTIER
         .may_load(storage)?
-        .unwrap_or_else(|| vec![Binary::from(vec![0u8; 32]); DEPTH]);
-    if stored.len() != DEPTH {
+        .unwrap_or_else(|| vec![Binary::from(vec![0u8; 32]); depth]);
+    if stored.len() != depth {
         return Err(StdError::msg("registration"));
     }
-    let mut out = [[0u8; 32]; DEPTH];
+    let mut out = vec![[0u8; 32]; depth];
     for (slot, node) in out.iter_mut().enumerate() {
         *node = stored[slot]
             .as_slice()
@@ -662,14 +737,14 @@ fn load_frontier(storage: &dyn Storage) -> StdResult<[[u8; 32]; DEPTH]> {
     Ok(out)
 }
 
-fn parse_fp(bytes: &[u8]) -> StdResult<pallas::Base> {
+pub(crate) fn parse_fp(bytes: &[u8]) -> StdResult<pallas::Base> {
     let arr: [u8; 32] = bytes
         .try_into()
         .map_err(|_| StdError::msg("key commitment"))?;
     Option::from(pallas::Base::from_repr(arr)).ok_or_else(|| StdError::msg("key commitment"))
 }
 
-fn sha256(bytes: &[u8]) -> [u8; 32] {
+pub(crate) fn sha256(bytes: &[u8]) -> [u8; 32] {
     let dig = Sha256::digest(bytes);
     let mut out = [0u8; 32];
     out.copy_from_slice(&dig);

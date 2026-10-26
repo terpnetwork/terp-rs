@@ -111,14 +111,25 @@ pub fn set_campaign(
     campaign: EpochCampaignParams,
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let existing_campaign = EPOCH_CAMPAIGN.may_load(deps.storage)?;
+    if existing_campaign.is_none() && campaign.vk_id == crate::notes::RETIRED_VK_ID {
+        // N1: vk_id 2 stays verifiable for the campaign that already uses it, but no
+        // new campaign may be created under it. New membership campaigns use vk_id 3.
+        return Err(StdError::msg("vk id 2 is retired for new campaigns"));
+    }
     validate_campaign(&campaign)?;
+    crate::notes::validate_note_campaign(&campaign)?;
     if let Some(cfg) = campaign.registration.as_ref() {
-        crate::registration::validate_config(cfg, campaign.ctx.as_slice())?;
+        crate::registration::validate_config(
+            cfg,
+            campaign.ctx.as_slice(),
+            crate::registration::depth_for(&campaign),
+        )?;
     }
     if !campaign.sweep_recipient.is_empty() {
         deps.api.addr_validate(&campaign.sweep_recipient)?;
     }
-    if let Some(existing) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
+    if let Some(existing) = existing_campaign {
         if existing.vk_id != campaign.vk_id || existing.vk_hash != campaign.vk_hash {
             return Err(StdError::msg("vk is fixed"));
         }
@@ -136,7 +147,11 @@ pub fn set_campaign(
     bind_campaign_eligibility(deps.storage, &campaign)?;
     EPOCH_CAMPAIGN.save(deps.storage, &campaign)?;
     if let Some(cfg) = campaign.registration.as_ref() {
-        crate::registration::prepare_window(deps.storage, cfg)?;
+        crate::registration::prepare_window(
+            deps.storage,
+            cfg,
+            crate::registration::depth_for(&campaign),
+        )?;
     }
     Ok(Response::new()
         .add_attribute("action", "set_epoch_campaign")
@@ -1697,7 +1712,7 @@ mod tests {
         let info = message_info(&creator, &[]);
         let mut params = campaign(&allocation);
         params.backend = "halo2".into();
-        params.vk_id = 2;
+        params.vk_id = 7; // any live non-note vk: vk 2 is retired for new campaigns (N1)
         params.vk_hash = Binary::from([9u8; 32].to_vec());
         params.registration = Some(crate::registration::RegistrationConfig {
             eligibility_root: Binary::from([4u8; 32].to_vec()),

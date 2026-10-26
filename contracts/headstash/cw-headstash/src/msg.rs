@@ -169,6 +169,18 @@ pub enum ExecuteMsg {
         eligibility_index: u32,
         eligibility_path: Vec<Binary>,
     },
+    /// Spec rev 5 note registration (vk_id 3 campaigns only). Anyone may relay.
+    /// `list` is the identity's full ordered note list on every chunk; `signature`
+    /// (required on the first chunk) signs its hash. `eligibility` holds one
+    /// depth-17 path per note in `start..start + eligibility.len()` (at most 32).
+    RegisterNotes {
+        signer: crate::notes::NoteSigner,
+        #[serde(default)]
+        signature: Option<Binary>,
+        list: Vec<crate::notes::NoteListEntry>,
+        start: u32,
+        eligibility: Vec<crate::notes::NoteEligibility>,
+    },
     /// Permissionless. Stores the current registration root when the window is open.
     AcceptAnchor {},
 }
@@ -235,6 +247,9 @@ pub enum QueryMsg {
     /// 40-char lowercase hex EVM address, or `sol:` + 64-char hex pubkey.
     #[returns(bool)]
     Registered { identity: String },
+    /// Signed note list state for an identity key (`<evm hex>` or `sol:<hex>`).
+    #[returns(Option<crate::notes::NoteListState>)]
+    NoteList { identity: String },
 }
 
 #[cw_serde]

@@ -2,6 +2,7 @@ pub mod bridge;
 pub mod distro;
 pub mod egress;
 pub mod epoch;
+pub mod notes;
 pub mod registration;
 pub mod headstash;
 pub mod msg;
@@ -415,6 +416,24 @@ pub fn execute(
                 eligibility_path,
             )
         }
+        ExecuteMsg::RegisterNotes {
+            signer,
+            signature,
+            list,
+            start,
+            eligibility,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _, _, _) -> _>(notes::register_notes)(
+                deps,
+                &campaign,
+                signer,
+                signature,
+                list,
+                start,
+                eligibility,
+            )
+        }
         ExecuteMsg::AcceptAnchor {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
             opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
@@ -467,6 +486,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 key_com.as_slice(),
                 anchor.as_slice(),
             )?)
+        }
+        QueryMsg::NoteList { identity } => {
+            to_json_binary(&notes::query_note_list(deps.storage, &identity)?)
         }
         QueryMsg::Registered { identity } => {
             to_json_binary(&registration::is_registered(deps.storage, &identity)?)
