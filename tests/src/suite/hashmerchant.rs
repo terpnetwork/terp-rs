@@ -225,6 +225,9 @@ impl HashMerchantSuite {
         let runtime_key = runtime_key.into();
         let config = Config {
             bind: bind.into(),
+            allow_public_bind: false,
+            tree_operator: hash_market::config::DEFAULT_TREE_OPERATOR.into(),
+            operator_pubkeys: vec![],
             chain_id: chain_id.to_string(),
             signing_key: None,
             data_dir: None,
@@ -245,6 +248,7 @@ impl HashMerchantSuite {
                 broadcast: false,
             }),
             privval: None,
+            pir: None,
         };
         Self::new("hashmerchant-mint", config)
     }
@@ -272,6 +276,9 @@ impl HashMerchantSuite {
 
         let config = Config {
             bind: "127.0.0.1:9090".into(),
+            allow_public_bind: false,
+            tree_operator: hash_market::config::DEFAULT_TREE_OPERATOR.into(),
+            operator_pubkeys: vec![],
             chain_id: chain_id.to_string(),
             signing_key: Some(signing_key),
             data_dir: None,
@@ -297,6 +304,7 @@ impl HashMerchantSuite {
             cashu_mesh: None,
             onboard: None,
             privval: None,
+            pir: None,
         };
         Self::new("hashmerchant", config)
     }
@@ -778,6 +786,38 @@ mod test {
     /// Start the hash-market server in-process on a random port.
     /// Returns (base_url, data_dir, shutdown_guard).
     /// The shutdown_guard triggers graceful shutdown when dropped.
+    // `/trees` writes are pinned to one operator and need an ADR-36 signature
+    // (hash_market::tree_operator). Tests sign with one ephemeral operator key.
+    fn test_tree_operator() -> &'static (k256::ecdsa::SigningKey, String) {
+        static OP: std::sync::OnceLock<(k256::ecdsa::SigningKey, String)> =
+            std::sync::OnceLock::new();
+        OP.get_or_init(hash_market::tree_operator::ephemeral_operator)
+    }
+
+    trait TreeSigned {
+        fn tree_signed(self, method: &str, path: &str, body: &[u8]) -> Self;
+    }
+
+    impl TreeSigned for reqwest::RequestBuilder {
+        fn tree_signed(self, method: &str, path: &str, body: &[u8]) -> Self {
+            let (pubkey, sig) = hash_market::tree_operator::sign_tree_write(
+                &test_tree_operator().0,
+                method,
+                path,
+                body,
+            );
+            let mut rb = self
+                .header("x-hash-market-pubkey", pubkey)
+                .header("x-hash-market-signature", sig);
+            if !body.is_empty() {
+                rb = rb
+                    .header("content-type", "application/json")
+                    .body(body.to_vec());
+            }
+            rb
+        }
+    }
+
     async fn start_test_server()
     -> anyhow::Result<(String, tempfile::TempDir, tokio::sync::oneshot::Sender<()>)> {
         // Initialize tracing for diagnostics
@@ -788,12 +828,14 @@ mod test {
         let data_dir = tempfile::TempDir::new()?;
         let custody = LocalSecp256k1::generate();
         let ve_handler = VoteExtensionHandler::new(Box::new(custody));
-        let state = Arc::new(AppState::new(
+        let mut state = AppState::new(
             Some(ve_handler),
             "test-chain".into(),
             data_dir.path().to_path_buf(),
             true,
-        )?);
+        )?;
+        state.set_tree_operator(test_tree_operator().1.clone());
+        let state = Arc::new(state);
         let app = build_router(state);
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -1124,7 +1166,7 @@ mod test {
         let input = valid_tree_input();
         let resp = client
             .post(format!("{base}/trees/{tree_id}"))
-            .json(&input)
+            .tree_signed("POST", &format!("/trees/{tree_id}"), &serde_json::to_vec(&input).unwrap())
             .send()
             .await
             .unwrap();
@@ -1167,7 +1209,7 @@ mod test {
         for id in &ids {
             let resp = client
                 .post(format!("{base}/trees/{id}"))
-                .json(&valid_tree_input())
+                .tree_signed("POST", &format!("/trees/{id}"), &serde_json::to_vec(&valid_tree_input()).unwrap())
                 .send()
                 .await
                 .unwrap();
@@ -1194,7 +1236,7 @@ mod test {
         // Save
         client
             .post(format!("{base}/trees/{tree_id}"))
-            .json(&valid_tree_input())
+            .tree_signed("POST", &format!("/trees/{tree_id}"), &serde_json::to_vec(&valid_tree_input()).unwrap())
             .send()
             .await
             .unwrap();
@@ -1202,6 +1244,7 @@ mod test {
         // Delete
         let del_resp = client
             .delete(format!("{base}/trees/{tree_id}"))
+            .tree_signed("DELETE", &format!("/trees/{tree_id}"), b"")
             .send()
             .await
             .unwrap();
@@ -1227,7 +1270,7 @@ mod test {
 
         let resp = client
             .post(format!("{base}/trees/bad-root"))
-            .json(&invalid)
+            .tree_signed("POST", &format!("/trees/bad-root"), &serde_json::to_vec(&invalid).unwrap())
             .send()
             .await
             .unwrap();
@@ -1251,7 +1294,7 @@ mod test {
 
         let resp = client
             .post(format!("{base}/trees/bad-proof"))
-            .json(&invalid)
+            .tree_signed("POST", &format!("/trees/bad-proof"), &serde_json::to_vec(&invalid).unwrap())
             .send()
             .await
             .unwrap();
@@ -1360,7 +1403,7 @@ mod test {
         let client = reqwest::Client::new();
         let resp = client
             .post(format!("{base}/trees/auth-test"))
-            .json(&valid_tree_input())
+            .tree_signed("POST", &format!("/trees/auth-test"), &serde_json::to_vec(&valid_tree_input()).unwrap())
             .send()
             .await
             .unwrap();
@@ -1399,7 +1442,7 @@ mod test {
         let tree_input = valid_tree_input();
         let tree_resp = client
             .post(format!("{base}/trees/{tree_id}"))
-            .json(&tree_input)
+            .tree_signed("POST", &format!("/trees/{tree_id}"), &serde_json::to_vec(&tree_input).unwrap())
             .send()
             .await
             .unwrap();

@@ -23,6 +23,9 @@ pub struct HashMerchantClient {
     mode: Mode,
     /// Keeps the merkle/blob data dir alive for in-process hosts.
     _data: Option<Arc<tempfile::TempDir>>,
+    /// Signs `/trees` writes (hash-market pins them to one `tree_operator`
+    /// and requires an ADR-36 signature). In-process hosts get an ephemeral one.
+    tree_signer: Option<Arc<k256::ecdsa::SigningKey>>,
 }
 
 #[derive(Clone)]
@@ -52,6 +55,7 @@ impl HashMerchantClient {
         Self {
             mode: Mode::Http(base.into().trim_end_matches('/').to_string()),
             _data: None,
+            tree_signer: None,
         }
     }
 
@@ -62,11 +66,32 @@ impl HashMerchantClient {
         if let (Some(dao), Some(rt_key)) = (opts.onboard_dao.clone(), opts.onboard_runtime.clone()) {
             state.enable_onboard_roles(dao, rt_key, opts.chain_id.clone());
         }
+        let (op_key, op_addr) = hash_market::tree_operator::ephemeral_operator();
+        state.set_tree_operator(op_addr);
         let app = router(Arc::new(state));
         Ok(Self {
             mode: Mode::InProcess(app),
             _data: Some(Arc::new(dir)),
+            tree_signer: Some(Arc::new(op_key)),
         })
+    }
+
+    /// Use `key` to sign `/trees` writes (e.g. against a live host whose
+    /// `tree_operator` is this key's terp1 address).
+    pub fn with_tree_signer(mut self, key: k256::ecdsa::SigningKey) -> Self {
+        self.tree_signer = Some(Arc::new(key));
+        self
+    }
+
+    fn tree_auth_headers(&self, method: &str, path: &str, body: &[u8]) -> Vec<(&'static str, String)> {
+        match &self.tree_signer {
+            Some(sk) if method != "GET" && path.starts_with("/trees") => {
+                let (pk, sig) =
+                    hash_market::tree_operator::sign_tree_write(sk, method, path, body);
+                vec![("x-hash-market-pubkey", pk), ("x-hash-market-signature", sig)]
+            }
+            _ => vec![],
+        }
     }
 
     pub fn in_process_merkle(chain_id: &str) -> Result<Self> {
@@ -225,6 +250,9 @@ impl HashMerchantClient {
                 if !content_type.is_empty() {
                     b = b.header("content-type", content_type);
                 }
+                for (k, v) in self.tree_auth_headers(method, path, body) {
+                    b = b.header(k, v);
+                }
                 let req = b.body(Body::from(body.to_vec()))?;
                 let res = app.clone().oneshot(req).await?;
                 let st = res.status();
@@ -245,6 +273,9 @@ impl HashMerchantClient {
                 };
                 if !content_type.is_empty() {
                     req = req.header("content-type", content_type);
+                }
+                for (k, v) in self.tree_auth_headers(method, path, body) {
+                    req = req.header(k, v);
                 }
                 if !body.is_empty() {
                     req = req.body(body.to_vec());

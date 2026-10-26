@@ -258,6 +258,8 @@ impl NostrTestEnv {
             gas_denom: gas_denom.to_string(),
             gas_price: 0.025,
             grpc_urls: vec![grpc_url.to_string()],
+            // CometBFT RPC fallback only; these local/mock fixtures are gRPC-only.
+            rpc_urls: vec![],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
@@ -442,6 +444,8 @@ mod tests {
             gas_denom: "uterp".to_string(),
             gas_price: 0.025,
             grpc_urls: vec!["http://127.0.0.1:9090".to_string()],
+            // CometBFT RPC fallback only; these local/mock fixtures are gRPC-only.
+            rpc_urls: vec![],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
