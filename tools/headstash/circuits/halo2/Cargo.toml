@@ -74,3 +74,7 @@ zcash_note_encryption  = { workspace = true }
 [[example]]
 name = "curate_keys"
 required-features = ["interface", "host-crypto"]
+
+[[example]]
+name = "membership_key_com"
+required-features = ["circuit", "std"]
