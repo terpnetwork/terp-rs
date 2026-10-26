@@ -201,24 +201,120 @@ pub fn register(
     eligibility_index: u32,
     eligibility_path: Vec<Binary>,
 ) -> Result<Response, StdError> {
-    let cfg = campaign
+    let cfg = registration_cfg(campaign)?;
+    precheck(deps.storage, amount)?;
+    parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
+    let message = register_message(campaign.ctx.as_slice(), key_com.as_slice(), amount);
+    let address = recover_address(deps.api, &message, signature.as_slice())?;
+    let leaf = eligibility_leaf(&address, amount);
+    insert_registration(
+        deps,
+        cfg,
+        &evm_identity(&address),
+        leaf,
+        key_com,
+        amount,
+        eligibility_index,
+        &eligibility_path,
+        "evm",
+    )
+}
+
+/// Solana registration. `signature` is a 64-byte ed25519 signature by the
+/// 32-byte `pubkey` over the raw UTF-8 bytes of [`register_sol_message`]
+/// (what Phantom/Solflare `signMessage` signs). The eligible identity is the pubkey.
+#[allow(clippy::too_many_arguments)]
+pub fn register_sol(
+    deps: DepsMut,
+    campaign: &EpochCampaignParams,
+    key_com: Binary,
+    amount: u64,
+    pubkey: Binary,
+    signature: Binary,
+    eligibility_index: u32,
+    eligibility_path: Vec<Binary>,
+) -> Result<Response, StdError> {
+    let cfg = registration_cfg(campaign)?;
+    precheck(deps.storage, amount)?;
+    parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
+    let pk: [u8; 32] = pubkey
+        .as_slice()
+        .try_into()
+        .map_err(|_| StdError::msg("pubkey"))?;
+    if signature.len() != 64 {
+        return Err(StdError::msg("signature"));
+    }
+    let message = register_sol_message(campaign.ctx.as_slice(), key_com.as_slice(), amount);
+    let ok = deps
+        .api
+        .ed25519_verify(message.as_bytes(), signature.as_slice(), &pk)
+        .map_err(|_| StdError::msg("signature"))?;
+    if !ok {
+        return Err(StdError::msg("signature"));
+    }
+    let leaf = sol_eligibility_leaf(&pk, amount);
+    insert_registration(
+        deps,
+        cfg,
+        &sol_identity(&pk),
+        leaf,
+        key_com,
+        amount,
+        eligibility_index,
+        &eligibility_path,
+        "sol",
+    )
+}
+
+fn registration_cfg(campaign: &EpochCampaignParams) -> StdResult<&RegistrationConfig> {
+    campaign
         .registration
         .as_ref()
-        .ok_or_else(|| StdError::msg("registration"))?;
-    let count = leaf_count(deps.storage)?;
-    if count >= MAX_LEAVES {
+        .ok_or_else(|| StdError::msg("registration"))
+}
+
+fn precheck(storage: &dyn Storage, amount: u64) -> StdResult<()> {
+    if leaf_count(storage)? >= MAX_LEAVES {
         return Err(StdError::msg("tree full"));
     }
     if amount == 0 {
         return Err(StdError::msg("amount"));
     }
+    Ok(())
+}
+
+/// Registered-identity key for an EVM address (unchanged from v1 storage: 40 hex chars).
+pub fn evm_identity(address: &[u8; 20]) -> String {
+    hex::encode(address)
+}
+
+/// Registered-identity key for a Solana pubkey. The `sol:` prefix keeps it
+/// disjoint from EVM keys in the shared one-registration-per-identity map.
+pub fn sol_identity(pubkey: &[u8; 32]) -> String {
+    format!("sol:{}", hex::encode(pubkey))
+}
+
+pub fn is_registered(storage: &dyn Storage, identity: &str) -> StdResult<bool> {
+    Ok(ADDRESSES.may_load(storage, identity)?.is_some())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn insert_registration(
+    deps: DepsMut,
+    cfg: &RegistrationConfig,
+    identity: &str,
+    eligible_leaf: [u8; 32],
+    key_com: Binary,
+    amount: u64,
+    eligibility_index: u32,
+    eligibility_path: &[Binary],
+    kind: &str,
+) -> Result<Response, StdError> {
+    let count = leaf_count(deps.storage)?;
     let key_fp = parse_fp(key_com.as_slice()).map_err(|_| StdError::msg("key commitment"))?;
-    let message = register_message(campaign.ctx.as_slice(), key_com.as_slice(), amount);
-    let address = recover_address(deps.api, &message, signature.as_slice())?;
-    let path = path_bytes(&eligibility_path)?;
-    let opened = open_eligibility(
-        &address,
-        amount,
+    let path = path_bytes(eligibility_path)?;
+    let opened = open_eligibility_leaf(
+        eligible_leaf,
         eligibility_index,
         &path,
         cfg.eligibility_depth,
@@ -226,11 +322,7 @@ pub fn register(
     if opened.as_slice() != cfg.eligibility_root.as_slice() {
         return Err(StdError::msg("eligibility"));
     }
-    let addr_key = hex::encode(address);
-    if ADDRESSES
-        .may_load(deps.storage, addr_key.as_str())?
-        .is_some()
-    {
+    if ADDRESSES.may_load(deps.storage, identity)?.is_some() {
         return Err(StdError::msg("already registered"));
     }
     let key_hex = hex::encode(key_com.as_slice());
@@ -250,7 +342,7 @@ pub fn register(
     )?;
     COUNT.save(deps.storage, &(count + 1))?;
     ROOT.save(deps.storage, &Binary::from(root.to_vec()))?;
-    ADDRESSES.save(deps.storage, addr_key.as_str(), &())?;
+    ADDRESSES.save(deps.storage, identity, &())?;
     LEAVES.save(deps.storage, count, &Binary::from(leaf.to_vec()))?;
     KEYS.save(
         deps.storage,
@@ -262,6 +354,7 @@ pub fn register(
     )?;
     Ok(Response::new()
         .add_attribute("action", "register_headstash")
+        .add_attribute("kind", kind)
         .add_attribute("index", count.to_string())
         .add_attribute("leaf", hex::encode(leaf)))
 }
@@ -332,6 +425,17 @@ pub fn register_message(ctx: &[u8], key_com: &[u8], amount: u64) -> String {
     )
 }
 
+/// Solana registration message. Signed as raw UTF-8 bytes (no prefix), as
+/// Phantom/Solflare `signMessage` does. `ctx` is the same campaign ctx the EVM
+/// message binds (it commits to the chain id and contract off-chain).
+pub fn register_sol_message(ctx: &[u8], key_com: &[u8], amount: u64) -> String {
+    format!(
+        "headstash-register-sol-v1:{}:{}:{amount}",
+        hex::encode(ctx),
+        hex::encode(key_com)
+    )
+}
+
 pub fn recover_address(
     api: &dyn cosmwasm_std::Api,
     message: &str,
@@ -389,7 +493,23 @@ pub fn open_eligibility(
     if index >= 1u32 << depth {
         return Err(StdError::msg("eligibility"));
     }
-    let mut node = eligibility_leaf(address, amount);
+    open_eligibility_leaf(eligibility_leaf(address, amount), index, path, depth)
+}
+
+/// Fold a pre-hashed eligibility leaf (EVM or Solana) up to the root.
+pub fn open_eligibility_leaf(
+    leaf: [u8; 32],
+    index: u32,
+    path: &[[u8; 32]],
+    depth: u32,
+) -> StdResult<[u8; 32]> {
+    if depth == 0 || depth > DEPTH as u32 || path.len() != depth as usize {
+        return Err(StdError::msg("eligibility"));
+    }
+    if index >= 1u32 << depth {
+        return Err(StdError::msg("eligibility"));
+    }
+    let mut node = leaf;
     for level in 0..depth {
         let sibling = path[level as usize];
         node = if (index >> level) & 1 == 0 {
@@ -404,6 +524,22 @@ pub fn open_eligibility(
 pub fn eligibility_leaf(address: &[u8; 20], amount: u64) -> [u8; 32] {
     let mut pre = b"terp-hs-elig-leaf-v1".to_vec();
     pre.extend_from_slice(address);
+    pre.extend_from_slice(&amount.to_le_bytes());
+    sha256(&pre)
+}
+
+/// Domain tag for Solana eligibility leaves.
+pub const SOL_LEAF_TAG: u8 = 0x02;
+
+/// Solana eligibility leaf:
+/// `sha256("terp-hs-elig-leaf-v1" || 0x02 || pubkey[32] || amount_le[8])` (61-byte preimage).
+/// EVM leaves stay `sha256("terp-hs-elig-leaf-v1" || address[20] || amount_le[8])`
+/// (48-byte preimage), so the two families have different preimage lengths and
+/// one can never open as the other. Both share the same node hash and tree.
+pub fn sol_eligibility_leaf(pubkey: &[u8; 32], amount: u64) -> [u8; 32] {
+    let mut pre = b"terp-hs-elig-leaf-v1".to_vec();
+    pre.push(SOL_LEAF_TAG);
+    pre.extend_from_slice(pubkey);
     pre.extend_from_slice(&amount.to_le_bytes());
     sha256(&pre)
 }
@@ -1019,5 +1155,211 @@ mod tests {
 
     fn row_root() -> Vec<u8> {
         vec![0u8; 32]
+    }
+
+    // ---- Solana (ed25519) registration ----
+
+    struct SolEligible {
+        pubkey: [u8; 32],
+        key_com: [u8; 32],
+        signature: Vec<u8>,
+        amount: u64,
+    }
+
+    fn sol_key(byte: u8) -> ed25519_zebra::SigningKey {
+        ed25519_zebra::SigningKey::from([byte; 32])
+    }
+
+    fn sol_eligible(byte: u8, ctx: &[u8], word: u64, amount: u64) -> SolEligible {
+        let sk = sol_key(byte);
+        let pubkey: [u8; 32] = ed25519_zebra::VerificationKey::from(&sk).into();
+        let key_com = key_bytes(word);
+        let message = register_sol_message(ctx, &key_com, amount);
+        let sig: [u8; 64] = sk.sign(message.as_bytes()).into();
+        SolEligible {
+            pubkey,
+            key_com,
+            signature: sig.to_vec(),
+            amount,
+        }
+    }
+
+    fn do_register_sol(
+        deps: DepsMut,
+        env: &cosmwasm_std::Env,
+        who: &SolEligible,
+        amount: u64,
+        index: u32,
+        sibling: [u8; 32],
+    ) -> Result<Response, StdError> {
+        let sender = mock_dependencies().api.addr_make("sidecar");
+        execute(
+            deps,
+            env.clone(),
+            message_info(&sender, &[]),
+            ExecuteMsg::RegisterHeadstashSol {
+                key_com: Binary::from(who.key_com.to_vec()),
+                amount,
+                pubkey: Binary::from(who.pubkey.to_vec()),
+                signature: Binary::from(who.signature.clone()),
+                eligibility_index: index,
+                eligibility_path: vec![Binary::from(sibling.to_vec())],
+            },
+        )
+    }
+
+    /// root = node(evm_leaf(first), sol_leaf(sol)).
+    fn mixed() -> (
+        cosmwasm_std::OwnedDeps<
+            cosmwasm_std::testing::MockStorage,
+            cosmwasm_std::testing::MockApi,
+            cosmwasm_std::testing::MockQuerier,
+        >,
+        cosmwasm_std::Env,
+        Eligible,
+        SolEligible,
+        [u8; 32],
+        [u8; 32],
+    ) {
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let evm = eligible(1, &ctx, 11, 15);
+        let sol = sol_eligible(7, &ctx, 21, 15);
+        let leaf0 = eligibility_leaf(&evm.address, 15);
+        let leaf1 = sol_eligibility_leaf(&sol.pubkey, 15);
+        let root = eligibility_node(&leaf0, &leaf1);
+        let (mut deps, env) = setup();
+        install(deps.as_mut(), &env, campaign_with(&ctx, root, 1));
+        (deps, env, evm, sol, leaf0, leaf1)
+    }
+
+    #[test]
+    fn sol_valid_signature_registers_alongside_evm() {
+        let (mut deps, env, evm, sol, leaf0, leaf1) = mixed();
+        let res = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap();
+        assert!(res.attributes.iter().any(|a| a.key == "kind" && a.value == "sol"));
+        do_register(deps.as_mut(), &env, &evm, 0, leaf1).unwrap();
+        assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 2);
+        assert!(is_registered(deps.as_ref().storage, &sol_identity(&sol.pubkey)).unwrap());
+        assert!(is_registered(deps.as_ref().storage, &evm_identity(&evm.address)).unwrap());
+    }
+
+    #[test]
+    fn sol_invalid_signature_is_rejected() {
+        let (mut deps, env, _evm, mut sol, leaf0, _) = mixed();
+        let before = snapshot(deps.as_ref().storage);
+        sol.signature[3] ^= 1;
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("signature"), "{err}");
+        sol.signature.truncate(63);
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("signature"), "{err}");
+        assert_eq!(snapshot(deps.as_ref().storage), before);
+    }
+
+    #[test]
+    fn sol_wrong_pubkey_length_is_rejected() {
+        let (mut deps, env, _evm, sol, leaf0, _) = mixed();
+        let sender = mock_dependencies().api.addr_make("sidecar");
+        let err = execute(
+            deps.as_mut(),
+            env,
+            message_info(&sender, &[]),
+            ExecuteMsg::RegisterHeadstashSol {
+                key_com: Binary::from(sol.key_com.to_vec()),
+                amount: 15,
+                pubkey: Binary::from(sol.pubkey[..31].to_vec()),
+                signature: Binary::from(sol.signature.clone()),
+                eligibility_index: 1,
+                eligibility_path: vec![Binary::from(leaf0.to_vec())],
+            },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("pubkey"), "{err}");
+    }
+
+    #[test]
+    fn sol_wrong_ctx_is_rejected() {
+        let (mut deps, env, _evm, sol, leaf0, _) = mixed();
+        let other_ctx = pallas::Base::from(4u64).to_repr();
+        let forged = sol_eligible(7, &other_ctx, 21, 15);
+        assert_eq!(forged.pubkey, sol.pubkey);
+        let err = do_register_sol(deps.as_mut(), &env, &forged, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("signature"), "{err}");
+    }
+
+    #[test]
+    fn sol_wrong_amount_is_rejected() {
+        let (mut deps, env, _evm, sol, leaf0, _) = mixed();
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 16, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("signature"), "{err}");
+        // Signed for 16 but only eligible for 15: signature passes, eligibility fails.
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let greedy = sol_eligible(7, &ctx, 21, 16);
+        let err = do_register_sol(deps.as_mut(), &env, &greedy, 16, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("eligibility"), "{err}");
+    }
+
+    #[test]
+    fn sol_replay_and_duplicate_identity_are_rejected() {
+        let (mut deps, env, _evm, sol, leaf0, _) = mixed();
+        do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap();
+        let after = snapshot(deps.as_ref().storage);
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("already registered"), "{err}");
+        // Same pubkey, fresh key commitment: still one registration per identity.
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let again = sol_eligible(7, &ctx, 99, 15);
+        let err = do_register_sol(deps.as_mut(), &env, &again, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("already registered"), "{err}");
+        assert_eq!(snapshot(deps.as_ref().storage), after);
+    }
+
+    #[test]
+    fn sol_malleated_signature_is_rejected() {
+        let (mut deps, env, _evm, mut sol, leaf0, _) = mixed();
+        // s' = s + L (group order) verifies under lax checks; must be refused.
+        const L: [u8; 32] = [
+            0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9,
+            0xde, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10,
+        ];
+        let mut carry = 0u16;
+        for i in 0..32 {
+            let v = sol.signature[32 + i] as u16 + L[i] as u16 + carry;
+            sol.signature[32 + i] = v as u8;
+            carry = v >> 8;
+        }
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap_err();
+        assert!(err.to_string().contains("signature"), "{err}");
+        assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 0);
+    }
+
+    #[test]
+    fn evm_and_sol_leaves_cannot_be_confused() {
+        let ctx = pallas::Base::from(3u64).to_repr();
+        let evm = eligible(1, &ctx, 11, 15);
+        let sol = sol_eligible(7, &ctx, 21, 15);
+        let mut padded = [0u8; 32];
+        padded[..20].copy_from_slice(&evm.address);
+        assert_ne!(sol_eligibility_leaf(&padded, 15), eligibility_leaf(&evm.address, 15));
+        let mut addr = [0u8; 20];
+        addr.copy_from_slice(&sol.pubkey[..20]);
+        assert_ne!(eligibility_leaf(&addr, 15), sol_eligibility_leaf(&sol.pubkey, 15));
+        assert_ne!(evm_identity(&addr), sol_identity(&sol.pubkey));
+
+        // Root holding only a Solana leaf + filler: an EVM signer cannot open it.
+        let filler = [5u8; 32];
+        let root = eligibility_node(&sol_eligibility_leaf(&sol.pubkey, 15), &filler);
+        let (mut deps, env) = setup();
+        install(deps.as_mut(), &env, campaign_with(&ctx, root, 1));
+        let err = do_register(deps.as_mut(), &env, &evm, 0, filler).unwrap_err();
+        assert!(err.to_string().contains("eligibility"), "{err}");
+
+        // Root holding only an EVM leaf: no Solana registration opens it.
+        let root = eligibility_node(&eligibility_leaf(&evm.address, 15), &filler);
+        let (mut deps, env) = setup();
+        install(deps.as_mut(), &env, campaign_with(&ctx, root, 1));
+        let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 0, filler).unwrap_err();
+        assert!(err.to_string().contains("eligibility"), "{err}");
+        assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 0);
     }
 }

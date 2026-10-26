@@ -378,6 +378,26 @@ pub fn execute(
                 eligibility_path,
             )
         }
+        ExecuteMsg::RegisterHeadstashSol {
+            key_com,
+            amount,
+            pubkey,
+            signature,
+            eligibility_index,
+            eligibility_path,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::register_sol(
+                deps,
+                &campaign,
+                key_com,
+                amount,
+                pubkey,
+                signature,
+                eligibility_index,
+                eligibility_path,
+            )
+        }
         ExecuteMsg::AcceptAnchor {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::accept_anchor(deps, &env, &campaign)

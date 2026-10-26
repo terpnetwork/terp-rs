@@ -155,6 +155,17 @@ pub enum ExecuteMsg {
         eligibility_index: u32,
         eligibility_path: Vec<Binary>,
     },
+    /// Anyone may relay a Solana registration. `pubkey` (32 bytes) is the eligible
+    /// identity; `signature` (64 bytes) is ed25519 over the raw UTF-8 of
+    /// `headstash-register-sol-v1:{ctx_hex}:{key_com_hex}:{amount}`.
+    RegisterHeadstashSol {
+        key_com: Binary,
+        amount: u64,
+        pubkey: Binary,
+        signature: Binary,
+        eligibility_index: u32,
+        eligibility_path: Vec<Binary>,
+    },
     /// Permissionless. Stores the current registration root when the window is open.
     AcceptAnchor {},
 }
