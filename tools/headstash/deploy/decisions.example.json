@@ -1,0 +1,19 @@
+{
+  "CHAIN_ID": "morocco-1",
+  "CAMPAIGN_LABEL": "headstash-2026-1",
+  "CONTRACT_ADDR": "{{fill after instantiate}}",
+  "CONTRACT_OWNER": "{{DECISION: TerpNET DAO core or ops multisig}}",
+  "WASM_ADMIN": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+  "WAVS_POO_JSON": "{{DECISION: BLS operator set PoP JSON from the operators}}",
+  "CUSTODY_PUBKEY_B64": "{{DECISION: lane custody ed25519 pubkey, base64}}",
+  "SIDECAR_LANE_URL": "{{DECISION: https URL validators fetch batches from}}",
+  "CUTOFF_HEIGHT": "{{DECISION}}",
+  "ANCHOR_START_HEIGHT": "{{DECISION}}",
+  "ANCHOR_INTERVAL": "{{DECISION: e.g. 14400 (~1 day at 6s)}}",
+  "MIN_ANONYMITY_SET": "{{DECISION: e.g. 64}}",
+  "MAX_ROWS": 25,
+  "SWEEP_RECIPIENT": "{{DECISION: where leftovers go after cutoff (e.g. gov module, then a pool-return proposal)}}",
+  "FUNDING_AMOUNT_UTERP": "{{DECISION: leaf total (default) or 67000000000000}}",
+  "DEPOSIT_UTERP": "10000000000",
+  "PROPOSER": "{{DECISION}}"
+}
