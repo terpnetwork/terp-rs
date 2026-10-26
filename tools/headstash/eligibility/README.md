@@ -20,7 +20,7 @@ leaves 66,999,999,994,137 + dust 5,863 = 67,000,000,000,000 uterp.
 
 ## Decision (2026-10-26)
 
-- **67,000,000 TERP is the chosen production total.** Production root (after exclusions, below): `0acb1bb0e0caf6860046c163e4a5d946957ab29526db00adf9e8f6a8d8efb10b`. The earlier `361e39a8…cd419` root is superseded.
+- **67,000,000 TERP is the chosen production total.** Production root (after exclusions, below): `ffad92213f2c2001d73e56938064b0f2764535f220e16256abcd235f20338a57`. The earlier `361e39a8…cd419` and `0acb1bb0…b10b` roots are superseded.
 - Prop #32 funded the headstash-patch contract with 43,476,089.028199 TERP and 43,476,089.028199 THIOL
   (`43476089028199` uterp/uthiol): https://explorer.anode.team/main/terp/governance/32/. That figure is cited for context and is not the budget used.
 - **n8 is excluded by decision.** It has no headstash.yaml entry and gets no allocation.
@@ -39,21 +39,33 @@ original community total as denominator, so every other holder's amount is ident
 - Excluded (18 rows, 16 identities): zero address (monster-buds, secret-sesh), `0x…dEaD` (buddah-bears, monster-buds),
   and 14 non-wallet contracts (incl. the chronic-token contract itself holding 20,109,025.22 and the crypto-canna-club
   NFT contract). No Solana incinerator/System addresses are in the snapshot.
-- Review, still eligible: 7 Safe multisig proxies (EVM) and 12 program-owned Solana accounts (5 SPL token accounts, 7 others).
+- Review list (first pass): 7 Safe multisig proxies (EVM) and 12 program-owned Solana accounts (5 SPL token accounts, 7 others); excluded in the second decision below.
 - EIP-7702: 1,058 rows (~950 addresses) have `0xef0100…` delegation code. They are EOAs with keys, so they are **not**
   excluded. (The older `*.unallocated.csv` "dead:contract" labels include 610 of them.)
 - Off-curve Solana entries are already dropped by the builder (0 in this snapshot).
 - Caveat: code is checked at the latest block, not the snapshot block.
 
-Result: root `0acb1bb0e0caf6860046c163e4a5d946957ab29526db00adf9e8f6a8d8efb10b`, depth 15, 17,810 identities
-(15,751 EVM / 2,059 Sol). Leaves 66,557,443,517,619 + dust 5,863 + unallocated 442,556,476,518 = 67,000,000,000,000 uterp.
+First pass (superseded): root `0acb1bb0…b10b`, 17,810 identities, 18 rows excluded, 442,556,476,518 uterp unallocated.
+
+### Second decision (2026-10-26, t49s298): review list excluded too
+
+The 7 Safe multisigs (`safe-multisig`) and the 12 program-owned stoned-ape-club Solana accounts
+(5 `spl-token-account` owned by `TokenkegQ…`, 7 `program-owned-solana`) are now in `exclusions.csv`; `review.csv`
+keeps them with `status = resolved: excluded per user decision t49s298`. Same method: no leaf, share unallocated,
+original community denominator. **Kept**: the 1,058 EIP-7702 delegated EOA rows and the 190 Solana addresses with no
+on-chain account. Verified vs the first pass: 19 rows removed, 0 added, 0 changed (91,141,910,241 uterp moved to unallocated).
+
+Result: root `ffad92213f2c2001d73e56938064b0f2764535f220e16256abcd235f20338a57`, depth 15, 17,791 identities
+(15,744 EVM / 2,047 Sol). Leaves 66,466,301,607,378 + dust 5,863 + unallocated 533,698,386,759 = 67,000,000,000,000 uterp.
 
 | community | excluded rows | unallocated uterp |
 |---|---:|---:|
-| buddah-bears | 4 | 6,845,823,580 |
+| buddah-bears | 6 | 23,960,382,535 |
+| cannabuddies | 1 | 18,902,218,085 |
 | chronic-token | 3 | 328,380,077,032 |
-| crypto-canna-club | 6 | 12,230,527,200 |
-| galacktic-gang | 1 | 7,004,456,345 |
-| monster-buds | 3 | 6,540,098,332 |
-| secret-sesh | 1 | 81,555,494,029 |
-| **total** | **18** | **442,556,476,518** |
+| crypto-canna-club | 7 | 13,249,737,800 |
+| galacktic-gang | 2 | 11,207,130,152 |
+| monster-buds | 4 | 7,266,775,924 |
+| secret-sesh | 2 | 107,863,717,909 |
+| stoned-ape-club | 12 | 22,868,347,322 |
+| **total** | **37** | **533,698,386,759** |

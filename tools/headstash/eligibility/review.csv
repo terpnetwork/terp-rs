@@ -1,20 +1,20 @@
-address,community,reason,evidence
-0x419e767e29cca57abf3bb78a9bf50927638fd1c6,buddah-bears,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 2
-0x5a4d476e413661087adb78557dfc69432cab6d08,monster-buds,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 1
-0x62b2cd4f75857c300e7e504658630e367b500f64,secret-sesh,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 10
-0x77f31543d45b834fbb928d6e546eecddea5c8394,buddah-bears,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 18
-0x92812de516e8be5ef4cd4c8916626870fff95988,crypto-canna-club,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 1
-0xaab53aa8bdad105ff1075e1fcbad5d8e3a9c528c,cannabuddies,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 3
-0xe090d18834584181ed73984acd58856bb6b04c45,galacktic-gang,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 3
-2F6YafCNDXjWGU98bJvYf53k7gz1bQv6ULhakRpDyk1H,stoned-ape-club,sol-program-owned,getAccountInfo owner AU4DTuH5uQosCtL2TTeGDzoZeEXu3LduGkx4TgQfFQTR; snapshot amount 1
-2gykSUtdVZMkHDDHgtdLeptEPxfhnKAGPp7vmGcWnpoD,stoned-ape-club,sol-program-owned,getAccountInfo owner Sig9GJN6wztuKj6BiaWjCRYAavAJULSwBs12ad5rpqn; snapshot amount 2
-313PtLYWXuUnmVJj1ptQ28ni8CgjqEmit4TX79DuWSEJ,stoned-ape-club,sol-program-owned,getAccountInfo owner AU4DTuH5uQosCtL2TTeGDzoZeEXu3LduGkx4TgQfFQTR; snapshot amount 1
-3k9bWHwvPYy6kqz9gVACvM8LpJUMj4z3fYpEoK1GX46M,stoned-ape-club,sol-program-owned,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 5
-8p1DQNyEkV2gDeAv8GFFdnLWo2PDTqtvn4ET35P3RrtZ,stoned-ape-club,sol-program-owned,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1
-9JgkiCKhXECni664Qg5fD5EhkcJNeoQXdC7dMx96AaEq,stoned-ape-club,sol-program-owned,getAccountInfo owner BUyLRaYEYHeorkrw3e9dvTuWQwq1HD6ioTXkAeMX6uWS; snapshot amount 2
-9Mpz67Se58qYXkQUr4wPcCNzmHZLFnb3NBoXSWHRvjc2,stoned-ape-club,sol-program-owned,getAccountInfo owner BNRThTYg9x49JYNkbDUYERb3X7JV2GYcEpFLAUHX5Rep; snapshot amount 1
-9a3UvME6AtJJr24PjW3SUp4u2xRwaYVxyiwoLYSXZr1p,stoned-ape-club,sol-program-owned,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1
-A3ngSeveSRdiq6M1vRunKXLxbtnMwf9nBLcB29bH549f,stoned-ape-club,sol-program-owned,getAccountInfo owner GKJBELftW5Rjg24wP88NRaKGsEBtrPLgMiv3DhbJwbzQ; snapshot amount 1
-A67xcD5h2zWxwhGtGnqvWSjbfX7UJiMrJKvrCmsaQeuL,stoned-ape-club,sol-program-owned,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1
-G6bfDikmBmntCLcLdFTQhZ2zhqcuWygDpgou2Nq8YqX1,stoned-ape-club,sol-program-owned,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 5
-GsXqkgF2752Ae2LQzxkcKpFEgNxBeegvAbfDgHsm7YzN,stoned-ape-club,sol-program-owned,getAccountInfo owner 2egNQWqrdvxbv8SVwdK9KsYuEXSZzdvuL1bcsHv1p45d; snapshot amount 3
+address,community,reason,evidence,status
+0x419e767e29cca57abf3bb78a9bf50927638fd1c6,buddah-bears,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 2,resolved: excluded per user decision t49s298
+0x5a4d476e413661087adb78557dfc69432cab6d08,monster-buds,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 1,resolved: excluded per user decision t49s298
+0x62b2cd4f75857c300e7e504658630e367b500f64,secret-sesh,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 10,resolved: excluded per user decision t49s298
+0x77f31543d45b834fbb928d6e546eecddea5c8394,buddah-bears,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 18,resolved: excluded per user decision t49s298
+0x92812de516e8be5ef4cd4c8916626870fff95988,crypto-canna-club,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 1,resolved: excluded per user decision t49s298
+0xaab53aa8bdad105ff1075e1fcbad5d8e3a9c528c,cannabuddies,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 3,resolved: excluded per user decision t49s298
+0xe090d18834584181ed73984acd58856bb6b04c45,galacktic-gang,safe-multisig,eth_getCode(latest) on Ethereum mainnet: 171 bytes (Safe proxy bytecode); snapshot amount 3,resolved: excluded per user decision t49s298
+2F6YafCNDXjWGU98bJvYf53k7gz1bQv6ULhakRpDyk1H,stoned-ape-club,program-owned-solana,getAccountInfo owner AU4DTuH5uQosCtL2TTeGDzoZeEXu3LduGkx4TgQfFQTR; snapshot amount 1,resolved: excluded per user decision t49s298
+2gykSUtdVZMkHDDHgtdLeptEPxfhnKAGPp7vmGcWnpoD,stoned-ape-club,program-owned-solana,getAccountInfo owner Sig9GJN6wztuKj6BiaWjCRYAavAJULSwBs12ad5rpqn; snapshot amount 2,resolved: excluded per user decision t49s298
+313PtLYWXuUnmVJj1ptQ28ni8CgjqEmit4TX79DuWSEJ,stoned-ape-club,program-owned-solana,getAccountInfo owner AU4DTuH5uQosCtL2TTeGDzoZeEXu3LduGkx4TgQfFQTR; snapshot amount 1,resolved: excluded per user decision t49s298
+3k9bWHwvPYy6kqz9gVACvM8LpJUMj4z3fYpEoK1GX46M,stoned-ape-club,spl-token-account,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 5,resolved: excluded per user decision t49s298
+8p1DQNyEkV2gDeAv8GFFdnLWo2PDTqtvn4ET35P3RrtZ,stoned-ape-club,spl-token-account,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1,resolved: excluded per user decision t49s298
+9JgkiCKhXECni664Qg5fD5EhkcJNeoQXdC7dMx96AaEq,stoned-ape-club,program-owned-solana,getAccountInfo owner BUyLRaYEYHeorkrw3e9dvTuWQwq1HD6ioTXkAeMX6uWS; snapshot amount 2,resolved: excluded per user decision t49s298
+9Mpz67Se58qYXkQUr4wPcCNzmHZLFnb3NBoXSWHRvjc2,stoned-ape-club,program-owned-solana,getAccountInfo owner BNRThTYg9x49JYNkbDUYERb3X7JV2GYcEpFLAUHX5Rep; snapshot amount 1,resolved: excluded per user decision t49s298
+9a3UvME6AtJJr24PjW3SUp4u2xRwaYVxyiwoLYSXZr1p,stoned-ape-club,spl-token-account,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1,resolved: excluded per user decision t49s298
+A3ngSeveSRdiq6M1vRunKXLxbtnMwf9nBLcB29bH549f,stoned-ape-club,program-owned-solana,getAccountInfo owner GKJBELftW5Rjg24wP88NRaKGsEBtrPLgMiv3DhbJwbzQ; snapshot amount 1,resolved: excluded per user decision t49s298
+A67xcD5h2zWxwhGtGnqvWSjbfX7UJiMrJKvrCmsaQeuL,stoned-ape-club,spl-token-account,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 1,resolved: excluded per user decision t49s298
+G6bfDikmBmntCLcLdFTQhZ2zhqcuWygDpgou2Nq8YqX1,stoned-ape-club,spl-token-account,getAccountInfo owner TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA; snapshot amount 5,resolved: excluded per user decision t49s298
+GsXqkgF2752Ae2LQzxkcKpFEgNxBeegvAbfDgHsm7YzN,stoned-ape-club,program-owned-solana,getAccountInfo owner 2egNQWqrdvxbv8SVwdK9KsYuEXSZzdvuL1bcsHv1p45d; snapshot amount 3,resolved: excluded per user decision t49s298

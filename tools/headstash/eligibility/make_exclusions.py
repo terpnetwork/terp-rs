@@ -22,17 +22,19 @@ for a,code in sorted(c['evm'].items()):
         safe='a619486e' in code[:200]
         for comm,amt in rows[a]:
             t=(a,comm,'safe-multisig' if safe else 'contract',f'eth_getCode(latest) on Ethereum mainnet: {(len(code)-2)//2} bytes'+(' (Safe proxy bytecode)' if safe else '')+f'; snapshot amount {amt}')
-            (rv if safe else ex).append(t)
+            ex.append(t); safe and rv.append(t+('resolved: excluded per user decision t49s298',))
 for a in SOLBURN:
     for comm,amt in rows.get(a,[]): ex.append((a,comm,'burn',SOLBURN[a]))
 for a,v in sorted(c['sol'].items()):
     if v and v['owner']!=SYS:
-        for comm,amt in rows[a]: rv.append((a,comm,'sol-program-owned',f'getAccountInfo owner {v["owner"]}; snapshot amount {amt}'))
+        for comm,amt in rows[a]:
+            t=(a,comm,'spl-token-account' if v['owner']=='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' else 'program-owned-solana',f'getAccountInfo owner {v["owner"]}; snapshot amount {amt}')
+            ex.append(t); rv.append(t+('resolved: excluded per user decision t49s298',))
 hdr='address,community,reason,evidence\n'
 open(R+'/eligibility/exclusions.csv','w').write(hdr+''.join(','.join(t)+'\n' for t in ex))
-open(R+'/eligibility/review.csv','w').write(hdr+''.join(','.join(t)+'\n' for t in rv))
+open(R+'/eligibility/review.csv','w').write(hdr.rstrip()+',status\n'+''.join(','.join(t)+'\n' for t in rv))
 n7702=collections.Counter(comm for a,v in c['evm'].items() if v.startswith('0xef0100') for comm,_ in rows[a])
 print('excl',len(ex),collections.Counter(t[2] for t in ex)); print('review',len(rv),collections.Counter(t[2] for t in rv))
 print('7702 rows kept',sum(n7702.values()),dict(n7702))
 print('sol no account (kept)',sum(1 for v in c['sol'].values() if v is None))
-for t in ex+rv: print(t)
+for t in ex: print(t)
