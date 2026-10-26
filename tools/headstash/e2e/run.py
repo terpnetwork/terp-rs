@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headstash membership-vk local e2e harness (loopback only).
+"""Headstash denomination-note (vk_id 3) local e2e harness (loopback only).
 
 Needs a chain from bootstrap-chain.sh. Test identities (EVM key, Solana key,
 membership secrets) live only in this process; nothing secret is written or
@@ -21,14 +21,14 @@ LANE = "http://127.0.0.1:19180"
 RELAY_BIND = "127.0.0.1:18795"
 TERPD = os.environ.get("TERPD", "/tmp/terpd-b2339a9c-build/terpd")
 RELAY_BIN = os.environ.get("RELAY_BIN", "/tmp/hm-build-target/release/headstash-register-relay")
-ELIG_BIN = os.environ.get("ELIG_BIN", "/tmp/headstash-membership-vk-target/release/headstash-eligibility")
-EX = os.environ.get("ZK_EX", "/tmp/zk-standalone/target/release/examples")
+ELIG_BIN = os.environ.get("ELIG_BIN", "/tmp/hm-build-target/release/headstash-eligibility")
+EX = os.environ.get("ZK_EX", "/tmp/hm-build-target/release/examples")
 WAVS_BIN = os.environ.get("WAVS_BIN", "/tmp/cwhs-native-target/release/examples/print_wavs")
-WASM = os.environ.get("WASM", "/tmp/cw_headstash_opt.wasm")
+WASM = os.environ.get("WASM", "/tmp/hs-p2-opt-out/cw_headstash.wasm")
 OPSIGN = os.path.join(HERE, "..", "..", "hash-market", "scripts", "headstash-operator-sign.py")
 VK_HASH = "94d4326108e28451829b68d64df58cf975fafdb874a5a554f3cbe8931eefed11"
 DENOM = "1d56a5879c78333d517942a36e7ea0932e7ffa1a1027e439279e8517580ea706"
-CUT = int(os.environ.get("CUT", "100"))
+CUT_AHEAD = int(os.environ.get("CUT_AHEAD", "220"))
 RUN = os.environ.get("RUN_DIR") or os.path.join(HOME, "run-%d" % int(time.time()))
 os.makedirs(RUN, exist_ok=True)
 for a in (RELAY_BIND,):
@@ -134,15 +134,30 @@ def opsign_post(path, body_bytes):
     f = os.path.join(RUN, "body-%s.json" % path.strip("/").replace("/", "_"))
     open(f, "wb").write(body_bytes)
     key = os.path.join(HOME, "operator.key")
-    pub = subprocess.run(["python3", OPSIGN, "--key", key, "--pubkey-only"], capture_output=True, text=True, check=True).stdout.strip()
-    sig = subprocess.run(["python3", OPSIGN, "--key", key, "--method", "POST", "--path", path, "--body", f], capture_output=True, text=True, check=True).stdout.strip()
+    pub = subprocess.run(["/usr/local/bin/python3", OPSIGN, "--key", key, "--pubkey-only"], capture_output=True, text=True, check=True).stdout.strip()
+    sig = subprocess.run(["/usr/local/bin/python3", OPSIGN, "--key", key, "--method", "POST", "--path", path, "--body", f], capture_output=True, text=True, check=True).stdout.strip()
     return requests.post(LANE + path, data=body_bytes, timeout=600, headers={
         "content-type": "application/json", "x-hash-market-pubkey": pub, "x-hash-market-signature": sig})
 
+NOTE_VK_HASH = "34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398"
+DENOMS = [1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000, 100_000_000,
+          200_000_000, 500_000_000, 1_000_000_000, 2_000_000_000, 5_000_000_000]
+NOTE_EX = os.environ.get("NOTE_EX", "/tmp/hm-build-target/release/examples")
+CHUNK = 32
+
+def list_hash(ctx, tag, ident, lst):
+    pre = b"terp-hs-note-list-v2" + ctx + bytes([tag]) + ident + len(lst).to_bytes(2, "little")
+    for i, (c, kc) in enumerate(lst):
+        pre += bytes([c]) + i.to_bytes(2, "little") + bytes.fromhex(kc)
+    return hashlib.sha256(pre).digest()
+
+def gas_used(res):
+    return int(res.get("gas_used", 0) or 0)
+
 def main():
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
-    OWNER, R1, R2 = addrs["OWNER_ADDR"], addrs["RECIPIENT1_ADDR"], addrs["RECIPIENT2_ADDR"]
-    R["chain"] = {"chain_id": CHAIN_ID, "rpc": RPC, "rest": REST, "lane": LANE, "relay": RELAY_BIND, "start_height": height()}
+    OWNER = addrs["OWNER_ADDR"]
+    R["chain"] = {"chain_id": CHAIN_ID, "rpc": RPC, "rest": REST, "lane": LANE, "start_height": height()}
     R["addresses"] = addrs
     lane_dir = open(os.path.join(HOME, "lane.data")).read().strip()
     custody_pub = open(os.path.join(lane_dir, "custody.pub")).read().strip()
@@ -153,133 +168,118 @@ def main():
     evm_addr = kec(pt[0].to_bytes(32, "big") + pt[1].to_bytes(32, "big"))[12:]
     sol_sk = Ed25519PrivateKey.generate()
     sol_pk = sol_sk.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
-    sec = {"evm": pallas_rand(), "sol": pallas_rand()}
-    kc = {}
-    for k, s in sec.items():
-        kc[k] = subprocess.run([EX + "/membership_key_com"], input=s.hex(), capture_output=True, text=True, check=True).stdout.strip()
-    R["identities"] = {"evm_address": "0x" + evm_addr.hex(), "sol_pubkey_b58": b58(sol_pk), "key_com": kc,
-                       "note": "private keys and membership secrets held in memory only"}
-    log("identities", R["identities"])
+    ids = {"evm": (0x01, evm_addr, evm_addr.hex()), "sol": (0x02, sol_pk, "sol:" + sol_pk.hex())}
+    R["identities"] = {"evm_address": "0x" + evm_addr.hex(), "sol_pubkey_b58": b58(sol_pk),
+                       "note": "private keys and note secrets held in memory only"}
 
-    # 2. eligibility (4bc3c3b builder: exact decimals + floor budget)
+    # 2. denomination eligibility: EVM 200008 TERP -> 43 notes (2 chunks), Sol 3.5 TERP -> 2 notes + 0.5 unallocated
     comm = os.path.join(RUN, "communities", "mvk"); os.makedirs(comm, exist_ok=True)
-    open(os.path.join(comm, "mvk.csv"), "w").write("addr,amount\n0x%s,1.5\n%s,2.5\n" % (evm_addr.hex(), b58(sol_pk)))
+    open(os.path.join(comm, "mvk.csv"), "w").write("addr,amount\n0x%s,200008\n%s,3.5\n" % (evm_addr.hex(), b58(sol_pk)))
     elig = os.path.join(RUN, "eligibility")
-    subprocess.run([ELIG_BIN, os.path.join(RUN, "communities"), elig, "--decimals", "mvk=6", "--budget", "mvk=4000000"], check=True)
-    tree = json.load(open(os.path.join(elig, "tree.json")))
-    summ = json.load(open(os.path.join(elig, "summary.json")))
-    amt = {}
-    for e in tree["entries"]:
-        if "address_hex" in e: amt["evm"] = int(e["amount"])
-        else: amt["sol"] = int(e["amount"])
-    R["eligibility"] = {"root_hex": tree["root_hex"], "depth": tree["depth"], "amounts_uterp": amt,
-                        "dust_uterp": summ.get("total_dust_uterp")}
-    step("eligibility_exact_decimals", amt == {"evm": 1500000, "sol": 2500000}, json.dumps(R["eligibility"]))
+    subprocess.run([ELIG_BIN, os.path.join(RUN, "communities"), elig, "--decimals", "mvk=6", "--denominations"],
+                   check=True, capture_output=True)
+    ntree = json.load(open(os.path.join(elig, "notes", "tree.json")))
+    nsum = json.load(open(os.path.join(elig, "notes", "summary.json")))
+    paths = [json.loads(l) for l in open(os.path.join(elig, "notes", "note_paths.jsonl"))]
+    notes = {k: sorted([p for p in paths if p["identity"] == ids[k][2]], key=lambda p: p["note_index"]) for k in ids}
+    counts = {k: len(v) for k, v in notes.items()}
+    R["eligibility"] = {"note_root_hex": ntree["root_hex"], "depth": ntree["depth"], "notes": ntree["notes"], "per_identity": counts,
+                        "summary": nsum}
+    step("note_eligibility_tree", ntree["depth"] == 17 and counts == {"evm": 43, "sol": 2},
+         "root %s notes %s per identity %s" % (ntree["root_hex"], ntree["notes"], counts))
 
     # 3. store + instantiate
     res = rec("store", tx("owner", 250000000, "wasm", "store", WASM))
     code_id = attr(res, "code_id"); R["code_id"] = code_id
-    step("store", res.get("code") == 0 and code_id, "code_id %s" % code_id)
+    R["wasm_sha256"] = hashlib.sha256(open(WASM, "rb").read()).hexdigest()
+    step("store", res.get("code") == 0 and code_id, "code_id %s wasm %s" % (code_id, R["wasm_sha256"]))
     wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
-    init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-mvk-e2e",
+    init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-notes-e2e",
             "token_strategy": {"existing_fungible": {"proof": h2b64(DENOM), "raw": "uterp"}}, "wavs": wavs}
     res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
-                                "--label", "headstash-mvk-e2e", "--admin", OWNER, amount="5000000uterp"))
+                                "--label", "headstash-notes-e2e", "--admin", OWNER, amount="5030000000uterp"))  # funds the 5000 TERP note payout
     contract = attr(res, "_contract_address"); R["contract"] = contract
     step("instantiate", res.get("code") == 0 and contract, contract or res.get("raw_log", ""))
 
     ctx = pallas_rand(); R["ctx_hex"] = ctx.hex()
-    def campaign(alloc):
+    cut = height() + CUT_AHEAD; R["cutoff_height"] = cut
+    classes = {}
+    for k in ids:
+        for p in notes[k]: classes[p["class"]] = classes.get(p["class"], 0) + 1
+    amounts = [{"amount": DENOMS[c], "cap": n} for c, n in sorted(classes.items())]
+    def campaign(alloc, vk_id=3, vk_hash=NOTE_VK_HASH):
         return {"set_epoch_campaign": {"campaign": {
-            "ctx": b64(ctx), "backend": "halo2", "cutoff_height": CUT, "bech32_hrp": "terp", "denom": h2b64(DENOM),
-            "amounts": [{"amount": 1500000, "cap": 1}, {"amount": 2500000, "cap": 1}], "reserved": [],
-            "trusted": [h2b64(custody_pub)], "trusted_verify_threshold": 1, "trusted_sign_threshold": 1,
-            "max_rows": 4, "allocation_root": b64(alloc), "root_id": 0, "vk_id": 2, "vk_hash": h2b64(VK_HASH),
-            "registration": {"eligibility_root": h2b64(tree["root_hex"]), "eligibility_depth": tree["depth"],
+            "ctx": b64(ctx), "backend": "halo2", "cutoff_height": cut, "bech32_hrp": "terp", "denom": h2b64(DENOM),
+            "amounts": amounts, "reserved": [], "trusted": [h2b64(custody_pub)], "trusted_verify_threshold": 1,
+            "trusted_sign_threshold": 1, "max_rows": 8, "allocation_root": b64(alloc), "root_id": 0, "vk_id": vk_id,
+            "vk_hash": h2b64(vk_hash), "registration": {"eligibility_root": h2b64(ntree["root_hex"]), "eligibility_depth": 17,
                              "min_anonymity_set": 2, "anchor_start_height": 1, "anchor_interval": 1}}}}
+
+    # NEG: vk_id 2 campaign rejected for a new campaign
+    res = tx("owner", 5000000, "wasm", "execute", contract, json.dumps(campaign(bytes(32), 2, VK_HASH)))
+    R["negatives"]["vk2_campaign"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:240])
+    step("neg_vk2_campaign_rejected", res.get("code") != 0 and "retired" in res.get("raw_log", ""), R["negatives"]["vk2_campaign"])
     res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(campaign(bytes(32)))))
     oc = smart(contract, {"epoch_campaign": {}})
-    step("set_campaign_vk2", res.get("code") == 0 and oc.get("vk_id") == 2 and oc.get("vk_hash") == h2b64(VK_HASH),
-         "vk_id %s vk_hash %s" % (oc.get("vk_id"), VK_HASH))
+    step("set_campaign_vk3", res.get("code") == 0 and oc.get("vk_id") == 3, "vk_id %s amounts %s" % (oc.get("vk_id"), amounts))
 
-    # 4. relay (batches EVM + Sol in one tx)
-    env = dict(os.environ, HEADSTASH_RELAY_BIND=RELAY_BIND, HEADSTASH_ELIGIBILITY=os.path.join(elig, "tree.json"),
-               HEADSTASH_RELAY_HOME=HOME, HEADSTASH_RELAY_FROM="relayer", HEADSTASH_KEYRING_BACKEND="test",
-               HEADSTASH_REST=REST, HEADSTASH_CONTRACT=contract, HEADSTASH_CHAIN_ID=CHAIN_ID, TERPD=TERPD,
-               HEADSTASH_NODE=NODE, HEADSTASH_FLUSH_SECS="6", HEADSTASH_MAX_BATCH="25")
-    relay_log = open(os.path.join(RUN, "relay.log"), "w")
-    relay = subprocess.Popen([RELAY_BIN], env=env, stdout=relay_log, stderr=subprocess.STDOUT)
-    open(os.path.join(HOME, "relay.pid"), "w").write(str(relay.pid))
-    try:
-        for _ in range(60):
-            if "relay_up" in open(os.path.join(RUN, "relay.log")).read(): break
-            if relay.poll() is not None: break
-            time.sleep(1)
-        rl = open(os.path.join(RUN, "relay.log")).read()
-        step("relay_up", "relay_up" in rl, rl.strip().splitlines()[-1] if rl.strip() else "")
-        if "relay_up" not in rl: return
-        RELAY = "http://" + RELAY_BIND
-        def evm_req(keycom, amount, priv=evm_priv):
-            msg = "headstash-register-v1:%s:%s:%d" % (ctx.hex(), keycom, amount)
-            return {"ctx_hex": ctx.hex(), "key_com_hex": keycom, "amount": amount, "kind": "evm",
-                    "signature_hex": evm_sign(priv, eip191(msg)).hex()}
-        def sol_req(keycom, amount):
-            msg = "headstash-register-sol-v1:%s:%s:%d" % (ctx.hex(), keycom, amount)
-            return {"ctx_hex": ctx.hex(), "key_com_hex": keycom, "amount": amount, "kind": "sol",
-                    "signature_hex": sol_sk.sign(msg.encode()).hex(), "pubkey_hex": sol_pk.hex()}
-        ids = {}
-        for k, body in (("evm", evm_req(kc["evm"], amt["evm"])), ("sol", sol_req(kc["sol"], amt["sol"]))):
-            r = requests.post(RELAY + "/register", json=body, timeout=30)
-            ids[k] = r.json().get("id"); log("register", k, r.status_code, r.text[:200])
-        st = {}
-        end = time.time() + 120
-        while time.time() < end:
-            st = {k: requests.get(RELAY + "/register/status/%s" % i, timeout=10).json() for k, i in ids.items()}
-            if all(v.get("status") in ("registered", "failed") for v in st.values()): break
-            time.sleep(2)
-        log("relay status", st)
-        hashes = {v.get("txhash") for v in st.values()}
-        ok = all(v.get("status") == "registered" for v in st.values()) and len(hashes) == 1
-        th = st["evm"].get("txhash")
-        R["tx"]["batched_registration"] = {"txhash": th, "height": int(st["evm"].get("height", 0) or 0), "code": 0}
-        if th:
-            t = wait_tx(th); msgs = t.get("tx", {}).get("body", {}).get("messages", [])
-            kinds = [list(json.loads(json.dumps(m.get("msg"))).keys())[0] if isinstance(m.get("msg"), dict) else "?" for m in msgs]
-            R["tx"]["batched_registration"]["messages"] = kinds
-            ok = ok and "register_headstash" in kinds and "register_headstash_sol" in kinds
-        step("batched_registration_evm_sol_one_tx", ok, json.dumps(R["tx"]["batched_registration"]))
-        save()
+    # 4. note secrets + key commitments
+    sec = {k: [pallas_rand() for _ in notes[k]] for k in ids}
+    kcs = {k: [subprocess.run([EX + "/membership_key_com"], input=s.hex(), capture_output=True, text=True, check=True).stdout.strip()
+               for s in sec[k]] for k in ids}
+    lists = {k: [(p["class"], kcs[k][i]) for i, p in enumerate(notes[k])] for k in ids}
+    def wire(lst): return [{"class": c, "key_com": h2b64(kc)} for c, kc in lst]
+    def signer(k): return {"evm": {"address": b64(evm_addr)}} if k == "evm" else {"sol": {"pubkey": b64(sol_pk)}}
+    def sign(k, lst):
+        lh = list_hash(ctx, ids[k][0], ids[k][1], lst).hex()
+        if k == "evm":
+            return evm_sign(evm_priv, eip191("headstash-register-notes-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))))
+        return sol_sk.sign(("headstash-register-notes-sol-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))).encode())
+    def chunk_msg(k, lst, start, sig, rows):
+        return {"register_notes": {"signer": signer(k), "signature": b64(sig) if sig else None, "list": wire(lst), "start": start,
+                "eligibility": [{"index": r["leaf_index"], "path": [h2b64(x) for x in r["path"]]} for r in rows]}}
 
-        # 5. registration negatives
-        r = requests.post(RELAY + "/register", json=evm_req(kc["evm"], amt["evm"]), timeout=30)
-        dup = r.text
-        if r.status_code == 200 and "id" in r.json():
-            for _ in range(60):
-                s = requests.get(RELAY + "/register/status/%s" % r.json()["id"], timeout=10).json()
-                if s.get("status") in ("registered", "failed"): break
-                time.sleep(2)
-            dup = json.dumps(s)
-        R["negatives"]["duplicate_registration_relay"] = dup
-        # relay is idempotent: a resubmission maps to the existing request, no second tx
-        step("neg_duplicate_registration_relay", (ids["evm"] in dup and th in dup) or "failed" in dup or r.status_code >= 400,
-             "same id, same txhash (no new tx): " + dup[:200])
-        other = secrets.randbelow(N - 1) + 1
-        bad = evm_req(kc["evm"], amt["evm"], priv=other)
-        r = requests.post(RELAY + "/register", json=bad, timeout=30)
-        R["negatives"]["wrong_signature_relay"] = "%d %s" % (r.status_code, r.text[:200])
-        step("neg_wrong_signature_relay", r.status_code >= 400, R["negatives"]["wrong_signature_relay"])
-        # direct on-chain duplicate (bypasses relay pre-checks)
-        line = [json.loads(l) for l in open(os.path.join(elig, "paths.jsonl"))]
-        ev = [l for l in line if l["identity"] == evm_addr.hex()][0]
-        msg = "headstash-register-v1:%s:%s:%d" % (ctx.hex(), kc["evm"], amt["evm"])
-        direct = {"register_headstash": {"key_com": h2b64(kc["evm"]), "amount": amt["evm"],
-                  "signature": b64(evm_sign(evm_priv, eip191(msg))), "eligibility_index": ev["index"],
-                  "eligibility_path": [h2b64(x) for x in ev["path"]]}}
-        res = tx("stranger", 5000000, "wasm", "execute", contract, json.dumps(direct))
-        R["negatives"]["duplicate_registration_chain"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:200])
-        step("neg_duplicate_registration_chain", res.get("code") != 0, R["negatives"]["duplicate_registration_chain"])
-    finally:
-        relay.terminate(); relay.wait(10)
+    # NEG: duplicate key_com inside one signed list (Sol, before its real registration)
+    dl = [(lists["sol"][0][0], kcs["sol"][0]), (lists["sol"][1][0], kcs["sol"][0])]
+    res = tx("stranger", 20000000, "wasm", "execute", contract, json.dumps(chunk_msg("sol", dl, 0, sign("sol", dl), notes["sol"])))
+    R["negatives"]["duplicate_key_com"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:240])
+    step("neg_duplicate_key_com_in_list", res.get("code") != 0 and "duplicate key commitment" in res.get("raw_log", ""),
+         R["negatives"]["duplicate_key_com"])
+
+    # 5. EVM: multi-chunk RegisterNotes (32 + 11), relayed by a stranger
+    sig = sign("evm", lists["evm"])
+    gas = []
+    res = rec("register_notes_evm_0", tx("stranger", 60000000, "wasm", "execute", contract,
+              json.dumps(chunk_msg("evm", lists["evm"], 0, sig, notes["evm"][:CHUNK]))))
+    gas.append((CHUNK, gas_used(res)))
+    step("register_notes_evm_chunk0", res.get("code") == 0, "32 notes gas %d (%d/note) %s" % (gas_used(res), gas_used(res) // CHUNK, res.get("raw_log", "")[:160]))
+    # NEG: chunk 2 with a list that differs from the signed one
+    bad = list(lists["evm"]); bad[40] = (bad[40][0], subprocess.run([EX + "/membership_key_com"], input=pallas_rand().hex(), capture_output=True, text=True, check=True).stdout.strip())
+    res = tx("stranger", 60000000, "wasm", "execute", contract, json.dumps(chunk_msg("evm", bad, CHUNK, None, notes["evm"][CHUNK:])))
+    R["negatives"]["mismatched_list_hash"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:240])
+    step("neg_mismatched_list_hash", res.get("code") != 0 and "list hash" in res.get("raw_log", ""), R["negatives"]["mismatched_list_hash"])
+    rest = len(lists["evm"]) - CHUNK
+    res = rec("register_notes_evm_1", tx("stranger", 60000000, "wasm", "execute", contract,
+              json.dumps(chunk_msg("evm", lists["evm"], CHUNK, None, notes["evm"][CHUNK:]))))
+    gas.append((rest, gas_used(res)))
+    step("register_notes_evm_chunk1", res.get("code") == 0, "%d notes gas %d (%d/note)" % (rest, gas_used(res), gas_used(res) // rest))
+    nl = smart(contract, {"note_list": {"identity": ids["evm"][2]}})
+    step("evm_note_list_complete", nl and nl.get("n") == 43 and nl.get("next") == 43, json.dumps(nl))
+
+    # NEG: duplicate key_com across identities (Sol list reuses an EVM key_com)
+    xl = [(lists["sol"][0][0], kcs["evm"][0]), lists["sol"][1]]
+    res = tx("stranger", 20000000, "wasm", "execute", contract, json.dumps(chunk_msg("sol", xl, 0, sign("sol", xl), notes["sol"])))
+    R["negatives"]["duplicate_key_com_cross_identity"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:240])
+    step("neg_duplicate_key_com_cross_identity", res.get("code") != 0 and "key commitment" in res.get("raw_log", ""),
+         R["negatives"]["duplicate_key_com_cross_identity"])
+    res = rec("register_notes_sol", tx("stranger", 20000000, "wasm", "execute", contract,
+              json.dumps(chunk_msg("sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"]))))
+    gas.append((2, gas_used(res)))
+    step("register_notes_sol", res.get("code") == 0, "2 notes gas %d %s" % (gas_used(res), res.get("raw_log", "")[:160]))
+    R["gas_per_note"] = [{"notes": n, "gas_used": g, "per_note": g // n} for n, g in gas]
+    # marginal: (chunk0 - chunk1) / (32 - 11)
+    R["gas_marginal_per_note"] = (gas[0][1] - gas[1][1]) // (gas[0][0] - gas[1][0])
+    log("gas", R["gas_per_note"], "marginal", R["gas_marginal_per_note"]); save()
 
     # 6. anchor
     rt = smart(contract, {"registration_tree": {}})
@@ -287,99 +287,125 @@ def main():
     res = rec("accept_anchor", tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}})))
     rt = smart(contract, {"registration_tree": {}})
     anchor = base64.b64decode(rt["anchors"][-1]["root"]); R["anchor_hex"] = anchor.hex()
-    step("accept_anchor", res.get("code") == 0 and rt["anchors"][-1]["leaf_count"] == 2, "anchor %s count %s" % (anchor.hex(), rt["count"]))
+    step("accept_anchor", res.get("code") == 0 and rt["anchors"][-1]["leaf_count"] == 45, "anchor %s leaves %s" % (anchor.hex(), rt["anchors"][-1]["leaf_count"]))
     res = rec("set_campaign_anchor", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(campaign(anchor))))
     step("campaign_alloc_anchor", res.get("code") == 0, res.get("raw_log", "")[:200])
     res = rec("escrow_register", tx("owner", 3000000, "hashmerchant", "register-contract", contract, "headstash-claim", "bank", "1000000uterp"))
     step("escrow_register_contract", res.get("code") == 0, res.get("raw_log", "")[:200])
 
-    # 7. proofs (browser prover path prove_witness_json, K=11)
-    dest = {"evm": R1, "sol": R2}
-    proofs = {}
-    for k in ("evm", "sol"):
-        pth = smart(contract, {"registration_path": {"key_com": h2b64(kc[k]), "anchor": b64(anchor)}})
-        wit = json.dumps({"secret_hex": sec[k].hex(), "ctx_hex": ctx.hex(), "root_hex": anchor.hex(), "destination": dest[k],
-                          "amount": pth["amount"], "index": pth["index"], "siblings_hex": pth["siblings"]})
-        t0 = time.time()
-        out = subprocess.run([EX + "/prove_membership_witness", "/dev/stdin"], input=wit, capture_output=True, text=True)
-        if out.returncode != 0: step("prove_" + k, False, out.stderr[-300:]); return
-        pr = json.loads(out.stdout); proofs[k] = pr
-        step("prove_" + k, pr["k"] == 11 and pr["vk_id"] == 2, "k %s vk_id %s bytes %s %.1fs dest %s" % (pr["k"], pr["vk_id"], pr["proof_bytes"], time.time() - t0, dest[k]))
-    R["proofs"] = {k: {"k": v["k"], "vk_id": v["vk_id"], "proof_bytes": v["proof_bytes"], "body": v["body"],
-                       "digest": hashlib.sha256(bytes.fromhex(v["proof_hex"])).hexdigest()} for k, v in proofs.items()}
+    # 7. one fresh temporary wallet per claimed note, fee-granted by the owner
+    picks = [("evm", 0), ("evm", 41), ("evm", 42), ("sol", 0), ("sol", 1)]
+    wallets = []
+    for j, _ in enumerate(picks):
+        name = "tmpclaim%d" % j
+        terpd("keys", "add", name, "--keyring-backend", "test", "--home", HOME, "--output", "json")  # mnemonic discarded
+        wallets.append(terpd("keys", "show", name, "-a", "--keyring-backend", "test", "--home", HOME).strip())
+    step("fresh_claim_wallets", len(set(wallets)) == len(wallets) and all(bal(w) == 0 for w in wallets), " ".join(wallets))
+    R["claim_wallets"] = wallets
+
+    def witness(k, i, dest, amount=None):
+        pth = smart(contract, {"registration_path": {"key_com": h2b64(kcs[k][i]), "anchor": b64(anchor)}})
+        return json.dumps({"secret_hex": sec[k][i].hex(), "ctx_hex": ctx.hex(), "root_hex": anchor.hex(), "destination": dest,
+                           "amount": str(amount if amount is not None else pth["amount"]), "index": pth["index"], "siblings_hex": pth["siblings"]}), pth
+    def prove(wit):
+        out = subprocess.run([NOTE_EX + "/prove_note_witness", "/dev/stdin"], input=wit, capture_output=True, text=True)
+        return (json.loads(out.stdout) if out.returncode == 0 else None), out.stderr.strip()[-200:]
+    proofs = []
+    for j, (k, i) in enumerate(picks):
+        wit, pth = witness(k, i, wallets[j])
+        t0 = time.time(); pr, err = prove(wit)
+        ok = pr is not None and pr["vk_id"] == 3 and len(pth["siblings"]) == 17 and int(pth["amount"]) == DENOMS[lists[k][i][0]]
+        step("prove_note_%s_%d" % (k, i), ok, "amount %s k %s bytes %s %.1fs" % (pth.get("amount"), pr and pr["k"], pr and pr["proof_bytes"], time.time() - t0) if pr else err)
+        if not pr: return
+        proofs.append(pr)
+    R["proofs"] = [{"body": p["body"], "proof_bytes": p["proof_bytes"], "digest": hashlib.sha256(bytes.fromhex(p["proof_hex"])).hexdigest()} for p in proofs]
 
     # 8. lane campaign + claims
     subprocess.run([os.path.join(HERE, "bootstrap-chain.sh"), "lane"], check=True)
     body = json.dumps({"backend": "halo2", "ctx_hex": ctx.hex(), "allocation_root_hex": anchor.hex(), "bech32_hrp": "terp",
-            "denom_hex": DENOM, "proof_len": proofs["evm"]["proof_bytes"], "cutoff_height": CUT,
-            "amounts": [{"amount": 1500000, "cap": 1}, {"amount": 2500000, "cap": 1}], "trusted_hex": [custody_pub],
-            "trusted_verify_threshold": 1, "trusted_sign_threshold": 1, "max_rows": 4, "reserved_hex": [], "vk_id": 2,
-            "vk_hash_hex": VK_HASH, "registration_anchor_hex": anchor.hex()}).encode()
+            "denom_hex": DENOM, "proof_len": proofs[0]["proof_bytes"], "cutoff_height": cut, "amounts": amounts,
+            "trusted_hex": [custody_pub], "trusted_verify_threshold": 1, "trusted_sign_threshold": 1, "max_rows": 8,
+            "reserved_hex": [], "vk_id": 3, "vk_hash_hex": NOTE_VK_HASH, "registration_anchor_hex": anchor.hex()}).encode()
     r = opsign_post("/ve/headstash/campaign", body)
-    step("lane_campaign", r.status_code == 200, "%d %s" % (r.status_code, r.text[:200]))
-    before = {"recipient1": bal(R1), "recipient2": bal(R2)}
-    R["balances_before"] = before; log("before", before)
-    for k in ("evm", "sol"):
-        pr = proofs[k]
-        r = requests.post(LANE + "/ve/headstash/claims", json={"claims": [{"proof_hex": pr["proof_hex"], "message": pr["body"],
-                          "denom_hex": DENOM, "vk_id": 2}]}, timeout=600)
-        R.setdefault("lane_claims", {})[k] = "%d %s" % (r.status_code, r.text[:300])
-        step("lane_claim_" + k, r.status_code == 200 and "error" not in r.text, R["lane_claims"][k])
-    r = requests.post(LANE + "/ve/headstash/claims", json={"claims": [{"proof_hex": proofs["evm"]["proof_hex"], "message": proofs["evm"]["body"], "denom_hex": DENOM, "vk_id": 2}]}, timeout=600)
-    R["negatives"]["double_claim_digest"] = "%d %s" % (r.status_code, r.text[:200])
-    step("neg_double_claim_same_proof", "already" in r.text, R["negatives"]["double_claim_digest"])
-    # fresh proof, same secret -> same nullifier
-    pth = smart(contract, {"registration_path": {"key_com": h2b64(kc["evm"]), "anchor": b64(anchor)}})
-    wit = json.dumps({"secret_hex": sec["evm"].hex(), "ctx_hex": ctx.hex(), "root_hex": anchor.hex(), "destination": addrs["STRANGER_ADDR"],
-                      "amount": pth["amount"], "index": pth["index"], "siblings_hex": pth["siblings"]})
-    out = subprocess.run([EX + "/prove_membership_witness", "/dev/stdin"], input=wit, capture_output=True, text=True, check=True)
-    pr2 = json.loads(out.stdout)
-    r = requests.post(LANE + "/ve/headstash/claims", json={"claims": [{"proof_hex": pr2["proof_hex"], "message": pr2["body"], "denom_hex": DENOM, "vk_id": 2}]}, timeout=600)
-    R["negatives"]["double_claim_nullifier"] = "%d %s" % (r.status_code, r.text[:200])
-    step("neg_double_claim_new_proof_same_nullifier", "nullifier" in r.text and "already" in r.text, R["negatives"]["double_claim_nullifier"])
+    step("lane_campaign_vk3", r.status_code == 200, "%d %s" % (r.status_code, r.text[:200]))
+    def claim(proof_hex, message):
+        return requests.post(LANE + "/ve/headstash/claims", json={"claims": [{"proof_hex": proof_hex, "message": message,
+                             "denom_hex": DENOM, "vk_id": 3}]}, timeout=600)
+    # NEG: wrong-class amount (a) proven body with its amount swapped for another class, (b) a non-denomination witness
+    parts = proofs[0]["body"].split(":"); parts[5] = str(DENOMS[4])
+    r = claim(proofs[0]["proof_hex"], ":".join(parts))
+    wa = "%d %s" % (r.status_code, r.text[:200])
+    wit, _ = witness("evm", 0, wallets[0], amount=3_000_000)
+    pr_bad, err_bad = prove(wit)
+    R["negatives"]["wrong_class_amount"] = {"lane_swapped_class": wa, "prover_non_denomination": err_bad or "proved"}
+    step("neg_wrong_class_amount", (r.status_code >= 400 or "error" in r.text or "rejected" in r.text) and pr_bad is None,
+         json.dumps(R["negatives"]["wrong_class_amount"])[:300])
+    before = {w: bal(w) for w in wallets}
+    for j, pr in enumerate(proofs):
+        r = claim(pr["proof_hex"], pr["body"])
+        R.setdefault("lane_claims", []).append("%d %s" % (r.status_code, r.text[:300]))
+        step("lane_claim_%d" % j, r.status_code == 200 and "error" not in r.text, R["lane_claims"][-1][:200])
+    # NEG: replayed nullifier (fresh proof of an already claimed note to a different wallet)
+    wit, _ = witness("evm", 0, addrs["STRANGER_ADDR"])
+    pr2, _ = prove(wit)
+    r = claim(pr2["proof_hex"], pr2["body"]) if pr2 else None
+    R["negatives"]["replayed_nullifier"] = "%d %s" % (r.status_code, r.text[:200]) if r is not None else "prove failed"
+    step("neg_replayed_nullifier", r is not None and "nullifier" in r.text and "already" in r.text, R["negatives"]["replayed_nullifier"])
     save()
 
-    # 9. stage (pays 0) -> seal -> sudo payout
-    rows, digests = [], []
-    for k in ("evm", "sol"):
-        parts = proofs[k]["body"].split(":")  # headstash-claim-v1:ctx:root:nullifier:dest:amount
-        rows.append({"nullifier": h2b64(parts[3]), "denom": h2b64(DENOM), "destination": parts[4], "amount": int(parts[5]), "anchor": b64(anchor)})
-        digests.append(b64(bytes.fromhex(R["proofs"][k]["digest"])))
+    # 9. stage (pays 0) -> seal -> epoch payout
+    rows = []
+    for pr in proofs:
+        p = pr["body"].split(":")  # headstash-note-claim-v2:ctx:root:nullifier:dest:amount
+        rows.append({"nullifier": h2b64(p[3]), "denom": h2b64(DENOM), "destination": p[4], "amount": int(p[5]), "anchor": b64(anchor)})
+    digests = [b64(bytes.fromhex(x["digest"])) for x in R["proofs"]]
     stage = json.dumps({"stage_epoch_batch": {"digests": digests, "rows": rows}})
-    res = rec("stage", tx("owner", 5000000, "wasm", "execute", contract, stage))
-    step("stage_pays_nothing", res.get("code") == 0 and attr(res, "minted") in ("0", None) and bal(R1) == before["recipient1"],
+    res = rec("stage", tx("owner", 8000000, "wasm", "execute", contract, stage))
+    step("stage_pays_nothing", res.get("code") == 0 and all(bal(w) == before[w] for w in wallets),
          "code %s minted %s %s" % (res.get("code"), attr(res, "minted"), res.get("raw_log", "")[:200]))
-    while height() < CUT + 1: time.sleep(1)
-    r = opsign_post("/ve/headstash/seal", json.dumps({"height": CUT}).encode())
+    while height() < cut + 1: time.sleep(1)
+    r = opsign_post("/ve/headstash/seal", json.dumps({"height": cut}).encode())
     R["seal"] = {"status": r.status_code, "body": r.text[:400], "chain_height_at_seal": height()}
     step("seal", r.status_code == 200, R["seal"]["body"][:200])
-    paid_h = None; er = {}
-    end = time.time() + 120
+    want = {wallets[j]: DENOMS[lists[k][i][0]] for j, (k, i) in enumerate(picks)}
+    end = time.time() + 120; er = {}
     while time.time() < end:
         try: er = smart(contract, {"epoch_root": {"algo": "headstash-accepted"}})
         except Exception: er = {}
-        if er.get("root") and bal(R1) > before["recipient1"]: break
+        if er.get("root") and all(bal(w) > before[w] for w in wallets): break
         time.sleep(2)
-    after = {"recipient1": bal(R1), "recipient2": bal(R2)}
-    R["balances_after"] = after; R["epoch_root"] = er
-    # find the block whose finalize events carry the sudo payout
+    after = {w: bal(w) for w in wallets}
+    R["payout"] = {w: {"want": want[w], "got": after[w] - before[w]} for w in wallets}; R["epoch_root"] = er
+    paid_h = None
     for hgt in range(R["tx"]["stage"]["height"], height() + 1):
         br = requests.get(RPC + "/block_results?height=%d" % hgt, timeout=10).json()["result"]
-        evs = (br.get("finalize_block_events") or []) + [e for t in (br.get("txs_results") or []) for e in t.get("events", [])]
-        for e in evs:
+        for e in (br.get("finalize_block_events") or []):
             kv = {a["key"]: a["value"] for a in e.get("attributes", [])}
-            if kv.get("_contract_address") == contract and "minted" in kv and kv["minted"] not in ("0",):
-                paid_h = hgt; R["payout_event"] = {"height": hgt, "type": e["type"], "attrs": kv,
-                    "in_tx": any(e is x for t in (br.get("txs_results") or []) for x in t.get("events", []))}
+            if kv.get("_contract_address") == contract and kv.get("minted") not in (None, "0"):
+                paid_h = hgt; R["payout_event"] = {"height": hgt, "type": e["type"], "attrs": kv}
         if paid_h: break
-    R["tx"]["sudo_payout"] = {"height": paid_h, "txhash": None, "path": "epoch sudo (finalize_block, no tx)" if paid_h and not R["payout_event"]["in_tx"] else "see payout_event"}
-    d1, d2 = after["recipient1"] - before["recipient1"], after["recipient2"] - before["recipient2"]
-    step("sudo_payout_exact", d1 == 1500000 and d2 == 2500000 and paid_h is not None,
-         "delta r1 %d r2 %d payout height %s epoch_root height %s" % (d1, d2, paid_h, er.get("height")))
-    res = tx("owner", 5000000, "wasm", "execute", contract, stage)
+    step("epoch_payout_exact_per_note", paid_h is not None and all(after[w] - before[w] == want[w] for w in wallets),
+         "payout height %s %s" % (paid_h, json.dumps(R["payout"])))
+    res = tx("owner", 8000000, "wasm", "execute", contract, stage)
     R["negatives"]["double_payout_restage"] = "code %s minted %s %s" % (res.get("code"), attr(res, "minted"), res.get("raw_log", "")[:200])
-    step("neg_double_payout_restage", (res.get("code") != 0 or attr(res, "minted") in ("0", None)) and bal(R1) == after["recipient1"],
+    step("neg_double_payout_restage", (res.get("code") != 0 or attr(res, "minted") in ("0", None)) and all(bal(w) == after[w] for w in wallets),
          R["negatives"]["double_payout_restage"])
+
+    # 10. fee grants: each temporary wallet moves its note with fees paid by the owner
+    fg = []
+    for j, w in enumerate(wallets):
+        g = tx("owner", 300000, "feegrant", "grant", OWNER, w, "--spend-limit", "200000uterp")
+        a = ["tx", "bank", "send", w, w, "1uterp", "--home", HOME, "--keyring-backend", "test", "--chain-id", CHAIN_ID, "--node", NODE,
+             "--gas", "200000", "--gas-prices", "0.025uterp", "--fee-granter", OWNER, "-b", "sync", "-y", "-o", "json"]
+        p = subprocess.run([TERPD, *a], capture_output=True, text=True)
+        try:
+            s = json.loads(p.stdout); s = wait_tx(s["txhash"]) if s.get("code", 0) == 0 else s
+        except Exception:
+            s = {"code": -1, "raw_log": (p.stdout + p.stderr)[-200:]}
+        fg.append({"wallet": w, "grant_code": g.get("code"), "send_code": s.get("code"), "balance": bal(w)})
+    R["fee_grants"] = fg
+    step("fee_granted_claim_wallets", all(x["grant_code"] == 0 and x["send_code"] == 0 and x["balance"] == after[x["wallet"]] for x in fg),
+         json.dumps(fg)[:300])
     save()
 
 if __name__ == "__main__":

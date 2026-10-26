@@ -96,3 +96,7 @@ required-features = ["interface", "host-crypto"]
 [[example]]
 name = "membership_key_com"
 required-features = ["circuit", "std"]
+
+[[example]]
+name = "prove_note_witness"
+required-features = ["circuit", "std"]
