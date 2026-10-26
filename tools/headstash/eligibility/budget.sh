@@ -31,6 +31,8 @@ P
 )"
 rm -rf "$STAGE"; mkdir -p "$STAGE"
 ARGS=(--decimals chronic-token=18)
+EXCLUDE="${EXCLUDE:-$HERE/exclusions.csv}"   # burn/zero/contract rows: no leaf, share stays unallocated
+[ -n "$EXCLUDE" ] && [ "$EXCLUDE" != none ] && ARGS+=(--exclude "$EXCLUDE")
 while IFS= read -r kv; do
   p="${kv%%=*}"; ln -s "$ROOT/headstash/communities/$p" "$STAGE/$p"; ARGS+=(--budget "$kv")
 done <<< "$BUDGETS"

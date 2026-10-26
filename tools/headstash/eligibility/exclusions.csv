@@ -1,0 +1,19 @@
+address,community,reason,evidence
+0x0000000000000000000000000000000000000000,monster-buds,burn,zero address; snapshot amount 4
+0x0000000000000000000000000000000000000000,secret-sesh,burn,zero address; snapshot amount 31
+0x000000000000000000000000000000000000dead,buddah-bears,burn,burn sink 0x...dEaD; snapshot amount 2
+0x000000000000000000000000000000000000dead,monster-buds,burn,burn sink 0x...dEaD; snapshot amount 4
+0x00000000500e2fece27a7600435d0c48d64e0c00,chronic-token,contract,eth_getCode(latest) on Ethereum mainnet: 3040 bytes; snapshot amount 145.82
+0x01a2494d330064d829125b59548e44d42bbf0ce9,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 230 bytes; snapshot amount 1
+0x0baba1ad5be3a5c0a66e7ac838a129bf948f1ea4,monster-buds,contract,eth_getCode(latest) on Ethereum mainnet: 1516 bytes; snapshot amount 1
+0x0c15cf0ed7e191f136716b974aaa1d33620e8fd2,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 114 bytes; snapshot amount 6
+0x19fab8f7dffff38268644eaebd3d538f68036000,chronic-token,contract,eth_getCode(latest) on Ethereum mainnet: 22337 bytes; snapshot amount 20109025.22
+0x2bcc224349bd1ce4297e93dca447c3441a11675a,buddah-bears,contract,eth_getCode(latest) on Ethereum mainnet: 13742 bytes; snapshot amount 1
+0x58783060f7a091e8f6ae043826209416178eda83,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 214 bytes; snapshot amount 2
+0x5a7749f83b81b301cab5f48eb8516b986daef23d,buddah-bears,contract,eth_getCode(latest) on Ethereum mainnet: 2096 bytes; snapshot amount 4
+0x80890f7fb7c0971b07ffa07ae6d4133085dd3d26,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 252 bytes; snapshot amount 1
+0x80a4b80c653112b789517eb28ac111519b608b19,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 10478 bytes; snapshot amount 1
+0xac886baac9cb5205770ceb5bd9fee245b6d6ac20,crypto-canna-club,contract,eth_getCode(latest) on Ethereum mainnet: 319 bytes; snapshot amount 1
+0xb406478558a8cd0f3f7af9e1e6258dff722e8cd4,chronic-token,contract,eth_getCode(latest) on Ethereum mainnet: 11293 bytes; snapshot amount 3374.38
+0xc86d863bf08110379888ee4f4f0e338ede7262f1,buddah-bears,contract,eth_getCode(latest) on Ethereum mainnet: 114 bytes; snapshot amount 1
+0xf76b78ff77c51f2ce37631c60082966cf86818e2,galacktic-gang,contract,eth_getCode(latest) on Ethereum mainnet: 319 bytes; snapshot amount 5

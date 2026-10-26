@@ -12,18 +12,26 @@
 //! Without a budget the leaf amount is the base-unit balance (must fit u64).
 //! With a budget, leaf = floor(budget * balance / community_total) in u128;
 //! the floor remainder (dust) is reported per project and not distributed.
+//!
+//! `--exclude <csv>` (`address,community,reason,evidence`; community `*` = all):
+//! excluded rows get no leaf. The split still uses the ORIGINAL community total,
+//! so other holders are unchanged and the excluded share is reported as
+//! `unallocated_uterp` (not redistributed).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::PathBuf;
 
-use headstash_epoch::eligibility::{allocate_floor, parse_base_units, decode_evm, decode_sol, EligTree, Identity, SolDrop, SolForm};
+use headstash_epoch::eligibility::{allocate_floor, apply_exclusions, parse_base_units, decode_evm, decode_sol, EligTree, Identity, SolDrop, SolForm};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut pos, mut decimals, mut budgets) = (Vec::new(), BTreeMap::<String, u32>::new(), BTreeMap::<String, u64>::new());
+    let mut exclude_file: Option<PathBuf> = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
-        if a == "--decimals" || a == "--budget" {
+        if a == "--exclude" {
+            exclude_file = Some(PathBuf::from(args.next().ok_or("missing --exclude <csv>")?));
+        } else if a == "--decimals" || a == "--budget" {
             let kv = args.next().ok_or("missing <project>=<n>")?;
             let (k, v) = kv.split_once('=').ok_or("expected <project>=<n>")?;
             if a == "--decimals" { decimals.insert(k.into(), v.parse()?); } else { budgets.insert(k.into(), v.parse()?); }
@@ -32,6 +40,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = PathBuf::from(pos.first().ok_or("communities dir")?);
     let out = PathBuf::from(pos.get(1).ok_or("out dir")?);
     let mut total_dust: u128 = 0;
+    let mut total_unallocated: u128 = 0;
+    // community ("*" = all) -> excluded identities
+    let mut excl: BTreeMap<String, BTreeSet<Identity>> = BTreeMap::new();
+    if let Some(f) = &exclude_file {
+        for (n, line) in std::fs::read_to_string(f)?.lines().enumerate().skip(1) {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') { continue }
+            let mut p = line.split(',');
+            let (Some(addr), Some(comm)) = (p.next(), p.next()) else { return Err(format!("exclude line {}: need address,community", n + 1).into()) };
+            let addr = addr.trim();
+            let id = if addr.starts_with("0x") || addr.starts_with("0X") {
+                Identity::Evm(decode_evm(addr).ok_or_else(|| format!("exclude line {}: bad evm {addr}", n + 1))?)
+            } else {
+                match decode_sol(addr) {
+                    Ok((pk, _)) => Identity::Sol(pk),
+                    // Off-curve / undecodable Solana entries never get a leaf anyway.
+                    Err(_) => continue,
+                }
+            };
+            excl.entry(comm.trim().to_string()).or_default().insert(id);
+        }
+    }
+    let all_excl = excl.get("*").cloned().unwrap_or_default();
     std::fs::create_dir_all(&out)?;
     let mut rows = Vec::new();
     // Per-(community, identity) leaf contributions, before cross-community summing.
@@ -73,11 +104,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         let total_units: u128 = prow.iter().map(|r| r.1).sum();
+        let (mut excluded_rows, mut unallocated) = (0u64, 0u128);
         let (mode, dust, budget) = match budgets.get(&name) {
             Some(&b) => {
                 let bals: Vec<u128> = prow.iter().map(|r| r.1).collect();
                 let (alloc, dust) = allocate_floor(&bals, b)?;
-                for ((id, _), a) in prow.into_iter().zip(alloc) { allocs.push((name.clone(), id.clone(), a)); rows.push((id, a)); }
+                let mut ex = all_excl.clone();
+                if let Some(s) = excl.get(&name) { ex.extend(s.iter().copied()); }
+                let split: Vec<(Identity, u64)> = prow.into_iter().map(|r| r.0).zip(alloc).collect();
+                let (kept, unalloc, n) = apply_exclusions(split, &ex);
+                excluded_rows = n; unallocated = unalloc;
+                for (id, a) in kept { allocs.push((name.clone(), id, a)); rows.push((id, a)); }
                 ("budget_floor", dust, Some(b))
             }
             None => {
@@ -85,8 +122,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ("base_units", 0, None)
             }
         };
+        if exclude_file.is_some() && budget.is_none() && !excl.is_empty() {
+            return Err(format!("{name}: --exclude requires --budget").into());
+        }
         total_dust += dust as u128;
-        report.insert(name, serde_json::json!({"evm_valid": evm, "evm_invalid": bad_evm, "sol_valid": sol, "sol_dropped": drops, "sol_forms": forms, "bad_amount": bad_amount, "bad_amount_samples": bad_samples, "decimals": dec, "total_base_units": total_units.to_string(), "mode": mode, "budget_uterp": budget, "dust_uterp": dust}));
+        total_unallocated += unallocated;
+        report.insert(name, serde_json::json!({"evm_valid": evm, "evm_invalid": bad_evm, "sol_valid": sol, "sol_dropped": drops, "sol_forms": forms, "bad_amount": bad_amount, "bad_amount_samples": bad_samples, "decimals": dec, "total_base_units": total_units.to_string(), "mode": mode, "budget_uterp": budget, "dust_uterp": dust, "excluded_rows": excluded_rows, "unallocated_uterp": unallocated.to_string()}));
     }
     let raw_rows = rows.len();
     let mut af = std::io::BufWriter::new(std::fs::File::create(out.join("allocations.jsonl"))?);
@@ -110,7 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let summary = serde_json::json!({
         "root_hex": root, "depth": tree.depth, "rows": raw_rows,
         "identities": tree.entries.len(), "evm_identities": evm_ids,
-        "sol_identities": tree.entries.len() - evm_ids, "total_dust_uterp": total_dust.to_string(), "projects": report,
+        "sol_identities": tree.entries.len() - evm_ids, "total_dust_uterp": total_dust.to_string(), "total_unallocated_uterp": total_unallocated.to_string(), "projects": report,
     });
     std::fs::write(out.join("summary.json"), serde_json::to_vec_pretty(&summary)?)?;
     println!("{}", serde_json::to_string_pretty(&summary)?);

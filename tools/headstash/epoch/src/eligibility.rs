@@ -292,6 +292,50 @@ pub fn allocate_floor(balances: &[u128], budget: u64) -> Result<(Vec<u64>, u64),
     Ok((out, (budget as u128 - given) as u64))
 }
 
+/// Drop excluded holders after the pro-rata split. The split is computed over
+/// the ORIGINAL community total, so kept holders' amounts are unchanged and the
+/// excluded holders' share is returned as unallocated (never redistributed).
+/// Returns (kept rows, unallocated uterp, excluded row count).
+pub fn apply_exclusions(
+    rows: Vec<(Identity, u64)>,
+    excluded: &std::collections::BTreeSet<Identity>,
+) -> (Vec<(Identity, u64)>, u128, u64) {
+    let (mut kept, mut unallocated, mut n) = (Vec::with_capacity(rows.len()), 0u128, 0u64);
+    for (id, a) in rows {
+        if excluded.contains(&id) { unallocated += a as u128; n += 1; } else { kept.push((id, a)); }
+    }
+    (kept, unallocated, n)
+}
+
+#[cfg(test)]
+mod exclusion_tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn excluded_share_stays_unallocated_and_others_unchanged() {
+        let ids = [Identity::Evm([1; 20]), Identity::Evm([2; 20]), Identity::Sol([3; 32])];
+        let bals = [5u128, 3, 2];
+        let budget = 1_000_003u64;
+        let (alloc, dust) = allocate_floor(&bals, budget).unwrap();
+        let rows: Vec<_> = ids.iter().copied().zip(alloc.iter().copied()).collect();
+        let ex: BTreeSet<_> = [ids[1]].into_iter().collect();
+        let (kept, unalloc, n) = apply_exclusions(rows, &ex);
+        assert_eq!(n, 1);
+        assert_eq!(kept, vec![(ids[0], alloc[0]), (ids[2], alloc[2])]);
+        assert_eq!(unalloc, alloc[1] as u128);
+        let leaves: u128 = kept.iter().map(|r| r.1 as u128).sum();
+        assert_eq!(leaves + dust as u128 + unalloc, budget as u128);
+    }
+
+    #[test]
+    fn no_exclusions_is_identity() {
+        let rows = vec![(Identity::Evm([9; 20]), 7u64)];
+        let (kept, u, n) = apply_exclusions(rows.clone(), &BTreeSet::new());
+        assert_eq!((kept, u, n), (rows, 0, 0));
+    }
+}
+
 #[cfg(test)]
 mod amount_tests {
     use super::*;
