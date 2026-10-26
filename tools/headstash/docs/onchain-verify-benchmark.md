@@ -81,3 +81,42 @@ Full run: 35 passed, 0 failed (`run-1793054153`).
 - A real 50M-gas block, which would need a genesis change and more than 680 fixture proofs.
 - Circuit deposit amount (query missing on this build).
 - Gov / allowlist upload path (this genesis allows `Everybody`).
+
+## Verification time (wall clock)
+
+Measured on 2026-10-26 between 19:07 and 19:19 groot-wan local time (UTC-4). This was the local headstash chain on 127.0.0.1:46667 with one validator, timeout_commit 1s. It used the cw-zk-bench contract, the vk3 membership circuit (zk_id 1 after re-store) and the real proofs in /tmp/zkbench/fx. Each tx went in its own block, with 5 reps per row; the table shows medians. Harness: `tools/headstash/e2e/zk_time.py`, summarised by `zk_time_summary.py`.
+
+Load averages during the runs were 3.5 to 6.3 (1-min). The kms-dev mainnet node used about 75% of one core. Expect this to inflate the numbers by roughly 10-30%, and it is the main source of the jitter.
+
+Methods:
+- **(a) In the node**, using the stock libwasmvm (sha 034be1fd) with CometBFT and SDK telemetry turned on:
+  - `wasm_contract_execute` is the delta of the SDK telemetry sum for each tx, so it is exact: one execute per window.
+  - `finalize_block` is from `cometbft_abci_connection_method_timing_seconds{method="finalize_block"}`, sampled every 100 ms. Blocks whose sample was ambiguous were dropped, which leaves n of 2 to 5.
+  - The JSON log only has 1-second timestamps, so it could not be used.
+- **(b) Host function.** This is a scratch, local-only libwasmvm built from the exact pinned sources: terp-core ec436048 libwasmvm plus cosmwasm 416d8c60, using a `[patch]` to path. It adds `Instant` timing around `load_verifying_key_for_zkid`, prepare and `backend.verify`/`batch_verify`, plus a log line naming the cache tier that served the VK.
+  - It lived in /tmp/zkbench/wvm and was never committed. The stock dylib was restored afterwards.
+  - Gas was identical to stock, which shows the build is semantically the same.
+
+| tx | gas | (a) wasm execute ms, stock | (a) finalize_block ms, stock | (a) verify ms = batch - baseline | (b) host verify ms | (b) host total ms | (b) ms / proof |
+|---|---|---|---|---|---|---|---|
+| baseline n=1..32 | 157.8k-1.39M | 0.4-2.0 | 2-8 | - | - | - | - |
+| verify (single) | 192.7k | 13.0 (8-35) | 16.1 | ~12 | 23.4 | 23.8 | 23.4 |
+| batch 1 | 193.0k | 22.5 | 24.9 | 21.8 | 22.2 | 23.8 | 22.2 |
+| batch 2 | 266.2k | 16.3 | 27.6 | 15.5 | 28.8 | 29.1 | 14.4 |
+| batch 4 | 412.8k | 32.6 | 35.2 | 32.2 | 44.2 | 45.1 | 11.1 |
+| batch 8 | 706.1k | 67.5 | 64.6 | 65.5 | 78.7 | 87.4 | 9.8 |
+| batch 16 | 1.29M | 124.1 | 126.3 | 123.5 | 131.3 | 132.9 | 8.2 |
+| batch 32 | 2.47M | 249.4 | 252.3 | 248.6 | 257.9 | 261.2 | 8.1 |
+
+With the instrumented dylib, wasm execute was 24.9 / 30.1 / 49.0 / 91.5 / 139.8 / 264.1 ms for batches 1-32. That is within noise of stock, plus up to about 6%.
+
+Cold vs warm, and caching:
+- The VK is cached between txs inside the node: pinned, then a memory LRU, then the fs cache (deserialize), then a split-file rebuild from the param+vk files.
+- **First call after a node restart**, 3 runs on the instrumented build: tier=fs. The VK load took 20.3-23.3 ms and backend verify took 7.7-8.0 ms, for a host total of 28-31 ms. Wasm execute was 31-43 ms, and 46.7 ms on stock.
+- **Every later call**: tier=memory, with VK load at 0.3-0.7 ms.
+- Surprisingly, **warm single verify is slower in the backend: 21-23 ms against about 7.8 ms cold**. A batch costs roughly 14 ms fixed plus about 7.6-7.9 ms per proof. The fixed part looks tied to the memory-tier VK path, not to the proof itself. Stock single-verify samples are bimodal (8-13 ms or 22-35 ms), which fits the same pattern. This is worth looking into: the per-call overhead seems to be avoidable.
+- The circuit is not pinned: no pinned-tier hits.
+
+Comparison with the gas schedule: the schedule prices one proof at a 4.7 ms equivalent (about 33.7k gas). The measured marginal cost is about 7.9 ms per proof under load 4-6, and 22 ms for a warm single call. So at this load, verification is underpriced by about 1.7x per proof in batches and about 4.7x for a single call. The native example verifier measured about 1.6 ms per proof earlier. The gap of roughly 5x against in-node is not explained yet. Candidates are threading or rayon differences, the halo2 build, and machine load.
+
+Not measured: per-proof time under a quiet machine; DeliverTx split by phase (ante versus msg), because the SDK has no per-msg timer and the log resolution is 1 s; and multi-validator or production hardware.
