@@ -490,3 +490,5 @@ ict-rs-cw-orch = { path = "../ict-rs/ict-rs-cw-orch" }
 terp-seams = { path = "crates/terp-seams" }
 threshold_committee = { path = "crates/threshold_committee" }
 frost_escrow = { path = "crates/frost_escrow" }
+
+zakura-orchard = { path = "../zakura-common/crates/orchard" }

@@ -136,3 +136,6 @@ informalsystems-pbjson = { path = "../../../pbjson/pbjson" }
 tendermint = { path = "../../../tendermint-rs/tendermint" }
 tendermint-proto = { path = "../../../tendermint-rs/proto" }
 tendermint-rpc = { path = "../../../tendermint-rs/rpc" }
+
+cosmwasm-vm = { path = "../../../cosmwasm/packages/vm" }
+zakura-orchard = { path = "../../../zakura-common/crates/orchard" }
