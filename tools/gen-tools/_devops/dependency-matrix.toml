@@ -221,7 +221,7 @@ zk_local = "cosmwasm/packages/core"
 [crates.cosmwasm-core.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cosmwasm-core.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -236,7 +236,7 @@ zk_local = "cosmwasm/packages/crypto"
 [crates.cosmwasm-crypto.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cosmwasm-crypto.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -251,7 +251,7 @@ zk_local = "cosmwasm/packages/derive"
 [crates.cosmwasm-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cosmwasm-derive.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -282,7 +282,7 @@ consumers = [
 [crates.cosmwasm-schema.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 
 [crates.cosmwasm-schema.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
@@ -299,7 +299,7 @@ patch_only = true
 [crates.cosmwasm-schema-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cosmwasm-schema-derive.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -336,7 +336,7 @@ consumers = [
 [crates.cosmwasm-std.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 
 [crates.cosmwasm-std.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
@@ -353,7 +353,7 @@ consumers = ["clone-cw-multi-test"]
 [crates.cosmwasm-vm.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cosmwasm-vm.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -758,7 +758,7 @@ consumers = ["osmosis-rust"]
 [crates.cw-schema.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 
 [crates.cw-schema.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
@@ -775,7 +775,7 @@ patch_only = true
 [crates.cw-schema-derive.git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
-rev = "e20646e2d9a9c4f93e993eb0656afa795f6e387a"
+rev = "63ac6cb94311daccf73ce658e8c2f6b4dcade3a0"
 [crates.cw-schema-derive.zk_git]
 url = "https://github.com/permissionlessweb/cosmwasm"
 branch = "mvp"
@@ -1125,39 +1125,101 @@ zk_local = "halo2-axiom/halo2_proofs"
 url = "https://github.com/permissionlessweb/halo2-axiom"
 branch = "v3.1.0-zk.0"
 
-[crates.halo2_gadgets]
-description = "Halo2 gadgets library (zcash fork)"
-local = "zcash/halo2/halo2_gadgets"
-zk_local = "zcash/halo2/halo2_gadgets"
-consumers = ["terp-rs"]
 
-[crates.halo2_gadgets.git]
-url = "https://github.com/permissionlessweb/halo2"
-branch = "v3.1.0-zk.0"
 
-[crates.halo2_poseidon]
-description = "Halo2 Poseidon hash (zcash fork)"
-local = "zcash/halo2/halo2_poseidon"
-zk_local = "zcash/halo2/halo2_poseidon"
-consumers = ["terp-rs"]
 
-[crates.halo2_poseidon.git]
-url = "https://github.com/permissionlessweb/halo2"
-branch = "v3.1.0-zk.0"
 
-[crates.halo2_proofs]
-description = "Halo2 proving system (zcash fork)"
-local = "zcash/halo2/halo2_proofs"
-zk_local = "zcash/halo2/halo2_proofs"
-consumers = ["terp-rs"]
+
+
+
+[crates.zakura-halo2-proofs]
+description = "Halo2 proving system (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/halo2_proofs"
+zk_local = "zakura-common/crates/halo2_proofs"
 required_default_features_off = ["terp-rs/crates/zk/headstash"]
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
 
-[crates.halo2_proofs.git]
-url = "https://github.com/permissionlessweb/halo2"
-branch = "v3.1.0-zk.0"
+[crates.zakura-halo2-proofs.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
 
-[crates.halo2_proofs.required_features]
+
+[crates.zakura-halo2-proofs.required_features]
 "terp-rs/crates/zk/headstash" = ["batch"]
+
+[crates.zakura-halo2-gadgets]
+description = "Halo2 gadgets (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/halo2_gadgets"
+zk_local = "zakura-common/crates/halo2_gadgets"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-halo2-gadgets.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+[crates.zakura-halo2-poseidon]
+description = "Halo2 Poseidon (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/halo2_poseidon"
+zk_local = "zakura-common/crates/halo2_poseidon"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-halo2-poseidon.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+[crates.zakura-halo2-legacy-pdqsort]
+description = "Halo2 pdqsort (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/halo2_legacy_pdqsort"
+zk_local = "zakura-common/crates/halo2_legacy_pdqsort"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-halo2-legacy-pdqsort.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+[crates.zakura-pasta-curves]
+description = "Pasta curves (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/pasta_curves"
+zk_local = "zakura-common/crates/pasta_curves"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-pasta-curves.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+[crates.zakura-reddsa]
+description = "RedDSA (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/reddsa"
+zk_local = "zakura-common/crates/reddsa"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-reddsa.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+[crates.zakura-sinsemilla]
+description = "Sinsemilla (zakura-common)"
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/sinsemilla"
+zk_local = "zakura-common/crates/sinsemilla"
+consumers = ["terp-rs", "terp-rs/tools/headstash", "cosmwasm"]
+
+[crates.zakura-sinsemilla.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
 
 [crates.ibc]
 description = "IBC protocol implementation in Rust"
@@ -2026,3 +2088,13 @@ branch = "v3.1.0-zk.0"
 [crates.zk-test-press.features]
 "." = ["interface"]
 
+
+[crates.zakura-orchard]
+stable = "=1.3.0-alpha.1"
+local = "zakura-common/crates/orchard"
+consumers = ["o-line"]
+
+[crates.zakura-orchard.git]
+url = "https://github.com/permissionlessweb/common"
+branch = "feat/plonk-artifact-codec"
+rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
