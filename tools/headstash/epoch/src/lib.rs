@@ -5,6 +5,7 @@
 //! that cw-headstash already hashes. A halo2 campaign selects a cached
 //! verifying key by `vk_id` and does not accept a signature or a leaf key.
 
+pub mod eligibility;
 mod host;
 mod lane;
 mod roots;
