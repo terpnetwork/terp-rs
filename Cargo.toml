@@ -492,3 +492,4 @@ threshold_committee = { path = "crates/threshold_committee" }
 frost_escrow = { path = "crates/frost_escrow" }
 
 zakura-orchard = { path = "../zakura-common/crates/orchard" }
+zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }

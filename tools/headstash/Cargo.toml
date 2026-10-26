@@ -139,3 +139,4 @@ tendermint-rpc = { path = "../../../tendermint-rs/rpc" }
 
 cosmwasm-vm = { path = "../../../cosmwasm/packages/vm" }
 zakura-orchard = { path = "../../../zakura-common/crates/orchard" }
+zakura-halo2-poseidon = { path = "../../../zakura-common/crates/halo2_poseidon" }

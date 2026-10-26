@@ -2098,3 +2098,66 @@ consumers = ["o-line"]
 url = "https://github.com/permissionlessweb/common"
 branch = "feat/plonk-artifact-codec"
 rev = "798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+
+# --- added 2026-10-26 (phase 7): direct path deps converted to crates.io lines + patch ---
+# git revs below are the local checkout HEADs; verify they are on the remote before using patch-git.
+
+[crates.akash-deploy-rs]
+description = "Akash deployment client (permissionlessweb fork)"
+stable = "0.0.6"
+local = "akash-deploy-rs"
+zk_local = "akash-deploy-rs"
+consumers = ["o-line", "ict-rs"]
+
+[crates.akash-deploy-rs.git]
+url = "https://github.com/permissionlessweb/akash-deploy-rs"
+branch = "feat/bme"
+rev = "6e234183aa5ac400d553e8bd7dde6d55e1edbd98"
+
+[crates.layer-climb-address]
+description = "Climb address types (permissionlessweb fork)"
+stable = "0.7.3"
+local = "climb/packages/layer-climb-address"
+zk_local = "climb/packages/layer-climb-address"
+consumers = ["o-line", "ict-rs"]
+
+[crates.layer-climb-address.git]
+url = "https://github.com/permissionlessweb/climb"
+branch = "feat/oline"
+rev = "b6deff3f56b8620205e20ffe851fe86ad89d21e1"
+
+[crates.ibc-relayer]
+description = "Hermes relayer (permissionlessweb fork)"
+stable = "0.32.2"
+local = "hermes/crates/relayer"
+zk_local = "hermes/crates/relayer"
+consumers = ["cw-orchestrator", "terp-rs"]
+
+[crates.ibc-relayer.git]
+url = "https://github.com/permissionlessweb/hermes"
+branch = "feat/feature-gate"
+rev = "f636aa80a13623b55197ef63e8f980894354307b"
+
+[crates.ibc-relayer-cli]
+description = "Hermes relayer CLI (permissionlessweb fork)"
+stable = "1.13.2"
+local = "hermes/crates/relayer-cli"
+zk_local = "hermes/crates/relayer-cli"
+consumers = ["cw-orchestrator"]
+
+[crates.ibc-relayer-cli.git]
+url = "https://github.com/permissionlessweb/hermes"
+branch = "feat/feature-gate"
+rev = "f636aa80a13623b55197ef63e8f980894354307b"
+
+[crates.osst]
+description = "OSST threshold signatures (third-party rotkonetworks/zeratul checkout)"
+stable = "0.1.1"
+local = "zeratul/crates/osst"
+zk_local = "zeratul/crates/osst"
+consumers = ["cw-orchestrator", "terp-rs"]
+
+[crates.osst.git]
+url = "https://github.com/rotkonetworks/zeratul"
+branch = "master"
+rev = "3ea453329fda2861de81525bfd4a93c0011e43ba"
