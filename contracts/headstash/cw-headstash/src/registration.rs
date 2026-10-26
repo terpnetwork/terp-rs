@@ -24,6 +24,12 @@ const ANCHORS: Item<Vec<AcceptedAnchor>> = Item::new("reg_anchors");
 const ADDRESSES: Map<&str, ()> = Map::new("reg_addr");
 const KEYS: Map<&str, RegisteredKey> = Map::new("reg_key");
 const LEAVES: Map<u32, Binary> = Map::new("reg_leaf");
+/// Completed subtree roots keyed by (level, node index), level >= 1. A node is written
+/// once, when its last leaf lands, and never changes (append-only tree). Lets
+/// `query_path` build siblings for any past anchor in O(DEPTH^2) reads instead of
+/// loading every leaf. Missing entries (contracts that registered before this map
+/// existed) fall back to recomputing from `LEAVES`, so no migration is needed.
+const NODES: Map<(u8, u32), Binary> = Map::new("reg_node");
 const PAID_BATCH: Map<&str, ()> = Map::new("reg_paid_batch");
 
 #[cosmwasm_schema::cw_serde]
@@ -137,26 +143,72 @@ pub fn query_path(
     if record.index >= matched.leaf_count {
         return Err(StdError::msg("anchor"));
     }
-    let mut leaves = Vec::with_capacity(matched.leaf_count as usize);
-    for index in 0..matched.leaf_count {
-        let leaf = LEAVES
-            .may_load(storage, index)?
-            .ok_or_else(|| StdError::msg("registration"))?;
-        let bytes: [u8; 32] = leaf
-            .as_slice()
-            .try_into()
-            .map_err(|_| StdError::msg("registration"))?;
-        leaves.push(bytes);
+    let n = matched.leaf_count;
+    let leaf = load_leaf(storage, record.index)?;
+    let mut siblings = Vec::with_capacity(DEPTH);
+    for level in 0..DEPTH {
+        let sibling_at = (record.index >> level) ^ 1;
+        let bytes = match node_at(storage, level, sibling_at, n)? {
+            Some(node) => node.to_repr(),
+            None => [0u8; 32],
+        };
+        siblings.push(hex::encode(bytes));
     }
-    let leaf = leaves[record.index as usize];
     Ok(RegistrationPathResponse {
         index: record.index,
         leaf: hex::encode(leaf),
         amount: record.amount,
-        siblings: siblings_under(&leaves, record.index)?,
+        siblings,
     })
 }
 
+fn load_leaf(storage: &dyn Storage, index: u32) -> StdResult<[u8; 32]> {
+    LEAVES
+        .may_load(storage, index)?
+        .ok_or_else(|| StdError::msg("registration"))?
+        .as_slice()
+        .try_into()
+        .map_err(|_| StdError::msg("registration"))
+}
+
+/// Root of the subtree at (`level`, `node_index`) as it stood when the tree held `n`
+/// leaves; same zero-padding rules as [`subtree`]. A subtree entirely below `n` is
+/// immutable and read from `NODES`; only the one subtree straddling `n` per level is
+/// recursed into, so a full path costs O(DEPTH^2) reads.
+fn node_at(
+    storage: &dyn Storage,
+    level: usize,
+    node_index: u32,
+    n: u32,
+) -> StdResult<Option<pallas::Base>> {
+    let start = (node_index as u64) << level;
+    if start >= n as u64 {
+        return Ok(None);
+    }
+    if level == 0 {
+        return Ok(Some(parse_fp(&load_leaf(storage, node_index)?)?));
+    }
+    if start + (1u64 << level) <= n as u64 {
+        if let Some(stored) = NODES.may_load(storage, (level as u8, node_index))? {
+            return Ok(Some(parse_fp(stored.as_slice())?));
+        }
+    }
+    let left = node_at(storage, level - 1, node_index << 1, n)?;
+    let right = node_at(storage, level - 1, (node_index << 1) + 1, n)?;
+    match (left, right) {
+        (None, None) => Ok(None),
+        (None, Some(_)) => Err(StdError::msg("registration")),
+        (Some(left), None) => Ok(Some(poseidon_distro_crh(
+            (level - 1) as u32,
+            left,
+            pallas::Base::ZERO,
+        ))),
+        (Some(left), Some(right)) => Ok(Some(poseidon_distro_crh((level - 1) as u32, left, right))),
+    }
+}
+
+/// Reference implementation (loads every leaf); kept for the equivalence tests.
+#[cfg(test)]
 fn siblings_under(leaves: &[[u8; 32]], index: u32) -> StdResult<Vec<String>> {
     let mut out = Vec::with_capacity(DEPTH);
     for level in 0..DEPTH {
@@ -170,6 +222,7 @@ fn siblings_under(leaves: &[[u8; 32]], index: u32) -> StdResult<Vec<String>> {
     Ok(out)
 }
 
+#[cfg(test)]
 fn subtree(leaves: &[[u8; 32]], level: usize, node_index: u32) -> StdResult<Option<pallas::Base>> {
     let start = node_index << (level as u32);
     if start >= leaves.len() as u32 {
@@ -332,7 +385,14 @@ fn insert_registration(
     let leaf_fp = registration_leaf(key_fp, amount);
     let leaf = leaf_fp.to_repr();
     let mut frontier = load_frontier(deps.storage)?;
-    let root = append_leaf(&mut frontier, count, leaf)?;
+    let mut done: Vec<(u8, u32, pallas::Base)> = Vec::new();
+    let root = append_leaf_with(&mut frontier, count, leaf, |l, j, node| {
+        done.push((l, j, *node));
+        Ok(())
+    })?;
+    for (l, j, node) in done {
+        NODES.save(deps.storage, (l, j), &Binary::from(node.to_repr().to_vec()))?;
+    }
     FRONTIER.save(
         deps.storage,
         &frontier
@@ -556,6 +616,17 @@ pub fn append_leaf(
     index: u32,
     leaf: [u8; 32],
 ) -> StdResult<[u8; 32]> {
+    append_leaf_with(frontier, index, leaf, |_, _, _| Ok(()))
+}
+
+/// [`append_leaf`] that also reports each subtree completed by this leaf as
+/// (level, node index, root), level >= 1.
+fn append_leaf_with(
+    frontier: &mut [[u8; 32]; DEPTH],
+    index: u32,
+    leaf: [u8; 32],
+    mut completed: impl FnMut(u8, u32, &pallas::Base) -> StdResult<()>,
+) -> StdResult<[u8; 32]> {
     let mut current = parse_fp(&leaf)?;
     let mut cursor = index;
     for level in 0..DEPTH {
@@ -565,6 +636,9 @@ pub fn append_leaf(
         } else {
             let left = parse_fp(&frontier[level])?;
             current = poseidon_distro_crh(level as u32, left, current);
+            if cursor >> 1 == index >> (level + 1) && (index + 1) % (1u32 << (level + 1)) == 0 {
+                completed((level + 1) as u8, index >> (level + 1), &current)?;
+            }
         }
         cursor >>= 1;
     }
@@ -1373,5 +1447,167 @@ mod tests {
         let err = do_register_sol(deps.as_mut(), &env, &sol, 15, 0, filler).unwrap_err();
         assert!(err.to_string().contains("eligibility"), "{err}");
         assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 0);
+    }
+}
+
+#[cfg(test)]
+mod node_index_tests {
+    use super::*;
+    use cosmwasm_std::testing::MockStorage;
+    use cosmwasm_std::Order;
+    use std::cell::Cell;
+
+    /// Storage wrapper that counts reads, standing in for per-read query gas.
+    struct Counting<'a> {
+        inner: &'a MockStorage,
+        reads: Cell<u64>,
+    }
+    impl Storage for Counting<'_> {
+        fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
+            self.reads.set(self.reads.get() + 1);
+            self.inner.get(key)
+        }
+        fn range<'b>(
+            &'b self,
+            start: Option<&[u8]>,
+            end: Option<&[u8]>,
+            order: Order,
+        ) -> Box<dyn Iterator<Item = cosmwasm_std::Record> + 'b> {
+            self.inner.range(start, end, order)
+        }
+        fn set(&mut self, _: &[u8], _: &[u8]) {
+            unreachable!()
+        }
+        fn remove(&mut self, _: &[u8]) {
+            unreachable!()
+        }
+    }
+
+    fn leaf(i: u32) -> [u8; 32] {
+        // Deterministic pseudo-random field elements.
+        let x = (i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03;
+        pallas::Base::from(x).to_repr()
+    }
+
+    /// Mirrors insert_registration's tree writes (frontier, LEAVES, NODES).
+    fn build(n: u32) -> (MockStorage, Vec<[u8; 32]>, Vec<[u8; 32]>) {
+        let mut st = MockStorage::new();
+        let mut frontier = [[0u8; 32]; DEPTH];
+        let mut leaves = Vec::new();
+        let mut roots = Vec::new();
+        for i in 0..n {
+            let l = leaf(i);
+            let mut done = Vec::new();
+            let root = append_leaf_with(&mut frontier, i, l, |lv, j, node| {
+                done.push((lv, j, *node));
+                Ok(())
+            })
+            .unwrap();
+            for (lv, j, node) in done {
+                NODES
+                    .save(&mut st, (lv, j), &Binary::from(node.to_repr().to_vec()))
+                    .unwrap();
+            }
+            LEAVES.save(&mut st, i, &Binary::from(l.to_vec())).unwrap();
+            leaves.push(l);
+            roots.push(root);
+        }
+        (st, leaves, roots)
+    }
+
+    fn indexed(st: &dyn Storage, index: u32, n: u32) -> Vec<String> {
+        (0..DEPTH)
+            .map(|level| {
+                let b = match node_at(st, level, (index >> level) ^ 1, n).unwrap() {
+                    Some(node) => node.to_repr(),
+                    None => [0u8; 32],
+                };
+                hex::encode(b)
+            })
+            .collect()
+    }
+
+    fn fold(index: u32, leaf: [u8; 32], sib: &[String]) -> [u8; 32] {
+        let mut cur = parse_fp(&leaf).unwrap();
+        for (level, s) in sib.iter().enumerate() {
+            let s = parse_fp(&hex::decode(s).unwrap()).unwrap();
+            cur = if (index >> level) & 1 == 0 {
+                poseidon_distro_crh(level as u32, cur, s)
+            } else {
+                poseidon_distro_crh(level as u32, s, cur)
+            };
+        }
+        cur.to_repr()
+    }
+
+    #[test]
+    fn indexed_siblings_match_reference_for_every_anchor_and_index() {
+        let total = 70u32;
+        let (st, leaves, roots) = build(total);
+        for n in 1..=total {
+            for index in 0..n {
+                let got = indexed(&st, index, n);
+                let want = siblings_under(&leaves[..n as usize], index).unwrap();
+                assert_eq!(got, want, "n={n} index={index}");
+                assert_eq!(fold(index, leaves[index as usize], &got), roots[n as usize - 1]);
+            }
+        }
+    }
+
+    #[test]
+    fn indexed_siblings_match_reference_at_sampled_large_counts() {
+        let total = 1100u32;
+        let (st, leaves, roots) = build(total);
+        let mut seed = 0x1234_5678u64;
+        for n in [127, 128, 129, 255, 256, 511, 512, 513, 1023, 1024, 1025, 1100] {
+            for _ in 0..6 {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                let index = ((seed >> 33) as u32) % n;
+                for idx in [index, 0, n - 1] {
+                    let got = indexed(&st, idx, n);
+                    assert_eq!(got, siblings_under(&leaves[..n as usize], idx).unwrap(), "n={n} index={idx}");
+                    assert_eq!(fold(idx, leaves[idx as usize], &got), roots[n as usize - 1]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn missing_nodes_fall_back_to_leaves() {
+        // A contract that registered before NODES existed: no node entries at all.
+        let (mut st, leaves, _) = build(37);
+        let keys: Vec<(u8, u32)> = NODES
+            .keys(&st, None, None, Order::Ascending)
+            .map(|k| k.unwrap())
+            .collect();
+        assert!(!keys.is_empty());
+        for k in keys {
+            NODES.remove(&mut st, k);
+        }
+        for n in [1u32, 2, 3, 16, 17, 32, 37] {
+            for index in 0..n {
+                assert_eq!(
+                    indexed(&st, index, n),
+                    siblings_under(&leaves[..n as usize], index).unwrap()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn read_count_at_large_n() {
+        let n = 4096u32;
+        let (st, leaves, _) = build(n);
+        let probe = Counting { inner: &st, reads: Cell::new(0) };
+        let mut worst = 0;
+        for (anchor, index) in [(n, 0u32), (n, n - 1), (n - 1, 1234), (3001, 2999), (2049, 2048)] {
+            probe.reads.set(0);
+            let got = indexed(&probe, index, anchor);
+            assert_eq!(got, siblings_under(&leaves[..anchor as usize], index).unwrap());
+            worst = worst.max(probe.reads.get());
+        }
+        // Old query_path read every leaf (anchor reads); new bound is DEPTH^2.
+        println!("reads: indexed worst {worst} vs old {n}");
+        assert!(worst <= (DEPTH * DEPTH) as u64, "worst {worst}");
     }
 }
