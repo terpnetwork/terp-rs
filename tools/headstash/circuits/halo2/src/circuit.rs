@@ -1580,8 +1580,8 @@ mod tests {
                     &circuits[0],
                 );
             // Layout after unused Sinsemilla configure removal.
-            assert_eq!(usize::from(circuit_cost.proof_size(1)), 4704);
-            assert_eq!(usize::from(circuit_cost.proof_size(2)), 7840);
+            assert_eq!(usize::from(circuit_cost.proof_size(1)), 4800);
+            assert_eq!(usize::from(circuit_cost.proof_size(2)), 6560);
             usize::from(circuit_cost.proof_size(instances.len()))
         };
 

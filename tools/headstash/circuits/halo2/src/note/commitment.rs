@@ -142,20 +142,22 @@ mod packing_tests {
     fn derive_matches_poseidon_ssot_for_dummy_note() {
         let mut rng = os_rng();
         let (_sk, _fvk, esk, note) = Note::dummy(&mut rng, None);
-        let rho = note.rho();
-        let psi = note.rseed().psi(&rho);
-        let rcm = note.rseed().rcm(&rho);
+        // Production derive (and the in-circuit gadget) bind the claim
+        // hiding values from `hiding_binding()` and pin the esk slot to zero:
+        // the eligible key is not a note-commit input, ownership is the signature.
+        let _ = esk;
+        let bound = note.hiding_binding();
         let derived = note.commitment();
 
-        let rcm_base = rcm_to_base(rcm.inner());
+        let rcm_base = rcm_to_base(bound.rcm.inner());
         let cmx = poseidon_note_cmx(
             note.nd().to_fp(),
             pallas::Base::from(note.value().inner()),
             pallas::Base::from(note.fdi()),
             note.recipient().to_fp(),
-            esk.derive_pallas(),
-            rho.into_inner(),
-            psi,
+            pallas::Base::ZERO,
+            bound.rho.into_inner(),
+            bound.psi,
             rcm_base,
         );
         let point = lift_note_cmx(cmx);

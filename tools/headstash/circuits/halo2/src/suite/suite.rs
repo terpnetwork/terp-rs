@@ -2481,7 +2481,8 @@ mod test {
     fn test_zkvm_circuit_public_layout() {
         // Spec for CosmwasmCircuit / CircuitFooter public inputs (build_and_write).
         use crate::circuit::{Instance, K};
-        assert_eq!(K, 18, "zkvm circuit K");
+        // K=19 since landing: personal-sign verify needs two GLV muls (see circuit::K).
+        assert_eq!(K, 19, "zkvm circuit K");
         // Instance wire: 6 * 32 = 168 bytes (anchor, nd, v, recp, nf, cmx).
         // Footer `i` field in ProvingKey::build_and_write is 6.
         let (circuit, instance, _, _) = HeadstashCircuitSuite::new(Mock::new("sender"))
@@ -2550,12 +2551,15 @@ mod test {
         assert_eq!(instance.to_bytes().len(), 168);
         assert_eq!(data.auth_path.leaf_index, 2);
 
-        let rebuilt = suite.generate_leaf_data(
+        let mut rebuilt = suite.generate_leaf_data(
             &partial.esk_bytes,
             &partial.token,
             partial.value,
             partial.fdi,
         );
+        // Inclusion leaves carry a random rseed (bound via claim_rseed_com);
+        // the deterministic builder's default rseed is not this leaf's.
+        rebuilt.rseed = partial.rseed;
         assert_eq!(
             partial.poseidon_leaf(),
             suite.compute_leaf_from_data_poseidon_v1(&rebuilt)
