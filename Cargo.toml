@@ -263,6 +263,16 @@ zebra-crosslink = { path = "../zebra-crosslink/zebra-crosslink" }
 # Prevents re-resolve of abstract → cw-asset → permissionlessweb/cw-minus without cosmwasm-schema.
 
 [patch.crates-io]
+# zakura-* come from crates.io in sibling workspaces (cosmwasm 2a747ae94); route them to the
+# local zakura-common so every crate in this graph shares one halo2 (cosmwasm/Cargo.toml mirror).
+zakura-bls12-381 = { path = "../zakura-common/crates/bls12_381" }
+zakura-halo2-gadgets = { path = "../zakura-common/crates/halo2_gadgets" }
+zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }
+zakura-halo2-proofs = { path = "../zakura-common/crates/halo2_proofs" }
+zakura-jubjub = { path = "../zakura-common/crates/jubjub" }
+zakura-pasta-curves = { path = "../zakura-common/crates/pasta_curves" }
+zakura-reddsa = { path = "../zakura-common/crates/reddsa" }
+zakura-sinsemilla = { path = "../zakura-common/crates/sinsemilla" }
 zk-cosmwasm = { path = "../cosmwasm/packages/zk" }
 cw721-nips = { path = "crates/nips" }
 cw4-group = { path = "../cw-plus/contracts/cw4-group" }

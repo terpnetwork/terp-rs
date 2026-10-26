@@ -3361,11 +3361,11 @@ dependencies = [
  "poseidon377",
  "rand_core 0.6.4",
  "rayon",
- "reddsa",
  "sha2 0.10.9",
  "thiserror 1.0.69",
- "zakura-halo2-poseidon 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-halo2-poseidon",
+ "zakura-pasta-curves",
+ "zakura-reddsa",
 ]
 
 [[package]]
@@ -3499,6 +3499,7 @@ dependencies = [
  "nam-wasm-instrument",
  "poseidon377",
  "rand 0.8.7",
+ "rand_chacha 0.10.0",
  "rand_core 0.6.4",
  "serde",
  "serde_json",
@@ -3511,7 +3512,7 @@ dependencies = [
  "wasmer",
  "wasmer-middlewares",
  "wasmer-types",
- "zakura-halo2-proofs 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-halo2-proofs",
  "zk-cosmwasm",
 ]
 
@@ -4007,8 +4008,8 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "terp-auth",
- "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
  "zk-headstash",
 ]
 
@@ -4218,7 +4219,7 @@ dependencies = [
  "prost 0.14.4",
  "rand_core 0.10.1",
  "thiserror 2.0.19",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -8154,8 +8155,8 @@ dependencies = [
  "tower 0.5.3",
  "tracing",
  "tracing-subscriber 0.3.23",
- "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -8298,7 +8299,7 @@ dependencies = [
  "serde_yaml",
  "sha3 0.10.9",
  "tokio",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-pasta-curves",
  "zk-headstash",
 ]
 
@@ -9021,7 +9022,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber 0.3.23",
- "zakura-halo2-proofs 1.3.0-alpha.1",
+ "zakura-halo2-proofs",
 ]
 
 [[package]]
@@ -12413,6 +12414,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_chacha"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e6af7f3e25ded52c41df4e0b1af2d047e45896c2f3281792ed68a1c243daedb"
+dependencies = [
+ "ppv-lite86",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "rand_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15244,7 +15255,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "zakura-halo2-proofs 1.3.0-alpha.1",
+ "zakura-halo2-proofs",
 ]
 
 [[package]]
@@ -15423,7 +15434,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber 0.3.23",
  "which",
- "zakura-halo2-proofs 1.3.0-alpha.1",
+ "zakura-halo2-proofs",
  "zebra-chain",
  "zebra-crosslink",
  "zk-test-press",
@@ -17454,25 +17465,10 @@ dependencies = [
  "ff 0.14.0",
  "group 0.14.0",
  "subtle",
- "zakura-halo2-poseidon 1.3.0-alpha.1",
- "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
- "zakura-sinsemilla 1.3.0-alpha.1",
-]
-
-[[package]]
-name = "zakura-halo2-gadgets"
-version = "1.3.0-alpha.1"
-source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
-dependencies = [
- "arrayvec",
- "ff 0.14.0",
- "group 0.14.0",
- "subtle",
- "zakura-halo2-poseidon 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-halo2-proofs 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-sinsemilla 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-halo2-poseidon",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
+ "zakura-sinsemilla",
 ]
 
 [[package]]
@@ -17486,18 +17482,7 @@ dependencies = [
  "bitvec 1.1.1",
  "ff 0.14.0",
  "group 0.14.0",
- "zakura-pasta-curves 1.3.0-alpha.1",
-]
-
-[[package]]
-name = "zakura-halo2-poseidon"
-version = "1.3.0-alpha.1"
-source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
-dependencies = [
- "bitvec 1.1.1",
- "ff 0.14.0",
- "group 0.14.0",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -17513,23 +17498,7 @@ dependencies = [
  "rand_core 0.10.1",
  "tracing",
  "zakura-halo2-legacy-pdqsort",
- "zakura-pasta-curves 1.3.0-alpha.1",
-]
-
-[[package]]
-name = "zakura-halo2-proofs"
-version = "1.3.0-alpha.1"
-source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
-dependencies = [
- "blake2b_simd",
- "corez",
- "ff 0.14.0",
- "group 0.14.0",
- "maybe-rayon",
- "rand 0.10.2",
- "rand_core 0.10.1",
- "tracing",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -17560,21 +17529,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "zakura-pasta-curves"
-version = "1.3.0-alpha.1"
-source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
-dependencies = [
- "blake2b_simd",
- "cc",
- "ff 0.14.0",
- "group 0.14.0",
- "once_cell",
- "rand 0.10.2",
- "static_assertions",
- "subtle",
-]
-
-[[package]]
 name = "zakura-reddsa"
 version = "1.3.0-alpha.1"
 dependencies = [
@@ -17586,7 +17540,7 @@ dependencies = [
  "serde",
  "thiserror 2.0.19",
  "zakura-jubjub",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-pasta-curves",
  "zeroize",
 ]
 
@@ -17597,18 +17551,7 @@ dependencies = [
  "group 0.14.0",
  "once_cell",
  "subtle",
- "zakura-pasta-curves 1.3.0-alpha.1",
-]
-
-[[package]]
-name = "zakura-sinsemilla"
-version = "1.3.0-alpha.1"
-source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
-dependencies = [
- "group 0.14.0",
- "once_cell",
- "subtle",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -18134,9 +18077,9 @@ dependencies = [
  "wasmer",
  "wasmer-middlewares",
  "wasmer-types",
- "zakura-halo2-gadgets 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-halo2-proofs 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
- "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-halo2-gadgets",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
 ]
 
 [[package]]
@@ -18173,11 +18116,11 @@ dependencies = [
  "subtle",
  "tracing",
  "visibility",
- "zakura-halo2-gadgets 1.3.0-alpha.1",
- "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
+ "zakura-halo2-gadgets",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
  "zakura-reddsa",
- "zakura-sinsemilla 1.3.0-alpha.1",
+ "zakura-sinsemilla",
  "zcash_note_encryption",
  "zcash_spec",
  "zip32",
@@ -18220,10 +18163,10 @@ dependencies = [
  "thiserror 2.0.19",
  "threshold_committee",
  "tracing-subscriber 0.3.23",
- "zakura-halo2-gadgets 1.3.0-alpha.1",
- "zakura-halo2-proofs 1.3.0-alpha.1",
- "zakura-pasta-curves 1.3.0-alpha.1",
- "zakura-sinsemilla 1.3.0-alpha.1",
+ "zakura-halo2-gadgets",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
+ "zakura-sinsemilla",
  "zk-cosmwasm",
  "zk-headstash",
 ]
@@ -18282,9 +18225,9 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "cw3"
-version = "3.0.0"
-
-[[patch.unused]]
 name = "cw-clearable"
 version = "0.2.0"
+
+[[patch.unused]]
+name = "cw3"
+version = "3.0.0"
