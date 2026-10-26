@@ -1,222 +1,230 @@
-# Headstash registration through smart-account authenticators (design spec)
+# Headstash registration through a shared registrar smart account (design spec, rev 2)
 
-Status: DRAFT, design only. No code, no chain txs. Proposed by Terp Network, 2026-10-26.
-Scope: registration (and analysis of claim submission). Circuit, vk_hash and claim payout path unchanged.
+Status: DRAFT, design only. Rev 1 2026-10-26 (commit e4520b1). Rev 2 2026-10-26 applies Terp Network review decisions:
+no chain zero-fee lane; the registrar smart account pays fees; Solana via in-contract `ed25519_verify`;
+feegrant vs unordered analysis; sidecar batching recorded as a rejected alternative; expanded security review.
+No code, no chain txs. Circuit and locked vk_hash unchanged.
 
-> Proposal (verbatim intent): smart-account auth lets eligible accounts register and prove ownership with
-> no fees and no sequence mismatch, using the granular per-message tracks of smart-account authenticators;
-> Solana signatures are accepted with the same method as the old public headstash claim. This is how Solana
-> joins, and how users avoid a centralized relayer or ingress.
+## 0. Code facts this design relies on
 
-## 0. What exists today (read from the tree)
+| Fact | Where |
+|---|---|
+| Fee payer is the first signer of msg[0]; manual fee payer not supported | `x/smart-account/ante/ante.go:63-66, 110-118` |
+| Authenticators run first under a small gas meter (`MaximumUnauthenticatedGas`, default 120_000) | `ante/ante.go:76-83`, `x/smart-account/types/params.go:12` |
+| Fees are deducted **only after** the fee payer's authenticator returns ok, then the store is written so the fee persists even if a later message fails authentication | `ante/ante.go:185-215` |
+| Authenticate runs in a discarded cache ctx; Track runs after all msgs authenticate, and its writes are **not** reverted if message execution later fails | `ante/ante.go:185-187, 218-240`; `authenticator/iface.go` (Track doc) |
+| Sequence must equal account sequence (`SequenceMatch`) in ante; sequence then incremented | `ante/ante.go:171`, `authenticator/replay_protection.go`, `app/abci/ante.go:85` |
+| No unordered-tx wiring anywhere in `app/` or `x/smart-account` (grep `unordered`: no hits) | `app/abci/ante.go:68-104` |
+| Without a selected authenticator the tx goes through the classic sig path (key signature) | `app/abci/ante.go:70-77, 97-101` (CircuitBreakerDecorator) |
+| `AddAuthenticator`/`RemoveAuthenticator` are signed by the account itself; only `SetActiveState` (circuit breaker) has a governor/controllers | `x/smart-account/keeper/msg_server.go:29, 67, 92-108` |
+| Feegrant is honored by the deduct decorator (`FeeGranter`) | `ante/ante.go:117`, `types/expected_keepers.go:14` |
+| cw-headstash: EVM message l.327, EIP-191 + secp256k1 recover l.335-361, leaf l.404 (20B only), "already registered" l.234 | `contracts/headstash/cw-headstash/src/registration.rs` |
+| Ed25519 CosmWasm authenticator exists but signs Cosmos tx bytes (`sign_mode_direct`), not a wallet message | `contracts/smart-accounts/terp-ed25519/src/lib.rs:10-14, 177-190` |
 
-| Piece | Path | Relevant facts |
-|---|---|---|
-| Smart-account module | `x/smart-account/{ante,post,authenticator,keeper}` | Osmosis-derived. Per-message authenticator selection, `Authenticate` (stateless) then `Track` closures that commit only if every message authenticates, `ConfirmExecution` in post handler. |
-| Ante wiring | `app/abci/ante.go` | `CircuitBreakerDecorator` picks the authenticator chain or the classic chain. Both chains run `DeductFeeDecorator` and `IncrementSequenceDecorator`. |
-| Fees in smart-account | `x/smart-account/ante/ante.go:63-215` | Fee payer = first signer, cannot be overridden (`ValidateAuthenticatorFeePayer`). Payer is authenticated under a small free gas budget, then fees are deducted once. Feegrant (`FeeGranter`) is honored. **No fee bypass exists.** |
-| Replay protection | `x/smart-account/authenticator/replay_protection.go`, `ante.go:171` | Ante uses `SequenceMatch` (signature sequence must equal account sequence). Post uses `NoReplayProtection`. **Sequence is still enforced.** |
-| Global fee bypass | `x/globalfee/ante/fee.go`, `app/app.go:519` `GetDefaultBypassFeeMessages` | Bypass list is IBC only, capped by `maxBypassMinFeeMsgGasUsage = 2_000_000`. Only lifts the *min-fee* check; fee deduction still runs if a fee is set. |
-| Message scoping | `authenticator/message_filter.go`, `all_of.go`, `any_of.go` | JSON pattern match on message type and fields; compose with `AllOf`. |
-| CosmWasm authenticators | `authenticator/cosmwasm.go` | Sudo `authenticate / track / confirm_execution / on_authenticator_added / removed`. |
-| ZK authenticator | `authenticator/zkproof_authenticator.go` | Shape only; `GlobalPathAVerifier` not registered by default; never spends nullifiers. |
-| Ed25519 authenticator contract | `crates/terp-rs-headstash-membership-vk/contracts/smart-accounts/terp-ed25519` | Verifies `ed25519_verify(sign_mode_direct tx bytes, sig, pk)`; one pubkey per account. Signs **Cosmos tx bytes**, which Phantom/Solflare cannot produce as `signMessage` output in a human-readable way. Also `terp-eth`, `terp-passkey`, `terp-recovery`, etc. |
-| cw-headstash registration | `contracts/headstash/cw-headstash/src/registration.rs`, `msg.rs:151` | `RegisterHeadstash{key_com, amount, signature, eligibility_index, eligibility_path}`. `register_message()` (l.327) builds `headstash-register-v1:{ctx}:{key_com}:{amount}`, `recover_address()` (l.335) does EIP-191 + `secp256k1_recover_pubkey` + keccak to a 20-byte address, `eligibility_leaf(address:[u8;20], amount)` (l.404), "already registered" guard (l.234). Leaf type is EVM-only. |
-| Relay | `tools/hash-market/src/bin/headstash-register-relay.rs` | Current permissionless relay that pays fees for registration. |
-| Old public headstash Solana support | git `fdb575c` / `92b81d8`: `scripts/headstash/solana-utils.js`, `headstash-scripts.js`, `headstash.yaml` (`stoned-ape-club`, `chain_type: solana`, `allocation_percentage: 0.10400262686567165`) | Snapshot stored the Solana address as `base64(utf8(base58 address))` "in the format used to verify the offline signature". **The old claim contract source is not in this repo or its history** (searched `-S solana/ed25519/phantom/ed25519_verify`). Section 4 reconstructs the format; it must be confirmed against the deployed old contract before freezing. |
-
-Key correction to the proposal: on today's chain, smart-account auth **does not** bypass fees and **does** enforce
-sequence. Both properties require new, small chain changes (section 3). The authenticator machinery is still the
-right place for it, because of `Track` and message scoping.
+Contradictions with the review assumptions:
+1. "Fees paid by the registrar" is correct (first-signer deduction, `ante.go:110-118, 192-215`), but a tx that
+   **passes the authenticator and then fails in contract execution still pays** (fee written at `ante.go:203-209`
+   before execution). So the authenticator must replicate every contract precondition, or the registrar can be drained (section 3).
+2. Track writes survive execution failure (`iface.go` Track doc). Recording "registered" in Track would lock an
+   address out if execution fails. Source of truth must be cw-headstash state (section 2.3).
+3. 120_000 unauthenticated gas (`params.go:12`) is probably too small for a CosmWasm sudo that does a secp256k1 or
+   ed25519 verify plus a 16-32 level keccak path; exceeding it fails with OutOfGas (`ante.go:86-95`). Must be benchmarked; options in OQ3.
+4. Feegrant `AllowedMsgAllowance` scopes by message **type URL** only. It can allow `MsgExecuteContract` but cannot pin the cw-headstash address.
+5. Option (b) (feegrant to an ephemeral key) does not escape the registrar's sequence: the grant itself is a tx from some granter (section 4).
 
 ## 1. Design summary
 
-Registration becomes a **keyless-sender transaction**: the tx is signed by nobody the user has to fund. A
-module-controlled *registrar account* `R` (a plain account address with no private key, derived like a module
-address) carries one authenticator, `HeadstashRegistrationAuthenticator` (HRA):
+One shared **registrar account R** pays all registration fees. R carries one authenticator, the
+Headstash Registration Authenticator (HRA):
 
 ```
 AllOf(
-  MessageFilter{ "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
-                 "sender": R, "contract": <cw-headstash>, "funds": [],
-                 "msg": {"register_headstash": {}} },      // exactly one msg per tx
-  HeadstashOwnershipAuth   // native Go, or CosmWasm via cosmwasm.go
+  MessageFilter{"@type":"/cosmwasm.wasm.v1.MsgExecuteContract","sender":R,
+                "contract":<cw-headstash>,"funds":[],"msg":{"register_headstash":{}}},
+  CosmwasmAuthenticator{contract: <cw-headstash or headstash-auth>, params: {}}
 )
 ```
 
-`HeadstashOwnershipAuth.Authenticate` verifies the **eligible key's** signature (secp256k1/EIP-191 for EVM,
-ed25519 for Solana) over the registration message carried in the tx signature slot, checks the eligibility
-Merkle path, and checks the address is not yet registered. `Track` records `registered[addr_tag]` in the
-authenticator store (the "granular track"), so a second tx for the same address fails in ante, before
-consuming block space. cw-headstash **re-verifies the same signature** in execute (defence in depth and so the
-ownership check can never be skipped by a mis-configured authenticator).
+The CosmWasm leg is **signing-aware**: its sudo `authenticate` receives the `RegisterHeadstash` msg and the
+tx signature slot, and runs the same pure function cw-headstash uses at execute:
+`verify_registration(ctx, msg) -> Result<EligibleId>` (EVM: EIP-191 secp256k1 recover; Solana: `deps.api.ed25519_verify`),
+then eligibility path, window open, tree not full, not already registered. Preferred: put the sudo entry point in
+**cw-headstash itself**, so there is one code path and one state (no drift between authenticator and contract).
 
-Anyone (the user's own browser, a wallet, any node) broadcasts the tx straight to any RPC. No relayer, no
-sidecar, no fee account.
+The user's browser builds the tx with `sender = R`, fee from R, selected authenticator = HRA id, and broadcasts to any
+public RPC. No relayer, no sidecar. cw-headstash re-runs `verify_registration` in execute (ownership never skipped).
 
 ## 2. Data flow
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant B as Browser (zakura app)
-    participant W as Wallet (MetaMask / Phantom / Solflare)
-    participant N as Any Terp RPC node
-    participant A as Ante: CircuitBreaker -> Authenticator chain
-    participant H as HRA (MessageFilter + OwnershipAuth)
-    participant C as cw-headstash
-    B->>B: secret <- random, key_com = Poseidon(secret)
-    B->>B: build msg M (EVM: v1 text; Solana: v1-sol text, section 4)
-    B->>W: personal_sign(M) / signMessage(utf8(M))
-    W-->>B: sig (65B secp256k1 or 64B ed25519) [+ pubkey for Solana]
-    B->>B: build Tx{ MsgExecuteContract(sender=R, cw-headstash, RegisterHeadstash{...}) }, fee=0, unordered=true, timeout_timestamp<=10m, TxExtension{selected_authenticators=[HRA id]}
-    B->>N: BroadcastTx (CheckTx)
+    participant B as Browser
+    participant W as Wallet (MetaMask | Phantom/Solflare)
+    participant N as Any Terp RPC
+    participant A as Ante (smart-account)
+    participant H as HRA = MessageFilter + cw-headstash sudo
+    participant C as cw-headstash execute
+    B->>B: secret, key_com = Poseidon(secret)
+    B->>W: EVM personal_sign(M_evm) | Solana signMessage(bytes(M_sol))
+    W-->>B: sig (65B) | sig (64B) + pubkey (32B)
+    B->>N: Tx{MsgExecuteContract(sender=R, RegisterHeadstash)}, fee paid by R, authenticator=HRA, sequence: see section 4
     N->>A: CheckTx
-    A->>H: Authenticate(req{msg, signature=registration payload})
-    H->>H: scope: one msg, contract, R, no funds, no other fields
-    H->>H: verify sig over rebuilt M (ctx from contract config incl. chain_id)
-    H->>H: verify eligibility path -> root, not registered, rate bucket ok
-    H-->>A: ok (fee=0 accepted only for HRA-only txs)
-    A->>H: Track -> mark pending/registered(addr_tag)
-    N-->>B: txhash (mempool)
-    Note over N,C: DeliverTx in block
-    A->>H: Authenticate + Track again (DeliverTx)
+    A->>H: Authenticate (cache ctx, <= MaximumUnauthenticatedGas)
+    H->>H: filter exact msg, verify sig, path, window, not registered
+    alt invalid
+        H-->>A: error, no fee charged, not in mempool
+    else valid
+        A->>A: deduct fee from R (ante.go:192-215)
+    end
+    Note over A,C: DeliverTx repeats Authenticate, then
     A->>C: execute RegisterHeadstash
-    C->>C: re-verify sig, path, not registered, append key_com to Poseidon tree
-    C-->>B: event leaf_index, new root
+    C->>C: verify again, mark registered, append key_com
 ```
 
-EVM and Solana differ only in step 3-4 and in the leaf type.
+### 2.3 State
+- `REGISTERED[eligible_id]` lives in cw-headstash and is written only by successful execute.
+- HRA Track: no-op (or a per-block counter only, see 3.3). Two txs for the same address in one block: the
+  first execute writes REGISTERED; the second tx's DeliverTx ante re-runs Authenticate against updated state and
+  fails **before** fee deduction. In CheckTx both may enter the mempool; the duplicate is evicted on recheck.
 
-## 3. Fees and sequence
+## 3. Fees, funding and drain analysis
 
-### 3.1 Fees
-Today the authenticator ante deducts `fee` from the first signer and globalfee requires a min fee. Proposed:
-- Add a narrow **zero-fee lane**: in `AuthenticatorDecorator`, if the tx has exactly one message, the signer is
-  `R`, and the selected authenticator is the HRA id, skip `deductFeeDecorator` and require `fee == 0`
-  and `gas_limit <= HRA_MAX_GAS` (e.g. 400k; measure: secp recover + 32-deep keccak path + Poseidon append).
-- Add `MsgExecuteContract` to globalfee bypass **only** via a predicate (`sender == R && contract == cw-headstash`),
-  not by type URL, because type-URL bypass would free every wasm execute. Prefer a dedicated
-  `headstash` ante decorator placed before globalfee that marks the context `zeroFeeApproved`.
-- Alternative with no new fee logic: `R` gets a feegrant from a community-pool-funded granter, `AllowedMsgAllowance`
-  restricted to MsgExecuteContract plus a periodic spend cap. Simpler, but someone pays and the cap is a DoS lever.
-  Recommended as the fallback if governance rejects a zero-fee lane.
+### 3.1 Who pays
+R pays every registration (first signer). R must stay funded. Rough cost: gas ~300-500k at min gas price per
+registration, times eligible holders (thousands). Fund R with a fixed budget sized for the eligible count plus 20%.
 
-### 3.2 Sequence
-All registrations share one sender `R`, so ordered sequences would collide (the "sequence mismatch" the
-proposal wants to avoid). SDK v0.55 (go.mod) supports **unordered transactions** (`unordered=true` +
-`timeout_timestamp`, replay protected by tx hash in the unordered nonce store).
-- HRA path must use unordered txs; extend `GenerateAuthenticationRequest` callers in ante with a replay mode
-  that, for `R` only, accepts unordered and skips `SequenceMatch`; skip `IncrementSequenceDecorator` for `R`.
-- Replay safety does not depend on sequence: the registration is idempotent-rejecting (one per address via
-  Track + contract state), and the tx hash store blocks byte-identical replays within the timeout window.
-- `R` needs an account (`BaseAccount` with no pubkey) created at upgrade; `SetPubKeyDecorator` is not on the
-  authenticator chain, so no pubkey is needed.
+### 3.2 Who can make R pay
+Only a tx where HRA Authenticate returns ok (fees are deducted after it, `ante.go:192-198`). HRA returns ok only
+for an unused, valid eligible signature over the current ctx. Therefore the maximum number of paid txs equals the
+number of eligible, unregistered entries, plus the residual cases below:
+1. **Pass-auth, fail-execute**: anything the contract checks that HRA does not (window closes between blocks, tree
+   full, gas limit too low, contract migrated). Mitigation: HRA and execute share one function and one state; HRA
+   rejects `gas_limit` above a cap and below a floor (so an attacker cannot set too little gas to make execution fail
+   after fee); HRA rejects any fee above a cap (attacker cannot burn R by setting a huge fee) and any non-native fee denom.
+2. **Same-block duplicates**: only the first executes; the rest fail at DeliverTx ante before fee (2.3). Cost: CheckTx work only.
+3. **Front-running** a user's own tx: same signed key_com, so it only registers the user; R pays once.
+4. **Fee size attack**: the attacker builds the tx, so the attacker chooses fee and gas. HRA must pin
+   `fee == expected` (params: max_fee, max_gas), otherwise one valid signature could spend R's whole balance.
+5. **Track/state desync**: avoided by keeping state in the contract.
+Bound: R loses at most (eligible_count x max_fee) plus rare race cases. No unbounded griefing.
 
-## 4. Message formats
+### 3.3 Top-up and monitoring
+- Alert when R balance < 2 days of expected volume or < N x max_fee; alert on paid-but-failed executes (event
+  `headstash.register` missing for a tx where R paid).
+- Top-up by multisig/DAO send to R (anyone can send to R; harmless).
+- Optional HRA per-block counter in Track (reset per height) capping registrations per block, e.g. 50.
 
-EVM (unchanged): EIP-191 `personal_sign` over
-`headstash-register-v1:{ctx}:{key_com}:{amount}`.
+## 4. Sequence handling: shared R clashes
 
-Solana (new, matches the old public claim style: wallet `signMessage` over UTF-8 text, address as base58,
-snapshot address stored as `base64(utf8(base58))`):
+All users sign txs for the same account R. With `SequenceMatch` (`ante.go:171`) two browsers that read sequence s
+both build txs with s; one fails with sequence mismatch (no fee charged since sequence check happens in
+`GenerateAuthenticationRequest` before deduction, but the user must retry). Under load this is a retry storm.
+
+### (a) Unordered transactions on R
+- SDK v0.55 supports `unordered=true` + `timeout_timestamp`, replay-protected by tx hash. Needs wiring: the
+  unordered decorator/manager in `app/abci/ante.go`, and smart-account must pass a replay mode that skips
+  `SequenceMatch` for unordered txs (`ante.go:171` currently hard-codes it) and skip sequence increment.
+- Pros: one tx per user, no trusted party, no new grants, concurrency unlimited. Byte replays blocked by the hash
+  store; semantic replays blocked by REGISTERED.
+- Cons: chain upgrade (small, contained in ante); unordered applies to any account once enabled, so gate it:
+  allow unordered only when the selected authenticator is a CosmWasm authenticator whose params opt in, or enable chain-wide per SDK default.
+
+### (b) One-time feegrant to a browser ephemeral key
+Flow: browser makes ephemeral Terp key E; E gets `AllowedMsgAllowance{[MsgExecuteContract], BasicAllowance{spend_limit, expiration}}`;
+E sends RegisterHeadstash with `fee_granter`.
+- Chicken-and-egg: the grant is itself a tx (`MsgGrantAllowance`) whose granter must sign and pay.
+  - Granter = R via HRA: still one tx per user from R, so the **same sequence clash** moves to the grant tx. Nothing gained.
+  - Granter = cw-headstash contract (CosmosMsg::Any `MsgGrantAllowance`, granter = contract) triggered by a verified
+    eligibility signature: someone must still submit that execute tx and pay for it: a relayer (centralized) or R (clash again).
+  - Granter = a relayer/faucet: reintroduces the trusted, centralized party the user wants removed.
+- Two txs per user instead of one; the grant leaks the ephemeral key to the eligible address (fine, registration is linkable anyway).
+- Scope is weaker: allowance cannot pin the contract address (type URL only), so E could spend its allowance on any wasm execute.
+- Verdict: (b) does not solve the sequence problem without a relayer.
+
+### (c) Sharded registrars (no chain change)
+R_1..R_k (e.g. k = 32) each with the same HRA. Browser picks a random shard, reads its sequence, retries on another
+shard on mismatch. Clash probability per attempt ~ concurrent users / k. Fees: fund k accounts. Admin surface x k.
+
+### Recommendation
+**(a) unordered on R** as the target: one tx, no trusted party, smallest attack surface. Ship **(c)** first if the
+upgrade cannot land before the registration window, since it needs no chain change. Do not use (b).
+
+## 5. Solana
+
+The old claim contract (old version of the terpnetwork headstash-patch repo) is deleted and unrecoverable. Its
+method was ed25519 offline signatures; this spec defines the format fresh, verified in-contract with `deps.api.ed25519_verify`.
+
+Exact signed bytes: Phantom/Solflare `signMessage(Uint8Array)` signs raw bytes. Base58 is only the encoding of pubkeys and signatures.
 ```
-headstash-register-sol-v1:{ctx}:{key_com}:{amount}
+M_sol   = UTF-8 bytes of "headstash-register-sol-v1:" + ctx_hex + ":" + key_com_hex + ":" + amount_decimal
+ctx_hex = lowercase hex of the 32-byte registration ctx (binds chain_id, cw-headstash address, round)
+key_com_hex = lowercase hex of the 32-byte key_com, amount_decimal = base-10 u64, no padding
 ```
-- Signed bytes = exactly the UTF-8 string (Phantom/Solflare `signMessage(new TextEncoder().encode(M))`), no
-  Solana off-chain-message header. If the old contract used the off-chain-message envelope
-  (`\xffsolana offchain` + version + format + len), copy that instead; **confirm against the old contract (OQ1)**.
-- Payload in the authenticator signature slot and in `RegisterHeadstash`:
-  `{scheme:"ed25519", pubkey: 32B, signature: 64B}`; `scheme:"secp256k1-eip191"` for EVM (65B sig, address recovered).
-- `ctx` = existing registration ctx (contract address + chain_id + epoch/round id, as in `validate_config`);
-  must include `chain_id` explicitly (see 6.1).
-- `key_com`, `amount`: same lowercase hex / decimal encodings as v1.
+Browser: `wallet.signMessage(new TextEncoder().encode(M_sol))` -> 64-byte signature; pubkey from `wallet.publicKey.toBytes()`.
+Wire (in RegisterHeadstash and therefore visible to HRA): `auth: {ed25519: {pubkey: Binary(32), signature: Binary(64)}}`;
+EVM stays `auth: {secp256k1_eip191: {signature: Binary(65)}}`. Contract checks lengths, then `ed25519_verify(M_sol, sig, pubkey)`.
+No Solana off-chain-message envelope, no prehash.
 
-Eligibility leaf, typed to separate the two address spaces:
-```
-leaf = keccak256( tag || address_bytes || amount_be64 )
-tag = 0x01 EVM (20B address) | 0x02 Solana (32B ed25519 pubkey, decoded from base58)
-```
-Today `eligibility_leaf(address:[u8;20], amount)` has no tag; adding the tag means **a new eligibility root**
-(rebuild with stoned-ape-club leaves). If the current root is already published/locked, keep EVM leaves
-byte-identical (tag only on Solana leaves, padded length differs, so no collision) and document it (OQ2).
+Snapshot mapping: entries store `base64(utf8(base58_address))` (git `fdb575c` `scripts/solana-utils.js`). Tooling:
+base64-decode -> ASCII base58 string -> base58-decode (Bitcoin alphabet) -> must be exactly 32 bytes (reject otherwise; also
+reject off-curve? no: Solana PDAs are off-curve and cannot sign, so drop off-curve keys at snapshot build and report them).
+Leaf: `keccak256(0x02 || pubkey32 || amount_be64)`; EVM leaf `keccak256(0x01 || addr20 || amount_be64)`.
+If the existing EVM root is already published untagged, keep EVM untagged and tag only Solana (length differs, no collision; OQ1).
+Eligible id for REGISTERED: `0x01||addr20` or `0x02||pubkey32`.
 
-## 5. Relayer, ingress, and claim unlinkability
+## 6. Considered alternative: sidecar accumulation + vote-extension ingress (not the plan)
 
-### 5.1 Registration
-Registration is linkable by design (the eligible key signs a `key_com`). With HRA the user's own browser
-broadcasts; `headstash-register-relay` becomes optional (keep it for users behind restrictive networks).
-The node operator sees the user IP, the same as any wallet broadcast; recommend multiple public RPCs.
+Sidecars collect registration signatures, reject invalid ones, batch verified ones, and validators confirm batches via vote extensions.
+- Pros: no per-user tx; second confirmation by validator quorum; fees amortized; spam filtered off-chain.
+- Cons: extra bandwidth on every validator, VE size limits, liveness coupled to sidecars, more code on a critical surface,
+  sidecar becomes an ingress users depend on, censorship by sidecar operators, harder audit.
+- Decision: rejected in favour of the direct path (section 1, sequence per section 4).
 
-### 5.2 Claims
-Claims must not link `nullifier`/destination to the registering address. Options:
-- **Claim via the same `R`/HRA lane: no.** Nothing ties a claim to the eligible key cryptographically, but
-  timing (register then claim right away from the same IP/RPC), same-session browser fingerprint, and a fee
-  payer would link it. A claim tx through a *separate* keyless account `Rc` with a `ZkProofAuthenticatorV1` +
-  nullifier gate (`AllOf`, as the zkproof file suggests) avoids a funded sender, because the proof itself is
-  the authorization and the destination is bound in the proof.
-- **Leaks that remain** even via `Rc`: submission IP and timing; per-claim on-chain txs (the sidecar batch
-  today hides individual claim timing inside a batch and is the anonymity-set amplifier). Direct per-claim txs
-  shrink the effective anonymity set to "registered before this block" minus timing correlation.
-- **Ownership requirement**: claims prove membership in the registration tree, whose leaves were admitted only
-  after the ownership check. So an `Rc` lane keeps the requirement, provided the in-ante ZK verifier is the
-  same vk_hash-locked circuit and the contract still verifies (no "authenticator already checked it" skip).
-- **Recommendation**: phase 1 registration only. Phase 2 an optional direct-claim lane through `Rc` gated by
-  the Path-A verifier, with a UI warning and a delay/jitter suggestion; keep the batching ingress as the
-  default for privacy. Not before `GlobalPathAVerifier` is wired in keepers.
+## 7. Security review (critical surface)
 
-## 6. Security review
+1. **Replay across ctx/chain**: ctx binds chain_id, contract address and round; signatures for testnet, a fork, another
+   instance or a past round fail. Within chain: REGISTERED blocks semantic replay; unordered hash store (a) or sequence (c) blocks byte replay.
+2. **Domain separation**: EVM inside EIP-191 with prefix `headstash-register-v1:`; Solana raw with `headstash-register-sol-v1:`.
+   A Solana `signMessage` payload starting with ASCII `h` cannot parse as a Solana tx (Phantom also refuses tx-shaped messages);
+   not a Cosmos SignDoc; not EIP-712. Leaf tags separate address spaces. Do not reuse the same message for claims.
+3. **Malleability**: secp256k1 require low-s and v in {0,1,27,28}; identity = recovered address. ed25519 host verify
+   (ed25519-zebra) rejects non-canonical s; identity = pubkey. Never key state by signature bytes or tx hash.
+4. **One per address**: REGISTERED in contract; checked in HRA and execute; duplicates in one block fail at DeliverTx ante before fee.
+5. **Griefing / drain**: section 3.2; pin fee, gas floor/ceiling, denom; per-block cap; all contract preconditions in HRA.
+6. **Ownership**: checked twice by the same function; execute never trusts "ante already checked".
+7. **Authenticator scope**: MessageFilter pins type, sender R, contract, empty funds, `register_headstash` only; one message
+   per tx (reject multi-msg so a valid registration cannot carry a second message paid by R); no memo-carried data trusted.
+   Cosmwasm leg rejects unknown fields in its params.
+8. **Registrar key and admin control**: R must not have a usable private key, or the holder can bypass HRA via the
+   classic path (`app/abci/ante.go:97-101`) and spend R's funds or call `RemoveAuthenticator`/`AddAuthenticator`
+   (`msg_server.go:29, 67`). Options: (i) R created at upgrade as a module-derived address with HRA installed by the upgrade
+   handler (no key exists); (ii) R a cw3/DAO multisig contract account. Recommend (i). cw-headstash wasm admin can migrate
+   the sudo logic: admin must be the DAO/gov with a timelock; vk_hash lock unaffected. Circuit breaker
+   (`msg_server.go:92-108`) can disable all authenticators chain-wide: registration then halts (fails closed); document it.
+9. **Gas**: the HRA must fit `MaximumUnauthenticatedGas` or authenticate always fails (`ante.go:86-95`); benchmark.
+10. **Privacy**: registration is linkable by design. Claims stay on the batched ingress; a direct claim through R would link
+    timing/IP and shrink the anonymity set, so out of scope.
 
-1. **Replay across ctx/chain**: message includes `ctx`; `ctx` must bind chain_id, cw-headstash address and
-   registration round. Signatures for a testnet or another headstash instance fail. Unordered tx hash store
-   plus "already registered" prevents in-chain replay.
-2. **Domain separation**: distinct prefixes `headstash-register-v1` (EVM, inside EIP-191) and
-   `headstash-register-sol-v1` (Solana raw). Neither can be a valid Cosmos SignDoc, Solana transaction (Phantom
-   refuses to `signMessage` tx-shaped bytes, and text starting with `h` is not a valid tx header), or an EIP-712
-   payload. Leaf tags 0x01/0x02 separate address spaces.
-3. **Malleability**: secp256k1: require low-s and v in {27,28}/{0,1}; identity is the recovered address, not the
-   signature, so a malleated sig cannot double-register. ed25519: `ed25519_verify` in cosmwasm-crypto
-   (ed25519-zebra) rejects non-canonical s; registration identity is the pubkey. Never key any store by signature bytes.
-4. **DoS/spam without fees**: (a) ante does all checks in CheckTx, so invalid txs never enter the mempool;
-   (b) one registration per eligible address via Track (tx count is bounded by eligible-set size, roughly
-   thousands); (c) `HRA_MAX_GAS` and static gas charged before crypto; (d) cap HRA txs per block (e.g. 50) and
-   mempool priority below fee-paying txs; (e) CheckTx cost of a bogus tx is one sig verify, so per-peer rate
-   limits in CometBFT mempool config; (f) window open/close in contract config.
-5. **Ownership**: verified twice, in HRA and in cw-headstash execute. Contract must not accept an
-   "authenticated by ante" flag. Requirement "no sidecar or verifier may skip the ownership check" is preserved.
-6. **Authenticator scope creep**: `R` has exactly one authenticator; `R` holds no funds (contract must reject
-   `funds`, and any bank send to `R` is irrelevant because HRA only signs one exact message form);
-   authenticator management for `R` only by governance (no `MsgAddAuthenticator` from `R` itself, which the
-   filter already excludes); MessageFilter pattern pins contract address, so a migration of cw-headstash
-   requires a gov update; zero-fee lane keyed on authenticator id + `R`, not on message type.
-7. **Front-running**: a mempool observer can rebroadcast the same tx; harmless (same key_com). Cannot change
-   `key_com` because it is signed.
-8. **Circuit breaker**: if smart-account is disabled via circuit breaker, registration falls back to the relay path; document it.
-
-## 7. Changes per component (rough effort)
+## 8. Changes per component and effort (revised, no chain fee lane)
 
 | Component | Change | Effort |
 |---|---|---|
-| Chain: `x/smart-account` | `HeadstashOwnershipAuth` (Go native preferred for gas; or CosmWasm via existing sudo) with Track store; unordered/no-sequence replay mode for `R`; zero-fee lane in `AuthenticatorDecorator` | 1.5-2.5 wk incl. tests |
-| Chain: app/upgrade | create `R`, register HRA via upgrade handler/gov, globalfee predicate decorator, per-block cap | 3-5 d |
-| cw-headstash | `RegisterHeadstash` signature payload enum `{Secp256k1Eip191, Ed25519{pubkey}}`; `register_message_sol`; ed25519 via `deps.api.ed25519_verify`; tagged leaf; reject funds; optional `sender == R or anyone` (keep permissionless) | 3-5 d |
-| Eligibility root / tools/headstash | include stoned-ape-club leaves (base58 decode to 32B; snapshot holds base64(utf8(base58))); rebuild root; publish leaf spec | 2-3 d |
-| Front end | Phantom/Solflare `signMessage`, unordered tx builder with `TxExtension` selected authenticator, direct broadcast, multi-RPC | 1 wk |
-| Relay | keep `headstash-register-relay` as fallback, teach it ed25519 | 1 d |
+| cw-headstash | shared `verify_registration`; ed25519 path; `auth` enum; tagged eligible id/leaf; sudo `authenticate` entry (no-op track/confirm); fee/gas pin params | 4-6 d |
+| Chain | (c) none. (a) unordered wiring in `app/abci/ante.go` + replay mode at `ante.go:171`; create R and install HRA in upgrade handler | (c) 0; (a) 4-6 d |
+| Ops | fund R, monitoring, alerts | 1-2 d |
+| Eligibility tooling | decode SAC entries, off-curve check, rebuild root | 2 d |
+| Front end | Phantom/Solflare signMessage, tx with sender R + selected authenticator, shard/unordered logic, multi-RPC | 4-5 d |
+| Benchmarks/tests | HRA gas vs 120k, drain tests, duplicate-in-block test | 2-3 d |
+Total: ~2.5-3 weeks (was 3-4).
 
-## 8. vk_hash impact
+## 9. vk_hash impact
+None. Registration is outside the circuit; only the eligibility root and contract registration code change.
 
-None. Registration is outside the circuit: the circuit proves membership of `Poseidon(secret)` in the registration
-tree and the nullifier, independent of how the leaf was admitted. The eligibility-leaf tag change touches only
-the eligibility root checked in cw-headstash, not circuit public inputs. The locked vk_hash stays valid.
-Only the phase-2 claim lane would touch verification, and it must reuse the same vk_hash.
-
-## 9. Open questions / decisions
-
-- OQ1: exact old Solana claim message (raw text vs Solana off-chain envelope, field order). Source of the old contract is not in this repo.
-- OQ2: is the current eligibility root already published? If so, re-root (adds tag) or EVM-untagged + Solana-tagged.
-- OQ3: zero-fee lane (chain change) vs feegranted `R` (no fee-logic change, needs funding).
-- OQ4: native Go authenticator (cheaper, chain upgrade per change) vs CosmWasm authenticator contract (upgradable, heavier gas).
-- OQ5: per-block cap and mempool priority values.
-- OQ6: ship phase-2 direct-claim lane at all, given anonymity-set cost.
-- OQ7: Solana pubkey or base58 string as on-chain identity in events (pubkey recommended).
+## 10. Open questions
+- OQ1: is the EVM eligibility root already published (untagged EVM + tagged Solana, or full re-root)?
+- OQ2: sequence: ship (c) sharded registrars now and (a) unordered later, or wait for (a)?
+- OQ3: HRA gas: raise `MaximumUnauthenticatedGas` by param change, use a native Go leg, or trim the path check?
+- OQ4: R creation: module-derived at upgrade (recommended) vs DAO multisig account.
+- OQ5: fee/gas caps and per-block cap values; R funding budget and who tops up.
+- OQ6: sudo authenticator inside cw-headstash (recommended) vs separate headstash-auth contract.
