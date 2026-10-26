@@ -451,6 +451,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 anchor.as_slice(),
             )?)
         }
+        QueryMsg::Registered { identity } => {
+            to_json_binary(&registration::is_registered(deps.storage, &identity)?)
+        }
     }
 }
 

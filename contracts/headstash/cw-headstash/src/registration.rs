@@ -1241,6 +1241,18 @@ mod tests {
         assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 2);
         assert!(is_registered(deps.as_ref().storage, &sol_identity(&sol.pubkey)).unwrap());
         assert!(is_registered(deps.as_ref().storage, &evm_identity(&evm.address)).unwrap());
+        let q: bool = cosmwasm_std::from_json(
+            crate::query(
+                deps.as_ref(),
+                env.clone(),
+                QueryMsg::Registered {
+                    identity: sol_identity(&sol.pubkey),
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(q);
     }
 
     #[test]

@@ -228,6 +228,10 @@ pub enum QueryMsg {
     /// Sixteen little-endian siblings for `key_com` under one accepted root.
     #[returns(crate::registration::RegistrationPathResponse)]
     RegistrationPath { key_com: Binary, anchor: Binary },
+    /// Whether an eligible identity already registered. `identity` is the
+    /// 40-char lowercase hex EVM address, or `sol:` + 64-char hex pubkey.
+    #[returns(bool)]
+    Registered { identity: String },
 }
 
 #[cw_serde]
