@@ -227,6 +227,12 @@ fn main() -> Result<()> {
     let env_path = args.env_file.clone().unwrap_or_else(|| {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../scripts/ibc-ops/cw-orch-ibc/.env")
     });
+    if std::env::var("TERP_SCRIPT_LEGACY_SIGNER").as_deref() != Ok("1") {
+        bail!(
+            "this broadcast signs with DAO_MEMBER1_MNEMONIC, which is no longer the default. \
+Use `cargo run -p dao-scripts --bin fiab_subdao -- --broadcast ...` (cw-orch-kms), or opt in with TERP_SCRIPT_LEGACY_SIGNER=1."
+        );
+    }
     load_env(&env_path)?;
     let mut secrets = Vec::new();
     let phrase = required_phrase("DAO_MEMBER1_MNEMONIC", &mut secrets)?;
@@ -277,6 +283,7 @@ fn chain_info(args: &Args) -> ChainInfoOwned {
         gas_denom: "uthiol".into(),
         gas_price: 0.05,
         grpc_urls: vec![args.grpc_url.clone()],
+        rpc_urls: vec![],
         lcd_url: Some(args.lcd_url.clone()),
         fcd_url: None,
         network_info: NetworkInfoOwned {

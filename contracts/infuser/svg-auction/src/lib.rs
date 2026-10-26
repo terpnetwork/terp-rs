@@ -15,6 +15,14 @@ use cosmwasm_std::{
 };
 use cw_storage_plus::{Bound, Item, Map};
 
+/// cw-orch contract id and artifact label (`artifacts/svg_auction.wasm`).
+pub const CONTRACT_NAME: &str = "svg-auction";
+
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::SvgAuction;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ContractError {
     #[error(transparent)]
@@ -124,6 +132,10 @@ pub struct Bid {
     pub time: Timestamp,
     pub refunded: bool,
 }
+
+/// Migrate message. Intentionally empty: migrate is a plain capability entrypoint.
+#[cw_serde]
+pub struct MigrateMsg {}
 
 const CONFIG: Item<Config> = Item::new("config");
 const NEXT_ID: Item<u64> = Item::new("next_id");
@@ -446,5 +458,35 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn migrate(
+    _deps: DepsMut,
+    _env: Env,
+    _msg: MigrateMsg,
+    _info: cosmwasm_std::MigrateInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("action", "migrate"))
+}
+
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod migrate_tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+
+    #[test]
+    fn migrate_ok() {
+        let mut deps = mock_dependencies();
+        let admin = deps.api.addr_make("admin");
+        let res = migrate(
+            deps.as_mut(),
+            mock_env(),
+            MigrateMsg {},
+            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+        )
+        .unwrap();
+        assert_eq!(res.attributes[0].value, "migrate");
+    }
+}

@@ -172,7 +172,7 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
-    dotenv::dotenv()?;
+    dao_scripts::kms_gate::legacy_signer("dels (bitsong mnemonic Daemon)", "foundation_delegate / fiab_subdao (cw-orch-kms)")?;
     // Fix for rustls 0.23+ CryptoProvider
     rustls::crypto::ring::default_provider()
         .install_default()

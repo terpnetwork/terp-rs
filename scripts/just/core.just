@@ -61,14 +61,20 @@ scripts-ibc-harness:
 optimize:
     #!/usr/bin/env bash
     set -euo pipefail
-    image=terpnetwork/optimizer:0.17.0
+    # Local image: tools/optimizer, `make build-arm64-local` (or build-amd64-local).
+    # Guest rustc 1.91.0; bob only builds members with a cdylib lib target.
+    image=terpnetwork/optimizer:0.17.0-rust1.91
     case "$(uname -m)" in
-      arm64|aarch64) image=terpnetwork/optimizer-arm64:0.17.0 ;;
+      arm64|aarch64) image=terpnetwork/optimizer-arm64:0.17.0-rust1.91 ;;
     esac
-    cd ..
+    # justfile_directory() is the root justfile (terp-rs), even inside this module.
+    # Mount crates/, the parent of terp-rs, so ../cosmwasm and other sibling path
+    # dependencies resolve.
+    cd "{{justfile_directory()}}/.."
+    test -f terp-rs/Cargo.toml || { echo "optimize: expected terp-rs/ under $(pwd)" >&2; exit 1; }
     docker run --rm \
       -v "$(pwd)":/workspace \
       -e PROJECT_DIR=/workspace/terp-rs \
-      --mount type=volume,source=terp-rs_cache,target=/target \
+      --mount type=volume,source="${OPTIMIZE_TARGET_VOLUME:-terp-rs_cache}",target=/target \
       --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
       "$image"

@@ -13,7 +13,7 @@ const CONTRACT_NAME: &str = "crates.io:cw-oracle-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const ALGO_PRICE_MEDIAN_V1: &str = "price_median_v1";
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -38,7 +38,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate_oracle_registry"))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -91,7 +91,7 @@ pub fn execute(
     }
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::HashMerchant {
@@ -289,7 +289,7 @@ fn record_observation(
     Ok(res)
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => {
@@ -375,4 +375,34 @@ pub fn height_weighted_twap(rows: &[Observation]) -> Decimal {
         return rows[rows.len() - 1].mid;
     }
     acc / Decimal::from_ratio(weight, 1u64)
+}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn migrate(
+    _deps: DepsMut,
+    _env: Env,
+    _msg: MigrateMsg,
+    _info: cosmwasm_std::MigrateInfo,
+) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+#[cfg(test)]
+mod migrate_tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+
+    #[test]
+    fn migrate_ok() {
+        let mut deps = mock_dependencies();
+        let admin = deps.api.addr_make("admin");
+        let res = migrate(
+            deps.as_mut(),
+            mock_env(),
+            MigrateMsg {},
+            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+        )
+        .unwrap();
+        assert_eq!(res.attributes[0].value, "migrate");
+    }
 }

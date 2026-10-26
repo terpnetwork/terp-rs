@@ -322,21 +322,8 @@ uploadable!(
     cw_reg_eligibility::contract::query
 );
 
-#[interface(
-    svg_auction::InstantiateMsg,
-    svg_auction::ExecuteMsg,
-    svg_auction::QueryMsg,
-    Empty,
-    id = "svg-auction"
-)]
-pub struct SvgAuction;
-uploadable!(
-    SvgAuction,
-    "svg_auction",
-    svg_auction::execute,
-    svg_auction::instantiate,
-    svg_auction::query
-);
+/// Crate interface: carries `MigrateMsg` and `.with_migrate(migrate)`.
+pub use svg_auction::SvgAuction;
 
 #[interface(
     cw_oracle_registry::msg::InstantiateMsg,

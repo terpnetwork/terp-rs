@@ -1,0 +1,19 @@
+# Example only. Do not install or enable this unit from the repo.
+# Copy by hand if you want a daily corpus refresh. It does not restart the bot.
+# The running process keeps the previous sqlite inode until it reopens the file.
+#
+# Env names only. Put secrets in an EnvironmentFile the host already owns;
+# this example sets none.
+
+[Unit]
+Description=Refresh terp docs sqlite corpus (example)
+Documentation=file:scripts/refresh-docs.sh
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/terp-bot
+# Environment=EDGAR_BIN=/opt/terp-bot/bin/edgar
+Environment=TERP_DOCS_SQLITE=/opt/terp-bot/data/docs/terp-docs.sqlite
+Environment=TERP_DOCS_URL=https://terp.network
+Environment=TERP_DOCS_LABEL=terp
+ExecStart=/opt/terp-bot/scripts/refresh-docs.sh

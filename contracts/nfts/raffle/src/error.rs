@@ -57,6 +57,8 @@ pub enum ContractError {
     RandomnessSet,
     #[error("reply did not include draw attributes")]
     BadDrawReply,
+    #[error("oracle: {0}")]
+    Oracle(#[from] terp_oracle::OracleError),
 }
 
 impl From<nftfi_utils::PullError> for ContractError {

@@ -5,8 +5,6 @@ edition = "2024"
 publish = false
 description = "Off-chain builders for packed-only (SVP1) cw721-svg collections: Marain orb + Symbient ASCII"
 
-[workspace]
-
 [dependencies]
 cw-svg = { path = "../../crates/cw-svg" }
 cw-svg-pack = { path = "../../crates/svg-codec" }

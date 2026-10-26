@@ -16,6 +16,11 @@ use sha2::{Digest, Sha256};
 pub const MAX_SVG_SIZE: usize = 42 * 1024;
 pub const MAX_TOTAL_SUPPLY: u64 = 10_000;
 pub const PAUSED: Item<()> = Item::new("svg_paused");
+/// Optional oracle pricing for paying the mint in an alt asset.
+pub const ORACLE_PRICING: Item<terp_oracle::OraclePricing> = Item::new("svg_oracle_pricing");
+/// Address that instantiated this collection (e.g. the cw-svg-minter factory);
+/// may set oracle pricing alongside the creator owner.
+pub const INSTANTIATOR: Item<Addr> = Item::new("svg_instantiator");
 /// Raw SVP1 bytes: the only copy of the template and variables.
 pub const SVG_PACKED_KEY: &[u8] = b"svg_packed";
 
@@ -293,9 +298,11 @@ pub fn execute_mint(
     }
     // Native collection payment skipped for whitelist OR DREGG runtime (OR-rail foreign pay).
     let payment_msg = if is_whitelisted || is_dregg_runtime {
-        None
+        vec![]
     } else {
         validate_and_build_payment(
+            deps.as_ref(),
+            &env,
             c.config.withdraw_address.load(deps.storage)?,
             &config,
             &info,
@@ -372,9 +379,7 @@ pub fn execute_mint(
         .add_attribute("minter", info.sender.to_string())
         .add_attribute("amount", amnt.to_string());
 
-    if let Some(bank_msg) = payment_msg {
-        res = res.add_message(bank_msg);
-    }
+    res = res.add_messages(payment_msg);
 
     for event in events {
         res = res.add_event(event);
@@ -485,8 +490,14 @@ pub enum SvgExecuteMsgExt {
         /// Set to Some(addr) to enable whitelist, None to disable
         address: Option<String>,
     },
+    /// Creator owner or instantiator: set (or clear with None) oracle pricing for
+    /// paying the mint price in alt assets.
+    SetOraclePricing {
+        pricing: Option<terp_oracle::OraclePricing>,
+    },
 }
 
+#[terp_oracle::oracle_query]
 #[cw_ownable::cw_ownable_query]
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
 #[cw_serde]
@@ -565,13 +576,18 @@ pub struct MintCountResponse {
 
 /// Validate that the sent funds match the required payment for `amount` tokens.
 /// Returns the total cost as a BankMsg to forward to the payment address.
+///
+/// With [`ORACLE_PRICING`] set and enforced, a single coin of a configured alt
+/// asset is accepted instead: at least the oracle-quoted amount, excess refunded.
 fn validate_and_build_payment(
+    deps: Deps,
+    env: &Env,
     payment_address: String,
     config: &crate::SvgCollectionMetadata,
     info: &MessageInfo,
     mint_count: u64,
     amount: u64,
-) -> Result<Option<BankMsg>, ContractError> {
+) -> Result<Vec<BankMsg>, ContractError> {
     // If no price tiers, mint is free — require no funds
     if config.price_tiers.is_empty() {
         if !info.funds.is_empty() {
@@ -579,7 +595,7 @@ fn validate_and_build_payment(
                 expected: "free mint (no funds)".into(),
             });
         }
-        return Ok(None);
+        return Ok(vec![]);
     }
 
     // Calculate total cost across all tokens being minted.
@@ -608,7 +624,23 @@ fn validate_and_build_payment(
     }
     let denom = expected_denom.unwrap();
     if total_cost.is_zero() {
-        return Ok(None);
+        return Ok(vec![]);
+    }
+
+    // Alt asset path: no base-denom coin sent and oracle pricing configured.
+    if !info.funds.iter().any(|c| c.denom == denom) {
+        if let Some(pricing) = ORACLE_PRICING.may_load(deps.storage)? {
+            if !info.funds.is_empty() {
+                return settle_alt_payment(
+                    deps,
+                    env.block.height,
+                    &pricing,
+                    Coin::new(total_cost, denom.clone()),
+                    payment_address,
+                    info,
+                );
+            }
+        }
     }
 
     // Check the sender sent exactly the right amount
@@ -625,13 +657,44 @@ fn validate_and_build_payment(
         });
     }
 
-    Ok(Some(BankMsg::Send {
+    Ok(vec![BankMsg::Send {
         to_address: payment_address,
         amount: vec![Coin {
             denom,
             amount: total_cost,
         }],
-    }))
+    }])
+}
+
+/// Creator owner or the instantiator (factory): set or clear oracle pricing.
+pub fn execute_set_oracle_pricing(
+    deps: DepsMut,
+    info: MessageInfo,
+    pricing: Option<terp_oracle::OraclePricing>,
+) -> Result<Response, ContractError> {
+    let owner = Cw721SvgContract::default()
+        .query_creator_ownership(deps.storage)?
+        .owner;
+    let instantiator = INSTANTIATOR.may_load(deps.storage)?;
+    if owner.as_ref() != Some(&info.sender) && instantiator.as_ref() != Some(&info.sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+    match &pricing {
+        Some(p) => {
+            p.validate(deps.api)
+                .map_err(|e| ContractError::GenericMsg { m: e.to_string() })?;
+            ORACLE_PRICING.save(deps.storage, p)?;
+        }
+        None => ORACLE_PRICING.remove(deps.storage),
+    }
+    Ok(Response::new()
+        .add_attribute("action", "set_oracle_pricing")
+        .add_attribute(
+            "enforce",
+            pricing
+                .map(|p| p.enforce.to_string())
+                .unwrap_or("none".into()),
+        ))
 }
 
 /// Verify that the sender is on the merkle whitelist and has not exceeded their mint allocation.
@@ -859,4 +922,32 @@ mod interface {
             Box::new(ContractWrapper::new_with_empty(execute, instantiate, query))
         }
     }
+}
+
+/// Oracle alt-asset settlement, kept out of line so it is not folded into the
+/// `execute` export (arm64 singlepass relocation budget; see `cw721_svg_fn_split`).
+#[inline(never)]
+pub fn settle_alt_payment(
+    deps: Deps,
+    height: u64,
+    pricing: &terp_oracle::OraclePricing,
+    cost: Coin,
+    payment_address: String,
+    info: &MessageInfo,
+) -> Result<Vec<BankMsg>, ContractError> {
+    let s = terp_oracle::settle_payment(&deps.querier, height, Some(pricing), &cost, &info.funds)
+        .map_err(|e| ContractError::IncorrectPayment {
+        expected: e.to_string(),
+    })?;
+    let mut msgs = vec![BankMsg::Send {
+        to_address: payment_address,
+        amount: vec![s.charged],
+    }];
+    if let Some(refund) = s.refund {
+        msgs.push(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: vec![refund],
+        });
+    }
+    Ok(msgs)
 }

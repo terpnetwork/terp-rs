@@ -1,9 +1,17 @@
 use cosmwasm_std::coin;
 
+/// Terp Foundation DAO core. Default wasm admin, owner, minter and creator for new
+/// deploy scripts. Admin rotation is planned: the Foundation DAO holds these roles only while we deploy and bootstrap.
+pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w";
+
+pub mod benders;
+pub mod collection;
+pub mod drops;
 pub mod suite;
 pub mod yijing;
 
 pub mod prelude {
+    pub use crate::collection::{SvgCollectionConfig, SvgCollectionSuite, SvgFactory, SeriesConfig};
     pub use crate::suite::{CwSvgSuite, CwSvgSuiteDeployData};
 }
 

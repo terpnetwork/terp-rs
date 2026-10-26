@@ -1,10 +1,11 @@
 use cosmwasm_schema::write_api;
-use nftfi_loan::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use nftfi_loan::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {
         instantiate: InstantiateMsg,
         execute: ExecuteMsg,
         query: QueryMsg,
+        migrate: MigrateMsg,
     }
 }

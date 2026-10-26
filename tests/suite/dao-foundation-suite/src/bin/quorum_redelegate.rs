@@ -514,6 +514,7 @@ fn chain_info(args: &Args) -> ChainInfoOwned {
         gas_denom: "uthiol".into(),
         gas_price,
         grpc_urls: vec![args.grpc_url.clone()],
+        rpc_urls: vec![],
         lcd_url: Some(args.lcd.clone()),
         fcd_url: None,
         network_info: NetworkInfoOwned {

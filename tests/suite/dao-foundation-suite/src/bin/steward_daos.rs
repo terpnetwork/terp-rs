@@ -5,6 +5,7 @@
 //! payloads. Sends nothing. There is no `--broadcast`.
 
 use anyhow::{Context, Result, bail};
+use cw_orch::prelude::TxHandler;
 use clap::Parser;
 use dao_foundation_suite::ibc_ops::native_delegation::{CODE_CORE, PARENT_CORE};
 use dao_foundation_suite::ibc_ops::steward::{
@@ -38,6 +39,24 @@ struct Args {
     osmosis_cw4_group: Option<u64>,
     #[arg(long)]
     osmosis_proposal_single: Option<u64>,
+
+    /// Sign a cw-orch-kms session and submit the foundation proposal from the ephemeral key.
+    #[arg(long)]
+    kms: bool,
+
+    /// Optional. When empty with `--kms`, the airgapped signature chooses the granter.
+    #[arg(long, default_value = "")]
+    granter: String,
+
+    /// Boot local 240u-1. Required with `--kms` so the session has a chain.
+    #[arg(long)]
+    spawn: bool,
+
+    #[arg(long, default_value_t = 0u32)]
+    account_index: u32,
+
+    #[arg(long, default_value_t = 2 * 60 * 60)]
+    ttl_secs: u64,
 }
 
 fn fetch_checksum(lcd: &str, code_id: u64) -> Result<Vec<u8>> {
@@ -132,5 +151,81 @@ fn main() -> Result<()> {
     let index_path = out_dir.join("plan.json");
     std::fs::write(&index_path, serde_json::to_string_pretty(&index)?)?;
     println!("{}", serde_json::to_string_pretty(&index)?);
+    if args.kms {
+        anyhow::bail!(
+            "steward_daos --kms (cw-orch-granter v1 + --spawn) is retired. The plan above is written; \
+broadcast with `cargo run -p dao-scripts --bin steward_multi_dao -- --broadcast --chain-id morocco-1 --granter terp1...` \
+(cw-orch-kms v2, scoped propose)."
+        );
+        #[allow(unreachable_code)]
+        submit_foundation(&args, &plan.foundation_proposal)?;
+    }
+    Ok(())
+}
+
+fn submit_foundation(args: &Args, proposal: &serde_json::Value) -> Result<()> {
+    if !args.spawn {
+        bail!("steward --kms needs --spawn so the session lands on 240u-1");
+    }
+    let granter = if args.granter.is_empty() {
+        println!("sign once at http://127.0.0.1:8741. that key is the granter");
+        cw_orch_kms::capture_granter_sync(
+            "127.0.0.1:8741".parse()?,
+            args.account_index,
+            "steward-daos",
+        )
+        .map_err(|err| anyhow::anyhow!(err))?
+    } else {
+        args.granter.clone()
+    };
+    println!("granter {granter}");
+    let spawned = cw_orch_kms::SpawnedTerp::boot().map_err(|err| anyhow::anyhow!(err))?;
+    spawned.fund(&granter).map_err(|err| anyhow::anyhow!(err))?;
+    let info = spawned.chain_info();
+    if info.chain_id != cw_orch_kms::SPAWN_CHAIN_ID {
+        bail!(
+            "spawn destination is {}, expected {}",
+            info.chain_id,
+            cw_orch_kms::SPAWN_CHAIN_ID
+        );
+    }
+    println!(
+        "spawn destination {} grpc {}",
+        info.chain_id,
+        info.grpc_urls.first().map(String::as_str).unwrap_or("")
+    );
+    let call = cw_orch_kms::ScopedCall {
+        address: dao_foundation_suite::ibc_ops::native_delegation::PRE_PROPOSE_A.into(),
+        keys: vec!["propose".into()],
+        calls: 1,
+        funds: vec![],
+    };
+    let mut session = cw_orch_kms::ApprovalSession::open(&granter)
+        .allow_execute(call)
+        .map_err(|err| anyhow::anyhow!(err))?;
+    session.ttl_secs = args.ttl_secs;
+    session.account_index = args.account_index;
+    session.allowance_limit = cw_orch_kms::planned_spend_limit(2);
+    let mut builder = cw_orch::prelude::DaemonBuilder::new(info);
+    builder.load_network(false).is_test(true);
+    let actions = vec![
+        cw_orch_kms::SigningRequest::new("session-key")
+            .body("propose steward and custody DAOs"),
+    ];
+    let run = cw_orch_kms::enable_session(&builder, session, actions)
+        .map_err(|err| anyhow::anyhow!(err))?;
+    let resp = run
+        .daemon
+        .execute(
+            proposal,
+            &[],
+            &cw_orch::prelude::Addr::unchecked(
+                dao_foundation_suite::ibc_ops::native_delegation::PRE_PROPOSE_A,
+            ),
+        )
+        .map_err(|err| anyhow::anyhow!("foundation proposal: {err}"))?;
+    println!("foundation proposal tx {}", resp.txhash);
+    run.close().map_err(|err| anyhow::anyhow!(err))?;
+    println!("session grant closed");
     Ok(())
 }

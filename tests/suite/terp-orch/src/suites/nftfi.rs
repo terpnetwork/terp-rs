@@ -101,6 +101,7 @@ impl<Chain: CwEnv> Deploy<Chain> for NftfiSuite<Chain> {
                 minimum_raffle_duration: Some(1),
                 max_tickets_per_raffle: Some(100),
                 raffle_fee: data.raffle_fee,
+                oracle_pricing: None,
                 creation_coins: data.creation_coins,
                 randomness: nftfi_randomness::RandomnessSourceMsg::Seed { provider: None },
             },

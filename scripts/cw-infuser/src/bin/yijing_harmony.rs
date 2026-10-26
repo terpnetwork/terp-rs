@@ -234,6 +234,7 @@ fn local(
                 owner: Some(sender.to_string()),
                 svg_code_id: suite.cwsvg.code_id()?,
                 dregg_ibc_only: false,
+                oracle_pricing: None,
                 runtime_minters: vec![],
             },
             Some(&sender),

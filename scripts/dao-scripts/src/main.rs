@@ -6,7 +6,7 @@ fn main() -> anyhow::Result<()> {
         .install_default()
         .unwrap();
     env_logger::init();
-    dotenv::dotenv().ok();
+    dao_scripts::kms_gate::legacy_signer("dao-scripts main (TERP_MAINNET mnemonic upload)", "app_upload / dao_upload (cw-orch-kms)")?;
     let terp = Daemon::builder(networks::TERP_MAINNET).build()?;
 
     let dao = DaoDaoSuite::new(terp.clone());

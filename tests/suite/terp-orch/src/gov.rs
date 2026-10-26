@@ -48,7 +48,7 @@ struct Args {
     #[arg(long)]
     proposal: Option<PathBuf>,
 
-    /// dotenv file with MAIN_MNEMONIC. Default: scripts/release/.env
+    /// dotenv file with MAIN_MNEMONIC. Read only with `--legacy-signer`.
     #[arg(long, env = "UPGRADE_ENV_FILE")]
     env_file: Option<PathBuf>,
 
@@ -74,6 +74,31 @@ struct Args {
     /// Keyring home for `--from`. Default: $HOME/.terpd
     #[arg(long, env = "TERP_HOME")]
     key_home: Option<PathBuf>,
+
+    /// Accepted for compatibility. cw-orch-kms is the default signer: the
+    /// ephemeral key pays the deposit under a v2 grant for `MsgSubmitProposal`.
+    /// MsgRecoverClient stays signed by the gov module.
+    #[arg(long, hide = true)]
+    kms: bool,
+
+    /// Opt in to the old signer: MAIN_MNEMONIC/TEST_MNEMONIC from the env file,
+    /// else `terpd keys export` from the test keyring. Off by default.
+    #[arg(long, conflicts_with = "kms")]
+    legacy_signer: bool,
+
+    /// Optional. When empty with `--kms`, the airgapped signature chooses the granter.
+    #[arg(long, default_value = "")]
+    granter: String,
+
+    /// Boot local 240u-1 and fund the granter and the ephemeral deposit wallet.
+    #[arg(long)]
+    spawn: bool,
+
+    #[arg(long, default_value_t = 0u32)]
+    account_index: u32,
+
+    #[arg(long, default_value_t = 2 * 60 * 60)]
+    ttl_secs: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -411,6 +436,7 @@ fn chain_info(args: &Args) -> Result<ChainInfoOwned> {
         gas_denom,
         gas_price,
         grpc_urls: vec![grpc],
+        rpc_urls: vec![],
         lcd_url: args
             .lcd_url
             .clone()
@@ -900,7 +926,11 @@ pub fn run() -> Result<()> {
             .map(PathBuf::from)
             .unwrap_or_else(|_| root.join("scripts/release/.env"))
     });
-    load_env(&env_path)?;
+    let kms = !args.legacy_signer;
+    if !kms {
+        println!("signer: legacy (--legacy-signer); loading {}", env_path.display());
+        load_env(&env_path)?;
+    }
     // The node's simulation is the deposit check. cw-orch's extra balance
     // assertion only looks at the gas fee and can fail a simulation the node accepted.
     // SAFETY: this process only sets the flag before cw-orch reads it. Nothing else
@@ -909,7 +939,27 @@ pub fn run() -> Result<()> {
         std::env::set_var("CW_ORCH_WALLET_BALANCE_ASSERTION", "false");
     }
 
-    let chain = chain_info(&args)?;
+    let spawned = if kms && args.spawn {
+        let chain = cw_orch_kms::SpawnedTerp::boot().map_err(|err| anyhow::anyhow!(err))?;
+        Some(chain)
+    } else if args.spawn {
+        bail!("--spawn is not valid with --legacy-signer");
+    } else {
+        None
+    };
+    let chain = if let Some(spawned) = &spawned {
+        let info = spawned.chain_info();
+        if info.chain_id != cw_orch_kms::SPAWN_CHAIN_ID {
+            bail!(
+                "spawn destination is {}, expected {}",
+                info.chain_id,
+                cw_orch_kms::SPAWN_CHAIN_ID
+            );
+        }
+        info
+    } else {
+        chain_info(&args)?
+    };
     let lcd = chain
         .lcd_url
         .clone()
@@ -923,29 +973,70 @@ pub fn run() -> Result<()> {
     println!("lcd: {lcd}");
     println!("gov module: {gov}");
 
-    let signer = signer_source(&args)?;
+    let chain_id = chain.chain_id.clone();
     let mut builder = DaemonBuilder::new(chain);
     builder.load_network(false).is_test(true);
-    let daemon = match &signer {
-        SignerSource::Mnemonic(mnemonic) => {
-            let words = mnemonic.split_whitespace().count();
-            println!("signer: {words}-word mnemonic (not printed)");
-            builder.mnemonic(mnemonic);
-            builder
-                .build()
-                .context("build cw-orch daemon (check GRPC_URL / mnemonic)")?
+    let mut kms_run = None;
+    let daemon = if kms {
+        let granter = if args.granter.is_empty() {
+            println!("sign the cw-orch-granter:v2 challenge at http://127.0.0.1:8741");
+            cw_orch_kms::capture_granter_for_chain_sync(
+                "127.0.0.1:8741".parse()?,
+                args.account_index,
+                "gov-proposal",
+                &chain_id,
+            )
+            .map_err(|err| anyhow::anyhow!(err))?
+        } else {
+            cw_orch_kms::set_approval_chain_id(&chain_id).map_err(|err| anyhow::anyhow!(err))?;
+            args.granter.clone()
+        };
+        println!("granter {granter}");
+        if let Some(spawned) = &spawned {
+            spawned.fund(&granter).map_err(|err| anyhow::anyhow!(err))?;
+            println!("funded granter {granter}");
         }
-        SignerSource::Keyring { name, secret } => {
-            println!("signer: test keyring `{name}` (secret not printed; simulation only)");
-            let expected = keyring_address(&terpd_bin(), name, &key_home(&args)?)?;
-            let daemon = builder
-                .build_sender(CosmosOptions::default().secp256k1_secret(secret.to_vec()))
-                .context("build cw-orch daemon from the test keyring")?;
-            let got = daemon.sender_addr().to_string();
-            if got != expected {
-                bail!("keyring address {expected} did not match the cw-orch signer {got}");
+        let mut session = cw_orch_kms::ApprovalSession::open(&granter)
+            .allow_sdk("/cosmos.gov.v1.MsgSubmitProposal")
+            .map_err(|err| anyhow::anyhow!(err))?;
+        session.ttl_secs = args.ttl_secs;
+        session.account_index = args.account_index;
+        session.allowance_limit = cw_orch_kms::planned_spend_limit(8);
+        let actions = vec![
+            cw_orch_kms::SigningRequest::new("session-key").body("MsgSubmitProposal deposit"),
+        ];
+        let run = cw_orch_kms::enable_session(&builder, session, actions)
+            .map_err(|err| anyhow::anyhow!(err))?;
+        println!(
+            "deposit signer: {} (ephemeral; gov module still signs MsgRecoverClient)",
+            run.daemon.sender_addr()
+        );
+        let daemon = run.daemon.clone();
+        kms_run = Some(run);
+        daemon
+    } else {
+        let signer = signer_source(&args)?;
+        match &signer {
+            SignerSource::Mnemonic(mnemonic) => {
+                let words = mnemonic.split_whitespace().count();
+                println!("signer: {words}-word mnemonic (not printed)");
+                builder.mnemonic(mnemonic);
+                builder
+                    .build()
+                    .context("build cw-orch daemon (check GRPC_URL / mnemonic)")?
             }
-            daemon
+            SignerSource::Keyring { name, secret } => {
+                println!("signer: test keyring `{name}` (secret not printed; simulation only)");
+                let expected = keyring_address(&terpd_bin(), name, &key_home(&args)?)?;
+                let daemon = builder
+                    .build_sender(CosmosOptions::default().secp256k1_secret(secret.to_vec()))
+                    .context("build cw-orch daemon from the test keyring")?;
+                let got = daemon.sender_addr().to_string();
+                if got != expected {
+                    bail!("keyring address {expected} did not match the cw-orch signer {got}");
+                }
+                daemon
+            }
         }
     };
     let proposer = daemon.sender_addr().to_string();
@@ -1071,6 +1162,10 @@ pub fn run() -> Result<()> {
                 }
             }
         }
+    }
+    if let Some(run) = kms_run {
+        run.close().map_err(|err| anyhow::anyhow!(err))?;
+        println!("session grant closed");
     }
     if failures > 0 {
         bail!("{failures} draft(s) failed the dry-run");

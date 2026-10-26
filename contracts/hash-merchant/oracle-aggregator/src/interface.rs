@@ -1,12 +1,12 @@
 use cw_orch::prelude::*;
 
-use crate::{ExecuteMsg, InstantiateMsg, QueryMsg, execute, instantiate, query};
+use crate::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, execute, instantiate, migrate, query};
 
 #[cw_orch::interface(
     InstantiateMsg,
     ExecuteMsg,
     QueryMsg,
-    Empty,
+    MigrateMsg,
     id = "cw-oracle-aggregator"
 )]
 pub struct OracleAggregator;
@@ -19,6 +19,6 @@ impl<Chain: CwEnv> Uploadable for OracleAggregator<Chain> {
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
-        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query))
+        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_migrate(migrate))
     }
 }

@@ -51,6 +51,7 @@ fn chain_info(chain: &CosmosChain) -> ChainInfoOwned {
         gas_denom: cfg.denom.clone(),
         gas_price,
         grpc_urls: vec![chain.host_grpc_address()],
+        rpc_urls: vec![],
         lcd_url: None,
         fcd_url: None,
         network_info: NetworkInfoOwned {

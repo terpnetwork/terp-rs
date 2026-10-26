@@ -14,6 +14,9 @@ pub struct InstantiateMsg {
     /// Terp addrs the DREGG runtime uses (OR with IBC packet receive).
     #[serde(default)]
     pub runtime_minters: Vec<String>,
+    /// Default oracle pricing pushed to each new collection (alt-asset mint payments).
+    #[serde(default)]
+    pub oracle_pricing: Option<terp_oracle::OraclePricing>,
 }
 
 #[cw_serde]
@@ -36,6 +39,20 @@ pub enum ExecuteMsg {
         label: String,
     },
 
+    /// Create a collection under a rate-limited series (see SeriesConfig). The series must
+    /// exist; the cadence is enforced here for every sender, including the owner.
+    CreateSeriesCollection {
+        series: String,
+        instantiate_msg: SvgInstantiateMsg,
+        label: String,
+    },
+
+    /// Owner-only: set (Some) or remove (None) a series config.
+    SetSeries {
+        series: String,
+        config: Option<crate::state::SeriesConfig>,
+    },
+
     /// Owner-only: update the cw721-svg code ID used for new collections.
     UpdateCodeId { code_id: u64 },
 
@@ -44,8 +61,15 @@ pub enum ExecuteMsg {
 
     /// Bind IBC channel/port after handshake (also used by migrate).
     BindDreggChannel { channel: String, port: String },
+
+    /// Owner-only: set (Some) or clear (None) the default oracle pricing for new
+    /// collections. Existing collections are unchanged.
+    UpdateOraclePricing {
+        pricing: Option<terp_oracle::OraclePricing>,
+    },
 }
 
+#[terp_oracle::oracle_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
@@ -88,9 +112,22 @@ pub enum QueryMsg {
     #[returns(::std::primitive::u64)]
     CodeId {},
 
+    /// Series config, recent creation times and the next time a creation is allowed.
+    #[returns(SeriesInfo)]
+    Series { series: String },
+
     /// Bound DREGG IBC channel / runtime minters.
     #[returns(DreggIbcStatus)]
     DreggIbc {},
+}
+
+#[cw_serde]
+pub struct SeriesInfo {
+    pub config: Option<crate::state::SeriesConfig>,
+    /// Unix seconds of recent creations (oldest first).
+    pub recent: Vec<u64>,
+    /// Earliest unix second at which the next creation passes the cadence rules.
+    pub next_allowed_at: Option<u64>,
 }
 
 #[cw_serde]

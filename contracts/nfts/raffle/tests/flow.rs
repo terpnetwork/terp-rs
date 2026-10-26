@@ -101,6 +101,7 @@ fn world(randomness: RandomnessSourceMsg, creation: u128, fee_pct: u64, drop: &S
                 minimum_raffle_duration: Some(1),
                 max_tickets_per_raffle: Some(100),
                 raffle_fee: Decimal::percent(fee_pct),
+                oracle_pricing: None,
                 creation_coins,
                 randomness,
             },
@@ -412,6 +413,7 @@ fn callback_draw() {
                 minimum_raffle_duration: Some(1),
                 max_tickets_per_raffle: None,
                 raffle_fee: Decimal::percent(10),
+                oracle_pricing: None,
                 creation_coins: None,
                 randomness: RandomnessSourceMsg::Callback {
                     verifier: verifier.to_string(),

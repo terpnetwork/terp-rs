@@ -106,3 +106,7 @@ pub struct OfferResponse {
     pub global_offer_id: String,
     pub offer: OfferInfo,
 }
+
+/// Migrate message. Intentionally empty: migrate is a plain capability entrypoint.
+#[cw_serde]
+pub struct MigrateMsg {}

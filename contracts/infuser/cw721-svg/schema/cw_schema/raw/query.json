@@ -112,7 +112,7 @@
           "type": "named",
           "properties": {
             "msg": {
-              "value": 12
+              "value": 18
             }
           }
         },
@@ -309,6 +309,56 @@
             }
           }
         },
+        "oracle_aggregate": {
+          "description": "Prices for several pairs in one call. Failed pairs carry an error string.",
+          "type": "named",
+          "properties": {
+            "pairs": {
+              "value": 14
+            }
+          }
+        },
+        "oracle_price": {
+          "description": "Combined oracle price of `asset` against `base_denom`, with every feed point.",
+          "type": "named",
+          "properties": {
+            "asset": {
+              "value": 12
+            },
+            "base_denom": {
+              "value": 1
+            }
+          }
+        },
+        "oracle_pricing": {
+          "description": "Oracle pricing config, if any. `None` means default-asset only.",
+          "type": "named",
+          "properties": {}
+        },
+        "oracle_quote": {
+          "description": "Amount of `asset` that settles a payment of `base` right now.",
+          "type": "named",
+          "properties": {
+            "asset": {
+              "value": 12
+            },
+            "base": {
+              "value": 15
+            }
+          }
+        },
+        "oracle_raw": {
+          "description": "Raw smart query passthrough to one of the configured oracle contracts.",
+          "type": "named",
+          "properties": {
+            "msg": {
+              "value": 17
+            },
+            "oracle": {
+              "value": 1
+            }
+          }
+        },
         "original_minter": {
           "type": "named",
           "properties": {
@@ -421,60 +471,40 @@
       "signed": false
     },
     {
-      "name": "cw721_svg_state_SvgCollectionMetadata",
-      "type": "struct",
-      "properties": {
-        "mint_end_time": {
-          "value": 19
+      "name": "terp_oracle_types_PriceAsset",
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "type": "enum",
+      "cases": {
+        "cw20": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
         },
-        "mint_start_time": {
-          "description": "Timestamp of mint start. If less than current block, mints available",
-          "value": 19
-        },
-        "packed": {
-          "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
-          "value": 13
-        },
-        "price_tiers": {
-          "description": "Price tiers for minting. Empty or None = free mint.",
-          "value": 17
-        },
-        "require_auth": {
-          "defaulting": true,
-          "description": "When true, every mint must include valid ADR-36 `ext` auth\n(`CosmosArbitrary` over DST+nonce[|digest]). Required for trustless\npledge collections; default false preserves open-mint SVG drops.",
-          "value": 2
-        },
-        "seed": {
-          "value": 13
-        },
-        "total": {
-          "value": 11
-        },
-        "whitelist": {
-          "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
-          "value": 4
+        "native": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
         }
       }
     },
     {
-      "name": "cosmwasm_std_binary_Binary",
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
-      "type": "binary"
-    },
-    {
-      "name": "cw721_svg_contract_PriceTier",
-      "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
+      "name": "terp_oracle_types_AssetPair",
       "type": "struct",
       "properties": {
-        "price": {
-          "description": "Price per token in this tier",
-          "value": 15
+        "asset": {
+          "value": 12
         },
-        "until_count": {
-          "description": "This tier applies while mint_count < until_count",
-          "value": 11
+        "base_denom": {
+          "value": 1
         }
       }
+    },
+    {
+      "name": "alloc::vec::Vec<terp_oracle::types::AssetPair>",
+      "type": "array",
+      "items": 13
     },
     {
       "name": "cosmwasm_std_coin_Coin",
@@ -496,9 +526,65 @@
       "signed": false
     },
     {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw721_svg_state_SvgCollectionMetadata",
+      "type": "struct",
+      "properties": {
+        "mint_end_time": {
+          "value": 22
+        },
+        "mint_start_time": {
+          "description": "Timestamp of mint start. If less than current block, mints available",
+          "value": 22
+        },
+        "packed": {
+          "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
+          "value": 17
+        },
+        "price_tiers": {
+          "description": "Price tiers for minting. Empty or None = free mint.",
+          "value": 20
+        },
+        "require_auth": {
+          "defaulting": true,
+          "description": "When true, every mint must include valid ADR-36 `ext` auth\n(`CosmosArbitrary` over DST+nonce[|digest]). Required for trustless\npledge collections; default false preserves open-mint SVG drops.",
+          "value": 2
+        },
+        "seed": {
+          "value": 17
+        },
+        "total": {
+          "value": 11
+        },
+        "whitelist": {
+          "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw721_svg_contract_PriceTier",
+      "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
+      "type": "struct",
+      "properties": {
+        "price": {
+          "description": "Price per token in this tier",
+          "value": 15
+        },
+        "until_count": {
+          "description": "This tier applies while mint_count < until_count",
+          "value": 11
+        }
+      }
+    },
+    {
       "name": "alloc::vec::Vec<cw721_svg::contract::PriceTier>",
       "type": "array",
-      "items": 14
+      "items": 19
     },
     {
       "name": "cosmwasm_std_timestamp_Timestamp",
@@ -508,7 +594,7 @@
     {
       "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
       "type": "optional",
-      "inner": 18
+      "inner": 21
     }
   ]
 }

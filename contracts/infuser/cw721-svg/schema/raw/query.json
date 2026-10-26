@@ -547,6 +547,22 @@
     }
   ],
   "definitions": {
+    "AssetPair": {
+      "type": "object",
+      "required": [
+        "asset",
+        "base_denom"
+      ],
+      "properties": {
+        "asset": {
+          "$ref": "#/definitions/PriceAsset"
+        },
+        "base_denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
@@ -566,6 +582,35 @@
         }
       },
       "additionalProperties": false
+    },
+    "PriceAsset": {
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "PriceTier": {
       "description": "A price tier that applies until the mint count reaches `until_count`. Tiers must be sorted ascending by `until_count`. Example: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }] means: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
@@ -992,6 +1037,123 @@
               ],
               "properties": {
                 "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Oracle pricing config, if any. `None` means default-asset only.",
+          "type": "object",
+          "required": [
+            "oracle_pricing"
+          ],
+          "properties": {
+            "oracle_pricing": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Combined oracle price of `asset` against `base_denom`, with every feed point.",
+          "type": "object",
+          "required": [
+            "oracle_price"
+          ],
+          "properties": {
+            "oracle_price": {
+              "type": "object",
+              "required": [
+                "asset",
+                "base_denom"
+              ],
+              "properties": {
+                "asset": {
+                  "$ref": "#/definitions/PriceAsset"
+                },
+                "base_denom": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Prices for several pairs in one call. Failed pairs carry an error string.",
+          "type": "object",
+          "required": [
+            "oracle_aggregate"
+          ],
+          "properties": {
+            "oracle_aggregate": {
+              "type": "object",
+              "required": [
+                "pairs"
+              ],
+              "properties": {
+                "pairs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/AssetPair"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Amount of `asset` that settles a payment of `base` right now.",
+          "type": "object",
+          "required": [
+            "oracle_quote"
+          ],
+          "properties": {
+            "oracle_quote": {
+              "type": "object",
+              "required": [
+                "asset",
+                "base"
+              ],
+              "properties": {
+                "asset": {
+                  "$ref": "#/definitions/PriceAsset"
+                },
+                "base": {
+                  "$ref": "#/definitions/Coin"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Raw smart query passthrough to one of the configured oracle contracts.",
+          "type": "object",
+          "required": [
+            "oracle_raw"
+          ],
+          "properties": {
+            "oracle_raw": {
+              "type": "object",
+              "required": [
+                "msg",
+                "oracle"
+              ],
+              "properties": {
+                "msg": {
+                  "$ref": "#/definitions/Binary"
+                },
+                "oracle": {
                   "type": "string"
                 }
               },

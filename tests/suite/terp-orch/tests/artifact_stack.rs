@@ -53,7 +53,15 @@ fn mock_upload_and_instantiate_all() {
     let stack = TerpArtifactStack::deploy_on(mock, admin.clone().into()).expect("mock deploy");
     let norick = stack.products.norick.code_id().expect("cw-norick uploaded");
     assert!(norick > 0, "cw-norick has no code id");
-    assert_bound(&stack);
+    let rows = assert_bound(&stack);
+    assert!(rows.iter().any(|(id, _, _)| *id == "svg-auction"), "svg-auction missing from stack");
+    // Wasm admin is the deploy admin (FOUNDATION_DAO on live deploys), so it can migrate.
+    let auction = &stack.products.svg_auction;
+    let code_id = auction.code_id().expect("svg-auction code id");
+    let res = auction
+        .migrate(&svg_auction::MigrateMsg {}, code_id)
+        .expect("svg-auction migrate via cw-orch");
+    assert_eq!(res.event_attr_value("wasm", "action").unwrap(), "migrate");
     // Compiled artifacts, not the ContractWrapper path above. mock_instance
     // runs them through cosmwasm-vm's wasmer Gatekeeper and metering middleware.
     terp_orch::stack::wasmer_upload_and_instantiate(admin.as_str());

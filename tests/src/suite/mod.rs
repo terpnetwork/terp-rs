@@ -153,6 +153,7 @@ impl SidecarFleet {
             gas_denom: "uterp".to_string(),
             gas_price: 0.025,
             grpc_urls: vec!["http://127.0.0.1:9090".to_string()],
+            rpc_urls: vec![],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {

@@ -134,7 +134,7 @@ fn main() {
         .install_default()
         .unwrap();
     env_logger::init();
-    let _ = dotenv::dotenv();
+    dao_scripts::kms_gate::load_dotenv_public();
 
     let cli = Cli::parse();
     let format = OutputFormat::from(cli.format);

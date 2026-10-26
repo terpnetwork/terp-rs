@@ -11,6 +11,18 @@
       "default": false,
       "type": "boolean"
     },
+    "oracle_pricing": {
+      "description": "Default oracle pricing pushed to each new collection (alt-asset mint payments).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/OraclePricing"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "owner": {
       "description": "Optional owner. If set, only the owner may create collections.",
       "type": [
@@ -33,5 +45,400 @@
       "minimum": 0.0
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "AggregateMethod": {
+      "description": "How several values are combined into one.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "median",
+            "min",
+            "max"
+          ]
+        },
+        {
+          "description": "Weighted by `Feed::weight` (default 1) when combining feeds, and by nothing when combining a history window.",
+          "type": "string",
+          "enum": [
+            "mean"
+          ]
+        },
+        {
+          "description": "Weighted by observation count (`PricePoint::observations`) when combining feeds, and by block gap (piecewise constant, like the registry TWAP) on a history window.",
+          "type": "string",
+          "enum": [
+            "weighted"
+          ]
+        }
+      ]
+    },
+    "AltAsset": {
+      "description": "An alternate asset accepted in place of `base_denom`.",
+      "type": "object",
+      "required": [
+        "alt_decimals",
+        "asset",
+        "base_decimals",
+        "base_denom",
+        "feeds",
+        "quote"
+      ],
+      "properties": {
+        "alt_decimals": {
+          "description": "Decimals of the alt asset.",
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "asset": {
+          "$ref": "#/definitions/PriceAsset"
+        },
+        "base_decimals": {
+          "description": "Decimals of the base denom (e.g. 6 for uterp).",
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "base_denom": {
+          "description": "The default mint asset this alt is priced against.",
+          "type": "string"
+        },
+        "combine": {
+          "description": "How feed values are combined. Default median.",
+          "default": "median",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AggregateMethod"
+            }
+          ]
+        },
+        "feeds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Feed"
+          }
+        },
+        "quote": {
+          "$ref": "#/definitions/Quote"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "string"
+    },
+    "Feed": {
+      "description": "One oracle source.",
+      "type": "object",
+      "required": [
+        "kind",
+        "oracle"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/FeedKind"
+        },
+        "oracle": {
+          "description": "Oracle contract address (registry, aggregator or probe, matching `kind`).",
+          "type": "string"
+        },
+        "weight": {
+          "description": "Weight for `AggregateMethod::Mean` across feeds. Default 1.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "FeedKind": {
+      "description": "What to read from one oracle contract.",
+      "oneOf": [
+        {
+          "description": "Registry `Latest { market_id }`.",
+          "type": "object",
+          "required": [
+            "spot"
+          ],
+          "properties": {
+            "spot": {
+              "type": "object",
+              "required": [
+                "market_id"
+              ],
+              "properties": {
+                "market_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Registry `Twap` over the newest `window_blocks` heights ending at the latest observation.",
+          "type": "object",
+          "required": [
+            "twap"
+          ],
+          "properties": {
+            "twap": {
+              "type": "object",
+              "required": [
+                "market_id",
+                "window_blocks"
+              ],
+              "properties": {
+                "market_id": {
+                  "type": "string"
+                },
+                "window_blocks": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Registry `History { limit }`, combined locally with `method`.",
+          "type": "object",
+          "required": [
+            "history"
+          ],
+          "properties": {
+            "history": {
+              "type": "object",
+              "required": [
+                "limit",
+                "market_id",
+                "method"
+              ],
+              "properties": {
+                "limit": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "market_id": {
+                  "type": "string"
+                },
+                "method": {
+                  "$ref": "#/definitions/AggregateMethod"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Aggregator `Median { market_id, window }`. The height comes from the aggregator's registry `Latest`, so staleness checks still apply.",
+          "type": "object",
+          "required": [
+            "aggregator_median"
+          ],
+          "properties": {
+            "aggregator_median": {
+              "type": "object",
+              "required": [
+                "market_id",
+                "window"
+              ],
+              "properties": {
+                "market_id": {
+                  "type": "string"
+                },
+                "window": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "TWAP probe `ArithmeticTwap { pool_id }`. Carries no height.",
+          "type": "object",
+          "required": [
+            "probe_twap"
+          ],
+          "properties": {
+            "probe_twap": {
+              "type": "object",
+              "required": [
+                "pool_id"
+              ],
+              "properties": {
+                "pool_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "OraclePricing": {
+      "description": "Optional oracle pricing for a minting contract.\n\nAbsent, or `enforce == false`: only the default asset is accepted and payment behaves as before. The oracle queries still answer, so a frontend can show prices before enforcement is switched on.",
+      "type": "object",
+      "required": [
+        "alt_assets",
+        "enforce"
+      ],
+      "properties": {
+        "alt_assets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AltAsset"
+          }
+        },
+        "enforce": {
+          "type": "boolean"
+        },
+        "policy": {
+          "default": {
+            "max_deviation": null,
+            "max_staleness_blocks": null,
+            "min_observations": null,
+            "min_sources": null,
+            "slippage": null
+          },
+          "allOf": [
+            {
+              "$ref": "#/definitions/PricingPolicy"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "PriceAsset": {
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PricingPolicy": {
+      "description": "Guards applied to every price read.",
+      "type": "object",
+      "properties": {
+        "max_deviation": {
+          "description": "Max relative spread between any feed and the combined price, e.g. 0.05.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_staleness_blocks": {
+          "description": "Max `env.block.height - observation.height`. Requires feeds that record local (terp) heights. `None` disables the check.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_observations": {
+          "description": "Min total observations behind the combined price. Default none.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "min_sources": {
+          "description": "Min number of feeds that must answer. Default 1.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "slippage": {
+          "description": "Accepted underpayment against the quote, e.g. 0.01 = pay at least 99%. Overpayment is refunded.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "Quote": {
+      "description": "Direction of the feed price.",
+      "oneOf": [
+        {
+          "description": "Feed value = base units per 1 alt (in display units). E.g. feed `ATOM/TERP = 12.5`, base TERP, alt ATOM: 1 ATOM costs 12.5 TERP.",
+          "type": "string",
+          "enum": [
+            "alt_in_base"
+          ]
+        },
+        {
+          "description": "Feed value = alt units per 1 base (in display units).",
+          "type": "string",
+          "enum": [
+            "base_in_alt"
+          ]
+        }
+      ]
+    }
+  }
 }

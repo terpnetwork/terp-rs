@@ -10,9 +10,9 @@ pub use crate::error::ContractError;
 pub mod interface {
     use cw_orch::{interface, prelude::*};
 
-    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+    use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
-    #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]
+    #[interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg)]
     pub struct OracleRegistryContract;
 
     impl<Chain> Uploadable for OracleRegistryContract<Chain> {
@@ -28,7 +28,8 @@ pub mod interface {
                     crate::contract::instantiate,
                     crate::contract::query,
                 )
-                .with_sudo(crate::contract::sudo),
+                .with_sudo(crate::contract::sudo)
+                .with_migrate(crate::contract::migrate),
             )
         }
     }

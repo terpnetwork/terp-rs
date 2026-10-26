@@ -1,8 +1,8 @@
-use crate::contract::{CONTRACT_NAME, execute, instantiate, query, reply};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::contract::{CONTRACT_NAME, execute, instantiate, migrate, query, reply};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cw_orch::prelude::*;
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_NAME)]
+#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, id = CONTRACT_NAME)]
 pub struct NftfiRaffle;
 
 impl<Chain: CwEnv> Uploadable for NftfiRaffle<Chain> {
@@ -14,7 +14,7 @@ impl<Chain: CwEnv> Uploadable for NftfiRaffle<Chain> {
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(
-            ContractWrapper::new_with_empty(execute, instantiate, query).with_reply_empty(reply),
+            ContractWrapper::new_with_empty(execute, instantiate, query).with_reply_empty(reply).with_migrate(migrate),
         )
     }
 }

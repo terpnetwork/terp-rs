@@ -58,6 +58,15 @@ auth = ["dep:terp-authenticator-suite"]
 ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
 # Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
 headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+# morocco-1 gov drafts. The deposit signer is a cw-orch-kms session.
+gov = [
+    "cw-orch/daemon",
+    "dep:cw-orch-kms",
+    "dep:clap",
+    "dep:cosmos-sdk-proto",
+    "dep:ibc-proto",
+    "dep:dotenvy",
+]
 # Live deploy commands (Daemon). Off for library tests.
 deploy-bins = [
     "stack",
@@ -155,6 +164,11 @@ cw-oracle-twap-probe = { workspace = true, optional = true, features = ["library
 cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
 cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 cw-orch = { workspace = true }
+cw-orch-kms = { path = "../../../../cw-orchestrator/packages/cw-orch-kms", optional = true, features = ["ict"] }
+clap = { workspace = true, optional = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true, optional = true }
+dotenvy = { version = "0.15", optional = true }
+ibc-proto = { workspace = true, optional = true }
 cw-private-dex = { workspace = true, optional = true }
 cw-reg-eligibility = { workspace = true, optional = true, features = ["library"] }
 cw-shit-denom = { workspace = true, optional = true }
@@ -186,7 +200,7 @@ revenue-reserve-auction = { workspace = true, optional = true, features = ["libr
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true, optional = true, features = ["std"] }
-svg-auction = { workspace = true, optional = true, features = ["library"] }
+svg-auction = { workspace = true, optional = true, features = ["library", "interface"] }
 terp-account = { workspace = true, optional = true, features = ["full", "interface"] }
 terp-authenticator-suite = { workspace = true, optional = true }
 terp721-account = { workspace = true, optional = true }

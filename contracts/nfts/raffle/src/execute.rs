@@ -13,8 +13,9 @@ use nftfi_utils::{
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, RaffleOptionsMsg, SudoMsg};
 use crate::state::{
-    CONFIG, Config, DrawnRandomness, RAFFLES, RaffleInfo, RaffleOptions, RaffleState, TICKETS,
-    USER_TICKETS, load_raffle, raffle_state, seed_bytes, ticket_pot,
+    ALT_PAID, ALT_POT, ALT_TICKETS, ALT_USER_TICKETS, CONFIG, Config, DrawnRandomness,
+    ORACLE_PRICING, RAFFLES, RaffleInfo, RaffleOptions, RaffleState, TICKETS, USER_TICKETS,
+    add_coin, load_raffle, raffle_state, seed_bytes, ticket_pot,
 };
 
 pub const DRAW_REPLY_ID: u64 = 1;
@@ -47,6 +48,10 @@ pub fn instantiate(
         randomness: msg.randomness.validate(deps.api)?,
     };
     CONFIG.save(deps.storage, &cfg)?;
+    if let Some(pricing) = msg.oracle_pricing {
+        pricing.validate(deps.api)?;
+        ORACLE_PRICING.save(deps.storage, &pricing)?;
+    }
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -100,6 +105,7 @@ pub fn execute(
             randomness,
         ),
         ExecuteMsg::ToggleLock { lock } => toggle_lock(deps, info, lock),
+        ExecuteMsg::UpdateOraclePricing { pricing } => update_oracle_pricing(deps, info, pricing),
     }
 }
 
@@ -282,14 +288,30 @@ fn buy_ticket(
         .amount
         .checked_mul(Uint256::from(ticket_count as u128))
         .map_err(|e| ContractError::Std(StdError::msg(e.to_string())))?;
-    let paid = info
-        .funds
-        .iter()
-        .find(|c| c.denom == raffle.ticket_price.denom)
-        .map(|c| c.amount)
-        .unwrap_or_default();
-    if info.funds.len() != 1 || paid != cost {
+    if info.funds.len() != 1 {
         return Err(ContractError::Payment);
+    }
+    // Default denom: exact amount, unchanged. Another denom: oracle pricing,
+    // which must be configured and enforced.
+    let mut alt_paid: Option<Coin> = None;
+    let mut refund: Option<Coin> = None;
+    if info.funds[0].denom == raffle.ticket_price.denom {
+        if info.funds[0].amount != cost {
+            return Err(ContractError::Payment);
+        }
+    } else {
+        let Some(pricing) = ORACLE_PRICING.may_load(deps.storage)? else {
+            return Err(ContractError::Payment);
+        };
+        let s = terp_oracle::settle_payment(
+            &deps.querier,
+            env.block.height,
+            Some(&pricing),
+            &Coin::new(cost, raffle.ticket_price.denom.clone()),
+            &info.funds,
+        )?;
+        alt_paid = Some(s.charged);
+        refund = s.refund;
     }
     if let Some(max) = raffle.options.max_ticket_per_address {
         let held = USER_TICKETS
@@ -313,6 +335,26 @@ fn buy_ticket(
         |held| -> StdResult<_> { Ok(held.unwrap_or(0) + ticket_count) },
     )?;
     raffle.ticket_count += ticket_count;
+    let mut extra = Vec::new();
+    if let Some(alt) = &alt_paid {
+        ALT_TICKETS.update(deps.storage, raffle_id, |n| -> StdResult<_> {
+            Ok(n.unwrap_or(0) + ticket_count)
+        })?;
+        ALT_USER_TICKETS.update(deps.storage, (raffle_id, &buyer), |n| -> StdResult<_> {
+            Ok(n.unwrap_or(0) + ticket_count)
+        })?;
+        let mut pot = ALT_POT.may_load(deps.storage, raffle_id)?.unwrap_or_default();
+        add_coin(&mut pot, alt)?;
+        ALT_POT.save(deps.storage, raffle_id, &pot)?;
+        let mut mine = ALT_PAID.may_load(deps.storage, (raffle_id, &buyer))?.unwrap_or_default();
+        add_coin(&mut mine, alt)?;
+        ALT_PAID.save(deps.storage, (raffle_id, &buyer), &mine)?;
+        extra.push(cosmwasm_std::attr("paid_alt", alt.to_string()));
+    }
+    let refund_msgs: Vec<cosmwasm_std::CosmosMsg> = refund
+        .into_iter()
+        .map(|c| bank(info.sender.to_string(), c))
+        .collect();
     if let Some(max) = raffle.options.max_ticket_number {
         if raffle.ticket_count >= max && env.block.time >= raffle.options.start {
             let elapsed = env.block.time.seconds() - raffle.options.start.seconds();
@@ -321,6 +363,8 @@ fn buy_ticket(
     }
     RAFFLES.save(deps.storage, raffle_id, &raffle)?;
     Ok(Response::new()
+        .add_messages(refund_msgs)
+        .add_attributes(extra)
         .add_attribute("action", "buy_ticket")
         .add_attribute("raffle_id", raffle_id.to_string())
         .add_attribute("buyer", buyer)
@@ -469,7 +513,7 @@ fn claim(deps: DepsMut, env: Env, raffle_id: u64) -> Result<Response, ContractEr
             winners.push(TICKETS.load(deps.storage, (raffle_id, index))?);
         }
         raffle.winners = winners;
-        let mut msgs = pay_pot(&cfg, &raffle)?;
+        let mut msgs = pay_pot(deps.storage, raffle_id, &cfg, &raffle)?;
         msgs.extend(pay_prizes(&env, &raffle)?);
         msgs
     };
@@ -488,26 +532,32 @@ fn claim(deps: DepsMut, env: Env, raffle_id: u64) -> Result<Response, ContractEr
 }
 
 fn pay_pot(
+    storage: &dyn cosmwasm_std::Storage,
+    raffle_id: u64,
     cfg: &Config,
     raffle: &RaffleInfo,
 ) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
-    let pot = ticket_pot(raffle)?;
-    let fee = pot
-        .checked_mul_floor(cfg.raffle_fee)
-        .map_err(|e| ContractError::Std(StdError::msg(e.to_string())))?;
-    let owner_amt = pot.checked_sub(fee).map_err(math_err)?;
+    let mut pots = vec![Coin::new(
+        ticket_pot(storage, raffle_id, raffle)?,
+        raffle.ticket_price.denom.clone(),
+    )];
+    pots.extend(ALT_POT.may_load(storage, raffle_id)?.unwrap_or_default());
     let mut msgs = Vec::new();
-    if !owner_amt.is_zero() {
-        msgs.push(bank(
-            raffle.owner.to_string(),
-            Coin::new(owner_amt, raffle.ticket_price.denom.clone()),
-        ));
-    }
-    if !fee.is_zero() {
-        msgs.push(bank(
-            cfg.fee_addr.to_string(),
-            Coin::new(fee, raffle.ticket_price.denom.clone()),
-        ));
+    for pot in pots {
+        let fee = pot
+            .amount
+            .checked_mul_floor(cfg.raffle_fee)
+            .map_err(|e| ContractError::Std(StdError::msg(e.to_string())))?;
+        let owner_amt = pot.amount.checked_sub(fee).map_err(math_err)?;
+        if !owner_amt.is_zero() {
+            msgs.push(bank(
+                raffle.owner.to_string(),
+                Coin::new(owner_amt, pot.denom.clone()),
+            ));
+        }
+        if !fee.is_zero() {
+            msgs.push(bank(cfg.fee_addr.to_string(), Coin::new(fee, pot.denom.clone())));
+        }
     }
     Ok(msgs)
 }
@@ -558,24 +608,38 @@ fn refund_tickets(
     raffle_id: u64,
     raffle: &RaffleInfo,
 ) -> Result<Vec<cosmwasm_std::CosmosMsg>, ContractError> {
-    let mut totals: BTreeMap<Addr, Uint256> = BTreeMap::new();
+    let mut counts: BTreeMap<Addr, u32> = BTreeMap::new();
     for index in 0..raffle.ticket_count {
         let buyer = TICKETS.load(storage, (raffle_id, index))?;
-        let entry = totals.entry(buyer).or_insert_with(Uint256::zero);
-        *entry = entry
-            .checked_add(raffle.ticket_price.amount)
-            .map_err(math_err)?;
+        *counts.entry(buyer).or_insert(0) += 1;
     }
-    Ok(totals
-        .into_iter()
-        .filter(|(_, amount)| !amount.is_zero())
-        .map(|(buyer, amount)| {
-            bank(
+    let mut msgs = Vec::new();
+    for (buyer, held) in counts {
+        // Alt-paid tickets are refunded in the alt coins actually charged.
+        let alt = ALT_USER_TICKETS
+            .may_load(storage, (raffle_id, &buyer))?
+            .unwrap_or(0);
+        let amount = raffle
+            .ticket_price
+            .amount
+            .checked_mul(Uint256::from(held.saturating_sub(alt) as u128))
+            .map_err(math_err)?;
+        if !amount.is_zero() {
+            msgs.push(bank(
                 buyer.to_string(),
                 Coin::new(amount, raffle.ticket_price.denom.clone()),
-            )
-        })
-        .collect())
+            ));
+        }
+        for coin in ALT_PAID
+            .may_load(storage, (raffle_id, &buyer))?
+            .unwrap_or_default()
+        {
+            if !coin.amount.is_zero() {
+                msgs.push(bank(buyer.to_string(), coin));
+            }
+        }
+    }
+    Ok(msgs)
 }
 
 fn update_config(
@@ -619,6 +683,27 @@ fn update_config(
     }
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::new().add_attribute("action", "update_config"))
+}
+
+fn update_oracle_pricing(
+    deps: DepsMut,
+    info: MessageInfo,
+    pricing: Option<terp_oracle::OraclePricing>,
+) -> Result<Response, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.owner {
+        return Err(ContractError::Unauthorized);
+    }
+    match &pricing {
+        Some(p) => {
+            p.validate(deps.api)?;
+            ORACLE_PRICING.save(deps.storage, p)?;
+        }
+        None => ORACLE_PRICING.remove(deps.storage),
+    }
+    Ok(Response::new()
+        .add_attribute("action", "update_oracle_pricing")
+        .add_attribute("enforce", pricing.map(|p| p.enforce.to_string()).unwrap_or("none".into())))
 }
 
 fn toggle_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> Result<Response, ContractError> {

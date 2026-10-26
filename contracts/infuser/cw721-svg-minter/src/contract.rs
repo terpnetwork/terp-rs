@@ -12,8 +12,9 @@ use crate::error::ContractError;
 use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    COLLECTION_NONCE, DREGG_CHANNEL, DREGG_IBC_ONLY, DREGG_PORT, RUNTIME_MINTERS, SVG_CODE_ID,
-    SvgCollection, svg_collections,
+    COLLECTION_NONCE, DEFAULT_SERIES_WINDOW_SECS, DREGG_CHANNEL, DREGG_IBC_ONLY, DREGG_PORT,
+    ORACLE_PRICING, RUNTIME_MINTERS, SERIES, SERIES_RECENT, SVG_CODE_ID, SeriesConfig, SvgCollection,
+    svg_collections,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "cw-svg-minter";
@@ -37,6 +38,11 @@ pub fn instantiate(
     for a in msg.runtime_minters {
         let addr = deps.api.addr_validate(&a)?;
         RUNTIME_MINTERS.save(deps.storage, &addr, &())?;
+    }
+    if let Some(p) = msg.oracle_pricing {
+        p.validate(deps.api)
+            .map_err(|e| cosmwasm_std::StdError::msg(e.to_string()))?;
+        ORACLE_PRICING.save(deps.storage, &p)?;
     }
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -79,6 +85,27 @@ pub fn execute(
             instantiate_msg,
             label,
         } => execute_create_svg_collection(deps, env, info, instantiate_msg, label),
+        ExecuteMsg::CreateSeriesCollection {
+            series,
+            instantiate_msg,
+            label,
+        } => create_collection(deps, env, info, instantiate_msg, label, Some(series)),
+        ExecuteMsg::SetSeries { series, config } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            match &config {
+                Some(c) => {
+                    for o in &c.operators {
+                        deps.api.addr_validate(o)?;
+                    }
+                    SERIES.save(deps.storage, &series, c)?
+                }
+                None => SERIES.remove(deps.storage, &series),
+            }
+            Ok(Response::new()
+                .add_attribute("action", "set_series")
+                .add_attribute("series", series)
+                .add_attribute("removed", config.is_none().to_string()))
+        }
         ExecuteMsg::UpdateOwnership(action) => {
             let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
             Ok(Response::new().add_attributes(ownership.into_attributes()))
@@ -108,6 +135,20 @@ pub fn execute(
             crate::state::DREGG_PORT.save(deps.storage, &port)?;
             Ok(Response::new().add_attribute("action", "bind_dregg_channel"))
         }
+        ExecuteMsg::UpdateOraclePricing { pricing } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            match &pricing {
+                Some(p) => {
+                    p.validate(deps.api)
+                        .map_err(|e| cosmwasm_std::StdError::msg(e.to_string()))?;
+                    ORACLE_PRICING.save(deps.storage, p)?
+                }
+                None => ORACLE_PRICING.remove(deps.storage),
+            }
+            Ok(Response::new()
+                .add_attribute("action", "update_oracle_pricing")
+                .add_attribute("removed", pricing.is_none().to_string()))
+        }
     }
 }
 
@@ -118,14 +159,129 @@ pub fn execute_create_svg_collection(
     instantiate_msg: cw721_svg::InstantiateMsg,
     label: String,
 ) -> Result<Response, ContractError> {
-    // If owner is set, only owner may create collections.
-    let ownership = cw_ownable::get_ownership(deps.storage)?;
-    if ownership
-        .owner
-        .as_ref()
-        .is_some_and(|owner| *owner != info.sender)
+    create_collection(deps, env, info, instantiate_msg, label, None)
+}
+
+/// Next unix second at which `cfg` allows a creation, given `recent` (oldest first).
+pub fn series_next_allowed(cfg: &SeriesConfig, recent: &[u64]) -> Option<u64> {
+    let mut next: Option<u64> = None;
+    if let (Some(min), Some(last)) = (cfg.min_interval_secs, recent.last()) {
+        next = Some(last + min);
+    }
+    if let Some(max) = cfg.max_per_window {
+        let w = cfg.window_secs.unwrap_or(DEFAULT_SERIES_WINDOW_SECS);
+        let n = recent.len();
+        if max == 0 {
+            return Some(u64::MAX);
+        }
+        if n >= max as usize {
+            // the oldest of the last `max` entries must leave the window
+            let t = recent[n - max as usize] + w;
+            next = Some(next.map_or(t, |x| x.max(t)));
+        }
+    }
+    next
+}
+
+/// Enforce the series cadence at `now` and return the pruned + appended history.
+fn check_series(
+    deps: &DepsMut,
+    sender: &cosmwasm_std::Addr,
+    series: &str,
+    now: u64,
+    msg: &cw721_svg::InstantiateMsg,
+) -> Result<Vec<u64>, ContractError> {
+    let cfg = SERIES
+        .may_load(deps.storage, series)?
+        .ok_or_else(|| ContractError::UnknownSeries {
+            series: series.to_string(),
+        })?;
+    let is_owner = cw_ownable::is_owner(deps.storage, sender)?;
+    if !cfg.operators.is_empty() && !is_owner && !cfg.operators.iter().any(|o| o == sender.as_str())
     {
         return Err(ContractError::Unauthorized {});
+    }
+    if let Some(max) = cfg.max_mint_window_secs {
+        match msg.collection_info_extension.mint_end_time {
+            Some(off) if off.seconds() <= max => {}
+            _ => {
+                return Err(ContractError::SeriesMintWindow {
+                    series: series.to_string(),
+                    max,
+                });
+            }
+        }
+    }
+    let keep = cfg
+        .window_secs
+        .unwrap_or(DEFAULT_SERIES_WINDOW_SECS)
+        .max(cfg.min_interval_secs.unwrap_or(0));
+    let mut recent: Vec<u64> = SERIES_RECENT
+        .may_load(deps.storage, series)?
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|t| now < t.saturating_add(keep))
+        .collect();
+    // window count only looks at entries inside the window
+    let w = cfg.window_secs.unwrap_or(DEFAULT_SERIES_WINDOW_SECS);
+    let in_window: Vec<u64> = recent.iter().copied().filter(|t| now < t + w).collect();
+    if let (Some(min), Some(last)) = (cfg.min_interval_secs, recent.last()) {
+        if now < last + min {
+            return Err(ContractError::SeriesTooSoon {
+                series: series.to_string(),
+                next_at: last + min,
+            });
+        }
+    }
+    if let Some(max) = cfg.max_per_window {
+        if in_window.len() >= max as usize {
+            let next_at = if max == 0 {
+                u64::MAX
+            } else {
+                in_window[in_window.len() - max as usize] + w
+            };
+            return Err(ContractError::SeriesWindowFull {
+                series: series.to_string(),
+                max,
+                window: w,
+                next_at,
+            });
+        }
+    }
+    recent.push(now);
+    Ok(recent)
+}
+
+fn create_collection(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    instantiate_msg: cw721_svg::InstantiateMsg,
+    label: String,
+    series: Option<String>,
+) -> Result<Response, ContractError> {
+    let mut is_series_operator = false;
+    if let Some(s) = &series {
+        let recent = check_series(&deps, &info.sender, s, env.block.time.seconds(), &instantiate_msg)?;
+        SERIES_RECENT.save(deps.storage, s, &recent)?;
+        is_series_operator = true;
+    }
+    // If owner is set, only owner (or an authorized series operator) may create collections.
+    let ownership = cw_ownable::get_ownership(deps.storage)?;
+    if !is_series_operator
+        && ownership
+            .owner
+            .as_ref()
+            .is_some_and(|owner| *owner != info.sender)
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+    if is_series_operator && ownership.owner.as_ref().is_some_and(|o| *o != info.sender) {
+        // owned factory: an open (operator-less) series still needs the owner
+        let cfg = SERIES.load(deps.storage, series.as_deref().unwrap_or_default())?;
+        if cfg.operators.is_empty() {
+            return Err(ContractError::Unauthorized {});
+        }
     }
 
     // Fail early (before instantiate2) on bad templates, for both input paths.
@@ -169,6 +325,7 @@ pub fn execute_create_svg_collection(
             creator: tru_creator.to_string(),
             name: instantiate_msg.name.clone(),
             symbol: instantiate_msg.symbol.clone(),
+            series: series.clone(),
         },
     )?;
 
@@ -184,11 +341,26 @@ pub fn execute_create_svg_collection(
         salt,
     };
 
-    Ok(Response::new()
+    let mut res = Response::new()
         .add_attribute("action", "create_svg_collection")
         .add_attribute("contract", predicted_addr.to_string())
         .add_attribute("creator", info.sender.to_string())
-        .add_message(wasm_msg))
+        .add_attribute("series", series.unwrap_or_default())
+        .add_message(wasm_msg);
+    // Factory default pricing: the factory is the collection's instantiator, so it
+    // may set it right after instantiate2 in the same tx.
+    if let Some(pricing) = ORACLE_PRICING.may_load(deps.storage)? {
+        res = res.add_message(WasmMsg::Execute {
+            contract_addr: predicted_addr.to_string(),
+            msg: to_json_binary(&cw721_svg::ExecuteMsg::UpdateExtension {
+                msg: cw721_svg::SvgExecuteMsgExt::SetOraclePricing {
+                    pricing: Some(pricing),
+                },
+            })?,
+            funds: vec![],
+        });
+    }
+    Ok(res)
 }
 
 pub fn execute_update_code_id(
@@ -204,8 +376,34 @@ pub fn execute_update_code_id(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    let msg = match msg.into_oracle_query() {
+        Ok(oracle) => {
+            let pricing = ORACLE_PRICING.may_load(deps.storage)?;
+            return terp_oracle::handle_oracle_query(deps, &env, pricing.as_ref(), oracle);
+        }
+        Err(msg) => msg,
+    };
     match msg {
+        QueryMsg::Series { series } => {
+            let config = SERIES.may_load(deps.storage, &series)?;
+            let recent = SERIES_RECENT.may_load(deps.storage, &series)?.unwrap_or_default();
+            let now = env.block.time.seconds();
+            let next_allowed_at = config.as_ref().and_then(|c| {
+                let w = c.window_secs.unwrap_or(DEFAULT_SERIES_WINDOW_SECS);
+                let live: Vec<u64> = recent
+                    .iter()
+                    .copied()
+                    .filter(|t| c.min_interval_secs.is_some_and(|m| now < t + m) || now < t + w)
+                    .collect();
+                series_next_allowed(c, &live).filter(|t| *t > now)
+            });
+            to_json_binary(&crate::msg::SeriesInfo {
+                config,
+                recent,
+                next_allowed_at,
+            })
+        }
         QueryMsg::ListSvgCollections { start_after, limit } => {
             let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
             let start = start_after.as_deref().map(Bound::exclusive);
@@ -282,5 +480,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             port: DREGG_PORT.may_load(deps.storage)?,
             ibc_only: DREGG_IBC_ONLY.may_load(deps.storage)?.unwrap_or(false),
         }),
+        _ => Err(cosmwasm_std::StdError::msg("unknown query")),
     }
 }

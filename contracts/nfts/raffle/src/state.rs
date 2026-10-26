@@ -12,6 +12,30 @@ pub const RAFFLES: Map<u64, RaffleInfo> = Map::new("raffle");
 pub const TICKETS: Map<(u64, u32), Addr> = Map::new("tickets");
 pub const USER_TICKETS: Map<(Addr, u64), u32> = Map::new("user_tickets");
 
+/// Optional oracle pricing. Absent = only the raffle's ticket denom is accepted.
+pub const ORACLE_PRICING: Item<terp_oracle::OraclePricing> = Item::new("oracle_pricing");
+/// Tickets in a raffle that were paid with an alt asset.
+pub const ALT_TICKETS: Map<u64, u32> = Map::new("alt_tickets");
+/// Alt coins collected per raffle (the alt pot).
+pub const ALT_POT: Map<u64, Vec<Coin>> = Map::new("alt_pot");
+/// (raffle, ticket holder) -> alt tickets held, and the alt coins paid for them.
+pub const ALT_USER_TICKETS: Map<(u64, &Addr), u32> = Map::new("alt_user_tickets");
+pub const ALT_PAID: Map<(u64, &Addr), Vec<Coin>> = Map::new("alt_paid");
+
+/// Add `coin` into `coins`, merging by denom.
+pub fn add_coin(coins: &mut Vec<Coin>, coin: &Coin) -> Result<(), ContractError> {
+    match coins.iter_mut().find(|c| c.denom == coin.denom) {
+        Some(c) => {
+            c.amount = c
+                .amount
+                .checked_add(coin.amount)
+                .map_err(|e| ContractError::Std(cosmwasm_std::StdError::msg(e.to_string())))?
+        }
+        None => coins.push(coin.clone()),
+    }
+    Ok(())
+}
+
 #[cw_serde]
 pub struct Config {
     pub name: String,
@@ -116,9 +140,13 @@ pub fn prize_coins(info: &RaffleInfo) -> Vec<Coin> {
         .collect()
 }
 
-pub fn ticket_pot(info: &RaffleInfo) -> Result<Uint256, ContractError> {
+/// Ticket-denom pot: tickets paid in the default denom only.
+/// Alt-paid tickets live in [`ALT_POT`].
+pub fn ticket_pot(storage: &dyn Storage, raffle_id: u64, info: &RaffleInfo) -> Result<Uint256, ContractError> {
+    let alt = ALT_TICKETS.may_load(storage, raffle_id)?.unwrap_or(0);
+    let default_paid = info.ticket_count.saturating_sub(alt);
     info.ticket_price
         .amount
-        .checked_mul(Uint256::from(info.ticket_count as u128))
+        .checked_mul(Uint256::from(default_paid as u128))
         .map_err(|e| ContractError::Std(cosmwasm_std::StdError::msg(e.to_string())))
 }

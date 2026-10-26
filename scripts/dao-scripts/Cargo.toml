@@ -28,6 +28,10 @@ name = "create_val"
 path = "src/bin/create_val.rs"
 
 [[bin]]
+name = "zcinti-keygen"
+path = "src/bin/zcinti_keygen.rs"
+
+[[bin]]
 name = "polytone_migrate"
 path = "src/bin/polytone_migrate.rs"
 
@@ -35,26 +39,100 @@ path = "src/bin/polytone_migrate.rs"
 name = "dao_upload"
 path = "src/bin/dao_upload.rs"
 
+[[bin]]
+name = "app_upload"
+path = "src/bin/app_upload.rs"
+
+[[bin]]
+name = "app_setup"
+path = "src/bin/app_setup.rs"
+
+[[bin]]
+name = "svg_markets"
+path = "src/bin/svg_markets.rs"
+
+[[bin]]
+name = "deploy_preflight"
+path = "src/bin/deploy_preflight.rs"
+
+[[bin]]
+name = "relay_grants"
+path = "src/bin/relay_grants.rs"
+
 [dependencies]
 anyhow = { workspace = true }
+base64 = { workspace = true }
+bech32 = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
+ed25519-dalek = "=2.2.0"
 cosmos-sdk-proto = { workspace = true }
 cosmrs = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 csv = "1.4.0"
+cw-infuser-scripts = { workspace = true, default-features = false }
 cw-orch = { workspace = true, features = ["daemon"] }
 cw-orch-kms = { path = "../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
 cw-orch-interchain = { workspace = true, features = ["daemon"] }
 cw-orch-polytone = { workspace = true }
 dao-cw-orch = { workspace = true }
 dao-testing = { workspace = true }
+dao-interface = { workspace = true }
 dotenv = { workspace = true }
 env_logger = { workspace = true, features = ["default"] }
 log = "0.4.30"
+rand08 = { package = "rand", version = "0.8" }
 rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
+sha2 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 terp-rs = { workspace = true, features = ["default"] }
 terp-scripts = { workspace = true, features = ["hash-market"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
+ibc-proto = { workspace = true }
+dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
+
+[[bin]]
+name = "bounty_dao"
+path = "src/bin/bounty_dao.rs"
+
+[[bin]]
+name = "ibc_create_clients"
+path = "src/bin/ibc_create_clients.rs"
+
+[[bin]]
+name = "ibc_recover_clients"
+path = "src/bin/ibc_recover_clients.rs"
+
+[[bin]]
+name = "fiab_subdao"
+path = "src/bin/fiab_subdao.rs"
+
+[[bin]]
+name = "steward_multi_dao"
+path = "src/bin/steward_multi_dao.rs"
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+cw4-group = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting-cw4 = { workspace = true }
+
+[[bin]]
+name = "polytone_osmosis"
+path = "src/bin/polytone_osmosis.rs"
+
+[[bin]]
+name = "bounty_dao_standalone"
+path = "src/bin/bounty_dao_standalone.rs"
+
+[[bin]]
+name = "mainnet_deploy"
+path = "src/bin/mainnet_deploy.rs"
+
+[[bin]]
+name = "svg_ops"
+path = "src/bin/svg_ops.rs"

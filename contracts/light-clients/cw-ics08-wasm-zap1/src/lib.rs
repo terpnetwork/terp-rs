@@ -5,8 +5,9 @@
 //! This is not Crosslink header / Ed25519 finalizer verification.
 //!
 //! Leaf and node hashes stay inside `zap1-verify` (`blake2b_simd`) with
-//! personals `NordicShield_` and `NordicShield_MRK`. Host `Api::blake2b_256`
-//! is message-only and is not a substitute. Guest `simd128` stays off.
+//! personals `NordicShield_` and `NordicShield_MRK`. `Api::blake2b_256` is
+//! message-only. `Api::blake2b_256_personal` takes that block, zero-padded
+//! to 16 bytes. Guest `simd128` stays off.
 
 use cosmwasm_std::{
     Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,

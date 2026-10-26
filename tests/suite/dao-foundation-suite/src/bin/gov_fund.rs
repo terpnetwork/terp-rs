@@ -298,6 +298,7 @@ fn chain_info(args: &Args) -> ChainInfoOwned {
         gas_denom: std::env::var("GAS_DENOM").unwrap_or_else(|_| "uthiol".into()),
         gas_price,
         grpc_urls: vec![args.grpc_url.clone()],
+        rpc_urls: vec![],
         lcd_url: Some(args.lcd_url.clone()),
         fcd_url: None,
         network_info: NetworkInfoOwned {

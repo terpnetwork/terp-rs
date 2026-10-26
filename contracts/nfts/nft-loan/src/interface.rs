@@ -1,8 +1,8 @@
-use crate::contract::{CONTRACT_NAME, execute, instantiate, query};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::contract::{CONTRACT_NAME, execute, instantiate, migrate, query};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cw_orch::prelude::*;
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_NAME)]
+#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, id = CONTRACT_NAME)]
 pub struct NftfiLoan;
 
 impl<Chain: CwEnv> Uploadable for NftfiLoan<Chain> {
@@ -13,6 +13,6 @@ impl<Chain: CwEnv> Uploadable for NftfiLoan<Chain> {
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
-        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query))
+        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_migrate(migrate))
     }
 }

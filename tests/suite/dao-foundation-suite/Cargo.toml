@@ -43,6 +43,7 @@ cw-denom = { workspace = true }
 cw-fund-distributor = { workspace = true }
 cw-multi-test = { workspace = true }
 cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-kms = { path = "../../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
 cw-payroll-factory = { workspace = true }
 cw-token-swap = { workspace = true }
 cw-utils = { workspace = true }
@@ -76,9 +77,13 @@ serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
+base64 = { workspace = true }
 cw4-group = { workspace = true }
 dao-dao-core = { workspace = true }
 dao-pre-propose-single = { workspace = true }
 ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing"] }
 ict-rs-cw-orch = { workspace = true }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+k256 = { workspace = true, features = ["ecdsa"] }
+ripemd = { workspace = true }
+sha2 = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-util"] }

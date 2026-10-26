@@ -137,6 +137,7 @@ fn mock_gas_bench() {
                 minimum_raffle_duration: Some(1),
                 max_tickets_per_raffle: Some(100),
                 raffle_fee: Decimal::percent(10),
+                oracle_pricing: None,
                 creation_coins: Some(vec![coin(100, DENOM)]),
                 randomness: RandomnessSourceMsg::Seed { provider: None },
             },

@@ -75,6 +75,20 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+/// Migrate message. Intentionally empty: migrate is a plain capability entrypoint.
+#[cw_serde]
+pub struct MigrateMsg {}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn migrate(
+    _deps: DepsMut,
+    _env: Env,
+    _msg: MigrateMsg,
+    _info: cosmwasm_std::MigrateInfo,
+) -> StdResult<Response> {
+    Ok(Response::new().add_attribute("action", "migrate"))
+}
+
 #[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
 mod interface;
 #[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
@@ -105,5 +119,25 @@ mod tests {
         let r: TwapResponse = from_json(bin).unwrap();
         assert_eq!(r.arithmetic_twap, "1.25");
         assert_eq!(r.pool_id, 1);
+    }
+}
+
+#[cfg(test)]
+mod migrate_tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+
+    #[test]
+    fn migrate_ok() {
+        let mut deps = mock_dependencies();
+        let admin = deps.api.addr_make("admin");
+        let res = migrate(
+            deps.as_mut(),
+            mock_env(),
+            MigrateMsg {},
+            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+        )
+        .unwrap();
+        assert_eq!(res.attributes[0].value, "migrate");
     }
 }

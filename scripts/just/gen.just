@@ -43,3 +43,9 @@ zk-cycle module="terp-core":
     @just build-{{module}} || echo "Module build skipped"
     @just gen --module={{module}}
     @echo "✅ zk-cycle complete for {{module}}"
+
+# Rust dependency graph JSON: terp-rs workspace + CosmWasm, wasmvm, Wasmer,
+# parity-wasm (roots in tools/gen-tools/rust-deps/roots.json; see its README).
+# `just gen deps [out] [--root id=PATH --offline ...]`
+deps out="target/gen-deps/rust-crates.json" *args="":
+    node tools/gen-tools/rust-deps/gen-deps.mjs --out {{out}} {{args}}

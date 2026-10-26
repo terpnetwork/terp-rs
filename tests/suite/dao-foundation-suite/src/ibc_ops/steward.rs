@@ -255,29 +255,36 @@ fn instantiate_by_parent(spec: &DaoInit) -> CosmosMsg {
     })
 }
 
-fn oversight(name: &str, chain: &str, member: &str) -> DaoInit {
+fn parent_text(parent: Option<&str>) -> String {
+    match parent {
+        Some(p) => format!("Its parent (dao admin and wasm admin) is the Terp x/gov module account {p}; the Foundation is not the parent."),
+        None => "Foundation is not the parent.".into(),
+    }
+}
+
+fn oversight(name: &str, chain: &str, member: &str, parent: Option<&str>) -> DaoInit {
     DaoInit {
         name: name.into(),
         description: format!(
-            "Liquidity steward oversight for {chain}. Foundation creates this DAO and is not its parent. One cw4 member ({member}) adds the rest once the committee is final."
+            "Liquidity steward oversight for {chain}. Foundation creates this DAO. {} One cw4 member ({member}) adds the rest once the committee is final.", parent_text(parent)
         ),
         member: member.into(),
-        dao_admin: None,
-        wasm_admin: None,
+        dao_admin: parent.map(String::from),
+        wasm_admin: parent.map(String::from),
         vetoer: None,
         salt: name.into(),
     }
 }
 
-fn custody(name: &str, chain: &str, member: &str, steward_contract: &str) -> DaoInit {
+fn custody(name: &str, chain: &str, member: &str, steward_contract: &str, parent: Option<&str>) -> DaoInit {
     DaoInit {
         name: name.into(),
         description: format!(
-            "Custody DAO for {chain} liquidity. {steward_contract} can veto a proposal for 48 hours, including before it passes. Early execute is off. Foundation is not the parent. One cw4 member ({member})."
+            "Custody DAO for {chain} liquidity. {steward_contract} can veto a proposal for 48 hours, including before it passes. Early execute is off. {} One cw4 member ({member}).", parent_text(parent)
         ),
         member: member.into(),
-        dao_admin: None,
-        wasm_admin: None,
+        dao_admin: parent.map(String::from),
+        wasm_admin: parent.map(String::from),
         vetoer: Some(steward_contract.into()),
         salt: name.into(),
     }
@@ -364,6 +371,19 @@ pub fn build_steward_plan(
     polytone_note: Option<&str>,
     remote_codes: Option<&RemoteCodeIds>,
 ) -> Result<StewardPlan, String> {
+    build_steward_plan_with_parent(accounts, creator_bech32, checksum, polytone_note, remote_codes, None)
+}
+
+/// Same plan, with `parent` (the Terp x/gov module account) as dao admin and
+/// wasm admin of the two steward and two custody DAOs. `None` keeps them self-admin.
+pub fn build_steward_plan_with_parent(
+    accounts: &StewardAccounts,
+    creator_bech32: &str,
+    checksum: &[u8],
+    polytone_note: Option<&str>,
+    remote_codes: Option<&RemoteCodeIds>,
+    parent: Option<&str>,
+) -> Result<StewardPlan, String> {
     if checksum.len() != 32 {
         return Err(format!(
             "code checksum is {} bytes, expected 32",
@@ -394,24 +414,31 @@ pub fn build_steward_plan(
             "steward-akash",
             "Akash",
             &accounts.steward_akash,
+            parent,
         )),
-        instantiate2(&oversight("steward-juno", "Juno", &accounts.steward_juno)),
+        instantiate2(&oversight("steward-juno", "Juno", &accounts.steward_juno, parent)),
         instantiate2(&custody(
             "custody-akash",
             "Akash",
             &accounts.custody_akash,
             &steward_akash,
+            parent,
         )),
         instantiate2(&custody(
             "custody-juno",
             "Juno",
             &accounts.custody_juno,
             &steward_juno,
+            parent,
         )),
     ];
+    let admin_text = match parent {
+        Some(p) => format!("Foundation is not the parent of any of them: dao admin and wasm admin are the Terp x/gov module account {p}."),
+        None => "Foundation is not the parent of any of them: dao admin and wasm admin are unset, so each core becomes its own admin.".into(),
+    };
     let foundation_proposal = foundation_proposal_wrapper(
         "Create Akash and Juno steward and custody DAOs",
-        "Foundation instantiates two oversight DAOs and two custody DAOs. Foundation is not the parent of any of them: dao admin and wasm admin are unset, so each core becomes its own admin. custody-akash is vetoed by the steward-akash contract and custody-juno by the steward-juno contract. The veto window is 48 hours, the vetoer may veto before passage, and early execute is off. Each DAO has one cw4 member from steward-accounts.json. SubDAOs are separate proposals those custody DAOs submit after this executes.",
+        &format!("Foundation instantiates two oversight DAOs and two custody DAOs. {admin_text} custody-akash is vetoed by the steward-akash contract and custody-juno by the steward-juno contract. The veto window is 48 hours, the vetoer may veto before passage, and early execute is off. Each DAO has one cw4 member from steward-accounts.json. SubDAOs are separate proposals those custody DAOs submit after this executes."),
         foundation_msgs,
     );
 
@@ -529,6 +556,23 @@ pub fn assert_no_foundation_admin(msg: &CosmosMsg, foundation: &str) -> Result<(
     let init: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     if init.get("admin").and_then(|a| a.as_str()) == Some(foundation) {
         return Err("dao admin is the foundation DAO".into());
+    }
+    Ok(())
+}
+
+/// Steward guard: Foundation is never wasm or DAO admin; the only accepted
+/// admin is `parent` (the x/gov module account), or unset when `parent` is None.
+pub fn assert_steward_admin(msg: &CosmosMsg, foundation: &str, parent: Option<&str>) -> Result<(), String> {
+    assert_no_foundation_admin(msg, foundation)?;
+    let v = serde_json::to_value(msg).map_err(|e| e.to_string())?;
+    let inst = v.get("wasm").and_then(|w| w.get("instantiate2").or_else(|| w.get("instantiate"))).ok_or("not a wasm instantiate")?;
+    let bytes = Binary::from_base64(inst.get("msg").and_then(|m| m.as_str()).ok_or("instantiate msg missing")?).map_err(|e| e.to_string())?;
+    let init: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    for (what, got) in [("wasm admin", inst.get("admin")), ("dao admin", init.get("admin"))] {
+        let got = got.and_then(|a| a.as_str());
+        if got != parent {
+            return Err(format!("{what} is {got:?}, expected {parent:?} (gov module parent)"));
+        }
     }
     Ok(())
 }

@@ -112,6 +112,7 @@ pub mod entry {
         // the template; read it with the `svg_packed` query.
         svg.packed = Binary::default();
         SVG_COLLECTION.save(deps.storage, &svg)?;
+        crate::contract::INSTANTIATOR.save(deps.storage, &info.sender)?;
         // Prefer explicit minter (e.g. hm-nft-minter); default to this contract for
         // self-serve public mint flows.
         let minter = msg
@@ -190,6 +191,9 @@ pub mod entry {
                     token_id,
                     speed_pct,
                 } => crate::scribing::set_speed(deps, info, token_id, speed_pct),
+                SvgExecuteMsgExt::SetOraclePricing { pricing } => {
+                    crate::contract::execute_set_oracle_pricing(deps, info, pricing)
+                }
             },
             ExecuteMsg::Mint { .. } => Err(ContractError::IncorrectEntrypoint),
             _ => Cw721SvgContract::default()
@@ -202,82 +206,89 @@ pub mod entry {
     #[inline(never)]
     pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         match msg {
-            QueryMsg::Extension { msg } => match msg {
-                SvgQueryMsgExt::SvgTokenUri { token_id } => {
-                    let svg = query_svg_token_uri(deps, token_id)
-                        .map_err(|e| StdError::msg(e.to_string()))?;
-                    to_json_binary(&SvgTokenUriResponse { svg })
+            QueryMsg::Extension { msg } => match msg.into_oracle_query() {
+                Ok(oracle) => {
+                    let pricing = crate::contract::ORACLE_PRICING.may_load(deps.storage)?;
+                    terp_oracle::handle_oracle_query(deps, &env, pricing.as_ref(), oracle)
                 }
-                SvgQueryMsgExt::SvgPlaceholder { seed } => {
-                    let svg = query_svg_placeholder(deps, seed)
-                        .map_err(|e| StdError::msg(e.to_string()))?;
-                    to_json_binary(&SvgTokenUriResponse { svg })
-                }
+                Err(msg) => match msg {
+                    SvgQueryMsgExt::SvgTokenUri { token_id } => {
+                        let svg = query_svg_token_uri(deps, token_id)
+                            .map_err(|e| StdError::msg(e.to_string()))?;
+                        to_json_binary(&SvgTokenUriResponse { svg })
+                    }
+                    SvgQueryMsgExt::SvgPlaceholder { seed } => {
+                        let svg = query_svg_placeholder(deps, seed)
+                            .map_err(|e| StdError::msg(e.to_string()))?;
+                        to_json_binary(&SvgTokenUriResponse { svg })
+                    }
 
-                SvgQueryMsgExt::SvgPacked {} => to_json_binary(&Binary::from(
-                    deps.storage.get(SVG_PACKED_KEY).unwrap_or_default(),
-                )),
-                SvgQueryMsgExt::SvgTemplate {} => {
-                    let template =
-                        query_svg_template(deps).map_err(|e| StdError::msg(e.to_string()))?;
-                    to_json_binary(&SvgTemplateResponse { template })
-                }
-                SvgQueryMsgExt::Whitelist {} => {
-                    let wl = query_whitelist(deps).map_err(|e| StdError::msg(e.to_string()))?;
-                    to_json_binary(&wl)
-                }
-                SvgQueryMsgExt::Ownership {} => {
-                    to_json_binary(&cw_ownable::get_ownership(deps.storage)?)
-                }
+                    SvgQueryMsgExt::SvgPacked {} => to_json_binary(&Binary::from(
+                        deps.storage.get(SVG_PACKED_KEY).unwrap_or_default(),
+                    )),
+                    SvgQueryMsgExt::SvgTemplate {} => {
+                        let template =
+                            query_svg_template(deps).map_err(|e| StdError::msg(e.to_string()))?;
+                        to_json_binary(&SvgTemplateResponse { template })
+                    }
+                    SvgQueryMsgExt::Whitelist {} => {
+                        let wl = query_whitelist(deps).map_err(|e| StdError::msg(e.to_string()))?;
+                        to_json_binary(&wl)
+                    }
+                    SvgQueryMsgExt::Ownership {} => {
+                        to_json_binary(&cw_ownable::get_ownership(deps.storage)?)
+                    }
 
-                SvgQueryMsgExt::MintCount { address } => {
-                    let addr = deps.api.addr_validate(&address)?;
-                    let count = mint_count(deps, &addr);
-                    to_json_binary(&MintCountResponse { address, count })
-                }
-                SvgQueryMsgExt::WlMintCount { address } => {
-                    let addr = deps.api.addr_validate(&address)?;
-                    let count = whitelist_mint_count(deps, &addr);
-                    to_json_binary(&MintCountResponse { address, count })
-                }
-                SvgQueryMsgExt::Scribed { token_id } => {
-                    to_json_binary(&crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?)
-                }
-                SvgQueryMsgExt::ScribeEpoch {} => {
-                    to_json_binary(&crate::scribing::q_epoch(deps, &env))
-                }
-                SvgQueryMsgExt::Proposals { token_id, epoch } => to_json_binary(
-                    &crate::scribing::q_proposals(deps, token_id, epoch)
-                        .map_err(|e| StdError::msg(e.to_string()))?,
-                ),
-                SvgQueryMsgExt::EpochPot { token_id, epoch } => to_json_binary(
-                    &crate::scribing::q_pot(deps, token_id, epoch)
-                        .map_err(|e| StdError::msg(e.to_string()))?,
-                ),
-                SvgQueryMsgExt::ScribeHistory { token_id } => to_json_binary(
-                    &crate::scribing::q_history(deps, token_id)
-                        .map_err(|e| StdError::msg(e.to_string()))?,
-                ),
-                SvgQueryMsgExt::Participants { epoch, limit } => to_json_binary(
-                    &crate::scribing::q_participants(deps, epoch, limit)
-                        .map_err(|e| StdError::msg(e.to_string()))?,
-                ),
-                SvgQueryMsgExt::Speed { token_id } => {
-                    to_json_binary(&crate::scribing::SPEED.may_load(deps.storage, &token_id)?)
-                }
-                SvgQueryMsgExt::OriginalMinter { token_id } => {
-                    to_json_binary(&crate::scribing::ORIGIN.may_load(deps.storage, &token_id)?)
-                }
-                SvgQueryMsgExt::CurrentPriceTier {} => {
-                    let c = Cw721SvgContract::default();
-                    let mc = c.config.token_count(deps.storage)?;
-                    let pt = c
-                        .query_collection_info_and_extension(deps)?
-                        .extension
-                        .price_tiers;
+                    SvgQueryMsgExt::MintCount { address } => {
+                        let addr = deps.api.addr_validate(&address)?;
+                        let count = mint_count(deps, &addr);
+                        to_json_binary(&MintCountResponse { address, count })
+                    }
+                    SvgQueryMsgExt::WlMintCount { address } => {
+                        let addr = deps.api.addr_validate(&address)?;
+                        let count = whitelist_mint_count(deps, &addr);
+                        to_json_binary(&MintCountResponse { address, count })
+                    }
+                    SvgQueryMsgExt::Scribed { token_id } => to_json_binary(
+                        &crate::scribing::MESSAGES.may_load(deps.storage, &token_id)?,
+                    ),
+                    SvgQueryMsgExt::ScribeEpoch {} => {
+                        to_json_binary(&crate::scribing::q_epoch(deps, &env))
+                    }
+                    SvgQueryMsgExt::Proposals { token_id, epoch } => to_json_binary(
+                        &crate::scribing::q_proposals(deps, token_id, epoch)
+                            .map_err(|e| StdError::msg(e.to_string()))?,
+                    ),
+                    SvgQueryMsgExt::EpochPot { token_id, epoch } => to_json_binary(
+                        &crate::scribing::q_pot(deps, token_id, epoch)
+                            .map_err(|e| StdError::msg(e.to_string()))?,
+                    ),
+                    SvgQueryMsgExt::ScribeHistory { token_id } => to_json_binary(
+                        &crate::scribing::q_history(deps, token_id)
+                            .map_err(|e| StdError::msg(e.to_string()))?,
+                    ),
+                    SvgQueryMsgExt::Participants { epoch, limit } => to_json_binary(
+                        &crate::scribing::q_participants(deps, epoch, limit)
+                            .map_err(|e| StdError::msg(e.to_string()))?,
+                    ),
+                    SvgQueryMsgExt::Speed { token_id } => {
+                        to_json_binary(&crate::scribing::SPEED.may_load(deps.storage, &token_id)?)
+                    }
+                    SvgQueryMsgExt::OriginalMinter { token_id } => {
+                        to_json_binary(&crate::scribing::ORIGIN.may_load(deps.storage, &token_id)?)
+                    }
+                    SvgQueryMsgExt::CurrentPriceTier {} => {
+                        let c = Cw721SvgContract::default();
+                        let mc = c.config.token_count(deps.storage)?;
+                        let pt = c
+                            .query_collection_info_and_extension(deps)?
+                            .extension
+                            .price_tiers;
 
-                    to_json_binary(&current_tier_price(&pt, mc))
-                }
+                        to_json_binary(&current_tier_price(&pt, mc))
+                    }
+                    _ => Err(StdError::msg("unknown extension query")),
+                },
             },
             other => Cw721SvgContract::default()
                 .query(deps, &env, other)
@@ -312,14 +323,26 @@ pub mod entry {
     /// `ExecuteMsg` / `QueryMsg` / `InstantiateMsg` decoding into the exports.
     /// After the stack limiter adds a branch per block, that body no longer
     /// fits an arm64 relocation. This export is not a CosmWasm entry point.
-    #[cfg(target_arch = "wasm32")]
+    ///
+    /// Only in the cw721-svg cdylib itself. Under `library` (cw-svg-minter,
+    /// svg-auction, ...) the entry points are not exported, so this would be
+    /// the decoders' only caller: wasm-opt then inlines all three into it and
+    /// the 69 KB body fails arm64 singlepass with ImpossibleRelocation.
+    #[cfg(all(target_arch = "wasm32", not(feature = "library")))]
     #[unsafe(no_mangle)]
     pub extern "C" fn cw721_svg_fn_split() -> usize {
         let bytes: &[u8] = b"{}";
         let execute = from_json::<ExecuteMsg>(bytes).is_err() as usize;
         let query = from_json::<QueryMsg>(bytes).is_err() as usize;
         let instantiate = from_json::<InstantiateMsg>(bytes).is_err() as usize;
-        execute + query + instantiate
+        // Address-taken (table refs) so wasm-opt keeps these out of `execute`.
+        let keep = core::hint::black_box(crate::contract::execute_mint as usize)
+            ^ core::hint::black_box(crate::contract::settle_alt_payment as usize)
+            ^ core::hint::black_box(crate::contract::execute_set_oracle_pricing as usize)
+            ^ core::hint::black_box(crate::scribing::configure as usize)
+            ^ core::hint::black_box(crate::scribing::propose as usize)
+            ^ core::hint::black_box(terp_oracle::handle_oracle_query as usize);
+        execute + query + instantiate + (keep & 0)
     }
 }
 

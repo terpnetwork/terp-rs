@@ -30,9 +30,11 @@ nftfi-randomness = { workspace = true }
 nftfi-utils = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
+terp-oracle = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+cw-oracle-registry = { workspace = true, features = ["library"] }
 cw-multi-test = { workspace = true }
 cw721 = { workspace = true }
 cw721-svg = { workspace = true }

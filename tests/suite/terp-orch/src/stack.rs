@@ -293,6 +293,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
                 minimum_raffle_duration: None,
                 max_tickets_per_raffle: None,
                 raffle_fee: Decimal::percent(1),
+                oracle_pricing: None,
                 creation_coins: None,
                 randomness: nftfi_randomness::RandomnessSourceMsg::Seed { provider: None },
             },

@@ -22,6 +22,11 @@
         "name": {
           "value": 1
         },
+        "oracle_pricing": {
+          "defaulting": true,
+          "description": "Optional oracle pricing for alt-asset ticket payments. Absent = unchanged.",
+          "value": 26
+        },
         "owner": {
           "value": 2
         },
@@ -124,6 +129,259 @@
           }
         }
       }
+    },
+    {
+      "name": "terp_oracle_types_OraclePricing",
+      "description": "Optional oracle pricing for a minting contract.\n\nAbsent, or `enforce == false`: only the default asset is accepted and\npayment behaves as before. The oracle queries still answer, so a frontend\ncan show prices before enforcement is switched on.",
+      "type": "struct",
+      "properties": {
+        "alt_assets": {
+          "value": 23
+        },
+        "enforce": {
+          "value": 14
+        },
+        "policy": {
+          "defaulting": true,
+          "value": 24
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "terp_oracle_types_AltAsset",
+      "description": "An alternate asset accepted in place of `base_denom`.",
+      "type": "struct",
+      "properties": {
+        "alt_decimals": {
+          "description": "Decimals of the alt asset.",
+          "value": 22
+        },
+        "asset": {
+          "value": 16
+        },
+        "base_decimals": {
+          "description": "Decimals of the base denom (e.g. 6 for uterp).",
+          "value": 22
+        },
+        "base_denom": {
+          "description": "The default mint asset this alt is priced against.",
+          "value": 1
+        },
+        "combine": {
+          "defaulting": true,
+          "description": "How feed values are combined. Default median.",
+          "value": 19
+        },
+        "feeds": {
+          "value": 20
+        },
+        "quote": {
+          "value": 21
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_PriceAsset",
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "type": "enum",
+      "cases": {
+        "cw20": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "native": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_Feed",
+      "description": "One oracle source.",
+      "type": "struct",
+      "properties": {
+        "kind": {
+          "value": 18
+        },
+        "oracle": {
+          "description": "Oracle contract address (registry, aggregator or probe, matching `kind`).",
+          "value": 1
+        },
+        "weight": {
+          "defaulting": true,
+          "description": "Weight for `AggregateMethod::Mean` across feeds. Default 1.",
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_FeedKind",
+      "description": "What to read from one oracle contract.",
+      "type": "enum",
+      "cases": {
+        "aggregator_median": {
+          "description": "Aggregator `Median { market_id, window }`. The height comes from the\naggregator's registry `Latest`, so staleness checks still apply.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 1
+            },
+            "window": {
+              "value": 5
+            }
+          }
+        },
+        "history": {
+          "description": "Registry `History { limit }`, combined locally with `method`.",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 5
+            },
+            "market_id": {
+              "value": 1
+            },
+            "method": {
+              "value": 19
+            }
+          }
+        },
+        "probe_twap": {
+          "description": "TWAP probe `ArithmeticTwap { pool_id }`. Carries no height.",
+          "type": "named",
+          "properties": {
+            "pool_id": {
+              "value": 3
+            }
+          }
+        },
+        "spot": {
+          "description": "Registry `Latest { market_id }`.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 1
+            }
+          }
+        },
+        "twap": {
+          "description": "Registry `Twap` over the newest `window_blocks` heights ending at the latest observation.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 1
+            },
+            "window_blocks": {
+              "value": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_AggregateMethod",
+      "description": "How several values are combined into one.",
+      "type": "enum",
+      "cases": {
+        "max": {
+          "type": "unit"
+        },
+        "mean": {
+          "description": "Weighted by `Feed::weight` (default 1) when combining feeds, and by\nnothing when combining a history window.",
+          "type": "unit"
+        },
+        "median": {
+          "type": "unit"
+        },
+        "min": {
+          "type": "unit"
+        },
+        "weighted": {
+          "description": "Weighted by observation count (`PricePoint::observations`) when combining feeds,\nand by block gap (piecewise constant, like the registry TWAP) on a history window.",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<terp_oracle::types::Feed>",
+      "type": "array",
+      "items": 17
+    },
+    {
+      "name": "terp_oracle_types_Quote",
+      "description": "Direction of the feed price.",
+      "type": "enum",
+      "cases": {
+        "alt_in_base": {
+          "description": "Feed value = base units per 1 alt (in display units). E.g. feed\n`ATOM/TERP = 12.5`, base TERP, alt ATOM: 1 ATOM costs 12.5 TERP.",
+          "type": "unit"
+        },
+        "base_in_alt": {
+          "description": "Feed value = alt units per 1 base (in display units).",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u8",
+      "type": "integer",
+      "precision": 8,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<terp_oracle::types::AltAsset>",
+      "type": "array",
+      "items": 15
+    },
+    {
+      "name": "terp_oracle_types_PricingPolicy",
+      "description": "Guards applied to every price read.",
+      "type": "struct",
+      "properties": {
+        "max_deviation": {
+          "defaulting": true,
+          "description": "Max relative spread between any feed and the combined price, e.g. 0.05.",
+          "value": 25
+        },
+        "max_staleness_blocks": {
+          "defaulting": true,
+          "description": "Max `env.block.height - observation.height`. Requires feeds that record\nlocal (terp) heights. `None` disables the check.",
+          "value": 4
+        },
+        "min_observations": {
+          "defaulting": true,
+          "description": "Min total observations behind the combined price. Default none.",
+          "value": 6
+        },
+        "min_sources": {
+          "defaulting": true,
+          "description": "Min number of feeds that must answer. Default 1.",
+          "value": 6
+        },
+        "slippage": {
+          "defaulting": true,
+          "description": "Accepted underpayment against the quote, e.g. 0.01 = pay at least 99%.\nOverpayment is refunded.",
+          "value": 25
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::math::decimal::Decimal>",
+      "type": "optional",
+      "inner": 7
+    },
+    {
+      "name": "core::option::Option<terp_oracle::types::OraclePricing>",
+      "type": "optional",
+      "inner": 13
     }
   ]
 }

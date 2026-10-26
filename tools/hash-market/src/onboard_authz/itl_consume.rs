@@ -819,7 +819,8 @@ pub fn msg_store_code_with_circuit(sender: &str, wasm: &[u8], vk: &[u8]) -> Json
         "wasm_byte_code": b64(wasm),
         "verifying_key": b64(vk),
         "prover_id": PROVER_ID,
-        "instantiate_permission": null,
+        // Explicit, never null: CodeGrant.Accept nil-deref under authz (docs/issues/wasm-authz-codegrant-nil-instantiate-permission.md).
+        "instantiate_permission": {"permission": "ACCESS_TYPE_EVERYBODY", "addresses": []},
     })
 }
 
@@ -1019,6 +1020,7 @@ mod tests {
         assert_eq!(msg["@type"], MSG_STORE_CODE_WITH_CIRCUIT);
         assert_eq!(msg["prover_id"], 0);
         assert!(msg.get("verifying_key").is_some());
+        assert_eq!(msg["instantiate_permission"]["permission"], "ACCESS_TYPE_EVERYBODY");
         assert!(
             !msg["@type"].as_str().unwrap().ends_with("MsgStoreCode")
                 || msg["@type"].as_str().unwrap().contains("Circuit")

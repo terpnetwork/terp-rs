@@ -1,11 +1,12 @@
 use cosmwasm_schema::write_api;
-use cw_oracle_registry::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use cw_oracle_registry::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 
 fn main() {
     write_api! {
         instantiate: InstantiateMsg,
         execute: ExecuteMsg,
         query: QueryMsg,
+        migrate: MigrateMsg,
         sudo: SudoMsg,
     }
 }

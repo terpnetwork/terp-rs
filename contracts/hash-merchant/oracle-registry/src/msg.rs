@@ -161,3 +161,7 @@ pub struct TwapResponse {
     pub twap: Decimal,
     pub volume_hint: Uint128,
 }
+
+/// Migrate message. Intentionally empty: migrate is a plain capability entrypoint.
+#[cw_serde]
+pub struct MigrateMsg {}

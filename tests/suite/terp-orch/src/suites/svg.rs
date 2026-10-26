@@ -88,6 +88,7 @@ impl<Chain: CwEnv> Deploy<Chain> for CwSvgSuite<Chain> {
                     owner,
                     svg_code_id: suite.cwsvg.code_id()?,
                     dregg_ibc_only: false,
+                    oracle_pricing: None,
                     runtime_minters: vec![],
                 },
                 admin,

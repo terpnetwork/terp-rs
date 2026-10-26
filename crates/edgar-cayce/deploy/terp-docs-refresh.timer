@@ -1,0 +1,14 @@
+# Example only. Do not install or enable this timer from the repo.
+# Pairs with terp-docs-refresh.service. Daily, with a small delay so hosts
+# do not all fetch at the same minute. Persistent catches up after downtime.
+
+[Unit]
+Description=Daily terp docs corpus refresh (example)
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

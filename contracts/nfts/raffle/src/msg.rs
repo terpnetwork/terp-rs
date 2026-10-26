@@ -17,6 +17,9 @@ pub struct InstantiateMsg {
     /// Empty means creating a raffle is free.
     pub creation_coins: Option<Vec<Coin>>,
     pub randomness: RandomnessSourceMsg,
+    /// Optional oracle pricing for alt-asset ticket payments. Absent = unchanged.
+    #[serde(default)]
+    pub oracle_pricing: Option<terp_oracle::OraclePricing>,
 }
 
 #[cw_serde]
@@ -75,6 +78,10 @@ pub enum ExecuteMsg {
     ToggleLock {
         lock: bool,
     },
+    /// Owner: set or clear oracle pricing. `None` clears it.
+    UpdateOraclePricing {
+        pricing: Option<terp_oracle::OraclePricing>,
+    },
 }
 
 #[cw_serde]
@@ -82,6 +89,7 @@ pub enum SudoMsg {
     ToggleLock { lock: bool },
 }
 
+#[terp_oracle::oracle_query]
 #[cw_serde]
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
 #[derive(QueryResponses)]
@@ -94,6 +102,15 @@ pub enum QueryMsg {
     Ticket { raffle_id: u64, index: u32 },
     #[returns(TicketCountResponse)]
     TicketCount { owner: String, raffle_id: u64 },
+    /// Alt-asset tickets and pot for a raffle.
+    #[returns(AltPotResponse)]
+    AltPot { raffle_id: u64 },
+}
+
+#[cw_serde]
+pub struct AltPotResponse {
+    pub alt_tickets: u32,
+    pub pot: Vec<Coin>,
 }
 
 #[cw_serde]
@@ -112,3 +129,7 @@ pub struct TicketResponse {
 pub struct TicketCountResponse {
     pub count: u32,
 }
+
+/// Migrate message. Intentionally empty: migrate is a plain capability entrypoint.
+#[cw_serde]
+pub struct MigrateMsg {}

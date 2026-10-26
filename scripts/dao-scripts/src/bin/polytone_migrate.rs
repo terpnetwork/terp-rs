@@ -116,7 +116,7 @@ fn print_registry_hints(cli: &Cli, chain_id: &str) {
 }
 
 fn main() -> Result<()> {
-    let _ = dotenv::dotenv();
+    dao_scripts::kms_gate::legacy_signer("polytone_migrate (mnemonic Daemon)", "polytone_osmosis (cw-orch-kms gov proposal)")?;
     env_logger::init();
 
     let cli = Cli::parse();
