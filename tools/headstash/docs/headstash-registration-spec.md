@@ -1,4 +1,76 @@
-# Headstash registration spec (rev 3): sidecar fee grants to fresh wallets
+# Headstash registration spec (rev 4): submit to any sidecar (direct batched path)
+
+Status: IMPLEMENTED on `wip/headstash-membership-vk` (local commits, not deployed). History: rev 1 (`e4520b1`),
+rev 2 (`144d87d`), rev 3 (`51d30fe`, fee grants to fresh wallets). Rev 4 (2026-10-26) makes the direct sidecar
+path primary (resolves D1 below) and keeps fee grants only as an optional self-submit path (section A).
+Circuit, vk and public-input layout unchanged; only the eligibility (pre-registration) layer changed.
+
+## R4.1 Primary flow: any sidecar relays RegisterHeadstash directly
+
+1. The holder signs the registration message with the eligible key (EVM personal_sign, or Phantom/Solflare
+   `signMessage` for Solana). The claim destination is a separate Terp address and must not equal the registering
+   address (the page warns).
+2. The page POSTs it to any sidecar in its configured list (falls back to the next on network error, 429 or 5xx) and
+   polls `GET /register/status/{id}` on the sidecar that accepted it.
+3. The sidecar checks cheapest-first: 4 KiB body cap, JSON/format, `ctx == campaign ctx`, per-IP and per-identity
+   rate limits, native signature verify (secp256k1 recover; ed25519 strict), eligibility path vs its local tree
+   whose root and depth must equal the on-chain campaign at startup, cached `Registered{identity}` query, dedupe by identity,
+   max queue length.
+4. A single broadcaster flushes every N seconds (default 6) or at max batch (default 25) as ONE tx with several
+   `RegisterHeadstash` / `RegisterHeadstashSol` msgs from the sidecar's own account. Sequence is kept locally and
+   refreshed from chain on mismatch. The batch is simulated first; a failing msg (node reports `message index: i`)
+   is dropped with its phrase (e.g. `already registered`) and the rest retried; failed delivery requeues up to 2x.
+5. The contract re-verifies everything, so a sidecar cannot forge or alter a registration; it can only refuse or
+   delay. Liveness: any sidecar, or the holder submitting the same msg themselves (any funded account; the
+   sender is irrelevant to the contract).
+
+No fee grants and no fresh wallets. Each sidecar pays its own gas; the registration is a few hundred k gas per msg.
+Cross-sidecar duplicates cost at most one failed simulate, never a fee (the Registered query plus simulation drop it).
+
+Operations: the binary is `headstash-register-relay` (hash-market). It binds 127.0.0.1 only behind the one nginx
+(X-Real-IP trusted only from loopback). The operator key is a keyring reference (`HEADSTASH_RELAY_FROM`,
+`HEADSTASH_RELAY_HOME`, `HEADSTASH_KEYRING_BACKEND`) passed to `terpd tx sign --offline`; the process never reads key material.
+Chain access is the node REST API (`HEADSTASH_REST`, loopback by default). Required: `HEADSTASH_CONTRACT`,
+`HEADSTASH_ELIGIBILITY` (tree.json from `headstash-eligibility`).
+
+HTTP:
+- `POST /register` takes `{kind:"evm"|"sol", ctx_hex, key_com_hex, amount:"<decimal>", signature_hex, pubkey_hex?}`.
+  Lowercase hex. EVM sig is 65 bytes (v 27/28 or 0/1). Sol pubkey is 32 bytes and sig is 64 bytes.
+  It returns `202 {id,status:"queued"}`, `200 {status:"registered"}`, `400 {error}`, `429` or `503`.
+- `GET /register/status/{id}` returns `queued | submitted{txhash} | registered{txhash,height} | failed{error}`.
+  The id is `hex(sha256(identity))[..16 bytes]`.
+
+## R4.2 Encodings (normative, supersedes section 7 leaves)
+
+- ctx: the campaign's 32-byte Pallas field ctx (`epoch_campaign.ctx`), shared by both kinds.
+- EVM message: `headstash-register-v1:{ctx_hex}:{key_com_hex}:{amount}` (EIP-191). Unchanged.
+- Solana message: `headstash-register-sol-v1:{ctx_hex}:{key_com_hex}:{amount}`, raw UTF-8, ed25519
+  (`deps.api.ed25519_verify`; non-canonical S rejected).
+- EVM leaf: `sha256("terp-hs-elig-leaf-v1" || addr20 || amount_le8)` (48-byte preimage, unchanged, so the published EVM
+  root form stays valid. This resolves D3 as "EVM untagged + Solana tagged").
+- Solana leaf: `sha256("terp-hs-elig-leaf-v1" || 0x02 || pubkey32 || amount_le8)`. The 61-byte preimage can never
+  equal a 48-byte EVM preimage.
+- Node: `sha256("terp-hs-elig-node-v1" || left || right)`; padding leaf = 32 zero bytes; depth <= 16.
+- Vectors: sol_leaf(pubkey=0x01*32, 15) = `e224308c...3af711`; evm_leaf(0x7e5f45...395bdf, 15) = `45dd29df...4412ed`.
+- Identity / one-registration key: EVM `hex(addr)` and Solana `"sol:" + hex(pubkey)`, both in the shared ADDRESSES map.
+- Contract msgs: `RegisterHeadstash{key_com,amount,signature,eligibility_index,eligibility_path}`,
+  `RegisterHeadstashSol{key_com,amount,pubkey,signature,eligibility_index,eligibility_path}`, and the
+  `Registered{identity} -> bool` query.
+- Snapshot: Solana entries are accepted as base64(utf8(base58)) or plain base58 (stoned-ape-club is plain base58).
+  Each must decode to exactly 32 bytes on the curve; duplicates are summed. Built by `headstash-eligibility`
+  (headstash-epoch).
+
+## R4.3 Remaining decisions
+- D2 (batch size/cadence): defaults 25 / 6 s, env-tunable.
+- D5 reimbursement: still open (sidecars self-fund in rev 4).
+- Allocation policy for fractional token snapshots (chronic-token) before the production root is built.
+
+---
+
+# Section A (optional): self-submit via fee grant (rev 3 text, retained)
+
+The following is the rev 3 design. It is no longer the primary path. Use it only if a holder wants to submit
+their own tx from a fresh wallet without funds. Section numbers below are rev 3's.
 
 Status: DRAFT, design only. History: rev 1 (`e4520b1`) and rev 2 (`144d87d`) in
 `smart-account-registration-spec.md` (now a pointer). Rev 3 (2026-10-26) follows the Terp Network decision to
@@ -117,7 +189,7 @@ Registration links the eligible address to `E` and `key_com` (acceptable: regist
 keep it in session storage only, discard after registration, and have the claim screen reject a destination equal to any registration wallet.
 Claims stay on the batched claim ingress; a sidecar that saw a grant request should not also see the claim from the same IP/session (recommend a different sidecar or delay).
 
-## 7. Message formats (unchanged from rev 2)
+## 7. Message formats (rev 3; leaves superseded by R4.2)
 
 - EVM: EIP-191 over `headstash-register-v1:{ctx}:{key_com}:{amount}`.
 - Solana: `ed25519_verify` over UTF-8 bytes of `headstash-register-sol-v1:{ctx_hex}:{key_com_hex}:{amount_decimal}`;
