@@ -282,6 +282,15 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 
+/// Returns `f` through `black_box`, so the call becomes `call_indirect`. Without
+/// this, wasm-opt -Os inlines every single-caller handler into `execute`, giving one
+/// ~127 KB function that arm64 singlepass rejects (ImpossibleRelocation).
+/// `#[inline(never)]` does not help: it only binds LLVM, not binaryen.
+#[inline(always)]
+fn opaque<F: Copy>(f: F) -> F {
+    core::hint::black_box(f)
+}
+
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -292,23 +301,23 @@ pub fn execute(
     // TODO: allowlist for writing to nullifier tree
     match msg {
         ExecuteMsg::ProcessHeadstash { claims } => {
-            crate::headstash::process_headstash(deps, env, claims)
+            opaque::<fn(_, _, _) -> _>(crate::headstash::process_headstash)(deps, env, claims)
         }
         ExecuteMsg::SetCircuitId { circuit_id } => {
-            crate::headstash::set_circuit_id(deps, info, circuit_id)
+            opaque::<fn(_, _, _) -> _>(crate::headstash::set_circuit_id)(deps, info, circuit_id)
         }
         ExecuteMsg::RegisterEligibilityRoot {
             root,
             domain,
             label,
-        } => crate::headstash::register_eligibility_root(deps, info, root, domain, label),
+        } => opaque::<fn(_, _, _, _, _) -> _>(crate::headstash::register_eligibility_root)(deps, info, root, domain, label),
         ExecuteMsg::Mint { to_address, amount } => {
-            execute_mint(deps, env, info, to_address, amount)
+            opaque::<fn(_, _, _, _, _) -> _>(execute_mint)(deps, env, info, to_address, amount)
         }
         ExecuteMsg::Burn {
             from_address,
             amount,
-        } => execute_burn(deps, env, info, from_address, amount),
+        } => opaque::<fn(_, _, _, _, _) -> _>(execute_burn)(deps, env, info, from_address, amount),
         // Private-bridge mint router (CLARITY: cw-headstash is the mint)
         ExecuteMsg::UpdateReflection {
             pool_root,
@@ -316,7 +325,7 @@ pub fn execute(
             burn_root,
             source_height,
             tip_height,
-        } => bridge::execute_update_reflection(
+        } => opaque::<fn(_, _, _, _, _, _, _) -> _>(bridge::execute_update_reflection)(
             deps,
             info,
             pool_root,
@@ -326,30 +335,30 @@ pub fn execute(
             tip_height,
         ),
         ExecuteMsg::SetReflectionSnapshot { snapshot } => {
-            bridge::execute_set_reflection_snapshot(deps, info, snapshot)
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_reflection_snapshot)(deps, info, snapshot)
         }
         ExecuteMsg::RegisterAsset {
             asset_id,
             local_denom,
             origin,
             status,
-        } => bridge::execute_register_asset(deps, info, asset_id, local_denom, origin, status),
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(bridge::execute_register_asset)(deps, info, asset_id, local_denom, origin, status),
         ExecuteMsg::SetExternalAssetRegistry { addr } => {
-            bridge::execute_set_external_asset_registry(deps, info, addr)
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_external_asset_registry)(deps, info, addr)
         }
-        ExecuteMsg::SetBridgeCfg { cfg } => bridge::execute_set_bridge_cfg(deps, info, cfg),
+        ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
         ExecuteMsg::BridgeMintNote { claim, proof } => {
-            bridge::execute_bridge_mint_note(deps, env, info, claim, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, claim, proof)
         }
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
-            egress::execute_bridge_egress_burn(deps, env, info, statement, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, statement, proof)
         }
-        ExecuteMsg::SetDenomTable { amounts } => epoch::set_denom_table(deps, info, amounts),
+        ExecuteMsg::SetDenomTable { amounts } => opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts),
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
-            epoch::assign_public_notes(deps, info, nullifiers)
+            opaque::<fn(_, _, _) -> _>(epoch::assign_public_notes)(deps, info, nullifiers)
         }
-        ExecuteMsg::SetEpochCampaign { campaign } => epoch::set_campaign(deps, info, campaign),
-        ExecuteMsg::SweepUnclaimed {} => epoch::sweep_unclaimed(deps, env, info),
+        ExecuteMsg::SetEpochCampaign { campaign } => opaque::<fn(_, _, _) -> _>(epoch::set_campaign)(deps, info, campaign),
+        ExecuteMsg::SweepUnclaimed {} => opaque::<fn(_, _, _) -> _>(epoch::sweep_unclaimed)(deps, env, info),
         ExecuteMsg::UpdateOwnership(action) => {
             if matches!(action, cw_ownable::Action::RenounceOwnership) {
                 return Err(StdError::msg("renounce_ownership is disabled"));
@@ -359,15 +368,15 @@ pub fn execute(
             Ok(Response::new().add_attributes(o.into_attributes()))
         }
         ExecuteMsg::StageEpochBatch { digests, rows } => {
-            epoch::stage_batch(deps, &env, info, digests, rows)
+            opaque::<fn(_, _, _, _, _) -> _>(epoch::stage_batch)(deps, &env, info, digests, rows)
         }
         ExecuteMsg::ApplyAcceptedBatch {
             allocation_root,
             root_id,
             rows,
             vk_hash,
-        } => epoch::apply_accepted_batch(deps, env, allocation_root, root_id, rows, vk_hash),
-        ExecuteMsg::ApplyPublicBatch { rows } => epoch::apply_public_batch(deps, env, rows),
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(epoch::apply_accepted_batch)(deps, env, allocation_root, root_id, rows, vk_hash),
+        ExecuteMsg::ApplyPublicBatch { rows } => opaque::<fn(_, _, _) -> _>(epoch::apply_public_batch)(deps, env, rows),
         ExecuteMsg::RegisterHeadstash {
             key_com,
             amount,
@@ -376,7 +385,7 @@ pub fn execute(
             eligibility_path,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            registration::register(
+            opaque::<fn(_, _, _, _, _, _, _) -> _>(registration::register)(
                 deps,
                 &campaign,
                 key_com,
@@ -395,7 +404,7 @@ pub fn execute(
             eligibility_path,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            registration::register_sol(
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(registration::register_sol)(
                 deps,
                 &campaign,
                 key_com,
@@ -408,7 +417,7 @@ pub fn execute(
         }
         ExecuteMsg::AcceptAnchor {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            registration::accept_anchor(deps, &env, &campaign)
+            opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
         }
     }
 }

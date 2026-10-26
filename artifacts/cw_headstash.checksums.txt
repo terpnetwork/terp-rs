@@ -1,12 +1,14 @@
-# cw-headstash reproducible build record (2026-10-26)
-# source: terp-rs-headstash-membership-vk tree at 33f6afd + zakura [patch.crates-io] + relocked Cargo.lock (this commit)
-# image:  terpnetwork/optimizer-arm64:0.17.0-rust1.91 (sha256:b4d2087efbaf36126e0b992b4313b5c322502bc3bb538582050d324bfd6f5d6f), rustc 1.91.0 (f8297e351), wasm-opt 116
-# build:  terp-core mounted read-only at /workspace, no port binds;
-#         cargo build --release --lib --target wasm32-unknown-unknown -p cw-headstash   (image RUSTFLAGS)
-#         wasm-opt -Os --enable-bulk-memory --enable-sign-ext --disable-simd   (same flags as terp-optimize.sh)
-048242afeb39401c0f9f299db620c8ac38fdd7675978cc1976ac5c0b11e28946  cw_headstash.wasm  1015008 bytes
-# cosmwasm-check 4.0.0-zk, caps = BuiltIn + cosmwasm_3_0, --wasm-limits {"max_function_locals":1024} (local chain WasmLimitsConfig):
-#   x86_64 singlepass: PASS (terp-optimizer wasm_fn_budget scan)
-#   arm64  singlepass: FAIL  func[195] body 127231 B -> ImpossibleRelocation(Dynamic(DynamicLabel(0)))
-#   default limits (100 locals): FAIL, 110 locals
-# NOT the tracked artifacts/cw_headstash.wasm (2b206935…, 92b81d8), which fails the same arm64 check (124 locals at default).
+# cw-headstash pinned optimizer build (single contract, image toolchain)
+# image   terpnetwork/optimizer-arm64:0.17.0-rust1.91 (rustc 1.91.0, wasm-opt 116, cosmwasm-check 4.0.0-zk)
+# build   cargo build --release --lib --target wasm32-unknown-unknown -p cw-headstash  (image RUSTFLAGS)
+#         wasm-opt -Os --enable-bulk-memory --enable-sign-ext --disable-simd
+# source  execute handlers dispatched via black_box fn pointers (lib.rs `opaque`) + RegistrationPath NODES index
+3ea9947fb1d64aeff63c0a7a8c6c4322683ee006b60f5524fb805446f33d06aa  cw_headstash.wasm  1018650 bytes
+#
+# cosmwasm-check --available-capabilities cosmwasm_1_1,cosmwasm_1_2,cosmwasm_1_3,cosmwasm_1_4,cosmwasm_2_0,cosmwasm_2_1,cosmwasm_2_2,cosmwasm_3_0,iterator,staking,stargate,bulk_memory,hash_poseidon,hash_blake,redpallas,bn254,ibc2 --wasm-limits '{"max_function_locals":1024}'
+#   arm64 (aarch64, optimizer image, Wasmer 7.4.2 singlepass): PASS
+#   x86_64 (docker --platform linux/amd64 rust:1.95 under emulation, cosmwasm-check 4.0.0-zk built --locked from crates/cosmwasm): PASS
+# wasm_fn_budget scan: arm64 PASS (compiled), largest body 53,900 B (<= 69,396), udiv tail 5,147
+#
+# previous: 048242af... 1,015,008 B  arm64 FAIL ImpossibleRelocation func[195] = cw_headstash::execute (127,231 B,
+#           wasm-opt inlined all single-caller handlers into it); x86_64 PASS
