@@ -41,6 +41,12 @@ struct Cli {
     chain_id: String,
     #[arg(long)]
     grpc: Option<String>,
+    /// CometBFT RPC fallback for broadcast (comma-separated). Default: env MOROCCO_RPC on morocco-1.
+    #[arg(long)]
+    rpc: Option<String>,
+    /// LCD/REST fallback for broadcast, after --rpc. Default: env MOROCCO_LCD on morocco-1.
+    #[arg(long)]
+    lcd: Option<String>,
     #[arg(long, default_value = "morocco-1")]
     network: String,
     #[arg(long, default_value = "uthiol")]
@@ -160,6 +166,8 @@ fn main() -> Result<()> {
         Some(g) => kms_gate::chain_info(&cli.network, g, &cli.gas_denom, cli.gas_price, "terp", ChainKind::Mainnet),
         None => kms_gate::morocco_info(),
     };
+    let info = kms_gate::with_http_fallback(info, cli.rpc.as_deref(), cli.lcd.as_deref());
+    println!("broadcast fallback: rpc {:?} lcd {:?}", info.rpc_urls, info.lcd_url);
     let msgs = load_msgs(&cli)?;
     let msg = msgs.first().cloned();
     let plan = json!({"cmd": cli.cmd, "chain_id": info.chain_id, "granter": cli.granter, "contract": cli.contract,

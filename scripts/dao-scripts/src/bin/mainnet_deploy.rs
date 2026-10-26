@@ -125,6 +125,12 @@ struct Cli {
     /// Override the chain: gRPC endpoint (default morocco_info()).
     #[arg(long)]
     grpc: Option<String>,
+    /// CometBFT RPC fallback for broadcast (comma-separated). Default: env MOROCCO_RPC on morocco-1.
+    #[arg(long)]
+    rpc: Option<String>,
+    /// LCD/REST fallback for broadcast, after --rpc. Default: env MOROCCO_LCD on morocco-1.
+    #[arg(long)]
+    lcd: Option<String>,
     /// Chain id when --grpc points at another chain.
     #[arg(long, default_value = "morocco-1")]
     network: String,
@@ -931,6 +937,8 @@ fn main() -> Result<()> {
         Some(g) => kms_gate::chain_info(&cli.network, g, &cli.gas_denom, cli.gas_price, "terp", if cli.signer == SignerKind::LocalTest { ChainKind::Local } else { ChainKind::Mainnet }),
         None => kms_gate::morocco_info(),
     };
+    let info = kms_gate::with_http_fallback(info, cli.rpc.as_deref(), cli.lcd.as_deref());
+    println!("broadcast fallback: rpc {:?} lcd {:?}", info.rpc_urls, info.lcd_url);
     if cli.signer == SignerKind::LocalTest { local_guard(&cli)?; }
     if cli.broadcast && cli.chain_id != info.chain_id { bail!("broadcast refused: --chain-id {:?} != {}", cli.chain_id, info.chain_id); }
     if cli.broadcast && std::env::var(kms_gate::BROADCAST_ENV).ok().as_deref() != Some("1") { bail!("broadcast refused: set {}=1", kms_gate::BROADCAST_ENV); }

@@ -44,8 +44,8 @@ pub fn chain_info(
         gas_denom: gas_denom.into(),
         gas_price,
         grpc_urls: vec![grpc.into()],
-        rpc_urls: vec![],
-        lcd_url: None,
+        rpc_urls: env_rpc_urls(chain_id),
+        lcd_url: env_lcd_url(chain_id),
         fcd_url: None,
         network_info: NetworkInfoOwned {
             chain_name: prefix.into(),
@@ -54,6 +54,30 @@ pub fn chain_info(
         },
         kind,
     }
+}
+
+/// CometBFT RPC fallback for broadcast / tx lookup when gRPC fails (cw-orch http_broadcast).
+/// morocco-1 only: `MOROCCO_RPC` (comma-separated, tried in order). Empty = no fallback.
+pub fn env_rpc_urls(chain_id: &str) -> Vec<String> {
+    if chain_id != "morocco-1" { return vec![]; }
+    split_urls(&std::env::var("MOROCCO_RPC").unwrap_or_default())
+}
+
+/// LCD (REST) fallback, tried after the RPC urls. morocco-1 only: `MOROCCO_LCD`.
+pub fn env_lcd_url(chain_id: &str) -> Option<String> {
+    if chain_id != "morocco-1" { return None; }
+    std::env::var("MOROCCO_LCD").ok().map(|s| s.trim().trim_end_matches('/').to_string()).filter(|s| !s.is_empty())
+}
+
+pub fn split_urls(s: &str) -> Vec<String> {
+    s.split(',').map(|u| u.trim().trim_end_matches('/').to_string()).filter(|u| !u.is_empty()).collect()
+}
+
+/// Apply `--rpc` / `--lcd` flags (they replace the env values when given).
+pub fn with_http_fallback(mut info: ChainInfoOwned, rpc: Option<&str>, lcd: Option<&str>) -> ChainInfoOwned {
+    if let Some(r) = rpc { info.rpc_urls = split_urls(r); }
+    if let Some(l) = lcd { let l = l.trim().trim_end_matches('/'); info.lcd_url = (!l.is_empty()).then(|| l.to_string()); }
+    info
 }
 
 /// morocco-1 defaults. `MOROCCO_GRPC` overrides the endpoint.
