@@ -1,826 +1,1004 @@
-//! Loopback register relay for the headstash page.
+//! Headstash registration sidecar ("submit to any sidecar").
 //!
-//! Binds only `127.0.0.1:8791`. The page posts `ctx_hex`, `key_com_hex`,
-//! `amount`, and `signature_hex`. This process recovers the signer, attaches
-//! the eligibility sibling from a local file, and broadcasts `RegisterHeadstash`.
-//! It does not print the body, the signature, or the key commitment.
+//! Any sidecar accepts holders' signed eligibility registrations over HTTP,
+//! verifies them cheaply, and batches them into its own transactions: one tx
+//! carrying several `RegisterHeadstash` / `RegisterHeadstashSol` messages, sent
+//! from the sidecar's own account with a locally ordered sequence. No fee
+//! grants, no fresh wallets. cw-headstash re-verifies every signature and
+//! eligibility path, so a sidecar cannot forge a registration; it can only
+//! refuse or delay one, which is why the page falls back across sidecars.
+//!
+//! Pipeline per request (cheapest first):
+//!   body cap -> JSON/format -> ctx == campaign ctx -> rate limits ->
+//!   native signature verify (secp256k1 recover / ed25519 strict) ->
+//!   eligibility path against the configured root (== on-chain root) ->
+//!   on-chain `registered` query (cached) -> dedupe by identity -> queue.
+//! One broadcaster task flushes every `FLUSH_SECS` or at `MAX_BATCH`.
+//!
+//! Binds 127.0.0.1 only (put the single nginx in front). The operator key is
+//! the existing keyring reference (`--from` + `--home` + backend) handed to
+//! `terpd tx sign`; this process never reads key material. It does not log
+//! bodies, signatures, or key commitments.
 
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+use async_trait::async_trait;
 use axum::body::Bytes;
-use axum::extract::{Request, State};
-use axum::http::{header, HeaderMap, StatusCode};
+use axum::extract::{ConnectInfo, Path, Request, State};
+use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use base64::Engine;
 use ff::PrimeField;
 use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
-#[cfg(test)]
-use k256::ecdsa::SigningKey;
 use pasta_curves::pallas;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use tiny_keccak::{Hasher, Keccak};
+use tokio::sync::{Mutex, Notify};
 
-const BIND: &str = "127.0.0.1:8791";
-const PAGE_ORIGIN: &str = "http://127.0.0.1:3921";
-const CONTRACT: &str = "terp1x22q8lfhz7qcvtzs0dakhgx2th64l79kepjujhhxk5x804taeqlquq4ehx";
-const CHAIN_ID: &str = "headstash-epoch-e2e";
-const NODE: &str = "tcp://127.0.0.1:36667";
-const HOME: &str = "/tmp/headstash-epoch-chain";
-const FROM: &str = "owner";
+const DEFAULT_BIND: &str = "127.0.0.1:8791";
+const DEFAULT_ORIGIN: &str = "http://127.0.0.1:3921";
 const BODY_LIMIT: usize = 4096;
+const SOL_LEAF_TAG: u8 = 0x02;
 
-#[derive(Clone)]
-struct Cfg {
-    terpd: PathBuf,
-    home: PathBuf,
-    contract: String,
+// ---------------------------------------------------------------- types
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Evm { address: [u8; 20], signature: [u8; 65] },
+    Sol { pubkey: [u8; 32], signature: [u8; 64] },
 }
 
-struct App {
-    cfg: Cfg,
-    ctx: [u8; 32],
-    tree: EligTree,
-    busy: tokio::sync::Mutex<()>,
-}
-
-#[derive(Clone)]
-struct EligTree {
-    depth: u32,
-    entries: Vec<Elig>,
-}
-
-#[derive(Clone)]
-struct Elig {
-    address: [u8; 20],
-    amount: u64,
-}
-
-struct Landed {
-    txhash: String,
-    index: u32,
-    count: u32,
-    root_hex: String,
-}
-
-enum Fail {
-    Phrase(&'static str),
-    Retry,
-    Relay,
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let bind = std::env::var("HEADSTASH_RELAY_BIND").unwrap_or_else(|_| BIND.to_string());
-    if let Err(phrase) = check_bind(&bind) {
-        anyhow::bail!("{phrase}");
-    }
-    let path = std::env::var("HEADSTASH_ELIGIBILITY")
-        .map_err(|_| anyhow::anyhow!("HEADSTASH_ELIGIBILITY is required"))?;
-    let tree = load_tree(std::fs::read(&path)?)?;
-    let cfg = Cfg {
-        terpd: PathBuf::from(
-            std::env::var("TERPD").unwrap_or_else(|_| "/tmp/terpd-v6.4.0-abstain".into()),
-        ),
-        home: PathBuf::from(HOME),
-        contract: contract_from_env()?,
-    };
-    if !cfg.terpd.is_file() {
-        anyhow::bail!("terpd missing");
-    }
-    let campaign = smart_query(&cfg, r#"{"epoch_campaign":{}}"#)?;
-    let data = campaign
-        .get("data")
-        .ok_or_else(|| anyhow::anyhow!("chain query"))?;
-    let ctx = decode_bin32(data.get("ctx").and_then(|v| v.as_str()).unwrap_or(""))
-        .ok_or_else(|| anyhow::anyhow!("chain ctx"))?;
-    let registration = data
-        .get("registration")
-        .ok_or_else(|| anyhow::anyhow!("chain registration"))?;
-    let chain_root = decode_bin32(
-        registration
-            .get("eligibility_root")
-            .and_then(|v| v.as_str())
-            .unwrap_or(""),
-    )
-    .ok_or_else(|| anyhow::anyhow!("chain eligibility"))?;
-    let depth = registration
-        .get("eligibility_depth")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| anyhow::anyhow!("chain depth"))? as u32;
-    if depth != tree.depth || chain_root != tree.root() {
-        anyhow::bail!(
-            "eligibility mismatch chain_prefix {} file_prefix {}",
-            prefix(&chain_root),
-            prefix(&tree.root())
-        );
-    }
-    let contract = cfg.contract.clone();
-    let app = Arc::new(App {
-        cfg,
-        ctx,
-        tree,
-        busy: tokio::sync::Mutex::new(()),
-    });
-    let router = Router::new()
-        .route("/health", get(health))
-        .route(
-            "/headstash/register",
-            post(register).options(preflight),
-        )
-        .with_state(app);
-    let listener = tokio::net::TcpListener::bind(&bind).await?;
-    let local = listener.local_addr()?;
-    if !local.ip().is_loopback() || local.port() != 8791 {
-        anyhow::bail!("listener is not 127.0.0.1:8791");
-    }
-    println!(
-        "relay_up {bind} depth {depth} root_prefix {} contract {}",
-        prefix(&chain_root),
-        contract
-    );
-    axum::serve(listener, router).await?;
-    Ok(())
-}
-
-async fn health(headers: HeaderMap) -> Response {
-    reply(StatusCode::OK, serde_json::json!({"ok": true}), origin_of(&headers))
-}
-
-async fn preflight(headers: HeaderMap) -> Response {
-    reply(
-        StatusCode::NO_CONTENT,
-        serde_json::Value::Null,
-        origin_of(&headers),
-    )
-}
-
-async fn register(State(app): State<Arc<App>>, req: Request) -> Response {
-    let origin = origin_of(req.headers()).map(str::to_string);
-    let bytes = match axum::body::to_bytes(req.into_body(), BODY_LIMIT).await {
-        Ok(bytes) => bytes,
-        Err(_) => return fail(Fail::Relay, origin.as_deref()),
-    };
-    let parsed = match parse_registration(&bytes) {
-        Ok(parsed) => parsed,
-        Err(err) => return fail(err, origin.as_deref()),
-    };
-    if parsed.ctx != app.ctx {
-        return fail(Fail::Phrase("registration"), origin.as_deref());
-    }
-    let message = register_message(&app.ctx, &parsed.key_com, parsed.amount);
-    let Some(address) = recover_address(&message, &parsed.signature) else {
-        return fail(Fail::Phrase("signature"), origin.as_deref());
-    };
-    let Some(index) = app.tree.index_of(&address, parsed.amount) else {
-        return fail(Fail::Phrase("eligibility"), origin.as_deref());
-    };
-    let Some(path) = app.tree.path(index) else {
-        return fail(Fail::Phrase("eligibility"), origin.as_deref());
-    };
-    let _guard = app.busy.lock().await;
-    let cfg = app.cfg.clone();
-    let joined = tokio::task::spawn_blocking(move || {
-        broadcast(&cfg, &parsed.key_com, parsed.amount, &parsed.signature, index, &path)
-    })
-    .await;
-    match joined {
-        Ok(Ok(landed)) => reply(
-            StatusCode::OK,
-            serde_json::json!({
-                "txhash": landed.txhash,
-                "index": landed.index,
-                "count": landed.count,
-                "root_hex": landed.root_hex,
-            }),
-            origin.as_deref(),
-        ),
-        Ok(Err(err)) => fail(err, origin.as_deref()),
-        Err(_) => fail(Fail::Relay, origin.as_deref()),
-    }
-}
-
-struct Parsed {
-    ctx: [u8; 32],
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reg {
+    kind: Kind,
     key_com: [u8; 32],
     amount: u64,
-    signature: [u8; 65],
-}
-
-fn parse_registration(bytes: &Bytes) -> Result<Parsed, Fail> {
-    let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|_| Fail::Phrase("registration"))?;
-    let ctx = decode_hex64(value.get("ctx_hex").and_then(|v| v.as_str()).unwrap_or(""))
-        .ok_or(Fail::Phrase("registration"))?;
-    let key_com = decode_hex64(value.get("key_com_hex").and_then(|v| v.as_str()).unwrap_or(""))
-        .ok_or(Fail::Phrase("key commitment"))?;
-    if !canonical_key(&key_com) {
-        return Err(Fail::Phrase("key commitment"));
-    }
-    let amount = match value.get("amount") {
-        Some(serde_json::Value::String(text)) => text.parse::<u64>().map_err(|_| Fail::Phrase("amount"))?,
-        Some(serde_json::Value::Number(number)) => number.as_u64().ok_or(Fail::Phrase("amount"))?,
-        _ => return Err(Fail::Phrase("amount")),
-    };
-    if amount == 0 {
-        return Err(Fail::Phrase("amount"));
-    }
-    let signature_hex = value
-        .get("signature_hex")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    if signature_hex.len() != 130 || !signature_hex.chars().all(|ch| ch.is_ascii_hexdigit() && !ch.is_ascii_uppercase()) {
-        return Err(Fail::Phrase("signature"));
-    }
-    let raw = hex::decode(signature_hex).map_err(|_| Fail::Phrase("signature"))?;
-    let signature: [u8; 65] = raw.try_into().map_err(|_| Fail::Phrase("signature"))?;
-    Ok(Parsed {
-        ctx,
-        key_com,
-        amount,
-        signature,
-    })
-}
-
-fn broadcast(
-    cfg: &Cfg,
-    key_com: &[u8; 32],
-    amount: u64,
-    signature: &[u8; 65],
     index: u32,
-    path: &[[u8; 32]],
-) -> Result<Landed, Fail> {
-    let msg = execute_msg(key_com, amount, signature, index, path);
-    let txhash = match submit(cfg, &msg, 2_000_000) {
-        Err(Fail::Retry) => submit(cfg, &msg, 8_000_000)?,
-        other => other?,
-    };
-    let viewed = poll_tx(cfg, &txhash)?;
-    let code = viewed
-        .get("code")
-        .and_then(|v| v.as_u64())
-        .ok_or(Fail::Relay)?;
-    if code != 0 {
-        let raw = viewed
-            .get("raw_log")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        return Err(phrase_in(raw).map(Fail::Phrase).unwrap_or(Fail::Relay));
-    }
-    let index = event_index(&viewed).unwrap_or(index);
-    let tree = smart_query(cfg, r#"{"registration_tree":{}}"#).map_err(|_| Fail::Relay)?;
-    let data = tree.get("data").ok_or(Fail::Relay)?;
-    let count = data
-        .get("count")
-        .and_then(|v| v.as_u64())
-        .ok_or(Fail::Relay)? as u32;
-    let root = decode_bin32(data.get("root").and_then(|v| v.as_str()).unwrap_or("")).ok_or(Fail::Relay)?;
-    Ok(Landed {
-        txhash,
-        index,
-        count,
-        root_hex: hex::encode(root),
-    })
+    path: Vec<[u8; 32]>,
 }
 
-fn submit(cfg: &Cfg, msg: &str, gas: u64) -> Result<String, Fail> {
-    let gas = gas.to_string();
-    let args = [
-        "tx",
-        "wasm",
-        "execute",
-        cfg.contract.as_str(),
-        msg,
-        "--from",
-        FROM,
-        "--home",
-        HOME,
-        "--keyring-backend",
-        "test",
-        "--chain-id",
-        CHAIN_ID,
-        "--node",
-        NODE,
-        "--gas",
-        gas.as_str(),
-        "--gas-prices",
-        "0.025uterp",
-        "-y",
-        "-b",
-        "sync",
-        "-o",
-        "json",
-    ];
-    let (stdout, stderr, ok) = run(cfg, &args);
-    let text = String::from_utf8_lossy(&stdout);
-    let err_text = String::from_utf8_lossy(&stderr);
-    if let Some(phrase) = phrase_in(&text).or_else(|| phrase_in(&err_text)) {
-        return Err(Fail::Phrase(phrase));
-    }
-    if !ok {
-        if text.contains("out of gas") || err_text.contains("out of gas") {
-            return Err(Fail::Retry);
+impl Reg {
+    fn identity(&self) -> String {
+        match &self.kind {
+            Kind::Evm { address, .. } => hex::encode(address),
+            Kind::Sol { pubkey, .. } => format!("sol:{}", hex::encode(pubkey)),
         }
-        return Err(Fail::Relay);
     }
-    let value = json_from(&stdout).ok_or(Fail::Relay)?;
-    let code = value.get("code").and_then(|v| v.as_u64()).unwrap_or(0);
-    if code != 0 {
-        return Err(Fail::Relay);
+
+    fn execute_msg(&self) -> Value {
+        let path: Vec<String> = self.path.iter().map(|s| b64(s)).collect();
+        match &self.kind {
+            Kind::Evm { signature, .. } => json!({"register_headstash": {
+                "key_com": b64(&self.key_com), "amount": self.amount,
+                "signature": b64(signature),
+                "eligibility_index": self.index, "eligibility_path": path }}),
+            Kind::Sol { pubkey, signature } => json!({"register_headstash_sol": {
+                "key_com": b64(&self.key_com), "amount": self.amount,
+                "pubkey": b64(pubkey), "signature": b64(signature),
+                "eligibility_index": self.index, "eligibility_path": path }}),
+        }
     }
-    value
-        .get("txhash")
-        .and_then(|v| v.as_str())
-        .filter(|hash| hash.len() == 64 && hash.chars().all(|ch| ch.is_ascii_hexdigit()))
-        .map(|hash| hash.to_string())
-        .ok_or(Fail::Relay)
 }
 
-fn poll_tx(cfg: &Cfg, txhash: &str) -> Result<serde_json::Value, Fail> {
-    let args = [
-        "query",
-        "tx",
-        txhash,
-        "--node",
-        NODE,
-        "-o",
-        "json",
-    ];
-    for _ in 0..60 {
-        let (stdout, _, ok) = run(cfg, &args);
-        if ok {
-            if let Some(value) = json_from(&stdout) {
-                let view = value.get("tx_response").cloned().unwrap_or(value);
-                if view.get("code").is_some() {
-                    return Ok(view);
-                }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Status {
+    Queued,
+    Submitted { txhash: String },
+    Registered { txhash: Option<String>, height: Option<u64> },
+    Failed { error: String },
+}
+
+impl Status {
+    fn to_json(&self, id: &str) -> Value {
+        match self {
+            Status::Queued => json!({"id": id, "status": "queued"}),
+            Status::Submitted { txhash } => json!({"id": id, "status": "submitted", "txhash": txhash}),
+            Status::Registered { txhash, height } => {
+                json!({"id": id, "status": "registered", "txhash": txhash, "height": height})
             }
-        }
-        std::thread::sleep(Duration::from_millis(500));
-    }
-    Err(Fail::Relay)
-}
-
-fn smart_query(cfg: &Cfg, query: &str) -> anyhow::Result<serde_json::Value> {
-    let args = [
-        "query",
-        "wasm",
-        "contract-state",
-        "smart",
-        cfg.contract.as_str(),
-        query,
-        "--node",
-        NODE,
-        "-o",
-        "json",
-    ];
-    let (stdout, _, ok) = run(cfg, &args);
-    if !ok {
-        anyhow::bail!("chain query");
-    }
-    json_from(&stdout).ok_or_else(|| anyhow::anyhow!("chain query"))
-}
-
-fn run(cfg: &Cfg, args: &[&str]) -> (Vec<u8>, Vec<u8>, bool) {
-    let mut cmd = Command::new(&cfg.terpd);
-    cmd.args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env_clear();
-    if let Ok(home) = std::env::var("HOME") {
-        cmd.env("HOME", home);
-    }
-    if let Ok(path) = std::env::var("PATH") {
-        cmd.env("PATH", path);
-    }
-    cmd.env("TMPDIR", std::env::var("TMPDIR").unwrap_or_else(|_| "/tmp".into()));
-    if let Some(user) = std::env::var_os("USER") {
-        cmd.env("USER", user);
-    }
-    let _ = cfg.home;
-    match cmd.output() {
-        Ok(output) => (output.stdout, output.stderr, output.status.success()),
-        Err(_) => (Vec::new(), Vec::new(), false),
-    }
-}
-
-fn execute_msg(
-    key_com: &[u8; 32],
-    amount: u64,
-    signature: &[u8; 65],
-    index: u32,
-    path: &[[u8; 32]],
-) -> String {
-    let siblings: Vec<String> = path.iter().map(|sibling| b64(sibling)).collect();
-    serde_json::json!({
-        "register_headstash": {
-            "key_com": b64(key_com),
-            "amount": amount,
-            "signature": b64(signature),
-            "eligibility_index": index,
-            "eligibility_path": siblings,
-        }
-    })
-    .to_string()
-}
-
-fn event_index(view: &serde_json::Value) -> Option<u32> {
-    let events = view.get("events")?.as_array()?;
-    for event in events {
-        if event.get("type").and_then(|v| v.as_str()) != Some("wasm") {
-            continue;
-        }
-        let attrs = event.get("attributes")?.as_array()?;
-        let action = attr(attrs, "action");
-        if action != Some("register_headstash") {
-            continue;
-        }
-        if let Some(index) = attr(attrs, "index") {
-            return index.parse().ok();
+            Status::Failed { error } => json!({"id": id, "status": "failed", "error": error}),
         }
     }
-    None
 }
 
-fn attr<'a>(attrs: &'a [serde_json::Value], key: &str) -> Option<&'a str> {
-    attrs.iter().find_map(|attr| {
-        let found = attr.get("key").and_then(|v| v.as_str())?;
-        if found == key {
-            attr.get("value").and_then(|v| v.as_str())
-        } else {
-            None
+#[derive(Debug)]
+pub enum Reject {
+    Bad(&'static str),
+    Rate,
+    Full,
+}
+
+// ---------------------------------------------------------------- chain
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChainErr {
+    /// Simulation failed for message `index` (if the node said which).
+    Msg { index: Option<usize>, log: String },
+    Sequence,
+    Other(String),
+}
+
+pub struct TxResult {
+    pub code: u32,
+    pub height: u64,
+    pub log: String,
+}
+
+#[async_trait]
+pub trait Chain: Send + Sync + 'static {
+    async fn registered(&self, identity: &str) -> Result<bool, String>;
+    async fn sequence(&self) -> Result<(u64, u64), String>;
+    /// Returns gas used.
+    async fn simulate(&self, msgs: &[Value], acct: u64, seq: u64) -> Result<u64, ChainErr>;
+    /// Returns txhash once CheckTx accepted it.
+    async fn broadcast(&self, msgs: &[Value], gas: u64, acct: u64, seq: u64) -> Result<String, ChainErr>;
+    async fn wait(&self, txhash: &str) -> Result<TxResult, String>;
+}
+
+// ---------------------------------------------------------------- eligibility
+
+pub struct Elig {
+    depth: u32,
+    levels: Vec<Vec<[u8; 32]>>,
+    index: HashMap<String, (u32, u64)>,
+}
+
+impl Elig {
+    pub fn load(bytes: &[u8]) -> anyhow::Result<Self> {
+        let v: Value = serde_json::from_slice(bytes)?;
+        let depth = v.get("depth").and_then(Value::as_u64).ok_or_else(|| anyhow::anyhow!("eligibility depth"))? as u32;
+        if !(1..=16).contains(&depth) {
+            anyhow::bail!("eligibility depth");
         }
-    })
-}
-
-fn contract_from_env() -> anyhow::Result<String> {
-    let raw = std::env::var("HEADSTASH_CONTRACT").unwrap_or_else(|_| CONTRACT.to_string());
-    parse_contract(&raw).map_err(|phrase| anyhow::anyhow!(phrase))
-}
-
-fn parse_contract(raw: &str) -> Result<String, &'static str> {
-    if raw.len() < 39 || raw.len() > 90 || !raw.starts_with("terp1") {
-        return Err("contract");
-    }
-    if !raw.chars().all(|ch| ch.is_ascii_alphanumeric()) {
-        return Err("contract");
-    }
-    Ok(raw.to_string())
-}
-
-fn check_bind(bind: &str) -> Result<(), &'static str> {
-    if bind == BIND {
-        Ok(())
-    } else {
-        Err("refusing non-loopback bind")
-    }
-}
-
-fn load_tree(bytes: Vec<u8>) -> anyhow::Result<EligTree> {
-    let value: serde_json::Value = serde_json::from_slice(&bytes)?;
-    let depth = value
-        .get("depth")
-        .and_then(|v| v.as_u64())
-        .ok_or_else(|| anyhow::anyhow!("eligibility"))? as u32;
-    if !(1..=16).contains(&depth) {
-        anyhow::bail!("eligibility");
-    }
-    let rows = value
-        .get("entries")
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| anyhow::anyhow!("eligibility"))?;
-    if rows.len() != 1usize << depth {
-        anyhow::bail!("eligibility");
-    }
-    let mut entries = Vec::with_capacity(rows.len());
-    for row in rows {
-        let address = decode_hex_n(
-            row.get("address_hex").and_then(|v| v.as_str()).unwrap_or(""),
-            20,
-        )
-        .ok_or_else(|| anyhow::anyhow!("eligibility"))?;
-        let amount = row
-            .get("amount")
-            .and_then(|v| v.as_u64())
-            .ok_or_else(|| anyhow::anyhow!("eligibility"))?;
-        if amount == 0 {
-            anyhow::bail!("eligibility");
+        let rows = v.get("entries").and_then(Value::as_array).ok_or_else(|| anyhow::anyhow!("eligibility entries"))?;
+        if rows.len() > 1usize << depth {
+            anyhow::bail!("eligibility entries exceed depth");
         }
-        entries.push(Elig {
-            address: address.try_into().unwrap(),
-            amount,
-        });
+        let mut leaves = vec![[0u8; 32]; 1usize << depth];
+        let mut index = HashMap::with_capacity(rows.len());
+        for (i, row) in rows.iter().enumerate() {
+            let amount = row.get("amount").and_then(Value::as_u64).filter(|a| *a > 0).ok_or_else(|| anyhow::anyhow!("eligibility amount"))?;
+            let (id, leaf) = if let Some(a) = row.get("address_hex").and_then(Value::as_str) {
+                let a: [u8; 20] = decode_hex_n(a, 20).ok_or_else(|| anyhow::anyhow!("eligibility address"))?.try_into().unwrap();
+                (hex::encode(a), evm_leaf(&a, amount))
+            } else if let Some(p) = row.get("sol_pubkey_hex").and_then(Value::as_str) {
+                let p: [u8; 32] = decode_hex_n(p, 32).ok_or_else(|| anyhow::anyhow!("eligibility pubkey"))?.try_into().unwrap();
+                (format!("sol:{}", hex::encode(p)), sol_leaf(&p, amount))
+            } else {
+                anyhow::bail!("eligibility row");
+            };
+            if index.insert(id, (i as u32, amount)).is_some() {
+                anyhow::bail!("eligibility duplicate identity");
+            }
+            leaves[i] = leaf;
+        }
+        Ok(Self::from_leaves(depth, leaves, index))
     }
-    Ok(EligTree { depth, entries })
-}
 
-impl EligTree {
-    fn index_of(&self, address: &[u8; 20], amount: u64) -> Option<u32> {
-        self.entries
-            .iter()
-            .position(|entry| entry.address == *address && entry.amount == amount)
-            .map(|index| index as u32)
+    fn from_leaves(depth: u32, leaves: Vec<[u8; 32]>, index: HashMap<String, (u32, u64)>) -> Self {
+        let mut levels = vec![leaves];
+        for _ in 0..depth {
+            let next = levels.last().unwrap().chunks(2).map(|p| elig_node(&p[0], &p[1])).collect();
+            levels.push(next);
+        }
+        Self { depth, levels, index }
     }
 
-    fn path(&self, index: u32) -> Option<Vec<[u8; 32]>> {
-        if index >= self.entries.len() as u32 {
+    pub fn root(&self) -> [u8; 32] {
+        self.levels[self.depth as usize][0]
+    }
+
+    /// Index + path when `identity` is eligible for exactly `amount`.
+    fn lookup(&self, identity: &str, amount: u64) -> Option<(u32, Vec<[u8; 32]>)> {
+        let (i, a) = *self.index.get(identity)?;
+        if a != amount {
             return None;
         }
-        let mut nodes: Vec<[u8; 32]> = self
-            .entries
-            .iter()
-            .map(|entry| eligibility_leaf(&entry.address, entry.amount))
-            .collect();
-        let mut cursor = index as usize;
-        let mut path = Vec::with_capacity(self.depth as usize);
-        for _ in 0..self.depth {
-            path.push(nodes[cursor ^ 1]);
-            let mut next = Vec::with_capacity(nodes.len() / 2);
-            for pair in nodes.chunks(2) {
-                next.push(eligibility_node(&pair[0], &pair[1]));
-            }
-            nodes = next;
-            cursor /= 2;
-        }
-        Some(path)
-    }
-
-    fn root(&self) -> [u8; 32] {
-        let mut nodes: Vec<[u8; 32]> = self
-            .entries
-            .iter()
-            .map(|entry| eligibility_leaf(&entry.address, entry.amount))
-            .collect();
-        while nodes.len() > 1 {
-            let mut next = Vec::with_capacity(nodes.len() / 2);
-            for pair in nodes.chunks(2) {
-                next.push(eligibility_node(&pair[0], &pair[1]));
-            }
-            nodes = next;
-        }
-        nodes[0]
+        let path = (0..self.depth as usize).map(|l| self.levels[l][((i as usize) >> l) ^ 1]).collect();
+        Some((i, path))
     }
 }
 
-fn eligibility_leaf(address: &[u8; 20], amount: u64) -> [u8; 32] {
+pub fn evm_leaf(address: &[u8; 20], amount: u64) -> [u8; 32] {
     let mut pre = b"terp-hs-elig-leaf-v1".to_vec();
     pre.extend_from_slice(address);
     pre.extend_from_slice(&amount.to_le_bytes());
     sha256(&pre)
 }
 
-fn eligibility_node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+pub fn sol_leaf(pubkey: &[u8; 32], amount: u64) -> [u8; 32] {
+    let mut pre = b"terp-hs-elig-leaf-v1".to_vec();
+    pre.push(SOL_LEAF_TAG);
+    pre.extend_from_slice(pubkey);
+    pre.extend_from_slice(&amount.to_le_bytes());
+    sha256(&pre)
+}
+
+pub fn elig_node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut pre = b"terp-hs-elig-node-v1".to_vec();
     pre.extend_from_slice(left);
     pre.extend_from_slice(right);
     sha256(&pre)
 }
 
-fn register_message(ctx: &[u8], key_com: &[u8], amount: u64) -> String {
-    format!(
-        "headstash-register-v1:{}:{}:{amount}",
-        hex::encode(ctx),
-        hex::encode(key_com)
-    )
+fn open_path(mut node: [u8; 32], index: u32, path: &[[u8; 32]]) -> [u8; 32] {
+    for (l, s) in path.iter().enumerate() {
+        node = if (index >> l) & 1 == 0 { elig_node(&node, s) } else { elig_node(s, &node) };
+    }
+    node
 }
 
-fn recover_address(message: &str, signature: &[u8; 65]) -> Option<[u8; 20]> {
+// ---------------------------------------------------------------- verify
+
+pub fn register_message(ctx: &[u8], key_com: &[u8], amount: u64) -> String {
+    format!("headstash-register-v1:{}:{}:{amount}", hex::encode(ctx), hex::encode(key_com))
+}
+
+pub fn register_sol_message(ctx: &[u8], key_com: &[u8], amount: u64) -> String {
+    format!("headstash-register-sol-v1:{}:{}:{amount}", hex::encode(ctx), hex::encode(key_com))
+}
+
+pub struct Parsed {
+    ctx: [u8; 32],
+    key_com: [u8; 32],
+    amount: u64,
+    sig: ParsedSig,
+}
+
+enum ParsedSig {
+    Evm([u8; 65]),
+    Sol { pubkey: [u8; 32], signature: [u8; 64] },
+}
+
+/// Stateless format checks only.
+pub fn parse(bytes: &[u8]) -> Result<Parsed, Reject> {
+    let v: Value = serde_json::from_slice(bytes).map_err(|_| Reject::Bad("registration"))?;
+    let ctx = decode_hex_n(v.get("ctx_hex").and_then(Value::as_str).unwrap_or(""), 32).ok_or(Reject::Bad("registration"))?;
+    let key_com: [u8; 32] = decode_hex_n(v.get("key_com_hex").and_then(Value::as_str).unwrap_or(""), 32)
+        .ok_or(Reject::Bad("key commitment"))?
+        .try_into()
+        .unwrap();
+    if Option::<pallas::Base>::from(pallas::Base::from_repr(key_com)).is_none() {
+        return Err(Reject::Bad("key commitment"));
+    }
+    let amount = match v.get("amount") {
+        Some(Value::String(t)) if !t.starts_with('0') || t == "0" => t.parse::<u64>().map_err(|_| Reject::Bad("amount"))?,
+        Some(Value::Number(n)) => n.as_u64().ok_or(Reject::Bad("amount"))?,
+        _ => return Err(Reject::Bad("amount")),
+    };
+    if amount == 0 {
+        return Err(Reject::Bad("amount"));
+    }
+    let sig_hex = v.get("signature_hex").and_then(Value::as_str).unwrap_or("");
+    let sig = match v.get("kind").and_then(Value::as_str).unwrap_or("evm") {
+        "evm" => ParsedSig::Evm(decode_hex_n(sig_hex, 65).ok_or(Reject::Bad("signature"))?.try_into().unwrap()),
+        "sol" => ParsedSig::Sol {
+            pubkey: decode_hex_n(v.get("pubkey_hex").and_then(Value::as_str).unwrap_or(""), 32)
+                .ok_or(Reject::Bad("pubkey"))?
+                .try_into()
+                .unwrap(),
+            signature: decode_hex_n(sig_hex, 64).ok_or(Reject::Bad("signature"))?.try_into().unwrap(),
+        },
+        _ => return Err(Reject::Bad("kind")),
+    };
+    Ok(Parsed { ctx: ctx.try_into().unwrap(), key_com, amount, sig })
+}
+
+/// Identity the signature claims (before verification) — used for rate limiting.
+fn claimed_identity(p: &Parsed) -> Option<String> {
+    match &p.sig {
+        ParsedSig::Sol { pubkey, .. } => Some(format!("sol:{}", hex::encode(pubkey))),
+        ParsedSig::Evm(_) => None,
+    }
+}
+
+/// Native signature check, then eligibility against the configured tree.
+pub fn verify(p: &Parsed, ctx: &[u8; 32], elig: &Elig) -> Result<Reg, Reject> {
+    if &p.ctx != ctx {
+        return Err(Reject::Bad("registration"));
+    }
+    let (kind, leaf) = match &p.sig {
+        ParsedSig::Evm(sig) => {
+            let msg = register_message(ctx, &p.key_com, p.amount);
+            let address = recover_address(&msg, sig).ok_or(Reject::Bad("signature"))?;
+            (Kind::Evm { address, signature: *sig }, evm_leaf(&address, p.amount))
+        }
+        ParsedSig::Sol { pubkey, signature } => {
+            let vk = ed25519_dalek::VerifyingKey::from_bytes(pubkey).map_err(|_| Reject::Bad("pubkey"))?;
+            let msg = register_sol_message(ctx, &p.key_com, p.amount);
+            vk.verify_strict(msg.as_bytes(), &ed25519_dalek::Signature::from_bytes(signature))
+                .map_err(|_| Reject::Bad("signature"))?;
+            (Kind::Sol { pubkey: *pubkey, signature: *signature }, sol_leaf(pubkey, p.amount))
+        }
+    };
+    let mut reg = Reg { kind, key_com: p.key_com, amount: p.amount, index: 0, path: vec![] };
+    let (index, path) = elig.lookup(&reg.identity(), p.amount).ok_or(Reject::Bad("eligibility"))?;
+    if open_path(leaf, index, &path) != elig.root() {
+        return Err(Reject::Bad("eligibility"));
+    }
+    reg.index = index;
+    reg.path = path;
+    Ok(reg)
+}
+
+pub fn recover_address(message: &str, signature: &[u8; 65]) -> Option<[u8; 20]> {
     let recid = match signature[64] {
         0 | 27 => 0,
         1 | 28 => 1,
         _ => return None,
     };
-    let digest = keccak256(&eip191(message));
+    let mut env = format!("\x19Ethereum Signed Message:\n{}", message.len()).into_bytes();
+    env.extend_from_slice(message.as_bytes());
+    let digest = keccak256(&env);
     let sig = Signature::from_slice(&signature[..64]).ok()?;
-    let id = RecoveryId::from_byte(recid)?;
-    let vk = VerifyingKey::recover_from_prehash(&digest, &sig, id).ok()?;
+    let vk = VerifyingKey::recover_from_prehash(&digest, &sig, RecoveryId::from_byte(recid)?).ok()?;
     let point = vk.to_encoded_point(false);
-    let bytes = point.as_bytes();
-    if bytes.len() != 65 || bytes[0] != 0x04 {
-        return None;
+    let hash = keccak256(&point.as_bytes()[1..]);
+    let mut out = [0u8; 20];
+    out.copy_from_slice(&hash[12..]);
+    Some(out)
+}
+
+// ---------------------------------------------------------------- batcher
+
+pub struct Limits {
+    pub flush: Duration,
+    pub max_batch: usize,
+    pub max_queue: usize,
+    pub per_identity: (usize, Duration),
+    pub per_ip: (usize, Duration),
+    pub cache_ttl: Duration,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            flush: Duration::from_secs(6),
+            max_batch: 25,
+            max_queue: 2000,
+            per_identity: (5, Duration::from_secs(600)),
+            per_ip: (30, Duration::from_secs(60)),
+            cache_ttl: Duration::from_secs(30),
+        }
     }
-    let hash = keccak256(&bytes[1..]);
-    let mut address = [0u8; 20];
-    address.copy_from_slice(&hash[12..]);
-    Some(address)
 }
 
-fn eip191(message: &str) -> Vec<u8> {
-    let mut out = b"\x19Ethereum Signed Message:\n".to_vec();
-    out.extend_from_slice(message.len().to_string().as_bytes());
-    out.extend_from_slice(message.as_bytes());
-    out
+#[derive(Default)]
+struct Inner {
+    queue: VecDeque<(String, Reg, u8)>,
+    queued: HashSet<String>,
+    status: HashMap<String, Status>,
+    by_identity: HashMap<String, String>,
+    hits: HashMap<String, VecDeque<Instant>>,
+    cache: HashMap<String, Instant>,
 }
 
-fn canonical_key(bytes: &[u8; 32]) -> bool {
-    Option::<pallas::Base>::from(pallas::Base::from_repr(*bytes)).is_some()
+pub struct Batcher<C: Chain> {
+    chain: C,
+    limits: Limits,
+    inner: Mutex<Inner>,
+    wake: Notify,
+    seq: Mutex<Option<(u64, u64)>>,
+}
+
+pub fn request_id(identity: &str) -> String {
+    hex::encode(&sha256(identity.as_bytes())[..16])
+}
+
+impl<C: Chain> Batcher<C> {
+    pub fn new(chain: C, limits: Limits) -> Self {
+        Self { chain, limits, inner: Mutex::new(Inner::default()), wake: Notify::new(), seq: Mutex::new(None) }
+    }
+
+    fn hit(inner: &mut Inner, key: String, (n, window): (usize, Duration)) -> bool {
+        let now = Instant::now();
+        let q = inner.hits.entry(key).or_default();
+        while q.front().is_some_and(|t| now.duration_since(*t) > window) {
+            q.pop_front();
+        }
+        if q.len() >= n {
+            return false;
+        }
+        q.push_back(now);
+        true
+    }
+
+    pub async fn rate_ip(&self, ip: &str) -> Result<(), Reject> {
+        let mut inner = self.inner.lock().await;
+        if Self::hit(&mut inner, format!("ip:{ip}"), self.limits.per_ip) { Ok(()) } else { Err(Reject::Rate) }
+    }
+
+    pub async fn rate_identity(&self, id: &str) -> Result<(), Reject> {
+        let mut inner = self.inner.lock().await;
+        if Self::hit(&mut inner, format!("id:{id}"), self.limits.per_identity) { Ok(()) } else { Err(Reject::Rate) }
+    }
+
+    /// Dedupe, on-chain registered check (cached), then queue.
+    pub async fn submit(&self, reg: Reg) -> Result<(String, Status), Reject> {
+        let identity = reg.identity();
+        let id = request_id(&identity);
+        {
+            let inner = self.inner.lock().await;
+            if let Some(s) = inner.status.get(&id) {
+                if !matches!(s, Status::Failed { .. }) {
+                    return Ok((id, s.clone()));
+                }
+            }
+            if inner.queue.len() >= self.limits.max_queue {
+                return Err(Reject::Full);
+            }
+        }
+        let fresh = {
+            let inner = self.inner.lock().await;
+            inner.cache.get(&identity).is_some_and(|t| t.elapsed() < self.limits.cache_ttl)
+        };
+        if !fresh {
+            match self.chain.registered(&identity).await {
+                Ok(true) => {
+                    let s = Status::Registered { txhash: None, height: None };
+                    self.inner.lock().await.status.insert(id.clone(), s.clone());
+                    return Ok((id, s));
+                }
+                Ok(false) => {
+                    self.inner.lock().await.cache.insert(identity.clone(), Instant::now());
+                }
+                Err(_) => return Err(Reject::Bad("relay")),
+            }
+        }
+        let mut inner = self.inner.lock().await;
+        if inner.queued.contains(&identity) {
+            return Ok((id.clone(), inner.status.get(&id).cloned().unwrap_or(Status::Queued)));
+        }
+        if inner.queue.len() >= self.limits.max_queue {
+            return Err(Reject::Full);
+        }
+        inner.queued.insert(identity.clone());
+        inner.by_identity.insert(identity, id.clone());
+        inner.status.insert(id.clone(), Status::Queued);
+        inner.queue.push_back((id.clone(), reg, 0));
+        let full = inner.queue.len() >= self.limits.max_batch;
+        drop(inner);
+        if full {
+            self.wake.notify_one();
+        }
+        Ok((id, Status::Queued))
+    }
+
+    pub async fn status(&self, id: &str) -> Option<Status> {
+        self.inner.lock().await.status.get(id).cloned()
+    }
+
+    /// The single in-flight broadcaster.
+    pub async fn run(self: Arc<Self>) {
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(self.limits.flush) => {}
+                _ = self.wake.notified() => {}
+            }
+            while self.flush_once().await > 0 {}
+        }
+    }
+
+    async fn set(&self, id: &str, s: Status) {
+        self.inner.lock().await.status.insert(id.to_string(), s);
+    }
+
+    async fn finish(&self, item: &(String, Reg, u8), s: Status) {
+        let mut inner = self.inner.lock().await;
+        inner.queued.remove(&item.1.identity());
+        inner.cache.remove(&item.1.identity());
+        inner.status.insert(item.0.clone(), s);
+    }
+
+    async fn account(&self, refresh: bool) -> Result<(u64, u64), String> {
+        let mut seq = self.seq.lock().await;
+        if refresh || seq.is_none() {
+            *seq = Some(self.chain.sequence().await?);
+        }
+        Ok(seq.unwrap())
+    }
+
+    /// Flush up to `max_batch`. Returns the number of items taken.
+    pub async fn flush_once(&self) -> usize {
+        let mut batch: Vec<(String, Reg, u8)> = {
+            let mut inner = self.inner.lock().await;
+            let n = inner.queue.len().min(self.limits.max_batch);
+            inner.queue.drain(..n).collect()
+        };
+        let taken = batch.len();
+        if taken == 0 {
+            return 0;
+        }
+        let Ok((mut acct, mut seq)) = self.account(false).await else {
+            self.requeue(batch).await;
+            return 0;
+        };
+        // Simulate; drop the offending message and retry the rest.
+        let mut gas = 0u64;
+        let mut refreshed = false;
+        while !batch.is_empty() {
+            let msgs: Vec<Value> = batch.iter().map(|b| b.1.execute_msg()).collect();
+            match self.chain.simulate(&msgs, acct, seq).await {
+                Ok(g) => {
+                    gas = g;
+                    break;
+                }
+                Err(ChainErr::Msg { index: Some(i), log }) if i < batch.len() => {
+                    let bad = batch.remove(i);
+                    self.finish(&bad, Status::Failed { error: phrase_in(&log).unwrap_or("rejected").into() }).await;
+                }
+                Err(ChainErr::Sequence) if !refreshed => {
+                    refreshed = true;
+                    match self.account(true).await {
+                        Ok(a) => (acct, seq) = a,
+                        Err(_) => break,
+                    }
+                }
+                Err(_) => {
+                    // Unknown index: isolate one message at a time.
+                    let mut keep = Vec::new();
+                    for item in batch.drain(..) {
+                        match self.chain.simulate(&[item.1.execute_msg()], acct, seq).await {
+                            Ok(_) => keep.push(item),
+                            Err(ChainErr::Msg { log, .. }) => {
+                                self.finish(&item, Status::Failed { error: phrase_in(&log).unwrap_or("rejected").into() }).await
+                            }
+                            Err(_) => keep.push(item),
+                        }
+                    }
+                    if !keep.is_empty() {
+                        let msgs: Vec<Value> = keep.iter().map(|b| b.1.execute_msg()).collect();
+                        match self.chain.simulate(&msgs, acct, seq).await {
+                            Ok(g) => gas = g,
+                            Err(_) => {
+                                self.requeue(keep).await;
+                                return taken;
+                            }
+                        }
+                    }
+                    batch = keep;
+                    break;
+                }
+            }
+        }
+        if batch.is_empty() {
+            return taken;
+        }
+        if gas == 0 {
+            self.requeue(batch).await;
+            return taken;
+        }
+        let gas = gas.saturating_mul(13) / 10 + 50_000;
+        let msgs: Vec<Value> = batch.iter().map(|b| b.1.execute_msg()).collect();
+        let mut sent = self.chain.broadcast(&msgs, gas, acct, seq).await;
+        if matches!(sent, Err(ChainErr::Sequence)) {
+            if let Ok(a) = self.account(true).await {
+                (acct, seq) = a;
+                sent = self.chain.broadcast(&msgs, gas, acct, seq).await;
+            }
+        }
+        let txhash = match sent {
+            Ok(h) => h,
+            Err(_) => {
+                let _ = self.account(true).await;
+                self.requeue(batch).await;
+                return taken;
+            }
+        };
+        *self.seq.lock().await = Some((acct, seq + 1));
+        for item in &batch {
+            self.set(&item.0, Status::Submitted { txhash: txhash.clone() }).await;
+        }
+        match self.chain.wait(&txhash).await {
+            Ok(r) if r.code == 0 => {
+                for item in &batch {
+                    self.finish(item, Status::Registered { txhash: Some(txhash.clone()), height: Some(r.height) }).await;
+                }
+            }
+            Ok(_) => {
+                // DeliverTx failed (state moved since simulate): requeue; requeue caps retries.
+                self.requeue(batch).await;
+            }
+            Err(_) => {
+                let _ = self.account(true).await;
+                self.requeue(batch).await;
+            }
+        }
+        taken
+    }
+
+    async fn requeue(&self, items: Vec<(String, Reg, u8)>) {
+        let mut inner = self.inner.lock().await;
+        for (id, reg, tries) in items.into_iter().rev() {
+            if tries >= 2 {
+                inner.queued.remove(&reg.identity());
+                inner.status.insert(id, Status::Failed { error: "relay".into() });
+                continue;
+            }
+            inner.status.insert(id.clone(), Status::Queued);
+            inner.queue.push_front((id, reg, tries + 1));
+        }
+    }
+}
+
+// ---------------------------------------------------------------- terpd + REST chain
+
+pub struct TerpdChain {
+    terpd: PathBuf,
+    home: String,
+    from: String,
+    backend: String,
+    chain_id: String,
+    rest: String,
+    contract: String,
+    gas_price: (f64, String),
+    sender: String,
+    http: reqwest::Client,
+    tmp: PathBuf,
+}
+
+impl TerpdChain {
+    pub async fn from_env() -> anyhow::Result<Self> {
+        let var = |k: &str, d: &str| std::env::var(k).unwrap_or_else(|_| d.to_string());
+        let terpd = PathBuf::from(var("TERPD", "terpd"));
+        let home = std::env::var("HEADSTASH_RELAY_HOME").map_err(|_| anyhow::anyhow!("HEADSTASH_RELAY_HOME (keyring home) is required"))?;
+        let from = var("HEADSTASH_RELAY_FROM", "operator");
+        let backend = var("HEADSTASH_KEYRING_BACKEND", "test");
+        let rest = var("HEADSTASH_REST", "http://127.0.0.1:1317");
+        if !rest.starts_with("http://127.0.0.1:") && !rest.starts_with("http://localhost:") && std::env::var("HEADSTASH_ALLOW_REMOTE_REST").is_err() {
+            anyhow::bail!("HEADSTASH_REST must be loopback unless HEADSTASH_ALLOW_REMOTE_REST is set");
+        }
+        let contract = parse_contract(&var("HEADSTASH_CONTRACT", "")).map_err(|e| anyhow::anyhow!(e))?;
+        let gp = var("HEADSTASH_GAS_PRICE", "0.025uterp");
+        let split = gp.find(|c: char| c.is_ascii_alphabetic()).ok_or_else(|| anyhow::anyhow!("gas price"))?;
+        let gas_price = (gp[..split].parse::<f64>()?, gp[split..].to_string());
+        let tmp = std::env::temp_dir().join(format!("hs-relay-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o700))?;
+        }
+        let mut me = Self {
+            terpd, home, from, backend, chain_id: String::new(), rest, contract, gas_price,
+            sender: String::new(), http: reqwest::Client::builder().timeout(Duration::from_secs(20)).build()?, tmp,
+        };
+        // Address only: `keys show -a` prints the bech32 address, never key material.
+        let out = me.terpd(&["keys", "show", &me.from.clone(), "-a", "--home", &me.home.clone(), "--keyring-backend", &me.backend.clone()]).await?;
+        me.sender = out.trim().to_string();
+        parse_contract(&me.sender).map_err(|_| anyhow::anyhow!("operator address"))?;
+        let info: Value = me.http.get(format!("{}/cosmos/base/tendermint/v1beta1/node_info", me.rest)).send().await?.json().await?;
+        me.chain_id = info.pointer("/default_node_info/network").and_then(Value::as_str).unwrap_or("").to_string();
+        if let Ok(want) = std::env::var("HEADSTASH_CHAIN_ID") {
+            if want != me.chain_id {
+                anyhow::bail!("chain id mismatch");
+            }
+        }
+        Ok(me)
+    }
+
+    async fn terpd(&self, args: &[&str]) -> anyhow::Result<String> {
+        let mut cmd = tokio::process::Command::new(&self.terpd);
+        cmd.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).env_clear();
+        for k in ["HOME", "PATH", "TMPDIR", "USER"] {
+            if let Some(v) = std::env::var_os(k) {
+                cmd.env(k, v);
+            }
+        }
+        let out = cmd.output().await?;
+        if !out.status.success() {
+            anyhow::bail!("terpd {}", args.first().unwrap_or(&""));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+    }
+
+    pub async fn smart(&self, q: &Value) -> Result<Value, String> {
+        let url = format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}", self.rest, self.contract, b64(q.to_string().as_bytes()));
+        let v: Value = self.http.get(url).send().await.map_err(|_| "query")?.json().await.map_err(|_| "query")?;
+        v.get("data").cloned().ok_or_else(|| "query".to_string())
+    }
+
+    async fn signed_bytes(&self, msgs: &[Value], gas: u64, acct: u64, seq: u64) -> Result<String, ChainErr> {
+        let fee = ((gas as f64) * self.gas_price.0).ceil() as u64;
+        let body: Vec<Value> = msgs.iter().map(|m| json!({
+            "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+            "sender": self.sender, "contract": self.contract, "msg": m, "funds": []
+        })).collect();
+        let unsigned = json!({
+            "body": {"messages": body, "memo": "", "timeout_height": "0", "extension_options": [], "non_critical_extension_options": []},
+            "auth_info": {"signer_infos": [], "fee": {"amount": [{"denom": self.gas_price.1, "amount": fee.to_string()}], "gas_limit": gas.to_string(), "payer": "", "granter": ""}},
+            "signatures": []
+        });
+        let n = format!("{}-{}", seq, rand_suffix());
+        let upath = self.tmp.join(format!("u-{n}.json"));
+        let spath = self.tmp.join(format!("s-{n}.json"));
+        std::fs::write(&upath, unsigned.to_string()).map_err(|e| ChainErr::Other(e.to_string()))?;
+        let (a, s) = (acct.to_string(), seq.to_string());
+        let res = async {
+            let signed = self.terpd(&["tx", "sign", upath.to_str().unwrap(), "--from", &self.from, "--home", &self.home,
+                "--keyring-backend", &self.backend, "--chain-id", &self.chain_id, "--offline",
+                "--account-number", &a, "--sequence", &s, "--sign-mode", "direct", "-o", "json"]).await?;
+            std::fs::write(&spath, signed)?;
+            let enc = self.terpd(&["tx", "encode", spath.to_str().unwrap()]).await?;
+            Ok::<String, anyhow::Error>(enc.trim().to_string())
+        }.await;
+        let _ = std::fs::remove_file(&upath);
+        let _ = std::fs::remove_file(&spath);
+        res.map_err(|e| ChainErr::Other(e.to_string()))
+    }
+}
+
+fn rand_suffix() -> String {
+    let mut b = [0u8; 6];
+    rand_core::RngCore::fill_bytes(&mut rand_core::OsRng, &mut b);
+    hex::encode(b)
+}
+
+fn classify(log: &str) -> ChainErr {
+    if log.contains("account sequence mismatch") || log.contains("incorrect account sequence") {
+        return ChainErr::Sequence;
+    }
+    let index = log.find("message index: ").and_then(|p| {
+        log[p + 15..].chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().ok()
+    });
+    if index.is_some() || phrase_in(log).is_some() {
+        ChainErr::Msg { index, log: log.to_string() }
+    } else {
+        ChainErr::Other(log.chars().take(200).collect())
+    }
+}
+
+#[async_trait]
+impl Chain for TerpdChain {
+    async fn registered(&self, identity: &str) -> Result<bool, String> {
+        self.smart(&json!({"registered": {"identity": identity}})).await?.as_bool().ok_or_else(|| "query".into())
+    }
+
+    async fn sequence(&self) -> Result<(u64, u64), String> {
+        let v: Value = self.http.get(format!("{}/cosmos/auth/v1beta1/accounts/{}", self.rest, self.sender))
+            .send().await.map_err(|_| "account")?.json().await.map_err(|_| "account")?;
+        let acct = v.get("account").ok_or("account")?;
+        let base = acct.get("base_account").unwrap_or(acct);
+        let num = |k: &str| base.get(k).and_then(|x| x.as_str().and_then(|s| s.parse().ok()).or(x.as_u64())).unwrap_or(0);
+        Ok((num("account_number"), num("sequence")))
+    }
+
+    async fn simulate(&self, msgs: &[Value], acct: u64, seq: u64) -> Result<u64, ChainErr> {
+        let tx = self.signed_bytes(msgs, 50_000_000, acct, seq).await?;
+        let v: Value = self.http.post(format!("{}/cosmos/tx/v1beta1/simulate", self.rest)).json(&json!({"tx_bytes": tx}))
+            .send().await.map_err(|e| ChainErr::Other(e.to_string()))?.json().await.map_err(|e| ChainErr::Other(e.to_string()))?;
+        if let Some(g) = v.pointer("/gas_info/gas_used").and_then(|g| g.as_str().and_then(|s| s.parse().ok())) {
+            return Ok(g);
+        }
+        Err(classify(v.get("message").and_then(Value::as_str).unwrap_or("")))
+    }
+
+    async fn broadcast(&self, msgs: &[Value], gas: u64, acct: u64, seq: u64) -> Result<String, ChainErr> {
+        let tx = self.signed_bytes(msgs, gas, acct, seq).await?;
+        let v: Value = self.http.post(format!("{}/cosmos/tx/v1beta1/txs", self.rest))
+            .json(&json!({"tx_bytes": tx, "mode": "BROADCAST_MODE_SYNC"}))
+            .send().await.map_err(|e| ChainErr::Other(e.to_string()))?.json().await.map_err(|e| ChainErr::Other(e.to_string()))?;
+        let r = v.get("tx_response").ok_or_else(|| ChainErr::Other("broadcast".into()))?;
+        if r.get("code").and_then(Value::as_u64).unwrap_or(1) != 0 {
+            return Err(classify(r.get("raw_log").and_then(Value::as_str).unwrap_or("")));
+        }
+        r.get("txhash").and_then(Value::as_str).map(str::to_string).ok_or_else(|| ChainErr::Other("txhash".into()))
+    }
+
+    async fn wait(&self, txhash: &str) -> Result<TxResult, String> {
+        for _ in 0..60 {
+            if let Ok(resp) = self.http.get(format!("{}/cosmos/tx/v1beta1/txs/{}", self.rest, txhash)).send().await {
+                if resp.status().is_success() {
+                    let v: Value = resp.json().await.map_err(|_| "tx")?;
+                    if let Some(r) = v.get("tx_response") {
+                        let code = r.get("code").and_then(Value::as_u64).unwrap_or(1) as u32;
+                        let height = r.get("height").and_then(|h| h.as_str().and_then(|s| s.parse().ok())).unwrap_or(0);
+                        let log = r.get("raw_log").and_then(Value::as_str).unwrap_or("").to_string();
+                        return Ok(TxResult { code, height, log });
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(1000)).await;
+        }
+        Err("timeout".into())
+    }
+}
+
+// ---------------------------------------------------------------- HTTP
+
+pub struct App<C: Chain> {
+    ctx: [u8; 32],
+    elig: Elig,
+    batcher: Arc<Batcher<C>>,
+    origins: Vec<String>,
+}
+
+pub fn router<C: Chain>(app: Arc<App<C>>) -> Router {
+    Router::new()
+        .route("/health", get(health::<C>))
+        .route("/register", post(register::<C>).options(preflight::<C>))
+        .route("/headstash/register", post(register::<C>).options(preflight::<C>))
+        .route("/register/status/:id", get(status::<C>).options(preflight::<C>))
+        .with_state(app)
+}
+
+async fn health<C: Chain>(State(app): State<Arc<App<C>>>, headers: HeaderMap) -> Response {
+    let root = hex::encode(app.elig.root());
+    reply(StatusCode::OK, json!({"ok": true, "ctx_hex": hex::encode(app.ctx), "eligibility_root_hex": root}), &app.origins, &headers)
+}
+
+async fn preflight<C: Chain>(State(app): State<Arc<App<C>>>, headers: HeaderMap) -> Response {
+    reply(StatusCode::NO_CONTENT, Value::Null, &app.origins, &headers)
+}
+
+async fn status<C: Chain>(State(app): State<Arc<App<C>>>, Path(id): Path<String>, headers: HeaderMap) -> Response {
+    if id.len() != 32 || !id.chars().all(|c| c.is_ascii_hexdigit()) {
+        return reply(StatusCode::BAD_REQUEST, json!({"error": "id"}), &app.origins, &headers);
+    }
+    match app.batcher.status(&id).await {
+        Some(s) => reply(StatusCode::OK, s.to_json(&id), &app.origins, &headers),
+        None => reply(StatusCode::NOT_FOUND, json!({"error": "unknown"}), &app.origins, &headers),
+    }
+}
+
+fn client_ip(peer: SocketAddr, headers: &HeaderMap) -> String {
+    // Trust X-Real-IP only from the loopback nginx.
+    if peer.ip().is_loopback() {
+        if let Some(v) = headers.get("x-real-ip").and_then(|v| v.to_str().ok()) {
+            return v.chars().take(64).collect();
+        }
+    }
+    peer.ip().to_string()
+}
+
+async fn register<C: Chain>(State(app): State<Arc<App<C>>>, ConnectInfo(peer): ConnectInfo<SocketAddr>, req: Request) -> Response {
+    let headers = req.headers().clone();
+    let r = handle(&app, client_ip(peer, &headers), req).await;
+    match r {
+        Ok((id, s)) => {
+            let code = if matches!(s, Status::Registered { .. }) { StatusCode::OK } else { StatusCode::ACCEPTED };
+            reply(code, s.to_json(&id), &app.origins, &headers)
+        }
+        Err(Reject::Bad(p)) => reply(StatusCode::BAD_REQUEST, json!({"error": p}), &app.origins, &headers),
+        Err(Reject::Rate) => reply(StatusCode::TOO_MANY_REQUESTS, json!({"error": "rate"}), &app.origins, &headers),
+        Err(Reject::Full) => reply(StatusCode::SERVICE_UNAVAILABLE, json!({"error": "queue full"}), &app.origins, &headers),
+    }
+}
+
+async fn handle<C: Chain>(app: &App<C>, ip: String, req: Request) -> Result<(String, Status), Reject> {
+    let bytes: Bytes = axum::body::to_bytes(req.into_body(), BODY_LIMIT).await.map_err(|_| Reject::Bad("body"))?;
+    let parsed = parse(&bytes)?;
+    if parsed.ctx != app.ctx {
+        return Err(Reject::Bad("registration"));
+    }
+    app.batcher.rate_ip(&ip).await?;
+    if let Some(id) = claimed_identity(&parsed) {
+        app.batcher.rate_identity(&id).await?;
+    }
+    let reg = verify(&parsed, &app.ctx, &app.elig)?;
+    if matches!(reg.kind, Kind::Evm { .. }) {
+        app.batcher.rate_identity(&reg.identity()).await?;
+    }
+    app.batcher.submit(reg).await
+}
+
+fn reply(status: StatusCode, body: Value, origins: &[String], headers: &HeaderMap) -> Response {
+    let mut resp = if body.is_null() { status.into_response() } else { (status, Json(body)).into_response() };
+    if let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) {
+        if origins.iter().any(|o| o == origin) {
+            let h = resp.headers_mut();
+            if let Ok(v) = HeaderValue::from_str(origin) {
+                h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, v);
+            }
+            h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static("content-type"));
+            h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static("GET, POST, OPTIONS"));
+            h.insert(header::VARY, HeaderValue::from_static("Origin"));
+        }
+    }
+    resp
+}
+
+// ---------------------------------------------------------------- main
+
+fn check_bind(bind: &str) -> Result<SocketAddr, &'static str> {
+    let addr: SocketAddr = bind.parse().map_err(|_| "bind")?;
+    if addr.ip() != std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST) {
+        return Err("refusing non-loopback bind");
+    }
+    Ok(addr)
+}
+
+fn env_num<T: std::str::FromStr>(k: &str, d: T) -> T {
+    std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d)
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let bind = std::env::var("HEADSTASH_RELAY_BIND").unwrap_or_else(|_| DEFAULT_BIND.to_string());
+    let addr = check_bind(&bind).map_err(|e| anyhow::anyhow!(e))?;
+    let path = std::env::var("HEADSTASH_ELIGIBILITY").map_err(|_| anyhow::anyhow!("HEADSTASH_ELIGIBILITY is required"))?;
+    let elig = Elig::load(&std::fs::read(&path)?)?;
+    let chain = TerpdChain::from_env().await?;
+    let campaign = chain.smart(&json!({"epoch_campaign": {}})).await.map_err(|e| anyhow::anyhow!(e))?;
+    let ctx = decode_bin32(campaign.get("ctx").and_then(Value::as_str).unwrap_or("")).ok_or_else(|| anyhow::anyhow!("chain ctx"))?;
+    let reg = campaign.get("registration").ok_or_else(|| anyhow::anyhow!("chain registration"))?;
+    let root = decode_bin32(reg.get("eligibility_root").and_then(Value::as_str).unwrap_or("")).ok_or_else(|| anyhow::anyhow!("chain root"))?;
+    let depth = reg.get("eligibility_depth").and_then(Value::as_u64).unwrap_or(0) as u32;
+    if root != elig.root() || depth != elig.depth {
+        anyhow::bail!("eligibility mismatch chain {} file {}", hex::encode(&root[..4]), hex::encode(&elig.root()[..4]));
+    }
+    let limits = Limits {
+        flush: Duration::from_secs(env_num("HEADSTASH_FLUSH_SECS", 6)),
+        max_batch: env_num("HEADSTASH_MAX_BATCH", 25),
+        max_queue: env_num("HEADSTASH_MAX_QUEUE", 2000),
+        ..Limits::default()
+    };
+    let origins = std::env::var("HEADSTASH_PAGE_ORIGINS").unwrap_or_else(|_| DEFAULT_ORIGIN.into())
+        .split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+    let sender = chain.sender.clone();
+    let chain_id = chain.chain_id.clone();
+    let batcher = Arc::new(Batcher::new(chain, limits));
+    tokio::spawn(batcher.clone().run());
+    let app = Arc::new(App { ctx, elig, batcher, origins });
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let local = listener.local_addr()?;
+    if !local.ip().is_loopback() {
+        anyhow::bail!("listener is not loopback");
+    }
+    println!("relay_up {local} chain {chain_id} root_prefix {} sender {sender}", hex::encode(&root[..4]));
+    axum::serve(listener, router(app).into_make_service_with_connect_info::<SocketAddr>()).await?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------- helpers
+
+fn parse_contract(raw: &str) -> Result<String, &'static str> {
+    if raw.len() < 39 || raw.len() > 90 || !raw.starts_with("terp1") || !raw.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return Err("contract");
+    }
+    Ok(raw.to_string())
+}
+
+fn phrase_in(text: &str) -> Option<&'static str> {
+    const P: &[&str] = &["already registered", "tree full", "key commitment", "eligibility", "signature", "pubkey", "amount", "registration"];
+    P.iter().copied().find(|p| text.contains(p))
 }
 
 fn keccak256(bytes: &[u8]) -> [u8; 32] {
-    let mut hasher = Keccak::v256();
-    hasher.update(bytes);
+    let mut h = Keccak::v256();
+    h.update(bytes);
     let mut out = [0u8; 32];
-    hasher.finalize(&mut out);
+    h.finalize(&mut out);
     out
 }
 
 fn sha256(bytes: &[u8]) -> [u8; 32] {
-    let dig = Sha256::digest(bytes);
-    let mut out = [0u8; 32];
-    out.copy_from_slice(&dig);
-    out
-}
-
-fn decode_hex64(text: &str) -> Option<[u8; 32]> {
-    if text.len() != 64 || !text.chars().all(|ch| ch.is_ascii_hexdigit() && !ch.is_ascii_uppercase()) {
-        return None;
-    }
-    let raw = hex::decode(text).ok()?;
-    raw.try_into().ok()
+    Sha256::digest(bytes).into()
 }
 
 fn decode_hex_n(text: &str, len: usize) -> Option<Vec<u8>> {
-    if text.len() != len * 2 || !text.chars().all(|ch| ch.is_ascii_hexdigit() && !ch.is_ascii_uppercase()) {
+    if text.len() != len * 2 || !text.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()) {
         return None;
     }
     hex::decode(text).ok()
 }
 
 fn decode_bin32(text: &str) -> Option<[u8; 32]> {
-    let raw = base64::engine::general_purpose::STANDARD.decode(text.trim()).ok()?;
-    raw.try_into().ok()
+    base64::engine::general_purpose::STANDARD.decode(text.trim()).ok()?.try_into().ok()
 }
 
 fn b64(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
 
-fn prefix(bytes: &[u8]) -> String {
-    hex::encode(&bytes[..4])
-}
-
-fn phrase_in(text: &str) -> Option<&'static str> {
-    const PHRASES: &[&str] = &[
-        "already registered",
-        "tree full",
-        "key commitment",
-        "anonymity set",
-        "eligibility",
-        "signature",
-        "anchor early",
-        "anchor unchanged",
-    ];
-    PHRASES.iter().copied().find(|phrase| text.contains(phrase))
-}
-
-fn json_from(bytes: &[u8]) -> Option<serde_json::Value> {
-    let text = std::str::from_utf8(bytes).ok()?;
-    let start = text.find('{')?;
-    serde_json::from_str(&text[start..]).ok()
-}
-
-fn origin_of(headers: &HeaderMap) -> Option<&str> {
-    headers
-        .get(header::ORIGIN)
-        .and_then(|value| value.to_str().ok())
-}
-
-fn fail(err: Fail, origin: Option<&str>) -> Response {
-    let phrase = match err {
-        Fail::Phrase(phrase) => phrase,
-        Fail::Retry | Fail::Relay => "relay",
-    };
-    reply(
-        StatusCode::BAD_REQUEST,
-        serde_json::json!({"error": phrase}),
-        origin,
-    )
-}
-
-fn reply(status: StatusCode, body: serde_json::Value, origin: Option<&str>) -> Response {
-    let mut response = if body.is_null() {
-        status.into_response()
-    } else {
-        (status, Json(body)).into_response()
-    };
-    if origin == Some(PAGE_ORIGIN) {
-        let headers = response.headers_mut();
-        headers.insert(
-            header::ACCESS_CONTROL_ALLOW_ORIGIN,
-            header::HeaderValue::from_static(PAGE_ORIGIN),
-        );
-        headers.insert(
-            header::ACCESS_CONTROL_ALLOW_HEADERS,
-            header::HeaderValue::from_static("content-type"),
-        );
-        headers.insert(
-            header::ACCESS_CONTROL_ALLOW_METHODS,
-            header::HeaderValue::from_static("POST, OPTIONS"),
-        );
-        headers.insert(header::VARY, header::HeaderValue::from_static("Origin"));
-    }
-    response
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn tree() -> EligTree {
-        EligTree {
-            depth: 1,
-            entries: vec![
-                Elig {
-                    address: hex_addr("7e5f4552091a69125d5dfcb7b8c2659029395bdf"),
-                    amount: 15,
-                },
-                Elig {
-                    address: hex_addr("2b5ad5c4795c026514f8317c7a215e218dccd6cf"),
-                    amount: 15,
-                },
-            ],
-        }
-    }
-
-    fn hex_addr(text: &str) -> [u8; 20] {
-        let raw = hex::decode(text).unwrap();
-        raw.try_into().unwrap()
-    }
-
-    #[test]
-    fn two_public_leaves_open_the_live_eligibility_root() {
-        let opened = tree().root();
-        assert!(hex::encode(opened).starts_with("ddfd4cb0"));
-        let path = tree().path(1).unwrap();
-        assert_eq!(path.len(), 1);
-        assert_eq!(path[0], eligibility_leaf(&hex_addr("7e5f4552091a69125d5dfcb7b8c2659029395bdf"), 15));
-        let mut node = eligibility_leaf(&hex_addr("2b5ad5c4795c026514f8317c7a215e218dccd6cf"), 15);
-        node = eligibility_node(&path[0], &node);
-        assert_eq!(node, opened);
-    }
-
-    #[test]
-    fn signer_byte_two_recovers_the_unused_leaf() {
-        let mut secret = [0u8; 32];
-        secret[31] = 2;
-        let mut key_com = [0u8; 32];
-        key_com[0] = 21;
-        assert!(canonical_key(&key_com));
-        let ctx = [3u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let message = register_message(&ctx, &key_com, 15);
-        let key = SigningKey::from_slice(&secret).unwrap();
-        let digest = keccak256(&eip191(&message));
-        let (signature, recid) = key.sign_prehash_recoverable(&digest).unwrap();
-        let raw = signature.to_bytes();
-        let slice: &[u8] = raw.as_ref();
-        let mut bytes = slice.to_vec();
-        bytes.push(recid.to_byte());
-        let signature: [u8; 65] = bytes.try_into().unwrap();
-        let address = recover_address(&message, &signature).unwrap();
-        assert_eq!(hex::encode(address), "2b5ad5c4795c026514f8317c7a215e218dccd6cf");
-        assert_eq!(tree().index_of(&address, 15), Some(1));
-    }
-
-    #[test]
-    fn contract_override_stays_a_terp_address() {
-        assert_eq!(parse_contract(CONTRACT).as_deref(), Ok(CONTRACT));
-        assert!(parse_contract("").is_err());
-        assert!(parse_contract("cosmos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq").is_err());
-        assert!(parse_contract("terp1bad/path").is_err());
-    }
-
-    #[test]
-    fn bind_and_origin_stay_on_the_page_loopback() {
-        assert!(check_bind(BIND).is_ok());
-        assert!(check_bind("0.0.0.0:8791").is_err());
-        assert!(check_bind("127.0.0.1:8792").is_err());
-        let mut headers = HeaderMap::new();
-        headers.insert(header::ORIGIN, header::HeaderValue::from_static(PAGE_ORIGIN));
-        let response = reply(StatusCode::OK, serde_json::json!({"ok": true}), origin_of(&headers));
-        assert_eq!(
-            response.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).unwrap(),
-            PAGE_ORIGIN
-        );
-        let bare = reply(StatusCode::OK, serde_json::json!({"ok": true}), None);
-        assert!(bare.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).is_none());
-        let other = reply(
-            StatusCode::OK,
-            serde_json::json!({"ok": true}),
-            Some("http://127.0.0.1:9999"),
-        );
-        assert!(other.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).is_none());
-    }
-
-    #[test]
-    fn malformed_signature_is_a_phrase_not_an_echo() {
-        let body = br#"{"ctx_hex":"aa","key_com_hex":"bb","amount":"15","signature_hex":"ABCD"}"#;
-        assert!(matches!(
-            parse_registration(&Bytes::from_static(body)),
-            Err(Fail::Phrase("registration"))
-        ));
-    }
-}
+#[path = "headstash-register-relay/tests.rs"]
+mod tests;
