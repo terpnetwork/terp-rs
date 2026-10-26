@@ -482,13 +482,27 @@ impl<const D: usize> Campaign<D> {
         if parsed.destination.len() > 128 {
             return Err(IngressError::Destination);
         }
-        let expected = canonical_sign_message(
-            &parsed.ctx,
-            &parsed.root,
-            &parsed.nullifier,
-            &parsed.destination,
-            parsed.amount,
-        );
+        // vk id 3 claims carry the note body; every other vk keeps the v1 body.
+        if parsed.note != (self.vk_id == crate::NOTE_VK_ID) {
+            return Err(IngressError::Message);
+        }
+        let expected = if parsed.note {
+            note_claim_message(
+                &parsed.ctx,
+                &parsed.root,
+                &parsed.nullifier,
+                &parsed.destination,
+                parsed.amount,
+            )
+        } else {
+            canonical_sign_message(
+                &parsed.ctx,
+                &parsed.root,
+                &parsed.nullifier,
+                &parsed.destination,
+                parsed.amount,
+            )
+        };
         if item.message != expected {
             return Err(IngressError::Message);
         }
@@ -537,7 +551,8 @@ impl<const D: usize> Campaign<D> {
         self.verifies.fetch_add(1, Ordering::Relaxed);
         // vk id 2 is the K=11 membership circuit: six field limbs.
         // vk id 1 stays the K=19 epoch statement, including its trailing limb.
-        let instances = if item.vk_id == crate::MEMBERSHIP_VK_ID {
+        // vk id 3 (note circuit) uses the same six limbs in the same order.
+        let instances = if item.vk_id == crate::MEMBERSHIP_VK_ID || item.vk_id == crate::NOTE_VK_ID {
             zk_headstash::no_ecdsa::membership_public_inputs(
                 &parsed.ctx,
                 &parsed.root,
@@ -898,6 +913,37 @@ mod tests {
         assert_eq!(report.rejected, vec![(0, IngressError::Proof)]);
         assert_eq!(campaign.verifies(), 1);
         assert!(campaign.rows().is_empty());
+    }
+
+    #[test]
+    fn epoch_claim_halo2_note_body_needs_vk3() {
+        let ctx = [7u8; 32];
+        let root = [0u8; 32];
+        let mut nullifier = [0u8; 32];
+        nullifier[0] = 3;
+        let denom = [9u8; 32];
+        let mut campaign = halo2_campaign(ctx, root, denom);
+        let message = note_claim_message(
+            &ctx,
+            &root,
+            &nullifier,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            15,
+        );
+        assert!(parse_canonical_message(&message).unwrap().note);
+        let item = SubmittedClaim {
+            proof: vec![1, 2, 3, 4],
+            message,
+            signature: Vec::new(),
+            leaf_x: [0u8; 32],
+            denom,
+            index: None,
+            receipts: Vec::new(),
+            vk_id: 1,
+        };
+        let report = campaign.accept_batch(&[item], Some(&local_key()));
+        assert_eq!(report.rejected, vec![(0, IngressError::Message)]);
+        assert_eq!(campaign.verifies(), 0);
     }
 
     #[test]
@@ -1267,6 +1313,8 @@ mod tests {
 }
 
 struct ParsedBody {
+    /// true for the vk id 3 note body `headstash-note-claim-v2`.
+    note: bool,
     ctx: [u8; 32],
     root: [u8; 32],
     nullifier: [u8; 32],
@@ -1274,12 +1322,39 @@ struct ParsedBody {
     amount: u64,
 }
 
+/// Body prefix of a vk id 3 note claim (`note_membership::note_canonical_body`).
+pub const NOTE_CLAIM_PREFIX: &str = "headstash-note-claim-v2";
+
+/// The vk id 3 note body. Same fields and lowercase hex as `note_canonical_body`.
+pub fn note_claim_message(
+    ctx: &[u8; 32],
+    root: &[u8; 32],
+    nullifier: &[u8; 32],
+    destination: &str,
+    amount: u64,
+) -> Vec<u8> {
+    format!(
+        "{NOTE_CLAIM_PREFIX}:{}:{}:{}:{}:{}",
+        hex::encode(ctx),
+        hex::encode(root),
+        hex::encode(nullifier),
+        destination,
+        amount
+    )
+    .into_bytes()
+}
+
 fn parse_canonical_message(message: &[u8]) -> Option<ParsedBody> {
     let text = std::str::from_utf8(message).ok()?;
     let parts: Vec<&str> = text.split(':').collect();
-    if parts.len() != 6 || parts[0] != "headstash-claim-v1" {
+    if parts.len() != 6 {
         return None;
     }
+    let note = match parts[0] {
+        "headstash-claim-v1" => false,
+        NOTE_CLAIM_PREFIX => true,
+        _ => return None,
+    };
     let ctx = hex32(parts[1])?;
     let root = hex32(parts[2])?;
     let nullifier = hex32(parts[3])?;
@@ -1288,6 +1363,7 @@ fn parse_canonical_message(message: &[u8]) -> Option<ParsedBody> {
     }
     let amount = parts[5].parse().ok()?;
     Some(ParsedBody {
+        note,
         ctx,
         root,
         nullifier,

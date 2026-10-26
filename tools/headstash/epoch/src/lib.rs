@@ -23,12 +23,14 @@ pub use zk_headstash::no_ecdsa::{
     membership_circuit_blob, membership_host_proof, membership_public_inputs, membership_vk_hash,
     MEMBERSHIP_VK_ID,
 };
+pub use zk_headstash::note_membership::{note_circuit_blob, note_host_proof, NoteHostProof, NOTE_VK_HASH, NOTE_VK_ID};
 
 /// Campaign id of the epoch circuit blob. Not the Pasta curve id.
 pub const EPOCH_VK_ID: u64 = 1;
 
 pub use lane::{
     Backend, BatchReport, Campaign, CampaignParams, IngressError, PeerReceipt, SubmittedClaim,
+    note_claim_message, NOTE_CLAIM_PREFIX,
 };
 pub use roots::{
     ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_HEIGHT, BATCH_ATTEST_TIMESTAMP, BATCH_SCOPE,

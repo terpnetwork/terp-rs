@@ -450,6 +450,47 @@ pub fn verify_note_witness_proof(witness_json: &str, proof: &[u8]) -> Result<(),
     verify_membership(&params, &vk, proof, &public)
 }
 
+/// Blob, proof, host limbs and body for one note at index 5 of an otherwise empty depth-17 tree.
+#[derive(Debug, Clone)]
+pub struct NoteHostProof {
+    pub blob: Vec<u8>,
+    pub proof: Vec<u8>,
+    pub instances: Vec<u8>,
+    pub ctx: [u8; 32],
+    pub root: [u8; 32],
+    pub nullifier: [u8; 32],
+    pub destination: String,
+    pub amount: u64,
+    pub body: String,
+}
+
+pub fn note_host_proof() -> Result<NoteHostProof, String> {
+    let secret = pallas::Base::from(0x5eed_u64);
+    let ctx = pallas::Base::from(0x11_u64);
+    let amount = DENOMS_UTERP[3];
+    let index = 5u32;
+    let path = [pallas::Base::ZERO; NOTE_DEPTH];
+    let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
+    let root = note_root(note_leaf(key_commitment(secret), amount), index, &path);
+    let proved = prove_note(secret, ctx, amount, index, path, destination)?;
+    let mut instances = Vec::with_capacity(32 * 6);
+    for limb in &proved.public {
+        instances.extend_from_slice(limb.to_repr().as_ref());
+    }
+    let nf = claim_nullifier(secret, ctx);
+    Ok(NoteHostProof {
+        blob: note_circuit_blob()?,
+        proof: proved.proof,
+        instances,
+        ctx: ctx.to_repr(),
+        root: root.to_repr(),
+        nullifier: nf.to_repr(),
+        destination: destination.into(),
+        amount,
+        body: note_canonical_body(ctx, root, nf, destination, amount),
+    })
+}
+
 pub fn minimal_note_k(circuit: &NoteMembershipCircuit, public: &[pallas::Base]) -> Option<u32> {
     (8..20).find(|k| {
         halo2_proofs::dev::MockProver::run(*k, circuit, vec![public.to_vec()])

@@ -234,10 +234,12 @@ const MEMBERSHIP_BLOB_HASH: [u8; 32] = [
     0x75, 0xfa, 0xfd, 0xb8, 0x74, 0xa5, 0xa5, 0x54, 0xf3, 0xcb, 0xe8, 0x93, 0x1e, 0xef, 0xed, 0x11,
 ];
 
-/// Cache vk id 1 and vk id 2, then install the host. Returns the epoch blob hash.
+/// Cache vk id 1, 2 and 3, then install the host. Returns the epoch blob hash.
 pub fn install_epoch_host() -> Result<[u8; 32], String> {
     if let Some(hash) = headstash_epoch::halo2_vk_hash(EPOCH_VK_ID) {
-        if headstash_epoch::halo2_vk_hash(MEMBERSHIP_VK_ID).is_none() {
+        if headstash_epoch::halo2_vk_hash(MEMBERSHIP_VK_ID).is_none()
+            || headstash_epoch::halo2_vk_hash(headstash_epoch::NOTE_VK_ID).is_none()
+        {
             return Err("vk id".into());
         }
         return Ok(hash);
@@ -249,6 +251,11 @@ pub fn install_epoch_host() -> Result<[u8; 32], String> {
     }
     let membership = vm.register(MEMBERSHIP_VK_ID, &membership_circuit_blob()?)?;
     if membership != MEMBERSHIP_BLOB_HASH {
+        return Err("vk hash".into());
+    }
+    // vk id 3: the depth-17 note circuit. Pinned whole-blob hash, same as the contract.
+    let note = vm.register(headstash_epoch::NOTE_VK_ID, &headstash_epoch::note_circuit_blob()?)?;
+    if hex::encode(note) != headstash_epoch::NOTE_VK_HASH {
         return Err("vk hash".into());
     }
     install_halo2_host(Arc::new(vm));
@@ -722,6 +729,37 @@ mod tests {
             vm.check(MEMBERSHIP_VK_ID, &bundle.proof, &epoch_instances[..32 * 6]),
             HostOutcome::Rejected
         );
+    }
+
+    #[test]
+    fn note_key_vk3_selects_and_rejects() {
+        use headstash_epoch::{
+            membership_public_inputs, note_claim_message, note_host_proof, MEMBERSHIP_VK_ID,
+            NOTE_VK_HASH, NOTE_VK_ID,
+        };
+        let note = note_host_proof().expect("note");
+        let vm = VmVerifier::open().expect("vm");
+        let hash = vm.register(NOTE_VK_ID, &note.blob).expect("reg note");
+        assert_eq!(hex::encode(hash), NOTE_VK_HASH);
+        // the lane rebuilds the limbs from the parsed body with the vk 2 encoder
+        let lane = membership_public_inputs(
+            &note.ctx, &note.root, &note.nullifier, &note.destination, note.amount,
+        )
+        .expect("limbs");
+        assert_eq!(lane, note.instances);
+        assert_eq!(
+            note_claim_message(&note.ctx, &note.root, &note.nullifier, &note.destination, note.amount),
+            note.body.as_bytes()
+        );
+        assert_eq!(vm.check(NOTE_VK_ID, &note.proof, &lane), HostOutcome::Valid);
+        let mut wrong = lane.clone();
+        wrong[32 * 5] ^= 1; // amount limb
+        assert_eq!(vm.check(NOTE_VK_ID, &note.proof, &wrong), HostOutcome::Rejected);
+        let membership = vm
+            .register(MEMBERSHIP_VK_ID, &headstash_epoch::membership_circuit_blob().unwrap())
+            .unwrap();
+        assert_ne!(membership, hash);
+        assert_eq!(vm.check(MEMBERSHIP_VK_ID, &note.proof, &lane), HostOutcome::Rejected);
     }
 
     fn host_api_round_trips_terp_addresses() {
