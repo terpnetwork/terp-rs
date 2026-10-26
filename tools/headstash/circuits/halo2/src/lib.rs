@@ -9,6 +9,7 @@
 
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(all(target_arch = "wasm32", feature = "browser"), feature(alloc_error_hook))]
 // Temporary until we have more of the crate implemented.
 #![allow(dead_code)]
 // Catch documentation errors caused by code changes.
@@ -48,6 +49,10 @@ pub mod toy_host;
 
 #[cfg(all(feature = "circuit", feature = "std"))]
 pub mod no_ecdsa;
+
+// wasm-bindgen membership prover for the claim page (feature `browser`).
+#[cfg(all(feature = "browser", target_arch = "wasm32"))]
+mod browser_prove;
 
 // Guest CosmWasm: Instance-only surface (no multicore / C-sys graph).
 #[cfg(all(feature = "circuit", not(feature = "host-crypto")))]

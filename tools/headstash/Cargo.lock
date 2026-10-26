@@ -888,17 +888,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bls12_381"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7bc6d6292be3a19e6379786dac800f551e5865a5bb51ebbe3064ab80433f403"
-dependencies = [
- "ff 0.13.1",
- "rand_core 0.6.4",
- "subtle",
-]
-
-[[package]]
 name = "bnum"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1321,11 +1310,11 @@ dependencies = [
  "poseidon377",
  "rand_core 0.6.4",
  "rayon",
- "reddsa",
  "sha2 0.10.9",
  "thiserror 1.0.69",
  "zakura-halo2-poseidon 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
  "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-reddsa 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
 ]
 
 [[package]]
@@ -2655,9 +2644,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 5.3.0",
  "wasip2",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3449,20 +3440,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jubjub"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8499f7a74008aafbecb2a2e608a3e13e4dd3e84df198b604451efe93f2de6e61"
-dependencies = [
- "bitvec",
- "bls12_381",
- "ff 0.13.1",
- "group 0.13.0",
- "rand_core 0.6.4",
- "subtle",
-]
-
-[[package]]
 name = "k256"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4034,19 +4011,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pasta_curves"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3e57598f73cc7e1b2ac63c79c517b31a0877cd7c402cdcaa311b5208de7a095"
-dependencies = [
- "ff 0.13.1",
- "group 0.13.0",
- "rand 0.8.6",
- "static_assertions",
- "subtle",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4591,20 +4555,6 @@ checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
-]
-
-[[package]]
-name = "reddsa"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4784b85c8bfd17b36b86e664e6e504ecdb586001086ee23749e4a633bbb84832"
-dependencies = [
- "blake2b_simd",
- "byteorder",
- "group 0.13.0",
- "jubjub",
- "pasta_curves",
- "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -7200,6 +7150,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "zakura-bls12-381"
+version = "1.3.0-alpha.1"
+source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+dependencies = [
+ "ff 0.14.0",
+ "rand_core 0.10.1",
+ "subtle",
+]
+
+[[package]]
 name = "zakura-halo2-gadgets"
 version = "1.3.0-alpha.1"
 dependencies = [
@@ -7295,7 +7255,20 @@ dependencies = [
  "group 0.14.0",
  "rand_core 0.10.1",
  "subtle",
- "zakura-bls12-381",
+ "zakura-bls12-381 1.3.0-alpha.1",
+]
+
+[[package]]
+name = "zakura-jubjub"
+version = "1.3.0-alpha.1"
+source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+dependencies = [
+ "bitvec",
+ "ff 0.14.0",
+ "group 0.14.0",
+ "rand_core 0.10.1",
+ "subtle",
+ "zakura-bls12-381 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
 ]
 
 [[package]]
@@ -7339,9 +7312,21 @@ dependencies = [
  "rand_core 0.10.1",
  "serde",
  "thiserror 2.0.18",
- "zakura-jubjub",
+ "zakura-jubjub 1.3.0-alpha.1",
  "zakura-pasta-curves 1.3.0-alpha.1",
  "zeroize",
+]
+
+[[package]]
+name = "zakura-reddsa"
+version = "1.3.0-alpha.1"
+source = "git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2#798a3178a6d20d2df08cfe7141065bfb59e4c7a2"
+dependencies = [
+ "blake2b_simd",
+ "group 0.14.0",
+ "rand_core 0.10.1",
+ "zakura-jubjub 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
+ "zakura-pasta-curves 1.3.0-alpha.1 (git+https://github.com/permissionlessweb/common?rev=798a3178a6d20d2df08cfe7141065bfb59e4c7a2)",
 ]
 
 [[package]]
@@ -7532,6 +7517,9 @@ dependencies = [
  "cw-orch",
  "ff 0.14.0",
  "fpe",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
+ "getrandom 0.4.2",
  "getset",
  "group 0.14.0",
  "headstash-randomness",
@@ -7554,10 +7542,11 @@ dependencies = [
  "subtle",
  "tracing",
  "visibility",
+ "wasm-bindgen",
  "zakura-halo2-gadgets 1.3.0-alpha.1",
  "zakura-halo2-proofs 1.3.0-alpha.1",
  "zakura-pasta-curves 1.3.0-alpha.1",
- "zakura-reddsa",
+ "zakura-reddsa 1.3.0-alpha.1",
  "zakura-sinsemilla 1.3.0-alpha.1",
  "zcash_note_encryption",
  "zcash_spec",
