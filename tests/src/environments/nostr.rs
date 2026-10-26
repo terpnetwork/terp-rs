@@ -112,6 +112,9 @@ impl NostrTestEnv {
         chain_info: ChainInfoOwned,
         mnemonic: &str,
     ) -> anyhow::Result<Self> {
+        // ── 0. Chain WS URL comes from the CometBFT RPC endpoint (not gRPC) ──
+        let chain_ws_url = cometbft_ws_url(&chain_info)?;
+
         // ── 1. Build the ict-rs Docker runtime ──────────────────────────
         let runtime_backend = IctRuntime::Docker(Default::default())
             .into_backend()
@@ -134,20 +137,6 @@ impl NostrTestEnv {
             .await
             .context("Failed to build cw-orch DaemonAsync")?;
 
-        // ── 4. Determine chain WS URL from the daemon's gRPC endpoint ――――
-        // The DaemonAsync's chain_info has grpc_urls. We derive the WS endpoint
-        // from the first configured RPC port (default 26657).
-        let rpc_port = daemon
-            .chain_info()
-            .grpc_urls
-            .first()
-            .and_then(|url| {
-                // Expect "http://host:port" — extract port
-                url.rsplit(':').next().and_then(|p| p.parse::<u16>().ok())
-            })
-            .unwrap_or(26657);
-        let chain_ws_url = format!("ws://127.0.0.1:{}/websocket", rpc_port);
-
         Ok(Self {
             name: name.to_string(),
             daemon: Arc::new(daemon),
@@ -167,6 +156,7 @@ impl NostrTestEnv {
         mnemonic: &str,
         runtime: Arc<dyn RuntimeBackend>,
     ) -> anyhow::Result<Self> {
+        let chain_ws_url = cometbft_ws_url(&chain_info)?;
         let mut relayer = NostrRelayerManager::new(runtime.clone(), name);
         let nostr_ws_url = relayer
             .start()
@@ -179,14 +169,6 @@ impl NostrTestEnv {
             .build()
             .await
             .context("Failed to build cw-orch DaemonAsync")?;
-
-        let rpc_port = daemon
-            .chain_info()
-            .grpc_urls
-            .first()
-            .and_then(|url| url.rsplit(':').next().and_then(|p| p.parse::<u16>().ok()))
-            .unwrap_or(26657);
-        let chain_ws_url = format!("ws://127.0.0.1:{}/websocket", rpc_port);
 
         Ok(Self {
             name: name.to_string(),
@@ -248,9 +230,12 @@ impl NostrTestEnv {
     ///
     /// This is a convenience for quick test setup. For custom chain
     /// configurations, construct `ChainInfoOwned` directly.
+    /// `rpc_url` is the CometBFT RPC (e.g. `http://127.0.0.1:26657`); the
+    /// event watcher subscribes on its `/websocket` endpoint.
     pub fn local_terp_chain_info(
         chain_id: &str,
         grpc_url: &str,
+        rpc_url: &str,
         gas_denom: &str,
     ) -> ChainInfoOwned {
         ChainInfoOwned {
@@ -258,8 +243,8 @@ impl NostrTestEnv {
             gas_denom: gas_denom.to_string(),
             gas_price: 0.025,
             grpc_urls: vec![grpc_url.to_string()],
-            // CometBFT RPC fallback only; these local/mock fixtures are gRPC-only.
-            rpc_urls: vec![],
+            // CometBFT RPC: used for the ChainEventWatcher websocket.
+            rpc_urls: vec![rpc_url.to_string()],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
@@ -270,6 +255,24 @@ impl NostrTestEnv {
             kind: ChainKind::Local,
         }
     }
+}
+
+/// CometBFT RPC `http(s)://host:port` → `ws(s)://host:port/websocket`.
+fn cometbft_ws_url(chain_info: &ChainInfoOwned) -> anyhow::Result<String> {
+    let rpc = chain_info.rpc_urls.first().ok_or_else(|| {
+        anyhow::anyhow!("chain_info.rpc_urls is empty: CometBFT RPC is required for ChainEventWatcher")
+    })?;
+    let rpc = rpc.trim_end_matches('/');
+    let ws = if let Some(rest) = rpc.strip_prefix("https://") {
+        format!("wss://{rest}")
+    } else if let Some(rest) = rpc.strip_prefix("http://") {
+        format!("ws://{rest}")
+    } else if rpc.starts_with("ws://") || rpc.starts_with("wss://") {
+        rpc.to_string()
+    } else {
+        anyhow::bail!("unsupported CometBFT RPC url scheme: {rpc}");
+    };
+    Ok(if ws.ends_with("/websocket") { ws } else { format!("{ws}/websocket") })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,55 +324,21 @@ pub fn nip01_to_ict(ev: hash_market::Nip01Event) -> NostrEvent {
     }
 }
 
-/// Create a NostrEvent from chain metadata.
+/// Bridge: wasm attributes → signed, NIP-52-valid kind 31922 event for the relay.
 ///
-/// Bridge function: wasm attributes → NIP-52-shaped kind 31922 event for the
-/// relay. Prefer [`calendar_meta_to_nostr`] when MetadataExt / content body is
-/// available (full Phase B egress).
+/// Prefer [`calendar_meta_to_nostr`] when MetadataExt / content body is
+/// available (full Phase B egress). Always signed by `signer` (BIP-340).
+#[cfg(feature = "hash-market")]
 pub fn chain_event_to_nostr(
     attrs: &[(String, String)],
     height: u64,
     action: Option<&str>,
     contract: Option<&str>,
-    pubkey: &str,
-) -> NostrEvent {
-    #[cfg(feature = "hash-market")]
-    {
-        return nip01_to_ict(hash_market::chain_attrs_to_nostr(
-            attrs, height, action, contract, pubkey,
-        ));
-    }
-    #[cfg(not(feature = "hash-market"))]
-    {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let content = serde_json::json!({
-            "chain_height": height,
-            "action": action,
-            "contract": contract,
-            "attributes": attrs,
-        })
-        .to_string();
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
-        let mut hasher = DefaultHasher::new();
-        content.hash(&mut hasher);
-        NostrEvent {
-            id: format!("{:x}", hasher.finish()),
-            pubkey: pubkey.to_string(),
-            created_at: now,
-            kind: 31922,
-            tags: vec![
-                vec!["t".to_string(), "chain-event".to_string()],
-                vec!["h".to_string(), height.to_string()],
-            ],
-            content,
-            sig: "00".repeat(32),
-        }
-    }
+    signer: &hash_market::NostrSigner,
+) -> anyhow::Result<NostrEvent> {
+    let ev = hash_market::chain_attrs_to_nostr(attrs, height, action, contract, signer)
+        .map_err(|e| anyhow::anyhow!(e))?;
+    Ok(nip01_to_ict(ev))
 }
 
 /// Phase B egress: calendar metadata (+ optional resolved off-chain body) → NIP-52.
@@ -381,9 +350,9 @@ pub fn calendar_meta_to_nostr(
     meta: &hash_market::CalendarMetaView,
     body: Option<&[u8]>,
     action: Option<&hash_market::CalendarChainAction>,
-    pubkey: &str,
+    signer: &hash_market::NostrSigner,
 ) -> anyhow::Result<NostrEvent> {
-    let ev = hash_market::metadata_to_nip52_event(meta, body, action, pubkey)
+    let ev = hash_market::metadata_to_nip52_event(meta, body, action, signer)
         .map_err(|e| anyhow::anyhow!(e))?;
     Ok(nip01_to_ict(ev))
 }
@@ -398,7 +367,7 @@ pub fn bind_and_bridge_offchain(
     kind: u16,
     d_tag: Option<&str>,
     calendar_d: Option<&str>,
-    pubkey: &str,
+    signer: &hash_market::NostrSigner,
     action: Option<&hash_market::CalendarChainAction>,
 ) -> anyhow::Result<(hash_market::OffchainBind, NostrEvent)> {
     let (bind, mut meta) = hash_market::bind_offchain_event(store, body, kind)
@@ -409,7 +378,6 @@ pub fn bind_and_bridge_offchain(
     if let Some(c) = calendar_d {
         meta.calendar_d = Some(c.to_string());
     }
-    meta.author_pubkey = Some(pubkey.to_string());
     let resolved = hash_market::resolve_local(store, &meta.cid).map_err(|e| anyhow::anyhow!(e))?;
     let view = hash_market::CalendarMetaView {
         on_chain: false,
@@ -421,7 +389,7 @@ pub fn bind_and_bridge_offchain(
         author_pubkey: meta.author_pubkey,
         nostr_e_d: None,
     };
-    let ev = calendar_meta_to_nostr(&view, Some(&resolved), action, pubkey)?;
+    let ev = calendar_meta_to_nostr(&view, Some(&resolved), action, signer)?;
     Ok((bind, ev))
 }
 
@@ -444,8 +412,7 @@ mod tests {
             gas_denom: "uterp".to_string(),
             gas_price: 0.025,
             grpc_urls: vec!["http://127.0.0.1:9090".to_string()],
-            // CometBFT RPC fallback only; these local/mock fixtures are gRPC-only.
-            rpc_urls: vec![],
+            rpc_urls: vec!["http://127.0.0.1:26657".to_string()],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
@@ -484,16 +451,34 @@ mod tests {
     }
 
     #[test]
+    fn test_cometbft_ws_url_uses_rpc_not_grpc() {
+        let info = NostrTestEnv::local_terp_chain_info(
+            "c",
+            "http://127.0.0.1:49091",
+            "http://127.0.0.1:46667",
+            "uterp",
+        );
+        assert_eq!(cometbft_ws_url(&info).unwrap(), "ws://127.0.0.1:46667/websocket");
+        let mut empty = info.clone();
+        empty.rpc_urls.clear();
+        assert!(cometbft_ws_url(&empty).is_err());
+    }
+
+    #[cfg(feature = "hash-market")]
+    #[test]
     fn test_chain_event_to_nostr_conversion() {
+        let signer = hash_market::NostrSigner::generate();
         let attrs = vec![("action".into(), "create_event".into())];
         let result = chain_event_to_nostr(
             &attrs,
             42,
             Some("create_event"),
             Some("terp1test123"),
-            "test_pubkey_abc",
-        );
+            &signer,
+        )
+        .unwrap();
         assert_eq!(result.kind, 31922);
+        assert_eq!(result.pubkey, signer.pubkey_hex());
         assert!(result.content.contains("chain_height"));
         assert!(result.content.contains("42"));
     }
@@ -508,7 +493,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let store = TreeStore::open(dir.join("trees")).unwrap();
-        let body = br#"{"title":"Suite Event","content":"hi","d_tag":"s1"}"#;
+        let signer = hash_market::NostrSigner::generate();
+        let body = br#"{"title":"Suite Event","content":"hi","d_tag":"s1","start_time":1700000000}"#;
         let action = CalendarChainAction {
             action: "create_event".into(),
             e_d: Some("evt/cal/1/1".into()),
@@ -522,14 +508,18 @@ mod tests {
             KIND_TIME_BASED,
             Some("s1"),
             Some("cal/1"),
-            "pk_test",
+            &signer,
             Some(&action),
         )
         .unwrap();
         assert_eq!(bind.chain_cid.len(), 64);
         assert_eq!(ev.kind, KIND_TIME_BASED as u32);
         assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
-        assert!(ev.content.contains("Suite Event"));
+        assert_eq!(ev.content, "hi");
+        assert!(ev.tags.iter().any(|t| t.as_slice() == ["title", "Suite Event"]));
+        assert_eq!(ev.pubkey, signer.pubkey_hex());
+        assert_eq!(ev.id.len(), 64);
+        assert_eq!(ev.sig.len(), 128);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

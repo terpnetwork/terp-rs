@@ -16,14 +16,12 @@
 //! Reverse direction (order parse → suggested purchase intent, no auto-execute):
 //! [`super::marketplace_ingress`].
 //!
-//! Signature is **not** cryptographic — test / unsigned egress. Production should
-//! re-sign with operator key before publish. Mirrors `calendar_egress.rs`.
+//! Every builder takes a caller-supplied [`NostrSigner`] and returns a fully
+//! signed NIP-01 event (sha256 id + BIP-340 sig). Mirrors `calendar_egress.rs`.
 
-use crate::client::nostr::calendar_egress::Nip01Event;
+use crate::client::nostr::nip01::{is_valid_pubkey_hex, Nip01Event, NostrSigner};
 use crate::content::{content_path, parse_cid, CidKind};
 use serde::{Deserialize, Serialize};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// NIP-15 kinds used by marketplace-mirror egress.
@@ -142,7 +140,7 @@ pub fn parse_marketplace_action(
 pub fn product_to_nip15(
     meta: &ProductMetaView,
     body: Option<&[u8]>,
-    pubkey: &str,
+    signer: &NostrSigner,
 ) -> Result<Nip01Event, String> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -184,8 +182,13 @@ pub fn product_to_nip15(
             }
         }
     }
+    // `p` must be an x-only hex pubkey (NIP-01); non-key seller ids go in `seller`.
     if let Some(seller) = &meta.seller {
-        tags.push(vec!["p".into(), seller.clone()]);
+        if is_valid_pubkey_hex(seller) {
+            tags.push(vec!["p".into(), seller.clone()]);
+        } else {
+            tags.push(vec!["seller".into(), seller.clone()]);
+        }
     }
     if let Some(c) = &meta.contract {
         tags.push(vec!["contract".into(), c.clone()]);
@@ -194,24 +197,17 @@ pub fn product_to_nip15(
         tags.push(vec!["stall".into(), stall.clone()]);
     }
 
-    let mut event = Nip01Event {
-        id: String::new(),
-        pubkey: pubkey.to_string(),
-        created_at: now,
-        kind: KIND_SET_PRODUCT as u32,
-        tags,
-        content,
-        sig: "00".repeat(32),
-    };
-    event.id = deterministic_id(&event);
-    Ok(event)
+    signer.sign_event(now, KIND_SET_PRODUCT as u32, tags, content)
 }
 
 /// Build a confirmation / status note from a settle or purchase chain action.
 ///
 /// Uses kind:1 with marketplace tags so relays can filter without requiring a
 /// dedicated NIP-15 kind for order confirmations.
-pub fn purchase_confirmation_to_nostr(action: &MarketplaceChainAction, pubkey: &str) -> Nip01Event {
+pub fn purchase_confirmation_to_nostr(
+    action: &MarketplaceChainAction,
+    signer: &NostrSigner,
+) -> Result<Nip01Event, String> {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -255,17 +251,7 @@ pub fn purchase_confirmation_to_nostr(action: &MarketplaceChainAction, pubkey: &
         }
     }
 
-    let mut event = Nip01Event {
-        id: String::new(),
-        pubkey: pubkey.to_string(),
-        created_at: now,
-        kind: KIND_PURCHASE_NOTE as u32,
-        tags,
-        content,
-        sig: "00".repeat(32),
-    };
-    event.id = deterministic_id(&event);
-    event
+    signer.sign_event(now, KIND_PURCHASE_NOTE as u32, tags, content)
 }
 
 /// Route a chain action to the appropriate NIP-15 / note egress.
@@ -273,7 +259,7 @@ pub fn chain_action_to_nostr(
     action: &MarketplaceChainAction,
     product: Option<&ProductMetaView>,
     body: Option<&[u8]>,
-    pubkey: &str,
+    signer: &NostrSigner,
 ) -> Result<Nip01Event, String> {
     match action.action.as_str() {
         "list_product" | "update_stock" => {
@@ -293,9 +279,9 @@ pub fn chain_action_to_nostr(
                     contract: action.contract.clone(),
                 }
             };
-            product_to_nip15(&meta, body, pubkey)
+            product_to_nip15(&meta, body, signer)
         }
-        "purchase" | "settle" | "cancel" => Ok(purchase_confirmation_to_nostr(action, pubkey)),
+        "purchase" | "settle" | "cancel" => purchase_confirmation_to_nostr(action, signer),
         other => Err(format!("unsupported marketplace action: {other}")),
     }
 }
@@ -303,20 +289,6 @@ pub fn chain_action_to_nostr(
 /// Content-plane path hint for a product cid (BUD / dual-index).
 pub fn product_content_path(cid: &str) -> Option<String> {
     parse_cid(cid).ok().map(|p| content_path(&p))
-}
-
-fn deterministic_id(ev: &Nip01Event) -> String {
-    let mut hasher = DefaultHasher::new();
-    ev.pubkey.hash(&mut hasher);
-    ev.created_at.hash(&mut hasher);
-    ev.kind.hash(&mut hasher);
-    ev.content.hash(&mut hasher);
-    for t in &ev.tags {
-        for s in t {
-            s.hash(&mut hasher);
-        }
-    }
-    format!("{:016x}", hasher.finish())
 }
 
 #[cfg(test)]
@@ -357,8 +329,13 @@ mod tests {
             seller: Some("npub1seller".into()),
             contract: Some("terp1mm".into()),
         };
-        let ev = product_to_nip15(&meta, None, "pubkey1").unwrap();
+        let signer = NostrSigner::generate();
+        let ev = product_to_nip15(&meta, None, &signer).unwrap();
+        ev.verify().unwrap();
+        assert_eq!(ev.pubkey, signer.pubkey_hex());
         assert_eq!(ev.kind, KIND_SET_PRODUCT as u32);
+        assert!(ev.tags.iter().any(|t| t.as_slice() == ["seller", "npub1seller"]));
+        assert!(!ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("p")));
         assert!(ev.tags.iter().any(|t| t.as_slice() == ["d", "product-tee"]));
         assert!(ev
             .tags
@@ -382,7 +359,11 @@ mod tests {
             contract: Some("terp1mm".into()),
             height: 12352,
         };
-        let ev = purchase_confirmation_to_nostr(&action, "pubkey1");
+        let signer = NostrSigner::generate();
+        let ev = purchase_confirmation_to_nostr(&action, &signer).unwrap();
+        ev.verify().unwrap();
+        let via_router = chain_action_to_nostr(&action, None, None, &signer).unwrap();
+        via_router.verify().unwrap();
         assert_eq!(ev.kind, KIND_PURCHASE_NOTE as u32);
         assert!(ev
             .tags

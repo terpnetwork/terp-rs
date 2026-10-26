@@ -90,8 +90,9 @@ pub use crate::client::ve::{SignedVoteExtension, VoteExtensionHandler};
 #[cfg(feature = "nostr")]
 pub use client::nostr::{
     chain_attrs_to_nostr, metadata_to_nip52_event, offchain_to_nip52, onchain_to_nip52,
-    parse_calendar_action, CalendarChainAction, CalendarMetaView, HashMerchantKind,
-    HashMerchantPayload, HashMerchantRelayInfo, NegentropyFilter, Nip01Event,
+    parse_calendar_action, validate_nip52_calendar_event, CalendarChainAction, CalendarMetaView,
+    HashMerchantKind, HashMerchantPayload, HashMerchantRelayInfo, NegentropyFilter, Nip01Event,
+    NostrSigner,
 };
 
 // Content plane calendar/listing bind/resolve is always available (no second blob store).

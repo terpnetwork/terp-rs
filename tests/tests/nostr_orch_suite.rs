@@ -19,11 +19,30 @@ use std::time::Duration;
 use hash_market::store::TreeStore;
 use hash_market::{
     bind_offchain_event, metadata_to_nip52_event, parse_calendar_action, resolve_local,
-    CalendarChainAction, CalendarMetaView, KIND_DATE_BASED, KIND_TIME_BASED,
+    validate_nip52_calendar_event, CalendarChainAction, CalendarMetaView, Nip01Event,
+    NostrSigner, KIND_DATE_BASED, KIND_TIME_BASED,
 };
 use terp_scripts::environments::nostr::{
     bind_and_bridge_offchain, calendar_meta_to_nostr, chain_event_to_nostr, nip01_to_ict,
+    NostrEvent,
 };
+
+/// NIP-01 id + BIP-340 sig check on a harness event, plus NIP-52 structure for calendar kinds.
+fn assert_valid_nostr(ev: &NostrEvent) {
+    let n = Nip01Event {
+        id: ev.id.clone(),
+        pubkey: ev.pubkey.clone(),
+        created_at: ev.created_at,
+        kind: ev.kind,
+        tags: ev.tags.clone(),
+        content: ev.content.clone(),
+        sig: ev.sig.clone(),
+    };
+    n.verify().expect("NIP-01 id/sig must verify");
+    if n.kind == 31922 || n.kind == 31923 {
+        validate_nip52_calendar_event(&n).expect("NIP-52 structure");
+    }
+}
 
 // ---------------------------------------------------------------------------
 // L0 — pure content plane + egress (no Docker)
@@ -44,6 +63,7 @@ fn l0_offchain_cid_bind_and_nip52_shape() {
 
     let resolved = resolve_local(&store, &meta.cid).unwrap();
     assert_eq!(resolved, body);
+    let signer = NostrSigner::generate();
 
     let action = CalendarChainAction {
         action: "create_event".into(),
@@ -59,26 +79,32 @@ fn l0_offchain_cid_bind_and_nip52_shape() {
         kind: KIND_TIME_BASED,
         d_tag: Some("l0-1".into()),
         calendar_d: Some("cal/1".into()),
-        author_pubkey: Some("pk_l0".into()),
+        author_pubkey: None,
         nostr_e_d: None,
     };
-    let ev = metadata_to_nip52_event(&view, Some(&resolved), Some(&action), "pk_l0").unwrap();
+    let ev = metadata_to_nip52_event(&view, Some(&resolved), Some(&action), &signer).unwrap();
+    ev.verify().unwrap();
+    validate_nip52_calendar_event(&ev).unwrap();
     assert_eq!(ev.kind, KIND_TIME_BASED as u32);
+    assert_eq!(ev.pubkey, signer.pubkey_hex());
     assert!(ev.tags.iter().any(|t| t == &["cid".to_string(), bind.chain_cid.clone()]));
     assert!(ev.tags.iter().any(|t| t == &["t".to_string(), "dao-calendar".to_string()]));
-    assert!(ev.content.contains("L0 Meetup"));
+    assert!(ev.tags.iter().any(|t| t.as_slice() == ["title", "L0 Meetup"]));
+    assert_eq!(ev.content, "content-plane body");
 
-    // harness bridge matches
-    let ict = calendar_meta_to_nostr(&view, Some(&resolved), Some(&action), "pk_l0").unwrap();
+    // harness bridge produces an equally valid, signed event
+    let ict = calendar_meta_to_nostr(&view, Some(&resolved), Some(&action), &signer).unwrap();
+    assert_valid_nostr(&ict);
     assert_eq!(ict.kind, ev.kind);
-    assert_eq!(ict.id, ev.id);
+    assert_eq!(ict.pubkey, ev.pubkey);
+    assert_eq!(ict.tags, ev.tags);
 
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn l0_onchain_e_json_egress() {
-    let e = r#"{"d_tag":"on-1","title":"On-Chain Event","content":"full e","start_time":10,"end_time":20,"event_type":"DateBased"}"#;
+    let e = r#"{"d_tag":"on-1","title":"On-Chain Event","content":"full e","start_time":1700000000,"end_time":1700100000,"event_type":"DateBased"}"#;
     let view = CalendarMetaView {
         on_chain: true,
         e_json: Some(e.into()),
@@ -86,11 +112,13 @@ fn l0_onchain_e_json_egress() {
         kind: KIND_DATE_BASED,
         d_tag: Some("on-1".into()),
         calendar_d: None,
-        author_pubkey: Some("pk_on".into()),
+        author_pubkey: None,
         nostr_e_d: None,
     };
-    let ev = metadata_to_nip52_event(&view, None, None, "pk_on").unwrap();
+    let ev = metadata_to_nip52_event(&view, None, None, &NostrSigner::generate()).unwrap();
+    ev.verify().unwrap();
     assert_eq!(ev.kind, KIND_DATE_BASED as u32);
+    assert!(ev.tags.iter().any(|t| t.as_slice() == ["start", "2023-11-14"]));
     assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("title")));
 }
 
@@ -111,8 +139,10 @@ fn l0_parse_calendar_action_and_legacy_bridge() {
         55,
         Some("create_event"),
         Some("terp1c"),
-        "pk",
-    );
+        &NostrSigner::generate(),
+    )
+    .unwrap();
+    assert_valid_nostr(&bridged);
     assert_eq!(bridged.kind, KIND_DATE_BASED as u32);
     assert!(bridged.content.contains("55"));
 }
@@ -123,17 +153,18 @@ fn l0_bind_and_bridge_helper() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let store = TreeStore::open(dir.join("trees")).unwrap();
-    let body = br#"{"title":"helper","d_tag":"h1"}"#;
+    let body = br#"{"title":"helper","d_tag":"h1","start_time":1700000000}"#;
     let (bind, ev) = bind_and_bridge_offchain(
         &store,
         body,
         KIND_DATE_BASED,
         Some("h1"),
         Some("cal/9"),
-        "pk",
+        &NostrSigner::generate(),
         None,
     )
     .unwrap();
+    assert_valid_nostr(&ev);
     assert_eq!(bind.sha256.len(), 64);
     assert_eq!(ev.kind, KIND_DATE_BASED as u32);
     let _ = std::fs::remove_dir_all(&dir);
@@ -172,17 +203,20 @@ async fn l1_mock_backend_relay_lifecycle() {
 // L2 — Docker + optional local chain (ignored by default)
 // ---------------------------------------------------------------------------
 
-async fn try_connect_nostr(url: &str) -> Option<ict_rs::nostr::NostrClient> {
+/// Ignored L2 tests are explicit opt-in: infrastructure failures fail the test (no silent skip).
+async fn connect_nostr(url: &str) -> ict_rs::nostr::NostrClient {
     // relay container needs a moment after start (no readiness probe in NostrRelayerManager)
     let mut last = None;
     for _ in 0..40 {
         match ict_rs::nostr::NostrClient::connect(url).await {
-            Ok(c) => return Some(c),
-            Err(e) => { last = Some(e); tokio::time::sleep(Duration::from_millis(250)).await; }
+            Ok(c) => return c,
+            Err(e) => {
+                last = Some(e);
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
         }
     }
-    eprintln!("Skipping: cannot connect to {url}: {}", last.unwrap());
-    None
+    panic!("cannot connect to relay {url}: {}", last.unwrap());
 }
 
 /// Full lifecycle: NostrTestEnv + content-plane off-chain bind + NIP-52 publish/subscribe.
@@ -196,35 +230,27 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
     let chain_info = terp_scripts::environments::nostr::NostrTestEnv::local_terp_chain_info(
         &std::env::var("NOSTR_E2E_CHAIN_ID").unwrap_or_else(|_| "terp-test-1".into()),
         &std::env::var("NOSTR_E2E_GRPC").unwrap_or_else(|_| "http://127.0.0.1:9090".into()),
+        &std::env::var("NOSTR_E2E_RPC").unwrap_or_else(|_| "http://127.0.0.1:26657".into()),
         "uterp",
     );
 
-    let env = match terp_scripts::environments::nostr::NostrTestEnv::start(
+    let env = terp_scripts::environments::nostr::NostrTestEnv::start(
         "phase-b-lifecycle",
         chain_info,
         "chapter wrist alcohol shine angry noise mercy simple rebel recycle vehicle wrap \
          morning giraffe lazy outdoor noise blood ginger sort reunion boss crowd dutch",
     )
     .await
-    {
-        Ok(e) => e,
-        Err(e) => {
-            eprintln!("Skipping L2: NostrTestEnv start failed: {e}");
-            return;
-        }
-    };
+    .expect("NostrTestEnv start (Docker relay + local chain)");
 
-    assert!(env.nostr_ws_url().starts_with("ws://"));
-    assert!(env.chain_ws_url().contains("/websocket"));
+    assert!(env.nostr_ws_url().starts_with("ws://127.0.0.1:"));
+    assert!(env.chain_ws_url().starts_with("ws://127.0.0.1:"));
+    assert!(env.chain_ws_url().ends_with("/websocket"));
+    eprintln!("chain_ws_url = {}", env.chain_ws_url());
 
-    let mut client = match try_connect_nostr(env.nostr_ws_url()).await {
-        Some(c) => c,
-        None => {
-            let mut env = env;
-            let _ = env.stop().await;
-            return;
-        }
-    };
+    let mut client = connect_nostr(env.nostr_ws_url()).await;
+    // Ephemeral in-memory bridge key (never persisted / printed).
+    let signer = NostrSigner::generate();
 
     // Content plane: bind off-chain NIP-52 body (TreeStore sole store)
     let dir = tempfile::tempdir().expect("tempdir");
@@ -243,12 +269,13 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
         KIND_TIME_BASED,
         Some("pb-1"),
         Some("cal/1"),
-        "nostr_pubkey_test",
+        &signer,
         Some(&action),
     )
     .expect("bind+bridge");
     assert_eq!(bind.chain_cid.len(), 64);
     assert_eq!(nip_ev.kind, KIND_TIME_BASED as u32);
+    assert_valid_nostr(&nip_ev);
 
     // Publish NIP-52 to relay
     let ok = client
@@ -256,6 +283,7 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
         .await
         .expect("publish NIP-52");
     assert!(ok, "relay should accept NIP-52 event");
+    eprintln!("relay OK true for NIP-52 event {}", nip_ev.id);
 
     // Subscribe and receive
     let filters = vec![serde_json::json!({
@@ -273,29 +301,39 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
         "got kind {}",
         received.kind
     );
-    assert!(
-        received.content.contains("Phase B E2E")
-            || received.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")),
-        "content/tags should carry event or cid: {}",
-        received.content
-    );
+    assert_eq!(received.id, nip_ev.id, "relay returned our event");
+    assert_valid_nostr(&received);
+    assert!(received
+        .tags
+        .iter()
+        .any(|t| t.as_slice() == ["title", "Phase B E2E"]));
+    assert!(received
+        .tags
+        .iter()
+        .any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
 
-    // Legacy attrs bridge still works
+    // Legacy attrs bridge: signed, NIP-52-valid 31922
     let attrs = vec![
         ("action".into(), "create_event".into()),
         ("e_d".into(), "evt/cal/1/1".into()),
     ];
-    let legacy = chain_event_to_nostr(&attrs, 42, Some("create_event"), Some("terp1c"), "pk");
-    let ok = client.send_event(legacy).await.expect("publish legacy");
-    assert!(ok);
+    let legacy = chain_event_to_nostr(&attrs, 42, Some("create_event"), Some("terp1c"), &signer)
+        .expect("legacy bridge");
+    assert_valid_nostr(&legacy);
+    let legacy_id = legacy.id.clone();
+    // Fresh connection: the previous REQ subscription may still deliver frames on `client`.
+    let mut pub_client = connect_nostr(env.nostr_ws_url()).await;
+    let ok = pub_client.send_event(legacy).await.expect("publish legacy");
+    assert!(ok, "relay should accept legacy 31922 event");
+    eprintln!("relay OK true for legacy 31922 event {legacy_id}");
 
-    match env.event_watcher().await {
-        Ok(watcher) => {
-            eprintln!("ChainEventWatcher connected");
-            watcher.shutdown();
-        }
-        Err(e) => eprintln!("ChainEventWatcher skipped (no chain): {e}"),
-    }
+    // Watcher must reach the local chain's CometBFT websocket (subscribe succeeds).
+    let watcher = env
+        .event_watcher()
+        .await
+        .expect("ChainEventWatcher must connect to CometBFT RPC websocket");
+    eprintln!("ChainEventWatcher connected + subscribed: {}", env.chain_ws_url());
+    watcher.shutdown();
 
     let mut env = env;
     env.stop().await.expect("stop relay");
@@ -308,34 +346,21 @@ async fn l2_dao_calendar_attr_egress_roundtrip() {
     use ict_rs::nostr::NostrRelayerManager;
     use ict_rs::runtime::IctRuntime;
 
-    let runtime = match IctRuntime::Docker(Default::default()).into_backend().await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Skipping: Docker unavailable: {e}");
-            return;
-        }
-    };
+    let runtime = IctRuntime::Docker(Default::default())
+        .into_backend()
+        .await
+        .expect("Docker runtime");
 
     let mut relay = NostrRelayerManager::new(runtime, "attr-egress");
-    let url = match relay.start().await {
-        Ok(u) => u,
-        Err(e) => {
-            eprintln!("Skipping: relay start: {e}");
-            return;
-        }
-    };
+    let url = relay.start().await.expect("relay start");
+    assert!(url.starts_with("ws://127.0.0.1:"));
 
-    let mut client = match try_connect_nostr(&url).await {
-        Some(c) => c,
-        None => {
-            let _ = relay.stop().await;
-            return;
-        }
-    };
+    let mut client = connect_nostr(&url).await;
+    let signer = NostrSigner::generate();
 
     let dir = tempfile::tempdir().unwrap();
     let store = TreeStore::open(dir.path().join("trees")).unwrap();
-    let body = br#"{"title":"Attr Egress","d_tag":"ae-1","content":"from wasm attrs"}"#;
+    let body = br#"{"title":"Attr Egress","d_tag":"ae-1","content":"from wasm attrs","start_time":1700000000,"end_time":1700003600}"#;
     let attrs = vec![
         ("action".into(), "create_event".into()),
         ("d".into(), "cal/1".into()),
@@ -352,12 +377,16 @@ async fn l2_dao_calendar_attr_egress_roundtrip() {
         kind: KIND_TIME_BASED,
         d_tag: Some("ae-1".into()),
         calendar_d: Some("cal/1".into()),
-        author_pubkey: Some("op".into()),
+        author_pubkey: None,
         nostr_e_d: None,
     };
-    let nip = metadata_to_nip52_event(&view, Some(&resolved), Some(&action), "op").unwrap();
+    let nip = metadata_to_nip52_event(&view, Some(&resolved), Some(&action), &signer).unwrap();
+    nip.verify().unwrap();
+    validate_nip52_calendar_event(&nip).unwrap();
     let ict = nip01_to_ict(nip);
-    assert!(client.send_event(ict).await.unwrap());
+    let sent_id = ict.id.clone();
+    assert!(client.send_event(ict).await.unwrap(), "relay should accept signed 31923");
+    eprintln!("relay OK true for 31923 event {sent_id}");
 
     let _ = client
         .subscribe(vec![serde_json::json!({"kinds":[31923],"limit":5})])
@@ -368,6 +397,8 @@ async fn l2_dao_calendar_attr_egress_roundtrip() {
         .expect("timeout")
         .expect("event");
     assert_eq!(got.kind, 31923);
+    assert_eq!(got.id, sent_id);
+    assert_valid_nostr(&got);
     assert!(got.tags.iter().any(|t| t.get(1) == Some(&bind.chain_cid)));
 
     relay.stop().await.unwrap();

@@ -8,13 +8,15 @@ pub mod calendar_egress;
 pub mod discovery;
 pub mod marketplace_egress;
 pub mod marketplace_ingress;
+pub mod nip01;
 pub mod negentropy;
 pub mod roots;
 
 pub use calendar_egress::{
     chain_attrs_to_nostr, metadata_to_nip52_event, offchain_to_nip52, onchain_to_nip52,
-    parse_calendar_action, CalendarChainAction, CalendarMetaView, Nip01Event,
+    parse_calendar_action, validate_nip52_calendar_event, CalendarChainAction, CalendarMetaView,
 };
+pub use nip01::{canonical_serialize, is_valid_pubkey_hex, Nip01Event, NostrSigner};
 pub use marketplace_egress::{
     chain_action_to_nostr, parse_marketplace_action, product_to_nip15,
     purchase_confirmation_to_nostr, MarketplaceChainAction, ProductMetaView, KIND_SET_PRODUCT,
