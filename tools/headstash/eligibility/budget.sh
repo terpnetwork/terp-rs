@@ -36,6 +36,8 @@ EXCLUDE="${EXCLUDE:-$HERE/exclusions.csv}"   # burn/zero/contract rows: no leaf,
 while IFS= read -r kv; do
   p="${kv%%=*}"; ln -s "$ROOT/headstash/communities/$p" "$STAGE/$p"; ARGS+=(--budget "$kv")
 done <<< "$BUDGETS"
+# DENOMS=1: also write the depth-17 fixed-denomination note tree to $OUT/notes (spec rev 5).
+[ "${DENOMS:-0}" = 1 ] && ARGS+=(--denominations --total "$TOTAL_UTERP")
 echo "$BUDGETS" > "$OUT.budgets.txt" 2>/dev/null || true
 cd "$ROOT"
 cargo run --release -q -p headstash-epoch --bin headstash-eligibility -- "$STAGE" "$OUT" "${ARGS[@]}"

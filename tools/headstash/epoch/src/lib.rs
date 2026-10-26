@@ -6,6 +6,7 @@
 //! verifying key by `vk_id` and does not accept a signature or a leaf key.
 
 pub mod eligibility;
+pub mod denominations;
 mod host;
 mod lane;
 mod roots;

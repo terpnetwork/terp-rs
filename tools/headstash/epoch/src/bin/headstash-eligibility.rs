@@ -17,6 +17,12 @@
 //! excluded rows get no leaf. The split still uses the ORIGINAL community total,
 //! so other holders are unchanged and the excluded share is reported as
 //! `unallocated_uterp` (not redistributed).
+//!
+//! `--denominations` (rev 5): also build the per-note depth-17 tree
+//! (`denominations.rs`) into `<out>/notes/`: `tree.json`, `notes.jsonl` (one row per
+//! identity, landing lookup), `note_paths.jsonl` (one row per note) and
+//! `summary.json` with the class table and the uterp invariant
+//! notes + remainder + dust + unallocated == sum of budgets (`--total <uterp>` also checks it).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
@@ -27,9 +33,14 @@ use headstash_epoch::eligibility::{allocate_floor, apply_exclusions, parse_base_
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (mut pos, mut decimals, mut budgets) = (Vec::new(), BTreeMap::<String, u32>::new(), BTreeMap::<String, u64>::new());
     let mut exclude_file: Option<PathBuf> = None;
+    let (mut denoms, mut expect_total) = (false, None::<u128>);
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
-        if a == "--exclude" {
+        if a == "--denominations" {
+            denoms = true;
+        } else if a == "--total" {
+            expect_total = Some(args.next().ok_or("missing --total <uterp>")?.parse()?);
+        } else if a == "--exclude" {
             exclude_file = Some(PathBuf::from(args.next().ok_or("missing --exclude <csv>")?));
         } else if a == "--decimals" || a == "--budget" {
             let kv = args.next().ok_or("missing <project>=<n>")?;
@@ -155,5 +166,64 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     std::fs::write(out.join("summary.json"), serde_json::to_vec_pretty(&summary)?)?;
     println!("{}", serde_json::to_string_pretty(&summary)?);
+    if denoms {
+        let budget_sum: u128 = budgets.values().map(|b| *b as u128).sum();
+        write_notes(&out.join("notes"), &tree.entries, total_dust, total_unallocated, budget_sum, expect_total)?;
+    }
     Ok(())
+}
+
+fn write_notes(
+    dir: &std::path::Path,
+    entries: &[(Identity, u64)],
+    dust: u128,
+    unallocated: u128,
+    budget_sum: u128,
+    expect_total: Option<u128>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use headstash_epoch::denominations::{NoteTree, DENOMS_UTERP, NOTE_TREE_DEPTH};
+    std::fs::create_dir_all(dir)?;
+    let t = NoteTree::build(entries)?;
+    let root = hex::encode(t.root());
+    let (notes_u, rem_u) = (t.notes_uterp(), t.remainder_uterp());
+    let total = notes_u + rem_u + dust + unallocated;
+    if !budgets_match(total, budget_sum) { return Err(format!("invariant: {total} != budgets {budget_sum}").into()); }
+    if let Some(e) = expect_total { if total != e { return Err(format!("invariant: {total} != --total {e}").into()); } }
+    let mut nl = std::io::BufWriter::new(std::fs::File::create(dir.join("notes.jsonl"))?);
+    let mut pl = std::io::BufWriter::new(std::fs::File::create(dir.join("note_paths.jsonl"))?);
+    let mut counts: Vec<usize> = Vec::new();
+    let mut zero_note_ids = 0u64;
+    for i in &t.ids {
+        let notes: Vec<_> = i.notes.iter().enumerate().map(|(k, n)| serde_json::json!({"class": n.class, "amount": n.amount(), "note_index": n.note_index, "leaf_index": i.first_leaf + k})).collect();
+        writeln!(nl, "{}", serde_json::json!({"identity": i.identity.key(), "allocation": i.allocation, "remainder": i.remainder, "notes": notes}))?;
+        for (k, n) in i.notes.iter().enumerate() {
+            let idx = i.first_leaf + k;
+            let path: Vec<String> = t.path(idx).iter().map(hex::encode).collect();
+            writeln!(pl, "{}", serde_json::json!({"identity": i.identity.key(), "class": n.class, "note_index": n.note_index, "leaf_index": idx, "leaf": hex::encode(t.leaf(idx)), "path": path}))?;
+        }
+        counts.push(i.notes.len());
+        if i.notes.is_empty() { zero_note_ids += 1; }
+    }
+    drop((nl, pl));
+    counts.sort();
+    let n = counts.len().max(1);
+    let classes: Vec<_> = t.class_table().iter().enumerate().map(|(c, (notes, holders))| serde_json::json!({"class": c, "amount_uterp": DENOMS_UTERP[c], "notes": notes, "holders": holders})).collect();
+    let summary = serde_json::json!({
+        "root_hex": root, "depth": NOTE_TREE_DEPTH, "identities": t.ids.len(), "notes": t.note_count(),
+        "identities_without_notes": zero_note_ids,
+        "notes_per_identity": {"mean": t.note_count() as f64 / n as f64, "p50": counts[n / 2], "p99": counts[(n * 99) / 100], "max": counts[n - 1]},
+        "classes": classes,
+        "notes_uterp": notes_u.to_string(), "remainder_uterp": rem_u.to_string(),
+        "dust_uterp": dust.to_string(), "unallocated_uterp": unallocated.to_string(),
+        "total_uterp": total.to_string(), "invariant_ok": true,
+    });
+    std::fs::write(dir.join("tree.json"), serde_json::to_vec(&serde_json::json!({"depth": NOTE_TREE_DEPTH, "root_hex": root, "notes": t.note_count(), "denoms_uterp": DENOMS_UTERP}))?)?;
+    std::fs::write(dir.join("summary.json"), serde_json::to_vec_pretty(&summary)?)?;
+    println!("{}", serde_json::to_string_pretty(&summary)?);
+    Ok(())
+}
+
+/// Without budgets (base-unit mode) there is nothing to check against.
+fn budgets_match(total: u128, budget_sum: u128) -> bool {
+    budget_sum == 0 || total == budget_sum
 }

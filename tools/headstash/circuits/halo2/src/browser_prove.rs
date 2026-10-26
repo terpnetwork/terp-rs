@@ -111,3 +111,23 @@ pub fn prove_membership_witness_browser(witness_json: &str) -> Result<String, Js
     });
     Ok(serde_json::to_string(&body).map_err(|err| JsError::new(&err.to_string()))?)
 }
+
+/// vk_id 3 note prover (depth 17, denomination leaf, pinned tags). Same JSON
+/// witness shape as `prove_membership_witness_browser` with 17 siblings and an
+/// amount that must be one of the 12 denomination classes.
+#[wasm_bindgen]
+pub fn prove_note_witness_browser(witness_json: &str) -> Result<String, JsError> {
+    phase(&format!("note-enter mem={}", wasm_mem()));
+    let proof = crate::note_membership::prove_note_witness_json(witness_json)
+        .map_err(|err| JsError::new(&err))?;
+    phase(&format!("note-exit mem={} k={} proof_bytes={}", wasm_mem(), proof.k, proof.proof.len()));
+    let body = serde_json::json!({
+        "vk_id": crate::note_membership::NOTE_VK_ID,
+        "k": proof.k,
+        "proof_hex": hex::encode(&proof.proof),
+        "proof_bytes": proof.proof.len(),
+        "pk_bytes": proof.pk_bytes,
+        "body": proof.body,
+    });
+    Ok(serde_json::to_string(&body).map_err(|err| JsError::new(&err.to_string()))?)
+}

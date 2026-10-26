@@ -119,3 +119,65 @@ can check rows against submitted proofs.
 
 ## Parity and timing
 See `tools/headstash/docs/mainnet-deploy-runbook.md` "Verification evidence".
+
+## Addendum: fixed-denomination notes (spec rev 5, 2026-10-26)
+
+Scope: `circuits/halo2/src/note_membership.rs` (vk_id 3), `epoch/src/denominations.rs`,
+`docs/headstash-denominations-spec.md`, and the vk_id 2 circuit it replaces.
+
+### N1 (critical, vk_id 2): Poseidon tags and Merkle layer constants are free advice
+In `no_ecdsa.rs` the key-commitment, leaf and nullifier tags and the per-layer Merkle
+constants are loaded with `assign_advice` and never constrained to constants. The prover
+chooses them. With a free nullifier tag one secret yields unlimited distinct nullifiers for
+the same leaf, i.e. unlimited claims of one allocation. vk_id 2 must not be deployed for a
+campaign holding funds. Fix (vk_id 3): every tag and layer cell goes through
+`region.constrain_constant`. Test `pinned_tags_reject_a_forged_nullifier`: the same circuit
+with pinning off accepts a forged-tag nullifier, with pinning on (production) it fails.
+
+### N2 (by design): registration links an identity to all its notes
+The eligibility tree is public and the contract needs each note class to build the claim
+leaf, so registration reveals identity, note count and class vector. `key_com` values are
+Poseidon commitments to independent 255-bit secrets and reveal nothing; leaf positions are
+public but the proof hides which leaf is opened. Privacy rests entirely on claim-side
+unlinkability. Mitigation: spec section 6 (fresh destinations, random order and delay,
+relayer fees, Penumbra diversified addresses). Padding the registration with decoy notes
+does not help because the eligibility tree already publishes the note list.
+
+### N3 (medium): note-count and class-vector fingerprints
+Max holder has 177 notes; 15 identities have a note count nobody else has, 61 a count shared
+by fewer than 10, 895 a unique class vector. If an observer groups claims (same block,
+same relayer session, same IP, linked destinations) these identities are re-identified. A
+5000 TERP holder with 177 notes owns 2.3% of class 11 (7,676 notes, 2,859 holders).
+Mitigation: per-note random delays, never more than one note per identity per block, and
+the claim page should warn large holders. Open: cap notes per identity by adding a 10k or
+20k class (reduces max count but creates a small class; not recommended at this size).
+
+### N4 (low): front-running
+Registration: the message is signed over `H(list)`; a relayer can only submit it as is.
+Claims: destination is a public input bound by the proof, a copied proof pays the same
+destination, and the nullifier makes a second copy fail. No change needed.
+
+### N5 (low): griefing
+A third party cannot register for an identity without its signature. A sidecar can delay
+or drop chunks; since every chunk carries the full signed list any sidecar can resubmit.
+A wrong first chunk cannot pin a different list because the contract stores the list hash
+from the signature, not from the sender.
+
+### N6 (medium if missed): cross-note replay and duplicate secrets
+Distinct secrets give distinct nullifiers. If a buggy client reused a secret for two
+notes, both leaves would share one nullifier and one note would be unclaimable. Contract
+must reject duplicate `key_com` within a list and globally. The nullifier tag stays v1; the
+`ctx` must include the campaign/contract so a vk_id 2 nullifier cannot collide with or be
+replayed in the vk_id 3 campaign.
+
+### N7 (medium if missed): class tampering
+Eligibility leaf commits the class, the claim leaf commits `DENOMS[class]`, the circuit
+binds `amount` into the leaf and exposes it. The contract must take the amount from its own
+table (never from the message) at registration and check `amount` in `DENOMS` at claim.
+`prove_note` refuses non-class amounts; `wrong_amount_or_root_fails` covers mismatch.
+
+### Proposed mitigations / phase-2 checks
+1. Do not deploy vk_id 2 for new funds; register vk_id 3 (hash 34d11437...5398).
+2. Contract: amount from table, `DENOMS` membership at claim, duplicate key_com rejection,
+   ctx bound to contract address and campaign.
+3. Claim page: per-note delays and fresh destinations by default; large-holder warning.

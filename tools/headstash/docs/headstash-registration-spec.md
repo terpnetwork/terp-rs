@@ -5,6 +5,9 @@ rev 2 (`144d87d`), rev 3 (`51d30fe`, fee grants to fresh wallets). Rev 4 (2026-1
 path primary (resolves D1 below) and keeps fee grants only as an optional self-submit path (section A).
 Circuit, vk and public-input layout unchanged; only the eligibility (pre-registration) layer changed.
 
+> Rev 5 (fixed-denomination notes, depth 17, vk_id 3) is specified in
+> [`headstash-denominations-spec.md`](headstash-denominations-spec.md). Rev 4 stays valid for the existing campaign only.
+
 ## R4.1 Primary flow: any sidecar relays RegisterHeadstash directly
 
 1. The holder signs the registration message with the eligible key (EVM personal_sign, or Phantom/Solflare

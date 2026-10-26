@@ -91,6 +91,16 @@ zk-test-press = { path = "test-press" }
 
 # Mirror of the terp-rs root [patch.crates-io] (local forks), paths relative to tools/headstash.
 [patch.crates-io]
+# zakura-* come from crates.io via zk-cosmwasm (cosmwasm 2a747ae94); route them to the local
+# zakura-common so the whole graph shares one halo2 (mirrors the terp-rs root patch, 16101ab).
+zakura-bls12-381 = { path = "../../../zakura-common/crates/bls12_381" }
+zakura-halo2-gadgets = { path = "../../../zakura-common/crates/halo2_gadgets" }
+zakura-halo2-poseidon = { path = "../../../zakura-common/crates/halo2_poseidon" }
+zakura-halo2-proofs = { path = "../../../zakura-common/crates/halo2_proofs" }
+zakura-jubjub = { path = "../../../zakura-common/crates/jubjub" }
+zakura-pasta-curves = { path = "../../../zakura-common/crates/pasta_curves" }
+zakura-reddsa = { path = "../../../zakura-common/crates/reddsa" }
+zakura-sinsemilla = { path = "../../../zakura-common/crates/sinsemilla" }
 zk-cosmwasm = { path = "../../../cosmwasm/packages/zk" }
 cw721-nips = { path = "../../crates/nips" }
 cw4-group = { path = "../../../cw-plus/contracts/cw4-group" }

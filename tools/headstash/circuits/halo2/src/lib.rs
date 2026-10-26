@@ -50,6 +50,9 @@ pub mod toy_host;
 #[cfg(all(feature = "circuit", feature = "std"))]
 pub mod no_ecdsa;
 
+#[cfg(all(feature = "circuit", feature = "std"))]
+pub mod note_membership;
+
 // wasm-bindgen membership prover for the claim page (feature `browser`).
 #[cfg(all(feature = "browser", target_arch = "wasm32"))]
 mod browser_prove;
