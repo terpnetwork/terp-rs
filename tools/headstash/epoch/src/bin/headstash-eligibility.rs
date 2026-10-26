@@ -4,7 +4,8 @@
 //! Reads every `<project>/<project>.csv` (`addr,amount`). `0x` rows are EVM;
 //! anything else is a Solana entry (base64 of base58, or base58). Duplicate
 //! identities are summed. Writes `tree.json` (sidecar input), `paths.jsonl`,
-//! and prints counts. Never reads keys.
+//! `allocations.jsonl` (one row per community x identity), and prints counts.
+//! Never reads keys.
 //!
 //! Options (repeatable): `--decimals <project>=<n>` and `--budget <project>=<uterp>`.
 //! Balances are parsed as exact decimals into base units (10^-n), never floats.
@@ -33,6 +34,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut total_dust: u128 = 0;
     std::fs::create_dir_all(&out)?;
     let mut rows = Vec::new();
+    // Per-(community, identity) leaf contributions, before cross-community summing.
+    let mut allocs: Vec<(String, Identity, u64)> = Vec::new();
     let mut report: BTreeMap<String, serde_json::Value> = BTreeMap::new();
     let mut projects: Vec<_> = std::fs::read_dir(&dir)?.filter_map(|e| e.ok()).filter(|e| e.path().is_dir()).collect();
     projects.sort_by_key(|e| e.file_name());
@@ -74,11 +77,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(&b) => {
                 let bals: Vec<u128> = prow.iter().map(|r| r.1).collect();
                 let (alloc, dust) = allocate_floor(&bals, b)?;
-                for ((id, _), a) in prow.into_iter().zip(alloc) { rows.push((id, a)); }
+                for ((id, _), a) in prow.into_iter().zip(alloc) { allocs.push((name.clone(), id.clone(), a)); rows.push((id, a)); }
                 ("budget_floor", dust, Some(b))
             }
             None => {
-                for (id, v) in prow { rows.push((id, u64::try_from(v).map_err(|_| format!("{name}: base-unit balance exceeds u64; pass --budget"))?)); }
+                for (id, v) in prow { let a = u64::try_from(v).map_err(|_| format!("{name}: base-unit balance exceeds u64; pass --budget"))?; allocs.push((name.clone(), id.clone(), a)); rows.push((id, a)); }
                 ("base_units", 0, None)
             }
         };
@@ -86,6 +89,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         report.insert(name, serde_json::json!({"evm_valid": evm, "evm_invalid": bad_evm, "sol_valid": sol, "sol_dropped": drops, "sol_forms": forms, "bad_amount": bad_amount, "bad_amount_samples": bad_samples, "decimals": dec, "total_base_units": total_units.to_string(), "mode": mode, "budget_uterp": budget, "dust_uterp": dust}));
     }
     let raw_rows = rows.len();
+    let mut af = std::io::BufWriter::new(std::fs::File::create(out.join("allocations.jsonl"))?);
+    for (project, id, amount) in &allocs {
+        writeln!(af, "{}", serde_json::json!({"project": project, "identity": id.key(), "amount": amount}))?;
+    }
+    drop(af);
     let tree = EligTree::build(rows)?;
     let root = hex::encode(tree.root());
     let entries: Vec<_> = tree.entries.iter().map(|(id, amount)| match id {

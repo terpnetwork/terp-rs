@@ -17,3 +17,11 @@ Governance context (morocco-1):
 
 Result at 67M: root 361e39a8dac874317ac046a51348bd1ae64080c771c6c2030b895231464cd419, depth 15, 17826 ids (15767 EVM / 2059 Sol),
 leaves 66,999,999,994,137 + dust 5,863 = 67,000,000,000,000 uterp.
+
+## Decision (2026-10-26)
+
+- **67,000,000 TERP is the chosen production total.** Production root: `361e39a8dac874317ac046a51348bd1ae64080c771c6c2030b895231464cd419`.
+- Prop #32 funded the headstash-patch contract with 43,476,089.028199 TERP and 43,476,089.028199 THIOL
+  (`43476089028199` uterp/uthiol): https://explorer.anode.team/main/terp/governance/32/. That figure is cited for context and is not the budget used.
+- **n8 is excluded by decision.** It has no headstash.yaml entry and gets no allocation.
+- The builder also writes `allocations.jsonl`, one row per (community, identity) leaf contribution. The dao-dao-ui landing snapshot reads this file.
