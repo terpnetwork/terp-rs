@@ -109,8 +109,15 @@ def validate_toml(path):
 
 
 def cargo_sort(path):
-    """Run cargo-sort on a Cargo.toml to keep dependency tables sorted."""
+    """Run cargo-sort on a Cargo.toml to keep dependency tables sorted.
+
+    Opt-in (DEP_CARGO_SORT=1): cargo-sort also reorders [workspace] members
+    and other non-patch tables, which a patch switch must never touch.
+    """
+    import os
     import subprocess
+    if os.environ.get("DEP_CARGO_SORT") != "1":
+        return
     try:
         subprocess.run(
             ["cargo", "sort", "--grouped", str(Path(path).parent)],
@@ -663,7 +670,8 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
                     print(f"  [WARN] {ws_toml}: keep patch {patch_name}: {refusal}")
                     static_lines.append(line)
                 elif val:
-                    new_section.append(f"{patch_name} = {val}")
+                    # Rewrite in place: keep the manifest's patch order stable.
+                    static_lines.append(f"{patch_name} = {val}")
                 elif mode == "git-rev":
                     print(f"  [WARN] {ws_toml}: keep patch {patch_name}: "
                           f"git.rev/git.commit is not a full 40-hex sha")
@@ -1952,10 +1960,16 @@ def _closure_patches(ws_toml, crates, defaults):
     return to_add, urls
 
 
-def unify_local_patches(ws_toml, crates, defaults, dry_run):
-    """Fill `[patch.crates-io]` for the path closure and drop unused git-url sections."""
+def unify_local_patches(ws_toml, crates, defaults, dry_run, crate_filter=None):
+    """Fill `[patch.crates-io]` for the path closure and drop unused git-url sections.
+
+    With --crate, only closure entries for the filtered packages are added.
+    """
     cargo_path = REPO_ROOT / ws_toml
     added, urls = _closure_patches(ws_toml, crates, defaults)
+    if crate_filter:
+        added = [l for l in added
+                 if "=" not in l or l.split("=", 1)[0].strip() in crate_filter]
     if added:
         content = cargo_path.read_text()
         lines = content.split("\n")
@@ -2010,14 +2024,44 @@ TARGET_DESC = {
 }
 
 
+_PATCH_HDR = re.compile(r"^\s*\[patch[.\]]")
+_ANY_HDR = re.compile(r"^\s*\[")
+
+
+def _non_patch_text(text):
+    """Manifest text with every [patch.*] table removed and blank lines dropped."""
+    out, in_patch = [], False
+    for line in text.split("\n"):
+        if _ANY_HDR.match(line):
+            in_patch = bool(_PATCH_HDR.match(line))
+        if not in_patch and line.strip():
+            out.append(line)
+    return "\n".join(out)
+
+
+def _guard_non_patch_sections(snapshots):
+    """--target patches must only change [patch.*]. Revert any file that drifted."""
+    for ws_toml, before in snapshots.items():
+        path = REPO_ROOT / ws_toml
+        after = path.read_text()
+        if _non_patch_text(after) != _non_patch_text(before):
+            path.write_text(before)
+            print(f"  REVERTED {ws_toml}: switch changed tables outside [patch.*]")
+
+
 def cmd_switch(args):
     """Switch fork deps to the specified mode."""
     crates = load_matrix()
     defaults = load_defaults()
-    projects = resolve_projects(args.workspace, all_projects=(args.target in ("members", "all")))
     crate_filter = resolve_crate_filter(args.crate, crates)
-    target = args.target
     mode = args.mode
+    target = args.target
+    if target is None:
+        # patch-* modes only own [patch.crates-io]; touching ws-deps or member
+        # manifests is opt-in (--target all) to adopt the scheme once.
+        target = "patches" if mode in PATCH_MODE_MAP else "all"
+        args.target = target
+    projects = resolve_projects(args.workspace, all_projects=(target in ("members", "all")))
 
     # Decompose composite modes into the dependency-line mode and the patch mode.
     is_dev = mode in DEV_MODE_MAP
@@ -2050,12 +2094,15 @@ def cmd_switch(args):
         print("  [DRY RUN]")
     print()
 
+    snapshots = {}
     for proj in projects:
         ws_toml = proj.rel_path + "/Cargo.toml"
 
         if not (REPO_ROOT / ws_toml).exists():
             print(f"  SKIP {ws_toml}: file not found")
             continue
+        if target == "patches":
+            snapshots[ws_toml] = (REPO_ROOT / ws_toml).read_text()
 
         if target in ("patches", "both", "all"):
             rewrite_patches(
@@ -2091,7 +2138,10 @@ def cmd_switch(args):
             ws_toml = proj.rel_path + "/Cargo.toml"
             if not (REPO_ROOT / ws_toml).exists():
                 continue
-            unify_local_patches(ws_toml, crates, defaults, args.dry_run)
+            unify_local_patches(ws_toml, crates, defaults, args.dry_run, crate_filter)
+
+    if target == "patches" and not args.dry_run:
+        _guard_non_patch_sections(snapshots)
 
     # Persist active mode (skip on dry-run or partial crate/workspace filters)
     if not args.dry_run and not args.crate and not args.workspace:
@@ -2382,8 +2432,8 @@ def main():
     )
     sw.add_argument(
         "--target", choices=["patches", "ws-deps", "members", "both", "all"],
-        default="all",
-        help="Which sections to modify (default: all)",
+        default=None,
+        help="Which sections to modify (default: patches for patch-* modes, else all)",
     )
     sw.set_defaults(func=cmd_switch)
 

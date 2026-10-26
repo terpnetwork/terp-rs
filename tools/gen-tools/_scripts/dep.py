@@ -591,7 +591,7 @@ def main():
     p.add_argument(
         "--target",
         choices=["patches", "ws-deps", "members", "both", "all"],
-        default="all",
+        default=None,
     )
     p.add_argument("--force", action="store_true", help="Allow switch with matrix errors")
     p.add_argument("--verify", action="store_true", help="cargo metadata verify after switch")
