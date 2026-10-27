@@ -12,6 +12,8 @@ use ibc_proto::ibc::core::client::v1::{Height, MsgCreateClient, MsgRecoverClient
 use ibc_proto::ibc::core::commitment::v1::MerkleRoot;
 use ibc_proto::ibc::lightclients::tendermint::v1::{ClientState, ConsensusState, Fraction};
 
+pub use ibc_proto::ibc::lightclients::tendermint::v1::ClientState as TmClientState;
+pub use ibc_proto::ibc::lightclients::tendermint::v1::ConsensusState as TmConsensusState;
 pub const MSG_CREATE_CLIENT: &str = "/ibc.core.client.v1.MsgCreateClient";
 pub const MSG_RECOVER_CLIENT: &str = "/ibc.core.client.v1.MsgRecoverClient";
 pub const MSG_SUBMIT_PROPOSAL: &str = "/cosmos.gov.v1.MsgSubmitProposal";
@@ -159,6 +161,96 @@ pub fn client_state(a: &Anchor, max_clock_drift_secs: u64) -> Result<ClientState
         allow_update_after_expiry: false,
         allow_update_after_misbehaviour: false,
     })
+}
+
+pub const DAY_SECS: u64 = 86_400;
+pub const TRUSTING_FLOOR_SECS: u64 = 7 * DAY_SECS;
+pub const TRUSTING_CAP_SECS: u64 = 10 * DAY_SECS;
+pub const DEFAULT_MAX_CLOCK_DRIFT_SECS: u64 = 600;
+pub const MAX_CLOCK_DRIFT_LIMIT_SECS: u64 = 3600;
+
+/// Default trusting period: min(2/3 unbonding, 10d), floored at 7d when
+/// 7d < unbonding. Returns (secs, note) where note flags anything unusual.
+pub fn default_trusting_secs(unbonding_secs: u64) -> (u64, Option<String>) {
+    let t = trusting_secs(unbonding_secs).min(TRUSTING_CAP_SECS);
+    if t >= TRUSTING_FLOOR_SECS {
+        return (t, None);
+    }
+    if TRUSTING_FLOOR_SECS < unbonding_secs {
+        return (TRUSTING_FLOOR_SECS, Some(format!("7d floor applied; above 2/3 of unbonding {unbonding_secs}s")));
+    }
+    (t, Some(format!("unbonding {unbonding_secs}s too short for 7d; using 2/3 = {t}s")))
+}
+
+pub fn check_trusting(trusting: u64, unbonding: u64) -> Result<()> {
+    if trusting == 0 || trusting >= unbonding {
+        bail!("trusting period {trusting}s must be > 0 and strictly < unbonding {unbonding}s");
+    }
+    Ok(())
+}
+
+pub fn check_drift(drift: u64) -> Result<()> {
+    if drift == 0 || drift > MAX_CLOCK_DRIFT_LIMIT_SECS {
+        bail!("max clock drift {drift}s out of bounds (1..={MAX_CLOCK_DRIFT_LIMIT_SECS}s)");
+    }
+    Ok(())
+}
+
+/// Fresh client with explicit trusting period and drift.
+pub fn client_state_with(a: &Anchor, trusting: u64, drift: u64) -> Result<ClientState> {
+    check_trusting(trusting, a.unbonding_secs)?;
+    check_drift(drift)?;
+    let mut cs = client_state(a, drift)?;
+    cs.trusting_period = Some(duration(trusting));
+    Ok(cs)
+}
+
+/// Substitute for `subject`: copy every field ibc-go v11
+/// `IsMatchingClientState` compares; only latest height, frozen height,
+/// trusting period and chain id come from the new anchor.
+pub fn substitute_state(subject: &ClientState, a: &Anchor, trusting: u64) -> Result<ClientState> {
+    let sub_unb = subject.unbonding_period.as_ref().map(|d| d.seconds as u64).unwrap_or(0);
+    if sub_unb != a.unbonding_secs {
+        bail!("{}: live unbonding {}s != subject unbonding {}s; substitute cannot match", a.chain_id, a.unbonding_secs, sub_unb);
+    }
+    if subject.chain_id != a.chain_id {
+        bail!("subject chain {} != anchor chain {}", subject.chain_id, a.chain_id);
+    }
+    check_trusting(trusting, sub_unb)?;
+    let mut cs = subject.clone();
+    cs.chain_id = a.chain_id.clone();
+    cs.trusting_period = Some(duration(trusting));
+    cs.frozen_height = Some(Height { revision_number: 0, revision_height: 0 });
+    cs.latest_height = Some(Height { revision_number: revision_number(&a.chain_id), revision_height: a.height });
+    if !is_matching_client_state(subject, &cs) {
+        bail!("internal: substitute does not match subject");
+    }
+    Ok(cs)
+}
+
+/// Mirror of ibc-go v11 07-tendermint `IsMatchingClientState`.
+#[allow(deprecated)]
+pub fn is_matching_client_state(subject: &ClientState, substitute: &ClientState) -> bool {
+    let norm = |c: &ClientState| {
+        let mut c = c.clone();
+        c.latest_height = Some(Height { revision_number: 0, revision_height: 0 });
+        c.frozen_height = Some(Height { revision_number: 0, revision_height: 0 });
+        c.trusting_period = Some(duration(0));
+        c.chain_id = String::new();
+        c.allow_update_after_expiry = true;
+        c.allow_update_after_misbehaviour = true;
+        c.encode_to_vec()
+    };
+    norm(subject) == norm(substitute)
+}
+
+pub fn create_client_any_from(cs: &ClientState, a: &Anchor, signer: &str) -> Any {
+    let msg = MsgCreateClient {
+        client_state: Some(ibc_proto::google::protobuf::Any { type_url: TM_CLIENT_STATE.into(), value: cs.encode_to_vec() }),
+        consensus_state: Some(ibc_proto::google::protobuf::Any { type_url: TM_CONSENSUS_STATE.into(), value: consensus_state(a).encode_to_vec() }),
+        signer: signer.into(),
+    };
+    Any { type_url: MSG_CREATE_CLIENT.into(), value: msg.encode_to_vec() }
 }
 
 pub fn consensus_state(a: &Anchor) -> ConsensusState {
@@ -375,6 +467,34 @@ mod tests {
         let m = cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal::decode(a.value.as_slice()).unwrap();
         let r = MsgRecoverClient::decode(m.messages[0].value.as_slice()).unwrap();
         assert_eq!(r.signer, auth);
+    }
+
+    #[test]
+    fn trusting_and_drift_rules() {
+        assert_eq!(default_trusting_secs(1_209_600).0, 806_400);
+        assert_eq!(default_trusting_secs(2_419_200).0, 864_000);
+        assert_eq!(default_trusting_secs(1_814_400).0, 864_000);
+        let (t, n) = default_trusting_secs(604_800);
+        assert_eq!(t, 403_200);
+        assert!(n.is_some());
+        assert_eq!(default_trusting_secs(9 * DAY_SECS).0, 7 * DAY_SECS);
+        assert!(check_trusting(604_800, 604_800).is_err());
+        assert!(check_drift(600).is_ok());
+        assert!(check_drift(7_235).is_err());
+        assert!(check_drift(0).is_err());
+    }
+
+    #[test]
+    fn substitute_copies_match_fields() {
+        let a = anchor(Store::Iavl);
+        let mut subj = client_state(&a, 40).unwrap();
+        subj.trusting_period = Some(duration(500_000));
+        let mut b = a.clone();
+        b.height += 100;
+        let sub = substitute_state(&subj, &b, 403_200).unwrap();
+        assert!(is_matching_client_state(&subj, &sub));
+        let fresh = client_state(&b, 600).unwrap();
+        assert!(!is_matching_client_state(&subj, &fresh));
     }
 
     #[test]

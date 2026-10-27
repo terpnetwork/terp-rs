@@ -12,6 +12,7 @@
 //! ```
 
 use anyhow::{anyhow, bail, Result};
+use cosmos_sdk_proto::prost::Message;
 use base64::Engine;
 use clap::Parser;
 use dao_scripts::ibc_clients::{self, MSG_SUBMIT_PROPOSAL};
@@ -28,8 +29,11 @@ struct Cli {
     #[arg(long, default_value = "Recover expired 07-tendermint clients on morocco-1 to fresh substitute clients created by ibc_create_clients.")]
     summary: String,
     /// Initial deposit in uterp.
-    #[arg(long, default_value_t = 5_000_000_000)]
+    #[arg(long, default_value_t = 10_000_000_000)]
     deposit: u128,
+    /// Each substitute must stay Active at least this long (voting period 4d + 1d margin).
+    #[arg(long, default_value_t = 432_000)]
+    min_remaining_secs: i64,
     #[arg(long)]
     broadcast: bool,
     #[arg(long, default_value = "")]
@@ -63,20 +67,55 @@ fn main() -> Result<()> {
     let authority = kms_gate::module_address("gov", "terp")?;
     let proposer = if cli.granter.is_empty() { "<cw-orch-kms granter>".to_string() } else { cli.granter.clone() };
     let any = ibc_clients::recover_proposal_any(&pairs, &authority, &proposer, (cli.deposit, "uterp"), &cli.title, &cli.summary)?;
-    // Live client status, read-only. A stale or unreachable node is reported, not fatal.
+    // Live checks, read-only: subject/substitute must satisfy ibc-go v11
+    // IsMatchingClientState and each substitute must be Active with enough
+    // trusting time left to outlast the vote. Broadcast refuses on any failure.
+    let mut all_ok = true;
     let status = match kms_gate::query_only(&morocco) {
         Ok(d) => {
             let ibc = cw_orch::daemon::queriers::Ibc::new_async(d.channel());
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
+            let cs_of = |id: &str| -> Result<ibc_clients::TmClientState> {
+                let r = d.rt_handle.block_on(ibc._client_state(id)).map_err(|e| anyhow!("{id}: {e}"))?;
+                let a = r.client_state.ok_or_else(|| anyhow!("{id}: no client state"))?;
+                Ok(ibc_clients::TmClientState::decode(a.value.as_slice())?)
+            };
+            let status_of = |id: &str| d.rt_handle.block_on(ibc._client_status(id)).map(|r| r.status).unwrap_or_else(|e| format!("error: {e}"));
             let mut out = Vec::new();
             for (s, t) in &pairs {
-                for id in [s, t] {
-                    let r = d.rt_handle.block_on(ibc._client_state(id));
-                    out.push(serde_json::json!({"client_id": id, "found": r.is_ok(), "error": r.err().map(|e| e.to_string())}));
-                }
+                let subj = cs_of(s);
+                let sub = cs_of(t);
+                let sub_status = status_of(t);
+                let remaining = sub.as_ref().ok().and_then(|c| {
+                    let lh = c.latest_height.clone()?;
+                    let cons = d.rt_handle.block_on(ibc._consensus_states(t)).ok()?;
+                    let e = cons.consensus_states.into_iter().find(|e| e.height.as_ref().map(|h| h.revision_height) == Some(lh.revision_height))?;
+                    let cs = ibc_clients::TmConsensusState::decode(e.consensus_state?.value.as_slice()).ok()?;
+                    let ts = cs.timestamp?.seconds;
+                    Some(ts + c.trusting_period.as_ref()?.seconds - now)
+                });
+                let matching = match (&subj, &sub) {
+                    (Ok(a), Ok(b)) => Some(ibc_clients::is_matching_client_state(a, b)),
+                    _ => None,
+                };
+                let ok = sub_status == "Active" && remaining.map_or(false, |r| r >= cli.min_remaining_secs) && matching == Some(true);
+                all_ok &= ok;
+                out.push(serde_json::json!({
+                    "subject": s, "subject_status": status_of(s),
+                    "subject_error": subj.as_ref().err().map(|e| e.to_string()),
+                    "substitute": t, "substitute_status": sub_status,
+                    "substitute_error": sub.as_ref().err().map(|e| e.to_string()),
+                    "substitute_trusting_remaining_secs": remaining,
+                    "is_matching_client_state": matching,
+                    "ok": ok,
+                }));
             }
             serde_json::json!(out)
         }
-        Err(e) => serde_json::json!({"error": e.to_string()}),
+        Err(e) => {
+            all_ok = false;
+            serde_json::json!({"error": e.to_string()})
+        }
     };
     let plan = serde_json::json!({
         "dry_run": !cli.broadcast,
@@ -85,6 +124,8 @@ fn main() -> Result<()> {
         "proposer": proposer,
         "pairs": pairs,
         "client_status": status,
+        "checks_ok": all_ok,
+        "deposit_uterp": cli.deposit.to_string(),
         "session_scope": {"allow_sdk": [MSG_SUBMIT_PROPOSAL], "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
         "msg": {"type_url": any.type_url, "value_b64": base64::engine::general_purpose::STANDARD.encode(&any.value)},
     });
@@ -95,6 +136,9 @@ fn main() -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&plan)?);
     if !cli.broadcast {
         return Ok(());
+    }
+    if !all_ok {
+        bail!("broadcast refused: a substitute is not Active with >= {}s left, or does not match its subject", cli.min_remaining_secs);
     }
     if cli.granter.is_empty() {
         bail!("broadcast refused: pass --granter so the proposer is the granter");
