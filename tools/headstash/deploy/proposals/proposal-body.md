@@ -89,3 +89,9 @@ TERP from this proposal is spent on fees.
 Privacy limits: the anonymity set is the set of notes of the same denomination registered by the
 anchor used; a small first epoch gives a small set; claiming soon after registering can be
 correlated by time (the page adds random anchor and broadcast delays).
+
+### Fee-grant funding
+Claim and registration fees are paid by sidecar operators from their own accounts through one-transaction
+fee grants scoped to this contract. This proposal sends each named operator its THIOL share:
+{{OPERATOR_BUDGET_TABLE}} (total {{FEEGRANT_BUDGET_THIOL}} THIOL, source {{FEEGRANT_FUNDING_SOURCE}}). An
+operator can only spend what it was sent; leftovers are returned after the cutoff.

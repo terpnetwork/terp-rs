@@ -49,11 +49,33 @@
           "amount": "{{FUNDING_AMOUNT_UTERP}}"
         }
       ]
+    },
+    {
+      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "recipient": "{{OPERATOR_1_ADDR}}",
+      "amount": [
+        {
+          "denom": "uthiol",
+          "amount": "{{OPERATOR_1_BUDGET_UTHIOL}}"
+        }
+      ]
+    },
+    {
+      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "recipient": "{{OPERATOR_2_ADDR}}",
+      "amount": [
+        {
+          "denom": "uthiol",
+          "amount": "{{OPERATOR_2_BUDGET_UTHIOL}}"
+        }
+      ]
     }
   ],
   "metadata": "{{PROPOSAL_METADATA_URI}}",
   "deposit": "{{DEPOSIT_UTERP}}uterp",
   "title": "Headstash 2026: fund the private TERP airdrop to 16 partner communities",
-  "summary": "Stores the Headstash note circuit (vk hash {{NOTE_VK_HASH}}), registers the optional headstash-claim oracle source with hashmerchant, and sends {{FUNDING_AMOUNT_UTERP}} uterp from the community pool to the cw-headstash contract {{CONTRACT_ADDR}} (eligibility root {{ELIGIBILITY_ROOT}}). Full text: {{PROPOSAL_METADATA_URI}}",
+  "summary": "Stores the Headstash note circuit (vk hash {{NOTE_VK_HASH}}), registers the optional headstash-claim oracle source with hashmerchant, and sends {{FUNDING_AMOUNT_UTERP}} uterp from the community pool to the cw-headstash contract {{CONTRACT_ADDR}} (eligibility root {{ELIGIBILITY_ROOT}}). Sends each named sidecar operator its THIOL fee-grant budget. Full text: {{PROPOSAL_METADATA_URI}}",
   "expedited": false
 }

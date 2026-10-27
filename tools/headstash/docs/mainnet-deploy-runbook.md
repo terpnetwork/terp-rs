@@ -176,3 +176,15 @@ expire). Lowering `HEADSTASH_CLAIM_GAS` to 300,000 (claims use ~262.6k) saves ~4
 **57 passed, 0 failed**, report `/tmp/headstash-mvk-chain/run-1793063360/report.json` (log `e2e6.log` beside it).
 Every negative in the security review addendum D-tests passed. Gas: store_circuit 10,242,506; bind 570,551;
 claim 262,528–262,652 (mean 262,561); accept_anchor 135,937 / 138,501; grant tx fee 3,086 uterp at 0.025.
+
+### Production fee-grant model: operator-funded direct mode (decision 2026-10-27)
+The relay runs in **direct mode**; there is no authz mode. Each participating sidecar operator is the
+fee granter from its **own** account: `HEADSTASH_FEEGRANT=1`, `HEADSTASH_GAS_PRICE=0.05uthiol`, relayer key in
+the OS keyring, bind 127.0.0.1:18795 behind the single nginx. The operator account holds THIOL.
+Funding: the foundation DAO (or the community pool by gov, `{{FEEGRANT_FUNDING_SOURCE}}`) bank-sends each
+named operator `{{OPERATOR_n_ADDR}}` its share `{{OPERATOR_n_BUDGET_UTHIOL}}` of the ~4,800 THIOL budget above.
+Loss is bounded by what was sent: an operator can only grant from its own balance. Top up in tranches
+based on grants used (relay `/register/status`, on-chain `feegrant` events with granter = operator).
+Template: one `MsgCommunityPoolSpend` (uthiol) per operator; repeat for each operator. If the foundation DAO
+funds instead, drop them and send `BankMsg::Send` uthiol from the DAO.
+Read-only check 2026-10-27 01:08 UTC (01:08 Africa/Dakar): the community pool holds 572,865,724 THIOL.
