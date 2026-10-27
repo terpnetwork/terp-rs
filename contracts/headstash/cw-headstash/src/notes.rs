@@ -1,10 +1,12 @@
 //! Spec rev 5 note registration (vk_id 3). One signature per identity over the
-//! ordered note list hash; chunks append `note_leaf(key_com, DENOMS[class])` into the
-//! depth-17 claim tree. Proofs are NOT verified here: the sidecar lane verifies them
-//! off-chain and payout goes through the epoch seal + hashmerchant aggregate.
+//! ordered note list hash and the reward address (v3 message); chunks append
+//! `note_leaf(key_com, DENOMS[class])` into the depth-17 claim tree. vk_id 3 proofs are
+//! verified on-chain by the direct path (`crate::direct`, `ClaimNote`); the sidecar lane
+//! (epoch seal + hashmerchant aggregate) is the optional lane path. When the list
+//! completes, an optional registration hook contract is called (see `REG_HOOK`).
 
-use cosmwasm_std::{Binary, Deps, DepsMut, Response, StdError, StdResult, Storage};
-use cw_storage_plus::Map;
+use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Response, StdError, StdResult, Storage, SubMsg, WasmMsg};
+use cw_storage_plus::{Item, Map};
 use std::collections::HashSet;
 
 use crate::epoch::EpochCampaignParams;
@@ -68,6 +70,67 @@ pub struct NoteListState {
     pub list_hash: Binary,
     pub n: u32,
     pub next: u32,
+    /// Terp address bound by the v3 signature, passed to the registration hook.
+    #[serde(default)]
+    pub reward_addr: Option<String>,
+}
+
+/// Optional contract called once per identity when its note list completes.
+#[cosmwasm_schema::cw_serde]
+pub struct RegistrationHook {
+    pub contract: Addr,
+    pub gas_limit: u64,
+}
+
+/// Message sent to the hook (no funds). The hook links identity to reward_addr publicly.
+#[cosmwasm_schema::cw_serde]
+pub enum RegistrationHookMsg {
+    HeadstashRegistered {
+        /// hex campaign ctx
+        campaign: String,
+        id_tag: u8,
+        /// hex EVM address (20 bytes) or Solana pubkey (32 bytes)
+        identity: String,
+        note_count: u32,
+        reward_addr: Option<String>,
+    },
+}
+
+pub const REG_HOOK: Item<RegistrationHook> = Item::new("reg_hook");
+pub const HOOK_REPLY_ID: u64 = 0x4855_4b;
+pub const DEFAULT_HOOK_GAS: u64 = 500_000;
+pub const MAX_HOOK_GAS: u64 = 5_000_000;
+
+/// Instantiate-time only (no update path): validate and store the hook.
+pub fn set_registration_hook(storage: &mut dyn Storage, api: &dyn Api, hook: Option<String>, gas_limit: Option<u64>) -> StdResult<()> {
+    let Some(hook) = hook.filter(|h| !h.is_empty()) else {
+        if gas_limit.is_some() {
+            return Err(StdError::msg("registration hook gas limit without a hook"));
+        }
+        return Ok(());
+    };
+    let contract = api.addr_validate(&hook)?;
+    let gas_limit = gas_limit.unwrap_or(DEFAULT_HOOK_GAS);
+    if gas_limit == 0 || gas_limit > MAX_HOOK_GAS {
+        return Err(StdError::msg("registration hook gas limit"));
+    }
+    REG_HOOK.save(storage, &RegistrationHook { contract, gas_limit })
+}
+
+pub fn query_registration_hook(storage: &dyn Storage) -> StdResult<Option<RegistrationHook>> {
+    REG_HOOK.may_load(storage)
+}
+
+/// Bech32 Terp address under the campaign hrp, canonical form.
+fn check_reward_addr(api: &dyn Api, campaign: &EpochCampaignParams, addr: &str) -> StdResult<()> {
+    if !addr.starts_with(&format!("{}1", campaign.bech32_hrp)) {
+        return Err(StdError::msg("reward_addr prefix"));
+    }
+    let a = api.addr_validate(addr).map_err(|_| StdError::msg("reward_addr"))?;
+    if a.as_str() != addr {
+        return Err(StdError::msg("reward_addr"));
+    }
+    Ok(())
 }
 
 /// identity key (`evm_identity` / `sol_identity`) -> signed list state.
@@ -152,17 +215,19 @@ pub fn open_note_eligibility(leaf: [u8; 32], index: u32, path: &[[u8; 32]]) -> [
     node
 }
 
-pub fn register_notes_message(ctx: &[u8], list_hash: &[u8], n: u32) -> String {
+/// v3: the reward address (empty when none) is part of the signed string, so a
+/// relayer cannot swap it. v2 is retired.
+pub fn register_notes_message(ctx: &[u8], list_hash: &[u8], n: u32, reward_addr: &str) -> String {
     format!(
-        "headstash-register-notes-v2:{}:{}:{n}",
+        "headstash-register-notes-v3:{}:{}:{n}:{reward_addr}",
         hex::encode(ctx),
         hex::encode(list_hash)
     )
 }
 
-pub fn register_notes_sol_message(ctx: &[u8], list_hash: &[u8], n: u32) -> String {
+pub fn register_notes_sol_message(ctx: &[u8], list_hash: &[u8], n: u32, reward_addr: &str) -> String {
     format!(
-        "headstash-register-notes-sol-v2:{}:{}:{n}",
+        "headstash-register-notes-sol-v3:{}:{}:{n}:{reward_addr}",
         hex::encode(ctx),
         hex::encode(list_hash)
     )
@@ -190,7 +255,11 @@ pub(crate) fn check_register_notes(
     list: &[NoteListEntry],
     start: u32,
     eligibility: &[NoteEligibility],
+    reward_addr: Option<&str>,
 ) -> StdResult<NoteRegCheck> {
+    if let Some(r) = reward_addr {
+        check_reward_addr(deps.api, campaign, r)?;
+    }
     if campaign.vk_id != NOTE_VK_ID {
         return Err(StdError::msg("not a note campaign"));
     }
@@ -246,11 +315,12 @@ pub(crate) fn check_register_notes(
                 }
             }
             let sig = signature.ok_or_else(|| StdError::msg("signature"))?;
-            verify_signer(deps.api, signer, ctx, &list_hash, n as u32, sig.as_slice())?;
+            verify_signer(deps.api, signer, ctx, &list_hash, n as u32, reward_addr.unwrap_or(""), sig.as_slice())?;
             NoteListState {
                 list_hash: Binary::from(list_hash.to_vec()),
                 n: n as u32,
                 next: 0,
+                reward_addr: reward_addr.map(str::to_string),
             }
         }
         Some(state) => {
@@ -262,6 +332,9 @@ pub(crate) fn check_register_notes(
             }
             if start != state.next {
                 return Err(StdError::msg("chunk"));
+            }
+            if reward_addr.is_some() && reward_addr != state.reward_addr.as_deref() {
+                return Err(StdError::msg("reward_addr"));
             }
             state
         }
@@ -298,9 +371,10 @@ pub fn register_notes(
     list: Vec<NoteListEntry>,
     start: u32,
     eligibility: Vec<NoteEligibility>,
+    reward_addr: Option<String>,
 ) -> Result<Response, StdError> {
     let NoteRegCheck { id_tag, identity_bytes, identity, mut state, eligibility_root } =
-        check_register_notes(deps.as_ref(), campaign, &signer, signature.as_ref(), &list, start, &eligibility)?;
+        check_register_notes(deps.as_ref(), campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
     let count = eligibility.len() as u32;
     let mut first_leaf = None;
     for (offset, elig) in eligibility.iter().enumerate() {
@@ -324,12 +398,30 @@ pub fn register_notes(
     }
     state.next = start + count;
     NOTE_LIST.save(deps.storage, identity.as_str(), &state)?;
-    Ok(Response::new()
+    let done = state.next == state.n;
+    let mut res = Response::new()
         .add_attribute("action", "register_notes")
         .add_attribute("start", start.to_string())
         .add_attribute("count", count.to_string())
         .add_attribute("first_leaf", first_leaf.unwrap_or(0).to_string())
-        .add_attribute("done", (state.next == state.n).to_string()))
+        .add_attribute("done", done.to_string());
+    // Fires once per identity: a completed list rejects every later chunk.
+    if done {
+        if let Some(hook) = REG_HOOK.may_load(deps.storage)? {
+            let msg = RegistrationHookMsg::HeadstashRegistered {
+                campaign: hex::encode(campaign.ctx.as_slice()),
+                id_tag,
+                identity: hex::encode(&identity_bytes),
+                note_count: state.n,
+                reward_addr: state.reward_addr.clone(),
+            };
+            let exec = WasmMsg::Execute { contract_addr: hook.contract.to_string(), msg: to_json_binary(&msg)?, funds: vec![] };
+            res = res
+                .add_attribute("registration_hook", hook.contract.as_str())
+                .add_submessage(SubMsg::reply_on_error(exec, HOOK_REPLY_ID).with_gas_limit(hook.gas_limit));
+        }
+    }
+    Ok(res)
 }
 
 fn verify_signer(
@@ -338,11 +430,12 @@ fn verify_signer(
     ctx: &[u8],
     list_hash: &[u8; 32],
     n: u32,
+    reward_addr: &str,
     signature: &[u8],
 ) -> StdResult<()> {
     match signer {
         NoteSigner::Evm { address } => {
-            let message = register_notes_message(ctx, list_hash, n);
+            let message = register_notes_message(ctx, list_hash, n, reward_addr);
             let got = crate::registration::recover_address(api, &message, signature)?;
             if got.as_slice() != address.as_slice() {
                 return Err(StdError::msg("signature"));
@@ -352,7 +445,7 @@ fn verify_signer(
             if signature.len() != 64 {
                 return Err(StdError::msg("signature"));
             }
-            let message = register_notes_sol_message(ctx, list_hash, n);
+            let message = register_notes_sol_message(ctx, list_hash, n, reward_addr);
             let ok = api
                 .ed25519_verify(message.as_bytes(), signature, pubkey.as_slice())
                 .map_err(|_| StdError::msg("signature"))?;
@@ -410,6 +503,8 @@ mod tests {
             }),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         (deps, env)
@@ -500,6 +595,7 @@ mod tests {
         classes: Vec<u8>,
         first: usize,
         word: u64,
+        reward: String,
     }
 
     fn sign_with(key: &SigningKey, message: &str) -> Vec<u8> {
@@ -520,7 +616,8 @@ mod tests {
         let sig = sign_with(&key, "probe");
         let deps = mock_dependencies();
         let address = recover_address(deps.as_ref().api, "probe", &sig).unwrap();
-        Holder { key, address, classes, first, word }
+        let reward = deps.api.addr_make(&format!("reward{byte}")).to_string();
+        Holder { key, address, classes, first, word, reward }
     }
 
     impl Holder {
@@ -545,7 +642,7 @@ mod tests {
         }
         fn signature(&self, list: &[NoteListEntry]) -> Binary {
             let h = note_list_hash(&ctx(), EVM_ID_TAG, &self.address, list).unwrap();
-            let msg = register_notes_message(&ctx(), &h, list.len() as u32);
+            let msg = register_notes_message(&ctx(), &h, list.len() as u32, &self.reward);
             Binary::from(sign_with(&self.key, &msg))
         }
         fn chunk(&self, tree: &Elig, list: &[NoteListEntry], start: usize, len: usize, sig: bool) -> ExecuteMsg {
@@ -557,6 +654,7 @@ mod tests {
                 eligibility: (start..start + len)
                     .map(|i| NoteEligibility { index: (self.first + i) as u32, path: tree.path(self.first + i) })
                     .collect(),
+                reward_addr: Some(self.reward.clone()),
             }
         }
     }
@@ -625,6 +723,130 @@ mod tests {
             };
         }
         assert_eq!(node.to_repr().as_slice(), anchor.as_slice());
+    }
+
+    fn hook_msgs(r: &Response) -> Vec<(u64, u64, RegistrationHookMsg)> {
+        r.messages
+            .iter()
+            .map(|m| match &m.msg {
+                cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute { msg, funds, .. }) => {
+                    assert!(funds.is_empty());
+                    assert_eq!(m.reply_on, cosmwasm_std::ReplyOn::Error);
+                    (m.id, m.gas_limit.unwrap(), cosmwasm_std::from_json(msg).unwrap())
+                }
+                other => panic!("unexpected {other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn hook_fires_once_on_completion_with_reward_addr() {
+        let (mut deps, env, a, b, tree) = fixture();
+        let hook = deps.api.addr_make("hook");
+        set_registration_hook(&mut deps.storage, &deps.api, Some(hook.to_string()), None).unwrap();
+        let list = a.list();
+        let r = run(&mut deps, &env, a.chunk(&tree, &list, 0, 32, true)).unwrap();
+        assert!(r.messages.is_empty(), "no hook before completion");
+        let r = run(&mut deps, &env, a.chunk(&tree, &list, 32, 8, false)).unwrap();
+        let m = hook_msgs(&r);
+        assert_eq!(m.len(), 1);
+        assert_eq!(m[0].0, HOOK_REPLY_ID);
+        assert_eq!(m[0].1, DEFAULT_HOOK_GAS);
+        assert_eq!(
+            m[0].2,
+            RegistrationHookMsg::HeadstashRegistered {
+                campaign: hex::encode(ctx()),
+                id_tag: EVM_ID_TAG,
+                identity: hex::encode(a.address),
+                note_count: 40,
+                reward_addr: Some(a.reward.clone()),
+            }
+        );
+        // a completed identity can never re-trigger the hook
+        assert!(run(&mut deps, &env, a.chunk(&tree, &list, 0, 1, true)).is_err());
+        let r = run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
+        assert_eq!(hook_msgs(&r).len(), 1);
+    }
+
+    #[test]
+    fn no_hook_means_no_submsg() {
+        let (mut deps, env, _a, b, tree) = fixture();
+        let r = run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
+        assert!(r.attributes.iter().any(|x| x.key == "done" && x.value == "true"));
+        assert!(r.messages.is_empty());
+        assert_eq!(query_registration_hook(&deps.storage).unwrap(), None);
+    }
+
+    #[test]
+    fn failing_hook_reply_is_swallowed() {
+        let (mut deps, env, _a, b, tree) = fixture();
+        set_registration_hook(&mut deps.storage, &deps.api, Some(deps.api.addr_make("hook").to_string()), Some(123_456)).unwrap();
+        let r = run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
+        assert_eq!(hook_msgs(&r)[0].1, 123_456);
+        #[allow(deprecated)]
+        let reply = cosmwasm_std::Reply {
+            id: HOOK_REPLY_ID,
+            payload: Binary::default(),
+            gas_used: 0,
+            result: cosmwasm_std::SubMsgResult::Err("hook exploded".into()),
+        };
+        let r = crate::reply(deps.as_mut(), env.clone(), reply).unwrap();
+        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "registration_hook_failed"));
+        assert!(r.attributes.iter().any(|x| x.key == "hook_error" && x.value.contains("hook exploded")));
+        // registration state persisted
+        assert_eq!(crate::registration::leaf_count(deps.as_ref().storage).unwrap(), 3);
+    }
+
+    #[test]
+    fn hook_config_is_validated() {
+        let mut deps = mock_dependencies();
+        let api = deps.api;
+        assert!(set_registration_hook(&mut deps.storage, &api, Some("not an addr".into()), None).is_err());
+        assert!(set_registration_hook(&mut deps.storage, &api, Some(api.addr_make("h").to_string()), Some(0)).is_err());
+        assert!(set_registration_hook(&mut deps.storage, &api, Some(api.addr_make("h").to_string()), Some(MAX_HOOK_GAS + 1)).is_err());
+        assert!(set_registration_hook(&mut deps.storage, &api, None, Some(1)).is_err());
+        set_registration_hook(&mut deps.storage, &api, None, None).unwrap();
+        assert_eq!(query_registration_hook(&deps.storage).unwrap(), None);
+    }
+
+    #[test]
+    fn reward_addr_is_signed_and_validated() {
+        let (mut deps, env, a, b, tree) = fixture();
+        let list = b.list();
+        // relayer swaps the reward address: signature no longer matches
+        let mut m = b.chunk(&tree, &list, 0, 3, true);
+        if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
+            *reward_addr = Some(deps.api.addr_make("thief").to_string());
+        }
+        assert!(run(&mut deps, &env, m).is_err());
+        // dropping it also breaks the signature
+        let mut m = b.chunk(&tree, &list, 0, 3, true);
+        if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
+            *reward_addr = None;
+        }
+        assert!(run(&mut deps, &env, m).is_err());
+        // malformed / wrong prefix
+        for bad in ["cosmwasm1notbech32", "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw", ""] {
+            let mut m = b.chunk(&tree, &list, 0, 3, true);
+            if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
+                *reward_addr = Some(bad.into());
+            }
+            assert!(err(run(&mut deps, &env, m)).contains("reward_addr"), "{bad}");
+        }
+        // later chunks must not change it
+        let la = a.list();
+        run(&mut deps, &env, a.chunk(&tree, &la, 0, 32, true)).unwrap();
+        let mut m = a.chunk(&tree, &la, 32, 8, false);
+        if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
+            *reward_addr = Some(b.reward.clone());
+        }
+        assert!(err(run(&mut deps, &env, m)).contains("reward_addr"));
+        let mut m = a.chunk(&tree, &la, 32, 8, false);
+        if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
+            *reward_addr = None;
+        }
+        run(&mut deps, &env, m).unwrap();
+        run(&mut deps, &env, b.chunk(&tree, &list, 0, 3, true)).unwrap();
     }
 
     #[test]

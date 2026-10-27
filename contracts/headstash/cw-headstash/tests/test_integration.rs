@@ -243,6 +243,8 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         genesis_label: None,
         wavs: mock_wavs_proof(),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
     }
 }
 

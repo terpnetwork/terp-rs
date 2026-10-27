@@ -72,7 +72,7 @@ SOURCES = {
 DECISION = {
     "CHAIN_ID": "str", "CAMPAIGN_LABEL": "str", "CONTRACT_OWNER": "addr", "WASM_ADMIN": "addr",
     "WAVS_POO_JSON": "json",
-    "CUTOFF_HEIGHT": "cutoff", "ANCHOR_START_HEIGHT": "int", "ANCHOR_INTERVAL": "int",
+    "CUTOFF_HEIGHT": "cutoff", "ANCHOR_START_HEIGHT": "int", "ANCHOR_INTERVAL": "interval",
     "MIN_ANONYMITY_SET": "int", "MAX_ROWS": "int", "BURN_UNCLAIMED": "burn",
     "FUNDING_AMOUNT_UTERP": "int", "DEPOSIT_UTERP": "int", "PROPOSER": "addr",
     "SOURCE_COMMIT": "hex", "FEEGRANT_FUNDING_SOURCE": "source", "OPERATORS": "operators",
@@ -135,8 +135,8 @@ def example_decisions():
         "CONTRACT_OWNER": ex_addr("owner"), "WASM_ADMIN": GOV,
         "WAVS_POO_JSON": {"EXAMPLE": "operator set PoP"},
         # CUTOFF_HEIGHT example = mainnet 24,118,282 (2026-10-27) + 2y at the 10k-block mean 4.2046 s.
-        "CUTOFF_HEIGHT": 39129426, "ANCHOR_START_HEIGHT": 11111111, "ANCHOR_INTERVAL": 16,
-        "MIN_ANONYMITY_SET": 1024, "MAX_ROWS": 25, "BURN_UNCLAIMED": True,
+        "CUTOFF_HEIGHT": 39129426, "ANCHOR_START_HEIGHT": 11111111, "ANCHOR_INTERVAL": 3430,
+        "MIN_ANONYMITY_SET": 1, "REGISTRATION_HOOK": ex_addr("registration-hook", 32), "MAX_ROWS": 25, "BURN_UNCLAIMED": True,
         "FUNDING_AMOUNT_UTERP": 1234567, "DEPOSIT_UTERP": 1000000, "PROPOSER": ex_addr("proposer"),
         "SOURCE_COMMIT": "0" * 40, "FEEGRANT_FUNDING_SOURCE": "foundation-dao",
         "OPERATORS": [
@@ -162,6 +162,7 @@ dec_source = None   # FEEGRANT_FUNDING_SOURCE of the run being checked
 
 CUTOFF_REST = "https://terp.api.m.anode.team"
 CUTOFF_YEARS, CUTOFF_WINDOW = 2, 10_000
+ANCHOR_TARGET_SECS = 4 * 3600  # ANCHOR_INTERVAL auto: ~4h of blocks (3430 at 4.2s)
 
 def compute_cutoff(rest, years=CUTOFF_YEARS, window=CUTOFF_WINDOW):
     """Read-only: latest mainnet height + ceil(years / mean block time over the last `window` blocks)."""
@@ -191,6 +192,8 @@ def check(key, kind, val, dry):
         return None if val is True else "must be true (v1 burns unclaimed funds; no sweep recipient)"
     if kind == "cutoff":
         return None if re.fullmatch(r"[1-9][0-9]*", s) else f"not a positive integer (use \"auto\" to compute it): {s!r}"
+    if kind == "interval":
+        return None if re.fullmatch(r"[1-9][0-9]*", s) else f"not a positive integer (use \"auto\" for ~4h of blocks): {s!r}"
     if kind == "int" and not re.fullmatch(r"[1-9][0-9]*", s): return f"not a positive integer: {s!r}"
     if kind == "addr" and not is_terp_addr(s): return f"not a terp1 bech32 address: {s!r}"
     if kind == "hex" and not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", s): return f"not lowercase hex sha: {s!r}"
@@ -288,6 +291,17 @@ def main():
         dec["CUTOFF_HEIGHT"] = cutoff_info["cutoff_height"]
         print("CUTOFF_HEIGHT auto: %(cutoff_height)d = %(latest_height)d + %(blocks)d (%(years)sy at %(avg_block_secs)ss)" % cutoff_info,
               file=sys.stderr)
+    if str(dec.get("ANCHOR_INTERVAL", "")).strip().lower() == "auto":
+        ci = cutoff_info or compute_cutoff(opt("--cutoff-rest", CUTOFF_REST))
+        dec["ANCHOR_INTERVAL"] = max(1, round(ANCHOR_TARGET_SECS / ci["avg_block_secs"]))
+        print("ANCHOR_INTERVAL auto: %d blocks (%ds at %ss, same 10k-block mean as the cutoff)"
+              % (dec["ANCHOR_INTERVAL"], ANCHOR_TARGET_SECS, ci["avg_block_secs"]), file=sys.stderr)
+    hook = dec.get("REGISTRATION_HOOK")
+    if hook not in (None, "") and (unfilled(hook) or not is_terp_addr(str(hook))):
+        sys.exit(f"FATAL REGISTRATION_HOOK: optional, but when set must be a terp1 contract address: {hook!r}")
+    hook_gas = dec.get("REGISTRATION_HOOK_GAS_LIMIT")
+    if hook_gas is not None and not (hook and isinstance(hook_gas, int) and 0 < hook_gas <= 5_000_000):
+        sys.exit("FATAL REGISTRATION_HOOK_GAS_LIMIT: integer 1..5000000 and only with REGISTRATION_HOOK")
     dec.pop("SWEEP_RECIPIENT", None)
     need_dec = dict(DECISION, **(LANE_DECISION if lane else {}))
     need_later = dict(LATER, **(LANE_LATER if lane else {}))
@@ -346,6 +360,8 @@ def main():
         "NOTE_VK_HASH_B64": b64(bytes.fromhex(vkh)), "NOTE_VK_ID": str(NOTE_VK_ID), "NOTE_K": str(NOTE_K),
         "FEEGRANT_BUDGET_UTHIOL": str(budget), "FEEGRANT_BUDGET_THIOL": thiol(budget),
         "FEEGRANT_FUNDING_SOURCE": SOURCES[source],
+        "REGISTRATION_HOOK_JSON": json.dumps(hook or None),
+        "REGISTRATION_HOOK_GAS_LIMIT_JSON": json.dumps(hook_gas if hook else None),
         "TRUSTED_KEYS_JSON": json.dumps([v_ for v_ in [dec.get("CUSTODY_PUBKEY_B64")]] if lane else [b64(DIRECT_TRUSTED_PLACEHOLDER)]),
         "PATH_SUMMARY": ("It also registers the optional headstash-claim oracle source with hashmerchant (lane path)."
                          if lane else "Claims are verified and paid by the contract directly; no hashmerchant registration."),

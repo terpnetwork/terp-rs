@@ -233,8 +233,8 @@ def main():
     def sign(k, lst):
         lh = list_hash(ctx, ids[k][0], ids[k][1], lst).hex()
         if k == "evm":
-            return evm_sign(evm_priv, eip191("headstash-register-notes-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))))
-        return sol_sk.sign(("headstash-register-notes-sol-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))).encode())
+            return evm_sign(evm_priv, eip191("headstash-register-notes-v3:%s:%s:%d:" % (ctx.hex(), lh, len(lst))))  # v3, no reward_addr
+        return sol_sk.sign(("headstash-register-notes-sol-v3:%s:%s:%d:" % (ctx.hex(), lh, len(lst))).encode())
     def chunk_msg(k, lst, start, sig, rows):
         return {"register_notes": {"signer": signer(k), "signature": b64(sig) if sig else None, "list": wire(lst), "start": start,
                 "eligibility": [{"index": r["leaf_index"], "path": [h2b64(x) for x in r["path"]]} for r in rows]}}

@@ -62,6 +62,8 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             ),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         },
         Some(&mock.sender_addr()),
         &[Coin::new(1_000u64, DENOM)],

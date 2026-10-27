@@ -19,8 +19,8 @@
   "registration": {
     "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
     "eligibility_depth": 17,
-    "min_anonymity_set": 1024,
+    "min_anonymity_set": 1,
     "anchor_start_height": 11111111,
-    "anchor_interval": 16
+    "anchor_interval": 3430
   }
 }}}

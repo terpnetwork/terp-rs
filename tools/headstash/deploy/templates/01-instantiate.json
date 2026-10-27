@@ -2,5 +2,7 @@
   "genesis_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   "genesis_label": "{{CAMPAIGN_LABEL}}",
   "token_strategy": {"existing_fungible": {"proof": "{{DENOM_B64}}", "raw": "uterp"}},
-  "wavs": {{WAVS_POO_JSON}}
+  "wavs": {{WAVS_POO_JSON}},
+  "registration_hook": {{REGISTRATION_HOOK_JSON}},
+  "registration_hook_gas_limit": {{REGISTRATION_HOOK_GAS_LIMIT_JSON}}
 }

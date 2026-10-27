@@ -83,7 +83,7 @@ amounts; the contract must also check `amount` is in `DENOMS` before verifying.
 | pk bytes | 1,245,877 | 1,245,877 |
 | canonical body | headstash-claim-v1:... | headstash-note-claim-v2:... |
 
-## 5. Registration v2
+## 5. Registration v2 (superseded by v3, section 5a)
 
 ```mermaid
 sequenceDiagram
@@ -114,6 +114,59 @@ sequenceDiagram
   registration (signature, depth-15 sha path, one Poseidon append). Each note adds a
   depth-17 sha path, a depth-17 Poseidon frontier append and two writes; budget 150k to
   250k per note, so p50 (5 notes) is about 1.0 to 1.4M gas and the max (177) about 6 chunks.
+
+## 5a. Registration v3: reward address and optional registration hook
+
+v3 replaces v2 (`headstash-register-notes-v2` / `-sol-v2` are no longer accepted). The
+signed string adds a Terp reward address so a relayer cannot swap it:
+
+```
+headstash-register-notes-v3:{ctx_hex}:{list_hash_hex}:{n}:{reward_addr}       (EIP-191, EVM)
+headstash-register-notes-sol-v3:{ctx_hex}:{list_hash_hex}:{n}:{reward_addr}   (ed25519, Solana)
+```
+
+`reward_addr` is optional (empty string in the signed text when absent). When present it
+must be a canonical bech32 address with the campaign hrp (`terp1...`). The first chunk
+stores it in `NOTE_LIST` with the list hash; later chunks may omit it or must repeat the
+same value (otherwise `reward_addr` error).
+
+```mermaid
+sequenceDiagram
+  participant W as wallet (EVM or Sol)
+  participant P as claim page / relayer
+  participant C as cw-headstash
+  participant H as registration hook (optional)
+  W->>P: sign v3(ctx, H(list), n, reward_addr)
+  P->>C: RegisterNotes{signer, sig, list, start=0, eligibility, reward_addr}
+  C->>C: check reward_addr (hrp, bech32), verify sig over v3 string, store {H(list), n, reward_addr}
+  P->>C: RegisterNotes{start=32, ...} (no sig; same or no reward_addr)
+  C->>C: last chunk: next == n, list complete
+  C-->>H: SubMsg reply_on_error, gas_limit (default 500k), no funds<br/>{"headstash_registered":{campaign, id_tag, identity, note_count, reward_addr}}
+  H-->>C: Err (or out of gas) -> reply: attrs action=registration_hook_failed, hook_error; registration kept
+```
+
+* The hook is set only at instantiate (`registration_hook`, `registration_hook_gas_limit`
+  1..5,000,000, default 500,000) and is validated there. There is no config-update path;
+  only `UpdateOwnership` exists, so the hook is immutable for the campaign.
+* It fires once per identity: a completed list rejects every further chunk ("already
+  registered"), so the completion branch runs at most once.
+* `reply_on_error` with a gas cap: a reverting or gas-exhausting hook only rolls back the
+  hook's own sub-call; the registration writes commit. A hook cannot take funds (none are
+  attached) and cannot re-enter registration for the same identity.
+
+Security / privacy note:
+
+* The hook call (and the `NOTE_LIST` entry) publicly links the eligible identity (EVM
+  address or Solana pubkey) to `reward_addr`. Registration is already identity-linked,
+  but claims are not: notes are claimed by zk proof to any fresh wallet.
+* **Do not use your claim wallet as `reward_addr`.** Doing so links your identity to your
+  claims and removes the anonymity the note proofs give. Use a separate Terp address.
+* The hook is trusted only to receive data. A hostile or broken hook can waste up to its
+  gas cap of the registrant's (fee-granted) gas, but cannot block or alter registration.
+* Anonymity set: a claim hides among all notes in the accepted anchor it proves against.
+  Anchors are accepted every `ANCHOR_INTERVAL` blocks (v1: 3430 blocks, ~4h at 4.2s).
+  `MIN_ANONYMITY_SET` is 1 (no on-chain floor); the claim page shows the anchor's leaf
+  count and advises waiting for a later anchor when it is small.
 
 ## 6. Claims
 

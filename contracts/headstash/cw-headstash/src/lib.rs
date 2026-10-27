@@ -209,6 +209,7 @@ pub fn instantiate(
     let domain = msg.distro_hash_domain;
     let genesis_label = msg.genesis_label;
     let circuit_id = msg.circuit_id.unwrap_or(0);
+    notes::set_registration_hook(deps.storage, deps.api, msg.registration_hook.clone(), msg.registration_hook_gas_limit)?;
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
@@ -425,10 +426,11 @@ pub fn execute(
             list,
             start,
             eligibility,
+            reward_addr,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::assert_registration_open(env.block.height, &campaign)?;
-            opaque::<fn(_, _, _, _, _, _, _) -> _>(notes::register_notes)(
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(notes::register_notes)(
                 deps,
                 &campaign,
                 signer,
@@ -436,6 +438,7 @@ pub fn execute(
                 list,
                 start,
                 eligibility,
+                reward_addr,
             )
         }
         ExecuteMsg::BindNoteCircuit { zk_id } => {
@@ -499,10 +502,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 anchor.as_slice(),
             )?)
         }
-        QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility } => {
+        QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility, reward_addr } => {
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::assert_registration_open(env.block.height, &campaign)?;
-            notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility)?;
+            notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
             to_json_binary(&true)
         }
         QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
@@ -598,6 +601,10 @@ pub fn execute_burn(
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> {
     match msg.id {
+        // reply_on_error only: a failing (or out-of-gas) hook never blocks registration.
+        notes::HOOK_REPLY_ID => Ok(Response::new()
+            .add_attribute("action", "registration_hook_failed")
+            .add_attribute("hook_error", msg.result.unwrap_err())),
         CREATE_DENOM_REPLY_ID => {
             // Extract the new_token_denom from the reply data
             // In CosmWasm v3, the reply data contains the response from the submessage
@@ -827,6 +834,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(3),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -929,6 +938,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(3),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -975,6 +986,8 @@ mod instantiate_tests {
             )),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1007,6 +1020,8 @@ mod instantiate_tests {
             )),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1042,6 +1057,10 @@ mod instantiate_tests {
             wavs: invalid_wavs,
 
             circuit_id: None,
+
+            registration_hook: None,
+
+            registration_hook_gas_limit: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1076,6 +1095,10 @@ mod instantiate_tests {
             wavs,
 
             circuit_id: None,
+
+            registration_hook: None,
+
+            registration_hook_gas_limit: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1106,6 +1129,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -1144,6 +1169,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1170,6 +1197,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1217,6 +1246,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(1),
             circuit_id: Some(0),
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1255,6 +1286,8 @@ mod instantiate_tests {
             }),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 

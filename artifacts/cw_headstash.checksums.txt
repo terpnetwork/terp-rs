@@ -5,14 +5,16 @@
 # source  execute handlers dispatched via black_box fn pointers (lib.rs `opaque`) + RegistrationPath NODES index
 #         + direct vk3 ClaimNote / BindNoteCircuit / CheckNoteClaim / CheckRegisterNotes (imports proof_instance_verify)
 #         + burn_unclaimed (BankMsg::Burn sweep, default for vk3) + registration closed after cutoff_height
-57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d  cw_headstash.wasm  1099694 bytes
+#         + registration v3 (signed reward_addr) + optional immutable registration_hook SubMsg (reply_on_error)
+1e7092d2e463252a0d506b3df59c76389b4b835ebe769f96a5aa8c1d2fb604e9  cw_headstash.wasm  1111283 bytes
 #
 # cosmwasm-check --available-capabilities cosmwasm_1_1,cosmwasm_1_2,cosmwasm_1_3,cosmwasm_1_4,cosmwasm_2_0,cosmwasm_2_1,cosmwasm_2_2,cosmwasm_3_0,iterator,staking,stargate,bulk_memory,hash_poseidon,hash_blake,redpallas,bn254,ibc2 --wasm-limits '{"max_function_locals":1024}'
 #   arm64 (aarch64, optimizer image, Wasmer 7.4.2 singlepass): PASS
 #   x86_64 (docker --platform linux/amd64 rust:1.95 under emulation, cosmwasm-check 4.0.0-zk built --locked from crates/cosmwasm): PASS
 # wasm_fn_budget scan (3ea9947f build; this build verified by arm64 cosmwasm-check compile above): arm64 PASS (compiled), largest body 53,900 B (<= 69,396), udiv tail 5,147
 #
-# previous: 3010d1ba... 1,096,689 B (direct claims, sweep to a recipient)
+# previous: 57b784f4... 1,099,694 B (burn unclaimed, registration cutoff)
+# before that: 3010d1ba... 1,096,689 B (direct claims, sweep to a recipient)
 # earlier:  3ea9947f... 1,018,650 B (no zk-api, lane-only claims)
 # before:   048242af... 1,015,008 B  arm64 FAIL ImpossibleRelocation func[195] = cw_headstash::execute (127,231 B,
 #           wasm-opt inlined all single-caller handlers into it); x86_64 PASS

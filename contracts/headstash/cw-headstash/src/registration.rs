@@ -814,6 +814,8 @@ mod tests {
             }),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         (deps, env)

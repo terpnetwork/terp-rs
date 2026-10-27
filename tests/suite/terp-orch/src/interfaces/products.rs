@@ -293,6 +293,8 @@ pub fn headstash_msg() -> cw_headstash::InstantiateMsg {
         token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new("existing_token".into())),
         wavs: generate_test_wavs_proof(1),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
     }
 }
 

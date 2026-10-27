@@ -303,6 +303,8 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             )),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         }
     }
 

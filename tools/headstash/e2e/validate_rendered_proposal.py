@@ -19,9 +19,13 @@ if os.path.exists(camp_f):
     check("campaign burns unclaimed (no sweep recipient)", c.get("burn_unclaimed") is True and c.get("sweep_recipient") == "",
           {"burn_unclaimed": c.get("burn_unclaimed"), "sweep_recipient": c.get("sweep_recipient")})
     r_ = c["registration"]
-    check("anchor_interval 16 blocks, min_anonymity_set 1024", r_["anchor_interval"] == 16 and r_["min_anonymity_set"] == 1024,
+    check("anchor_interval 3430 blocks, min_anonymity_set 1", r_["anchor_interval"] == 3430 and r_["min_anonymity_set"] == 1,
           {k: r_[k] for k in ("anchor_interval", "min_anonymity_set")})
     check("cutoff_height set", isinstance(c["cutoff_height"], int) and c["cutoff_height"] > 24_118_282, c["cutoff_height"])
+inst_f = os.path.join(os.path.dirname(F), "01-instantiate.json")
+if os.path.exists(inst_f):
+    i_ = json.load(open(inst_f)); hk = i_.get("registration_hook")
+    check("registration_hook unset or a terp1 address", hk is None or (isinstance(hk, str) and hk.startswith("terp1")), hk)
 check("no lane/hashmerchant messages", not any("hashmerchant" in t for t in types), [t.split(".")[-1] for t in types])
 need = {}
 for m in p["messages"]:

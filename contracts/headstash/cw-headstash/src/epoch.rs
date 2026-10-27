@@ -1307,6 +1307,8 @@ mod tests {
             }),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         (deps, env, root)
@@ -2350,6 +2352,8 @@ mod tests {
                     )),
                     wavs: generate_test_wavs_proof(1),
                     circuit_id: None,
+                    registration_hook: None,
+                    registration_hook_gas_limit: None,
                 },
                 &coins(1_000_000, "uterp"),
                 "headstash",
@@ -2466,6 +2470,7 @@ mod tests {
             list: vec![],
             start: 0,
             eligibility: vec![],
+            reward_addr: None,
         };
         let err = execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), notes).unwrap_err();
         assert!(err.to_string().contains("registration closed"), "{err}");

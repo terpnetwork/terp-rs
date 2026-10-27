@@ -22,6 +22,13 @@ pub struct InstantiateMsg {
     /// Stored circuit id after zkvm `store-circuit` / `upload_circuit` (default 0 until set).
     #[serde(default)]
     pub circuit_id: Option<u64>,
+    /// Optional contract executed (no funds, gas-capped, errors swallowed) once per
+    /// identity when its note list completes. Immutable after instantiate.
+    #[serde(default)]
+    pub registration_hook: Option<String>,
+    /// Gas cap for the hook submessage (default 500,000; max 5,000,000).
+    #[serde(default)]
+    pub registration_hook_gas_limit: Option<u64>,
 }
 
 /// One-shot admin migrate. The new code copies a still-zero genesis root
@@ -180,6 +187,10 @@ pub enum ExecuteMsg {
         list: Vec<crate::notes::NoteListEntry>,
         start: u32,
         eligibility: Vec<crate::notes::NoteEligibility>,
+        /// Terp bech32 address bound by the v3 signature (first chunk); later chunks
+        /// may omit it or must repeat the same value.
+        #[serde(default)]
+        reward_addr: Option<String>,
     },
     /// Permissionless. Stores the current registration root when the window is open.
     AcceptAnchor {},
@@ -275,6 +286,10 @@ pub enum QueryMsg {
         list: Vec<crate::notes::NoteListEntry>,
         start: u32,
         eligibility: Vec<crate::notes::NoteEligibility>,
+        /// Terp bech32 address bound by the v3 signature (first chunk); later chunks
+        /// may omit it or must repeat the same value.
+        #[serde(default)]
+        reward_addr: Option<String>,
     },
     /// Dry-run of `ClaimNote` for `dest` (the fresh wallet).
     #[returns(bool)]

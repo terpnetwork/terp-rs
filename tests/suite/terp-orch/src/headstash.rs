@@ -218,6 +218,8 @@ pub fn run_headstash_claim() -> Result<HeadstashClaimReport> {
             token_strategy: TokenStrategy::ExistingFungible(token),
             wavs: generate_test_wavs_proof(1),
             circuit_id: Some(CID),
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         },
         Some(&admin),
         &[Coin::new(claim_value as u128, denom.clone())],

@@ -223,6 +223,8 @@ impl BridgeEnv {
             )),
             wavs: valid_wavs_proof_one(),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
         };
 
         let headstash = app

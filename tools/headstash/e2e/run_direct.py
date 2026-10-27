@@ -19,6 +19,10 @@ from cryptography.hazmat.primitives import serialization
 WASM = os.environ.get("WASM", "/tmp/hsdirect/opt-out/cw_headstash.wasm")
 CUT_AHEAD = int(os.environ.get("CUT_AHEAD", "600"))
 SWEEP = os.environ.get("SWEEP", "1") == "1"
+# Registration hook: e2e-only recorder contract (tools/headstash/e2e/hook-recorder). HEADSTASH_HOOK=0 = no hook (gas baseline).
+HOOK = os.environ.get("HEADSTASH_HOOK", "1") == "1"
+HOOK_WASM = os.environ.get("HOOK_WASM", "/tmp/hsdirect/opt-out/hook_recorder.wasm")
+REWARD = {}
 RELAY_URL = "http://" + RELAY_BIND
 CLAIM_GAS = int(os.environ.get("HEADSTASH_CLAIM_GAS", "400000"))
 REGISTER_GAS = int(os.environ.get("HEADSTASH_REGISTER_GAS", "12000000"))
@@ -53,6 +57,7 @@ def grant(grantee, kind, body):
     return r.status_code, j
 
 def new_wallet(name):
+    terpd("keys", "delete", name, "-y", "--keyring-backend", "test", "--home", HOME, check=False)  # stale throwaway key from a prior run
     terpd("keys", "add", name, "--keyring-backend", "test", "--home", HOME, "--output", "json")  # mnemonic discarded
     return terpd("keys", "show", name, "-a", "--keyring-backend", "test", "--home", HOME).strip()
 
@@ -121,6 +126,23 @@ def main():
     wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
     init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-direct-e2e",
             "token_strategy": {"existing_fungible": {"proof": h2b64(DENOM), "raw": "uterp"}}, "wavs": wavs}
+    R["hook"] = {"enabled": HOOK}
+    if HOOK:
+        res = rec("store_hook", tx("owner", 20000000, "wasm", "store", HOOK_WASM))
+        hcode = attr(res, "code_id")
+        res = rec("instantiate_hook", tx("owner", 2000000, "wasm", "instantiate", hcode, json.dumps({"source": None}),
+                  "--label", "hook-recorder-e2e", "--no-admin"))
+        hook = attr(res, "_contract_address")
+        step("hook_recorder_instantiated", res.get("code") == 0 and hook, "code %s addr %s" % (hcode, hook))
+        R["hook"].update({"code_id": hcode, "contract": hook, "wasm_sha256": hashlib.sha256(open(HOOK_WASM, "rb").read()).hexdigest()})
+        init["registration_hook"] = hook
+        bad = dict(init, registration_hook="terp1notanaddress")
+        neg("instantiate_rejects_bad_hook", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(bad),
+            "--label", "bad-hook", "--admin", OWNER, amount="1uterp"), "")
+        b.HOOK_ADDR = hook
+    for k in ("evm", "sol"):
+        REWARD[k] = new_wallet("reward_%s" % k)
+    R["hook"]["reward_addrs"] = dict(REWARD)
     res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
               "--label", "headstash-direct-e2e", "--admin", OWNER, amount="10030000000uterp"))  # two 5000 TERP note payouts (evm_0 + negatives note) + small notes
     contract = attr(res, "_contract_address"); R["contract"] = contract
@@ -204,11 +226,12 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     def sign(k, lst):
         lh = list_hash(ctx, ids[k][0], ids[k][1], lst).hex()
         if k == "evm":
-            return evm_sign(evm_priv, eip191("headstash-register-notes-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))))
-        return sol_sk.sign(("headstash-register-notes-sol-v2:%s:%s:%d" % (ctx.hex(), lh, len(lst))).encode())
-    def reg_body(k, lst, start, sig, rows):
+            return evm_sign(evm_priv, eip191("headstash-register-notes-v3:%s:%s:%d:%s" % (ctx.hex(), lh, len(lst), REWARD[k])))
+        return sol_sk.sign(("headstash-register-notes-sol-v3:%s:%s:%d:%s" % (ctx.hex(), lh, len(lst), REWARD[k])).encode())
+    def reg_body(k, lst, start, sig, rows, reward=None):
         return {"signer": signer(k), "signature": b64(sig) if sig else None, "list": wire(lst), "start": start,
-                "eligibility": [{"index": r["leaf_index"], "path": [h2b64(x) for x in r["path"]]} for r in rows]}
+                "eligibility": [{"index": r["leaf_index"], "path": [h2b64(x) for x in r["path"]]} for r in rows],
+                "reward_addr": (reward or REWARD[k]) if sig else None}
 
     def granted_register(label, k, lst, start, sig, rows):
         w = new_wallet("dreg_%s" % label)
@@ -230,10 +253,32 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     R["negatives"]["grant_refused_bad_register_sig"] = "%d %s" % (code, json.dumps(j)[:200])
     step("neg_grant_refused_bad_register_sig", code != 200 and not j.get("granted"), R["negatives"]["grant_refused_bad_register_sig"])
 
-    # 6. EVM registration in two chunks (32 + 11), each from a fresh fee-granted wallet
+    # NEG: relayer swaps the signed reward_addr (v3 signature covers it); malformed reward_addr
     sig = sign("evm", lists["evm"])
-    if not granted_register("evm0", "evm", lists["evm"], 0, sig, notes["evm"][:CHUNK]): return
-    if not granted_register("evm1", "evm", lists["evm"], CHUNK, None, notes["evm"][CHUNK:]): return
+    res = tx("stranger", REGISTER_GAS, "wasm", "execute", contract,
+             json.dumps({"register_notes": reg_body("evm", lists["evm"], 0, sig, notes["evm"][:CHUNK], reward=REWARD["sol"])}))
+    R["negatives"]["tampered_reward_addr"] = "code %s %s" % (res.get("code"), res.get("raw_log", "")[:200])
+    step("neg_tampered_reward_addr", res.get("code") not in (0, None), R["negatives"]["tampered_reward_addr"])
+    res = tx("stranger", REGISTER_GAS, "wasm", "execute", contract,
+             json.dumps({"register_notes": reg_body("evm", lists["evm"], 0, sig, notes["evm"][:CHUNK], reward="cosmos1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqnrql8a")}))
+    neg("bad_reward_addr_prefix", res, "reward_addr")
+
+    # 6. EVM registration in two chunks (32 + 11), each from a fresh fee-granted wallet
+    r0 = granted_register("evm0", "evm", lists["evm"], 0, sig, notes["evm"][:CHUNK])
+    if not r0: return
+    r1 = granted_register("evm1", "evm", lists["evm"], CHUNK, None, notes["evm"][CHUNK:])
+    if not r1: return
+    if HOOK:
+        hook = R["hook"]["contract"]
+        regs = smart(hook, {"registrants": {}})
+        R["hook"]["after_evm"] = regs
+        step("hook_not_fired_on_partial_chunk", attr(r0, "registration_hook") is None, "evm0 attrs ok")
+        step("hook_recorded_registrant_and_reward_addr",
+             len(regs) == 1 and regs[0]["identity"] == evm_addr.hex() and regs[0]["reward_addr"] == REWARD["evm"]
+             and regs[0]["note_count"] == 43 and regs[0]["caller"] == contract and regs[0]["funds"] == 0
+             and regs[0]["campaign"] == ctx.hex() and regs[0]["id_tag"] == 1, json.dumps(regs)[:300])
+        res = rec("hook_set_fail", tx("owner", 500000, "wasm", "execute", hook, json.dumps({"set_fail": {"fail": True}})))
+        step("hook_set_fail", res.get("code") == 0, res.get("raw_log", "")[:120])
 
     # 7. anchor A1 (43 EVM notes)
     def anchor_now(label, want):
@@ -249,7 +294,16 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     A1, _ = anchor_now("A1", 43)
 
     # 8. Sol notes registered after A1
-    if not granted_register("sol", "sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"]): return
+    rs = granted_register("sol", "sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"])
+    if not rs: return
+    if HOOK:
+        regs = smart(R["hook"]["contract"], {"registrants": {}})
+        R["hook"]["after_sol"] = regs
+        failed = [a.get("value") for ev in rs.get("events", []) for a in ev.get("attributes", []) if a.get("key") == "hook_error"]
+        step("failing_hook_does_not_block_registration",
+             rs.get("code") == 0 and attr(rs, "action") is not None and len(regs) == 1 and len(failed) == 1
+             and any(a.get("value") == "registration_hook_failed" for ev in rs.get("events", []) for a in ev.get("attributes", [])),
+             "registrants %d hook_error %s" % (len(regs), failed[:1]))
     rt = smart(contract, {"registration_tree": {}})
     live = base64.b64decode(rt["root"])
 
