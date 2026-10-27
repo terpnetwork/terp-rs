@@ -377,7 +377,9 @@ mod tests {
     }
 
     fn ctx() -> [u8; 32] {
-        pallas::Base::from(5u64).to_repr()
+        // Bound to the mock chain + contract so the same fixture drives direct claims.
+        let env = mock_env();
+        crate::direct::direct_ctx(&env.block.chain_id, env.contract.address.as_str())
     }
 
     fn campaign(root: [u8; 32], vk_id: u64) -> EpochCampaignParams {
@@ -660,4 +662,149 @@ mod tests {
             "34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398"
         );
     }
+
+    // ---- direct on-chain claims (crate::direct) ----
+    use crate::direct::{self, test_hook};
+
+    fn direct_fixture() -> (TDeps, Env, Holder, Holder, Elig) {
+        let a = holder(1, (0..40).map(|i| (i % 12) as u8).collect(), 0, 1000);
+        let b = holder(2, vec![11, 3, 0], 40, 2000);
+        let mut leaves = a.leaves();
+        leaves.extend(b.leaves());
+        let tree = Elig::new(leaves);
+        let (mut deps, env) = setup();
+        let mut c = campaign(tree.root(), NOTE_VK_ID);
+        c.cutoff_height = env.block.height + 1000;
+        c.amounts = DENOMS_UTERP.iter().map(|amount| AmountCap { amount: *amount, cap: if *amount == DENOMS_UTERP[11] { 1 } else { 50 } }).collect();
+        set(&mut deps, &env, c).unwrap();
+        test_hook::set(Some(NOTE_VK_HASH));
+        test_hook::set_ok(true);
+        (deps, env, a, b, tree)
+    }
+
+    fn owner_run(deps: &mut TDeps, env: &Env, msg: ExecuteMsg) -> Result<Response, StdError> {
+        let creator = deps.api.addr_make("creator");
+        execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg)
+    }
+
+    fn register_all(deps: &mut TDeps, env: &Env, h: &Holder, tree: &Elig) {
+        let list = h.list();
+        let mut start = 0;
+        while start < list.len() {
+            let len = core::cmp::min(32, list.len() - start);
+            run(deps, env, h.chunk(tree, &list, start, len, start == 0)).unwrap();
+            start += len;
+        }
+    }
+
+    fn tree_root(deps: &TDeps) -> (Binary, Vec<crate::registration::AcceptedAnchor>) {
+        let c = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
+        let t = crate::registration::query_tree(deps.as_ref().storage, c.registration.as_ref().unwrap()).unwrap();
+        (t.root, t.anchors)
+    }
+
+    fn claim(deps: &mut TDeps, env: &Env, who: &str, root: &Binary, nf: u8, amount: u64) -> Result<Response, StdError> {
+        let sender = cosmwasm_std::Addr::unchecked(format!("terp1{who}"));
+        let mut n = [0u8; 32];
+        n[0] = nf;
+        execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), ExecuteMsg::ClaimNote {
+            root: root.clone(),
+            nullifier: Binary::from(n.to_vec()),
+            amount,
+            proof: Binary::from(vec![1u8; 64]),
+        })
+    }
+
+    #[test]
+    fn direct_instances_match_circuit_public_inputs() {
+        let secret = pallas::Base::from(77u64);
+        let c = pallas::Base::from_repr(ctx()).unwrap();
+        let root = pallas::Base::from(99u64);
+        let dest = "terp1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu";
+        let public = zk_headstash::note_membership::note_public(secret, c, DENOMS_UTERP[4], root, dest).unwrap();
+        let want: Vec<u8> = public.iter().flat_map(|f| f.to_repr().to_vec()).collect();
+        let got = direct::instances(&ctx(), &root.to_repr(), &public[2].to_repr(), dest, DENOMS_UTERP[4]).unwrap();
+        assert_eq!(got, want);
+        // a different sender gives different dest limbs, so a copied proof cannot verify
+        let other = direct::instances(&ctx(), &root.to_repr(), &public[2].to_repr(), "terp1other", DENOMS_UTERP[4]).unwrap();
+        assert_ne!(other[96..160], want[96..160]);
+    }
+
+    #[test]
+    fn direct_bind_pins_circuit_once_and_checks_ctx_and_hash() {
+        let (mut deps, env, ..) = direct_fixture();
+        let stranger = deps.api.addr_make("stranger");
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), ExecuteMsg::BindNoteCircuit { zk_id: 3 }).is_err());
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 0 })).contains("zk id"));
+        test_hook::set(Some([9u8; 32]));
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 })).contains("vk hash"));
+        test_hook::set(Some(NOTE_VK_HASH));
+        // another chain id => ctx not bound
+        let mut env2 = env.clone();
+        env2.block.chain_id = "other-chain".into();
+        assert!(err(owner_run(&mut deps, &env2, ExecuteMsg::BindNoteCircuit { zk_id: 3 })).contains("ctx"));
+        owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 4 })).contains("fixed"));
+        let info = direct::query_info(deps.as_ref().storage, &env).unwrap();
+        assert_eq!(info.cfg.unwrap().zk_id, 3);
+        assert_eq!(info.expected_ctx.as_slice(), ctx());
+    }
+
+    #[test]
+    fn direct_claim_roots_amounts_replay_window_and_payout() {
+        let (mut deps, mut env, a, b, tree) = direct_fixture();
+        register_all(&mut deps, &env, &a, &tree);
+        let (live, _) = tree_root(&deps);
+        assert!(err(claim(&mut deps, &env, "w1", &live, 1, DENOMS_UTERP[0])).contains("not enabled"));
+        owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
+        // live root, nothing sealed yet
+        assert!(err(claim(&mut deps, &env, "w1", &live, 1, DENOMS_UTERP[0])).contains("anchor"));
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+        let (_, anchors) = tree_root(&deps);
+        let epoch_n = anchors[0].root.clone();
+        assert_eq!(anchors[0].leaf_count, 40);
+        // epoch N+1 registration moves the live root; it is not claimable until sealed
+        register_all(&mut deps, &env, &b, &tree);
+        let (live2, _) = tree_root(&deps);
+        assert_ne!(live2, epoch_n);
+        assert!(err(claim(&mut deps, &env, "w2", &live2, 2, DENOMS_UTERP[0])).contains("anchor"));
+        // fabricated root
+        let mut fake = [7u8; 32];
+        fake[31] = 0;
+        assert!(err(claim(&mut deps, &env, "w2", &Binary::from(fake.to_vec()), 2, DENOMS_UTERP[0])).contains("anchor"));
+        // non-canonical limbs
+        let mut nc = epoch_n.to_vec();
+        nc[31] |= 0x80;
+        assert!(err(claim(&mut deps, &env, "w2", &Binary::from(nc), 2, DENOMS_UTERP[0])).contains("root"));
+        // amounts
+        assert!(err(claim(&mut deps, &env, "w2", &epoch_n, 2, 3_000_000)).contains("denomination"));
+        // ok: payout to sender, exactly amount
+        let r = claim(&mut deps, &env, "w1", &epoch_n, 1, DENOMS_UTERP[3]).unwrap();
+        let w1 = "terp1w1".to_string();
+        let sent = r.messages.iter().any(|m| matches!(&m.msg, cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address, amount }) if *to_address == w1 && amount[0].amount.to_string() == DENOMS_UTERP[3].to_string()));
+        assert!(sent);
+        // replay of the nullifier from any sender, against any anchor
+        assert!(err(claim(&mut deps, &env, "w1", &epoch_n, 1, DENOMS_UTERP[3])).contains("nullifier"));
+        // seal N+1; the older anchor still works
+        env.block.height += 1;
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+        let (_, anchors) = tree_root(&deps);
+        assert_eq!(anchors.len(), 2);
+        assert!(err(claim(&mut deps, &env, "w9", &anchors[1].root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+        claim(&mut deps, &env, "w2", &epoch_n, 2, DENOMS_UTERP[0]).unwrap();
+        claim(&mut deps, &env, "w3", &anchors[1].root, 3, DENOMS_UTERP[0]).unwrap();
+        // per-denomination cap
+        claim(&mut deps, &env, "w4", &epoch_n, 4, DENOMS_UTERP[11]).unwrap();
+        assert!(err(claim(&mut deps, &env, "w5", &epoch_n, 5, DENOMS_UTERP[11])).contains("cap"));
+        // failed verification consumes nothing
+        test_hook::set_ok(false);
+        assert!(err(claim(&mut deps, &env, "w6", &epoch_n, 6, DENOMS_UTERP[0])).contains("invalid note proof"));
+        test_hook::set_ok(true);
+        claim(&mut deps, &env, "w6", &epoch_n, 6, DENOMS_UTERP[0]).unwrap();
+        // window
+        env.block.height += 2000;
+        assert!(err(claim(&mut deps, &env, "w7", &epoch_n, 7, DENOMS_UTERP[0])).contains("window"));
+        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 5);
+    }
+
 }

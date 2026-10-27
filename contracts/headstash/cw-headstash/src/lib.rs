@@ -1,4 +1,5 @@
 pub mod bridge;
+pub mod direct;
 pub mod distro;
 pub mod egress;
 pub mod epoch;
@@ -434,6 +435,14 @@ pub fn execute(
                 eligibility,
             )
         }
+        ExecuteMsg::BindNoteCircuit { zk_id } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _) -> _>(direct::bind_circuit)(deps, &env, info, &campaign, zk_id)
+        }
+        ExecuteMsg::ClaimNote { root, nullifier, amount, proof } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(direct::claim_note)(deps, &env, info, &campaign, root, nullifier, amount, proof)
+        }
         ExecuteMsg::AcceptAnchor {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
             opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
@@ -451,7 +460,7 @@ pub fn sudo(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Nullifer { null } => Ok(to_json_binary(
@@ -487,6 +496,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 anchor.as_slice(),
             )?)
         }
+        QueryMsg::DirectClaim {} => to_json_binary(&direct::query_info(deps.storage, &env)?),
         QueryMsg::NoteList { identity } => {
             to_json_binary(&notes::query_note_list(deps.storage, &identity)?)
         }

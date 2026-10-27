@@ -183,6 +183,18 @@ pub enum ExecuteMsg {
     },
     /// Permissionless. Stores the current registration root when the window is open.
     AcceptAnchor {},
+    /// Owner, once: pin the wasmvm circuit id for direct note claims. The stored
+    /// circuit must hash to the campaign vk_hash and campaign.ctx must equal
+    /// `direct_ctx(chain_id, contract)`.
+    BindNoteCircuit { zk_id: u64 },
+    /// Anyone: direct vk_id 3 claim, paid to `info.sender` (bound in the proof).
+    /// `root` must be a closed-epoch anchor.
+    ClaimNote {
+        root: Binary,
+        nullifier: Binary,
+        amount: u64,
+        proof: Binary,
+    },
 }
 
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
@@ -250,6 +262,9 @@ pub enum QueryMsg {
     /// Signed note list state for an identity key (`<evm hex>` or `sol:<hex>`).
     #[returns(Option<crate::notes::NoteListState>)]
     NoteList { identity: String },
+    /// Direct-claim binding, the ctx this contract expects, and the paid count.
+    #[returns(crate::direct::DirectClaimInfo)]
+    DirectClaim {},
 }
 
 #[cw_serde]

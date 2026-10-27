@@ -531,6 +531,10 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
         .add_attribute("minted", n.to_string()))
 }
 
+pub(crate) fn is_public_reserved(storage: &dyn Storage, hex: &str) -> StdResult<bool> {
+    Ok(PUBLIC_RESERVED.may_load(storage, hex)?.is_some())
+}
+
 pub fn query_campaign(storage: &dyn Storage) -> StdResult<EpochCampaignParams> {
     EPOCH_CAMPAIGN
         .may_load(storage)?
@@ -949,7 +953,7 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
     Ok((res, stage.rows.len() as u64))
 }
 
-fn push_credit(
+pub(crate) fn push_credit(
     res: Response,
     env: &Env,
     strategy: &TokenStrategy,
@@ -979,7 +983,7 @@ fn push_credit(
     }
 }
 
-fn strategy_for<'a>(
+pub(crate) fn strategy_for<'a>(
     strategies: &'a [TokenStrategy],
     denom: &Binary,
 ) -> Result<&'a TokenStrategy, StdError> {
