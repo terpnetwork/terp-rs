@@ -258,3 +258,18 @@ Total: ~2.5-3.5 weeks; chain: none.
 - D4: bind grantee in the signed message?
 - D5: reimbursement source and rule (per successful registration via attestor registry?).
 - D6: accept bounded cross-sidecar waste (recommended) vs on-chain pre-check of existing grants vs gossip.
+
+## R5. Direct on-chain claim (vk_id 3, zk-api build)
+Reuses the registration epochs and anchors of `registration.rs` unchanged (no new epoch or anchor
+machinery, no auto-snapshot). `ClaimNote {root, nullifier, amount, proof}`:
+1. amount is a campaign denomination and `DIRECT_CLASS_PAID[class] < class.cap`;
+2. the public-reserved check;
+3. root must be an accepted anchor (`anchor_known`); otherwise "root is not an accepted anchor";
+4. nullifier unused;
+5. `proof_instance_verify(zk_id, proof, [ctx, root, nullifier, dest_lo, dest_hi, amount])` with the
+   zk_id pinned by `bind_note_circuit` (hash-checked, single bind), dest = info.sender;
+6. record the nullifier, pay `amount` to the sender. Window = campaign cutoff; `sweep_unclaimed` after.
+The nullifier is root-independent, so a note proven against any accepted anchor spends once.
+Fee grants: the relay dry-runs the claim with the contract queries, then grants
+`AllowedMsgAllowance{MsgExecuteContract}` over `BasicAllowance{spend_limit = one claim fee, short
+expiry}` to the fresh wallet; dedupe by nullifier; rate limited; no IP logging.

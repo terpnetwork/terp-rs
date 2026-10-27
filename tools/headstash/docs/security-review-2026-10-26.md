@@ -181,3 +181,34 @@ table (never from the message) at registration and check `amount` in `DENOMS` at
 2. Contract: amount from table, `DENOMS` membership at claim, duplicate key_com rejection,
    ctx bound to contract address and campaign.
 3. Claim page: per-note delays and fresh destinations by default; large-holder warning.
+
+## Addendum: direct on-chain claim (2026-10-27)
+### D1 (by design): anonymity set
+A note hides among the notes of the same denomination registered by the anchor its proof uses.
+A **small first epoch** gives a small set. Mitigation: announce, require `MIN_ANONYMITY_SET` before the
+first claimable anchor, and let the page wait 0–2 extra anchors. Any later anchor is a valid root.
+### D2 (medium): timing correlation
+Registration time, grant request, and broadcast can be linked by time and by the relay. Mitigations
+shipped in the page: anchor wait plus random extra anchors, random 2–20 s and 6–30 s delays, a fresh
+wallet per note, a user-chosen RPC, and a pluggable transport (Nym mixFetch interface; direct by
+default). The relay keeps no IPs but still sees the grantee and the claim.
+### D3 (low, flag only): ANCHORS stored as `Item<Vec<_>>`
+`anchor_known` loads and scans the whole vector each claim; gas grows with the anchor count (A2 accept
+138,501 gas in e2e). Bounded by cadence × window; **not changed** per instructions. Consider a Map later.
+### D4 (low): feegrant scope limitation
+`AllowedMsgAllowance` limits the message *type* (MsgExecuteContract), not the contract or the payload.
+A grantee could spend the one-tx allowance on any contract execute up to the spend limit. Exposure per
+grant is one claim fee (spend limit, short expiry, single use, dedupe by nullifier, dry-run first).
+The e2e confirms bank sends and fees above the limit are rejected.
+### D5 (high if missed): fee denom
+Mainnet globalfee lists only uthiol (0.05). A uterp allowance would make every claim fail. Fixed in
+the page (denom from the grant's spend_limit); the relay must run with `HEADSTASH_GAS_PRICE=0.05uthiol`.
+### D6 (info): circuit store via gov
+`circuit_upload_access` is Nobody on mainnet; the circuit is stored by the proposal and bound once by the
+owner with a hash check. Owner trust (H4) still applies to the bind and the sweep.
+### D-tests (e2e negatives, all must pass)
+unanchored live root and fabricated root rejected, grant refused for the live root; live root
+claimable once anchored; late note against an older anchor; older-anchor claim pays; single-use allowance;
+replayed nullifier (grant and tx); forged proof (grant and tx); wrong root; same-set amount swap;
+non-denomination amount; wrong sender; bank send under allowance rejected; fee above spend limit;
+grant dedupe; wrong/unknown zk_id; stranger bind; rebind refused; claim after cutoff; sweep.

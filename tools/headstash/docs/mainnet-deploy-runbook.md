@@ -116,3 +116,63 @@ Runs on groot-wan, 2026-10-26 (local times UTC-4).
 - **warm_verify_stays_under_one_second: FAIL under load** (epoch-claim circuit, 4.041 s warm
   verify, load average ~30 during the run; key build 78.8 s). Rerun on an idle host before
   relying on it; the membership verify path above took 0.29 s.
+
+## Direct on-chain claim (vk_id 3, zk-api build) — supersedes lane steps 11–12
+The direct path verifies the note proof in the contract (`proof_instance_verify`, pinned zk_id)
+and pays immediately. hashmerchant `MsgRegisterChain`, lane staging and the sudo escrow
+(steps 7, 11, 12) are **only needed for the optional lane path**.
+
+Artifact: `tools/headstash/artifacts/cw_headstash.wasm` (`--features zk-api`, optimizer),
+sha256 `3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b`, 1,096,689 B.
+
+1. **Store code** (anyone; `code_upload_access` Everybody). Check the code-info checksum = sha above.
+2. **Instantiate** (deployer, admin = gov) and set the campaign exactly as steps 2–5 above
+   (registration epochs and anchors in `registration.rs` are unchanged).
+3. **Governance proposal** bundles, in this order:
+   a. `/cosmwasm.wasm.v1.MsgStoreFullCircuit` with `sender` = gov module
+      `terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq`, `auth {circuit_type 0, curve_type 0, k 11}`,
+      `params_body`, `vk_body` (blob sha256 must equal the campaign `vk_hash`). Mainnet
+      `circuit_upload_access` is Nobody, so this has to come from gov. In wasmd source
+      (`wasmd-bulk-memory` 2d5821c1) `StoreFullCircuit` uses `selectAuthorizationPolicy(sender)`,
+      which gives the gov authority the gov policy, so a gov-signed store passes. **Check this against
+      the mainnet binary (v0.39.0) before submitting.**
+   b. `MsgCommunityPoolSpend` funding the contract.
+   Bundling is safe: the zk_id is only known after execution, and the contract pays nothing until
+   the owner binds it in step 4, so funds sit idle until then.
+4. **Bind** (owner): `{"bind_note_circuit":{"zk_id":<from the proposal's store event>}}`. The contract
+   checks sha256(circuit data) == vk_hash and refuses a rebind ("circuit is fixed").
+5. **Relay** with fee grants: `HEADSTASH_FEEGRANT=1`, `HEADSTASH_GAS_PRICE=0.05uthiol`,
+   `HEADSTASH_CLAIM_GAS` (400000 default), bind 127.0.0.1:18795 (not 8791) behind the single nginx,
+   no IP logging. The granter key holds the THIOL budget below.
+6. **Claims**: the page waits until the note's registration is in an accepted anchor plus 0–2
+   random extra anchor intervals, creates a fresh wallet per note, requests a grant (one tx,
+   short expiry, MsgExecuteContract to this contract only), and broadcasts to the user-selected RPC.
+7. **Cutoff and sweep** as step 13.
+
+### Fee-grant budget (direct claim)
+Read-only mainnet query (2026-10-27 01:08 UTC = 01:08 Africa/Dakar, height 24,110,663,
+terp.api.m.anode.team): globalfee `minimum_gas_prices` = **0.05 uthiol** (only denom listed);
+recent mainnet txs pay fees in uthiol. **Fees are THIOL, not TERP.** The relay granter must hold
+uthiol and run with `HEADSTASH_GAS_PRICE=0.05uthiol` (the allowance denom follows it). The page
+takes the fee denom and amount from the grant's `spend_limit`.
+
+Inputs: 98,841 notes, 17,791 identities. Measured on the local zk-api build:
+registration ≈ 133,164 gas per message + 314,545 gas per note (32 notes 10,198,618; 11 notes
+3,593,164; 2 Solana notes 785,218) → ≈ 338.5k gas per note averaged over one message per identity.
+Claim gas used 262,462–262,602, but fees are charged on the 400,000 limit. Grant tx ≈ 123,440 gas.
+
+| Item | Gas | THIOL @ 0.05 |
+|---|---:|---:|
+| notes × (registration + claim limit) = 98,841 × (338.5k + 400k) | 73.0 B | **3,649.8** |
+| + one feegrant tx per note (relay pays) | 12.2 B | 610.0 |
+| = base budget | 85.2 B | **4,259.8** |
+| with 1.3× registration gas adjustment | 95.2 B | 4,761.7 |
+
+Recommendation: fund the granter with ~4,800 THIOL (top up in tranches; unspent allowances
+expire). Lowering `HEADSTASH_CLAIM_GAS` to 300,000 (claims use ~262.6k) saves ~494 THIOL.
+
+### Direct-path e2e evidence
+`RESET=1 tools/headstash/e2e/run-local.sh` (`run_direct.py`) on groot-wan, 2026-10-26 21:08 local (UTC-4):
+**57 passed, 0 failed**, report `/tmp/headstash-mvk-chain/run-1793063360/report.json` (log `e2e6.log` beside it).
+Every negative in the security review addendum D-tests passed. Gas: store_circuit 10,242,506; bind 570,551;
+claim 262,528–262,652 (mean 262,561); accept_anchor 135,937 / 138,501; grant tx fee 3,086 uterp at 0.025.

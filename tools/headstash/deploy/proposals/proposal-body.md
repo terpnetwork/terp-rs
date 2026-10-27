@@ -73,3 +73,19 @@ attested batches or the post-cutoff sweep to `{{SWEEP_RECIPIENT}}`; gov can migr
 - Source: https://github.com/terpnetwork/terp-core (commit `{{SOURCE_COMMIT}}`)
 - Forum: {{FORUM_URL}}
 - Prior: Proposal #26, #31, #32
+
+## Direct on-chain claim (2026-10 update)
+Claims are verified by the contract itself (Halo2 vk_id 3 note circuit stored by this proposal,
+`proof_instance_verify`, six public inputs: ctx, root, nullifier, dest_lo, dest_hi, amount) and pay
+the claiming address at once. The proof root must be an accepted registration anchor. Each note
+pays a fixed denomination to a fresh wallet; claim fees come from a one-transaction fee grant
+scoped to this contract, so the fresh wallet never has to be funded.
+
+This proposal therefore also stores the note circuit (`MsgStoreFullCircuit`, gov is the only allowed
+uploader on mainnet). Circuit vk hash `{{NOTE_VK_HASH}}`. Fee grants are paid in THIOL by the relay
+operator (estimated {{FEEGRANT_BUDGET_THIOL}} THIOL for all 98,841 notes at 0.05 uthiol/gas); no
+TERP from this proposal is spent on fees.
+
+Privacy limits: the anonymity set is the set of notes of the same denomination registered by the
+anchor used; a small first epoch gives a small set; claiming soon after registering can be
+correlated by time (the page adds random anchor and broadcast delays).

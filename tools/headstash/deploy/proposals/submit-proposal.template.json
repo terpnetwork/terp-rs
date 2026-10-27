@@ -1,34 +1,59 @@
 {
   "messages": [
     {
+      "@type": "/cosmwasm.wasm.v1.MsgStoreFullCircuit",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "auth": {
+        "circuit_type": "0",
+        "curve_type": "0",
+        "k": "11"
+      },
+      "params_body": "{{NOTE_CIRCUIT_PARAMS_B64}}",
+      "vk_body": "{{NOTE_CIRCUIT_VK_B64}}"
+    },
+    {
       "@type": "/terp.hashmerchant.v1.MsgRegisterChain",
       "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
       "chain": {
         "chain_uid": "headstash-claim",
         "name": "headstash-claim",
         "rpc_endpoints": [],
-        "hash_algos": ["headstash-pending", "headstash-accepted"],
+        "hash_algos": [
+          "headstash-pending",
+          "headstash-accepted"
+        ],
         "enabled": true,
-        "oracle_sources": [{
-          "source_id": "headstash-batch",
-          "kind": "ORACLE_SOURCE_KIND_HTTP",
-          "endpoint": "{{SIDECAR_LANE_URL}}",
-          "merkle_prefix": [],
-          "authenticator": {"pubkey": "{{CUSTODY_PUBKEY_B64}}", "algorithm": "ed25519", "scope": "headstash-batch"},
-          "enabled": true
-        }]
+        "oracle_sources": [
+          {
+            "source_id": "headstash-batch",
+            "kind": "ORACLE_SOURCE_KIND_HTTP",
+            "endpoint": "{{SIDECAR_LANE_URL}}",
+            "merkle_prefix": [],
+            "authenticator": {
+              "pubkey": "{{CUSTODY_PUBKEY_B64}}",
+              "algorithm": "ed25519",
+              "scope": "headstash-batch"
+            },
+            "enabled": true
+          }
+        ]
       }
     },
     {
       "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
       "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
       "recipient": "{{CONTRACT_ADDR}}",
-      "amount": [{"denom": "uterp", "amount": "{{FUNDING_AMOUNT_UTERP}}"}]
+      "amount": [
+        {
+          "denom": "uterp",
+          "amount": "{{FUNDING_AMOUNT_UTERP}}"
+        }
+      ]
     }
   ],
   "metadata": "{{PROPOSAL_METADATA_URI}}",
   "deposit": "{{DEPOSIT_UTERP}}uterp",
   "title": "Headstash 2026: fund the private TERP airdrop to 16 partner communities",
-  "summary": "Registers the headstash-claim oracle source with hashmerchant and sends {{FUNDING_AMOUNT_UTERP}} uterp from the community pool to the cw-headstash contract {{CONTRACT_ADDR}} (eligibility root {{ELIGIBILITY_ROOT}}). Full text: {{PROPOSAL_METADATA_URI}}",
+  "summary": "Stores the Headstash note circuit (vk hash {{NOTE_VK_HASH}}), registers the optional headstash-claim oracle source with hashmerchant, and sends {{FUNDING_AMOUNT_UTERP}} uterp from the community pool to the cw-headstash contract {{CONTRACT_ADDR}} (eligibility root {{ELIGIBILITY_ROOT}}). Full text: {{PROPOSAL_METADATA_URI}}",
   "expedited": false
 }
