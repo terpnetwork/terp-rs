@@ -3,7 +3,18 @@
 Local single-node chain (127.0.0.1), block max_gas 50,000,000, max_bytes 16,777,216, timeout_commit 500 ms, Apple M1 Pro (shared host, load ~20).
 Real proofs (vk_id 3, K=11). M = measured, X = extrapolated. Raw data: `limits-benchmark-full.json` (fill to 127,850 leaves / 1,735 anchors)
 and `limits-benchmark-12k.json` (11,776 leaves / 90 anchors, block packing, multi-claim, prove). Scripts: `e2e/bench_limits.py`, `e2e/bench_probe_full.py`, `e2e/bench_wasm_prove.mjs`.
-Mainnet max_bytes could not be read (public REST endpoints returned empty); bytes are not binding unless max_bytes < ~0.7 MB.
+Mainnet consensus params (read-only, `/consensus_params` on a synced morocco-1 node at 127.0.0.1, height 24,123,126, 2026-10-27; the chain-registry public RPCs were unreachable): **max_bytes 16,777,216, max_gas 50,000,000** — identical to the local bench chain; bytes are not binding (claim block ≤ 0.69 MB).
+
+## After: ANCHORS map (cw_headstash 43a8e5d8, commit e976867)
+`Map<seq, Anchor>` + `Map<root, seq>` + meta `Item`; paginated `registration_anchors`. Bench: `BENCH_HOME=/tmp/headstash-bench-anchorfix FILL_TARGET=16384 ANCHOR_TARGET=2100 BENCH_STOP_AFTER=claims_per_block e2e/bench_limits.py` (16,359 leaves / 2,103 anchors). Raw data: `limits-benchmark-anchormap.json`.
+| metric | before (1e7092d2, Item<Vec>) | after (43a8e5d8, map) |
+|---|---|---|
+| accept_anchor gas | 149k at 1 → 4.78M at 1,735; **fails at 1,735** (131,090 B > 128 KiB value) | 149,467 at 1 → 149,728 at 2,103 (flat) M |
+| ClaimNote gas | 262k + 256 × anchors (≈706k at 1,735; >400k past ~540) | 263.5k at 10, 263.6k at 1,003, 263,613 latest / **263,604 against the first anchor at 2,103** (flat) M |
+| claim gas_wanted (dapp/relay/e2e) | 400k | 300k |
+| claims per block @ 300k gas_wanted | 125 @ 400k | 50M / 300k = **166** X; measured: 250/250 fee-granted claims at ~303k gas_wanted (1.15 × used), 113 in one block (34.3M wanted, 29.8M used, FinalizeBlock 976 ms) M |
+| registration | — | 32-note chunk 10.27M (first chunk 10.67M); 4 chunks/tx 41.3M ok, 5 rejected (> block gas) M |
+| fee-grant total, 98,841 notes @ 0.05 uthiol/gas | ~2,995 THIOL (≈4,180 at 1,000 anchors) + accept_anchor Σ ≈ 210 THIOL | registration 321k + claim 264k = 585k gas/note → **~2,891 THIOL**, independent of anchor count (≤ 3,336 THIOL if every grant is spent to its cap: 12M/32 + 300k); accept_anchor 149.7k × 1,735 ≈ 13 THIOL X |
 
 ## 1. Claims per tx / block (M, 90 anchors)
 | metric | value |
@@ -67,8 +78,8 @@ Registration gas is flat in fill level (depth-17 frontier with stored NODES: O(d
 - Fee grants at 0.05 uthiol/gas: registration 321k + claim 285k = 606k gas/note → 30,300 uthiol; ×98,841 = **~2,995 THIOL** (≈4,180 THIOL if claims average 1,000 anchors). Plus accept_anchor calls (~2.7k × n gas each: Σ to 1,735 ≈ 4.2G gas ≈ 210 THIOL).
 - Block capacity share: registration + claims ≈ 60G gas = ~1,200 full blocks = 0.008 % of 2 years (15.0M blocks); bursts saturate blocks for ~1–1.5 h total.
 
-## Bottlenecks and fix proposals (not implemented)
-1. **ANCHORS `Item<Vec>` (binding):** 128 KiB storage value limit at 1,735 anchors bricks accept_anchor (~290 days at the 3,430-block interval); claim gas grows 256/anchor and query gas grows unbounded. Fix: `Map<u64, Anchor>` + `Map<root, u64>` (O(1) root check), keep a bounded ring buffer (e.g. last N roots) or only the latest root plus roots used by unclaimed proofs; or raise the interval (≥ 3× → still < 2y). Expected claim gas then ~262k flat.
+## Bottlenecks and fix proposals (1–3 implemented in e976867 + follow-up; see "After" above)
+1. **(fixed: map + paged query)** **ANCHORS `Item<Vec>` (binding):** 128 KiB storage value limit at 1,735 anchors bricks accept_anchor (~290 days at the 3,430-block interval); claim gas grows 256/anchor and query gas grows unbounded. Fix: `Map<u64, Anchor>` + `Map<root, u64>` (O(1) root check), keep a bounded ring buffer (e.g. last N roots) or only the latest root plus roots used by unclaimed proofs; or raise the interval (≥ 3× → still < 2y). Expected claim gas then ~262k flat.
 2. Block gas is the claim limit (not time/bytes): set claim gas_wanted ≈ 300k (not 400k) in the dapp/relay to fit ~165 claims/block instead of 125.
 3. Registration: always use 32-note chunks (1-note chunks cost 2× per note); max 4 chunks/tx.
 4. Browser prove 3.3 s is fine; relay serial at 1.5 s/request queues under concurrency — add workers if bursty.

@@ -29,7 +29,7 @@ NODE, RPC, REST, PROM = (f"tcp://127.0.0.1:{P['rpc']}", f"http://127.0.0.1:{P['r
                          f"http://127.0.0.1:{P['rest']}", f"http://127.0.0.1:{P['prom']}/metrics")
 RELAY_BIND = "127.0.0.1:18895"
 WASM = os.environ.get("WASM", "/tmp/hsdirect/opt-out/cw_headstash.wasm")
-WASM_SHA = "1e7092d2e463252a0d506b3df59c76389b4b835ebe769f96a5aa8c1d2fb604e9"
+WASM_SHA = "43a8e5d88a3af34dc09bd63f85f88a1b2b0a008a4b68ef45a83ed434894149a9"
 ELIG_BIN = "/tmp/hm-build-target/release/headstash-eligibility"
 RELAY_BIN = "/tmp/hm-build-target/release/headstash-register-relay"
 EX = "/tmp/hm-build-target/release/examples"
@@ -54,6 +54,7 @@ os.environ.setdefault("RUN_DIR", str(RUN)); os.environ["CHAIN_HOME"] = str(H)
 import run as b  # crypto + hashing helpers only (pmul, kec, eip191, evm_sign, list_hash, pallas_rand)
 from run import pmul, kec, eip191, evm_sign, pallas_rand, list_hash, b64, h2b64, N, DENOMS, NOTE_VK_HASH, DENOM
 
+CLAIM_GAS = int(os.environ.get("HEADSTASH_CLAIM_GAS", "300000"))
 B = {"meta": {}, "reg": {}, "claims": {}, "fill": [], "anchors": [], "query": {}, "prove": {}, "blocks": {}, "relay": {}, "notes": []}
 def log(*a): print(time.strftime("%H:%M:%S"), *a, flush=True)
 def save():
@@ -465,7 +466,7 @@ def main_run():
         return anchorer.send([exe(anchorer.addr, contract, {"accept_anchor": {}})], ACCEPT_GAS[0], wait=wait)
     ACCEPT_GAS = [3_000_000]
     def latest_anchor():
-        rt = tree_info(); return base64.b64decode(rt["anchors"][-1]["root"]), len(rt["anchors"]), rt
+        rt = tree_info(); return base64.b64decode(rt["latest_anchor"]["root"]), rt["anchor_count"], rt
     wallet_n = [0]
     def fresh_wallet():
         wallet_n[0] += 1; name = "bw%05d" % wallet_n[0]
@@ -479,15 +480,15 @@ def main_run():
         out = []
         for j in range(k):
             name, w = fresh_wallet()
-            r_old = base64.b64decode(rt["anchors"][0]["root"]) if j == 1 and len(rt["anchors"]) > 1 else root
+            r_old = base64.b64decode(smart(contract, {"registration_anchors": {"limit": 1}})[0]["anchors"][0]["root"]) if j == 1 and rt["anchor_count"] > 1 else root
             note = claimable.pop()
             try: pr = prove(note, w, r_old)
             except RuntimeError as e:  # note not under the oldest anchor: use the latest
                 r_old = root; pr = prove(note, w, root)
-            g = relayer.send([feegrant_msg(w, 400_000)], 200_000)
+            g = relayer.send([feegrant_msg(w, CLAIM_GAS)], 200_000)
             assert g["code"] == 0, g.get("raw_log")
             a = Acct(name)
-            r = a.send([exe(w, contract, claim_msg(pr))], 400_000, granter=relayer.addr)
+            r = a.send([exe(w, contract, claim_msg(pr))], CLAIM_GAS, granter=relayer.addr)
             oog = None
             if r["code"] == 11:   # out of gas at the production CLAIM_GAS: re-grant and retry with headroom to measure
                 oog = r.get("gas_used")
@@ -578,7 +579,7 @@ def main_run():
             time.sleep(1.5)
             for f in B["fill"][-3 * batch:]:
                 if f["finalize_ms"] is None and f["height"]: f["finalize_ms"] = fb_ms(f["height"])
-            na = len(tree_info()["anchors"])
+            na = tree_info()["anchor_count"]
             NA[0] = na
             log(phase, "leaves", leaves[0], "anchors", na, "fill gas", B["fill"][-1]["gas_used"], "accept gas", B["anchors"][-1]["gas"],
                 "fb_ms", B["fill"][-2]["finalize_ms"] if len(B["fill"]) > 1 else None)
@@ -623,7 +624,7 @@ def main_run():
     t_anc = time.time()
     block_loop(anchor_builder, lambda: NA[0] >= ANCHOR_TARGET, "anchor", batch=50)
     B["meta"]["anchor_phase_secs"] = round(time.time() - t_anc, 1)
-    na = len(tree_info()["anchors"])
+    na = tree_info()["anchor_count"]
     checkpoint_claims("anchors_%d_final" % na, 3)
     B["meta"]["final_leaves"] = leaves[0]; B["meta"]["final_anchors"] = na; save()
 
@@ -638,7 +639,7 @@ def main_run():
     # relay grants (latency, serial and concurrent) for the first 30 wallets
     env = dict(os.environ, HEADSTASH_RELAY_HOME=str(H), HEADSTASH_RELAY_FROM="relayer", HEADSTASH_KEYRING_BACKEND="test",
                HEADSTASH_REST=REST, HEADSTASH_CONTRACT=contract, HEADSTASH_CHAIN_ID=CID, HEADSTASH_RELAY_BIND=RELAY_BIND,
-               HEADSTASH_GAS_PRICE="0.025uterp", HEADSTASH_CLAIM_GAS="400000", HEADSTASH_REGISTER_GAS="12000000",
+               HEADSTASH_GAS_PRICE="0.025uterp", HEADSTASH_CLAIM_GAS=str(CLAIM_GAS), HEADSTASH_REGISTER_GAS="12000000",
                HEADSTASH_GRANTS_PER_MIN="100000", HEADSTASH_FEEGRANT="1", TERPD=TERPD, PATH="/usr/local/bin:" + os.environ.get("PATH", ""))
     env.pop("HEADSTASH_ELIGIBILITY", None)
     rlog = open(RUN / "relay.log", "w")
@@ -663,9 +664,9 @@ def main_run():
         relay.terminate(); relay.wait(10)
     relayer.resync(); save()
     cg = [c["gas"] for cp in B["claims"]["checkpoints"] for c in cp["claims"] if c.get("gas") and c["code"] == 0]
-    PACK_GAS = max(400_000, int(max(cg[-3:]) * 1.15)) if cg else 400_000
+    PACK_GAS = max(CLAIM_GAS, int(max(cg[-3:]) * 1.15)) if cg else CLAIM_GAS
     B["blocks"]["pack_gas_limit"] = PACK_GAS
-    if PACK_GAS > 400_000:  # relay grants were sized for 400k: replace them
+    if PACK_GAS > CLAIM_GAS:  # relay grants were sized for CLAIM_GAS: replace them
         for k in sorted(granted): relayer.send(list(feegrant_msg_update(wallets[k][1], PACK_GAS)), 300_000)
     rest = [k for k in range(PACK_CLAIMS) if k not in granted]
     for i in range(0, len(rest), 100):   # batched direct grants (same allowance shape as the relay)
@@ -693,6 +694,8 @@ def main_run():
     B["claims"]["pack_fail_logs"] = [r["raw_log"][:160] for r in res if r["code"] != 0][:5]
     save(); log("pack", json.dumps({k: v for k, v in B["blocks"]["pack"].items() if k != "claim_gas"})[:600])
 
+    if os.environ.get("BENCH_STOP_AFTER") == "claims_per_block":  # anchor-growth / claims-per-block only
+        B["meta"]["stopped_after"] = "claims_per_block"; save(); return
     # ---- 7. claims per tx: N claims (one dest wallet) in one tx
     B["claims"]["multi"] = {}
     per = sorted(B["blocks"]["pack"]["claim_gas"])[len(B["blocks"]["pack"]["claim_gas"]) // 2] if B["blocks"]["pack"]["claim_gas"] else 300_000

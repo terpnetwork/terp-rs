@@ -1146,11 +1146,13 @@ async fn main() -> anyhow::Result<()> {
     // Fee grants: on unless HEADSTASH_FEEGRANT=0. Spend = gas limit x gas price, one tx.
     let grants = (std::env::var("HEADSTASH_FEEGRANT").as_deref() != Ok("0")).then(|| {
         let fee = |gas: u64| ((gas as f64) * chain.gas_price.0).ceil() as u64;
+        // ClaimNote is flat ~262k with the anchor map; one grant funds one 32-note RegisterNotes
+        // chunk (~10.7M), so a granted tx can never carry more than one (block cap 4x).
         GrantCfg {
             granter: sender.clone(),
             denom: chain.gas_price.1.clone(),
-            claim_spend: fee(env_num("HEADSTASH_CLAIM_GAS", 400_000)),
-            register_spend: fee(env_num("HEADSTASH_REGISTER_GAS", 1_500_000)),
+            claim_spend: fee(env_num("HEADSTASH_CLAIM_GAS", 300_000)),
+            register_spend: fee(env_num("HEADSTASH_REGISTER_GAS", 12_000_000)),
             ttl: Duration::from_secs(env_num("HEADSTASH_GRANT_TTL_SECS", 600)),
             global: (env_num("HEADSTASH_GRANTS_PER_MIN", 60), Duration::from_secs(60)),
         }

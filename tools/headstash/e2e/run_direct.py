@@ -16,6 +16,15 @@ from run import (R, log, step, save, b64, h2b64, pmul, kec, eip191, evm_sign, b5
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 
+
+def all_anchors(contract):
+    out, after = [], None
+    while True:
+        page = smart(contract, {"registration_anchors": {"start_after": after, "limit": 100}})["anchors"]
+        out += page
+        if len(page) < 100: return out
+        after = page[-1]["seq"]
+
 WASM = os.environ.get("WASM", "/tmp/hsdirect/opt-out/cw_headstash.wasm")
 CUT_AHEAD = int(os.environ.get("CUT_AHEAD", "600"))
 SWEEP = os.environ.get("SWEEP", "1") == "1"
@@ -24,7 +33,7 @@ HOOK = os.environ.get("HEADSTASH_HOOK", "1") == "1"
 HOOK_WASM = os.environ.get("HOOK_WASM", "/tmp/hsdirect/opt-out/hook_recorder.wasm")
 REWARD = {}
 RELAY_URL = "http://" + RELAY_BIND
-CLAIM_GAS = int(os.environ.get("HEADSTASH_CLAIM_GAS", "400000"))
+CLAIM_GAS = int(os.environ.get("HEADSTASH_CLAIM_GAS", "300000"))
 REGISTER_GAS = int(os.environ.get("HEADSTASH_REGISTER_GAS", "12000000"))
 GP = 0.025
 CTX_TAG = b"terp-hs-direct-ctx-v1"
@@ -286,7 +295,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         while height() < int(rt.get("next_anchor_height", 0)): time.sleep(1)
         res = rec("accept_anchor_" + label, tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}})))
         rt = smart(contract, {"registration_tree": {}})
-        a = rt["anchors"][-1]
+        a = rt["latest_anchor"]
         step("accept_anchor_" + label, res.get("code") == 0 and a["leaf_count"] == want,
              "root %s leaf_count %s height %s gas %d" % (base64.b64decode(a["root"]).hex(), a["leaf_count"], a.get("height"), gas_used(res)))
         R["gas"]["accept_anchor_" + label] = gas_used(res)
@@ -351,8 +360,8 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     neg("claim_against_fabricated_root", res, "not an accepted anchor")
 
     A2, rt2 = anchor_now("A2", 45)
-    R["anchors"] = [{"root_hex": base64.b64decode(a["root"]).hex(), "leaf_count": a["leaf_count"], "height": a.get("height")} for a in rt2["anchors"]]
-    step("anchor_growth_item_vec", len(rt2["anchors"]) >= 2, "ANCHORS entries %d (Item<Vec>, flagged)" % len(rt2["anchors"]))
+    R["anchors"] = [{"root_hex": base64.b64decode(a["root"]).hex(), "leaf_count": a["leaf_count"], "height": a.get("height")} for a in all_anchors(contract)]
+    step("anchor_map_paged", rt2["anchor_count"] >= 2 and len(R["anchors"]) == rt2["anchor_count"] and "anchors" not in rt2, "anchor map entries %d (paged registration_anchors)" % rt2["anchor_count"])
 
     # NEG: a note registered after A1 cannot claim against A1 (forced root swap on a valid A2 proof)
     ws = new_wallet("dclaim_late")
