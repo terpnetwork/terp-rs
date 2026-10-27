@@ -150,6 +150,16 @@ struct Cli {
     /// sets up the factory and offers ownership to this address (it must accept).
     #[arg(long)]
     svg_owner: Option<String>,
+    /// Curator keys (public addresses) per drop: cw721 creator owner and series operator (the
+    /// daily runtime signer, see svg_curator). Withdraw/royalties go to --admin. The factory makes
+    /// the creator the wasm admin; `svg_curator handoff` then moves it to --admin (migration only).
+    /// --creator-yijing defaults to --admin (no daily runtime: no handoff needed).
+    #[arg(long, env = "SVG_CREATOR_MARAIN")]
+    creator_marain: Option<String>,
+    #[arg(long, env = "SVG_CREATOR_BENDERS")]
+    creator_benders: Option<String>,
+    #[arg(long, env = "SVG_CREATOR_YIJING")]
+    creator_yijing: Option<String>,
     #[arg(long, default_value_t = 3600)]
     ttl_secs: u64,
     /// Keep grants after a phase (default: revoke).
@@ -807,12 +817,14 @@ fn svg(ctx: &mut Ctx) -> Result<()> {
     let mut minter_msg = json!({"owner": granter, "svg_code_id": svg_code, "dregg_ibc_only": false, "runtime_minters": []});
     oracle_pricing(ctx, "svg-minter", &mut minter_msg)?;
     let mut steps = vec![Step::Inst { name: "svg-minter".into(), code: "svg-minter".into(), admin: Some(admin.clone()), msg: minter_msg }];
-    let ops = vec![owner.clone()];
-    for (series, cfg) in [(MARAIN_SERIES, collection::marain_series(ops.clone())), (BENDERS_SERIES, collection::benders_series(ops))] {
+    let creators = drop_creators(ctx)?;
+    for (series, cfg) in [(MARAIN_SERIES, collection::marain_series(vec![owner.clone(), creators[0].1.clone()])),
+        (BENDERS_SERIES, collection::benders_series(vec![owner.clone(), creators[1].1.clone()]))] {
         steps.push(Step::ExecAs { id: format!("svg:series:{series}"), contract: factory.clone(), key: "set_series".into(),
             msg: json!({"set_series": {"series": series, "config": cfg}}) });
     }
-    for drop in drops::initial_collections(&admin, &ctx.cli.market_denom)? {
+    let cr = drops::Creators { withdraw: &admin, marain: &creators[0].1, benders: &creators[1].1, yijing: &creators[2].1 };
+    for drop in drops::initial_collections_with(&cr, &ctx.cli.market_denom)? {
         let mut m = drop.msg.clone();
         let (key, body) = match drop.name {
             MARAIN_ORBS => ("create_series_collection", json!({"series": MARAIN_SERIES, "label": m.name, "instantiate_msg": m})),
@@ -829,6 +841,7 @@ fn svg(ctx: &mut Ctx) -> Result<()> {
             msg: json!({"update_ownership": {"transfer_ownership": {"new_owner": owner, "expiry": null}}}) });
     }
     execute_steps(ctx, "svg", steps)?;
+    write_update_admin(ctx, &creators)?;
     let p = ctx.cli.out.join("svg_accept_ownership.json");
     if handoff && ctx.state.done.contains("svg:offer-ownership") {
         let accept = json!({"note": format!("{owner} sends this itself (MsgExecuteContract, or MsgExec via a grant)"),
@@ -844,6 +857,45 @@ fn svg(ctx: &mut Ctx) -> Result<()> {
     Ok(())
 }
 
+/// (drop name, creator address) for the three initial drops. Required when broadcasting.
+fn drop_creators(ctx: &Ctx) -> Result<Vec<(&'static str, String)>> {
+    let c = &ctx.cli;
+    let mut out = Vec::new();
+    for (name, v, flag) in [(MARAIN_ORBS, &c.creator_marain, "--creator-marain"), (KARA_GIPPY, &c.creator_benders, "--creator-benders"),
+        (YIJING_HARMONY, &c.creator_yijing, "--creator-yijing")] {
+        let a = match v {
+            Some(a) if !a.is_empty() => a.clone(),
+            _ if name == YIJING_HARMONY => c.admin.clone(),
+            _ if c.broadcast => bail!("{flag} (creator key address for {name}) is required with --broadcast"),
+            _ => format!("<{}>", flag.trim_start_matches("--")),
+        };
+        if a == c.admin && name != YIJING_HARMONY { bail!("{flag}: the curator must be its own key, not the admin"); }
+        out.push((name, a));
+    }
+    Ok(out)
+}
+
+/// The factory sets wasm admin = creator. MsgUpdateAdmin is never granted to a script session
+/// (cw-orch-kms policy), so each creator key sends it itself.
+fn write_update_admin(ctx: &Ctx, creators: &[(&'static str, String)]) -> Result<()> {
+    let mut msgs = Vec::new();
+    for (name, creator) in creators {
+        if creator == &ctx.cli.admin { continue; }
+        if let Some(addr) = ctx.state.addr(&format!("drop:{name}")) {
+            let key = if *name == MARAIN_ORBS { "marain" } else { "benders" };
+            msgs.push(json!({"drop": name, "signer": creator, "msg": {"@type": "/cosmwasm.wasm.v1.MsgUpdateAdmin",
+                "sender": creator, "new_admin": ctx.cli.admin, "contract": addr},
+                "cw_orch": format!("TERP_SCRIPT_BROADCAST=1 cargo run --bin svg_curator -- handoff --name {key} --contract {addr} --admin {} --broadcast <same --network/--grpc/--rpc/--lcd>", ctx.cli.admin)}));
+        }
+    }
+    if msgs.is_empty() { return Ok(()); }
+    std::fs::create_dir_all(&ctx.cli.out)?;
+    let p = ctx.cli.out.join("svg_update_admin.json");
+    std::fs::write(&p, serde_json::to_string_pretty(&json!({"note": "each curator key signs its own MsgUpdateAdmin via svg_curator handoff (cw-orch); not a session step", "txs": msgs}))?)?;
+    println!("[svg] creator -> {} admin handoff msgs -> {}", ctx.cli.admin, p.display());
+    Ok(())
+}
+
 fn verify(ctx: &mut Ctx) -> Result<()> {
     let q = ctx.query()?;
     let mut rows = Vec::new();
@@ -851,14 +903,25 @@ fn verify(ctx: &mut Ctx) -> Result<()> {
     for (name, rec) in &ctx.state.contracts {
         let info = q.wasm_querier().contract_info(&Addr::unchecked(&rec.address));
         let (admin, code_id) = match &info { Ok(i) => (i.admin.as_ref().map(|a| a.to_string()), Some(i.code_id)), Err(_) => (None, None) };
-        let expect = if ADMINLESS.contains(&name.as_str()) { "adminless" } else if name.starts_with("drop:") { "factory-set" } else { "admin" };
+        let expect = if ADMINLESS.contains(&name.as_str()) { "adminless" } else if name.starts_with("drop:") { "admin (after curator handoff)" } else { "admin" };
         let ok = match expect {
             "adminless" => admin.is_none(),
-            "factory-set" => info.is_ok(),
+            "admin (after curator handoff)" => admin.as_deref() == Some(ctx.cli.admin.as_str()),
             _ => admin.as_deref() == Some(ctx.cli.admin.as_str()),
         };
         if !ok || info.is_err() { failures.push(format!("{name}: admin {admin:?}, expected {expect}")); }
         rows.push(json!({"name": name, "address": rec.address, "code": rec.code, "code_id": code_id, "admin": admin, "expected": expect, "ok": ok, "tx": rec.tx}));
+    }
+    if let Ok(creators) = drop_creators(ctx) {
+        for (name, want) in creators {
+            let Some(a) = ctx.state.addr(&format!("drop:{name}")) else { continue };
+            let a = Addr::unchecked(&a);
+            let own = q.wasm_querier().smart_query::<_, Value>(&a, &json!({"get_creator_ownership": {}})).unwrap_or(Value::Null);
+            let wd = q.wasm_querier().smart_query::<_, Value>(&a, &json!({"get_withdraw_address": {}})).unwrap_or(Value::Null);
+            if own["owner"].as_str() != Some(want.as_str()) { failures.push(format!("drop:{name}: creator {}, expected {want}", own["owner"])); }
+            if wd.as_str() != Some(ctx.cli.admin.as_str()) { failures.push(format!("drop:{name}: withdraw address {wd}, expected {}", ctx.cli.admin)); }
+            println!("  drop:{name} creator {} withdraw {wd}", own["owner"]);
+        }
     }
     let mut owner = Value::Null;
     if let Some(f) = ctx.state.addr("svg-minter") {
@@ -867,10 +930,13 @@ fn verify(ctx: &mut Ctx) -> Result<()> {
         if let Some(want) = want {
             let ok = owner["owner"].as_str() == Some(want.as_str()) || owner["pending_owner"].as_str() == Some(want.as_str());
             if !ok { failures.push(format!("svg-minter: ownership {owner}, expected {want}")); }
-            for series in [MARAIN_SERIES, BENDERS_SERIES] {
+            let cur = drop_creators(ctx).ok();
+            for (i, series) in [MARAIN_SERIES, BENDERS_SERIES].into_iter().enumerate() {
+                let mut wants = vec![want.clone()];
+                if let Some(c) = &cur { wants.push(c[i].1.clone()); }
                 let info = q.wasm_querier().smart_query::<_, Value>(&Addr::unchecked(&f), &json!({"series": {"series": series}})).unwrap_or(Value::Null);
                 let ops = info.pointer("/config/operators").cloned().unwrap_or(Value::Null);
-                if ops != json!([want]) { failures.push(format!("svg-minter series {series}: operators {ops}, expected [{want}]")); }
+                if ops != json!(wants) { failures.push(format!("svg-minter series {series}: operators {ops}, expected {wants:?}")); }
                 println!("  series {series} operators {ops}");
             }
             println!("  svg-minter ownership {owner}");

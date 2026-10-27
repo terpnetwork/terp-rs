@@ -89,6 +89,7 @@ serde_json = { workspace = true }
 terp-rs = { workspace = true, features = ["default"] }
 terp-scripts = { workspace = true, features = ["hash-market"] }
 tokio = { version = "1", features = ["full"] }
+bip39 = { version = "2.0.0", features = ["rand"] }
 tracing = "0.1"
 ibc-proto = { workspace = true }
 dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
@@ -136,3 +137,8 @@ path = "src/bin/mainnet_deploy.rs"
 [[bin]]
 name = "svg_ops"
 path = "src/bin/svg_ops.rs"
+
+
+[[bin]]
+name = "svg_curator"
+path = "src/bin/svg_curator.rs"

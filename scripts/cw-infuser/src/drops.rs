@@ -19,19 +19,32 @@ pub struct Drop {
     pub msg: InstantiateMsg,
 }
 
+/// Creator (cw721 creator owner, withdraw address and, via the factory, wasm admin) per drop.
+pub struct Creators<'a> {
+    /// Withdraw (proceeds) + royalty recipient for every drop.
+    pub withdraw: &'a str,
+    pub marain: &'a str,
+    pub benders: &'a str,
+    pub yijing: &'a str,
+}
+
 pub fn initial_collections(creator: &str, denom: &str) -> Result<Vec<Drop>> {
+    initial_collections_with(&Creators { withdraw: creator, marain: creator, benders: creator, yijing: creator }, denom)
+}
+
+pub fn initial_collections_with(c: &Creators, denom: &str) -> Result<Vec<Drop>> {
     Ok(vec![
         Drop {
             name: MARAIN_ORBS,
-            msg: marain_orbs(creator)?,
+            msg: marain_orbs(c.marain, c.withdraw)?,
         },
         Drop {
             name: KARA_GIPPY,
-            msg: kara_gippy(creator)?,
+            msg: kara_gippy(c.benders, c.withdraw)?,
         },
         Drop {
             name: YIJING_HARMONY,
-            msg: yijing_harmony(creator, denom)?,
+            msg: yijing_harmony(c.yijing, c.withdraw, denom)?,
         },
     ])
 }
@@ -46,7 +59,7 @@ fn pack(template: &str, vars: &[cw_svg::VariableDef]) -> Result<Binary> {
     Ok(Binary::from(packed))
 }
 
-fn marain_orbs(creator: &str) -> Result<InstantiateMsg> {
+fn marain_orbs(creator: &str, withdraw: &str) -> Result<InstantiateMsg> {
     let themes = svg_collections::marain::themes();
     let vars = svg_collections::marain::variables(&themes);
     let template = svg_collections::marain::template();
@@ -65,11 +78,11 @@ fn marain_orbs(creator: &str) -> Result<InstantiateMsg> {
         },
         minter: None,
         creator: Some(creator.to_string()),
-        withdraw_address: Some(creator.to_string()),
+        withdraw_address: Some(withdraw.to_string()),
     })
 }
 
-fn kara_gippy(creator: &str) -> Result<InstantiateMsg> {
+fn kara_gippy(creator: &str, withdraw: &str) -> Result<InstantiateMsg> {
     let frame = svg_collections::ascii::sanitize(
         "Kara holds the room\nGippy walks the day\n################\n  ##    ##    ##\n ####  ####  ####\n",
     )
@@ -95,18 +108,18 @@ fn kara_gippy(creator: &str) -> Result<InstantiateMsg> {
         },
         minter: None,
         creator: Some(creator.to_string()),
-        withdraw_address: Some(creator.to_string()),
+        withdraw_address: Some(withdraw.to_string()),
     })
 }
 
-fn yijing_harmony(creator: &str, denom: &str) -> Result<InstantiateMsg> {
+fn yijing_harmony(creator: &str, withdraw: &str, denom: &str) -> Result<InstantiateMsg> {
     let mut cfg = YiJingConfig::default();
     cfg.denom = denom.to_string();
     cfg.usdt_decimals = 6;
     cfg.minter = None;
     cfg.creator = Some(creator.to_string());
-    cfg.withdraw_address = Some(creator.to_string());
-    cfg.royalty_recipient = Some(creator.to_string());
+    cfg.withdraw_address = Some(withdraw.to_string());
+    cfg.royalty_recipient = Some(withdraw.to_string());
     let mut msg = yijing::yijing_harmony_init(&cfg)?;
     msg.collection_info_extension.price_tiers = vec![cw721_svg::PriceTier {
         until_count: yijing::SUPPLY,
