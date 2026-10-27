@@ -156,6 +156,68 @@
     }
   },
   "morocco-1": {
+    "ibc_new_clients": {
+      "tx": {
+        "create": "F3013633327D67C06DAA7798B32FB03BEC3ADDB120E7B56D4D2377A04335DD60",
+        "create_height": 24124789,
+        "grant": "29E6C216217B1D613A44A939D4074215C7A6E170527032CEF5799A28AE07F860",
+        "feegrant": "62A7BB5924B6A6DEB53B5892E9141812D4C8688B5C94C5A264B20F3F9C8E9D16",
+        "time": "2026-10-27T15:18:02Z"
+      },
+      "clients": [
+        {
+          "client_id": "07-tendermint-43",
+          "chain_id": "osmosis-1",
+          "latest_height": 73290599,
+          "trusting_period_secs": 806400,
+          "max_clock_drift_secs": 40,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-3"
+        },
+        {
+          "client_id": "07-tendermint-44",
+          "chain_id": "osmosis-1",
+          "latest_height": 73290601,
+          "trusting_period_secs": 806400,
+          "max_clock_drift_secs": 600,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-33"
+        },
+        {
+          "client_id": "07-tendermint-45",
+          "chain_id": "atomone-1",
+          "latest_height": 10998225,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-34"
+        },
+        {
+          "client_id": "07-tendermint-46",
+          "chain_id": "juno-1",
+          "latest_height": 43134590,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        },
+        {
+          "client_id": "07-tendermint-47",
+          "chain_id": "akashnet-2",
+          "latest_height": 29253738,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        },
+        {
+          "client_id": "07-tendermint-48",
+          "chain_id": "penumbra-1",
+          "latest_height": 13393260,
+          "trusting_period_secs": 403200,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        }
+      ]
+    },
     "assets": {
       "": [
         {
