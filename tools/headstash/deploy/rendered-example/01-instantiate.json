@@ -1,0 +1,6 @@
+{
+  "genesis_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  "genesis_label": "headstash-EXAMPLE",
+  "token_strategy": {"existing_fungible": {"proof": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=", "raw": "uterp"}},
+  "wavs": {"EXAMPLE": "operator set PoP"}
+}

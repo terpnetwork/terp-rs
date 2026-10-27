@@ -1,7 +1,8 @@
 # Headstash 2026: mainnet deploy runbook (morocco-1)
 
 Status: draft. Nothing here has been broadcast. Messages live in `tools/headstash/deploy/`.
-Render them with `python3 tools/headstash/deploy/render.py decisions.json`. It reads
+Render them with `python3 tools/headstash/deploy/render.py decisions.json --circuit <dir with params.bin, vk_body.bin>`
+(`--partial` before the contract exists; `--dry-run` for an EXAMPLE sample in `deploy/rendered-example/`). It reads
 `tools/headstash/target/eligibility/` and fills `{{PLACEHOLDERS}}`. The eligibility root is
 not hardcoded anywhere; it is read from the build at render time.
 
@@ -50,11 +51,11 @@ not hardcoded anywhere; it is read from the build at render time.
    Optional: `instantiate2` with a fixed salt to know the address in advance.
 3. Put the address in `decisions.json` as `CONTRACT_ADDR`, rerun `render.py`. This derives `ctx`.
 4. **Open campaign** (deployer): execute `rendered/02-set-epoch-campaign-open.json`. It carries
-   the eligibility root, depth, ctx, vk_id 2, vk_hash, amount classes, cutoff and anchor cadence.
+   the eligibility root, depth, ctx, vk_id 3, the note vk_hash, amount classes, cutoff and anchor cadence.
    Verify with `{"epoch_campaign":{}}`.
 5. **Hand ownership** (deployer, then new owner): `03-update-ownership-transfer.json`, then the
    owner executes `03b-update-ownership-accept.json`. Verify `{"ownership":{}}`.
-6. **Governance proposal**: `rendered/proposal-headstash-fund-and-oracle.json`
+6. **Governance proposal**: `rendered/submit-proposal.json`
    (`terpd tx gov submit-proposal <file> --from proposer`). Registers the `headstash-claim`
    oracle source and sends the funding amount to the contract. 3 d deposit + 4 d vote.
 7. **Escrow for sudo gas** (any funded account): `terpd tx hashmerchant register-contract
@@ -132,14 +133,17 @@ sha256 `3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b`, 1,096
    a. `/cosmwasm.wasm.v1.MsgStoreFullCircuit` with `sender` = gov module
       `terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq`, `auth {circuit_type 0, curve_type 0, k 11}`,
       `params_body`, `vk_body` (blob sha256 must equal the campaign `vk_hash`). Mainnet
-      `circuit_upload_access` is Nobody, so this has to come from gov. In wasmd source
-      (`wasmd-bulk-memory` 2d5821c1) `StoreFullCircuit` uses `selectAuthorizationPolicy(sender)`,
-      which gives the gov authority the gov policy, so a gov-signed store passes. **Check this against
-      the mainnet binary (v0.39.0) before submitting.**
+      `circuit_upload_access` is Nobody, so this has to come from gov. Verified against terpd v6.4.0
+      (84a11395, = mainnet): `StoreFullCircuit` -> `selectAuthorizationPolicy(sender)` returns
+      `GovAuthorizationPolicy` for the gov authority, whose `CanCreateCode` is `true`, so
+      `authorizeCircuitUpload` skips the Nobody check and the deposit. Local v6.4.0 node with
+      `circuit_upload_access` Nobody: the gov proposal passed and emitted `store_full_circuit`
+      (param_id, zk_id); the same msg from a user account failed `circuit deposit required`.
+      Note: zk_id is chain-assigned (1 on a fresh chain), so take it from the event.
    b. `MsgCommunityPoolSpend` funding the contract.
    Bundling is safe: the zk_id is only known after execution, and the contract pays nothing until
    the owner binds it in step 4, so funds sit idle until then.
-4. **Bind** (owner): `{"bind_note_circuit":{"zk_id":<from the proposal's store event>}}`. The contract
+4. **Bind** (owner): `rendered/06-bind-note-circuit.json` (set `NOTE_ZK_ID` from the proposal's store event). The contract
    checks sha256(circuit data) == vk_hash and refuses a rebind ("circuit is fixed").
 5. **Relay** with fee grants: `HEADSTASH_FEEGRANT=1`, `HEADSTASH_GAS_PRICE=0.05uthiol`,
    `HEADSTASH_CLAIM_GAS` (400000 default), bind 127.0.0.1:18795 (not 8791) behind the single nginx,

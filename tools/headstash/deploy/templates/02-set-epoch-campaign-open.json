@@ -12,8 +12,8 @@
   "max_rows": {{MAX_ROWS}},
   "allocation_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
   "root_id": 0,
-  "vk_id": 2,
-  "vk_hash": "{{VK_HASH_B64}}",
+  "vk_id": {{NOTE_VK_ID}},
+  "vk_hash": "{{NOTE_VK_HASH_B64}}",
   "sweep_recipient": "{{SWEEP_RECIPIENT}}",
   "registration": {
     "eligibility_root": "{{ELIGIBILITY_ROOT_B64}}",

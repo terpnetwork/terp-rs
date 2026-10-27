@@ -1,0 +1,43 @@
+{
+  "mode": "DRY RUN - EXAMPLE VALUES, DO NOT SUBMIT",
+  "eligibility_root": "ffad92213f2c2001d73e56938064b0f2764535f220e16256abcd235f20338a57",
+  "identities": 17791,
+  "rows": 18248,
+  "total_leaf_uterp": 66466301607378,
+  "unallocated_vs_67M_uterp": 533698392622,
+  "amount_classes": 1826,
+  "unique_amount_identities": 1563,
+  "ctx_hex": "4709dad7bce9ec14348bb9770b5a445c8e49531140519aaa442ca4ef560d7c38",
+  "note_vk_hash": "34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398",
+  "note_params_bytes": 131140,
+  "note_vk_bytes": 3883,
+  "contract_owner": "terp15jmsc20sy9z7pj9wwm2zz0pmmhqpkwhfwdg9p2",
+  "funding_amount_uterp": "1234567",
+  "feegrant_source": "community-pool",
+  "feegrant_budget_uthiol": 4800000000,
+  "operators": 3,
+  "feegrant_below_recommended": false,
+  "proposal_messages": [
+    "/cosmwasm.wasm.v1.MsgStoreFullCircuit",
+    "/terp.hashmerchant.v1.MsgRegisterChain",
+    "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+    "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+    "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+    "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend"
+  ],
+  "written": [
+    "01-instantiate.json",
+    "02-set-epoch-campaign-open.json",
+    "03-update-ownership-transfer.json",
+    "03b-update-ownership-accept.json",
+    "04-accept-anchor.json",
+    "05-set-epoch-campaign-final-anchor.json",
+    "06-bind-note-circuit.json",
+    "08-stage-epoch-batch.example.json",
+    "09-sweep-unclaimed.json",
+    "forum-post.md",
+    "proposal-body.md",
+    "submit-proposal.json"
+  ],
+  "skipped_waiting_on": {}
+}

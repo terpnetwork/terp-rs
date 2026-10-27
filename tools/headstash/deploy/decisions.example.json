@@ -15,5 +15,26 @@
   "SWEEP_RECIPIENT": "{{DECISION: where leftovers go after cutoff (e.g. gov module, then a pool-return proposal)}}",
   "FUNDING_AMOUNT_UTERP": "{{DECISION: leaf total (default) or 67000000000000}}",
   "DEPOSIT_UTERP": "10000000000",
-  "PROPOSER": "{{DECISION}}"
+  "PROPOSER": "{{DECISION}}",
+  "CODE_ID": "{{fill after store code}}",
+  "WASM_SHA256": "3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b",
+  "SOURCE_COMMIT": "{{DECISION: terp-core commit the artifact was built from}}",
+  "PROPOSAL_METADATA_URI": "{{fill: https URL of the proposal JSON/markdown}}",
+  "FORUM_URL": "{{fill: https URL of the forum post}}",
+  "FINAL_ANCHOR_B64": "{{fill after the last accepted anchor}}",
+  "NOTE_ZK_ID": "{{fill from the proposal store_full_circuit event zk_id}}",
+  "FEEGRANT_FUNDING_SOURCE": "{{DECISION: community-pool or foundation-dao}}",
+  "OPERATORS": [
+    {
+      "label": "{{DECISION: operator name}}",
+      "addr": "{{DECISION: operator terp1 address (fee granter)}}",
+      "budget_uthiol": "{{DECISION: e.g. 2400000000}}"
+    },
+    {
+      "label": "{{DECISION: operator name}}",
+      "addr": "{{DECISION}}",
+      "budget_uthiol": "{{DECISION}}"
+    }
+  ],
+  "_doc": "Any {{...}} value makes render.py exit 1. OPERATORS may have any length; total budget >= 4761.7 THIOL recommended. Dry run: render.py --dry-run --circuit DIR"
 }
