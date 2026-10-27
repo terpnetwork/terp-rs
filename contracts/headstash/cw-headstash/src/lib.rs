@@ -496,6 +496,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 anchor.as_slice(),
             )?)
         }
+        QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            deps.api.addr_validate(&dest)?;
+            direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
+            to_json_binary(&true)
+        }
         QueryMsg::DirectClaim {} => to_json_binary(&direct::query_info(deps.storage, &env)?),
         QueryMsg::NoteList { identity } => {
             to_json_binary(&notes::query_note_list(deps.storage, &identity)?)

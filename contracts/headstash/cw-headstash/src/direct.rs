@@ -157,7 +157,7 @@ pub mod test_hook {
     pub fn ok() -> bool { OK.with(|c| c.get()) }
 }
 
-fn verify(deps: &DepsMut, zk_id: u64, proof: &[u8], inst: &[u8]) -> StdResult<()> {
+fn verify(deps: Deps, zk_id: u64, proof: &[u8], inst: &[u8]) -> StdResult<()> {
     if proof.is_empty() {
         return Err(StdError::msg("invalid note proof"));
     }
@@ -180,17 +180,18 @@ fn verify(deps: &DepsMut, zk_id: u64, proof: &[u8], inst: &[u8]) -> StdResult<()
     }
 }
 
-/// Anyone. Pays `amount` to `info.sender` when the proof verifies under the pinned circuit.
-pub fn claim_note(
-    mut deps: DepsMut,
+/// Every read-only check a claim must pass (shared by `ClaimNote` and the
+/// `CheckNoteClaim` query the fee-grant sidecar uses before granting).
+pub fn check_claim(
+    deps: Deps,
     env: &Env,
-    info: MessageInfo,
     campaign: &EpochCampaignParams,
-    root: Binary,
-    nullifier: Binary,
+    dest: &str,
+    root: &Binary,
+    nullifier: &Binary,
     amount: u64,
-    proof: Binary,
-) -> Result<Response, StdError> {
+    proof: &Binary,
+) -> StdResult<(u32, String)> {
     note_campaign(campaign)?;
     let cfg = DIRECT_CFG.may_load(deps.storage)?.ok_or_else(|| StdError::msg("direct claims are not enabled"))?;
     if cfg.vk_hash != campaign.vk_hash {
@@ -199,27 +200,46 @@ pub fn claim_note(
     if env.block.height > campaign.cutoff_height {
         return Err(StdError::msg("claim window closed"));
     }
-    canonical32(&root, "root")?;
-    canonical32(&nullifier, "nullifier")?;
+    canonical32(root, "root")?;
+    canonical32(nullifier, "nullifier")?;
     if !crate::registration::anchor_known(deps.storage, root.as_slice())? {
-        return Err(StdError::msg("root is not a closed-epoch anchor"));
+        return Err(StdError::msg("root is not an accepted anchor"));
     }
     if !DENOMS_UTERP.contains(&amount) {
         return Err(StdError::msg("amount is not a denomination"));
     }
     let class = campaign.amounts.iter().find(|c| c.amount == amount).ok_or_else(|| StdError::msg("amount not in campaign"))?;
     let paid = DIRECT_CLASS_PAID.may_load(deps.storage, amount)?.unwrap_or(0);
-    if paid as u64 >= class.cap as u64 {
+    if paid >= class.cap {
         return Err(StdError::msg("denomination cap reached"));
     }
     let nf_hex = hex::encode(nullifier.as_slice());
     if crate::epoch::is_public_reserved(deps.storage, &nf_hex)? {
         return Err(StdError::msg("note is on the public path"));
     }
-    let inst = instances(campaign.ctx.as_slice(), root.as_slice(), nullifier.as_slice(), info.sender.as_str(), amount)?;
-    verify(&deps, cfg.zk_id, proof.as_slice(), &inst)?;
+    let key = nullifier_storage_key(campaign.root_id, &nf_hex);
+    if crate::NULLIFIERS.has(deps.storage, key.clone()) {
+        return Err(StdError::msg("nullifier already exists"));
+    }
+    let inst = instances(campaign.ctx.as_slice(), root.as_slice(), nullifier.as_slice(), dest, amount)?;
+    verify(deps, cfg.zk_id, proof.as_slice(), &inst)?;
+    Ok((paid, key))
+}
+
+/// Anyone. Pays `amount` to `info.sender` when the proof verifies under the pinned circuit.
+pub fn claim_note(
+    deps: DepsMut,
+    env: &Env,
+    info: MessageInfo,
+    campaign: &EpochCampaignParams,
+    root: Binary,
+    nullifier: Binary,
+    amount: u64,
+    proof: Binary,
+) -> Result<Response, StdError> {
+    let (paid, key) = check_claim(deps.as_ref(), env, campaign, info.sender.as_str(), &root, &nullifier, amount, &proof)?;
     // Shared nullifier set with the lane path, same root scope: one spend per note.
-    verify_nullifier_stateful(deps.branch().storage, nullifier_storage_key(campaign.root_id, &nf_hex))?;
+    verify_nullifier_stateful(deps.storage, key)?;
     DIRECT_CLASS_PAID.save(deps.storage, amount, &(paid + 1))?;
     let n = DIRECT_CLAIMED.may_load(deps.storage)?.unwrap_or(0) + 1;
     DIRECT_CLAIMED.save(deps.storage, &n)?;

@@ -265,6 +265,16 @@ pub enum QueryMsg {
     /// Direct-claim binding, the ctx this contract expects, and the paid count.
     #[returns(crate::direct::DirectClaimInfo)]
     DirectClaim {},
+    /// Dry-run of `ClaimNote` for `dest` (the fresh wallet). Errors with the same
+    /// reason the execute would; `true` when the claim would pay.
+    #[returns(bool)]
+    CheckNoteClaim {
+        dest: String,
+        root: Binary,
+        nullifier: Binary,
+        amount: u64,
+        proof: Binary,
+    },
 }
 
 #[cw_serde]
