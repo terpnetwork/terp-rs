@@ -3,8 +3,33 @@
 Status: draft. Nothing here has been broadcast. Messages live in `tools/headstash/deploy/`.
 Render them with `python3 tools/headstash/deploy/render.py decisions.json --circuit <dir with params.bin, vk_body.bin>`
 (`--partial` before the contract exists; `--dry-run` for an EXAMPLE sample in `deploy/rendered-example/`). It reads
-`tools/headstash/target/eligibility/` and fills `{{PLACEHOLDERS}}`. The eligibility root is
-not hardcoded anywhere; it is read from the build at render time.
+`tools/headstash/target/eligibility-denoms/` (the depth-17 note tree in `notes/` for the campaign, the identity tree for
+stats) and fills `{{PLACEHOLDERS}}`. The eligibility root is not hardcoded anywhere; it is read from the build.
+
+**v1 is the direct path** (default, `LANE_PATH` false): the contract verifies each note proof and pays at once. No
+hashmerchant `MsgRegisterChain`, lane, custody key or oracle settings are rendered or required, and
+`05-set-epoch-campaign-final-anchor` and `08-stage-epoch-batch` are not written. `LANE_PATH: true` (or `--lane`)
+opts in to the old lane path (Appendix: lane path).
+
+### Decisions a real direct render needs
+Before the contract exists (`--partial`): `CHAIN_ID`, `CAMPAIGN_LABEL`, `CONTRACT_OWNER`, `WASM_ADMIN`,
+`WAVS_POO_JSON`, `CUTOFF_HEIGHT`, `ANCHOR_START_HEIGHT`, `ANCHOR_INTERVAL`, `MIN_ANONYMITY_SET`, `MAX_ROWS`,
+`SWEEP_RECIPIENT`, `FUNDING_AMOUNT_UTERP` (>= note total, render fails otherwise), `DEPOSIT_UTERP`, `PROPOSER`,
+`SOURCE_COMMIT`, `FEEGRANT_FUNDING_SOURCE`, `OPERATORS`.
+After deploy: `CONTRACT_ADDR` (derives ctx), `CODE_ID`, `WASM_SHA256`, `NOTE_ZK_ID` (assigned by the chain when the
+proposal's `MsgStoreFullCircuit` executes), `PROPOSAL_METADATA_URI`, `FORUM_URL`.
+
+Why these anchors, and not others:
+- `ANCHOR_START_HEIGHT`, `ANCHOR_INTERVAL`, `MIN_ANONYMITY_SET` stay required: `claim_note` only accepts a proof whose
+  root is an accepted registration anchor (`direct.rs`), and `accept_anchor` enforces start height, interval and
+  minimum anonymity set. `04-accept-anchor` is part of the direct flow.
+- `FINAL_ANCHOR_B64` is lane-only: it sets `allocation_root`, which only lane batches read
+  (`epoch.rs` apply/stage batch). Direct campaigns keep `allocation_root` = genesis root (zeros).
+- `ctx` is `sha256("terp-hs-direct-ctx-v1"||0||chain_id||0||contract)` with the top two bits cleared, the value the
+  contract returns from `{"direct_claim":{}}` (`expected_ctx`); the label is not part of it.
+- `trusted` cannot be empty (contract validation) but the direct path never checks batch signatures, so a direct
+  render puts one nothing-up-my-sleeve key there: `sha256("terp-hs-direct-v1: no lane, no trusted batch key")`.
+- `WAVS_POO_JSON` is checked at instantiate for every path (contract `InstantiateMsg`), so it stays required.
 
 ## Facts read from mainnet (2026-10-26 ~17:44 UTC, height 24,104,724, terp.api.m.anode.team)
 - App version 6.4.0. `code_upload_access` Everybody, `instantiate_default_permission` Everybody:
@@ -22,68 +47,58 @@ not hardcoded anywhere; it is read from the build at render time.
 | Role | Signs | Recommended |
 |---|---|---|
 | Deployer | store, instantiate, initial `set_epoch_campaign`, ownership transfer | ops key, then hands off |
-| Contract owner | `set_epoch_campaign` (final anchor), `stage_epoch_batch`, `sweep_unclaimed` | TerpNET DAO or ops multisig (decision) |
+| Contract owner | `bind_note_circuit`, `sweep_unclaimed` | TerpNET DAO or ops multisig (decision) |
 | Wasm admin | migrate | gov module `terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq` |
-| Governance | `MsgRegisterChain` + `MsgCommunityPoolSpend` | proposal |
-| Relayer key | registration batches via relay | hot key, gas only |
-| Anyone | `accept_anchor` | permissionless |
-| Lane custody key | signs batches the oracle attests | sidecar operator, ed25519 |
-| Validators | vote extensions for the accepted root | 2/3 power running the sidecar |
+| Governance | `MsgStoreFullCircuit` + `MsgCommunityPoolSpend` | proposal |
+| Relay operators | registration batches, one-tx fee grants (THIOL) | hot keys, funded by the proposal |
+| Anyone | `accept_anchor`, `claim_note` | permissionless |
 
 ## Pre-flight (all must pass)
-1. Eligibility rebuild final; `render.py` report shows root, identities, leaf total. Leaf total
-   is slightly under 67M TERP; the excluded share stays unallocated in the pool.
+1. Eligibility rebuild final with `--denominations`; `render.py` report shows note root (depth 17), 98,841 notes,
+   note total. Excluded shares and sub-1-TERP remainders stay in the pool.
 2. Wasm built with the CosmWasm optimizer (Rust 1.91); sha256 recorded in
    `tools/headstash/artifacts/checksums.txt`; `cosmwasm-check` passes; matches the e2e code.
-3. Prover sources committed (security review M4); `membership_vk_hash` prints `94d43261...ed11`.
-4. Full e2e (`tools/headstash/e2e/run.py`) green on the final wasm and the mainnet binary version.
-5. Decide whether mainnet needs the `b2339a9c` VE custody fix (upgrade) before payout.
-6. Validator sidecar readiness: >= 2/3 voting power confirms `[hashmerchant] sidecar-url`.
-7. Path delivery solved (security review H2).
-8. Decisions file complete; `render.py` exits 0.
+3. Note circuit blob hash `34d11437...5398` (render checks it).
+4. Direct e2e (`tools/headstash/e2e/run_direct.py`) green on the final wasm and the mainnet binary version.
+5. Path delivery solved (security review H2).
+6. Decisions file complete; `render.py` exits 0.
 
-## Steps
+## Steps (direct path)
 1. **Store code** (deployer): `terpd tx wasm store cw_headstash.wasm --from deployer --gas auto
    --gas-adjustment 1.3 --gas-prices 0.05uterp --chain-id morocco-1`. Check `code-info` checksum.
 2. **Instantiate** (deployer), admin gov:
-   `terpd tx wasm instantiate <code> "$(cat rendered/01-instantiate.json)" --label headstash-2026-1
+   `terpd tx wasm instantiate <code> "$(cat rendered/01-instantiate.json)" --label <CAMPAIGN_LABEL>
    --admin terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq --from deployer`.
-   Optional: `instantiate2` with a fixed salt to know the address in advance.
-3. Put the address in `decisions.json` as `CONTRACT_ADDR`, rerun `render.py`. This derives `ctx`.
-4. **Open campaign** (deployer): execute `rendered/02-set-epoch-campaign-open.json`. It carries
-   the eligibility root, depth, ctx, vk_id 3, the note vk_hash, amount classes, cutoff and anchor cadence.
-   Verify with `{"epoch_campaign":{}}`.
-5. **Hand ownership** (deployer, then new owner): `03-update-ownership-transfer.json`, then the
-   owner executes `03b-update-ownership-accept.json`. Verify `{"ownership":{}}`.
-6. **Governance proposal**: `rendered/submit-proposal.json`
-   (`terpd tx gov submit-proposal <file> --from proposer`). Registers the `headstash-claim`
-   oracle source and sends the funding amount to the contract. 3 d deposit + 4 d vote.
-7. **Escrow for sudo gas** (any funded account): `terpd tx hashmerchant register-contract
-   <contract> headstash-claim bank 1000000uterp`. Top up with `refill-escrow`.
-   The airdrop escrow is the contract's own uterp balance from step 6.
-8. **Relay** (operator): run `headstash-register-relay` on 127.0.0.1:<port other than 8791>
-   behind the single nginx (`proxy_set_header X-Real-IP $remote_addr`), env
-   `HEADSTASH_CONTRACT`, `HEADSTASH_CHAIN_ID=morocco-1`, `HEADSTASH_ELIGIBILITY=tree.json`,
-   `HEADSTASH_FLUSH_SECS=6`, `HEADSTASH_MAX_BATCH=25`, relayer key in the OS keyring.
-9. **Registration window**: anyone sends `04-accept-anchor.json` each `ANCHOR_INTERVAL` from
-   `ANCHOR_START_HEIGHT`. Close when the registration count passes `MIN_ANONYMITY_SET` and the
-   announced date arrives; take the last anchor.
-10. **Freeze allocation** (owner): `05-set-epoch-campaign-final-anchor.json` with
-    `FINAL_ANCHOR_B64`. Lane: post the same campaign to `/ve/headstash/campaign`.
-11. **Claims**: users prove in the browser (vk id 2, K=11) and submit to the lane.
-12. **Seal cadence**: owner stages each lane batch (`08-stage-epoch-batch.example.json`, max_rows
-    rows); lane seals at each epoch height; validators attest `headstash-accepted`; sudo pays.
-    Suggested cadence daily until cutoff.
-13. **Cutoff and sweep** (owner): after `CUTOFF_HEIGHT`, after the last staged batch is paid,
-    `09-sweep-unclaimed.json` sends leftovers to `SWEEP_RECIPIENT`.
+3. Put the address in `decisions.json` as `CONTRACT_ADDR`, rerun `render.py`. This derives the direct `ctx`;
+   check it equals `expected_ctx` from `{"direct_claim":{}}`.
+4. **Open campaign** (deployer): `rendered/02-set-epoch-campaign-open.json` (note root, depth 17, ctx, vk_id 3,
+   note vk_hash, 12 denomination classes with note counts as caps, cutoff, anchor cadence).
+5. **Hand ownership**: `03-update-ownership-transfer.json`, then the owner sends `03b-update-ownership-accept.json`.
+6. **Governance proposal**: `rendered/submit-proposal.json`. Stores the note circuit and sends the note total to the
+   contract and each operator its THIOL share. 3 d deposit + 4 d vote.
+7. **Bind circuit** (owner): put the `zk_id` from the `store_full_circuit` event in `NOTE_ZK_ID`, rerun, send
+   `06-bind-note-circuit.json`.
+8. **Relay** (operators): `headstash-register-relay` on 127.0.0.1 behind the single nginx; registration batches and
+   one-transaction fee grants scoped to the contract.
+9. **Registration and anchors**: anyone sends `04-accept-anchor.json` each `ANCHOR_INTERVAL` from
+   `ANCHOR_START_HEIGHT` once the set reaches `MIN_ANONYMITY_SET`.
+10. **Claims**: users prove in the browser against an accepted anchor and call `claim_note`; paid at once.
+11. **Cutoff and sweep** (owner): after `CUTOFF_HEIGHT`, `09-sweep-unclaimed.json` sends leftovers to
+    `SWEEP_RECIPIENT`.
+
+### Appendix: lane path (opt-in, not v1)
+`LANE_PATH: true` adds `CUSTODY_PUBKEY_B64`, `SIDECAR_LANE_URL` and later `FINAL_ANCHOR_B64` to the required
+decisions, puts `MsgRegisterChain` back in the proposal, uses the custody key as `trusted` and the lane ctx, and
+writes `05-set-epoch-campaign-final-anchor` and `08-stage-epoch-batch`. It also needs the hashmerchant escrow
+(`register-contract ... headstash-claim`) and >= 2/3 validator sidecars.
 
 ## Abort / rollback
 - Before step 6 passes: nothing is funded; abandon the contract.
 - Proposal fails: no funds move. Fix and resubmit.
-- After funding, before payouts: owner stops staging; gov can migrate (admin) to a code that
+- After funding: the contract has no pause message; gov can migrate (admin) to a code that
   returns funds, or wait for cutoff and sweep. Relay can be stopped at any time.
 - Bad batch staged but not attested: lane withholds the seal; nothing pays.
-- Oracle misbehaviour: gov disables the chain (`MsgRegisterChain` with `enabled:false`, or params).
+- Lane path only: oracle misbehaviour, gov disables the chain (`MsgRegisterChain` with `enabled:false`).
 
 ## Monitoring
 - Contract uterp balance vs sum of paid rows (`wasm` events `minted`).

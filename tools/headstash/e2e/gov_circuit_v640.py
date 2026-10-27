@@ -30,7 +30,7 @@ if sys.argv[1:] == ["setup"]:
     run("init", "govc", "--chain-id", CID, "--default-denom", "uterp")
     run("keys", "add", "val", "--keyring-backend", "test", "--output", "json", inp="")
     addr = run("keys", "show", "val", "-a", "--keyring-backend", "test").strip()
-    run("genesis", "add-genesis-account", addr, "100000000000uterp,100000000000uthiol", "--keyring-backend", "test")
+    run("genesis", "add-genesis-account", addr, "100000000000000uterp,100000000000uthiol", "--keyring-backend", "test")
     run("genesis", "gentx", "val", "1000000000uterp", "--chain-id", CID, "--keyring-backend", "test")
     run("genesis", "collect-gentxs")
     g = json.loads((H / "config/genesis.json").read_text())

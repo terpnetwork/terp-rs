@@ -6,7 +6,7 @@
   "denom": "{{DENOM_B64}}",
   "amounts": {{AMOUNT_CLASSES_JSON}},
   "reserved": [],
-  "trusted": ["{{CUSTODY_PUBKEY_B64}}"],
+  "trusted": {{TRUSTED_KEYS_JSON}},
   "trusted_verify_threshold": 1,
   "trusted_sign_threshold": 1,
   "max_rows": {{MAX_ROWS}},

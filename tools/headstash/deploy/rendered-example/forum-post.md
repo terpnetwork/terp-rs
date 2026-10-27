@@ -5,8 +5,7 @@ We are preparing a governance proposal to fund the Headstash airdrop from the co
 **Ask:** up to 67M TERP (exact leaf total 66466301607378 uterp; addresses that cannot
 sign (burn/zero, contracts, Safes, program-owned Solana accounts) are excluded and their share
 stays in the pool; see eligibility/exclusions.csv) sent to a new cw-headstash contract whose
-admin is the gov module, plus registering the `headstash-claim` oracle source.
-
+admin is the gov module, which verifies claims itself and pays at once.
 **Why again?** Proposal #32 (2023) funded a public claim contract; it is empty now. This version
 lets holders claim to any Terp address without linking it to their EVM/Solana wallet.
 
@@ -39,8 +38,8 @@ Secret Sesh, Shurlok, Special K, Stoned Ape Club (Solana), Wake and Bake.
 
 Allocated + unallocated + rounding dust (5,863 uterp) = 67,000,000 TERP exactly. Wallet counts are snapshot rows after exclusions; they merge into 17,791 identities (15,744 EVM, 2,047 Solana).
 
-**Known trade-off:** payout amounts are public, so holders with a one-of-a-kind amount are
-easier to link (1,563 of 17,791 identities have a unique amount). We are discussing splitting allocations into fixed denominations; feedback welcome.
-
+**Privacy:** allocations are split into 98841 fixed-denomination notes, so a claim only reveals
+its denomination (each class has at least 5081 notes). Claiming right after registering, or
+all notes at once, can still be correlated by time; the claim page adds random delays.
 Questions on eligibility, timing (registration window, cutoff) and who should own the
 contract are welcome below before we go on-chain.

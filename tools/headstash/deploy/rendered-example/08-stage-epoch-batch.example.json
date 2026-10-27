@@ -1,4 +1,0 @@
-{"stage_epoch_batch": {
-  "digests": ["<base64 sha256(proof bytes), one per row>"],
-  "rows": [{"nullifier": "<base64 32B>", "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=", "destination": "terp1...", "amount": 0, "anchor": "7FU5DHUyw1lYtF8mmzhLurFKCujGDT7OUzAvn8HhvoM="}]
-}}

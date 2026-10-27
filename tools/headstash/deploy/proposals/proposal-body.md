@@ -1,12 +1,18 @@
 # Headstash 2026: fund the private TERP airdrop to 16 partner communities
 
 ## Summary
-This proposal registers the `headstash-claim` oracle source with the hashmerchant module and
-sends {{FUNDING_AMOUNT_UTERP}} uterp from the community pool to the new cw-headstash contract
+<!--DIRECT-->This proposal stores the Headstash note circuit and sends {{FUNDING_AMOUNT_UTERP}} uterp
+<!--/DIRECT--><!--LANE-->This proposal registers the `headstash-claim` oracle source with the hashmerchant module and
+sends {{FUNDING_AMOUNT_UTERP}} uterp
+<!--/LANE--> from the community pool to the new cw-headstash contract
 `{{CONTRACT_ADDR}}`. Eligible holders from 16 partner communities (Ethereum/EVM and Solana)
 register once with a wallet signature, then claim TERP to any Terp address with a
 zero-knowledge proof that does not reveal which eligible wallet they own.
-
+<!--DIRECT-->
+Allocations are split into {{NOTES_COUNT}} fixed-denomination notes ({{NOTE_CLASSES}} classes, 1 to 5,000 TERP)
+totalling {{NOTES_TOTAL_UTERP}} uterp, which is the funded amount. The sub-1-TERP remainder of each
+allocation ({{NOTES_REMAINDER_UTERP}} uterp in total) cannot form a note and stays in the pool.
+<!--/DIRECT-->
 The eligibility tree leaves total {{ELIGIBILITY_TOTAL_UTERP}} uterp, slightly under the 67M TERP
 budget. Addresses that cannot produce a wallet signature were excluded: burn and zero addresses,
 EVM contracts, Safe multisigs and program-owned Solana accounts. Their share is left unallocated
@@ -16,26 +22,39 @@ is published in `eligibility/exclusions.csv`.
 ## What changed since Proposal #32 (Dec 2023)
 - #32 sent 43,476,089.03 TERP to `terp1qeyjez...40ehd` (code 8, admin gov). That contract now
   holds 0 uterp, so nothing is recoverable and funding comes from the pool.
-- Claims are private: registration links a wallet to a Poseidon key commitment; claiming proves
+<!--DIRECT-->- Claims are private: registration links a wallet to one Poseidon key commitment per note; claiming
+  proves membership in the registration tree (Halo2 note circuit, K=11, vk id 3) and reveals only a
+  nullifier and the note denomination.
+- The contract verifies each proof on-chain and pays the claiming address at once. No oracle,
+  hashmerchant lane or custody key is involved.
+<!--/DIRECT--><!--LANE-->- Claims are private: registration links a wallet to a Poseidon key commitment; claiming proves
   membership in the registration tree (Halo2, K=11, vk id 2) and reveals only a nullifier.
 - Payouts are batched and attested by validators through hashmerchant vote extensions.
-- Wasm admin is the gov module. Unclaimed funds are swept after the cutoff.
+<!--/LANE-->- Wasm admin is the gov module. Unclaimed funds are swept after the cutoff.
 
 ## Privacy design
 Registration message: `headstash-register-v1:{ctx}:{key_com}:{amount}` (EIP-191) or
 `headstash-register-sol-v1:...` (ed25519). Claim proves knowledge of the secret behind a leaf
 in the registration tree anchor, binds destination and amount, and publishes
-`nullifier = Poseidon(tag, secret, ctx)`. `ctx` is derived from chain id, contract and label.
+`nullifier = Poseidon(tag, secret, ctx)`.
+<!--DIRECT-->`ctx = sha256("terp-hs-direct-ctx-v1" || 0 || chain id || 0 || contract)` (top two bits cleared), the
+value the contract returns from its `direct_claim` query. Every claim reveals only a denomination;
+each class has at least {{NOTE_MIN_CLASS_NOTES}} notes from at least {{NOTE_MIN_CLASS_HOLDERS}} holders.
+<!--/DIRECT--><!--LANE-->`ctx` is derived from chain id, contract and label.
 Known limit: the payout amount is public, so identities with a unique allocation amount are
 linkable (see security summary). In the final tree 17,791 identities hold 1,826 distinct
 amounts; 1,563 identities have an amount no one else has.
-
+<!--/LANE-->
 ## Eligibility method
 Snapshots of 16 communities; per-project budgets split pro rata across holders with exact
 decimal handling and floor rounding (dust stays unallocated). EVM leaves
 `sha256("terp-hs-elig-leaf-v1"||addr20||amount_le8)`, Solana leaves add 0x02 and the 32-byte
-pubkey. Eligibility root `{{ELIGIBILITY_ROOT}}`, depth {{ELIGIBILITY_DEPTH}},
+pubkey. <!--DIRECT-->Each allocation is then split greedily into notes with leaf
+`sha256("terp-hs-note-elig-v2"||identity_tag||identity||class||note_index_le2)`. Note eligibility root
+`{{ELIGIBILITY_ROOT}}`, depth {{ELIGIBILITY_DEPTH}}, {{ELIGIBILITY_IDENTITIES}} identities.
+<!--/DIRECT--><!--LANE-->Eligibility root `{{ELIGIBILITY_ROOT}}`, depth {{ELIGIBILITY_DEPTH}},
 {{ELIGIBILITY_IDENTITIES}} identities.
+<!--/LANE-->
 
 Per-community figures from the final build (`summary.json`, `eligibility/exclusions.csv`):
 
@@ -65,8 +84,10 @@ Allocated + unallocated + rounding dust (5,863 uterp) = 67,000,000 TERP exactly.
 Internal review 2026-10-26 (`tools/headstash/docs/security-review-2026-10-26.md`): no Critical
 findings. Fixed: owner handoff (two-step, no renounce). Open and addressed operationally: owner
 trust (owner = {{CONTRACT_OWNER}}, admin = gov), Merkle path delivery, unique-amount
-linkability, oracle source registration (this proposal). Funds can only leave the contract via
-attested batches or the post-cutoff sweep to `{{SWEEP_RECIPIENT}}`; gov can migrate.
+<!--DIRECT-->linkability (addressed by fixed denominations). Funds can only leave the contract via
+verified note claims or the post-cutoff sweep<!--/DIRECT--><!--LANE-->linkability, oracle source registration (this proposal). Funds can only leave the contract via
+attested batches or the post-cutoff sweep<!--/LANE-->
+ to `{{SWEEP_RECIPIENT}}`; gov can migrate.
 
 ## Links
 - Contract: `{{CONTRACT_ADDR}}` (code id `{{CODE_ID}}`, wasm sha256 `{{WASM_SHA256}}`)
@@ -74,7 +95,7 @@ attested batches or the post-cutoff sweep to `{{SWEEP_RECIPIENT}}`; gov can migr
 - Forum: {{FORUM_URL}}
 - Prior: Proposal #26, #31, #32
 
-## Direct on-chain claim (2026-10 update)
+## Direct on-chain claim
 Claims are verified by the contract itself (Halo2 vk_id 3 note circuit stored by this proposal,
 `proof_instance_verify`, six public inputs: ctx, root, nullifier, dest_lo, dest_hi, amount) and pay
 the claiming address at once. The proof root must be an accepted registration anchor. Each note
