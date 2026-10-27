@@ -705,7 +705,7 @@ mod tests {
             campaign([0u8; 32], NOTE_VK_ID).registration.as_ref().unwrap(),
         )
         .unwrap();
-        let anchor = tree_state.anchors.last().unwrap().root.clone();
+        let anchor = tree_state.latest_anchor.unwrap().root.clone();
         let p = crate::registration::query_path(deps.as_ref().storage, b.list()[0].key_com.as_slice(), &anchor)
             .unwrap();
         assert_eq!(p.index, 40);
@@ -1122,7 +1122,8 @@ mod tests {
     fn tree_root(deps: &TDeps) -> (Binary, Vec<crate::registration::AcceptedAnchor>) {
         let c = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
         let t = crate::registration::query_tree(deps.as_ref().storage, c.registration.as_ref().unwrap()).unwrap();
-        (t.root, t.anchors)
+        let a = crate::registration::query_anchors(deps.as_ref().storage, None, Some(100)).unwrap().anchors;
+        (t.root, a.into_iter().map(|e| crate::registration::AcceptedAnchor { root: e.root, leaf_count: e.leaf_count }).collect())
     }
 
     fn claim(deps: &mut TDeps, env: &Env, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> Result<Response, StdError> {
@@ -1169,6 +1170,36 @@ mod tests {
         let info = direct::query_info(deps.as_ref().storage, &env).unwrap();
         assert_eq!(info.cfg.unwrap().zk_id, 3);
         assert_eq!(info.expected_ctx.as_slice(), ctx());
+    }
+
+    #[test]
+    fn direct_claims_against_first_and_latest_of_2100_anchors() {
+        let (mut deps, mut env, a, b, tree) = direct_fixture();
+        register_all(&mut deps, &env, &a, &tree);
+        owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+        let first = tree_root(&deps).1[0].root.clone();
+        // 2,100 more accepted anchors (synthetic roots; past the old 128 KiB Vec limit of ~1,735)
+        for i in 0..2100u32 {
+            let mut r = [0u8; 32];
+            r[..4].copy_from_slice(&(i + 1).to_be_bytes());
+            r[30] = 0xAB;
+            crate::registration::test_push_anchor(deps.as_mut().storage, &Binary::from(r.to_vec()), 40);
+        }
+        register_all(&mut deps, &env, &b, &tree);
+        env.block.height += 1;
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+        let c = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
+        let t = crate::registration::query_tree(deps.as_ref().storage, c.registration.as_ref().unwrap()).unwrap();
+        assert_eq!(t.anchor_count, 2102);
+        let latest = t.latest_anchor.unwrap();
+        assert!(latest.leaf_count > 40);
+        let page = crate::registration::query_anchors(deps.as_ref().storage, Some(2000), Some(500)).unwrap().anchors;
+        assert_eq!((page.len(), page[0].seq, page.last().unwrap().seq), (100, 2001, 2100));
+        claim(&mut deps, &env, &a, "w1", &first, 1, DENOMS_UTERP[0]).unwrap();
+        claim(&mut deps, &env, &a, "w2", &latest.root, 2, DENOMS_UTERP[0]).unwrap();
+        assert!(err(claim(&mut deps, &env, &a, "w3", &latest.root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 2);
     }
 
     #[test]

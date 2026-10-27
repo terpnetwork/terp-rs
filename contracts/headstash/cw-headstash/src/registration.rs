@@ -49,7 +49,18 @@ const FRONTIER: Item<Vec<Binary>> = Item::new("reg_frontier");
 const COUNT: Item<u32> = Item::new("reg_count");
 const ROOT: Item<Binary> = Item::new("reg_root");
 const NEXT_ANCHOR: Item<u64> = Item::new("reg_next_anchor");
-const ANCHORS: Item<Vec<AcceptedAnchor>> = Item::new("reg_anchors");
+/// Pre-map layout (one Vec item; hit the 128 KiB value limit at ~1,735 anchors).
+/// Read only to migrate a legacy instance; never written.
+const LEGACY_ANCHORS: Item<Vec<AcceptedAnchor>> = Item::new("reg_anchors");
+/// Accepted anchors keyed by acceptance sequence (0-based). Never pruned: a claim may
+/// use any accepted anchor.
+const ANCHOR_BY_SEQ: Map<u32, AcceptedAnchor> = Map::new("reg_anchor_seq");
+/// Root bytes -> sequence, for O(1) membership checks on claims.
+const ANCHOR_SEQ: Map<&[u8], u32> = Map::new("reg_anchor_root");
+/// Small summary of the anchor set (count and latest root).
+const ANCHOR_META: Item<AnchorMeta> = Item::new("reg_anchor_meta");
+pub const ANCHOR_PAGE_MAX: u32 = 100;
+pub const ANCHOR_PAGE_DEFAULT: u32 = 30;
 const ADDRESSES: Map<&str, ()> = Map::new("reg_addr");
 const KEYS: Map<&str, RegisteredKey> = Map::new("reg_key");
 const LEAVES: Map<u32, Binary> = Map::new("reg_leaf");
@@ -77,6 +88,25 @@ pub struct AcceptedAnchor {
 }
 
 #[cosmwasm_schema::cw_serde]
+#[derive(Default)]
+pub struct AnchorMeta {
+    pub count: u32,
+    pub last_root: Option<Binary>,
+}
+
+#[cosmwasm_schema::cw_serde]
+pub struct AnchorEntry {
+    pub seq: u32,
+    pub root: Binary,
+    pub leaf_count: u32,
+}
+
+#[cosmwasm_schema::cw_serde]
+pub struct RegistrationAnchorsResponse {
+    pub anchors: Vec<AnchorEntry>,
+}
+
+#[cosmwasm_schema::cw_serde]
 struct RegisteredKey {
     index: u32,
     amount: u64,
@@ -88,7 +118,9 @@ pub struct RegistrationTreeResponse {
     pub root: Binary,
     pub next_anchor_height: u64,
     pub min_anonymity_set: u32,
-    pub anchors: Vec<AcceptedAnchor>,
+    /// Number of accepted anchors; page through them with `RegistrationAnchors`.
+    pub anchor_count: u32,
+    pub latest_anchor: Option<AcceptedAnchor>,
 }
 
 #[cosmwasm_schema::cw_serde]
@@ -140,7 +172,9 @@ pub fn prepare_window(
         FRONTIER.save(storage, &vec![Binary::from(vec![0u8; 32]); depth])?;
         COUNT.save(storage, &0)?;
         ROOT.save(storage, &Binary::from(vec![0u8; 32]))?;
-        ANCHORS.save(storage, &Vec::new())?;
+        if ANCHOR_META.may_load(storage)?.is_none() && LEGACY_ANCHORS.may_load(storage)?.is_none() {
+            ANCHOR_META.save(storage, &AnchorMeta::default())?;
+        }
     }
     NEXT_ANCHOR.save(storage, &cfg.anchor_start_height)?;
     Ok(())
@@ -163,8 +197,98 @@ pub fn query_tree(
             .may_load(storage)?
             .unwrap_or(cfg.anchor_start_height),
         min_anonymity_set: cfg.min_anonymity_set,
-        anchors: ANCHORS.may_load(storage)?.unwrap_or_default(),
+        anchor_count: anchor_meta(storage)?.count,
+        latest_anchor: latest_anchor(storage)?,
     })
+}
+
+/// Anchor summary; for a legacy (pre-map) instance, derived from the old Vec.
+pub fn anchor_meta(storage: &dyn Storage) -> StdResult<AnchorMeta> {
+    if let Some(m) = ANCHOR_META.may_load(storage)? {
+        return Ok(m);
+    }
+    let legacy = LEGACY_ANCHORS.may_load(storage)?.unwrap_or_default();
+    Ok(AnchorMeta {
+        count: legacy.len() as u32,
+        last_root: legacy.last().map(|a| a.root.clone()),
+    })
+}
+
+fn anchor_by_root(storage: &dyn Storage, root: &[u8]) -> StdResult<Option<AcceptedAnchor>> {
+    if ANCHOR_META.may_load(storage)?.is_some() {
+        return match ANCHOR_SEQ.may_load(storage, root)? {
+            Some(seq) => ANCHOR_BY_SEQ.may_load(storage, seq),
+            None => Ok(None),
+        };
+    }
+    Ok(LEGACY_ANCHORS
+        .may_load(storage)?
+        .unwrap_or_default()
+        .into_iter()
+        .find(|a| a.root.as_slice() == root))
+}
+
+fn latest_anchor(storage: &dyn Storage) -> StdResult<Option<AcceptedAnchor>> {
+    let m = anchor_meta(storage)?;
+    match m.last_root {
+        Some(r) => anchor_by_root(storage, r.as_slice()),
+        None => Ok(None),
+    }
+}
+
+/// Moves a legacy Vec into the maps (one-time; bounded by the old 128 KiB item).
+fn migrate_legacy_anchors(storage: &mut dyn Storage) -> StdResult<()> {
+    if ANCHOR_META.may_load(storage)?.is_some() {
+        return Ok(());
+    }
+    let legacy = LEGACY_ANCHORS.may_load(storage)?.unwrap_or_default();
+    for (i, a) in legacy.iter().enumerate() {
+        ANCHOR_BY_SEQ.save(storage, i as u32, a)?;
+        ANCHOR_SEQ.save(storage, a.root.as_slice(), &(i as u32))?;
+    }
+    ANCHOR_META.save(
+        storage,
+        &AnchorMeta {
+            count: legacy.len() as u32,
+            last_root: legacy.last().map(|a| a.root.clone()),
+        },
+    )?;
+    LEGACY_ANCHORS.remove(storage);
+    Ok(())
+}
+
+/// Accepted anchors in acceptance order, `start_after` exclusive, at most 100 per page.
+pub fn query_anchors(
+    storage: &dyn Storage,
+    start_after: Option<u32>,
+    limit: Option<u32>,
+) -> StdResult<RegistrationAnchorsResponse> {
+    let limit = limit.unwrap_or(ANCHOR_PAGE_DEFAULT).clamp(1, ANCHOR_PAGE_MAX) as usize;
+    let start = start_after.map(|s| s as u64 + 1).unwrap_or(0);
+    let mut anchors = Vec::new();
+    if ANCHOR_META.may_load(storage)?.is_some() {
+        if start <= u32::MAX as u64 {
+            for item in ANCHOR_BY_SEQ
+                .range(storage, Some(cw_storage_plus::Bound::inclusive(start as u32)), None, cosmwasm_std::Order::Ascending)
+                .take(limit)
+            {
+                let (seq, a) = item?;
+                anchors.push(AnchorEntry { seq, root: a.root, leaf_count: a.leaf_count });
+            }
+        }
+    } else {
+        for (i, a) in LEGACY_ANCHORS
+            .may_load(storage)?
+            .unwrap_or_default()
+            .into_iter()
+            .enumerate()
+            .skip(start as usize)
+            .take(limit)
+        {
+            anchors.push(AnchorEntry { seq: i as u32, root: a.root, leaf_count: a.leaf_count });
+        }
+    }
+    Ok(RegistrationAnchorsResponse { anchors })
 }
 
 pub fn query_path(
@@ -178,11 +302,7 @@ pub fn query_path(
     let record = KEYS
         .may_load(storage, hex::encode(key_com).as_str())?
         .ok_or_else(|| StdError::msg("key commitment"))?;
-    let stored = ANCHORS.may_load(storage)?.unwrap_or_default();
-    let matched = stored
-        .iter()
-        .find(|item| item.root.as_slice() == anchor)
-        .ok_or_else(|| StdError::msg("anchor"))?;
+    let matched = anchor_by_root(storage, anchor)?.ok_or_else(|| StdError::msg("anchor"))?;
     if record.index >= matched.leaf_count {
         return Err(StdError::msg("anchor"));
     }
@@ -524,30 +644,100 @@ pub fn accept_anchor(
     let root = ROOT
         .may_load(deps.storage)?
         .unwrap_or_else(|| Binary::from(vec![0u8; 32]));
-    let mut anchors = ANCHORS.may_load(deps.storage)?.unwrap_or_default();
-    if anchors.last().is_some_and(|latest| latest.root == root) {
+    migrate_legacy_anchors(deps.storage)?;
+    let mut meta = ANCHOR_META.may_load(deps.storage)?.unwrap_or_default();
+    if meta.last_root.as_ref() == Some(&root) {
         return Err(StdError::msg("anchor unchanged"));
     }
-    anchors.push(AcceptedAnchor {
-        root: root.clone(),
-        leaf_count: count,
-    });
-    ANCHORS.save(deps.storage, &anchors)?;
+    // Append-only tree: a new root never repeats an older one, but refuse defensively.
+    if ANCHOR_SEQ.has(deps.storage, root.as_slice()) {
+        return Err(StdError::msg("anchor unchanged"));
+    }
+    let seq = meta.count;
+    ANCHOR_BY_SEQ.save(deps.storage, seq, &AcceptedAnchor { root: root.clone(), leaf_count: count })?;
+    ANCHOR_SEQ.save(deps.storage, root.as_slice(), &seq)?;
+    meta.count = seq + 1;
+    meta.last_root = Some(root.clone());
+    ANCHOR_META.save(deps.storage, &meta)?;
     NEXT_ANCHOR.save(deps.storage, &(env.block.height + cfg.anchor_interval))?;
     Ok(Response::new()
         .add_attribute("action", "accept_anchor")
-        .add_attribute("anchors", anchors.len().to_string()))
+        .add_attribute("anchors", meta.count.to_string()))
 }
 
 pub fn anchor_known(storage: &dyn Storage, anchor: &[u8]) -> StdResult<bool> {
-    let anchors = ANCHORS.may_load(storage)?.unwrap_or_default();
-    Ok(anchors.iter().any(|item| item.root.as_slice() == anchor))
+    if ANCHOR_META.may_load(storage)?.is_some() {
+        return Ok(ANCHOR_SEQ.has(storage, anchor));
+    }
+    Ok(anchor_by_root(storage, anchor)?.is_some())
 }
 
 pub(crate) fn has_accepted_anchor(storage: &dyn Storage) -> StdResult<bool> {
-    Ok(ANCHORS
-        .may_load(storage)?
-        .is_some_and(|anchors| !anchors.is_empty()))
+    Ok(anchor_meta(storage)?.count > 0)
+}
+
+/// Test helper: append an anchor directly (bypasses height/anonymity checks).
+#[cfg(test)]
+pub(crate) fn test_push_anchor(storage: &mut dyn Storage, root: &Binary, leaf_count: u32) {
+    migrate_legacy_anchors(storage).unwrap();
+    let mut meta = ANCHOR_META.may_load(storage).unwrap().unwrap_or_default();
+    let seq = meta.count;
+    ANCHOR_BY_SEQ.save(storage, seq, &AcceptedAnchor { root: root.clone(), leaf_count }).unwrap();
+    ANCHOR_SEQ.save(storage, root.as_slice(), &seq).unwrap();
+    meta.count += 1;
+    meta.last_root = Some(root.clone());
+    ANCHOR_META.save(storage, &meta).unwrap();
+}
+
+#[cfg(test)]
+mod anchor_map_tests {
+    use super::*;
+    use cosmwasm_std::testing::MockStorage;
+
+    fn root(i: u32) -> Binary {
+        let mut b = [0u8; 32];
+        b[..4].copy_from_slice(&i.to_be_bytes());
+        Binary::from(b.to_vec())
+    }
+
+    #[test]
+    fn many_anchors_membership_and_pagination() {
+        let mut st = MockStorage::new();
+        ANCHOR_META.save(&mut st, &AnchorMeta::default()).unwrap();
+        for i in 0..2500u32 {
+            test_push_anchor(&mut st, &root(i), i + 1);
+        }
+        assert_eq!(anchor_meta(&st).unwrap().count, 2500);
+        assert!(anchor_known(&st, root(0).as_slice()).unwrap());
+        assert!(anchor_known(&st, root(2499).as_slice()).unwrap());
+        assert!(!anchor_known(&st, root(9999).as_slice()).unwrap());
+        assert_eq!(anchor_by_root(&st, root(0).as_slice()).unwrap().unwrap().leaf_count, 1);
+        assert_eq!(latest_anchor(&st).unwrap().unwrap().root, root(2499));
+        let p = query_anchors(&st, None, None).unwrap().anchors;
+        assert_eq!(p.len(), ANCHOR_PAGE_DEFAULT as usize);
+        assert_eq!(p[0].seq, 0);
+        let p = query_anchors(&st, Some(99), Some(1000)).unwrap().anchors;
+        assert_eq!(p.len(), ANCHOR_PAGE_MAX as usize);
+        assert_eq!(p[0].seq, 100);
+        let p = query_anchors(&st, Some(2497), Some(10)).unwrap().anchors;
+        assert_eq!(p.iter().map(|a| a.seq).collect::<Vec<_>>(), vec![2498, 2499]);
+        assert!(query_anchors(&st, Some(u32::MAX), None).unwrap().anchors.is_empty());
+    }
+
+    #[test]
+    fn legacy_vec_is_read_then_migrated() {
+        let mut st = MockStorage::new();
+        let legacy: Vec<AcceptedAnchor> = (0..3).map(|i| AcceptedAnchor { root: root(i), leaf_count: i + 1 }).collect();
+        LEGACY_ANCHORS.save(&mut st, &legacy).unwrap();
+        assert!(anchor_known(&st, root(1).as_slice()).unwrap());
+        assert_eq!(anchor_meta(&st).unwrap().count, 3);
+        assert_eq!(query_anchors(&st, Some(0), None).unwrap().anchors.len(), 2);
+        test_push_anchor(&mut st, &root(3), 4);
+        assert!(LEGACY_ANCHORS.may_load(&st).unwrap().is_none());
+        assert_eq!(anchor_meta(&st).unwrap().count, 4);
+        assert!(anchor_known(&st, root(0).as_slice()).unwrap());
+        assert_eq!(query_anchors(&st, None, Some(100)).unwrap().anchors.len(), 4);
+    }
 }
 
 pub fn batch_already_paid(storage: &dyn Storage, attested: &[u8]) -> StdResult<bool> {
@@ -899,15 +1089,7 @@ mod tests {
         let eligibility = [4u8; 32];
         let (mut deps, env) = setup();
         let anchor = Binary::from([0x11u8; 32].to_vec());
-        ANCHORS
-            .save(
-                deps.as_mut().storage,
-                &vec![AcceptedAnchor {
-                    root: anchor.clone(),
-                    leaf_count: 1,
-                }],
-            )
-            .unwrap();
+        test_push_anchor(deps.as_mut().storage, &anchor, 1);
         let creator = deps.api.addr_make("creator");
         let mut stranger = campaign_with(&ctx, eligibility, 1);
         stranger.allocation_root = Binary::from([0x22u8; 32].to_vec());
@@ -1074,7 +1256,7 @@ mod tests {
         params.registration.as_mut().unwrap().eligibility_depth = 1;
         install(deps.as_mut(), &env, params);
         do_register(deps.as_mut(), &env, &first, 0, [0u8; 32]).unwrap();
-        let before = ANCHORS.load(deps.as_ref().storage).unwrap();
+        let before = anchor_meta(deps.as_ref().storage).unwrap();
         let next = NEXT_ANCHOR.load(deps.as_ref().storage).unwrap();
         let sender = deps.api.addr_make("anyone");
         let err = execute(
@@ -1085,7 +1267,7 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("anonymity set"), "{err}");
-        assert_eq!(ANCHORS.load(deps.as_ref().storage).unwrap(), before);
+        assert_eq!(anchor_meta(deps.as_ref().storage).unwrap(), before);
         assert_eq!(NEXT_ANCHOR.load(deps.as_ref().storage).unwrap(), next);
     }
 
@@ -1244,9 +1426,11 @@ mod tests {
         let tree = tree_for(deps.as_ref(), &env);
         assert_eq!(tree.min_anonymity_set, 1);
         assert_eq!(tree.count, 1);
-        assert_eq!(tree.anchors.len(), 1);
-        assert_eq!(tree.anchors[0].leaf_count, 1);
-        assert_eq!(tree.anchors[0].root, anchor_a);
+        assert_eq!(tree.anchor_count, 1);
+        assert_eq!(tree.latest_anchor.as_ref().unwrap().leaf_count, 1);
+        assert_eq!(tree.latest_anchor.as_ref().unwrap().root, anchor_a);
+        let page = query_anchors(deps.as_ref().storage, None, None).unwrap().anchors;
+        assert_eq!((page.len(), page[0].seq, &page[0].root), (1, 0, &anchor_a));
 
         env.block.height += 1;
         do_register(deps.as_mut(), &env, &second, 1, leaf0).unwrap();

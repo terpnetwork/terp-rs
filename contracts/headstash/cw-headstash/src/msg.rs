@@ -260,9 +260,18 @@ pub enum QueryMsg {
     /// Creator campaign, including the sidecar `vk_id` and blob hash.
     #[returns(crate::epoch::EpochCampaignParams)]
     EpochCampaign {},
-    /// Registration frontier, anonymity minimum, and accepted anchors.
+    /// Registration frontier, anonymity minimum, anchor count and latest anchor.
     #[returns(crate::registration::RegistrationTreeResponse)]
     RegistrationTree {},
+    /// Accepted anchors in acceptance order (`start_after` = last seen `seq`,
+    /// exclusive; `limit` default 30, max 100).
+    #[returns(crate::registration::RegistrationAnchorsResponse)]
+    RegistrationAnchors {
+        #[serde(default)]
+        start_after: Option<u32>,
+        #[serde(default)]
+        limit: Option<u32>,
+    },
     /// Sixteen little-endian siblings for `key_com` under one accepted root.
     #[returns(crate::registration::RegistrationPathResponse)]
     RegistrationPath { key_com: Binary, anchor: Binary },

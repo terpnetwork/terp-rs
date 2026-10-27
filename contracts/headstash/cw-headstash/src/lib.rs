@@ -495,6 +495,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .ok_or_else(|| StdError::msg("registration"))?;
             to_json_binary(&registration::query_tree(deps.storage, &cfg)?)
         }
+        QueryMsg::RegistrationAnchors { start_after, limit } => {
+            to_json_binary(&registration::query_anchors(deps.storage, start_after, limit)?)
+        }
         QueryMsg::RegistrationPath { key_com, anchor } => {
             to_json_binary(&registration::query_path(
                 deps.storage,
