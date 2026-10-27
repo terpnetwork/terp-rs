@@ -26,7 +26,7 @@ use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 #[derive(Parser, Debug)]
 #[command(name = "ibc_create_clients")]
 struct Cli {
-    /// osmosis, juno, akash, secret, atomone, penumbra. Repeat or comma-separate. Default: all.
+    /// osmosis, juno, akash, atomone, penumbra. Repeat or comma-separate. Default: all.
     #[arg(long, value_delimiter = ',')]
     counterparty: Vec<String>,
     #[arg(long, env = "PENUMBRA_RPC", default_value = "https://rpc.penumbra.fi")]
@@ -60,27 +60,24 @@ struct Cli {
     out: String,
 }
 
+/// Dead or dropped routes: never create clients for these.
+const DROPPED_ROUTES: &[&str] = &["stargaze", "omniflix", "evmos", "gitopia", "secret"];
+
 fn cosmos_info(name: &str) -> Result<ChainInfoOwned> {
     use cw_orch::daemon::networks::{ATOMEONE_MAINNET, JUNO_1, OSMOSIS_1};
     let mut info: ChainInfoOwned = match name {
         "osmosis" => OSMOSIS_1.into(),
         "juno" => JUNO_1.into(),
         "atomone" => ATOMEONE_MAINNET.into(),
-        // cw-orch-networks has no secret-4 entry and AKASH_MAINNET says "akash-1";
-        // reuse the akash network info with the live chain ids.
-        "akash" | "secret" => {
-            let (chain_id, denom, grpc, prefix) = match name {
-                "akash" => ("akashnet-2", "uakt", "https://akash.lavenderfive.com:443", "akash"),
-                _ => ("secret-4", "uscrt", "https://secretnetwork.lavenderfive.com:443", "secret"),
-            };
+        // AKASH_MAINNET says "akash-1"; use the live chain id.
+        "akash" => {
             let mut i: ChainInfoOwned = cw_orch::daemon::networks::AKASH_MAINNET.into();
-            i.chain_id = chain_id.into();
-            i.gas_denom = denom.into();
-            i.grpc_urls = vec![grpc.into()];
-            i.network_info.chain_name = name.into();
-            i.network_info.pub_address_prefix = prefix.into();
+            i.chain_id = "akashnet-2".into();
+            i.gas_denom = "uakt".into();
+            i.grpc_urls = vec!["https://akash.lavenderfive.com:443".into()];
             i
         }
+        d if DROPPED_ROUTES.contains(&d) => bail!("{d} is a dropped route; no clients are created for it"),
         other => bail!("unknown counterparty {other}"),
     };
     if let Ok(grpc) = std::env::var(format!("{}_GRPC", name.to_uppercase())) {
@@ -195,7 +192,7 @@ fn main() -> Result<()> {
     let mut specs: Vec<Spec> = cli.clients.iter().map(|c| parse_spec(c)).collect::<Result<_>>()?;
     specs.extend(cli.counterparty.iter().map(|n| Spec { name: n.clone(), ..Default::default() }));
     if specs.is_empty() {
-        specs = ["osmosis", "juno", "akash", "secret", "atomone", "penumbra"]
+        specs = ["osmosis", "juno", "akash", "atomone", "penumbra"]
             .map(|n| Spec { name: n.into(), ..Default::default() })
             .into_iter()
             .collect();

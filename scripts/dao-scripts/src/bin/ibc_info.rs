@@ -535,7 +535,7 @@ fn derive_full_ibc_state() -> anyhow::Result<()> {
     // Capability-based filtering: exclude only via env / known dead chain IDs.
     // Prefer skipping clients without open transfer channels (handled below).
     let dead_chains: Vec<String> = std::env::var("IBC_EXCLUDE_CHAIN_IDS")
-        .unwrap_or_else(|_| "omniflixhub-1,evmos-1,stargaze-1".into())
+        .unwrap_or_else(|_| "omniflixhub-1,evmos-1,stargaze-1,secret-4".into())
         .split(',')
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
