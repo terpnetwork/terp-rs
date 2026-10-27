@@ -85,6 +85,11 @@ pub struct EpochCampaignParams {
     /// Empty disables the sweep. The sweep message does not carry an address.
     #[serde(default)]
     pub sweep_recipient: String,
+    /// Burn the leftover escrow after the cutoff instead of sending it.
+    /// Absent: burn for direct (vk_id 3 note) campaigns, send otherwise.
+    /// A burning campaign must leave `sweep_recipient` empty.
+    #[serde(default)]
+    pub burn_unclaimed: Option<bool>,
     /// Append-only registration window. Absent keeps today's single pay.
     #[serde(default)]
     pub registration: Option<crate::registration::RegistrationConfig>,
@@ -198,6 +203,13 @@ fn bind_campaign_eligibility(
 /// Owner sends the campaign denom balance to the recipient stored on the
 /// campaign. The block must be past the cutoff, and a staged batch that
 /// has not been paid still owns its escrow.
+/// Whether the post-cutoff sweep burns. Direct note campaigns burn by default.
+pub fn burns_unclaimed(campaign: &EpochCampaignParams) -> bool {
+    campaign
+        .burn_unclaimed
+        .unwrap_or(campaign.vk_id == crate::notes::NOTE_VK_ID)
+}
+
 pub fn sweep_unclaimed(
     deps: DepsMut,
     env: Env,
@@ -207,10 +219,15 @@ pub fn sweep_unclaimed(
     let campaign = EPOCH_CAMPAIGN
         .may_load(deps.storage)?
         .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
-    if campaign.sweep_recipient.is_empty() {
-        return Err(StdError::msg("sweep recipient is not set"));
-    }
-    let recipient = deps.api.addr_validate(&campaign.sweep_recipient)?;
+    let burn = burns_unclaimed(&campaign);
+    let recipient = if burn {
+        None
+    } else {
+        if campaign.sweep_recipient.is_empty() {
+            return Err(StdError::msg("sweep recipient is not set"));
+        }
+        Some(deps.api.addr_validate(&campaign.sweep_recipient)?)
+    };
     if env.block.height <= campaign.cutoff_height {
         return Err(StdError::msg("campaign has not ended"));
     }
@@ -228,12 +245,18 @@ pub fn sweep_unclaimed(
     if balance.amount.is_zero() {
         return Err(StdError::msg("nothing to sweep"));
     }
+    let (msg, mode) = match recipient {
+        None => (BankMsg::Burn { amount: vec![balance.clone()] }, "burn"),
+        Some(to) => (
+            BankMsg::Send { to_address: to.to_string(), amount: vec![balance.clone()] },
+            "send",
+        ),
+    };
     Ok(Response::new()
-        .add_message(BankMsg::Send {
-            to_address: recipient.to_string(),
-            amount: vec![balance],
-        })
+        .add_message(msg)
         .add_attribute("action", "sweep_unclaimed")
+        .add_attribute("mode", mode)
+        .add_attribute("amount", balance.amount.to_string())
         .add_attribute("denom", denom))
 }
 
@@ -777,6 +800,9 @@ fn validate_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
     }
     if campaign.backend == "halo2" && campaign.vk_hash.iter().all(|byte| *byte == 0) {
         return Err(StdError::msg("vk hash"));
+    }
+    if burns_unclaimed(campaign) && !campaign.sweep_recipient.is_empty() {
+        return Err(StdError::msg("a burning campaign takes no sweep recipient"));
     }
     if !campaign.sweep_recipient.is_empty() {
         let prefix = format!("{}1", campaign.bech32_hrp);
@@ -1899,6 +1925,7 @@ mod tests {
             vk_id: 0,
             vk_hash: Binary::from([0u8; 32].to_vec()),
             sweep_recipient: String::new(),
+            burn_unclaimed: None,
             registration: None,
         }
     }
@@ -2287,6 +2314,15 @@ mod tests {
 
     /// Existing-fungible escrow. The bank in this app actually holds the coins.
     fn escrow_app(cutoff: u64, height: u64, with_recipient: bool) -> (App, Addr, Addr, Addr) {
+        escrow_app_with(cutoff, height, with_recipient, None)
+    }
+
+    fn escrow_app_with(
+        cutoff: u64,
+        height: u64,
+        with_recipient: bool,
+        burn: Option<bool>,
+    ) -> (App, Addr, Addr, Addr) {
         let mut app = App::default();
         let owner = app.api().addr_make("owner");
         let treasury = app.api().addr_make("treasury");
@@ -2335,6 +2371,7 @@ mod tests {
         } else {
             String::new()
         };
+        params.burn_unclaimed = burn;
         app.execute_contract(
             owner.clone(),
             contract.clone(),
@@ -2343,6 +2380,99 @@ mod tests {
         )
         .unwrap();
         (app, owner, contract, treasury)
+    }
+
+    fn uterp_supply(app: &App) -> Uint256 {
+        app.wrap().query_supply("uterp").unwrap().amount
+    }
+
+    #[test]
+    fn direct_note_campaigns_burn_by_default() {
+        let mut params = campaign(&Binary::from(vec![0u8; 32]));
+        assert!(!burns_unclaimed(&params));
+        params.vk_id = crate::notes::NOTE_VK_ID;
+        assert!(burns_unclaimed(&params));
+        params.burn_unclaimed = Some(false);
+        assert!(!burns_unclaimed(&params));
+        params.vk_id = 1;
+        params.burn_unclaimed = Some(true);
+        assert!(burns_unclaimed(&params));
+    }
+
+    #[test]
+    fn burning_campaign_rejects_a_sweep_recipient() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let mut params = campaign(&root);
+        params.burn_unclaimed = Some(true);
+        params.sweep_recipient = deps.api.addr_make("treasury").to_string();
+        let err = execute(
+            deps.as_mut(),
+            env,
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("takes no sweep recipient"), "{err}");
+    }
+
+    #[test]
+    fn sweep_burns_the_contract_balance_after_cutoff() {
+        let (mut app, owner, contract, treasury) = escrow_app_with(20, 20, false, Some(true));
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("campaign has not ended"), "{err}");
+
+        let (mut app, owner, contract, treasury2) = escrow_app_with(19, 20, false, Some(true));
+        let _ = treasury;
+        let before = uterp_supply(&app);
+        let held = uterp_of(&app, &contract);
+        assert_eq!(held, Uint256::from(1_000_000u128));
+        let res = app
+            .execute_contract(owner.clone(), contract.clone(), &ExecuteMsg::SweepUnclaimed {}, &[])
+            .unwrap();
+        assert!(res.events.iter().any(|e| e.attributes.iter().any(|a| a.key == "mode" && a.value == "burn")));
+        assert_eq!(uterp_of(&app, &contract), Uint256::zero());
+        assert_eq!(uterp_of(&app, &treasury2), Uint256::zero());
+        assert_eq!(uterp_supply(&app), before - held);
+        let err = sweep_err(&mut app, &owner, &contract);
+        assert!(err.contains("nothing to sweep"), "{err}");
+    }
+
+    #[test]
+    fn registration_is_rejected_after_cutoff() {
+        let (mut deps, mut env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let mut params = campaign(&root);
+        params.cutoff_height = env.block.height - 1;
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: params },
+        )
+        .unwrap();
+        let reg = || ExecuteMsg::RegisterHeadstash {
+            key_com: Binary::from(vec![0u8; 32]),
+            amount: 15,
+            signature: Binary::from(vec![0u8; 65]),
+            eligibility_index: 0,
+            eligibility_path: vec![],
+        };
+        let err = execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), reg()).unwrap_err();
+        assert!(err.to_string().contains("registration closed"), "{err}");
+        let notes = ExecuteMsg::RegisterNotes {
+            signer: serde_json::from_value(serde_json::json!({"evm": {"address": "00".repeat(20)}})).unwrap_or_else(|_| panic!("signer shape")),
+            signature: None,
+            list: vec![],
+            start: 0,
+            eligibility: vec![],
+        };
+        let err = execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), notes).unwrap_err();
+        assert!(err.to_string().contains("registration closed"), "{err}");
+        // At the cutoff block itself registration is still open (fails later, not on the window).
+        env.block.height -= 1;
+        let err = execute(deps.as_mut(), env, message_info(&creator, &[]), reg()).unwrap_err();
+        assert!(!err.to_string().contains("registration closed"), "{err}");
     }
 
     #[test]

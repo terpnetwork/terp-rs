@@ -387,6 +387,7 @@ pub fn execute(
             eligibility_path,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
             opaque::<fn(_, _, _, _, _, _, _) -> _>(registration::register)(
                 deps,
                 &campaign,
@@ -406,6 +407,7 @@ pub fn execute(
             eligibility_path,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
             opaque::<fn(_, _, _, _, _, _, _, _) -> _>(registration::register_sol)(
                 deps,
                 &campaign,
@@ -425,6 +427,7 @@ pub fn execute(
             eligibility,
         } => {
             let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
             opaque::<fn(_, _, _, _, _, _, _) -> _>(notes::register_notes)(
                 deps,
                 &campaign,
@@ -498,6 +501,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility } => {
             let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
             notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility)?;
             to_json_binary(&true)
         }

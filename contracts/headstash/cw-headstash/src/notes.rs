@@ -425,7 +425,7 @@ mod tests {
         EpochCampaignParams {
             ctx: Binary::from(ctx().to_vec()),
             backend: "halo2".into(),
-            cutoff_height: 10,
+            cutoff_height: 1_000_000, // above mock_env height: registration stays open
             bech32_hrp: "cosmwasm".into(),
             denom: derive_nd("cht"),
             amounts: DENOMS_UTERP.iter().map(|amount| AmountCap { amount: *amount, cap: 50 }).collect(),
@@ -439,6 +439,7 @@ mod tests {
             vk_id,
             vk_hash: Binary::from(NOTE_VK_HASH.to_vec()),
             sweep_recipient: String::new(),
+            burn_unclaimed: None,
             registration: Some(RegistrationConfig {
                 eligibility_root: Binary::from(root.to_vec()),
                 eligibility_depth: NOTE_DEPTH as u32,

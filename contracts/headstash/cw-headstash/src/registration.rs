@@ -373,6 +373,15 @@ fn legacy_only(campaign: &EpochCampaignParams) -> StdResult<()> {
     Ok(())
 }
 
+/// Registration closes with the claim window: nothing registered after the
+/// cutoff could ever be claimed.
+pub(crate) fn assert_registration_open(height: u64, campaign: &EpochCampaignParams) -> StdResult<()> {
+    if height > campaign.cutoff_height {
+        return Err(StdError::msg("registration closed"));
+    }
+    Ok(())
+}
+
 pub(crate) fn registration_cfg(campaign: &EpochCampaignParams) -> StdResult<&RegistrationConfig> {
     campaign
         .registration
@@ -857,7 +866,7 @@ mod tests {
         EpochCampaignParams {
             ctx: Binary::from(ctx.to_vec()),
             backend: "flock".into(),
-            cutoff_height: 10,
+            cutoff_height: 1_000_000, // above mock_env height: registration stays open
             bech32_hrp: "cosmwasm".into(),
             denom: derive_nd("cht"),
             amounts: vec![crate::epoch::AmountCap { amount: 15, cap: 1 }],
@@ -871,6 +880,7 @@ mod tests {
             vk_id: 0,
             vk_hash: Binary::from(vec![0u8; 32]),
             sweep_recipient: String::new(),
+            burn_unclaimed: None,
             registration: Some(RegistrationConfig {
                 eligibility_root: Binary::from(eligibility_root.to_vec()),
                 eligibility_depth: 1,
@@ -1137,7 +1147,7 @@ mod tests {
                 hash_merchant: HashMerchantSudoPayload {
                     chain_uid: CHAIN_UID.into(),
                     algo: ALGO_ACCEPTED.into(),
-                    height: 10,
+                    height: 1_000_000, // attested at the cutoff
                     root: root_b64(&attested),
                     attestation_count: 1,
                     block_time: 1,
@@ -1182,7 +1192,7 @@ mod tests {
                 hash_merchant: HashMerchantSudoPayload {
                     chain_uid: CHAIN_UID.into(),
                     algo: ALGO_ACCEPTED.into(),
-                    height: 11,
+                    height: 1_000_001,
                     root: root_b64(&attested_b),
                     attestation_count: 1,
                     block_time: 1,
