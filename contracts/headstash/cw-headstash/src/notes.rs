@@ -706,6 +706,164 @@ mod tests {
     // ---- direct on-chain claims (crate::direct) ----
     use crate::direct::{self, test_hook};
 
+    /// Serve circuit 3 to the bind check. Without zk-api the contract reads the
+    /// test hook; with zk-api the real path queries the chain, so the mock querier
+    /// serves the real vk_id 3 blob (or a tampered copy) and its CircuitInfo.
+    fn serve_circuit(deps: &mut TDeps, genuine: bool) {
+        #[cfg(not(feature = "zk-api"))]
+        {
+            let _ = &deps;
+            test_hook::set(Some(if genuine { NOTE_VK_HASH } else { [9u8; 32] }));
+        }
+        #[cfg(feature = "zk-api")]
+        real_zk::serve(deps, genuine);
+    }
+
+    /// Make the next proofs invalid. With zk-api the proof bytes are really corrupted
+    /// and rejected by the real halo2 verifier registered for zk_id 3.
+    fn bad_proofs(bad: bool) {
+        #[cfg(not(feature = "zk-api"))]
+        test_hook::set_ok(!bad);
+        #[cfg(feature = "zk-api")]
+        real_zk::BAD.with(|c| c.set(bad));
+    }
+
+    #[cfg(feature = "zk-api")]
+    mod real_zk {
+        use super::*;
+        use cosmwasm_std::{to_json_binary, Addr, CircuitInfoResponse, CircuitResponse, ContractResult, SystemError, SystemResult, WasmQuery};
+        use std::cell::{Cell, RefCell};
+        use std::collections::HashMap;
+        use zk_headstash::note_membership as nm;
+
+        thread_local!(pub static BAD: Cell<bool> = const { Cell::new(false) });
+        thread_local!(static BLOB: Vec<u8> = nm::note_circuit_blob().unwrap());
+        thread_local!(static NOTES: RefCell<HashMap<u8, usize>> = RefCell::new(HashMap::new()));
+        thread_local!(static PROOFS: RefCell<HashMap<(u8, Vec<u8>, String, u64, bool), (Vec<u8>, Vec<u8>)>> = RefCell::new(HashMap::new()));
+
+        pub fn serve(deps: &mut TDeps, genuine: bool) {
+            let mut data = BLOB.with(|b| b.clone());
+            if !genuine {
+                let last = data.len() - 1;
+                data[last] ^= 1;
+            }
+            deps.querier.update_wasm(move |q| match q {
+                WasmQuery::Circuit { zk_id: 3 } => {
+                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&CircuitResponse::new(Binary::from(data.clone()))).unwrap()))
+                }
+                WasmQuery::CircuitInfo { zk_id: 3 } => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&CircuitInfoResponse::new(3, Addr::unchecked("circuit-creator"), Binary::from(vec![0xABu8; 72]))).unwrap(),
+                )),
+                WasmQuery::Circuit { zk_id } | WasmQuery::CircuitInfo { zk_id } => SystemResult::Err(SystemError::NoSuchCircuit { zk_id: *zk_id }),
+                _ => SystemResult::Err(SystemError::UnsupportedRequest { kind: "wasm".into() }),
+            });
+        }
+
+        /// Real halo2 verification of a note proof against the vk_id 3 verifying key.
+        pub fn register_verifier() {
+            cosmwasm_std::testing::register_test_circuit(
+                3,
+                "headstash-note-membership-vk3",
+                Box::new(|proof: &[u8], inst: &[u8]| {
+                    if inst.len() != 6 * 32 {
+                        return Ok(false);
+                    }
+                    let mut public = Vec::new();
+                    for c in inst.chunks(32) {
+                        let mut r = [0u8; 32];
+                        r.copy_from_slice(c);
+                        match Option::<pallas::Base>::from(pallas::Base::from_repr(r)) {
+                            Some(f) => public.push(f),
+                            None => return Ok(false),
+                        }
+                    }
+                    let params = nm::note_params();
+                    let vk = nm::note_vk(&params).unwrap();
+                    Ok(zk_headstash::no_ecdsa::verify_membership(&params, &vk, proof, &public).is_ok())
+                }),
+            );
+            NOTES.with(|m| m.borrow_mut().clear());
+            PROOFS.with(|m| m.borrow_mut().clear());
+            BAD.with(|c| c.set(false));
+        }
+
+        /// Note `nf` is the holder note bound to that label on first proof (first unused
+        /// index of the amount's class). Returns the real nullifier and a real proof
+        /// when the root is an accepted anchor holding that note; otherwise checks fail
+        /// before verification and a placeholder proof is sent.
+        pub fn witness(deps: &TDeps, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> (Vec<u8>, Vec<u8>) {
+            let bad = BAD.with(|c| c.get());
+            let key = (nf, root.to_vec(), who.to_string(), amount, bad);
+            if let Some(v) = PROOFS.with(|m| m.borrow().get(&key).cloned()) {
+                return v;
+            }
+            let class = DENOMS_UTERP.iter().position(|d| *d == amount);
+            let idx = NOTES.with(|m| {
+                let mut m = m.borrow_mut();
+                if let Some(i) = m.get(&nf) {
+                    return Some(*i);
+                }
+                let class = class?;
+                let used: Vec<usize> = m.values().copied().collect();
+                (0..h.classes.len()).find(|i| h.classes[*i] as usize == class && !used.contains(i))
+            });
+            let mut fallback = [0u8; 32];
+            fallback[0] = nf;
+            let Some(idx) = idx else { return (fallback.to_vec(), vec![1u8; 64]) };
+            let secret = pallas::Base::from(h.word + idx as u64);
+            let c = pallas::Base::from_repr(ctx()).unwrap();
+            let nullifier = zk_headstash::no_ecdsa::claim_nullifier(secret, c).to_repr().to_vec();
+            let key_com = registration_key_commitment(secret).to_repr();
+            let dest = format!("terp1{who}");
+            let path = crate::registration::query_path(deps.as_ref().storage, &key_com, root.as_slice());
+            let out = match path {
+                Ok(p) if class == Some(h.classes[idx] as usize) => {
+                    // label bound to this note once it is first proved against an anchor
+                    NOTES.with(|m| {
+                        m.borrow_mut().entry(nf).or_insert(idx);
+                    });
+                    let sib: Vec<pallas::Base> = p
+                        .siblings
+                        .iter()
+                        .map(|x| {
+                            let mut r = [0u8; 32];
+                            r.copy_from_slice(&hex::decode(x).unwrap());
+                            pallas::Base::from_repr(r).unwrap()
+                        })
+                        .collect();
+                    let path: [pallas::Base; NOTE_DEPTH] = sib.try_into().unwrap();
+                    let proved = nm::prove_note(secret, c, amount, p.index, path, &dest).unwrap();
+                    assert_eq!(proved.public[2].to_repr().to_vec(), nullifier);
+                    assert_eq!(proved.public[1].to_repr().as_slice(), root.as_slice());
+                    let mut proof = proved.proof;
+                    if bad {
+                        proof[100] ^= 1;
+                    }
+                    (nullifier, proof)
+                }
+                _ => (nullifier, vec![1u8; 64]),
+            };
+            PROOFS.with(|m| m.borrow_mut().insert(key, out.clone()));
+            out
+        }
+    }
+
+    /// Nullifier and proof for note label `nf` claimed by `who`.
+    fn witness(deps: &TDeps, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> (Binary, Binary) {
+        #[cfg(feature = "zk-api")]
+        {
+            let (n, p) = real_zk::witness(deps, h, who, root, nf, amount);
+            (Binary::from(n), Binary::from(p))
+        }
+        #[cfg(not(feature = "zk-api"))]
+        {
+            let _ = (deps, h, who, root, amount);
+            let mut n = [0u8; 32];
+            n[0] = nf;
+            (Binary::from(n.to_vec()), Binary::from(vec![1u8; 64]))
+        }
+    }
+
     fn direct_fixture() -> (TDeps, Env, Holder, Holder, Elig) {
         let a = holder(1, (0..40).map(|i| (i % 12) as u8).collect(), 0, 1000);
         let b = holder(2, vec![11, 3, 0], 40, 2000);
@@ -717,8 +875,10 @@ mod tests {
         c.cutoff_height = env.block.height + 1000;
         c.amounts = DENOMS_UTERP.iter().map(|amount| AmountCap { amount: *amount, cap: if *amount == DENOMS_UTERP[11] { 1 } else { 50 } }).collect();
         set(&mut deps, &env, c).unwrap();
-        test_hook::set(Some(NOTE_VK_HASH));
-        test_hook::set_ok(true);
+        #[cfg(feature = "zk-api")]
+        real_zk::register_verifier();
+        serve_circuit(&mut deps, true);
+        bad_proofs(false);
         (deps, env, a, b, tree)
     }
 
@@ -743,15 +903,14 @@ mod tests {
         (t.root, t.anchors)
     }
 
-    fn claim(deps: &mut TDeps, env: &Env, who: &str, root: &Binary, nf: u8, amount: u64) -> Result<Response, StdError> {
+    fn claim(deps: &mut TDeps, env: &Env, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> Result<Response, StdError> {
         let sender = cosmwasm_std::Addr::unchecked(format!("terp1{who}"));
-        let mut n = [0u8; 32];
-        n[0] = nf;
+        let (nullifier, proof) = witness(deps, h, who, root, nf, amount);
         execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), ExecuteMsg::ClaimNote {
             root: root.clone(),
-            nullifier: Binary::from(n.to_vec()),
+            nullifier,
             amount,
-            proof: Binary::from(vec![1u8; 64]),
+            proof,
         })
     }
 
@@ -776,9 +935,9 @@ mod tests {
         let stranger = deps.api.addr_make("stranger");
         assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), ExecuteMsg::BindNoteCircuit { zk_id: 3 }).is_err());
         assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 0 })).contains("zk id"));
-        test_hook::set(Some([9u8; 32]));
+        serve_circuit(&mut deps, false);
         assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 })).contains("vk hash"));
-        test_hook::set(Some(NOTE_VK_HASH));
+        serve_circuit(&mut deps, true);
         // another chain id => ctx not bound
         let mut env2 = env.clone();
         env2.block.chain_id = "other-chain".into();
@@ -795,10 +954,10 @@ mod tests {
         let (mut deps, mut env, a, b, tree) = direct_fixture();
         register_all(&mut deps, &env, &a, &tree);
         let (live, _) = tree_root(&deps);
-        assert!(err(claim(&mut deps, &env, "w1", &live, 1, DENOMS_UTERP[0])).contains("not enabled"));
+        assert!(err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0])).contains("not enabled"));
         owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
         // live root, nothing sealed yet
-        assert!(err(claim(&mut deps, &env, "w1", &live, 1, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0])).contains("anchor"));
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let (_, anchors) = tree_root(&deps);
         let epoch_n = anchors[0].root.clone();
@@ -807,53 +966,52 @@ mod tests {
         register_all(&mut deps, &env, &b, &tree);
         let (live2, _) = tree_root(&deps);
         assert_ne!(live2, epoch_n);
-        assert!(err(claim(&mut deps, &env, "w2", &live2, 2, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(err(claim(&mut deps, &env, &a, "w2", &live2, 2, DENOMS_UTERP[0])).contains("anchor"));
         // fabricated root
         let mut fake = [7u8; 32];
         fake[31] = 0;
-        assert!(err(claim(&mut deps, &env, "w2", &Binary::from(fake.to_vec()), 2, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(err(claim(&mut deps, &env, &a, "w2", &Binary::from(fake.to_vec()), 2, DENOMS_UTERP[0])).contains("anchor"));
         // non-canonical limbs
         let mut nc = epoch_n.to_vec();
         nc[31] |= 0x80;
-        assert!(err(claim(&mut deps, &env, "w2", &Binary::from(nc), 2, DENOMS_UTERP[0])).contains("root"));
+        assert!(err(claim(&mut deps, &env, &a, "w2", &Binary::from(nc), 2, DENOMS_UTERP[0])).contains("root"));
         // amounts
-        assert!(err(claim(&mut deps, &env, "w2", &epoch_n, 2, 3_000_000)).contains("denomination"));
+        assert!(err(claim(&mut deps, &env, &a, "w2", &epoch_n, 2, 3_000_000)).contains("denomination"));
         // ok: payout to sender, exactly amount
         // CheckNoteClaim dry-run: same verdict as the execute, writes nothing.
         let dry = |deps: &TDeps, who: &str, nf: u8| {
-            let mut n = [0u8; 32];
-            n[0] = nf;
+            let (n, proof) = witness(deps, &a, who, &epoch_n, nf, DENOMS_UTERP[3]);
             let campaign = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
-            direct::check_claim(deps.as_ref(), &env, &campaign, &format!("terp1{who}"), &epoch_n, &Binary::from(n.to_vec()), DENOMS_UTERP[3], &Binary::from(vec![1u8; 64])).map(|_| ())
+            direct::check_claim(deps.as_ref(), &env, &campaign, &format!("terp1{who}"), &epoch_n, &n, DENOMS_UTERP[3], &proof).map(|_| ())
         };
         dry(&deps, "w1", 1).unwrap();
         dry(&deps, "w1", 1).unwrap();
-        let r = claim(&mut deps, &env, "w1", &epoch_n, 1, DENOMS_UTERP[3]).unwrap();
+        let r = claim(&mut deps, &env, &a, "w1", &epoch_n, 1, DENOMS_UTERP[3]).unwrap();
         assert!(dry(&deps, "w1", 1).unwrap_err().to_string().contains("nullifier"));
         let w1 = "terp1w1".to_string();
         let sent = r.messages.iter().any(|m| matches!(&m.msg, cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address, amount }) if *to_address == w1 && amount[0].amount.to_string() == DENOMS_UTERP[3].to_string()));
         assert!(sent);
         // replay of the nullifier from any sender, against any anchor
-        assert!(err(claim(&mut deps, &env, "w1", &epoch_n, 1, DENOMS_UTERP[3])).contains("nullifier"));
+        assert!(err(claim(&mut deps, &env, &a, "w1", &epoch_n, 1, DENOMS_UTERP[3])).contains("nullifier"));
         // seal N+1; the older anchor still works
         env.block.height += 1;
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let (_, anchors) = tree_root(&deps);
         assert_eq!(anchors.len(), 2);
-        assert!(err(claim(&mut deps, &env, "w9", &anchors[1].root, 1, DENOMS_UTERP[0])).contains("nullifier"));
-        claim(&mut deps, &env, "w2", &epoch_n, 2, DENOMS_UTERP[0]).unwrap();
-        claim(&mut deps, &env, "w3", &anchors[1].root, 3, DENOMS_UTERP[0]).unwrap();
+        assert!(err(claim(&mut deps, &env, &a, "w9", &anchors[1].root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+        claim(&mut deps, &env, &a, "w2", &epoch_n, 2, DENOMS_UTERP[0]).unwrap();
+        claim(&mut deps, &env, &a, "w3", &anchors[1].root, 3, DENOMS_UTERP[0]).unwrap();
         // per-denomination cap
-        claim(&mut deps, &env, "w4", &epoch_n, 4, DENOMS_UTERP[11]).unwrap();
-        assert!(err(claim(&mut deps, &env, "w5", &epoch_n, 5, DENOMS_UTERP[11])).contains("cap"));
+        claim(&mut deps, &env, &a, "w4", &epoch_n, 4, DENOMS_UTERP[11]).unwrap();
+        assert!(err(claim(&mut deps, &env, &a, "w5", &epoch_n, 5, DENOMS_UTERP[11])).contains("cap"));
         // failed verification consumes nothing
-        test_hook::set_ok(false);
-        assert!(err(claim(&mut deps, &env, "w6", &epoch_n, 6, DENOMS_UTERP[0])).contains("invalid note proof"));
-        test_hook::set_ok(true);
-        claim(&mut deps, &env, "w6", &epoch_n, 6, DENOMS_UTERP[0]).unwrap();
+        bad_proofs(true);
+        assert!(err(claim(&mut deps, &env, &a, "w6", &epoch_n, 6, DENOMS_UTERP[0])).contains("invalid note proof"));
+        bad_proofs(false);
+        claim(&mut deps, &env, &a, "w6", &epoch_n, 6, DENOMS_UTERP[0]).unwrap();
         // window
         env.block.height += 2000;
-        assert!(err(claim(&mut deps, &env, "w7", &epoch_n, 7, DENOMS_UTERP[0])).contains("window"));
+        assert!(err(claim(&mut deps, &env, &a, "w7", &epoch_n, 7, DENOMS_UTERP[0])).contains("window"));
         assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 5);
     }
 
