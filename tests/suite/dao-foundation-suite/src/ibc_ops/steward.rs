@@ -529,6 +529,175 @@ fn subdao_file(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Tuned structure (default since the new Terp<->Juno / Terp<->Osmosis routes).
+//
+// Terp holds three DAOs: steward-akash, custody-akash (vetoed by steward-akash),
+// and steward-juno. The Juno custody DAO lives on juno-1: steward-juno creates
+// it through its own Polytone proxy on Juno. On Juno the x/gov module account is
+// wasm admin, dao admin and 48-hour vetoer, and the proxy is the only cw4 member.
+// custody-akash opens a Polytone account it owns on Osmosis.
+
+/// juno-1 DAO-DAO v2.7.0 code ids (dao-dao-ui codeIds.json, checked on chain).
+pub const JUNO_DAO_CODES: RemoteCodeIds = RemoteCodeIds {
+    core: 4862,
+    voting_cw4: 4872,
+    cw4_group: 1992,
+    proposal_single: 4869,
+};
+/// juno-1 x/gov module account (auth ModuleAccountByName "gov").
+pub const JUNO_GOV: &str = "juno10d07y265gmmuvt4z0w9aw880jnsr700jvss730";
+
+pub struct JunoRemote<'a> {
+    /// Terp note pinned to the new Terp<->Juno connection.
+    pub note: Option<&'a str>,
+    /// steward-juno's proxy on Juno, when it can be predicted (voice and Juno-side connection known).
+    pub proxy: Option<&'a str>,
+    pub juno_gov: &'a str,
+    pub codes: RemoteCodeIds,
+}
+
+/// Note `Execute` carrying `msgs` for the remote proxy.
+pub fn polytone_execute(note: &str, msgs: Vec<CosmosMsg>) -> CosmosMsg {
+    let msg = serde_json::json!({
+        "execute": {
+            "msgs": msgs,
+            "callback": null,
+            "timeout_seconds": POLYTONE_TIMEOUT_SECONDS.to_string(),
+        }
+    });
+    CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: note.to_string(),
+        msg: to_json_binary(&msg).expect("note execute"),
+        funds: vec![],
+    })
+}
+
+/// The custody-juno instantiate executed on juno-1 by steward-juno's proxy.
+pub fn juno_custody_instantiate(proxy: &str, juno_gov: &str, codes: &RemoteCodeIds) -> CosmosMsg {
+    let spec = DaoInit {
+        name: "custody-juno".into(),
+        description: format!(
+            "Custody DAO for Juno liquidity, created on Juno by the Terp steward-juno DAO through Polytone. The Juno x/gov module account {juno_gov} is the dao admin, the wasm admin and the 48-hour vetoer (veto before passage on, early execute off). Sole cw4 member: the steward-juno Polytone account {proxy}."
+        ),
+        member: proxy.into(),
+        dao_admin: Some(juno_gov.into()),
+        wasm_admin: Some(juno_gov.into()),
+        vetoer: Some(juno_gov.into()),
+        salt: "custody-juno".into(),
+    };
+    CosmosMsg::Wasm(WasmMsg::Instantiate {
+        admin: Some(juno_gov.into()),
+        code_id: codes.core,
+        msg: to_json_binary(&dao_init_msg(&spec, codes.voting_cw4, codes.cw4_group, codes.proposal_single))
+            .expect("core msg"),
+        funds: vec![],
+        label: "custody-juno".into(),
+    })
+}
+
+pub fn build_steward_plan_tuned(
+    accounts: &StewardAccounts,
+    creator_bech32: &str,
+    checksum: &[u8],
+    osmosis_note: Option<&str>,
+    parent: Option<&str>,
+    juno: &JunoRemote,
+) -> Result<StewardPlan, String> {
+    if checksum.len() != 32 {
+        return Err(format!("code checksum is {} bytes, expected 32", checksum.len()));
+    }
+    let (hrp, creator) = decode_bech32(creator_bech32)?;
+    if hrp != "terp" {
+        return Err(format!("creator prefix is {hrp}, expected terp"));
+    }
+    let predict = |salt: &str| predictable_contract_address(checksum, &creator, salt.as_bytes(), "terp");
+    let steward_akash = predict("steward-akash")?;
+    let steward_juno = predict("steward-juno")?;
+    let custody_akash = predict("custody-akash")?;
+    let mut addresses = BTreeMap::new();
+    addresses.insert("steward-akash".into(), steward_akash.clone());
+    addresses.insert("steward-juno".into(), steward_juno.clone());
+    addresses.insert("custody-akash".into(), custody_akash.clone());
+
+    let msgs = vec![
+        instantiate2(&oversight("steward-akash", "Akash", &accounts.steward_akash, parent)),
+        instantiate2(&oversight("steward-juno", "Juno", &accounts.steward_juno, parent)),
+        instantiate2(&custody("custody-akash", "Akash", &accounts.custody_akash, &steward_akash, parent)),
+    ];
+    let admin_text = match parent {
+        Some(p) => format!("The Foundation is not their parent: dao admin and wasm admin are the Terp x/gov module account {p}."),
+        None => "The Foundation is not their parent: each core is its own admin.".into(),
+    };
+    let foundation_proposal = foundation_proposal_wrapper(
+        "Create the Akash and Juno steward DAOs and the Akash custody DAO",
+        &format!("Foundation instantiates steward-akash, steward-juno and custody-akash on Terp. {admin_text} steward-akash can veto custody-akash for 48 hours, including before a proposal passes; early execute is off. Each DAO has one cw4 member from steward-accounts.json. steward-juno later creates the Juno custody DAO on Juno through Polytone, and custody-akash opens a Polytone account on Osmosis; both are separate proposals of those DAOs."),
+        msgs,
+    );
+
+    let mut subdaos = vec![subdao_file(
+        "akash",
+        &custody_akash,
+        &accounts.sub_custody_akash_terp,
+        &accounts.sub_custody_akash_osmosis,
+        osmosis_note,
+        None,
+    )];
+    subdaos.push(SubdaoFile {
+        file_stem: "custody-akash-osmosis-account".into(),
+        body: serde_json::json!({
+            "dao": custody_akash,
+            "submit_to": "custody-akash proposal module (AnyoneMayPropose); vote and execute as its cw4 member. steward-akash can veto for 48h.",
+            "route": "Terp polytone note pinned to the new Terp<->Osmosis connection (client 07-tendermint-44) -> Osmosis voice",
+            "note": osmosis_note,
+            "ready": osmosis_note.is_some(),
+            "blocker": if osmosis_note.is_some() { serde_json::Value::Null } else { serde_json::json!("Osmosis note not deployed: needs the Terp<->Osmosis connection, voice and polytone channel (Hermes), then polytone_note --remote osmosis.") },
+            "propose": osmosis_note.map(|n| foundation_proposal_wrapper(
+                "Open the custody-akash Polytone account on Osmosis",
+                "Empty Polytone execute through the Terp<->Osmosis note. The Osmosis voice creates a proxy owned by this DAO. Read its address afterwards with the note's remote_address query.",
+                vec![polytone_open_account(n)],
+            )),
+        }),
+    });
+
+    let placeholder = "POLYTONE_PROXY_OF_steward-juno";
+    let proxy = juno.proxy.unwrap_or(placeholder);
+    let create = juno_custody_instantiate(proxy, juno.juno_gov, &juno.codes);
+    let ready = juno.note.is_some() && juno.proxy.is_some();
+    let note = juno.note.unwrap_or("POLYTONE_NOTE_TO_juno-1");
+    subdaos.push(SubdaoFile {
+        file_stem: "steward-juno-custody-on-juno".into(),
+        body: serde_json::json!({
+            "dao": steward_juno,
+            "submit_to": "steward-juno proposal module (AnyoneMayPropose); vote and execute as its cw4 member",
+            "route": "Terp polytone note pinned to the new Terp<->Juno connection (client 07-tendermint-46) -> Juno voice",
+            "juno": {"chain_id": "juno-1", "gov_module": juno.juno_gov, "code_ids": {"core": juno.codes.core, "voting_cw4": juno.codes.voting_cw4, "cw4_group": juno.codes.cw4_group, "proposal_single": juno.codes.proposal_single}, "code_source": "DAO-DAO v2.7.0"},
+            "steward_juno_proxy": juno.proxy,
+            "note": juno.note,
+            "ready": ready,
+            "blocker": if ready { serde_json::Value::Null } else { serde_json::json!("Needs the Juno-side client/connection on 07-tendermint-46, a Juno voice, the Terp note pinned to it and the polytone channel. Then rerun with --juno-note, --juno-voice and --juno-connection so the proxy is predicted; or submit open_account first and read the proxy from the note's remote_address query.") },
+            "open_account": juno.note.map(|n| foundation_proposal_wrapper(
+                "Open the steward-juno Polytone account on Juno",
+                "Empty Polytone execute through the Terp<->Juno note. The Juno voice creates the proxy owned by steward-juno. Only needed if the proxy address was not predicted.",
+                vec![polytone_open_account(n)],
+            )),
+            "create_custody": foundation_proposal_wrapper(
+                "Create custody-juno on Juno",
+                &format!("Through Polytone, steward-juno's Juno account instantiates custody-juno (DAO-DAO v2.7.0 code {}). The Juno x/gov module account {} is wasm admin, dao admin and 48-hour vetoer. Sole cw4 member: the steward-juno Polytone account {}, weight 1.", juno.codes.core, juno.juno_gov, proxy),
+                vec![polytone_execute(note, vec![create])],
+            ),
+        }),
+    });
+
+    Ok(StewardPlan {
+        checksum_hex: hex_encode(checksum),
+        creator: creator_bech32.to_string(),
+        addresses,
+        foundation_proposal,
+        subdaos,
+    })
+}
+
 fn hex_encode(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut out = String::with_capacity(bytes.len() * 2);
@@ -692,6 +861,41 @@ mod tests {
             let cosmos: CosmosMsg = serde_json::from_value(msg.clone()).unwrap();
             assert_no_foundation_admin(&cosmos, PARENT_CORE).unwrap();
         }
+    }
+
+    #[test]
+    fn tuned_plan_drops_terp_custody_juno_and_builds_juno_custody() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../steward-accounts.json");
+        let accounts = load_steward_accounts(&path).unwrap();
+        let gov = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq";
+        let proxy = "juno1proxyproxyproxy";
+        let juno = JunoRemote { note: Some("terp1note"), proxy: Some(proxy), juno_gov: JUNO_GOV, codes: JUNO_DAO_CODES };
+        let plan = build_steward_plan_tuned(&accounts, PARENT_CORE, &golden_checksum(), Some("terp1osmonote"), Some(gov), &juno).unwrap();
+        assert_eq!(plan.addresses.len(), 3);
+        assert!(!plan.addresses.contains_key("custody-juno"));
+        let msgs = plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"].as_array().unwrap().clone();
+        assert_eq!(msgs.len(), 3);
+        for m in &msgs {
+            let c: CosmosMsg = serde_json::from_value(m.clone()).unwrap();
+            assert_steward_admin(&c, PARENT_CORE, Some(gov)).unwrap();
+        }
+        let j = &plan.subdaos.iter().find(|s| s.file_stem == "steward-juno-custody-on-juno").unwrap().body;
+        assert_eq!(j["ready"], true);
+        let note_msg = &j["create_custody"]["propose"]["msg"]["propose"]["msgs"][0]["wasm"]["execute"];
+        assert_eq!(note_msg["contract_addr"], "terp1note");
+        let exec: serde_json::Value = serde_json::from_slice(&Binary::from_base64(note_msg["msg"].as_str().unwrap()).unwrap()).unwrap();
+        let inst = &exec["execute"]["msgs"][0];
+        assert_eq!(inst["wasm"]["instantiate"]["admin"], JUNO_GOV);
+        assert_eq!(inst["wasm"]["instantiate"]["code_id"], 4862);
+        let init = decode_init(inst);
+        assert_eq!(init["admin"], JUNO_GOV);
+        let prop: serde_json::Value = serde_json::from_slice(&Binary::from_base64(init["proposal_modules_instantiate_info"][0]["msg"].as_str().unwrap()).unwrap()).unwrap();
+        assert_eq!(prop["veto"]["vetoer"], JUNO_GOV);
+        let voting: serde_json::Value = serde_json::from_slice(&Binary::from_base64(init["voting_module_instantiate_info"]["msg"].as_str().unwrap()).unwrap()).unwrap();
+        assert_eq!(voting["group_contract"]["new"]["initial_members"], serde_json::json!([{"addr": proxy, "weight": 1}]));
+        let a = &plan.subdaos.iter().find(|s| s.file_stem == "custody-akash-osmosis-account").unwrap().body;
+        assert_eq!(a["dao"], plan.addresses["custody-akash"]);
+        assert_eq!(a["ready"], true);
     }
 
     fn decode_init(msg: &serde_json::Value) -> serde_json::Value {

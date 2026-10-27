@@ -268,3 +268,85 @@ mod v3_tests {
         assert_ne!(a, predict_for(gov, V3_NOTE_CHECKSUM, "other").unwrap());
     }
 }
+
+// ---------------------------------------------------------------------------
+// Chain-parametric remote side (juno-1, osmosis-1). Both chains run DAO-DAO's
+// polytone v1 binaries with the checksums above; ids read from each chain's LCD
+// (juno: lcd juno-api.polkachu.com, voices juno1mkq8…e0d0u / juno13yxr…wgvf).
+
+#[derive(Debug, Clone)]
+pub struct Remote {
+    pub chain_id: &'static str,
+    pub prefix: &'static str,
+    pub listener_code: u64,
+    pub note_code: u64,
+    pub proxy_code: u64,
+    pub voice_code: u64,
+    /// `block_max_gas` used by DAO-DAO's voices on that chain.
+    pub block_max_gas: &'static str,
+    /// Terp light client of that chain the new connection sits on.
+    pub terp_client: &'static str,
+}
+
+pub const JUNO: Remote = Remote {
+    chain_id: "juno-1", prefix: "juno",
+    listener_code: 3319, note_code: 3320, proxy_code: 3321, voice_code: 3322,
+    block_max_gas: "100000000", terp_client: "07-tendermint-46",
+};
+pub const OSMOSIS: Remote = Remote {
+    chain_id: "osmosis-1", prefix: "osmo",
+    listener_code: OSMO_LISTENER_CODE, note_code: OSMO_NOTE_CODE, proxy_code: OSMO_PROXY_CODE, voice_code: OSMO_VOICE_CODE,
+    block_max_gas: BLOCK_MAX_GAS, terp_client: "07-tendermint-44",
+};
+
+pub fn remote(name: &str) -> Result<Remote> {
+    match name {
+        "juno" | "juno-1" => Ok(JUNO),
+        "osmosis" | "osmosis-1" => Ok(OSMOSIS),
+        o => Err(anyhow!("unknown remote chain {o} (juno | osmosis)")),
+    }
+}
+
+impl Remote {
+    pub fn note_salt(&self) -> String { format!("polytone-v3-note-to-{}", self.chain_id) }
+    pub fn listener_salt(&self) -> String { format!("polytone-v3-listener-from-{}", self.chain_id) }
+    pub fn note_label(&self) -> String { format!("polytone_note_to_{}", self.chain_id) }
+    pub fn listener_label(&self) -> String { format!("polytone_listener_from_{}", self.chain_id) }
+    pub fn voice_init(&self) -> serde_json::Value {
+        serde_json::json!({"proxy_code_id": self.proxy_code.to_string(), "block_max_gas": self.block_max_gas})
+    }
+}
+
+/// Proxy a polytone v1 voice instantiates for `sender`: instantiate2(proxy
+/// checksum, creator = voice, salt = sha512(voice-side connection ||
+/// counterparty port `wasm.<note>` || sender)). Mirrors polytone voice `salt()`.
+pub fn predict_proxy(voice: &str, voice_connection: &str, note: &str, sender: &str) -> Result<String> {
+    use sha2::{Digest, Sha512};
+    let (hrp, creator) = bech32::decode(voice).map_err(|e| anyhow!("{e}"))?;
+    let salt = Sha512::new()
+        .chain_update(voice_connection.as_bytes())
+        .chain_update(format!("wasm.{note}").as_bytes())
+        .chain_update(sender.as_bytes())
+        .finalize();
+    cw_orch_kms::instantiate2_bech32(hrp.as_str(), &hex32(PROXY_CHECKSUM)?, &creator, &salt).map_err(|e| anyhow!(e))
+}
+
+#[cfg(test)]
+mod remote_tests {
+    use super::*;
+    #[test]
+    fn remotes_resolve_and_salts_are_per_chain() {
+        assert_eq!(remote("juno").unwrap().voice_code, 3322);
+        assert_eq!(remote("osmosis").unwrap().voice_code, 128);
+        assert_ne!(JUNO.note_salt(), OSMOSIS.note_salt());
+        assert_eq!(OSMOSIS.note_salt(), V3_NOTE_SALT);
+        assert_eq!(JUNO.voice_init(), serde_json::json!({"proxy_code_id": "3321", "block_max_gas": "100000000"}));
+    }
+    #[test]
+    fn proxy_prediction_is_deterministic_and_prefixed() {
+        let v = "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u";
+        let a = predict_proxy(v, "connection-9", "terp1note", "terp1sender").unwrap();
+        assert!(a.starts_with("juno1"));
+        assert_ne!(a, predict_proxy(v, "connection-10", "terp1note", "terp1sender").unwrap());
+    }
+}

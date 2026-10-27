@@ -200,16 +200,17 @@ pub fn foundation_proposal_wrapper(
 }
 
 pub const FOUNDATION_TITLE: &str = "Say fuck it and begin";
-/// Reproposal. Proposal 4 used [`FOUNDATION_TITLE`] and its execution failed.
-pub const FIAB_PROPOSAL_TITLE: &str = "Create FIAB-SUBDAO with 1,000,000 TERP and 1,000,000 THIOL";
+/// Reproposal of proposal 4 (execution_failed). Title, DAO name and description,
+/// codes, member, thresholds and periods match it. Only the seed differs: proposal 4
+/// sent 1,000,000 micro-units (1 TERP, 1 THIOL); this sends 1,000,000 whole tokens.
+pub const FIAB_PROPOSAL_TITLE: &str = FOUNDATION_TITLE;
 pub const FOUNDATION_DESCRIPTION: &str = "\
 'Say Fuck It And Begin'. A forward deployment subdao for Terp Network Foundation, \
 deploying and interacting with Terp Network's ecosystem in a minimally constrained \
 structure. Allows us to curate data points, and reflect for improving the stewardship \
 and collaborative support of growth.
 
-This DAO stays admin. The instantiate attaches 1000000000000uterp and \
-1000000000000uthiol (1,000,000 TERP and 1,000,000 THIOL). One member.";
+This DAO stays admin. Seed 1,000,000 TERP and 1,000,000 THIOL. One member.";
 
 pub const DELEGATION_TITLE: &str = "Delegate 100,000 TERP to every bonded validator";
 pub const DELEGATION_DESCRIPTION: &str =

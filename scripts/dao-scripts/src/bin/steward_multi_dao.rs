@@ -1,6 +1,9 @@
-//! Liquidity-steward multi-DAO: the Foundation proposal that instantiate2s
-//! the two steward (oversight) DAOs and two custody DAOs, plus the follow-up
-//! TERP subDAO proposals each custody DAO submits.
+//! Liquidity-steward multi-DAO. Default (tuned) structure: the Foundation
+//! proposal instantiate2s steward-akash, custody-akash and steward-juno on Terp
+//! (x/gov module parent). Follow-ups: custody-akash opens a Polytone account on
+//! Osmosis; steward-juno creates custody-juno on Juno through its Polytone proxy
+//! (Juno x/gov = wasm admin, dao admin, vetoer; proxy = sole member).
+//! `--legacy-four` restores the old four-DAO plan with custody-juno on Terp.
 //!
 //! cw-orch runtime. The dao-dao-core checksum comes from cw-orch's read-only
 //! gRPC querier (or `--checksum`). Default dry-run writes `out/steward/` and
@@ -15,7 +18,8 @@ use cosmwasm_std::CosmosMsg;
 use cw_orch_kms::ScopedCall;
 use dao_foundation_suite::ibc_ops::native_delegation::{CODE_CORE, PARENT_CORE, PRE_PROPOSE_A};
 use dao_foundation_suite::ibc_ops::steward::{
-    assert_steward_admin, build_steward_plan_with_parent, decode_hex, load_steward_accounts,
+    assert_steward_admin, build_steward_plan_tuned, build_steward_plan_with_parent, decode_bech32,
+    decode_hex, load_steward_accounts, JunoRemote, JUNO_DAO_CODES, JUNO_GOV,
 };
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 use std::path::PathBuf;
@@ -46,6 +50,21 @@ struct Cli {
     /// Keep the four DAOs self-admin (old behaviour).
     #[arg(long)]
     no_gov_parent: bool,
+    /// Old plan: four DAOs on Terp including custody-juno.
+    #[arg(long)]
+    legacy_four: bool,
+    /// Terp note pinned to the new Terp<->Juno connection (polytone_note --remote juno).
+    #[arg(long)]
+    juno_note: Option<String>,
+    /// Juno voice paired with --juno-note.
+    #[arg(long)]
+    juno_voice: Option<String>,
+    /// Juno-side connection id (counterparty of the Terp connection on 07-tendermint-46).
+    #[arg(long)]
+    juno_connection: Option<String>,
+    /// Juno x/gov module account. Default: queried on juno-1, else the known address.
+    #[arg(long)]
+    juno_gov: Option<String>,
     #[arg(long)]
     broadcast: bool,
     #[arg(long, default_value = "")]
@@ -80,7 +99,7 @@ fn main() -> Result<()> {
     let morocco = kms_gate::morocco_info();
     // Default: the gov-instantiate2 note to osmosis-1 predicted by polytone_osmosis
     // (DAO-DAO code ids; not instantiated until that gov proposal passes).
-    let note = match (&cli.polytone_note, cli.no_polytone) {
+    let note = match (&cli.polytone_note, cli.no_polytone || !cli.legacy_four) {
         (_, true) => None,
         (Some(n), _) => Some(n.clone()),
         (None, false) => {
@@ -105,13 +124,41 @@ fn main() -> Result<()> {
         bail!("gov parent equals the Foundation DAO");
     }
     eprintln!("steward parent: {parent:?} (x/gov module account)");
-    let plan = build_steward_plan_with_parent(&accounts, &cli.foundation, &sum, note.as_deref(), None, parent.as_deref())
-        .map_err(|e| anyhow!(e))?;
+    let mut juno_info = serde_json::Value::Null;
+    let (plan, expect) = if cli.legacy_four {
+        (build_steward_plan_with_parent(&accounts, &cli.foundation, &sum, note.as_deref(), None, parent.as_deref())
+            .map_err(|e| anyhow!(e))?, 4)
+    } else {
+        let juno_gov = match &cli.juno_gov {
+            Some(g) => g.clone(),
+            None => {
+                let mut ji: cw_orch::environment::ChainInfoOwned = cw_orch::daemon::networks::JUNO_1.into();
+                if let Ok(g) = std::env::var("JUNO_GRPC") { ji.grpc_urls = vec![g]; }
+                match kms_gate::query_only(&ji).and_then(|d| kms_gate::query_module_account(&d, "gov", "juno")) {
+                    Ok(g) => g,
+                    Err(e) => { eprintln!("juno gov query failed ({e}); using {JUNO_GOV}"); JUNO_GOV.to_string() }
+                }
+            }
+        };
+        if juno_gov != JUNO_GOV || kms_gate::module_address("gov", "juno")? != JUNO_GOV {
+            bail!("juno gov module {juno_gov} != expected {JUNO_GOV}");
+        }
+        let creator_bytes = decode_bech32(&cli.foundation).map_err(|e| anyhow!(e))?.1;
+        let steward_juno = cw_orch_kms::instantiate2_bech32("terp", &sum, &creator_bytes, b"steward-juno").map_err(|e| anyhow!(e))?;
+        let proxy = match (&cli.juno_voice, &cli.juno_connection, &cli.juno_note) {
+            (Some(v), Some(c), Some(n)) => Some(dao_scripts::polytone::predict_proxy(v, c, n, &steward_juno)?),
+            _ => None,
+        };
+        juno_info = serde_json::json!({"gov": juno_gov, "note": cli.juno_note, "voice": cli.juno_voice, "connection": cli.juno_connection, "steward_juno_proxy": proxy, "codes": "DAO-DAO v2.7.0 juno-1: core 4862, voting_cw4 4872, cw4_group 1992, proposal_single 4869"});
+        let jr = JunoRemote { note: cli.juno_note.as_deref(), proxy: proxy.as_deref(), juno_gov: &juno_gov, codes: JUNO_DAO_CODES };
+        (build_steward_plan_tuned(&accounts, &cli.foundation, &sum, cli.polytone_note.as_deref(), parent.as_deref(), &jr)
+            .map_err(|e| anyhow!(e))?, 3)
+    };
     let msgs: Vec<CosmosMsg> = serde_json::from_value(
         plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"].clone(),
     )?;
-    if msgs.len() != 4 {
-        bail!("expected 4 foundation instantiate2 msgs, got {}", msgs.len());
+    if msgs.len() != expect {
+        bail!("expected {expect} foundation instantiate2 msgs, got {}", msgs.len());
     }
     for m in &msgs {
         assert_steward_admin(m, &cli.foundation, parent.as_deref()).map_err(|e| anyhow!(e))?;
@@ -130,7 +177,9 @@ fn main() -> Result<()> {
         "foundation_proposal": plan.foundation_proposal,
         "subdao_files": plan.subdaos.iter().map(|s| &s.file_stem).collect::<Vec<_>>(),
         "parent": parent,
-        "invariants": "foundation is neither wasm nor DAO admin of any of the 4 DAOs; both admins equal the x/gov module parent (checked)",
+        "structure": if cli.legacy_four { "legacy-four" } else { "tuned: steward-akash + custody-akash + steward-juno on Terp; custody-juno on Juno via Polytone" },
+        "juno": juno_info,
+        "invariants": "foundation is neither wasm nor DAO admin of any Terp DAO; both admins equal the x/gov module parent (checked)",
         "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
     }))?;
     if !cli.broadcast {

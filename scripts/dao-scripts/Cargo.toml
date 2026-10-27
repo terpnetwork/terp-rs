@@ -123,6 +123,10 @@ dao-proposal-single = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 
 [[bin]]
+name = "polytone_note"
+path = "src/bin/polytone_note.rs"
+
+[[bin]]
 name = "polytone_osmosis"
 path = "src/bin/polytone_osmosis.rs"
 
