@@ -78,12 +78,11 @@ const CODES: &[(&str, &str)] = &[
 
 /// DAO DAO subset re-stored from crates/dao-contracts/artifacts (paths are relative to the
 /// terp-rs artifacts dir): audited rewards-distributor and vote-delegation fixes, dao-calendar
-/// and the gauge distribution contracts. Only the `dao-upload` phase stores these.
+/// and gauge-adapter (gauge-orchestrator fails arm64 compile; later). Only the `dao-upload` phase stores these.
 const DAO_CODES: &[(&str, &str)] = &[
     ("dao-rewards-distributor", "../../dao-contracts/artifacts/dao_rewards_distributor.wasm"),
     ("dao-vote-delegation", "../../dao-contracts/artifacts/dao_vote_delegation.wasm"),
     ("dao-calendar", "../../dao-contracts/artifacts/dao_calendar.wasm"),
-    ("gauge-orchestrator", "../../dao-contracts/artifacts/gauge_orchestrator.wasm"),
     ("gauge-adapter", "../../dao-contracts/artifacts/gauge_adapter.wasm"),
 ];
 
