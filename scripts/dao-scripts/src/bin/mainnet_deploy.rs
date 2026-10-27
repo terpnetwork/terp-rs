@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -74,6 +74,17 @@ const CODES: &[(&str, &str)] = &[
     ("recovery", "terp_recovery.wasm"),
     ("cw721-svg", "cw721_svg.wasm"),
     ("svg-minter", "cw_svg_minter.wasm"),
+];
+
+/// DAO DAO subset re-stored from crates/dao-contracts/artifacts (paths are relative to the
+/// terp-rs artifacts dir): audited rewards-distributor and vote-delegation fixes, dao-calendar
+/// and the gauge distribution contracts. Only the `dao-upload` phase stores these.
+const DAO_CODES: &[(&str, &str)] = &[
+    ("dao-rewards-distributor", "../../dao-contracts/artifacts/dao_rewards_distributor.wasm"),
+    ("dao-vote-delegation", "../../dao-contracts/artifacts/dao_vote_delegation.wasm"),
+    ("dao-calendar", "../../dao-contracts/artifacts/dao_calendar.wasm"),
+    ("gauge-orchestrator", "../../dao-contracts/artifacts/gauge_orchestrator.wasm"),
+    ("gauge-adapter", "../../dao-contracts/artifacts/gauge_adapter.wasm"),
 ];
 
 /// Codes already on morocco-1 that this runtime reuses and never re-stores.
@@ -330,7 +341,7 @@ fn artifacts_dir() -> PathBuf {
 }
 
 fn file_of(name: &str) -> Result<&'static str> {
-    CODES.iter().find(|(n, _)| *n == name).map(|(_, f)| *f).ok_or_else(|| anyhow!("unknown code {name}"))
+    CODES.iter().chain(DAO_CODES).find(|(n, _)| *n == name).map(|(_, f)| *f).ok_or_else(|| anyhow!("unknown code {name}"))
 }
 
 fn read(dir: &Path, file: &str) -> Result<Vec<u8>> {
@@ -640,6 +651,12 @@ fn upload(ctx: &mut Ctx) -> Result<()> {
     let steps = CODES.iter().filter(|(n, _)| !ctx.cli.skip_code.iter().any(|s| s == n))
         .map(|(name, file)| Step::Store { name, file }).collect();
     execute_steps(ctx, "upload", steps)
+}
+
+fn dao_upload(ctx: &mut Ctx) -> Result<()> {
+    let steps = DAO_CODES.iter().filter(|(n, _)| !ctx.cli.skip_code.iter().any(|s| s == n))
+        .map(|(name, file)| Step::Store { name, file }).collect();
+    execute_steps(ctx, "dao-upload", steps)
 }
 
 /// FIAB + steward are Foundation proposals. A Foundation member (the kms granter) submits
@@ -1041,6 +1058,7 @@ fn main() -> Result<()> {
         match phase {
             "preflight" => preflight(&mut ctx)?,
             "upload" => upload(&mut ctx)?,
+            "dao-upload" => dao_upload(&mut ctx)?,
             "daos" => daos(&mut ctx)?,
             "oracles" => oracles(&mut ctx)?,
             "nftfi" => nftfi(&mut ctx)?,
