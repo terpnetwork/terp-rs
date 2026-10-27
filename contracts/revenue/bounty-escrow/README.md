@@ -48,3 +48,14 @@ escrow.instantiate(&msg, Some(&admin), &[])?;
 let n = escrow.proposal_count()?;    // DAO DAO queries through QueryFns
 ```
 `TerpProductSuite::upload()` and `instantiate_lab()` leave it out on purpose (unaudited, dev-chain-guard).
+
+## Mainnet build (morocco-1) — 2026-10-27
+
+- Built with `terpnetwork/optimizer-arm64:0.17.0-rust1.91` used as a toolchain (rustc 1.91.0, wasm-opt 116):
+  `cargo build --locked --release --lib --target wasm32-unknown-unknown -p terp-bounty-escrow --no-default-features`
+  (`RUSTFLAGS="-C link-arg=-s"`), then `wasm-opt -Os --enable-bulk-memory --enable-sign-ext --disable-simd`.
+- `--no-default-features` drops `dev-chain-guard`, so instantiate works on morocco-1. Owner approved this on 2026-10-27.
+- Artifact: `artifacts/mainnet/terp_bounty_escrow.wasm`, 673080 bytes, sha256 `26041c3c0de61cebed54c7e18aa23d7118108a7a019e25050d6b8a4de2e92c1a`.
+- **Migrate exception:** this contract keeps its `migrate` entrypoint as an explicit, owner-approved exception (2026-10-27) to the no-migrate convention.
+- Upload only: `mainnet_deploy bounty-upload` (authz MsgExec store, instantiate permission Everybody); the code id is recorded in `scripts/dao-scripts/out/mainnet-deploy/state.json`.
+- Gas notes: the earlier store txs used 3.4M–10M gas for 0.3–0.9 MB wasm. Expect roughly 7–9M gas here, which is ≈0.4–0.5 THIOL at 0.05 uthiol per gas.

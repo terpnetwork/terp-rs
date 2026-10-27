@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -85,6 +85,13 @@ const DAO_CODES: &[(&str, &str)] = &[
     ("dao-calendar", "../../dao-contracts/artifacts/dao_calendar.wasm"),
     ("gauge-adapter", "../../dao-contracts/artifacts/gauge_adapter.wasm"),
 ];
+
+/// Bounty escrow (contracts/revenue/bounty-escrow), mainnet build: `--no-default-features`
+/// (no dev-chain-guard), optimizer terpnetwork/optimizer-arm64:0.17.0-rust1.91, written to
+/// artifacts/mainnet/ so the guarded dev artifact in artifacts/ is untouched. It keeps its
+/// `migrate` entrypoint: an explicit, owner-approved exception (2026-10-27). Only the
+/// `bounty-upload` phase stores it; nothing here instantiates it.
+const BOUNTY_CODES: &[(&str, &str)] = &[("bounty-escrow", "mainnet/terp_bounty_escrow.wasm")];
 
 /// Codes already on morocco-1 that this runtime reuses and never re-stores.
 const EXTERNAL_CODES: &[(&str, u64)] = &[
@@ -652,6 +659,11 @@ fn upload(ctx: &mut Ctx) -> Result<()> {
     execute_steps(ctx, "upload", steps)
 }
 
+fn bounty_upload(ctx: &mut Ctx) -> Result<()> {
+    let steps = BOUNTY_CODES.iter().map(|(name, file)| Step::Store { name, file }).collect();
+    execute_steps(ctx, "bounty-upload", steps)
+}
+
 fn dao_upload(ctx: &mut Ctx) -> Result<()> {
     let steps = DAO_CODES.iter().filter(|(n, _)| !ctx.cli.skip_code.iter().any(|s| s == n))
         .map(|(name, file)| Step::Store { name, file }).collect();
@@ -1058,6 +1070,7 @@ fn main() -> Result<()> {
             "preflight" => preflight(&mut ctx)?,
             "upload" => upload(&mut ctx)?,
             "dao-upload" => dao_upload(&mut ctx)?,
+            "bounty-upload" => bounty_upload(&mut ctx)?,
             "daos" => daos(&mut ctx)?,
             "oracles" => oracles(&mut ctx)?,
             "nftfi" => nftfi(&mut ctx)?,

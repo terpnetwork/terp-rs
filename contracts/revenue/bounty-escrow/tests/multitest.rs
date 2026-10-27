@@ -771,8 +771,10 @@ fn instantiate_rejects_no_gate_and_bad_params() {
     }
 }
 
+/// morocco-1 instantiate: refused with the default `dev-chain-guard`, allowed by the
+/// mainnet build (`--no-default-features`, owner-approved 2026-10-27).
 #[test]
-fn mainnet_chain_id_is_refused() {
+fn mainnet_chain_id_follows_dev_chain_guard() {
     let api = MockApiBech32::new("terp");
     let mut app: TApp = AppBuilder::default().with_api(api).build(|_, _, _| {});
     app.update_block(|b| b.chain_id = "morocco-1".into());
@@ -797,10 +799,12 @@ fn mainnet_chain_id_is_refused() {
         pre_propose_info: None,
         creation_gate: None,
     };
-    let e = app
-        .instantiate_contract(code, owner.clone(), &m, &[], "x", None)
-        .unwrap_err();
-    assert_eq!(decode(&e), ContractError::MainnetGuard("morocco-1".into()));
+    let r = app.instantiate_contract(code, owner.clone(), &m, &[], "x", None);
+    if cfg!(feature = "dev-chain-guard") {
+        assert_eq!(decode(&r.unwrap_err()), ContractError::MainnetGuard("morocco-1".into()));
+    } else {
+        r.expect("mainnet build instantiates on morocco-1");
+    }
 }
 
 // ------------------------------------------------------------------ deposit
