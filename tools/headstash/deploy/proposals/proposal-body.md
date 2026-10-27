@@ -87,7 +87,7 @@ trust (owner = {{CONTRACT_OWNER}}, admin = gov), Merkle path delivery, unique-am
 <!--DIRECT-->linkability (addressed by fixed denominations). Funds can only leave the contract via
 verified note claims or the post-cutoff sweep<!--/DIRECT--><!--LANE-->linkability, oracle source registration (this proposal). Funds can only leave the contract via
 attested batches or the post-cutoff sweep<!--/LANE-->
- to `{{SWEEP_RECIPIENT}}`; gov can migrate.
+, which burns every unclaimed coin (no recipient); gov can migrate.
 
 ## Links
 - Contract: `{{CONTRACT_ADDR}}` (code id `{{CODE_ID}}`, wasm sha256 `{{WASM_SHA256}}`)

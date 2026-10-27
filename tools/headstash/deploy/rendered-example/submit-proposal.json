@@ -21,44 +21,11 @@
           "amount": "66456669000000"
         }
       ]
-    },
-    {
-      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
-      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "recipient": "terp15n2h9ptg0r7tuf0ctzpvpjgfgc7c288x9mcnpv",
-      "amount": [
-        {
-          "denom": "uthiol",
-          "amount": "2400000000"
-        }
-      ]
-    },
-    {
-      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
-      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "recipient": "terp1y6xjllwkm97rch44f7wlec8cfmxw2heaaug4k7",
-      "amount": [
-        {
-          "denom": "uthiol",
-          "amount": "1600000000"
-        }
-      ]
-    },
-    {
-      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
-      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "recipient": "terp1mxcwhmatwrlpuchtx34fpgemwcuqle3ujvxctq",
-      "amount": [
-        {
-          "denom": "uthiol",
-          "amount": "800000000"
-        }
-      ]
     }
   ],
   "metadata": "https://example.invalid/EXAMPLE-proposal.json",
   "deposit": "1000000uterp",
   "title": "Headstash 2026: fund the private TERP airdrop to 16 partner communities",
-  "summary": "Stores the Headstash note circuit (vk hash 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) and sends 66456669000000 uterp from the community pool to the cw-headstash contract terp19vfl5kafn2e6vs6raem350avwkpdaqgavm8rpf7d8rj4dkpmrmts06av8u (eligibility root c6ffae12fc3e5aa7f40a4f5b45e141b18362bdb06a798cc5c234ab5b5105a3b0). Sends each named sidecar operator its THIOL fee-grant budget. Claims are verified and paid by the contract directly; no hashmerchant registration. Full text: https://example.invalid/EXAMPLE-proposal.json",
+  "summary": "Stores the Headstash note circuit (vk hash 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) and sends 66456669000000 uterp from the community pool to the cw-headstash contract terp19vfl5kafn2e6vs6raem350avwkpdaqgavm8rpf7d8rj4dkpmrmts06av8u (eligibility root c6ffae12fc3e5aa7f40a4f5b45e141b18362bdb06a798cc5c234ab5b5105a3b0). Operator THIOL fee-grant budgets come from the foundation DAO, not this proposal. Claims are verified and paid by the contract directly; no hashmerchant registration. Full text: https://example.invalid/EXAMPLE-proposal.json",
   "expedited": false
 }

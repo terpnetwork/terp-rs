@@ -13,6 +13,15 @@ def check(name, ok, info=""):
     if not ok: fails.append(name)
 p = json.load(open(F))
 types = [m["@type"] for m in p["messages"]]
+camp_f = os.path.join(os.path.dirname(F), "02-set-epoch-campaign-open.json")
+if os.path.exists(camp_f):
+    c = json.load(open(camp_f))["set_epoch_campaign"]["campaign"]
+    check("campaign burns unclaimed (no sweep recipient)", c.get("burn_unclaimed") is True and c.get("sweep_recipient") == "",
+          {"burn_unclaimed": c.get("burn_unclaimed"), "sweep_recipient": c.get("sweep_recipient")})
+    r_ = c["registration"]
+    check("anchor_interval 16 blocks, min_anonymity_set 1024", r_["anchor_interval"] == 16 and r_["min_anonymity_set"] == 1024,
+          {k: r_[k] for k in ("anchor_interval", "min_anonymity_set")})
+    check("cutoff_height set", isinstance(c["cutoff_height"], int) and c["cutoff_height"] > 24_118_282, c["cutoff_height"])
 check("no lane/hashmerchant messages", not any("hashmerchant" in t for t in types), [t.split(".")[-1] for t in types])
 need = {}
 for m in p["messages"]:
@@ -28,9 +37,14 @@ def tx(*a):
 def bal(addr):
     b = json.loads(sh("q", "bank", "balances", addr, "--node", N, "-o", "json")[1])["balances"]
     return {c["denom"]: int(c["amount"]) for c in b}
-fund = ",".join(f"{v}{d}" for d, v in sorted(need.items()))
-tx("distribution", "fund-community-pool", fund)
-print("community pool funded locally with exactly the proposal spends:", fund)
+pool = {}
+for c in json.loads(sh("q", "distribution", "community-pool", "--node", N, "-o", "json")[1]).get("pool", []):
+    d, a = (c["denom"], c["amount"]) if isinstance(c, dict) else (c.lstrip("0123456789."), c[:len(c) - len(c.lstrip("0123456789."))])
+    pool[d] = pool.get(d, 0) + int(float(a))
+short = {d: v - pool.get(d, 0) for d, v in need.items() if v > pool.get(d, 0)}
+fund = ",".join(f"{v}{d}" for d, v in sorted(short.items()))
+if fund: tx("distribution", "fund-community-pool", fund)
+print("community pool topped up locally to cover the proposal spends (reruns reuse leftovers):", fund or "nothing needed", "need", need)
 before = {m["recipient"]: bal(m["recipient"]) for m in p["messages"] if m["@type"].endswith("MsgCommunityPoolSpend")}
 r = tx("gov", "submit-proposal", F)
 pid = [a["value"] for e in r["events"] if e["type"] == "submit_proposal" for a in e["attributes"] if a["key"] == "proposal_id"][0]

@@ -56,6 +56,21 @@ def new_wallet(name):
     terpd("keys", "add", name, "--keyring-backend", "test", "--home", HOME, "--output", "json")  # mnemonic discarded
     return terpd("keys", "show", name, "-a", "--keyring-backend", "test", "--home", HOME).strip()
 
+def supply(h):
+    r = requests.get(REST + "/cosmos/bank/v1beta1/supply/by_denom", params={"denom": "uterp"},
+                     headers={"x-cosmos-block-height": str(h)}, timeout=10).json()
+    return int(r["amount"]["amount"])
+
+def minted_at(h):
+    """uterp minted by x/mint in block h (inflation lands in the fee collector, not burned)."""
+    r = requests.get(RPC + "/block_results", params={"height": h}, timeout=10).json()["result"]
+    m = 0
+    for e in (r.get("finalize_block_events") or []) + (r.get("begin_block_events") or []):
+        if e.get("type") == "mint":
+            for a in e.get("attributes", []):
+                if a.get("key") == "amount" and a.get("value", "").isdigit(): m += int(a["value"])
+    return m
+
 def main():
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
     OWNER = addrs["OWNER_ADDR"]
@@ -125,16 +140,21 @@ def main():
             "ctx": b64(c), "backend": "halo2", "cutoff_height": cut, "bech32_hrp": "terp", "denom": h2b64(DENOM),
             "amounts": amounts, "reserved": [], "trusted": [], "trusted_verify_threshold": 0, "trusted_sign_threshold": 0,
             "max_rows": 8, "allocation_root": b64(bytes(32)), "root_id": 0, "vk_id": 3, "vk_hash": h2b64(NOTE_VK_HASH),
-            "sweep_recipient": OWNER,
+            "sweep_recipient": "",  # vk_id 3 burns unclaimed by default (burn_unclaimed omitted)
             "registration": {"eligibility_root": h2b64(ntree["root_hex"]), "eligibility_depth": 17,
                              "min_anonymity_set": 2, "anchor_start_height": 1, "anchor_interval": 1}}}}
-    res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(campaign())))
+    eff = campaign()
+    res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(eff)))
     if res.get("code") != 0:  # trusted set may be mandatory; fall back to a 1-of-1 placeholder (unused by the direct path)
         c = campaign(); cc = c["set_epoch_campaign"]["campaign"]
         cc["trusted"] = [b64(bytes(32))]; cc["trusted_verify_threshold"] = 1; cc["trusted_sign_threshold"] = 1
         R["set_campaign_first_error"] = res.get("raw_log", "")[:300]
-        res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(c)))
+        res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(c))); eff = c
     step("set_campaign_vk3_direct_ctx", res.get("code") == 0, res.get("raw_log", "")[:200])
+    # NEG: the same (accepted) campaign with a sweep recipient is refused: vk_id 3 burns unclaimed by default
+    cr = json.loads(json.dumps(eff)); cr["set_epoch_campaign"]["campaign"]["sweep_recipient"] = OWNER
+    neg("burning_campaign_rejects_sweep_recipient", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(cr)),
+        "takes no sweep recipient")
 
     # 4. BindNoteCircuit: negatives then the real bind
     res = tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
@@ -382,11 +402,31 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         step("neg_grant_refused_after_cutoff", code != 200 and "window" in json.dumps(j) or code != 200, "%d %s" % (code, json.dumps(j)[:160]))
         res = tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc)))
         neg("claim_after_cutoff", res, "claim window closed")
+        # registration closes at cutoff: a correctly signed body (sol list) now fails before any other check
+        sbody = reg_body("sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"])
+        wr2 = new_wallet("dreg_late")
+        code, j = grant(wr2, "register", sbody)
+        R["negatives"]["grant_refused_register_after_cutoff"] = "%d %s" % (code, json.dumps(j)[:200])
+        step("neg_grant_refused_register_after_cutoff", code != 200 and not j.get("granted"),
+             R["negatives"]["grant_refused_register_after_cutoff"])
+        res = tx("stranger", REGISTER_GAS, "wasm", "execute", contract, json.dumps({"register_notes": sbody}))
+        neg("register_after_cutoff", res, "registration closed")
+        try: smart(contract, {"check_register_notes": sbody}); r_ = "query ok"
+        except Exception as e: r_ = str(e)[-200:]
+        step("neg_check_register_notes_after_cutoff", "registration closed" in r_, r_)
+        # sweep burns: contract -> 0, owner pays only the fee, total uterp supply drops by the balance
         c0, o0 = bal(contract), bal(OWNER)
         res = rec("sweep", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})))
-        fee = int(3000000 * GP + 0.999999)
-        step("sweep_unclaimed", res.get("code") == 0 and bal(contract) == 0 and bal(OWNER) - o0 == c0 - fee,
-             "swept %d contract now %d %s" % (c0, bal(contract), res.get("raw_log", "")[:160]))
+        fee = int(3000000 * GP + 0.999999); hs = int(res.get("height", 0) or 0)
+        s_before, s_after, minted = supply(hs - 1), supply(hs), minted_at(hs)
+        burned = s_before + minted - s_after
+        R["sweep_burn"] = {"height": hs, "contract_before": c0, "supply_before": s_before, "supply_after": s_after,
+                           "minted_in_block": minted, "burned": burned, "mode": attr(res, "mode"), "amount_attr": attr(res, "amount")}
+        burn_ev = [e for e in res.get("events", []) if e.get("type") == "burn"]
+        step("sweep_unclaimed_burns", res.get("code") == 0 and bal(contract) == 0 and o0 - bal(OWNER) == fee and attr(res, "mode") == "burn"
+             and bool(burn_ev), "burned %d contract now %d owner -%d (fee %d) %s" % (c0, bal(contract), o0 - bal(OWNER), fee, res.get("raw_log", "")[:120]))
+        step("sweep_supply_drops_by_balance", burned == c0,
+             "supply %d -> %d (+%d minted in block %d) burned %d == contract balance %d" % (s_before, s_after, minted, hs, burned, c0))
 
 if __name__ == "__main__":
     try:

@@ -14,7 +14,8 @@
   "root_id": 0,
   "vk_id": {{NOTE_VK_ID}},
   "vk_hash": "{{NOTE_VK_HASH_B64}}",
-  "sweep_recipient": "{{SWEEP_RECIPIENT}}",
+  "sweep_recipient": "",
+  "burn_unclaimed": {{BURN_UNCLAIMED}},
   "registration": {
     "eligibility_root": "{{ELIGIBILITY_ROOT_B64}}",
     "eligibility_depth": {{ELIGIBILITY_DEPTH}},

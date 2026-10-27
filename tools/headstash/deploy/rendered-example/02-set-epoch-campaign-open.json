@@ -1,7 +1,7 @@
 {"set_epoch_campaign": {"campaign": {
   "ctx": "XY/vg6O7YujphcR6kCKpTi972NHeDtycSPmlZsNH1xs=",
   "backend": "halo2",
-  "cutoff_height": 99999999,
+  "cutoff_height": 39129426,
   "bech32_hrp": "terp",
   "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
   "amounts": [{"amount": 1000000, "cap": 6491}, {"amount": 2000000, "cap": 12569}, {"amount": 5000000, "cap": 10150}, {"amount": 10000000, "cap": 6940}, {"amount": 20000000, "cap": 6387}, {"amount": 50000000, "cap": 6219}, {"amount": 100000000, "cap": 5081}, {"amount": 200000000, "cap": 15363}, {"amount": 500000000, "cap": 8031}, {"amount": 1000000000, "cap": 7978}, {"amount": 2000000000, "cap": 5956}, {"amount": 5000000000, "cap": 7676}],
@@ -14,12 +14,13 @@
   "root_id": 0,
   "vk_id": 3,
   "vk_hash": "NNEUN9lXVU9ACDd97OX6wPBH4OnMAS0Vs9CUSKbMU5g=",
-  "sweep_recipient": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+  "sweep_recipient": "",
+  "burn_unclaimed": true,
   "registration": {
     "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
     "eligibility_depth": 17,
-    "min_anonymity_set": 64,
+    "min_anonymity_set": 1024,
     "anchor_start_height": 11111111,
-    "anchor_interval": 14400
+    "anchor_interval": 16
   }
 }}}

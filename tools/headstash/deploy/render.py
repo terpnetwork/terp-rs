@@ -6,6 +6,13 @@ Nothing here signs or broadcasts.
 usage:
   render.py DECISIONS.json --circuit DIR [--elig DIR] [--out DIR] [--partial] [--lane]
   render.py --dry-run --circuit DIR [--elig DIR] [--out DIR] [--lane]
+  render.py --compute-cutoff [--cutoff-rest URL]   (read-only mainnet query, prints JSON)
+
+Unclaimed funds
+  BURN_UNCLAIMED must be true: after CUTOFF_HEIGHT the owner's sweep burns the contract balance
+  (BankMsg::Burn); campaigns carry no sweep recipient. Registration also closes at CUTOFF_HEIGHT.
+  CUTOFF_HEIGHT may be "auto": latest mainnet height + 2 years at the mean block time of the last
+  10,000 blocks (public REST, read-only, --cutoff-rest URL). ANCHOR_INTERVAL is in blocks.
 
 Paths
   v1 default is the DIRECT path: the contract verifies note proofs (vk_id 3) and pays at once.
@@ -65,8 +72,8 @@ SOURCES = {
 DECISION = {
     "CHAIN_ID": "str", "CAMPAIGN_LABEL": "str", "CONTRACT_OWNER": "addr", "WASM_ADMIN": "addr",
     "WAVS_POO_JSON": "json",
-    "CUTOFF_HEIGHT": "int", "ANCHOR_START_HEIGHT": "int", "ANCHOR_INTERVAL": "int",
-    "MIN_ANONYMITY_SET": "int", "MAX_ROWS": "int", "SWEEP_RECIPIENT": "addr",
+    "CUTOFF_HEIGHT": "cutoff", "ANCHOR_START_HEIGHT": "int", "ANCHOR_INTERVAL": "int",
+    "MIN_ANONYMITY_SET": "int", "MAX_ROWS": "int", "BURN_UNCLAIMED": "burn",
     "FUNDING_AMOUNT_UTERP": "int", "DEPOSIT_UTERP": "int", "PROPOSER": "addr",
     "SOURCE_COMMIT": "hex", "FEEGRANT_FUNDING_SOURCE": "source", "OPERATORS": "operators",
 }
@@ -127,17 +134,17 @@ def example_decisions():
         "CHAIN_ID": "morocco-1", "CAMPAIGN_LABEL": "headstash-EXAMPLE",
         "CONTRACT_OWNER": ex_addr("owner"), "WASM_ADMIN": GOV,
         "WAVS_POO_JSON": {"EXAMPLE": "operator set PoP"},
-        "CUTOFF_HEIGHT": 99999999, "ANCHOR_START_HEIGHT": 11111111, "ANCHOR_INTERVAL": 14400,
-        "MIN_ANONYMITY_SET": 64, "MAX_ROWS": 25, "SWEEP_RECIPIENT": GOV,
+        # CUTOFF_HEIGHT example = mainnet 24,118,282 (2026-10-27) + 2y at the 10k-block mean 4.2046 s.
+        "CUTOFF_HEIGHT": 39129426, "ANCHOR_START_HEIGHT": 11111111, "ANCHOR_INTERVAL": 16,
+        "MIN_ANONYMITY_SET": 1024, "MAX_ROWS": 25, "BURN_UNCLAIMED": True,
         "FUNDING_AMOUNT_UTERP": 1234567, "DEPOSIT_UTERP": 1000000, "PROPOSER": ex_addr("proposer"),
-        "SOURCE_COMMIT": "0" * 40, "FEEGRANT_FUNDING_SOURCE": "community-pool",
+        "SOURCE_COMMIT": "0" * 40, "FEEGRANT_FUNDING_SOURCE": "foundation-dao",
         "OPERATORS": [
-            {"label": "EXAMPLE operator A", "addr": ex_addr("operator A"), "budget_uthiol": 2_400_000_000},
-            {"label": "EXAMPLE operator B", "addr": ex_addr("operator B"), "budget_uthiol": 1_600_000_000},
-            {"label": "EXAMPLE operator C", "addr": ex_addr("operator C"), "budget_uthiol": 800_000_000},
+            {"label": "EXAMPLE foundation fee granter", "addr": ex_addr("foundation granter"),
+             "budget_uthiol": FEEGRANT_RECOMMENDED_UTHIOL},
         ],
         "CONTRACT_ADDR": ex_addr("contract", 32), "CODE_ID": 999999,
-        "WASM_SHA256": "3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b",
+        "WASM_SHA256": "57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d",
         "PROPOSAL_METADATA_URI": "https://example.invalid/EXAMPLE-proposal.json",
         "FORUM_URL": "https://example.invalid/EXAMPLE-forum",
         "NOTE_ZK_ID": 999,
@@ -151,11 +158,39 @@ def example_lane():
 def unfilled(x):
     return x is None or (isinstance(x, str) and (x.strip() == "" or "{{" in x or "DECISION" in x.upper()))
 
+dec_source = None   # FEEGRANT_FUNDING_SOURCE of the run being checked
+
+CUTOFF_REST = "https://terp.api.m.anode.team"
+CUTOFF_YEARS, CUTOFF_WINDOW = 2, 10_000
+
+def compute_cutoff(rest, years=CUTOFF_YEARS, window=CUTOFF_WINDOW):
+    """Read-only: latest mainnet height + ceil(years / mean block time over the last `window` blocks)."""
+    import datetime, math, urllib.request
+    def hdr(h):
+        u = rest.rstrip("/") + "/cosmos/base/tendermint/v1beta1/blocks/" + str(h)
+        try:
+            import requests  # certifi CA bundle (python.org builds ship without system CAs)
+            j = requests.get(u, timeout=30).json()
+        except ImportError:
+            j = json.load(urllib.request.urlopen(u, timeout=30))
+        x = j["block"]["header"]
+        t = re.sub(r"(\.\d{6})\d*", r"\1", x["time"]).replace("Z", "+00:00")
+        return int(x["height"]), datetime.datetime.fromisoformat(t)
+    h1, t1 = hdr("latest"); h0, t0 = hdr(h1 - window)
+    avg = (t1 - t0).total_seconds() / (h1 - h0)
+    blocks = math.ceil(years * 365.25 * 86400 / avg)
+    return {"rest": rest, "latest_height": h1, "latest_time": t1.isoformat(), "window_blocks": h1 - h0,
+            "avg_block_secs": round(avg, 6), "years": years, "blocks": blocks, "cutoff_height": h1 + blocks}
+
 def check(key, kind, val, dry):
     """Return an error string or None."""
     if unfilled(val): return "unfilled"
     if not dry and "EXAMPLE" in json.dumps(val).upper(): return "EXAMPLE value in a real render"
     s = str(val)
+    if kind == "burn":
+        return None if val is True else "must be true (v1 burns unclaimed funds; no sweep recipient)"
+    if kind == "cutoff":
+        return None if re.fullmatch(r"[1-9][0-9]*", s) else f"not a positive integer (use \"auto\" to compute it): {s!r}"
     if kind == "int" and not re.fullmatch(r"[1-9][0-9]*", s): return f"not a positive integer: {s!r}"
     if kind == "addr" and not is_terp_addr(s): return f"not a terp1 bech32 address: {s!r}"
     if kind == "hex" and not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", s): return f"not lowercase hex sha: {s!r}"
@@ -168,6 +203,8 @@ def check(key, kind, val, dry):
     if kind == "json" and not isinstance(val, (dict, list)): return "must be a JSON object/array (not a string)"
     if kind == "operators":
         if not isinstance(val, list) or not val: return "must be a non-empty list of {label, addr, budget_uthiol}"
+        if dec_source == "foundation-dao" and len(val) != 1:
+            return "foundation-dao funding uses exactly one dedicated foundation fee-granter operator"
         seen = set()
         for i, o in enumerate(val, 1):
             if not isinstance(o, dict): return f"operator {i} is not an object"
@@ -226,6 +263,9 @@ def as_bool(k, x):
 def main():
     a = sys.argv[1:]
     if not a or "-h" in a or "--help" in a: sys.exit(__doc__)
+    if "--compute-cutoff" in a:
+        u = a[a.index("--cutoff-rest") + 1] if "--cutoff-rest" in a else CUTOFF_REST
+        print(json.dumps(compute_cutoff(u), indent=2)); return
     opt = lambda k, d=None: a[a.index(k) + 1] if k in a else d
     dry, partial = "--dry-run" in a, "--partial" in a
     circuit = opt("--circuit")
@@ -234,12 +274,21 @@ def main():
     if dry:
         dec = example_decisions()
     else:
-        pos = [x for i, x in enumerate(a) if not x.startswith("--") and (i == 0 or a[i - 1] not in ("--circuit", "--elig", "--out"))]
+        pos = [x for i, x in enumerate(a) if not x.startswith("--") and (i == 0 or a[i - 1] not in ("--circuit", "--elig", "--out", "--cutoff-rest"))]
         if not pos: sys.exit("FATAL DECISIONS.json is required (or --dry-run)")
         dec = json.load(open(pos[0]))
     lane = as_bool("LANE_PATH", dec.get("LANE_PATH")) or "--lane" in a
     if dry and lane: dec.update(example_lane())
     out = opt("--out", os.path.join(HERE, ("rendered-example" if dry else "rendered") + ("-lane" if lane else "")))
+    global dec_source
+    dec_source = dec.get("FEEGRANT_FUNDING_SOURCE")
+    cutoff_info = None
+    if str(dec.get("CUTOFF_HEIGHT", "")).strip().lower() == "auto":
+        cutoff_info = compute_cutoff(opt("--cutoff-rest", CUTOFF_REST))
+        dec["CUTOFF_HEIGHT"] = cutoff_info["cutoff_height"]
+        print("CUTOFF_HEIGHT auto: %(cutoff_height)d = %(latest_height)d + %(blocks)d (%(years)sy at %(avg_block_secs)ss)" % cutoff_info,
+              file=sys.stderr)
+    dec.pop("SWEEP_RECIPIENT", None)
     need_dec = dict(DECISION, **(LANE_DECISION if lane else {}))
     need_later = dict(LATER, **(LANE_LATER if lane else {}))
     errors, later_missing = [], set()
@@ -286,7 +335,7 @@ def main():
     ops, source = dec["OPERATORS"], dec["FEEGRANT_FUNDING_SOURCE"]
     budget = sum(int(o["budget_uthiol"]) for o in ops)
 
-    v = {k: (json.dumps(x) if isinstance(x, (dict, list)) else str(x)) for k, x in dec.items()
+    v = {k: (json.dumps(x) if isinstance(x, (dict, list, bool)) else str(x)) for k, x in dec.items()
          if k not in ("OPERATORS", "LANE_PATH") and not unfilled(x)}
     v.update({
         "ELIGIBILITY_ROOT": root_hex, "ELIGIBILITY_ROOT_B64": b64(bytes.fromhex(root_hex)),
@@ -359,6 +408,9 @@ def main():
         "ctx_hex": v.get("CTX_HEX"), "ctx_derivation": "lane derive_ctx (with label)" if lane else "direct_ctx (terp-hs-direct-ctx-v1)",
         "trusted": json.loads(v["TRUSTED_KEYS_JSON"]),
         "note_vk_hash": vkh, "note_params_bytes": len(pb), "note_vk_bytes": len(vb),
+        "cutoff_height": int(v["CUTOFF_HEIGHT"]), "cutoff_auto": cutoff_info,
+        "anchor_interval_blocks": int(v["ANCHOR_INTERVAL"]), "min_anonymity_set": int(v["MIN_ANONYMITY_SET"]),
+        "unclaimed": "burned (BankMsg::Burn after cutoff; no sweep recipient)",
         "contract_owner": v["CONTRACT_OWNER"], "funding_amount_uterp": v["FUNDING_AMOUNT_UTERP"],
         "feegrant_source": source, "feegrant_budget_uthiol": budget, "operators": len(ops),
         "feegrant_below_recommended": budget < FEEGRANT_RECOMMENDED_UTHIOL,

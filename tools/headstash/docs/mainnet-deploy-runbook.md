@@ -13,8 +13,8 @@ opts in to the old lane path (Appendix: lane path).
 
 ### Decisions a real direct render needs
 Before the contract exists (`--partial`): `CHAIN_ID`, `CAMPAIGN_LABEL`, `CONTRACT_OWNER`, `WASM_ADMIN`,
-`WAVS_POO_JSON`, `CUTOFF_HEIGHT`, `ANCHOR_START_HEIGHT`, `ANCHOR_INTERVAL`, `MIN_ANONYMITY_SET`, `MAX_ROWS`,
-`SWEEP_RECIPIENT`, `FUNDING_AMOUNT_UTERP` (>= note total, render fails otherwise), `DEPOSIT_UTERP`, `PROPOSER`,
+`WAVS_POO_JSON`, `CUTOFF_HEIGHT` (`"auto"` = mainnet height + 2y at the last-10k-block mean, example 39129426), `ANCHOR_START_HEIGHT`, `ANCHOR_INTERVAL`, `MIN_ANONYMITY_SET`, `MAX_ROWS`,
+`BURN_UNCLAIMED` (must be `true`), `FUNDING_AMOUNT_UTERP` (>= note total, render fails otherwise), `DEPOSIT_UTERP`, `PROPOSER`,
 `SOURCE_COMMIT`, `FEEGRANT_FUNDING_SOURCE`, `OPERATORS`.
 After deploy: `CONTRACT_ADDR` (derives ctx), `CODE_ID`, `WASM_SHA256`, `NOTE_ZK_ID` (assigned by the chain when the
 proposal's `MsgStoreFullCircuit` executes), `PROPOSAL_METADATA_URI`, `FORUM_URL`.
@@ -83,8 +83,10 @@ Why these anchors, and not others:
 9. **Registration and anchors**: anyone sends `04-accept-anchor.json` each `ANCHOR_INTERVAL` from
    `ANCHOR_START_HEIGHT` once the set reaches `MIN_ANONYMITY_SET`.
 10. **Claims**: users prove in the browser against an accepted anchor and call `claim_note`; paid at once.
-11. **Cutoff and sweep** (owner): after `CUTOFF_HEIGHT`, `09-sweep-unclaimed.json` sends leftovers to
-    `SWEEP_RECIPIENT`.
+11. **Cutoff and burn** (owner): after `CUTOFF_HEIGHT` claims and registration are rejected and
+    `09-sweep-unclaimed.json` burns the whole contract balance (`BankMsg::Burn`, total supply drops by it).
+    Decided values: `ANCHOR_INTERVAL=16` blocks, `MIN_ANONYMITY_SET=1024`, `FEEGRANT_FUNDING_SOURCE=foundation-dao`
+    with one dedicated foundation fee-granter operator.
 
 ### Appendix: lane path (opt-in, not v1)
 `LANE_PATH: true` adds `CUSTODY_PUBKEY_B64`, `SIDECAR_LANE_URL` and later `FINAL_ANCHOR_B64` to the required
@@ -110,7 +112,7 @@ writes `05-set-epoch-campaign-final-anchor` and `08-stage-epoch-batch`. It also 
 
 ## User decisions
 Contract owner; wasm admin (recommend gov); funding amount (leaf total vs 67M); `CAMPAIGN_LABEL`
-(enters ctx); `CUTOFF_HEIGHT`; anchor start/interval; `MIN_ANONYMITY_SET`; sweep recipient;
+(enters ctx); `CUTOFF_HEIGHT`; anchor start/interval; `MIN_ANONYMITY_SET`; unclaimed funds burned;
 WAVS operator set; lane custody key and public lane URL; upgrade to the VE fix; amount
 privacy approach (review H3); path delivery (H2); proposal timing and proposer/deposit.
 
@@ -139,7 +141,7 @@ and pays immediately. hashmerchant `MsgRegisterChain`, lane staging and the sudo
 (steps 7, 11, 12) are **only needed for the optional lane path**.
 
 Artifact: `tools/headstash/artifacts/cw_headstash.wasm` (`--features zk-api`, optimizer),
-sha256 `3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b`, 1,096,689 B.
+sha256 `57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d`, 1,099,694 B (burn sweep, registration closes at cutoff).
 
 1. **Store code** (anyone; `code_upload_access` Everybody). Check the code-info checksum = sha above.
 2. **Instantiate** (deployer, admin = gov) and set the campaign exactly as steps 2–5 above

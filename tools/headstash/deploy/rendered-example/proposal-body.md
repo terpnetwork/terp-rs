@@ -69,10 +69,10 @@ Internal review 2026-10-26 (`tools/headstash/docs/security-review-2026-10-26.md`
 findings. Fixed: owner handoff (two-step, no renounce). Open and addressed operationally: owner
 trust (owner = terp15jmsc20sy9z7pj9wwm2zz0pmmhqpkwhfwdg9p2, admin = gov), Merkle path delivery, unique-amount
 linkability (addressed by fixed denominations). Funds can only leave the contract via
-verified note claims or the post-cutoff sweep to `terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq`; gov can migrate.
+verified note claims or the post-cutoff sweep, which burns every unclaimed coin (no recipient); gov can migrate.
 
 ## Links
-- Contract: `terp19vfl5kafn2e6vs6raem350avwkpdaqgavm8rpf7d8rj4dkpmrmts06av8u` (code id `999999`, wasm sha256 `3010d1baf4623a665f0631cb099af973f3de97b2fdb62a5e798f582d4e0a597b`)
+- Contract: `terp19vfl5kafn2e6vs6raem350avwkpdaqgavm8rpf7d8rj4dkpmrmts06av8u` (code id `999999`, wasm sha256 `57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d`)
 - Source: https://github.com/terpnetwork/terp-core (commit `0000000000000000000000000000000000000000`)
 - Forum: https://example.invalid/EXAMPLE-forum
 - Prior: Proposal #26, #31, #32
@@ -86,7 +86,7 @@ scoped to this contract, so the fresh wallet never has to be funded.
 
 This proposal therefore also stores the note circuit (`MsgStoreFullCircuit`, gov is the only allowed
 uploader on mainnet). Circuit vk hash `34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398`. Fee grants are paid in THIOL by the relay
-operator (estimated 4,800 THIOL for all 98,841 notes at 0.05 uthiol/gas); no
+operator (estimated 4,761.7 THIOL for all 98,841 notes at 0.05 uthiol/gas); no
 TERP from this proposal is spent on fees.
 
 Privacy limits: the anonymity set is the set of notes of the same denomination registered by the
@@ -98,8 +98,6 @@ Claim and registration fees are paid by sidecar operators from their own account
 fee grants scoped to this contract. This proposal sends each named operator its THIOL share:
 | # | Operator | Address | Budget (THIOL) | uthiol |
 |---|---|---|---:|---:|
-| 1 | EXAMPLE operator A | `terp15n2h9ptg0r7tuf0ctzpvpjgfgc7c288x9mcnpv` | 2,400 | 2400000000 |
-| 2 | EXAMPLE operator B | `terp1y6xjllwkm97rch44f7wlec8cfmxw2heaaug4k7` | 1,600 | 1600000000 |
-| 3 | EXAMPLE operator C | `terp1mxcwhmatwrlpuchtx34fpgemwcuqle3ujvxctq` | 800 | 800000000 |
-| | **Total** | | **4,800** | **4800000000** | (total 4,800 THIOL, source community pool (one MsgCommunityPoolSpend of uthiol per operator, in this proposal)). An
+| 1 | EXAMPLE foundation fee granter | `terp1c6vzw6jds5udzm8w35qunu6y9afszthjutdqgl` | 4,761.7 | 4761700000 |
+| | **Total** | | **4,761.7** | **4761700000** | (total 4,761.7 THIOL, source foundation DAO (bank send from the DAO to each operator, outside this proposal)). An
 operator can only spend what it was sent; leftovers are returned after the cutoff.
