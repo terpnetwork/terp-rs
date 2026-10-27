@@ -19,6 +19,17 @@
 //! the existing keyring reference (`--from` + `--home` + backend) handed to
 //! `terpd tx sign`; this process never reads key material. It does not log
 //! bodies, signatures, or key commitments.
+//!
+//! Direct-path fee grants (`POST /headstash/feegrant`, same process, same
+//! account, same tx serialisation as the batcher): a fresh wallet asks for gas
+//! for one `ClaimNote` (or one `RegisterNotes` chunk). The sidecar first runs
+//! the contract's own read-only dry-run (`check_note_claim` with dest = the
+//! grantee, or `check_register_notes`), so it grants only for a proof that
+//! verifies against an accepted anchor with an unspent nullifier, or a valid
+//! eligible signature. One grant per nullifier / per (signer, chunk) and per
+//! grantee; per-IP (in memory only, never logged) and global rate limits. The
+//! allowance is `AllowedMsgAllowance[MsgExecuteContract]` over a
+//! `BasicAllowance` whose spend limit is one tx fee with a short expiry.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::net::SocketAddr;
@@ -46,6 +57,7 @@ use tokio::sync::{Mutex, Notify};
 const DEFAULT_BIND: &str = "127.0.0.1:8791";
 const DEFAULT_ORIGIN: &str = "http://127.0.0.1:3921";
 const BODY_LIMIT: usize = 4096;
+const GRANT_BODY_LIMIT: usize = 64 * 1024;
 const SOL_LEAF_TAG: u8 = 0x02;
 
 // ---------------------------------------------------------------- types
@@ -141,6 +153,8 @@ pub trait Chain: Send + Sync + 'static {
     /// Returns txhash once CheckTx accepted it.
     async fn broadcast(&self, msgs: &[Value], gas: u64, acct: u64, seq: u64) -> Result<String, ChainErr>;
     async fn wait(&self, txhash: &str) -> Result<TxResult, String>;
+    /// Contract dry-run query that must return `true`; Err carries the chain reason.
+    async fn check(&self, q: &Value) -> Result<(), String>;
 }
 
 // ---------------------------------------------------------------- eligibility
@@ -387,6 +401,9 @@ pub struct Batcher<C: Chain> {
     inner: Mutex<Inner>,
     wake: Notify,
     seq: Mutex<Option<(u64, u64)>>,
+    /// Serialises every tx this account signs (batches and grants).
+    tx: Mutex<()>,
+    granted: Mutex<HashMap<String, Instant>>,
 }
 
 pub fn request_id(identity: &str) -> String {
@@ -395,7 +412,10 @@ pub fn request_id(identity: &str) -> String {
 
 impl<C: Chain> Batcher<C> {
     pub fn new(chain: C, limits: Limits) -> Self {
-        Self { chain, limits, inner: Mutex::new(Inner::default()), wake: Notify::new(), seq: Mutex::new(None) }
+        Self {
+            chain, limits, inner: Mutex::new(Inner::default()), wake: Notify::new(), seq: Mutex::new(None),
+            tx: Mutex::new(()), granted: Mutex::new(HashMap::new()),
+        }
     }
 
     fn hit(inner: &mut Inner, key: String, (n, window): (usize, Duration)) -> bool {
@@ -414,6 +434,63 @@ impl<C: Chain> Batcher<C> {
     pub async fn rate_ip(&self, ip: &str) -> Result<(), Reject> {
         let mut inner = self.inner.lock().await;
         if Self::hit(&mut inner, format!("ip:{ip}"), self.limits.per_ip) { Ok(()) } else { Err(Reject::Rate) }
+    }
+
+    pub async fn rate_key(&self, key: &str, limit: (usize, Duration)) -> Result<(), Reject> {
+        let mut inner = self.inner.lock().await;
+        if Self::hit(&mut inner, key.to_string(), limit) { Ok(()) } else { Err(Reject::Rate) }
+    }
+
+    /// Reserve grant dedupe keys (nullifier / chunk, grantee) for `ttl`.
+    pub async fn reserve(&self, keys: &[String], ttl: Duration) -> Result<(), Reject> {
+        let mut g = self.granted.lock().await;
+        g.retain(|_, t| t.elapsed() < ttl);
+        if keys.iter().any(|k| g.contains_key(k)) {
+            return Err(Reject::Bad("already granted"));
+        }
+        let now = Instant::now();
+        for k in keys {
+            g.insert(k.clone(), now);
+        }
+        Ok(())
+    }
+
+    pub async fn release(&self, keys: &[String]) {
+        let mut g = self.granted.lock().await;
+        for k in keys {
+            g.remove(k);
+        }
+    }
+
+    /// Sign + broadcast one raw message (a fee grant) and wait for inclusion.
+    pub async fn send_one(&self, msg: Value) -> Result<(String, u64, u64), Reject> {
+        let _tx = self.tx.lock().await;
+        let msgs = [msg];
+        let (mut acct, mut seq) = self.account(false).await.map_err(|_| Reject::Bad("relay"))?;
+        let gas = match self.chain.simulate(&msgs, acct, seq).await {
+            Ok(g) => g,
+            Err(ChainErr::Sequence) => {
+                (acct, seq) = self.account(true).await.map_err(|_| Reject::Bad("relay"))?;
+                self.chain.simulate(&msgs, acct, seq).await.map_err(|_| Reject::Bad("grant rejected"))?
+            }
+            Err(_) => return Err(Reject::Bad("grant rejected")),
+        };
+        let gas = gas.saturating_mul(13) / 10 + 20_000;
+        let txhash = match self.chain.broadcast(&msgs, gas, acct, seq).await {
+            Ok(h) => h,
+            Err(_) => {
+                let _ = self.account(true).await;
+                return Err(Reject::Bad("relay"));
+            }
+        };
+        *self.seq.lock().await = Some((acct, seq + 1));
+        match self.chain.wait(&txhash).await {
+            Ok(r) if r.code == 0 => Ok((txhash, r.height, gas)),
+            _ => {
+                let _ = self.account(true).await;
+                Err(Reject::Bad("grant rejected"))
+            }
+        }
     }
 
     pub async fn rate_identity(&self, id: &str) -> Result<(), Reject> {
@@ -517,6 +594,7 @@ impl<C: Chain> Batcher<C> {
         if taken == 0 {
             return 0;
         }
+        let _tx = self.tx.lock().await;
         let Ok((mut acct, mut seq)) = self.account(false).await else {
             self.requeue(batch).await;
             return 0;
@@ -708,10 +786,11 @@ impl TerpdChain {
 
     async fn signed_bytes(&self, msgs: &[Value], gas: u64, acct: u64, seq: u64) -> Result<String, ChainErr> {
         let fee = ((gas as f64) * self.gas_price.0).ceil() as u64;
-        let body: Vec<Value> = msgs.iter().map(|m| json!({
+        // Raw Any messages (fee grants) pass through; contract msgs get wrapped.
+        let body: Vec<Value> = msgs.iter().map(|m| if m.get("@type").is_some() { m.clone() } else { json!({
             "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
             "sender": self.sender, "contract": self.contract, "msg": m, "funds": []
-        })).collect();
+        })}).collect();
         let unsigned = json!({
             "body": {"messages": body, "memo": "", "timeout_height": "0", "extension_options": [], "non_critical_extension_options": []},
             "auth_info": {"signer_infos": [], "fee": {"amount": [{"denom": self.gas_price.1, "amount": fee.to_string()}], "gas_limit": gas.to_string(), "payer": "", "granter": ""}},
@@ -810,6 +889,113 @@ impl Chain for TerpdChain {
         }
         Err("timeout".into())
     }
+
+    async fn check(&self, q: &Value) -> Result<(), String> {
+        let url = format!("{}/cosmwasm/wasm/v1/contract/{}/smart/{}", self.rest, self.contract, b64(q.to_string().as_bytes()));
+        let v: Value = self.http.get(url).send().await.map_err(|_| "query")?.json().await.map_err(|_| "query")?;
+        if v.get("data") == Some(&Value::Bool(true)) {
+            return Ok(());
+        }
+        Err(v.get("message").and_then(Value::as_str).unwrap_or("rejected").to_string())
+    }
+}
+
+// ---------------------------------------------------------------- fee grants
+
+pub struct GrantCfg {
+    pub granter: String,
+    pub denom: String,
+    /// Exactly one tx fee; the client pays fee == spend limit so the allowance is pruned.
+    pub claim_spend: u64,
+    pub register_spend: u64,
+    pub ttl: Duration,
+    pub global: (usize, Duration),
+}
+
+fn grant_phrase(text: &str) -> &'static str {
+    const P: &[&str] = &[
+        "invalid note proof", "nullifier", "anchor", "denomination", "amount", "window", "cap", "public path",
+        "not enabled", "root", "destination", "signature", "eligibility", "chunk", "already registered",
+        "key commitment", "list hash", "note list",
+    ];
+    P.iter().copied().find(|p| text.contains(p)).unwrap_or("rejected")
+}
+
+fn is_wallet(a: &str) -> bool {
+    a.len() == 44 && a.starts_with("terp1") && a.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+}
+
+/// RFC 3339 UTC, seconds precision, `ttl` from now.
+pub fn expiry_rfc3339(ttl: Duration) -> String {
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default() + ttl;
+    let secs = t.as_secs() as i64;
+    let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
+}
+
+async fn feegrant<C: Chain>(State(app): State<Arc<App<C>>>, ConnectInfo(peer): ConnectInfo<SocketAddr>, req: Request) -> Response {
+    let headers = req.headers().clone();
+    match grant_handle(&app, client_ip(peer, &headers), req).await {
+        Ok(v) => reply(StatusCode::OK, v, &app.origins, &headers),
+        Err(Reject::Bad(p)) => reply(StatusCode::BAD_REQUEST, json!({"error": p}), &app.origins, &headers),
+        Err(Reject::Rate) => reply(StatusCode::TOO_MANY_REQUESTS, json!({"error": "rate"}), &app.origins, &headers),
+        Err(Reject::Full) => reply(StatusCode::SERVICE_UNAVAILABLE, json!({"error": "busy"}), &app.origins, &headers),
+    }
+}
+
+async fn grant_handle<C: Chain>(app: &App<C>, ip: String, req: Request) -> Result<Value, Reject> {
+    let g = app.grants.as_ref().ok_or(Reject::Bad("fee grants disabled"))?;
+    let bytes: Bytes = axum::body::to_bytes(req.into_body(), GRANT_BODY_LIMIT).await.map_err(|_| Reject::Bad("body"))?;
+    let v: Value = serde_json::from_slice(&bytes).map_err(|_| Reject::Bad("json"))?;
+    let grantee = v.get("grantee").and_then(Value::as_str).filter(|a| is_wallet(a)).ok_or(Reject::Bad("grantee"))?.to_string();
+    app.batcher.rate_ip(&ip).await?;
+    app.batcher.rate_key("grant:global", g.global).await?;
+    let s = |o: &Value, k: &str| o.get(k).and_then(Value::as_str).map(str::to_string).ok_or(Reject::Bad("grant"));
+    let (key, query, spend, kind) = if let Some(c) = v.get("claim") {
+        let nullifier = s(c, "nullifier")?;
+        let nf = decode_bin32(&nullifier).ok_or(Reject::Bad("nullifier"))?;
+        let amount = c.get("amount").and_then(|a| a.as_u64().or_else(|| a.as_str().and_then(|x| x.parse().ok()))).ok_or(Reject::Bad("amount"))?;
+        let q = json!({"check_note_claim": {
+            "dest": grantee, "root": s(c, "root")?, "nullifier": nullifier, "amount": amount, "proof": s(c, "proof")?
+        }});
+        (format!("nf:{}", hex::encode(nf)), q, g.claim_spend, "claim")
+    } else if let Some(r) = v.get("register") {
+        let signer = r.get("signer").ok_or(Reject::Bad("grant"))?;
+        let start = r.get("start").and_then(Value::as_u64).ok_or(Reject::Bad("chunk"))?;
+        let id = hex::encode(&sha256(signer.to_string().as_bytes())[..16]);
+        app.batcher.rate_identity(&id).await?;
+        (format!("reg:{id}:{start}"), json!({"check_register_notes": r}), g.register_spend, "register")
+    } else {
+        return Err(Reject::Bad("grant kind"));
+    };
+    let keys = vec![key, format!("grantee:{grantee}")];
+    app.batcher.reserve(&keys, g.ttl).await?;
+    if let Err(e) = app.batcher.chain.check(&query).await {
+        app.batcher.release(&keys).await;
+        return Err(Reject::Bad(grant_phrase(&e)));
+    }
+    let expiration = expiry_rfc3339(g.ttl);
+    let msg = hash_market::onboard_authz::headstash_feegrant(&g.granter, &grantee, &g.denom, spend, &expiration);
+    match app.batcher.send_one(msg).await {
+        Ok((txhash, height, _)) => Ok(json!({
+            "granted": true, "kind": kind, "granter": g.granter, "grantee": grantee,
+            "spend_limit": {"denom": g.denom, "amount": spend.to_string()}, "expiration": expiration,
+            "txhash": txhash, "height": height
+        })),
+        Err(e) => {
+            app.batcher.release(&keys).await;
+            Err(e)
+        }
+    }
 }
 
 // ---------------------------------------------------------------- HTTP
@@ -819,6 +1005,7 @@ pub struct App<C: Chain> {
     elig: Elig,
     batcher: Arc<Batcher<C>>,
     origins: Vec<String>,
+    grants: Option<GrantCfg>,
 }
 
 pub fn router<C: Chain>(app: Arc<App<C>>) -> Router {
@@ -827,6 +1014,7 @@ pub fn router<C: Chain>(app: Arc<App<C>>) -> Router {
         .route("/register", post(register::<C>).options(preflight::<C>))
         .route("/headstash/register", post(register::<C>).options(preflight::<C>))
         .route("/register/status/:id", get(status::<C>).options(preflight::<C>))
+        .route("/headstash/feegrant", post(feegrant::<C>).options(preflight::<C>))
         .with_state(app)
 }
 
@@ -945,9 +1133,21 @@ async fn main() -> anyhow::Result<()> {
         .split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
     let sender = chain.sender.clone();
     let chain_id = chain.chain_id.clone();
+    // Fee grants: on unless HEADSTASH_FEEGRANT=0. Spend = gas limit x gas price, one tx.
+    let grants = (std::env::var("HEADSTASH_FEEGRANT").as_deref() != Ok("0")).then(|| {
+        let fee = |gas: u64| ((gas as f64) * chain.gas_price.0).ceil() as u64;
+        GrantCfg {
+            granter: sender.clone(),
+            denom: chain.gas_price.1.clone(),
+            claim_spend: fee(env_num("HEADSTASH_CLAIM_GAS", 400_000)),
+            register_spend: fee(env_num("HEADSTASH_REGISTER_GAS", 1_500_000)),
+            ttl: Duration::from_secs(env_num("HEADSTASH_GRANT_TTL_SECS", 600)),
+            global: (env_num("HEADSTASH_GRANTS_PER_MIN", 60), Duration::from_secs(60)),
+        }
+    });
     let batcher = Arc::new(Batcher::new(chain, limits));
     tokio::spawn(batcher.clone().run());
-    let app = Arc::new(App { ctx, elig, batcher, origins });
+    let app = Arc::new(App { ctx, elig, batcher, origins, grants });
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let local = listener.local_addr()?;
     if !local.ip().is_loopback() {

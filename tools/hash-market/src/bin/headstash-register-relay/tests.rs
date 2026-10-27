@@ -190,12 +190,17 @@ struct Ledger {
     blocks: Vec<(String, u64, Vec<String>)>,
     simulations: usize,
     stale_once: bool,
+    check_err: Option<String>,
+    checks: Vec<Value>,
 }
 
 #[derive(Clone, Default)]
 struct TestChain(Arc<StdMutex<Ledger>>);
 
 fn identity_of(msg: &Value) -> String {
+    if let Some(g) = msg.get("grantee").and_then(Value::as_str) {
+        return format!("grant:{g}");
+    }
     let (k, v) = msg.as_object().unwrap().iter().next().unwrap();
     let d = |s: &str| base64::engine::general_purpose::STANDARD.decode(v[s].as_str().unwrap()).unwrap();
     if k == "register_headstash_sol" {
@@ -252,6 +257,14 @@ impl Chain for TestChain {
         let b = l.blocks.iter().find(|b| b.0 == txhash).ok_or("missing")?;
         Ok(TxResult { code: 0, height: b.1, log: String::new() })
     }
+    async fn check(&self, q: &Value) -> Result<(), String> {
+        let mut l = self.0.lock().unwrap();
+        l.checks.push(q.clone());
+        match &l.check_err {
+            Some(e) => Err(e.clone()),
+            None => Ok(()),
+        }
+    }
 }
 
 fn test_limits() -> Limits {
@@ -268,7 +281,7 @@ async fn http_to_one_batched_tx_with_isolation_and_sequence_refresh() {
     let late_id = format!("evm:{}", hex::encode(&late[..8]));
     chain.0.lock().unwrap().stale_once = true;
     let batcher = Arc::new(Batcher::new(chain.clone(), test_limits()));
-    let app = Arc::new(App { ctx: CTX, elig: f.elig, batcher: batcher.clone(), origins: vec![DEFAULT_ORIGIN.into()] });
+    let app = Arc::new(App { ctx: CTX, elig: f.elig, batcher: batcher.clone(), origins: vec![DEFAULT_ORIGIN.into()], grants: None });
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(axum::serve(listener, router(app).into_make_service_with_connect_info::<SocketAddr>()).into_future());
@@ -337,4 +350,85 @@ async fn queue_cap_and_identity_rate_limit() {
     assert!(batcher.rate_identity("x").await.is_ok());
     assert!(batcher.rate_identity("x").await.is_ok());
     assert!(matches!(batcher.rate_identity("x").await, Err(Reject::Rate)));
+}
+
+fn wallet(n: u8) -> String {
+    format!("terp1{}", std::iter::repeat((b'a' + n) as char).take(39).collect::<String>())
+}
+
+#[tokio::test]
+async fn feegrant_only_after_dry_run_one_per_nullifier_scoped_allowance() {
+    let f = fixture();
+    let chain = TestChain::default();
+    let batcher = Arc::new(Batcher::new(chain.clone(), test_limits()));
+    let grants = GrantCfg {
+        granter: "terp1granter".into(), denom: "uterp".into(), claim_spend: 10_000, register_spend: 40_000,
+        ttl: Duration::from_secs(600), global: (100, Duration::from_secs(60)),
+    };
+    let app = Arc::new(App { ctx: CTX, elig: f.elig, batcher: batcher.clone(), origins: vec![DEFAULT_ORIGIN.into()], grants: Some(grants) });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(axum::serve(listener, router(app).into_make_service_with_connect_info::<SocketAddr>()).into_future());
+    let http = reqwest::Client::new();
+    let post = |b: Value| {
+        let http = http.clone();
+        async move {
+            let r = http.post(format!("http://{addr}/headstash/feegrant")).json(&b).send().await.unwrap();
+            (r.status().as_u16(), r.json::<Value>().await.unwrap())
+        }
+    };
+    let nf = b64(&[5u8; 32]);
+    let claim = |w: &str, nf: &str| json!({"grantee": w, "claim": {"root": b64(&[1u8; 32]), "nullifier": nf, "amount": 1000000, "proof": b64(&[9u8; 64])}});
+
+    // invalid proof: dry-run fails -> refused, nothing broadcast, keys released
+    chain.0.lock().unwrap().check_err = Some("Generic error: invalid note proof".into());
+    let (c, e) = post(claim(&wallet(1), &nf)).await;
+    assert_eq!((c, e["error"].as_str()), (400, Some("invalid note proof")));
+    assert!(chain.0.lock().unwrap().blocks.is_empty());
+    chain.0.lock().unwrap().check_err = None;
+
+    // bad grantee (contract-length / junk) never reaches the chain
+    let (c, _) = post(claim("terp1short", &nf)).await;
+    assert_eq!(c, 400);
+
+    let (c, ok) = post(claim(&wallet(1), &nf)).await;
+    assert_eq!(c, 200, "{ok}");
+    {
+        let l = chain.0.lock().unwrap();
+        let q = &l.checks.last().unwrap()["check_note_claim"];
+        assert_eq!(q["dest"], wallet(1), "dry-run binds dest to the grantee");
+        assert_eq!(l.blocks.len(), 1);
+    }
+    assert_eq!(ok["spend_limit"]["amount"], "10000");
+    assert!(ok["expiration"].as_str().unwrap().ends_with('Z'));
+
+    // same nullifier, other wallet: refused (one grant per note)
+    let (c, e) = post(claim(&wallet(2), &nf)).await;
+    assert_eq!((c, e["error"].as_str()), (400, Some("already granted")));
+    // same wallet, other note: refused (one grant per fresh wallet)
+    let (c, _) = post(claim(&wallet(1), &b64(&[6u8; 32]))).await;
+    assert_eq!(c, 400);
+
+    // registration chunk grant goes through check_register_notes
+    let reg = json!({"grantee": wallet(3), "register": {"signer": {"evm": {"address": b64(&[2u8; 20])}}, "signature": b64(&[0u8; 65]), "list": [], "start": 0, "eligibility": []}});
+    let (c, ok) = post(reg.clone()).await;
+    assert_eq!(c, 200, "{ok}");
+    assert_eq!(ok["spend_limit"]["amount"], "40000");
+    assert!(chain.0.lock().unwrap().checks.last().unwrap().get("check_register_notes").is_some());
+    let (c, _) = post(json!({"grantee": wallet(4), "register": reg["register"]})).await;
+    assert_eq!(c, 400, "same signer + chunk granted once");
+}
+
+#[test]
+fn headstash_allowance_is_contract_exec_only_one_fee_short_expiry() {
+    let m = hash_market::onboard_authz::headstash_feegrant("terp1g", &wallet(1), "uterp", 10_000, &expiry_rfc3339(Duration::from_secs(600)));
+    assert_eq!(m["@type"], "/cosmos.feegrant.v1beta1.MsgGrantAllowance");
+    let a = &m["allowance"];
+    assert_eq!(a["@type"], "/cosmos.feegrant.v1beta1.AllowedMsgAllowance");
+    assert_eq!(a["allowed_messages"], json!(["/cosmwasm.wasm.v1.MsgExecuteContract"]));
+    assert_eq!(a["allowance"]["@type"], "/cosmos.feegrant.v1beta1.BasicAllowance");
+    assert_eq!(a["allowance"]["spend_limit"], json!([{"denom": "uterp", "amount": "10000"}]));
+    let e = expiry_rfc3339(Duration::ZERO);
+    assert_eq!(e.len(), 20);
+    assert!(e.starts_with("20"));
 }

@@ -279,6 +279,31 @@ pub fn onboard_feegrant(roles: &OnboardRoles, req: &FeegrantRequest) -> Value {
     })
 }
 
+/// Headstash direct-path allowance for one fresh wallet: gas for exactly one
+/// `MsgExecuteContract` tx (claim or one registration chunk), short expiry.
+/// x/feegrant can filter by message type only, not by contract address: the
+/// "this contract only" property comes from the sidecar's pre-grant dry-run
+/// query plus a spend limit equal to one tx fee (the allowance is pruned once
+/// spent), so misuse is bounded to one fee per verified proof / signed chunk.
+pub fn headstash_feegrant(granter: &str, grantee: &str, denom: &str, spend_limit: u64, expiration: &str) -> Value {
+    let scope = AllowanceScope::mint_only();
+    debug_assert!(scope.is_sound());
+    json!({
+        "@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
+        "granter": granter,
+        "grantee": grantee,
+        "allowance": {
+            "@type": "/cosmos.feegrant.v1beta1.AllowedMsgAllowance",
+            "allowance": {
+                "@type": "/cosmos.feegrant.v1beta1.BasicAllowance",
+                "spend_limit": [{ "denom": denom, "amount": spend_limit.to_string() }],
+                "expiration": expiration
+            },
+            "allowed_messages": scope.allowed
+        }
+    })
+}
+
 pub fn authz_exec_feegrant(roles: &OnboardRoles, inner: Value) -> Value {
     json!({
         "@type": "/cosmos.authz.v1beta1.MsgExec",
