@@ -1,0 +1,39 @@
+{
+  "name": "Eth SVG",
+  "symbol": "ETH",
+  "collection_info_extension": {
+    "seed": "jkqqg6gIjf4v3o6rs/RigW5FpYbxbXimK385JCS/mpA=",
+    "packed": "U1ZQAQwKY29sb3ItYmx1ZQMBQWmHr9f/DGNvbG9yLXB1cnBsZQMByOt9pcPrC2NvbG9yLWNvcmFsAwHr/4eqgqUKY29sb3ItY3lhbgMBLV/D69L/CmNvbG9yLWxpbWUDAYe50vVfhwxjb2xvci15ZWxsb3cDAev/4f9BcwhicmVhdGgtYQEBAioCYghicmVhdGgtYgEBAjcCcAhicmVhdGgtYwEBAiYCVAhicmVhdGgtZAEBAkQCfQhicmVhdGgtZQEBAjECaghicmVhdGgtZgEBAjMCXwIAAgEBASACAwEHMzE5LjYiIAIEAQc1MzMuMyIgAgIDIwEBASADGgMCIAEEPgogIAIGBgQCCAYGAQguZmFjZXQgewYIAlgBDiBwcmlzbS1icmVhdGggAlwBASACWwEBIAJeAQE7BgYBAX0DVwkBBS1hICB7A1IGAQQtZHVyA1sDBAYBFnM7IH0gICAvKiBjb29sIGJsdWUgKi8DSAoBAWIDSB0BAWIDSAcBDHNvZnQgbWFnZW50YQNLDQEBYwNLHQEBYwNLBwEKd2FybSBjb3JhbANJDQEBZANJHQEBZANJBwENZWxlY3RyaWMgY3lhbgNMDQEBZQNMHQEBZQNMBwEJZnJlc2ggbGltA6kCDgEBZgNJHQEBZgNJBwERZ29sZGVuIHllbGxvdyAqLwoGBgJXA4QECQOmBAYBB2Zyb20geyACWQEGIDAuOTM7A/4DBQEGICB0byAgAyAIAQQxLjAwAyAGAwgCAgkBAwogIAIHAQcKCiAgCiAgAgwCVQOgBQIDzwQDA9gFBAQAAxUCARQtcnVsZT0iZXZlbm9kZCIgY2xpcAMUDAEaZD0iTTE1OS42LDQwMi41TDMxOS42LDMwMkwDFgIBBjUzMy4zVgMcAQEceiBNMTgzLjQsNDE1LjZ2NDEuOGw1MS4zLTc0TAMZBwEDeiIvA7YBHQEBYgO2AQwBBXB1cnBsA7gBLQEWNzUuOSwxOTMuOGwxMTguMiw2Ni45bAUDdQEGLDIwLjZsBQOeCQEGLTY2LjlMAy4HA6MBIAEBYwOjAQwBBWNvcmFsA9oCMQECMGwDCAIBBTI3NC42A9gCAwEHMzc1LjNWMAPUAgMBGDEsODcuOXYyNDQuN2wxMDQuMi02NS43TAMcBgOzASABAWQDswENAQN5YW4DsgEsAQQ2MC4xA4wEAwEGMCwzMDJsAxICAQMyMzEDiAQIAQQzNi4zA4gECAEBLQOJBAUDGgYDswEgAQFlA7MBDAEDbGltA4cELQEUMzguNywxOTZMMjAuNSwyNjIuOWwDhAQGA4MECAMqBAObASABAWYDmwEMA5QIAgOCBDIBAkwwA/4DAgOKBAMBBTEwMC42A/4DAgECMzYD/AMHAQdMMzEuOCwyA60BAwMaAgEFeiIvPgoCBQA=",
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null,
+    "require_auth": false
+  },
+  "minter": null,
+  "creator": "LOGOS_CURATOR_TBD",
+  "withdraw_address": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
+}

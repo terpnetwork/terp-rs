@@ -1,0 +1,39 @@
+{
+  "name": "Akash SVG",
+  "symbol": "AKASH",
+  "collection_info_extension": {
+    "seed": "U+dvWI4g1l0RM1x8aIFKONoQMBxfJz1jlxl12BWtiPY=",
+    "packed": "U1ZQAQ4KY29sb3ItbWFpbgMBGS0ZLRktDGNvbG9yLWFjY2VudAMB3P8tVTdfCGFscGhhLWxvAQICAAQKCGFscGhhLWhpAQIEPARfDmFscGhhLWJsZWVkLWxvAQICAAQGDmFscGhhLWJsZWVkLWhpAQIECAQWCm9wYWNpdHktbG8BAgRLBFoKb3BhY2l0eS1oaQECBF8CCgdwdWxzZS1hAQICFAI8CnB1bHNlLWZhc3QBAgIPAiMJcHVsc2UtbWlkAQICGQI3CnB1bHNlLXNsb3cBAgIjAkYKb2Zmc2V0LW1pZAECAgUCFAtvZmZzZXQtc2xvdwECAgoCHgIAAgMBBTQ4MSIgAgQBBTQyMCIgAgIBBDQ4MSADFgECIAEBIAIBAQQ+CiAgAgYBAwoKIAYEAjcCVAEMZ3JhZC1zaGFyZWQiBgYCFwEFMTYwIiACGAN5AQIZAQU0MDAiIAIaAQEwAygEAmkBAj4KBgYGBgI7AjwBBDAlIiACPQQAAxsDAiUBAzEiLwNOGgJxA1ApAQE+BggBCDxhbmltYXRlBgoCLgNXBgP5AQQBBCAgICACLwQAAQE7BAEDEAUDhwECBgoCMwQIAQFzAxwIAjABBzA7MC41OzEDHQsBBVNwbGluAx8BAQ0uNDUgMCAwLjU1IDE7Aw4JAzMIAjIGCgI1AQEvA6ICLQPeAgMDpAISAQphbHBoYS1sb307BAMDDAUBAmxvA5wCsgEBBjwvc3RvcAObBQMCOAEECgogIAIHAQoKIAogIDxwYXRoBgQBBGQ9Ik0FBsvOEwEHIDI3OS40TAUG57kYAQEgBQbeyRkBAUgFBv/WDgEBTAUGn+UJAyYCAQFIAzQDAQFaA6UBAgJOA8UHBwEBKQPcBQMDtgMLAi4DrQMLAi8EBgEBOwQHAw4HA68DBwOrAwkBBGZhc3QDrgMGA6oDFQOmAysDogMUA54DGQJhA/gCDwUGvLkYA+oCAgEDNjFMBQaYqh0D4gICAQMyM0wFBtzHEwEBIAUOjfAwAQFIA4QDAwEBTAM6CwOGAwkEAAODAQMDd18D/QNLA44HAgEFYmxlZWQDrAcJAxICA7IHCAMkBQOJBBEBA21pZAOIBGYCNAQMA30FA6UEIQOmBA8FCKKIMQEBIAUGosMIAQFIBQbB1g4BB0w4MC40NTQDjAMCAQMyNUwFDK7oFQEBIAUG24YRAQFMAzgLA6QEKgN1UAOiBJMBAQRzbG93A6MEdgN+CgOkBCICBQA=",
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null,
+    "require_auth": false
+  },
+  "minter": null,
+  "creator": "LOGOS_CURATOR_TBD",
+  "withdraw_address": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
+}
