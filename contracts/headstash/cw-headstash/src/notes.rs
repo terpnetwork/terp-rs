@@ -3,7 +3,7 @@
 //! depth-17 claim tree. Proofs are NOT verified here: the sidecar lane verifies them
 //! off-chain and payout goes through the epoch seal + hashmerchant aggregate.
 
-use cosmwasm_std::{Binary, DepsMut, Response, StdError, StdResult, Storage};
+use cosmwasm_std::{Binary, Deps, DepsMut, Response, StdError, StdResult, Storage};
 use cw_storage_plus::Map;
 use std::collections::HashSet;
 
@@ -169,15 +169,28 @@ pub fn register_notes_sol_message(ctx: &[u8], list_hash: &[u8], n: u32) -> Strin
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn register_notes(
-    deps: DepsMut,
+/// Result of the read-only half of `RegisterNotes`.
+pub(crate) struct NoteRegCheck {
+    id_tag: u8,
+    identity_bytes: Vec<u8>,
+    identity: String,
+    state: NoteListState,
+    eligibility_root: Binary,
+}
+
+/// Every read-only check `RegisterNotes` performs (signature, N6, eligibility
+/// openings, chunk order, already-registered). Shared by the execute and the
+/// `CheckRegisterNotes` query the fee-grant sidecar uses before granting.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn check_register_notes(
+    deps: Deps,
     campaign: &EpochCampaignParams,
-    signer: NoteSigner,
-    signature: Option<Binary>,
-    list: Vec<NoteListEntry>,
+    signer: &NoteSigner,
+    signature: Option<&Binary>,
+    list: &[NoteListEntry],
     start: u32,
-    eligibility: Vec<NoteEligibility>,
-) -> Result<Response, StdError> {
+    eligibility: &[NoteEligibility],
+) -> StdResult<NoteRegCheck> {
     if campaign.vk_id != NOTE_VK_ID {
         return Err(StdError::msg("not a note campaign"));
     }
@@ -194,7 +207,7 @@ pub fn register_notes(
         return Err(StdError::msg("chunk"));
     }
     let ctx = campaign.ctx.as_slice();
-    let (id_tag, identity_bytes, identity) = match &signer {
+    let (id_tag, identity_bytes, identity) = match signer {
         NoteSigner::Evm { address } => {
             let a: [u8; 20] = address
                 .as_slice()
@@ -210,9 +223,9 @@ pub fn register_notes(
             (SOL_ID_TAG, p.to_vec(), crate::registration::sol_identity(&p))
         }
     };
-    let list_hash = note_list_hash(ctx, id_tag, &identity_bytes, &list)?;
+    let list_hash = note_list_hash(ctx, id_tag, &identity_bytes, list)?;
     let stored = NOTE_LIST.may_load(deps.storage, identity.as_str())?;
-    let mut state = match stored {
+    let state = match stored {
         None => {
             if start != 0 {
                 return Err(StdError::msg("chunk"));
@@ -222,7 +235,7 @@ pub fn register_notes(
             }
             // N6: no repeated key_com inside the list, none already in the tree.
             let mut seen = HashSet::new();
-            for entry in &list {
+            for entry in list {
                 if !seen.insert(entry.key_com.to_vec()) {
                     return Err(StdError::msg("duplicate key commitment"));
                 }
@@ -233,7 +246,7 @@ pub fn register_notes(
                 }
             }
             let sig = signature.ok_or_else(|| StdError::msg("signature"))?;
-            verify_signer(deps.api, &signer, ctx, &list_hash, n as u32, sig.as_slice())?;
+            verify_signer(deps.api, signer, ctx, &list_hash, n as u32, sig.as_slice())?;
             NoteListState {
                 list_hash: Binary::from(list_hash.to_vec()),
                 n: n as u32,
@@ -253,7 +266,6 @@ pub fn register_notes(
             state
         }
     };
-    let mut first_leaf = None;
     for (offset, elig) in eligibility.iter().enumerate() {
         let i = start + offset as u32;
         let entry = &list[i as usize];
@@ -273,6 +285,33 @@ pub fn register_notes(
         {
             return Err(StdError::msg("already registered"));
         }
+        parse_fp(entry.key_com.as_slice())?;
+    }
+    Ok(NoteRegCheck { id_tag, identity_bytes, identity, state, eligibility_root: cfg.eligibility_root.clone() })
+}
+
+pub fn register_notes(
+    deps: DepsMut,
+    campaign: &EpochCampaignParams,
+    signer: NoteSigner,
+    signature: Option<Binary>,
+    list: Vec<NoteListEntry>,
+    start: u32,
+    eligibility: Vec<NoteEligibility>,
+) -> Result<Response, StdError> {
+    let NoteRegCheck { id_tag, identity_bytes, identity, mut state, eligibility_root } =
+        check_register_notes(deps.as_ref(), campaign, &signer, signature.as_ref(), &list, start, &eligibility)?;
+    let count = eligibility.len() as u32;
+    let mut first_leaf = None;
+    for (offset, elig) in eligibility.iter().enumerate() {
+        let i = start + offset as u32;
+        let entry = &list[i as usize];
+        let amount = denom_amount(entry.class)?;
+        // Re-run per leaf: earlier appends in this chunk move the caps.
+        precheck(deps.storage, amount)?;
+        let path = path_bytes(&elig.path)?;
+        let leaf = note_eligibility_leaf(id_tag, &identity_bytes, entry.class, i as u16);
+        debug_assert_eq!(open_note_eligibility(leaf, elig.index, &path).as_slice(), eligibility_root.as_slice());
         let key_fp = parse_fp(entry.key_com.as_slice())?;
         let (index, _) = append_claim_leaf(
             deps.storage,
@@ -779,7 +818,17 @@ mod tests {
         // amounts
         assert!(err(claim(&mut deps, &env, "w2", &epoch_n, 2, 3_000_000)).contains("denomination"));
         // ok: payout to sender, exactly amount
+        // CheckNoteClaim dry-run: same verdict as the execute, writes nothing.
+        let dry = |deps: &TDeps, who: &str, nf: u8| {
+            let mut n = [0u8; 32];
+            n[0] = nf;
+            let campaign = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
+            direct::check_claim(deps.as_ref(), &env, &campaign, &format!("terp1{who}"), &epoch_n, &Binary::from(n.to_vec()), DENOMS_UTERP[3], &Binary::from(vec![1u8; 64])).map(|_| ())
+        };
+        dry(&deps, "w1", 1).unwrap();
+        dry(&deps, "w1", 1).unwrap();
         let r = claim(&mut deps, &env, "w1", &epoch_n, 1, DENOMS_UTERP[3]).unwrap();
+        assert!(dry(&deps, "w1", 1).unwrap_err().to_string().contains("nullifier"));
         let w1 = "terp1w1".to_string();
         let sent = r.messages.iter().any(|m| matches!(&m.msg, cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address, amount }) if *to_address == w1 && amount[0].amount.to_string() == DENOMS_UTERP[3].to_string()));
         assert!(sent);

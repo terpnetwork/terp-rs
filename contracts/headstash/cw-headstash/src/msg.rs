@@ -268,6 +268,16 @@ pub enum QueryMsg {
     /// Dry-run of `ClaimNote` for `dest` (the fresh wallet). Errors with the same
     /// reason the execute would; `true` when the claim would pay.
     #[returns(bool)]
+    CheckRegisterNotes {
+        signer: crate::notes::NoteSigner,
+        #[serde(default)]
+        signature: Option<Binary>,
+        list: Vec<crate::notes::NoteListEntry>,
+        start: u32,
+        eligibility: Vec<crate::notes::NoteEligibility>,
+    },
+    /// Dry-run of `ClaimNote` for `dest` (the fresh wallet).
+    #[returns(bool)]
     CheckNoteClaim {
         dest: String,
         root: Binary,

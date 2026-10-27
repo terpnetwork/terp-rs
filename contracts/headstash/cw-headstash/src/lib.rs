@@ -496,6 +496,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 anchor.as_slice(),
             )?)
         }
+        QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility)?;
+            to_json_binary(&true)
+        }
         QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
             let campaign = epoch::query_campaign(deps.storage)?;
             deps.api.addr_validate(&dest)?;
