@@ -1155,7 +1155,19 @@
       "terp-passkey": 84,
       "terp-recovery": 85,
       "terp-ed25519": 86,
-      "terp-eth": 87
+      "terp-eth": 87,
+      "oracle-registry": 88,
+      "oracle-aggregator": 89,
+      "oracle-twap-probe": 90,
+      "marketplace": 91,
+      "reserve-auction": 92,
+      "svg-auction": 93,
+      "raffle": 94,
+      "nft-loan": 95,
+      "passkey": 96,
+      "recovery": 97,
+      "cw721-svg": 98,
+      "svg-minter": 99
     },
     "default": {
       "abstract:account-local-0": "terp1dn68205qvzcrxcnquzch0dnnde38eu34lkxan9343a364vjl32dq6gzacv",
@@ -1175,7 +1187,11 @@
       "cw_admin_factory": "terp1405rgu0e4rrzkwpvscl5xc8ypf6edseyjxljft4jp7qxrchqlnws28au53",
       "polytone:note": "terp1ywux48hkyznee0454ptw7g78npv4eexc0txa9aap7r44a3l55p6q9df53h",
       "polytone:voice": "terp1cargggxyxpfhr4z3qxma0fznj6epg2vtx0e49clq4alx22xsypwssnxx3v",
-      "whitelist-mtree": "terp1uv54d987cq5c83wcs9phal9drgrgf3jdxzp33phgjrfm27djvqdq7xy0cr"
+      "whitelist-mtree": "terp1uv54d987cq5c83wcs9phal9drgrgf3jdxzp33phgjrfm27djvqdq7xy0cr",
+      "svg-minter": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "drop:marain-orbs": "terp163t2m8aa64d430stzddftqhpk464vzm88j8le9c8dn4gc6jk2m7sppfga0",
+      "drop:kara-gippy": "terp14h3nj95tatr4f6fc4hqtc7xdhhmkl938smx7cm4d08tsxj82wt2qelc8kv",
+      "drop:yijing-harmony": "terp12zz8jsjkx0l26334k0kmuk8tywgqy9ndswgkr6kl2f294mqxa65qpntqzu"
     },
     "ibc_data": {
       "akash": {
@@ -1896,5 +1912,5 @@
     "default": {}
   },
   "source": "usb2/snapshots/mainnet/morocco-1/state.json \u2014 unified cw-orch + site morocco-1",
-  "note": "Single state.json for cw-orch, terp.network, and permissionless.money. morocco-1.code_ids terp-passkey=84 terp-recovery=85 terp-ed25519=86 terp-eth=87. Do not use dist copies; 120u-1 ids stay on 120u-1 only."
+  "note": "Single state.json for cw-orch, terp.network, and permissionless.money. morocco-1.code_ids terp-passkey=84 terp-recovery=85 terp-ed25519=86 terp-eth=87. Do not use dist copies; 120u-1 ids stay on 120u-1 only. 2026-10-27 terp-rs deploy: oracle-registry=88 .. svg-minter=99 (see morocco-1.code_ids); terp-passkey=84/terp-recovery=85 and legacy cw721_svg=83/cw-svg-minter=72 unchanged. default svg-minter, drop:marain-orbs, drop:kara-gippy, drop:yijing-harmony."
 }
