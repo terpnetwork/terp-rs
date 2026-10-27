@@ -353,7 +353,7 @@ async fn queue_cap_and_identity_rate_limit() {
 }
 
 fn wallet(n: u8) -> String {
-    format!("terp1{}", std::iter::repeat((b'a' + n) as char).take(39).collect::<String>())
+    format!("terp1{}", std::iter::repeat((b'a' + n) as char).take(38).collect::<String>())
 }
 
 #[tokio::test]

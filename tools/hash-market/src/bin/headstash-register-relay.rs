@@ -922,7 +922,7 @@ fn grant_phrase(text: &str) -> &'static str {
 }
 
 fn is_wallet(a: &str) -> bool {
-    a.len() == 44 && a.starts_with("terp1") && a.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+    a.len() == 43 && a.starts_with("terp1") && a.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
 }
 
 /// RFC 3339 UTC, seconds precision, `ttl` from now.
@@ -1112,15 +1112,25 @@ fn env_num<T: std::str::FromStr>(k: &str, d: T) -> T {
 async fn main() -> anyhow::Result<()> {
     let bind = std::env::var("HEADSTASH_RELAY_BIND").unwrap_or_else(|_| DEFAULT_BIND.to_string());
     let addr = check_bind(&bind).map_err(|e| anyhow::anyhow!(e))?;
-    let path = std::env::var("HEADSTASH_ELIGIBILITY").map_err(|_| anyhow::anyhow!("HEADSTASH_ELIGIBILITY is required"))?;
-    let elig = Elig::load(&std::fs::read(&path)?)?;
     let chain = TerpdChain::from_env().await?;
     let campaign = chain.smart(&json!({"epoch_campaign": {}})).await.map_err(|e| anyhow::anyhow!(e))?;
+    // vk_id 3 note campaigns register on-chain (RegisterNotes, depth 17 note tree) and are
+    // gated by the CheckRegisterNotes / CheckNoteClaim dry runs, so the legacy amount file is
+    // optional there: without it the legacy /register route rejects every body ("eligibility").
+    let note_campaign = campaign.get("vk_id").and_then(Value::as_u64) == Some(3);
+    let elig_path = std::env::var("HEADSTASH_ELIGIBILITY").ok();
+    if elig_path.is_none() && !note_campaign {
+        anyhow::bail!("HEADSTASH_ELIGIBILITY is required");
+    }
     let ctx = decode_bin32(campaign.get("ctx").and_then(Value::as_str).unwrap_or("")).ok_or_else(|| anyhow::anyhow!("chain ctx"))?;
     let reg = campaign.get("registration").ok_or_else(|| anyhow::anyhow!("chain registration"))?;
     let root = decode_bin32(reg.get("eligibility_root").and_then(Value::as_str).unwrap_or("")).ok_or_else(|| anyhow::anyhow!("chain root"))?;
     let depth = reg.get("eligibility_depth").and_then(Value::as_u64).unwrap_or(0) as u32;
-    if root != elig.root() || depth != elig.depth {
+    let elig = match &elig_path {
+        Some(path) => Elig::load(&std::fs::read(path)?)?,
+        None => Elig::from_leaves(1, vec![[0u8; 32]; 2], HashMap::new()),
+    };
+    if elig_path.is_some() && (root != elig.root() || depth != elig.depth) {
         anyhow::bail!("eligibility mismatch chain {} file {}", hex::encode(&root[..4]), hex::encode(&elig.root()[..4]));
     }
     let limits = Limits {
