@@ -157,6 +157,27 @@
   },
   "morocco-1": {
     "ibc_new_clients": {
+      "recovery_proposal": {
+        "proposal_id": 63,
+        "tx": "51D697AC357067E08FED05A4B563F8D95389D4B0D57E3FFF65DF12AEED186067",
+        "height": 24125330,
+        "deposit_uterp": "10000000000",
+        "voting_end": "2026-10-31T15:49:20Z",
+        "pairs": [
+          [
+            "07-tendermint-3",
+            "07-tendermint-43"
+          ],
+          [
+            "07-tendermint-33",
+            "07-tendermint-44"
+          ],
+          [
+            "07-tendermint-34",
+            "07-tendermint-45"
+          ]
+        ]
+      },
       "tx": {
         "create": "F3013633327D67C06DAA7798B32FB03BEC3ADDB120E7B56D4D2377A04335DD60",
         "create_height": 24124789,
