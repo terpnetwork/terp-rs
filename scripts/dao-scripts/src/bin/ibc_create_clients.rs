@@ -26,7 +26,7 @@ use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 #[derive(Parser, Debug)]
 #[command(name = "ibc_create_clients")]
 struct Cli {
-    /// osmosis, juno, atomone, penumbra. Repeat or comma-separate. Default: all.
+    /// osmosis, juno, akash, secret, atomone, penumbra. Repeat or comma-separate. Default: all.
     #[arg(long, value_delimiter = ',')]
     counterparty: Vec<String>,
     #[arg(long, env = "PENUMBRA_RPC", default_value = "https://rpc.penumbra.fi")]
@@ -60,6 +60,21 @@ fn cosmos_info(name: &str) -> Result<ChainInfoOwned> {
         "osmosis" => OSMOSIS_1.into(),
         "juno" => JUNO_1.into(),
         "atomone" => ATOMEONE_MAINNET.into(),
+        // cw-orch-networks has no secret-4 entry and AKASH_MAINNET says "akash-1";
+        // reuse the akash network info with the live chain ids.
+        "akash" | "secret" => {
+            let (chain_id, denom, grpc, prefix) = match name {
+                "akash" => ("akashnet-2", "uakt", "https://akash.lavenderfive.com:443", "akash"),
+                _ => ("secret-4", "uscrt", "https://secretnetwork.lavenderfive.com:443", "secret"),
+            };
+            let mut i: ChainInfoOwned = cw_orch::daemon::networks::AKASH_MAINNET.into();
+            i.chain_id = chain_id.into();
+            i.gas_denom = denom.into();
+            i.grpc_urls = vec![grpc.into()];
+            i.network_info.chain_name = name.into();
+            i.network_info.pub_address_prefix = prefix.into();
+            i
+        }
         other => bail!("unknown counterparty {other}"),
     };
     if let Ok(grpc) = std::env::var(format!("{}_GRPC", name.to_uppercase())) {
@@ -92,7 +107,7 @@ fn main() -> Result<()> {
     env_logger::init();
     let cli = Cli::parse();
     let names: Vec<String> = if cli.counterparty.is_empty() {
-        ["osmosis", "juno", "atomone", "penumbra"].map(String::from).to_vec()
+        ["osmosis", "juno", "akash", "secret", "atomone", "penumbra"].map(String::from).to_vec()
     } else {
         cli.counterparty.clone()
     };
