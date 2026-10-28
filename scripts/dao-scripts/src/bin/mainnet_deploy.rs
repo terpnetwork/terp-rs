@@ -776,6 +776,15 @@ fn foundation_vote(ctx: &mut Ctx, phase: &str, signer: &Signer, d: &Daemon, modu
         Ok(d.wasm_querier().smart_query::<_, Value>(&m, &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{e}"))?["proposal"].clone())
     };
     println!("  voter (granter) {granter}");
+    if ctx.cli.vote_execute {
+        // Run 2 must be a second member: refuse a signer that already voted on an open proposal.
+        for pid in ctx.cli.vote_proposals.clone() {
+            let mine: Value = d.wasm_querier().smart_query(&m, &json!({"get_vote": {"proposal_id": pid, "voter": granter}})).map_err(|e| anyhow!("{e}"))?;
+            if !mine["vote"].is_null() && status(pid)?["status"] == "open" {
+                bail!("refused: {granter} already voted on open proposal {pid}; --execute run must be signed by another Foundation member");
+            }
+        }
+    }
     for pid in ctx.cli.vote_proposals.clone() {
         let mine: Value = d.wasm_querier().smart_query(&m, &json!({"get_vote": {"proposal_id": pid, "voter": granter}})).map_err(|e| anyhow!("{e}"))?;
         let p = status(pid)?;

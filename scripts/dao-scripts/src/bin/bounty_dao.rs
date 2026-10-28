@@ -50,8 +50,42 @@ struct Cli {
     account_index: u32,
     #[arg(long, default_value_t = 1800)]
     ttl_secs: u64,
+    /// instantiate2 salt of the bounty DAO core (Foundation is the creator).
+    #[arg(long, default_value = BOUNTY_SALT)]
+    salt: String,
+    /// sha256 (hex) of the DAO core code (code 23 on morocco-1), used to predict the address.
+    #[arg(long, default_value = CORE_CHECKSUM)]
+    core_checksum: String,
     #[arg(long, default_value = "out/06-bounty-subdao.json")]
     out: String,
+}
+
+const BOUNTY_SALT: &str = "bounty-subdao";
+const CORE_CHECKSUM: &str = "9cac5bccfc7d68893bf99d737a02af27b43fe7992bcf1af2379417955790eaaf";
+/// Placeholder in --bounty-init replaced by the predicted DAO core address.
+const CORE_PLACEHOLDER: &str = "$DAO_CORE";
+
+fn predict_core(parent: &str, checksum_hex: &str, salt: &str) -> Result<String> {
+    let h = checksum_hex.trim();
+    if h.len() != 64 { bail!("--core-checksum must be 32-byte hex"); }
+    let sum = (0..32).map(|i| u8::from_str_radix(&h[2 * i..2 * i + 2], 16)).collect::<Result<Vec<u8>, _>>().context("--core-checksum hex")?;
+    let (_, creator) = dao_foundation_suite::ibc_ops::steward::decode_bech32(parent).map_err(anyhow::Error::msg)?;
+    cw_orch_kms::instantiate2_bech32("terp", &sum, &creator, salt.as_bytes()).map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+fn resolve_init(init: &serde_json::Value, core: &str) -> Result<serde_json::Value> {
+    let s = serde_json::to_string(init)?.replace(CORE_PLACEHOLDER, core);
+    let v: serde_json::Value = serde_json::from_str(&s)?;
+    for k in ["owner", "approver"] {
+        if v[k].as_str() != Some(core) { bail!("bounty init {k} {} is not the predicted DAO core {core}", v[k]); }
+    }
+    Ok(v)
+}
+
+/// Turn the suite's plain Instantiate into Instantiate2 (same code/admin/label/msg/funds).
+fn to_instantiate2(msg: CosmosMsg, salt: &str) -> Result<CosmosMsg> {
+    let CosmosMsg::Wasm(WasmMsg::Instantiate { admin, code_id, msg, funds, label }) = msg else { bail!("not an instantiate") };
+    Ok(CosmosMsg::Wasm(WasmMsg::Instantiate2 { admin, code_id, label, msg, funds, salt: cosmwasm_std::Binary::from(salt.as_bytes()) }))
 }
 
 fn bounty_msg(parent: &str, member: &str, code_id: u64, init: &serde_json::Value) -> Result<CosmosMsg> {
@@ -76,7 +110,8 @@ fn bounty_msg(parent: &str, member: &str, code_id: u64, init: &serde_json::Value
 }
 
 fn check_bounty(msg: &CosmosMsg, parent: &str) -> Result<serde_json::Value> {
-    let CosmosMsg::Wasm(WasmMsg::Instantiate { admin, funds, msg: init, .. }) = msg else {
+    let (CosmosMsg::Wasm(WasmMsg::Instantiate { admin, funds, msg: init, .. })
+    | CosmosMsg::Wasm(WasmMsg::Instantiate2 { admin, funds, msg: init, .. })) = msg else {
         bail!("bounty message is not a wasm instantiate");
     };
     if admin.as_deref() != Some(parent) {
@@ -100,8 +135,14 @@ fn main() -> Result<()> {
     let init: serde_json::Value = serde_json::from_slice(
         &std::fs::read(&cli.bounty_init).with_context(|| format!("read {}", cli.bounty_init.display()))?,
     )?;
-    let msg = bounty_msg(&cli.parent, cli.member.trim(), cli.bounty_code_id, &init)?;
-    let checks = check_bounty(&msg, &cli.parent)?;
+    let core = predict_core(&cli.parent, &cli.core_checksum, &cli.salt)?;
+    let init = resolve_init(&init, &core)?;
+    let msg = to_instantiate2(bounty_msg(&cli.parent, cli.member.trim(), cli.bounty_code_id, &init)?, &cli.salt)?;
+    let mut checks = check_bounty(&msg, &cli.parent)?;
+    checks["predicted_dao_core"] = core.clone().into();
+    checks["salt"] = cli.salt.clone().into();
+    checks["bounty_init_resolved"] = init.clone();
+    println!("predicted bounty DAO core {core} (instantiate2, creator {}, salt {})", cli.parent, cli.salt);
     let propose = foundation_proposal_wrapper(BOUNTY_PROPOSAL_TITLE, &bounty_proposal_description(cli.bounty_code_id), vec![msg]);
     let morocco = kms_gate::morocco_info();
     kms_gate::write_plan(&cli.out, &serde_json::json!({
