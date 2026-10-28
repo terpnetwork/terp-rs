@@ -1,5 +1,5 @@
 {
-  "status": "DRAFT - do not launch. Channel open; receiver PENUMBRA_ADDRESS_TBD.",
+  "status": "READY - launch via dao_account full mode",
   "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
   "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
   "creation_policy": "anyone (no pre-propose, no deposit)",
@@ -19,13 +19,13 @@
   "propose": {
     "propose": {
       "title": "FIAB-SUBDAO: send half of TERP and THIOL to the Penumbra liquidity wallet",
-      "description": "Two ICS-20 transfers from FIAB-SUBDAO to its Penumbra liquidity cold wallet PENUMBRA_ADDRESS_TBD over Terp transfer/channel-16 <-> Penumbra transfer/channel-25 (connection-16 <-> connection-25): 120,000 TERP and 240,000 THIOL. The wallet opens Penumbra liquidity positions anchored at the floor of 2.124 THIOL per TERP (TERP $0.05012, THIOL $0.02360 at height 23,238,152), weighted for net THIOL->TERP flow.",
+      "description": "Two ICS-20 transfers from FIAB-SUBDAO to its Penumbra liquidity cold wallet penumbra1gmapdgqxe0s20trdqz0fulurzgk0agyzawp3ymtm4msks4mu9kvhm3ghw3rah3l7g727xuj5vw9jjg596ec2ecprw3hpta05rfx4djrl0y6e4ujj6cvmcf7t93ldcsquzmqf22 over Terp transfer/channel-16 <-> Penumbra transfer/channel-25 (connection-16 <-> connection-25): 120,000 TERP and 240,000 THIOL. The wallet opens Penumbra liquidity positions anchored at the floor of 2.124 THIOL per TERP (TERP $0.05012, THIOL $0.02360 at height 23,238,152), weighted for net THIOL->TERP flow.",
       "msgs": [
         {
           "ibc": {
             "transfer": {
               "channel_id": "channel-16",
-              "to_address": "PENUMBRA_ADDRESS_TBD",
+              "to_address": "penumbra1gmapdgqxe0s20trdqz0fulurzgk0agyzawp3ymtm4msks4mu9kvhm3ghw3rah3l7g727xuj5vw9jjg596ec2ecprw3hpta05rfx4djrl0y6e4ujj6cvmcf7t93ldcsquzmqf22",
               "amount": {
                 "denom": "uterp",
                 "amount": "120000000000"
@@ -40,7 +40,7 @@
           "ibc": {
             "transfer": {
               "channel_id": "channel-16",
-              "to_address": "PENUMBRA_ADDRESS_TBD",
+              "to_address": "penumbra1gmapdgqxe0s20trdqz0fulurzgk0agyzawp3ymtm4msks4mu9kvhm3ghw3rah3l7g727xuj5vw9jjg596ec2ecprw3hpta05rfx4djrl0y6e4ujj6cvmcf7t93ldcsquzmqf22",
               "amount": {
                 "denom": "uthiol",
                 "amount": "240000000000"
