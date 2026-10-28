@@ -1,0 +1,331 @@
+{
+  "codes": {
+    "bounty-escrow": {
+      "checksum": "26041c3c0de61cebed54c7e18aa23d7118108a7a019e25050d6b8a4de2e92c1a",
+      "code_id": 104,
+      "tx": "1A2CCA3F5C16E36FD302722EB2DA127F2BDDC3C7E51CCCE61B14D661CD9EF151"
+    },
+    "cw721-svg": {
+      "checksum": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+      "code_id": 98,
+      "tx": "6704D67FF6534A0B0AF58DB759F31EBD2E16D1C1FA0F32C79BB665D9D8135664"
+    },
+    "dao-calendar": {
+      "checksum": "e2baaf3a797a27ed0062519bb09f45772003c981a0a1b210856ea0ee85626fe4",
+      "code_id": 102,
+      "tx": "D04ABC8FEE8B6458562ACC0EAEB5DF58844A743F329870A262461D6EE07EAF41"
+    },
+    "dao-rewards-distributor": {
+      "checksum": "d4f0cac1884e1eb158921d53a5a2066508cb42efd6366fdda724e423749b5854",
+      "code_id": 100,
+      "tx": "407D85051B05E57A57DE4E6C62B3525892C8946658AF11B0276FE60B223EADB6"
+    },
+    "dao-vote-delegation": {
+      "checksum": "7c090aac36bba846b4bb272c48436eaa4b3815753acf34ba2a10446aa4ac600a",
+      "code_id": 101,
+      "tx": "46FD47C85F2C577A7F4D34EA0011751C9A7AA2FA2E2D43C512DFFA5FB560D7D1"
+    },
+    "gauge-adapter": {
+      "checksum": "fa51a045084231b6dfabab13af21e09e99af7661ad214db57a023c06a364b052",
+      "code_id": 103,
+      "tx": "FA9C40EE61345CEF6189CACE3121E355450100125E6FE64F1DACEEC5784C55DE"
+    },
+    "marketplace": {
+      "checksum": "18a83231b909b612cc789e1e8cff9bdca37d11133ca9daafec4bd5507864bb3f",
+      "code_id": 91,
+      "tx": "EBD925681F27ECFF22F91AF9491F00C0D5F909CC83B7502196EADE0307EB86D7"
+    },
+    "nft-loan": {
+      "checksum": "f25aa65314f89febd587ef0553837ec967606ec1f55c32a54a54a5beb447265c",
+      "code_id": 95,
+      "tx": "359265FDD41C86C935743A11533BA8B4FE708AC294D5392A5B1656B6E5A4084A"
+    },
+    "oracle-aggregator": {
+      "checksum": "0e15a509c8b86818e5266dc82cbbdf53c6020b38ca79780fe958870ce1636b4a",
+      "code_id": 89,
+      "tx": "24FEE626A7BB631B00C13C68467DB749DE21917F9F61C496DBE548C158C4C9AB"
+    },
+    "oracle-registry": {
+      "checksum": "34c0eab85a32636a63072a6593794d8c9822ead3e4fba1eda97043a6c7352afb",
+      "code_id": 88,
+      "tx": "DDE145B0C0B4D975477357BF9FE13C82FFC69BCB609E811175B95C37C247F754"
+    },
+    "oracle-twap-probe": {
+      "checksum": "04fa794e9fa40f50ffe68fa29130fa2f77de2d86202bfb09401e08efb247ecba",
+      "code_id": 90,
+      "tx": "E8B17216A8AECD43E7FB8A5850573671CBFB0F1B6937AD0184529B29A978DE3E"
+    },
+    "passkey": {
+      "checksum": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+      "code_id": 96,
+      "tx": "E3275E4179565360A8F5F76F44295F1FD7E442865C29A9F2B87635AB68786493"
+    },
+    "raffle": {
+      "checksum": "28a9ac5283f4ade77e82ac41ddbbd2790fd7cdac46b7bcce3c241602d0f588c1",
+      "code_id": 94,
+      "tx": "C986681E66E4E31DEB722495B59808791EB76DAD177646FBC863A66F7C5559FA"
+    },
+    "recovery": {
+      "checksum": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+      "code_id": 97,
+      "tx": "342F9414BCE243B42E01D86C732D3EE366683F6BD6CF0A189722F9A8CD5197E5"
+    },
+    "reserve-auction": {
+      "checksum": "b55b4e025575fc6a5982ead25e6a4ca7c774c3ef2c6633adb854463e8e3ea42f",
+      "code_id": 92,
+      "tx": "41757B97E59D1EA0664D4DB0125DD0BB6616BDA394E845470179AB42AAAA51DD"
+    },
+    "svg-auction": {
+      "checksum": "575057ddff1d02dadb8c58e583d57c6fee12ad135474ca9fb1ed3205e101a4b6",
+      "code_id": 93,
+      "tx": "20D3A19D147DC761CC929492FD7C8DDC1ACE1F42A493F0E0E9C38BC82257C45E"
+    },
+    "svg-minter": {
+      "checksum": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+      "code_id": 99,
+      "tx": "543851F01F5B4395D094ABC817897AE043A009F90543A203AD3635DC2EE1A556"
+    }
+  },
+  "contracts": {
+    "custody-akash": {
+      "address": "terp10g9vk5kqxv50ezc0sj4n5ves9zxxtu97nfpyctw5zutqdhe2cz5qfgxk3j",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "drop:kara-gippy": {
+      "address": "terp14h3nj95tatr4f6fc4hqtc7xdhhmkl938smx7cm4d08tsxj82wt2qelc8kv",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "6E326444521D9BBDCAB6503C2474078AD4251B200A30501AF35FDB3CD12832A1"
+    },
+    "drop:marain-orbs": {
+      "address": "terp163t2m8aa64d430stzddftqhpk464vzm88j8le9c8dn4gc6jk2m7sppfga0",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "F7B4B1935250F852AADBE31028240F88B9B19C7B2D894B30E2E374436119FA92"
+    },
+    "drop:yijing-harmony": {
+      "address": "terp12zz8jsjkx0l26334k0kmuk8tywgqy9ndswgkr6kl2f294mqxa65qpntqzu",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "201FD1E347A366B0EBD28FDBFF746DDB65A899F27E5774BDE86BCB2FEE6FCDAA"
+    },
+    "fiab-subdao": {
+      "address": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "dao-dao-core",
+      "tx": "19025242FD17BC6F6506C9E4C800C3180941905398773EDBF89DF69CBE5EAB94"
+    },
+    "steward-akash": {
+      "address": "terp1lwy7emky9lcnmt7j9jhtrnewh9yvlsglyuu9ahlpsgnghwv06r5qdsy454",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "steward-juno": {
+      "address": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "svg-minter": {
+      "address": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "svg-minter",
+      "tx": "DB9BDD0467A9B12C6954F6CBC43E4AE65E87226B8661706CB28E3936DBB5D59E"
+    }
+  },
+  "proposals": {
+    "daos:propose:fiab": 9,
+    "daos:propose:steward": 10
+  },
+  "txs": [
+    {
+      "gas_used": 5111553,
+      "hash": "DDE145B0C0B4D975477357BF9FE13C82FFC69BCB609E811175B95C37C247F754",
+      "phase": "upload",
+      "step": "store oracle-registry"
+    },
+    {
+      "gas_used": 4101145,
+      "hash": "24FEE626A7BB631B00C13C68467DB749DE21917F9F61C496DBE548C158C4C9AB",
+      "phase": "upload",
+      "step": "store oracle-aggregator"
+    },
+    {
+      "gas_used": 3422181,
+      "hash": "E8B17216A8AECD43E7FB8A5850573671CBFB0F1B6937AD0184529B29A978DE3E",
+      "phase": "upload",
+      "step": "store oracle-twap-probe"
+    },
+    {
+      "gas_used": 8250251,
+      "hash": "EBD925681F27ECFF22F91AF9491F00C0D5F909CC83B7502196EADE0307EB86D7",
+      "phase": "upload",
+      "step": "store marketplace"
+    },
+    {
+      "gas_used": 5662939,
+      "hash": "41757B97E59D1EA0664D4DB0125DD0BB6616BDA394E845470179AB42AAAA51DD",
+      "phase": "upload",
+      "step": "store reserve-auction"
+    },
+    {
+      "gas_used": 4709883,
+      "hash": "20D3A19D147DC761CC929492FD7C8DDC1ACE1F42A493F0E0E9C38BC82257C45E",
+      "phase": "upload",
+      "step": "store svg-auction"
+    },
+    {
+      "gas_used": 10043926,
+      "hash": "C986681E66E4E31DEB722495B59808791EB76DAD177646FBC863A66F7C5559FA",
+      "phase": "upload",
+      "step": "store raffle"
+    },
+    {
+      "gas_used": 6389275,
+      "hash": "359265FDD41C86C935743A11533BA8B4FE708AC294D5392A5B1656B6E5A4084A",
+      "phase": "upload",
+      "step": "store nft-loan"
+    },
+    {
+      "gas_used": 4784204,
+      "hash": "E3275E4179565360A8F5F76F44295F1FD7E442865C29A9F2B87635AB68786493",
+      "phase": "upload",
+      "step": "store passkey"
+    },
+    {
+      "gas_used": 5090094,
+      "hash": "342F9414BCE243B42E01D86C732D3EE366683F6BD6CF0A189722F9A8CD5197E5",
+      "phase": "upload",
+      "step": "store recovery"
+    },
+    {
+      "gas_used": 17122189,
+      "hash": "6704D67FF6534A0B0AF58DB759F31EBD2E16D1C1FA0F32C79BB665D9D8135664",
+      "phase": "upload",
+      "step": "store cw721-svg"
+    },
+    {
+      "gas_used": 10481311,
+      "hash": "543851F01F5B4395D094ABC817897AE043A009F90543A203AD3635DC2EE1A556",
+      "phase": "upload",
+      "step": "store svg-minter"
+    },
+    {
+      "gas_used": 220131,
+      "hash": "DB9BDD0467A9B12C6954F6CBC43E4AE65E87226B8661706CB28E3936DBB5D59E",
+      "phase": "svg",
+      "step": "instantiate2 svg-minter"
+    },
+    {
+      "gas_used": 164544,
+      "hash": "88ABAA8C58710C395C25871477A455C1D30F9AA50C8B6E4B81FB424781DADC47",
+      "phase": "svg",
+      "step": "svg:series:marain-orbs"
+    },
+    {
+      "gas_used": 164904,
+      "hash": "441BBDA0CA8EA625EB8517B8D0BD76EDD79A1662804027692AA671D65155BD23",
+      "phase": "svg",
+      "step": "svg:series:latent-benders"
+    },
+    {
+      "gas_used": 633839,
+      "hash": "F7B4B1935250F852AADBE31028240F88B9B19C7B2D894B30E2E374436119FA92",
+      "phase": "svg",
+      "step": "svg:create:marain-orbs"
+    },
+    {
+      "gas_used": 561756,
+      "hash": "6E326444521D9BBDCAB6503C2474078AD4251B200A30501AF35FDB3CD12832A1",
+      "phase": "svg",
+      "step": "svg:create:kara-gippy"
+    },
+    {
+      "gas_used": 1692035,
+      "hash": "201FD1E347A366B0EBD28FDBFF746DDB65A899F27E5774BDE86BCB2FEE6FCDAA",
+      "phase": "svg",
+      "step": "svg:create:yijing-harmony"
+    },
+    {
+      "gas_used": 7342899,
+      "hash": "407D85051B05E57A57DE4E6C62B3525892C8946658AF11B0276FE60B223EADB6",
+      "phase": "dao-upload",
+      "step": "store dao-rewards-distributor"
+    },
+    {
+      "gas_used": 6964096,
+      "hash": "46FD47C85F2C577A7F4D34EA0011751C9A7AA2FA2E2D43C512DFFA5FB560D7D1",
+      "phase": "dao-upload",
+      "step": "store dao-vote-delegation"
+    },
+    {
+      "gas_used": 12979378,
+      "hash": "D04ABC8FEE8B6458562ACC0EAEB5DF58844A743F329870A262461D6EE07EAF41",
+      "phase": "dao-upload",
+      "step": "store dao-calendar"
+    },
+    {
+      "gas_used": 6531664,
+      "hash": "FA9C40EE61345CEF6189CACE3121E355450100125E6FE64F1DACEEC5784C55DE",
+      "phase": "dao-upload",
+      "step": "store gauge-adapter"
+    },
+    {
+      "gas_used": 8842081,
+      "hash": "1A2CCA3F5C16E36FD302722EB2DA127F2BDDC3C7E51CCCE61B14D661CD9EF151",
+      "phase": "bounty-upload",
+      "step": "store bounty-escrow"
+    },
+    {
+      "gas_used": 963781,
+      "hash": "F89DE573C11740A1408CA4FB01AAC10BDAC66DF7AC21032850E99C4AF5AF9C7D",
+      "phase": "daos",
+      "step": "daos:propose:fiab"
+    },
+    {
+      "gas_used": 1152163,
+      "hash": "47C9BF57605F72CF0E206930E48299ACC44A78C1609DC7358C62941814727D4E",
+      "phase": "daos",
+      "step": "daos:propose:steward"
+    },
+    {
+      "gas_used": 474909,
+      "hash": "049717A2B97FC330486677A57B30FEC762D63015EE8736BAD06170F0328A7462",
+      "phase": "vote",
+      "step": "vote:9:terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
+    },
+    {
+      "gas_used": 617709,
+      "hash": "4184E8897A63AB3BABAAD938FAA313B627080C2DD7C4750B8994222C4C6C0F69",
+      "phase": "vote",
+      "step": "vote:10:terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
+    },
+    {
+      "gas_used": 475830,
+      "hash": "C9B28117943A15F3DE57EC208D81C98271D103E373D344AEF1E6D149FADF6AF0",
+      "phase": "vote",
+      "step": "vote:9:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj"
+    },
+    {
+      "gas_used": 618630,
+      "hash": "ECACA7A6FA2E4E2BFAB4F9CC88A1CCD3B0A36456EEDA527FACB58A9ADD43B561",
+      "phase": "vote",
+      "step": "vote:10:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj"
+    },
+    {
+      "gas_used": 1056055,
+      "hash": "19025242FD17BC6F6506C9E4C800C3180941905398773EDBF89DF69CBE5EAB94",
+      "phase": "vote",
+      "step": "execute:9"
+    },
+    {
+      "gas_used": 2442608,
+      "hash": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379",
+      "phase": "vote",
+      "step": "execute:10"
+    }
+  ]
+}

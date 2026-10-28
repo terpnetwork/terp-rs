@@ -56,6 +56,12 @@ struct Cli {
     /// sha256 (hex) of the DAO core code (code 23 on morocco-1), used to predict the address.
     #[arg(long, default_value = CORE_CHECKSUM)]
     core_checksum: String,
+    /// Also submit, in the same session, the Foundation proposal instantiating the
+    /// Polytone notes (code --note-code-id) to Juno and Osmosis, Foundation as admin.
+    #[arg(long)]
+    with_notes: bool,
+    #[arg(long, default_value_t = 78)]
+    note_code_id: u64,
     #[arg(long, default_value = "out/06-bounty-subdao.json")]
     out: String,
 }
@@ -86,6 +92,33 @@ fn resolve_init(init: &serde_json::Value, core: &str) -> Result<serde_json::Valu
 fn to_instantiate2(msg: CosmosMsg, salt: &str) -> Result<CosmosMsg> {
     let CosmosMsg::Wasm(WasmMsg::Instantiate { admin, code_id, msg, funds, label }) = msg else { bail!("not an instantiate") };
     Ok(CosmosMsg::Wasm(WasmMsg::Instantiate2 { admin, code_id, label, msg, funds, salt: cosmwasm_std::Binary::from(salt.as_bytes()) }))
+}
+
+/// (remote, terp connection, remote connection, DAO-DAO voice on the remote chain)
+const NOTE_PAIRS: &[(&str, &str, &str, &str)] = &[
+    ("juno", "connection-14", "connection-557", "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u"),
+    ("osmosis", "connection-15", "connection-11101", "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs"),
+];
+const NOTES_TITLE: &str = "Instantiate Polytone notes to Juno and Osmosis";
+
+fn notes_msgs(parent: &str, code_id: u64) -> Result<(Vec<CosmosMsg>, serde_json::Value)> {
+    use dao_scripts::polytone as pt;
+    let mut msgs = vec![];
+    let mut plan = serde_json::Map::new();
+    for (remote, conn, rconn, voice) in NOTE_PAIRS {
+        let r = pt::remote(remote)?;
+        let port = format!("wasm.{voice}");
+        let init = pt::note_init(Some((conn, &port)));
+        let predicted = pt::predict_for(parent, pt::V3_NOTE_CHECKSUM, &r.note_salt())?;
+        msgs.push(CosmosMsg::Wasm(WasmMsg::Instantiate2 {
+            admin: Some(parent.to_string()), code_id, label: r.note_label(),
+            msg: cosmwasm_std::to_json_binary(&init).map_err(anyhow::Error::msg)?, funds: vec![],
+            salt: cosmwasm_std::Binary::from(r.note_salt().as_bytes()),
+        }));
+        plan.insert(r.chain_id.into(), serde_json::json!({"note_predicted": predicted, "terp_connection": conn, "remote_connection": rconn,
+            "voice": voice, "label": r.note_label(), "salt": r.note_salt(), "init": init, "channel_version": pt::CHANNEL_VERSION}));
+    }
+    Ok((msgs, serde_json::Value::Object(plan)))
 }
 
 fn bounty_msg(parent: &str, member: &str, code_id: u64, init: &serde_json::Value) -> Result<CosmosMsg> {
@@ -144,6 +177,13 @@ fn main() -> Result<()> {
     checks["bounty_init_resolved"] = init.clone();
     println!("predicted bounty DAO core {core} (instantiate2, creator {}, salt {})", cli.parent, cli.salt);
     let propose = foundation_proposal_wrapper(BOUNTY_PROPOSAL_TITLE, &bounty_proposal_description(cli.bounty_code_id), vec![msg]);
+    let notes = if cli.with_notes {
+        let (msgs, plan) = notes_msgs(&cli.parent, cli.note_code_id)?;
+        for (k, v) in plan.as_object().unwrap() { println!("note to {k}: {} pinned {} -> wasm.{}", v["note_predicted"], v["terp_connection"], v["voice"].as_str().unwrap_or("")); }
+        let desc = format!("Two Polytone notes (code {}) owned by the Foundation (wasm admin), instantiate2 from the Foundation core, each pinned to one Terp connection and an existing DAO-DAO voice:\n- juno-1: connection-14 (Juno connection-557), voice {}\n- osmosis-1: connection-15 (Osmosis connection-11101), voice {}\nChannels (polytone-1, unordered) are opened by the relayer after execution.", cli.note_code_id, NOTE_PAIRS[0].3, NOTE_PAIRS[1].3);
+        Some((foundation_proposal_wrapper(NOTES_TITLE, &desc, msgs), plan))
+    } else { None };
+    let n_calls = 1 + notes.is_some() as u64;
     let morocco = kms_gate::morocco_info();
     kms_gate::write_plan(&cli.out, &serde_json::json!({
         "dry_run": !cli.broadcast,
@@ -151,7 +191,8 @@ fn main() -> Result<()> {
         "contract": cli.pre_propose,
         "execute": propose,
         "invariants": checks,
-        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
+        "notes_proposal": notes.as_ref().map(|(p, plan)| serde_json::json!({"execute": p, "plan": plan})),
+        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": n_calls}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
     }))?;
     if !cli.broadcast {
         return Ok(());
@@ -159,7 +200,8 @@ fn main() -> Result<()> {
     if cli.granter.is_empty() {
         bail!("broadcast refused: pass --granter (a Foundation member)");
     }
-    let any = kms_gate::execute_any(&cli.granter, &cli.pre_propose, &propose)?;
+    let mut anys = vec![kms_gate::execute_any(&cli.granter, &cli.pre_propose, &propose)?];
+    if let Some((p, _)) = &notes { anys.push(kms_gate::execute_any(&cli.granter, &cli.pre_propose, p)?); }
     let tx = kms_gate::kms_broadcast(
         BroadcastRequest {
             info: morocco,
@@ -168,10 +210,10 @@ fn main() -> Result<()> {
             purpose: "bounty-subdao".into(),
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
-            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: 1, funds: vec![] }),
+            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: n_calls, funds: vec![] }),
             summary: BOUNTY_PROPOSAL_TITLE.into(),
         },
-        vec![any],
+        anys,
         "bounty_dao",
     )?;
     println!("tx {tx}");
