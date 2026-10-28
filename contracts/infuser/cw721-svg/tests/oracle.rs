@@ -64,7 +64,7 @@ fn world(tiers: Vec<PriceTier>) -> W {
         .instantiate_contract(
             rid,
             creator.clone(),
-            &reg::InstantiateMsg { admin: creator.to_string(), open_submit: true, bounty: None, note: None },
+            &reg::InstantiateMsg { admin: creator.to_string(), open_submit: true, bounty: None, note: None, ibc2_source_client: None },
             &[],
             "registry",
             None,

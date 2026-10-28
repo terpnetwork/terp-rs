@@ -70,7 +70,7 @@ fn world(mk: impl Fn(&Addr) -> Option<OraclePricing>) -> W {
         .instantiate_contract(
             rid,
             owner.clone(),
-            &reg::InstantiateMsg { admin: owner.to_string(), open_submit: true, bounty: None, note: None },
+            &reg::InstantiateMsg { admin: owner.to_string(), open_submit: true, bounty: None, note: None, ibc2_source_client: None },
             &[],
             "registry",
             None,

@@ -2,13 +2,16 @@
 
 Permissionless **price-bound** store for Osmosis TWAP (and later VE mids). Bounds only. Never mints.
 
-## Two ingresses, one record
+## One record, several writers
 
 | Source | Who writes | Cost |
 |---|---|---|
 | `Relayer` | First sidecar / packet processor to `Submit` at `(market_id, height)` | Optional bounty from contract balance |
 | `Polytone` | Note ACK `{ "callback": CallbackMessage }`. Query payload is Osmosis `arithmetic_twap` JSON. | Packet gas |
 | `VeQuorum` | `sudo { hash_merchant }` when `algo = price_median_v1` | Free to readers (validators already voted) |
+| `DexQuote` | IBC v2 ack on port `dex-quote`. Posted position `p/q`, not a swap fill. | Packet gas |
+
+`RegisterIbcV2` (admin) stores this chain's client id. `RequestQuote` emits one `Ibc2Msg::SendPacket`. `RequestQuotes` puts up to 16 of those requests in the same packet under `{"quotes":[...]}`. The payload carries each `market_id`, the filing height, the pair, and an optional position id. `ibc2_packet_ack` files a mid for each success. A per-quote error, a universal error ack, or a timeout files nothing for that quote. `Callback` is unchanged.
 
 Bind the note with `SetNote` (or instantiate `note`). Only that address may `Callback`. `initiator_msg` is JSON `{ market_id, source_chain, pool_id, height }`. First `(market_id, height)` still wins.
 

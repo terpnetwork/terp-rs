@@ -127,6 +127,7 @@ fn world() -> W {
                 open_submit: true,
                 bounty: None,
                 note: None,
+                ibc2_source_client: None,
             },
             &[],
             "registry",

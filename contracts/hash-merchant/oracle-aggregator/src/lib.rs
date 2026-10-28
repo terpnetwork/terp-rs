@@ -1,10 +1,9 @@
 //! Fractal price view: query one registry, compute your own window / method.
 //! Instantiate as many times as you want. The registry stays the SSOT.
 
-use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{
-    Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    to_json_binary,
+    to_json_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
 use cw_oracle_registry::msg::{HistoryResponse, QueryMsg as RegistryQuery};
 use cw_storage_plus::Item;
@@ -128,8 +127,8 @@ pub use interface::OracleAggregator;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{ContractResult, SystemResult, WasmQuery, from_json};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
+    use cosmwasm_std::{from_json, ContractResult, SystemResult, WasmQuery};
     use cw_oracle_registry::msg::ObservationResponse;
     use cw_oracle_registry::state::SourceKind;
 
@@ -159,6 +158,7 @@ mod tests {
                             height: 3,
                             mid: Decimal::percent(300),
                             recorder: registry.clone(),
+                            position_id: None,
                         },
                         ObservationResponse {
                             market_id: "OSMO/USD".into(),
@@ -168,6 +168,7 @@ mod tests {
                             height: 2,
                             mid: Decimal::percent(100),
                             recorder: registry.clone(),
+                            position_id: None,
                         },
                         ObservationResponse {
                             market_id: "OSMO/USD".into(),
@@ -177,6 +178,7 @@ mod tests {
                             height: 1,
                             mid: Decimal::percent(200),
                             recorder: registry.clone(),
+                            position_id: None,
                         },
                     ],
                 };
@@ -198,6 +200,66 @@ mod tests {
         assert_eq!(v.n, 3);
         assert_eq!(v.value, Decimal::percent(200));
     }
+
+    #[test]
+    fn terp_um_median_moves_when_the_position_is_replaced() {
+        let registry = MockApi::default().addr_make("registry");
+        let mut deps = mock_dependencies();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            message_info(&MockApi::default().addr_make("u"), &[]),
+            InstantiateMsg {
+                registry: registry.to_string(),
+            },
+        )
+        .unwrap();
+
+        deps.querier.update_wasm(move |q| match q {
+            WasmQuery::Smart { .. } => {
+                let hist = HistoryResponse {
+                    observations: vec![
+                        ObservationResponse {
+                            market_id: "TERP/UM".into(),
+                            source: SourceKind::DexQuote,
+                            source_chain: "07-tendermint-0".into(),
+                            pool_id: None,
+                            height: 20,
+                            mid: Decimal::from_ratio(5u128, 1u128),
+                            recorder: registry.clone(),
+                            position_id: Some("plpid-um-2".into()),
+                        },
+                        ObservationResponse {
+                            market_id: "TERP/UM".into(),
+                            source: SourceKind::DexQuote,
+                            source_chain: "07-tendermint-0".into(),
+                            pool_id: None,
+                            height: 10,
+                            mid: Decimal::from_ratio(2u128, 1u128),
+                            recorder: registry.clone(),
+                            position_id: Some("plpid-um-1".into()),
+                        },
+                    ],
+                };
+                SystemResult::Ok(ContractResult::Ok(to_json_binary(&hist).unwrap()))
+            }
+            _ => SystemResult::Err(cosmwasm_std::SystemError::Unknown {}),
+        });
+
+        let bin = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Median {
+                market_id: "TERP/UM".into(),
+                window: 2,
+            },
+        )
+        .unwrap();
+        let v: ViewResponse = from_json(bin).unwrap();
+        assert_eq!(v.n, 2);
+        assert_eq!(v.method, "median");
+        assert_eq!(v.value, Decimal::from_ratio(7u128, 2u128));
+    }
 }
 
 #[cfg(test)]
@@ -213,7 +275,10 @@ mod migrate_tests {
             deps.as_mut(),
             mock_env(),
             MigrateMsg {},
-            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+            cosmwasm_std::MigrateInfo {
+                sender: admin,
+                old_migrate_version: None,
+            },
         )
         .unwrap();
         assert_eq!(res.attributes[0].value, "migrate");
