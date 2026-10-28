@@ -8,6 +8,7 @@ pub mod benders;
 pub mod collection;
 pub mod drops;
 pub mod paymint;
+pub mod fresh_plan;
 #[cfg(feature = "shitstrap")]
 pub mod suite;
 pub mod yijing;
@@ -23,9 +24,33 @@ pub mod fractal {
     use cw_svg::{VariableDef, VariableKind};
     use rand::{SeedableRng, rngs::StdRng};
 
-    /// Minimal SVG template that visualizes attractor params as a geometric constellation.
-    /// The real fractal rendering happens off-chain; this gives each token a displayable on-chain preview.
-    const FRACTAL_SVG_TEMPLATE: &str = include_str!("../svgs/research/fractals/fractal.svg");
+    /// Animated, SVP1-checked on-chain art for the attractor params: 8 self-similar rotated
+    /// copies of the a..h polygon (stroke-color SMIL over static strokes), spin period
+    /// `${base_range}`s, flowing a->s / c->g links, pulsing nodes. Zooms stay in `<desc>`
+    /// for the off-chain permissionless.money visualizer. Built from fractal.svg.
+    pub const FRACTAL_SVG_TEMPLATE: &str = include_str!("../svgs/research/fractals/fractal-v2.svg");
+    pub const FRACTAL_SUPPLY: u64 = 10_000;
+
+    /// Mainnet roles for the fractal collection; `*_TBD` placeholders refuse to broadcast.
+    #[derive(Debug, Clone)]
+    pub struct FractalRoles {
+        pub curator: String,
+        pub withdraw: String,
+        /// whitelist-mtree (code 73) instance holding the paymint tree; None = no bypass.
+        pub paymint_whitelist: Option<String>,
+    }
+
+    /// Codec-checked (check_template) init for the factory's CreateSvgCollection.
+    pub fn permissionless_fractal_init_v2(seed: &u64, roles: &FractalRoles) -> anyhow::Result<cw721_svg::InstantiateMsg> {
+        let mut m = default_permissionless_fractal_init(seed, &roles.curator);
+        let mut rng = StdRng::seed_from_u64(*seed);
+        let v = build_variable_defs(&(0..64).map(|_| gen_zoom_set(&mut rng)).collect::<Vec<_>>());
+        m.collection_info_extension.packed = crate::yijing::check_template(FRACTAL_SVG_TEMPLATE, &v)?;
+        m.collection_info_extension.whitelist = roles.paymint_whitelist.clone();
+        m.minter = None;
+        m.withdraw_address = Some(roles.withdraw.clone());
+        Ok(m)
+    }
 
     pub fn default_permissionless_fractal_init(
         seed: &u64,
