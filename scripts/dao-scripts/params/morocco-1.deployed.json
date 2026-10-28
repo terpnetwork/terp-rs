@@ -395,5 +395,27 @@
       "hash": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60",
       "gas_used": 595509
     }
-  ]
+  ],
+  "ibc_channels": {
+    "polytone-note-juno": {
+      "channel": "channel-14",
+      "connection": "connection-14",
+      "counterparty_chain": "juno-1",
+      "counterparty_channel": "channel-675",
+      "counterparty_connection": "connection-557",
+      "counterparty_port": "wasm.juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u",
+      "version": "polytone-1",
+      "order": "unordered"
+    },
+    "polytone-note-osmosis": {
+      "channel": "channel-15",
+      "connection": "connection-15",
+      "counterparty_chain": "osmosis-1",
+      "counterparty_channel": "channel-111102",
+      "counterparty_connection": "connection-11101",
+      "counterparty_port": "wasm.osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs",
+      "version": "polytone-1",
+      "order": "unordered"
+    }
+  }
 }
