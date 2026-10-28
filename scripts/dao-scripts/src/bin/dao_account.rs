@@ -98,6 +98,9 @@ fn main() -> Result<()> {
     }))?;
     println!("{title}: {} on {pm} as {signer}, proposal {pid}, calls {calls}", steps.join("+"));
     if !cli.broadcast { return Ok(()); }
+    // Release the read-only daemon (state-file lock) before the session daemon opens.
+    drop(q);
+    drop(d);
     let anys = msgs.iter().map(|m| kms_gate::execute_any(&signer, &pm, m)).collect::<Result<Vec<_>>>()?;
     let tx = kms_gate::kms_broadcast(
         BroadcastRequest {
@@ -110,7 +113,8 @@ fn main() -> Result<()> {
         "dao_account",
     )?;
     println!("tx {tx}");
-    let p = q(&pm, json!({"proposal": {"proposal_id": pid}}))?;
+    let d = kms_gate::query_only(&kms_gate::morocco_info())?;
+    let p = d.wasm_querier().smart_query::<_, Value>(&Addr::unchecked(&pm), &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{e}"))?;
     println!("proposal {pid} status {}", p["proposal"]["status"]);
     Ok(())
 }
