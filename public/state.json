@@ -157,6 +157,60 @@
   },
   "morocco-1": {
     "ibc_new_clients": {
+      "routes": [
+        {
+          "counterparty_chain_id": "juno-1",
+          "opened": "2026-10-28T09:37:40Z",
+          "terp": {
+            "client_id": "07-tendermint-46",
+            "connection_id": "connection-14",
+            "transfer_channel": "channel-12"
+          },
+          "counterparty": {
+            "client_id": "07-tendermint-593",
+            "connection_id": "connection-557",
+            "transfer_channel": "channel-674",
+            "client_trusting_period_secs": 864000,
+            "client_max_clock_drift_secs": 600
+          },
+          "denoms_on_counterparty": {
+            "uterp": "ibc/9A24840D4F9B52572BDA2DEA337DD5E6756442A41795E37B1AC92F661D11A6CB",
+            "uthiol": "ibc/F91310DAF75623B005DB07EF05C61B13947BD8315004C2A28DDF1A69D3C25D00"
+          },
+          "denoms_on_terp": {
+            "ujuno": "ibc/EBAD197C6356727798A2706D143655D853F018BCAB950D970101078374D8CE41"
+          },
+          "hermes_allow": true,
+          "polytone": "not deployed; note/voice channels pending separate approval",
+          "note": "juno connection-558 is a stray TRYOPEN from a crossing handshake; ignore"
+        },
+        {
+          "counterparty_chain_id": "osmosis-1",
+          "opened": "2026-10-28T09:42:52Z",
+          "terp": {
+            "client_id": "07-tendermint-44",
+            "connection_id": "connection-15",
+            "transfer_channel": "channel-13"
+          },
+          "counterparty": {
+            "client_id": "07-tendermint-3764",
+            "connection_id": "connection-11101",
+            "transfer_channel": "channel-111101",
+            "client_trusting_period_secs": 864000,
+            "client_max_clock_drift_secs": 600
+          },
+          "denoms_on_counterparty": {
+            "uterp": "ibc/A22843672FE341E6BFB0D6D8DF1E2C150CD866DB744F574AA4BD8855ABBE5798",
+            "uthiol": "ibc/7DE92FE1226D8D7F8CA498B2AA4AE06A297B45E58959A9F7A81E77321B992714"
+          },
+          "denoms_on_terp": {
+            "uosmo": "ibc/9C4DCD21B48231D0BC2AC3D1B74A864746B37E4292694C93C617324250D002FC"
+          },
+          "hermes_allow": true,
+          "polytone": "not deployed; note/voice channels pending separate approval",
+          "note": "Terp client -44 is also the recovery substitute for -33 (prop 63)"
+        }
+      ],
       "recovery_proposal": {
         "proposal_id": 63,
         "tx": "51D697AC357067E08FED05A4B563F8D95389D4B0D57E3FFF65DF12AEED186067",
