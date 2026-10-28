@@ -14,7 +14,7 @@ RPC="http://127.0.0.1:46667"
 LANE_BIND="127.0.0.1:19180"
 OPSIGN="$HERE/../../hash-market/scripts/headstash-operator-sign.py"
 case "$CHAIN_HOME" in /tmp/headstash-mvk-*) ;; *) echo "refusing home $CHAIN_HOME" >&2; exit 1;; esac
-"$TERPD" version --long 2>/dev/null | grep -q b2339a9c || { echo "terpd is not b2339a9c" >&2; exit 1; }
+"$TERPD" version --long 2>/dev/null | grep -q "${TERPD_EXPECT:-b2339a9c}" || { echo "terpd is not ${TERPD_EXPECT:-b2339a9c}" >&2; exit 1; }
 
 stop_pidfile() { local f="$1"; if [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null; then kill "$(cat "$f")"; sleep 2; fi; rm -f "$f"; }
 
@@ -44,12 +44,12 @@ umask 077
 if [ ! -f "$CHAIN_HOME/config/genesis.json" ]; then
   "$TERPD" init mvk-e2e --chain-id "$CHAIN_ID" --default-denom uterp --home "$CHAIN_HOME" >"$CHAIN_HOME/init.log" 2>&1
   : >"$CHAIN_HOME/addresses.env"
-  for name in owner relayer recipient1 recipient2 stranger; do
+  for name in owner relayer recipient1 recipient2 stranger proposer; do
     "$TERPD" keys add "$name" --keyring-backend test --home "$CHAIN_HOME" --output json >/dev/null 2>&1 </dev/null
     echo "$(echo "$name" | tr a-z A-Z)_ADDR=$("$TERPD" keys show "$name" -a --keyring-backend test --home "$CHAIN_HOME")" >>"$CHAIN_HOME/addresses.env"
   done
   source "$CHAIN_HOME/addresses.env"
-  for a in "$OWNER_ADDR:100000000000" "$RELAYER_ADDR:1000000000" "$RECIPIENT1_ADDR:1000000" "$RECIPIENT2_ADDR:1000000" "$STRANGER_ADDR:100000000"; do
+  for a in "$OWNER_ADDR:100000000000" "$RELAYER_ADDR:1000000000" "$RECIPIENT1_ADDR:1000000" "$RECIPIENT2_ADDR:1000000" "$STRANGER_ADDR:100000000" "$PROPOSER_ADDR:50000000000"; do
     "$TERPD" genesis add-genesis-account "${a%%:*}" "${a##*:}uterp" --home "$CHAIN_HOME" --keyring-backend test >>"$CHAIN_HOME/init.log" 2>&1
   done
   "$TERPD" genesis gentx owner 1000000uterp --chain-id "$CHAIN_ID" --home "$CHAIN_HOME" --keyring-backend test >>"$CHAIN_HOME/init.log" 2>&1

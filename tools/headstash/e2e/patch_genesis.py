@@ -54,6 +54,13 @@ assert len(raw) == 32
 pub_b64 = base64.b64encode(raw).decode()
 g = json.loads(GENESIS.read_text())
 g["consensus"]["params"]["abci"]["vote_extensions_enable_height"] = "2"
+import os
+if os.environ.get("GOV_ROLES") == "1":  # mainnet-like roles: only gov stores circuits
+    g["app_state"]["wasm"]["params"]["circuit_upload_access"] = {"permission": "Nobody", "addresses": []}
+    gp = g["app_state"]["gov"]["params"]
+    gp.update(voting_period="15s", expedited_voting_period="10s", max_deposit_period="300s",
+              min_deposit=[{"denom": "uterp", "amount": "10000000"}], expedited_min_deposit=[{"denom": "uterp", "amount": "20000000"}],
+              min_initial_deposit_ratio="0.500000000000000000")
 m = g["app_state"]["hashmerchant"]
 m["registered_chains"] = [{
     "chain_uid": "headstash-claim", "name": "headstash-claim", "rpc_endpoints": [],

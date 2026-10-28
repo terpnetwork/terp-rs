@@ -1,0 +1,180 @@
+{
+ "body": {
+  "messages": [
+   {
+    "@type": "/cosmos.gov.v1.MsgSubmitProposal",
+    "messages": [
+     {
+      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "recipient": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "amount": [
+       {
+        "denom": "uterp",
+        "amount": "66456669000000"
+       }
+      ]
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code_id": "{{CODE_ID}}",
+      "label": "headstash-2026-1",
+      "msg": {
+       "genesis_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+       "genesis_label": "headstash-2026-1",
+       "token_strategy": {
+        "existing_fungible": {
+         "proof": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
+         "raw": "uterp"
+        }
+       },
+       "wavs": {{WAVS_POO_JSON}},
+       "registration_hook": null,
+       "registration_hook_gas_limit": null,
+       "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
+      },
+      "funds": [
+       {
+        "denom": "uterp",
+        "amount": "66456669000000"
+       }
+      ],
+      "salt": "dGthxwhH0MNbequTHTM0zK7w+qG3RHm1SROa72XKndU=",
+      "fix_msg": false
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "contract": "terp106p5shu8zxmk3yhwuja7ttz0vw2hk44r403a7tp023m7cz7zl4ns2t2vz9",
+      "msg": {
+       "set_epoch_campaign": {
+        "campaign": {
+         "ctx": "GqJK/fsXjjuHH7K8cmY5hgZMEOriV0QFfVlJfl7YLD4=",
+         "backend": "halo2",
+         "cutoff_height": 41764718,
+         "bech32_hrp": "terp",
+         "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
+         "amounts": [
+          {
+           "amount": 1000000,
+           "cap": 6491
+          },
+          {
+           "amount": 2000000,
+           "cap": 12569
+          },
+          {
+           "amount": 5000000,
+           "cap": 10150
+          },
+          {
+           "amount": 10000000,
+           "cap": 6940
+          },
+          {
+           "amount": 20000000,
+           "cap": 6387
+          },
+          {
+           "amount": 50000000,
+           "cap": 6219
+          },
+          {
+           "amount": 100000000,
+           "cap": 5081
+          },
+          {
+           "amount": 200000000,
+           "cap": 15363
+          },
+          {
+           "amount": 500000000,
+           "cap": 8031
+          },
+          {
+           "amount": 1000000000,
+           "cap": 7978
+          },
+          {
+           "amount": 2000000000,
+           "cap": 5956
+          },
+          {
+           "amount": 5000000000,
+           "cap": 7676
+          }
+         ],
+         "reserved": [],
+         "trusted": [
+          "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
+         ],
+         "trusted_verify_threshold": 1,
+         "trusted_sign_threshold": 1,
+         "max_rows": 25,
+         "allocation_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+         "root_id": 0,
+         "vk_id": 3,
+         "vk_hash": "NNEUN9lXVU9ACDd97OX6wPBH4OnMAS0Vs9CUSKbMU5g=",
+         "sweep_recipient": "",
+         "burn_unclaimed": true,
+         "registration": {
+          "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
+          "eligibility_depth": 17,
+          "min_anonymity_set": 1,
+          "anchor_start_height": {{ANCHOR_START_HEIGHT}},
+          "anchor_interval": 3430
+         }
+        }
+       }
+      },
+      "funds": []
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "contract": "terp106p5shu8zxmk3yhwuja7ttz0vw2hk44r403a7tp023m7cz7zl4ns2t2vz9",
+      "msg": {
+       "bind_note_circuit": {
+        "zk_id": "{{NOTE_ZK_ID}}"
+       }
+      },
+      "funds": []
+     }
+    ],
+    "initial_deposit": [
+     {
+      "denom": "uterp",
+      "amount": "5000000000"
+     }
+    ],
+    "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
+    "metadata": "{{PROPOSAL_METADATA_URI}}",
+    "title": "Headstash 2026 (2/2): instantiate and fund cw-headstash",
+    "summary": "Instantiates cw-headstash code {{CODE_ID}} (sha256 43a8e5d88a3af34dc09bd63f85f88a1b2b0a008a4b68ef45a83ed434894149a9) at terp106p5shu8zxmk3yhwuja7ttz0vw2hk44r403a7tp023m7cz7zl4ns2t2vz9 with gov as admin and owner, funds it with 66456669000000 uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Forum: {{FORUM_URL}}",
+    "expedited": false
+   }
+  ],
+  "memo": "headstash-gov:instantiate",
+  "timeout_height": "0",
+  "extension_options": [],
+  "non_critical_extension_options": []
+ },
+ "auth_info": {
+  "signer_infos": [],
+  "fee": {
+   "amount": [
+    {
+     "denom": "uthiol",
+     "amount": "75000"
+    }
+   ],
+   "gas_limit": "3000000",
+   "payer": "",
+   "granter": ""
+  },
+  "tip": null
+ },
+ "signatures": []
+}

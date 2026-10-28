@@ -10,6 +10,8 @@ on 127.0.0.1:18795 (granter = keyring name "relayer"). Test secrets stay in memo
 import base64, hashlib, json, os, secrets, subprocess, sys, time
 import requests
 import run as b
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "deploy"))
+import gov_session as gs
 from run import (R, log, step, save, b64, h2b64, pmul, kec, eip191, evm_sign, b58, pallas_rand, terpd, q, height,
                  wait_tx, tx, attr, smart, bal, rec, list_hash, gas_used, N, HOME, CHAIN_ID, NODE, RPC, REST, RUN,
                  RELAY_BIND, RELAY_BIN, ELIG_BIN, EX, WAVS_BIN, DENOM, NOTE_VK_HASH, DENOMS, NOTE_EX, CHUNK, TERPD)
@@ -85,6 +87,75 @@ def minted_at(h):
                 if a.get("key") == "amount" and a.get("value", "").isdigit(): m += int(a["value"])
     return m
 
+GOV_ROLES = os.environ.get("GOV_ROLES") == "1"
+GOV = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
+INIT_DEPOSIT = 5000000   # local analogue of mainnet 5,000 TERP initial
+FULL_DEPOSIT = 10000000  # local analogue of mainnet 10,000 TERP min deposit
+SESSION_FEE = 2000000          # eph MsgExec fee, paid by the proposer feegrant
+SESSION_ALLOWANCE = 300000000  # feegrant cap sized for a ~175 KB MsgExec (mainnet analogue: 300 THIOL)
+
+def gen_only(frm, *args):
+    p = subprocess.run([TERPD, "tx", *args, "--from", frm, "--home", HOME, "--keyring-backend", "test", "--chain-id", CHAIN_ID,
+                        "--node", NODE, "--generate-only", "-o", "json"], capture_output=True, text=True)
+    if p.returncode: raise RuntimeError("generate-only %s: %s" % (args[:3], p.stderr[-300:]))
+    return p.stdout
+
+def sign_send(frm, unsigned, name, mode=None):
+    """Sign an unsigned tx JSON (from gov_session) with a local test key and broadcast to 127.0.0.1 only."""
+    uf = os.path.join(RUN, "unsigned_%s.json" % name); sf = os.path.join(RUN, "signed_%s.json" % name)
+    json.dump(unsigned, open(uf, "w"))
+    a = [TERPD, "tx", "sign", uf, "--from", frm, "--home", HOME, "--keyring-backend", "test", "--chain-id", CHAIN_ID, "--node", NODE, "-o", "json"]
+    if mode: a += ["--sign-mode", mode]
+    p = subprocess.run(a, capture_output=True, text=True)
+    if p.returncode: return {"code": -1, "raw_log": p.stderr[-400:]}
+    open(sf, "w").write(p.stdout)
+    p = subprocess.run([TERPD, "tx", "broadcast", sf, "--node", NODE, "-b", "sync", "-o", "json"], capture_output=True, text=True)
+    try: res = json.loads(p.stdout)
+    except Exception: return {"code": -1, "raw_log": (p.stdout + p.stderr)[-400:]}
+    return res if res.get("code", 0) else wait_tx(res["txhash"])
+
+def gov_submit(name, msgs, frm, eph=None):
+    """Submit with INIT_DEPOSIT, top up to FULL_DEPOSIT, vote yes (owner = sole validator), wait."""
+    f = os.path.join(RUN, "prop_%s.json" % name)
+    json.dump({"messages": msgs, "metadata": "", "deposit": "%duterp" % INIT_DEPOSIT, "title": name, "summary": "local gov-roles e2e",
+               "expedited": False}, open(f, "w"))
+    if eph:
+        inner = json.loads(gen_only(frm, "gov", "submit-proposal", f))
+        open(os.path.join(RUN, "unsigned_%s.json" % name), "w").write(json.dumps(inner))
+        res = sign_send(eph, gs.exec_tx(R["addresses"]["EPH_ADDR"], frm, inner["body"]["messages"], 80000000, SESSION_FEE, "uterp"), "exec_" + name)
+    else:
+        res = tx(frm, 80000000, "gov", "submit-proposal", f)
+    pid = None
+    for ev in res.get("events", []):
+        for at in ev.get("attributes", []):
+            if ev["type"] == "submit_proposal" and at["key"] == "proposal_id": pid = at["value"]
+    if not pid: return res, None, None
+    R.setdefault("deposits_at_submit", {})[name] = q("gov", "deposits", pid).get("deposits", [])
+    dep = tx("proposer", 30000000, "gov", "deposit", pid, "%duterp" % (FULL_DEPOSIT - INIT_DEPOSIT))
+    if dep.get("code") != 0: log("deposit top-up failed: %s" % dep.get("raw_log", "")[:300])
+    vote = tx("owner", 8000000, "gov", "vote", pid, "yes")
+    for _ in range(60):
+        time.sleep(1)
+        st = q("gov", "proposal", pid); st = st.get("proposal", st)
+        if st["status"] not in ("PROPOSAL_STATUS_VOTING_PERIOD", "PROPOSAL_STATUS_DEPOSIT_PERIOD", 1, 2): break
+    st["_deposit_code"] = dep.get("code"); st["_vote_code"] = vote.get("code")
+    return res, pid, st
+
+def close_session(PROPOSER):
+    """Session close via tools/headstash/deploy/gov_session.py: one MsgExec signed by the eph key revokes
+    SubmitProposal, the feegrant (MsgRevokeAllowance), its grant, and MsgRevoke last."""
+    eph = R["addresses"]["EPH_ADDR"]
+    res = sign_send("eph", gs.revoke_tx(eph, PROPOSER, gs.SESSION_TYPES, 400000, 20000, "uterp", use_feegrant=True), "revoke")
+    step("session_revoke_msgexec", res.get("code") == 0, "gas %d %s" % (gas_used(res), res.get("raw_log", "")[:160]))
+    left = q("authz", "grants", PROPOSER, eph).get("grants", [])
+    fg = subprocess.run([TERPD, "q", "feegrant", "grant", PROPOSER, eph, "--node", NODE, "-o", "json"], capture_output=True, text=True)
+    step("session_authz_revoked", left == [], "remaining authz %d" % len(left))
+    step("session_feegrant_revoked", fg.returncode != 0, (fg.stdout + fg.stderr).strip()[-160:])
+    inner = json.load(open(os.path.join(RUN, "unsigned_circuit.json")))
+    neg("eph_cannot_submit_after_revoke", sign_send("eph", gs.exec_tx(eph, PROPOSER, inner["body"]["messages"], 80000000, SESSION_FEE, "uterp"), "exec_after_revoke"))
+
+def passed(st): return st is not None and st.get("status") in ("PROPOSAL_STATUS_PASSED", 3)
+
 def main():
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
     OWNER = addrs["OWNER_ADDR"]
@@ -115,7 +186,44 @@ def main():
     subprocess.run([NOTE_EX + "/bench_note_proofs", cdir, "0"], check=True, capture_output=True)
     blob = open(os.path.join(cdir, "blob.bin"), "rb").read()
     step("circuit_blob_hash", hashlib.sha256(blob).hexdigest() == NOTE_VK_HASH, "blob %d B sha %s" % (len(blob), hashlib.sha256(blob).hexdigest()))
-    res = rec("store_circuit", tx("owner", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
+    if GOV_ROLES:
+        PROPOSER = terpd("keys", "show", "proposer", "-a", "--keyring-backend", "test", "--home", HOME).strip()
+        R["addresses"]["PROPOSER_ADDR"] = PROPOSER
+        res = tx("stranger", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
+                 os.path.join(cdir, "vk_body.bin"), "--k", "11", "--circuit-type", "0", "--curve-type", "0")
+        neg("direct_circuit_store_refused_nobody", res)
+        # cw-orch-kms session shape: cold key grants a short GenericAuthorization + feegrant to an ephemeral key
+        EPH = new_wallet("eph"); R["addresses"]["EPH_ADDR"] = EPH
+        exp = int(time.time()) + 600
+        exp_rfc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(exp))
+        parts = [json.loads(gen_only("proposer", "authz", "grant", EPH, "generic", "--msg-type", url, "--expiration", str(exp))) for url in gs.SESSION_TYPES]
+        parts.append(json.loads(gen_only("proposer", "feegrant", "grant", PROPOSER, EPH, "--spend-limit", "%duterp" % SESSION_ALLOWANCE, "--expiration", exp_rfc)))
+        gtx = parts[0]; gtx["body"]["messages"] = [m for p_ in parts for m in p_["body"]["messages"]]; gtx["body"]["memo"] = "cw-orch-session:v1"
+        gtx["auth_info"]["fee"] = {"amount": [{"denom": "uterp", "amount": "20000"}], "gas_limit": "600000", "payer": "", "granter": ""}
+        f_ = sign_send("proposer", gtx, "session_grant", mode="amino-json")
+        step("session_grants_amino_signed", f_.get("code") == 0, "one amino tx: generic %s + feegrant %d%s exp %s %s" % (
+            ",".join(u.rsplit(".", 1)[1] for u in gs.SESSION_TYPES), SESSION_ALLOWANCE, "uterp", exp_rfc, f_.get("raw_log", "")[:120]))
+        b0, e0 = bal(PROPOSER), bal(EPH)
+        msg = {"@type": "/cosmwasm.wasm.v1.MsgStoreFullCircuit", "sender": GOV, "auth": {"circuit_type": 0, "curve_type": 0, "k": 11},
+               "params_body": base64.b64encode(open(os.path.join(cdir, "params.bin"), "rb").read()).decode(),
+               "vk_body": base64.b64encode(open(os.path.join(cdir, "vk_body.bin"), "rb").read()).decode()}
+        res, pid, st = gov_submit("circuit", [msg], PROPOSER, eph="eph")
+        res = rec("store_circuit", res)
+        R["circuit_proposal"] = {"id": pid, "status": st and st["status"], "tx_bytes_unsigned": os.path.getsize(os.path.join(RUN, "unsigned_circuit.json"))}
+        step("eph_msgexec_submit_proposal", res.get("code") == 0 and pid is not None, "proposal %s gas %d %s" % (pid, gas_used(res), res.get("raw_log", "")[:160]))
+        if pid:
+            pp = q("gov", "proposal", pid); pp = pp.get("proposal", pp)
+            step("proposer_is_granter", pp.get("proposer") == PROPOSER, "proposer %s" % pp.get("proposer"))
+            deps = R["deposits_at_submit"]["circuit"]  # queried right after submit, before top-up/refund
+            tot = sum(int(c["amount"]) for d in deps for c in d["amount"] if c["denom"] == "uterp")
+            step("initial_deposit_by_granter", tot == INIT_DEPOSIT and len(deps) > 0 and all(d["depositor"] == PROPOSER for d in deps), "at submit %s" % json.dumps(deps)[:200])
+            tot = sum(int(c["amount"]) for c in pp.get("total_deposit", []) if c["denom"] == "uterp")  # deposits are refunded+pruned once passed; total_deposit stays
+            step("deposit_from_granter", tot == FULL_DEPOSIT and all(d["depositor"] == PROPOSER for d in deps) and b0 - bal(PROPOSER) > 0 and bal(EPH) == e0 == 0,
+                 "deposits %s proposer -%d eph %d" % (json.dumps(deps)[:200], b0 - bal(PROPOSER), bal(EPH)))
+        step("circuit_proposal_passed", passed(st), "status %s %s" % (st and st["status"], st and st.get("failed_reason", "")))
+        close_session(PROPOSER)  # close right after the large action, well inside the TTL
+    else:
+        res = rec("store_circuit", tx("owner", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
               os.path.join(cdir, "vk_body.bin"), "--k", "11", "--circuit-type", "0", "--curve-type", "0"))
     zk_id = None
     for ev in res.get("events", []):
@@ -125,7 +233,7 @@ def main():
     R["circuit_store_events"] = [ev for ev in res.get("events", []) if "circuit" in ev.get("type", "")]
     zk_id = zk_id or int(os.environ.get("ZK_ID", "1"))
     R["zk_id"] = zk_id; R["gas"] = {"store_circuit": gas_used(res)}
-    step("store_circuit", res.get("code") == 0, "zk_id %s gas %d %s" % (zk_id, gas_used(res), res.get("raw_log", "")[:160]))
+    if not GOV_ROLES: step("store_circuit", res.get("code") == 0, "zk_id %s gas %d %s" % (zk_id, gas_used(res), res.get("raw_log", "")[:160]))
 
     # 3. store + instantiate the zk-api contract
     res = rec("store", tx("owner", 250000000, "wasm", "store", WASM))
@@ -152,15 +260,19 @@ def main():
     for k in ("evm", "sol"):
         REWARD[k] = new_wallet("reward_%s" % k)
     R["hook"]["reward_addrs"] = dict(REWARD)
-    res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
+    if GOV_ROLES:
+        salt = hashlib.sha256(b"headstash-gov-e2e").hexdigest()
+        chk = q("wasm", "code-info", code_id); chk = chk.get("checksum") or chk.get("data_hash")
+        contract = terpd("q", "wasm", "build-address", chk.lower(), GOV, salt).strip().split()[-1]
+    else:
+        res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
               "--label", "headstash-direct-e2e", "--admin", OWNER, amount="10030000000uterp"))  # two 5000 TERP note payouts (evm_0 + negatives note) + small notes
-    contract = attr(res, "_contract_address"); R["contract"] = contract
-    step("instantiate", res.get("code") == 0 and contract, contract or res.get("raw_log", ""))
+        contract = attr(res, "_contract_address")
+    R["contract"] = contract
+    if not GOV_ROLES: step("instantiate", res.get("code") == 0 and contract, contract or res.get("raw_log", ""))
     b.R = R
 
     ctx = direct_ctx(CHAIN_ID, contract); R["ctx_hex"] = ctx.hex()
-    info = smart(contract, {"direct_claim": {}})
-    step("direct_ctx_matches_contract", base64.b64decode(info["expected_ctx"]) == ctx, json.dumps(info)[:200])
     cut = height() + CUT_AHEAD; R["cutoff_height"] = cut
     classes = {}
     for k in ids:
@@ -175,30 +287,61 @@ def main():
             "registration": {"eligibility_root": h2b64(ntree["root_hex"]), "eligibility_depth": 17,
                              "min_anonymity_set": 2, "anchor_start_height": 1, "anchor_interval": 1}}}}
     eff = campaign()
-    res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(eff)))
-    if res.get("code") != 0:  # trusted set may be mandatory; fall back to a 1-of-1 placeholder (unused by the direct path)
-        c = campaign(); cc = c["set_epoch_campaign"]["campaign"]
+    if GOV_ROLES:
+        # one small proposal: instantiate2 (gov admin+owner) + campaign + bind + community-pool funding
+        cc = eff["set_epoch_campaign"]["campaign"]  # contract requires a non-empty trusted set; 1-of-1 placeholder, unused on the direct path
         cc["trusted"] = [b64(bytes(32))]; cc["trusted_verify_threshold"] = 1; cc["trusted_sign_threshold"] = 1
-        R["set_campaign_first_error"] = res.get("raw_log", "")[:300]
-        res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(c))); eff = c
-    step("set_campaign_vk3_direct_ctx", res.get("code") == 0, res.get("raw_log", "")[:200])
-    # NEG: the same (accepted) campaign with a sweep recipient is refused: vk_id 3 burns unclaimed by default
-    cr = json.loads(json.dumps(eff)); cr["set_epoch_campaign"]["campaign"]["sweep_recipient"] = OWNER
-    neg("burning_campaign_rejects_sweep_recipient", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(cr)),
-        "takes no sweep recipient")
+        res = tx("owner", 300000, "distribution", "fund-community-pool", "10100000000uterp")
+        step("community_pool_funded", res.get("code") == 0, res.get("raw_log", "")[:120])
+        msgs = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
+                 "amount": [{"denom": "uterp", "amount": "10030000000"}]},  # pool -> gov, then gov funds the instantiate
+                {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(code_id),
+                 "label": "headstash-direct-e2e", "msg": init, "funds": [{"denom": "uterp", "amount": "10030000000"}], "salt": base64.b64encode(bytes.fromhex(salt)).decode(), "fix_msg": False},
+                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": eff, "funds": []},
+                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"bind_note_circuit": {"zk_id": zk_id}}, "funds": []},
+]
+        res, pid, st = gov_submit("contract", msgs, "proposer")
+        R["contract_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason")}
+        ci = q("wasm", "contract", contract) if passed(st) else {}
+        ci = ci.get("contract_info", ci)
+        step("contract_proposal_passed", passed(st), "proposal %s %s %s" % (pid, st and st["status"], st and st.get("failed_reason", "")))
+        step("instantiate", passed(st) and ci.get("admin") == GOV and ci.get("creator") == GOV and bal(contract) == 10030000000,
+             "%s admin %s creator %s bal %d" % (contract, ci.get("admin"), ci.get("creator"), bal(contract) if passed(st) else -1))
+        if not passed(st): return
+        info = smart(contract, {"direct_claim": {}})
+        step("direct_ctx_matches_contract", base64.b64decode(info["expected_ctx"]) == ctx, json.dumps(info)[:200])
+        step("store_circuit_and_bind_via_gov", True, "zk_id %s bound by gov proposal (bind checks sha256(circuit)==vk_hash)" % zk_id)
+        res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
+        neg("owner_key_is_not_contract_owner", res)
+        res = tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
+        neg("bind_by_non_owner", res)
+    else:
+      info = smart(contract, {"direct_claim": {}})
+      step("direct_ctx_matches_contract", base64.b64decode(info["expected_ctx"]) == ctx, json.dumps(info)[:200])
+      res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(eff)))
+      if res.get("code") != 0:  # trusted set may be mandatory; fall back to a 1-of-1 placeholder (unused by the direct path)
+          c = campaign(); cc = c["set_epoch_campaign"]["campaign"]
+          cc["trusted"] = [b64(bytes(32))]; cc["trusted_verify_threshold"] = 1; cc["trusted_sign_threshold"] = 1
+          R["set_campaign_first_error"] = res.get("raw_log", "")[:300]
+          res = rec("set_campaign", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(c))); eff = c
+      step("set_campaign_vk3_direct_ctx", res.get("code") == 0, res.get("raw_log", "")[:200])
+      # NEG: the same (accepted) campaign with a sweep recipient is refused: vk_id 3 burns unclaimed by default
+      cr = json.loads(json.dumps(eff)); cr["set_epoch_campaign"]["campaign"]["sweep_recipient"] = OWNER
+      neg("burning_campaign_rejects_sweep_recipient", tx("owner", 5000000, "wasm", "execute", contract, json.dumps(cr)),
+          "takes no sweep recipient")
 
-    # 4. BindNoteCircuit: negatives then the real bind
-    res = tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
-    neg("bind_by_non_owner", res)
-    res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id + 99}}))
-    neg("wrong_zk_id_unknown_circuit", res)
-    res = rec("bind_circuit", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}})))
-    R["gas"]["bind_circuit"] = gas_used(res)
-    step("bind_note_circuit_hash_matches", res.get("code") == 0,
-         "sha256(Circuit.data) == vk_hash on chain: %s; %s" % (res.get("code") == 0, res.get("raw_log", "")[:240]))
-    if res.get("code") != 0: return
-    res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
-    neg("rebind_zk_id_swap", res, "circuit is fixed")
+      # 4. BindNoteCircuit: negatives then the real bind
+      res = tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
+      neg("bind_by_non_owner", res)
+      res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id + 99}}))
+      neg("wrong_zk_id_unknown_circuit", res)
+      res = rec("bind_circuit", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}})))
+      R["gas"]["bind_circuit"] = gas_used(res)
+      step("bind_note_circuit_hash_matches", res.get("code") == 0,
+           "sha256(Circuit.data) == vk_hash on chain: %s; %s" % (res.get("code") == 0, res.get("raw_log", "")[:240]))
+      if res.get("code") != 0: return
+      res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": zk_id}}))
+      neg("rebind_zk_id_swap", res, "circuit is fixed")
 
     # 5. relay (fee grants) on 127.0.0.1:18795
     env = dict(os.environ, HEADSTASH_RELAY_HOME=HOME, HEADSTASH_RELAY_FROM="relayer", HEADSTASH_KEYRING_BACKEND="test",
@@ -295,6 +438,11 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         while height() < int(rt.get("next_anchor_height", 0)): time.sleep(1)
         res = rec("accept_anchor_" + label, tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}})))
         rt = smart(contract, {"registration_tree": {}})
+        for _ in range(15):
+            if rt.get("latest_anchor"): break
+            time.sleep(1); rt = smart(contract, {"registration_tree": {}})
+        if not rt.get("latest_anchor"):
+            raise RuntimeError("no latest_anchor after accept_anchor_%s: %s" % (label, json.dumps(rt)[:400]))
         a = rt["latest_anchor"]
         step("accept_anchor_" + label, res.get("code") == 0 and a["leaf_count"] == want,
              "root %s leaf_count %s height %s gas %d" % (base64.b64decode(a["root"]).hex(), a["leaf_count"], a.get("height"), gas_used(res)))
@@ -479,6 +627,11 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         step("neg_check_register_notes_after_cutoff", "registration closed" in r_, r_)
         # sweep burns: contract -> 0, owner pays only the fee, total uterp supply drops by the balance
         c0, o0 = bal(contract), bal(OWNER)
+        if GOV_ROLES:
+            res, pid, st = gov_submit("sweep", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
+                                                 "msg": {"sweep_unclaimed": {}}, "funds": []}], "proposer")
+            step("sweep_via_gov_burns", passed(st) and bal(contract) == 0, "proposal %s %s contract %d -> %d" % (pid, st and st["status"], c0, bal(contract)))
+            return
         res = rec("sweep", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})))
         fee = int(3000000 * GP + 0.999999); hs = int(res.get("height", 0) or 0)
         s_before, s_after, minted = supply(hs - 1), supply(hs), minted_at(hs)

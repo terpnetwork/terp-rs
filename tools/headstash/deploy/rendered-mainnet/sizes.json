@@ -1,0 +1,73 @@
+{
+  "contract_addr_predicted": "terp106p5shu8zxmk3yhwuja7ttz0vw2hk44r403a7tp023m7cz7zl4ns2t2vz9",
+  "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
+  "wasm_sha256": "43a8e5d88a3af34dc09bd63f85f88a1b2b0a008a4b68ef45a83ed434894149a9",
+  "wasm_bytes": 1124929,
+  "wasm_gzip_bytes": 409664,
+  "files": {
+    "11-circuit-proposal.inner.json": {
+      "tx_json_bytes": 180680,
+      "signer": null
+    },
+    "12-circuit-exec.unsigned.json": {
+      "tx_json_bytes": 181149,
+      "signer": "eph",
+      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
+    },
+    "13-store-wasm.unsigned.json": {
+      "tx_json_bytes": 546824,
+      "signer": "eph",
+      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
+    },
+    "14-instantiate-proposal.unsigned.json": {
+      "tx_json_bytes": 3460,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 3355,
+      "zigner_ok": true
+    },
+    "15-session-revoke.unsigned.json": {
+      "tx_json_bytes": 1246,
+      "signer": "eph",
+      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
+    },
+    "16-feegrant-terp1fx.unsigned.json": {
+      "tx_json_bytes": 561,
+      "signer": "terp1fx",
+      "amino_sign_doc_bytes": 450,
+      "zigner_ok": true
+    },
+    "17-deposit-topup.unsigned.json": {
+      "tx_json_bytes": 462,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 354,
+      "zigner_ok": true
+    },
+    "10-session-grant/sign_doc.json": {
+      "amino_sign_doc_bytes": 1419,
+      "zigner_ok": true,
+      "qr_frames": 1,
+      "signer": "proposer (Zigner)",
+      "types": [
+        "/cosmos.gov.v1.MsgSubmitProposal",
+        "/cosmos.authz.v1beta1.MsgRevoke",
+        "/cosmos.feegrant.v1beta1.MsgRevokeAllowance"
+      ]
+    }
+  },
+  "validate_rendered_proposal": "ok",
+  "placeholders_left": [
+    "ANCHOR_START_HEIGHT",
+    "CLAIMER_ADDR",
+    "CLAIM_FEE_UTHIOL",
+    "CODE_ID",
+    "EXEC_FEE_UTHIOL",
+    "EXEC_GAS",
+    "FORUM_URL",
+    "NOTE_ZK_ID",
+    "PROPOSAL_ID_CIRCUIT",
+    "PROPOSAL_METADATA_URI",
+    "STORE_FEE_UTHIOL",
+    "STORE_GAS",
+    "WAVS_POO_JSON"
+  ]
+}
