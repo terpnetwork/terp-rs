@@ -677,7 +677,7 @@ fn dao_upload(ctx: &mut Ctx) -> Result<()> {
 /// Stewards: not blocked on FIAB; their dao admin and wasm admin are the x/gov module
 /// account, queried from the chain (auth ModuleAccountByName "gov").
 fn daos(ctx: &mut Ctx) -> Result<()> {
-    use dao_foundation_suite::ibc_ops::steward::{assert_steward_admin, build_steward_plan_with_parent, decode_hex, load_steward_accounts};
+    use dao_foundation_suite::ibc_ops::steward::{assert_steward_admin, build_steward_plan_tuned, decode_hex, load_steward_accounts, JunoRemote, JUNO_DAO_CODES, JUNO_GOV};
     use dao_foundation_suite::ibc_ops::{foundation_proposal_wrapper, morocco_fiab_instantiate, CODE_CORE, FIAB_PROPOSAL_TITLE, FOUNDATION_DESCRIPTION};
     let foundation = ctx.cli.admin.clone();
     let pre = ctx.cli.foundation_pre_propose.clone();
@@ -700,10 +700,15 @@ fn daos(ctx: &mut Ctx) -> Result<()> {
     };
     let accounts_path = ctx.cli.steward_accounts.clone().unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../steward-accounts.json"));
     let accounts = load_steward_accounts(&accounts_path).map_err(|e| anyhow!(e))?;
-    let note = dao_scripts::polytone::predicted_terp_note(&kms_gate::module_address("gov", "terp")?)?.note;
-    let plan = build_steward_plan_with_parent(&accounts, &foundation, &sum, Some(&note), None, Some(&gov)).map_err(|e| anyhow!(e))?;
+    // Tuned plan (4abf137): steward-akash + custody-akash + steward-juno on Terp, gov-admin.
+    // Polytone follow-ups (custody-juno via Juno note, custody-akash Osmosis account) are
+    // separate proposals after the new-channel notes are approved: no note here.
+    if kms_gate::module_address("gov", "juno")? != JUNO_GOV { bail!("juno gov module mismatch"); }
+    let jr = JunoRemote { note: None, proxy: None, juno_gov: JUNO_GOV, codes: JUNO_DAO_CODES };
+    let plan = build_steward_plan_tuned(&accounts, &foundation, &sum, None, Some(&gov), &jr).map_err(|e| anyhow!(e))?;
     let msgs: Vec<cosmwasm_std::CosmosMsg> = serde_json::from_value(plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"].clone())?;
-    if msgs.len() != 4 { bail!("expected 4 steward instantiate2 msgs, got {}", msgs.len()); }
+    if msgs.len() != 3 { bail!("expected 3 steward instantiate2 msgs (tuned), got {}", msgs.len()); }
+    println!("  steward addresses {}", serde_json::to_string(&plan.addresses)?);
     for m in &msgs { assert_steward_admin(m, &foundation, Some(&gov)).map_err(|e| anyhow!(e))?; }
     std::fs::create_dir_all(ctx.cli.out.join("steward"))?;
     for sd in &plan.subdaos { std::fs::write(ctx.cli.out.join("steward").join(format!("{}.json", sd.file_stem)), serde_json::to_string_pretty(&sd.body)?)?; }
