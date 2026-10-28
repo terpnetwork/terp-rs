@@ -182,7 +182,13 @@
     "daos:propose:fiab": 9,
     "daos:propose:steward": 10,
     "bounty:propose:bounty": 11,
-    "bounty:propose:notes": 12
+    "bounty:propose:notes": 12,
+    "custody-akash:osmosis-account": {
+      "proposal_id": 1,
+      "tx": "0B484488D144452A21E390C2A78F4FDFD8BD8262634B92AB93AC2804ECF95E9F",
+      "status": "veto_timelock",
+      "earliest_execute": "2026-11-01T12:17:38Z"
+    }
   },
   "txs": [
     {
@@ -431,6 +437,21 @@
       "proposal_id": 1,
       "tx": "D8B7D1A116A9FFE736588ACB34C59A33FE0588652BBA4DDA4A4AD17902C3C13E",
       "height": 24145592
+    }
+  },
+  "proposals_remote": {
+    "zechub:add-fiab": {
+      "chain": "juno-1",
+      "proposal_module": "juno14futcfehnc8fn4nz6gtm25svn05mzz09ju8rtj0jvven2hpxj85s0q8a55",
+      "proposal_id": 189,
+      "dao_dao_id": "A189",
+      "proposer": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+      "juno_height": 43164575,
+      "via": {
+        "fiab_proposal": 2,
+        "tx": "CE87510A68E7997B3BBFAB4395B53BA9DF15294021AF0825AB535689A19F0D40",
+        "packet_sequence": 2
+      }
     }
   }
 }
