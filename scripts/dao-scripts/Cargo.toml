@@ -95,6 +95,10 @@ ibc-proto = { workspace = true }
 dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
 
 [[bin]]
+name = "dao_account"
+path = "src/bin/dao_account.rs"
+
+[[bin]]
 name = "bounty_dao"
 path = "src/bin/bounty_dao.rs"
 
