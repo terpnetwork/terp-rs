@@ -437,6 +437,30 @@
       "proposal_id": 1,
       "tx": "D8B7D1A116A9FFE736588ACB34C59A33FE0588652BBA4DDA4A4AD17902C3C13E",
       "height": 24145592
+    },
+    "steward-juno:juno-1": {
+      "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+      "proposal_id": 1,
+      "tx": "C2B8D84FDFAC80697538662669210FDFEEF9E16C710235832E24B9B416C35916",
+      "height": 24146552,
+      "proxy": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+      "proxy_code_id": 3321,
+      "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "channel": "channel-14->channel-675",
+      "packet_sequence": 3
+    },
+    "steward-juno:osmosis-1": {
+      "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+      "proposal_id": 1,
+      "tx": "C2B8D84FDFAC80697538662669210FDFEEF9E16C710235832E24B9B416C35916",
+      "height": 24146552,
+      "proxy": "osmo15aqqcae2wtklrxt3hew0elsm5uhrh0j7uqtnvzvqjklcflwdnggqkv655x",
+      "proxy_code_id": 127,
+      "note": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+      "channel": "channel-15->channel-111102",
+      "packet_sequence": 1
     }
   },
   "proposals_remote": {
