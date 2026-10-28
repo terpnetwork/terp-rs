@@ -1,0 +1,60 @@
+{
+  "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+  "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+  "signer": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+  "remote_chain": "juno-1",
+  "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+  "proxy": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+  "juno_msg": {
+    "contract": "juno1z3tknzeenvmcxwg7eyr82d2rdx9ffpwg9fsqnj6ushmszkwqmrhsqgt55x",
+    "msg": {
+      "propose": {
+        "msg": {
+          "propose": {
+            "title": "Add Terp Network's FIAB DAO to ZecHub DAO",
+            "description": "## Background\nTerp Network is a public, community-run Cosmos SDK blockchain. Its FIAB DAO is a community subDAO on Terp Network, and it now holds a cross-chain account on Juno so it can take part in DAOs here directly.\n\nreturniflost is a member of Terp Network who has been building experience across the full stack of Cosmos SDK projects, and is now looking to contribute that experience to ZecHub.\n\n## Why?\n- returniflost intends to contribute to and participate in ZecHub DAO.\n- Specifically, returniflost wants to operate a Penumbra validator on behalf of the ZecHub community.\n- Joining through the FIAB DAO's cross-chain account keeps this participation accountable to a DAO, rather than to a single wallet.\n\n## Proposal\nAdd the following account as a ZecHub DAO member with a voting weight of 1:\n\n`juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y`\n\nThis account is the cross-chain account of the FIAB DAO on Terp Network.\n\n## Action\nIf this vote passes, the account above is added to ZecHub DAO as a member with weight 1. From there, returniflost (through the FIAB DAO) will take part in ZecHub governance and work with the community on running a Penumbra validator on its behalf.",
+            "msgs": [
+              {
+                "wasm": {
+                  "execute": {
+                    "contract_addr": "juno1re0pu5hdafdcexmvuvdngn0d5sttkp6wz4wfjdd3p9cwfhmg8h9s8ek80w",
+                    "msg": "eyJ1cGRhdGVfbWVtYmVycyI6eyJhZGQiOlt7ImFkZHIiOiJqdW5vMWhhZm10Z3hwcnVmNWt6cnJ3ZnRueGNjdWVyNDY1MzRlN3o1dDBqbDRnNGxlNjZ4OGtreXNyY2dqOXkiLCJ3ZWlnaHQiOjF9XSwicmVtb3ZlIjpbXX19",
+                    "funds": []
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "funds": []
+  },
+  "juno_simulation": {
+    "sender": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+    "gas_used": 464801,
+    "predicted_zechub_proposal_id": 189,
+    "pre_propose_code": 2459,
+    "proposal_module_version": "dao-proposal-single 2.1.0",
+    "at": "2026-10-28"
+  },
+  "callback": "none: FIAB DAO core has no polytone callback handler; result verified by querying ZecHub proposal module juno14futcfehnc8fn4nz6gtm25svn05mzz09ju8rtj0jvven2hpxj85s0q8a55",
+  "flow": "one session: propose+vote+execute (no veto)",
+  "propose": {
+    "propose": {
+      "title": "FIAB-SUBDAO: submit the ZecHub membership proposal from its Juno account",
+      "description": "Polytone execute through the Terp<->Juno note (channel-14 <-> channel-675): FIAB-SUBDAO's Juno proxy juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y submits \"Add Terp Network's FIAB DAO to ZecHub DAO\" to ZecHub's pre-propose juno1z3tknzeenvmcxwg7eyr82d2rdx9ffpwg9fsqnj6ushmszkwqmrhsqgt55x (no deposit). The ZecHub proposal adds that proxy to ZecHub's group with weight 1.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbeyJ3YXNtIjp7ImV4ZWN1dGUiOnsiY29udHJhY3RfYWRkciI6Imp1bm8xejN0a256ZWVudm1jeHdnN2V5cjgyZDJyZHg5ZmZwd2c5ZnNxbmo2dXNobXN6a3dxbXJoc3FndDU1eCIsIm1zZyI6ImV5SndjbTl3YjNObElqcDdJbTF6WnlJNmV5SndjbTl3YjNObElqcDdJblJwZEd4bElqb2lRV1JrSUZSbGNuQWdUbVYwZDI5eWF5ZHpJRVpKUVVJZ1JFRlBJSFJ2SUZwbFkwaDFZaUJFUVU4aUxDSmtaWE5qY21sd2RHbHZiaUk2SWlNaklFSmhZMnRuY205MWJtUmNibFJsY25BZ1RtVjBkMjl5YXlCcGN5QmhJSEIxWW14cFl5d2dZMjl0YlhWdWFYUjVMWEoxYmlCRGIzTnRiM01nVTBSTElHSnNiMk5yWTJoaGFXNHVJRWwwY3lCR1NVRkNJRVJCVHlCcGN5QmhJR052YlcxMWJtbDBlU0J6ZFdKRVFVOGdiMjRnVkdWeWNDQk9aWFIzYjNKckxDQmhibVFnYVhRZ2JtOTNJR2h2YkdSeklHRWdZM0p2YzNNdFkyaGhhVzRnWVdOamIzVnVkQ0J2YmlCS2RXNXZJSE52SUdsMElHTmhiaUIwWVd0bElIQmhjblFnYVc0Z1JFRlBjeUJvWlhKbElHUnBjbVZqZEd4NUxseHVYRzV5WlhSMWNtNXBabXh2YzNRZ2FYTWdZU0J0WlcxaVpYSWdiMllnVkdWeWNDQk9aWFIzYjNKcklIZG9ieUJvWVhNZ1ltVmxiaUJpZFdsc1pHbHVaeUJsZUhCbGNtbGxibU5sSUdGamNtOXpjeUIwYUdVZ1puVnNiQ0J6ZEdGamF5QnZaaUJEYjNOdGIzTWdVMFJMSUhCeWIycGxZM1J6TENCaGJtUWdhWE1nYm05M0lHeHZiMnRwYm1jZ2RHOGdZMjl1ZEhKcFluVjBaU0IwYUdGMElHVjRjR1Z5YVdWdVkyVWdkRzhnV21WalNIVmlMbHh1WEc0akl5QlhhSGsvWEc0dElISmxkSFZ5Ym1sbWJHOXpkQ0JwYm5SbGJtUnpJSFJ2SUdOdmJuUnlhV0oxZEdVZ2RHOGdZVzVrSUhCaGNuUnBZMmx3WVhSbElHbHVJRnBsWTBoMVlpQkVRVTh1WEc0dElGTndaV05wWm1sallXeHNlU3dnY21WMGRYSnVhV1pzYjNOMElIZGhiblJ6SUhSdklHOXdaWEpoZEdVZ1lTQlFaVzUxYldKeVlTQjJZV3hwWkdGMGIzSWdiMjRnWW1Wb1lXeG1JRzltSUhSb1pTQmFaV05JZFdJZ1kyOXRiWFZ1YVhSNUxseHVMU0JLYjJsdWFXNW5JSFJvY205MVoyZ2dkR2hsSUVaSlFVSWdSRUZQSjNNZ1kzSnZjM010WTJoaGFXNGdZV05qYjNWdWRDQnJaV1Z3Y3lCMGFHbHpJSEJoY25ScFkybHdZWFJwYjI0Z1lXTmpiM1Z1ZEdGaWJHVWdkRzhnWVNCRVFVOHNJSEpoZEdobGNpQjBhR0Z1SUhSdklHRWdjMmx1WjJ4bElIZGhiR3hsZEM1Y2JseHVJeU1nVUhKdmNHOXpZV3hjYmtGa1pDQjBhR1VnWm05c2JHOTNhVzVuSUdGalkyOTFiblFnWVhNZ1lTQmFaV05JZFdJZ1JFRlBJRzFsYldKbGNpQjNhWFJvSUdFZ2RtOTBhVzVuSUhkbGFXZG9kQ0J2WmlBeE9seHVYRzVnYW5WdWJ6Rm9ZV1p0ZEdkNGNISjFaalZyZW5KeWQyWjBibmhqWTNWbGNqUTJOVE0wWlRkNk5YUXdhbXcwWnpSc1pUWTJlRGhyYTNsemNtTm5hamw1WUZ4dVhHNVVhR2x6SUdGalkyOTFiblFnYVhNZ2RHaGxJR055YjNOekxXTm9ZV2x1SUdGalkyOTFiblFnYjJZZ2RHaGxJRVpKUVVJZ1JFRlBJRzl1SUZSbGNuQWdUbVYwZDI5eWF5NWNibHh1SXlNZ1FXTjBhVzl1WEc1SlppQjBhR2x6SUhadmRHVWdjR0Z6YzJWekxDQjBhR1VnWVdOamIzVnVkQ0JoWW05MlpTQnBjeUJoWkdSbFpDQjBieUJhWldOSWRXSWdSRUZQSUdGeklHRWdiV1Z0WW1WeUlIZHBkR2dnZDJWcFoyaDBJREV1SUVaeWIyMGdkR2hsY21Vc0lISmxkSFZ5Ym1sbWJHOXpkQ0FvZEdoeWIzVm5hQ0IwYUdVZ1JrbEJRaUJFUVU4cElIZHBiR3dnZEdGclpTQndZWEowSUdsdUlGcGxZMGgxWWlCbmIzWmxjbTVoYm1ObElHRnVaQ0IzYjNKcklIZHBkR2dnZEdobElHTnZiVzExYm1sMGVTQnZiaUJ5ZFc1dWFXNW5JR0VnVUdWdWRXMWljbUVnZG1Gc2FXUmhkRzl5SUc5dUlHbDBjeUJpWldoaGJHWXVJaXdpYlhObmN5STZXM3NpZDJGemJTSTZleUpsZUdWamRYUmxJanA3SW1OdmJuUnlZV04wWDJGa1pISWlPaUpxZFc1dk1YSmxNSEIxTldoa1lXWmtZMlY0YlhaMWRtUnVaMjR3WkRWemRIUnJjRFozZWpSM1ptcGtaRE53T1dOM1ptaHRaemhvT1hNNFpXczRNSGNpTENKdGMyY2lPaUpsZVVveFkwZFNhR1JIVm1aaVYxWjBXVzFXZVdONVNUWmxlVXBvV2tkUmFVOXNkRGRKYlVacldraEphVTlwU25Ga1Z6VjJUVmRvYUZwdE1UQmFNMmgzWTI1V2JVNVhkRFpqYmtveldtNVNkV1ZIVG1wa1YxWjVUa1JaTVUxNlVteE9NMjh4WkVSQ2NXSkVVbTVPUjNoc1RtcGFORTlIZEhKbFdFNTVXVEprY1U5WWEybE1RMG96V2xkc2JtRklVV2xQYWtZNVdGTjNhV050Vm5SaU0xcHNTV3B3WWxoWU1Ua2lMQ0ptZFc1a2N5STZXMTE5ZlgxZGZYMTlmUT09IiwiZnVuZHMiOltdfX19XSwidGltZW91dF9zZWNvbmRzIjoiMzYwMCJ9fQ==",
+              "funds": []
+            }
+          }
+        }
+      ]
+    }
+  }
+}
