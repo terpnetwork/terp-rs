@@ -37,7 +37,8 @@ fn rehearse_fresh_plan() {
         payment_minter: PAYMENT_MINTER.to_string(), withdraw: chain.addr_make("dao").to_string(), operator: op.to_string(), salt: PAYMINT_SALT.into() };
     assert_eq!(cw_infuser_scripts::paymint::paymint_tree(PAYMENT_MINTER, 10_000, PAYMINT_SALT).root, PAYMINT_ROOT);
     r.require_real().unwrap();
-    assert!(Roles::default().require_real().is_err());
+    Roles::default().require_real().unwrap(); // curators = Zigner granter
+    assert!(Roles { logos_curator: LOGOS_CURATOR_TBD.into(), ..Default::default() }.require_real().is_err());
     let buyer = chain.addr_make("buyer");
     chain.add_balance(&buyer, vec![coin(10_000_000_000, "uthiol")]).unwrap();
     let suite = SvgCollectionSuite::new(chain.clone());

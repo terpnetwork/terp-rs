@@ -27,6 +27,9 @@ pub const RETIRED_CODE71: [&str; 7] = [
     "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt"];
 pub const FRACTAL_CURATOR_TBD: &str = "FRACTAL_CURATOR_TBD";
 pub const LOGOS_CURATOR_TBD: &str = "LOGOS_CURATOR_TBD";
+/// Curators chosen by the owner (2026-10-28): the Zigner granter for both, for now.
+pub const FRACTAL_CURATOR: &str = ZIGNER_GRANTER;
+pub const LOGOS_CURATOR: &str = ZIGNER_GRANTER;
 pub const SERIES: &str = "interchain-logos";
 pub const BATCHES: [&[&str]; 3] = [
     &["penumbra"],
@@ -46,7 +49,7 @@ pub struct Roles {
 }
 impl Default for Roles {
     fn default() -> Self {
-        Self { fractal_curator: FRACTAL_CURATOR_TBD.into(), logos_curator: LOGOS_CURATOR_TBD.into(),
+        Self { fractal_curator: FRACTAL_CURATOR.into(), logos_curator: LOGOS_CURATOR.into(),
             payment_minter: PAYMENT_MINTER.into(), withdraw: FOUNDATION_DAO.into(),
             operator: ZIGNER_GRANTER.into(), salt: PAYMINT_SALT.into() }
     }

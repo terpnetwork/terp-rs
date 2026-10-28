@@ -6,7 +6,7 @@ use cw_infuser_scripts::fractal::*;
 #[command(version, about)]
 struct Args {
     #[arg(long, default_value_t = 42)] seed: u64,
-    #[arg(long, default_value = cw_infuser_scripts::fresh_plan::FRACTAL_CURATOR_TBD)] curator: String,
+    #[arg(long, default_value = cw_infuser_scripts::fresh_plan::FRACTAL_CURATOR)] curator: String,
     #[arg(long)] whitelist: Option<String>,
 }
 pub fn main() -> anyhow::Result<()> {

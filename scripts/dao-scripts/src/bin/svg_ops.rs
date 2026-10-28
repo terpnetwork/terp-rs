@@ -90,6 +90,20 @@ struct Cli {
     bind: String,
     #[arg(long)]
     broadcast: bool,
+    /// instantiate: existing code id (no upload).
+    #[arg(long, default_value_t = 0)]
+    code_id: u64,
+    /// instantiate: label.
+    #[arg(long, default_value = "")]
+    label: String,
+    /// instantiate: wasm admin of the new contract (empty = none).
+    #[arg(long, default_value = "")]
+    admin: String,
+    /// Dry-run only: simulate the planned msgs as signed by --granter (no key, no session;
+    /// the tx carries no pubkey/signature, which Simulate accepts). Real gas adds the
+    /// MsgExec wrapper (~+40k).
+    #[arg(long)]
+    simulate: bool,
 }
 
 fn load_msgs(cli: &Cli) -> Result<Vec<Value>> {
@@ -177,10 +191,23 @@ fn main() -> Result<()> {
     match cli.cmd.as_str() {
         "operator-exec" => return operator_exec(cli, info, msgs),
         "grants" => return grants(cli, info),
-        "exec" | "grant-operator" | "revoke-operator" => {}
+        "exec" | "grant-operator" | "revoke-operator" | "instantiate" => {}
         other => bail!("unknown cmd {other}"),
     }
-    if !cli.broadcast { println!("dry-run: nothing signed"); return Ok(()); }
+    if !cli.broadcast {
+        if cli.simulate {
+            cw_orch_kms::validate_address(&cli.granter, "terp").map_err(|e| anyhow!("--simulate needs --granter: {e}"))?;
+            let anys = match cli.cmd.as_str() {
+                // simulate: every --msg-file in one tx (e.g. set_series + a dependent create)
+                "exec" => msgs.iter().map(|m| kms_gate::execute_any(&cli.granter, &cli.contract, m)).collect::<Result<Vec<_>>>()?,
+                "instantiate" => vec![instantiate_any(&cli, msg.as_ref().ok_or_else(|| anyhow!("instantiate needs --msg"))?)?],
+                other => bail!("--simulate supports exec | instantiate, not {other}"),
+            };
+            let gas = simulate_as(&info, &cli.granter, anys)?;
+            println!("simulate ok: gas_used {gas} (as {}; nothing signed)", cli.granter);
+        }
+        println!("dry-run: nothing signed"); return Ok(());
+    }
     broadcast_gate(&cli, &info)?;
     cw_orch_kms::validate_ttl(cli.ttl_secs).map_err(|e| anyhow!(e))?;
     cw_orch_kms::set_approval_chain(kms_gate::kms_profile(&info)).map_err(|e| anyhow!(e))?;
@@ -206,6 +233,11 @@ fn main() -> Result<()> {
             if cli.contract.is_empty() { bail!("exec needs --contract"); }
             session = session.allow_execute(ScopedCall { address: cli.contract.clone(), keys: vec![top_key(&m)?], calls: 2, funds: vec![] }).map_err(|e| anyhow!(e))?;
             vec![kms_gate::execute_any(&granter, &cli.contract, &m)?]
+        }
+        "instantiate" => {
+            let m = msg.clone().ok_or_else(|| anyhow!("instantiate needs --msg"))?;
+            session = session.allow_instantiate();
+            vec![instantiate_any(&cli, &m)?]
         }
         "grant-operator" => {
             if cli.contract.is_empty() { bail!("grant-operator needs --contract"); }
@@ -399,4 +431,36 @@ mod tests {
         assert!(top_key(&json!({"a":{},"b":{}})).is_err());
         assert_eq!(top_key(&json!({"a":{}})).unwrap(), "a");
     }
+}
+
+/// `MsgInstantiateContract` of an existing code from the granter (under MsgExec).
+fn instantiate_any(cli: &Cli, msg: &Value) -> Result<cosmrs::Any> {
+    use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgInstantiateContract;
+    if cli.code_id == 0 || cli.label.is_empty() { bail!("instantiate needs --code-id and --label"); }
+    if !cli.admin.is_empty() { cw_orch_kms::validate_address(&cli.admin, "terp").map_err(|e| anyhow!("--admin: {e}"))?; }
+    Ok(kms_gate::any("/cosmwasm.wasm.v1.MsgInstantiateContract", &MsgInstantiateContract {
+        sender: cli.granter.clone(), admin: cli.admin.clone(), code_id: cli.code_id, label: cli.label.clone(),
+        msg: serde_json::to_vec(msg)?, funds: vec![] }))
+}
+
+/// Gas for `anys` signed by `signer`, via gRPC Simulate. No key: the signer info has no
+/// pubkey and the signature is empty (the ante handler skips verification in simulate).
+fn simulate_as(info: &cw_orch::environment::ChainInfoOwned, signer: &str, anys: Vec<cosmrs::Any>) -> Result<u64> {
+    use cosmos_sdk_proto::cosmos::auth::v1beta1::{query_client::QueryClient as AuthQ, QueryAccountInfoRequest};
+    use cosmos_sdk_proto::cosmos::tx::v1beta1::{service_client::ServiceClient, mode_info, AuthInfo, Fee, ModeInfo, SignerInfo, SimulateRequest, TxBody, TxRaw};
+    use cosmos_sdk_proto::prost::Message;
+    let d = kms_gate::query_only(info)?;
+    let ch = d.channel();
+    d.rt_handle.block_on(async move {
+        let seq = AuthQ::new(ch.clone()).account_info(QueryAccountInfoRequest { address: signer.into() }).await
+            .map_err(|e| anyhow!("account {signer}: {}", e.message()))?.into_inner().info.ok_or_else(|| anyhow!("no account"))?.sequence;
+        let body = TxBody { messages: anys.into_iter().map(|a| cosmos_sdk_proto::Any { type_url: a.type_url, value: a.value }).collect(), memo: "svg_ops simulate".into(), ..Default::default() };
+        let auth = AuthInfo { signer_infos: vec![SignerInfo { public_key: None, mode_info: Some(ModeInfo { sum: Some(mode_info::Sum::Single(mode_info::Single { mode: 1 })) }), sequence: seq }],
+            fee: Some(Fee { amount: vec![], gas_limit: 0, payer: String::new(), granter: String::new() }), ..Default::default() };
+        let raw = TxRaw { body_bytes: body.encode_to_vec(), auth_info_bytes: auth.encode_to_vec(), signatures: vec![vec![]] };
+        #[allow(deprecated)]
+        let r = ServiceClient::new(ch).simulate(SimulateRequest { tx: None, tx_bytes: raw.encode_to_vec() }).await
+            .map_err(|e| anyhow!("simulate: {}", e.message()))?.into_inner();
+        Ok(r.gas_info.map(|g| g.gas_used).unwrap_or(0))
+    })
 }

@@ -1,6 +1,6 @@
 [
   {
-    "init_msg_json_bytes": 1833,
+    "init_msg_json_bytes": 1859,
     "legacy_ext_json_bytes": 4911,
     "logo": "akash",
     "name": "Akash SVG",
@@ -12,7 +12,7 @@
     "variables": 14
   },
   {
-    "init_msg_json_bytes": 4511,
+    "init_msg_json_bytes": 4537,
     "legacy_ext_json_bytes": 8476,
     "logo": "bcna",
     "name": "Bcna SVG",
@@ -24,7 +24,7 @@
     "variables": 14
   },
   {
-    "init_msg_json_bytes": 3116,
+    "init_msg_json_bytes": 3142,
     "legacy_ext_json_bytes": 3260,
     "logo": "bitcoin",
     "name": "Bitcoin SVG",
@@ -36,7 +36,7 @@
     "variables": 5
   },
   {
-    "init_msg_json_bytes": 2268,
+    "init_msg_json_bytes": 2294,
     "legacy_ext_json_bytes": 3711,
     "logo": "bitsong",
     "name": "Bitsong SVG",
@@ -48,7 +48,7 @@
     "variables": 4
   },
   {
-    "init_msg_json_bytes": 8197,
+    "init_msg_json_bytes": 8223,
     "legacy_ext_json_bytes": 14524,
     "logo": "cardano",
     "name": "Cardano SVG",
@@ -60,7 +60,7 @@
     "variables": 16
   },
   {
-    "init_msg_json_bytes": 3335,
+    "init_msg_json_bytes": 3361,
     "legacy_ext_json_bytes": 5135,
     "logo": "cosmos",
     "name": "Cosmos SVG",
@@ -72,7 +72,7 @@
     "variables": 9
   },
   {
-    "init_msg_json_bytes": 2361,
+    "init_msg_json_bytes": 2387,
     "legacy_ext_json_bytes": 5426,
     "logo": "dao",
     "name": "Dao SVG",
@@ -84,7 +84,7 @@
     "variables": 3
   },
   {
-    "init_msg_json_bytes": 2005,
+    "init_msg_json_bytes": 2031,
     "legacy_ext_json_bytes": 3613,
     "logo": "eth",
     "name": "Eth SVG",
@@ -96,7 +96,7 @@
     "variables": 12
   },
   {
-    "init_msg_json_bytes": 1687,
+    "init_msg_json_bytes": 1713,
     "legacy_ext_json_bytes": 2037,
     "logo": "monero",
     "name": "Monero SVG",
@@ -108,7 +108,7 @@
     "variables": 6
   },
   {
-    "init_msg_json_bytes": 11204,
+    "init_msg_json_bytes": 11230,
     "legacy_ext_json_bytes": 19567,
     "logo": "osmosis",
     "name": "Osmosis SVG",
@@ -120,7 +120,7 @@
     "variables": 18
   },
   {
-    "init_msg_json_bytes": 39405,
+    "init_msg_json_bytes": 39431,
     "legacy_ext_json_bytes": 40551,
     "logo": "penumbra",
     "name": "Penumbra SVG",
@@ -132,7 +132,7 @@
     "variables": 15
   },
   {
-    "init_msg_json_bytes": 2955,
+    "init_msg_json_bytes": 2981,
     "legacy_ext_json_bytes": 9347,
     "logo": "terp",
     "name": "Terp SVG",
@@ -144,7 +144,7 @@
     "variables": 40
   },
   {
-    "init_msg_json_bytes": 2241,
+    "init_msg_json_bytes": 2267,
     "legacy_ext_json_bytes": 3025,
     "logo": "zec",
     "name": "Zec SVG",
