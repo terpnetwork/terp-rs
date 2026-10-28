@@ -7,6 +7,7 @@ pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5
 pub mod benders;
 pub mod collection;
 pub mod drops;
+pub mod paymint;
 #[cfg(feature = "shitstrap")]
 pub mod suite;
 pub mod yijing;
