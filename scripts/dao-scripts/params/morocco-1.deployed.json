@@ -417,5 +417,20 @@
       "version": "polytone-1",
       "order": "unordered"
     }
+  },
+  "polytone_accounts": {
+    "fiab-subdao:juno-1": {
+      "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "proxy": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+      "proxy_code_id": 3321,
+      "juno_height": 43163832,
+      "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "channel": "channel-14->channel-675",
+      "packet_sequence": 1,
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 1,
+      "tx": "D8B7D1A116A9FFE736588ACB34C59A33FE0588652BBA4DDA4A4AD17902C3C13E",
+      "height": 24145592
+    }
   }
 }
