@@ -1,0 +1,38 @@
+{
+  "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+  "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+  "creation_policy": "anyone (no pre-propose, no deposit)",
+  "signer": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+  "predicted_proxy": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+  "remote_chain": "juno-1",
+  "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+  "flow": "threshold 1, no veto: propose, vote yes and execute in one session (sole member)",
+  "propose": {
+    "propose": {
+      "title": "Open the FIAB-SUBDAO Polytone account on Juno",
+      "description": "Empty Polytone execute through the Terp<->Juno note (channel-14 <-> channel-675). The Juno voice creates FIAB-SUBDAO's Juno proxy juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y. That account is FIAB-SUBDAO's member seat in ZecHub.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbXSwidGltZW91dF9zZWNvbmRzIjoiMzYwMCJ9fQ==",
+              "funds": []
+            }
+          }
+        }
+      ]
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": "<next id>",
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": "<next id>"
+    }
+  }
+}

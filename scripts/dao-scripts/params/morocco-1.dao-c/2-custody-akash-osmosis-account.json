@@ -1,0 +1,38 @@
+{
+  "dao": "terp10g9vk5kqxv50ezc0sj4n5ves9zxxtu97nfpyctw5zutqdhe2cz5qfgxk3j",
+  "proposal_module": "terp1glzukmjr9kxsus00mtlgeudgty6qxj2y4ltzjk9xxec0zg3hcl6skaefza",
+  "creation_policy": "anyone (no pre-propose, no deposit)",
+  "signer": "terp10a839738cp8pf5cd00ghthfzyqeusu0lesannt",
+  "predicted_proxy": "osmo16u55lsqx9pur6ld5glrdzq6deymtqxcmcvg9kkt6ra35v523ga5q8j0244",
+  "remote_chain": "osmosis-1",
+  "note": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+  "flow": "threshold 1 with steward-akash veto (48h timelock, early_execute false): session 1 propose + vote; execute only after the 48h timelock, in a second session",
+  "propose": {
+    "propose": {
+      "title": "Open the custody-akash Polytone account on Osmosis",
+      "description": "Empty Polytone execute through the Terp<->Osmosis note (channel-15 <-> channel-111102). The Osmosis voice creates custody-akash's Osmosis proxy osmo16u55lsqx9pur6ld5glrdzq6deymtqxcmcvg9kkt6ra35v523ga5q8j0244. steward-akash may veto for 48 hours after it passes.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbXSwidGltZW91dF9zZWNvbmRzIjoiMzYwMCJ9fQ==",
+              "funds": []
+            }
+          }
+        }
+      ]
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": "<next id>",
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": "<next id>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "dao": "juno1nktrulhakwm0n3wlyajpwxyg54n39xx4y8hdaqlty7mymf85vweq7m6t0y",
+  "submit_to": "juno1z3tknzeenvmcxwg7eyr82d2rdx9ffpwg9fsqnj6ushmszkwqmrhsqgt55x (pre-propose for proposal module A juno14futcfehnc8fn4nz6gtm25svn05mzz09ju8rtj0jvven2hpxj85s0q8a55)",
+  "deposit": "none (deposit_info null), open_proposal_submission true: any Juno account may submit",
+  "voting": "67% yes, 40% quorum, 5 days, revoting on, 23 members weight 1",
+  "precondition": "FIAB-SUBDAO's Juno proxy must exist first (proposal 1 executed and the packet acked), otherwise it can't be verified on chain",
+  "status": "NOT SUBMITTED",
+  "msg": {
+    "propose": {
+      "msg": {
+        "propose": {
+          "title": "Add FIAB-SUBDAO (Terp Network) as a ZecHub member",
+          "description": "Adds the Juno Polytone account of Terp Network's FIAB-SUBDAO (terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc on morocco-1) as a ZecHub member with weight 1. The account juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y is a Polytone proxy controlled only by FIAB-SUBDAO proposals, created over Terp channel-14 <-> Juno channel-675.",
+          "msgs": [
+            {
+              "wasm": {
+                "execute": {
+                  "contract_addr": "juno1re0pu5hdafdcexmvuvdngn0d5sttkp6wz4wfjdd3p9cwfhmg8h9s8ek80w",
+                  "msg": "eyJ1cGRhdGVfbWVtYmVycyI6eyJhZGQiOlt7ImFkZHIiOiJqdW5vMWhhZm10Z3hwcnVmNWt6cnJ3ZnRueGNjdWVyNDY1MzRlN3o1dDBqbDRnNGxlNjZ4OGtreXNyY2dqOXkiLCJ3ZWlnaHQiOjF9XSwicmVtb3ZlIjpbXX19",
+                  "funds": []
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
