@@ -467,6 +467,21 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
     }
     let builder = ctx.daemon_builder.clone().ok_or_else(|| anyhow!("no builder"))?;
     let granter = ensure_granter(ctx, phase)?;
+    if phase == "vote" && ctx.cli.vote_execute {
+        // Wrong-signer check right after the granter challenge, before any grant/fee scan.
+        let module = steps.iter().find_map(|s| match s { Step::Custom { id, what } if id == "foundation:vote" => Some(what.clone()), _ => None })
+            .ok_or_else(|| anyhow!("vote: no proposal module"))?;
+        let q = ctx.query()?;
+        let m = Addr::unchecked(&module);
+        for pid in ctx.cli.vote_proposals.clone() {
+            let mine: Value = q.wasm_querier().smart_query(&m, &json!({"get_vote": {"proposal_id": pid, "voter": granter}})).map_err(|e| anyhow!("{e}"))?;
+            let p: Value = q.wasm_querier().smart_query(&m, &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{e}"))?;
+            if !mine["vote"].is_null() && p["proposal"]["status"] == "open" {
+                bail!("refused before any grant: {granter} already voted on open proposal {pid}; the --execute run must be signed by another Foundation member (nothing was broadcast)");
+            }
+        }
+        println!("  signer check ok: {granter} has not voted on open proposals {:?}", ctx.cli.vote_proposals);
+    }
     let mut session = ApprovalSession::open(&granter);
     let mut execs: BTreeMap<String, (BTreeSet<String>, u64)> = BTreeMap::new();
     let mut actions = Vec::new();
