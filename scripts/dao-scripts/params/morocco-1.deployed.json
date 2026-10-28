@@ -134,11 +134,55 @@
       "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
       "code": "svg-minter",
       "tx": "DB9BDD0467A9B12C6954F6CBC43E4AE65E87226B8661706CB28E3936DBB5D59E"
+    },
+    "bounty-subdao": {
+      "address": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "code": "dao-dao-core",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-voting-cw4": {
+      "address": "terp1k20dhp46g7y784c0dntq7ugrx8qk9dujaeejgu8svuw58zzhfncqalc4k8",
+      "code": "dao-voting-cw4",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-cw4-group": {
+      "address": "terp126d92tmu5mww9x8ltu6rc9hy5cx4k4f302utslf4964drftm47js96wvkm",
+      "code": "cw4-group",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-proposal-single": {
+      "address": "terp14mah9w6muzphujdlfhywceu6expgfa4xwx49nsxc6vzrr577q65q7lj5uh",
+      "code": "dao-proposal-single",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-bounties": {
+      "address": "terp1hpv9m7qwxde58pefcc0d42arrkdljlnzz3dskh8xna6z8z8vhkwq5hnchv",
+      "code": "bounty-escrow",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "polytone-note-juno": {
+      "address": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "code": "polytone-note",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60"
+    },
+    "polytone-note-osmosis": {
+      "address": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+      "code": "polytone-note",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60"
     }
   },
   "proposals": {
     "daos:propose:fiab": 9,
-    "daos:propose:steward": 10
+    "daos:propose:steward": 10,
+    "bounty:propose:bounty": 11,
+    "bounty:propose:notes": 12
   },
   "txs": [
     {
@@ -326,6 +370,30 @@
       "hash": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379",
       "phase": "vote",
       "step": "execute:10"
+    },
+    {
+      "phase": "vote",
+      "step": "vote:11:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj",
+      "hash": "CC232FA696BEE79F895D858DF4C11AF05B1B69E48CBF16650E231DF1E50CFA3E",
+      "gas_used": 521295
+    },
+    {
+      "phase": "vote",
+      "step": "vote:12:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj",
+      "hash": "BA51BFEE08E85729743BB552B5A18C2564ECB8C2905799B75BAD50FC36303DFE",
+      "gas_used": 424700
+    },
+    {
+      "phase": "vote",
+      "step": "execute:11",
+      "hash": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6",
+      "gas_used": 1311649
+    },
+    {
+      "phase": "vote",
+      "step": "execute:12",
+      "hash": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60",
+      "gas_used": 595509
     }
   ]
 }

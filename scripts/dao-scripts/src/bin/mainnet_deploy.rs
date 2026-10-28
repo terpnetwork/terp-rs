@@ -829,7 +829,7 @@ fn foundation_vote(ctx: &mut Ctx, phase: &str, signer: &Signer, d: &Daemon, modu
             if c.parse::<u64>().ok() != Some(CODE_CORE) { continue; }
             let info = d.wasm_querier().contract_info(&Addr::unchecked(&a))?;
             let mut label = None;
-            for salt in ["steward-akash", "custody-akash", "steward-juno"] {
+            for salt in ["steward-akash", "custody-akash", "steward-juno", "bounty-subdao"] {
                 let want = cw_orch_kms::instantiate2_bech32("terp", &core_sum, &fbytes, salt.as_bytes()).map_err(|e| anyhow!(e))?;
                 if want == a { label = Some(salt.to_string()); }
             }

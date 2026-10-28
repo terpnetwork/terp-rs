@@ -183,7 +183,8 @@ fn main() -> Result<()> {
         let desc = format!("Two Polytone notes (code {}) owned by the Foundation (wasm admin), instantiate2 from the Foundation core, each pinned to one Terp connection and an existing DAO-DAO voice:\n- juno-1: connection-14 (Juno connection-557), voice {}\n- osmosis-1: connection-15 (Osmosis connection-11101), voice {}\nChannels (polytone-1, unordered) are opened by the relayer after execution.", cli.note_code_id, NOTE_PAIRS[0].3, NOTE_PAIRS[1].3);
         Some((foundation_proposal_wrapper(NOTES_TITLE, &desc, msgs), plan))
     } else { None };
-    let n_calls = 1 + notes.is_some() as u64;
+    // +1 headroom: a fully spent wasm grant is auto-deleted and the generic revoke then fails.
+    let n_calls = 2 + notes.is_some() as u64;
     let morocco = kms_gate::morocco_info();
     kms_gate::write_plan(&cli.out, &serde_json::json!({
         "dry_run": !cli.broadcast,
