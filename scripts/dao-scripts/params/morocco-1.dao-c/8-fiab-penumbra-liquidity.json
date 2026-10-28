@@ -1,5 +1,5 @@
 {
-  "status": "DRAFT - do not launch. Blocked: no Terp<->Penumbra connection/transfer channel on client 07-tendermint-48; receiver TBD.",
+  "status": "DRAFT - do not launch. Channel open; receiver PENUMBRA_ADDRESS_TBD.",
   "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
   "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
   "creation_policy": "anyone (no pre-propose, no deposit)",
@@ -15,37 +15,23 @@
     "thiol_per_terp": "2.124",
     "band": "2.10-2.13"
   },
-  "options": {
-    "a_balanced": {
-      "uterp": "235404896421",
-      "uthiol": "500000000000"
-    },
-    "b_half_each": {
-      "uterp": "500000000000",
-      "uthiol": "500000000000",
-      "lp_uterp": "235404896421",
-      "lp_uthiol": "500000000000",
-      "idle_uterp": "264595103579"
-    }
-  },
-  "chosen": "b_half_each (edit amounts to option a if preferred)",
-  "timeout_note": "absolute timestamp 2026-12-01T00:00:00Z (ns). IbcMsg::Transfer needs a timeout; Penumbra accepts timestamp-only. Must be after proposal execution; refresh before launch.",
+  "timeout_note": "absolute timestamp 2026-11-15T00:00:00Z (ns); must be after execution, refresh before launch",
   "propose": {
     "propose": {
       "title": "FIAB-SUBDAO: send half of TERP and THIOL to the Penumbra liquidity wallet",
-      "description": "Two ICS-20 transfers from FIAB-SUBDAO to its Penumbra cold wallet PENUMBRA_ADDRESS_TBD over CHANNEL_TERP_PENUMBRA_TBD: 500,000 TERP and 500,000 THIOL. The wallet opens Penumbra liquidity at ~2.124 THIOL per TERP (floor: TERP $0.05012, THIOL $0.02360 at height 23,238,152), i.e. 235,404.896421 TERP : 500,000 THIOL; remaining TERP stays in the cold wallet.",
+      "description": "Two ICS-20 transfers from FIAB-SUBDAO to its Penumbra liquidity cold wallet PENUMBRA_ADDRESS_TBD over Terp transfer/channel-16 <-> Penumbra transfer/channel-25 (connection-16 <-> connection-25): 120,000 TERP and 240,000 THIOL. The wallet opens Penumbra liquidity positions anchored at the floor of 2.124 THIOL per TERP (TERP $0.05012, THIOL $0.02360 at height 23,238,152), weighted for net THIOL->TERP flow.",
       "msgs": [
         {
           "ibc": {
             "transfer": {
-              "channel_id": "CHANNEL_TERP_PENUMBRA_TBD",
+              "channel_id": "channel-16",
               "to_address": "PENUMBRA_ADDRESS_TBD",
               "amount": {
                 "denom": "uterp",
-                "amount": "500000000000"
+                "amount": "120000000000"
               },
               "timeout": {
-                "timestamp": "1796083200000000000"
+                "timestamp": "1794700800000000000"
               }
             }
           }
@@ -53,14 +39,14 @@
         {
           "ibc": {
             "transfer": {
-              "channel_id": "CHANNEL_TERP_PENUMBRA_TBD",
+              "channel_id": "channel-16",
               "to_address": "PENUMBRA_ADDRESS_TBD",
               "amount": {
                 "denom": "uthiol",
-                "amount": "500000000000"
+                "amount": "240000000000"
               },
               "timeout": {
-                "timestamp": "1796083200000000000"
+                "timestamp": "1794700800000000000"
               }
             }
           }
@@ -77,6 +63,22 @@
   "execute": {
     "execute": {
       "proposal_id": "<next id>"
+    }
+  },
+  "amounts": {
+    "uterp": "120000000000",
+    "uthiol": "240000000000"
+  },
+  "ibc": {
+    "terp": {
+      "connection": "connection-16",
+      "channel": "channel-16",
+      "client": "07-tendermint-48"
+    },
+    "penumbra": {
+      "connection": "connection-25",
+      "channel": "channel-25",
+      "client": "07-tendermint-32"
     }
   }
 }

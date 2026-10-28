@@ -477,5 +477,23 @@
         "packet_sequence": 2
       }
     }
+  },
+  "ibc": {
+    "penumbra-1": {
+      "terp_client": "07-tendermint-48",
+      "penumbra_client": "07-tendermint-32",
+      "terp_connection": "connection-16",
+      "penumbra_connection": "connection-25",
+      "terp_transfer_channel": "channel-16",
+      "penumbra_transfer_channel": "channel-25",
+      "version": "ics20-1",
+      "relayer": "groot2 /storage/penumbra/hermes.toml",
+      "txs": {
+        "conn_init": "04FE997129CB93AB983A74828DBA8599C9B81C8F3F31BC95D2532508C92C27DE",
+        "conn_ack": "A1907161F0BB8DEE3480D900AA433AC1198AB4671E843BD055AEE9B736FDF0FF",
+        "chan_init": "36468B7203A1A85127390FD8EFF72E6B1982A416ADD6B6BDE5063D28D8E11F23",
+        "chan_ack": "B95C1501BD97E9A178E45342CF3682EFE116BBA4164486289FFDAB25D85789BF"
+      }
+    }
   }
 }
