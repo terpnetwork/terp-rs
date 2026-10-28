@@ -34,7 +34,8 @@ fn rehearse_fresh_plan() {
     let chain = MockBech32::new("terp");
     let op = chain.sender_addr();
     let r = Roles { fractal_curator: chain.addr_make("fcur").to_string(), logos_curator: chain.addr_make("lcur").to_string(),
-        payment_minter: chain.addr_make("pm").to_string(), withdraw: chain.addr_make("dao").to_string(), operator: op.to_string(), salt: "s".into() };
+        payment_minter: PAYMENT_MINTER.to_string(), withdraw: chain.addr_make("dao").to_string(), operator: op.to_string(), salt: PAYMINT_SALT.into() };
+    assert_eq!(cw_infuser_scripts::paymint::paymint_tree(PAYMENT_MINTER, 10_000, PAYMINT_SALT).root, PAYMINT_ROOT);
     r.require_real().unwrap();
     assert!(Roles::default().require_real().is_err());
     let buyer = chain.addr_make("buyer");

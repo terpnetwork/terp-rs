@@ -1,7 +1,7 @@
 //! Fresh SVG collections on the ALREADY-DEPLOYED codes only (no uploads, no migrations):
 //! cw721_svg code 98, factory code 99 (instance below), whitelist-mtree code 73.
 //! Builds every message as data; nothing here can sign or broadcast.
-use crate::paymint::{self, PAYMENT_MINTER_TBD};
+use crate::paymint;
 use anyhow::Result;
 use serde_json::{Value, json};
 
@@ -11,6 +11,20 @@ pub const CODE_WHITELIST_MTREE: u64 = 73;
 pub const FACTORY: &str = "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80";
 pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w";
 pub const ZIGNER_GRANTER: &str = "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052";
+/// Off-chain payment minter (owner-confirmed 2026-10-28). Not yet an on-chain account:
+/// it needs a THIOL balance for tx fees before step 5.
+pub const PAYMENT_MINTER: &str = "terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8";
+pub const PAYMINT_SALT: &str = "permissionless-fractal-v1";
+/// paymint_tree(PAYMENT_MINTER, 10000, PAYMINT_SALT), verified on the code-73 wasm (gas-bench wl73).
+pub const PAYMINT_ROOT: &str = "bfeda62026afd9f946dba360eb0be86785613db261ecbf6913a175dcfa1d818c";
+pub const PAYMINT_PROOF: &str = "59a73b7800d05280d8838a704cc496993b7ca578e7a3b4d016c433a8b869aaf5";
+/// Retired code-71 logo collections: no step here. If their mint is still open they keep
+/// minting until their own creator pauses / ends them (creator-signed, not part of this plan).
+pub const RETIRED_CODE71: [&str; 7] = [
+    "terp1jagdzq7ncqtv7zmechkuexem2ak50kjpk3uj5vajucw0l3cqg9rqz7al0a", "terp1tsk4rgs87c6da2pgnypgftg267c2k2x0d3ec0kdxf7pcwdedgdrqf6dc2w",
+    "terp1ptewup5u6jgg8x5zrw7fndt5845nynr5efvd7pe5e36y4c8k7rzsrc6l6f", "terp15wlh64paltl9c0kfmuxqfafkdnr89mvevmygxdxs6tg4wd4w5zesmvv7us",
+    "terp13pz6xddpj0n8ky6nsyqptvgkm9ulp96xqg3zygwzh9s3w3a2ju5qlh2yxn", "terp1wx5vuf7aduxp69x7xuge9dapxdysdvl33dlwd7chfwtdfvsrph0s2t632a",
+    "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt"];
 pub const FRACTAL_CURATOR_TBD: &str = "FRACTAL_CURATOR_TBD";
 pub const LOGOS_CURATOR_TBD: &str = "LOGOS_CURATOR_TBD";
 pub const SERIES: &str = "interchain-logos";
@@ -33,14 +47,17 @@ pub struct Roles {
 impl Default for Roles {
     fn default() -> Self {
         Self { fractal_curator: FRACTAL_CURATOR_TBD.into(), logos_curator: LOGOS_CURATOR_TBD.into(),
-            payment_minter: PAYMENT_MINTER_TBD.into(), withdraw: FOUNDATION_DAO.into(),
-            operator: ZIGNER_GRANTER.into(), salt: "permissionless-fractal-v1".into() }
+            payment_minter: PAYMENT_MINTER.into(), withdraw: FOUNDATION_DAO.into(),
+            operator: ZIGNER_GRANTER.into(), salt: PAYMINT_SALT.into() }
     }
 }
 impl Roles {
     pub fn require_real(&self) -> Result<()> {
-        paymint::require_real(&[("fractal_curator", &self.fractal_curator), ("logos_curator", &self.logos_curator),
-            ("payment_minter", &self.payment_minter), ("withdraw", &self.withdraw), ("operator", &self.operator)])
+        let bad: Vec<_> = [("fractal_curator", &self.fractal_curator), ("logos_curator", &self.logos_curator),
+            ("payment_minter", &self.payment_minter), ("withdraw", &self.withdraw), ("operator", &self.operator)]
+            .into_iter().filter(|(_, v)| paymint::is_placeholder(v)).map(|(k, v)| format!("{k}={v}")).collect();
+        anyhow::ensure!(bad.is_empty(), "BLOCKED: placeholders, refusing to broadcast: {}", bad.join(", "));
+        Ok(())
     }
 }
 
