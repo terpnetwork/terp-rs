@@ -104,6 +104,10 @@ mod snap_bench;
 mod lab_bench;
 #[cfg(all(feature = "circuit", feature = "host-crypto", feature = "std"))]
 pub mod blind_k19;
+// Browser (wasm32, no libsecp): sound raw-key claim circuit, built from the same sources.
+#[cfg(all(feature = "browser", not(feature = "host-crypto")))]
+#[path = "rawkey_browser/mod.rs"]
+pub mod rawkey;
 pub mod tree;
 pub mod value;
 pub mod zip32;

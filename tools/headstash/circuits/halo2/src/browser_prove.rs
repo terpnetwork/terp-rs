@@ -131,3 +131,51 @@ pub fn prove_note_witness_browser(witness_json: &str) -> Result<String, JsError>
     });
     Ok(serde_json::to_string(&body).map_err(|err| JsError::new(&err.to_string()))?)
 }
+
+/// Sound raw-key claim (secp256k1 sk·G in-circuit, fixed-base comb) proved in the browser.
+/// Params + keygen run in the client (IPA: no trusted setup). Fixture uses a test-only sk.
+/// Returns JSON: k, proof_len, pk_bytes, mem (wasm linear memory, bytes) per phase.
+#[wasm_bindgen]
+pub fn prove_rawkey_fixture_browser(k: u32, destination: &str) -> Result<String, JsError> {
+    use halo2_proofs::{
+        plonk,
+        poly::commitment::Params,
+        transcript::{Blake2bWrite, Challenge255},
+    };
+    use pasta_curves::vesta;
+    use crate::rawkey::blind_k19::blind_fixture;
+    use crate::note_membership::NOTE_DEPTH;
+    let e = |s: String| JsError::new(&s);
+    phase(&format!("rawkey-enter mem={}", wasm_mem()));
+    let mut path = [pallas::Base::ZERO; NOTE_DEPTH];
+    for (i, p) in path.iter_mut().enumerate() {
+        *p = pallas::Base::from(1000 + i as u64);
+    }
+    let fx = blind_fixture([0x11u8; 32], pallas::Base::from(7u64), 1234, 5, path, destination).map_err(e)?;
+    phase(&format!("rawkey-fixture mem={}", wasm_mem()));
+    let params = Params::<vesta::Affine>::new(k);
+    phase(&format!("rawkey-params mem={}", wasm_mem()));
+    let vk = plonk::keygen_vk(&params, &fx.circuit).map_err(|x| JsError::new(&format!("vk {x:?}")))?;
+    phase(&format!("rawkey-vk mem={}", wasm_mem()));
+    let pk = plonk::keygen_pk(&params, vk, &fx.circuit).map_err(|x| JsError::new(&format!("pk {x:?}")))?;
+    let mut pk_buf = Vec::new();
+    pk.write(&mut pk_buf).map_err(|x| JsError::new(&x.to_string()))?;
+    let pk_bytes = pk_buf.len();
+    drop(pk_buf);
+    phase(&format!("rawkey-pk mem={} pk_bytes={}", wasm_mem(), pk_bytes));
+    let mut rng = crate::os_rng();
+    let mut tr = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(Vec::new());
+    plonk::create_proof(&params, &pk, &[fx.circuit], &[&[&fx.public]], &mut rng, &mut tr)
+        .map_err(|x| JsError::new(&format!("prove {x:?}")))?;
+    let proof = tr.finalize();
+    phase(&format!("rawkey-proved mem={} proof={}", wasm_mem(), proof.len()));
+    crate::no_ecdsa::verify_membership(&params, pk.get_vk(), &proof, &fx.public).map_err(e)?;
+    phase(&format!("rawkey-verified mem={}", wasm_mem()));
+    Ok(format!(
+        "{{\"k\":{},\"proof_len\":{},\"pk_bytes\":{},\"mem\":{}}}",
+        k,
+        proof.len(),
+        pk_bytes,
+        wasm_mem()
+    ))
+}

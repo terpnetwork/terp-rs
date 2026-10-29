@@ -33,7 +33,7 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 
-use crate::circuit::{Secp256k1Chip, Secp256k1Config, Secp256k1Fp, Secp256k1Fq};
+use super::circuit::{Secp256k1Chip, Secp256k1Config, Secp256k1Fp, Secp256k1Fq};
 use crate::distro_poseidon::{distro_crh_tag, personalization_to_fp};
 use crate::note_membership::{note_leaf, note_root, NOTE_DEPTH};
 
@@ -213,7 +213,7 @@ pub fn reg_fixture(
     secret: pallas::Base,
     any_dest: &str,
 ) -> Result<BlindFixture, String> {
-    use crate::circuit::gadget::secp256k1_chip::secp_secret_be_to_pallas_base;
+    use super::circuit::gadget::secp256k1_chip::secp_secret_be_to_pallas_base;
     let mut f = blind_fixture(sk_be, ctx, amount, position, path, any_dest)?;
     f.circuit.destination_lo = Value::known(relayer);
     f.circuit.destination_hi = Value::known(secret);
@@ -238,14 +238,18 @@ pub fn blind_fixture(
     path: [pallas::Base; NOTE_DEPTH],
     destination: &str,
 ) -> Result<BlindFixture, String> {
-    use crate::circuit::gadget::secp256k1_chip::{
+    use super::circuit::gadget::secp256k1_chip::{
         secp_coord_be_to_pallas_base, secp_fp_from_coord_be, secp_fq_from_secret_be, secp_secret_be_to_pallas_base,
     };
-    let secp = secp256k1::Secp256k1::new();
-    let sk = secp256k1::SecretKey::from_byte_array(sk_be).map_err(|e| format!("sk {e}"))?;
-    let raw = secp256k1::PublicKey::from_secret_key(&secp, &sk).serialize_uncompressed();
-    let x: [u8; 32] = raw[1..33].try_into().unwrap();
-    let y: [u8; 32] = raw[33..65].try_into().unwrap();
+    let (x, y) = super::circuit::gadget::secp256k1_chip::secp_pubkey_be_from_secret_be(&sk_be)
+        .ok_or_else(|| String::from("sk out of range"))?;
+    #[cfg(feature = "host-crypto")]
+    {
+        let secp = secp256k1::Secp256k1::new();
+        let sk = secp256k1::SecretKey::from_byte_array(sk_be).map_err(|e| format!("sk {e}"))?;
+        let raw = secp256k1::PublicKey::from_secret_key(&secp, &sk).serialize_uncompressed();
+        assert!(raw[1..33] == x[..] && raw[33..65] == y[..], "pure-Rust sk*G disagrees with libsecp");
+    }
     let pk_com = blind_pk_com(secp_coord_be_to_pallas_base(&x), secp_coord_be_to_pallas_base(&y));
     let root = note_root(note_leaf_blind(pk_com, amount), position, &path);
     let nf = blind_nullifier(secp_secret_be_to_pallas_base(&sk_be), ctx);
@@ -302,7 +306,7 @@ mod tests {
 
     /// MockProver verdict under a forge mode; a synthesis panic is reported as `None`.
     fn ok_forged(mode: u8, c: &BlindClaimCircuit, p: &[pallas::Base]) -> Option<bool> {
-        use crate::circuit::gadget::secp256k1_chip::forge;
+        use super::circuit::gadget::secp256k1_chip::forge;
         forge::set(mode);
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ok(c, p)));
         forge::set(0);
@@ -315,10 +319,10 @@ mod tests {
     #[test]
     #[ignore = "K=19 MockProver"]
     fn blind_forgery_rejected() {
-        use crate::circuit::gadget::secp256k1_chip::forge;
+        use super::circuit::gadget::secp256k1_chip::forge;
         let f = fx();
         let mut c = f.circuit.clone();
-        c.sk = Value::known(crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
+        c.sk = Value::known(super::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
         let honest_reject = !ok(&c, &f.public);
         let mut forged_pub = f.public.clone();
         let fake_sk_native = {
@@ -337,7 +341,7 @@ mod tests {
     #[test]
     #[ignore = "K=19 MockProver"]
     fn blind_negative_suite() {
-        use crate::circuit::gadget::secp256k1_chip::forge;
+        use super::circuit::gadget::secp256k1_chip::forge;
         let f = fx();
         assert!(ok(&f.circuit, &f.public), "honest claim");
         let cases = [
@@ -356,9 +360,9 @@ mod tests {
             // fp.add only occurs in doublings; the fixed-base path has none, so exercise the
             // add gate through the GLV path (same chip, same gate).
             let glv = m == forge::ADD_OUT;
-            crate::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(glv, core::sync::atomic::Ordering::SeqCst);
+            super::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(glv, core::sync::atomic::Ordering::SeqCst);
             let r = ok_forged(m, &f.circuit, &f.public);
-            crate::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(false, core::sync::atomic::Ordering::SeqCst);
+            super::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(false, core::sync::atomic::Ordering::SeqCst);
             std::println!("NEG {name}: accepted={r:?}");
             if r != Some(false) { bad.push(name); }
         }
@@ -373,7 +377,7 @@ mod tests {
         assert!(ok(&f.circuit, &f.public), "honest claim");
         // wrong key: a different sk for the same pk
         let mut c = f.circuit.clone();
-        c.sk = Value::known(crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
+        c.sk = Value::known(super::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
         assert!(!ok(&c, &f.public), "wrong key must fail");
         // wrong Merkle path
         let mut c = f.circuit.clone();
@@ -395,11 +399,11 @@ mod tests {
     #[test]
     #[ignore = "K=19 bench"]
     fn lab_bench_blind_ladder() {
-        use crate::circuit::gadget::secp256k1_chip::KEYPAIR_LADDER;
+        use super::circuit::gadget::secp256k1_chip::KEYPAIR_LADDER;
         KEYPAIR_LADDER.store(true, core::sync::atomic::Ordering::SeqCst);
         let f = fx();
         let mut bad = f.circuit.clone();
-        bad.sk = Value::known(crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
+        bad.sk = Value::known(super::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
         std::println!("LADDER honest_ok={} wrong_sk_rejected={}", ok(&f.circuit, &f.public), !ok(&bad, &f.public));
         crate::lab_bench::measure("k19_blind_keypair_ladder", k(), f.circuit, f.public, crate::lab_bench::runs_pub());
     }
@@ -416,7 +420,7 @@ mod tests {
         REG_MODE.store(true, core::sync::atomic::Ordering::SeqCst);
         let f = rfx();
         let mut bad = f.circuit.clone();
-        bad.sk = Value::known(crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
+        bad.sk = Value::known(super::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
         let mut badpath = f.circuit.clone();
         badpath.position = Value::known(6);
         let mut badsec = f.circuit.clone();

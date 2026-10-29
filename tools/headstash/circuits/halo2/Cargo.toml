@@ -17,7 +17,7 @@ std = ["core3/std", "group/wnaf-memuse", "reddsa/std"]
 host-crypto = ["dep:secp256k1"]
 # wasm-bindgen membership prover for the claim page. wasm32-unknown-unknown only;
 # no libsecp (host-crypto stays off). Build: tools/headstash/scripts/build-browser-prover.sh
-browser = ["circuit", "std", "dep:wasm-bindgen", "dep:getrandom02", "dep:getrandom03", "dep:getrandom04"]
+browser = ["circuit", "std", "reddsa/pallas-pasta", "dep:wasm-bindgen", "dep:getrandom02", "dep:getrandom03", "dep:getrandom04"]
 rpc = []
 test-dependencies = []
 dev-graph = []

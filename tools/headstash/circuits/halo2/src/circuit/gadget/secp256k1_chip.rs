@@ -21,7 +21,15 @@ use halo2_proofs::{
     plonk::{Advice, Column, ConstraintSystem, Error as PlonkError},
 };
 use pasta_curves::pallas;
-use secp256k1::constants::{GENERATOR_X, GENERATOR_Y};
+/// secp256k1 generator (SEC 2), big-endian; in-crate so the browser build needs no libsecp.
+const GENERATOR_X: [u8; 32] = [
+    0x79, 0xbe, 0x66, 0x7e, 0xf9, 0xdc, 0xbb, 0xac, 0x55, 0xa0, 0x62, 0x95, 0xce, 0x87, 0x0b, 0x07,
+    0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8, 0x17, 0x98,
+];
+const GENERATOR_Y: [u8; 32] = [
+    0x48, 0x3a, 0xda, 0x77, 0x26, 0xa3, 0xc4, 0x65, 0x5d, 0xa4, 0xfb, 0xfc, 0x0e, 0x11, 0x08, 0xa8,
+    0xfd, 0x17, 0xb4, 0x48, 0xa6, 0x85, 0x54, 0x19, 0x9c, 0x47, 0xd0, 0x8f, 0xfb, 0x10, 0xd4, 0xb8,
+];
 
 use crate::spec::{
     biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_for_field, fe_to_biguint_simple,
@@ -36,6 +44,7 @@ use std::vec::Vec;
 // Constants
 // ============================================================================
 
+#[path = "secp256k1_chip/fixed_base.rs"]
 mod fixed_base;
 pub use fixed_base::{FB_ALWAYS_CHECKED, FB_NWIN, FB_W, KEYPAIR_GLV};
 
@@ -332,6 +341,22 @@ pub type Secp256k1FqChip = FpChip<Secp256k1Fq>;
 ///
 /// `halo2curves` `Fq::from_repr` / `from_bytes` expect **little-endian** limbs; callers
 /// must reverse BE host encodings before use (see `test_secp256k1_key_pairing_valid`).
+/// Pure-Rust `sk·G` (big-endian x, y). None for sk = 0 or sk >= n.
+pub fn secp_pubkey_be_from_secret_be(sk_be: &[u8; 32]) -> Option<([u8; 32], [u8; 32])> {
+    let k = BigUint::from_bytes_be(sk_be);
+    if k.is_zero() || k >= secp_n() {
+        return None;
+    }
+    let p = host_mul(generator_xy(), &k)?;
+    let be = |v: &Secp256k1Fp| {
+        let b = fe_to_biguint_host(v).to_bytes_be();
+        let mut out = [0u8; 32];
+        out[32 - b.len()..].copy_from_slice(&b);
+        out
+    };
+    Some((be(&p.0), be(&p.1)))
+}
+
 pub fn secp_fq_from_secret_be(be: &[u8; 32]) -> Secp256k1Fq {
     let mut le = *be;
     le.reverse();
