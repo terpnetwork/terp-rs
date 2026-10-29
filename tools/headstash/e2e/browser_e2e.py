@@ -9,6 +9,7 @@ generates the notes file from the test EVM key, registers all notes, (test accep
 anchor), re-imports the notes file, claims every note, and the test checks balances.
 Test key is generated in memory by run_direct and passed to the browser only via stdin.
 """
+import re
 import base64, functools, hashlib, http.server, json, os, subprocess, sys, threading, time
 os.environ.setdefault("CUT_AHEAD", "7200")  # 43 browser proofs + rounds need > 600 blocks of claim window
 os.environ.setdefault("HSFE_ASSET_DIR", "/tmp/hsfe/prover")
@@ -127,8 +128,17 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         # replay: claim again from the same file must not mint (nullifier spent)
         c = browser("replay", {"url": url, "notes": os.path.join(work, "notes-after-register.json"), "out": os.path.join(work, "notes-replay.json"), "n": 1})
         tot2 = sum(bal(n["dest"]) for n in nf2.get("notes", []))
-        refused = c.get("log", "").count('fee grant refused: {"error":"nullifier"}')
-        rd.step("neg_replay_rejected_spent_nullifier", refused == len(st2), "%d/%d replays refused (nullifier spent)" % (refused, len(st2)))
+        rlog = c.get("log", ""); R["browser_replay_log"] = rlog[-20000:]; R["browser_replay"] = {k: c.get(k) for k in ("ok", "error", "counts")}
+        # per note outcome of the replay: must be refused by the relay, or rejected on chain as spent; never a code-0 claim
+        refused = len(re.findall(r"fee grant refused", rlog)); failed = len(re.findall(r"claim failed code [1-9]", rlog))
+        codes = []
+        for h in re.findall(r"claimed .*? tx ([0-9A-Fa-f]{64})", rlog):
+            tr = rd.requests.get(REST + "/cosmos/tx/v1beta1/txs/" + h, timeout=10).json().get("tx_response", {})
+            codes.append([tr.get("code"), (tr.get("raw_log") or "")[:160]])
+        R["replay_tx_codes"] = codes
+        oks = sum(1 for code, _ in codes if code == 0); rejected = refused + failed + sum(1 for code, _ in codes if code)
+        rd.step("neg_replay_rejected_spent_nullifier", rejected == len(st2) and oks == 0,
+                "%d/%d replays rejected (grant refused %d, tx failed %d, tx rejected-as-spent %d, tx ok %d)" % (rejected, len(st2), refused, failed, rejected - refused - failed, oks))
         rd.step("neg_replay_from_old_file_no_double_mint", tot2 == tot and tot > 0, "balances %d -> %d after re-claim attempt" % (tot, tot2))
     finally:
         srv.shutdown()
