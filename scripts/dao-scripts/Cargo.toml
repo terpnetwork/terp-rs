@@ -111,6 +111,10 @@ path = "src/bin/svg_ops.rs"
 name = "svg_curator"
 path = "src/bin/svg_curator.rs"
 
+[[bin]]
+name = "penumbra_ibc_transfer"
+path = "src/bin/penumbra_ibc_transfer.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 base64 = { workspace = true }
