@@ -100,6 +100,10 @@ mod test_vectors;
 mod orchard_delta_part_t;
 #[cfg(all(test, feature = "circuit", feature = "host-crypto", feature = "interface"))]
 mod snap_bench;
+#[cfg(all(test, feature = "circuit"))]
+mod lab_bench;
+#[cfg(all(feature = "circuit", feature = "host-crypto", feature = "std"))]
+pub mod blind_k19;
 pub mod tree;
 pub mod value;
 pub mod zip32;

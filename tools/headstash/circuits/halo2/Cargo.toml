@@ -42,7 +42,7 @@ fpe = { workspace = true, default-features = false, features = ["alloc"] }
 getset = { workspace = true }
 group = { workspace = true }
 halo2_gadgets  = { workspace = true, optional = true }
-halo2_proofs  = { workspace = true, optional = true, features = ["floor-planner-v1-legacy-pdqsort"] }
+halo2_proofs  = { workspace = true, optional = true }
 headstash-randomness  = { workspace = true }
 hex = { workspace = true }
 incrementalmerkletree = "0.8.1"

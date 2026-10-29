@@ -58,7 +58,7 @@ memuse      = "0.2"
 nonempty    = "0.10"
 num-bigint   = "0.4"
 num-traits   = "0.2"
-pasta_curves = { package = "zakura-pasta-curves", path = "../../../zakura-common/crates/pasta_curves", default-features = false, features = ["default"] }
+pasta_curves = { package = "zakura-pasta-curves", path = "../../../zakura-common/crates/pasta_curves", default-features = false, features = ["default", "bits"] }
 proptest    = ">=1.0.0, <1.7.0"
 prost       = "0.14.3"
 rand       = { version = "0.10", features = ["std", "sys_rng", "thread_rng"] }
