@@ -1,73 +1,114 @@
 [workspace]
 resolver = "2"
-exclude = [
-    "contracts/headstash/cw-headstash/scripts",
-    # Path-only crate (rand 0.8). Not a member; cargo fmt follows the path dep.
-    "crates/randomness",
-    # Own workspace. Cold signer; not part of the contract workspace graph.
-    "crates/zafu",
-    "tools/hash-market",
-    "tools/headstash",
-    "tools/svg-mint",
-]
+exclude = ["crates/randomness", "crates/zafu"]
 members = [
-    "crates/terp-oracle",
-    "crates/terp-oracle-derive",
     "contracts/accounts/ownership-verifier",
+    "contracts/accounts/ownership-verifier/e2e",
     "contracts/accounts/terp721-account",
     "contracts/accounts/terp721-account-manifold",
+    "contracts/accounts/terp721-account-manifold/e2e",
+    "contracts/accounts/terp721-account/e2e",
     "contracts/ave/cw-ave",
     "contracts/ave/cw-ave-factory",
+    "contracts/ave/cw-ave-factory/e2e",
+    "contracts/ave/cw-ave/e2e",
     "contracts/ave/cw420",
+    "contracts/ave/cw420/e2e",
     "contracts/cashu/cw-cashu-registry",
+    "contracts/cashu/cw-cashu-registry/e2e",
+    "contracts/hash-merchant/dex-quote-fixture",
     "contracts/hash-merchant/loyalty-verifier",
+    "contracts/hash-merchant/loyalty-verifier/e2e",
     "contracts/hash-merchant/marketplace-mirror",
+    "contracts/hash-merchant/marketplace-mirror/e2e",
     "contracts/hash-merchant/oracle-aggregator",
+    "contracts/hash-merchant/oracle-aggregator/e2e",
     "contracts/hash-merchant/oracle-registry",
+    "contracts/hash-merchant/oracle-registry/e2e",
     "contracts/hash-merchant/oracle-twap-probe",
+    "contracts/hash-merchant/oracle-twap-probe/e2e",
     "contracts/hash-merchant/trusted-builder-sbt",
+    "contracts/hash-merchant/trusted-builder-sbt/e2e",
     "contracts/headstash/cw-headstash",
     "contracts/headstash/cw-nullifier-auth",
+    "contracts/headstash/cw-nullifier-auth/e2e",
     "contracts/headstash/cw-nullifier-gate",
+    "contracts/headstash/cw-nullifier-gate/e2e",
     "contracts/headstash/cw-reg-eligibility",
+    "contracts/headstash/cw-reg-eligibility/e2e",
     "contracts/headstash/cw-vote-anchor",
+    "contracts/headstash/cw-vote-anchor/e2e",
     "contracts/headstash/cw-vote-ceremony",
+    "contracts/headstash/cw-vote-ceremony/e2e",
     "contracts/headstash/manifold",
+    "contracts/headstash/manifold/e2e",
     "contracts/headstash/no-rick",
+    "contracts/headstash/no-rick/e2e",
     "contracts/ibc/polytone-any-proxy",
+    "contracts/ibc/polytone-any-proxy/e2e",
     "contracts/infuser/cw-infuser",
+    "contracts/infuser/cw-infuser/e2e",
     "contracts/infuser/cw721-svg",
     "contracts/infuser/cw721-svg-minter",
+    "contracts/infuser/cw721-svg-minter/e2e",
+    "contracts/infuser/cw721-svg/e2e",
     "contracts/infuser/hm-nft-minter",
+    "contracts/infuser/hm-nft-minter/e2e",
     "contracts/infuser/svg-auction",
+    "contracts/infuser/svg-auction/e2e",
     "contracts/infuser/whitelist-merkletree",
+    "contracts/infuser/whitelist-merkletree/e2e",
     "contracts/light-clients/cw-ics08-wasm-crosslink",
+    "contracts/light-clients/cw-ics08-wasm-crosslink/e2e",
     "contracts/light-clients/cw-ics08-wasm-dregg",
+    "contracts/light-clients/cw-ics08-wasm-dregg/e2e",
     "contracts/light-clients/cw-ics08-wasm-terp",
+    "contracts/light-clients/cw-ics08-wasm-terp/e2e",
     "contracts/light-clients/cw-ics08-wasm-zap1",
+    "contracts/light-clients/cw-ics08-wasm-zap1/e2e",
     "contracts/light-clients/terp-iavl-lc",
     "contracts/nfts/nft-loan",
+    "contracts/nfts/nft-loan/e2e",
     "contracts/nfts/packages/randomness",
     "contracts/nfts/packages/utils",
     "contracts/nfts/raffle",
+    "contracts/nfts/raffle/e2e",
     "contracts/revenue/bounty-escrow",
+    "contracts/revenue/bounty-escrow/e2e",
     "contracts/revenue/marketplace",
+    "contracts/revenue/marketplace/e2e",
     "contracts/revenue/private-dex",
+    "contracts/revenue/private-dex/e2e",
     "contracts/revenue/reserve-auction",
+    "contracts/revenue/reserve-auction/e2e",
     "contracts/shitstrap/cw-shitstrap",
     "contracts/shitstrap/cw-shitstrap-factory",
+    "contracts/shitstrap/cw-shitstrap-factory/e2e",
+    "contracts/shitstrap/cw-shitstrap/e2e",
     "contracts/smart-accounts/terp-bls",
+    "contracts/smart-accounts/terp-bls/e2e",
     "contracts/smart-accounts/terp-dao",
+    "contracts/smart-accounts/terp-dao/e2e",
     "contracts/smart-accounts/terp-dregg",
+    "contracts/smart-accounts/terp-dregg/e2e",
     "contracts/smart-accounts/terp-ed25519",
+    "contracts/smart-accounts/terp-ed25519/e2e",
     "contracts/smart-accounts/terp-eth",
+    "contracts/smart-accounts/terp-eth/e2e",
     "contracts/smart-accounts/terp-frost",
+    "contracts/smart-accounts/terp-frost/e2e",
     "contracts/smart-accounts/terp-passkey",
+    "contracts/smart-accounts/terp-passkey/e2e",
     "contracts/smart-accounts/terp-recovery",
+    "contracts/smart-accounts/terp-recovery/e2e",
     "contracts/smart-accounts/terp-vsck",
+    "contracts/smart-accounts/terp-vsck/e2e",
     "contracts/smart-accounts/terp-zkjwt",
+    "contracts/smart-accounts/terp-zkjwt/e2e",
     "contracts/smart-accounts/terp-zktls",
+    "contracts/smart-accounts/terp-zktls/e2e",
     "contracts/zk/cw-zk-verify-demo",
+    "contracts/zk/cw-zk-verify-demo/e2e",
     "crates/av-event-helpers",
     "crates/crosslink/light-client",
     "crates/cw-infusions",
@@ -82,10 +123,11 @@ members = [
     "crates/svg-codec",
     "crates/terp-account",
     "crates/terp-auth",
+    "crates/terp-oracle",
+    "crates/terp-oracle-derive",
     "crates/terp-seams",
     "proto",
     "scripts/cw-infuser",
-    "tools/svg-collections",
     "scripts/dao-scripts",
     "scripts/headstash/eth-pubkeys",
     "tests",
@@ -93,58 +135,18 @@ members = [
     "tests/suite/ipa-params",
     "tests/suite/terp-authenticator-suite",
     "tests/suite/terp-orch",
-    "contracts/ave/cw420/e2e",
-    "contracts/ave/cw-ave-factory/e2e",
-    "contracts/shitstrap/cw-shitstrap/e2e",
-    "contracts/shitstrap/cw-shitstrap-factory/e2e",
-    "contracts/nfts/raffle/e2e",
-    "contracts/nfts/nft-loan/e2e",
-    "contracts/revenue/marketplace/e2e",
-    "contracts/revenue/reserve-auction/e2e",
-    "contracts/revenue/bounty-escrow/e2e",
-    "contracts/revenue/private-dex/e2e",
-    "contracts/headstash/manifold/e2e",
-    "contracts/headstash/no-rick/e2e",
-    "contracts/headstash/cw-nullifier-auth/e2e",
-    "contracts/headstash/cw-nullifier-gate/e2e",
-    "contracts/headstash/cw-vote-anchor/e2e",
-    "contracts/headstash/cw-vote-ceremony/e2e",
-    "contracts/headstash/cw-reg-eligibility/e2e",
-    "contracts/infuser/svg-auction/e2e",
-    "contracts/hash-merchant/oracle-aggregator/e2e",
-    "contracts/hash-merchant/oracle-twap-probe/e2e",
-    "contracts/hash-merchant/oracle-registry/e2e",
-    "contracts/hash-merchant/marketplace-mirror/e2e",
-    "contracts/hash-merchant/loyalty-verifier/e2e",
-    "contracts/hash-merchant/trusted-builder-sbt/e2e",
-    "contracts/cashu/cw-cashu-registry/e2e",
-    "contracts/infuser/hm-nft-minter/e2e",
-    "contracts/infuser/cw-infuser/e2e",
-    "contracts/infuser/cw721-svg/e2e",
-    "contracts/infuser/cw721-svg-minter/e2e",
-    "contracts/infuser/whitelist-merkletree/e2e",
-    "contracts/smart-accounts/terp-dao/e2e",
-    "contracts/smart-accounts/terp-dregg/e2e",
-    "contracts/smart-accounts/terp-frost/e2e",
-    "contracts/smart-accounts/terp-bls/e2e",
-    "contracts/smart-accounts/terp-zktls/e2e",
-    "contracts/ibc/polytone-any-proxy/e2e",
-    "contracts/light-clients/cw-ics08-wasm-crosslink/e2e",
-    "contracts/light-clients/cw-ics08-wasm-dregg/e2e",
-    "contracts/light-clients/cw-ics08-wasm-terp/e2e",
-    "contracts/light-clients/cw-ics08-wasm-zap1/e2e",
-    "contracts/zk/cw-zk-verify-demo/e2e",
-    "contracts/smart-accounts/terp-passkey/e2e",
-    "contracts/smart-accounts/terp-recovery/e2e",
-    "contracts/smart-accounts/terp-ed25519/e2e",
-    "contracts/smart-accounts/terp-eth/e2e",
-    "contracts/smart-accounts/terp-zkjwt/e2e",
-    "contracts/smart-accounts/terp-vsck/e2e",
-    "contracts/accounts/terp721-account/e2e",
-    "contracts/accounts/terp721-account-manifold/e2e",
-    "contracts/accounts/ownership-verifier/e2e",
-    "contracts/ave/cw-ave/e2e",
     "tools/gen-tools",
+    "tools/gen-tools/gen-api",
+    "tools/hash-market",
+    "tools/headstash/circuits/claim-flock",
+    "tools/headstash/circuits/halo2",
+    "tools/headstash/test-press",
+    "tools/headstash/wire",
+    "tools/svg-collections",
+    "tools/svg-mint/crates/cw-dregg-svg-gate",
+    "tools/svg-mint/crates/dregg",
+    "tools/svg-mint/crates/svg-mint-fed",
+    "tools/svg-mint/crates/svg-mint-zrt",
 ]
 
 [workspace.package]
@@ -170,19 +172,27 @@ keywords = [
 [workspace.dependencies]
 abstract-interface = { version = "0.26.1" }
 abstract-std = { version = "0.26.1" }
+
+# tools/headstash and tools/svg-mint, now root members.
+aes = "0.8"
 alloy-consensus = { path = "../alloy/crates/consensus", default-features = false }
 alloy-primitives = { version = "1.2.0", default-features = false }
 alloy-rpc-types-eth = { path = "../alloy/crates/rpc-types-eth", default-features = false }
+anybuf = "0.5"
 anyhow = "1"
 ark-bls12-381 = "0.5.0"
 ark-ec = "0.5.0"
 ark-ff = "0.5.0"
 ark-serialize = "0.5.0"
+async-trait = "0.1"
 av-event-helpers = { path = "crates/av-event-helpers" }
 axum = { version = "0.7", default-features = false }
 base64 = "0.22"
 bech32 = { version = "0.11.0", default-features = false }
+bip39 = { version = "2", default-features = false, features = ["std"] }
+bitvec = { version = "1", default-features = false }
 blake2 = "0.10"
+blake2b_simd = { version = "1", default-features = false }
 blake3 = "1.8.3"
 byteorder = "1.5.0"
 bytes = "1.11.1"
@@ -190,13 +200,15 @@ chacha20 = "0.9"
 chacha20poly1305 = "0.10"
 clap = "4"
 constant_time_eq = "0.3"
+core3 = { version = "0.1", default-features = false }
 cosmos-sdk-proto = { version = "0.28.0", default-features = false }
 cosmrs = { version = "0.23.0", default-features = false }
-cosmwasm-crypto = { version = "=4.0.0-zk" }
-cosmwasm-schema = { version = "=4.0.0-zk" }
-cosmwasm-std = { version = "=4.0.0-zk", default-features = false, features = ["exports", "iterator", "std"] }
-cosmwasm-vm = { version = "=4.0.0-zk", default-features = false }
+cosmwasm-crypto = { version = "=4.1.0" }
+cosmwasm-schema = { version = "=4.1.0" }
+cosmwasm-std = { version = "=4.1.0", default-features = false, features = ["exports", "iterator", "std"] }
+cosmwasm-vm = { version = "=4.1.0", default-features = false }
 crosslink-light-client = { path = "crates/crosslink/light-client", default-features = false }
+curve25519-dalek = "3.2"
 cw-admin-factory = { version = "=2.9.0-delta.9" }
 cw-ave = { path = "contracts/ave/cw-ave" }
 cw-ave-factory = { path = "contracts/ave/cw-ave-factory" }
@@ -255,6 +267,7 @@ cw4-group = { version = "3.0.0" }
 cw420 = { path = "contracts/ave/cw420" }
 cw721 = { version = "0.22.0" }
 cw721-base = { version = "0.22.0" }
+cw721-nips = { path = "crates/nips" }
 cw721-svg = { path = "contracts/infuser/cw721-svg" }
 dao-cw-orch = { version = "=2.9.0-delta.9" }
 dao-cw721-extensions = { version = "=2.9.0-delta.9" }
@@ -275,17 +288,29 @@ dao-voting-cw721-roles = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-staked = { version = "=2.9.0-delta.9" }
 digest = { version = "0.10", default-features = false }
 dotenv = "0.15"
+dregg = { path = "tools/svg-mint/crates/dregg" }
 easy-addr = { path = "crates/easy-addr" }
 ecdsa = "0.16"
+ed25519-dalek = { version = "1.0.1", features = ["std"] }
 ed25519-zebra = { version = "4.2", default-features = false }
 env_logger = { version = "0.11", default-features = false }
 ff = "0.14"
+fpe = { version = "0.6", default-features = false }
+frost-ed25519 = { version = "2.2", default-features = false }
+frost_escrow = { path = "crates/frost_escrow" }
+futures-util = { version = "0.3", default-features = false }
 gauge-adapter = { version = "=2.9.0-delta.9" }
 gauge-orchestrator = { version = "=2.9.0-delta.9" }
+gen-tools = { path = "tools/gen-tools" }
 getrandom = { version = "0.2", default-features = false }
+getset = "0.1"
+glob = "0.3"
 group = "0.14"
+halo2-base = { version = "0.4.1" }
+halo2_gadgets = { package = "zakura-halo2-gadgets", version = "=1.3.0-alpha.1", default-features = false }
 halo2_proofs = { package = "zakura-halo2-proofs", version = "=1.3.0-alpha.1", default-features = false, features = ["batch"] }
-hash-market = { path = "tools/hash-market" }
+hash-market = { path = "tools/hash-market", default-features = false }
+headstash-randomness = { version = "0.1.0" }
 hex = { version = "0.4", default-features = false }
 hkdf = "0.12"
 hm-loyalty-whitelist = { path = "crates/hm-loyalty-whitelist" }
@@ -296,47 +321,73 @@ ibc-proto = { version = "0.52.0", default-features = false }
 ics23 = { version = "0.12.0", default-features = false }
 ict-rs = { path = "../ict-rs/ict-rs", default-features = false }
 ict-rs-cw-orch = { path = "../ict-rs/ict-rs-cw-orch" }
+incrementalmerkletree = "0.8.1"
+bincode = "1.3"
+flock-core = { path = "../flock/crates/flock-core" }
+flock-hash = { path = "../flock/crates/flock-hash" }
+flock-prover = { path = "../flock/crates/flock-prover" }
+headstash-wire = { path = "tools/headstash/wire" }
 k256 = { version = "0.13", default-features = false }
 kms-shard = { path = "../kms-shard" }
+lazy_static = "1"
+log = "0.4"
 lol_alloc = "0.4.1"
 loyalty-verifier = { path = "contracts/hash-merchant/loyalty-verifier", default-features = false }
 marketplace-mirror = { path = "contracts/hash-merchant/marketplace-mirror", default-features = false }
+memuse = { version = "0.2", default-features = false }
 mtree-tooling = { path = "crates/mtree-tooling" }
 nftfi-loan = { path = "contracts/nfts/nft-loan" }
 nftfi-raffle = { path = "contracts/nfts/raffle" }
 nftfi-randomness = { path = "contracts/nfts/packages/randomness" }
 nftfi-utils = { path = "contracts/nfts/packages/utils" }
+nonempty = { version = "0.10", default-features = false }
+num-bigint = "0.4"
+num-traits = "0.2"
+orchard = { version = "0.16", default-features = false }
+osmosis-std = { version = "0.26.0" }
 osst = { version = "0.1.1", default-features = false }
 ownership-verifier = { path = "contracts/accounts/ownership-verifier" }
 p256 = { version = "0.13", default-features = false }
 pasta_curves = { package = "zakura-pasta-curves", version = "=1.3.0-alpha.1", default-features = false, features = ["default"] }
+pathdiff = "0.2"
 pbjson-types = "0.9"
 polytone-any-proxy = { path = "contracts/ibc/polytone-any-proxy", default-features = false }
-terp-oracle = { path = "crates/terp-oracle" }
-terp-oracle-derive = { path = "crates/terp-oracle-derive" }
 proc-macro2 = "1"
+proptest = ">=1.0.0, <1.7.0"
 prost = { version = "0.14", default-features = false, features = ["derive"] }
+prost-types = "0.14"
 pyo3 = "0.24"
 quote = "1"
 rand = { version = "0.9", default-features = false }
+rand010 = { package = "rand", version = "0.10", default-features = false }
 rand08 = { package = "rand", version = "0.8", features = ["std", "std_rng"] }
 rand_core = "0.10"
 rand_core06 = { package = "rand_core", version = "0.6", default-features = false }
 rand_xoshiro = { version = "0.6.0", default-features = false }
+rayon = "1"
+reddsa = { package = "zakura-reddsa", version = "=1.3.0-alpha.1", default-features = false, features = ["std"] }
+regex = "1"
 reqwest = { version = "0.12", default-features = false }
 revenue-marketplace = { path = "contracts/revenue/marketplace" }
 revenue-reserve-auction = { path = "contracts/revenue/reserve-auction" }
 ripemd = { version = "0.1.3", default-features = false }
 rs_merkle = { version = "1.4.1", default-features = false }
+rusqlite = { version = "0.31", features = ["bundled"] }
 rstest = "0.23"
 rustls = { version = "0.23", default-features = false }
 schemars = "0.8"
+secp256k1 = "0.31"
 semver = "1"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false }
+serde_yaml = "0.9"
 sha2 = { version = "0.10.8", default-features = false }
 sha3 = "0.10"
+shardtree = "0.6"
 shuffle = { git = "https://github.com/webmaster128/shuffle", branch = "rm-getrandom", version = "0.1.7" }
+sinsemilla = { package = "zakura-sinsemilla", version = "=1.3.0-alpha.1", default-features = false }
+snow = "0.9"
+subtle = { version = "2", default-features = false }
 svg-auction = { path = "contracts/infuser/svg-auction" }
 syn = "1.0.6"
 terp-account = { path = "crates/terp-account" }
@@ -350,6 +401,8 @@ terp-ed25519 = { path = "contracts/smart-accounts/terp-ed25519" }
 terp-eth = { path = "contracts/smart-accounts/terp-eth" }
 terp-frost = { path = "contracts/smart-accounts/terp-frost", default-features = false }
 terp-iavl-lc = { path = "contracts/light-clients/terp-iavl-lc" }
+terp-oracle = { path = "crates/terp-oracle" }
+terp-oracle-derive = { path = "crates/terp-oracle-derive" }
 terp-orch = { path = "tests/suite/terp-orch" }
 terp-passkey = { path = "contracts/smart-accounts/terp-passkey" }
 terp-recovery = { path = "contracts/smart-accounts/terp-recovery" }
@@ -359,21 +412,43 @@ terp-seams = { path = "crates/terp-seams" }
 terp-vsck = { path = "contracts/smart-accounts/terp-vsck" }
 terp-zkjwt = { path = "contracts/smart-accounts/terp-zkjwt" }
 terp-zktls = { path = "contracts/smart-accounts/terp-zktls", default-features = false }
+tempfile = "3"
+tera = "1"
 terp721-account = { path = "contracts/accounts/terp721-account" }
 terp721-account-manifold = { path = "contracts/accounts/terp721-account-manifold" }
 thiserror = { version = "2.0", default-features = false }
+threshold_committee = { path = "crates/threshold_committee" }
+tiny-keccak = { version = "2", features = ["keccak"] }
+tokio = { version = "1", default-features = false }
+tokio-tungstenite = { version = "0.24", default-features = false }
+toml = "0.8"
 tonic = "0.14"
 tonic-prost = "0.14.4"
+tower = { version = "0.5", default-features = false }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 trusted-builder-sbt = { path = "contracts/hash-merchant/trusted-builder-sbt", default-features = false }
 url = "2.2.2"
+visibility = "0.1"
+walkdir = "2"
 whitelist-mtree = { path = "contracts/infuser/whitelist-merkletree" }
+zakura-halo2-gadgets = { package = "zakura-halo2-gadgets", path = "../zakura-common/crates/halo2_gadgets", default-features = false }
+zakura-halo2-proofs = { package = "zakura-halo2-proofs", path = "../zakura-common/crates/halo2_proofs", default-features = false }
+zakura-pasta-curves = { package = "zakura-pasta-curves", path = "../zakura-common/crates/pasta_curves", default-features = false }
 zap1-verify = "0.2.1"
+zcash_address = { version = "0.13", default-features = false }
+zcash_note_encryption = { version = "0.4", features = ["pre-zip-212"] }
+zcash_protocol = { version = "0.10", default-features = false }
+zcash_spec = "0.2"
 zebra-chain = { version = "10.0.0" }
 zebra-crosslink = { version = "=1.0.0-beta.46" }
-zk-cosmwasm = { version = "=4.0.0-zk", default-features = false }
+zip32 = { version = "0.2", default-features = false }
+zip3203 = { package = "zip32", version = "0.3", default-features = false }
+zk-cosmwasm = { version = "=4.1.0", default-features = false }
 zk-headstash = { path = "tools/headstash/circuits/halo2", default-features = false, features = ["circuit", "std"] }
 
 zk-test-press = { path = "tools/headstash/test-press" }
+
 [patch.crates-io]
 cosmwasm-core = { path = "../cosmwasm/packages/core" }
 cosmwasm-crypto = { path = "../cosmwasm/packages/crypto" }
