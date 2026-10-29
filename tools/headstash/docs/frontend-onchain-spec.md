@@ -229,3 +229,20 @@ Headless e2e (`e2e/browser_e2e.py` + `browser_e2e.mjs`, Playwright 1.49 / chromi
 - Full browser e2e on a fresh chain (RESET=1 bootstrap with OWNER_UTERP raised and REST_CORS=1; campaign funded to the owed 200011.5 TERP; CUT_AHEAD=7200). Each run: 29/29 PASS; 43/43 registered; 43/43 claimed with exact balances (200008 TERP); 43/43 old-file replays refused (spent nullifier); no extra mint.
   - Unoptimized prover: prove 3211/3224/3305 ms (min/median/max), claim phase 262.3 s, page load 216 ms.
   - -Oz prover: prove 3200/3215/3340 ms, claim phase 265.0 s, page load 212 ms. Proof time is unchanged within noise; the gain is download size.
+
+### 11.x Reproducible prover build (`scripts/build-browser-prover.sh`)
+`tools/headstash/scripts/build-browser-prover.sh [DEST|-]` is the one way to produce the page's prover (`zk_headstash.js` + `zk_headstash_bg.wasm`):
+1. `cargo build --release --lib --target wasm32-unknown-unknown -p zk-headstash --no-default-features --features browser` with `--cfg getrandom_backend="wasm_js"`. Cargo resolves into a scratch copy of `tools/headstash/Cargo.lock` (`resolver.lockfile-path`), so the committed lock is never rewritten; the resolved lock's sha256 is printed.
+2. `wasm-bindgen --target web --out-name zk_headstash`. The CLI version must equal the `wasm-bindgen` crate in the resolved lock (checked; currently 0.2.122). Override with `WASM_BINDGEN=`.
+3. binaryen **wasm-opt 132** from npm, pinned in `scripts/wasm-opt/package-lock.json` (`binaryen@132.0.0`, integrity `sha512-4Usg7yEvwO3FMso3Oov6qkOOHSod1IEv+boKkh77kTljM+eNBouqCTbqWswGzbG+vDNO/b/v2C4gfEh1WgB9Lg==`; `npm ci` refuses a mismatch, the script also checks `--version`). Flags: `-Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --enable-reference-types --enable-multivalue`.
+4. Prints raw and `gzip -9n` sizes and sha256 for both files.
+
+Reproducibility check (groot-wan, 2026-10-29, rustc 1.98.0-nightly 61d7280f3, resolved lock 852dac3e…): two builds from empty target dirs gave byte-identical output.
+
+| file | raw B | raw sha256 | gzip B | gzip sha256 |
+|---|---|---|---|---|
+| zk_headstash_bg.wasm before wasm-opt | 3613365 | e72078d7d76fef12212c3429fe8adcb0828e6c8cd02e4ecd1e835a14336b1862 | 697105 | 284f6809… |
+| **zk_headstash_bg.wasm (-Oz)** | **1801693** | **2774af96737a634bf979ff21389144bd94119f48213128213e9df1bfe21c5f18** | 642593 | a9b1bb2321bda1f320fbeffbc2ca36e84f441a2f4b28bc6abb6a1d731ad5e89f |
+| zk_headstash.js | 12777 | 7993da8952cb3a28c69627f3118de051f8a90253c716a1f571475654db8d6564 | 3005 | dfd6812d… |
+
+This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because that one came from a flattened scratch workspace with wasm-bindgen 0.2.127; the repo workspace resolves wasm-bindgen 0.2.122. The repo-built 2774af96… prover is the one used by the gov-session dry run (§12).
