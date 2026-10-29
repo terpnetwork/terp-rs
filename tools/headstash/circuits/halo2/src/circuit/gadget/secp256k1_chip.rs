@@ -468,919 +468,696 @@ pub fn modulus_simple_secp_fp() -> BigUint {
 // FpConfig — configuration for foreign field arithmetic
 // ============================================================================
 
-/// Configuration for foreign prime field arithmetic with custom gates.
+/// TEST-ONLY adversarial witness hooks for the sound foreign-field chip. A malicious prover can
+/// witness anything; these flip one witness so the negative tests can show the gates reject it.
+#[cfg(test)]
+pub mod forge {
+    use core::sync::atomic::{AtomicU8, Ordering};
+    pub const NONE: u8 = 0;
+    /// `add` output + 1 (identity broken)
+    pub const ADD_OUT: u8 = 1;
+    /// `sub` output forced to 0 (the old forgery)
+    pub const SUB_OUT: u8 = 2;
+    /// `mul` output + 1 (identity broken)
+    pub const MUL_OUT: u8 = 3;
+    /// `mul` quotient limb 0 += 2^70, limb 1 -= 2^6 (integer identity kept, limb out of range)
+    pub const MUL_Q_RANGE: u8 = 4;
+    /// `mul` output limb 0 += 2^64, limb 1 -= 1 (integer identity kept, r limb out of range)
+    pub const MUL_R_RANGE: u8 = 5;
+    /// pinned constants witnessed with limb 0 + 1 (copy of the constant differs from the fixed value)
+    pub const CONST: u8 = 6;
+    /// secret key witnessed as sk + n (same point, different integer / nullifier)
+    pub const SK_PLUS_N: u8 = 7;
+    /// GLV split witnessed with k1.mag + 1
+    pub const GLV_K1: u8 = 8;
+    /// one-shot sub forgery used only by `enforce_equal` (the original FORGE_EQ attack)
+    pub const EQ_SUB: u8 = 9;
+    pub static MODE: AtomicU8 = AtomicU8::new(NONE);
+    pub fn set(m: u8) {
+        MODE.store(m, Ordering::SeqCst)
+    }
+    pub fn is(m: u8) -> bool {
+        MODE.load(Ordering::SeqCst) == m
+    }
+}
+#[cfg(not(test))]
+#[allow(dead_code)]
+pub(crate) mod forge {
+    pub const ADD_OUT: u8 = 1;
+    pub const SUB_OUT: u8 = 2;
+    pub const MUL_OUT: u8 = 3;
+    pub const MUL_Q_RANGE: u8 = 4;
+    pub const MUL_R_RANGE: u8 = 5;
+    pub const CONST: u8 = 6;
+    pub const SK_PLUS_N: u8 = 7;
+    pub const GLV_K1: u8 = 8;
+    pub const EQ_SUB: u8 = 9;
+    #[inline(always)]
+    pub fn is(_m: u8) -> bool {
+        false
+    }
+}
+
 /// Lab switch: use the revived Montgomery ladder instead of GLV in `prove_key_pairing`.
 pub static KEYPAIR_LADDER: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
-/// TEST-ONLY adversarial hook: a malicious prover may witness ANY range-valid `sub` output,
-/// because `FpChip::sub`/`add` only range-check their result. Used by the forgery test.
+/// Kept for the old test name; now maps onto `forge::EQ_SUB`.
 #[cfg(test)]
-pub static FORGE_EQ: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+#[derive(Debug)] pub struct ForgeEqCompat;
 #[cfg(test)]
-pub static FORGE_SUB: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+impl ForgeEqCompat {
+    pub fn store(&self, v: bool, _o: core::sync::atomic::Ordering) {
+        forge::set(if v { forge::EQ_SUB } else { 0 })
+    }
+}
+#[cfg(test)]
+pub static FORGE_EQ: ForgeEqCompat = ForgeEqCompat;
+
+// ============================================================================
+// Sound foreign-field arithmetic (CRT limbs, carries checked per limb)
+// ============================================================================
+//
+// Representation: x = Σ x_i·2^(64 i), i = 0..3, every limb range-checked to [0, 2^64) by the
+// 10-bit lookup (6 words + a 4-bit short check on the residual running sum). The native cell
+// is constrained to Σ x_i·2^(64 i) mod r (r = Pallas base modulus) in the same gate that
+// produces the limbs, so `to_native` is bound to the limbs.
+//
+// mul:  a·b = q·p + r over the integers. With t_k = Σ_{i+j=k}(a_i b_j - q_i p_j) - r_k
+//       (r_k = 0 for k ≥ 4), the gate checks, for k = 0..6,
+//           t_k + c_{k-1} = c_k·2^64,   c_{-1} = 0, c_6 = 0,
+//       with carries c_k = c'_k - 2^79, c'_k ∈ [0, 2^80) (8 lookup words, strict), q_i ∈ [0, 2^70)
+//       (7 words, strict), r_i ∈ [0, 2^64). |t_k| < 4·2^128 + 4·2^134 + 2^64 < 2^137 and
+//       |c_k·2^64| < 2^143, so every per-limb equation is < 2^144 ≪ r ≈ 2^254 in absolute
+//       value: it holds over Z, and telescoping gives Σ t_k 2^(64k) = 0 over Z, i.e. a·b = q·p + r.
+//       The gate also checks a·b - q·p - r ≡ 0 (mod r) on the recomposed natives (redundant).
+// add:  a + b = q·p + r, q ∈ {0,1}; sub: a - b + q·p = r, q ∈ {0,1}; carries c_k ∈ {-1,0,1},
+//       c_3 = 0. Per-limb terms < 2^66.
+// lt:   a < m (m = p or n): a + d = m - 1 over Z with d limbs range-checked, boolean carries.
+// select: r_i = b_i + c·(a_i - b_i), c boolean, on limbs and native.
 
 #[derive(Clone, Debug)]
 pub struct FpConfig {
-    /// 9 advice columns (2*NUM_LIMBS + 1)
     pub advices: [Column<Advice>; 9],
-    /// Selector for foreign multiplication gate (native check)
+    pub q_compose: Selector,
     pub q_mul: Selector,
-    /// Selector for foreign multiplication gate (auxiliary check)
-    pub q_mul_aux: Selector,
-    /// Selector for normalization gate
-    pub q_normalize: Selector,
-    /// Range check configuration (10-bit, shared with rest of circuit)
+    pub q_add: Selector,
+    pub q_sub: Selector,
+    pub q_lt: Selector,
+    pub q_select: Selector,
     pub range_check: LookupRangeCheckConfig<pallas::Base, 10>,
+    pub modulus: BigUint,
+}
+
+const CARRY_OFFSET_BITS: usize = 79;
+const CARRY_RC_WORDS: usize = 8; // 80 bits
+const Q_RC_WORDS: usize = 7; // 70 bits
+
+fn fe_big(v: &BigUint) -> pallas::Base {
+    biguint_to_fe_simple(&(v % modulus_simple_pallas()))
+}
+fn fe_int(v: &BigInt) -> pallas::Base {
+    let m = BigInt::from(modulus_simple_pallas());
+    let r = ((v % &m) + &m) % &m;
+    biguint_to_fe_simple(&r.to_biguint().unwrap())
+}
+fn floor_div64(t: &BigInt) -> BigInt {
+    let d = BigInt::one() << 64usize;
+    let q = t / &d;
+    if t < &BigInt::zero() && (&q * &d) != *t { q - 1 } else { q }
+}
+fn limbs4(v: &BigUint) -> [BigUint; 4] {
+    let mask = (BigUint::one() << 64usize) - 1u32;
+    core::array::from_fn(|i| (v >> (64 * i)) & &mask)
 }
 
 impl FpConfig {
-    /// Configure the foreign field chip with custom gates.
-    ///
-    /// Gate layout for `foreign_mul` (3 rows):
-    /// Row 0: x[0], x[1], x[2], x[3], z[0], z[1], z[2], z[3], u
-    /// Row 1: y[0], y[1], y[2], y[3], (reserved for carries/overflow)
-    /// Row 2: (range check witness cells)
-    ///
-    /// The native check enforces:
-    ///   Σ_{i,j} c[i+j]*x_i*y_j - Σ_i c[i]*z_i - u*q_native ≡ 0 (mod p_native)
-    ///
-    /// The auxiliary check (mod 2^128) enforces a similar identity with
-    /// coefficients reduced mod 2^128.
     pub fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 9],
         range_check: LookupRangeCheckConfig<pallas::Base, 10>,
-        c_coeffs: [pallas::Base; 7],
-        q_native: pallas::Base, // foreign modulus mod pallas modulus
+        _c_coeffs: [pallas::Base; 7],
+        _q_native: pallas::Base,
+        modulus: BigUint,
     ) -> Self {
+        for a in advices.iter() {
+            meta.enable_equality(*a);
+        }
+        let q_compose = meta.selector();
         let q_mul = meta.selector();
-        let q_mul_aux = meta.selector();
-        let q_normalize = meta.selector();
+        let q_add = meta.selector();
+        let q_sub = meta.selector();
+        let q_lt = meta.selector();
+        let q_select = meta.selector();
+        let c = |v: pallas::Base| Expression::Constant(v);
+        let bk: [pallas::Base; 4] =
+            core::array::from_fn(|i| fe_big(&(BigUint::one() << (64 * i))));
+        let b64 = fe_big(&(BigUint::one() << 64usize));
+        let p_limbs: [pallas::Base; 4] = limbs4(&modulus).map(|l| fe_big(&l));
+        let p_native = fe_big(&modulus);
+        let m1_limbs: [pallas::Base; 4] = limbs4(&(&modulus - 1u32)).map(|l| fe_big(&l));
+        let off = fe_big(&(BigUint::one() << CARRY_OFFSET_BITS));
+        let recompose = |l: &[Expression<pallas::Base>]| {
+            l.iter()
+                .zip(bk.iter())
+                .fold(c(pallas::Base::ZERO), |acc, (x, b)| acc + x.clone() * c(*b))
+        };
 
-        for advice in advices.iter() {
-            meta.enable_equality(*advice);
-        }
+        meta.create_gate("ff compose", |meta| {
+            let s = meta.query_selector(q_compose);
+            let l: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::cur())).collect();
+            let n = meta.query_advice(advices[4], Rotation::cur());
+            vec![s * (n - recompose(&l))]
+        });
 
-        // ── foreign_mul native check ──
-        // Row 0 layout: [x0, x1, x2, x3, z0, z1, z2, z3, u]
-        // Row 1 layout: [y0, y1, y2, y3, ...]
-        //
-        // Identity: Σ_{i,j} c[i+j]*x_i*y_j - Σ_i c[i]*z_i - u*q_native = 0
-        meta.create_gate("foreign_mul_native", |meta| {
-            let sel = meta.query_selector(q_mul);
-
-            // Query x limbs from row 0, columns 0..3
-            let x: Vec<Expression<pallas::Base>> = (0..4)
-                .map(|i| meta.query_advice(advices[i], Rotation::cur()))
+        meta.create_gate("ff mul", |meta| {
+            let s = meta.query_selector(q_mul);
+            let a: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::cur())).collect();
+            let b: Vec<_> = (0..4).map(|i| meta.query_advice(advices[4 + i], Rotation::cur())).collect();
+            let q: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::next())).collect();
+            let r: Vec<_> = (0..4).map(|i| meta.query_advice(advices[4 + i], Rotation::next())).collect();
+            let rn = meta.query_advice(advices[8], Rotation::next());
+            let cr: Vec<_> = (0..6)
+                .map(|i| meta.query_advice(advices[i], Rotation(2)) - c(off))
                 .collect();
-            // Query y limbs from row 1, columns 0..3
-            let y: Vec<Expression<pallas::Base>> = (0..4)
-                .map(|i| meta.query_advice(advices[i], Rotation::next()))
-                .collect();
-            // Query z limbs from row 0, columns 4..7
-            let z: Vec<Expression<pallas::Base>> = (0..4)
-                .map(|i| meta.query_advice(advices[4 + i], Rotation::cur()))
-                .collect();
-            // Query u (quotient) from row 0, column 8
-            let u = meta.query_advice(advices[8], Rotation::cur());
-
-            // Compute Σ_{i,j} c[i+j]*x_i*y_j
-            let mut cross_sum = Expression::Constant(pallas::Base::ZERO);
-            for i in 0..4 {
-                for j in 0..4 {
-                    let c_ij = Expression::Constant(c_coeffs[i + j]);
-                    cross_sum = cross_sum + c_ij * x[i].clone() * y[j].clone();
+            let mut out = Vec::new();
+            for k in 0..7 {
+                let mut t = c(pallas::Base::ZERO);
+                for i in 0..4 {
+                    if k >= i && k - i < 4 {
+                        let j = k - i;
+                        t = t + a[i].clone() * b[j].clone() - q[i].clone() * c(p_limbs[j]);
+                    }
                 }
+                if k < 4 {
+                    t = t - r[k].clone();
+                }
+                if k > 0 {
+                    t = t + cr[k - 1].clone();
+                }
+                if k < 6 {
+                    t = t - cr[k].clone() * c(b64);
+                }
+                out.push(s.clone() * t);
             }
-
-            // Compute Σ_i c[i]*z_i
-            let mut z_sum = Expression::Constant(pallas::Base::ZERO);
-            for i in 0..4 {
-                let c_i = Expression::Constant(c_coeffs[i]);
-                z_sum = z_sum + c_i * z[i].clone();
-            }
-
-            // u * q_native
-            let u_q = u * Expression::Constant(q_native);
-
-            // Full identity: cross_sum - z_sum - u_q = 0
-            vec![sel * (cross_sum - z_sum - u_q)]
+            // redundant native-modulus check and binding of r's native cell
+            out.push(
+                s.clone()
+                    * (recompose(&a) * recompose(&b) - recompose(&q) * c(p_native) - rn.clone()),
+            );
+            out.push(s * (rn - recompose(&r)));
+            out
         });
 
-        // ── normalize gate ──
-        // Reduces limbs back to canonical form [0, B).
-        // Row 0: [x0, x1, x2, x3, z0, z1, z2, z3, k]
-        // Identity: Σ_i c[i]*x_i - Σ_i c[i]*z_i - k*q_native = 0
-        meta.create_gate("normalize", |meta| {
-            let sel = meta.query_selector(q_normalize);
-
-            let x: Vec<Expression<pallas::Base>> = (0..4)
-                .map(|i| meta.query_advice(advices[i], Rotation::cur()))
-                .collect();
-            let z: Vec<Expression<pallas::Base>> = (0..4)
-                .map(|i| meta.query_advice(advices[4 + i], Rotation::cur()))
-                .collect();
-            let k = meta.query_advice(advices[8], Rotation::cur());
-
-            let mut x_sum = Expression::Constant(pallas::Base::ZERO);
-            let mut z_sum = Expression::Constant(pallas::Base::ZERO);
-            for i in 0..4 {
-                let c_i = Expression::Constant(c_coeffs[i]);
-                x_sum = x_sum + c_i.clone() * x[i].clone();
-                z_sum = z_sum + c_i * z[i].clone();
-            }
-
-            let k_q = k * Expression::Constant(q_native);
-
-            vec![sel * (x_sum - z_sum - k_q)]
-        });
-
-        Self {
-            advices,
-            q_mul,
-            q_mul_aux,
-            q_normalize,
-            range_check,
+        for (name, sel, sign) in [("ff add", q_add, false), ("ff sub", q_sub, true)] {
+            meta.create_gate(name, |meta| {
+                let s = meta.query_selector(sel);
+                let a: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::cur())).collect();
+                let b: Vec<_> = (0..4).map(|i| meta.query_advice(advices[4 + i], Rotation::cur())).collect();
+                let qb = meta.query_advice(advices[8], Rotation::cur());
+                let r: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::next())).collect();
+                let cr: Vec<_> = (0..3)
+                    .map(|i| meta.query_advice(advices[4 + i], Rotation::next()))
+                    .collect();
+                let rn = meta.query_advice(advices[8], Rotation::next());
+                let one = c(pallas::Base::ONE);
+                let mut out = vec![s.clone() * qb.clone() * (qb.clone() - one.clone())];
+                for k in 0..3 {
+                    out.push(
+                        s.clone()
+                            * cr[k].clone()
+                            * (cr[k].clone() - one.clone())
+                            * (cr[k].clone() - c(pallas::Base::from(2))),
+                    );
+                }
+                for k in 0..4 {
+                    // add: a + b - q p - r ; sub: a - b + q p - r
+                    let mut t = if sign {
+                        a[k].clone() - b[k].clone() + qb.clone() * c(p_limbs[k]) - r[k].clone()
+                    } else {
+                        a[k].clone() + b[k].clone() - qb.clone() * c(p_limbs[k]) - r[k].clone()
+                    };
+                    if k > 0 {
+                        t = t + cr[k - 1].clone() - one.clone();
+                    }
+                    if k < 3 {
+                        t = t - (cr[k].clone() - one.clone()) * c(b64);
+                    }
+                    out.push(s.clone() * t);
+                }
+                out.push(s * (rn - recompose(&r)));
+                out
+            });
         }
+
+        meta.create_gate("ff lt const", |meta| {
+            let s = meta.query_selector(q_lt);
+            let a: Vec<_> = (0..4).map(|i| meta.query_advice(advices[i], Rotation::cur())).collect();
+            let d: Vec<_> = (0..4).map(|i| meta.query_advice(advices[4 + i], Rotation::cur())).collect();
+            let cr: Vec<_> = (0..3).map(|i| meta.query_advice(advices[i], Rotation::next())).collect();
+            let one = c(pallas::Base::ONE);
+            let mut out = Vec::new();
+            for k in 0..3 {
+                out.push(s.clone() * cr[k].clone() * (cr[k].clone() - one.clone()));
+            }
+            for k in 0..4 {
+                let mut t = a[k].clone() + d[k].clone() - c(m1_limbs[k]);
+                if k > 0 {
+                    t = t + cr[k - 1].clone();
+                }
+                if k < 3 {
+                    t = t - cr[k].clone() * c(b64);
+                }
+                out.push(s.clone() * t);
+            }
+            out
+        });
+
+        meta.create_gate("ff select", |meta| {
+            let s = meta.query_selector(q_select);
+            let cond = meta.query_advice(advices[8], Rotation::cur());
+            let one = c(pallas::Base::ONE);
+            let mut out = vec![s.clone() * cond.clone() * (cond.clone() - one)];
+            let pick = |a: Expression<pallas::Base>, b: Expression<pallas::Base>, r: Expression<pallas::Base>| {
+                r - b.clone() - cond.clone() * (a - b)
+            };
+            for k in 0..4 {
+                let a = meta.query_advice(advices[k], Rotation::cur());
+                let b = meta.query_advice(advices[4 + k], Rotation::cur());
+                let r = meta.query_advice(advices[k], Rotation::next());
+                out.push(s.clone() * pick(a, b, r));
+            }
+            let an = meta.query_advice(advices[4], Rotation::next());
+            let bn = meta.query_advice(advices[5], Rotation::next());
+            let rn = meta.query_advice(advices[6], Rotation::next());
+            out.push(s * pick(an, bn, rn));
+            out
+        });
+
+        Self { advices, q_compose, q_mul, q_add, q_sub, q_lt, q_select, range_check, modulus }
     }
 }
 
-// ============================================================================
-// FpChip — foreign field arithmetic chip
-// ============================================================================
-
 /// Trait for foreign field instructions (preserved for API compatibility).
 pub trait FpInstructions<Fp: PrimeField> {
-    fn load_constant(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        v: Fp,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
-    fn load_private(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        value: Value<Fp>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
-    fn range_check_limbs(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError>;
-    fn to_native(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<AssignedCell<pallas::Base, pallas::Base>, PlonkError>;
-    fn enforce_zero(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        num: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError>;
-    fn enforce_equal(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError>;
-    fn add(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
-    fn sub(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
-    fn mul(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
-    fn div(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn load_constant(&self, layouter: impl Layouter<pallas::Base>, v: Fp) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn load_private(&self, layouter: impl Layouter<pallas::Base>, value: Value<Fp>) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn range_check_limbs(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError>;
+    fn to_native(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<AssignedCell<pallas::Base, pallas::Base>, PlonkError>;
+    fn enforce_zero(&self, layouter: impl Layouter<pallas::Base>, num: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError>;
+    fn enforce_equal(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError>;
+    fn add(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn sub(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn mul(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
+    fn div(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError>;
 }
 
-/// Chip for foreign prime field arithmetic with custom gates.
 #[derive(Clone, Debug)]
 pub struct FpChip<Fp: PrimeField> {
     pub config: FpConfig,
     pub limb_bits: usize,
     pub num_limbs: usize,
-    pub limb_bases: Vec<pallas::Base>,
-    pub limb_base_big: BigInt,
-    pub limb_mask: BigUint,
-    pub p: BigInt,
     pub p_biguint: BigUint,
-    pub p_limbs: Vec<pallas::Base>,
-    pub p_native: pallas::Base,
     pub native_modulus: BigUint,
     pub c_coeffs: [pallas::Base; 7],
     _marker: PhantomData<Fp>,
 }
 
+type Cell = AssignedCell<pallas::Base, pallas::Base>;
+
 impl<Fp: PrimeField> FpChip<Fp> {
-    pub fn construct(
-        config: FpConfig,
-        limb_bits: usize,
-        num_limbs: usize,
-        c_coeffs: [pallas::Base; 7],
-        modulus: &BigUint,
-    ) -> Self {
+    pub fn construct(config: FpConfig, limb_bits: usize, num_limbs: usize, c_coeffs: [pallas::Base; 7], modulus: &BigUint) -> Self {
         assert_eq!(limb_bits, LIMB_BITS);
         assert_eq!(num_limbs, NUM_LIMBS);
-
-        let limb_mask = (BigUint::from(1u64) << limb_bits) - 1usize;
-        let p = modulus.clone();
-        let p_limbs = decompose_biguint_simple(&p, num_limbs, limb_bits);
-        let native_modulus = modulus_simple_pallas();
-        let p_native = biguint_to_fe_simple(&(&p % &native_modulus));
-
-        let limb_base = biguint_to_fe_simple(&(BigUint::one() << limb_bits));
-        let mut limb_bases = Vec::with_capacity(num_limbs);
-        limb_bases.push(pallas::Base::ONE);
-        while limb_bases.len() != num_limbs {
-            limb_bases.push(limb_base * limb_bases.last().unwrap());
-        }
-
+        assert_eq!(&config.modulus, modulus);
         Self {
             config,
             limb_bits,
             num_limbs,
-            limb_bases,
-            limb_base_big: BigInt::one() << limb_bits,
-            limb_mask,
-            p: p.clone().into(),
-            p_biguint: p,
-            p_limbs,
-            p_native,
-            native_modulus,
+            p_biguint: modulus.clone(),
+            native_modulus: modulus_simple_pallas(),
             c_coeffs,
             _marker: PhantomData,
         }
     }
 
-    // ── Load operations ──
+    // ── range checks (lookup, exact bit widths) ──
 
-    pub fn load_constant(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        v: Fp,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        layouter.assign_region(
-            || "load constant Fp",
-            |mut region| {
-                let value = fe_to_biguint_host(&v);
-                let fixed =
-                    FixedOverflowInteger::from_native(&value, self.num_limbs, self.limb_bits);
-
-                let mut limbs = Vec::with_capacity(self.num_limbs);
-                for (i, &limb_value) in fixed.limbs.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("const limb {}", i),
-                        self.config.advices[i],
-                        0,
-                        || Value::known(limb_value),
-                    )?;
-                    limbs.push(cell);
-                }
-
-                let native_value = fixed
-                    .limbs
-                    .iter()
-                    .zip(self.limb_bases.iter())
-                    .fold(pallas::Base::ZERO, |acc, (&limb, &base)| acc + limb * base);
-
-                let native_cell = region.assign_advice(
-                    || "const native",
-                    self.config.advices[4],
-                    0,
-                    || Value::known(native_value),
-                )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(limbs, self.limb_bits),
-                    native_cell,
-                    Value::known(value.into()),
-                ))
-            },
-        )
-    }
-
-    pub fn load_private(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        value: Value<Fp>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        layouter.assign_region(
-            || "load private Fp",
-            |mut region| {
-                let value_big = value.map(|v| fe_to_biguint_host(&v));
-                let limb_values: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        value_big.as_ref().map(|v| {
-                            let limbs = decompose_biguint_simple(v, self.num_limbs, self.limb_bits);
-                            limbs[i]
-                        })
-                    })
-                    .collect();
-
-                let mut limbs = Vec::with_capacity(self.num_limbs);
-                for (i, limb_value) in limb_values.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("witness limb {}", i),
-                        self.config.advices[i],
-                        0,
-                        || *limb_value,
-                    )?;
-                    limbs.push(cell);
-                }
-
-                let native_value = value.map(|v| {
-                    biguint_to_fe_simple(&(&fe_to_biguint_host(&v) % &self.native_modulus))
-                });
-
-                let native_cell = region.assign_advice(
-                    || "witness native",
-                    self.config.advices[4],
-                    0,
-                    || native_value,
-                )?;
-
-                let value_bigint = value.map(|v| BigInt::from(fe_to_biguint_host(&v)));
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(limbs, self.limb_bits),
-                    native_cell,
-                    value_bigint,
-                ))
-            },
-        )
-    }
-
-    // ── Range checks ──
-
-    /// Range check all limbs of a foreign field element.
-    /// For 64-bit limbs with K=10, we need 7 words (64/10 = 6.4 → 7).
-    pub fn range_check_limbs(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError> {
-        const K: usize = 10;
-        let num_words = (self.limb_bits + K - 1) / K; // 7 for 64-bit limbs
-
-        for (i, limb) in a.truncation.limbs.iter().enumerate() {
-            self.config.range_check.copy_check(
-                layouter.namespace(|| format!("range check limb {}", i)),
-                limb.clone(),
-                num_words,
-                false,
-            )?;
+    /// `cell < 2^bits`: `bits/10` lookup words plus a short lookup on the residual.
+    pub fn rc_bits(&self, mut layouter: impl Layouter<pallas::Base>, cell: &Cell, bits: usize) -> Result<(), PlonkError> {
+        let words = bits / 10;
+        let rem = bits % 10;
+        if rem == 0 {
+            self.config.range_check.copy_check(layouter.namespace(|| "rc"), cell.clone(), words, true)?;
+        } else {
+            let zs = self.config.range_check.copy_check(layouter.namespace(|| "rc"), cell.clone(), words, false)?;
+            self.config.range_check.copy_short_check(layouter.namespace(|| "rc top"), zs[words].clone(), rem)?;
         }
         Ok(())
     }
 
-    pub fn to_native(
-        &self,
-        _layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<AssignedCell<pallas::Base, pallas::Base>, PlonkError> {
+    fn rc_limbs(&self, mut layouter: impl Layouter<pallas::Base>, limbs: &[Cell]) -> Result<(), PlonkError> {
+        for (i, l) in limbs.iter().enumerate() {
+            self.rc_bits(layouter.namespace(|| format!("limb {i}")), l, LIMB_BITS)?;
+        }
+        Ok(())
+    }
+
+    /// Assign limbs (cols 0..3) and native (col 4) in one row under the compose gate.
+    fn compose_row(&self, region: &mut Region<'_, pallas::Base>, row: usize, v: &Value<BigUint>) -> Result<(Vec<Cell>, Cell), PlonkError> {
+        self.config.q_compose.enable(region, row)?;
+        let mut limbs = Vec::with_capacity(4);
+        for i in 0..4 {
+            limbs.push(region.assign_advice(|| format!("limb {i}"), self.config.advices[i], row, || v.as_ref().map(|v| fe_big(&limbs4(v)[i])))?);
+        }
+        let n = region.assign_advice(|| "native", self.config.advices[4], row, || v.as_ref().map(fe_big))?;
+        Ok((limbs, n))
+    }
+
+    /// Witness an integer < 2^256 as range-checked limbs with a bound native cell.
+    pub fn assign_biguint(&self, mut layouter: impl Layouter<pallas::Base>, v: Value<BigUint>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let (limbs, n) = layouter.assign_region(|| "ff witness", |mut region| self.compose_row(&mut region, 0, &v))?;
+        self.rc_limbs(layouter.namespace(|| "rc witness"), &limbs)?;
+        Ok(CrtInteger::new(OverflowInteger::new(limbs, LIMB_BITS), n, v.map(BigInt::from)))
+    }
+
+    pub fn load_constant(&self, mut layouter: impl Layouter<pallas::Base>, v: Fp) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        self.load_constant_big(layouter.namespace(|| "const"), fe_to_biguint_host(&v))
+    }
+
+    /// Constant pinned to the fixed column limb by limb (constrain_constant); native bound by gate.
+    pub fn load_constant_big(&self, mut layouter: impl Layouter<pallas::Base>, value: BigUint) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let expected = limbs4(&value).map(|l| fe_big(&l));
+        let mut witness = value.clone();
+        if forge::is(forge::CONST) {
+            witness += 1u32;
+        }
+        let (limbs, n) = layouter.assign_region(
+            || "ff constant",
+            |mut region| {
+                let (limbs, n) = self.compose_row(&mut region, 0, &Value::known(witness.clone()))?;
+                for (l, e) in limbs.iter().zip(expected.iter()) {
+                    region.constrain_constant(l.cell(), *e)?;
+                }
+                Ok((limbs, n))
+            },
+        )?;
+        Ok(CrtInteger::new(OverflowInteger::new(limbs, LIMB_BITS), n, Value::known(BigInt::from(value))))
+    }
+
+    pub fn load_private(&self, mut layouter: impl Layouter<pallas::Base>, value: Value<Fp>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        self.assign_biguint(layouter.namespace(|| "private"), value.map(|v| fe_to_biguint_host(&v)))
+    }
+
+    /// Every CrtInteger produced by this chip is range-checked at creation; kept for API compat.
+    pub fn range_check_limbs(&self, _layouter: impl Layouter<pallas::Base>, _a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> {
+        Ok(())
+    }
+
+    pub fn to_native(&self, _layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<Cell, PlonkError> {
         Ok(a.native.clone())
     }
 
-    // ── Constrained multiplication: x * y = z (mod q) ──
+    fn val(a: &ProperCrtUint<pallas::Base>) -> Value<BigUint> {
+        a.value.as_ref().map(|v| v.to_biguint().expect("non-negative"))
+    }
 
-    /// Multiply two foreign field elements using the foreign_mul custom gate.
-    ///
-    /// The gate enforces:
-    ///   Σ_{i,j} c[i+j]*x_i*y_j - Σ_i c[i]*z_i - u*q ≡ 0 (mod p_native)
-    ///
-    /// Where u = floor(x*y / q) is the quotient, and z = (x*y) mod q.
-    pub fn mul(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        layouter.assign_region(
-            || "foreign_mul",
+    fn copy4(region: &mut Region<'_, pallas::Base>, cols: &[Column<Advice>], row: usize, a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> {
+        for (i, l) in a.truncation.limbs.iter().enumerate() {
+            l.copy_advice(|| "limb", region, cols[i], row)?;
+        }
+        Ok(())
+    }
+
+    /// a·b = q·p + r over Z (carry chain per limb + native check). Output r < 2^256, ≡ a·b (mod p).
+    pub fn mul(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let p = self.p_biguint.clone();
+        let p_l = limbs4(&p);
+        let wit = Self::val(a).zip(Self::val(b)).map(|(a, b)| {
+            let prod = &a * &b;
+            let mut q = BigInt::from(&prod / &p);
+            let mut r = BigInt::from(&prod % &p);
+            if forge::is(forge::MUL_OUT) {
+                r += 1;
+            }
+            let mut ql: [BigInt; 4] = core::array::from_fn(|i| BigInt::from(limbs4(&q.to_biguint().unwrap())[i].clone()));
+            let mut rl: [BigInt; 4] = core::array::from_fn(|i| BigInt::from(limbs4(&r.to_biguint().unwrap())[i].clone()));
+            if forge::is(forge::MUL_Q_RANGE) {
+                ql[0] += BigInt::one() << 70usize;
+                ql[1] -= BigInt::from(64);
+            }
+            if forge::is(forge::MUL_R_RANGE) {
+                rl[0] += BigInt::one() << 64usize;
+                rl[1] -= BigInt::one();
+            }
+            let _ = (&mut q, &mut r);
+            let al = limbs4(&a).map(BigInt::from);
+            let bl = limbs4(&b).map(BigInt::from);
+            let pl: [BigInt; 4] = core::array::from_fn(|i| BigInt::from(p_l[i].clone()));
+            let mut carries = Vec::with_capacity(6);
+            let mut cprev = BigInt::zero();
+            for k in 0..6 {
+                let mut t = BigInt::zero();
+                for i in 0..4 {
+                    if k >= i && k - i < 4 {
+                        t += &al[i] * &bl[k - i] - &ql[i] * &pl[k - i];
+                    }
+                }
+                if k < 4 {
+                    t -= &rl[k];
+                }
+                t += &cprev;
+                // exact division in the honest case; floor otherwise (forged rows then fail)
+                let c = floor_div64(&t);
+                carries.push(&c + (BigInt::one() << CARRY_OFFSET_BITS));
+                cprev = c;
+            }
+            (ql, rl, carries)
+        });
+        let ((ql, rl), carries) = {
+            let ql = wit.as_ref().map(|w| w.0.clone());
+            let rl = wit.as_ref().map(|w| w.1.clone());
+            let cs = wit.as_ref().map(|w| w.2.clone());
+            ((ql, rl), cs)
+        };
+        let (q_cells, r_cells, rn, c_cells) = layouter.assign_region(
+            || "ff mul",
             |mut region| {
-                // Enable the multiplication gate
                 self.config.q_mul.enable(&mut region, 0)?;
-
-                // Copy x limbs into row 0, columns 0..3
-                for (i, limb) in a.truncation.limbs.iter().enumerate() {
-                    limb.copy_advice(
-                        || format!("x[{}]", i),
-                        &mut region,
-                        self.config.advices[i],
-                        0,
-                    )?;
+                let adv = self.config.advices;
+                Self::copy4(&mut region, &adv[0..4], 0, a)?;
+                Self::copy4(&mut region, &adv[4..8], 0, b)?;
+                let mut qc = Vec::new();
+                let mut rc = Vec::new();
+                for i in 0..4 {
+                    qc.push(region.assign_advice(|| "q", adv[i], 1, || ql.as_ref().map(|q| fe_int(&q[i])))?);
+                    rc.push(region.assign_advice(|| "r", adv[4 + i], 1, || rl.as_ref().map(|r| fe_int(&r[i])))?);
                 }
-
-                // Copy y limbs into row 1, columns 0..3
-                for (i, limb) in b.truncation.limbs.iter().enumerate() {
-                    limb.copy_advice(
-                        || format!("y[{}]", i),
-                        &mut region,
-                        self.config.advices[i],
-                        1,
-                    )?;
-                }
-
-                // Compute witness: z = (a * b) mod q, u = (a * b) / q
-                let (z_val, u_val, c_bigint) = {
-                    let mut z_opt = Value::unknown();
-                    let mut u_opt = Value::unknown();
-                    let mut c_opt = Value::unknown();
-
-                    a.value.clone().zip(b.value.as_ref()).map(|(a_val, b_val)| {
-                        let a_pos = a_val.to_biguint().expect("positive");
-                        let b_pos = b_val.to_biguint().expect("positive");
-                        let product = &a_pos * &b_pos;
-                        let z_big = &product % &self.p_biguint;
-                        let u_big = &product / &self.p_biguint;
-                        z_opt = Value::known(z_big.clone());
-                        u_opt = Value::known(u_big);
-                        c_opt = Value::known(BigInt::from(z_big));
-                    });
-
-                    (z_opt, u_opt, c_opt)
-                };
-
-                // Assign z limbs into row 0, columns 4..7
-                let z_limb_values: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        z_val
-                            .as_ref()
-                            .map(|z| decompose_biguint_simple(z, self.num_limbs, self.limb_bits)[i])
-                    })
-                    .collect();
-
-                let mut z_limbs = Vec::with_capacity(self.num_limbs);
-                for (i, lv) in z_limb_values.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("z[{}]", i),
-                        self.config.advices[4 + i],
-                        0,
-                        || *lv,
-                    )?;
-                    z_limbs.push(cell);
-                }
-
-                // Assign u (quotient) into row 0, column 8
-                let u_native = u_val
-                    .as_ref()
-                    .map(|u| biguint_to_fe_simple(&(u % &self.native_modulus)));
-                region.assign_advice(|| "u", self.config.advices[8], 0, || u_native)?;
-
-                // Compute native representation for z
-                let c_native_val = z_val
-                    .as_ref()
-                    .map(|z| biguint_to_fe_simple(&(z % &self.native_modulus)));
-                let c_native = region.assign_advice(
-                    || "z_native",
-                    self.config.advices[8],
+                let rn = region.assign_advice(
+                    || "r native",
+                    adv[8],
                     1,
-                    || c_native_val,
+                    || rl.as_ref().map(|r| (0..4).fold(pallas::Base::ZERO, |acc, i| acc + fe_int(&r[i]) * fe_big(&(BigUint::one() << (64 * i))))),
                 )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(z_limbs, self.limb_bits),
-                    c_native,
-                    c_bigint,
-                ))
-            },
-        )
-    }
-
-    /// Normalize: reduce non-canonical limbs to canonical [0, B) form.
-    /// Uses the normalize custom gate.
-    pub fn normalize(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        layouter.assign_region(
-            || "normalize",
-            |mut region| {
-                self.config.q_normalize.enable(&mut region, 0)?;
-
-                // Copy x limbs (input) into columns 0..3
-                for (i, limb) in a.truncation.limbs.iter().enumerate() {
-                    limb.copy_advice(
-                        || format!("x[{}]", i),
-                        &mut region,
-                        self.config.advices[i],
-                        0,
-                    )?;
+                let mut cc = Vec::new();
+                for k in 0..6 {
+                    cc.push(region.assign_advice(|| "carry", adv[k], 2, || carries.as_ref().map(|c| fe_int(&c[k])))?);
                 }
-
-                // Compute canonical z = x mod q and quotient k
-                let (z_val, k_val, z_bigint) = {
-                    let mut z_opt = Value::unknown();
-                    let mut k_opt = Value::unknown();
-                    let mut z_bi = Value::unknown();
-
-                    a.value.as_ref().map(|a_val| {
-                        let a_pos = a_val.to_biguint().unwrap_or_else(|| {
-                            // Handle negative: add q until positive
-                            let neg = (-a_val).to_biguint().expect("positive negation");
-                            let q_big = self.p_biguint.clone();
-                            let k = (&neg / &q_big) + 1u64;
-                            &q_big * k - neg
-                        });
-                        let z_big = &a_pos % &self.p_biguint;
-                        let k_big = &a_pos / &self.p_biguint;
-                        z_opt = Value::known(z_big.clone());
-                        k_opt = Value::known(k_big);
-                        z_bi = Value::known(BigInt::from(z_big));
-                    });
-
-                    (z_opt, k_opt, z_bi)
-                };
-
-                // Assign z limbs into columns 4..7
-                let z_limb_values: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        z_val
-                            .as_ref()
-                            .map(|z| decompose_biguint_simple(z, self.num_limbs, self.limb_bits)[i])
-                    })
-                    .collect();
-
-                let mut z_limbs = Vec::with_capacity(self.num_limbs);
-                for (i, lv) in z_limb_values.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("z[{}]", i),
-                        self.config.advices[4 + i],
-                        0,
-                        || *lv,
-                    )?;
-                    z_limbs.push(cell);
-                }
-
-                // Assign k (quotient) into column 8
-                let k_native = k_val
-                    .as_ref()
-                    .map(|k| biguint_to_fe_simple(&(k % &self.native_modulus)));
-                region.assign_advice(|| "k", self.config.advices[8], 0, || k_native)?;
-
-                // Native representation of z
-                let z_native_val = z_val
-                    .as_ref()
-                    .map(|z| biguint_to_fe_simple(&(z % &self.native_modulus)));
-                let z_native = region.assign_advice(
-                    || "z_native",
-                    self.config.advices[4],
-                    1,
-                    || z_native_val,
-                )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(z_limbs, self.limb_bits),
-                    z_native,
-                    z_bigint,
-                ))
-            },
-        )
-    }
-
-    // ── Witness-assisted operations with gate enforcement ──
-
-    /// Add two foreign field elements: c = a + b mod q
-    /// Witnesses result then normalizes to enforce correctness.
-    pub fn add(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let result = layouter.assign_region(
-            || "fp add witness",
-            |mut region| {
-                let c_val = a.value.clone().zip(b.value.as_ref()).map(|(a_val, b_val)| {
-                    let sum = &a_val + b_val;
-                    let sum_pos = sum.to_biguint().unwrap_or_else(|| {
-                        let neg = (-&sum).to_biguint().expect("pos neg");
-                        let k = (&neg / &self.p_biguint) + 1u64;
-                        &self.p_biguint * k - neg
-                    });
-                    BigInt::from(&sum_pos % &self.p_biguint)
-                });
-
-                let c_biguint = c_val.as_ref().map(|v| v.to_biguint().expect("positive"));
-                let c_limbs_vals: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        c_biguint
-                            .as_ref()
-                            .map(|c| decompose_biguint_simple(c, self.num_limbs, self.limb_bits)[i])
-                    })
-                    .collect();
-
-                let mut c_limbs = Vec::with_capacity(self.num_limbs);
-                for (i, lv) in c_limbs_vals.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("c[{}]", i),
-                        self.config.advices[i],
-                        0,
-                        || *lv,
-                    )?;
-                    c_limbs.push(cell);
-                }
-
-                let c_native_val = c_biguint
-                    .as_ref()
-                    .map(|c| biguint_to_fe_simple(&(c % &self.native_modulus)));
-
-                let c_native = region.assign_advice(
-                    || "c_native",
-                    self.config.advices[4],
-                    0,
-                    || c_native_val,
-                )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(c_limbs, self.limb_bits),
-                    c_native,
-                    c_val,
-                ))
+                Ok((qc, rc, rn, cc))
             },
         )?;
-
-        // Enforce: a + b - result = 0 mod q
-        // We do this by checking (a + b - result) via normalize gate
-        // For soundness: witness z = (a+b) mod q, then check normalize(a+b - z) = 0
-        self.range_check_limbs(layouter.namespace(|| "rc add result"), &result)?;
-        Ok(result)
+        for (i, q) in q_cells.iter().enumerate() {
+            self.rc_bits(layouter.namespace(|| format!("rc q{i}")), q, Q_RC_WORDS * 10)?;
+        }
+        self.rc_limbs(layouter.namespace(|| "rc r"), &r_cells)?;
+        for (k, c) in c_cells.iter().enumerate() {
+            self.rc_bits(layouter.namespace(|| format!("rc carry{k}")), c, CARRY_RC_WORDS * 10)?;
+        }
+        let value = rl.map(|r| r.iter().enumerate().fold(BigInt::zero(), |acc, (i, l)| acc + (l << (64 * i))));
+        Ok(CrtInteger::new(OverflowInteger::new(r_cells, LIMB_BITS), rn, value))
     }
 
-    /// Subtract: c = a - b mod q
-    pub fn sub(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let result = layouter.assign_region(
-            || "fp sub witness",
+    fn add_sub(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>, sub: bool, forge_zero: bool) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let p = BigInt::from(self.p_biguint.clone());
+        let p_l = limbs4(&self.p_biguint).map(BigInt::from);
+        let forge_out = (!sub && forge::is(forge::ADD_OUT)) || (sub && (forge::is(forge::SUB_OUT) || forge_zero));
+        let wit = a.value.clone().zip(b.value.clone()).map(|(a, b)| {
+            let (s, q) = if sub {
+                let d = &a - &b;
+                if d < BigInt::zero() { (d + &p, 1u32) } else { (d, 0) }
+            } else {
+                let s = &a + &b;
+                if s >= p { (s - &p, 1u32) } else { (s, 0) }
+            };
+            let r = if forge_out { if sub { BigInt::zero() } else { s + 1 } } else { s };
+            let al = limbs4(&a.to_biguint().unwrap()).map(BigInt::from);
+            let bl = limbs4(&b.to_biguint().unwrap()).map(BigInt::from);
+            let rl = limbs4(&r.to_biguint().unwrap()).map(BigInt::from);
+            let mut cs = Vec::new();
+            let mut cprev = BigInt::zero();
+            for k in 0..3 {
+                let t = if sub { &al[k] - &bl[k] + BigInt::from(q) * &p_l[k] - &rl[k] } else { &al[k] + &bl[k] - BigInt::from(q) * &p_l[k] - &rl[k] } + &cprev;
+                let c = floor_div64(&t);
+                let c = c.clamp(BigInt::from(-1), BigInt::from(1));
+                cs.push(&c + 1);
+                cprev = c;
+            }
+            (r, q, cs)
+        });
+        let (r_cells, rn) = layouter.assign_region(
+            || if sub { "ff sub" } else { "ff add" },
             |mut region| {
-                let c_val = a.value.clone().zip(b.value.as_ref()).map(|(a_val, b_val)| {
-                    #[cfg(test)]
-                    if FORGE_SUB.load(core::sync::atomic::Ordering::SeqCst) {
-                        return BigInt::zero();
-                    }
-                    let diff = &a_val - b_val;
-                    let diff_pos = if diff < BigInt::zero() {
-                        let neg = (-&diff).to_biguint().expect("pos");
-                        let k = (&neg / &self.p_biguint) + 1u64;
-                        BigInt::from(&self.p_biguint * k) - BigInt::from(neg)
-                    } else {
-                        diff
-                    };
-                    BigInt::from(diff_pos.to_biguint().expect("pos") % &self.p_biguint)
-                });
-
-                let c_biguint = c_val.as_ref().map(|v| v.to_biguint().expect("positive"));
-                let c_limbs_vals: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        c_biguint
-                            .as_ref()
-                            .map(|c| decompose_biguint_simple(c, self.num_limbs, self.limb_bits)[i])
-                    })
-                    .collect();
-
-                let mut c_limbs = Vec::with_capacity(self.num_limbs);
-                for (i, lv) in c_limbs_vals.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("c[{}]", i),
-                        self.config.advices[i],
-                        0,
-                        || *lv,
-                    )?;
-                    c_limbs.push(cell);
+                if sub { self.config.q_sub.enable(&mut region, 0)? } else { self.config.q_add.enable(&mut region, 0)? }
+                let adv = self.config.advices;
+                Self::copy4(&mut region, &adv[0..4], 0, a)?;
+                Self::copy4(&mut region, &adv[4..8], 0, b)?;
+                region.assign_advice(|| "q", adv[8], 0, || wit.as_ref().map(|w| pallas::Base::from(w.1 as u64)))?;
+                let mut rc = Vec::new();
+                for i in 0..4 {
+                    rc.push(region.assign_advice(|| "r", adv[i], 1, || wit.as_ref().map(|w| fe_big(&limbs4(&w.0.to_biguint().unwrap())[i])))?);
                 }
-
-                let c_native_val = c_biguint
-                    .as_ref()
-                    .map(|c| biguint_to_fe_simple(&(c % &self.native_modulus)));
-
-                let c_native = region.assign_advice(
-                    || "c_native",
-                    self.config.advices[4],
-                    0,
-                    || c_native_val,
-                )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(c_limbs, self.limb_bits),
-                    c_native,
-                    c_val,
-                ))
+                for k in 0..3 {
+                    region.assign_advice(|| "carry", adv[4 + k], 1, || wit.as_ref().map(|w| fe_int(&w.2[k])))?;
+                }
+                let rn = region.assign_advice(|| "r native", adv[8], 1, || wit.as_ref().map(|w| fe_int(&w.0)))?;
+                Ok((rc, rn))
             },
         )?;
-
-        self.range_check_limbs(layouter.namespace(|| "rc sub result"), &result)?;
-        Ok(result)
+        self.rc_limbs(layouter.namespace(|| "rc r"), &r_cells)?;
+        Ok(CrtInteger::new(OverflowInteger::new(r_cells, LIMB_BITS), rn, wit.map(|w| w.0)))
     }
 
-    /// Divide: c = a / b = a * b^(-1) mod q
-    /// Witnesses c, then constrains c * b = a via foreign_mul gate.
-    pub fn div(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        // Witness c = a * b^(-1)
-        let c = layouter.assign_region(
-            || "fp div witness",
+    pub fn add(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        self.add_sub(layouter, a, b, false, false)
+    }
+
+    pub fn sub(&self, layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        self.add_sub(layouter, a, b, true, false)
+    }
+
+    /// Canonical-form check: a < modulus (over Z).
+    pub fn assert_canonical(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> {
+        let m1 = &self.p_biguint - 1u32;
+        let m1_l = limbs4(&m1).map(BigInt::from);
+        let wit = Self::val(a).map(|a| {
+            let al = limbs4(&a).map(BigInt::from);
+            // d = m-1-a computed limb-wise with borrows; honest only if a < m
+            let d_int = BigInt::from(m1.clone()) - BigInt::from(a.clone());
+            let d = if d_int < BigInt::zero() { BigUint::zero() } else { d_int.to_biguint().unwrap() };
+            let dl = limbs4(&d).map(BigInt::from);
+            let mut cs = Vec::new();
+            let mut cprev = BigInt::zero();
+            for k in 0..3 {
+                let t = &al[k] + &dl[k] - &m1_l[k] + &cprev;
+                let c = if t >= (BigInt::one() << 64usize) { BigInt::one() } else { BigInt::zero() };
+                cs.push(c.clone());
+                cprev = c;
+            }
+            (d, cs)
+        });
+        let d_cells = layouter.assign_region(
+            || "ff lt",
             |mut region| {
-                fn extended_gcd(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
-                    if b.is_zero() {
-                        return (a.clone(), BigInt::one(), BigInt::zero());
-                    }
-                    let (gcd, x1, y1) = extended_gcd(b, &(a % b));
-                    let x = y1.clone();
-                    let y = x1 - (a / b) * &y1;
-                    (gcd, x, y)
+                self.config.q_lt.enable(&mut region, 0)?;
+                let adv = self.config.advices;
+                Self::copy4(&mut region, &adv[0..4], 0, a)?;
+                let mut dc = Vec::new();
+                for i in 0..4 {
+                    dc.push(region.assign_advice(|| "d", adv[4 + i], 0, || wit.as_ref().map(|w| fe_big(&limbs4(&w.0)[i])))?);
                 }
-
-                let p_int = BigInt::from(self.p_biguint.clone());
-
-                let c_val = a.value.clone().zip(b.value.as_ref()).map(|(a_val, b_val)| {
-                    let b_int = b_val.clone();
-                    let (_gcd, x, _y) = extended_gcd(&b_int, &p_int);
-                    let b_inv = ((&x % &p_int) + &p_int) % &p_int;
-                    let a_pos = a_val.to_biguint().expect("positive");
-                    let b_inv_pos = b_inv.to_biguint().expect("positive");
-                    let c_big = (&a_pos * &b_inv_pos) % &self.p_biguint;
-                    BigInt::from(c_big)
-                });
-
-                let c_biguint = c_val.as_ref().map(|v| v.to_biguint().expect("positive"));
-                let c_limbs_vals: Vec<Value<pallas::Base>> = (0..self.num_limbs)
-                    .map(|i| {
-                        c_biguint
-                            .as_ref()
-                            .map(|c| decompose_biguint_simple(c, self.num_limbs, self.limb_bits)[i])
-                    })
-                    .collect();
-
-                let mut c_limbs = Vec::with_capacity(self.num_limbs);
-                for (i, lv) in c_limbs_vals.iter().enumerate() {
-                    let cell = region.assign_advice(
-                        || format!("c[{}]", i),
-                        self.config.advices[i],
-                        0,
-                        || *lv,
-                    )?;
-                    c_limbs.push(cell);
+                for k in 0..3 {
+                    region.assign_advice(|| "borrow", adv[k], 1, || wit.as_ref().map(|w| fe_int(&w.1[k])))?;
                 }
-
-                let c_native_val = c_biguint
-                    .as_ref()
-                    .map(|c| biguint_to_fe_simple(&(c % &self.native_modulus)));
-
-                let c_native = region.assign_advice(
-                    || "c_native",
-                    self.config.advices[4],
-                    0,
-                    || c_native_val,
-                )?;
-
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(c_limbs, self.limb_bits),
-                    c_native,
-                    c_val,
-                ))
+                Ok(dc)
             },
         )?;
+        self.rc_limbs(layouter.namespace(|| "rc d"), &d_cells)
+    }
 
-        // Constrain: c * b = a (mod q) using the foreign_mul gate
-        let product = self.mul(layouter.namespace(|| "c*b"), &c, b)?;
+    /// r = cond ? a : b (cond boolean, limbs and native).
+    pub fn select(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>, cond: &Cell) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let value = cond.value().copied().zip(a.value.clone()).zip(b.value.clone()).map(|((c, a), b)| if c == pallas::Base::ONE { a } else { b });
+        let (limbs, rn) = layouter.assign_region(
+            || "ff select",
+            |mut region| {
+                self.config.q_select.enable(&mut region, 0)?;
+                let adv = self.config.advices;
+                Self::copy4(&mut region, &adv[0..4], 0, a)?;
+                Self::copy4(&mut region, &adv[4..8], 0, b)?;
+                cond.copy_advice(|| "cond", &mut region, adv[8], 0)?;
+                let mut out = Vec::new();
+                for i in 0..4 {
+                    let v = cond.value().copied().zip(a.truncation.limbs[i].value().copied()).zip(b.truncation.limbs[i].value().copied()).map(|((c, a), b)| b + c * (a - b));
+                    out.push(region.assign_advice(|| "r", adv[i], 1, || v)?);
+                }
+                a.native.copy_advice(|| "an", &mut region, adv[4], 1)?;
+                b.native.copy_advice(|| "bn", &mut region, adv[5], 1)?;
+                let v = cond.value().copied().zip(a.native.value().copied()).zip(b.native.value().copied()).map(|((c, a), b)| b + c * (a - b));
+                let rn = region.assign_advice(|| "rn", adv[6], 1, || v)?;
+                Ok((out, rn))
+            },
+        )?;
+        Ok(CrtInteger::new(OverflowInteger::new(limbs, LIMB_BITS), rn, value))
+    }
 
-        // Enforce product == a by checking limb equality
-        self.enforce_equal(layouter.namespace(|| "c*b == a"), &product, a)?;
-
+    /// c = a / b: witness c, check c·b ≡ a. Only for denominators known non-zero (see div_checked).
+    pub fn div(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let p = self.p_biguint.clone();
+        let c_v = Self::val(a).zip(Self::val(b)).map(|(a, b)| {
+            let inv = b.modpow(&(&p - 2u32), &p);
+            (a * inv) % &p
+        });
+        let c = self.assign_biguint(layouter.namespace(|| "div witness"), c_v)?;
+        let prod = self.mul(layouter.namespace(|| "c*b"), &c, b)?;
+        self.enforce_equal(layouter.namespace(|| "c*b == a"), &prod, a)?;
         Ok(c)
     }
-}
 
-// ── FpInstructions implementation ──
+    /// a / b with b proven invertible (b·inv ≡ 1), so b ≡ 0 is unsatisfiable.
+    pub fn div_checked(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
+        let p = self.p_biguint.clone();
+        let inv_v = Self::val(b).map(|b| b.modpow(&(&p - 2u32), &p));
+        let inv = self.assign_biguint(layouter.namespace(|| "inv witness"), inv_v)?;
+        let one = self.load_constant_big(layouter.namespace(|| "one"), BigUint::one())?;
+        let bi = self.mul(layouter.namespace(|| "b*inv"), b, &inv)?;
+        self.enforce_equal(layouter.namespace(|| "b*inv == 1"), &bi, &one)?;
+        self.mul(layouter.namespace(|| "a*inv"), a, &inv)
+    }
 
-impl<Fp: PrimeField> FpInstructions<Fp> for FpChip<Fp> {
-    fn load_constant(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        v: Fp,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::load_constant(self, layouter, v)
-    }
-    fn load_private(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        v: Value<Fp>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::load_private(self, layouter, v)
-    }
-    fn range_check_limbs(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError> {
-        FpChip::range_check_limbs(self, layouter, a)
-    }
-    fn to_native(
-        &self,
-        lo: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-    ) -> Result<AssignedCell<pallas::Base, pallas::Base>, PlonkError> {
-        FpChip::to_native(self, lo, a)
-    }
-    fn enforce_zero(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        num: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError> {
-        // Normalize first, then check all limbs are zero
-        let normalized = self.normalize(layouter.namespace(|| "normalize for zero check"), num)?;
+    /// All limbs zero (x = 0 over Z).
+    pub fn enforce_zero(&self, mut layouter: impl Layouter<pallas::Base>, num: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> {
         layouter.assign_region(
             || "enforce zero",
             |mut region| {
-                for (i, limb) in normalized.truncation.limbs.iter().enumerate() {
-                    limb.copy_advice(
-                        || format!("limb {}", i),
-                        &mut region,
-                        self.config.advices[0],
-                        i,
-                    )?;
-                    region.constrain_constant(limb.cell(), pallas::Base::ZERO)?;
+                for (i, limb) in num.truncation.limbs.iter().enumerate() {
+                    let c = limb.copy_advice(|| "limb", &mut region, self.config.advices[i], 0)?;
+                    region.constrain_constant(c.cell(), pallas::Base::ZERO)?;
                 }
                 Ok(())
             },
         )
     }
-    fn enforce_equal(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<(), PlonkError> {
-        #[cfg(test)]
-        let forge = FORGE_EQ.load(core::sync::atomic::Ordering::SeqCst);
-        #[cfg(test)]
-        if forge {
-            FORGE_SUB.store(true, core::sync::atomic::Ordering::SeqCst);
-        }
-        let diff = self.sub(layouter.namespace(|| "a-b"), a, b)?;
-        #[cfg(test)]
-        if forge {
-            FORGE_SUB.store(false, core::sync::atomic::Ordering::SeqCst);
-        }
+
+    /// a ≡ b (mod p): (a - b + q p) = 0 over Z with q ∈ {0,1}.
+    pub fn enforce_equal(&self, mut layouter: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> {
+        // forge::EQ_SUB: the original attack (witness a-b = 0 only inside enforce_equal)
+        let diff = self.add_sub(layouter.namespace(|| "a-b"), a, b, true, forge::is(forge::EQ_SUB))?;
         self.enforce_zero(layouter.namespace(|| "enforce zero"), &diff)
     }
-    fn add(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::add(self, layouter, a, b)
-    }
-    fn sub(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::sub(self, layouter, a, b)
-    }
-    fn mul(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::mul(self, layouter, a, b)
-    }
-    fn div(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        a: &ProperCrtUint<pallas::Base>,
-        b: &ProperCrtUint<pallas::Base>,
-    ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        FpChip::div(self, layouter, a, b)
-    }
 }
+
+impl<Fp: PrimeField> FpInstructions<Fp> for FpChip<Fp> {
+    fn load_constant(&self, l: impl Layouter<pallas::Base>, v: Fp) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::load_constant(self, l, v) }
+    fn load_private(&self, l: impl Layouter<pallas::Base>, v: Value<Fp>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::load_private(self, l, v) }
+    fn range_check_limbs(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> { FpChip::range_check_limbs(self, l, a) }
+    fn to_native(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<Cell, PlonkError> { FpChip::to_native(self, l, a) }
+    fn enforce_zero(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> { FpChip::enforce_zero(self, l, a) }
+    fn enforce_equal(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<(), PlonkError> { FpChip::enforce_equal(self, l, a, b) }
+    fn add(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::add(self, l, a, b) }
+    fn sub(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::sub(self, l, a, b) }
+    fn mul(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::mul(self, l, a, b) }
+    fn div(&self, l: impl Layouter<pallas::Base>, a: &ProperCrtUint<pallas::Base>, b: &ProperCrtUint<pallas::Base>) -> Result<ProperCrtUint<pallas::Base>, PlonkError> { FpChip::div(self, l, a, b) }
+}
+
 
 // ============================================================================
 // BigIntChip (kept for backward compatibility)
@@ -1503,8 +1280,8 @@ impl Secp256k1Config {
         let fp_q_native = biguint_to_fe_simple(&(&p_mod % &native_mod));
         let fq_q_native = biguint_to_fe_simple(&(&n_mod % &native_mod));
 
-        let fp_config = FpConfig::configure(meta, advices, range_check.clone(), fp_c, fp_q_native);
-        let fq_config = FpConfig::configure(meta, advices, range_check, fq_c, fq_q_native);
+        let fp_config = FpConfig::configure(meta, advices, range_check.clone(), fp_c, fp_q_native, p_mod.clone());
+        let fq_config = FpConfig::configure(meta, advices, range_check, fq_c, fq_q_native, n_mod.clone());
 
         let q = meta.selector();
         let q_carry = meta.selector();
@@ -1741,7 +1518,8 @@ impl Secp256k1Chip {
 
         let dy = fp.sub(layouter.namespace(|| "dy"), &q.1, &p.1)?;
         let dx = fp.sub(layouter.namespace(|| "dx"), &q.0, &p.0)?;
-        let lambda = fp.div(layouter.namespace(|| "lambda"), &dy, &dx)?;
+        // dx must be invertible: P = ±Q would otherwise leave lambda free.
+        let lambda = fp.div_checked(layouter.namespace(|| "lambda"), &dy, &dx)?;
         let lambda_sq = fp.mul(layouter.namespace(|| "lambda_sq"), &lambda, &lambda)?;
         let x3 = fp.sub(layouter.namespace(|| "x3 part1"), &lambda_sq, &p.0)?;
         let x3 = fp.sub(layouter.namespace(|| "x3"), &x3, &q.0)?;
@@ -1758,20 +1536,16 @@ impl Secp256k1Chip {
     ) -> Result<SecpPoint<pallas::Base>, PlonkError> {
         let fp = &self.fp;
 
-        let three = fp.load_private(
-            layouter.namespace(|| "three"),
-            Value::known(Secp256k1Fp::from(3)),
-        )?;
-        let two = fp.load_private(
-            layouter.namespace(|| "two"),
-            Value::known(Secp256k1Fp::from(2)),
-        )?;
+        // 2 and 3 enter as additions (no witnessed constants to pin).
         let x_sq = fp.mul(layouter.namespace(|| "x_sq"), &p.0, &p.0)?;
-        let three_x_sq = fp.mul(layouter.namespace(|| "three_x_sq"), &three, &x_sq)?;
-        let two_y = fp.mul(layouter.namespace(|| "two_y"), &two, &p.1)?;
+        let two_x_sq = fp.add(layouter.namespace(|| "2x^2"), &x_sq, &x_sq)?;
+        let three_x_sq = fp.add(layouter.namespace(|| "3x^2"), &two_x_sq, &x_sq)?;
+        let two_y = fp.add(layouter.namespace(|| "two_y"), &p.1, &p.1)?;
+        // 2y != 0 for every curve point (secp256k1 has no 2-torsion), so plain div is sound:
+        // b ≡ 0 would force 3x^2 ≡ 0, i.e. (0,0), which is not on y^2 = x^3 + 7.
         let lambda = fp.div(layouter.namespace(|| "lambda"), &three_x_sq, &two_y)?;
         let lambda_sq = fp.mul(layouter.namespace(|| "lambda_sq"), &lambda, &lambda)?;
-        let two_x = fp.mul(layouter.namespace(|| "two_x"), &two, &p.0)?;
+        let two_x = fp.add(layouter.namespace(|| "two_x"), &p.0, &p.0)?;
         let x3 = fp.sub(layouter.namespace(|| "x3"), &lambda_sq, &two_x)?;
         let dx = fp.sub(layouter.namespace(|| "dx"), &p.0, &x3)?;
         let temp = fp.mul(layouter.namespace(|| "temp"), &lambda, &dx)?;
@@ -1782,26 +1556,12 @@ impl Secp256k1Chip {
 
     pub(crate) fn select(
         &self,
-        mut layouter: impl Layouter<pallas::Base>,
+        layouter: impl Layouter<pallas::Base>,
         a: &ProperCrtUint<pallas::Base>,
         b: &ProperCrtUint<pallas::Base>,
         cond: &AssignedCell<pallas::Base, pallas::Base>,
     ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let fp = &self.fp;
-
-        let diff = fp.sub(layouter.namespace(|| "diff"), a, b)?;
-        let cond_crt = fp.load_private(
-            layouter.namespace(|| "cond_crt"),
-            cond.value().map(|v| {
-                let mut r = [0u8; 32];
-                r.copy_from_slice(v.to_repr().as_ref());
-                secp_fp_from_le(r)
-            }),
-        )?;
-        let product = fp.mul(layouter.namespace(|| "product"), &diff, &cond_crt)?;
-        let result = fp.add(layouter.namespace(|| "result"), &product, b)?;
-
-        Ok(result)
+        self.fp.select(layouter, a, b, cond)
     }
 
     // ── GLV scalar multiplication ──
@@ -1831,36 +1591,18 @@ impl Secp256k1Chip {
 
     fn load_pinned_fp(
         &self,
-        mut layouter: impl Layouter<pallas::Base>,
+        layouter: impl Layouter<pallas::Base>,
         value: Secp256k1Fp,
     ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let assigned = self
-            .fp
-            .load_private(layouter.namespace(|| "load fp"), Value::known(value))?;
-        let expected = foreign_limbs(&value);
-        self.pin_limbs(
-            layouter.namespace(|| "pin fp"),
-            &assigned.truncation.limbs,
-            &expected,
-        )?;
-        Ok(assigned)
+        self.fp.load_constant(layouter, value)
     }
 
     fn load_pinned_fq(
         &self,
-        mut layouter: impl Layouter<pallas::Base>,
+        layouter: impl Layouter<pallas::Base>,
         value: Secp256k1Fq,
     ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let assigned = self
-            .fq
-            .load_private(layouter.namespace(|| "load fq"), Value::known(value))?;
-        let expected = foreign_limbs(&value);
-        self.pin_limbs(
-            layouter.namespace(|| "pin fq"),
-            &assigned.truncation.limbs,
-            &expected,
-        )?;
-        Ok(assigned)
+        self.fq.load_constant(layouter, value)
     }
 
     /// Boolean witness. The decomposition gate forces `bit ∈ {0,1}`.
@@ -2195,7 +1937,9 @@ impl Secp256k1Chip {
                 let sum = r1 + &reduced;
                 let k_big = k_int.to_biguint().expect("secret scalar is non-negative");
                 let m = if sum >= n { 1u64 } else { 0 };
-                assert_eq!(&sum - &(&n * m), k_big % &n, "GLV congruence witness");
+                if !forge::is(forge::GLV_K1) {
+                    assert_eq!(&sum - &(&n * m), k_big % &n, "GLV congruence witness");
+                }
                 pallas::Base::from(m)
             });
             self.assign_bit(layouter.namespace(|| "glv m"), m_v)?
@@ -2244,42 +1988,10 @@ impl Secp256k1Chip {
 
     fn load_biguint(
         &self,
-        mut layouter: impl Layouter<pallas::Base>,
+        layouter: impl Layouter<pallas::Base>,
         value: Value<BigUint>,
     ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        layouter.assign_region(
-            || "load integer",
-            |mut region| {
-                let value = value.clone();
-                let mut limbs = Vec::with_capacity(4);
-                for i in 0..4 {
-                    let limb_v = value
-                        .as_ref()
-                        .map(|v| decompose_biguint_simple(v, 4, 64)[i]);
-                    limbs.push(region.assign_advice(
-                        || format!("int limb {i}"),
-                        self.fq.config.advices[i],
-                        0,
-                        || limb_v,
-                    )?);
-                }
-                let native_v = value
-                    .as_ref()
-                    .map(|v| biguint_to_fe_simple(&(v % &self.fq.native_modulus)));
-                let native = region.assign_advice(
-                    || "int native",
-                    self.fq.config.advices[4],
-                    0,
-                    || native_v,
-                )?;
-                let big = value.map(BigInt::from);
-                Ok(CrtInteger::new(
-                    OverflowInteger::new(limbs, LIMB_BITS),
-                    native,
-                    big,
-                ))
-            },
-        )
+        self.fq.assign_biguint(layouter, value)
     }
 
     fn blend_limb(
@@ -2310,42 +2022,15 @@ impl Secp256k1Chip {
     /// `bit = 1` selects `a`, otherwise `b`. One blend gate per limb.
     fn blend_crt(
         &self,
-        mut layouter: impl Layouter<pallas::Base>,
+        layouter: impl Layouter<pallas::Base>,
         a: &ProperCrtUint<pallas::Base>,
         b: &ProperCrtUint<pallas::Base>,
         bit: &AssignedCell<pallas::Base, pallas::Base>,
     ) -> Result<ProperCrtUint<pallas::Base>, PlonkError> {
-        let mut limbs = Vec::with_capacity(4);
-        for i in 0..4 {
-            limbs.push(self.blend_limb(
-                layouter.namespace(|| format!("limb {i}")),
-                &a.truncation.limbs[i],
-                &b.truncation.limbs[i],
-                bit,
-            )?);
-        }
-        let value = bit
-            .value()
-            .copied()
-            .zip(a.value.clone())
-            .zip(b.value.clone())
-            .map(|((bit, a_v), b_v)| if bit == pallas::Base::ONE { a_v } else { b_v });
-        let native_v = value.as_ref().map(|v| {
-            let pos = v.to_biguint().unwrap_or_else(BigUint::zero);
-            biguint_to_fe_simple(&(pos % &self.fq.native_modulus))
-        });
-        let native = layouter.assign_region(
-            || "blend native",
-            |mut region| region.assign_advice(|| "native", self.advice_col(), 0, || native_v),
-        )?;
-        Ok(CrtInteger::new(
-            OverflowInteger::new(limbs, LIMB_BITS),
-            native,
-            value,
-        ))
+        // modulus-independent gate; binds limbs and native
+        self.fp.select(layouter, a, b, bit)
     }
 
-    /// Residue `mag` or `n - mag`, selected by `sign`.
     fn signed_residue(
         &self,
         mut layouter: impl Layouter<pallas::Base>,
@@ -2455,7 +2140,11 @@ impl Secp256k1Chip {
     ) -> Result<SecpPoint<pallas::Base>, PlonkError> {
         let split_v = sk.value.as_ref().map(|k| {
             let k_big = k.to_biguint().expect("secret scalar is non-negative");
-            glv_split(&k_big)
+            let mut sp = glv_split(&k_big);
+            if forge::is(forge::GLV_K1) {
+                sp.k1.mag += 1u32;
+            }
+            sp
         });
         let (mag1, sign1, z1_cell, z1, mag2, sign2, z2_cell, z2) =
             self.constrain_glv_split(layouter.namespace(|| "glv split"), sk, &split_v)?;
@@ -2592,14 +2281,8 @@ impl Secp256k1Chip {
         let neg_offset_x = secp_fp_from_le(MONTGOMERY_OFFSET_X);
         let neg_offset_y = secp_fp_from_le(MONTGOMERY_OFFSET_Y);
         let neg_offset = (
-            self.fp.load_private(
-                layouter.namespace(|| "neg_offset_x"),
-                Value::known(neg_offset_x),
-            )?,
-            self.fp.load_private(
-                layouter.namespace(|| "neg_offset_y"),
-                Value::known(neg_offset_y),
-            )?,
+            self.fp.load_constant(layouter.namespace(|| "neg_offset_x"), neg_offset_x)?,
+            self.fp.load_constant(layouter.namespace(|| "neg_offset_y"), neg_offset_y)?,
         );
         let corrected = self.add_point(
             layouter.namespace(|| "montgomery correction"),
@@ -2625,9 +2308,16 @@ impl Secp256k1Chip {
         PlonkError,
     > {
         // Load secret key
-        let sk_assigned = self
-            .fq
-            .load_private(layouter.namespace(|| "load secret key"), esk)?;
+        let sk_assigned = {
+            let n = secp_n();
+            let v = esk.map(|v| {
+                let k = fe_to_biguint_host(&v);
+                if forge::is(forge::SK_PLUS_N) { k + &n } else { k }
+            });
+            self.fq.assign_biguint(layouter.namespace(|| "load secret key"), v)?
+        };
+        // sk < n: one integer per scalar, so one nullifier per key
+        self.fq.assert_canonical(layouter.namespace(|| "sk < n"), &sk_assigned)?;
         self.fq
             .range_check_limbs(layouter.namespace(|| "range check sk"), &sk_assigned)?;
 
@@ -2642,6 +2332,9 @@ impl Secp256k1Chip {
             .range_check_limbs(layouter.namespace(|| "range check pk.x"), &pk_x_assigned)?;
         self.fp
             .range_check_limbs(layouter.namespace(|| "range check pk.y"), &pk_y_assigned)?;
+        // canonical coordinates: pk natives (hashed into pk_com) are unique per point
+        self.fp.assert_canonical(layouter.namespace(|| "pk.x < p"), &pk_x_assigned)?;
+        self.fp.assert_canonical(layouter.namespace(|| "pk.y < p"), &pk_y_assigned)?;
 
         // esk·G via GLV: k1·G + k2·ψ(G), ψ(x, y) = (βx, y).
         let computed_pk = if KEYPAIR_LADDER.load(core::sync::atomic::Ordering::SeqCst) {
@@ -2705,7 +2398,7 @@ impl Secp256k1Chip {
         self.fq.range_check_limbs(layouter.namespace(|| "rc s"), &s)?;
 
         let one = self.load_pinned_fq(layouter.namespace(|| "one"), Secp256k1Fq::from(1u64))?;
-        let s_inv = self.fq.div(layouter.namespace(|| "s inverse"), &one, &s)?;
+        let s_inv = self.fq.div_checked(layouter.namespace(|| "s inverse"), &one, &s)?;
         let u1 = self.fq.mul(layouter.namespace(|| "u1 = e/s"), &e, &s_inv)?;
         let u2 = self.fq.mul(layouter.namespace(|| "u2 = r/s"), &r, &s_inv)?;
 

@@ -299,37 +299,64 @@ mod tests {
         MockProver::run(k(), c, vec![p.to_vec()]).unwrap().verify().is_ok()
     }
 
-    /// ADVERSARIAL: the secp chip's `sub` output is only range-checked, so a prover can witness
-    /// `a - b = 0` for unequal a, b and pass `enforce_equal` with a key it does not own.
-    /// EXPECTS the forgery to be ACCEPTED: this documents the soundness hole.
+    /// MockProver verdict under a forge mode; a synthesis panic is reported as `None`.
+    fn ok_forged(mode: u8, c: &BlindClaimCircuit, p: &[pallas::Base]) -> Option<bool> {
+        use crate::circuit::gadget::secp256k1_chip::forge;
+        forge::set(mode);
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ok(c, p)));
+        forge::set(0);
+        r.ok()
+    }
+
+    /// ADVERSARIAL (formerly `blind_forgery_accepted_unsound_sub`): the old chip let a prover
+    /// witness `a - b = 0` inside `enforce_equal` for unequal a, b. The sound sub gate binds the
+    /// output, so the same forgery must now be REJECTED.
     #[test]
     #[ignore = "K=19 MockProver"]
-    fn blind_forgery_accepted_unsound_sub() {
-        use crate::circuit::gadget::secp256k1_chip::FORGE_EQ as FORGE_SUB;
+    fn blind_forgery_rejected() {
+        use crate::circuit::gadget::secp256k1_chip::forge;
         let f = fx();
         let mut c = f.circuit.clone();
         c.sk = Value::known(crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be(&[0x22; 32]));
         let honest_reject = !ok(&c, &f.public);
-        // attacker picks its own fake sk' and publishes nf' = Poseidon(tag, sk', ctx)
         let mut forged_pub = f.public.clone();
         let fake_sk_native = {
             use ff::PrimeField;
             pallas::Base::from_repr([0x22u8; 32]).unwrap()
         };
         forged_pub[2] = blind_nullifier(fake_sk_native, pallas::Base::from(0x11u64));
-        FORGE_SUB.store(true, core::sync::atomic::Ordering::SeqCst);
-        let forged = ok(&c, &forged_pub);
-        FORGE_SUB.store(true, core::sync::atomic::Ordering::SeqCst);
-        if !forged {
-            let pr = MockProver::run(k(), &c, vec![forged_pub.clone()]).unwrap();
-            if let Err(e) = pr.verify() {
-                for x in e.iter().take(4) { std::println!("FAIL {x:?}"); }
-            }
-        }
-        FORGE_SUB.store(false, core::sync::atomic::Ordering::SeqCst);
-        std::println!("FORGERY honest_wrong_sk_rejected={honest_reject} forged_wrong_sk_accepted={forged}");
+        let forged = ok_forged(forge::EQ_SUB, &c, &forged_pub);
+        std::println!("FORGERY honest_wrong_sk_rejected={honest_reject} forged_accepted={forged:?}");
         assert!(honest_reject);
-        assert!(forged, "forgery rejected: chip may be sound");
+        assert_eq!(forged, Some(false), "eq-sub forgery must be rejected by constraints");
+    }
+
+    /// Each forge mode tampers one witness of the HONEST claim; every one must be rejected by
+    /// the constraint system (not by a synthesis panic).
+    #[test]
+    #[ignore = "K=19 MockProver"]
+    fn blind_negative_suite() {
+        use crate::circuit::gadget::secp256k1_chip::forge;
+        let f = fx();
+        assert!(ok(&f.circuit, &f.public), "honest claim");
+        let cases = [
+            (forge::ADD_OUT, "forged add output"),
+            (forge::SUB_OUT, "forged sub output"),
+            (forge::MUL_OUT, "forged mul output"),
+            (forge::MUL_Q_RANGE, "mul quotient out of range"),
+            (forge::MUL_R_RANGE, "mul remainder limb out of range"),
+            (forge::CONST, "unpinned constant"),
+            (forge::SK_PLUS_N, "sk >= n (sk + n)"),
+            (forge::GLV_K1, "bad GLV decomposition"),
+        ];
+        let mut bad = vec![];
+        for (m, name) in cases {
+            let r = ok_forged(m, &f.circuit, &f.public);
+            std::println!("NEG {name}: accepted={r:?}");
+            if r != Some(false) { bad.push(name); }
+        }
+        assert!(ok(&f.circuit, &f.public), "honest claim after forges");
+        assert!(bad.is_empty(), "not rejected by constraints: {bad:?}");
     }
 
     #[test]
