@@ -36,6 +36,9 @@ use std::vec::Vec;
 // Constants
 // ============================================================================
 
+mod fixed_base;
+pub use fixed_base::{FB_NWIN, FB_W, KEYPAIR_GLV};
+
 /// Number of 64-bit limbs per foreign field element.
 const NUM_LIMBS: usize = 4;
 /// Bits per limb.
@@ -492,6 +495,8 @@ pub mod forge {
     pub const GLV_K1: u8 = 8;
     /// one-shot sub forgery used only by `enforce_equal` (the original FORGE_EQ attack)
     pub const EQ_SUB: u8 = 9;
+    pub const FB_DIGIT: u8 = 10;
+    pub const FB_POINT: u8 = 11;
     pub static MODE: AtomicU8 = AtomicU8::new(NONE);
     pub fn set(m: u8) {
         MODE.store(m, Ordering::SeqCst)
@@ -512,6 +517,8 @@ pub(crate) mod forge {
     pub const SK_PLUS_N: u8 = 7;
     pub const GLV_K1: u8 = 8;
     pub const EQ_SUB: u8 = 9;
+    pub const FB_DIGIT: u8 = 10;
+    pub const FB_POINT: u8 = 11;
     #[inline(always)]
     pub fn is(_m: u8) -> bool {
         false
@@ -1259,6 +1266,8 @@ pub struct Secp256k1Config {
     q_blend: Selector,
     /// `packed = lo + hi · 2^64` for a public 128-bit half of the challenge.
     q_pack: Selector,
+    /// Optional fixed-base window table for `sk·G` (lab, task 1a).
+    pub fixed_base: Option<fixed_base::FixedBaseConfig>,
 }
 
 impl Secp256k1Config {
@@ -1363,6 +1372,7 @@ impl Secp256k1Config {
             q_scale,
             q_blend,
             q_pack,
+            fixed_base: None,
         }
     }
 }
@@ -1377,6 +1387,7 @@ pub struct Secp256k1Chip {
     q_scale: Selector,
     q_blend: Selector,
     q_pack: Selector,
+    fixed_base: Option<fixed_base::FixedBaseConfig>,
 }
 
 impl Secp256k1Chip {
@@ -1402,6 +1413,7 @@ impl Secp256k1Chip {
             q_scale: config.q_scale,
             q_blend: config.q_blend,
             q_pack: config.q_pack,
+            fixed_base: config.fixed_base,
         }
     }
 
@@ -2341,6 +2353,8 @@ impl Secp256k1Chip {
             // Revived ea8ddf5 Montgomery-ladder path (lab variant, selected at synthesis time).
             let g = self.point_from_fp(layouter.namespace(|| "G"), generator_xy())?;
             self.scalar_mul_montgomery(layouter.namespace(|| "ladder scalar mul"), &sk_assigned, &g)?
+        } else if self.has_fixed_base() {
+            self.scalar_mul_fixed_base(layouter.namespace(|| "fixed-base scalar mul"), &sk_assigned)?
         } else {
             self.scalar_mul_glv(layouter.namespace(|| "glv scalar mul"), &sk_assigned)?
         };

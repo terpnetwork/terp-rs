@@ -90,7 +90,7 @@ impl Circuit<pallas::Base> for BlindClaimCircuit {
         }
         let table = meta.lookup_table_column();
         let range_check = LookupRangeCheckConfig::configure(meta, advice[0], table);
-        let secp = Secp256k1Config::configure(meta, advice, range_check);
+        let secp = Secp256k1Config::configure_with_fixed_base(meta, advice, range_check);
         let rc_a = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
         let rc_b = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
         meta.enable_constant(rc_b[0]);
@@ -116,6 +116,7 @@ impl Circuit<pallas::Base> for BlindClaimCircuit {
             },
         )?;
         let chip = Secp256k1Chip::construct(config.secp.clone());
+        chip.load_fixed_base_table(layouter.namespace(|| "fb table"))?;
         let (sk, (px, py)) = chip.prove_key_pairing(layouter.namespace(|| "sk·G = pk"), self.sk, self.pkx, self.pky)?;
         let ctx = load(&mut layouter, config.advice[1], "ctx", self.ctx)?;
         let amount = load(&mut layouter, config.advice[2], "amount", self.amount.map(pallas::Base::from))?;
@@ -340,18 +341,24 @@ mod tests {
         let f = fx();
         assert!(ok(&f.circuit, &f.public), "honest claim");
         let cases = [
-            (forge::ADD_OUT, "forged add output"),
+            (forge::ADD_OUT, "forged add output (GLV path)"),
             (forge::SUB_OUT, "forged sub output"),
             (forge::MUL_OUT, "forged mul output"),
             (forge::MUL_Q_RANGE, "mul quotient out of range"),
             (forge::MUL_R_RANGE, "mul remainder limb out of range"),
             (forge::CONST, "unpinned constant"),
             (forge::SK_PLUS_N, "sk >= n (sk + n)"),
-            (forge::GLV_K1, "bad GLV decomposition"),
+            (forge::FB_DIGIT, "fixed-base digit != sk limb"),
+            (forge::FB_POINT, "fixed-base point not from table"),
         ];
         let mut bad = vec![];
         for (m, name) in cases {
+            // fp.add only occurs in doublings; the fixed-base path has none, so exercise the
+            // add gate through the GLV path (same chip, same gate).
+            let glv = m == forge::ADD_OUT;
+            crate::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(glv, core::sync::atomic::Ordering::SeqCst);
             let r = ok_forged(m, &f.circuit, &f.public);
+            crate::circuit::gadget::secp256k1_chip::KEYPAIR_GLV.store(false, core::sync::atomic::Ordering::SeqCst);
             std::println!("NEG {name}: accepted={r:?}");
             if r != Some(false) { bad.push(name); }
         }
