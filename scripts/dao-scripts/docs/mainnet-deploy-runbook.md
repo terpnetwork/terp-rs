@@ -1,7 +1,7 @@
 # Mainnet deploy runbook (`mainnet_deploy`)
 
 Phased cw-orch deploy for **morocco-1**. Every signature goes through `cw-orch-kms` (`kms_gate`): one scoped,
-expiring authz session per phase, approved by the cold key on the granter page at `127.0.0.1:8741`, and revoked when the phase ends.
+expiring authz session per phase, approved by the cold key on the granter page (a random loopback port in 18700-18999, printed with its `ssh -L` line; `CW_ORCH_KMS_PORT` pins it), and revoked when the phase ends.
 The runtime is **dry-run by default**. It writes `out/mainnet-deploy/plan-<phase>.json` and signs nothing.
 It is **idempotent**: `out/mainnet-deploy/state.json` records code ids with checksums, contracts, done steps and txs.
 Before reusing a stored code id, it compares the on-chain checksum and stops on a mismatch.
@@ -16,7 +16,7 @@ cargo run -p dao-scripts --bin mainnet_deploy -- <phase|all> [--from P] [--only 
 
 | # | phase | does | approval |
 |---|-------|------|----------|
-| 0 | preflight | artifacts vs `checksums.txt`, node chain-id, broadcast gate, granter port 8741 | none (read-only) |
+| 0 | preflight | artifacts vs `checksums.txt`, node chain-id, broadcast gate, approval page port (random, re-picked if taken) | none (read-only) |
 | 1 | upload | store 12 codes: oracle-registry/aggregator/twap-probe, marketplace, reserve-auction, svg-auction, raffle, nft-loan, passkey, recovery, cw721-svg, svg-minter | **[APPROVAL]** one MsgStoreCode session |
 | 2 | daos | writes `daos_fiab_proposal.json` (FIAB via the Foundation pre-propose) and points to `steward_multi_dao` | **[APPROVAL]** Foundation proposal + vote, sent with `fiab_subdao`/`steward_multi_dao --broadcast` by a Foundation member |
 | 3 | oracles | instantiate2 registry, then aggregator(registry), then twap-probe(mid) | **[APPROVAL]** instantiate2 session |
@@ -61,7 +61,7 @@ CodeGrant has no permission constraint, and x/wasm accepts any permission in tha
 Every step is a cw-orch command. No `terpd tx` / `terpd q` step is used.
 ```
 cargo run -p dao-scripts --bin svg_ops -- <exec|grant-operator|operator-exec|revoke-operator|grants> --contract <factory> [--msg JSON|--msg-file F] [--broadcast]
-# same gate as mainnet_deploy: --chain-id, TERP_SCRIPT_BROADCAST=1 (+ TERP_SCRIPT_BROADCAST_CHAIN off morocco-1); --granter or the 8741 challenge
+# same gate as mainnet_deploy: --chain-id, TERP_SCRIPT_BROADCAST=1 (+ TERP_SCRIPT_BROADCAST_CHAIN off morocco-1); --granter or the approval-page challenge
 ```
 - **Granter acts directly** (create a drop, set_series, update_ownership, …): `svg_ops exec --contract <factory> --msg-file create.json`.
   The phone approves one session scoped to that contract + top-level key. The tx is MsgExec{MsgExecuteContract{sender: granter}}, and the grants are revoked afterwards.
@@ -69,7 +69,7 @@ cargo run -p dao-scripts --bin svg_ops -- <exec|grant-operator|operator-exec|rev
   `svg_ops grant-operator --contract <factory> --operator <operator addr> --keys create_series_collection,create_svg_collection --calls 10 --ttl-secs 86400`.
   The phone signs a **retained** MsgGrant (ContractExecutionAuthorization: factory only, AcceptedMessageKeysFilter, MaxCallsLimit = calls+1) and a feegrant to that address. Nothing is executed.
 - **Operator acts** (operator side, its own cold key):
-  `svg_ops operator-exec --granter <granter> --operator <operator addr> --contract <factory> --msg-file drop.json [--bind 127.0.0.1:8741] --broadcast`.
+  `svg_ops operator-exec --granter <granter> --operator <operator addr> --contract <factory> --msg-file drop.json [--bind 127.0.0.1:<port>] --broadcast`.
   It queries and prints the grant first (allowed keys, calls left, expiry, fee allowance). A missing, revoked, expired or used-up grant, or a message key the grant doesn't allow, is refused before anything is signed.
   The operator's Zigner never signs the contract msgs. It signs one short session grant (≤ 900 s) to an ephemeral key on the box: generic MsgExec authz + a feegrant capped at the planned spend. The ephemeral key then sends MsgExec{MsgExec{MsgExecuteContract{sender: granter}}} for each `--msg-file` (repeatable; up to the calls left). The session's grants are revoked when it closes (`session closed: session grants revoked`). `--signer kms` is the default and needs no mnemonic.
   Fallback only: `--signer env` signs with `MAIN_MNEMONIC` exported in the operator's own shell (never the repo `.env`).

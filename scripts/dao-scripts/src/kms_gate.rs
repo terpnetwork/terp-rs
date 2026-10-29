@@ -28,7 +28,11 @@ pub const BROADCAST_ENV: &str = "TERP_SCRIPT_BROADCAST";
 /// Chains other than morocco-1 need this set to the exact chain-id as well as
 /// `TERP_SCRIPT_BROADCAST=1`. Without both, scripts stay dry-run.
 pub const BROADCAST_CHAIN_ENV: &str = "TERP_SCRIPT_BROADCAST_CHAIN";
-pub const GRANTER_PAGE: &str = "127.0.0.1:8741";
+/// Granter/approval page: `CW_ORCH_KMS_PORT`, else one random loopback port
+/// (18700-18999) per process, re-picked if taken. The URL and ssh -L line print on bind.
+pub fn granter_page() -> std::net::SocketAddr {
+    cw_orch_kms::page_addr()
+}
 
 /// Chain info for a cosmos chain reached over gRPC.
 pub fn chain_info(
@@ -231,9 +235,9 @@ pub fn kms_broadcast(req: BroadcastRequest, msgs: Vec<Any>, memo: &str) -> Resul
     cw_orch_kms::ensure_ephemeral_mnemonic(req.info.kind.clone()).map_err(|e| anyhow!(e))?;
     cw_orch_kms::set_approval_chain(kms_profile(&req.info)).map_err(|e| anyhow!(e))?;
     let granter = if req.granter.is_empty() {
-        println!("sign the cw-orch-granter:v2 challenge at http://{GRANTER_PAGE}");
+        println!("sign the cw-orch-granter:v2 challenge on the approval page below");
         cw_orch_kms::capture_granter_for_chain_sync(
-            GRANTER_PAGE.parse()?,
+            granter_page(),
             req.account_index,
             &req.purpose,
             &req.info.chain_id,

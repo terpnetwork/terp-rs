@@ -3,7 +3,7 @@
 //! The daemon wallet is the grantee. `--granter` is the cold Terp address.
 //! The default session grants store of the three named Wasm files, pinned by
 //! checksum, and nothing else. The cold key signs that authorization once on
-//! http://127.0.0.1:8741. The same signature lets the ephemeral key revoke
+//! the approval page (random loopback port, printed at start). The same signature lets the ephemeral key revoke
 //! the grant after the uploads.
 //! `--retain` keeps the grant and skips the page when it already covers the run.
 //!
@@ -133,9 +133,9 @@ fn main() -> Result<()> {
         "skipped: dao_voting_token_staked-thorchain.wasm, cw_tokenfactory_issuer-thorchain.wasm"
     );
     let granter = if cli.granter.is_empty() {
-        println!("sign once at http://127.0.0.1:8741. that key is the granter");
+        println!("sign once on the approval page below. that key is the granter");
         cw_orch_kms::capture_granter_sync(
-            "127.0.0.1:8741".parse()?,
+            cw_orch_kms::page_addr(),
             cli.account_index,
             "dao-upload",
         )

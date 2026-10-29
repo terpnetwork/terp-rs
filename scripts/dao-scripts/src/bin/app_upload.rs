@@ -1,6 +1,6 @@
 //! Store the app contracts through one authz and feegrant session.
 //!
-//! The cold key signs one grant on http://127.0.0.1:8741. The grant stores
+//! The cold key signs one grant on the approval page (random loopback port, printed at start). The grant stores
 //! only these Wasm files, pinned by checksum. The ephemeral key then stores
 //! them and, unless `--retain`, revokes the grant.
 //!
@@ -175,9 +175,9 @@ fn main() -> Result<()> {
     }
 
     let granter = if cli.granter.is_empty() {
-        println!("sign once at http://127.0.0.1:8741. that key is the granter");
+        println!("sign once on the approval page below. that key is the granter");
         cw_orch_kms::capture_granter_sync(
-            "127.0.0.1:8741".parse()?,
+            cw_orch_kms::page_addr(),
             cli.account_index,
             "app-upload",
         )

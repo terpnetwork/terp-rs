@@ -2,7 +2,7 @@
 //!
 //! Two jobs, both dry-run by default:
 //!   1. a small test transfer from our own key (`--granter`), signed through the
-//!      cw-orch-kms Zigner session on 127.0.0.1:8741 (`--broadcast` +
+//!      cw-orch-kms Zigner session on a random loopback page (`--broadcast` +
 //!      TERP_SCRIPT_BROADCAST=1); the session allows MsgTransfer only.
 //!   2. `--fiab-proposal-out <file>` renders the FIAB-SUBDAO resend proposal
 //!      (dao_account params format, from 8-fiab-penumbra-liquidity.json) for the
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
         "coins": coins.iter().map(|(d, a)| json!({"denom": d, "amount": a.to_string()})).collect::<Vec<_>>(),
         "sender_balances": balances,
         "timeout_timestamp_ns": timeout_ns.to_string(),
-        "session_scope": {"sdk": [MSG_TRANSFER], "ttl_secs": cli.ttl_secs, "page": "127.0.0.1:8741"},
+        "session_scope": {"sdk": [MSG_TRANSFER], "ttl_secs": cli.ttl_secs, "page": cw_orch_kms::page_addr().to_string()},
         "simulate": "skipped in dry-run: simulation needs the granter's pubkey; the broadcast path simulates inside commit_tx_any.",
     }))?;
     if !cli.broadcast { return Ok(()); }

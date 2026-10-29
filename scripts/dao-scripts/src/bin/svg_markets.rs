@@ -281,9 +281,9 @@ fn main() -> Result<()> {
         wait_for_fee(&daemon, &creator, &denom)?;
     }
     let granter = if cli.granter.is_empty() {
-        println!("sign once at http://127.0.0.1:8741. that key is the granter");
+        println!("sign once on the approval page below. that key is the granter");
         cw_orch_kms::capture_granter_sync(
-            "127.0.0.1:8741".parse()?,
+            cw_orch_kms::page_addr(),
             cli.account_index,
             "svg-markets",
         )

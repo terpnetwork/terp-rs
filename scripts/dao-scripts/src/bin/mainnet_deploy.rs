@@ -108,7 +108,7 @@ const BENDERS_SERIES: &str = "latent-benders";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 enum SignerKind {
-    /// cw-orch-kms authz session approved by the cold key on 127.0.0.1:8741.
+    /// cw-orch-kms authz session approved by the cold key on a random loopback approval page (`CW_ORCH_KMS_PORT` pins it).
     Kms,
     /// Rehearsal only: in-process ephemeral key on a 127.0.0.1 chain.
     LocalTest,
@@ -472,8 +472,8 @@ impl Signer {
 /// The kms granter (the cold key that signs the session grants). Captured once per run.
 fn ensure_granter(ctx: &mut Ctx, phase: &str) -> Result<String> {
     if ctx.cli.granter.is_empty() {
-        println!("[{phase}] sign the granter challenge at http://{}", kms_gate::GRANTER_PAGE);
-        let g = cw_orch_kms::capture_granter_sync(kms_gate::GRANTER_PAGE.parse()?, ctx.cli.account_index, &format!("mainnet-deploy-{phase}"))
+        println!("[{phase}] sign the granter challenge on the approval page below");
+        let g = cw_orch_kms::capture_granter_sync(kms_gate::granter_page(), ctx.cli.account_index, &format!("mainnet-deploy-{phase}"))
             .map_err(|e| anyhow!(e))?;
         ctx.cli.granter = g;
     }
@@ -710,8 +710,8 @@ fn preflight(ctx: &mut Ctx) -> Result<()> {
             info: ctx.info.clone(), expected_chain_id: ctx.cli.chain_id.clone(), granter: ctx.cli.granter.clone(),
             purpose: "mainnet-deploy".into(), account_index: ctx.cli.account_index, ttl_secs: ctx.cli.ttl_secs,
             scope: Scope::Instantiate2, summary: "preflight".into() }, std::env::var(kms_gate::BROADCAST_ENV).ok().as_deref())?;
-        std::net::TcpListener::bind(kms_gate::GRANTER_PAGE).context("approval page port 127.0.0.1:8741 is busy")?;
-        println!("  kms gate ok; approval page port free");
+        let page = kms_gate::granter_page();
+        println!("  kms gate ok; approval page will bind {page} (re-picked if taken)");
     }
     println!("  admin {}  signer {:?}  creator {:?}", ctx.cli.admin, ctx.cli.signer, ctx.creator);
     println!("  state {} ({} codes, {} contracts, {} txs)", ctx.state.path.display(), ctx.state.codes.len(), ctx.state.contracts.len(), ctx.state.txs.len());

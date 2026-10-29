@@ -7,7 +7,7 @@
 //!
 //! The funded spawn account broadcasts the transaction. Set `CW_ORCH_GRANTER`
 //! when a cold account must grant that ephemeral account authz and a feegrant
-//! first. The approval page is http://127.0.0.1:8741.
+//! first. The approval page URL (random loopback port) prints at start.
 
 use clap::Parser;
 use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;

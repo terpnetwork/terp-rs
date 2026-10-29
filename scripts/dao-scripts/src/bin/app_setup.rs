@@ -325,8 +325,8 @@ fn main() -> Result<()> {
         } else {
             resolve_chain(cli.chain.as_deref().unwrap_or(""))?.chain_id.to_string()
         };
-        println!("sign once at http://127.0.0.1:8741 (cw-orch-granter:v2, chain {chain_id}). that key is the granter");
-        cw_orch_kms::capture_granter_for_chain_sync("127.0.0.1:8741".parse()?, cli.account_index, "app-setup", &chain_id)
+        println!("sign once on the approval page below (cw-orch-granter:v2, chain {chain_id}). that key is the granter");
+        cw_orch_kms::capture_granter_for_chain_sync(cw_orch_kms::page_addr(), cli.account_index, "app-setup", &chain_id)
             .map_err(|err| anyhow!(err))?
     } else {
         cli.granter.clone()
