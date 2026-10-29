@@ -522,6 +522,8 @@ pub mod forge {
     pub const EQ_SUB: u8 = 9;
     pub const FB_DIGIT: u8 = 10;
     pub const FB_POINT: u8 = 11;
+    /// window-1 lookup witnessed as the accumulator itself (acc == T, dx = dy = 0: plain div accepts any lambda)
+    pub const FB_COLLIDE: u8 = 12;
     pub static MODE: AtomicU8 = AtomicU8::new(NONE);
     pub fn set(m: u8) {
         MODE.store(m, Ordering::SeqCst)
@@ -544,6 +546,7 @@ pub(crate) mod forge {
     pub const EQ_SUB: u8 = 9;
     pub const FB_DIGIT: u8 = 10;
     pub const FB_POINT: u8 = 11;
+    pub const FB_COLLIDE: u8 = 12;
     #[inline(always)]
     pub fn is(_m: u8) -> bool {
         false

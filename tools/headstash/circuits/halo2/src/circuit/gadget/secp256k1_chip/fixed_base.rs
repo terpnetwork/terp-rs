@@ -218,7 +218,10 @@ impl Secp256k1Chip {
         let tab = fb_table();
         let mut pts = Vec::with_capacity(FB_NWIN);
         for (i, dcell) in digits.iter().enumerate() {
-            let pv: Value<HostPt> = digit_vals.as_ref().map(|d| tab[i][d[i] as usize]);
+            // forge::FB_COLLIDE: window 1 claims T_1 := acc_1 = T_0[d_0] (forces dx = dy = 0).
+            let pv: Value<HostPt> = digit_vals.as_ref().map(|d| {
+                if i == 1 && forge::is(forge::FB_COLLIDE) { tab[0][d[0] as usize] } else { tab[i][d[i] as usize] }
+            });
             let pt = layouter.assign_region(
                 || "fb lookup",
                 |mut region| {
@@ -287,3 +290,28 @@ impl Secp256k1Chip {
 
 /// Lab switch: use div_checked for every fixed-base add (1a baseline).
 pub static FB_ALWAYS_CHECKED: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
+#[cfg(test)]
+mod audit_tests {
+    use super::*;
+    /// Plain-div audit: for every window w in 1..last, max acc scalar < min T_w scalar and
+    /// max acc + max T_w < n, so acc != +-T_w (mod n) for ALL digit choices.
+    #[test]
+    fn fb_plain_div_scalar_bound() {
+        let n = secp_n();
+        let m = BigUint::from((1u64 << FB_W) - 1);
+        for w in 1..FB_NWIN - 1 {
+            let mut amax = BigUint::zero();
+            let mut amin = BigUint::zero();
+            for i in 0..w {
+                amax += (&m + 2u32) << (FB_W * i);
+                amin += BigUint::from(2u32) << (FB_W * i);
+            }
+            let tmin = BigUint::from(2u32) << (FB_W * w);
+            let tmax = (&m + 2u32) << (FB_W * w);
+            assert!(amin > BigUint::zero());
+            assert!(amax < tmin, "w={w}: acc may equal T");
+            assert!(&amax + &tmax < n, "w={w}: acc may equal -T");
+        }
+    }
+}

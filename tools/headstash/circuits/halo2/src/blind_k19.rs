@@ -36,6 +36,8 @@ use pasta_curves::pallas;
 use super::circuit::{Secp256k1Chip, Secp256k1Config, Secp256k1Fp, Secp256k1Fq};
 use crate::distro_poseidon::{distro_crh_tag, personalization_to_fp};
 use crate::note_membership::{note_leaf, note_root, NOTE_DEPTH};
+#[allow(unused_imports)]
+use super::circuit; // host: crate::circuit; browser: crate::rawkey::circuit (lets tests use super::circuit)
 
 pub const BLIND_K: u32 = 19;
 const TAG_PKCOM: &str = "terp-hs-pkcom-v1";
@@ -354,6 +356,7 @@ mod tests {
             (forge::SK_PLUS_N, "sk >= n (sk + n)"),
             (forge::FB_DIGIT, "fixed-base digit != sk limb"),
             (forge::FB_POINT, "fixed-base point not from table"),
+            (forge::FB_COLLIDE, "fixed-base acc == T (dx = 0, plain-div lambda free)"),
         ];
         let mut bad = vec![];
         for (m, name) in cases {
