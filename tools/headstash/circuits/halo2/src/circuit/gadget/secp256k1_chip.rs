@@ -553,6 +553,9 @@ pub(crate) mod forge {
     }
 }
 
+/// Lab switch: configure the ECDSA claim circuit with the fixed-base table (u1·G).
+pub static ECDSA_FIXED_BASE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
 /// Lab switch: use the revived Montgomery ladder instead of GLV in `prove_key_pairing`.
 pub static KEYPAIR_LADDER: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
@@ -2444,7 +2447,13 @@ impl Secp256k1Chip {
         let u1 = self.fq.mul(layouter.namespace(|| "u1 = e/s"), &e, &s_inv)?;
         let u2 = self.fq.mul(layouter.namespace(|| "u2 = r/s"), &r, &s_inv)?;
 
-        let r_g = self.scalar_mul_glv(layouter.namespace(|| "u1·G"), &u1)?;
+        // Fixed-base table when configured: digits of u1 (< 2^256, possibly non-canonical: same
+        // point mod n). Adds 1..30 plain div (bound holds for every digit choice), last add checked.
+        let r_g = if self.fixed_base.is_some() {
+            self.scalar_mul_fixed_base(layouter.namespace(|| "u1·G fb"), &u1)?
+        } else {
+            self.scalar_mul_glv(layouter.namespace(|| "u1·G"), &u1)?
+        };
         let q = (
             self.fp
                 .load_private(layouter.namespace(|| "Q.x"), qx)?,

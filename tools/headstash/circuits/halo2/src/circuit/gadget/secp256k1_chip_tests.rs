@@ -42,7 +42,11 @@ impl Secp256k1TestConfig {
         let range_check = LookupRangeCheckConfig::configure(meta, advices[0], table_idx);
 
         // Configure Secp256k1 chip with 9 shared columns
-        let secp_config = Secp256k1Config::configure(meta, advices, range_check);
+        let secp_config = if ECDSA_FIXED_BASE.load(core::sync::atomic::Ordering::SeqCst) {
+            Secp256k1Config::configure_with_fixed_base(meta, advices, range_check)
+        } else {
+            Secp256k1Config::configure(meta, advices, range_check)
+        };
 
         Self {
             secp_config,
@@ -154,6 +158,7 @@ impl Circuit<pallas::Base> for EcdsaVerifyCircuit {
             },
         )?;
         let chip = Secp256k1Chip::construct(config.secp_config);
+        chip.load_fixed_base_table(layouter.namespace(|| "fb table"))?;
         chip.prove_ecdsa_verify(
             layouter.namespace(|| "ecdsa"),
             Value::known(self.e),
@@ -221,6 +226,56 @@ fn test_ecdsa_verify_accepts_wallet_signature() {
     // Two GLV multiplications. K=19 leaves room for the variable-base offset doubles.
     let prover = MockProver::run(19, &circuit, vec![]).expect("synthesize");
     assert_eq!(prover.verify(), Ok(()));
+}
+
+/// ECDSA soundness: honest accepted; wrong sig / key / msg and forged arithmetic rejected by
+/// constraints. ECDSA_NEG_FB=1 uses fixed-base u1*G. ECDSA_NEG_K overrides K (default 19).
+#[test]
+#[ignore = "K=19 MockProver, many runs"]
+fn ecdsa_negative_suite() {
+    use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
+    use crate::claim_auth::claim_challenge;
+    let fb = std::env::var("ECDSA_NEG_FB").is_ok();
+    ECDSA_FIXED_BASE.store(fb, core::sync::atomic::Ordering::SeqCst);
+    let k: u32 = std::env::var("ECDSA_NEG_K").ok().and_then(|v| v.parse().ok()).unwrap_or(19);
+    let secp = Secp256k1::new();
+    let xy = |pk: &PublicKey| {
+        let raw = pk.serialize_uncompressed();
+        let (mut x, mut y) = ([0u8; 32], [0u8; 32]);
+        x.copy_from_slice(&raw[1..33]); y.copy_from_slice(&raw[33..65]);
+        (secp_fp_from_coord_be(&x), secp_fp_from_coord_be(&y))
+    };
+    let sk = SecretKey::from_byte_array([0x11; 32]).unwrap();
+    let (px, py) = xy(&PublicKey::from_secret_key(&secp, &sk));
+    let (ox, oy) = xy(&PublicKey::from_secret_key(&secp, &SecretKey::from_byte_array([0x22; 32]).unwrap()));
+    let challenge = claim_challenge(&[0xab; 32]);
+    let c2 = claim_challenge(&[0xac; 32]);
+    let sig = secp.sign_ecdsa(Message::from_digest(challenge), &sk).serialize_compact();
+    let (mut rb, mut sb) = ([0u8; 32], [0u8; 32]);
+    rb.copy_from_slice(&sig[..32]); sb.copy_from_slice(&sig[32..]);
+    let honest = || EcdsaVerifyCircuit { e: fq_from_be(&reduce_mod_n(&challenge)), r: fq_from_be(&rb), s: fq_from_be(&sb), pk_x: px, pk_y: py };
+    let ok = |c: &EcdsaVerifyCircuit| -> Option<bool> {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| MockProver::run(k, c, vec![]).expect("synth").verify().is_ok())).ok()
+    };
+    assert_eq!(ok(&honest()), Some(true), "honest signature");
+    let mut bad: std::vec::Vec<&str> = std::vec::Vec::new();
+    let mut chk = |name: &'static str, r: Option<bool>| { println!("ECDSA_NEG fb={fb} {name}: accepted={r:?}"); if r != Some(false) { bad.push(name); } };
+    let mut c = honest(); c.s = c.s + Secp256k1Fq::from(1u64); chk("wrong sig (s+1)", ok(&c));
+    let mut c = honest(); c.r = c.r + Secp256k1Fq::from(1u64); chk("wrong sig (r+1)", ok(&c));
+    let mut c = honest(); c.pk_x = ox; c.pk_y = oy; chk("wrong key", ok(&c));
+    let mut c = honest(); c.e = fq_from_be(&reduce_mod_n(&c2)); chk("wrong msg", ok(&c));
+    let mut modes = std::vec![(forge::ADD_OUT, "forged add"), (forge::SUB_OUT, "forged sub"), (forge::MUL_OUT, "forged mul"),
+        (forge::MUL_Q_RANGE, "mul q range"), (forge::MUL_R_RANGE, "mul r range"), (forge::CONST, "unpinned const"),
+        (forge::EQ_SUB, "eq-sub forge"), (forge::GLV_K1, "bad GLV k1")];
+    if fb { modes.push((forge::FB_DIGIT, "fb digit")); modes.push((forge::FB_POINT, "fb point")); modes.push((forge::FB_COLLIDE, "fb collide")); }
+    for (m, name) in modes {
+        forge::set(m); let r = ok(&honest()); forge::set(0);
+        chk(name, r);
+    }
+    drop(chk);
+    assert_eq!(ok(&honest()), Some(true), "honest after forges");
+    ECDSA_FIXED_BASE.store(false, core::sync::atomic::Ordering::SeqCst);
+    assert!(bad.is_empty(), "not rejected by constraints: {bad:?}");
 }
 
 // ============================================================================

@@ -361,7 +361,12 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             advices[0], advices[1], advices[2], advices[3], advices[4], advices[5], advices[6],
             advices[7], advices[8],
         ];
-        let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check.clone());
+        // k19 lab: ECDSA_FIXED_BASE switches u1·G to the fixed-base window table (changes the VK).
+        let secp256k1 = if crate::circuit::gadget::secp256k1_chip::ECDSA_FIXED_BASE.load(core::sync::atomic::Ordering::SeqCst) {
+            Secp256k1Config::configure_with_fixed_base(meta, secp_advices, range_check.clone())
+        } else {
+            Secp256k1Config::configure(meta, secp_advices, range_check.clone())
+        };
 
         // CondSwap for Poseidon-v1 distro Merkle path (node/sibling ordering).
         let cond_swap_config =
@@ -393,6 +398,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
 
         // 1. Eligible key signed the public claim challenge. esk is not a witness.
         let secp256k1_chip = Secp256k1Chip::construct(config.secp256k1.clone());
+        secp256k1_chip.load_fixed_base_table(layouter.namespace(|| "fb table"))?;
         let (epk_x, epk_y, sig_e) = secp256k1_chip.prove_ecdsa_verify(
             layouter.namespace(|| "personal_sign"),
             self.sig_e,

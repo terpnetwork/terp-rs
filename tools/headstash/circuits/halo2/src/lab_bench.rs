@@ -36,6 +36,12 @@ where
     let mut cs = ConstraintSystem::<pallas::Base>::default();
     let _ = C::configure(&mut cs);
     let cost = format!("{:?}", CircuitCost::<vesta::Point, C>::measure(k, &circuit));
+    if std::env::var("LAB_COST_ONLY").is_ok() {
+        let v = serde_json::json!({"circuit": name, "k": k, "cost_only": true, "rows_max": field(&cost, "max_rows"),
+            "advice_rows_max": field(&cost, "max_advice_rows"), "fixed_rows_max": field(&cost, "max_fixed_rows")});
+        println!("LAB_JSON {v}");
+        return v;
+    }
     let t = Instant::now();
     let params = Params::<vesta::Affine>::new(k);
     let params_secs = t.elapsed().as_secs_f64();
@@ -124,11 +130,13 @@ fn lab_bench_k19() {
     use crate::suite::suite::HeadstashProofBuilder;
     use crate::suite::HeadstashCircuitSuite;
     use cw_orch::prelude::Mock;
+    let fb = std::env::var("LAB_ECDSA_FB").is_ok();
+    crate::circuit::gadget::secp256k1_chip::ECDSA_FIXED_BASE.store(fb, core::sync::atomic::Ordering::SeqCst);
     let suite = HeadstashCircuitSuite::new(Mock::new("k19-lab"));
     let (circuit, instance, _a, _p) = suite.suite_backed_claim_pair(4, 1).expect("suite claim");
     let public = instance.to_halo2_instance()[0].to_vec();
     let k = std::env::var("LAB_K19_K").ok().and_then(|v| v.parse().ok()).unwrap_or(crate::circuit::K);
-    let name = if k == crate::circuit::K { String::from("k19_ecdsa_glv") } else { format!("k19_ecdsa_glv_at_k{k}") };
+    let name = if fb { format!("k19_ecdsa_fb_u1g_at_k{k}") } else if k == crate::circuit::K { String::from("k19_ecdsa_glv") } else { format!("k19_ecdsa_glv_at_k{k}") };
     measure(&name, k, circuit, public, runs());
 }
 
