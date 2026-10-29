@@ -101,3 +101,49 @@ The heavy step (K=19, or step 1) is not viable in the browser as built. K=17 raw
 - Wasm build at K=17.
 - Real gas measurement via cw-zk-bench on a local chain (127.0.0.1).
 - Note that verify CPU at K=19 (0.7–1.5 s) is far above what the flat gas meter prices (about 5 ms-equivalent): a DoS / mispricing risk.
+
+
+## Sound foreign-field chip (commit 02764a5)
+
+The old secp256k1 chip was unsound: its `sub` output was only (non-strictly) range-checked, native
+cells were unconstrained, and constants were free witnesses. A prover could pass `enforce_equal`
+with a key it did not own (`blind_forgery_accepted_unsound_sub`). It has been replaced.
+
+### Arithmetic
+* Elements: 4 x 64-bit limbs plus a native (Pallas) cell; a compose gate binds native = sum l_i 2^(64i).
+* Every limb is lookup range-checked (10-bit table, strict) when it is created: 64 bits per limb, 70 bits per quotient limb, 80 bits per offset carry.
+* mul: witness q, r with a*b = q*p + r. For each of the 7 limb positions k:
+  sum_{i+j=k} a_i b_j - q_i p_j - r_k + c_{k-1} = 2^64 c_k, where c_k = c'_k - 2^79 and c'_k is range-checked. The top carry is forced to 0. There is also a native-modulus check, a*b - q*p - r = 0 mod Pallas.
+* add/sub: a +- b = r + q*p with a boolean q, small carries c' in {0,1,2} and the same per-limb chain.
+* assert_canonical (x < m): a borrow chain checks m-1-x >= 0 with range-checked difference limbs.
+* div_checked: b*inv = 1 (non-zero divisor). It is used for add_point (dx) and ECDSA s^-1. Doubling keeps plain div because 2y != 0 on secp256k1.
+* Constants are pinned through constrain_constant on every limb: two/three are replaced by additions, and the ladder offset, generator tables and ECDSA one are pinned.
+* select binds cond, limbs and native. GLV k = k1 + k2*lambda mod n is now constrained through the sound Fq ops.
+* sk < n and canonical pk.x, pk.y < p are enforced in prove_key_pairing.
+
+### Soundness argument (sketch)
+Every limb is range-checked, so |a_i b_j|, |q_i p_j| < 2^134. Each column sum is < 2^137, and each per-limb equation is < 2^145, far below the Pallas modulus (about 2^254). The limb equations therefore hold over the integers rather than mod Pallas. Telescoping them with a zero top carry gives the integer identity a*b = q*p + r, so r = a*b mod p (up to a non-canonical representative < 2^256). Canonicity is imposed where uniqueness matters (sk, pk, the nullifier input). The native check is redundant but cheap. Add and sub follow the same argument with q in {0,1}. With pinned constants and a bound select, no free witness remains in the EC formulas except lambda, which the mul identity fixes.
+
+### Negative tests (MockProver, K=19; forge hooks are #[cfg(test)] only)
+| case | result |
+|---|---|
+| blind_forgery_rejected (eq-sub forge, wrong sk) | rejected |
+| forged add / sub / mul output | rejected / rejected / rejected |
+| mul quotient out of range | rejected |
+| mul remainder limb out of range | rejected |
+| unpinned constant | rejected |
+| sk >= n (sk+n) | rejected |
+| bad GLV decomposition (k1+1) | rejected |
+blind_soundness_suite also passes: the honest claim is accepted and 9 tamper cases are rejected.
+
+### Before / after (raw-key GLV keypair, native, groot-wan, median of 5)
+| | unsound (rawkey_glv_k19) | sound (rawkey_glv_sound_k19) |
+|---|---|---|
+| rows | 107,916 (fits K=17) | 453,787 (smallest K=19) |
+| prove median | 23.1 s @K19 (2.43 s @K17) | 28.2 s |
+| verify median | 0.74 s | 1.14 s |
+| PK / VK | 486.5 MB / 937 B | 503.3 MB / 969 B |
+| proof | 4,224 B | 4,640 B |
+| peak RSS | 4.19 GB | 4.18 GB (single-run, /usr/bin/time) |
+
+Not measured: sound ECDSA, the ladder and two-step registration overflow K=19 (NotEnoughRowsAvailable), and K=20 was not run. The wasm32 prover was not built for the sound chip.

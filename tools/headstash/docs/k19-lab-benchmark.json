@@ -3,7 +3,8 @@
  "machine": "groot-wan (Apple M1 Pro, 10 cores, 16 GB, macOS)",
  "not_measured": {
   "gas": "estimated only (no local chain run)",
-  "wasm": "not run: no wasm pkg built; K>=17 PK 122-637 MB serialized and native RSS 3.2-5.8 GB vs wasm32 4 GiB cap; host-crypto pulls libsecp C"
+  "wasm": "not run for sound chip: no wasm32 prover built this session; sound raw-key PK 503 MB, native peak RSS 4.18 GB (vs wasm32 4 GiB cap) - fit unverified",
+  "sound_ecdsa_and_reg": "sound ECDSA, ladder and two-step reg exceed K=19 (NotEnoughRowsAvailable); K=20 not run"
  },
  "results": {
   "k19_ecdsa": {
@@ -320,10 +321,53 @@
    ],
    "vk_bytes": 617,
    "wrong_public_rejected": true
+  },
+  "rawkey_glv_sound_k19": {
+   "advice_columns": 9,
+   "advice_rows_max": 453787,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 453786,
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 7.092109042,
+   "keygen_secs": 11.537240125,
+   "keygen_vk_secs": 4.445131083,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 17.878966625,
+   "pk_bytes": 503317569,
+   "proof_bytes": 4640,
+   "prove_median_secs": 28.245504833,
+   "prove_secs": [
+    28.245504833,
+    27.756697791,
+    26.721063083,
+    31.2496005,
+    34.03596475
+   ],
+   "public_inputs": 6,
+   "rows_max": 453787,
+   "threads": 10,
+   "verify_median_secs": 1.1363125410000001,
+   "verify_secs": [
+    1.1363125410000001,
+    0.61764625,
+    1.666139375,
+    0.560452625,
+    1.3187630000000001
+   ],
+   "vk_bytes": 969,
+   "wrong_public_rejected": true,
+   "peak_rss_bytes_process": 4176347136,
+   "peak_rss_note": "/usr/bin/time -l max RSS over cargo+test process, separate LAB_RUNS=1 run",
+   "chip": "sound CRT (commit 02764a5)"
   }
  },
  "soundness": {
-  "honest_negative_tests": "blind_soundness_suite pass (wrong sk/path/position/public slots rejected with honest witness gen); reg: wrong sk/pos/secret/relayer rejected; ladder wrong sk rejected. These do NOT imply soundness given the chip bug.",
-  "k19_secp_chip": "UNSOUND: FpChip add/sub only range-check the result; mul/normalize gates are one native-field equation with a free quotient. Forgery test blind_forgery_accepted_unsound_sub: wrong sk + attacker nullifier ACCEPTED by MockProver (K=19)."
+  "chip": "sound",
+  "forgery_test": "blind_forgery_rejected: rejected",
+  "negatives": "blind_negative_suite: 8/8 rejected by constraints (MockProver K=19)"
  }
 }
