@@ -1,0 +1,329 @@
+{
+ "harness": "circuits/halo2/src/lab_bench.rs measure(); prove/verify = median of 5, native, 10 threads",
+ "machine": "groot-wan (Apple M1 Pro, 10 cores, 16 GB, macOS)",
+ "not_measured": {
+  "gas": "estimated only (no local chain run)",
+  "wasm": "not run: no wasm pkg built; K>=17 PK 122-637 MB serialized and native RSS 3.2-5.8 GB vs wasm32 4 GiB cap; host-crypto pulls libsecp C"
+ },
+ "results": {
+  "k19_ecdsa": {
+   "advice_columns": 10,
+   "advice_rows_max": 215228,
+   "circuit": "k19_ecdsa_glv",
+   "degree": 9,
+   "fixed_columns": 10,
+   "fixed_rows_max": 19715,
+   "gas_estimate": {
+    "gas_approx": 52350,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 15
+   },
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 28.329712708,
+   "keygen_secs": 54.878422375,
+   "keygen_vk_secs": 26.548709667,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 17.550799083,
+   "peak_rss_bytes_process": 3766403072,
+   "pk_bytes": 637535585,
+   "proof_bytes": 4800,
+   "prove_median_secs": 31.358398125,
+   "prove_secs": [
+    23.237058666,
+    25.95974325,
+    31.358398125,
+    53.673558375,
+    34.950028417
+   ],
+   "public_inputs": 9,
+   "rows_max": 215228,
+   "threads": 10,
+   "verify_median_secs": 1.486295458,
+   "verify_secs": [
+    0.848782917,
+    0.946800959,
+    3.840296833,
+    2.27727575,
+    1.486295458
+   ],
+   "vk_bytes": 1225,
+   "wrong_public_rejected": true
+  },
+  "k19_ecdsa_at_k18": {
+   "advice_columns": 10,
+   "advice_rows_max": 215228,
+   "circuit": "k19_ecdsa_glv_at_k18",
+   "degree": 9,
+   "fixed_columns": 10,
+   "fixed_rows_max": 19715,
+   "gas_estimate": {
+    "gas_approx": 52350,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 15
+   },
+   "instance_columns": 1,
+   "k": 18,
+   "keygen_pk_secs": 24.310029833,
+   "keygen_secs": 47.749525166,
+   "keygen_vk_secs": 23.439495333,
+   "lookups": 1,
+   "params_bytes": 16777284,
+   "params_gen_secs": 8.262393667,
+   "peak_rss_bytes_process": 5841092608,
+   "pk_bytes": 318768481,
+   "proof_bytes": 4736,
+   "prove_median_secs": 7.55302225,
+   "prove_secs": [
+    7.617190625,
+    9.608189917,
+    7.55302225,
+    6.799214875,
+    6.564503542
+   ],
+   "public_inputs": 9,
+   "rows_max": 215228,
+   "threads": 10,
+   "verify_median_secs": 0.154389667,
+   "verify_secs": [
+    0.156318833,
+    0.280058792,
+    0.151044792,
+    0.154389667,
+    0.131588291
+   ],
+   "vk_bytes": 1225,
+   "wrong_public_rejected": true
+  },
+  "rawkey_glv_k17": {
+   "advice_columns": 9,
+   "advice_rows_max": 107916,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 107915,
+   "gas_estimate": {
+    "gas_approx": 38390,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 11
+   },
+   "instance_columns": 1,
+   "k": 17,
+   "keygen_pk_secs": 1.091036125,
+   "keygen_secs": 1.77321075,
+   "keygen_vk_secs": 0.682174625,
+   "lookups": 1,
+   "params_bytes": 8388676,
+   "params_gen_secs": 3.831308166,
+   "peak_rss_bytes_process": 3190489088,
+   "pk_bytes": 121635869,
+   "proof_bytes": 4096,
+   "prove_median_secs": 2.427484667,
+   "prove_secs": [
+    2.427484667,
+    2.457519917,
+    2.357229417,
+    2.382701042,
+    2.754925666
+   ],
+   "public_inputs": 6,
+   "rows_max": 107916,
+   "threads": 10,
+   "verify_median_secs": 0.07160225,
+   "verify_secs": [
+    0.084301,
+    0.067830166,
+    0.069451125,
+    0.072696167,
+    0.07160225
+   ],
+   "vk_bytes": 937,
+   "wrong_public_rejected": true
+  },
+  "rawkey_glv_k19": {
+   "advice_columns": 9,
+   "advice_rows_max": 107916,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 107915,
+   "gas_estimate": {
+    "gas_approx": 41880,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 12
+   },
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 5.766957125,
+   "keygen_secs": 11.640624083,
+   "keygen_vk_secs": 5.873666958,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 18.609584208,
+   "peak_rss_bytes_process": 4190289920,
+   "pk_bytes": 486540317,
+   "proof_bytes": 4224,
+   "prove_median_secs": 23.1187885,
+   "prove_secs": [
+    26.364230041,
+    21.421739542,
+    23.508883833,
+    20.826326459,
+    23.1187885
+   ],
+   "public_inputs": 6,
+   "rows_max": 107916,
+   "threads": 10,
+   "verify_median_secs": 0.743217209,
+   "verify_secs": [
+    0.554549416,
+    0.927649292,
+    0.773775875,
+    0.529613208,
+    0.743217209
+   ],
+   "vk_bytes": 937,
+   "wrong_public_rejected": true
+  },
+  "rawkey_ladder_k19": {
+   "advice_columns": 9,
+   "advice_rows_max": 214965,
+   "circuit": "k19_blind_keypair_ladder",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 214964,
+   "gas_estimate": {
+    "gas_approx": 41880,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 12
+   },
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 5.835259292,
+   "keygen_secs": 9.716776459,
+   "keygen_vk_secs": 3.881517167,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 18.051063875,
+   "peak_rss_bytes_process": 5328961536,
+   "pk_bytes": 486540317,
+   "proof_bytes": 4224,
+   "prove_median_secs": 25.174469167,
+   "prove_secs": [
+    18.355889208,
+    34.643499333,
+    25.240951292,
+    23.007011792,
+    25.174469167
+   ],
+   "public_inputs": 6,
+   "rows_max": 214965,
+   "threads": 10,
+   "verify_median_secs": 0.905237291,
+   "verify_secs": [
+    0.561303458,
+    2.379596416,
+    0.497530959,
+    0.905237291,
+    1.418490583
+   ],
+   "vk_bytes": 937,
+   "wrong_public_rejected": true
+  },
+  "reg_step1_glv_k19": {
+   "advice_columns": 9,
+   "advice_rows_max": 108038,
+   "circuit": "k19_reg_step1_glv",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 108037,
+   "gas_estimate": {
+    "gas_approx": 38390,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 11
+   },
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 5.704549875,
+   "keygen_secs": 9.653723083,
+   "keygen_vk_secs": 3.949173208,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 18.72043,
+   "peak_rss_bytes_process": 4413046784,
+   "pk_bytes": 486540317,
+   "proof_bytes": 4224,
+   "prove_median_secs": 24.493320833,
+   "prove_secs": [
+    17.237455209,
+    22.50416825,
+    24.493320833,
+    25.012928666,
+    32.678833583
+   ],
+   "public_inputs": 5,
+   "rows_max": 108038,
+   "threads": 10,
+   "verify_median_secs": 0.842308667,
+   "verify_secs": [
+    0.51043425,
+    0.842308667,
+    1.04367675,
+    0.500660209,
+    1.202575208
+   ],
+   "vk_bytes": 937,
+   "wrong_public_rejected": true
+  },
+  "vk3": {
+   "advice_columns": 6,
+   "advice_rows_max": 1598,
+   "circuit": "vk3_note_membership_d17",
+   "degree": 6,
+   "fixed_columns": 6,
+   "fixed_rows_max": 1597,
+   "gas_estimate": {
+    "gas_approx": 34900,
+    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+    "units": 10
+   },
+   "instance_columns": 1,
+   "k": 11,
+   "keygen_pk_secs": 0.012269791,
+   "keygen_secs": 0.029466624000000004,
+   "keygen_vk_secs": 0.017196833,
+   "lookups": 0,
+   "params_bytes": 131140,
+   "params_gen_secs": 0.0729805,
+   "peak_rss_bytes_process": 177831936,
+   "pk_bytes": 1245877,
+   "proof_bytes": 2752,
+   "prove_median_secs": 0.035818709,
+   "prove_secs": [
+    0.037926417,
+    0.035037916,
+    0.035818709,
+    0.035520125,
+    0.036004958
+   ],
+   "public_inputs": 6,
+   "rows_max": 1598,
+   "threads": 10,
+   "verify_median_secs": 0.001994916,
+   "verify_secs": [
+    0.002089375,
+    0.001969917,
+    0.002036166,
+    0.001917292,
+    0.001994916
+   ],
+   "vk_bytes": 617,
+   "wrong_public_rejected": true
+  }
+ },
+ "soundness": {
+  "honest_negative_tests": "blind_soundness_suite pass (wrong sk/path/position/public slots rejected with honest witness gen); reg: wrong sk/pos/secret/relayer rejected; ladder wrong sk rejected. These do NOT imply soundness given the chip bug.",
+  "k19_secp_chip": "UNSOUND: FpChip add/sub only range-check the result; mul/normalize gates are one native-field equation with a free quotient. Forgery test blind_forgery_accepted_unsound_sub: wrong sk + attacker nullifier ACCEPTED by MockProver (K=19)."
+ }
+}
