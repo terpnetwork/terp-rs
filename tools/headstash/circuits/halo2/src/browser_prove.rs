@@ -131,3 +131,32 @@ pub fn prove_note_witness_browser(witness_json: &str) -> Result<String, JsError>
     });
     Ok(serde_json::to_string(&body).map_err(|err| JsError::new(&err.to_string()))?)
 }
+
+/// Reduce 64 uniform bytes (hex, e.g. HKDF output) to a Pallas base element; LE hex.
+#[wasm_bindgen]
+pub fn note_secret_from_wide_hex(wide_hex: &str) -> Result<String, JsError> {
+    use ff::FromUniformBytes;
+    let bytes = hex::decode(wide_hex).map_err(|_| JsError::new("wide"))?;
+    if bytes.len() != 64 {
+        return Err(JsError::new("wide"));
+    }
+    let mut wide = [0u8; 64];
+    wide.copy_from_slice(&bytes);
+    Ok(hex::encode(pallas::Base::from_uniform_bytes(&wide).to_repr()))
+}
+
+/// Little-endian hex of the note nullifier Poseidon(nf_tag, secret, ctx), the
+/// value the vk_id 3 claim publishes. Lets the page precompute nullifiers.
+#[wasm_bindgen]
+pub fn note_nullifier_hex(secret_hex: &str, ctx_hex: &str) -> Result<String, JsError> {
+    let parse = |h: &str| -> Result<pallas::Base, JsError> {
+        let b = hex::decode(h).map_err(|_| JsError::new("field"))?;
+        if b.len() != 32 {
+            return Err(JsError::new("field"));
+        }
+        let mut r = [0u8; 32];
+        r.copy_from_slice(&b);
+        Option::from(pallas::Base::from_repr(r)).ok_or_else(|| JsError::new("field"))
+    };
+    Ok(hex::encode(crate::no_ecdsa::claim_nullifier(parse(secret_hex)?, parse(ctx_hex)?).to_repr()))
+}

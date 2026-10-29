@@ -196,3 +196,30 @@ Raw data: . Payload: the real prover bundle (zk_headstash.js 10923 B, gzipped 27
 Every size passed all three checks: verified, stranger-publish rejected, and tampered-chunk rejected. Instantiating with a 256 KiB max_chunk_bytes is also rejected. Storing the code (357352 B) costs 2.56M gas. Gas comes to about 45 gas/B and barely depends on chunk size, so most of the cost is per-byte storage. **Recommendation: 128 KiB.** It needs the fewest txs, and its 5.8M gas per tx is well under the mainnet block max of 50M.
 
 Builds: `tools/headstash/scripts/opt-fe.sh` (optimizer-arm64 0.17.0-rust1.91, `--ignore-rust-version`, BUILD_RC checked). The cw-headstash wasm is now sha256 `1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5` (1131133 B); it was `43a8e5d88a3af34dc09bd63f85f88a1b2b0a008a4b68ef45a83ed434894149a9`. The hash changed for two reasons. First, the new `frontend_contract` config field, query and msg. Second, the extra wasm-opt flag `--one-caller-inline-max-function-size=2000`. Without that flag, one-caller inlining produced a 74369-byte function, and arm64 singlepass rejects any function over ~69 KB with ImpossibleRelocation. The largest function is now 60591 B. **The mainnet render (`deploy/rendered-mainnet`) must be redone**; this change did not regenerate it. cw_headstash_frontend.wasm sha256 is `fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1` (357352 B).
+
+## 11. Phase 3: claim page (results, 2026-10-29)
+
+Files: `tools/headstash/frontend/{loader.html, app.html, app.js, crypto.js}`. The prover is `zk_headstash.js` + `zk_headstash_bg.wasm`, built from `circuits/halo2` (zakura-halo fork, `browser` feature, `browser_prove.rs`) with wasm-bindgen 0.2.127. There is no framework, no CDN, and no eval. CSP: `script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'`, connect-src limited to REST and the relay.
+
+| file | raw B | gzip -9 B |
+|---|---|---|
+| loader.html (served, not on chain) | 3015 | 1542 |
+| app.html | 5023 | 2247 |
+| app.js | 14638 | 5354 |
+| crypto.js | 10640 | 4326 |
+| zk_headstash.js | 12918 | 3065 |
+| zk_headstash_bg.wasm (not wasm-opt'd: local wasm-opt broken) | 3618817 | 700207 |
+
+On chain: 5 files, 10 chunks at 128 KiB, about 715 KB stored.
+
+Notes file (no threshold or Shamir): a versioned JSON `headstash-notes.v1.json` with a sha256 over canonical JSON. Passphrase encryption is optional (PBKDF2-SHA256 600k + AES-GCM). The key is used once, at generation, and then wiped. The file holds only derived note secrets, key_coms, nullifiers, eligibility paths, the registration signature and a per-note status (new, registered, submitted, spent). The page never queries the nullifier set.
+
+Headless e2e (`e2e/browser_e2e.py` + `browser_e2e.mjs`, Playwright 1.49 / chromium-1148, local chain `headstash-mvk-e2e`, cw_headstash 1305e434…):
+- PASS: page loaded from on-chain chunks (manifest v1, per-chunk + raw sha256 checked; load 206 ms).
+- PASS: notes file checksum ok; test key not present in file; key field cleared.
+- PASS: page registered all 43 EVM notes (2 fee-granted chunks of 32 + 11, fresh wallet each).
+- PASS: anchor accepted; fresh browser session re-imported the file.
+- PARTIAL: claimed 5/43 notes through the page (5 proofs + fee-granted claim txs, balances exact, 10008 TERP). The other 38 failed `insufficient funds`. The test identity is owed 200008 TERP, but the run_direct campaign is funded with only 10030 TERP, and the local chain's whole liquid supply is below 200008 TERP. A later top-up + retry run hit the 600-block claim window (`window`). The default is now CUT_AHEAD=7200 for browser runs.
+- PASS: replay from the pre-claim file minted nothing (balances unchanged).
+- PASS: Penumbra stub rejects an invalid address; the "How this works" modal opens.
+- Browser proof time: 43 proofs, 3214–3282 ms each (headless chromium, groot-wan), k=11, proof 2752 B, wasm memory peak about 28 MB.
