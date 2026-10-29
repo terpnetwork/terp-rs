@@ -74,7 +74,17 @@ def canon_ok(path):
     o = json.load(open(path)); want = o.pop("sha256")
     return hashlib.sha256(json.dumps(o, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest() == want, o
 
+OWED_UTERP = int(os.environ.get("HSFE_OWED_UTERP", str(200008 * 10**6 + 3500000)))  # mvk.csv: EVM 200008 + Sol 3.5 TERP
+
+def fund(contract):
+    have = bal(contract); need = OWED_UTERP - have
+    if need > 0:
+        res = tx("owner", 200000, "bank", "send", "owner", contract, "%duterp" % need)
+        rd.step("fund_campaign_to_owed_total", res.get("code") == 0 and bal(contract) >= OWED_UTERP, "contract %d -> %d (owed %d)" % (have, bal(contract), OWED_UTERP))
+    R["campaign_funded_uterp"] = bal(contract)
+
 def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER, OWNER, cut):
+    fund(contract)
     fe = publish(contract)
     work = os.path.join(rd.RUN, "browser"); os.makedirs(work, exist_ok=True)
     lt = open(os.path.join(PAGE, "loader.html")).read()
@@ -108,7 +118,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         R["browser_claim"] = {k: v for k, v in b.items() if k != "log"}; R["browser_claim_log"] = b.get("log", "")[-6000:]
         ok2, nf2 = canon_ok(os.path.join(work, "notes-after-claim.json")) if b.get("saved") else (False, {})
         st2 = [n["st"] for n in nf2.get("notes", [])]
-        rd.step("page_claimed_all_notes", ok2 and set(st2) == {"spent"}, json.dumps(b.get("counts")))
+        rd.step("page_claimed_all_notes", ok2 and set(st2) == {"spent"} and len(st2) == len(notes["evm"]), json.dumps(b.get("counts")))
         tot = 0; good = 0
         for n in nf2.get("notes", []):
             got = bal(n["dest"]); tot += got; good += got == int(n.get("amt") or -1)
@@ -117,6 +127,8 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         # replay: claim again from the same file must not mint (nullifier spent)
         c = browser("replay", {"url": url, "notes": os.path.join(work, "notes-after-register.json"), "out": os.path.join(work, "notes-replay.json"), "n": 1})
         tot2 = sum(bal(n["dest"]) for n in nf2.get("notes", []))
+        refused = c.get("log", "").count('fee grant refused: {"error":"nullifier"}')
+        rd.step("neg_replay_rejected_spent_nullifier", refused == len(st2), "%d/%d replays refused (nullifier spent)" % (refused, len(st2)))
         rd.step("neg_replay_from_old_file_no_double_mint", tot2 == tot and tot > 0, "balances %d -> %d after re-claim attempt" % (tot, tot2))
     finally:
         srv.shutdown()

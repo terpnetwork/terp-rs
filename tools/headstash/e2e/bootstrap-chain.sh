@@ -49,7 +49,7 @@ if [ ! -f "$CHAIN_HOME/config/genesis.json" ]; then
     echo "$(echo "$name" | tr a-z A-Z)_ADDR=$("$TERPD" keys show "$name" -a --keyring-backend test --home "$CHAIN_HOME")" >>"$CHAIN_HOME/addresses.env"
   done
   source "$CHAIN_HOME/addresses.env"
-  for a in "$OWNER_ADDR:100000000000" "$RELAYER_ADDR:1000000000" "$RECIPIENT1_ADDR:1000000" "$RECIPIENT2_ADDR:1000000" "$STRANGER_ADDR:100000000" "$PROPOSER_ADDR:50000000000"; do
+  for a in "$OWNER_ADDR:${OWNER_UTERP:-100000000000}" "$RELAYER_ADDR:1000000000" "$RECIPIENT1_ADDR:1000000" "$RECIPIENT2_ADDR:1000000" "$STRANGER_ADDR:100000000" "$PROPOSER_ADDR:50000000000"; do
     "$TERPD" genesis add-genesis-account "${a%%:*}" "${a##*:}uterp" --home "$CHAIN_HOME" --keyring-backend test >>"$CHAIN_HOME/init.log" 2>&1
   done
   "$TERPD" genesis gentx owner 1000000uterp --chain-id "$CHAIN_ID" --home "$CHAIN_HOME" --keyring-backend test >>"$CHAIN_HOME/init.log" 2>&1
@@ -61,6 +61,12 @@ if [ ! -f "$CHAIN_HOME/config/genesis.json" ]; then
   CUSTODY_PUB_HEX="$(cat "$(cat "$CHAIN_HOME/lane.data")/custody.pub")"
   python3 "$HERE/patch_genesis.py" "$CHAIN_HOME" "$CUSTODY_PUB_HEX" "http://$LANE_BIND"
   "$TERPD" genesis validate --home "$CHAIN_HOME" >>"$CHAIN_HOME/init.log" 2>&1
+  # browser e2e: the page (served from 127.0.0.1:3921) reads REST directly; loopback-only test chain
+  if [ "${REST_CORS:-0}" = 1 ]; then python3 - "$CHAIN_HOME/config/app.toml" <<'PY'
+import re,sys; p=sys.argv[1]; s=open(p).read()
+s=re.sub(r'(?m)^enabled-unsafe-cors = false', 'enabled-unsafe-cors = true', s); open(p,'w').write(s)
+PY
+  fi
 fi
 
 if ! curl -fsS --max-time 2 "$RPC/status" >/dev/null 2>&1; then
