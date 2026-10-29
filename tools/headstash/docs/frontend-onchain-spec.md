@@ -208,7 +208,9 @@ Files: `tools/headstash/frontend/{loader.html, app.html, app.js, crypto.js}`. Th
 | app.js | 14638 | 5354 |
 | crypto.js | 10640 | 4326 |
 | zk_headstash.js | 12918 | 3065 |
-| zk_headstash_bg.wasm (not wasm-opt'd: local wasm-opt broken) | 3618817 | 700207 |
+| zk_headstash_bg.wasm, unoptimized (wasm-bindgen output) | 3618817 | 700207 |
+| zk_headstash_bg.wasm, binaryen `wasm-opt -Oz` (shipped) | 1807402 | 647049 |
+| zk_headstash_bg.wasm, binaryen `wasm-opt -Os` (compared) | 1841545 | 648373 |
 
 On chain: 5 files, 10 chunks at 128 KiB, about 715 KB stored.
 
@@ -223,3 +225,7 @@ Headless e2e (`e2e/browser_e2e.py` + `browser_e2e.mjs`, Playwright 1.49 / chromi
 - PASS: replay from the pre-claim file minted nothing (balances unchanged).
 - PASS: Penumbra stub rejects an invalid address; the "How this works" modal opens.
 - Browser proof time: 43 proofs, 3214–3282 ms each (headless chromium, groot-wan), k=11, proof 2752 B, wasm memory peak about 28 MB.
+- Prover optimization: groot-wan's system wasm-opt is broken, so use the binaryen npm package (wasm-opt version 132): `npx wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --enable-reference-types --enable-multivalue zk_headstash_bg.wasm -o out.wasm` (about 42 s). -Oz gives −50.1% raw and −7.6% gz; -Os is slightly larger, so ship -Oz (sha256 prefix 3d371778287164cf). On chain the frontend goes from 10 to 9 chunks of 128 KiB.
+- Full browser e2e on a fresh chain (RESET=1 bootstrap with OWNER_UTERP raised and REST_CORS=1; campaign funded to the owed 200011.5 TERP; CUT_AHEAD=7200). Each run: 29/29 PASS; 43/43 registered; 43/43 claimed with exact balances (200008 TERP); 43/43 old-file replays refused (spent nullifier); no extra mint.
+  - Unoptimized prover: prove 3211/3224/3305 ms (min/median/max), claim phase 262.3 s, page load 216 ms.
+  - -Oz prover: prove 3200/3215/3340 ms, claim phase 265.0 s, page load 212 ms. Proof time is unchanged within noise; the gain is download size.

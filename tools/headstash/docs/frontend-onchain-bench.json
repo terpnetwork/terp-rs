@@ -148,5 +148,48 @@
  ],
  "neg_instantiate_256k_rejected": true,
  "measured_wasmvm_value_limit": "pre-fix build (cap 512 KiB): a 262144-byte chunk failed with Value too big. Tried to write 262144 bytes to storage, limit is 131072",
- "ok": true
+ "ok": true,
+ "prover_wasm_opt": {
+  "tool": "binaryen npm wasm-opt version 132",
+  "unoptimized": {
+   "raw": 3618817,
+   "gz9": 700207,
+   "e2e": {
+    "steps_pass": 29,
+    "steps_fail": 0,
+    "prove_ms": {
+     "n": 43,
+     "min": 3211,
+     "median": 3224,
+     "mean": 3230,
+     "max": 3305
+    },
+    "claim_phase_ms": 262271,
+    "load_ms": 216
+   }
+  },
+  "Oz": {
+   "raw": 1807402,
+   "gz9": 647049,
+   "sha256_prefix": "3d371778287164cf",
+   "fe_chunks_128k": 9,
+   "e2e": {
+    "steps_pass": 29,
+    "steps_fail": 0,
+    "prove_ms": {
+     "n": 43,
+     "min": 3200,
+     "median": 3215,
+     "mean": 3234,
+     "max": 3340
+    },
+    "claim_phase_ms": 264972,
+    "load_ms": 212
+   }
+  },
+  "Os": {
+   "raw": 1841545,
+   "gz9": 648373
+  }
+ }
 }
