@@ -469,6 +469,16 @@ pub fn modulus_simple_secp_fp() -> BigUint {
 // ============================================================================
 
 /// Configuration for foreign prime field arithmetic with custom gates.
+/// Lab switch: use the revived Montgomery ladder instead of GLV in `prove_key_pairing`.
+pub static KEYPAIR_LADDER: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
+/// TEST-ONLY adversarial hook: a malicious prover may witness ANY range-valid `sub` output,
+/// because `FpChip::sub`/`add` only range-check their result. Used by the forgery test.
+#[cfg(test)]
+pub static FORGE_EQ: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+#[cfg(test)]
+pub static FORGE_SUB: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+
 #[derive(Clone, Debug)]
 pub struct FpConfig {
     /// 9 advice columns (2*NUM_LIMBS + 1)
@@ -1124,6 +1134,10 @@ impl<Fp: PrimeField> FpChip<Fp> {
             || "fp sub witness",
             |mut region| {
                 let c_val = a.value.clone().zip(b.value.as_ref()).map(|(a_val, b_val)| {
+                    #[cfg(test)]
+                    if FORGE_SUB.load(core::sync::atomic::Ordering::SeqCst) {
+                        return BigInt::zero();
+                    }
                     let diff = &a_val - b_val;
                     let diff_pos = if diff < BigInt::zero() {
                         let neg = (-&diff).to_biguint().expect("pos");
@@ -1321,7 +1335,17 @@ impl<Fp: PrimeField> FpInstructions<Fp> for FpChip<Fp> {
         a: &ProperCrtUint<pallas::Base>,
         b: &ProperCrtUint<pallas::Base>,
     ) -> Result<(), PlonkError> {
+        #[cfg(test)]
+        let forge = FORGE_EQ.load(core::sync::atomic::Ordering::SeqCst);
+        #[cfg(test)]
+        if forge {
+            FORGE_SUB.store(true, core::sync::atomic::Ordering::SeqCst);
+        }
         let diff = self.sub(layouter.namespace(|| "a-b"), a, b)?;
+        #[cfg(test)]
+        if forge {
+            FORGE_SUB.store(false, core::sync::atomic::Ordering::SeqCst);
+        }
         self.enforce_zero(layouter.namespace(|| "enforce zero"), &diff)
     }
     fn add(
@@ -2620,8 +2644,13 @@ impl Secp256k1Chip {
             .range_check_limbs(layouter.namespace(|| "range check pk.y"), &pk_y_assigned)?;
 
         // esk·G via GLV: k1·G + k2·ψ(G), ψ(x, y) = (βx, y).
-        let computed_pk =
-            self.scalar_mul_glv(layouter.namespace(|| "glv scalar mul"), &sk_assigned)?;
+        let computed_pk = if KEYPAIR_LADDER.load(core::sync::atomic::Ordering::SeqCst) {
+            // Revived ea8ddf5 Montgomery-ladder path (lab variant, selected at synthesis time).
+            let g = self.point_from_fp(layouter.namespace(|| "G"), generator_xy())?;
+            self.scalar_mul_montgomery(layouter.namespace(|| "ladder scalar mul"), &sk_assigned, &g)?
+        } else {
+            self.scalar_mul_glv(layouter.namespace(|| "glv scalar mul"), &sk_assigned)?
+        };
 
         // Enforce computed_pk == public_key
         self.fp.enforce_equal(
