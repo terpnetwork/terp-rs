@@ -226,6 +226,32 @@
         "limit": "200 calls; 50000000000uterp + 100000000000uthiol",
         "expiration": "2027-10-30T00:00:00Z"
       }
+    },
+    "fiab:penumbra-liquidity-resend": {
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 5,
+      "draft": "morocco-1.dao-c/10-fiab-penumbra-liquidity-resend.json",
+      "tx": "07AF4EFD3C92D1FA35731A85A4B4634CFD09D3C0796C00A91CD4B4EBAB6031CA",
+      "height": 24180260,
+      "status": "executed",
+      "ibc": {
+        "channel": "channel-16",
+        "dst_channel": "channel-25",
+        "receiver": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+        "amounts": {
+          "uterp": "50000000000",
+          "uthiol": "100000000000"
+        },
+        "sequences": [
+          5,
+          6
+        ],
+        "recv_tx_penumbra": "ADA30CC6B05D40335484B9DF6B5CC5038502AFC38531FEDFB531408BC457B21D",
+        "recv_height_penumbra": 13427644,
+        "ack_tx": "C827366BDF23B1D88FBFB1297AA26EDEAB8584CD7BE2D3E71E7A8773EAD7263E",
+        "ack_height": 24180264,
+        "ack": "success"
+      }
     }
   },
   "txs": [
