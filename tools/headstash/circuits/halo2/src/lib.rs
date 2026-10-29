@@ -56,6 +56,9 @@ pub mod note_membership;
 // wasm-bindgen membership prover for the claim page (feature `browser`).
 #[cfg(all(feature = "browser", target_arch = "wasm32"))]
 mod browser_prove;
+// k19 lab: threaded wasm prover (JS: await initThreadPool(n)).
+#[cfg(all(feature = "browser-mt", target_arch = "wasm32"))]
+pub use wasm_bindgen_rayon::init_thread_pool;
 
 // Guest CosmWasm: Instance-only surface (no multicore / C-sys graph).
 #[cfg(all(feature = "circuit", not(feature = "host-crypto")))]

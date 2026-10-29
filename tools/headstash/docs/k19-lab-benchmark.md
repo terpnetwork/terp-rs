@@ -175,3 +175,13 @@ Wasm (733486b, node, single thread, params+keygen in client):
 5. At w = 31 the offset −C·G makes acc = ±T reachable, so div_checked stays there (acc = −T only when sk = 0; acc = T is a completeness loss only).
 
 Tests: `fb_plain_div_scalar_bound` (exhaustive bound for w = 1..30) passes. The new negative `FB_COLLIDE` sets the window-1 point to acc (dx = dy = 0, so plain div accepts λ = 0), and it is rejected by the lookup. blind_negative_suite rejects 10/10, blind_forgery_rejected rejects the forgery, and blind_soundness_suite passes (MockProver K=19).
+
+## Multithreaded wasm (wasm-bindgen-rayon) + PK cache, K=15 (rawkey, Chromium headless, groot-wan)
+
+| threads | prove | verify | wasm mem after prove | keygen regen (params+vk+pk) | cached path total (load params+pk+prove+verify) |
+|---|---|---|---|---|---|
+| 1 | 27.43 s | 0.46 s | 835.7 MB | 46.80 s | 39.82 s |
+| 4 | 7.32 s | 0.14 s | 879.0 MB | 14.26 s | 11.82 s |
+| 8 | 5.33 s | 0.16 s | 861.9 MB | 10.27 s | 8.71 s |
+
+PK cache: artifact 48,262,377 B (params 2,097,220 + cs 26,212 + pk). IndexedDB store 0.04-0.06 s, read 0.04-0.06 s. load-params 1.31 s; load-pk 10.61/3.05/1.90 s (1/4/8 thr) vs keygen_pk 10.53/3.11/1.99 s, i.e. ProvingKey::read_with_cs currently recomputes ~as much as keygen_pk; the saving is only params+vk generation (27.9/7.7/5.0 s + 8.3/3.3/3.2 s). Raw data: k19-lab-wasm-mt-k15.jsonl. Build: scripts/build-rawkey-mt.sh (needs --shared-memory/--import-memory, TLS + __heap_base/__data_end exports, -Z build-std).

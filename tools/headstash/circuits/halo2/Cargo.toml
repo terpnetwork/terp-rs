@@ -18,6 +18,8 @@ host-crypto = ["dep:secp256k1"]
 # wasm-bindgen membership prover for the claim page. wasm32-unknown-unknown only;
 # no libsecp (host-crypto stays off). Build: tools/headstash/scripts/build-browser-prover.sh
 browser = ["circuit", "std", "reddsa/pallas-pasta", "dep:wasm-bindgen", "dep:getrandom02", "dep:getrandom03", "dep:getrandom04"]
+# k19 lab: threaded wasm (needs +atomics,+bulk-memory, build-std, COOP/COEP host)
+browser-mt = ["browser", "halo2_proofs/multicore", "dep:wasm-bindgen-rayon", "dep:rayon"]
 rpc = []
 test-dependencies = []
 dev-graph = []
@@ -76,6 +78,7 @@ zk-cosmwasm = { workspace = true }
 # rand 0.10 ThreadRng -> getrandom 0.4; wasm_js needs
 # RUSTFLAGS='--cfg getrandom_backend="wasm_js"' (set by the build script).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-rayon = { version = "1", optional = true }
 wasm-bindgen = { version = "0.2.122", optional = true }
 getrandom02 = { package = "getrandom", version = "0.2.17", features = ["js"], optional = true }
 getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"], optional = true }

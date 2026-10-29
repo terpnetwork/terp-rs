@@ -179,3 +179,80 @@ pub fn prove_rawkey_fixture_browser(k: u32, destination: &str) -> Result<String,
         wasm_mem()
     ))
 }
+
+// ---- k19 lab task 3: multithreaded wasm + PK cache -------------------------------------------
+
+/// rayon threads visible to halo2 (1 without `browser-mt`).
+#[wasm_bindgen]
+pub fn rawkey_threads() -> usize {
+    #[cfg(feature = "browser-mt")]
+    return rayon::current_num_threads();
+    #[cfg(not(feature = "browser-mt"))]
+    1
+}
+
+fn rawkey_fx(destination: &str) -> Result<crate::rawkey::blind_k19::BlindFixture, JsError> {
+    use crate::note_membership::NOTE_DEPTH;
+    let mut path = [pallas::Base::ZERO; NOTE_DEPTH];
+    for (i, p) in path.iter_mut().enumerate() {
+        *p = pallas::Base::from(1000 + i as u64);
+    }
+    crate::rawkey::blind_k19::blind_fixture([0x11u8; 32], pallas::Base::from(7u64), 1234, 5, path, destination)
+        .map_err(|s| JsError::new(&s))
+}
+
+/// Run params + keygen once and serialize: [u32 len][params][u32 len][cs][pk] (IndexedDB/download blob).
+#[wasm_bindgen]
+pub fn rawkey_keygen_artifacts(k: u32) -> Result<Vec<u8>, JsError> {
+    use halo2_proofs::{plonk, poly::commitment::Params};
+    use pasta_curves::vesta;
+    let fx = rawkey_fx("terp1lab")?;
+    let params = Params::<vesta::Affine>::new(k);
+    phase("art-params");
+    let vk = plonk::keygen_vk(&params, &fx.circuit).map_err(|x| JsError::new(&format!("vk {x:?}")))?;
+    phase("art-vk");
+    let pk = plonk::keygen_pk(&params, vk, &fx.circuit).map_err(|x| JsError::new(&format!("pk {x:?}")))?;
+    phase("art-pk");
+    let je = |x: std::io::Error| JsError::new(&x.to_string());
+    let (mut pb, mut cb, mut out) = (Vec::new(), Vec::new(), Vec::new());
+    params.write(&mut pb).map_err(je)?;
+    pk.get_vk().cs().write(&mut cb).map_err(je)?;
+    out.extend_from_slice(&(pb.len() as u32).to_le_bytes());
+    out.extend_from_slice(&pb);
+    out.extend_from_slice(&(cb.len() as u32).to_le_bytes());
+    out.extend_from_slice(&cb);
+    pk.write(&mut out).map_err(je)?;
+    phase(&format!("art-serialized bytes={} params={} cs={}", out.len(), pb.len(), cb.len()));
+    Ok(out)
+}
+
+/// Load cached artifacts (no keygen), prove + verify. Phase logs: load-params, load-pk, proved, verified.
+#[wasm_bindgen]
+pub fn prove_rawkey_cached(artifacts: &[u8], destination: &str) -> Result<String, JsError> {
+    use halo2_proofs::{plonk, poly::commitment::Params, transcript::{Blake2bWrite, Challenge255}};
+    use pasta_curves::vesta;
+    let bad = || JsError::new("artifacts truncated");
+    let rd = |b: &[u8], o: usize| -> Option<usize> { Some(u32::from_le_bytes(b.get(o..o + 4)?.try_into().ok()?) as usize) };
+    let pl = rd(artifacts, 0).ok_or_else(bad)?;
+    let mut r = artifacts.get(4..4 + pl).ok_or_else(bad)?;
+    let je = |x: std::io::Error| JsError::new(&x.to_string());
+    let params = Params::<vesta::Affine>::read(&mut r).map_err(je)?;
+    phase(&format!("load-params mem={}", wasm_mem()));
+    let o = 4 + pl;
+    let cl = rd(artifacts, o).ok_or_else(bad)?;
+    let mut cr = artifacts.get(o + 4..o + 4 + cl).ok_or_else(bad)?;
+    let cs = plonk::ConstraintSystem::<pallas::Base>::read(&mut cr).map_err(je)?;
+    let mut pr = artifacts.get(o + 4 + cl..).ok_or_else(bad)?;
+    let pk = plonk::ProvingKey::<vesta::Affine>::read_with_cs(&mut pr, &params, cs).map_err(je)?;
+    phase(&format!("load-pk mem={}", wasm_mem()));
+    let fx = rawkey_fx(destination)?;
+    let mut rng = crate::os_rng();
+    let mut tr = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(Vec::new());
+    plonk::create_proof(&params, &pk, &[fx.circuit], &[&[&fx.public]], &mut rng, &mut tr)
+        .map_err(|x| JsError::new(&format!("prove {x:?}")))?;
+    let proof = tr.finalize();
+    phase(&format!("proved mem={} proof={}", wasm_mem(), proof.len()));
+    crate::no_ecdsa::verify_membership(&params, pk.get_vk(), &proof, &fx.public).map_err(|s| JsError::new(&s))?;
+    phase(&format!("verified mem={}", wasm_mem()));
+    Ok(format!("{{\"proof_len\":{},\"threads\":{},\"mem\":{}}}", proof.len(), rawkey_threads(), wasm_mem()))
+}

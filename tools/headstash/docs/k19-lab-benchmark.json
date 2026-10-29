@@ -1,529 +1,705 @@
 {
- "fixed_base_rows_per_step": {
-  "adds": 31,
-  "approx_rows_per_plain_add": "~(28484-24584)/30 = 130 fewer per add vs div_checked",
-  "digit_decomposition": "4 regions (1 per 64-bit limb, 8 digits/row)",
-  "doublings": 0,
-  "plain_div_saving_rows": 3900,
-  "rows_before_plain_div": 28484,
-  "rows_total_rawkey_claim": 24584,
-  "window_lookups": 32
- },
- "harness": "circuits/halo2/src/lab_bench.rs measure(); prove/verify = median of 5, native, 10 threads",
- "machine": "groot-wan (Apple M1 Pro, 10 cores, 16 GB, macOS)",
- "not_measured": {
-  "gas": "estimated only (no local chain run)",
-  "sound_ecdsa_and_reg": "sound ECDSA, ladder and two-step reg exceed K=19 (NotEnoughRowsAvailable); K=20 not run",
-  "wasm": "sound raw-key fixed-base: measured K15/K17 single-thread (see rawkey_fixed_base_wasm); multithread see task-3 section"
- },
- "plain_div_audit": {
-  "argument": "digits unique (lookup range [0,256) + linear limb gate, 64-bit limbs << Pallas p); lookup tuple (win fixed, d copied, x/y limbs+native) pins T_w=(d_w+2)2^{8w}G; by induction acc_w is the honest point sum_{i<w}(d_i+2)2^{8i}G with scalar a in [2(2^{8w}-1)/255, 257(2^{8w}-1)/255] < 2*2^{8w} <= t_w, and a+t_w <= 257*2^{8w}*(1+1/255) < 2^{249} < n for w<=30, so acc != +-T_w for EVERY digit choice; hence dx != 0 mod p, c*dx=dy fixes lambda uniquely. Last add (w=31) keeps div_checked.",
-  "commit": "15b8d21",
-  "tests": {
-   "FB_COLLIDE (window-1 point := acc, dx=dy=0)": "rejected by lookup",
-   "blind_forgery_rejected": "rejected",
-   "blind_negative_suite": "10/10 rejected",
-   "blind_soundness_suite": "pass (honest accepted, 9 tamper cases rejected)",
-   "fb_plain_div_scalar_bound": "pass (all w=1..30)"
+  "fixed_base_rows_per_step": {
+    "adds": 31,
+    "approx_rows_per_plain_add": "~(28484-24584)/30 = 130 fewer per add vs div_checked",
+    "digit_decomposition": "4 regions (1 per 64-bit limb, 8 digits/row)",
+    "doublings": 0,
+    "plain_div_saving_rows": 3900,
+    "rows_before_plain_div": 28484,
+    "rows_total_rawkey_claim": 24584,
+    "window_lookups": 32
   },
-  "verdict": "SOUND, no change (rows stay 24,584)"
- },
- "results": {
-  "k19_ecdsa": {
-   "advice_columns": 10,
-   "advice_rows_max": 215228,
-   "circuit": "k19_ecdsa_glv",
-   "degree": 9,
-   "fixed_columns": 10,
-   "fixed_rows_max": 19715,
-   "gas_estimate": {
-    "gas_approx": 52350,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 15
-   },
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 28.329712708,
-   "keygen_secs": 54.878422375,
-   "keygen_vk_secs": 26.548709667,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 17.550799083,
-   "peak_rss_bytes_process": 3766403072,
-   "pk_bytes": 637535585,
-   "proof_bytes": 4800,
-   "prove_median_secs": 31.358398125,
-   "prove_secs": [
-    23.237058666,
-    25.95974325,
-    31.358398125,
-    53.673558375,
-    34.950028417
-   ],
-   "public_inputs": 9,
-   "rows_max": 215228,
-   "threads": 10,
-   "verify_median_secs": 1.486295458,
-   "verify_secs": [
-    0.848782917,
-    0.946800959,
-    3.840296833,
-    2.27727575,
-    1.486295458
-   ],
-   "vk_bytes": 1225,
-   "wrong_public_rejected": true
+  "harness": "circuits/halo2/src/lab_bench.rs measure(); prove/verify = median of 5, native, 10 threads",
+  "machine": "groot-wan (Apple M1 Pro, 10 cores, 16 GB, macOS)",
+  "not_measured": {
+    "gas": "estimated only (no local chain run)",
+    "sound_ecdsa_and_reg": "sound ECDSA, ladder and two-step reg exceed K=19 (NotEnoughRowsAvailable); K=20 not run",
+    "wasm": "sound raw-key fixed-base: measured K15/K17 single-thread (see rawkey_fixed_base_wasm); multithread see task-3 section"
   },
-  "k19_ecdsa_at_k18": {
-   "advice_columns": 10,
-   "advice_rows_max": 215228,
-   "circuit": "k19_ecdsa_glv_at_k18",
-   "degree": 9,
-   "fixed_columns": 10,
-   "fixed_rows_max": 19715,
-   "gas_estimate": {
-    "gas_approx": 52350,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 15
-   },
-   "instance_columns": 1,
-   "k": 18,
-   "keygen_pk_secs": 24.310029833,
-   "keygen_secs": 47.749525166,
-   "keygen_vk_secs": 23.439495333,
-   "lookups": 1,
-   "params_bytes": 16777284,
-   "params_gen_secs": 8.262393667,
-   "peak_rss_bytes_process": 5841092608,
-   "pk_bytes": 318768481,
-   "proof_bytes": 4736,
-   "prove_median_secs": 7.55302225,
-   "prove_secs": [
-    7.617190625,
-    9.608189917,
-    7.55302225,
-    6.799214875,
-    6.564503542
-   ],
-   "public_inputs": 9,
-   "rows_max": 215228,
-   "threads": 10,
-   "verify_median_secs": 0.154389667,
-   "verify_secs": [
-    0.156318833,
-    0.280058792,
-    0.151044792,
-    0.154389667,
-    0.131588291
-   ],
-   "vk_bytes": 1225,
-   "wrong_public_rejected": true
+  "plain_div_audit": {
+    "argument": "digits unique (lookup range [0,256) + linear limb gate, 64-bit limbs << Pallas p); lookup tuple (win fixed, d copied, x/y limbs+native) pins T_w=(d_w+2)2^{8w}G; by induction acc_w is the honest point sum_{i<w}(d_i+2)2^{8i}G with scalar a in [2(2^{8w}-1)/255, 257(2^{8w}-1)/255] < 2*2^{8w} <= t_w, and a+t_w <= 257*2^{8w}*(1+1/255) < 2^{249} < n for w<=30, so acc != +-T_w for EVERY digit choice; hence dx != 0 mod p, c*dx=dy fixes lambda uniquely. Last add (w=31) keeps div_checked.",
+    "commit": "15b8d21",
+    "tests": {
+      "FB_COLLIDE (window-1 point := acc, dx=dy=0)": "rejected by lookup",
+      "blind_forgery_rejected": "rejected",
+      "blind_negative_suite": "10/10 rejected",
+      "blind_soundness_suite": "pass (honest accepted, 9 tamper cases rejected)",
+      "fb_plain_div_scalar_bound": "pass (all w=1..30)"
+    },
+    "verdict": "SOUND, no change (rows stay 24,584)"
   },
-  "rawkey_fixed_base_k15": {
-   "advice_columns": 9,
-   "advice_rows_max": 24584,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 20,
-   "fixed_rows_max": 24583,
-   "instance_columns": 1,
-   "k": 15,
-   "keygen_pk_secs": 0.379423583,
-   "keygen_secs": 0.779082541,
-   "keygen_vk_secs": 0.399658958,
-   "lookups": 2,
-   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
-   "params_bytes": 2097220,
-   "params_gen_secs": 0.916922417,
-   "peak_rss_bytes_process": 1698136064,
-   "pk_bytes": 46138937,
-   "proof_bytes": 5088,
-   "prove_median_secs": 0.938674542,
-   "prove_secs": [
-    0.939000291,
-    0.908082459,
-    0.938674542
-   ],
-   "public_inputs": 6,
-   "rows_max": 24584,
-   "threads": 10,
-   "verify_median_secs": 0.026364792,
-   "verify_secs": [
-    0.026364792,
-    0.029186125,
-    0.024937
-   ],
-   "vk_bytes": 1417,
-   "wrong_public_rejected": true
+  "results": {
+    "k19_ecdsa": {
+      "advice_columns": 10,
+      "advice_rows_max": 215228,
+      "circuit": "k19_ecdsa_glv",
+      "degree": 9,
+      "fixed_columns": 10,
+      "fixed_rows_max": 19715,
+      "gas_estimate": {
+        "gas_approx": 52350,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 15
+      },
+      "instance_columns": 1,
+      "k": 19,
+      "keygen_pk_secs": 28.329712708,
+      "keygen_secs": 54.878422375,
+      "keygen_vk_secs": 26.548709667,
+      "lookups": 1,
+      "params_bytes": 33554500,
+      "params_gen_secs": 17.550799083,
+      "peak_rss_bytes_process": 3766403072,
+      "pk_bytes": 637535585,
+      "proof_bytes": 4800,
+      "prove_median_secs": 31.358398125,
+      "prove_secs": [
+        23.237058666,
+        25.95974325,
+        31.358398125,
+        53.673558375,
+        34.950028417
+      ],
+      "public_inputs": 9,
+      "rows_max": 215228,
+      "threads": 10,
+      "verify_median_secs": 1.486295458,
+      "verify_secs": [
+        0.848782917,
+        0.946800959,
+        3.840296833,
+        2.27727575,
+        1.486295458
+      ],
+      "vk_bytes": 1225,
+      "wrong_public_rejected": true
+    },
+    "k19_ecdsa_at_k18": {
+      "advice_columns": 10,
+      "advice_rows_max": 215228,
+      "circuit": "k19_ecdsa_glv_at_k18",
+      "degree": 9,
+      "fixed_columns": 10,
+      "fixed_rows_max": 19715,
+      "gas_estimate": {
+        "gas_approx": 52350,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 15
+      },
+      "instance_columns": 1,
+      "k": 18,
+      "keygen_pk_secs": 24.310029833,
+      "keygen_secs": 47.749525166,
+      "keygen_vk_secs": 23.439495333,
+      "lookups": 1,
+      "params_bytes": 16777284,
+      "params_gen_secs": 8.262393667,
+      "peak_rss_bytes_process": 5841092608,
+      "pk_bytes": 318768481,
+      "proof_bytes": 4736,
+      "prove_median_secs": 7.55302225,
+      "prove_secs": [
+        7.617190625,
+        9.608189917,
+        7.55302225,
+        6.799214875,
+        6.564503542
+      ],
+      "public_inputs": 9,
+      "rows_max": 215228,
+      "threads": 10,
+      "verify_median_secs": 0.154389667,
+      "verify_secs": [
+        0.156318833,
+        0.280058792,
+        0.151044792,
+        0.154389667,
+        0.131588291
+      ],
+      "vk_bytes": 1225,
+      "wrong_public_rejected": true
+    },
+    "rawkey_fixed_base_k15": {
+      "advice_columns": 9,
+      "advice_rows_max": 24584,
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 20,
+      "fixed_rows_max": 24583,
+      "instance_columns": 1,
+      "k": 15,
+      "keygen_pk_secs": 0.379423583,
+      "keygen_secs": 0.779082541,
+      "keygen_vk_secs": 0.399658958,
+      "lookups": 2,
+      "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+      "params_bytes": 2097220,
+      "params_gen_secs": 0.916922417,
+      "peak_rss_bytes_process": 1698136064,
+      "pk_bytes": 46138937,
+      "proof_bytes": 5088,
+      "prove_median_secs": 0.938674542,
+      "prove_secs": [
+        0.939000291,
+        0.908082459,
+        0.938674542
+      ],
+      "public_inputs": 6,
+      "rows_max": 24584,
+      "threads": 10,
+      "verify_median_secs": 0.026364792,
+      "verify_secs": [
+        0.026364792,
+        0.029186125,
+        0.024937
+      ],
+      "vk_bytes": 1417,
+      "wrong_public_rejected": true
+    },
+    "rawkey_fixed_base_k16": {
+      "advice_columns": 9,
+      "advice_rows_max": 24584,
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 20,
+      "fixed_rows_max": 24583,
+      "instance_columns": 1,
+      "k": 16,
+      "keygen_pk_secs": 0.803859417,
+      "keygen_secs": 1.296709084,
+      "keygen_vk_secs": 0.492849667,
+      "lookups": 2,
+      "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+      "params_bytes": 4194372,
+      "params_gen_secs": 1.9335692089999998,
+      "peak_rss_bytes_process": 2022670336,
+      "pk_bytes": 92276281,
+      "proof_bytes": 5152,
+      "prove_median_secs": 1.574814166,
+      "prove_secs": [
+        1.64130975,
+        1.574814166,
+        1.539625708
+      ],
+      "public_inputs": 6,
+      "rows_max": 24584,
+      "threads": 10,
+      "verify_median_secs": 0.035354291,
+      "verify_secs": [
+        0.036796417,
+        0.034810584,
+        0.035354291
+      ],
+      "vk_bytes": 1417,
+      "wrong_public_rejected": true
+    },
+    "rawkey_fixed_base_k17": {
+      "advice_columns": 9,
+      "advice_rows_max": 24584,
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 20,
+      "fixed_rows_max": 24583,
+      "instance_columns": 1,
+      "k": 17,
+      "keygen_pk_secs": 1.7689185410000001,
+      "keygen_secs": 2.59658625,
+      "keygen_vk_secs": 0.827667709,
+      "lookups": 2,
+      "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+      "params_bytes": 8388676,
+      "params_gen_secs": 4.739881583,
+      "peak_rss_bytes_process": 3571007488,
+      "pk_bytes": 184550969,
+      "proof_bytes": 5216,
+      "prove_median_secs": 3.300883792,
+      "prove_secs": [
+        3.323035416,
+        2.898459125,
+        3.300883792
+      ],
+      "public_inputs": 6,
+      "rows_max": 24584,
+      "threads": 10,
+      "verify_median_secs": 0.064428041,
+      "verify_secs": [
+        0.069221292,
+        0.062383625,
+        0.064428041
+      ],
+      "vk_bytes": 1417,
+      "wrong_public_rejected": true
+    },
+    "rawkey_fixed_base_wasm": {
+      "build": "733486b prove_rawkey_fixture_browser, pure-Rust G, node v26, single-threaded",
+      "k15": {
+        "heap_bytes": 786000000.0,
+        "params_secs": 27.2,
+        "pk_bytes": 46138937,
+        "pk_secs": 10.4,
+        "proof_bytes": 5088,
+        "prove_secs": 26.8,
+        "rss_bytes": 890000000.0,
+        "verify_secs": 0.47,
+        "vk_secs": 8.4
+      },
+      "k17": {
+        "heap_bytes": 3120000000.0,
+        "params_secs": 124.9,
+        "pk_bytes": 184550969,
+        "pk_secs": 47.3,
+        "prove_secs": 105.1,
+        "verify_secs": 1.6,
+        "vk_secs": 23.6
+      }
+    },
+    "rawkey_glv_k17": {
+      "advice_columns": 9,
+      "advice_rows_max": 107916,
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 7,
+      "fixed_rows_max": 107915,
+      "gas_estimate": {
+        "gas_approx": 38390,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 11
+      },
+      "instance_columns": 1,
+      "k": 17,
+      "keygen_pk_secs": 1.091036125,
+      "keygen_secs": 1.77321075,
+      "keygen_vk_secs": 0.682174625,
+      "lookups": 1,
+      "params_bytes": 8388676,
+      "params_gen_secs": 3.831308166,
+      "peak_rss_bytes_process": 3190489088,
+      "pk_bytes": 121635869,
+      "proof_bytes": 4096,
+      "prove_median_secs": 2.427484667,
+      "prove_secs": [
+        2.427484667,
+        2.457519917,
+        2.357229417,
+        2.382701042,
+        2.754925666
+      ],
+      "public_inputs": 6,
+      "rows_max": 107916,
+      "threads": 10,
+      "verify_median_secs": 0.07160225,
+      "verify_secs": [
+        0.084301,
+        0.067830166,
+        0.069451125,
+        0.072696167,
+        0.07160225
+      ],
+      "vk_bytes": 937,
+      "wrong_public_rejected": true
+    },
+    "rawkey_glv_k19": {
+      "advice_columns": 9,
+      "advice_rows_max": 107916,
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 7,
+      "fixed_rows_max": 107915,
+      "gas_estimate": {
+        "gas_approx": 41880,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 12
+      },
+      "instance_columns": 1,
+      "k": 19,
+      "keygen_pk_secs": 5.766957125,
+      "keygen_secs": 11.640624083,
+      "keygen_vk_secs": 5.873666958,
+      "lookups": 1,
+      "params_bytes": 33554500,
+      "params_gen_secs": 18.609584208,
+      "peak_rss_bytes_process": 4190289920,
+      "pk_bytes": 486540317,
+      "proof_bytes": 4224,
+      "prove_median_secs": 23.1187885,
+      "prove_secs": [
+        26.364230041,
+        21.421739542,
+        23.508883833,
+        20.826326459,
+        23.1187885
+      ],
+      "public_inputs": 6,
+      "rows_max": 107916,
+      "threads": 10,
+      "verify_median_secs": 0.743217209,
+      "verify_secs": [
+        0.554549416,
+        0.927649292,
+        0.773775875,
+        0.529613208,
+        0.743217209
+      ],
+      "vk_bytes": 937,
+      "wrong_public_rejected": true
+    },
+    "rawkey_glv_sound_k19": {
+      "advice_columns": 9,
+      "advice_rows_max": 453787,
+      "chip": "sound CRT (commit 02764a5)",
+      "circuit": "k19_blind_keypair",
+      "degree": 6,
+      "fixed_columns": 7,
+      "fixed_rows_max": 453786,
+      "instance_columns": 1,
+      "k": 19,
+      "keygen_pk_secs": 7.092109042,
+      "keygen_secs": 11.537240125,
+      "keygen_vk_secs": 4.445131083,
+      "lookups": 1,
+      "params_bytes": 33554500,
+      "params_gen_secs": 17.878966625,
+      "peak_rss_bytes_process": 4176347136,
+      "peak_rss_note": "/usr/bin/time -l max RSS over cargo+test process, separate LAB_RUNS=1 run",
+      "pk_bytes": 503317569,
+      "proof_bytes": 4640,
+      "prove_median_secs": 28.245504833,
+      "prove_secs": [
+        28.245504833,
+        27.756697791,
+        26.721063083,
+        31.2496005,
+        34.03596475
+      ],
+      "public_inputs": 6,
+      "rows_max": 453787,
+      "threads": 10,
+      "verify_median_secs": 1.1363125410000001,
+      "verify_secs": [
+        1.1363125410000001,
+        0.61764625,
+        1.666139375,
+        0.560452625,
+        1.3187630000000001
+      ],
+      "vk_bytes": 969,
+      "wrong_public_rejected": true
+    },
+    "rawkey_ladder_k19": {
+      "advice_columns": 9,
+      "advice_rows_max": 214965,
+      "circuit": "k19_blind_keypair_ladder",
+      "degree": 6,
+      "fixed_columns": 7,
+      "fixed_rows_max": 214964,
+      "gas_estimate": {
+        "gas_approx": 41880,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 12
+      },
+      "instance_columns": 1,
+      "k": 19,
+      "keygen_pk_secs": 5.835259292,
+      "keygen_secs": 9.716776459,
+      "keygen_vk_secs": 3.881517167,
+      "lookups": 1,
+      "params_bytes": 33554500,
+      "params_gen_secs": 18.051063875,
+      "peak_rss_bytes_process": 5328961536,
+      "pk_bytes": 486540317,
+      "proof_bytes": 4224,
+      "prove_median_secs": 25.174469167,
+      "prove_secs": [
+        18.355889208,
+        34.643499333,
+        25.240951292,
+        23.007011792,
+        25.174469167
+      ],
+      "public_inputs": 6,
+      "rows_max": 214965,
+      "threads": 10,
+      "verify_median_secs": 0.905237291,
+      "verify_secs": [
+        0.561303458,
+        2.379596416,
+        0.497530959,
+        0.905237291,
+        1.418490583
+      ],
+      "vk_bytes": 937,
+      "wrong_public_rejected": true
+    },
+    "reg_step1_glv_k19": {
+      "advice_columns": 9,
+      "advice_rows_max": 108038,
+      "circuit": "k19_reg_step1_glv",
+      "degree": 6,
+      "fixed_columns": 7,
+      "fixed_rows_max": 108037,
+      "gas_estimate": {
+        "gas_approx": 38390,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 11
+      },
+      "instance_columns": 1,
+      "k": 19,
+      "keygen_pk_secs": 5.704549875,
+      "keygen_secs": 9.653723083,
+      "keygen_vk_secs": 3.949173208,
+      "lookups": 1,
+      "params_bytes": 33554500,
+      "params_gen_secs": 18.72043,
+      "peak_rss_bytes_process": 4413046784,
+      "pk_bytes": 486540317,
+      "proof_bytes": 4224,
+      "prove_median_secs": 24.493320833,
+      "prove_secs": [
+        17.237455209,
+        22.50416825,
+        24.493320833,
+        25.012928666,
+        32.678833583
+      ],
+      "public_inputs": 5,
+      "rows_max": 108038,
+      "threads": 10,
+      "verify_median_secs": 0.842308667,
+      "verify_secs": [
+        0.51043425,
+        0.842308667,
+        1.04367675,
+        0.500660209,
+        1.202575208
+      ],
+      "vk_bytes": 937,
+      "wrong_public_rejected": true
+    },
+    "vk3": {
+      "advice_columns": 6,
+      "advice_rows_max": 1598,
+      "circuit": "vk3_note_membership_d17",
+      "degree": 6,
+      "fixed_columns": 6,
+      "fixed_rows_max": 1597,
+      "gas_estimate": {
+        "gas_approx": 34900,
+        "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
+        "units": 10
+      },
+      "instance_columns": 1,
+      "k": 11,
+      "keygen_pk_secs": 0.012269791,
+      "keygen_secs": 0.029466624000000004,
+      "keygen_vk_secs": 0.017196833,
+      "lookups": 0,
+      "params_bytes": 131140,
+      "params_gen_secs": 0.0729805,
+      "peak_rss_bytes_process": 177831936,
+      "pk_bytes": 1245877,
+      "proof_bytes": 2752,
+      "prove_median_secs": 0.035818709,
+      "prove_secs": [
+        0.037926417,
+        0.035037916,
+        0.035818709,
+        0.035520125,
+        0.036004958
+      ],
+      "public_inputs": 6,
+      "rows_max": 1598,
+      "threads": 10,
+      "verify_median_secs": 0.001994916,
+      "verify_secs": [
+        0.002089375,
+        0.001969917,
+        0.002036166,
+        0.001917292,
+        0.001994916
+      ],
+      "vk_bytes": 617,
+      "wrong_public_rejected": true
+    }
   },
-  "rawkey_fixed_base_k16": {
-   "advice_columns": 9,
-   "advice_rows_max": 24584,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 20,
-   "fixed_rows_max": 24583,
-   "instance_columns": 1,
-   "k": 16,
-   "keygen_pk_secs": 0.803859417,
-   "keygen_secs": 1.296709084,
-   "keygen_vk_secs": 0.492849667,
-   "lookups": 2,
-   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
-   "params_bytes": 4194372,
-   "params_gen_secs": 1.9335692089999998,
-   "peak_rss_bytes_process": 2022670336,
-   "pk_bytes": 92276281,
-   "proof_bytes": 5152,
-   "prove_median_secs": 1.574814166,
-   "prove_secs": [
-    1.64130975,
-    1.574814166,
-    1.539625708
-   ],
-   "public_inputs": 6,
-   "rows_max": 24584,
-   "threads": 10,
-   "verify_median_secs": 0.035354291,
-   "verify_secs": [
-    0.036796417,
-    0.034810584,
-    0.035354291
-   ],
-   "vk_bytes": 1417,
-   "wrong_public_rejected": true
+  "soundness": {
+    "chip": "sound",
+    "forgery_test": "blind_forgery_rejected: rejected",
+    "negatives": "blind_negative_suite: 8/8 rejected by constraints (MockProver K=19)"
   },
-  "rawkey_fixed_base_k17": {
-   "advice_columns": 9,
-   "advice_rows_max": 24584,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 20,
-   "fixed_rows_max": 24583,
-   "instance_columns": 1,
-   "k": 17,
-   "keygen_pk_secs": 1.7689185410000001,
-   "keygen_secs": 2.59658625,
-   "keygen_vk_secs": 0.827667709,
-   "lookups": 2,
-   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
-   "params_bytes": 8388676,
-   "params_gen_secs": 4.739881583,
-   "peak_rss_bytes_process": 3571007488,
-   "pk_bytes": 184550969,
-   "proof_bytes": 5216,
-   "prove_median_secs": 3.300883792,
-   "prove_secs": [
-    3.323035416,
-    2.898459125,
-    3.300883792
-   ],
-   "public_inputs": 6,
-   "rows_max": 24584,
-   "threads": 10,
-   "verify_median_secs": 0.064428041,
-   "verify_secs": [
-    0.069221292,
-    0.062383625,
-    0.064428041
-   ],
-   "vk_bytes": 1417,
-   "wrong_public_rejected": true
-  },
-  "rawkey_fixed_base_wasm": {
-   "build": "733486b prove_rawkey_fixture_browser, pure-Rust G, node v26, single-threaded",
-   "k15": {
-    "heap_bytes": 786000000.0,
-    "params_secs": 27.2,
-    "pk_bytes": 46138937,
-    "pk_secs": 10.4,
-    "proof_bytes": 5088,
-    "prove_secs": 26.8,
-    "rss_bytes": 890000000.0,
-    "verify_secs": 0.47,
-    "vk_secs": 8.4
-   },
-   "k17": {
-    "heap_bytes": 3120000000.0,
-    "params_secs": 124.9,
-    "pk_bytes": 184550969,
-    "pk_secs": 47.3,
-    "prove_secs": 105.1,
-    "verify_secs": 1.6,
-    "vk_secs": 23.6
-   }
-  },
-  "rawkey_glv_k17": {
-   "advice_columns": 9,
-   "advice_rows_max": 107916,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 107915,
-   "gas_estimate": {
-    "gas_approx": 38390,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 11
-   },
-   "instance_columns": 1,
-   "k": 17,
-   "keygen_pk_secs": 1.091036125,
-   "keygen_secs": 1.77321075,
-   "keygen_vk_secs": 0.682174625,
-   "lookups": 1,
-   "params_bytes": 8388676,
-   "params_gen_secs": 3.831308166,
-   "peak_rss_bytes_process": 3190489088,
-   "pk_bytes": 121635869,
-   "proof_bytes": 4096,
-   "prove_median_secs": 2.427484667,
-   "prove_secs": [
-    2.427484667,
-    2.457519917,
-    2.357229417,
-    2.382701042,
-    2.754925666
-   ],
-   "public_inputs": 6,
-   "rows_max": 107916,
-   "threads": 10,
-   "verify_median_secs": 0.07160225,
-   "verify_secs": [
-    0.084301,
-    0.067830166,
-    0.069451125,
-    0.072696167,
-    0.07160225
-   ],
-   "vk_bytes": 937,
-   "wrong_public_rejected": true
-  },
-  "rawkey_glv_k19": {
-   "advice_columns": 9,
-   "advice_rows_max": 107916,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 107915,
-   "gas_estimate": {
-    "gas_approx": 41880,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 12
-   },
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 5.766957125,
-   "keygen_secs": 11.640624083,
-   "keygen_vk_secs": 5.873666958,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 18.609584208,
-   "peak_rss_bytes_process": 4190289920,
-   "pk_bytes": 486540317,
-   "proof_bytes": 4224,
-   "prove_median_secs": 23.1187885,
-   "prove_secs": [
-    26.364230041,
-    21.421739542,
-    23.508883833,
-    20.826326459,
-    23.1187885
-   ],
-   "public_inputs": 6,
-   "rows_max": 107916,
-   "threads": 10,
-   "verify_median_secs": 0.743217209,
-   "verify_secs": [
-    0.554549416,
-    0.927649292,
-    0.773775875,
-    0.529613208,
-    0.743217209
-   ],
-   "vk_bytes": 937,
-   "wrong_public_rejected": true
-  },
-  "rawkey_glv_sound_k19": {
-   "advice_columns": 9,
-   "advice_rows_max": 453787,
-   "chip": "sound CRT (commit 02764a5)",
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 453786,
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 7.092109042,
-   "keygen_secs": 11.537240125,
-   "keygen_vk_secs": 4.445131083,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 17.878966625,
-   "peak_rss_bytes_process": 4176347136,
-   "peak_rss_note": "/usr/bin/time -l max RSS over cargo+test process, separate LAB_RUNS=1 run",
-   "pk_bytes": 503317569,
-   "proof_bytes": 4640,
-   "prove_median_secs": 28.245504833,
-   "prove_secs": [
-    28.245504833,
-    27.756697791,
-    26.721063083,
-    31.2496005,
-    34.03596475
-   ],
-   "public_inputs": 6,
-   "rows_max": 453787,
-   "threads": 10,
-   "verify_median_secs": 1.1363125410000001,
-   "verify_secs": [
-    1.1363125410000001,
-    0.61764625,
-    1.666139375,
-    0.560452625,
-    1.3187630000000001
-   ],
-   "vk_bytes": 969,
-   "wrong_public_rejected": true
-  },
-  "rawkey_ladder_k19": {
-   "advice_columns": 9,
-   "advice_rows_max": 214965,
-   "circuit": "k19_blind_keypair_ladder",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 214964,
-   "gas_estimate": {
-    "gas_approx": 41880,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 12
-   },
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 5.835259292,
-   "keygen_secs": 9.716776459,
-   "keygen_vk_secs": 3.881517167,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 18.051063875,
-   "peak_rss_bytes_process": 5328961536,
-   "pk_bytes": 486540317,
-   "proof_bytes": 4224,
-   "prove_median_secs": 25.174469167,
-   "prove_secs": [
-    18.355889208,
-    34.643499333,
-    25.240951292,
-    23.007011792,
-    25.174469167
-   ],
-   "public_inputs": 6,
-   "rows_max": 214965,
-   "threads": 10,
-   "verify_median_secs": 0.905237291,
-   "verify_secs": [
-    0.561303458,
-    2.379596416,
-    0.497530959,
-    0.905237291,
-    1.418490583
-   ],
-   "vk_bytes": 937,
-   "wrong_public_rejected": true
-  },
-  "reg_step1_glv_k19": {
-   "advice_columns": 9,
-   "advice_rows_max": 108038,
-   "circuit": "k19_reg_step1_glv",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 108037,
-   "gas_estimate": {
-    "gas_approx": 38390,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 11
-   },
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 5.704549875,
-   "keygen_secs": 9.653723083,
-   "keygen_vk_secs": 3.949173208,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 18.72043,
-   "peak_rss_bytes_process": 4413046784,
-   "pk_bytes": 486540317,
-   "proof_bytes": 4224,
-   "prove_median_secs": 24.493320833,
-   "prove_secs": [
-    17.237455209,
-    22.50416825,
-    24.493320833,
-    25.012928666,
-    32.678833583
-   ],
-   "public_inputs": 5,
-   "rows_max": 108038,
-   "threads": 10,
-   "verify_median_secs": 0.842308667,
-   "verify_secs": [
-    0.51043425,
-    0.842308667,
-    1.04367675,
-    0.500660209,
-    1.202575208
-   ],
-   "vk_bytes": 937,
-   "wrong_public_rejected": true
-  },
-  "vk3": {
-   "advice_columns": 6,
-   "advice_rows_max": 1598,
-   "circuit": "vk3_note_membership_d17",
-   "degree": 6,
-   "fixed_columns": 6,
-   "fixed_rows_max": 1597,
-   "gas_estimate": {
-    "gas_approx": 34900,
-    "method": "ESTIMATE from host meter 1+ceil(proof/1024)+ceil(inst_bytes/32), 10 units=34.9k (onchain-verify-benchmark.md); NOT measured on chain",
-    "units": 10
-   },
-   "instance_columns": 1,
-   "k": 11,
-   "keygen_pk_secs": 0.012269791,
-   "keygen_secs": 0.029466624000000004,
-   "keygen_vk_secs": 0.017196833,
-   "lookups": 0,
-   "params_bytes": 131140,
-   "params_gen_secs": 0.0729805,
-   "peak_rss_bytes_process": 177831936,
-   "pk_bytes": 1245877,
-   "proof_bytes": 2752,
-   "prove_median_secs": 0.035818709,
-   "prove_secs": [
-    0.037926417,
-    0.035037916,
-    0.035818709,
-    0.035520125,
-    0.036004958
-   ],
-   "public_inputs": 6,
-   "rows_max": 1598,
-   "threads": 10,
-   "verify_median_secs": 0.001994916,
-   "verify_secs": [
-    0.002089375,
-    0.001969917,
-    0.002036166,
-    0.001917292,
-    0.001994916
-   ],
-   "vk_bytes": 617,
-   "wrong_public_rejected": true
-  }
- },
- "soundness": {
-  "chip": "sound",
-  "forgery_test": "blind_forgery_rejected: rejected",
-  "negatives": "blind_negative_suite: 8/8 rejected by constraints (MockProver K=19)"
- }
+  "wasm_mt_k15": [
+    {
+      "k": 15,
+      "req_threads": 1,
+      "threads": 1,
+      "cross_origin_isolated": true,
+      "keygen_regen_secs": 46.79860000002384,
+      "artifact_bytes": 48262377,
+      "idb_store_secs": 0.0615450000166893,
+      "idb_read_secs": 0.06216000002622604,
+      "out": {
+        "proof_len": 5088,
+        "threads": 1,
+        "mem": 835715072
+      },
+      "cached_total_secs": 39.823240000009534,
+      "phases": [
+        [
+          "art-params",
+          27.863,
+          "art-params"
+        ],
+        [
+          "art-vk",
+          8.334,
+          "art-vk"
+        ],
+        [
+          "art-pk",
+          10.533,
+          "art-pk"
+        ],
+        [
+          "art-serialized",
+          0.093,
+          "art-serialized bytes=48262377 params=2097220 cs=26212"
+        ],
+        [
+          "load-params",
+          1.319,
+          "load-params mem=655687680"
+        ],
+        [
+          "load-pk",
+          10.606,
+          "load-pk mem=655687680"
+        ],
+        [
+          "proved",
+          27.431,
+          "proved mem=835715072 proof=5088"
+        ],
+        [
+          "verified",
+          0.464,
+          "verified mem=835715072"
+        ]
+      ]
+    },
+    {
+      "k": 15,
+      "req_threads": 4,
+      "threads": 4,
+      "cross_origin_isolated": true,
+      "keygen_regen_secs": 14.260944999992848,
+      "artifact_bytes": 48262377,
+      "idb_store_secs": 0.042,
+      "idb_read_secs": 0.042689999997615816,
+      "out": {
+        "proof_len": 5088,
+        "threads": 4,
+        "mem": 879034368
+      },
+      "cached_total_secs": 11.815214999973774,
+      "phases": [
+        [
+          "art-params",
+          7.726,
+          "art-params"
+        ],
+        [
+          "art-vk",
+          3.346,
+          "art-vk"
+        ],
+        [
+          "art-pk",
+          3.108,
+          "art-pk"
+        ],
+        [
+          "art-serialized",
+          0.085,
+          "art-serialized bytes=48262377 params=2097220 cs=26212"
+        ],
+        [
+          "load-params",
+          1.307,
+          "load-params mem=663289856"
+        ],
+        [
+          "load-pk",
+          3.05,
+          "load-pk mem=663289856"
+        ],
+        [
+          "proved",
+          7.318,
+          "proved mem=879034368 proof=5088"
+        ],
+        [
+          "verified",
+          0.138,
+          "verified mem=879034368"
+        ]
+      ]
+    },
+    {
+      "k": 15,
+      "req_threads": 8,
+      "threads": 8,
+      "cross_origin_isolated": true,
+      "keygen_regen_secs": 10.266224999964237,
+      "artifact_bytes": 48262377,
+      "idb_store_secs": 0.036794999957084656,
+      "idb_read_secs": 0.0436350000500679,
+      "out": {
+        "proof_len": 5088,
+        "threads": 8,
+        "mem": 861863936
+      },
+      "cached_total_secs": 8.706509999990462,
+      "phases": [
+        [
+          "art-params",
+          4.957,
+          "art-params"
+        ],
+        [
+          "art-vk",
+          3.245,
+          "art-vk"
+        ],
+        [
+          "art-pk",
+          1.988,
+          "art-pk"
+        ],
+        [
+          "art-serialized",
+          0.084,
+          "art-serialized bytes=48262377 params=2097220 cs=26212"
+        ],
+        [
+          "load-params",
+          1.322,
+          "load-params mem=676003840"
+        ],
+        [
+          "load-pk",
+          1.899,
+          "load-pk mem=676003840"
+        ],
+        [
+          "proved",
+          5.326,
+          "proved mem=861863936 proof=5088"
+        ],
+        [
+          "verified",
+          0.158,
+          "verified mem=861863936"
+        ]
+      ]
+    }
+  ]
 }
