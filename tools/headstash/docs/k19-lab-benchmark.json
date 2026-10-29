@@ -701,5 +701,83 @@
         ]
       ]
     }
-  ]
+  ],
+  "final_comparison": {
+    "vk3": {
+      "rows": 1598,
+      "k": 11,
+      "native_prove_s": 0.036,
+      "wasm_prove_s": 3.3,
+      "proof_bytes": 2752,
+      "browser_viable": true
+    },
+    "rawkey_fixed_base": {
+      "rows": 24584,
+      "k": 15,
+      "native_prove_s": 0.94,
+      "wasm_mt_prove_s": {
+        "1": 27.4,
+        "4": 7.3,
+        "8": 5.3
+      },
+      "wasm_mem_gb": 0.86,
+      "proof_bytes": 5088,
+      "browser_viable": true,
+      "needs_key_export": true
+    },
+    "ecdsa_fixed_base_u1g": {
+      "rows": 681032,
+      "k": 20,
+      "native_prove": "killed at 25 GB footprint, host swap full",
+      "browser_viable": false,
+      "glv_ecdsa": "NotEnoughRows at K=20"
+    },
+    "two_step": {
+      "registration": {
+        "rows": 24706,
+        "k": 15,
+        "native_prove_s": 2.49,
+        "native_verify_ms": 57,
+        "pk_mb": 46.1,
+        "proof_bytes": 5088,
+        "wasm_mt_prove_s": {
+          "1": 38.04,
+          "4": 9.59,
+          "8": 6.38
+        },
+        "wasm_mt_verify_s": {
+          "1": 0.597,
+          "4": 0.216,
+          "8": 0.183
+        },
+        "wasm_mem_bytes": {
+          "1": 835321856,
+          "4": 873857024,
+          "8": 861405184
+        },
+        "wasm_keygen_regen_s": {
+          "1": 55.15,
+          "4": 16.46,
+          "8": 11.64
+        },
+        "wasm_cached_total_s": {
+          "1": 56.55,
+          "4": 15.37,
+          "8": 10.49
+        },
+        "raw": "k19-lab-wasm-mt-reg-k15.jsonl",
+        "needs_key_export": "once"
+      },
+      "claim": "vk3"
+    },
+    "known_test_gaps": {
+      "suite": "ecdsa_negative_suite FB K=20",
+      "not_rejected": {
+        "forged_sub": "host witness panic, MockProver never ran (inconclusive)",
+        "eq_sub": "honest diff already 0, hook no-op",
+        "bad_glv_k1": "hook only in scalar_mul_glv; FB mode uses table + scalar_mul_glv_at, hook no-op"
+      },
+      "note": "harness gaps, not demonstrated forgeries; u2*Q GLV split untested"
+    }
+  }
 }

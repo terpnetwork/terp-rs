@@ -185,3 +185,32 @@ Tests: `fb_plain_div_scalar_bound` (exhaustive bound for w = 1..30) passes. The 
 | 8 | 5.33 s | 0.16 s | 861.9 MB | 10.27 s | 8.71 s |
 
 PK cache: artifact 48,262,377 B (params 2,097,220 + cs 26,212 + pk). IndexedDB store 0.04-0.06 s, read 0.04-0.06 s. load-params 1.31 s; load-pk 10.61/3.05/1.90 s (1/4/8 thr) vs keygen_pk 10.53/3.11/1.99 s, i.e. ProvingKey::read_with_cs currently recomputes ~as much as keygen_pk; the saving is only params+vk generation (27.9/7.7/5.0 s + 8.3/3.3/3.2 s). Raw data: k19-lab-wasm-mt-k15.jsonl. Build: scripts/build-rawkey-mt.sh (needs --shared-memory/--import-memory, TLS + __heap_base/__data_end exports, -Z build-std).
+
+## FINAL: four-design comparison (measured only)
+
+All numbers measured on groot-wan (native: median of runs; wasm: Chromium headless, wasm-bindgen-rayon MT build). Wasm memory = wasm linear memory after prove.
+
+| Design | Rows | K | Native prove | Wasm prove (1/4/8 thr) | Wasm mem | Proof | Browser-viable |
+|---|---|---|---|---|---|---|---|
+| 1. vk3 (current) | 1,598 | 11 | 0.036 s | 3.3 s (single thread) | n/a | 2,752 B | yes |
+| 2. Sound raw-key claim, fixed base | 24,584 | 15 | 0.94 s | 27.4 / 7.3 / 5.3 s | ~0.86 GB | 5,088 B | yes, needs key export |
+| 3. Sound ECDSA, fixed-base u1·G (u2·Q GLV) | 681,032 | 20 (does not fit 18/19) | full prove killed at 25 GB footprint (host swap full) | not run | n/a | n/a | no; GLV-only ECDSA exceeds K=20 |
+| 4a. Two-step: registration (step 1, fixed-base chip) | 24,706 | 15 | 2.49 s (verify 57 ms, PK 46.1 MB) | 38.0 / 9.6 / 6.4 s (verify 0.6/0.2/0.2 s) | 0.84 / 0.87 / 0.86 GB | 5,088 B | yes, once per key |
+| 4b. Two-step: claim (step 2 = vk3) | 1,598 | 11 | 0.036 s | 3.3 s | n/a | 2,752 B | yes, per claim |
+
+Registration wasm extra: keygen regen (params+vk+pk) 55.2/16.5/11.6 s, cached path total 56.5/15.4/10.5 s at 1/4/8 threads, artifact 48,262,377 B (raw: k19-lab-wasm-mt-reg-k15.jsonl). The registration native prove (2.49 s) was measured with host swap full, so it is not directly comparable to the 0.94 s raw-key figure.
+
+### Privacy and UX tradeoffs
+
+- vk3: fastest and smallest. Privacy rests on the vk3 commitment scheme, which does not bind to the wallet's secp256k1 key inside the circuit. Best UX.
+- Sound raw-key: in-circuit proof that the claimer owns the secp256k1 key, with no on-chain link to the address. UX cost: the user must export the raw private key into the browser prover, which wallets discourage and which raises key-handling risk. 5-27 s browser prove, ~0.86 GB memory, 48 MB PK download/cache.
+- Sound ECDSA: best UX in principle (wallet just signs, no key export). Not viable: 681k rows needs K=20, the full prove did not finish within host memory, and the browser is out of reach.
+- Two-step: registration proves key ownership once (raw-key-class cost, ~6-38 s in browser, needs key export once), then each claim is a cheap vk3 proof (3.3 s wasm). Same key-export concern as design 2 but only at registration. Registration-to-claim linkability depends on the registration tree's anonymity set.
+
+### Known test gaps (ecdsa_negative_suite, FB mode, K=20 MockProver)
+
+Three cases were not rejected. All three are harness gaps, not demonstrated forgeries:
+- forged sub: the host witness panicked (secp_fp_from_le canonical check) before MockProver ran, so the result is inconclusive.
+- eq-sub forge: the honest witness diff is already 0, so the hook was a no-op.
+- bad GLV k1: the hook is only in scalar_mul_glv. FB mode computes u1·G from the table and u2·Q via scalar_mul_glv_at, so the hook was a no-op.
+The u2·Q GLV split is therefore untested against forgery. The other 12 cases were rejected.
