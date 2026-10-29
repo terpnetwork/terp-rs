@@ -37,7 +37,7 @@ use std::vec::Vec;
 // ============================================================================
 
 mod fixed_base;
-pub use fixed_base::{FB_NWIN, FB_W, KEYPAIR_GLV};
+pub use fixed_base::{FB_ALWAYS_CHECKED, FB_NWIN, FB_W, KEYPAIR_GLV};
 
 /// Number of 64-bit limbs per foreign field element.
 const NUM_LIMBS: usize = 4;

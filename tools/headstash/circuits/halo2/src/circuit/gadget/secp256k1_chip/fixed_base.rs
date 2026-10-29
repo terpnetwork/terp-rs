@@ -250,9 +250,40 @@ impl Secp256k1Chip {
         // 3. accumulate (no doublings)
         let mut it = pts.into_iter();
         let mut acc = it.next().unwrap();
+        let last = FB_NWIN - 1;
         for (i, p) in it.enumerate() {
-            acc = self.add_point(layouter.namespace(|| format!("fb add {}", i + 1)), &acc, &p)?;
+            let w = i + 1;
+            acc = if w < last && !FB_ALWAYS_CHECKED.load(core::sync::atomic::Ordering::SeqCst) {
+                // acc ≠ ±T_w by the scalar-size argument (module doc), so dx ≠ 0: plain div.
+                self.add_point_distinct(layouter.namespace(|| format!("fb add {w}")), &acc, &p)?
+            } else {
+                // last window: acc = T is reachable for a few sk, so prove dx invertible.
+                self.add_point(layouter.namespace(|| format!("fb add {w}")), &acc, &p)?
+            };
         }
         Ok(acc)
     }
+
+    /// Incomplete add for points whose x-coordinates are known distinct by construction.
+    fn add_point_distinct(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        p: &SecpPoint<pallas::Base>,
+        q: &SecpPoint<pallas::Base>,
+    ) -> Result<SecpPoint<pallas::Base>, PlonkError> {
+        let fp = &self.fp;
+        let dy = fp.sub(layouter.namespace(|| "dy"), &q.1, &p.1)?;
+        let dx = fp.sub(layouter.namespace(|| "dx"), &q.0, &p.0)?;
+        let lambda = fp.div(layouter.namespace(|| "lambda"), &dy, &dx)?;
+        let lambda_sq = fp.mul(layouter.namespace(|| "lambda_sq"), &lambda, &lambda)?;
+        let x3 = fp.sub(layouter.namespace(|| "x3 part1"), &lambda_sq, &p.0)?;
+        let x3 = fp.sub(layouter.namespace(|| "x3"), &x3, &q.0)?;
+        let dx_new = fp.sub(layouter.namespace(|| "dx_new"), &p.0, &x3)?;
+        let temp = fp.mul(layouter.namespace(|| "temp"), &lambda, &dx_new)?;
+        let y3 = fp.sub(layouter.namespace(|| "y3"), &temp, &p.1)?;
+        Ok((x3, y3))
+    }
 }
+
+/// Lab switch: use div_checked for every fixed-base add (1a baseline).
+pub static FB_ALWAYS_CHECKED: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
