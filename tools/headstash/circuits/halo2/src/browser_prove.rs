@@ -197,8 +197,20 @@ fn rawkey_fx(destination: &str) -> Result<crate::rawkey::blind_k19::BlindFixture
     for (i, p) in path.iter_mut().enumerate() {
         *p = pallas::Base::from(1000 + i as u64);
     }
+    if crate::rawkey::blind_k19::REG_MODE.load(core::sync::atomic::Ordering::SeqCst) {
+        // two-step step 1 (registration) on the same fixed-base chip; lab-only fixture values.
+        return crate::rawkey::blind_k19::reg_fixture([0x11u8; 32], pallas::Base::from(0x77u64),
+            crate::note_membership::DENOMS_UTERP[0], 5, path, pallas::Base::from(0xabcdu64),
+            pallas::Base::from(0x5eed0001u64), destination).map_err(|s| JsError::new(&s));
+    }
     crate::rawkey::blind_k19::blind_fixture([0x11u8; 32], pallas::Base::from(7u64), 1234, 5, path, destination)
         .map_err(|s| JsError::new(&s))
+}
+
+/// k19 lab: switch rawkey_* exports to the two-step registration (step 1) circuit.
+#[wasm_bindgen]
+pub fn rawkey_set_reg_mode(on: bool) {
+    crate::rawkey::blind_k19::REG_MODE.store(on, core::sync::atomic::Ordering::SeqCst);
 }
 
 /// Run params + keygen once and serialize: [u32 len][params][u32 len][cs][pk] (IndexedDB/download blob).

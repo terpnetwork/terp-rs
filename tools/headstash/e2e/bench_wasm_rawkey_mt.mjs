@@ -1,4 +1,5 @@
 // k19 lab task 3: threaded wasm raw-key prover in headless Chromium (COOP/COEP, 127.0.0.1 only).
+// HS_REG=1 benches the two-step registration (step 1) circuit instead.
 // Usage: node bench_mt.mjs <pkg dir> <k> <threads,...>   (PW = path to playwright module dir)
 import http from "node:http";
 import { readFileSync, existsSync, statSync } from "node:fs";
@@ -8,11 +9,13 @@ const [dir, k, tl] = [process.argv[2], +process.argv[3], process.argv[4] || "1,4
 const { chromium } = createRequire(import.meta.url)(process.env.PW);
 const page_html = `<!doctype html><script type="module">
 import init, * as m from "./pkg/zk_headstash.js";
+const REG = ${process.env.HS_REG ? "true" : "false"};
 window.run = async (threads, k) => {
   const log = []; let last = performance.now();
   console.error = (s) => { const t = performance.now(); log.push([String(s).split(" ")[0], +((t-last)/1000).toFixed(3), String(s)]); last = t; };
   await init();
   if (threads > 0 && m.initThreadPool) await m.initThreadPool(threads);
+  if (REG) m.rawkey_set_reg_mode(true);
   const T = () => performance.now(); const r = { threads: m.rawkey_threads(), cross_origin_isolated: crossOriginIsolated };
   let t = T(); const art = m.rawkey_keygen_artifacts(k); r.keygen_regen_secs = (T()-t)/1000; r.artifact_bytes = art.length;
   t = T();
