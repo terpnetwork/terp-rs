@@ -128,6 +128,8 @@ impl EgressEnv {
             registration_hook: None,
         
             registration_hook_gas_limit: None,
+        
+            frontend_contract: None,
         };
 
         let headstash = app

@@ -1,0 +1,28 @@
+[package]
+name = "cw-headstash-frontend"
+version = { workspace = true }
+edition = { workspace = true }
+description = "Gov-published, content-addressed on-chain host for the Headstash claim UI (ERC-8244 style, gzip chunks)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+interface = ["dep:cw-orch", "dep:flate2", "dep:anyhow"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+anyhow = { workspace = true, optional = true }
+cw-orch = { workspace = true, optional = true }
+flate2 = { version = "1", optional = true }
+hex = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

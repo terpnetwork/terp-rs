@@ -1309,6 +1309,7 @@ mod tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         (deps, env, root)
@@ -2354,6 +2355,7 @@ mod tests {
                     circuit_id: None,
                     registration_hook: None,
                     registration_hook_gas_limit: None,
+                    frontend_contract: None,
                 },
                 &coins(1_000_000, "uterp"),
                 "headstash",

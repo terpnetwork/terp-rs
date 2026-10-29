@@ -225,6 +225,7 @@ impl BridgeEnv {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let headstash = app

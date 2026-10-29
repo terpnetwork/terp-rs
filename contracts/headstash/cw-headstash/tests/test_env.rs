@@ -301,5 +301,6 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         circuit_id: None,
         registration_hook: None,
         registration_hook_gas_limit: None,
+        frontend_contract: None,
     }
 }

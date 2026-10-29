@@ -29,6 +29,10 @@ pub struct InstantiateMsg {
     /// Gas cap for the hook submessage (default 500,000; max 5,000,000).
     #[serde(default)]
     pub registration_hook_gas_limit: Option<u64>,
+    /// Optional cw-headstash-frontend contract hosting the gov-approved claim UI
+    /// (gzip chunks + manifest). Discoverable via `QueryMsg::FrontendContract`.
+    #[serde(default)]
+    pub frontend_contract: Option<String>,
 }
 
 /// One-shot admin migrate. The new code copies a still-zero genesis root
@@ -97,6 +101,10 @@ pub enum ExecuteMsg {
     },
     /// Optional external asset registry contract address (hook; not required for demos).
     SetExternalAssetRegistry {
+        addr: Option<String>,
+    },
+    /// Owner (x/gov): set or clear the on-chain frontend contract address.
+    SetFrontendContract {
         addr: Option<String>,
     },
     /// Owner-set bridge corridor config (dest domain, K, lag, mock_verify).
@@ -254,6 +262,9 @@ pub enum QueryMsg {
     /// External asset registry address (if configured).
     #[returns(Option<Addr>)]
     ExternalAssetRegistry {},
+    /// cw-headstash-frontend address hosting the claim UI (if configured).
+    #[returns(Option<Addr>)]
+    FrontendContract {},
     /// Hashmerchant root stored for `headstash-pending` or `headstash-accepted`.
     #[returns(crate::epoch::EpochRootResponse)]
     EpochRoot { algo: String },

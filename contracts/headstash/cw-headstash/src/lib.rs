@@ -210,6 +210,7 @@ pub fn instantiate(
     let genesis_label = msg.genesis_label;
     let circuit_id = msg.circuit_id.unwrap_or(0);
     notes::set_registration_hook(deps.storage, deps.api, msg.registration_hook.clone(), msg.registration_hook_gas_limit)?;
+    bridge::save_frontend_contract(deps.storage, deps.api, msg.frontend_contract.clone())?;
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
@@ -349,6 +350,9 @@ pub fn execute(
         ExecuteMsg::SetExternalAssetRegistry { addr } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_external_asset_registry)(deps, info, addr)
         }
+        ExecuteMsg::SetFrontendContract { addr } => {
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_frontend_contract)(deps, info, addr)
+        }
         ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
         ExecuteMsg::BridgeMintNote { claim, proof } => {
             opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, claim, proof)
@@ -486,6 +490,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BridgeAsset { asset_id } => bridge::query_asset(deps, asset_id),
         QueryMsg::BridgeConfig {} => bridge::query_bridge_cfg(deps),
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
+        QueryMsg::FrontendContract {} => bridge::query_frontend_contract(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
         QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
         QueryMsg::RegistrationTree {} => {
@@ -839,6 +844,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -943,6 +949,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -991,6 +998,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -1025,6 +1033,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1064,6 +1073,8 @@ mod instantiate_tests {
             registration_hook: None,
 
             registration_hook_gas_limit: None,
+
+            frontend_contract: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1102,6 +1113,8 @@ mod instantiate_tests {
             registration_hook: None,
 
             registration_hook_gas_limit: None,
+
+            frontend_contract: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1134,6 +1147,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -1174,6 +1188,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1202,6 +1217,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1251,6 +1267,7 @@ mod instantiate_tests {
             circuit_id: Some(0),
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1291,6 +1308,7 @@ mod instantiate_tests {
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 

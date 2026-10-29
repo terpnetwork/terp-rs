@@ -148,6 +148,7 @@ fn claim_clearnet_proof_instance_verify() {
             circuit_id: Some(CID),
             registration_hook: None,
             registration_hook_gas_limit: None,
+            frontend_contract: None,
         },
         Some(&admin),
         &[],
