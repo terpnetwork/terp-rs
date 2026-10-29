@@ -1,10 +1,32 @@
 {
+ "fixed_base_rows_per_step": {
+  "adds": 31,
+  "approx_rows_per_plain_add": "~(28484-24584)/30 = 130 fewer per add vs div_checked",
+  "digit_decomposition": "4 regions (1 per 64-bit limb, 8 digits/row)",
+  "doublings": 0,
+  "plain_div_saving_rows": 3900,
+  "rows_before_plain_div": 28484,
+  "rows_total_rawkey_claim": 24584,
+  "window_lookups": 32
+ },
  "harness": "circuits/halo2/src/lab_bench.rs measure(); prove/verify = median of 5, native, 10 threads",
  "machine": "groot-wan (Apple M1 Pro, 10 cores, 16 GB, macOS)",
  "not_measured": {
   "gas": "estimated only (no local chain run)",
-  "wasm": "not run for sound chip: no wasm32 prover built this session; sound raw-key PK 503 MB, native peak RSS 4.18 GB (vs wasm32 4 GiB cap) - fit unverified",
-  "sound_ecdsa_and_reg": "sound ECDSA, ladder and two-step reg exceed K=19 (NotEnoughRowsAvailable); K=20 not run"
+  "sound_ecdsa_and_reg": "sound ECDSA, ladder and two-step reg exceed K=19 (NotEnoughRowsAvailable); K=20 not run",
+  "wasm": "sound raw-key fixed-base: measured K15/K17 single-thread (see rawkey_fixed_base_wasm); multithread see task-3 section"
+ },
+ "plain_div_audit": {
+  "argument": "digits unique (lookup range [0,256) + linear limb gate, 64-bit limbs << Pallas p); lookup tuple (win fixed, d copied, x/y limbs+native) pins T_w=(d_w+2)2^{8w}G; by induction acc_w is the honest point sum_{i<w}(d_i+2)2^{8i}G with scalar a in [2(2^{8w}-1)/255, 257(2^{8w}-1)/255] < 2*2^{8w} <= t_w, and a+t_w <= 257*2^{8w}*(1+1/255) < 2^{249} < n for w<=30, so acc != +-T_w for EVERY digit choice; hence dx != 0 mod p, c*dx=dy fixes lambda uniquely. Last add (w=31) keeps div_checked.",
+  "commit": "15b8d21",
+  "tests": {
+   "FB_COLLIDE (window-1 point := acc, dx=dy=0)": "rejected by lookup",
+   "blind_forgery_rejected": "rejected",
+   "blind_negative_suite": "10/10 rejected",
+   "blind_soundness_suite": "pass (honest accepted, 9 tamper cases rejected)",
+   "fb_plain_div_scalar_bound": "pass (all w=1..30)"
+  },
+  "verdict": "SOUND, no change (rows stay 24,584)"
  },
  "results": {
   "k19_ecdsa": {
@@ -97,6 +119,140 @@
    "vk_bytes": 1225,
    "wrong_public_rejected": true
   },
+  "rawkey_fixed_base_k15": {
+   "advice_columns": 9,
+   "advice_rows_max": 24584,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 20,
+   "fixed_rows_max": 24583,
+   "instance_columns": 1,
+   "k": 15,
+   "keygen_pk_secs": 0.379423583,
+   "keygen_secs": 0.779082541,
+   "keygen_vk_secs": 0.399658958,
+   "lookups": 2,
+   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+   "params_bytes": 2097220,
+   "params_gen_secs": 0.916922417,
+   "peak_rss_bytes_process": 1698136064,
+   "pk_bytes": 46138937,
+   "proof_bytes": 5088,
+   "prove_median_secs": 0.938674542,
+   "prove_secs": [
+    0.939000291,
+    0.908082459,
+    0.938674542
+   ],
+   "public_inputs": 6,
+   "rows_max": 24584,
+   "threads": 10,
+   "verify_median_secs": 0.026364792,
+   "verify_secs": [
+    0.026364792,
+    0.029186125,
+    0.024937
+   ],
+   "vk_bytes": 1417,
+   "wrong_public_rejected": true
+  },
+  "rawkey_fixed_base_k16": {
+   "advice_columns": 9,
+   "advice_rows_max": 24584,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 20,
+   "fixed_rows_max": 24583,
+   "instance_columns": 1,
+   "k": 16,
+   "keygen_pk_secs": 0.803859417,
+   "keygen_secs": 1.296709084,
+   "keygen_vk_secs": 0.492849667,
+   "lookups": 2,
+   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+   "params_bytes": 4194372,
+   "params_gen_secs": 1.9335692089999998,
+   "peak_rss_bytes_process": 2022670336,
+   "pk_bytes": 92276281,
+   "proof_bytes": 5152,
+   "prove_median_secs": 1.574814166,
+   "prove_secs": [
+    1.64130975,
+    1.574814166,
+    1.539625708
+   ],
+   "public_inputs": 6,
+   "rows_max": 24584,
+   "threads": 10,
+   "verify_median_secs": 0.035354291,
+   "verify_secs": [
+    0.036796417,
+    0.034810584,
+    0.035354291
+   ],
+   "vk_bytes": 1417,
+   "wrong_public_rejected": true
+  },
+  "rawkey_fixed_base_k17": {
+   "advice_columns": 9,
+   "advice_rows_max": 24584,
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 20,
+   "fixed_rows_max": 24583,
+   "instance_columns": 1,
+   "k": 17,
+   "keygen_pk_secs": 1.7689185410000001,
+   "keygen_secs": 2.59658625,
+   "keygen_vk_secs": 0.827667709,
+   "lookups": 2,
+   "note": "fixed-base w=8 sk*G, plain-div adds 1..30 (audited sound), median of 3",
+   "params_bytes": 8388676,
+   "params_gen_secs": 4.739881583,
+   "peak_rss_bytes_process": 3571007488,
+   "pk_bytes": 184550969,
+   "proof_bytes": 5216,
+   "prove_median_secs": 3.300883792,
+   "prove_secs": [
+    3.323035416,
+    2.898459125,
+    3.300883792
+   ],
+   "public_inputs": 6,
+   "rows_max": 24584,
+   "threads": 10,
+   "verify_median_secs": 0.064428041,
+   "verify_secs": [
+    0.069221292,
+    0.062383625,
+    0.064428041
+   ],
+   "vk_bytes": 1417,
+   "wrong_public_rejected": true
+  },
+  "rawkey_fixed_base_wasm": {
+   "build": "733486b prove_rawkey_fixture_browser, pure-Rust G, node v26, single-threaded",
+   "k15": {
+    "heap_bytes": 786000000.0,
+    "params_secs": 27.2,
+    "pk_bytes": 46138937,
+    "pk_secs": 10.4,
+    "proof_bytes": 5088,
+    "prove_secs": 26.8,
+    "rss_bytes": 890000000.0,
+    "verify_secs": 0.47,
+    "vk_secs": 8.4
+   },
+   "k17": {
+    "heap_bytes": 3120000000.0,
+    "params_secs": 124.9,
+    "pk_bytes": 184550969,
+    "pk_secs": 47.3,
+    "prove_secs": 105.1,
+    "verify_secs": 1.6,
+    "vk_secs": 23.6
+   }
+  },
   "rawkey_glv_k17": {
    "advice_columns": 9,
    "advice_rows_max": 107916,
@@ -185,6 +341,48 @@
     0.743217209
    ],
    "vk_bytes": 937,
+   "wrong_public_rejected": true
+  },
+  "rawkey_glv_sound_k19": {
+   "advice_columns": 9,
+   "advice_rows_max": 453787,
+   "chip": "sound CRT (commit 02764a5)",
+   "circuit": "k19_blind_keypair",
+   "degree": 6,
+   "fixed_columns": 7,
+   "fixed_rows_max": 453786,
+   "instance_columns": 1,
+   "k": 19,
+   "keygen_pk_secs": 7.092109042,
+   "keygen_secs": 11.537240125,
+   "keygen_vk_secs": 4.445131083,
+   "lookups": 1,
+   "params_bytes": 33554500,
+   "params_gen_secs": 17.878966625,
+   "peak_rss_bytes_process": 4176347136,
+   "peak_rss_note": "/usr/bin/time -l max RSS over cargo+test process, separate LAB_RUNS=1 run",
+   "pk_bytes": 503317569,
+   "proof_bytes": 4640,
+   "prove_median_secs": 28.245504833,
+   "prove_secs": [
+    28.245504833,
+    27.756697791,
+    26.721063083,
+    31.2496005,
+    34.03596475
+   ],
+   "public_inputs": 6,
+   "rows_max": 453787,
+   "threads": 10,
+   "verify_median_secs": 1.1363125410000001,
+   "verify_secs": [
+    1.1363125410000001,
+    0.61764625,
+    1.666139375,
+    0.560452625,
+    1.3187630000000001
+   ],
+   "vk_bytes": 969,
    "wrong_public_rejected": true
   },
   "rawkey_ladder_k19": {
@@ -321,48 +519,6 @@
    ],
    "vk_bytes": 617,
    "wrong_public_rejected": true
-  },
-  "rawkey_glv_sound_k19": {
-   "advice_columns": 9,
-   "advice_rows_max": 453787,
-   "circuit": "k19_blind_keypair",
-   "degree": 6,
-   "fixed_columns": 7,
-   "fixed_rows_max": 453786,
-   "instance_columns": 1,
-   "k": 19,
-   "keygen_pk_secs": 7.092109042,
-   "keygen_secs": 11.537240125,
-   "keygen_vk_secs": 4.445131083,
-   "lookups": 1,
-   "params_bytes": 33554500,
-   "params_gen_secs": 17.878966625,
-   "pk_bytes": 503317569,
-   "proof_bytes": 4640,
-   "prove_median_secs": 28.245504833,
-   "prove_secs": [
-    28.245504833,
-    27.756697791,
-    26.721063083,
-    31.2496005,
-    34.03596475
-   ],
-   "public_inputs": 6,
-   "rows_max": 453787,
-   "threads": 10,
-   "verify_median_secs": 1.1363125410000001,
-   "verify_secs": [
-    1.1363125410000001,
-    0.61764625,
-    1.666139375,
-    0.560452625,
-    1.3187630000000001
-   ],
-   "vk_bytes": 969,
-   "wrong_public_rejected": true,
-   "peak_rss_bytes_process": 4176347136,
-   "peak_rss_note": "/usr/bin/time -l max RSS over cargo+test process, separate LAB_RUNS=1 run",
-   "chip": "sound CRT (commit 02764a5)"
   }
  },
  "soundness": {

@@ -147,3 +147,31 @@ blind_soundness_suite also passes: the honest claim is accepted and 9 tamper cas
 | peak RSS | 4.19 GB | 4.18 GB (single-run, /usr/bin/time) |
 
 Not measured: sound ECDSA, the ladder and two-step registration overflow K=19 (NotEnoughRowsAvailable), and K=20 was not run. The wasm32 prover was not built for the sound chip.
+
+
+## Fixed-base raw-key claim (w=8 window table, ccd2cb3 / 3959095 / audit 15b8d21)
+sk·G = Σ_{w<32} T_w[d_w] from a fixed lookup table keyed (window, digit) carrying x/y limbs: 4 digit-decomposition regions, 32 table lookups, 31 incomplete adds, no doublings. Adds 1..30 use plain div; the last add keeps div_checked. Rows: 28,484 (all div_checked) → 24,584 (plain div), smallest K=15.
+
+| K | rows | prove median | verify | PK | proof | peak RSS |
+|---|---|---|---|---|---|---|
+| 15 | 24,584 | 0.94 s | 26 ms | 46.1 MB | 5,088 B | 1.70 GB |
+| 16 | 24,584 | 1.57 s | 35 ms | 92.3 MB | 5,152 B | 2.02 GB |
+| 17 | 24,584 | 3.30 s | 64 ms | 184.6 MB | 5,216 B | 3.57 GB |
+
+Native, groot-wan, 10 threads, median of 3.
+
+Wasm (733486b, node, single thread, params+keygen in client):
+
+| K | params | vk | pk | prove | verify | heap |
+|---|---|---|---|---|---|---|
+| 15 | 27.2 s | 8.4 s | 10.4 s | 26.8 s | 0.47 s | 786 MB |
+| 17 | 124.9 s | 23.6 s | 47.3 s | 105.1 s | 1.6 s | 3.12 GB |
+
+### Plain-div audit (verdict: sound, no row change)
+1. Digits are unique: each d_w is range-checked to [0,256) by the table lookup, and the linear gate ties 8 digits to each 64-bit limb (sum < 2^64 << Pallas p), so d is a deterministic function of sk.
+2. The lookup is one tuple (window fixed column, d copied, 5 x-limb/native, 5 y-limb/native cells) and the window column is fixed and non-zero, so the zero row is unreachable. The selected point is exactly T_w[d_w] = (d_w+2)·2^{8w}·G; the prover has no freedom in table selection.
+3. Induction: if every earlier add had dx ≠ 0, λ is fixed by c·dx ≡ dy, so acc_w is the honest point a·G with a = Σ_{i<w}(d_i+2)2^{8i} ∈ [2(2^{8w}−1)/255, 257(2^{8w}−1)/255].
+4. For 1 ≤ w ≤ 30, a < 2·2^{8w} ≤ t_w = (d_w+2)2^{8w}, and a + t_w < 2^{249} < n. So a ≢ ±t_w (mod n), acc ≠ ±T_w, and x_acc ≠ x_T. G has prime order, so dx ≠ 0 for every witness. Plain div with dx = 0 would need acc = T exactly (dy = 0 too, any λ), and that cannot be reached.
+5. At w = 31 the offset −C·G makes acc = ±T reachable, so div_checked stays there (acc = −T only when sk = 0; acc = T is a completeness loss only).
+
+Tests: `fb_plain_div_scalar_bound` (exhaustive bound for w = 1..30) passes. The new negative `FB_COLLIDE` sets the window-1 point to acc (dx = dy = 0, so plain div accepts λ = 0), and it is rejected by the lookup. blind_negative_suite rejects 10/10, blind_forgery_rejected rejects the forgery, and blind_soundness_suite passes (MockProver K=19).
