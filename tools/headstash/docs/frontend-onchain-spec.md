@@ -63,7 +63,7 @@ Manifest { version: u32, entry: String, files: Vec<FileEntry>, note: Option<Stri
 FileEntry { path, content_type, encoding: "gzip"|"identity", size /*raw*/, sha256 /*raw, hex32*/,
             stored_size, chunks: Vec<HexBinary /*sha256 of each stored chunk*/> }
 ```
-Limits: ≤ 16 files, ≤ 512 chunks per file, path ≤ 64 ASCII chars `[a-z0-9._/-]`, and each chunk ≤ `max_chunk_bytes` (instantiate parameter, hard cap 512 KiB).
+Limits: ≤ 16 files, ≤ 512 chunks per file, path ≤ 64 ASCII chars `[a-z0-9._/-]`, and each chunk ≤ `max_chunk_bytes` (instantiate parameter, hard cap 128 KiB = wasmvm storage value limit 131072 B; measured: a 256 KiB chunk fails on chain with Value too big).
 
 ### Execute
 * `PublishManifest { manifest }`: owner only. `version` must equal `next_version` (monotonic, gap-free), so published versions are never overwritten.
@@ -180,3 +180,19 @@ flowchart TB
 * **Penumbra ephemeral key:** not implemented (§7). If built: in memory, shown once, and the user must sweep it.
 * **Relay:** it is fee-grant only. It cannot change signed fields (the reward_addr is covered by the v3 signature, and the dest is bound in the proof).
 * **Mutable UI:** gov can move `current`. Renouncing ownership freezes it. The loader can pin a version.
+
+## 10. Phase 2 measurements (local chain v6.4.0, 2026-10-29)
+
+Raw data: . Payload: the real prover bundle (zk_headstash.js 10923 B, gzipped 2754 B; zk_headstash_bg.wasm 2006266 B, gzipped 664342 B; worker.js 3043 B, gzipped 1228 B), for 668324 B gzipped in total. Each size was run on a fresh instantiate. Uploads came from a non-owner account. Every chunk was downloaded over REST and its sha256 checked against the manifest. After gunzip, each file was checked against its raw sha256.
+
+| chunk | upload txs | upload gas | max gas/tx | total gas (incl. publish) | fee @0.025 uterp | wall s | blocks | verify s |
+|---|---|---|---|---|---|---|---|---|
+| 16 KiB | 43 | 35.18M | 0.85M | 35.46M | 886623 | 58.8 | 57 | 0.21 |
+| 32 KiB | 23 | 32.23M | 1.56M | 32.46M | 811398 | 32.1 | 31 | 0.12 |
+| 64 KiB | 13 | 30.82M | 2.98M | 31.02M | 775443 | 18.4 | 17 | 0.10 |
+| 96 KiB | 9 | 30.27M | 4.41M | 30.45M | 761353 | 12.8 | 12 | 0.07 |
+| 128 KiB | 8 | 30.13M | 5.83M | 30.31M | 757859 | 11.4 | 11 | 0.07 |
+
+Every size passed all three checks: verified, stranger-publish rejected, and tampered-chunk rejected. Instantiating with a 256 KiB max_chunk_bytes is also rejected. Storing the code (357352 B) costs 2.56M gas. Gas comes to about 45 gas/B and barely depends on chunk size, so most of the cost is per-byte storage. **Recommendation: 128 KiB.** It needs the fewest txs, and its 5.8M gas per tx is well under the mainnet block max of 50M.
+
+Builds:  (optimizer-arm64 0.17.0-rust1.91, , BUILD_RC checked). The cw-headstash wasm is now sha256  (1131133 B); it was . The hash changed for two reasons. First, the new  config field, query and msg. Second, the extra wasm-opt flag . Without that flag, one-caller inlining produced a 74369-byte function, and arm64 singlepass rejects any function over ~69 KB with ImpossibleRelocation. The largest function is now 60591 B. **The mainnet render () must be redone**; this change did not regenerate it. cw_headstash_frontend.wasm sha256 is .
