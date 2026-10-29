@@ -81,3 +81,6 @@ if __name__ == "__main__":
 # gzipped wasm (~281 KB) is over Zigner 64 KiB. The ephemeral key stores it as itself in a normal tx
 # (sender = eph, instantiate_permission = gov only), fee paid by the session feegrant.
 SESSION_TYPES_MAINNET = SESSION_TYPES
+# The frontend wasm (cw_headstash_frontend.wasm, 13b) is stored the same way. Frontend chunk uploads are permissionless and
+# content-addressed, so they need no grant at all: a throwaway uploader key signs them, fees granted directly by terp1fx
+# (render_gov_session.py 18-20). The session grant therefore stays exactly SESSION_TYPES.

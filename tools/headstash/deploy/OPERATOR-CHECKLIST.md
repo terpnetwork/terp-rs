@@ -6,9 +6,12 @@ Roles:
 - **P**: the proposer, terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9 (dabarber validator). It is a cold key that signs on Zigner in amino-json.
 - **E**: the ephemeral session key. It lives in memory on the operator device (cw-orch-kms `ScriptSession::open_with_key`) and signs in direct mode, never on Zigner.
 - **FX**: the fee-grant wallet, terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052. It grants claim fees directly, with no authz.
+- **U**: a throwaway uploader key for the frontend chunks (direct mode, not Zigner). Its fees come from a capped FX feegrant (doc 18) that is revoked afterwards (doc 20). It holds no funds.
 - **GOV**: the gov module, terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq. It is the wasm admin and the contract owner.
 
-Wasm: `artifacts/cw_headstash.wasm`, sha256 43a8e5d88a3af34dc09bd63f85f88a1b2b0a008a4b68ef45a83ed434894149a9 (1,177,086 B, 327,630 B gzipped). The predicted Instantiate2 address is in `sizes.json` (`contract_addr_predicted`).
+Wasm: `cw_headstash.wasm`, sha256 1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5 (1,131,133 B, 411,864 B gzipped). The predicted address is terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4.
+
+Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1 (357,352 B). The predicted address is terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
 
 ## Read from mainnet, read-only, on 2026-10-28 at height 24,144,476
 - P: acct 0, seq 116. Spendable 10,980.26 TERP and 39,947.5 THIOL.
@@ -19,10 +22,10 @@ Wasm: `artifacts/cw_headstash.wasm`, sha256 43a8e5d88a3af34dc09bd63f85f88a1b2b0a
 ## Before you start
 1. Fill the placeholders that are still open, then re-run `render_gov_session.py` (it runs validate_rendered_proposal):
    - **WAVS_POO_JSON**, **ANCHOR_START_HEIGHT**, **PROPOSAL_METADATA_URI** and **FORUM_URL** are still unknown.
-   - These are filled at runtime: EXEC_GAS/EXEC_FEE_UTHIOL, STORE_GAS/STORE_FEE_UTHIOL, CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_CIRCUIT, CLAIMER_ADDR and CLAIM_FEE_UTHIOL.
+   - These are filled at runtime: EXEC_GAS/EXEC_FEE_UTHIOL, STORE_GAS/STORE_FEE_UTHIOL, CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_CIRCUIT, CLAIMER_ADDR and CLAIM_FEE_UTHIOL, FE_CODE_ID, FE_STORE_GAS/FE_STORE_FEE_UTHIOL, FE_UPLOADER_ADDR and FE_UPLOAD_EXPIRATION.
 2. Read the acct and seq of P and FX again right before each signature.
 3. **Deposits: P can't fund both proposals at once.** Each proposal needs 10,000 TERP, which is 5,000 initial plus 5,000 top-up within the 72h deposit period. P holds 10,980 TERP, so run the proposals one after the other: the circuit proposal deposit is refunded when it passes, and only then do you submit the instantiate proposal. Another option is for a second depositor to add the top-up.
-4. **FX THIOL top-up.** The claim fee-grant budget is ~2,891 THIOL and FX has 2,202.74, so send **at least 688.3 THIOL** to FX before step 16. Add about 10 THIOL for FX's own grant-tx fees. Note that `decisions.mainnet.json` still says `budget_uthiol` 4,761.7 THIOL. Reconcile that number with the 2,891 budget before you fill CLAIM_FEE_UTHIOL.
+4. **FX THIOL top-up.** The claim fee-grant budget is ~2,891 THIOL and FX has 2,202.74, plus the uploader allowance of 3.374 THIOL (doc 18: 2.374 THIOL of estimated upload fees plus 1 THIOL headroom). FX has 2,202.74, so send **at least 691.7 THIOL** to FX before step 16. Add about 10 THIOL for FX's own grant-tx fees, which makes ~702 THIOL in total. Note that `decisions.mainnet.json` still says `budget_uthiol` 4,761.7 THIOL. Reconcile that number with the 2,891 budget before you fill CLAIM_FEE_UTHIOL.
 
 ## Steps, in order
 
@@ -33,19 +36,31 @@ Wasm: `artifacts/cw_headstash.wasm`, sha256 43a8e5d88a3af34dc09bd63f85f88a1b2b0a
 | 12 | `12-circuit-exec.unsigned.json` (~181 KB) | E (direct) | MsgExec{MsgSubmitProposal{MsgStoreFullCircuit}}. Proposer is P, initial deposit is 5,000 TERP debited from P, and the fee comes from the feegrant. It used 22.2M gas locally, so set EXEC_GAS ≥ 25M (fee ~1.25 THIOL). Record PROPOSAL_ID_CIRCUIT. |
 | 13 | `13-store-wasm.unsigned.json` (~547 KB) | E (direct) | MsgStoreCode with sender E and instantiate permission limited to GOV. Upload is open on mainnet, and the fee comes from the feegrant. It used 7.6M gas locally, so set STORE_GAS ≥ 10M. Record CODE_ID. |
 | 17 | `17-deposit-topup.unsigned.json` | **P on Zigner** | Sign doc 354 B. MsgDeposit of +5,000 TERP on PROPOSAL_ID_CIRCUIT within 72h. Use 30M gas, because the large proposal ran out of gas at 8M locally. |
+| 13b | `13b-store-frontend-wasm.unsigned.json` (~186 KB) | E (direct) | MsgStoreCode of the frontend wasm with sender E and instantiate permission limited to GOV. It used 2.56M gas locally, so set FE_STORE_GAS ≥ 4M. Record FE_CODE_ID. Run it before 15. |
 | 15 | `15-session-revoke.unsigned.json` | E (direct) | MsgExec that revokes each grant and the allowance, with MsgRevoke last. Run it as soon as 12 and 13 are done. Locally it used 109k gas. TTL expiry is only a backstop. |
 | — | vote | validators | The circuit proposal passes. Record NOTE_ZK_ID from the events. |
-| 14 | `14-instantiate-proposal.unsigned.json` | **P on Zigner** | Sign doc 3,355 B. Small gov proposal: CommunityPoolSpend to GOV, then Instantiate2 (CODE_ID, admin GOV, owner GOV), then set_epoch_campaign, then bind_note_circuit. Defaults: ANCHOR_INTERVAL 3430, MIN_ANONYMITY_SET 1, CUTOFF auto (~2y), BURN_UNCLAIMED on. Initial deposit 5,000 TERP, then a top-up to 10,000 using the step-17 shape with the new proposal id, signed by P on Zigner. |
+| 14 | `14-instantiate-proposal.unsigned.json` | **P on Zigner** | Sign doc 6,112 B. Small gov proposal: CommunityPoolSpend to GOV, then the frontend Instantiate2 (FE_CODE_ID, admin GOV, owner GOV), then publish_manifest (activate), then the cw-headstash Instantiate2 (CODE_ID, admin GOV, owner GOV, frontend_contract set), then set_epoch_campaign, then bind_note_circuit. Defaults: ANCHOR_INTERVAL 3430, MIN_ANONYMITY_SET 1, CUTOFF auto (~2y), BURN_UNCLAIMED on. Initial deposit 5,000 TERP, then a top-up to 10,000 using the step-17 shape with the new proposal id, signed by P on Zigner. |
+| 18 | `18-fe-uploader-feegrant.unsigned.json` | **FX on Zigner** | Sign doc 499 B. BasicAllowance of 3,374,003 uthiol to U, with FE_UPLOAD_EXPIRATION. Run it after 14 passes. |
+| 19 | `19-fe-chunks/NN-fF-iI.unsigned.json` ×9 | U (direct) | UploadChunk txs. They are permissionless and content-addressed, so a tampered chunk is refused. The last chunk seals v1 and makes it current. Gas is 600k + 64·bytes, 47.48M in total (2.374 THIOL). The largest tx is 175 KB. |
+| 20 | `20-fe-uploader-revoke.unsigned.json` | **FX on Zigner** | Sign doc 343 B. MsgRevokeAllowance for U. |
 | 16 | `16-feegrant-terp1fx.unsigned.json` | **FX on Zigner** | Sign doc 450 B. One direct BasicAllowance in uthiol from FX for each claimer. Do the THIOL top-up first. |
 
 ## Afterwards
+- Check that the frontend admin and owner are both GOV, that config `current` is 1, and that U's allowance is gone.
 - Check that the contract admin and owner are both GOV, the balance equals FUNDING, and the campaign root and bound zk_id are correct.
 - Run `terpd q authz grants P E` and `terpd q feegrant grant P E`. Both must come back empty or not found.
 
 ## Verified locally (v6.4.0, test keys standing in for P/E/relay-granter)
-`tools/headstash/e2e/run_direct.py` with GOV_ROLES=1 covered session grant, E's MsgExec proposal, proposer = granter, the 5 TERP initial deposit from the granter, the vote passing, the circuit stored, the 43a8e5 wasm stored, the instantiate proposal passing with admin GOV, direct fee grants, claims, the revoke, and E being refused after the revoke.
+`tools/headstash/e2e/run_direct.py` with GOV_ROLES=1 covered session grant, E's MsgExec proposal, proposer = granter, the 5 TERP initial deposit from the granter, the vote passing, the circuit stored, the 1305e4 and fe096bf1 wasms stored by E, the frontend instantiated by gov (admin, creator and owner all GOV) with the manifest published, a non-gov publish refused, U uploading 9/9 chunks on an FX-style feegrant (tampered chunk refused, sealed, current 1, grant revoked), the page loaded from chain with every hash checked, register and claim of 43/43 notes, replays rejected, the instantiate proposal passing with admin GOV, direct fee grants, claims, the revoke, and E being refused after the revoke.
+
+## Totals (estimated at 0.05 uthiol)
+- E session gas: exec ≥25M, store ≥10M, FE store ≥4M, revoke ~0.11M. That is ≈39M gas, ≈1.96 THIOL, out of the 300 THIOL session allowance.
+- U uploads: 47.48M gas, 2.374 THIOL (from FX).
+- P: 2 × 10,000 TERP deposits, run one after the other, plus Zigner tx fees of a few THIOL.
+- FX: ~2,891 THIOL of claim budget + 3.374 THIOL uploader allowance + ~10 THIOL of fees. That requires a top-up of ≥~702 THIOL.
 
 ## Not verified
 - Zigner amino rendering of the gov v1 and wasm msg types in steps 14 and 17 on a real device.
-- A reproducible build of the 43a8e5 wasm against SOURCE_COMMIT.
+- A reproducible build of the 1305e4 and fe096bf1 wasms against SOURCE_COMMIT. The prover is reproducible (2774af96, via scripts/build-browser-prover.sh).
+- The real upload gas on mainnet. Doc 18 carries 1 THIOL of headroom over the estimate.
 - Whether the broadcast node's mempool limits match groot-wan's.

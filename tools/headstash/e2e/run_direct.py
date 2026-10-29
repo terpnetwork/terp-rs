@@ -93,6 +93,28 @@ INIT_DEPOSIT = 5000000   # local analogue of mainnet 5,000 TERP initial
 FULL_DEPOSIT = 10000000  # local analogue of mainnet 10,000 TERP min deposit
 SESSION_FEE = 2000000          # eph MsgExec fee, paid by the proposer feegrant
 SESSION_ALLOWANCE = 300000000  # feegrant cap sized for a ~175 KB MsgExec (mainnet analogue: 300 THIOL)
+# Optional gov frontend hook (set by gov_frontend_e2e.py): FE_GOV = {"wasm": path, "manifest": callable -> manifest dict,
+# "max_chunk_bytes": int}. With it, the eph key also stores the frontend wasm, and the contract proposal instantiates the
+# frontend (gov admin + owner), publishes the manifest (activate) and sets frontend_contract in the cw-headstash instantiate.
+FE_GOV = None
+FE_SALT = hashlib.sha256(b"headstash-frontend-gov-e2e").hexdigest()
+
+def eph_store(name, path, PROPOSER, gas):
+    """Rendered-mainnet shape (deploy/render_gov_session.py 13/13b): normal MsgStoreCode signed by the eph key,
+    sender = eph, instantiate permission gov only, fee paid by the session feegrant (granter = proposer)."""
+    import gzip as _gz
+    eph = R["addresses"]["EPH_ADDR"]
+    m = {"@type": "/cosmwasm.wasm.v1.MsgStoreCode", "sender": eph,
+         "wasm_byte_code": base64.b64encode(_gz.compress(open(path, "rb").read(), 9, mtime=0)).decode(),
+         "instantiate_permission": {"permission": "AnyOfAddresses", "addresses": [GOV]}}
+    res = sign_send("eph", gs._tx([m], gas, int(gas * 0.025) + 1, "uterp", PROPOSER, "headstash-gov-session:store-code"), "store_" + name)
+    cid = attr(res, "code_id")
+    ci = q("wasm", "code-info", cid) if cid else {}
+    perm = ci.get("instantiate_permission", {})
+    step("eph_store_%s" % name, res.get("code") == 0 and bool(cid) and perm.get("addresses") == [GOV],
+         "code_id %s sha %s gas %d perm %s %s" % (cid, (ci.get("checksum") or ci.get("data_hash") or "").lower(), gas_used(res), json.dumps(perm), res.get("raw_log", "")[:160]))
+    R.setdefault("gas", {})["eph_store_" + name] = gas_used(res)
+    return cid, (ci.get("checksum") or ci.get("data_hash") or "").lower()
 
 def gen_only(frm, *args):
     p = subprocess.run([TERPD, "tx", *args, "--from", frm, "--home", HOME, "--keyring-backend", "test", "--chain-id", CHAIN_ID,
@@ -221,6 +243,10 @@ def main():
             step("deposit_from_granter", tot == FULL_DEPOSIT and all(d["depositor"] == PROPOSER for d in deps) and b0 - bal(PROPOSER) > 0 and bal(EPH) == e0 == 0,
                  "deposits %s proposer -%d eph %d" % (json.dumps(deps)[:200], b0 - bal(PROPOSER), bal(EPH)))
         step("circuit_proposal_passed", passed(st), "status %s %s" % (st and st["status"], st and st.get("failed_reason", "")))
+        # wasm stores (> 64 KiB, not Zigner-signable): the eph key stores as itself while the session is open
+        R["eph_code_id"], _ = eph_store("cw_headstash", WASM, PROPOSER, 20000000)
+        if FE_GOV:
+            R["fe_code_id"], R["fe_checksum"] = eph_store("frontend", FE_GOV["wasm"], PROPOSER, 8000000)
         close_session(PROPOSER)  # close right after the large action, well inside the TTL
     else:
         res = rec("store_circuit", tx("owner", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
@@ -236,10 +262,13 @@ def main():
     if not GOV_ROLES: step("store_circuit", res.get("code") == 0, "zk_id %s gas %d %s" % (zk_id, gas_used(res), res.get("raw_log", "")[:160]))
 
     # 3. store + instantiate the zk-api contract
-    res = rec("store", tx("owner", 250000000, "wasm", "store", WASM))
-    code_id = attr(res, "code_id"); R["code_id"] = code_id
     R["wasm_sha256"] = hashlib.sha256(open(WASM, "rb").read()).hexdigest()
-    step("store_wasm", res.get("code") == 0 and code_id, "code_id %s wasm %s gas %d" % (code_id, R["wasm_sha256"], gas_used(res)))
+    if GOV_ROLES and R.get("eph_code_id"):
+        code_id = R["eph_code_id"]; R["code_id"] = code_id
+    else:
+        res = rec("store", tx("owner", 250000000, "wasm", "store", WASM))
+        code_id = attr(res, "code_id"); R["code_id"] = code_id
+        step("store_wasm", res.get("code") == 0 and code_id, "code_id %s wasm %s gas %d" % (code_id, R["wasm_sha256"], gas_used(res)))
     wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
     init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-direct-e2e",
             "token_strategy": {"existing_fungible": {"proof": h2b64(DENOM), "raw": "uterp"}}, "wavs": wavs}
@@ -264,6 +293,9 @@ def main():
         salt = hashlib.sha256(b"headstash-gov-e2e").hexdigest()
         chk = q("wasm", "code-info", code_id); chk = chk.get("checksum") or chk.get("data_hash")
         contract = terpd("q", "wasm", "build-address", chk.lower(), GOV, salt).strip().split()[-1]
+        if FE_GOV:
+            R["fe_contract"] = terpd("q", "wasm", "build-address", R["fe_checksum"], GOV, FE_SALT).strip().split()[-1]
+            init["frontend_contract"] = R["fe_contract"]
     else:
         res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
               "--label", "headstash-direct-e2e", "--admin", OWNER, amount="10030000000uterp"))  # two 5000 TERP note payouts (evm_0 + negatives note) + small notes
@@ -300,6 +332,13 @@ def main():
                 {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": eff, "funds": []},
                 {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"bind_note_circuit": {"zk_id": zk_id}}, "funds": []},
 ]
+        if FE_GOV:  # frontend first: instantiate2 (gov admin + owner) at the predicted address, then publish the manifest (activate)
+            fe = R["fe_contract"]; R["fe_manifest"] = FE_GOV["manifest"]()
+            msgs = [{"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(R["fe_code_id"]),
+                     "label": "headstash-frontend-gov-e2e", "msg": {"owner": GOV, "max_chunk_bytes": FE_GOV["max_chunk_bytes"]}, "funds": [],
+                     "salt": base64.b64encode(bytes.fromhex(FE_SALT)).decode(), "fix_msg": False},
+                    {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": fe,
+                     "msg": {"publish_manifest": {"manifest": R["fe_manifest"]}}, "funds": []}] + msgs
         res, pid, st = gov_submit("contract", msgs, "proposer")
         R["contract_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason")}
         ci = q("wasm", "contract", contract) if passed(st) else {}

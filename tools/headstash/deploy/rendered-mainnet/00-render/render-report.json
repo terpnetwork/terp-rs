@@ -12,7 +12,7 @@
   "notes_total_uterp": 66456669000000,
   "notes_remainder_uterp": 9632607378,
   "unique_amount_identities": null,
-  "ctx_hex": "1aa24afdfb178e3b871fb2bc72663986064c10eae25744057d59497e5ed82c3e",
+  "ctx_hex": "9dac3746ea71a2fa920bd1d2cfb39fd7c864d9402d194a877b0e53380b2a2420",
   "ctx_derivation": "direct_ctx (terp-hs-direct-ctx-v1)",
   "trusted": [
     "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
@@ -20,16 +20,16 @@
   "note_vk_hash": "34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398",
   "note_params_bytes": 131140,
   "note_vk_bytes": 3883,
-  "cutoff_height": 41764718,
+  "cutoff_height": 42617754,
   "cutoff_auto": {
     "rest": "https://terp.api.m.anode.team",
-    "latest_height": 24144687,
-    "latest_time": "2026-10-28T10:50:47.752046+00:00",
+    "latest_height": 24176151,
+    "latest_time": "2026-10-29T17:56:54.472264+00:00",
     "window_blocks": 10000,
-    "avg_block_secs": 3.582014,
+    "avg_block_secs": 3.422436,
     "years": 2,
-    "blocks": 17620031,
-    "cutoff_height": 41764718
+    "blocks": 18441603,
+    "cutoff_height": 42617754
   },
   "anchor_interval_blocks": 3430,
   "min_anonymity_set": 1,

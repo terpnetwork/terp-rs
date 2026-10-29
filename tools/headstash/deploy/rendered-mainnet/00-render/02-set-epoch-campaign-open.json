@@ -1,7 +1,7 @@
 {"set_epoch_campaign": {"campaign": {
-  "ctx": "GqJK/fsXjjuHH7K8cmY5hgZMEOriV0QFfVlJfl7YLD4=",
+  "ctx": "naw3RupxovqSC9HSz7Of18hk2UAtGUqHew5TOAsqJCA=",
   "backend": "halo2",
-  "cutoff_height": 41764718,
+  "cutoff_height": 42617754,
   "bech32_hrp": "terp",
   "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
   "amounts": [{"amount": 1000000, "cap": 6491}, {"amount": 2000000, "cap": 12569}, {"amount": 5000000, "cap": 10150}, {"amount": 10000000, "cap": 6940}, {"amount": 20000000, "cap": 6387}, {"amount": 50000000, "cap": 6219}, {"amount": 100000000, "cap": 5081}, {"amount": 200000000, "cap": 15363}, {"amount": 500000000, "cap": 8031}, {"amount": 1000000000, "cap": 7978}, {"amount": 2000000000, "cap": 5956}, {"amount": 5000000000, "cap": 7676}],
