@@ -127,12 +127,14 @@ pub fn minter_balance_native() -> Option<u128> {
 }
 
 fn query_minter_lcd() -> Option<u128> {
-    let lcd = std::env::var("DREGG_MINTER_LCD")
-        .ok()
-        .filter(|s| !s.is_empty())?;
-    let addr = std::env::var("DREGG_MINTER_ADDR")
-        .ok()
-        .filter(|s| s.starts_with("terp1"))?;
+    let lcd = std::env::var("DREGG_MINTER_LCD").ok().filter(|s| !s.is_empty())?;
+    // The signer that pays gas. Fall back to DREGG_MINTER_ADDR when the key
+    // file has not been created yet.
+    let addr = crate::mint_tx::address_if_present().or_else(|| {
+        std::env::var("DREGG_MINTER_ADDR")
+            .ok()
+            .filter(|s| s.starts_with("terp1"))
+    })?;
     let denom = prices::native_denom();
     let url = format!(
         "{}/cosmos/bank/v1beta1/balances/{}",
@@ -143,10 +145,7 @@ fn query_minter_lcd() -> Option<u128> {
     let bals = v.get("balances")?.as_array()?;
     for c in bals {
         if c.get("denom").and_then(|d| d.as_str()) == Some(denom.as_str()) {
-            return c
-                .get("amount")
-                .and_then(|a| a.as_str())
-                .and_then(|s| s.parse().ok());
+            return c.get("amount").and_then(|a| a.as_str()).and_then(|s| s.parse().ok());
         }
     }
     Some(0)
@@ -189,9 +188,8 @@ impl CheckoutStatus {
         }
         let (minter_funded, bal) = match minter_balance {
             Some(b) => {
-                // Cover at least one BOGO pair (or 1 after cap) plus gas — not a single NFT.
-                let cover = prices::nft_count_for_rail(0) as u64;
-                let need = native_needed_for_nfts(cover);
+                // The runtime minter bypasses the NFT price. The balance is gas only.
+                let need = minter_gas_reserve();
                 if b < need {
                     reasons.push("minter_underfunded".into());
                     (false, b)
@@ -204,6 +202,20 @@ impl CheckoutStatus {
                 (false, 0)
             }
         };
+        let gate = crate::collections::screen();
+        if crate::collections::watched().is_empty() {
+            reasons.push("collections_unset".into());
+        } else if gate.admitted.is_empty() {
+            if !gate.rejected.is_empty() {
+                reasons.push("collection_rejected".into());
+            }
+            if !gate.unproven.is_empty() {
+                reasons.push("collection_unproven".into());
+            }
+            if gate.rejected.is_empty() && gate.unproven.is_empty() {
+                reasons.push("collections_unset".into());
+            }
+        }
         let checkout_ready = reasons.is_empty();
         Self {
             checkout_ready,
@@ -234,6 +246,9 @@ impl CheckoutStatus {
     }
 
     pub fn to_json(&self) -> serde_json::Value {
+        let screen = crate::collections::screen();
+        let rejected = notes_json(&screen.rejected);
+        let unproven = notes_json(&screen.unproven);
         serde_json::json!({
             "checkout_ready": self.checkout_ready,
             "minter_funded": self.minter_funded,
@@ -248,8 +263,27 @@ impl CheckoutStatus {
             "unit_native": NATIVE_AMOUNT.to_string(),
             "reasons": self.reasons,
             "zec_tip": self.zec_tip.to_json(),
+            "minter_cover": "gas",
+            "collections": screen.admitted,
+            "collections_configured": crate::collections::watched(),
+            "collections_rejected": rejected,
+            "collections_unproven": unproven,
         })
     }
+}
+
+fn notes_json(notes: &[crate::collections::CollectionNote]) -> serde_json::Value {
+    serde_json::Value::Array(
+        notes
+            .iter()
+            .map(|n| {
+                serde_json::json!({
+                    "address": n.address,
+                    "reason": n.reason,
+                })
+            })
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -308,21 +342,30 @@ mod tests {
 
     #[test]
     fn ready_when_funded_and_supply() {
+        let _g = minter_env_lock();
+        admit_test_collection();
         let s = CheckoutStatus::evaluate(true, 1, 10, Some(NATIVE_AMOUNT * 10));
         assert!(s.checkout_ready);
         assert_eq!(s.remaining_supply, 9);
         assert!(s.reasons.is_empty());
+        clear_test_collection();
     }
 
     #[test]
-    fn bogo_pair_needs_two_nfts_of_native() {
-        let one = native_needed_for_nfts(1);
-        let s = CheckoutStatus::evaluate(true, 0, 10, Some(one));
+    fn gas_reserve_opens_checkout() {
+        let _g = minter_env_lock();
+        std::env::remove_var("DREGG_MINTER_GAS_RESERVE");
+        let gas = minter_gas_reserve();
+        let short = CheckoutStatus::evaluate(true, 0, 10, Some(gas - 1));
+        assert!(!short.checkout_ready);
+        assert!(short.reasons.iter().any(|r| r == "minter_underfunded"));
+        let s = CheckoutStatus::evaluate(true, 0, 10, Some(gas));
         assert!(!s.checkout_ready);
-        assert!(s.reasons.iter().any(|r| r == "minter_underfunded"));
-        let two = native_needed_for_nfts(2);
-        let s = CheckoutStatus::evaluate(true, 0, 10, Some(two));
-        assert!(s.checkout_ready);
+        assert!(s.reasons.iter().any(|r| r == "collections_unset"));
+        admit_test_collection();
+        let open = CheckoutStatus::evaluate(true, 0, 10, Some(gas));
+        assert!(open.checkout_ready);
+        clear_test_collection();
     }
 
     #[test]
@@ -334,9 +377,13 @@ mod tests {
 
     #[test]
     fn health_and_status_json_expose_checkout_ready() {
+        let _g = minter_env_lock();
+        admit_test_collection();
         let s = CheckoutStatus::evaluate(true, 0, 100, Some(NATIVE_AMOUNT * 10));
         let j = s.to_json();
         assert_eq!(j["checkout_ready"], true);
+        assert_eq!(j["collections"][0], "terp1testcollectionxxxxxxxxxxxxxxxxxx");
+        clear_test_collection();
         assert_eq!(j["minter_funded"], true);
         assert!(j.get("mint_timeout_secs").is_some());
         assert!(j.get("pending_ttl_secs").is_some());
@@ -371,12 +418,15 @@ mod tests {
 
     #[test]
     fn minter_funded_fail_closed() {
+        let _g = minter_env_lock();
         let unknown = CheckoutStatus::evaluate(true, 0, 10, None);
         assert!(!unknown.minter_funded);
         assert!(!unknown.checkout_ready);
+        admit_test_collection();
         let funded = CheckoutStatus::evaluate(true, 0, 10, Some(u128::MAX / 4));
         assert!(funded.minter_funded);
         assert!(funded.checkout_ready);
+        clear_test_collection();
         let dust = CheckoutStatus::evaluate(true, 0, 10, Some(1));
         assert!(!dust.minter_funded);
         assert!(dust.reasons.iter().any(|r| r == "minter_underfunded"));
@@ -421,7 +471,19 @@ mod tests {
     }
 
     #[test]
+    fn funded_without_a_collection_stays_closed() {
+        let _g = minter_env_lock();
+        clear_test_collection();
+        let s = CheckoutStatus::evaluate(true, 0, 10, Some(u128::MAX / 4));
+        assert!(!s.checkout_ready);
+        assert!(s.reasons.iter().any(|r| r == "collections_unset"));
+        assert!(s.to_json()["collections"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
     fn zec_tip_drift_hides_zec_keeps_native() {
+        let _g = minter_env_lock();
+        admit_test_collection();
         let mut s = CheckoutStatus::evaluate(true, 0, 10, Some(NATIVE_AMOUNT * 10));
         assert!(s.checkout_ready);
         s.apply_zec_tip(ZecTip::from_heights(10, 13, 2));
@@ -433,5 +495,22 @@ mod tests {
         ok.apply_zec_tip(ZecTip::from_heights(10, 12, 2));
         assert!(ok.checkout_ready);
         assert!(ok.reasons.is_empty());
+        clear_test_collection();
+    }
+
+    fn admit_test_collection() {
+        std::env::set_var(
+            "DREGG_COLLECTIONS",
+            "terp1testcollectionxxxxxxxxxxxxxxxxxx",
+        );
+        crate::collections::set_admission_override(Some(vec![
+            "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
+        ]));
+    }
+
+    fn clear_test_collection() {
+        std::env::remove_var("DREGG_COLLECTIONS");
+        std::env::remove_var("DREGG_COLLECTIONS_ADMIT");
+        crate::collections::set_admission_override(None);
     }
 }

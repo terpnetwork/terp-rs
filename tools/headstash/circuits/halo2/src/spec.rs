@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn i2lebsp_round_trip() {
         {
-            let bitstring = [0; 64].map(|_| rand::random());
+            let bitstring = [0; 64].map(|_| rand010::random());
             assert_eq!(i2lebsp(lebs2ip(&bitstring)), bitstring);
         }
 

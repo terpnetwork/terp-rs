@@ -1,7 +1,7 @@
 //! Cosmos ADR-036 (`sign/MsgSignData`) as used by Keplr `signArbitrary`.
 //! Offline proof of a terp1 address — not a chain tx, not the ZEC deposit UA.
 
-use bech32::{ToBase32, Variant};
+use bech32::{Bech32, Hrp};
 use k256::ecdsa::{Signature, VerifyingKey};
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 use ripemd::Ripemd160;
@@ -21,7 +21,8 @@ pub fn terp1_from_secp256k1_compressed(pk33: &[u8]) -> Result<String, String> {
     }
     let sha = Sha256::digest(pk33);
     let ripe = Ripemd160::digest(sha);
-    bech32::encode("terp", ripe.to_base32(), Variant::Bech32).map_err(|e| e.to_string())
+    let hrp = Hrp::parse("terp").map_err(|e| e.to_string())?;
+    bech32::encode::<Bech32>(hrp, ripe.as_slice()).map_err(|e| e.to_string())
 }
 
 /// Amino JSON Keplr `signArbitrary` actually signs.

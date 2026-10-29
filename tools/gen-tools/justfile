@@ -152,6 +152,20 @@ deps-patch-local-dry-run workspace:
 deps-patch-git-dry-run workspace:
     {{dep}} switch patch-git --workspace {{workspace}} --dry-run
 
+# Pin a workspace to the version committed in the local checkout.
+# Checks matrix fork_version against that package version, rewrites
+# requirements to the exact pin, and copies nested [patch.crates-io]
+# tables onto this workspace. Cargo ignores a path dependency's own patch.
+# abstract has four roots: framework, integrations, interchain, modules.
+deps-align workspace:
+    {{dep}} align --workspace {{workspace}}
+
+deps-align-crate workspace crate:
+    {{dep}} align --workspace {{workspace}} --crate {{crate}}
+
+deps-align-dry-run workspace:
+    {{dep}} align --workspace {{workspace}} --dry-run
+
 # Known core workspaces only. Does not walk the rest of the monorepo.
 deps-patch-local-core:
     {{dep}} switch patch-local --core

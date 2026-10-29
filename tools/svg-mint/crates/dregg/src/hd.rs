@@ -41,7 +41,7 @@ impl HdEngine {
             }
         }
         let mut seed = vec![0u8; 32];
-        rand::rngs::OsRng.fill_bytes(&mut seed);
+        rand::rng().fill_bytes(&mut seed);
         eprintln!("svg-mint-fed generated DREGG_HD_SEED (not printed); persist {seed_path}");
         let _ = std::fs::write(&seed_path, hex::encode(&seed));
         Self { seed }
@@ -162,8 +162,8 @@ fn hash160(data: &[u8]) -> [u8; 20] {
 }
 
 fn encode_cosmos(hrp: &str, prog: &[u8]) -> Result<String, String> {
-    use bech32::ToBase32;
-    bech32::encode(hrp, prog.to_base32(), bech32::Variant::Bech32).map_err(|e| e.to_string())
+    let hrp = bech32::Hrp::parse(hrp).map_err(|e| e.to_string())?;
+    bech32::encode::<bech32::Bech32>(hrp, prog).map_err(|e| e.to_string())
 }
 
 fn terp_home() -> std::path::PathBuf {
@@ -212,15 +212,14 @@ pub fn addr_from_mnemonic_file(kind: &str) -> Result<String, String> {
 
 // CLOSE Linus 11: convert_bits / bech32_polymod / hrp_expand deleted (unused; encode_segwit uses bech32).
 
-/// BIP173 Bech32 (not Bech32m). Crate 0.9 matches bitcoin/bitcoin:29 for witness v0.
+/// BIP173 Bech32 for witness v0. Witness v1 and above use Bech32m.
 fn encode_segwit(hrp: &str, witver: u8, prog: &[u8]) -> Result<String, String> {
-    use bech32::{ToBase32, Variant, u5};
     if witver > 16 {
         return Err("witver".into());
     }
-    let mut data = vec![u5::try_from_u8(witver).map_err(|e| e.to_string())?];
-    data.extend(prog.to_base32());
-    bech32::encode(hrp, data, Variant::Bech32).map_err(|e| e.to_string())
+    let hrp = bech32::Hrp::parse(hrp).map_err(|e| e.to_string())?;
+    let witver = bech32::Fe32::try_from(witver).map_err(|e| e.to_string())?;
+    bech32::segwit::encode(hrp, witver, prog).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

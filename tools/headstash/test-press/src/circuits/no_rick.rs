@@ -17,7 +17,7 @@ use halo2_proofs::{
     transcript::{Blake2bRead, Blake2bWrite},
 };
 use pasta_curves::{pallas, vesta};
-use rand::Rng;
+use rand010::Rng;
 
 use std::{
     fs::File,

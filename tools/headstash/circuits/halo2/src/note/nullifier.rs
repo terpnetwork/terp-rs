@@ -1,7 +1,7 @@
 use group::{Group, ff::PrimeField};
 use memuse::DynamicUsage;
 use pasta_curves::{arithmetic::CurveExt, pallas};
-use rand::Rng;
+use rand010::Rng;
 use subtle::{ConstantTimeEq, CtOption};
 
 use super::NoteCommitment;

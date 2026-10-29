@@ -25,7 +25,7 @@ use cw_headstash::msg::{ExecuteMsg, InstantiateMsg};
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
 use cw_headstash::wavs::{WavsAuthMetadata, WavsProofOfOwnership};
 use cw_orch::prelude::*;
-use rand::rngs::OsRng;
+use rand010::rngs::OsRng;
 use serde::Serialize;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};
 use zk_headstash::suite::HeadstashCircuitSuite;

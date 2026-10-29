@@ -37,7 +37,7 @@ halo2_gadgets  = { workspace = true, optional = true }
 halo2_proofs  = { workspace = true, optional = true, features = ["floor-planner-v1-legacy-pdqsort"] }
 headstash-randomness  = { workspace = true }
 hex = { workspace = true }
-incrementalmerkletree = "0.8.1"
+incrementalmerkletree = { workspace = true }
 lazy_static  = { workspace = true }
 memuse = { workspace = true }
 nonempty = { workspace = true }
@@ -45,7 +45,7 @@ num-bigint  = { workspace = true }
 num-traits = { workspace = true }
 pasta_curves  = { workspace = true }
 proptest = { workspace = true, optional = true }
-rand = { workspace = true }
+rand010 = { workspace = true, features = ["std", "sys_rng", "thread_rng"] }
 rand_core = { workspace = true }
 rayon  = { workspace = true, optional = true }
 reddsa = { workspace = true }
@@ -56,7 +56,7 @@ sinsemilla = { workspace = true }
 subtle = { workspace = true }
 tracing = { workspace = true }
 visibility = { workspace = true }
-zcash_note_encryption = "0.4"
+zcash_note_encryption = { workspace = true }
 zcash_spec = { workspace = true }
 zip32 = { workspace = true }
 zk-cosmwasm = { workspace = true }

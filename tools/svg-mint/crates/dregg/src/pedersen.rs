@@ -150,8 +150,7 @@ fn from_hexish(s: &str) -> Option<Commit> {
 mod tests {
     #[test]
     fn sessions_change_the_memo() {
-        use rand::rngs::OsRng;
-        let mut rng = OsRng;
+        let mut rng = rand::rng();
         let (a, _) = super::commit_session("terp1x", b"session-a", &mut rng);
         let (b, _) = super::commit_session("terp1x", b"session-b", &mut rng);
         assert_ne!(a, b);
@@ -159,11 +158,10 @@ mod tests {
     }
 
     use super::*;
-    use rand::rngs::OsRng;
 
     #[test]
     fn roundtrip_and_wrong_terp_fails() {
-        let mut rng = OsRng;
+        let mut rng = rand::rng();
         let terp = "terp1cyyzpxplxdzkeea7kwsydadg87357qnacvvp23";
         let (c, r) = commit(terp, &mut rng);
         assert!(verify(terp, &r, &c));

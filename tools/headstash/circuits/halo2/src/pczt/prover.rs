@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use halo2_proofs::plonk;
-use rand::{CryptoRng, Rng};
+use rand010::{CryptoRng, Rng};
 
 use crate::{
     Note, Proof,

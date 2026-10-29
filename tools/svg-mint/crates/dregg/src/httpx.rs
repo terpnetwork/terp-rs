@@ -24,7 +24,7 @@ fn split_host_path(url: &str) -> Option<(bool, String, u16, String)> {
     Some((tls, host, port, path))
 }
 
-fn read_http_body(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
+fn read_http_message(stream: &mut TcpStream) -> Result<(u16, Vec<u8>), String> {
     let mut buf = Vec::new();
     let mut tmp = [0u8; 4096];
     loop {
@@ -38,11 +38,20 @@ fn read_http_body(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
         }
     }
     let s = String::from_utf8_lossy(&buf);
+    let status = s
+        .split_whitespace()
+        .nth(1)
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
     if let Some(i) = s.find("\r\n\r\n") {
-        Ok(s[i + 4..].as_bytes().to_vec())
+        Ok((status, s[i + 4..].as_bytes().to_vec()))
     } else {
-        Ok(buf)
+        Ok((status, buf))
     }
+}
+
+fn read_http_body(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
+    read_http_message(stream).map(|(_, body)| body)
 }
 
 pub fn get_json(url: &str) -> Result<serde_json::Value, String> {
@@ -51,20 +60,32 @@ pub fn get_json(url: &str) -> Result<serde_json::Value, String> {
         return Err("https not used for local LCD/RPC".into());
     }
     let mut stream = TcpStream::connect((host.as_str(), port)).map_err(|e| e.to_string())?;
-    stream.set_write_timeout(Some(Duration::from_secs(3))).ok();
-    stream.set_read_timeout(Some(Duration::from_secs(8))).ok();
+    stream
+        .set_write_timeout(Some(Duration::from_secs(3)))
+        .ok();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(8)))
+        .ok();
     let req = format!(
         "GET {path} HTTP/1.0\r\nHost: {host}\r\nAccept: application/json\r\nConnection: close\r\n\r\n"
     );
-    stream
-        .write_all(req.as_bytes())
-        .map_err(|e| e.to_string())?;
+    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
     let body = read_http_body(&mut stream)?;
     serde_json::from_slice(&body).map_err(|e| format!("json: {e}"))
 }
 
 pub fn post_json(url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
-    post_json_timeout(url, body, Duration::from_secs(8), Duration::from_secs(8))
+    post_json_status(url, body).map(|(_, v)| v)
+}
+
+/// JSON POST plus the HTTP status. Cosmos LCD returns the error document as JSON
+/// on non-200, and simulate uses that document to tell a contract reject from
+/// an account that cannot be judged yet.
+pub fn post_json_status(
+    url: &str,
+    body: &serde_json::Value,
+) -> Result<(u16, serde_json::Value), String> {
+    post_json_status_timeout(url, body, Duration::from_secs(8), Duration::from_secs(12))
 }
 
 /// JSON POST with connect + I/O deadlines (ZEC tip probe must fail closed fast).
@@ -96,8 +117,8 @@ pub fn post_json_timeout_auth(
         .map_err(|e| e.to_string())?
         .next()
         .ok_or_else(|| format!("dns: {host}"))?;
-    let mut stream = TcpStream::connect_timeout(&addr, write.min(Duration::from_secs(3)))
-        .map_err(|e| e.to_string())?;
+    let mut stream =
+        TcpStream::connect_timeout(&addr, write.min(Duration::from_secs(3))).map_err(|e| e.to_string())?;
     stream.set_write_timeout(Some(write)).ok();
     stream.set_read_timeout(Some(read)).ok();
     let auth = authorization
@@ -108,9 +129,37 @@ pub fn post_json_timeout_auth(
         "POST {path} HTTP/1.0\r\nHost: {host}\r\nContent-Type: application/json\r\n{auth}Content-Length: {}\r\nConnection: close\r\n\r\n{payload}",
         payload.len()
     );
-    stream
-        .write_all(req.as_bytes())
-        .map_err(|e| e.to_string())?;
-    let resp = read_http_body(&mut stream)?;
+    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    let (_status, resp) = read_http_message(&mut stream)?;
     serde_json::from_slice(&resp).map_err(|e| format!("rpc json: {e}"))
+}
+
+fn post_json_status_timeout(
+    url: &str,
+    body: &serde_json::Value,
+    write: Duration,
+    read: Duration,
+) -> Result<(u16, serde_json::Value), String> {
+    let (tls, host, port, path) = split_host_path(url).ok_or("url")?;
+    if tls {
+        return Err("https not used for local LCD/RPC".into());
+    }
+    let payload = body.to_string();
+    let addr = (host.as_str(), port)
+        .to_socket_addrs()
+        .map_err(|e| e.to_string())?
+        .next()
+        .ok_or_else(|| format!("dns: {host}"))?;
+    let mut stream =
+        TcpStream::connect_timeout(&addr, write.min(Duration::from_secs(3))).map_err(|e| e.to_string())?;
+    stream.set_write_timeout(Some(write)).ok();
+    stream.set_read_timeout(Some(read)).ok();
+    let req = format!(
+        "POST {path} HTTP/1.0\r\nHost: {host}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{payload}",
+        payload.len()
+    );
+    stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
+    let (status, resp) = read_http_message(&mut stream)?;
+    let v = serde_json::from_slice(&resp).map_err(|e| format!("rpc json: {e}"))?;
+    Ok((status, v))
 }

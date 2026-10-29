@@ -51,7 +51,7 @@ use pasta_curves::{
     arithmetic::{CurveAffine, CurveExt},
     pallas,
 };
-use rand::Rng;
+use rand010::Rng;
 use subtle::CtOption;
 
 use crate::{

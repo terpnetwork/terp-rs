@@ -1,4 +1,4 @@
-use rand::{CryptoRng, Rng};
+use rand010::{CryptoRng, Rng};
 
 use crate::{keys::SpendAuthorizingKey, primitives::redpallas};
 

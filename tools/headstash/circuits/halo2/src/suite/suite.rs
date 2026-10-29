@@ -1272,7 +1272,7 @@ pub trait MerkleTestDataBuilder: HeadstashSinsemillaTree {
                     raw_token,
                     rseed: {
                         let mut rseed = [0u8; 32];
-                        rand::Rng::fill_bytes(&mut rng, &mut rseed);
+                        rand010::Rng::fill_bytes(&mut rng, &mut rseed);
                         rseed
                     },
                 }
@@ -2439,8 +2439,8 @@ mod test {
     #[test]
     fn test_poseidon_v1_two_leaf_matches_distro_module() {
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
-        let sk0 = EligibleSk::random(&mut rand::rng()).secret_bytes();
-        let sk1 = EligibleSk::random(&mut rand::rng()).secret_bytes();
+        let sk0 = EligibleSk::random(&mut rand010::rng()).secret_bytes();
+        let sk1 = EligibleSk::random(&mut rand010::rng()).secret_bytes();
         let d0 = suite.generate_leaf_data(&sk0, "uterp", 1_000_000, 0);
         let d1 = suite.generate_leaf_data(&sk1, "uterp", 5_000_000, 1);
         let l0 = suite.compute_leaf_from_data_poseidon_v1(&d0);

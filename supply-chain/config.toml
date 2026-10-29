@@ -148,32 +148,32 @@ audit-as-crates-io = true
 
 [policy."cosmwasm-core:2.3.4"]
 
-[policy."cosmwasm-core:4.0.0-zk"]
+[policy."cosmwasm-core:4.1.0"]
 audit-as-crates-io = true
 
 [policy."cosmwasm-crypto:2.2.2"]
 
-[policy."cosmwasm-crypto:4.0.0-zk"]
+[policy."cosmwasm-crypto:4.1.0"]
 audit-as-crates-io = true
 
 [policy."cosmwasm-derive:2.3.4"]
 
-[policy."cosmwasm-derive:4.0.0-zk"]
+[policy."cosmwasm-derive:4.1.0"]
 audit-as-crates-io = true
 
 [policy."cosmwasm-schema-derive:2.3.4"]
 
-[policy."cosmwasm-schema-derive:4.0.0-zk"]
+[policy."cosmwasm-schema-derive:4.1.0"]
 audit-as-crates-io = true
 
 [policy."cosmwasm-schema:2.3.4"]
 
-[policy."cosmwasm-schema:4.0.0-zk"]
+[policy."cosmwasm-schema:4.1.0"]
 audit-as-crates-io = true
 
 [policy."cosmwasm-std:2.2.2"]
 
-[policy."cosmwasm-std:4.0.0-zk"]
+[policy."cosmwasm-std:4.1.0"]
 audit-as-crates-io = true
 
 [policy.cosmwasm-vm]

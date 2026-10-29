@@ -900,7 +900,7 @@ checksum = "4df6f98652d30167eaeea34d77b730e07c8caba6df17bd4551842b9b8da01deb"
 
 [[package]]
 name = "cosmwasm-core"
-version = "4.0.0-zk"
+version = "4.1.0"
 
 [[package]]
 name = "cosmwasm-crypto"
@@ -917,7 +917,7 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-crypto"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "ark-bls12-381",
  "ark-bn254",
@@ -959,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-derive"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -981,9 +981,9 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-schema"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
- "cosmwasm-schema-derive 4.0.0-zk",
+ "cosmwasm-schema-derive 4.1.0",
  "cw-schema",
  "schemars 0.8.22",
  "serde",
@@ -1004,7 +1004,7 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-schema-derive"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1035,14 +1035,14 @@ dependencies = [
 
 [[package]]
 name = "cosmwasm-std"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "base64 0.22.1",
  "bech32 0.11.1",
  "bnum 0.11.0",
  "cosmwasm-core",
- "cosmwasm-crypto 4.0.0-zk",
- "cosmwasm-derive 4.0.0-zk",
+ "cosmwasm-crypto 4.1.0",
+ "cosmwasm-derive 4.1.0",
  "cw-schema",
  "derive_more",
  "hex",
@@ -1195,7 +1195,7 @@ dependencies = [
 name = "cw-address-like"
 version = "3.0.1"
 dependencies = [
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-std 4.1.0",
 ]
 
 [[package]]
@@ -1214,8 +1214,8 @@ dependencies = [
 name = "cw-ownable"
 version = "3.0.1"
 dependencies = [
- "cosmwasm-schema 4.0.0-zk",
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-schema 4.1.0",
+ "cosmwasm-std 4.1.0",
  "cw-address-like",
  "cw-ownable-derive",
  "cw-storage-plus 3.0.1",
@@ -1234,7 +1234,7 @@ dependencies = [
 
 [[package]]
 name = "cw-schema"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "cw-schema-derive",
  "indexmap",
@@ -1247,7 +1247,7 @@ dependencies = [
 
 [[package]]
 name = "cw-schema-derive"
-version = "4.0.0-zk"
+version = "4.1.0"
 dependencies = [
  "heck",
  "itertools 0.13.0",
@@ -1272,7 +1272,7 @@ dependencies = [
 name = "cw-storage-plus"
 version = "3.0.1"
 dependencies = [
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-std 4.1.0",
  "schemars 0.8.22",
  "serde",
 ]
@@ -1281,8 +1281,8 @@ dependencies = [
 name = "cw-utils"
 version = "3.0.0"
 dependencies = [
- "cosmwasm-schema 4.0.0-zk",
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-schema 4.1.0",
+ "cosmwasm-std 4.1.0",
  "schemars 0.8.22",
  "serde",
  "thiserror 2.0.21",
@@ -1307,8 +1307,8 @@ dependencies = [
 name = "cw2"
 version = "3.0.0"
 dependencies = [
- "cosmwasm-schema 4.0.0-zk",
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-schema 4.1.0",
+ "cosmwasm-std 4.1.0",
  "cw-storage-plus 3.0.1",
  "schemars 0.8.22",
  "semver",
@@ -1320,8 +1320,8 @@ dependencies = [
 name = "cw721"
 version = "0.22.0"
 dependencies = [
- "cosmwasm-schema 4.0.0-zk",
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-schema 4.1.0",
+ "cosmwasm-std 4.1.0",
  "cw-ownable",
  "cw-storage-plus 3.0.1",
  "cw-utils",
@@ -1337,7 +1337,7 @@ name = "cw721-nips"
 version = "0.1.0"
 dependencies = [
  "axum",
- "cosmwasm-std 4.0.0-zk",
+ "cosmwasm-std 4.1.0",
  "cw721",
  "hex",
  "schemars 0.8.22",

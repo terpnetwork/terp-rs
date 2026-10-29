@@ -25,8 +25,8 @@ extern crate std;
 
 /// rand 0.10 OS entropy is fallible (`SysRng`). Tests/prove use thread rng (infallible).
 #[cfg(feature = "std")]
-pub(crate) fn os_rng() -> rand::rngs::ThreadRng {
-    rand::rng()
+pub(crate) fn os_rng() -> rand010::rngs::ThreadRng {
+    rand010::rng()
 }
 
 use alloc::vec::Vec;

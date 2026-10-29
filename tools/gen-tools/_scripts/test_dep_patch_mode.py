@@ -68,13 +68,13 @@ def _crate(stable, local, url, rev=None, package=None, fork=None, aliases=None):
 
 class RegistryAndRevTests(unittest.TestCase):
     def test_fork_version_is_exact_even_when_stable_differs(self):
-        info = {"stable": "3.0.4", "fork_version": "4.0.0-zk"}
-        self.assertEqual(registry_version_literal(info), "=4.0.0-zk")
+        info = {"stable": "3.0.4", "fork_version": "4.1.0"}
+        self.assertEqual(registry_version_literal(info), "=4.1.0")
         entry = build_ws_dep_entry(
             "cosmwasm-std", info, "registry", "dao-contracts/Cargo.toml",
             {"features": ["std", "stargate"]},
         )
-        self.assertIn('version = "=4.0.0-zk"', entry)
+        self.assertIn('version = "=4.1.0"', entry)
         self.assertIn('"stargate"', entry)
         self.assertNotIn("git =", entry)
 
@@ -161,7 +161,7 @@ class RewriteTests(unittest.TestCase):
         self.crates = {
             "cosmwasm-std": _crate(
                 "3.0.4", "cosmwasm/packages/std",
-                "https://github.com/permissionlessweb/cosmwasm", COS_REV, fork="4.0.0-zk",
+                "https://github.com/permissionlessweb/cosmwasm", COS_REV, fork="4.1.0",
             ),
             "cw-multi-test_zk": _crate(
                 "3.0.0-rc", "cw-multi-test-fork",
@@ -399,7 +399,7 @@ class LintPatchTests(unittest.TestCase):
 class GitPatchRetireTests(unittest.TestCase):
     def test_patch_tables_do_not_count_as_git_dependencies(self):
         text = "\n".join([
-            'cosmwasm-std = { version = "=4.0.0-zk" }',
+            'cosmwasm-std = { version = "=4.1.0" }',
             "",
             "[patch.crates-io]",
             'cosmos-sdk-proto = { git = "https://github.com/permissionlessweb/cosmos-rust", rev = "abc" }',
@@ -476,6 +476,7 @@ class NestHierarchyTests(unittest.TestCase):
             manifest_edge_class(text, "contracts/cw20-base/Cargo.toml")[0],
             "registry",
         )
+
 
     def test_git_rev_is_self_pinned_and_a_branch_escapes(self):
         pinned = (
@@ -930,6 +931,102 @@ class NestHierarchyTests(unittest.TestCase):
             dep_switch.REPO_ROOT = old
             tmp.cleanup()
 
+
+class NestedPatchLiftTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name).resolve()
+        self._old_common = dep_common.REPO_ROOT
+        self._old_switch = dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = self.root
+        dep_switch.REPO_ROOT = self.root
+        app = self.root / "app"
+        fork_std = self.root / "fork" / "packages" / "std"
+        poseidon = self.root / "zakura" / "poseidon"
+        app.mkdir()
+        fork_std.mkdir(parents=True)
+        poseidon.mkdir(parents=True)
+        (app / "Cargo.toml").write_text(
+            "\n".join([
+                "[workspace]",
+                'members = ["."]',
+                "",
+                "[workspace.dependencies]",
+                'cosmwasm-std = "=4.1.0"',
+                "",
+                "[patch.crates-io]",
+                'cosmwasm-std = { path = "../fork/packages/std" }',
+                "",
+            ])
+        )
+        (self.root / "fork" / "Cargo.toml").write_text(
+            "\n".join([
+                "[workspace]",
+                'members = ["packages/*"]',
+                "",
+                "[workspace.package]",
+                'version = "4.1.0"',
+                "",
+                "[workspace.dependencies]",
+                'zakura-halo2-poseidon = { package = "zakura-halo2-poseidon", version = "=5.0.0" }',
+                "",
+                "[patch.crates-io]",
+                'zakura-halo2-poseidon = { path = "../zakura/poseidon" }',
+                'wasmer-compiler-singlepass = { git = "https://github.com/permissionlessweb/wasmer", rev = "e1edbf4ff55b0e0ccb61015ee1015d8283689fd5" }',
+                "",
+            ])
+        )
+        (fork_std / "Cargo.toml").write_text(
+            "\n".join([
+                "[package]",
+                'name = "cosmwasm-std"',
+                "version = { workspace = true }",
+                "",
+                "[dependencies]",
+                "zakura-halo2-poseidon = { workspace = true }",
+                'wasmer-compiler-singlepass = "=7.5.0"',
+                "",
+            ])
+        )
+        (poseidon / "Cargo.toml").write_text(
+            "\n".join([
+                "[package]",
+                'name = "zakura-halo2-poseidon"',
+                'version = "5.0.0"',
+                "",
+            ])
+        )
+
+    def tearDown(self):
+        dep_common.REPO_ROOT = self._old_common
+        dep_switch.REPO_ROOT = self._old_switch
+        self.tmp.cleanup()
+
+    def test_parent_receives_nested_path_and_git_patches(self):
+        added, _urls = dep_switch._closure_patches("app/Cargo.toml", {}, {})
+        text = "\n".join(added)
+        self.assertIn('zakura-halo2-poseidon = { path = "../zakura/poseidon" }', text)
+        self.assertIn(
+            'wasmer-compiler-singlepass = { git = "https://github.com/permissionlessweb/wasmer", rev = "e1edbf4ff55b0e0ccb61015ee1015d8283689fd5" }',
+            text,
+        )
+        self.assertNotIn("cosmwasm-std =", text)
+
+    def test_workspace_version_is_the_committed_version(self):
+        self.assertEqual(
+            dep_switch.committed_package_version("fork/packages/std"),
+            "4.1.0",
+        )
+
+
+class CommittedForkVersionTests(unittest.TestCase):
+    def test_cosmwasm_std_checkout_matches_matrix_fork_version(self):
+        crates = load_matrix()
+        info = crates["cosmwasm-std"]
+        self.assertEqual(
+            dep_switch.committed_package_version(info["local"]),
+            info["fork_version"],
+        )
 
 if __name__ == "__main__":
     unittest.main()

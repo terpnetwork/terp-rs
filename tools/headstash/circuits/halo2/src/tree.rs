@@ -17,7 +17,7 @@ use sinsemilla::HashDomain;
 
 use ff::{Field, PrimeField, PrimeFieldBits};
 use lazy_static::lazy_static;
-use rand::Rng;
+use rand010::Rng;
 use serde::de::{Deserializer, Error};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
@@ -312,7 +312,7 @@ impl<'de> Deserialize<'de> for MerkleHashOrchard {
 #[cfg(feature = "test-dependencies")]
 pub mod testing {
     use ff::Field;
-    use rand::{
+    use rand010::{
         Rng,
         distributions::{Distribution, Standard},
     };
@@ -327,7 +327,7 @@ pub mod testing {
     }
 
     impl Distribution<MerkleHashOrchard> for Standard {
-        fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> MerkleHashOrchard {
+        fn sample<R: rand010::Rng + ?Sized>(&self, rng: &mut R) -> MerkleHashOrchard {
             MerkleHashOrchard(pasta_curves::Fp::random(rng))
         }
     }

@@ -26,6 +26,9 @@ pub struct PendingPay {
     /// Per-checkout instance mixed into the Pedersen message. Empty = legacy.
     #[serde(default)]
     pub session: Vec<u8>,
+    /// cw721 collection this payment mints on. Empty = legacy `svg` cell id.
+    #[serde(default)]
+    pub collection: String,
 }
 
 fn pending_qty_default() -> u32 {
@@ -227,6 +230,7 @@ mod tests {
             issued_at,
             qty: 1,
             session: Vec::new(),
+            collection: String::new(),
         }
     }
 
@@ -294,10 +298,10 @@ mod tests {
     fn zec_watch_identifies_hex_ascii_and_zip321_memo() {
         use crate::pedersen::{self, memo_bytes, memo_hex};
         use crate::zip321::{self, payment_request};
-        use rand::rngs::OsRng;
+        use rand::rng;
 
         let terp = "terp1cyyzpxplxdzkeea7kwsydadg87357qnacvvp23";
-        let (c, r) = pedersen::commit(terp, &mut OsRng);
+        let (c, r) = pedersen::commit(terp, &mut rng());
         let mut pending = HashMap::new();
         let mut row = pay(10);
         row.terp = terp.into();

@@ -1,5 +1,5 @@
 use nonempty::NonEmpty;
-use rand::{CryptoRng, Rng};
+use rand010::{CryptoRng, Rng};
 
 use super::Action;
 use crate::{

@@ -4,7 +4,7 @@ use core::fmt;
 use ff::PrimeField;
 use memuse::DynamicUsage;
 use pasta_curves::pallas;
-use rand::Rng;
+use rand010::Rng;
 use subtle::CtOption;
 
 use crate::{

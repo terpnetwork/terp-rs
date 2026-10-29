@@ -1,7 +1,7 @@
 //! Ed25519 M-of-N checkpoints. Same verify family as `cosmos-lock` `count_oracle_sigs`.
 //! HTTP without a verifying QC is not a cell turn.
 
-use ed25519_dalek::{Keypair, PublicKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Signer, Verifier};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -124,6 +124,10 @@ pub fn require_receipt(
 }
 
 pub fn generate_operator() -> Keypair {
-    use rand::rngs::OsRng;
-    Keypair::generate(&mut OsRng)
+    use rand::RngCore;
+    let mut seed = [0u8; 32];
+    rand::rng().fill_bytes(&mut seed);
+    let secret = SecretKey::from_bytes(&seed).expect("ed25519 seed is 32 bytes");
+    let public = PublicKey::from(&secret);
+    Keypair { secret, public }
 }

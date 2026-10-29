@@ -1,7 +1,7 @@
 //! One-step cell: no mint without an unspent deposit.
 
 use crate::commit::{
-    ActionOpening, DepositOpening, bind, commit_action, commit_deposit, nullifier,
+    bind, commit_action, commit_deposit, nullifier, ActionOpening, DepositOpening,
 };
 use crate::observer::confirm_rail;
 use crate::packet::MintPacket;
@@ -70,6 +70,21 @@ struct Slot {
     /// Unix seconds when entitled (0 = untimed; sweep ignores).
     #[serde(default)]
     entitled_at: u64,
+    /// Committed mint tx. Set before transfer so a retry does not mint again.
+    #[serde(default)]
+    mint_tx: Option<String>,
+    #[serde(default)]
+    token_ids: Vec<String>,
+}
+
+/// Entitled slot waiting for the runtime to broadcast or finish a transfer.
+#[derive(Clone, Debug)]
+pub struct PendingMint {
+    pub n: [u8; 32],
+    pub collection: String,
+    pub qty: u32,
+    pub mint_tx: Option<String>,
+    pub token_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -149,27 +164,17 @@ impl<'de> serde::Deserialize<'de> for Cell {
 
 #[derive(Clone, Debug)]
 pub enum Turn {
-    DepositSeen {
-        opening: DepositOpening,
-    },
-    MintEntitled {
-        n_deposit: [u8; 32],
-        action: ActionOpening,
-    },
+    DepositSeen { opening: DepositOpening },
+    MintEntitled { n_deposit: [u8; 32], action: ActionOpening },
     MintSettled {
         n_deposit: [u8; 32],
         token_id: String,
         terp_tx: String,
         receipt: [u8; 32],
     },
-    DepositRefunded {
-        n_deposit: [u8; 32],
-    },
+    DepositRefunded { n_deposit: [u8; 32] },
     /// Bind a collection max supply (query-refunds use this).
-    SetCollection {
-        id: String,
-        max_supply: u64,
-    },
+    SetCollection { id: String, max_supply: u64 },
     /// On-chain supply observed at a queried height (must carry a real receipt digest).
     ObserveSupply {
         collection: String,
@@ -179,13 +184,9 @@ pub enum Turn {
         receipt: [u8; 32],
     },
     /// Set cell clock so entitle timestamps and stale-mint refunds are deterministic.
-    Tick {
-        now: u64,
-    },
+    Tick { now: u64 },
     /// Refund entitled slots whose mint was not observed within `timeout_secs`.
-    SweepStaleEntitlements {
-        timeout_secs: u64,
-    },
+    SweepStaleEntitlements { timeout_secs: u64 },
 }
 
 impl Cell {
@@ -197,17 +198,33 @@ impl Cell {
         self.checkout_with_tip(crate::zec_tip::probe())
     }
 
-    pub fn checkout_with_tip(
-        &self,
-        tip: crate::zec_tip::ZecTip,
-    ) -> crate::checkout::CheckoutStatus {
-        let (bound, minted, max) = self.supply("svg");
+    pub fn checkout_with_tip(&self, tip: crate::zec_tip::ZecTip) -> crate::checkout::CheckoutStatus {
+        let (bound, minted, max) = self.checkout_supply();
         let mut s = crate::checkout::CheckoutStatus::evaluate(
             bound,
             minted,
             max,
             crate::checkout::minter_balance_native(),
         );
+        // No admitted contract has no supply row. That is not sold out.
+        if crate::collections::admitted().is_empty() {
+            s.reasons
+                .retain(|r| r != "sold_out" && r != "collection_unbound");
+            s.collection_bound = false;
+            s.max_supply = 0;
+            s.minted = 0;
+            s.remaining_supply = 0;
+            s.checkout_ready = !s.reasons.iter().any(|r| {
+                matches!(
+                    r.as_str(),
+                    "minter_underfunded"
+                        | "minter_balance_unknown"
+                        | "collections_unset"
+                        | "collection_rejected"
+                        | "collection_unproven"
+                )
+            });
+        }
         s.apply_zec_tip(tip);
         s
     }
@@ -259,6 +276,8 @@ impl Cell {
                         payout: RailPayout::None,
                         qty: units.min(u32::MAX as u64) as u32,
                         entitled_at: 0,
+                        mint_tx: None,
+                        token_ids: Vec::new(),
                     },
                 );
                 Ok(None)
@@ -315,10 +334,7 @@ impl Cell {
                         col.minted = col.minted.saturating_add(add.min(room));
                     }
                 }
-                let slot = self
-                    .slots
-                    .get_mut(&n_deposit)
-                    .ok_or(CellError::NotEntitled)?;
+                let slot = self.slots.get_mut(&n_deposit).ok_or(CellError::NotEntitled)?;
                 let c_action = slot.c_action.ok_or(CellError::NotEntitled)?;
                 let b = slot.bind.ok_or(CellError::NotEntitled)?;
                 let packet = MintPacket {
@@ -379,13 +395,10 @@ impl Cell {
                 if crate::qc::is_dummy_receipt(&receipt) {
                     return Err(CellError::DummyReceipt);
                 }
-                let e = self
-                    .collections
-                    .entry(collection)
-                    .or_insert(CollectionSupply {
-                        max: max_supply,
-                        minted: 0,
-                    });
+                let e = self.collections.entry(collection).or_insert(CollectionSupply {
+                    max: max_supply,
+                    minted: 0,
+                });
                 e.max = max_supply;
                 if minted > e.minted {
                     e.minted = minted;
@@ -506,6 +519,81 @@ impl Cell {
             Some(c) => (true, c.minted, c.max),
             None => (false, 0, 0),
         }
+    }
+
+    /// Supply across admitted contracts. An empty admission is unbound: the
+    /// legacy id `svg` is not a payable collection.
+    fn checkout_supply(&self) -> (bool, u64, u64) {
+        let watched = crate::collections::admitted();
+        if watched.is_empty() {
+            return (false, 0, 0);
+        }
+        let mut minted = 0u64;
+        let mut max = 0u64;
+        let mut any_open = false;
+        for id in &watched {
+            match self.collections.get(id) {
+                Some(c) if c.max > 0 && c.minted >= c.max => {
+                    minted = minted.saturating_add(c.minted);
+                    max = max.saturating_add(c.max);
+                }
+                Some(c) => {
+                    any_open = true;
+                    minted = minted.saturating_add(c.minted);
+                    let room = c.max.max(c.minted.saturating_add(1));
+                    max = max.saturating_add(room);
+                }
+                None => any_open = true,
+            }
+        }
+        if any_open {
+            let max = max.max(minted.saturating_add(1));
+            (true, minted.min(max.saturating_sub(1)), max)
+        } else if max > 0 {
+            (true, max, max)
+        } else {
+            (false, 0, 0)
+        }
+    }
+
+    pub fn pending_mints(&self) -> Vec<PendingMint> {
+        let mut out = Vec::new();
+        for (n, s) in &self.slots {
+            if s.phase != Phase::Entitled {
+                continue;
+            }
+            let Some(collection) = s.collection.clone() else {
+                continue;
+            };
+            out.push(PendingMint {
+                n: *n,
+                collection,
+                qty: s.qty.max(1),
+                mint_tx: s.mint_tx.clone(),
+                token_ids: s.token_ids.clone(),
+            });
+        }
+        out
+    }
+
+    pub fn record_chain_mint(
+        &mut self,
+        n: &[u8; 32],
+        tx: &str,
+        token_ids: &[String],
+    ) -> Result<(), CellError> {
+        let slot = self.slots.get_mut(n).ok_or(CellError::NotEntitled)?;
+        if slot.phase != Phase::Entitled {
+            return Err(CellError::NotEntitled);
+        }
+        if tx.is_empty() {
+            return Err(CellError::DummyReceipt);
+        }
+        slot.mint_tx = Some(tx.to_string());
+        if !token_ids.is_empty() {
+            slot.token_ids = token_ids.to_vec();
+        }
+        Ok(())
     }
 
     pub fn cell_root(&self) -> [u8; 32] {

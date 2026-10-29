@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use halo2_proofs::plonk;
 use pasta_curves::vesta;
-use rand::{CryptoRng, Rng};
+use rand010::{CryptoRng, Rng};
 use tracing::debug;
 
 use super::{Authorized, Bundle};
@@ -76,6 +76,6 @@ mod tests {
         let vk = VerifyingKey::build();
         let batch = BatchValidator::new();
         // Empty Halo2 batch finalize is true in halo2_proofs batch verifier.
-        assert!(batch.validate(&vk, rand::thread_rng()));
+        assert!(batch.validate(&vk, rand010::thread_rng()));
     }
 }

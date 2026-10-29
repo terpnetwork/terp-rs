@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn uri_contains_zcash_scheme_amount_and_commit_memo() {
-        let mut rng = rand::rngs::OsRng;
+        let mut rng = rand::rng();
         let (c, _) = crate::pedersen::commit(TERP, &mut rng);
         let u = payment_request(UA, 10_000, &c).unwrap();
         assert!(u.starts_with("zcash:"));
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn qty_scales_amount_not_memo() {
-        let mut rng = rand::rngs::OsRng;
+        let mut rng = rand::rng();
         let (c, _) = crate::pedersen::commit(TERP, &mut rng);
         let one = payment_request(UA, 150_000, &c).unwrap();
         let three = payment_request(UA, 450_000, &c).unwrap();

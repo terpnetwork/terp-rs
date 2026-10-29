@@ -38,7 +38,7 @@
 // #[test]
 // pub fn test_conversion() {
 //     use jubjub::{AffinePoint, ExtendedPoint, Fr, SubgroupPoint};
-//     use rand::thread_rng;
+//     use rand010::thread_rng;
 //     use redjubjub::*;
 //     // Get the **redjubjub** generator point in the prime‑order subgroup
 //     // (the base point used for signing keys)

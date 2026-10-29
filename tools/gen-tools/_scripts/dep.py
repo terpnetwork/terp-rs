@@ -10,6 +10,7 @@ Usage:
     python3 _scripts/dep.py heal [--dry-run]
     python3 _scripts/dep.py status
     python3 _scripts/dep.py switch <mode> [options]
+    python3 _scripts/dep.py align --workspace PATH [--crate NAME] [--dry-run]
     python3 _scripts/dep.py pin-revs --workspace PATH [--dry-run]
     python3 _scripts/dep.py verify [--mode MODE] [--workspace PATH]
     python3 _scripts/dep.py ensure-branches <mode> [--force]
@@ -404,6 +405,90 @@ def cmd_switch(args):
         print("VERIFY OK")
 
 
+def cmd_align(args):
+    """Point one workspace at the versions committed in the local checkouts.
+
+    Refuses when a matrix ``fork_version`` disagrees with the package version
+    on disk. Then runs ``patch-local`` and copies a nested
+    ``[patch.crates-io]`` entry only when a walked manifest has a crates.io
+    version requirement for that name. Cargo does not apply a patch from a
+    path dependency, so that copy is what lets ``cargo metadata`` resolve
+    cw1, Zakura 5, and the Wasmer singlepass pin.
+    """
+    if args.core:
+        if args.workspace:
+            print("REFUSING align: pass either --core or --workspace.")
+            sys.exit(1)
+        args.workspace = [str(Path(path).parent) for path in KNOWN_WORKSPACE_ROOTS]
+    if not args.workspace:
+        print("REFUSING align: pass --workspace or --core. This does not rewrite the whole monorepo.")
+        sys.exit(1)
+
+    matrix = load_matrix()
+    ok, errors, _warns = matrix_is_clean(matrix, mode="patch-local")
+    if not ok and not args.force:
+        print("REFUSING align: matrix has integrity errors. Run `dep.py heal` or pass --force.")
+        for err in errors[:30]:
+            print(f"  {err}")
+        sys.exit(1)
+    dep_switch = _load_script("dep-switch")
+    selected = dep_switch.resolve_crate_filter(args.crate, matrix)
+    mismatches = []
+    checked = 0
+    for key, info in matrix.items():
+        fork = info.get("fork_version")
+        if not isinstance(fork, str) or not fork or fork == "N/A":
+            continue
+        published = info.get("package", key)
+        if selected is not None and published not in selected and key not in selected:
+            continue
+        local = info.get("local")
+        if not isinstance(local, str) or not local or local == "N/A":
+            continue
+        committed = dep_switch.committed_package_version(local)
+        if committed is None:
+            print(f"  SKIP {published}: no package version at {local}")
+            continue
+        checked += 1
+        if committed != fork:
+            mismatches.append(f"{published}: checkout {committed}, matrix fork_version {fork} ({local})")
+    if mismatches:
+        print("REFUSING align: matrix fork_version does not match the committed checkout.")
+        for line in mismatches:
+            print(f"  {line}")
+        sys.exit(1)
+    if checked == 0:
+        print("REFUSING align: no fork_version crates to check.")
+        sys.exit(1)
+    print(f"Committed versions match the matrix ({checked} crate(s)).")
+
+    ns = argparse.Namespace(
+        mode="patch-local",
+        dry_run=args.dry_run,
+        workspace=args.workspace,
+        crate=args.crate,
+        target=args.target or "all",
+        lift_all=True,
+    )
+    dep_switch.cmd_switch(ns)
+
+    if args.verify:
+        print("\n-- verify after align --")
+        report = verify_mode_resolution(
+            load_matrix(),
+            "patch-local",
+            projects=dep_switch.resolve_projects(args.workspace, all_projects=True),
+            defaults=load_defaults(),
+            max_workspaces=args.verify_limit,
+        )
+        if report["errors"]:
+            print(f"VERIFY FAILED ({len(report['errors'])} errors)")
+            for err in report["errors"]:
+                print(f"  {err}")
+            sys.exit(1)
+        print("VERIFY OK")
+
+
 def cmd_status(args):
     dep_switch = _load_script("dep-switch")
     # Prefer workspace roots only (full member dump is huge under monorepo_root=crates/)
@@ -598,6 +683,29 @@ def main():
     p.add_argument("--verify-limit", type=int, default=10)
     p.add_argument("-v", "--verbose", action="store_true")
     p.set_defaults(func=cmd_switch)
+
+    p = sub.add_parser(
+        "align",
+        help="Require the committed local version and lift nested crates.io patches",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the align to the known core workspaces (not the whole monorepo)",
+    )
+    p.add_argument("--crate", action="append", help="Only rewrite these matrix crates' version lines")
+    p.add_argument(
+        "--target",
+        choices=["patches", "ws-deps", "members", "both", "all"],
+        default=None,
+        help="Default is all: version lines and [patch.crates-io]",
+    )
+    p.add_argument("--force", action="store_true", help="Allow align when the matrix has integrity errors")
+    p.add_argument("--verify", action="store_true", help="cargo metadata after the rewrite")
+    p.add_argument("--verify-limit", type=int, default=4)
+    p.set_defaults(func=cmd_align)
 
     p = sub.add_parser(
         "pin-revs",

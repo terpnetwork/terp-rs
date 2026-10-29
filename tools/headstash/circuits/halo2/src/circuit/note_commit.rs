@@ -2357,7 +2357,7 @@ mod tests {
                     self.psi,
                 )?;
 
-                let rcm = pallas::Scalar::random(&mut rand::rng());
+                let rcm = pallas::Scalar::random(&mut rand010::rng());
                 let rcm_gadget =
                     ScalarFixed::new(ecc_chip.clone(), lo.namespace(|| "rcm"), Value::known(rcm))?;
 

@@ -109,7 +109,7 @@ pub fn instantiate(
         PORT.save(deps.storage, &p)?;
     }
     if msg.oracle_threshold == 0 || msg.oracle_pubkeys.len() < msg.oracle_threshold as usize {
-        return Err(StdError::generic_err("oracle threshold"));
+        return Err(StdError::msg("oracle threshold"));
     }
     ORACLE_THRESHOLD.save(deps.storage, &msg.oracle_threshold)?;
     ORACLE_KEYS.save(deps.storage, &msg.oracle_pubkeys)?;
@@ -147,7 +147,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::BindDreggChannel { channel, port } => {
             if !RUNTIME.has(deps.storage, info.sender.as_str()) {
-                return Err(StdError::generic_err("unauthorized"));
+                return Err(StdError::msg("unauthorized"));
             }
             CHANNEL.save(deps.storage, &channel)?;
             PORT.save(deps.storage, &port)?;
@@ -155,7 +155,7 @@ pub fn execute(
         }
         ExecuteMsg::RecvDreggPacket { packet, signatures } => {
             if !RUNTIME.has(deps.storage, info.sender.as_str()) {
-                return Err(StdError::generic_err("unauthorized"));
+                return Err(StdError::msg("unauthorized"));
             }
             accept_packet(deps, packet, signatures)?;
             Ok(Response::new().add_attribute("action", "recv_dregg_packet"))
@@ -166,7 +166,7 @@ pub fn execute(
             signatures,
         } => {
             if !RUNTIME.has(deps.storage, info.sender.as_str()) {
-                return Err(StdError::generic_err("unauthorized"));
+                return Err(StdError::msg("unauthorized"));
             }
             spend_with_qc(deps, n_deposit, receipt, signatures)?;
             Ok(Response::new().add_attribute("action", "spend_nullifier"))
@@ -206,7 +206,7 @@ fn verify_qc(deps: Deps, digest: &[u8], sigs: &[OracleSig]) -> StdResult<()> {
         }
     }
     if got < threshold {
-        return Err(StdError::generic_err("threshold not met"));
+        return Err(StdError::msg("threshold not met"));
     }
     Ok(())
 }
@@ -218,12 +218,12 @@ fn spend_with_qc(
     sigs: Vec<OracleSig>,
 ) -> StdResult<()> {
     if dummy_receipt(&receipt) {
-        return Err(StdError::generic_err("dummy receipt"));
+        return Err(StdError::msg("dummy receipt"));
     }
     verify_qc(deps.as_ref(), &receipt, &sigs)?;
     let id = nhex(&n_deposit);
     if SPENT.has(deps.storage, &id) {
-        return Err(StdError::generic_err("nullifier spent"));
+        return Err(StdError::msg("nullifier spent"));
     }
     SPENT.save(deps.storage, &id, &())?;
     Ok(())
@@ -233,16 +233,16 @@ fn accept_packet(deps: DepsMut, pkt: MintPacket, sigs: Vec<OracleSig>) -> StdRes
     let blob = format!("{pkt:?}").to_ascii_lowercase();
     for k in ["txid", "rail", "ironwood", "ethereum", "bitcoin"] {
         if blob.contains(k) {
-            return Err(StdError::generic_err("packet leaked payment source"));
+            return Err(StdError::msg("packet leaked payment source"));
         }
     }
     if dummy_receipt(&pkt.receipt) {
-        return Err(StdError::generic_err("dummy receipt"));
+        return Err(StdError::msg("dummy receipt"));
     }
     verify_qc(deps.as_ref(), &pkt.receipt, &sigs)?;
     let id = nhex(&pkt.n_deposit);
     if SPENT.has(deps.storage, &id) {
-        return Err(StdError::generic_err("nullifier spent"));
+        return Err(StdError::msg("nullifier spent"));
     }
     SPENT.save(deps.storage, &id, &())?;
     Ok(())
@@ -270,7 +270,7 @@ pub fn ibc_channel_open(
 ) -> StdResult<Option<Ibc3ChannelOpenResponse>> {
     let chan = msg.channel();
     if chan.order != IbcOrder::Unordered {
-        return Err(StdError::generic_err("unordered required"));
+        return Err(StdError::msg("unordered required"));
     }
     Ok(Some(Ibc3ChannelOpenResponse {
         version: IBC_VERSION.into(),
@@ -306,7 +306,7 @@ pub fn ibc_packet_receive(
 ) -> StdResult<IbcReceiveResponse> {
     let bound = CHANNEL.may_load(deps.storage)?;
     if bound.as_deref() != Some(msg.packet.dest.channel_id.as_str()) {
-        return Ok(IbcReceiveResponse::new().set_ack(b"bad-channel".as_slice()));
+        return Ok(IbcReceiveResponse::new(b"bad-channel".as_slice()));
     }
     #[derive(Deserialize)]
     struct Envelope {
@@ -316,15 +316,15 @@ pub fn ibc_packet_receive(
     let envl: Envelope = match from_json(&msg.packet.data) {
         Ok(e) => e,
         Err(_) => {
-            return Ok(IbcReceiveResponse::new().set_ack(b"unsigned".as_slice()));
+            return Ok(IbcReceiveResponse::new(b"unsigned".as_slice()));
         }
     };
     if envl.signatures.is_empty() {
-        return Ok(IbcReceiveResponse::new().set_ack(b"unsigned".as_slice()));
+        return Ok(IbcReceiveResponse::new(b"unsigned".as_slice()));
     }
     match accept_packet(deps, envl.packet, envl.signatures) {
-        Ok(()) => Ok(IbcReceiveResponse::new().set_ack(b"ok".as_slice())),
-        Err(e) => Ok(IbcReceiveResponse::new().set_ack(e.to_string().as_bytes())),
+        Ok(()) => Ok(IbcReceiveResponse::new(b"ok".as_slice())),
+        Err(e) => Ok(IbcReceiveResponse::new(e.to_string().into_bytes())),
     }
 }
 
@@ -349,7 +349,7 @@ pub fn ibc_packet_timeout(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     fn pkt() -> MintPacket {
         MintPacket {
@@ -366,13 +366,16 @@ mod tests {
     #[test]
     fn stranger_refused_runtime_accepted() {
         let mut deps = mock_dependencies();
+        let owner = deps.api.addr_make("owner");
+        let runtime = deps.api.addr_make("runtime");
+        let stranger = deps.api.addr_make("stranger");
         instantiate(
             deps.as_mut(),
             mock_env(),
-            mock_info("owner", &[]),
+            message_info(&owner, &[]),
             InstantiateMsg {
                 dregg_ibc_only: true,
-                runtime_minters: vec!["terp1runtime".into()],
+                runtime_minters: vec![runtime.to_string()],
                 dregg_channel: Some("channel-dregg".into()),
                 dregg_port: Some("svgmint".into()),
                 oracle_threshold: 1,
@@ -387,18 +390,13 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("stranger", &[]),
+            message_info(&stranger, &[]),
             msg.clone(),
         )
         .unwrap_err();
         assert!(err.to_string().contains("unauthorized"));
-        let err2 = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("terp1runtime", &[]),
-            msg,
-        )
-        .unwrap_err();
+        let err2 = execute(deps.as_mut(), mock_env(), message_info(&runtime, &[]), msg)
+            .unwrap_err();
         let es = err2.to_string();
         assert!(
             es.contains("dummy receipt") || es.contains("threshold"),
@@ -409,10 +407,12 @@ mod tests {
     #[test]
     fn migrate_binds_channel() {
         let mut deps = mock_dependencies();
+        let owner = deps.api.addr_make("owner");
+        let runtime = deps.api.addr_make("runtime");
         instantiate(
             deps.as_mut(),
             mock_env(),
-            mock_info("owner", &[]),
+            message_info(&owner, &[]),
             InstantiateMsg {
                 dregg_ibc_only: false,
                 runtime_minters: vec![],
@@ -430,7 +430,7 @@ mod tests {
                 dregg_channel: Some("channel-7".into()),
                 dregg_port: Some("svgmint".into()),
                 dregg_ibc_only: Some(true),
-                runtime_minters: Some(vec!["terp1rt".into()]),
+                runtime_minters: Some(vec![runtime.to_string()]),
             },
         )
         .unwrap();

@@ -75,7 +75,7 @@ consumers = ["cw-plus", "abstract/framework", "cw-orchestrator"]
 | Field         | Purpose                                                        |
 |---------------|----------------------------------------------------------------|
 | `stable`      | crates.io version used in release builds                       |
-| `fork_version`| Exact fork version when it differs from `stable` (`=4.0.0-zk`) |
+| `fork_version`| Exact fork version when it differs from `stable` (`=4.1.0`) |
 | `git`         | Forked git repo URL + branch. `rev` or `commit` is the full SHA `patch-git` writes |
 | `local`       | Path relative to monorepo root for local development           |
 | `zk_git`      | ZK variant git source, falls back to `git` if absent           |
@@ -111,6 +111,8 @@ workspaces. Handles three levels of dependency declaration:
 | `patch-git` | Version lines stay. `[patch.crates-io]` is `git` + a full `rev` |
 
 `patch-git` does not add `[patch.'<git-url>']`. Cargo keeps a crates.io→git replacement and will not chain a path over that same edge. `patch-local` is the unified shape: crate versions in the dependency line, local paths only in `[patch.crates-io]`. It drops a git-url section once the path graph no longer depends on that URL. `patch-git` still leaves an existing git-url section in place. `dev` remains the mode that puts git in the dependency line and a path in `[patch.'<url>']`.
+
+`align` is the command for a committed fork bump such as CosmWasm 4.1.0. It reads the package version at the matrix `local` path (following `version.workspace = true`) and refuses when that disagrees with `fork_version`. It then runs `patch-local`. A nested `[patch.crates-io]` entry is copied onto the workspace being resolved only when a walked manifest has a crates.io version requirement for that name (no path, no git on that edge). A git replacement such as `wasmer-compiler-singlepass` is included when something version-depends on it. A path that leaves the monorepo is dropped. The first workspace to name a crate wins, and a workspace does not copy its own table onto itself. Cargo ignores a path dependency's own patch table, so cw1, Zakura `=5.0.0`, and the Wasmer pin have to live on the parent. `just deps-align abstract/framework` does one root. abstract's other roots are `integrations`, `interchain`, and `modules`.
 
 ### Targets
 

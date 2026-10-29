@@ -1,0 +1,797 @@
+//! Runtime mint signer. One secp256k1 key file. No `terpd`, no mnemonic print.
+//!
+//! The file is `~/.terp/dregg-svg-runtime.sk` (override `DREGG_RUNTIME_SK_FILE`):
+//! 32 raw bytes, mode `0600`, written once. A short file exits the load and is
+//! not replaced. The public `terp1` is the address to fund with `uthiol` for gas.
+//! Mint executes carry no funds: this key is the fee-bypass minter on the
+//! collections in [`crate::collections`].
+
+use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
+use k256::ecdsa::{Signature, SigningKey};
+use sha2::{Digest, Sha256};
+use std::path::{Path, PathBuf};
+
+const MSG_TYPE: &str = "/cosmwasm.wasm.v1.MsgExecuteContract";
+const PK_TYPE: &str = "/cosmos.crypto.secp256k1.PubKey";
+
+pub fn key_path() -> PathBuf {
+    if let Ok(p) = std::env::var("DREGG_RUNTIME_SK_FILE") {
+        if !p.is_empty() {
+            return PathBuf::from(p);
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    PathBuf::from(home).join(".terp/dregg-svg-runtime.sk")
+}
+
+/// Address already on disk. Does not create a key.
+pub fn address_if_present() -> Option<String> {
+    let raw = std::fs::read(key_path()).ok()?;
+    if raw.len() != 32 {
+        return None;
+    }
+    address_of(&raw).ok()
+}
+
+/// Load the key file or write it once. Returns the `terp1` only.
+pub fn ensure_address() -> Result<String, String> {
+    let raw = load_or_create_secret()?;
+    address_of(&raw)
+}
+
+fn address_of(raw: &[u8]) -> Result<String, String> {
+    let sk = SigningKey::from_slice(raw).map_err(|e| e.to_string())?;
+    let pk = sk.verifying_key().to_encoded_point(true);
+    crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())
+}
+
+fn load_or_create_secret() -> Result<Vec<u8>, String> {
+    let path = key_path();
+    if path.is_file() {
+        let raw = std::fs::read(&path).map_err(|e| format!("runtime sk: {e}"))?;
+        if raw.len() != 32 {
+            return Err(
+                "dregg runtime sk file is not 32 bytes; refusing to replace it".into(),
+            );
+        }
+        return Ok(raw);
+    }
+    let mut raw = [0u8; 32];
+    rand::RngCore::fill_bytes(&mut rand::rng(), &mut raw);
+    if SigningKey::from_slice(&raw).is_err() {
+        return Err("runtime sk not on the secp256k1 curve".into());
+    }
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(&path, &raw).map_err(|e| format!("write runtime sk: {e}"))?;
+    set_mode_600(&path);
+    Ok(raw.to_vec())
+}
+
+fn set_mode_600(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+}
+
+/// SVG extension mint. Funds stay empty; the runtime minter bypasses the price.
+pub fn svg_mint_msg(amnt: u32) -> Vec<u8> {
+    serde_json::json!({
+        "update_extension": {
+            "msg": {
+                "mint": {
+                    "amnt": amnt.max(1),
+                    "proof_hashes": [],
+                    "alloc": 0,
+                    "ext": null
+                }
+            }
+        }
+    })
+    .to_string()
+    .into_bytes()
+}
+
+pub fn transfer_nft_msg(recipient: &str, token_id: &str) -> Vec<u8> {
+    serde_json::json!({
+        "transfer_nft": { "recipient": recipient, "token_id": token_id }
+    })
+    .to_string()
+    .into_bytes()
+}
+
+pub fn mint_gas() -> u64 {
+    std::env::var("DREGG_MINT_GAS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|n: &u64| *n > 0)
+        .unwrap_or(800_000)
+}
+
+/// House floor is `0.05uthiol`. `fee = ceil(gas * price)`.
+pub fn fee_uthiol(gas: u64) -> u128 {
+    let (num, den) = gas_price_ratio();
+    let g = gas as u128;
+    let q = g.saturating_mul(num) / den;
+    let rem = g.saturating_mul(num) % den;
+    if rem == 0 {
+        q
+    } else {
+        q.saturating_add(1)
+    }
+}
+
+fn gas_price_ratio() -> (u128, u128) {
+    let raw = std::env::var("DREGG_MINT_GAS_PRICE").unwrap_or_else(|_| "0.05".into());
+    let raw = raw.trim().trim_end_matches("uthiol").trim();
+    if let Some((w, f)) = raw.split_once('.') {
+        let den = 10u128.pow(f.len() as u32);
+        let whole: u128 = w.parse().unwrap_or(0);
+        let part: u128 = if f.is_empty() { 0 } else { f.parse().unwrap_or(0) };
+        let num = whole.saturating_mul(den).saturating_add(part);
+        if num == 0 || den == 0 {
+            (5, 100)
+        } else {
+            (num, den)
+        }
+    } else {
+        let n: u128 = raw.parse().unwrap_or(0);
+        if n == 0 {
+            (5, 100)
+        } else {
+            (n, 1)
+        }
+    }
+}
+
+pub fn chain_id() -> String {
+    std::env::var("DREGG_CHAIN_ID").unwrap_or_else(|_| "morocco-1".into())
+}
+
+pub fn lcd_base() -> Result<String, String> {
+    for name in ["DREGG_MINTER_LCD", "DREGG_LCD"] {
+        if let Ok(s) = std::env::var(name) {
+            let s = s.trim().trim_end_matches('/').to_string();
+            if !s.is_empty() {
+                return Ok(s);
+            }
+        }
+    }
+    Err("DREGG_MINTER_LCD unset".into())
+}
+
+/// SIGN_MODE_DIRECT tx bytes for one or more wasm executes. No funds attached.
+pub fn tx_raw(
+    secret32: &[u8],
+    contract: &str,
+    msgs: &[Vec<u8>],
+    account_number: u64,
+    sequence: u64,
+    chain_id: &str,
+    gas: u64,
+    fee_amount: u128,
+) -> Result<Vec<u8>, String> {
+    if secret32.len() != 32 {
+        return Err("runtime sk 32 bytes".into());
+    }
+    let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
+    let pk = sk.verifying_key().to_encoded_point(true);
+    let sender = crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())?;
+    let mut body = Vec::new();
+    for msg in msgs {
+        let exec = msg_execute(&sender, contract, msg);
+        body.extend(ld(1, &any(MSG_TYPE, &exec)));
+    }
+    let pk_msg = ld(1, pk.as_bytes());
+    let pk_any = any(PK_TYPE, &pk_msg);
+    let mut signer = ld(1, &pk_any);
+    signer.extend(ld(2, &mode_direct()));
+    signer.extend(vi(3, sequence));
+    let coin = coin_msg("uthiol", &fee_amount.to_string());
+    let mut fee = ld(1, &coin);
+    fee.extend(vi(2, gas));
+    let mut auth = ld(1, &signer);
+    auth.extend(ld(2, &fee));
+    let sig = sign_direct(&sk, &body, &auth, chain_id, account_number)?;
+    let mut raw = ld(1, &body);
+    raw.extend(ld(2, &auth));
+    raw.extend(ld(3, &sig));
+    Ok(raw)
+}
+
+fn sign_direct(
+    sk: &SigningKey,
+    body: &[u8],
+    auth: &[u8],
+    chain_id: &str,
+    account_number: u64,
+) -> Result<Vec<u8>, String> {
+    let mut doc = ld(1, body);
+    doc.extend(ld(2, auth));
+    doc.extend(ld(3, chain_id.as_bytes()));
+    doc.extend(vi(4, account_number));
+    let hash = Sha256::digest(&doc);
+    let sig: Signature = sk.sign_prehash(&hash).map_err(|e| e.to_string())?;
+    let sig = sig.normalize_s().unwrap_or(sig);
+    let vk = sk.verifying_key();
+    vk.verify_prehash(&hash, &sig)
+        .map_err(|_| "runtime signature did not verify".to_string())?;
+    Ok(sig.to_bytes().to_vec())
+}
+
+pub fn account_number_sequence(v: &serde_json::Value) -> Result<(u64, u64), String> {
+    fn num(v: &serde_json::Value) -> Option<u64> {
+        v.as_u64()
+            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+    }
+    fn walk(v: &serde_json::Value) -> Option<(u64, u64)> {
+        let obj = v.as_object()?;
+        if let (Some(a), Some(s)) = (obj.get("account_number"), obj.get("sequence")) {
+            if let (Some(a), Some(s)) = (num(a), num(s)) {
+                return Some((a, s));
+            }
+        }
+        for child in obj.values() {
+            if let Some(p) = walk(child) {
+                return Some(p);
+            }
+        }
+        None
+    }
+    walk(v).ok_or_else(|| "account number missing".into())
+}
+
+pub fn token_ids_from_tx(v: &serde_json::Value) -> Vec<String> {
+    let mut ids = Vec::new();
+    walk_token_ids(v, &mut ids);
+    ids
+}
+
+fn walk_token_ids(v: &serde_json::Value, ids: &mut Vec<String>) {
+    match v {
+        serde_json::Value::Object(m) => {
+            if let (Some(k), Some(val)) = (
+                m.get("key").and_then(|x| x.as_str()),
+                m.get("value").and_then(|x| x.as_str()),
+            ) {
+                if k == "token_id" || k.ends_with(".token_id") {
+                    if !val.is_empty() && !ids.iter().any(|e| e == val) {
+                        ids.push(val.to_string());
+                    }
+                }
+            }
+            for child in m.values() {
+                walk_token_ids(child, ids);
+            }
+        }
+        serde_json::Value::Array(a) => {
+            for child in a {
+                walk_token_ids(child, ids);
+            }
+        }
+        _ => {}
+    }
+}
+
+pub fn tx_code(v: &serde_json::Value) -> Option<u64> {
+    v.pointer("/tx_response/code")
+        .and_then(json_u64)
+        .or_else(|| v.get("code").and_then(json_u64))
+}
+
+pub fn tx_hash(v: &serde_json::Value) -> Option<String> {
+    v.pointer("/tx_response/txhash")
+        .and_then(|x| x.as_str())
+        .or_else(|| v.get("txhash").and_then(|x| x.as_str()))
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+fn json_u64(v: &serde_json::Value) -> Option<u64> {
+    v.as_u64()
+        .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+}
+
+/// What `/cosmos/tx/v1beta1/simulate` said about an empty-funds SVG mint.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SimVerdict {
+    /// The contract accepted the message in simulation.
+    Accepted,
+    /// The contract ran and rejected this signer. Keep the address out of the pay set.
+    Rejected(String),
+    /// The chain could not judge the contract (missing account, fees, LCD). Pay stays closed.
+    Unproven(String),
+}
+
+fn clip_reason(raw: &str) -> String {
+    let one = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut s: String = one.chars().take(180).collect();
+    if one.chars().count() > 180 {
+        s.push('…');
+    }
+    s
+}
+
+fn simulate_message(body: &serde_json::Value) -> String {
+    let pick = body
+        .get("message")
+        .and_then(|x| x.as_str())
+        .or_else(|| body.get("raw_log").and_then(|x| x.as_str()))
+        .or_else(|| body.pointer("/result/log").and_then(|x| x.as_str()))
+        .or_else(|| {
+            body.pointer("/tx_response/raw_log")
+                .and_then(|x| x.as_str())
+        })
+        .unwrap_or("");
+    clip_reason(pick)
+}
+
+fn unproven_marker(low: &str) -> bool {
+    low.contains("insufficient fee")
+        || (low.contains("account") && low.contains("not found"))
+        || low.contains("signature verification")
+        || low.contains("account sequence")
+        || low.contains("sequence mismatch")
+        || low.contains("out of gas")
+        || low.contains("runtime sk")
+}
+
+fn contract_marker(low: &str) -> bool {
+    low.contains("failed to execute message")
+        || low.contains("execute wasm")
+        || low.contains("insufficient funds")
+        || low.contains("unauthorized")
+        || low.contains("wrong amount")
+}
+
+/// Classify a simulate HTTP response. Contract rejection is the only `Rejected`.
+pub fn classify_simulate(status: u16, body: &serde_json::Value) -> SimVerdict {
+    let msg = simulate_message(body);
+    let low = msg.to_ascii_lowercase();
+    if unproven_marker(&low) {
+        return SimVerdict::Unproven(if msg.is_empty() {
+            "simulate unproven".into()
+        } else {
+            msg
+        });
+    }
+    let code = body
+        .get("code")
+        .and_then(json_u64)
+        .or_else(|| body.pointer("/result/code").and_then(json_u64))
+        .unwrap_or(0);
+    if status == 200 && code == 0 && body.get("gas_info").is_some() {
+        return SimVerdict::Accepted;
+    }
+    if contract_marker(&low) {
+        return SimVerdict::Rejected(msg);
+    }
+    let why = if msg.is_empty() {
+        format!("simulate status {status}")
+    } else {
+        msg
+    };
+    SimVerdict::Unproven(why)
+}
+
+fn read_secret() -> Result<Vec<u8>, String> {
+    let path = key_path();
+    if !path.is_file() {
+        return Err("runtime sk missing".into());
+    }
+    let raw = std::fs::read(&path).map_err(|e| format!("runtime sk: {e}"))?;
+    if raw.len() != 32 {
+        return Err("runtime sk file is not 32 bytes; refusing to replace it".into());
+    }
+    Ok(raw)
+}
+
+/// Simulate one empty-funds `update_extension` mint. Does not write a key or broadcast.
+pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
+    if !contract.starts_with("terp1") {
+        return SimVerdict::Rejected("mint contract must be terp1".into());
+    }
+    let secret = match read_secret() {
+        Ok(s) => s,
+        Err(e) => return SimVerdict::Unproven(e),
+    };
+    let lcd = match lcd_base() {
+        Ok(s) => s,
+        Err(e) => return SimVerdict::Unproven(e),
+    };
+    let sender = match address_of(&secret) {
+        Ok(s) => s,
+        Err(e) => return SimVerdict::Unproven(e),
+    };
+    let acct = match crate::httpx::get_json(&format!(
+        "{lcd}/cosmos/auth/v1beta1/accounts/{sender}"
+    )) {
+        Ok(v) => v,
+        Err(e) => return SimVerdict::Unproven(clip_reason(&e)),
+    };
+    let (account_number, sequence) = match account_number_sequence(&acct) {
+        Ok(p) => p,
+        Err(e) => return SimVerdict::Unproven(e),
+    };
+    let gas = 2_000_000u64;
+    let fee = fee_uthiol(gas);
+    let raw = match tx_raw(
+        &secret,
+        contract,
+        &[svg_mint_msg(1)],
+        account_number,
+        sequence,
+        &chain_id(),
+        gas,
+        fee,
+    ) {
+        Ok(b) => b,
+        Err(e) => return SimVerdict::Unproven(clip_reason(&e)),
+    };
+    let body = serde_json::json!({ "tx_bytes": b64(&raw) });
+    match crate::httpx::post_json_status(&format!("{lcd}/cosmos/tx/v1beta1/simulate"), &body) {
+        Ok((status, v)) => classify_simulate(status, &v),
+        Err(e) => SimVerdict::Unproven(clip_reason(&e)),
+    }
+}
+
+/// A mint the chain accepted. `transfer_tx` is empty until the NFT moves to the payer.
+#[derive(Clone, Debug)]
+pub struct PaidMint {
+    pub mint_tx: String,
+    pub token_ids: Vec<String>,
+    pub transfer_tx: String,
+}
+
+/// Broadcast the mint, wait for the committed tx, then transfer the new tokens
+/// to `recipient`. If the mint is committed and the transfer fails, the `Err`
+/// still starts with `minted {hash}` so the caller does not mint again.
+pub fn broadcast_paid_mint(
+    contract: &str,
+    recipient: &str,
+    nfts: u32,
+) -> Result<PaidMint, String> {
+    if !contract.starts_with("terp1") {
+        return Err("mint contract must be terp1".into());
+    }
+    if !recipient.starts_with("terp1") {
+        return Err("mint recipient must be terp1".into());
+    }
+    if !crate::collections::contains(contract) {
+        return Err("collection is not in the watched set".into());
+    }
+    let secret = load_or_create_secret()?;
+    let nfts = nfts.max(1);
+    let (hash, ids) = submit(&secret, contract, &[svg_mint_msg(nfts)])?;
+    if ids.is_empty() {
+        return Err(format!("minted {hash}"));
+    }
+    let transfers: Vec<Vec<u8>> = ids
+        .iter()
+        .map(|id| transfer_nft_msg(recipient, id))
+        .collect();
+    match submit(&secret, contract, &transfers) {
+        Ok((xfer, _)) => Ok(PaidMint {
+            mint_tx: hash,
+            token_ids: ids,
+            transfer_tx: xfer,
+        }),
+        Err(e) => Err(format!(
+            "minted {hash} ids {} transfer: {e}",
+            ids.join(",")
+        )),
+    }
+}
+
+/// Poll a mint hash that already succeeded CheckTx and finish the transfer.
+pub fn finish_transfer(
+    contract: &str,
+    recipient: &str,
+    mint_hash: &str,
+    known_ids: &[String],
+) -> Result<(Vec<String>, String), String> {
+    if !crate::collections::contains(contract) {
+        return Err("collection is not in the watched set".into());
+    }
+    let ids = if known_ids.is_empty() {
+        let lcd = lcd_base()?;
+        let v = crate::httpx::get_json(&format!(
+            "{lcd}/cosmos/tx/v1beta1/txs/{mint_hash}"
+        ))?;
+        let code = tx_code(&v).ok_or_else(|| format!("mint {mint_hash} not committed"))?;
+        if code != 0 {
+            return Err(format!("mint {mint_hash} code {code}"));
+        }
+        let ids = token_ids_from_tx(&v);
+        if ids.is_empty() {
+            return Err(format!("mint {mint_hash} has no token_id yet"));
+        }
+        ids
+    } else {
+        known_ids.to_vec()
+    };
+    let secret = load_or_create_secret()?;
+    let transfers: Vec<Vec<u8>> = ids
+        .iter()
+        .map(|id| transfer_nft_msg(recipient, id))
+        .collect();
+    let (xfer, _) = submit(&secret, contract, &transfers)?;
+    Ok((ids, xfer))
+}
+
+fn submit(
+    secret: &[u8],
+    contract: &str,
+    msgs: &[Vec<u8>],
+) -> Result<(String, Vec<String>), String> {
+    let lcd = lcd_base()?;
+    let sender = address_of(secret)?;
+    let acct = crate::httpx::get_json(&format!(
+        "{lcd}/cosmos/auth/v1beta1/accounts/{sender}"
+    ))?;
+    let (account_number, sequence) = account_number_sequence(&acct)?;
+    let gas = mint_gas().saturating_mul(msgs.len() as u64);
+    let fee = fee_uthiol(gas);
+    let raw = tx_raw(
+        secret,
+        contract,
+        msgs,
+        account_number,
+        sequence,
+        &chain_id(),
+        gas,
+        fee,
+    )?;
+    let body = serde_json::json!({
+        "tx_bytes": b64(&raw),
+        "mode": "BROADCAST_MODE_SYNC",
+    });
+    let sent = crate::httpx::post_json(&format!("{lcd}/cosmos/tx/v1beta1/txs"), &body)?;
+    let code = tx_code(&sent).unwrap_or(0);
+    let hash = tx_hash(&sent).ok_or_else(|| {
+        let log = sent
+            .pointer("/tx_response/raw_log")
+            .and_then(|x| x.as_str())
+            .unwrap_or("no txhash");
+        format!("broadcast rejected: {log}")
+    })?;
+    if code != 0 {
+        let log = sent
+            .pointer("/tx_response/raw_log")
+            .and_then(|x| x.as_str())
+            .unwrap_or("");
+        return Err(format!("broadcast code {code} {hash} {log}"));
+    }
+    let committed = poll_tx(&lcd, &hash)?;
+    let ids = token_ids_from_tx(&committed);
+    Ok((hash, ids))
+}
+
+fn poll_tx(lcd: &str, hash: &str) -> Result<serde_json::Value, String> {
+    let url = format!("{lcd}/cosmos/tx/v1beta1/txs/{hash}");
+    let mut last = String::from("not found");
+    for _ in 0..8 {
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        match crate::httpx::get_json(&url) {
+            Ok(v) => {
+                if let Some(code) = tx_code(&v) {
+                    if code != 0 {
+                        let log = v
+                            .pointer("/tx_response/raw_log")
+                            .and_then(|x| x.as_str())
+                            .unwrap_or("");
+                        return Err(format!("tx {hash} code {code} {log}"));
+                    }
+                    return Ok(v);
+                }
+                last = "tx has no code yet".into();
+            }
+            Err(e) => last = e,
+        }
+    }
+    Err(format!("tx {hash} not committed: {last}"))
+}
+
+fn msg_execute(sender: &str, contract: &str, msg: &[u8]) -> Vec<u8> {
+    let mut o = ld(1, sender.as_bytes());
+    o.extend(ld(2, contract.as_bytes()));
+    o.extend(ld(3, msg));
+    o
+}
+
+fn any(type_url: &str, value: &[u8]) -> Vec<u8> {
+    let mut o = ld(1, type_url.as_bytes());
+    o.extend(ld(2, value));
+    o
+}
+
+fn mode_direct() -> Vec<u8> {
+    // ModeInfo.single = Single { mode: SIGN_MODE_DIRECT (1) }
+    ld(1, &vi(1, 1))
+}
+
+fn coin_msg(denom: &str, amount: &str) -> Vec<u8> {
+    let mut o = ld(1, denom.as_bytes());
+    o.extend(ld(2, amount.as_bytes()));
+    o
+}
+
+fn varint(mut n: u64) -> Vec<u8> {
+    let mut o = Vec::new();
+    loop {
+        let mut b = (n & 0x7f) as u8;
+        n >>= 7;
+        if n != 0 {
+            b |= 0x80;
+        }
+        o.push(b);
+        if n == 0 {
+            break;
+        }
+    }
+    o
+}
+
+fn tag(field: u32, wire: u8) -> Vec<u8> {
+    varint(((field as u64) << 3) | wire as u64)
+}
+
+fn ld(field: u32, bytes: &[u8]) -> Vec<u8> {
+    let mut o = tag(field, 2);
+    o.extend(varint(bytes.len() as u64));
+    o.extend_from_slice(bytes);
+    o
+}
+
+fn vi(field: u32, n: u64) -> Vec<u8> {
+    let mut o = tag(field, 0);
+    o.extend(varint(n));
+    o
+}
+
+fn b64(data: &[u8]) -> String {
+    const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    let mut i = 0;
+    while i + 3 <= data.len() {
+        let n = ((data[i] as u32) << 16) | ((data[i + 1] as u32) << 8) | (data[i + 2] as u32);
+        out.push(T[((n >> 18) & 63) as usize] as char);
+        out.push(T[((n >> 12) & 63) as usize] as char);
+        out.push(T[((n >> 6) & 63) as usize] as char);
+        out.push(T[(n & 63) as usize] as char);
+        i += 3;
+    }
+    match data.len() - i {
+        1 => {
+            let n = (data[i] as u32) << 16;
+            out.push(T[((n >> 18) & 63) as usize] as char);
+            out.push(T[((n >> 12) & 63) as usize] as char);
+            out.push('=');
+            out.push('=');
+        }
+        2 => {
+            let n = ((data[i] as u32) << 16) | ((data[i + 1] as u32) << 8);
+            out.push(T[((n >> 18) & 63) as usize] as char);
+            out.push(T[((n >> 12) & 63) as usize] as char);
+            out.push(T[((n >> 6) & 63) as usize] as char);
+            out.push('=');
+        }
+        _ => {}
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn simulate_accepts_gas_info() {
+        let v = serde_json::json!({
+            "gas_info": {"gas_wanted": "2000000", "gas_used": "180000"},
+            "result": {"log": "", "events": []}
+        });
+        assert_eq!(classify_simulate(200, &v), SimVerdict::Accepted);
+    }
+
+    #[test]
+    fn simulate_rejects_wasm_execute() {
+        let v = serde_json::json!({
+            "code": 5,
+            "message": "failed to execute message; message index: 0: Needed funds: execute wasm contract failed"
+        });
+        match classify_simulate(400, &v) {
+            SimVerdict::Rejected(m) => assert!(m.contains("Needed funds")),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn simulate_insufficient_fees_is_unproven() {
+        let v = serde_json::json!({"code": 13, "message": "insufficient fees; got: 0uthiol"});
+        assert!(matches!(classify_simulate(400, &v), SimVerdict::Unproven(_)));
+        let missing = serde_json::json!({"code": 5, "message": "account terp1abc not found"});
+        assert!(matches!(classify_simulate(404, &missing), SimVerdict::Unproven(_)));
+    }
+
+    #[test]
+    fn fee_matches_house_floor() {
+        let _g = crate::checkout::minter_env_lock();
+        std::env::remove_var("DREGG_MINT_GAS_PRICE");
+        assert_eq!(fee_uthiol(800_000), 40_000);
+    }
+
+    #[test]
+    fn account_walks_base_account() {
+        let v = serde_json::json!({
+            "account": {
+                "@type": "/cosmos.auth.v1beta1.BaseAccount",
+                "address": "terp1x",
+                "account_number": "7",
+                "sequence": "3"
+            }
+        });
+        assert_eq!(account_number_sequence(&v).unwrap(), (7, 3));
+    }
+
+    #[test]
+    fn token_ids_from_wasm_events() {
+        let v = serde_json::json!({
+            "tx_response": {
+                "code": 0,
+                "txhash": "AB",
+                "events": [{
+                    "type": "wasm",
+                    "attributes": [
+                        {"key": "action", "value": "mint"},
+                        {"key": "token_id", "value": "4"},
+                        {"key": "token_id", "value": "5"}
+                    ]
+                }]
+            }
+        });
+        assert_eq!(token_ids_from_tx(&v), vec!["4".to_string(), "5".to_string()]);
+        assert_eq!(tx_code(&v), Some(0));
+        assert_eq!(tx_hash(&v).as_deref(), Some("AB"));
+    }
+
+    #[test]
+    fn direct_signature_verifies_and_address_is_stable() {
+        let secret = [7u8; 32];
+        let msg = svg_mint_msg(1);
+        let raw = tx_raw(&secret, "terp1contract", &[msg], 1, 0, "morocco-1", 800_000, 40_000)
+            .unwrap();
+        assert!(raw.len() > 80);
+        let a = address_of(&secret).unwrap();
+        let b = address_of(&secret).unwrap();
+        assert_eq!(a, b);
+        assert!(a.starts_with("terp1"));
+        let sk = SigningKey::from_slice(&secret).unwrap();
+        let vk = k256::ecdsa::VerifyingKey::from(sk);
+        assert_eq!(vk.to_encoded_point(true).as_bytes().len(), 33);
+    }
+
+    #[test]
+    fn key_file_is_created_once() {
+        let _g = crate::checkout::minter_env_lock();
+        let dir = std::env::temp_dir().join(format!(
+            "dregg-runtime-sk-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("runtime.sk");
+        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
+        let a = ensure_address().unwrap();
+        let b = ensure_address().unwrap();
+        assert_eq!(a, b);
+        assert_eq!(std::fs::read(&path).unwrap().len(), 32);
+        std::fs::write(&path, [1u8; 16]).unwrap();
+        assert!(ensure_address().is_err());
+        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

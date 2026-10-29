@@ -214,7 +214,7 @@ rev = "877ee79b693760f7ffa97ef542f5788c26f537dd"
 [crates.cosmwasm-core]
 description = "Components of cosmwasm-std for no_std environments"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/core"
 zk_local = "cosmwasm/packages/core"
 
@@ -229,7 +229,7 @@ branch = "mvp"
 [crates.cosmwasm-crypto]
 description = "Crypto bindings for CosmWasm contracts"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/crypto"
 zk_local = "cosmwasm/packages/crypto"
 
@@ -244,7 +244,7 @@ branch = "mvp"
 [crates.cosmwasm-derive]
 description = "Auto-generated code for CosmWasm contract development, shipped as part of cosmwasm-std"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/derive"
 zk_local = "cosmwasm/packages/derive"
 
@@ -259,7 +259,7 @@ branch = "mvp"
 [crates.cosmwasm-schema]
 description = "Dev-dependency for CosmWasm contracts to generate JSON Schema files"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/schema"
 zk_local = "cosmwasm/packages/schema"
 consumers = [
@@ -291,7 +291,7 @@ branch = "mvp"
 [crates.cosmwasm-schema-derive]
 description = "Derive macros for cosmwasm-schema"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/schema-derive"
 zk_local = "cosmwasm/packages/schema-derive"
 patch_only = true
@@ -307,7 +307,7 @@ branch = "mvp"
 [crates.cosmwasm-std]
 description = "Standard library for Wasm-based smart contracts on Cosmos blockchains"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/std"
 zk_local = "cosmwasm/packages/std"
 consumers = [
@@ -345,7 +345,7 @@ branch = "mvp"
 [crates.cosmwasm-vm]
 description = "VM bindings to run CosmWasm contracts"
 stable = "3.0.0"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/vm"
 zk_local = "cosmwasm/packages/vm"
 consumers = ["clone-cw-multi-test"]
@@ -750,7 +750,7 @@ rev = "99f8a568fe733735579b891c1dc47c97e4c8960d"
 [crates.cw-schema]
 description = "Dependency for CosmWasm contracts to generate schema files for their messages"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/cw-schema"
 zk_local = "cosmwasm/packages/cw-schema"
 consumers = ["osmosis-rust"]
@@ -767,7 +767,7 @@ branch = "mvp"
 [crates.cw-schema-derive]
 description = "Derive macros for cw-schema"
 stable = "3.0.4"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/cw-schema-derive"
 zk_local = "cosmwasm/packages/cw-schema-derive"
 patch_only = true
@@ -2045,7 +2045,7 @@ branch = "cw3"
 [crates.zk-cosmwasm]
 description = "ZK-Circuit VM bindings to run CosmWasm contracts with halo2 proving"
 stable = "N/A"
-fork_version = "4.0.0-zk"
+fork_version = "4.1.0"
 local = "cosmwasm/packages/zk"
 zk_local = "cosmwasm/packages/zk"
 

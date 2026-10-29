@@ -529,7 +529,7 @@ pub mod testing {
     use group::ff::FromUniformBytes;
     use nonempty::NonEmpty;
     use pasta_curves::pallas;
-    use rand::{SeedableRng, rngs::StdRng};
+    use rand010::{SeedableRng, rngs::StdRng};
     use reddsa::orchard::SpendAuth;
 
     use proptest::collection::vec;

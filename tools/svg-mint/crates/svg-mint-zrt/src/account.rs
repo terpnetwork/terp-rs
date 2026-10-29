@@ -351,7 +351,7 @@ fn normalize_hex(s: &str, nbytes: usize, what: &str) -> Result<String, String> {
 /// receiver type. This address is not a payment target until an Ironwood scan exists.
 fn derive(seed: &[u8; 32]) -> Result<(u32, [u8; 43], String), String> {
     use orchard::keys::{FullViewingKey, Scope, SpendingKey};
-    let sk = SpendingKey::from_zip32_seed(seed, 133, zip32::AccountId::ZERO)
+    let sk = SpendingKey::from_zip32_seed(seed, 133, zip3203::AccountId::ZERO)
         .map_err(|e| format!("zip32: {e}"))?;
     let fvk = FullViewingKey::from(&sk);
     let index = 0u32;

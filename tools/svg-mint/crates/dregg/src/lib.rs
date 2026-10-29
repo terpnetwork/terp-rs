@@ -10,10 +10,12 @@
 pub mod adr36;
 pub mod cell;
 pub mod checkout;
+pub mod collections;
 pub mod commit;
 pub mod hd;
 pub mod hopalong;
 pub mod httpx;
+pub mod mint_tx;
 pub mod memo;
 pub mod mentor;
 pub mod observer;

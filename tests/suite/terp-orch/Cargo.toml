@@ -18,6 +18,12 @@ name = "terp_gov_proposal"
 path = "src/bin/terp_gov_proposal.rs"
 required-features = ["gov"]
 
+# FIAB bounty-escrow rollout. Preview by default; signs only via cw-orch-kms with --execute.
+[[bin]]
+name = "fiab_bounty_escrow"
+path = "src/bin/fiab_bounty_escrow.rs"
+required-features = ["gov"]
+
 [[bin]]
 name = "cw-ave-deploy"
 path = "src/bin/cw_ave_deploy.rs"
@@ -141,6 +147,8 @@ abstract-interface = { workspace = true, optional = true }
 abstract-std = { workspace = true, optional = true }
 anyhow = { workspace = true }
 av-event-helpers = { workspace = true, optional = true }
+clap = { workspace = true, optional = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true, optional = true }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["zk"] }
 cosmwasm-vm = { workspace = true, optional = true, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }
@@ -154,45 +162,43 @@ cw-ics08-wasm-crosslink = { workspace = true, optional = true, features = ["libr
 cw-ics08-wasm-dregg = { workspace = true, optional = true, features = ["library"] }
 cw-ics08-wasm-terp = { workspace = true, optional = true, features = ["library"] }
 cw-ics08-wasm-zap1 = { workspace = true, optional = true, features = ["library"] }
+cw-infuser = { workspace = true, optional = true, features = ["interface"] }
 cw-norick = { workspace = true, optional = true, features = ["library"] }
 cw-nullifier-auth = { workspace = true, optional = true, features = ["library"] }
 cw-nullifier-gate = { workspace = true, optional = true, features = ["library"] }
-cw-infuser = { workspace = true, optional = true, features = ["interface"] }
 cw-oracle-aggregator = { workspace = true, optional = true, features = ["library", "interface"] }
 cw-oracle-registry = { workspace = true, optional = true, features = ["library", "interface"] }
 cw-oracle-twap-probe = { workspace = true, optional = true, features = ["library", "interface"] }
-cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
-cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 cw-orch = { workspace = true }
 cw-orch-kms = { path = "../../../../cw-orchestrator/packages/cw-orch-kms", optional = true, features = ["ict"] }
-clap = { workspace = true, optional = true, features = ["derive", "env"] }
-cosmos-sdk-proto = { workspace = true, optional = true }
-dotenvy = { version = "0.15", optional = true }
-ibc-proto = { workspace = true, optional = true }
 cw-private-dex = { workspace = true, optional = true }
 cw-reg-eligibility = { workspace = true, optional = true, features = ["library"] }
 cw-shit-denom = { workspace = true, optional = true }
 cw-shitstrap = { workspace = true, optional = true, features = ["library", "interface"] }
 cw-shitstrap-factory = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
 cw-vote-anchor = { workspace = true, optional = true, features = ["library"] }
 cw-vote-ceremony = { workspace = true, optional = true, features = ["library"] }
 cw-zk-verify-demo = { workspace = true, features = ["library"] }
 cw420 = { workspace = true, optional = true, features = ["library"] }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
 dao-testing = { workspace = true, optional = true }
 dotenv = { workspace = true, optional = true }
+dotenvy = { version = "0.15", optional = true }
 env_logger = { workspace = true, optional = true }
 hm-loyalty-whitelist = { workspace = true, optional = true }
 hm-nft-minter = { workspace = true, optional = true, features = ["library", "interface"] }
 hm-nft-oracle = { workspace = true, optional = true }
+ibc-proto = { workspace = true, optional = true }
 ict-rs = { workspace = true, optional = true, features = ["docker", "terp", "testing"] }
 ict-rs-cw-orch = { workspace = true, optional = true }
 loyalty-verifier = { workspace = true, optional = true, features = ["library", "interface"] }
-ownership-verifier = { workspace = true, optional = true }
 marketplace-mirror = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-loan = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-raffle = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-randomness = { workspace = true, optional = true }
 nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
+ownership-verifier = { workspace = true, optional = true }
 polytone-any-proxy = { workspace = true, optional = true, features = ["library"] }
 rand = { version = "0.10", optional = true, features = ["std", "sys_rng"] }
 revenue-marketplace = { workspace = true, optional = true, features = ["library"] }
@@ -203,14 +209,14 @@ sha2 = { workspace = true, optional = true, features = ["std"] }
 svg-auction = { workspace = true, optional = true, features = ["library", "interface"] }
 terp-account = { workspace = true, optional = true, features = ["full", "interface"] }
 terp-authenticator-suite = { workspace = true, optional = true }
-terp721-account = { workspace = true, optional = true }
-terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 terp-bls = { workspace = true, optional = true, features = ["library"] }
 terp-bounty-escrow = { workspace = true, optional = true, features = ["library", "interface", "dev-chain-guard"] }
 terp-dao = { workspace = true, optional = true, features = ["library"] }
 terp-dregg = { workspace = true, optional = true, features = ["library"] }
 terp-frost = { workspace = true, optional = true, features = ["library"] }
 terp-zktls = { workspace = true, optional = true, features = ["library"] }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 trusted-builder-sbt = { workspace = true, optional = true, features = ["library", "interface"] }
 whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
 zk-cosmwasm = { workspace = true, optional = true }

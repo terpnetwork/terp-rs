@@ -59,41 +59,6 @@ path = "src/bin/deploy_preflight.rs"
 name = "relay_grants"
 path = "src/bin/relay_grants.rs"
 
-[dependencies]
-anyhow = { workspace = true }
-base64 = { workspace = true }
-bech32 = { workspace = true }
-clap = { workspace = true, features = ["derive", "env"] }
-ed25519-dalek = "=2.2.0"
-cosmos-sdk-proto = { workspace = true }
-cosmrs = { workspace = true }
-cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
-csv = "1.4.0"
-cw-infuser-scripts = { workspace = true, default-features = false }
-cw-orch = { workspace = true, features = ["daemon"] }
-cw-orch-kms = { path = "../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
-cw-orch-interchain = { workspace = true, features = ["daemon"] }
-cw-orch-polytone = { workspace = true }
-dao-cw-orch = { workspace = true }
-dao-testing = { workspace = true }
-dao-interface = { workspace = true }
-dotenv = { workspace = true }
-env_logger = { workspace = true, features = ["default"] }
-log = "0.4.30"
-rand08 = { package = "rand", version = "0.8" }
-rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
-sha2 = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-terp-rs = { workspace = true, features = ["default"] }
-terp-scripts = { workspace = true, features = ["hash-market"] }
-tokio = { version = "1", features = ["full"] }
-bip39 = { version = "2.0.0", features = ["rand"] }
-tracing = "0.1"
-ibc-proto = { workspace = true }
-dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
-
 [[bin]]
 name = "dao_account"
 path = "src/bin/dao_account.rs"
@@ -118,14 +83,6 @@ path = "src/bin/fiab_subdao.rs"
 name = "steward_multi_dao"
 path = "src/bin/steward_multi_dao.rs"
 
-[dev-dependencies]
-cw-multi-test = { workspace = true }
-cw4-group = { workspace = true }
-dao-dao-core = { workspace = true }
-dao-pre-propose-single = { workspace = true }
-dao-proposal-single = { workspace = true }
-dao-voting-cw4 = { workspace = true }
-
 [[bin]]
 name = "polytone_note"
 path = "src/bin/polytone_note.rs"
@@ -146,7 +103,49 @@ path = "src/bin/mainnet_deploy.rs"
 name = "svg_ops"
 path = "src/bin/svg_ops.rs"
 
-
 [[bin]]
 name = "svg_curator"
 path = "src/bin/svg_curator.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = { workspace = true }
+bech32 = { workspace = true }
+bip39 = { version = "2.0.0", features = ["rand"] }
+clap = { workspace = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true }
+cosmrs = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+csv = "1.4.0"
+cw-infuser-scripts = { workspace = true, default-features = false }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-orch-kms = { path = "../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
+cw-orch-polytone = { workspace = true }
+dao-cw-orch = { workspace = true }
+dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
+dao-interface = { workspace = true }
+dao-testing = { workspace = true }
+dotenv = { workspace = true }
+ed25519-dalek = "=2.2.0"
+env_logger = { workspace = true, features = ["default"] }
+ibc-proto = { workspace = true }
+log = "0.4.30"
+rand08 = { package = "rand", version = "0.8" }
+rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+terp-rs = { workspace = true, features = ["default"] }
+terp-scripts = { workspace = true, features = ["hash-market"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+cw4-group = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting-cw4 = { workspace = true }

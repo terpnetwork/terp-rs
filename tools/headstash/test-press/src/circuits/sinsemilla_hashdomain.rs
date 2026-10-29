@@ -252,7 +252,7 @@ impl Circuit<pallas::Base> for LeafHashTestCircuit {
 //     use ff::{Field, PrimeField};
 //     use halo2_proofs::dev::MockProver;
 //     use pasta_curves::Fp;
-//     use rand::rngs::OsRng;
+//     use rand010::rngs::OsRng;
 
 //     /// k parameter for the circuit (number of rows = 2^k)
 //     const K: u32 = 17;

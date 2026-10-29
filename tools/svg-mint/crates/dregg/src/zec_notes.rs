@@ -249,7 +249,7 @@ mod tests {
     use crate::store::PendingPay;
 
     fn pending(terp: &str, ua: &str) -> (Commit, PendingPay) {
-        let (c, blinding) = pedersen::commit(terp, &mut rand::rngs::OsRng);
+        let (c, blinding) = pedersen::commit(terp, &mut rand::rng());
         let p = PendingPay {
             terp: terp.into(),
             blinding,
@@ -261,6 +261,7 @@ mod tests {
             issued_at: 1,
             qty: 1,
             session: Vec::new(),
+            collection: String::new(),
         };
         (c, p)
     }

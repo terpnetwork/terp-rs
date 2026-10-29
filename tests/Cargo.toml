@@ -66,8 +66,8 @@ axum = { workspace = true, features = ["form", "http1", "json", "matched-path", 
 clap = { workspace = true, features = ["derive"] }
 cosmos-sdk-proto = { workspace = true }
 cosmrs = { workspace = true }
-cosmwasm-schema = { workspace = true }
 cosmwasm-crypto = { workspace = true, optional = true }
+cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 crosslink-light-client = { workspace = true }
 csv = "1.4.0"
@@ -75,6 +75,9 @@ cw-ics08-wasm-crosslink = { workspace = true, features = ["interface"] }
 cw-infuser = { workspace = true, optional = true, features = ["interface"] }
 cw-infusions = { workspace = true, optional = true }
 cw-multi-test = { workspace = true, optional = true }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-orch-polytone = { workspace = true }
 cw-ownable = { workspace = true, optional = true }
 cw-shit-denom = { workspace = true, optional = true }
 cw-shitstrap = { workspace = true, optional = true, features = ["interface"] }
@@ -82,11 +85,8 @@ cw-svg = { workspace = true, optional = true }
 cw721 = { workspace = true, optional = true }
 cw721-base = { workspace = true, optional = true }
 cw721-svg = { workspace = true, optional = true, features = ["interface"] }
-ecdsa = { workspace = true, optional = true }
-cw-orch = { workspace = true, features = ["daemon"] }
-cw-orch-interchain = { workspace = true, features = ["daemon"] }
-cw-orch-polytone = { workspace = true }
 dotenv = { workspace = true }
+ecdsa = { workspace = true, optional = true }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 ed25519-zebra = { workspace = true }
 env_logger = { workspace = true, features = ["default"] }
@@ -105,23 +105,23 @@ nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
 prost = "0.13"
 prost-types = "0.13"
 rand = "0.8"
-rs_merkle = { workspace = true, optional = true, features = ["std"] }
 reqwest = { version = "0.13.4", features = ["json"] }
+rs_merkle = { workspace = true, optional = true, features = ["std"] }
 rustls = { workspace = true, features = ["ring", "std"] }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 sha2 = { workspace = true }
 snow = "0.9"
 tempfile = "3.27.0"
+terp-account = { workspace = true, optional = true, features = ["full"] }
 terp-auth = { workspace = true, optional = true }
 terp-authenticator-suite = { workspace = true, optional = true }
-terp-account = { workspace = true, optional = true, features = ["full"] }
 terp-bounty-escrow = { workspace = true, optional = true, features = ["interface"] }
 terp-orch = { workspace = true, optional = true }
-terp721-account = { workspace = true, optional = true }
-terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 terp-rs = { workspace = true, features = ["default"] }
 terp-vsck = { workspace = true, features = ["library"], optional = true }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
 tokio = { version = "1", features = ["full"] }
 toml = "1.1.2"
 tower = { version = "0.5", default-features = false, features = ["util"] }

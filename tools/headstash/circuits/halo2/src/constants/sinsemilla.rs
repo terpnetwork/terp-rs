@@ -160,7 +160,7 @@ mod tests {
     use halo2_gadgets::sinsemilla::primitives::{CommitDomain, HashDomain};
     use halo2_proofs::arithmetic::CurveAffine;
     use halo2_proofs::pasta::pallas;
-    use rand::{Rng, RngExt as _};
+    use rand010::{Rng, RngExt as _};
 
     #[test]
     // Nodes in the Merkle tree are Pallas base field elements.
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn lebs2ip_k_round_trip() {
-        let mut rng = rand::rng();
+        let mut rng = rand010::rng();
         {
             let int = 7usize;
             assert_eq!(lebs2ip_k(&i2lebsp_k(int)) as usize, int);
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn i2lebsp_k_round_trip() {
         {
-            let bitstring = [0; K].map(|_| rand::random());
+            let bitstring = [0; K].map(|_| rand010::random());
             assert_eq!(i2lebsp_k(lebs2ip_k(&bitstring) as usize), bitstring);
         }
 

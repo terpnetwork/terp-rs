@@ -13,7 +13,7 @@ use dregg::prices;
 use dregg::qc::{Checkpoint, OracleSig, count_valid, sign};
 use dregg::store::Durable;
 use dregg::store::PendingPay;
-use dregg::zip321::{payment_request, zat_from_zec_decimal};
+use dregg::zip321::payment_request;
 use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Verifier};
 use serde::Deserialize;
 use serde_json::json;
@@ -81,27 +81,67 @@ fn save_recipients(path: &str, map: &HashMap<String, [u8; 32]>) {
     }
 }
 
+fn operator_sk_file() -> std::path::PathBuf {
+    if let Ok(p) = std::env::var("SVG_MINT_FED_SK_FILE") {
+        if !p.is_empty() {
+            return std::path::PathBuf::from(p);
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    std::path::PathBuf::from(home).join(".terp/svg-mint-fed.sk")
+}
+
+fn keypair_from_raw(raw: &[u8]) -> Keypair {
+    assert_eq!(raw.len(), 32, "ed25519 sk 32 bytes");
+    let sk = SecretKey::from_bytes(raw).expect("sk");
+    let pk = PublicKey::from(&sk);
+    Keypair { secret: sk, public: pk }
+}
+
+/// Operator secret is one file. A restart loads it. A missing file is written
+/// once. A short or mismatched file exits and is not replaced.
 fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
     let thresh: u32 = std::env::var("SVG_MINT_FED_THRESHOLD")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(1);
+    let path = operator_sk_file();
     if let Ok(hexsk) = std::env::var("SVG_MINT_FED_SK_HEX") {
         let raw = hex::decode(hexsk.trim()).expect("sk hex");
-        assert_eq!(raw.len(), 32, "ed25519 sk 32 bytes");
-        let sk = SecretKey::from_bytes(&raw).expect("sk");
-        let pk = PublicKey::from(&sk);
-        let kp = Keypair {
-            secret: sk,
-            public: pk,
-        };
+        let kp = keypair_from_raw(&raw);
+        if path.is_file() {
+            let on_disk = std::fs::read(&path).expect("operator sk");
+            if on_disk.as_slice() != raw.as_slice() {
+                eprintln!("svg-mint-fed operator sk file does not match SVG_MINT_FED_SK_HEX");
+                std::process::exit(1);
+            }
+        }
         let pk_bytes = kp.public.to_bytes();
         return (vec![kp], vec![pk_bytes], thresh);
     }
+    if path.is_file() {
+        let raw = std::fs::read(&path).expect("operator sk");
+        if raw.len() != 32 {
+            eprintln!("svg-mint-fed operator sk file is not 32 bytes; refusing to replace it");
+            std::process::exit(1);
+        }
+        let kp = keypair_from_raw(&raw);
+        let pk_bytes = kp.public.to_bytes();
+        eprintln!("svg-mint-fed loaded operator pk={}", hex::encode(pk_bytes));
+        return (vec![kp], vec![pk_bytes], thresh);
+    }
     let kp = dregg::qc::generate_operator();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(&path, kp.secret.as_bytes()).expect("write operator sk");
+    let _ = std::fs::set_permissions(
+        &path,
+        std::os::unix::fs::PermissionsExt::from_mode(0o600),
+    );
     let pk_bytes = kp.public.to_bytes();
     eprintln!(
-        "svg-mint-fed generated operator pk={}",
+        "svg-mint-fed wrote operator sk and pk={}",
         hex::encode(pk_bytes)
     );
     (vec![kp], vec![pk_bytes], thresh)
@@ -110,7 +150,10 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
 fn main() {
     let bind = std::env::var("SVG_MINT_FED_BIND").unwrap_or_else(|_| "0.0.0.0:8421".into());
     let store_path = std::env::var("SVG_MINT_FED_STORE")
-        .unwrap_or_else(|_| "/tmp/svg-mint-fed-cell.json".into());
+        .unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+        format!("{home}/.terp/svg-mint-fed-cell.json")
+    });
     let (durable, mut cell, books, pending, hd_index, bogo_seen) =
         Durable::open(&store_path).expect("store");
     if !cell.supply("svg").0 {
@@ -124,6 +167,27 @@ fn main() {
             max_supply,
         });
         eprintln!("svg-mint-fed bound collection svg max_supply={max_supply}");
+    }
+    match dregg::mint_tx::ensure_address() {
+        Ok(addr) => eprintln!("svg-mint-fed runtime minter {addr}"),
+        Err(e) => {
+            eprintln!("svg-mint-fed runtime minter unavailable: {e}");
+            std::process::exit(1);
+        }
+    }
+    let max_supply = std::env::var("DREGG_SVG_MAX_SUPPLY")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|n: &u64| *n > 0)
+        .unwrap_or(10_000);
+    for id in dregg::collections::watched() {
+        if !cell.supply(&id).0 {
+            let _ = cell.apply(Turn::SetCollection {
+                id: id.clone(),
+                max_supply,
+            });
+            eprintln!("svg-mint-fed watching collection {id} max_supply={max_supply}");
+        }
     }
     let hd = HdEngine::from_env();
     if dregg::rpc_allowlist::require_self_hosted() {
@@ -247,11 +311,13 @@ fn issue_pay_target(
     fed: &Arc<Mutex<Fed>>,
     terp: &str,
     qty: u32,
+    collection: Option<&str>,
 ) -> Result<serde_json::Value, String> {
     let qty = qty.clamp(checkout::QTY_MIN, checkout::QTY_MAX);
-    let mut rng = rand::rngs::OsRng;
+    let collection = dregg::collections::resolve(collection)?;
+    let mut rng = rand::rng();
     let mut session = [0u8; 32];
-    rand::Rng::fill_bytes(&mut rng, &mut session);
+    rand::RngCore::fill_bytes(&mut rng, &mut session);
     let (c, r) = pedersen::commit_session(terp, &session, &mut rng);
     let mut f = fed.lock().unwrap();
     let st = checkout_now(&f);
@@ -313,6 +379,7 @@ fn issue_pay_target(
             issued_at: now,
             qty,
             session: session.to_vec(),
+            collection: collection.clone(),
         },
     );
     f.sessions.issue(terp, qty, zat);
@@ -350,6 +417,8 @@ fn issue_pay_target(
         "hd_index": i,
         "or": true,
         "pending_ttl_secs": ttl,
+        "collection": collection,
+        "runtime_minter": dregg::mint_tx::address_if_present(),
         "memo": "put memo_hex / ZIP-321 memo (Pedersen C) in the payment — never terp1 on ETH/Base/BTC/ZEC",
     }))
 }
@@ -508,7 +577,13 @@ fn spawn_note_watchers(fed: Arc<Mutex<Fed>>) {
                 eprintln!("zec watch: {e}");
             }
             std::thread::sleep(std::time::Duration::from_secs(12));
+            try_broadcast_mints(&f_zec);
         }
+    });
+    let f_mint = fed.clone();
+    std::thread::spawn(move || loop {
+        try_broadcast_mints(&f_mint);
+        std::thread::sleep(std::time::Duration::from_secs(20));
     });
 }
 
@@ -747,8 +822,9 @@ fn watch_btc_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     Ok(())
 }
 
-/// ZEC: ZIP-321 memo is the terp1 dest. svg-mint-zrt is the watcher.
-/// zcashd-compat `z_listreceivedbyaddress` is optional.
+/// ZEC observers: svg-mint-zrt notes, then house cookie mempool.
+/// The zcashd wallet RPC and zcli are not on this tick.
+/// On-chain claim remains `zcli_withdraw_zec` (svg-mint-zrt send to the donation UA).
 fn watch_zec_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     use std::sync::atomic::{AtomicBool, Ordering};
     static BUSY: AtomicBool = AtomicBool::new(false);
@@ -766,8 +842,8 @@ fn watch_zec_once(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     if let Err(e) = watched {
         eprintln!("zec watch: {e}");
     }
-    let _ = watch_zec_zcli(fed);
-    let _ = watch_zec_zcashd(fed);
+    // zcli and the zcashd wallet RPC are not observers.
+    // Shielded txids still land in house_mempool_txids. Checkout match is zrt notes.
     let _ = watch_zec_house_mempool(fed);
     Ok(())
 }
@@ -875,30 +951,6 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     Ok(())
 }
 
-fn watch_zec_zcli(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
-    let bin = match std::env::var("ZCLI_BIN") {
-        Ok(b) if !b.is_empty() => b,
-        _ => return Ok(()),
-    };
-    let ep = std::env::var("ZCLI_ENDPOINT").unwrap_or_default();
-    if ep.is_empty() {
-        return Err("ZCLI_BIN set but ZCLI_ENDPOINT missing (want http://127.0.0.1:9067, not zcash.rotko.net)".into());
-    }
-    let lower = ep.to_lowercase();
-    if lower.contains("rotko.net") || lower.contains("zec.rocks") {
-        return Err("ZCLI_ENDPOINT refuses public zidecar".into());
-    }
-    dregg::rpc_allowlist::check_env_rpc("ZCLI_ENDPOINT")?;
-    // zcli --json address is offline UA (currently orchard-encoded until Ironwood receiver lands).
-    // Scan/list still uses CompactTxStreamer (devtool) against ztreamer until zcli speaks native gRPC.
-    let out = std::process::Command::new(&bin)
-        .args(["--json", "address"])
-        .env("ZCLI_ENDPOINT", &ep)
-        .output()
-        .map_err(|e| e.to_string())?;
-    ingest_zec_blob(fed, &out.stdout)?;
-    Ok(())
-}
 
 fn zcash_cookie_rpc(method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
     let url = std::env::var("ZCASH_PRIVATE_RPC")
@@ -973,82 +1025,7 @@ fn watch_zec_house_mempool(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     Ok(())
 }
 
-fn watch_zec_zcashd(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
-    let url = match std::env::var("ZCASHD_RPC") {
-        Ok(u) if !u.is_empty() => u,
-        _ => return Ok(()),
-    };
-    let mut uas = Vec::new();
-    if let Ok(u) = std::env::var("DREGG_ZEC_UA") {
-        if !u.is_empty() {
-            uas.push(u);
-        }
-    }
-    {
-        let f = fed.lock().unwrap();
-        for p in f.pending.values() {
-            if let Some(u) = &p.zec_ua {
-                if !uas.contains(u) {
-                    uas.push(u.clone());
-                }
-            }
-        }
-    }
-    for ua in uas {
-        let v = http_json_local(
-            &url,
-            &serde_json::json!({
-                "jsonrpc":"1.0","id":"dregg","method":"z_listreceivedbyaddress",
-                "params":[ua, 0]
-            }),
-        )?;
-        ingest_zec_json(fed, &v)?;
-    }
-    Ok(())
-}
 
-fn parse_zec_paid_zat(item: &serde_json::Value, line: Option<&str>) -> Option<u128> {
-    if let Some(z) = item
-        .get("amountZat")
-        .or_else(|| item.get("zatoshis"))
-        .and_then(|x| x.as_u64())
-    {
-        if z > 0 {
-            return Some(z as u128);
-        }
-    }
-    if let Some(n) = item.get("amount").and_then(|x| x.as_u64()) {
-        if n >= 1_000 {
-            return Some(n as u128);
-        }
-        if n > 0 {
-            return Some((n as u128).saturating_mul(100_000_000));
-        }
-    }
-    if let Some(f) = item.get("amount").and_then(|x| x.as_f64()) {
-        if f > 0.0 {
-            return Some((f * 100_000_000.0).round() as u128);
-        }
-    }
-    if let Some(s) = item.get("amount").and_then(|x| x.as_str()) {
-        if let Some(z) = zat_from_zec_decimal(s) {
-            if z > 0 {
-                return Some(z as u128);
-            }
-        }
-    }
-    if let Some(line) = line {
-        if let Some(a) = line.split("amount=").nth(1) {
-            let a = a.split(['&', ' ', '"', ',']).next().unwrap_or("");
-            if let Some(z) = zat_from_zec_decimal(a) {
-                if z > 0 {
-                    return Some(z as u128);
-                }
-            }
-        }
-    }
-    None
-}
 
 fn zec_paid_fallback(fed: &Arc<Mutex<Fed>>, rec: &str) -> u128 {
     let unit = prices::zec_zat() as u128;
@@ -1062,45 +1039,6 @@ fn zec_paid_fallback(fed: &Arc<Mutex<Fed>>, rec: &str) -> u128 {
     unit.saturating_mul(q)
 }
 
-fn ingest_zec_json(fed: &Arc<Mutex<Fed>>, v: &serde_json::Value) -> Result<(), String> {
-    let arr = v
-        .pointer("/result")
-        .and_then(|x| x.as_array())
-        .cloned()
-        .unwrap_or_default();
-    for item in arr {
-        let memo = item.get("memo").and_then(|x| x.as_str()).unwrap_or("");
-        let blob = item.to_string();
-        let Some(rec) = {
-            let f = fed.lock().unwrap();
-            dregg::store::dest_for_zec_watch(&f.pending, memo, blob.as_bytes())
-        }
-        .or_else(|| resolve_dest(fed, blob.as_bytes())) else {
-            continue;
-        };
-        let txid = item
-            .get("txid")
-            .or_else(|| item.get("txId"))
-            .and_then(|x| x.as_str())
-            .unwrap_or("");
-        if txid.is_empty() {
-            continue;
-        }
-        let raw =
-            hex::decode(txid.trim_start_matches("0x")).unwrap_or_else(|_| txid.as_bytes().to_vec());
-        let zat = parse_zec_paid_zat(&item, None).unwrap_or_else(|| zec_paid_fallback(fed, &rec));
-        let conf = item
-            .get("confirmations")
-            .and_then(|x| x.as_i64())
-            .unwrap_or(1);
-        if conf == 0 {
-            note_mempool(fed, &rec, txid, zat);
-            continue;
-        }
-        ingest_observed(fed, Rail::ZecIronwood, zat, raw, rec)?;
-    }
-    Ok(())
-}
 
 fn note_mempool(fed: &Arc<Mutex<Fed>>, rec: &str, txid: &str, zat: u128) {
     let mut f = fed.lock().unwrap();
@@ -1118,126 +1056,7 @@ fn note_mempool(fed: &Arc<Mutex<Fed>>, rec: &str, txid: &str, zat: u128) {
     );
 }
 
-fn recipient_for_zec_ua(fed: &Arc<Mutex<Fed>>, ua: &str) -> Option<String> {
-    let ua = ua.trim();
-    if !ua.starts_with("u1") {
-        return None;
-    }
-    let f = fed.lock().unwrap();
-    f.pending
-        .values()
-        .find(|p| p.zec_ua.as_deref() == Some(ua))
-        .map(|p| p.terp.clone())
-}
 
-fn ingest_zec_blob(fed: &Arc<Mutex<Fed>>, blob: &[u8]) -> Result<(), String> {
-    let s = String::from_utf8_lossy(blob);
-    if let Ok(v) = serde_json::from_slice::<serde_json::Value>(blob) {
-        ingest_zec_json(fed, &v)?;
-        if v.is_array() {
-            ingest_zec_json(fed, &serde_json::json!({"result": v}))?;
-        }
-    }
-    // list-tx text: a 64-hex txid line, then "Unmined" or "Mined:", then "Memo:".
-    let mut last_txid: Option<String> = None;
-    let mut unmined = false;
-    // ZIP-321 memo field in text: memo=<b64url> or hex memo then terp1
-    for line in s.lines() {
-        let trim = line.trim();
-        if trim.len() == 64 && trim.chars().all(|c| c.is_ascii_hexdigit()) {
-            last_txid = Some(trim.to_string());
-            unmined = false;
-        }
-        if trim.contains("Unmined") {
-            unmined = true;
-        }
-        if trim.starts_with("Mined:") {
-            unmined = false;
-        }
-        if let Some(rest) = trim.strip_prefix("To:") {
-            let ua = rest.trim();
-            if let Some(rec) = recipient_for_zec_ua(fed, ua) {
-                let txid = last_txid
-                    .clone()
-                    .unwrap_or_else(|| hex::encode(blake3::hash(ua.as_bytes()).as_bytes()));
-                let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
-                let zat = zec_paid_fallback(fed, &rec);
-                match dregg::zec_notes::list_tx_credit(true, unmined) {
-                    dregg::zec_notes::ListTxCredit::Mempool => note_mempool(fed, &rec, &txid, zat),
-                    dregg::zec_notes::ListTxCredit::Mint => {
-                        ingest_observed(fed, Rail::ZecIronwood, zat, raw, rec.clone())?;
-                    }
-                    dregg::zec_notes::ListTxCredit::Skip => {}
-                }
-            }
-        }
-        let memo_text = if let Some(m) = line.split("memo=").nth(1) {
-            Some(
-                m.split(['&', ' ', '"', ','])
-                    .next()
-                    .unwrap_or("")
-                    .to_string(),
-            )
-        } else if let Some(rest) = trim.strip_prefix("Memo:") {
-            Some(rest.trim().to_string())
-        } else {
-            None
-        };
-        if let Some(m) = memo_text {
-            let m = m.split(['&', ' ', '"', ',']).next().unwrap_or("");
-            if let Some(rec) = {
-                let f = fed.lock().unwrap();
-                dregg::store::dest_for_zec_watch(&f.pending, &m, m.as_bytes())
-            }
-            .or_else(|| resolve_dest(fed, m.as_bytes()))
-            {
-                let txid = last_txid
-                    .clone()
-                    .or_else(|| extract_txid(line))
-                    .unwrap_or_else(|| hex::encode(blake3::hash(line.as_bytes()).as_bytes()));
-                let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
-                let zat = parse_zec_paid_zat(&serde_json::json!({}), Some(line))
-                    .unwrap_or_else(|| zec_paid_fallback(fed, &rec));
-                match dregg::zec_notes::list_tx_credit(true, unmined) {
-                    dregg::zec_notes::ListTxCredit::Mempool => note_mempool(fed, &rec, &txid, zat),
-                    dregg::zec_notes::ListTxCredit::Mint => {
-                        ingest_observed(fed, Rail::ZecIronwood, zat, raw, rec)?;
-                    }
-                    dregg::zec_notes::ListTxCredit::Skip => {}
-                }
-            }
-        }
-        // To: and Memo: already applied list_tx_credit. This tail used to mint
-        // any terp1 on the line and ignored Unmined.
-        let handled =
-            trim.starts_with("To:") || trim.starts_with("Memo:") || line.contains("memo=");
-        if !handled {
-            if let Some(rec) = resolve_dest(fed, line.as_bytes()) {
-                let open = {
-                    let f = fed.lock().unwrap();
-                    f.pending.values().any(|p| p.terp == rec)
-                };
-                let txid = last_txid.clone().or_else(|| extract_txid(line));
-                let zat = parse_zec_paid_zat(&serde_json::json!({}), Some(line))
-                    .unwrap_or_else(|| zec_paid_fallback(fed, &rec));
-                match dregg::zec_notes::list_tx_credit(open, unmined) {
-                    dregg::zec_notes::ListTxCredit::Mempool => {
-                        if let Some(txid) = txid {
-                            note_mempool(fed, &rec, &txid, zat);
-                        }
-                    }
-                    dregg::zec_notes::ListTxCredit::Mint => {
-                        let Some(txid) = txid else { continue };
-                        let raw = hex::decode(&txid).unwrap_or_else(|_| txid.as_bytes().to_vec());
-                        ingest_observed(fed, Rail::ZecIronwood, zat, raw, rec)?;
-                    }
-                    dregg::zec_notes::ListTxCredit::Skip => {}
-                }
-            }
-        }
-    }
-    Ok(())
-}
 
 fn urlencoding_decode(s: &str) -> String {
     let mut out = String::new();
@@ -1258,14 +1077,6 @@ fn urlencoding_decode(s: &str) -> String {
     out
 }
 
-fn extract_txid(s: &str) -> Option<String> {
-    for tok in s.split(|c: char| !c.is_ascii_hexdigit()) {
-        if tok.len() == 64 {
-            return Some(tok.to_string());
-        }
-    }
-    None
-}
 
 fn http_json_local(url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
     dregg::httpx::post_json(url, body)
@@ -1452,10 +1263,19 @@ fn ingest_observed(
         let _ = f
             .durable
             .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+        drop(f);
+        try_broadcast_mints(fed);
         return Ok(());
     }
+    let collection = f
+        .pending
+        .values()
+        .find(|p| p.terp == recipient)
+        .map(|p| p.collection.clone())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "svg".into());
     let action = ActionOpening {
-        collection: "svg".into(),
+        collection,
         svg_hash: [0u8; 32],
         recipient: recipient.clone(),
         session: n,
@@ -1482,7 +1302,125 @@ fn ingest_observed(
     let _ = f
         .durable
         .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+    drop(f);
+    try_broadcast_mints(fed);
     Ok(())
+}
+
+fn try_broadcast_mints(fed: &Arc<Mutex<Fed>>) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    let work: Vec<(dregg::cell::PendingMint, String)> = {
+        let f = fed.lock().unwrap();
+        let recip: Vec<(String, [u8; 32])> = f
+            .by_recipient
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        f.cell
+            .pending_mints()
+            .into_iter()
+            .filter_map(|p| {
+                if !p.collection.starts_with("terp1") || !dregg::collections::contains(&p.collection)
+                {
+                    return None;
+                }
+                let rec = recip
+                    .iter()
+                    .find(|(_, n)| *n == p.n)
+                    .map(|(r, _)| r.clone())?;
+                Some((p, rec))
+            })
+            .collect()
+    };
+    for (p, rec) in work {
+        let outcome = if let Some(hash) = p.mint_tx.clone() {
+            dregg::mint_tx::finish_transfer(&p.collection, &rec, &hash, &p.token_ids).map(
+                |(ids, xfer)| dregg::mint_tx::PaidMint {
+                    mint_tx: hash,
+                    token_ids: ids,
+                    transfer_tx: xfer,
+                },
+            )
+        } else {
+            dregg::mint_tx::broadcast_paid_mint(&p.collection, &rec, p.qty)
+        };
+        match outcome {
+            Ok(paid) => settle_paid_mint(fed, &p.n, &rec, &paid),
+            Err(e) => {
+                if let Some((hash, ids)) = partial_mint(&e) {
+                    let mut f = fed.lock().unwrap();
+                    if f.cell.record_chain_mint(&p.n, &hash, &ids).is_ok() {
+                        let _ = f
+                            .durable
+                            .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                    }
+                }
+                eprintln!("svg-mint-fed mint: {e}");
+            }
+        }
+    }
+    BUSY.store(false, Ordering::Release);
+}
+
+fn partial_mint(err: &str) -> Option<(String, Vec<String>)> {
+    let rest = err.strip_prefix("minted ")?;
+    let hash = rest.split_whitespace().next()?.to_string();
+    if hash.len() < 8 {
+        return None;
+    }
+    let ids = if let Some(i) = rest.find("ids ") {
+        let after = &rest[i + 4..];
+        let list = after.split(" transfer").next().unwrap_or("");
+        list.split(',')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect()
+    } else {
+        Vec::new()
+    };
+    Some((hash, ids))
+}
+
+fn settle_paid_mint(fed: &Arc<Mutex<Fed>>, n: &[u8; 32], recipient: &str, paid: &dregg::mint_tx::PaidMint) {
+    let mut f = fed.lock().unwrap();
+    if f.cell.phase(n) != Some(Phase::Entitled) {
+        return;
+    }
+    if f.cell
+        .record_chain_mint(n, &paid.mint_tx, &paid.token_ids)
+        .is_err()
+    {
+        return;
+    }
+    let token_id = paid
+        .token_ids
+        .first()
+        .cloned()
+        .unwrap_or_else(|| paid.mint_tx.clone());
+    let ck = Checkpoint::new(f.epoch, f.cell.cell_root(), *n, "mint");
+    match f.cell.apply(Turn::MintSettled {
+        n_deposit: *n,
+        token_id,
+        terp_tx: paid.transfer_tx.clone(),
+        receipt: ck.digest,
+    }) {
+        Ok(_) => {
+            f.sessions
+                .advance(recipient, "settled", &paid.mint_tx, 0, &paid.transfer_tx);
+            let _ = f
+                .durable
+                .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+            eprintln!(
+                "svg-mint-fed minted {} transfer {}",
+                paid.mint_tx, paid.transfer_tx
+            );
+        }
+        Err(e) => eprintln!("svg-mint-fed settle after mint: {e}"),
+    }
 }
 
 fn parse_sigs(v: &serde_json::Value) -> Vec<OracleSig> {
@@ -2121,6 +2059,7 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 "ok": st.checkout_ready,
                 "service": "dregg-svg",
                 "pay": st.checkout_ready,
+                "runtime_minter": dregg::mint_tx::address_if_present().unwrap_or_default(),
             });
             if let serde_json::Value::Object(m) = &mut p {
                 if let serde_json::Value::Object(s) = st.to_json() {
@@ -2210,8 +2149,8 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
         }
         ("GET", "/v1/admin/challenge") => {
             let mut nonce = [0u8; 32];
-            use rand::Rng;
-            rand::rngs::OsRng.fill_bytes(&mut nonce);
+            use rand::RngCore;
+            rand::rng().fill_bytes(&mut nonce);
             let challenge = hex::encode(nonce);
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -2563,7 +2502,12 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             } else {
                 let qty_raw = p.split("qty=").nth(1).and_then(|s| s.split('&').next());
                 let qty = checkout::parse_qty(qty_raw);
-                match issue_pay_target(&fed, &rec, qty) {
+                let col = p
+                    .split("collection=")
+                    .nth(1)
+                    .and_then(|s| s.split('&').next())
+                    .map(|s| urlencoding_decode(s));
+                match issue_pay_target(&fed, &rec, qty, col.as_deref()) {
                     Ok(v) => (200, v),
                     Err(e) if e.starts_with("checkout closed") => (
                         503,

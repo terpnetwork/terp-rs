@@ -818,7 +818,7 @@ mod tests {
                 )?;
 
                 // Use a random scalar for rivk
-                let rivk = pallas::Scalar::random(&mut rand::rng());
+                let rivk = pallas::Scalar::random(&mut rand010::rng());
                 let rivk_gadget = ScalarFixed::new(
                     ecc_chip.clone(),
                     layouter.namespace(|| "rivk"),

@@ -2,27 +2,27 @@
 # cargo-vet imports lock
 
 [[unpublished.cosmwasm-core]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cosmwasm-crypto]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cosmwasm-derive]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cosmwasm-schema]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cosmwasm-schema-derive]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cosmwasm-std]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cw-address-like]]
@@ -38,11 +38,11 @@ version = "3.0.1"
 audited_as = "0.6.0"
 
 [[unpublished.cw-schema]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[unpublished.cw-schema-derive]]
-version = "4.0.0-zk"
+version = "4.1.0"
 audited_as = "3.1.0-rc.1"
 
 [[publisher.bumpalo]]

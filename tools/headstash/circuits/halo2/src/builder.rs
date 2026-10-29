@@ -4,7 +4,7 @@ use core::fmt;
 
 use ff::Field;
 use pasta_curves::pallas;
-use rand::Rng;
+use rand010::Rng;
 
 use crate::address::RecpAddr;
 use crate::keys::EligibleSk;
@@ -1177,7 +1177,7 @@ pub struct SigningMetadata {
 //     use core::fmt::Debug;
 
 //     use incrementalmerkletree::{frontier::Frontier, Hashable};
-//     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
+//     use rand010::{rngs::StdRng, CryptoRng, SeedableRng};
 
 //     use proptest::collection::vec;
 //     use proptest::prelude::*;
@@ -1312,7 +1312,7 @@ pub struct SigningMetadata {
 
 // #[cfg(test)]
 // mod tests {
-//     use rand::rngs::OsRng;
+//     use rand010::rngs::OsRng;
 
 //     use super::Builder;
 //     use crate::{

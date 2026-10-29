@@ -1868,6 +1868,125 @@ def _queue_registry_patch(spec, name, lookup, crates, ws_toml, defaults, seen_pa
             queue.append((dest, False, False))
 
 
+def committed_package_version(local_rel: str):
+    """Version committed at a matrix ``local`` path.
+
+    A member that sets ``version.workspace = true`` reports the workspace
+    package version. That is the number consumers must require.
+    """
+    if not local_rel or local_rel == "N/A":
+        return None
+    cargo = REPO_ROOT / local_rel / "Cargo.toml"
+    if not cargo.is_file():
+        return None
+    try:
+        data, _ = read_cargo_toml(cargo)
+    except Exception:
+        return None
+    version = (data.get("package") or {}).get("version")
+    if isinstance(version, str) and version:
+        return version
+    if not (isinstance(version, dict) and version.get("workspace")):
+        return None
+    root, _ = _workspace_context(cargo.parent)
+    if root is None:
+        return None
+    try:
+        ws, _ = read_cargo_toml(root / "Cargo.toml")
+    except Exception:
+        return None
+    ws_version = ((ws.get("workspace") or {}).get("package") or {}).get("version")
+    if isinstance(ws_version, str) and ws_version:
+        return ws_version
+    return None
+
+
+def _patch_assignment(line: str):
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in stripped:
+        return None
+    name, rhs = stripped.split("=", 1)
+    name = name.strip()
+    if not name or name.startswith("["):
+        return None
+    return name, rhs.strip()
+
+
+_PATCH_PATH = re.compile(r'(?:"path"|path)\s*=\s*"([^"]+)"')
+
+
+def _rebase_patch_rhs(rhs: str, from_dir: Path, parent_dir: Path):
+    """Rewrite a path in a patch entry so it is relative to the parent workspace.
+
+    A git entry is copied unchanged. A path that leaves the monorepo is dropped.
+    """
+    match = _PATCH_PATH.search(rhs)
+    if not match:
+        if "path" in rhs:
+            return None
+        return rhs
+    dest = _inside_repo(from_dir / match.group(1))
+    if dest is None:
+        return None
+    rel = Path(os.path.relpath(dest, parent_dir.resolve())).as_posix()
+    return rhs[: match.start(1)] + rel + rhs[match.end(1) :]
+
+
+def _index_nested_crates_io(owner: Path, parent_dir: Path, indexed, seen_owners):
+    """Remember one workspace's crates.io patches, rebased onto the parent.
+
+    Nothing is written yet. A patch is copied only when this resolve actually
+    requires that crate. Cargo ignores the nested table, so the parent has to
+    carry the entry that satisfies the requirement.
+    """
+    owner = owner.resolve()
+    if owner in seen_owners or owner == parent_dir.resolve():
+        seen_owners.add(owner)
+        return
+    seen_owners.add(owner)
+    cargo = owner / "Cargo.toml"
+    if not cargo.is_file():
+        return
+    try:
+        lines = cargo.read_text().split("\n")
+    except Exception:
+        return
+    start, end = find_section(lines, "[patch.crates-io]")
+    if start is None:
+        return
+    for line in lines[start + 1 : end]:
+        parsed = _patch_assignment(line)
+        if parsed is None:
+            continue
+        name, rhs = parsed
+        if name in indexed:
+            continue
+        rebased = _rebase_patch_rhs(rhs, owner, parent_dir)
+        if rebased is None:
+            continue
+        indexed[name] = rebased
+
+
+def _apply_indexed_patch(name, spec, indexed, seen_patch, to_add, queue, parent_dir):
+    """Use a nested patch when this dependency is a crates.io requirement."""
+    if spec.get("path") or spec.get("git") or not spec.get("version"):
+        return
+    pkg = spec.get("package") or name
+    for candidate in (pkg, name):
+        rhs = indexed.get(candidate)
+        if not rhs or candidate in seen_patch:
+            continue
+        to_add.append(f"{candidate} = {rhs}")
+        seen_patch.add(candidate)
+        path_match = _PATCH_PATH.search(rhs)
+        if not path_match:
+            return
+        dest = _inside_repo(parent_dir / path_match.group(1))
+        if dest is not None:
+            queue.append((dest, False, False))
+        return
+
+
 def _closure_patches(ws_toml, crates, defaults):
     """Local patches for registry edges reached through this workspace's path graph.
 
@@ -1885,6 +2004,8 @@ def _closure_patches(ws_toml, crates, defaults):
     ws_dir = cargo_path.parent.resolve()
     seen = set()
     seen_patch = set()
+    indexed = {}
+    indexed_owners = set()
     urls = set()
     to_add = []
     queue = [(ws_dir, True, True)]
@@ -1920,6 +2041,8 @@ def _closure_patches(ws_toml, crates, defaults):
             continue
         urls.update(git_dependency_urls(manifest_text))
         _ws_root, ws_deps = _workspace_context(pkg_dir)
+        owner = _ws_root if _ws_root is not None else pkg_dir
+        _index_nested_crates_io(owner, ws_dir, indexed, indexed_owners)
 
         def consider(table, force_workspace):
             if not isinstance(table, dict):
@@ -1940,6 +2063,9 @@ def _closure_patches(ws_toml, crates, defaults):
                 _queue_registry_patch(
                     spec, dep_name, lookup, crates, ws_toml, defaults,
                     seen_patch, to_add, queue, pkg_dir,
+                )
+                _apply_indexed_patch(
+                    dep_name, spec, indexed, seen_patch, to_add, queue, ws_dir,
                 )
 
         for section in ("dependencies", "build-dependencies"):
@@ -2134,11 +2260,14 @@ def cmd_switch(args):
             # once the path closure no longer names the URL.
 
     if is_patch and patch_mode == "local":
+        # align checks the committed checkout, then lifts every nested patch
+        # this resolve requires. A --crate filter must not drop cw1 or the Wasmer pin.
+        closure_filter = None if getattr(args, "lift_all", False) else crate_filter
         for proj in projects:
             ws_toml = proj.rel_path + "/Cargo.toml"
             if not (REPO_ROOT / ws_toml).exists():
                 continue
-            unify_local_patches(ws_toml, crates, defaults, args.dry_run, crate_filter)
+            unify_local_patches(ws_toml, crates, defaults, args.dry_run, closure_filter)
 
     if target == "patches" and not args.dry_run:
         _guard_non_patch_sections(snapshots)

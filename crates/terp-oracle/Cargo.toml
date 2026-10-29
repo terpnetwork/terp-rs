@@ -15,8 +15,8 @@ terp-oracle-derive = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-cw-storage-plus = { workspace = true }
 cw-multi-test = { workspace = true }
 cw-oracle-aggregator = { workspace = true, features = ["library"] }
 cw-oracle-registry = { workspace = true, features = ["library"] }
 cw-oracle-twap-probe = { workspace = true, features = ["library"] }
+cw-storage-plus = { workspace = true }
