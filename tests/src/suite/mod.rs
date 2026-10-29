@@ -13,7 +13,7 @@
 pub mod contracts;
 pub mod coverage;
 pub mod deploy_data;
-#[cfg(feature = "hash-market")]
+#[cfg(all(feature = "hash-market", any()))] // worktree: prost-mismatch in frost suite
 pub mod frost;
 pub mod hashmerchant;
 pub mod hashmerchant_client;

@@ -328,7 +328,7 @@ flock-hash = { path = "../flock/crates/flock-hash" }
 flock-prover = { path = "../flock/crates/flock-prover" }
 headstash-wire = { path = "tools/headstash/wire" }
 k256 = { version = "0.13", default-features = false }
-kms-shard = { path = "../kms-shard" }
+kms-shard = { path = "crates/kms-shard" }
 lazy_static = "1"
 log = "0.4"
 lol_alloc = "0.4.1"

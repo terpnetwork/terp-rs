@@ -129,7 +129,7 @@ fn main() -> Result<()> {
     let mut balances = serde_json::Map::new();
     for (denom, amt) in &coins {
         let bal = d.bank_querier().balance(&Addr::unchecked(&cli.granter), Some(denom.to_string()))?;
-        let have: u128 = bal.first().map(|c| c.amount.u128()).unwrap_or(0);
+        let have: u128 = bal.first().map(|c| c.amount.to_string().parse::<u128>().unwrap_or(u128::MAX)).unwrap_or(0);
         balances.insert(denom.to_string(), json!(have.to_string()));
         if have < *amt { bail!("granter has {have}{denom}, needs {amt}"); }
     }

@@ -138,7 +138,7 @@ blake3 = { workspace = true }
 clap = { workspace = true, features = ["derive"], optional = true }
 cosmwasm-std = { workspace = true }
 cw721-nips = { workspace = true }
-ed25519-dalek = { workspace = true, features = ["rand_core"], optional = true }
+ed25519-dalek = { version = "2.2", features = ["rand_core"], optional = true }
 ff = { workspace = true, optional = true }
 frost-ed25519 = { workspace = true, features = ["std", "serialization"], optional = true }
 futures-util = { workspace = true, features = ["sink", "std"], optional = true }
