@@ -20,8 +20,8 @@
   }
  ],
  "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
- "metadata": "{{PROPOSAL_METADATA_URI}}",
+ "metadata": "{{PROPOSAL_METADATA_URI_CIRCUIT}}",
  "title": "Headstash 2026 (1/2): store the note circuit",
- "summary": "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov. Forum: {{FORUM_URL}}",
+ "summary": "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov. Forum: https://discord.terp.network",
  "expedited": false
 }

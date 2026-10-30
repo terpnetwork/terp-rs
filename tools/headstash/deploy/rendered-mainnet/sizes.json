@@ -56,11 +56,11 @@
   "wasm_gzip_bytes": 410975,
   "files": {
     "11-circuit-proposal.inner.json": {
-      "tx_json_bytes": 180680,
+      "tx_json_bytes": 180703,
       "signer": null
     },
     "12-circuit-exec.unsigned.json": {
-      "tx_json_bytes": 181149,
+      "tx_json_bytes": 181172,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
@@ -75,9 +75,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "14-instantiate-proposal.unsigned.json": {
-      "tx_json_bytes": 6182,
+      "tx_json_bytes": 6206,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 6070,
+      "amino_sign_doc_bytes": 6094,
       "zigner_ok": true
     },
     "15-session-revoke.unsigned.json": {
@@ -185,10 +185,10 @@
     "FE_STORE_GAS",
     "FE_UPLOADER_ADDR",
     "FE_UPLOAD_EXPIRATION",
-    "FORUM_URL",
     "NOTE_ZK_ID",
     "PROPOSAL_ID_CIRCUIT",
-    "PROPOSAL_METADATA_URI",
+    "PROPOSAL_METADATA_URI_CIRCUIT",
+    "PROPOSAL_METADATA_URI_CONTRACT",
     "STORE_FEE_UTHIOL",
     "STORE_GAS"
   ]

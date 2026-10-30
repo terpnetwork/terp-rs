@@ -31,11 +31,12 @@ import gov_session as gs
 GOV = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
 INIT_DEPOSIT, FULL_DEPOSIT = 5_000_000_000, 10_000_000_000
 ZIGNER_MAX = 65536
+MAX_METADATA_LEN = 255  # x/gov MaxMetadataLen, SDK v0.55 govtypes.DefaultConfig (terp-core v6.4.0 app/keepers)
 SENTINELS = {  # values that pass render.py checks, swapped back to {{NAME}} after rendering
     "PROPOSAL_METADATA_URI": "https://placeholder.invalid/PROPOSAL_METADATA_URI",
     "FORUM_URL": "https://placeholder.invalid/FORUM_URL",
 }
-ALLOWED_LEFT = {"PROPOSAL_METADATA_URI", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
+ALLOWED_LEFT = {"PROPOSAL_METADATA_URI", "PROPOSAL_METADATA_URI_CIRCUIT", "PROPOSAL_METADATA_URI_CONTRACT", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
                 "PROPOSAL_ID_CIRCUIT", "PROPOSAL_ID_CONTRACT", "CLAIMER_ADDR", "FE_CODE_ID", "FE_STORE_GAS", "FE_STORE_FEE_UTHIOL",
                 "FE_UPLOADER_ADDR", "FE_UPLOAD_EXPIRATION", "EXEC_FEE_UTHIOL", "EXEC_GAS", "STORE_GAS", "STORE_FEE_UTHIOL", "CLAIM_FEE_UTHIOL", "SEQ"}
 
@@ -150,12 +151,21 @@ def main():
     for f in os.listdir(rdir):
         p = os.path.join(rdir, f); raw[f] = open(p).read(); open(p, "w").write(unsentinel(raw[f]))
     rd = lambda f: raw[f]  # parse sentinel text; placeholders are restored when files are written
-    meta_uri = dec["PROPOSAL_METADATA_URI"] if not str(dec["PROPOSAL_METADATA_URI"]).startswith("{{") else "{{PROPOSAL_METADATA_URI}}"
+    # one x/gov v1 metadata file per proposal; the on-chain field holds only the URI (MaxMetadataLen 255)
+    def meta(k):
+        v = str(dec.get(k, "{{%s}}" % k))
+        if v.startswith("{{"): return "{{%s}}" % k
+        if len(v.encode()) > MAX_METADATA_LEN or not re.fullmatch(r"(ipfs://|https://)\S+", v):
+            sys.exit("FATAL %s must be an ipfs:// or https:// URI of at most %d bytes: %r" % (k, MAX_METADATA_LEN, v))
+        return v
+    meta_circ, meta_inst = meta("PROPOSAL_METADATA_URI_CIRCUIT"), meta("PROPOSAL_METADATA_URI_CONTRACT")
+    forum = dec.get("FORUM_URL", "")
+    forum = forum if re.fullmatch(r"https://\S+", str(forum)) else "{{FORUM_URL}}"
     sub = json.loads(rd("submit-proposal.json"))
     circuit_msg = [m for m in sub["messages"] if m["@type"] == "/cosmwasm.wasm.v1.MsgStoreFullCircuit"][0]
     funding = dec["FUNDING_AMOUNT_UTERP"]
 
-    def submit(msgs, title, summary):
+    def submit(msgs, title, summary, meta_uri):
         return {"@type": "/cosmos.gov.v1.MsgSubmitProposal", "messages": msgs,
                 "initial_deposit": [{"denom": "uterp", "amount": str(INIT_DEPOSIT)}], "proposer": proposer,
                 "metadata": meta_uri, "title": title, "summary": summary, "expedited": False}
@@ -163,8 +173,7 @@ def main():
     files = {}
     # 11/12 circuit proposal via the ephemeral session key
     p_circ = submit([circuit_msg], "Headstash 2026 (1/2): store the note circuit",
-                    "Stores the Headstash vk_id 3 note circuit (vk hash %s) with gov as sender. Forum: {{FORUM_URL}}" % circuit_msg.get("vk_body", "")[:0] + dec.get("_vk", ""))
-    p_circ["summary"] = "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov. Forum: {{FORUM_URL}}"
+                    "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov. Forum: " + forum, meta_circ)
     files["11-circuit-proposal.inner.json"] = (p_circ, None)
     files["12-circuit-exec.unsigned.json"] = (gs.exec_tx(eph, proposer, [p_circ], "{{EXEC_GAS}}", "{{EXEC_FEE_UTHIOL}}", "uthiol"), ("eph", None, None))
     # 13 wasm store (normal tx, sender = granter) via the session: > 64 KiB so Zigner cannot sign it directly
@@ -190,7 +199,7 @@ def main():
             {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
              "msg": {"bind_note_circuit": {"zk_id": "{{NOTE_ZK_ID}}"}}, "funds": []}]
     p_inst = submit(msgs, "Headstash 2026 (2/2): instantiate and fund cw-headstash",
-                    "Instantiates cw-headstash code {{CODE_ID}} (sha256 %s) at %s with gov as admin and owner, funds it with %s uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 %s) at %s (gov admin and owner) and publishes page manifest v1 (sha256 %s, activates when every chunk is uploaded). Forum: {{FORUM_URL}}" % (wsha, contract, funding, fsha, fe_addr, hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest()))
+                    "Instantiates cw-headstash code {{CODE_ID}} (sha256 %s) at %s with gov as admin and owner, funds it with %s uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 %s) at %s (gov admin and owner) and publishes page manifest v1 (sha256 %s, activates when every chunk is uploaded). Forum: %s" % (wsha, contract, funding, fsha, fe_addr, hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), forum), meta_inst)
     files["14-instantiate-proposal.unsigned.json"] = (gs._tx([p_inst], 3000000, 75000, "uthiol", "", "headstash-gov:instantiate"), ("proposer", p_acct, p_seq + 1))
     files["15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
     files["16-feegrant-terp1fx.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", "granter": fx, "grantee": "{{CLAIMER_ADDR}}",
