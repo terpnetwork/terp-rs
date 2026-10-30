@@ -1,8 +1,8 @@
 {
-  "contract_addr_predicted": "terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4",
+  "contract_addr_predicted": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
   "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
-  "wasm_sha256": "1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5",
-  "wasm_bytes": 1131133,
+  "wasm_sha256": "76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de",
+  "wasm_bytes": 1133358,
   "frontend": {
     "addr_predicted": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
     "salt_hex": "39881335f9a8242299ba3fd20d3069d1b7b813b2df2ac97a587c143857eaba27",
@@ -53,7 +53,7 @@
       }
     ]
   },
-  "wasm_gzip_bytes": 411864,
+  "wasm_gzip_bytes": 410975,
   "files": {
     "11-circuit-proposal.inner.json": {
       "tx_json_bytes": 180680,
@@ -65,7 +65,7 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "13-store-wasm.unsigned.json": {
-      "tx_json_bytes": 549756,
+      "tx_json_bytes": 548572,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
@@ -75,9 +75,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "14-instantiate-proposal.unsigned.json": {
-      "tx_json_bytes": 6663,
+      "tx_json_bytes": 6182,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 6551,
+      "amino_sign_doc_bytes": 6070,
       "zigner_ok": true
     },
     "15-session-revoke.unsigned.json": {

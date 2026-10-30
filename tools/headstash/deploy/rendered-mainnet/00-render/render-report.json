@@ -12,7 +12,7 @@
   "notes_total_uterp": 66456669000000,
   "notes_remainder_uterp": 9632607378,
   "unique_amount_identities": null,
-  "ctx_hex": "9dac3746ea71a2fa920bd1d2cfb39fd7c864d9402d194a877b0e53380b2a2420",
+  "ctx_hex": "0635d549aafaa8873a980805397a9e3a80312d184338f6a6b296054a6032421b",
   "ctx_derivation": "direct_ctx (terp-hs-direct-ctx-v1)",
   "trusted": [
     "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
@@ -51,8 +51,7 @@
     "OPERATORS",
     "PROPOSER",
     "SOURCE_COMMIT",
-    "WASM_ADMIN",
-    "WAVS_POO_JSON"
+    "WASM_ADMIN"
   ],
   "required_later": [
     "CODE_ID",

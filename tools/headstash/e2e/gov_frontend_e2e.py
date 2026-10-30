@@ -66,10 +66,16 @@ def publish(contract):
     return fe
 
 def wavs_negatives(contract):
-    """The WAVS set is stored only. No claim/anchor/execute/migrate path reads it, and the
-    smart-account AuthSudoMsg handlers are not wired to the sudo entry point, so the contract cannot
-    be attached as an authenticator (which would reach on_auth_removed's state wipe)."""
-    if os.environ.get("WAVS_JSON"):
+    """WAVS is disabled (wavs = null): the contract reports it, stores no operator set, and has
+    no execute path to set one. The smart-account authenticator handlers were removed and the
+    sudo entry point only decodes HashMerchantSudoMsg, so attaching the contract as an
+    authenticator is refused on chain."""
+    if os.environ.get("WAVS_DISABLED") == "1":
+        st = smart(contract, {"wavs_status": {}})
+        rd.step("wavs_status_disabled", st.get("enabled") is False and st.get("operator_set") is None, json.dumps(st))
+        cfg_has = R.get("wavs_aggregate_key")
+        rd.step("wavs_instantiated_with_null", cfg_has is None, "instantiate msg wavs = null")
+    elif os.environ.get("WAVS_JSON"):
         dec = json.load(open(os.environ["WAVS_JSON"]))["msg"]["aggregate_key"]
         rd.step("wavs_set_is_rendered_mainnet_set", R.get("wavs_aggregate_key") == dec, "aggregate_key %s..." % dec[:16])
     init = json.dumps({"contract": contract, "params": base64.b64encode(b"{}").decode()}).encode()
@@ -77,6 +83,7 @@ def wavs_negatives(contract):
     rd.neg("wavs_contract_as_smartaccount_authenticator_refused", tx("owner", 3000000, "smartaccount", "add-authenticator", "CosmwasmAuthenticatorV1", data),
            "OnAuthenticatorAdded", "hash_merchant")  # chain-side refusal, not a CLI error
     rd.neg("wavs_unknown_execute_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"wavs_rotate": {"nonce": 1}})))
+    rd.neg("wavs_set_operator_execute_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"set_wavs": {"wavs": {}}})))
 
 bf.publish = publish
 if __name__ == "__main__":

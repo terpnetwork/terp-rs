@@ -4,21 +4,8 @@
   "CONTRACT_ADDR": "{{fill after instantiate}}",
   "CONTRACT_OWNER": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
   "WASM_ADMIN": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-  "WAVS_POO_JSON": {
-    "poos": [
-      {
-        "key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
-        "poo": "917d9787cb2193edba18ebb36f7cf4bbbe1d9bd5b1eb45eb3083cd43019709f552f415bd0bc90007033d35a1579637ac01747e083f02b84bc2ef2f153d50ecdf5f99b81da3a2c26d81643e80c16b6bd5e6a15ec9c922af2922948a1f482bb95e"
-      }
-    ],
-    "msg": {
-      "aggregate_key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
-      "threshold": 1,
-      "total_operators": 1,
-      "nonce": 0
-    }
-  },
-  "_wavs_doc": "Inert 1-of-1 BLS set. Contract has no WAVS operator address field (keys only) and no reachable entry point reads it: the AuthSudoMsg handlers are not wired to the sudo entry point (sudo only parses HashMerchantSudoMsg), and no execute/migrate/claim/anchor path reads cfg.w. Key generated in-process by examples/print_wavs (OsRng), never written; only pubkey + PoP kept. Secret is gone, so nobody can ever sign as this set.",
+  "WAVS_POO_JSON": null,
+  "_wavs_doc": "WAVS disabled: null. The contract stores nothing, adds no checks, and every WAVS read fails closed (WavsStatus query reports enabled=false). No execute path can set it; only gov, as wasm admin, via migrate. Spec Appendix W.",
   "CUTOFF_HEIGHT": 44444444,
   "_cutoff_doc": "auto = latest mainnet height + 2 years at the last-10k-block mean, computed at render time (2026-10-27 example: 39129426). Claims and registration close after it; then the sweep burns what is left.",
   "ANCHOR_START_HEIGHT": 1,
@@ -33,11 +20,11 @@
   "DEPOSIT_UTERP": "5000000000",
   "PROPOSER": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
   "CODE_ID": "{{fill after store code}}",
-  "WASM_SHA256": "1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5",
+  "WASM_SHA256": "76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de",
   "FE_WASM_SHA256": "fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1",
   "FE_MAX_CHUNK_BYTES": 131072,
   "_frontend_doc": "cw-headstash-frontend (opt-fe.sh). Gov is admin and owner; the proposal instantiates it at a predicted instantiate2 address (salt sha256('headstash-frontend:'+CAMPAIGN_LABEL)), publishes the page manifest (activate) and sets frontend_contract in the cw-headstash instantiate. Chunks (<=128 KiB, content-addressed) are uploaded by a throwaway key fee-granted by OPERATORS[0]; the last chunk seals the version and makes it current. Page = frontend/app.html, app.js, crypto.js + the scripts/build-browser-prover.sh prover. loader.html is NOT published.",
-  "SOURCE_COMMIT": "9b804aba8bad5fdd69e714d83cf75f348a4905db",
+  "SOURCE_COMMIT": "ce1ae25b11a0ea1391046a78a1e35addb6c6c2e9",
   "PROPOSAL_METADATA_URI": "{{PROPOSAL_METADATA_URI}}",
   "FORUM_URL": "{{FORUM_URL}}",
   "NOTE_ZK_ID": "{{fill from the proposal store_full_circuit event zk_id}}",

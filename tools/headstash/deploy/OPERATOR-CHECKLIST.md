@@ -9,7 +9,7 @@ Roles:
 - **U**: a throwaway uploader key for the frontend chunks (direct mode, not Zigner). Its fees come from a capped FX feegrant (doc 18) that is revoked afterwards (doc 20). It holds no funds.
 - **GOV**: the gov module, terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq. It is the wasm admin and the contract owner.
 
-Wasm: `cw_headstash.wasm`, sha256 1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5 (1,131,133 B, 411,864 B gzipped). The predicted address is terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4.
+Wasm: `cw_headstash.wasm`, sha256 76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de (1,133,358 B, 410,993 B gzip -9). The predicted address is terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn.
 
 Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1 (357,352 B). The predicted address is terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
 
@@ -22,7 +22,7 @@ Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405
 ## Before you start
 1. Fill the placeholders that are still open, then re-run `render_gov_session.py` (it runs validate_rendered_proposal):
    - **PROPOSAL_METADATA_URI** and **FORUM_URL** are still unknown.
-   - **WAVS_POO_JSON** (filled): required by the 1305e4 contract (`InstantiateMsg.wavs` is non-optional; instantiate runs `wavs.verify()` and a BLS12-381 PoP pairing check). The field holds BLS public keys only. There is no operator address, so the gov module or a burn address cannot go in it. The committed value is an inert 1-of-1 set from `examples/print_wavs`: the secret existed only in that process's memory, was never written, and is gone. No claim, registration, anchor, execute or migrate path reads the stored set, and the smart-account AuthSudoMsg handlers are not reachable from the `sudo` entry point. The dry run checks this (`neg_wavs_*`).
+   - **WAVS_POO_JSON** = `null`: WAVS is disabled in the 76c737 contract (`InstantiateMsg.wavs: Option`). Nothing is stored and no WAVS check runs; every WAVS read fails closed, and the `wavs_status` query returns `enabled: false`. No execute path can set it later. Only gov, as wasm admin, can change it, by a migrate to new code. The smart-account authenticator handlers were removed and `sudo` decodes only `HashMerchantSudoMsg`, so attaching the contract as an authenticator is refused on chain. The dry run checks this (`wavs_status_disabled`, `neg_wavs_*`). Spec Appendix W.
    - **ANCHOR_START_HEIGHT** (filled, = 1): required (`registration.anchor_start_height` is a non-optional u64). 1 means the first anchor can be accepted immediately after the campaign is opened.
    - These are filled at runtime: EXEC_GAS/EXEC_FEE_UTHIOL, STORE_GAS/STORE_FEE_UTHIOL, CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_CIRCUIT, CLAIMER_ADDR and CLAIM_FEE_UTHIOL, FE_CODE_ID, FE_STORE_GAS/FE_STORE_FEE_UTHIOL, FE_UPLOADER_ADDR and FE_UPLOAD_EXPIRATION.
 2. Read the acct and seq of P and FX again right before each signature.
@@ -63,6 +63,6 @@ Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405
 
 ## Not verified
 - Zigner amino rendering of the gov v1 and wasm msg types in steps 14 and 17 on a real device.
-- A reproducible build of the 1305e4 and fe096bf1 wasms against SOURCE_COMMIT. The prover is reproducible (2774af96, via scripts/build-browser-prover.sh).
+- A reproducible build of the 76c737 and fe096bf1 wasms against SOURCE_COMMIT. The prover is reproducible (2774af96, via scripts/build-browser-prover.sh).
 - The real upload gas on mainnet. Doc 18 carries 1 THIOL of headroom over the estimate.
 - Whether the broadcast node's mempool limits match groot-wan's.

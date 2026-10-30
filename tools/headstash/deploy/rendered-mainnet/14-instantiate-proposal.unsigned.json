@@ -121,20 +121,7 @@
          "raw": "uterp"
         }
        },
-       "wavs": {
-        "poos": [
-         {
-          "key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
-          "poo": "917d9787cb2193edba18ebb36f7cf4bbbe1d9bd5b1eb45eb3083cd43019709f552f415bd0bc90007033d35a1579637ac01747e083f02b84bc2ef2f153d50ecdf5f99b81da3a2c26d81643e80c16b6bd5e6a15ec9c922af2922948a1f482bb95e"
-         }
-        ],
-        "msg": {
-         "aggregate_key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
-         "threshold": 1,
-         "total_operators": 1,
-         "nonce": 0
-        }
-       },
+       "wavs": null,
        "registration_hook": null,
        "registration_hook_gas_limit": null,
        "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
@@ -152,11 +139,11 @@
      {
       "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
       "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4",
+      "contract": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
       "msg": {
        "set_epoch_campaign": {
         "campaign": {
-         "ctx": "naw3RupxovqSC9HSz7Of18hk2UAtGUqHew5TOAsqJCA=",
+         "ctx": "BjXVSar6qIc6mAgFOXqeOoAxLRhDOPamspYFSmAyQhs=",
          "backend": "halo2",
          "cutoff_height": 44444444,
          "bech32_hrp": "terp",
@@ -239,7 +226,7 @@
      {
       "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
       "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4",
+      "contract": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
       "msg": {
        "bind_note_circuit": {
         "zk_id": "{{NOTE_ZK_ID}}"
@@ -257,7 +244,7 @@
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
     "metadata": "{{PROPOSAL_METADATA_URI}}",
     "title": "Headstash 2026 (2/2): instantiate and fund cw-headstash",
-    "summary": "Instantiates cw-headstash code {{CODE_ID}} (sha256 1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5) at terp1yh7hg3xqmhyqn7t45g2zfqfkma42rhhhj5rwpv37gu5sz6pzl72sx4nhr4 with gov as admin and owner, funds it with 66456669000000 uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (gov admin and owner) and publishes page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a, activates when every chunk is uploaded). Forum: {{FORUM_URL}}",
+    "summary": "Instantiates cw-headstash code {{CODE_ID}} (sha256 76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de) at terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn with gov as admin and owner, funds it with 66456669000000 uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (gov admin and owner) and publishes page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a, activates when every chunk is uploaded). Forum: {{FORUM_URL}}",
     "expedited": false
    }
   ],

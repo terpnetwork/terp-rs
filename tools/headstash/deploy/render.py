@@ -71,7 +71,6 @@ SOURCES = {
 # key -> kind. decision = user must choose; later = known after an on-chain step.
 DECISION = {
     "CHAIN_ID": "str", "CAMPAIGN_LABEL": "str", "CONTRACT_OWNER": "addr", "WASM_ADMIN": "addr",
-    "WAVS_POO_JSON": "json",
     "CUTOFF_HEIGHT": "cutoff", "ANCHOR_START_HEIGHT": "int", "ANCHOR_INTERVAL": "interval",
     "MIN_ANONYMITY_SET": "int", "MAX_ROWS": "int", "BURN_UNCLAIMED": "burn",
     "FUNDING_AMOUNT_UTERP": "int", "DEPOSIT_UTERP": "int", "PROPOSER": "addr",
@@ -302,6 +301,17 @@ def main():
     hook_gas = dec.get("REGISTRATION_HOOK_GAS_LIMIT")
     if hook_gas is not None and not (hook and isinstance(hook_gas, int) and 0 < hook_gas <= 5_000_000):
         sys.exit("FATAL REGISTRATION_HOOK_GAS_LIMIT: integer 1..5000000 and only with REGISTRATION_HOOK")
+    # WAVS_POO_JSON: explicit choice. null = WAVS disabled in the contract (nothing stored, every
+    # WAVS read fails closed; only gov via the wasm admin migrate can change it). An object = the
+    # BLS operator-set PoP, which the contract verifies at instantiate.
+    if "WAVS_POO_JSON" not in dec:
+        sys.exit("FATAL WAVS_POO_JSON: required; set null to disable WAVS or an operator-set PoP object")
+    wavs = dec.pop("WAVS_POO_JSON")
+    if wavs is not None and not isinstance(wavs, dict):
+        sys.exit(f"FATAL WAVS_POO_JSON: must be null (disabled) or a JSON object (operator-set PoP): {wavs!r}")
+    if wavs is not None and not dry and "EXAMPLE" in json.dumps(wavs).upper():
+        sys.exit("FATAL WAVS_POO_JSON: EXAMPLE value in a real render")
+    print("WAVS: " + ("disabled (wavs = null)" if wavs is None else "enabled (operator-set PoP)"), file=sys.stderr)
     dec.pop("SWEEP_RECIPIENT", None)
     need_dec = dict(DECISION, **(LANE_DECISION if lane else {}))
     need_later = dict(LATER, **(LANE_LATER if lane else {}))
@@ -352,6 +362,7 @@ def main():
     v = {k: (json.dumps(x) if isinstance(x, (dict, list, bool)) else str(x)) for k, x in dec.items()
          if k not in ("OPERATORS", "LANE_PATH") and not unfilled(x)}
     v.update({
+        "WAVS_POO_JSON": json.dumps(wavs),
         "ELIGIBILITY_ROOT": root_hex, "ELIGIBILITY_ROOT_B64": b64(bytes.fromhex(root_hex)),
         "ELIGIBILITY_DEPTH": str(depth), "ELIGIBILITY_IDENTITIES": str(len(tree["entries"])),
         "ELIGIBILITY_TOTAL_UTERP": str(total), "DENOM_B64": b64(bytes.fromhex(DENOM_HEX)), "DENOM_HEX": DENOM_HEX,
