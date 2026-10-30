@@ -269,7 +269,10 @@ def main():
         res = rec("store", tx("owner", 250000000, "wasm", "store", WASM))
         code_id = attr(res, "code_id"); R["code_id"] = code_id
         step("store_wasm", res.get("code") == 0 and code_id, "code_id %s wasm %s gas %d" % (code_id, R["wasm_sha256"], gas_used(res)))
-    wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
+    # WAVS_JSON: use a fixed public set (e.g. the rendered mainnet one) instead of a fresh print_wavs set
+    if os.environ.get("WAVS_JSON"): wavs = json.load(open(os.environ["WAVS_JSON"]))
+    else: wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
+    R["wavs_aggregate_key"] = wavs["msg"]["aggregate_key"]
     init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-direct-e2e",
             "token_strategy": {"existing_fungible": {"proof": h2b64(DENOM), "raw": "uterp"}}, "wavs": wavs}
     R["hook"] = {"enabled": HOOK}

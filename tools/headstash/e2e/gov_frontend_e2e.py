@@ -59,10 +59,24 @@ def publish(contract):
             "%d/%d chunk txs, %s, config %s, uploader balance %d" % (n, len(gas), json.dumps(st), json.dumps(cfg), bf.bal(up)))
     res = tx("relayer", 200000, "feegrant", "revoke", relayer, up)
     rd.step("fe_uploader_feegrant_revoked", res.get("code") == 0, res.get("raw_log", "")[:120])
+    wavs_negatives(contract)
     fs = bf.page_files()
     R["page"] = {"frontend": fe, "files": [{"path": f["path"], "raw": len(f["raw"]), "gzip": len(f["stored"]), "sha256": bf.hashlib.sha256(f["raw"]).hexdigest()} for f in fs],
                  "total_gzip": sum(len(f["stored"]) for f in fs), "chunks": len(gas)}
     return fe
+
+def wavs_negatives(contract):
+    """The WAVS set is stored only. No claim/anchor/execute/migrate path reads it, and the
+    smart-account AuthSudoMsg handlers are not wired to the sudo entry point, so the contract cannot
+    be attached as an authenticator (which would reach on_auth_removed's state wipe)."""
+    if os.environ.get("WAVS_JSON"):
+        dec = json.load(open(os.environ["WAVS_JSON"]))["msg"]["aggregate_key"]
+        rd.step("wavs_set_is_rendered_mainnet_set", R.get("wavs_aggregate_key") == dec, "aggregate_key %s..." % dec[:16])
+    init = json.dumps({"contract": contract, "params": base64.b64encode(b"{}").decode()}).encode()
+    data = base64.b64encode(init).decode()  # the CLI base64-decodes [data] into MsgAddAuthenticator.Data
+    rd.neg("wavs_contract_as_smartaccount_authenticator_refused", tx("owner", 3000000, "smartaccount", "add-authenticator", "CosmwasmAuthenticatorV1", data),
+           "OnAuthenticatorAdded", "hash_merchant")  # chain-side refusal, not a CLI error
+    rd.neg("wavs_unknown_execute_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"wavs_rotate": {"nonce": 1}})))
 
 bf.publish = publish
 if __name__ == "__main__":
