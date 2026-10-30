@@ -262,6 +262,7 @@ mod tests {
             qty: 1,
             session: Vec::new(),
             collection: String::new(),
+            zec_zat: 0,
         };
         (c, p)
     }

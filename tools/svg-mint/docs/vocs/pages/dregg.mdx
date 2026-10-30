@@ -5,18 +5,76 @@ description: SVG mint checkout runtime
 
 # DREGG
 
-The **dregg** crate is the cell library. **svg-mint-fed** is the HTTP runtime that depends on it (`dregg = { path = "../dregg" }`). Public origin: `https://dregg-svg.permissionless.money`. Loopback: `127.0.0.1:8421`. Workspace: `~/abstract/svg-mint`.
+The **dregg** crate is the cell library. **svg-mint-fed** is the HTTP runtime. Public origin: `https://dregg-svg.permissionless.money`. Loopback: `127.0.0.1:8421`.
 
-It:
+It publishes `health`, `prices`, and `pay-targets`. `checkout_ready` is the Pay gate. Health stays HTTP 200 when Pay is closed and lists `reasons`.
 
-- Publishes `health`, `prices`, and `pay-targets`.
-- Issues a ZIP-321 URI when the house Zcash tip is current.
-- Watches notes from svg-mint-zrt (house ztreamer). Matches the checkout address or the payment memo. An unmined note is receipt. A mined note is the mint.
-- After payment, entitles and executes CosmWasm mint on the collection.
-- Serves ops collect: `zec_wallet` on `/v1/admin/info`, ADR-036 recover on `POST /v1/admin/withdraw`.
+Native THIOL can stay open while ZEC is hidden (`zec_uri` null). ZEC is hidden until `svg-mint-zrt` can print a payable address and the tip circuit is configured. This build does not print a payable Ironwood address.
 
-`checkout_ready` is the Pay gate. Native THIOL can stay open while ZEC is hidden (`zec_uri` null) if the house tip drifted.
+## Observers
 
-Pending unpaid checkouts expire after 10 minutes (`pending_ttl_secs`). The pay step shows that time counting down. A note in the mempool stops the clock. Unknown-age carts (`issued_at` 0) expire immediately. The holder does not see a raw health blob.
+- ZEC: `svg-mint-zrt notes`, then the Zakura mempool signal. No zcli. No zcashd wallet RPC.
+- ETH, Base, and BTC threads stay, and no-op without their RPC env.
+- There is no background native-chain watcher. Native price is on `/v1/prices` and `/v1/pay-targets`. After a watched payment is entitled, the runtime signs the collection mint itself.
 
-See [HTTP API](/api) and [Ops collect](/engines/ops).
+## Runtime minter
+
+`svg-mint-fed` holds one secp256k1 key at `~/.terp/dregg-svg-runtime.sk` (override `DREGG_RUNTIME_SK_FILE`). The file is 32 bytes, mode `0600`, written once on groot2 on 2026-10-28. A restart loads it. A shorter file exits and is not replaced.
+
+The public address is `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8`. `/health` reports it as `runtime_minter`. That account pays gas in `uthiol`. The mint message carries no funds and no NFT price.
+
+Code 98 does not keep a runtime-minter bypass. Empty `proof_hashes` are rejected on the fractal. The proof is a merkle leaf for this signer on the collection whitelist. `DREGG_PAYMINT_PROOFS_FILE` maps a collection `terp1` to `{ "alloc", "proof_hashes" }`. `alloc` is the leaf cap (10000 on the fractal). Every mint sends that same cap. It is not a decreasing counter. A missing row sends `alloc: 0` and an empty proof, which the fractal rejects.
+
+After a payment is entitled, and only when the slot's collection is a watched `terp1`, the process signs `MsgExecuteContract` itself and posts it to the LCD (`BROADCAST_MODE_SYNC`, then up to eight polls). There is no `terpd` and no mnemonic. The fractal shape, with the public paymint proof, is:
+
+```json
+{"update_extension":{"msg":{"mint":{"alloc":10000,"amnt":1,"ext":null,"proof_hashes":["59a73b7800d05280d8838a704cc496993b7ca578e7a3b4d016c433a8b869aaf5"]}}}}
+```
+
+Funds on that execute are empty. The signer becomes the NFT owner, because this mint message has no recipient field. A second transaction is `transfer_nft` to the pay-target `recipient`. One NFT spends `800_000` gas on each transaction (`DREGG_MINT_GAS` times the message count). At the house floor `0.05` (`DREGG_MINT_GAS_PRICE`) that is `40_000` `uthiol` per transaction, `80_000` `uthiol` for the pair. Chain id is `morocco-1` (`DREGG_CHAIN_ID`). LCD is `DREGG_MINTER_LCD`, then `DREGG_LCD`. `DREGG_RUNTIME_NO_CREATE=1` refuses to write a missing runtime key.
+
+If the mint commits and the transfer fails, the error starts with `minted {hash}` and the slot keeps that hash. The same token is not minted again. `finish_transfer` sends the transfer for a hash that already committed.
+
+`DREGG_COLLECTIONS` is a comma- or whitespace-separated set of collection contracts. When that variable is unset or empty, `~/.terp/dregg-svg-collections` (override `DREGG_COLLECTIONS_FILE`) is the same list, one `terp1` per line, read on each checkout. Anything that does not start with `terp1` is ignored. An empty set leaves the broadcaster idle. The legacy cell id `svg` is not a contract and is never broadcast.
+
+One watched address is the default for `/v1/pay-targets`. Several addresses require `?collection=terp1…`. A requested address outside the set is an error.
+
+## Setup
+
+The key file already exists on the house. The desk watches one collection: the code-98 permissionless.money fractal `terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x`. Its whitelist is `terp1k5vz89g9z2w0yhg4yfgwwza5d2gg0l9396sjqh27wfck4957pkvq2at0z7`. The 13 interchain logos stay out of `DREGG_COLLECTIONS`. They have no whitelist, so an empty-funds mint fails. Retired, and not watched: code-71 Fractals `terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt`, and the code-72 factory `terp188jpppxtfpf0vvt5gypdj52hk2xuswwcn38auczzxv20fcxz3kss9fhlru`. Code 72 cannot be migrated. Code 83 is not the collection code. New collections are code 98. `runtime_minters` is migrate-only on code 98 and is dropped at instantiate.
+
+1. Read `runtime_minter` on `http://127.0.0.1:8421/health`. It is `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` while `~/.terp/dregg-svg-runtime.sk` is the 32-byte file from the first start. Deleting that file creates a different address on the next start, and the old address keeps whatever `uthiol` it holds.
+2. Send `uthiol` to that address for gas. Checkout opens when the LCD balance covers `DREGG_MINTER_GAS_RESERVE`, default `50_000_000` `uthiol` (50 THIOL). Keep that reserve. One mint-and-transfer pair costs about `80_000` `uthiol`. The reserve is the gate, not the price of one NFT. Leave `DREGG_MINTER_FUNDED` unset.
+3. Put the fractal proof in `DREGG_PAYMINT_PROOFS_FILE` before the address is listed. Admission simulates that message. `DREGG_COLLECTIONS` does not grant a bypass. `add_minter` authorizes the top-level minter-only `mint`, which this process does not send.
+4. Put the fractal `terp1` in `~/.terp/dregg-svg-collections`, one address per line. `DREGG_COLLECTIONS` in the systemd env overrides the file. Restart `dregg-svg-mint-fed.service` after the edit so startup records a supply row (`DREGG_SVG_MAX_SUPPLY`, default 10000). A watched address with no supply row stays open. Do not restart the house unit until that edit is approved.
+5. With one address in the set, `GET /v1/pay-targets?recipient=terp1…` uses it. The recipient is the `transfer_nft` destination. The buyer still needs a `terp1`. HashMerchant is not required for this signer to pay gas, and it stays off.
+
+`GET /v1/prices` lists the fractal tiers. THIOL is 100 / 500 / 1000. ZEC defaults are 0.001 / 0.005 / 0.01 (`100000,500000,1000000` zat) for token numbers 1–1000, 1001–5000, and 5001–10000. `DREGG_FRACTAL_ZEC_ZAT` overrides those three zat amounts. The active tier is `num_tokens + 1` from the LCD. A pay-target stores the zat it quoted. The flat `ZEC_ZAT` constant stays the parked rail default and is not the fractal quote.
+
+Health can show `minter_funded: false` and `collections: []` at the same time. Funding the signer does not start broadcast. Naming a collection does not open checkout while the balance is under the reserve.
+
+## Pay gate
+
+`DREGG_MINTER_LCD` is read on each health check. The balance is the runtime minter once `dregg-svg-runtime.sk` exists, otherwise `DREGG_MINTER_ADDR`. A live LCD miss stays `minter_balance_unknown` and does not fall through to `DREGG_MINTER_BALANCE`. Do not set `DREGG_MINTER_FUNDED=1`.
+
+Checkout opens when three things are true together. The LCD balance covers the gas reserve, default `50_000_000` `uthiol` (`DREGG_MINTER_GAS_RESERVE`). The NFT price is not part of that cover. The watch set has at least one admitted collection. Below the reserve, `reasons` includes `minter_underfunded`. An empty watch set adds `collections_unset`. Either one makes `/v1/pay-targets` return 503. The legacy id `svg` is not issued as a pay target.
+
+Admission is a simulate of the same empty-funds mint the broadcaster sends, posted to `{LCD}/cosmos/tx/v1beta1/simulate` from the runtime signer. A contract error (`collection_rejected`) keeps that address out of `collections` and out of broadcast. The reason string is on `collections_rejected`. An account that does not exist yet, a fee error, or an LCD miss is `collection_unproven`: pay stays closed, and the address is not treated as a bad contract. Results are cached for 20 seconds. `collections` on `/health` is the admitted set. `collections_configured` is the file or env list.
+
+## Admin
+
+`POST /v1/admin/checkout` action `refund` sets the session phase. It does not send coins. `POST /v1/admin/withdraw` is ADR-036 then `svg-mint-zrt send` to the donation UA. `GET /v1/admin/stats` is loopback and token-gated. Public `/health` has no wallet amounts. `GET /v1/status` includes `house_mempool_shielded`, a count, not a match.
+
+Operator signatures for entitle and settle come from `POST /v1/sign`. That key is `~/.terp/svg-mint-fed.sk`. A restart must load the same file.
+
+## Still closed
+
+- On 2026-10-30 the runtime address held `22200000` `uthiol` (22.2 THIOL), under the 50 THIOL reserve, so Pay stays closed with `minter_underfunded` until that account is topped up. This desk does not send that top-up.
+- The house watch set is still empty, so Pay is also closed with `collections_unset` until the fractal is listed and simulate admits it.
+- A configured collection that fails simulate stays in `collections_rejected` until the contract accepts this signer.
+- `num_tokens` on the collection is not polled. Supply is the local row written at startup.
+- A committed mint whose events have no `token_id` is stored and not retried. The NFT can remain on the runtime address until a transfer is finished for that hash.
+
+## Later
+
+Native THIOL on morocco-1 is the buyer calling the collection. This runtime does not watch those payments. A later listener can do for another cosmos chain what the ZEC tick does for a note: see the inbound payment, entitle the checkout, and have this signer mint. That listener is not part of this pay gate.

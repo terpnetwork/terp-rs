@@ -29,6 +29,9 @@ pub struct PendingPay {
     /// cw721 collection this payment mints on. Empty = legacy `svg` cell id.
     #[serde(default)]
     pub collection: String,
+    /// Zat quoted for one NFT when the pay-target was issued. `0` uses the flat rail.
+    #[serde(default)]
+    pub zec_zat: u64,
 }
 
 fn pending_qty_default() -> u32 {
@@ -231,6 +234,7 @@ mod tests {
             qty: 1,
             session: Vec::new(),
             collection: String::new(),
+            zec_zat: 0,
         }
     }
 

@@ -381,9 +381,9 @@ mod tests {
     fn skip_when_public_unset() {
         let _g = env_lock();
         clear_cache();
-        std::env::remove_var("ZCASH_PUBLIC_RPC");
-        std::env::remove_var("ZCASH_PRIVATE_RPC");
-        std::env::remove_var("ZAKURA_RPC");
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC") };
+        unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC") };
+        unsafe { std::env::remove_var("ZAKURA_RPC") };
         let t = probe_uncached();
         assert!(!t.configured);
         assert!(t.ok);
@@ -393,11 +393,11 @@ mod tests {
     fn fail_closed_public_without_private() {
         let _g = env_lock();
         clear_cache();
-        std::env::set_var("ZCASH_PUBLIC_RPC", "http://127.0.0.1:1");
-        std::env::remove_var("ZCASH_PRIVATE_RPC");
-        std::env::remove_var("ZAKURA_RPC");
+        unsafe { std::env::set_var("ZCASH_PUBLIC_RPC", "http://127.0.0.1:1") };
+        unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC") };
+        unsafe { std::env::remove_var("ZAKURA_RPC") };
         let t = probe_uncached();
-        std::env::remove_var("ZCASH_PUBLIC_RPC");
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC") };
         assert!(t.configured);
         assert!(!t.ok);
         assert_eq!(t.reason.as_deref(), Some("private_unconfigured"));
@@ -409,8 +409,8 @@ mod tests {
         clear_cache();
         let (pub_port, pub_h) = serve_height(40);
         let (priv_port, priv_h) = serve_height(40);
-        std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port}"));
-        std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{priv_port}"));
+        unsafe { std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port}")) };
+        unsafe { std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{priv_port}")) };
         let ok = probe_uncached();
         let _ = pub_h.join();
         let _ = priv_h.join();
@@ -420,12 +420,12 @@ mod tests {
 
         clear_cache();
         let (pub_port2, pub_h2) = serve_height(41);
-        std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port2}"));
-        std::env::set_var("ZCASH_PRIVATE_RPC", "http://127.0.0.1:1");
+        unsafe { std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{pub_port2}")) };
+        unsafe { std::env::set_var("ZCASH_PRIVATE_RPC", "http://127.0.0.1:1") };
         let down = probe_uncached();
         let _ = pub_h2.join();
-        std::env::remove_var("ZCASH_PUBLIC_RPC");
-        std::env::remove_var("ZCASH_PRIVATE_RPC");
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC") };
+        unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC") };
         assert!(!down.ok);
         assert_eq!(down.reason.as_deref(), Some("private_unreachable"));
         assert_eq!(down.public_height, Some(41));
@@ -473,24 +473,24 @@ mod tests {
         let _ = std::fs::create_dir_all(&dir);
         let cookie = dir.join(".cookie");
         std::fs::write(&cookie, "rpcuser:rpcpass\n").unwrap();
-        std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{port}"));
-        std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{port}"));
-        std::env::set_var(
+        unsafe { std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{port}")) };
+        unsafe { std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{port}")) };
+        unsafe { std::env::set_var(
             "ZCASH_PRIVATE_RPC_COOKIE",
             cookie.to_string_lossy().as_ref(),
-        );
-        std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE");
+        ) };
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE") };
         // First call is public (no cookie) — spawn a second listener in the same
         // process by probing private only via getblockcount helper path:
         // public will fail auth; treat this test as private-with-cookie by
         // giving both the cookie env for public too.
-        std::env::set_var("ZCASH_PUBLIC_RPC_COOKIE", cookie.to_string_lossy().as_ref());
+        unsafe { std::env::set_var("ZCASH_PUBLIC_RPC_COOKIE", cookie.to_string_lossy().as_ref()) };
         let t = probe_uncached();
         let _ = h.join();
-        std::env::remove_var("ZCASH_PUBLIC_RPC");
-        std::env::remove_var("ZCASH_PRIVATE_RPC");
-        std::env::remove_var("ZCASH_PRIVATE_RPC_COOKIE");
-        std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE");
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC") };
+        unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC") };
+        unsafe { std::env::remove_var("ZCASH_PRIVATE_RPC_COOKIE") };
+        unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE") };
         assert!(t.ok, "{t:?}");
         assert_eq!(t.private_height, Some(77));
     }

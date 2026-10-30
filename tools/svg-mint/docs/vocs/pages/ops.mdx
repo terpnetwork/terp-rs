@@ -1,15 +1,14 @@
 ---
 title: Ops collect
-description: One-time ADR-036 recover to the donation UA
+description: ADR-036 recover to the donation UA. Send is fail-closed.
 ---
 
 # Ops collect
 
-Unlinked desk: [permissionless.money/ops](https://permissionless.money/ops).
+Desk: [permissionless.money/ops](https://permissionless.money/ops).
 
-1. Sign in with Keplr (ADR-036) to **read** `zec_wallet.total_zat`.
-2. Confirm the house total matches what you expect.
-3. Enter zatoshis. **Withdraw ZEC** asks Keplr to sign **once more**.
+1. Sign in with Keplr (ADR-036) to read admin state.
+2. Withdraw asks Keplr to sign once more.
 
 The signed bytes are:
 
@@ -17,9 +16,11 @@ The signed bytes are:
 permissionless.money withdraw <zat> zat to <donation-ua> <challenge>
 ```
 
-That signature binds amount + donation UA + a one-time challenge. A login signature cannot spend. Token and zid can read info; they cannot move funds. There is no dest field — foreign `to` is 400.
+A login signature cannot spend. There is no destination field. A foreign `to` is 400.
 
-Send is `svg-mint-zrt send --zat … --address <donation-ua>` against house ztreamer.
+The fed then runs `svg-mint-zrt send --zat … --address <donation-ua>`. On this build that command checks the donation UA and exits because the Ironwood prover is not linked. Notes are not marked spent. Nothing is broadcast. The house does not have `svg-mint-zrt` installed and does not have `~/.terp/svg-mint-zrt`.
+
+Session refund is a different route. It changes phase to refunded and does not move ZEC.
 
 ```mermaid
 sequenceDiagram
@@ -27,12 +28,10 @@ sequenceDiagram
   participant D as DREGG
   participant K as Keplr
   participant Z as svg-mint-zrt
-  Ops->>D: GET /v1/admin/info
-  D-->>Ops: zec_wallet.total_zat
   Ops->>D: GET /v1/admin/challenge
   Ops->>K: signArbitrary withdraw statement
   Ops->>D: POST /v1/admin/withdraw
-  D->>D: verify ADR-036 + designated admin
+  D->>D: verify ADR-036 and designated admin
   D->>Z: send --zat --address donation UA
-  Z-->>D: tx out
+  Z-->>D: prover not linked, notes unspent
 ```

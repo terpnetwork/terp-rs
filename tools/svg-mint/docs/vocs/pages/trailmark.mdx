@@ -16,7 +16,7 @@ You (wallet gate)
   → Seen
        Mempool   = payment received, not yet a mint
        Deposited = in one block, then mint
-  → NFT mint (DREGG entitle / settle)
+  → NFT mint (DREGG signs the collection, then transfer_nft to the pay-target terp1)
   → Device gas (passkey only): POST /onboard/v1/passkey-grant
        body address + c
        c = pay-targets memo_hex (Pedersen)
@@ -31,12 +31,13 @@ Wallet gate: Watch / ZIP-321 does not load until a Keplr `terp1` or passkey dest
 1. `/health` `pay` / `checkout_ready` can be true while `minted=0` — the desk is open, not that a payment landed.
 2. Unpaid passkey-grant is **402** without `c`.
 3. Admin stats **401** without token; **200** with Bearer.
-4. Compact indexer vendor is **Ztreamer** on loopback, not ECC LWD.
+4. The mint curator does not dial the compact server. Loopback `:9067` is still lightwalletd. ztreamer is the intended listener and is not running.
 5. Recover without ADR-036 is **401** `adr36_required`.
 6. Recover dest is hardcoded to the donation UA.
 7. Unpaid checkouts show a visible countdown and clear after 10 minutes. The clock stops at Mempool.
 8. Mempool copy is one sentence: "Payment received. Minting after the next block."
 9. The desk does not render `/health` as JSON and does not say "house mempool".
+10. ZEC amount on the fractal follows `/v1/prices` `zec_quote.active`. Defaults are 0.001, 0.005, and 0.01 ZEC. Logos are not a pay target.
 
 ## Suggested scenarios
 

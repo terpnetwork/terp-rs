@@ -189,24 +189,24 @@ mod tests {
     #[test]
     fn empty_set_does_not_resolve_svg() {
         let _g = crate::checkout::minter_env_lock();
-        std::env::remove_var("DREGG_COLLECTIONS");
-        std::env::remove_var("DREGG_COLLECTIONS_ADMIT");
-        std::env::set_var("DREGG_COLLECTIONS_FILE", "/tmp/dregg-collections-absent");
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS") };
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS_ADMIT") };
+        unsafe { std::env::set_var("DREGG_COLLECTIONS_FILE", "/tmp/dregg-collections-absent") };
         let err = resolve(None).unwrap_err();
-        std::env::remove_var("DREGG_COLLECTIONS_FILE");
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS_FILE") };
         assert_eq!(err, "checkout closed: collections_unset");
     }
 
     #[test]
     fn admitted_singleton_resolves() {
         let _g = crate::checkout::minter_env_lock();
-        std::env::set_var("DREGG_COLLECTIONS", "terp1testcollectionxxxxxxxxxxxxxxxxxx");
+        unsafe { std::env::set_var("DREGG_COLLECTIONS", "terp1testcollectionxxxxxxxxxxxxxxxxxx") };
         set_admission_override(Some(vec!["terp1testcollectionxxxxxxxxxxxxxxxxxx".into()]));
         assert_eq!(
             resolve(None).unwrap(),
             "terp1testcollectionxxxxxxxxxxxxxxxxxx"
         );
-        std::env::remove_var("DREGG_COLLECTIONS");
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS") };
         set_admission_override(None);
     }
 

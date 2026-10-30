@@ -1,37 +1,47 @@
 ---
 title: Runtimes
-description: Git-pinned house processes for SVG mint
+description: Lean house processes for SVG mint
 ---
 
 # Runtimes
 
-This workspace owns **documentation, the dregg library, and the fed/zrt binaries**. Zakura and ztreamer are **git submodules** under `runtimes/`. `svg-mint-zrt` is a local wallet crate (orchard 0.16 and a sqlite ledger). It does not import zcli or `zync-core`. `zcash-devtool` is not a runtime here. zcli's public zidecar is not this compact server.
+The desk runs on groot2. Zakura is a Docker archive, not a second copy of the submodule checkout. The fed binary is native x86_64, built with the host stable compiler because `rust-toolchain.toml` pins 1.86 and `zcash_address` 0.13 needs 1.88.
 
-| Path | Remote | Role |
+| Process | Bind | State on the house |
 |---|---|---|
-| `runtimes/zakura` | `https://github.com/zakura-core/zakura.git` tag `v1.6.0` | Zcash full node |
-| `runtimes/ztreamer` | house ztreamer (CompactTxStreamer, vendor `Ztreamer`) | Compact blocks for watch / zrt |
-| `svg-mint-zrt` | `crates/svg-mint-zrt` | Product ZEC wallet CLI. Local e2e only until scan and prover are linked. |
+| `zakura-lab` `zakuracore/zakura:1.7.0` | `127.0.0.1:8232` cookie JSON-RPC | Archive, format 30, not pruned. Do not reopen this directory with 1.6.0. |
+| `lwd-lab` `lightwalletd:v0.5.3` | `127.0.0.1:9067` | Live compact server. The mint curator does not dial it. |
+| ztreamer | intended `127.0.0.1:9067` | Not running. Do not start a second compact server until scan is linked. |
+| `svg-mint-fed` | `127.0.0.1:8421` | User unit `dregg-svg-mint-fed.service`. Store `~/.terp/svg-mint-fed-cell.json`. The binary default bind is loopback. |
+| `svg-mint-zrt` | no port | Binary not installed. Do not `init` `~/.terp/svg-mint-zrt`. |
+| HashMerchant `onboard-runtime` | `127.0.0.1:19090` | Unit present, inactive. Keyring dir `~/.terp/kr-onboard` is absent. The fed's embedded listener must not take this port. |
 
-DREGG talks to `svg-mint-zrt` only. The public contract is zrt's argv and the `notes` JSON, not zcash-devtool flags and not zcli's rotko endpoint.
+ETH, Base, and BTC watcher threads stay in the fed. Their RPC variables stay unset.
 
-## Init
+## House env
 
-From this workspace:
+`~/.terp/dregg-fed.systemd.env` (mode `0600`):
+
+| Name | Value |
+|---|---|
+| `SVG_MINT_FED_STORE` | `/home/returniflost/.terp/svg-mint-fed-cell.json` |
+| `ZCASH_PRIVATE_RPC` | `http://127.0.0.1:8232` |
+| `ZCASH_PRIVATE_RPC_COOKIE` | `/home/returniflost/.terp/zakura.rpc.cookie` |
+| `DREGG_MINTER_LCD` | `http://127.0.0.1:1317` |
+| `DREGG_MINTER_ADDR` | Ignored for the balance once `~/.terp/dregg-svg-runtime.sk` exists. The live signer is `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8`. |
+| `DREGG_COLLECTIONS` | Optional override. Comma-separated collection contracts. The desk collection is the code-98 fractal. Logos stay off this list. Unset on the house, so `~/.terp/dregg-svg-collections` is the list. Empty closes Pay with `collections_unset`. A listed contract is admitted only after simulate accepts the paymint proof. |
+| `ONBOARD_BIND` / `ONBOARD_PORT` | `127.0.0.1` / `19091`, so HashMerchant keeps `19090` |
+
+Not set, on purpose: `SVG_MINT_FED_SK_HEX`, `DREGG_MINTER_FUNDED`, `DREGG_MINTER_BALANCE`, `ETH_RPC`, `BASE_RPC`, `BTC_RPC`, `ZCLI_BIN`, `ZCASHD_RPC`. Names for a dev process, still without values here: `SVG_MINT_FED_BIND`, `DREGG_PAYMINT_PROOFS_FILE`, `DREGG_PAYMINT_USED_FILE`, `DREGG_FRACTAL_ZEC_ZAT`, `DREGG_RUNTIME_NO_CREATE`, `DREGG_RUNTIME_ADDR`. The full name list is `docs/sample-env.names`.
+
+The operator secret is `~/.terp/svg-mint-fed.sk`. The mint signer is `~/.terp/dregg-svg-runtime.sk`. Neither secret is a line in the env file. Funding that address and naming the code-98 fractal are on the DREGG page. The house list is empty. Code 83 is not the collection code.
+
+## Git pins
+
+Submodule pins in the product tree are still Zakura `v1.6.0` and ztreamer. The running node is the 1.7.0 image. Do not move the pin until a release commit says so. Do not point 1.6.0 at the format-30 archive.
 
 ```bash
 bash scripts/init-runtimes.sh
 ```
 
-That script records submodule URLs from `runtimes/.gitmodules` and clones if missing. Do not point compact `--server` at zec.rocks.
-
-## House bind
-
-| Process | Bind |
-|---|---|
-| Zakura RPC | `127.0.0.1:8232` (cookie) |
-| ztreamer CompactTxStreamer | `127.0.0.1:9067` |
-| DREGG | `127.0.0.1:8421` |
-| onboard | `127.0.0.1:19090` |
-
-The browser never uses those loopback ports. Public Hosts terminate TLS on nginx.
+That clones the submodules. It does not start the house containers.

@@ -42,7 +42,7 @@ impl HdEngine {
         }
         let mut seed = vec![0u8; 32];
         rand::rng().fill_bytes(&mut seed);
-        eprintln!("svg-mint-fed generated DREGG_HD_SEED (not printed); persist {seed_path}");
+        eprintln!("svg-mint-fed wrote a new hd seed file at {seed_path}; the seed value is not logged");
         let _ = std::fs::write(&seed_path, hex::encode(&seed));
         Self { seed }
     }

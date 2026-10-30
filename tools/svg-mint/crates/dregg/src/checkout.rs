@@ -354,7 +354,7 @@ mod tests {
     #[test]
     fn gas_reserve_opens_checkout() {
         let _g = minter_env_lock();
-        std::env::remove_var("DREGG_MINTER_GAS_RESERVE");
+        unsafe { std::env::remove_var("DREGG_MINTER_GAS_RESERVE") };
         let gas = minter_gas_reserve();
         let short = CheckoutStatus::evaluate(true, 0, 10, Some(gas - 1));
         assert!(!short.checkout_ready);
@@ -412,7 +412,7 @@ mod tests {
     #[test]
     fn pending_ttl_default_ten_minutes() {
         let _g = minter_env_lock();
-        std::env::remove_var("DREGG_PENDING_TTL_SECS");
+        unsafe { std::env::remove_var("DREGG_PENDING_TTL_SECS") };
         assert_eq!(pending_ttl_secs(), 10 * 60);
     }
 
@@ -435,39 +435,39 @@ mod tests {
     #[test]
     fn minter_balance_native_env() {
         let _g = minter_env_lock();
-        std::env::remove_var("DREGG_MINTER_FUNDED");
-        std::env::remove_var("DREGG_MINTER_BALANCE");
-        std::env::remove_var("DREGG_MINTER_LCD");
-        std::env::remove_var("DREGG_MINTER_ADDR");
+        unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
+        unsafe { std::env::remove_var("DREGG_MINTER_BALANCE") };
+        unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
+        unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
         assert_eq!(minter_balance_native(), None);
-        std::env::set_var("DREGG_MINTER_BALANCE", "12345");
+        unsafe { std::env::set_var("DREGG_MINTER_BALANCE", "12345") };
         assert_eq!(minter_balance_native(), Some(12345));
-        std::env::set_var("DREGG_MINTER_FUNDED", "1");
+        unsafe { std::env::set_var("DREGG_MINTER_FUNDED", "1") };
         // FUNDED is not a funded proof (BALANCE still wins only because LCD is unset).
         assert_eq!(minter_balance_native(), Some(12345));
-        std::env::remove_var("DREGG_MINTER_BALANCE");
+        unsafe { std::env::remove_var("DREGG_MINTER_BALANCE") };
         assert_eq!(minter_balance_native(), None);
-        std::env::remove_var("DREGG_MINTER_FUNDED");
+        unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
     }
 
     #[test]
     fn lcd_https_miss_is_unknown_not_balance() {
         let _g = minter_env_lock();
-        std::env::set_var("DREGG_MINTER_LCD", "https://127.0.0.1:1317");
-        std::env::set_var(
+        unsafe { std::env::set_var("DREGG_MINTER_LCD", "https://127.0.0.1:1317") };
+        unsafe { std::env::set_var(
             "DREGG_MINTER_ADDR",
             "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqp3wq3h",
-        );
-        std::env::set_var("DREGG_MINTER_BALANCE", "999999999");
-        std::env::set_var("DREGG_MINTER_FUNDED", "1");
+        ) };
+        unsafe { std::env::set_var("DREGG_MINTER_BALANCE", "999999999") };
+        unsafe { std::env::set_var("DREGG_MINTER_FUNDED", "1") };
         assert_eq!(minter_balance_native(), None);
         let s = CheckoutStatus::evaluate(true, 0, 10, minter_balance_native());
         assert!(!s.checkout_ready);
         assert!(s.reasons.iter().any(|r| r == "minter_balance_unknown"));
-        std::env::remove_var("DREGG_MINTER_LCD");
-        std::env::remove_var("DREGG_MINTER_ADDR");
-        std::env::remove_var("DREGG_MINTER_BALANCE");
-        std::env::remove_var("DREGG_MINTER_FUNDED");
+        unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
+        unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
+        unsafe { std::env::remove_var("DREGG_MINTER_BALANCE") };
+        unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
     }
 
     #[test]
@@ -499,18 +499,18 @@ mod tests {
     }
 
     fn admit_test_collection() {
-        std::env::set_var(
+        unsafe { std::env::set_var(
             "DREGG_COLLECTIONS",
             "terp1testcollectionxxxxxxxxxxxxxxxxxx",
-        );
+        ) };
         crate::collections::set_admission_override(Some(vec![
             "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
         ]));
     }
 
     fn clear_test_collection() {
-        std::env::remove_var("DREGG_COLLECTIONS");
-        std::env::remove_var("DREGG_COLLECTIONS_ADMIT");
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS") };
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS_ADMIT") };
         crate::collections::set_admission_override(None);
     }
 }

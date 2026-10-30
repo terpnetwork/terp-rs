@@ -44,28 +44,28 @@ struct ReadyEnv {
 
 impl Drop for ReadyEnv {
     fn drop(&mut self) {
-        std::env::remove_var("DREGG_COLLECTIONS");
-        std::env::remove_var("DREGG_COLLECTIONS_ADMIT");
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS") };
+        unsafe { std::env::remove_var("DREGG_COLLECTIONS_ADMIT") };
         dregg::collections::set_admission_override(None);
     }
 }
 
 fn ready_cell(max_supply: u64) -> (ReadyEnv, Cell) {
     let g = checkout::minter_env_lock();
-    std::env::remove_var("DREGG_MINTER_LCD");
-    std::env::remove_var("DREGG_MINTER_ADDR");
-    std::env::remove_var("DREGG_MINTER_FUNDED");
-    std::env::set_var(
+    unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
+    unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
+    unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
+    unsafe { std::env::set_var(
         "DREGG_COLLECTIONS",
         "terp1testcollectionxxxxxxxxxxxxxxxxxx",
-    );
+    ) };
     dregg::collections::set_admission_override(Some(vec![
         "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
     ]));
-    std::env::set_var(
+    unsafe { std::env::set_var(
         "DREGG_MINTER_BALANCE",
         checkout::native_needed_for_nfts(1_000).to_string(),
-    );
+    ) };
     let mut cell = Cell::new();
     cell.apply(Turn::SetCollection {
         id: "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
@@ -197,10 +197,10 @@ fn underpay_ignored() {
 #[test]
 fn deposit_refused_when_minter_unfunded() {
     let _g = checkout::minter_env_lock();
-    std::env::remove_var("DREGG_MINTER_LCD");
-    std::env::remove_var("DREGG_MINTER_ADDR");
-    std::env::remove_var("DREGG_MINTER_FUNDED");
-    std::env::remove_var("DREGG_MINTER_BALANCE");
+    unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
+    unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
+    unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
+    unsafe { std::env::remove_var("DREGG_MINTER_BALANCE") };
     let mut cell = Cell::new();
     cell.apply(Turn::SetCollection {
         id: "svg".into(),
@@ -219,13 +219,13 @@ fn deposit_refused_when_minter_unfunded() {
 #[test]
 fn entitle_refused_when_checkout_unbound() {
     let _g = checkout::minter_env_lock();
-    std::env::remove_var("DREGG_MINTER_LCD");
-    std::env::remove_var("DREGG_MINTER_ADDR");
-    std::env::remove_var("DREGG_MINTER_FUNDED");
-    std::env::set_var(
+    unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
+    unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
+    unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
+    unsafe { std::env::set_var(
         "DREGG_MINTER_BALANCE",
         checkout::native_needed_for_nfts(1_000).to_string(),
-    );
+    ) };
     let mut cell = Cell::new();
     assert_eq!(
         cell.apply(Turn::MintEntitled {

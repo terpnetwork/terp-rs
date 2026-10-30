@@ -148,7 +148,7 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
 }
 
 fn main() {
-    let bind = std::env::var("SVG_MINT_FED_BIND").unwrap_or_else(|_| "0.0.0.0:8421".into());
+    let bind = std::env::var("SVG_MINT_FED_BIND").unwrap_or_else(|_| "127.0.0.1:8421".into());
     let store_path = std::env::var("SVG_MINT_FED_STORE")
         .unwrap_or_else(|_| {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
@@ -170,6 +170,9 @@ fn main() {
     }
     match dregg::mint_tx::ensure_address() {
         Ok(addr) => eprintln!("svg-mint-fed runtime minter {addr}"),
+        Err(e) if e == "runtime sk missing" => {
+            eprintln!("svg-mint-fed runtime minter key absent; continuing without writing one");
+        }
         Err(e) => {
             eprintln!("svg-mint-fed runtime minter unavailable: {e}");
             std::process::exit(1);
@@ -332,15 +335,26 @@ fn issue_pay_target(
             }
         ));
     }
+    let minted = if collection == prices::FRACTAL_COLLECTION {
+        match prices::query_num_tokens(&collection) {
+            Ok(n) => Some(n),
+            Err(e) => return Err(format!("fractal supply unproven: {e}")),
+        }
+    } else {
+        None
+    };
+    let zat_unit = prices::unit_zat(&collection, minted)
+        .ok_or_else(|| "fractal tier exhausted".to_string())?;
+    let native_unit = prices::unit_uthiol(&collection, minted)
+        .ok_or_else(|| "fractal tier exhausted".to_string())?;
     let i = f.hd_index;
     f.hd_index = f.hd_index.saturating_add(1);
     let main = std::env::var("DREGG_BTC_MAINNET").ok().as_deref() == Some("1");
     let btc = f.hd.btc_p2wpkh(i, main)?;
     let eth = f.hd.eth_addr(i)?;
     let div = f.hd.zec_diversifier(i);
-    let zat_unit = prices::zec_zat();
     let zat = zat_unit.saturating_mul(qty as u64);
-    let native = prices::NATIVE_AMOUNT.saturating_mul(qty as u128);
+    let native = native_unit.saturating_mul(qty as u128);
     let eth_wei = prices::eth_wei()
         .parse::<u128>()
         .unwrap_or(prices::ETH_WEI)
@@ -380,6 +394,7 @@ fn issue_pay_target(
             qty,
             session: session.to_vec(),
             collection: collection.clone(),
+            zec_zat: zat_unit,
         },
     );
     f.sessions.issue(terp, qty, zat);
@@ -418,7 +433,7 @@ fn issue_pay_target(
         "or": true,
         "pending_ttl_secs": ttl,
         "collection": collection,
-        "runtime_minter": dregg::mint_tx::address_if_present(),
+        "runtime_minter": dregg::mint_tx::runtime_addr_for_health(),
         "memo": "put memo_hex / ZIP-321 memo (Pedersen C) in the payment — never terp1 on ETH/Base/BTC/ZEC",
     }))
 }
@@ -1028,15 +1043,19 @@ fn watch_zec_house_mempool(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
 
 
 fn zec_paid_fallback(fed: &Arc<Mutex<Fed>>, rec: &str) -> u128 {
-    let unit = prices::zec_zat() as u128;
     let f = fed.lock().unwrap();
-    let q = f
-        .pending
+    f.pending
         .values()
         .find(|p| p.terp == rec)
-        .map(|p| p.qty.max(1) as u128)
-        .unwrap_or(1);
-    unit.saturating_mul(q)
+        .map(|p| {
+            let unit = if p.zec_zat > 0 {
+                p.zec_zat as u128
+            } else {
+                prices::zec_zat() as u128
+            };
+            unit.saturating_mul(p.qty.max(1) as u128)
+        })
+        .unwrap_or(prices::zec_zat() as u128)
 }
 
 
@@ -2059,7 +2078,7 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                 "ok": st.checkout_ready,
                 "service": "dregg-svg",
                 "pay": st.checkout_ready,
-                "runtime_minter": dregg::mint_tx::address_if_present().unwrap_or_default(),
+                "runtime_minter": dregg::mint_tx::runtime_addr_for_health().unwrap_or_default(),
             });
             if let serde_json::Value::Object(m) = &mut p {
                 if let serde_json::Value::Object(s) = st.to_json() {

@@ -2,9 +2,11 @@
 //!
 //! The file is `~/.terp/dregg-svg-runtime.sk` (override `DREGG_RUNTIME_SK_FILE`):
 //! 32 raw bytes, mode `0600`, written once. A short file exits the load and is
-//! not replaced. The public `terp1` is the address to fund with `uthiol` for gas.
-//! Mint executes carry no funds: this key is the fee-bypass minter on the
-//! collections in [`crate::collections`].
+//! not replaced. `DREGG_RUNTIME_NO_CREATE=1` refuses to write a missing file.
+//! The public `terp1` is the address to fund with `uthiol` for gas.
+//! Mint executes carry no funds. Code 98 does not keep a runtime-minter bypass.
+//! A collection admits this signer only when `DREGG_PAYMINT_PROOFS_FILE` has
+//! that collection's whitelist `alloc` and `proof_hashes`.
 
 use k256::ecdsa::signature::hazmat::{PrehashSigner, PrehashVerifier};
 use k256::ecdsa::{Signature, SigningKey};
@@ -56,6 +58,9 @@ fn load_or_create_secret() -> Result<Vec<u8>, String> {
         }
         return Ok(raw);
     }
+    if std::env::var("DREGG_RUNTIME_NO_CREATE").ok().as_deref() == Some("1") {
+        return Err("runtime sk missing".into());
+    }
     let mut raw = [0u8; 32];
     rand::RngCore::fill_bytes(&mut rand::rng(), &mut raw);
     if SigningKey::from_slice(&raw).is_err() {
@@ -77,22 +82,131 @@ fn set_mode_600(path: &Path) {
     }
 }
 
-/// SVG extension mint. Funds stay empty; the runtime minter bypasses the price.
-pub fn svg_mint_msg(amnt: u32) -> Vec<u8> {
+/// Whitelist leaf for one collection. Absent means an empty proof (logos today).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PaymintProof {
+    pub alloc: u32,
+    pub proof_hashes: Vec<String>,
+}
+
+fn paymint_path() -> PathBuf {
+    if let Ok(p) = std::env::var("DREGG_PAYMINT_PROOFS_FILE") {
+        if !p.is_empty() {
+            return PathBuf::from(p);
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    PathBuf::from(home).join(".terp/dregg-paymint-proofs.json")
+}
+
+/// `{ "terp1…": { "alloc": 10000, "proof_hashes": ["…"] } }`.
+/// The alloc is the merkle leaf cap, not a decreasing counter.
+pub fn paymint_for(collection: &str) -> PaymintProof {
+    let Ok(text) = std::fs::read_to_string(paymint_path()) else {
+        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+    };
+    let Some(row) = v.get(collection) else {
+        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+    };
+    let alloc = row.get("alloc").and_then(|n| {
+        n.as_u64().or_else(|| n.as_str().and_then(|s| s.parse().ok()))
+    }).unwrap_or(0) as u32;
+    let proof_hashes = row
+        .get("proof_hashes")
+        .and_then(|p| p.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+    PaymintProof { alloc, proof_hashes }
+}
+
+fn paymint_used_path() -> PathBuf {
+    if let Ok(p) = std::env::var("DREGG_PAYMINT_USED_FILE") {
+        if !p.is_empty() {
+            return PathBuf::from(p);
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    PathBuf::from(home).join(".terp/dregg-paymint-used.json")
+}
+
+fn paymint_used(collection: &str) -> u64 {
+    let Ok(text) = std::fs::read_to_string(paymint_used_path()) else {
+        return 0;
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        return 0;
+    };
+    v.get(collection)
+        .and_then(|n| n.as_u64().or_else(|| n.as_str().and_then(|s| s.parse().ok())))
+        .unwrap_or(0)
+}
+
+fn note_paymint_used(collection: &str, n: u64) {
+    let path = paymint_used_path();
+    let mut v: serde_json::Value = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+    let prev = v.get(collection).and_then(|n| n.as_u64()).unwrap_or(0);
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert(collection.to_string(), serde_json::json!(prev.saturating_add(n)));
+    }
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::write(&path, v.to_string());
+}
+
+/// Room left under the whitelist alloc. `None` when this collection has no proof.
+pub fn paymint_room(collection: &str) -> Option<u64> {
+    let proof = paymint_for(collection);
+    if proof.proof_hashes.is_empty() || proof.alloc == 0 {
+        return None;
+    }
+    Some((proof.alloc as u64).saturating_sub(paymint_used(collection)))
+}
+
+/// Empty-funds SVG mint. Proof fields come from [`paymint_for`].
+pub fn svg_mint_msg(collection: &str, amnt: u32) -> Vec<u8> {
+    let proof = paymint_for(collection);
     serde_json::json!({
         "update_extension": {
             "msg": {
                 "mint": {
+                    "alloc": proof.alloc,
                     "amnt": amnt.max(1),
-                    "proof_hashes": [],
-                    "alloc": 0,
-                    "ext": null
+                    "ext": null,
+                    "proof_hashes": proof.proof_hashes
                 }
             }
         }
     })
     .to_string()
     .into_bytes()
+}
+
+/// Address to name on `/health` when the key file is absent.
+/// Sk file wins. Then `DREGG_RUNTIME_ADDR`, then `DREGG_MINTER_ADDR`.
+pub fn runtime_addr_for_health() -> Option<String> {
+    if let Some(a) = address_if_present() {
+        return Some(a);
+    }
+    for name in ["DREGG_RUNTIME_ADDR", "DREGG_MINTER_ADDR"] {
+        if let Ok(s) = std::env::var(name) {
+            if s.starts_with("terp1") {
+                return Some(s);
+            }
+        }
+    }
+    None
 }
 
 pub fn transfer_nft_msg(recipient: &str, token_id: &str) -> Vec<u8> {
@@ -180,6 +294,21 @@ pub fn tx_raw(
     let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
     let pk = sk.verifying_key().to_encoded_point(true);
     let sender = crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())?;
+    tx_raw_as(&sk, &sender, contract, msgs, account_number, sequence, chain_id, gas, fee_amount)
+}
+
+fn tx_raw_as(
+    sk: &SigningKey,
+    sender: &str,
+    contract: &str,
+    msgs: &[Vec<u8>],
+    account_number: u64,
+    sequence: u64,
+    chain_id: &str,
+    gas: u64,
+    fee_amount: u128,
+) -> Result<Vec<u8>, String> {
+    let pk = sk.verifying_key().to_encoded_point(true);
     let mut body = Vec::new();
     for msg in msgs {
         let exec = msg_execute(&sender, contract, msg);
@@ -195,7 +324,7 @@ pub fn tx_raw(
     fee.extend(vi(2, gas));
     let mut auth = ld(1, &signer);
     auth.extend(ld(2, &fee));
-    let sig = sign_direct(&sk, &body, &auth, chain_id, account_number)?;
+    let sig = sign_direct(sk, &body, &auth, chain_id, account_number)?;
     let mut raw = ld(1, &body);
     raw.extend(ld(2, &auth));
     raw.extend(ld(3, &sig));
@@ -394,15 +523,19 @@ pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
     if !contract.starts_with("terp1") {
         return SimVerdict::Rejected("mint contract must be terp1".into());
     }
-    let secret = match read_secret() {
-        Ok(s) => s,
-        Err(e) => return SimVerdict::Unproven(e),
+    // A present key signs as itself. With no key file, simulate still names
+    // `DREGG_RUNTIME_ADDR` / `DREGG_MINTER_ADDR` and does not write a key.
+    let (secret, sender, keyless) = if let Ok(raw) = read_secret() {
+        match address_of(&raw) {
+            Ok(sender) => (raw, sender, false),
+            Err(e) => return SimVerdict::Unproven(e),
+        }
+    } else if let Some(sender) = runtime_addr_for_health() {
+        (vec![7u8; 32], sender, true)
+    } else {
+        return SimVerdict::Unproven("runtime sk missing".into());
     };
     let lcd = match lcd_base() {
-        Ok(s) => s,
-        Err(e) => return SimVerdict::Unproven(e),
-    };
-    let sender = match address_of(&secret) {
         Ok(s) => s,
         Err(e) => return SimVerdict::Unproven(e),
     };
@@ -418,10 +551,15 @@ pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
     };
     let gas = 2_000_000u64;
     let fee = fee_uthiol(gas);
-    let raw = match tx_raw(
-        &secret,
+    let sk = match SigningKey::from_slice(&secret) {
+        Ok(sk) => sk,
+        Err(e) => return SimVerdict::Unproven(e.to_string()),
+    };
+    let raw = match tx_raw_as(
+        &sk,
+        &sender,
         contract,
-        &[svg_mint_msg(1)],
+        &[svg_mint_msg(contract, 1)],
         account_number,
         sequence,
         &chain_id(),
@@ -431,6 +569,7 @@ pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
         Ok(b) => b,
         Err(e) => return SimVerdict::Unproven(clip_reason(&e)),
     };
+    let _ = keyless;
     let body = serde_json::json!({ "tx_bytes": b64(&raw) });
     match crate::httpx::post_json_status(&format!("{lcd}/cosmos/tx/v1beta1/simulate"), &body) {
         Ok((status, v)) => classify_simulate(status, &v),
@@ -465,7 +604,12 @@ pub fn broadcast_paid_mint(
     }
     let secret = load_or_create_secret()?;
     let nfts = nfts.max(1);
-    let (hash, ids) = submit(&secret, contract, &[svg_mint_msg(nfts)])?;
+    if let Some(room) = paymint_room(contract) {
+        if nfts as u64 > room {
+            return Err("paymint alloc exhausted".into());
+        }
+    }
+    let (hash, ids) = submit(&secret, contract, &[svg_mint_msg(contract, nfts)])?;
     if ids.is_empty() {
         return Err(format!("minted {hash}"));
     }
@@ -474,11 +618,14 @@ pub fn broadcast_paid_mint(
         .map(|id| transfer_nft_msg(recipient, id))
         .collect();
     match submit(&secret, contract, &transfers) {
-        Ok((xfer, _)) => Ok(PaidMint {
-            mint_tx: hash,
-            token_ids: ids,
-            transfer_tx: xfer,
-        }),
+        Ok((xfer, _)) => {
+            note_paymint_used(contract, nfts as u64);
+            Ok(PaidMint {
+                mint_tx: hash,
+                token_ids: ids,
+                transfer_tx: xfer,
+            })
+        }
         Err(e) => Err(format!(
             "minted {hash} ids {} transfer: {e}",
             ids.join(",")
@@ -720,7 +867,7 @@ mod tests {
     #[test]
     fn fee_matches_house_floor() {
         let _g = crate::checkout::minter_env_lock();
-        std::env::remove_var("DREGG_MINT_GAS_PRICE");
+        unsafe { std::env::remove_var("DREGG_MINT_GAS_PRICE") };
         assert_eq!(fee_uthiol(800_000), 40_000);
     }
 
@@ -761,7 +908,7 @@ mod tests {
     #[test]
     fn direct_signature_verifies_and_address_is_stable() {
         let secret = [7u8; 32];
-        let msg = svg_mint_msg(1);
+        let msg = svg_mint_msg("terp1contract", 1);
         let raw = tx_raw(&secret, "terp1contract", &[msg], 1, 0, "morocco-1", 800_000, 40_000)
             .unwrap();
         assert!(raw.len() > 80);
@@ -784,14 +931,57 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("runtime.sk");
-        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
+        unsafe { std::env::set_var("DREGG_RUNTIME_SK_FILE", &path) };
         let a = ensure_address().unwrap();
         let b = ensure_address().unwrap();
         assert_eq!(a, b);
         assert_eq!(std::fs::read(&path).unwrap().len(), 32);
         std::fs::write(&path, [1u8; 16]).unwrap();
         assert!(ensure_address().is_err());
-        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
+        unsafe { std::env::remove_var("DREGG_RUNTIME_SK_FILE") };
+        unsafe { std::env::remove_var("DREGG_RUNTIME_NO_CREATE") };
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn no_create_does_not_write_a_key() {
+        let _g = crate::checkout::minter_env_lock();
+        let path = std::env::temp_dir().join(format!("dregg-nocreate-{}", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        unsafe { std::env::set_var("DREGG_RUNTIME_SK_FILE", &path) };
+        unsafe { std::env::set_var("DREGG_RUNTIME_NO_CREATE", "1") };
+        assert!(ensure_address().is_err());
+        assert!(!path.exists());
+        unsafe { std::env::remove_var("DREGG_RUNTIME_NO_CREATE") };
+        unsafe { std::env::remove_var("DREGG_RUNTIME_SK_FILE") };
+    }
+
+    #[test]
+    fn fractal_msg_matches_paymint_template() {
+        let _g = crate::checkout::minter_env_lock();
+        let fractal = "terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x";
+        let logo = "terp1yldtf5nsychkasyz3gddemqy45fvl2fxpmc8jrsqvt5fv7ggghysektnqk";
+        let proof = "59a73b7800d05280d8838a704cc496993b7ca578e7a3b4d016c433a8b869aaf5";
+        let template = r#"{"update_extension":{"msg":{"mint":{"alloc":10000,"amnt":1,"ext":null,"proof_hashes":["59a73b7800d05280d8838a704cc496993b7ca578e7a3b4d016c433a8b869aaf5"]}}}}"#;
+        let path = std::env::temp_dir().join(format!("dregg-paymint-{}.json", std::process::id()));
+        let body = serde_json::json!({
+            fractal: { "alloc": 10000, "proof_hashes": [proof] }
+        });
+        std::fs::write(&path, body.to_string()).unwrap();
+        unsafe { std::env::set_var("DREGG_PAYMINT_PROOFS_FILE", &path) };
+        let msg = svg_mint_msg(fractal, 1);
+        let got: serde_json::Value = serde_json::from_slice(&msg).unwrap();
+        let expect: serde_json::Value = serde_json::from_str(template).unwrap();
+        assert_eq!(got, expect);
+        assert_eq!(String::from_utf8(msg).unwrap(), template);
+        let bare = svg_mint_msg(logo, 1);
+        let bare_v: serde_json::Value = serde_json::from_slice(&bare).unwrap();
+        assert_eq!(bare_v["update_extension"]["msg"]["mint"]["alloc"], 0);
+        assert!(bare_v["update_extension"]["msg"]["mint"]["proof_hashes"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        unsafe { std::env::remove_var("DREGG_PAYMINT_PROOFS_FILE") };
+        let _ = std::fs::remove_file(&path);
     }
 }
