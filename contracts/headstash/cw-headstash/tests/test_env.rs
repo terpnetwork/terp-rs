@@ -297,7 +297,7 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
         registration_hook: None,
         registration_hook_gas_limit: None,

@@ -121,7 +121,7 @@ impl EgressEnv {
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
                 "ubridge".into(),
             )),
-            wavs: valid_wavs_proof_one(),
+            wavs: Some(valid_wavs_proof_one()),
         
             circuit_id: None,
         

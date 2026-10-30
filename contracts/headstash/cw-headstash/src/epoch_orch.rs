@@ -60,7 +60,7 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
                 HeadstashTokenObject::new(DENOM.into()),
             ),
-            wavs: generate_test_wavs_proof(1),
+            wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,

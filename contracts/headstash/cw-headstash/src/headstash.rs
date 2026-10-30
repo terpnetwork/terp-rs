@@ -21,8 +21,9 @@ pub struct HeadstashCfg {
     pub distro_hash_domain: DistroHashDomain,
     // ts: token strategies
     pub ts: Vec<TokenStrategy>,
-    // w: wavs operator set
-    pub w: WavsOperatorSet,
+    // w: wavs operator set. None = WAVS disabled (read only via `wavs_operator_set`, fails closed).
+    #[serde(default)]
+    pub w: Option<WavsOperatorSet>,
 }
 
 #[cosmwasm_schema::cw_serde]

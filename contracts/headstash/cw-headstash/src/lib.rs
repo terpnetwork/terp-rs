@@ -33,12 +33,10 @@ use crate::{
     wavs::{WavsOperatorSet, WavsProofOfOwnership},
 };
 
-use ark_ff::Zero;
 use cosmwasm_schema::{cw_serde, serde, QueryResponses};
 use cosmwasm_std::{
-    coins, from_json, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    coins, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
     MessageInfo, Order, Reply, Response, StdError, StdResult, Storage, SubMsg, Uint128,
-    BLS12_381_G1_GENERATOR as G1, BLS12_381_G2_GENERATOR as G2,
 };
 use cw_storage_plus::{Bound, Bounder, Item, KeyDeserialize, Map};
 pub use msg::*;
@@ -58,8 +56,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // Reply IDs
 const CREATE_DENOM_REPLY_ID: u64 = 1;
 
-// a historical set of wavs operator keys after rotated. once rotated we list of old keys iwith block height changed as key.
-pub const WAVS_OPERATORS: Map<String, Vec<String>> = Map::new("wavs_operators");
 pub const HEADSTASH_CFG: Item<HeadstashCfg> = Item::new("headstash_params");
 pub(crate) const GENESIS_TREE_ROOT: Item<Binary> = Item::new("root_gen_tree");
 pub(crate) const COMMITMENT_TREE_ROOT: Item<Binary> = Item::new("root_cm_tree");
@@ -163,13 +159,21 @@ fn msg_burn(
     })
 }
 
+/// The only accessor for WAVS state. Fails closed when WAVS is disabled (`wavs: None`).
+pub fn wavs_operator_set(storage: &dyn Storage) -> StdResult<WavsOperatorSet> {
+    HEADSTASH_CFG
+        .load(storage)?
+        .w
+        .ok_or_else(|| StdError::msg("wavs disabled"))
+}
+
 fn save_headstash_cfg(
     storage: &mut dyn Storage,
     genesis_root: Binary,
     distro_hash_domain: DistroHashDomain,
     genesis_label: Option<String>,
     ts: Vec<TokenStrategy>,
-    w: WavsOperatorSet,
+    w: Option<WavsOperatorSet>,
     circuit_id: u64,
 ) -> Result<(), StdError> {
     distro::validate_instantiate_domain(distro_hash_domain)?;
@@ -202,7 +206,10 @@ pub fn instantiate(
 ) -> Result<Response, StdError> {
     // set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
-    msg.wavs.verify()?;
+    // WAVS is optional. None = disabled: nothing stored, no PoP/threshold checks.
+    if let Some(w) = &msg.wavs {
+        w.verify()?;
+    }
     msg.token_strategy.validate()?;
     let ts = msg.token_strategy;
     let c = env.contract.address.clone();
@@ -214,7 +221,7 @@ pub fn instantiate(
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
-            let w = msg.wavs.proof_of_ownership(deps.api, &c)?;
+            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -257,7 +264,7 @@ pub fn instantiate(
             DENOM.save(deps.storage, &denom.raw)?;
 
             // Save config for existing tokens too
-            let w = msg.wavs.proof_of_ownership(deps.api, &c)?;
+            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -480,6 +487,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             headstash::query_nullifiers(deps, start_after, limit)
         }
         QueryMsg::DistroConfig {} => headstash::query_distro_config(deps),
+        QueryMsg::WavsStatus {} => {
+            let w = HEADSTASH_CFG.load(deps.storage)?.w;
+            to_json_binary(&WavsStatusResponse { enabled: w.is_some(), operator_set: w })
+        }
         QueryMsg::EligibilityRoot { root_id } => headstash::query_eligibility_root(deps, root_id),
         QueryMsg::EligibilityRoots { start_after, limit } => {
             headstash::query_eligibility_roots(deps, start_after, limit)
@@ -663,116 +674,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
     }
 }
 
-impl terp_auth::TerpAccountTrait for CwHeadstash {
-    type InstantiateMsg = InstantiateMsg;
-    type ExecuteMsg = ExecuteMsg;
-    type QueryMsg = QueryMsg;
-    type SudoMsg = terp_auth::AuthSudoMsg;
-    type ContractError = StdError;
-    type AuthMethodStructs = Binary;
-    type AuthProcessResult = Result<Response, Self::ContractError>;
-
-    fn process_sudo_auth(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Self::SudoMsg,
-    ) -> Self::AuthProcessResult {
-        match req {
-            terp_auth::AuthSudoMsg::OnAuthAdded(req) => Self::on_auth_added(deps, env, req),
-            terp_auth::AuthSudoMsg::OnAuthRemoved(req) => Self::on_auth_removed(deps, env, req),
-            terp_auth::AuthSudoMsg::Authenticate(req) => Self::on_auth_request(deps, env, req),
-            terp_auth::AuthSudoMsg::Track(req) => Self::on_auth_track(deps, env, req),
-            terp_auth::AuthSudoMsg::ConfirmExecution(req) => Self::on_auth_confirm(deps, env, req),
-        }
-    }
-
-    fn extended_authenticate(
-        _deps: cosmwasm_std::DepsMut,
-        _auth: Self::AuthMethodStructs,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_added(
-        _deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::OnAuthenticatorAddedRequest,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_removed(
-        deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::OnAuthenticatorRemovedRequest,
-    ) -> Self::AuthProcessResult {
-        // prune state
-        WAVS_OPERATORS.clear(deps.storage);
-        HEADSTASH_CFG.remove(deps.storage);
-        NULLIFIERS.clear(deps.storage);
-        ELIGIBILITY_ROOTS.clear(deps.storage);
-        NEXT_ROOT_ID.remove(deps.storage);
-        Ok(Response::default())
-    }
-
-    // - sign the hash of the proofs being verified per msgs. this lets us recreate the hash on-chain and verify actions,
-    //   then recontstruct action values from proof inputs after verification (i.e coin amounts, auth params, etc.)
-    // confirms wavs operator set authentication.
-    // recomposes aggregated key and signature to enforce threshold minimums
-    fn on_auth_request(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
-    ) -> Self::AuthProcessResult {
-        let cfg = HEADSTASH_CFG.load(deps.storage)?;
-        let agg_g2 = deps.api.bls12_381_aggregate_g2(&req.signature)?;
-        let msg = to_json_binary(&req.tx_data.msgs)?;
-        // reconstruct msg that was signed (hash of req.tx_data.msgs) (TODO: BENCHMARK)
-        // `Hash-to-curve: H(msg) → G2`
-        let qs = deps
-            .api
-            .bls12_381_hash_to_g2(cosmwasm_std::HashFunction::Sha256, &msg, &G2)?;
-
-        if !cfg.w.msg.threshold.is_zero() {
-            let w: WavsOperatorSet = cfg.w;
-            let agg_g1 = hex::decode(&w.msg.aggregate_key)?;
-            // e(agg_g1, qs) == e(G1, agg_g2)
-            if !deps
-                .api
-                .bls12_381_pairing_equality(&agg_g1, &qs, &G1, &agg_g2)?
-            {
-                return Err(StdError::msg("auth_params"));
-            };
-        }
-
-        Ok(Response::default())
-    }
-
-    fn on_auth_track(
-        _deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::TrackRequest,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_confirm(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::ConfirmExecutionRequest,
-    ) -> Self::AuthProcessResult {
-        let auth_data: wavs::BlsThresholdAuthData =
-            from_json(&req.authenticator_params.clone().expect("cw-auth params"))?;
-
-        // verifies circuit proofs, reverts any stateful change if errors.
-        // Self::extended_authenticate(deps, params.clone())
-        Ok(Response::default())
-    }
-
-    fn on_hooks(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-}
+// Smart-account authenticator impl (TerpAccountTrait: on_auth_added/removed/request/track/confirm)
+// removed: it was unreachable (sudo decodes HashMerchantSudoMsg only) and on_auth_removed cleared
+// config, nullifiers and eligibility roots. See spec Appendix W.
 
 /// Map nonce -> indexList of wav operator bls12-381
 /// we want to be able to query:
@@ -840,7 +744,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(3),
+            wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -945,7 +849,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(3),
+            wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -994,7 +898,7 @@ mod instantiate_tests {
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
                 "existing_token".to_string(),
             )),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1029,7 +933,7 @@ mod instantiate_tests {
             token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
                 "test".to_string(),
             )),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1066,7 +970,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: invalid_wavs,
+            wavs: Some(invalid_wavs),
 
             circuit_id: None,
 
@@ -1106,7 +1010,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs,
+            wavs: Some(wavs),
 
             circuit_id: None,
 
@@ -1143,7 +1047,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1159,11 +1063,105 @@ mod instantiate_tests {
         assert_eq!(cfg.gr, genesis_root);
         assert_eq!(cfg.distro_hash_domain, DistroHashDomain::PoseidonV1);
         assert_eq!(cfg.ts.len(), 1);
-        assert!(cfg.w.msg.nonce == 0);
+        assert!(cfg.w.as_ref().unwrap().msg.nonce == 0);
 
         let elig = distro::require_root(&deps.storage, GENESIS_ROOT_ID).unwrap();
         assert_eq!(elig.root, genesis_root);
         assert_eq!(elig.domain, DistroHashDomain::PoseidonV1);
+    }
+
+    fn wavs_msg(wavs: Option<WavsProofOfOwnership>) -> InstantiateMsg {
+        InstantiateMsg {
+            genesis_root: Binary::from(vec![0xbb; 32]),
+            distro_hash_domain: Default::default(),
+            genesis_label: None,
+            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+                subdenom: HeadstashTokenObject::new("test".to_string()),
+                metadata: mock_metadata(),
+                initial_mint: None,
+                manager: None,
+                minters: vec![],
+            }),
+            wavs,
+            circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+        }
+    }
+
+    #[test]
+    fn instantiate_wavs_none_disables_wavs() {
+        let mut deps = mock_dependencies();
+        let sender = deps.api.addr_make("sender");
+        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(None)).unwrap();
+        assert!(HEADSTASH_CFG.load(&deps.storage).unwrap().w.is_none());
+        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
+        assert_eq!(st, WavsStatusResponse { enabled: false, operator_set: None });
+        // fail closed
+        assert!(wavs_operator_set(&deps.storage).unwrap_err().to_string().contains("wavs disabled"));
+        // stored config JSON carries no operator set
+        let raw = deps.storage.get(b"headstash_params").unwrap();
+        assert!(String::from_utf8(raw).unwrap().contains("\"w\":null"));
+    }
+
+    #[test]
+    fn instantiate_wavs_some_valid_is_enabled() {
+        let mut deps = mock_dependencies();
+        let sender = deps.api.addr_make("sender");
+        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(valid_wavs_proof(2)))).unwrap();
+        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
+        assert!(st.enabled);
+        assert_eq!(st.operator_set.unwrap().keys.len(), 2);
+        assert_eq!(wavs_operator_set(&deps.storage).unwrap().msg.total_operators, 2);
+    }
+
+    #[test]
+    fn instantiate_wavs_some_invalid_still_rejected() {
+        for bad in 0..3 {
+            let mut deps = mock_dependencies();
+            let sender = deps.api.addr_make("sender");
+            let mut w = valid_wavs_proof(1);
+            match bad {
+                0 => w.poos[0].poo = hex::encode(cosmwasm_std::BLS12_381_G2_GENERATOR), // valid point, wrong PoP
+                1 => w.msg.threshold = 0,
+                _ => w.poos.clear(),
+            }
+            assert!(instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(w))).is_err(), "case {bad}");
+            assert!(HEADSTASH_CFG.may_load(&deps.storage).unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn wavs_field_absent_from_json_means_disabled() {
+        let mut v = cosmwasm_std::to_json_vec(&wavs_msg(None)).unwrap();
+        let s = String::from_utf8(v.clone()).unwrap().replace(",\"wavs\":null", "");
+        assert!(!s.contains("wavs"));
+        v = s.into_bytes();
+        let m: InstantiateMsg = cosmwasm_std::from_json(&v).unwrap();
+        assert!(m.wavs.is_none());
+    }
+
+    #[test]
+    fn legacy_cfg_with_operator_set_still_decodes() {
+        // configs stored by the previous code (non-optional w) decode as Some
+        let w = valid_wavs_proof(1).proof_of_ownership(&cosmwasm_std::testing::MockApi::default(), &Addr::unchecked("c")).unwrap();
+        let cfg = HeadstashCfg { cid: 0, gr: Binary::from(vec![1; 32]), distro_hash_domain: Default::default(), ts: vec![], w: Some(w.clone()) };
+        let back: HeadstashCfg = cosmwasm_std::from_json(cosmwasm_std::to_json_vec(&cfg).unwrap()).unwrap();
+        assert_eq!(back.w, Some(w));
+    }
+
+    #[test]
+    fn sudo_refuses_smart_account_authenticator_messages() {
+        // only HashMerchantSudoMsg decodes; authenticator hooks (incl. the removed state-wiping
+        // on_authenticator_removed) cannot be dispatched
+        for m in [
+            r#"{"on_authenticator_added":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
+            r#"{"on_authenticator_removed":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
+            r#"{"authenticate":{}}"#, r#"{"track":{}}"#, r#"{"confirm_execution":{}}"#,
+        ] {
+            assert!(cosmwasm_std::from_json::<epoch::HashMerchantSudoMsg>(m.as_bytes()).is_err(), "{m}");
+        }
     }
 
     #[test]
@@ -1184,7 +1182,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1213,7 +1211,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1263,7 +1261,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: Some(0),
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1304,7 +1302,7 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,

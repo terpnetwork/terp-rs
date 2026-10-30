@@ -241,7 +241,7 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
         registration_hook: None,
         registration_hook_gas_limit: None,
@@ -359,7 +359,7 @@ fn test_integration_error_propagation() {
     // Create invalid headstash instantiate message
     let mut invalid_msg = mock_headstash_instantiate_msg();
     // Make WAVS invalid
-    invalid_msg.wavs.msg.threshold = 0;
+    invalid_msg.wavs.as_mut().unwrap().msg.threshold = 0;
 
     let create_msg = FactoryExecuteMsg::CreateHeadstash {
         instantiate_msg: invalid_msg,

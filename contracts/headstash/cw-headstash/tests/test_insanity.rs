@@ -240,7 +240,7 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
         registration_hook: None,
         registration_hook_gas_limit: None,
@@ -256,7 +256,7 @@ fn test_insanity_invalid_wavs_threshold_zero() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 0; // Invalid threshold
+    msg.wavs.as_mut().unwrap().msg.threshold = 0; // Invalid threshold
 
     let err = env
         .app
@@ -278,7 +278,7 @@ fn test_insanity_invalid_wavs_threshold_too_high() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 10; // Higher than total_operators
+    msg.wavs.as_mut().unwrap().msg.threshold = 10; // Higher than total_operators
 
     let err = env
         .app
@@ -300,7 +300,7 @@ fn test_insanity_invalid_wavs_empty_operators() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.poos = vec![]; // No operators but total_operators = 1
+    msg.wavs.as_mut().unwrap().poos = vec![]; // No operators but total_operators = 1
 
     let err = env
         .app

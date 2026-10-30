@@ -501,7 +501,7 @@ mod tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: generate_test_wavs_proof(1),
+            wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,
             registration_hook_gas_limit: None,
@@ -1177,6 +1177,8 @@ mod tests {
     fn direct_claims_against_first_and_latest_of_2100_anchors() {
         let (mut deps, mut env, a, b, tree) = direct_fixture();
         register_all(&mut deps, &env, &a, &tree);
+        // the whole register -> anchor -> claim flow below runs with WAVS disabled
+        assert!(crate::wavs_operator_set(&deps.storage).unwrap_err().to_string().contains("wavs disabled"));
         owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let first = tree_root(&deps).1[0].root.clone();

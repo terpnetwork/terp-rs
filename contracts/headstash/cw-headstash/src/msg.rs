@@ -17,8 +17,10 @@ pub struct InstantiateMsg {
     pub genesis_label: Option<String>,
     /// Token strategies for the tokens distributed to headstash users
     pub token_strategy: TokenStrategy,
-    /// Aggregated list of keys
-    pub wavs: WavsProofOfOwnership,
+    /// Optional WAVS operator set (aggregated BLS keys + PoPs). None = WAVS disabled.
+    /// There is no execute path to set it later; only a gov migrate to new code can.
+    #[serde(default)]
+    pub wavs: Option<WavsProofOfOwnership>,
     /// Stored circuit id after zkvm `store-circuit` / `upload_circuit` (default 0 until set).
     #[serde(default)]
     pub circuit_id: Option<u64>,
@@ -233,6 +235,9 @@ pub enum QueryMsg {
     /// Default distro hash domain + next root id.
     #[returns(DistroConfigResponse)]
     DistroConfig {},
+    /// WAVS status: `enabled` false when instantiated with `wavs: None`.
+    #[returns(WavsStatusResponse)]
+    WavsStatus {},
     /// Single eligibility root by id.
     #[returns(crate::distro::EligibilityRootEntry)]
     EligibilityRoot { root_id: u64 },
@@ -323,6 +328,12 @@ pub enum QueryMsg {
 }
 
 #[cw_serde]
+pub struct WavsStatusResponse {
+    pub enabled: bool,
+    pub operator_set: Option<crate::wavs::WavsOperatorSet>,
+}
+
+#[cosmwasm_schema::cw_serde]
 pub struct DistroConfigResponse {
     pub default_domain: DistroHashDomain,
     pub default_domain_tag: String,
