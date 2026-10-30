@@ -22,12 +22,12 @@ Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405
 ## Before you start
 1. Fill the placeholders that are still open, then re-run `render_gov_session.py` (it runs validate_rendered_proposal):
    - **PROPOSAL_METADATA_URI** and **FORUM_URL** are still unknown.
-   - **WAVS_POO_JSON** is still required by the 1305e4 contract even on the direct path: `InstantiateMsg.wavs` is a non-optional field, and instantiate runs `wavs.verify()` (≥1 operator, threshold in 1..=n) and a BLS12-381 proof-of-possession pairing check. The direct claim path never uses the operator set afterwards. Fill it with a one-operator PoP from a throwaway BLS key that is discarded, the way the e2e WAVS_BIN does. Removing it needs a contract change.
-   - **ANCHOR_START_HEIGHT** is still required: `registration.anchor_start_height` is a non-optional u64, and direct claims prove against an accepted registration anchor (`root is not an accepted anchor`). `accept_anchor` is refused before this height. Set it to the height from which the first anchor may be accepted, for example the expected instantiate-proposal pass height (or 1 = immediately).
+   - **WAVS_POO_JSON** (filled): required by the 1305e4 contract (`InstantiateMsg.wavs` is non-optional; instantiate runs `wavs.verify()` and a BLS12-381 PoP pairing check). The field holds BLS public keys only. There is no operator address, so the gov module or a burn address cannot go in it. The committed value is an inert 1-of-1 set from `examples/print_wavs`: the secret existed only in that process's memory, was never written, and is gone. No claim, registration, anchor, execute or migrate path reads the stored set, and the smart-account AuthSudoMsg handlers are not reachable from the `sudo` entry point. The dry run checks this (`neg_wavs_*`).
+   - **ANCHOR_START_HEIGHT** (filled, = 1): required (`registration.anchor_start_height` is a non-optional u64). 1 means the first anchor can be accepted immediately after the campaign is opened.
    - These are filled at runtime: EXEC_GAS/EXEC_FEE_UTHIOL, STORE_GAS/STORE_FEE_UTHIOL, CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_CIRCUIT, CLAIMER_ADDR and CLAIM_FEE_UTHIOL, FE_CODE_ID, FE_STORE_GAS/FE_STORE_FEE_UTHIOL, FE_UPLOADER_ADDR and FE_UPLOAD_EXPIRATION.
 2. Read the acct and seq of P and FX again right before each signature.
 3. **Deposits: P can't fund both proposals at once.** Each proposal needs 10,000 TERP, which is 5,000 initial plus 5,000 top-up within the 72h deposit period. P holds 10,980 TERP, so run the proposals one after the other: the circuit proposal deposit is refunded when it passes, and only then do you submit the instantiate proposal. Another option is for a second depositor to add the top-up.
-4. **FX THIOL top-up.** The claim fee-grant budget is ~2,891 THIOL and FX has 2,202.74, plus the uploader allowance of 3.374 THIOL (doc 18: 2.374 THIOL of estimated upload fees plus 1 THIOL headroom). FX has 2,202.74, so send **at least 691.7 THIOL** to FX before step 16. Add about 10 THIOL for FX's own grant-tx fees, which makes ~702 THIOL in total. Note that `decisions.mainnet.json` still says `budget_uthiol` 4,761.7 THIOL. Reconcile that number with the 2,891 budget before you fill CLAIM_FEE_UTHIOL.
+4. **FX THIOL top-up.** Claim fee-grant budget 4,761.7 THIOL (`FEEGRANT_RECOMMENDED_UTHIOL` 4,761,700,000) + uploader allowance 3.374003 THIOL (doc 18) + an assumed ~10 THIOL of FX's own grant-tx fees = 4,775.074003 THIOL. FX holds 2,202.74 THIOL, so send **2,572.334003 THIOL** (≥2,562.334003 without the 10 THIOL fee assumption) to FX before step 16.
 
 ## Steps, in order
 
@@ -59,7 +59,7 @@ Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405
 - E session gas: exec ≥25M, store ≥10M, FE store ≥4M, revoke ~0.11M. That is ≈39M gas, ≈1.96 THIOL, out of the 300 THIOL session allowance.
 - U uploads: 47.48M gas, 2.374 THIOL (from FX).
 - P: 2 × 10,000 TERP deposits, run one after the other, plus Zigner tx fees of a few THIOL.
-- FX: ~2,891 THIOL of claim budget + 3.374 THIOL uploader allowance + ~10 THIOL of fees. That requires a top-up of ≥~702 THIOL.
+- FX: 4,761.7 THIOL claim budget + 3.374003 THIOL uploader allowance + ~10 THIOL fees − 2,202.74 held = top-up of **2,572.334003 THIOL**.
 
 ## Not verified
 - Zigner amino rendering of the gov v1 and wasm msg types in steps 14 and 17 on a real device.
