@@ -97,6 +97,7 @@ SESSION_ALLOWANCE = 300000000  # feegrant cap sized for a ~175 KB MsgExec (mainn
 # "max_chunk_bytes": int}. With it, the eph key also stores the frontend wasm, and the contract proposal instantiates the
 # frontend (gov admin + owner), publishes the manifest (activate) and sets frontend_contract in the cw-headstash instantiate.
 FE_GOV = None
+EPH_KEY = "eph"
 FE_SALT = hashlib.sha256(b"headstash-frontend-gov-e2e").hexdigest()
 
 def eph_store(name, path, PROPOSER, gas):
@@ -107,7 +108,7 @@ def eph_store(name, path, PROPOSER, gas):
     m = {"@type": "/cosmwasm.wasm.v1.MsgStoreCode", "sender": eph,
          "wasm_byte_code": base64.b64encode(_gz.compress(open(path, "rb").read(), 9, mtime=0)).decode(),
          "instantiate_permission": {"permission": "AnyOfAddresses", "addresses": [GOV]}}
-    res = sign_send("eph", gs._tx([m], gas, int(gas * 0.025) + 1, "uterp", PROPOSER, "headstash-gov-session:store-code"), "store_" + name)
+    res = sign_send(EPH_KEY, gs._tx([m], gas, int(gas * 0.025) + 1, "uterp", PROPOSER, "headstash-gov-session:store-code"), "store_" + name)
     cid = attr(res, "code_id")
     ci = q("wasm", "code-info", cid) if cid else {}
     perm = ci.get("instantiate_permission", {})
@@ -167,14 +168,70 @@ def close_session(PROPOSER):
     """Session close via tools/headstash/deploy/gov_session.py: one MsgExec signed by the eph key revokes
     SubmitProposal, the feegrant (MsgRevokeAllowance), its grant, and MsgRevoke last."""
     eph = R["addresses"]["EPH_ADDR"]
-    res = sign_send("eph", gs.revoke_tx(eph, PROPOSER, gs.SESSION_TYPES, 400000, 20000, "uterp", use_feegrant=True), "revoke")
-    step("session_revoke_msgexec", res.get("code") == 0, "gas %d %s" % (gas_used(res), res.get("raw_log", "")[:160]))
+    res = sign_send(EPH_KEY, gs.revoke_tx(eph, PROPOSER, gs.SESSION_TYPES, 400000, 20000, "uterp", use_feegrant=True), "revoke")
+    step("session_revoke_msgexec_%s" % EPH_KEY, res.get("code") == 0, "gas %d %s" % (gas_used(res), res.get("raw_log", "")[:160]))
     left = q("authz", "grants", PROPOSER, eph).get("grants", [])
     fg = subprocess.run([TERPD, "q", "feegrant", "grant", PROPOSER, eph, "--node", NODE, "-o", "json"], capture_output=True, text=True)
-    step("session_authz_revoked", left == [], "remaining authz %d" % len(left))
-    step("session_feegrant_revoked", fg.returncode != 0, (fg.stdout + fg.stderr).strip()[-160:])
-    inner = json.load(open(os.path.join(RUN, "unsigned_circuit.json")))
-    neg("eph_cannot_submit_after_revoke", sign_send("eph", gs.exec_tx(eph, PROPOSER, inner["body"]["messages"], 80000000, SESSION_FEE, "uterp"), "exec_after_revoke"))
+    step("session_authz_revoked_%s" % EPH_KEY, left == [], "remaining authz %d" % len(left))
+    step("session_feegrant_revoked_%s" % EPH_KEY, fg.returncode != 0, (fg.stdout + fg.stderr).strip()[-160:])
+    inner = json.load(open(os.path.join(RUN, "unsigned_probe_%s.json" % EPH_KEY)))
+    neg("eph_cannot_submit_after_revoke_%s" % EPH_KEY, sign_send(EPH_KEY, gs.exec_tx(eph, PROPOSER, inner["body"]["messages"], 80000000, SESSION_FEE, "uterp"), "exec_after_revoke"))
+
+def open_session(PROPOSER, key):
+    """cw-orch-kms session shape (render 10 / B10): the cold key grants a short GenericAuthorization + feegrant
+    to a fresh ephemeral key in one amino tx."""
+    global EPH_KEY
+    EPH_KEY = key
+    EPH = new_wallet(key); R["addresses"]["EPH_ADDR"] = EPH; R["addresses"]["EPH_ADDR_" + key] = EPH
+    exp = int(time.time()) + 600
+    exp_rfc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(exp))
+    parts = [json.loads(gen_only("proposer", "authz", "grant", EPH, "generic", "--msg-type", url, "--expiration", str(exp))) for url in gs.SESSION_TYPES]
+    parts.append(json.loads(gen_only("proposer", "feegrant", "grant", PROPOSER, EPH, "--spend-limit", "%duterp" % SESSION_ALLOWANCE, "--expiration", exp_rfc)))
+    gtx = parts[0]; gtx["body"]["messages"] = [m for p_ in parts for m in p_["body"]["messages"]]; gtx["body"]["memo"] = "cw-orch-session:v1"
+    gtx["auth_info"]["fee"] = {"amount": [{"denom": "uterp", "amount": "20000"}], "gas_limit": "600000", "payer": "", "granter": ""}
+    f_ = sign_send("proposer", gtx, "session_grant_" + key, mode="amino-json")
+    step("session_grants_amino_signed_%s" % key, f_.get("code") == 0, "one amino tx: generic %s + feegrant %d%s exp %s %s" % (
+        ",".join(u.rsplit(".", 1)[1] for u in gs.SESSION_TYPES), SESSION_ALLOWANCE, "uterp", exp_rfc, f_.get("raw_log", "")[:120]))
+    pf = os.path.join(RUN, "prop_probe.json")
+    json.dump({"messages": [], "metadata": "", "deposit": "1uterp", "title": "probe", "summary": "post-revoke probe"}, open(pf, "w"))
+    open(os.path.join(RUN, "unsigned_probe_%s.json" % key), "w").write(gen_only("proposer", "gov", "submit-proposal", pf))
+    return EPH
+
+def circuit_via_gov(PROPOSER, cdir):
+    """Phase B: MsgStoreFullCircuit (sender gov) submitted by the session key (MsgExec, granter = proposer)."""
+    EPH = R["addresses"]["EPH_ADDR"]
+    b0, e0 = bal(PROPOSER), bal(EPH)
+    msg = {"@type": "/cosmwasm.wasm.v1.MsgStoreFullCircuit", "sender": GOV, "auth": {"circuit_type": 0, "curve_type": 0, "k": 11},
+           "params_body": base64.b64encode(open(os.path.join(cdir, "params.bin"), "rb").read()).decode(),
+           "vk_body": base64.b64encode(open(os.path.join(cdir, "vk_body.bin"), "rb").read()).decode()}
+    res, pid, st = gov_submit("circuit", [msg], PROPOSER, eph=EPH_KEY)
+    res = rec("store_circuit", res)
+    R["circuit_proposal"] = {"id": pid, "status": st and st["status"], "tx_bytes_unsigned": os.path.getsize(os.path.join(RUN, "unsigned_circuit.json"))}
+    step("eph_msgexec_submit_proposal", res.get("code") == 0 and pid is not None, "proposal %s gas %d %s" % (pid, gas_used(res), res.get("raw_log", "")[:160]))
+    if pid:
+        pp = q("gov", "proposal", pid); pp = pp.get("proposal", pp)
+        step("proposer_is_granter", pp.get("proposer") == PROPOSER, "proposer %s" % pp.get("proposer"))
+        deps = R["deposits_at_submit"]["circuit"]
+        tot = sum(int(c["amount"]) for d in deps for c in d["amount"] if c["denom"] == "uterp")
+        step("initial_deposit_by_granter", tot == INIT_DEPOSIT and len(deps) > 0 and all(d["depositor"] == PROPOSER for d in deps), "at submit %s" % json.dumps(deps)[:200])
+        tot = sum(int(c["amount"]) for c in pp.get("total_deposit", []) if c["denom"] == "uterp")
+        step("deposit_from_granter", tot == FULL_DEPOSIT and all(d["depositor"] == PROPOSER for d in deps) and b0 - bal(PROPOSER) > 0 and bal(EPH) == e0 == 0,
+             "deposits %s proposer -%d eph %d" % (json.dumps(deps)[:200], b0 - bal(PROPOSER), bal(EPH)))
+    step("circuit_proposal_passed", passed(st), "status %s %s" % (st and st["status"], st and st.get("failed_reason", "")))
+    return res
+
+def community_pool():
+    j = q("distribution", "community-pool")
+    from decimal import Decimal
+    tot = Decimal(0)
+    for c in j.get("pool", []):
+        if isinstance(c, dict):
+            if c.get("denom") == "uterp": tot += Decimal(c["amount"])
+        elif isinstance(c, str) and c.endswith("uterp") and c[:-5].replace(".", "", 1).isdigit():
+            tot += Decimal(c[:-5])
+    return int(tot)
+
+def prop_failed(st): return st is not None and st.get("status") in ("PROPOSAL_STATUS_FAILED", 5)
 
 def passed(st): return st is not None and st.get("status") in ("PROPOSAL_STATUS_PASSED", 3)
 
@@ -214,40 +271,13 @@ def main():
         res = tx("stranger", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
                  os.path.join(cdir, "vk_body.bin"), "--k", "11", "--circuit-type", "0", "--curve-type", "0")
         neg("direct_circuit_store_refused_nobody", res)
-        # cw-orch-kms session shape: cold key grants a short GenericAuthorization + feegrant to an ephemeral key
-        EPH = new_wallet("eph"); R["addresses"]["EPH_ADDR"] = EPH
-        exp = int(time.time()) + 600
-        exp_rfc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(exp))
-        parts = [json.loads(gen_only("proposer", "authz", "grant", EPH, "generic", "--msg-type", url, "--expiration", str(exp))) for url in gs.SESSION_TYPES]
-        parts.append(json.loads(gen_only("proposer", "feegrant", "grant", PROPOSER, EPH, "--spend-limit", "%duterp" % SESSION_ALLOWANCE, "--expiration", exp_rfc)))
-        gtx = parts[0]; gtx["body"]["messages"] = [m for p_ in parts for m in p_["body"]["messages"]]; gtx["body"]["memo"] = "cw-orch-session:v1"
-        gtx["auth_info"]["fee"] = {"amount": [{"denom": "uterp", "amount": "20000"}], "gas_limit": "600000", "payer": "", "granter": ""}
-        f_ = sign_send("proposer", gtx, "session_grant", mode="amino-json")
-        step("session_grants_amino_signed", f_.get("code") == 0, "one amino tx: generic %s + feegrant %d%s exp %s %s" % (
-            ",".join(u.rsplit(".", 1)[1] for u in gs.SESSION_TYPES), SESSION_ALLOWANCE, "uterp", exp_rfc, f_.get("raw_log", "")[:120]))
-        b0, e0 = bal(PROPOSER), bal(EPH)
-        msg = {"@type": "/cosmwasm.wasm.v1.MsgStoreFullCircuit", "sender": GOV, "auth": {"circuit_type": 0, "curve_type": 0, "k": 11},
-               "params_body": base64.b64encode(open(os.path.join(cdir, "params.bin"), "rb").read()).decode(),
-               "vk_body": base64.b64encode(open(os.path.join(cdir, "vk_body.bin"), "rb").read()).decode()}
-        res, pid, st = gov_submit("circuit", [msg], PROPOSER, eph="eph")
-        res = rec("store_circuit", res)
-        R["circuit_proposal"] = {"id": pid, "status": st and st["status"], "tx_bytes_unsigned": os.path.getsize(os.path.join(RUN, "unsigned_circuit.json"))}
-        step("eph_msgexec_submit_proposal", res.get("code") == 0 and pid is not None, "proposal %s gas %d %s" % (pid, gas_used(res), res.get("raw_log", "")[:160]))
-        if pid:
-            pp = q("gov", "proposal", pid); pp = pp.get("proposal", pp)
-            step("proposer_is_granter", pp.get("proposer") == PROPOSER, "proposer %s" % pp.get("proposer"))
-            deps = R["deposits_at_submit"]["circuit"]  # queried right after submit, before top-up/refund
-            tot = sum(int(c["amount"]) for d in deps for c in d["amount"] if c["denom"] == "uterp")
-            step("initial_deposit_by_granter", tot == INIT_DEPOSIT and len(deps) > 0 and all(d["depositor"] == PROPOSER for d in deps), "at submit %s" % json.dumps(deps)[:200])
-            tot = sum(int(c["amount"]) for c in pp.get("total_deposit", []) if c["denom"] == "uterp")  # deposits are refunded+pruned once passed; total_deposit stays
-            step("deposit_from_granter", tot == FULL_DEPOSIT and all(d["depositor"] == PROPOSER for d in deps) and b0 - bal(PROPOSER) > 0 and bal(EPH) == e0 == 0,
-                 "deposits %s proposer -%d eph %d" % (json.dumps(deps)[:200], b0 - bal(PROPOSER), bal(EPH)))
-        step("circuit_proposal_passed", passed(st), "status %s %s" % (st and st["status"], st and st.get("failed_reason", "")))
-        # wasm stores (> 64 KiB, not Zigner-signable): the eph key stores as itself while the session is open
+        # Phase A session: wasm stores only (> 64 KiB, not Zigner-signable); no circuit yet
+        open_session(PROPOSER, "eph")
         R["eph_code_id"], _ = eph_store("cw_headstash", WASM, PROPOSER, 20000000)
         if FE_GOV:
             R["fe_code_id"], R["fe_checksum"] = eph_store("frontend", FE_GOV["wasm"], PROPOSER, 8000000)
         close_session(PROPOSER)  # close right after the large action, well inside the TTL
+        res = {}
     else:
         res = rec("store_circuit", tx("owner", 60000000, "wasm", "store-full-circuit", os.path.join(cdir, "params.bin"),
               os.path.join(cdir, "vk_body.bin"), "--k", "11", "--circuit-type", "0", "--curve-type", "0"))
@@ -331,27 +361,48 @@ def main():
         cc["trusted"] = [b64(bytes(32))]; cc["trusted_verify_threshold"] = 1; cc["trusted_sign_threshold"] = 1
         res = tx("owner", 300000, "distribution", "fund-community-pool", "10100000000uterp")
         step("community_pool_funded", res.get("code") == 0, res.get("raw_log", "")[:120])
+        FUND = 10030000000
+        # Phase A proposal: deploy only. 1 uterp to gov (ExistingFungible instantiate needs >= 1 token),
+        # frontend instantiate2 + publish, cw-headstash instantiate2 with 1 uterp. No campaign, no circuit.
         msgs = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
-                 "amount": [{"denom": "uterp", "amount": "10030000000"}]},  # pool -> gov, then gov funds the instantiate
-                {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(code_id),
-                 "label": "headstash-direct-e2e", "msg": init, "funds": [{"denom": "uterp", "amount": "10030000000"}], "salt": base64.b64encode(bytes.fromhex(salt)).decode(), "fix_msg": False},
-                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": eff, "funds": []},
-                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"bind_note_circuit": {"zk_id": zk_id}}, "funds": []},
-]
-        if FE_GOV:  # frontend first: instantiate2 (gov admin + owner) at the predicted address, then publish the manifest (activate)
+                 "amount": [{"denom": "uterp", "amount": "1"}]}]
+        if FE_GOV:
             fe = R["fe_contract"]; R["fe_manifest"] = FE_GOV["manifest"]()
-            msgs = [{"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(R["fe_code_id"]),
-                     "label": "headstash-frontend-gov-e2e", "msg": {"owner": GOV, "max_chunk_bytes": FE_GOV["max_chunk_bytes"]}, "funds": [],
-                     "salt": base64.b64encode(bytes.fromhex(FE_SALT)).decode(), "fix_msg": False},
-                    {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": fe,
-                     "msg": {"publish_manifest": {"manifest": R["fe_manifest"]}}, "funds": []}] + msgs
-        res, pid, st = gov_submit("contract", msgs, "proposer")
-        R["contract_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason")}
-        ci = q("wasm", "contract", contract) if passed(st) else {}
-        ci = ci.get("contract_info", ci)
-        step("contract_proposal_passed", passed(st), "proposal %s %s %s" % (pid, st and st["status"], st and st.get("failed_reason", "")))
-        step("instantiate", passed(st) and ci.get("admin") == GOV and ci.get("creator") == GOV and bal(contract) == 10030000000,
-             "%s admin %s creator %s bal %d" % (contract, ci.get("admin"), ci.get("creator"), bal(contract) if passed(st) else -1))
+            msgs += [{"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(R["fe_code_id"]),
+                      "label": "headstash-frontend-gov-e2e", "msg": {"owner": GOV, "max_chunk_bytes": FE_GOV["max_chunk_bytes"]}, "funds": [],
+                      "salt": base64.b64encode(bytes.fromhex(FE_SALT)).decode(), "fix_msg": False},
+                     {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": fe,
+                      "msg": {"publish_manifest": {"manifest": R["fe_manifest"]}}, "funds": []}]
+        msgs += [{"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": str(code_id),
+                  "label": "headstash-direct-e2e", "msg": init, "funds": [{"denom": "uterp", "amount": "1"}],
+                  "salt": base64.b64encode(bytes.fromhex(salt)).decode(), "fix_msg": False}]
+        res, pid, st = gov_submit("phase_a", msgs, "proposer")
+        R["phase_a_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason"), "messages": len(msgs)}
+        step("phase_a_proposal_passed", passed(st), "proposal %s %s %s" % (pid, st and st["status"], st and st.get("failed_reason", "")))
+        if not passed(st): return
+        ci = q("wasm", "contract", contract); ci = ci.get("contract_info", ci)
+        try: own = smart(contract, {"ownership": {}}).get("owner")
+        except Exception as e: own = "query error %s" % str(e)[-80:]
+        step("phase_a_instantiated_gov_admin_owner", ci.get("admin") == GOV and ci.get("creator") == GOV and own == GOV and bal(contract) == 1,
+             "%s admin %s creator %s owner %s bal %d" % (contract, ci.get("admin"), ci.get("creator"), own, bal(contract)))
+        step("phase_a_reclaim_status_none", smart(contract, {"reclaim_status": {}}) is None, "reclaim_status null")
+        neg("phase_a_bind_by_owner_key_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
+        # Phase B: new session, circuit store proposal, then gov funds + campaign + bind
+        open_session(PROPOSER, "eph_b")
+        res_c = circuit_via_gov(PROPOSER, cdir)
+        close_session(PROPOSER)
+        for ev in res_c.get("events", []):
+            for at in ev.get("attributes", []):
+                if at["key"] in ("zk_id", "circuit_id") and at["value"].isdigit() and "circuit" in ev["type"]: zk_id = int(at["value"])
+        R["zk_id"] = zk_id
+        msgs = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": contract,
+                 "amount": [{"denom": "uterp", "amount": str(FUND - 1)}]},
+                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": eff, "funds": []},
+                {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"bind_note_circuit": {"zk_id": zk_id}}, "funds": []}]
+        res, pid, st = gov_submit("phase_b", msgs, "proposer")
+        R["contract_proposal"] = R["phase_b_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason")}
+        step("phase_b_proposal_passed", passed(st), "proposal %s %s %s" % (pid, st and st["status"], st and st.get("failed_reason", "")))
+        step("instantiate", passed(st) and bal(contract) == FUND, "%s funded %d (pool spend straight to the contract)" % (contract, bal(contract)))
         if not passed(st): return
         info = smart(contract, {"direct_claim": {}})
         step("direct_ctx_matches_contract", base64.b64decode(info["expected_ctx"]) == ctx, json.dumps(info)[:200])
@@ -648,6 +699,37 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     R["claims"].append({"note": R["neg_note"], "anchor": "A2", "wallet": wn, "amount": prn["amount"], "gas_used": gas_used(res), "fee": claim_spend})
     save()
 
+    # 10b. governance emergency reclaim (RECLAIM=1): before the cutoff, partial claims done
+    if GOV_ROLES and os.environ.get("RECLAIM") == "1":
+        rmsg = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"emergency_reclaim": {}}, "funds": []}]
+        neg("reclaim_by_non_gov_key_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
+        c0, p0, h0 = bal(contract), community_pool(), height()
+        res, pid, st = gov_submit("reclaim", rmsg, "proposer")
+        p1 = community_pool(); rs = smart(contract, {"reclaim_status": {}}) if passed(st) else None
+        amt = int(next((c["amount"] for c in (rs or {}).get("amounts", []) if c["denom"] == "uterp"), 0))
+        R["reclaim"] = {"proposal": pid, "status": st and st["status"], "contract_before": c0, "pool_before": p0, "pool_after": p1, "record": rs,
+                        "claimed_before": len(R["claims"]), "height_before": h0, "cutoff": cut}
+        step("gov_emergency_reclaim_passed_before_cutoff", passed(st) and height() <= cut, "proposal %s %s h %d cutoff %d" % (pid, st and st["status"], height(), cut))
+        step("reclaim_contract_emptied", bal(contract) == 0 and amt == c0, "contract %d -> %d, record %s" % (c0, bal(contract), json.dumps(rs)))
+        step("reclaim_credited_to_community_pool", c0 <= p1 - p0 < c0 + 10**9, "pool %d -> %d (+%d; reclaimed %d, rest = block community tax)" % (p0, p1, p1 - p0, c0))
+        wc = new_wallet("dclaim_after_reclaim")
+        prc, err = prove("sol", 0, wc, A2)
+        neg("claim_after_reclaim_refused", tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc))), "reclaimed by governance")
+        code, j = grant(wc, "claim", claim_msg(prc)["claim_note"])
+        step("neg_grant_refused_after_reclaim", code != 200, "%d %s" % (code, json.dumps(j)[:160]))
+        sbody = reg_body("sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"])
+        neg("register_after_reclaim_refused", tx("stranger", REGISTER_GAS, "wasm", "execute", contract, json.dumps({"register_notes": sbody})), "reclaimed by governance")
+        neg("sweep_after_reclaim_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})), "reclaimed by governance")
+        res, pid, st = gov_submit("reclaim_again", rmsg, "proposer")
+        step("gov_second_reclaim_fails_terminal", prop_failed(st), "proposal %s %s %s" % (pid, st and st["status"], (st or {}).get("failed_reason", "")[:160]))
+        return
+    if GOV_ROLES and SWEEP:
+        smsg = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"sweep_unclaimed": {}}, "funds": []}]
+        c0 = bal(contract)
+        res, pid, st = gov_submit("sweep_early", smsg, "proposer")
+        step("gov_burn_before_cutoff_fails", prop_failed(st) and bal(contract) == c0 and height() <= cut,
+             "proposal %s %s contract %d -> %d %s" % (pid, st and st["status"], c0, bal(contract), (st or {}).get("failed_reason", "")[:160]))
+
     # 11. window close + sweep
     if SWEEP:
         log("waiting for cutoff", cut, "now", height())
@@ -673,6 +755,11 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         # sweep burns: contract -> 0, owner pays only the fee, total uterp supply drops by the balance
         c0, o0 = bal(contract), bal(OWNER)
         if GOV_ROLES:
+            res, pid, st = gov_submit("reclaim_late", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
+                                                        "msg": {"emergency_reclaim": {}}, "funds": []}], "proposer")
+            step("gov_reclaim_after_cutoff_fails", prop_failed(st) and bal(contract) == c0,
+                 "proposal %s %s contract %d %s" % (pid, st and st["status"], bal(contract), (st or {}).get("failed_reason", "")[:160]))
+            hs0 = height(); s0 = supply(hs0)
             res, pid, st = gov_submit("sweep", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
                                                  "msg": {"sweep_unclaimed": {}}, "funds": []}], "proposer")
             step("sweep_via_gov_burns", passed(st) and bal(contract) == 0, "proposal %s %s contract %d -> %d" % (pid, st and st["status"], c0, bal(contract)))
