@@ -246,3 +246,19 @@ Reproducibility check (groot-wan, 2026-10-29, rustc 1.98.0-nightly 61d7280f3, re
 | zk_headstash.js | 12777 | 7993da8952cb3a28c69627f3118de051f8a90253c716a1f571475654db8d6564 | 3005 | dfd6812d… |
 
 This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because that one came from a flattened scratch workspace with wasm-bindgen 0.2.127; the repo workspace resolves wasm-bindgen 0.2.122. The repo-built 2774af96… prover is the one used by the gov-session dry run (§12).
+
+## Appendix W. WAVS operator set: optional, disabled for this drop
+
+**Spec.**
+- `InstantiateMsg.wavs` becomes `Option<WavsProofOfOwnership>` (`#[serde(default)]`). `HeadstashCfg.w` becomes `Option<WavsOperatorSet>` (`#[serde(default)]`, so older stored configs that hold a set still decode as `Some`).
+- `wavs: None` disables WAVS. Nothing is stored, and no PoP or threshold check runs. With `Some(set)`, instantiate keeps the existing validation (`verify()`: n ≥ 1, `poos.len() == total_operators`, 1 ≤ threshold ≤ n, plus a BLS12-381 PoP pairing check per key) and rejects invalid sets.
+- Every reader of WAVS state goes through `wavs_operator_set()`, which returns `Err("wavs disabled")` when `w` is None (fail closed). There is no ExecuteMsg that sets, rotates or enables WAVS, and none is added. `migrate` is a no-op. The only way to enable WAVS later is for the wasm admin (x/gov) to migrate to new code that does so.
+- `QueryMsg::WavsStatus {}` returns `{enabled, operator_set}`.
+- The smart-account authenticator impl (`TerpAccountTrait for CwHeadstash`: on_auth_added/removed/request/track/confirm) is removed. It was never reachable: the `sudo` entry point only decodes `HashMerchantSudoMsg`, which is the sole real sudo user (x/hashmerchant anchor seals). The `WAVS_OPERATORS` map is removed with it.
+- The mainnet render uses `"wavs": null`. There is no WAVS placeholder and no throwaway set.
+
+**Security note.**
+- A WAVS operator set is an extra trust root: whoever holds the aggregate key could authenticate as the contract's set. Leaving it disabled removes that root. Claims depend only on the ZK proof, the registration anchor and the nullifier set.
+- Removing the authenticator impl also removes `on_auth_removed`, which cleared HEADSTASH_CFG, NULLIFIERS and the eligibility roots. Future wiring could otherwise have made that a state wipe that permits double claims.
+- On chain, attaching the contract as a `CosmwasmAuthenticatorV1` stays refused, because the sudo entry point rejects `on_authenticator_added`. The dry run checks this.
+- Disabling is permanent for this code. Only x/gov, as wasm admin, can change it, by migrating to new code.
