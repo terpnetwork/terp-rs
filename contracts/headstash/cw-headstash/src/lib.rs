@@ -305,16 +305,9 @@ fn opaque<F: Copy>(f: F) -> F {
     core::hint::black_box(f)
 }
 
-#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, StdError> {
-    // Terminal state after an emergency reclaim: nothing executes (Appendix R).
-    reclaim::ensure_live(deps.storage)?;
-    // Pause gate (Appendix P): claims/payouts and registration only.
+
+#[inline(never)]
+fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(), StdError> {
     if matches!(
         msg,
         ExecuteMsg::ClaimNote { .. }
@@ -326,13 +319,37 @@ pub fn execute(
             | ExecuteMsg::RegisterHeadstashSol { .. }
             | ExecuteMsg::RegisterNotes { .. }
     ) {
-        pause::ensure_not_paused(deps.storage)?;
+        pause::ensure_not_paused(storage)?;
     }
+    Ok(())
+}
+
+#[inline(never)]
+fn pause_dispatch(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> Result<Response, StdError> {
+    match msg {
+        ExecuteMsg::Pause {} => pause::pause(deps, env, info),
+        ExecuteMsg::Resume {} => pause::resume(deps, env, info),
+        ExecuteMsg::UpdatePauser { pauser } => pause::update_pauser(deps, info, pauser),
+        _ => Err(StdError::msg("unreachable")),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, StdError> {
+    // Terminal state after an emergency reclaim: nothing executes (Appendix R).
+    reclaim::ensure_live(deps.storage)?;
+    // Pause gate (Appendix P): claims/payouts and registration only.
+    pause_gate(deps.storage, &msg)?;
     // TODO: allowlist for writing to nullifier tree
     match msg {
-        ExecuteMsg::Pause {} => opaque::<fn(_, _, _) -> _>(pause::pause)(deps, env, info),
-        ExecuteMsg::Resume {} => opaque::<fn(_, _, _) -> _>(pause::resume)(deps, env, info),
-        ExecuteMsg::UpdatePauser { pauser } => opaque::<fn(_, _, _) -> _>(pause::update_pauser)(deps, info, pauser),
+        m @ (ExecuteMsg::Pause {} | ExecuteMsg::Resume {} | ExecuteMsg::UpdatePauser { .. }) => {
+            opaque::<fn(_, _, _, _) -> _>(pause_dispatch)(deps, env, info, m)
+        }
         ExecuteMsg::ProcessHeadstash { claims } => {
             opaque::<fn(_, _, _) -> _>(crate::headstash::process_headstash)(deps, env, claims)
         }

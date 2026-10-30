@@ -349,3 +349,5 @@ This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because 
 - *Validation:* the address is checked with `addr_validate` at instantiate and in `UpdatePauser`. Empty strings are refused.
 - *Migration and upgrade:* there are no new storage keys in `HeadstashCfg`. An older contract without `PAUSER` reads as no pauser and live.
 - *Gas:* one extra `may_load` per gated entry.
+
+**P.build (pauser build note).** With the pauser, `-Os --one-caller-inline-max-function-size=2000` produced a 64307-byte function that arm64 singlepass rejected with ImpossibleRelocation, so the real limit is below the ~69 KB assumed earlier. cw-headstash now builds with `=1000`: largest function 38461 B, cosmwasm-check passes, sha256 `e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89` (1,172,126 B). The frontend stays at `=2000` and its hash is unchanged (`fe096bf1…`). `execute` sends the pause gate and the Pause/Resume/UpdatePauser arms through `#[inline(never)]` helpers (`pause_gate`, `pause_dispatch`).
