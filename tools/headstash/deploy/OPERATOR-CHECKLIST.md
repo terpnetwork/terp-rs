@@ -76,7 +76,11 @@ After Phase A both contracts are deployed and can be funded. Nothing is spent be
 - Run `terpd q authz grants P E` and `terpd q feegrant grant P E` for both session keys. Both must come back empty or not found.
 
 ## Verified locally
-VERIFIED_PLACEHOLDER
+Local morocco-1-like chain, terpd v6.4.0, test keys standing in for P/E/FX/U, wasms f7873d2d + fe096bf1, 2026-10-30:
+- `run_direct.py` GOV_ROLES=1 RECLAIM=1 (emergency scenario): **90 PASS / 0 FAIL**. Order: session A (stores, revoke) → proposal A (contracts deployed, admin/creator/owner GOV, balance 1 uterp, reclaim_status null, bind refused) → session B → B1 circuit → B2 campaign+bind+pool spend (balance = FUNDING) → registrations/claims → non-gov reclaim refused → gov EmergencyReclaim passes before cutoff, contract emptied, community pool credited (+reclaimed, plus block community tax) → claim/grant/register/sweep refused → second reclaim proposal FAILED.
+- `run_direct.py` GOV_ROLES=1 (burn scenario): **89 PASS / 0 FAIL**. Gov burn before cutoff FAILED (campaign has not ended), after cutoff claims/registration closed, gov reclaim after cutoff FAILED (only SweepUnclaimed allowed), gov sweep burns the rest.
+- `gov_frontend_e2e.py` (browser): **57 PASS / 0 FAIL**. Frontend manifest published by gov in A, 9/9 chunks uploaded on a feegrant (tampered chunk refused), page loaded from chain, 43/43 notes registered and claimed in the browser, 43/43 replays refused. In this harness the chunk upload runs after B2 rather than between A and B1 (on mainnet A18–A20 follow A); the docs do not depend on the order.
+- Local circuit zk_id fell back to 1.
 
 ## Totals (estimated at 0.05 uthiol)
 - E session gas: A: store ≥10M, FE store ≥4M, revoke ~0.11M; B: exec ≥25M, revoke ~0.11M. ≈39M gas, ≈1.96 THIOL in total, out of a 300 THIOL allowance per session.
