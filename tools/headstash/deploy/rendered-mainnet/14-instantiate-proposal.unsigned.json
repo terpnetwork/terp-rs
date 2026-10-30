@@ -145,7 +145,7 @@
         "campaign": {
          "ctx": "naw3RupxovqSC9HSz7Of18hk2UAtGUqHew5TOAsqJCA=",
          "backend": "halo2",
-         "cutoff_height": 42617754,
+         "cutoff_height": 44444444,
          "bech32_hrp": "terp",
          "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
          "amounts": [

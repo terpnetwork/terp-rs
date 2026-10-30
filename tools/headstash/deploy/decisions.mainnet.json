@@ -5,7 +5,7 @@
   "CONTRACT_OWNER": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
   "WASM_ADMIN": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
   "WAVS_POO_JSON": "{{WAVS_POO_JSON}}",
-  "CUTOFF_HEIGHT": "auto",
+  "CUTOFF_HEIGHT": 44444444,
   "_cutoff_doc": "auto = latest mainnet height + 2 years at the last-10k-block mean, computed at render time (2026-10-27 example: 39129426). Claims and registration close after it; then the sweep burns what is left.",
   "ANCHOR_START_HEIGHT": "{{ANCHOR_START_HEIGHT}}",
   "ANCHOR_INTERVAL": 3430,
