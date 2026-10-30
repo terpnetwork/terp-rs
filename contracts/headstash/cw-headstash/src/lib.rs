@@ -5,6 +5,7 @@ pub mod egress;
 pub mod epoch;
 pub mod notes;
 pub mod reclaim;
+pub mod pause;
 pub mod registration;
 pub mod headstash;
 pub mod msg;
@@ -219,6 +220,7 @@ pub fn instantiate(
     let circuit_id = msg.circuit_id.unwrap_or(0);
     notes::set_registration_hook(deps.storage, deps.api, msg.registration_hook.clone(), msg.registration_hook_gas_limit)?;
     bridge::save_frontend_contract(deps.storage, deps.api, msg.frontend_contract.clone())?;
+    pause::save_pauser(deps.storage, deps.api, msg.pauser.clone())?;
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
@@ -312,8 +314,25 @@ pub fn execute(
 ) -> Result<Response, StdError> {
     // Terminal state after an emergency reclaim: nothing executes (Appendix R).
     reclaim::ensure_live(deps.storage)?;
+    // Pause gate (Appendix P): claims/payouts and registration only.
+    if matches!(
+        msg,
+        ExecuteMsg::ClaimNote { .. }
+            | ExecuteMsg::ProcessHeadstash { .. }
+            | ExecuteMsg::BridgeMintNote { .. }
+            | ExecuteMsg::ApplyAcceptedBatch { .. }
+            | ExecuteMsg::ApplyPublicBatch { .. }
+            | ExecuteMsg::RegisterHeadstash { .. }
+            | ExecuteMsg::RegisterHeadstashSol { .. }
+            | ExecuteMsg::RegisterNotes { .. }
+    ) {
+        pause::ensure_not_paused(deps.storage)?;
+    }
     // TODO: allowlist for writing to nullifier tree
     match msg {
+        ExecuteMsg::Pause {} => opaque::<fn(_, _, _) -> _>(pause::pause)(deps, env, info),
+        ExecuteMsg::Resume {} => opaque::<fn(_, _, _) -> _>(pause::resume)(deps, env, info),
+        ExecuteMsg::UpdatePauser { pauser } => opaque::<fn(_, _, _) -> _>(pause::update_pauser)(deps, info, pauser),
         ExecuteMsg::ProcessHeadstash { claims } => {
             opaque::<fn(_, _, _) -> _>(crate::headstash::process_headstash)(deps, env, claims)
         }
@@ -478,6 +497,7 @@ pub fn sudo(
     msg: epoch::HashMerchantSudoMsg,
 ) -> Result<Response, StdError> {
     reclaim::ensure_live(deps.storage)?;
+    pause::ensure_not_paused(deps.storage)?;
     epoch::sudo(deps, &env, msg)
 }
 
@@ -528,6 +548,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility, reward_addr } => {
             reclaim::ensure_live(deps.storage)?;
+            pause::ensure_not_paused(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::assert_registration_open(env.block.height, &campaign)?;
             notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
@@ -535,12 +556,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
             reclaim::ensure_live(deps.storage)?;
+            pause::ensure_not_paused(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             deps.api.addr_validate(&dest)?;
             direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
             to_json_binary(&true)
         }
         QueryMsg::ReclaimStatus {} => to_json_binary(&reclaim::query_status(deps.storage)?),
+        QueryMsg::PauseStatus {} => to_json_binary(&pause::query_status(deps.storage)?),
         QueryMsg::DirectClaim {} => to_json_binary(&direct::query_info(deps.storage, &env)?),
         QueryMsg::NoteList { identity } => {
             to_json_binary(&notes::query_note_list(deps.storage, &identity)?)
@@ -757,6 +780,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -862,6 +886,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -911,6 +936,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -946,6 +972,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -987,6 +1014,8 @@ mod instantiate_tests {
             registration_hook_gas_limit: None,
 
             frontend_contract: None,
+
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1027,6 +1056,8 @@ mod instantiate_tests {
             registration_hook_gas_limit: None,
 
             frontend_contract: None,
+
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1060,6 +1091,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -1095,6 +1127,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         }
     }
 
@@ -1195,6 +1228,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1224,6 +1258,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1274,6 +1309,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1315,6 +1351,7 @@ mod instantiate_tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 

@@ -139,6 +139,7 @@ impl HeadstashDeployData {
                 registration_hook: None,
                 registration_hook_gas_limit: None,
                 frontend_contract: None,
+                pauser: None,
             },
         })
     }

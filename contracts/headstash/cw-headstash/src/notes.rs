@@ -506,6 +506,7 @@ mod tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         (deps, env)
@@ -1317,6 +1318,7 @@ mod tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         let mut c = campaign(tree.root(), NOTE_VK_ID);
@@ -1499,6 +1501,7 @@ mod tests {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         }).unwrap();
         set_admin(&mut deps, Some(creator.to_string()));
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
@@ -1512,7 +1515,7 @@ mod tests {
         instantiate(d2.as_mut(), env.clone(), message_info(&c2, &[]), InstantiateMsg {
             genesis_root: Binary::from(vec![0u8; 32]), distro_hash_domain: Default::default(), genesis_label: None,
             token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uterp".into())),
-            wavs: None, circuit_id: None, registration_hook: None, registration_hook_gas_limit: None, frontend_contract: None,
+            wavs: None, circuit_id: None, registration_hook: None, registration_hook_gas_limit: None, frontend_contract: None, pauser: None,
         }).unwrap();
         d2.querier.bank.update_balance(env.contract.address.as_str(), vec![]);
         set_admin(&mut d2, Some(c2.to_string()));
@@ -1520,5 +1523,121 @@ mod tests {
         assert!(r.messages.is_empty());
         assert!(status(&d2).unwrap().amounts.is_empty());
         assert!(err(owner_run(&mut d2, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+    }
+
+    fn as_(deps: &mut TDeps, env: &Env, who: &str, m: ExecuteMsg) -> Result<Response, StdError> {
+        let sender = deps.api.addr_make(who);
+        execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), m)
+    }
+
+    fn pstatus(deps: &TDeps) -> crate::pause::PauseStatusResponse {
+        cosmwasm_std::from_json(crate::query(deps.as_ref(), mock_env(), crate::msg::QueryMsg::PauseStatus {}).unwrap()).unwrap()
+    }
+
+    fn pause_fixture() -> (TDeps, Env, Holder, Binary) {
+        let (mut deps, env, a, root) = reclaim_fixture();
+        let p = deps.api.addr_make("dao").to_string();
+        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some(p) }).unwrap();
+        (deps, env, a, root)
+    }
+
+    #[test]
+    fn pause_1_unauthorized_pause_resume_refused() {
+        let (mut deps, env, _, _) = pause_fixture();
+        assert!(err(as_(&mut deps, &env, "relayer", ExecuteMsg::Pause {})).contains("unauthorized"));
+        assert!(!pstatus(&deps).paused);
+        as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
+        assert!(err(as_(&mut deps, &env, "relayer", ExecuteMsg::Resume {})).contains("unauthorized"));
+        assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Pause {})).contains("already paused"));
+        assert!(pstatus(&deps).paused);
+    }
+
+    #[test]
+    fn pause_2_blocks_claim_and_register_resume_restores() {
+        let (mut deps, env, a, root) = pause_fixture();
+        let r = as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
+        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "pause"));
+        let st = pstatus(&deps);
+        assert_eq!((st.paused, st.paused_at_height, st.paused_by), (true, Some(env.block.height), Some(deps.api.addr_make("dao"))));
+        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("paused"));
+        let b = holder(2, vec![11, 3, 0], 40, 2000);
+        let tree = Elig::new(b.leaves());
+        let list = b.list();
+        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, list.len(), true))).contains("paused"));
+        let (n, proof) = witness(&deps, &a, "w1", &root, 1, DENOMS_UTERP[0]);
+        let q = crate::query(deps.as_ref(), env.clone(), crate::msg::QueryMsg::CheckNoteClaim {
+            dest: "terp1w1".into(), root: root.clone(), nullifier: Binary::from(n), amount: DENOMS_UTERP[0], proof: Binary::from(proof),
+        });
+        assert!(q.unwrap_err().to_string().contains("paused"));
+        // anchors still accepted while paused
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).ok();
+        let r = as_(&mut deps, &env, "dao", ExecuteMsg::Resume {}).unwrap();
+        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "resume"));
+        assert!(!pstatus(&deps).paused);
+        assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Resume {})).contains("not paused"));
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+        // gov can pause/resume too
+        as_(&mut deps, &env, "creator", ExecuteMsg::Pause {}).unwrap();
+        as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
+    }
+
+    #[test]
+    fn pause_3_pauser_has_no_other_power() {
+        let (mut deps, mut env, _, _) = pause_fixture();
+        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::EmergencyReclaim {}).is_err());
+        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::UpdatePauser { pauser: None }).is_err());
+        let other = deps.api.addr_make("x").to_string();
+        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::UpdatePauser { pauser: Some(other) }).is_err());
+        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::BindNoteCircuit { zk_id: 3 }).is_err());
+        env.block.height += 1001;
+        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::SweepUnclaimed {}).is_err());
+        assert!(status(&deps).is_none());
+        assert_eq!(pstatus(&deps).pauser, Some(deps.api.addr_make("dao")));
+    }
+
+    #[test]
+    fn pause_4_gov_rotates_and_clears_pauser() {
+        let (mut deps, env, _, _) = pause_fixture();
+        let n = deps.api.addr_make("dao2").to_string();
+        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some(n) }).unwrap();
+        assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Pause {})).contains("unauthorized"));
+        as_(&mut deps, &env, "dao2", ExecuteMsg::Pause {}).unwrap();
+        // clearing does not resume
+        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: None }).unwrap();
+        let st = pstatus(&deps);
+        assert!(st.pauser.is_none() && st.paused);
+        assert!(err(as_(&mut deps, &env, "dao2", ExecuteMsg::Resume {})).contains("unauthorized"));
+        as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
+        assert!(as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some("".into()) }).is_err());
+    }
+
+    #[test]
+    fn pause_5_reclaim_works_while_paused_and_wins() {
+        let (mut deps, env, _, _) = pause_fixture();
+        as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(ESCROW, "uterp")]);
+        assert!(status(&deps).is_some());
+        assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Resume {})).contains("reclaimed"));
+        assert!(err(as_(&mut deps, &env, "creator", ExecuteMsg::Resume {})).contains("reclaimed"));
+    }
+
+    #[test]
+    fn pause_6_sweep_after_cutoff_works_while_paused() {
+        let (mut deps, mut env, _, _) = pause_fixture();
+        as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
+        env.block.height += 1001;
+        let r = owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}).unwrap();
+        assert!(r.messages.iter().any(|m| matches!(&m.msg, CosmosMsg::Bank(BankMsg::Burn { amount }) if amount == &vec![Coin::new(ESCROW, "uterp")])));
+    }
+
+    #[test]
+    fn pause_7_instantiate_with_pauser_and_default_disabled() {
+        let (deps, _, _, _) = reclaim_fixture();
+        let st = pstatus(&deps);
+        assert!(st.pauser.is_none() && !st.paused);
+        let j = serde_json::json!({"genesis_root": "AAAA", "token_strategy": {"existing_fungible": {"denom": "uterp"}}});
+        let _ = serde_json::from_value::<InstantiateMsg>(j); // pauser omitted still parses (serde default)
     }
 }

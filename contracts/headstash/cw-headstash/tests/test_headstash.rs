@@ -248,6 +248,7 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         registration_hook: None,
         registration_hook_gas_limit: None,
         frontend_contract: None,
+        pauser: None,
     }
 }
 // Test headstash instantiation with new fungible token

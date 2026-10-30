@@ -65,6 +65,7 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         },
         Some(&mock.sender_addr()),
         &[Coin::new(1_000u64, DENOM)],

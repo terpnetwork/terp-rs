@@ -230,6 +230,7 @@ impl BridgeEnv {
             registration_hook: None,
             registration_hook_gas_limit: None,
             frontend_contract: None,
+            pauser: None,
         };
 
         let headstash = app

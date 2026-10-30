@@ -35,6 +35,10 @@ pub struct InstantiateMsg {
     /// (gzip chunks + manifest). Discoverable via `QueryMsg::FrontendContract`.
     #[serde(default)]
     pub frontend_contract: Option<String>,
+    /// Optional pauser (Appendix P): may Pause/Resume claims and registration only.
+    /// None = no pauser (gov, as owner, can still pause). Gov changes it with UpdatePauser.
+    #[serde(default)]
+    pub pauser: Option<String>,
 }
 
 /// One-shot admin migrate. The new code copies a still-zero genesis root
@@ -150,6 +154,13 @@ pub enum ExecuteMsg {
     /// this contract) and permanently halts the contract. After the cutoff use
     /// `SweepUnclaimed` (burn). This message carries no address.
     EmergencyReclaim {},
+    /// Pauser or owner: halt claims, registration, sudo and the claim/register dry-run
+    /// queries. Errors "already paused" if paused. Does not extend the cutoff.
+    Pause {},
+    /// Pauser or owner: lift a pause. Errors "not paused" if live.
+    Resume {},
+    /// Owner (gov) only: set, rotate or clear (None) the pauser. Does not resume.
+    UpdatePauser { pauser: Option<String> },
     /// Owner: two-step ownership transfer (propose, then the new owner accepts).
     /// `renounce_ownership` is rejected so the campaign can never be orphaned.
     UpdateOwnership(cw_ownable::Action),
@@ -310,6 +321,9 @@ pub enum QueryMsg {
     /// `Some` once governance has run `EmergencyReclaim` (terminal).
     #[returns(Option<crate::reclaim::ReclaimRecord>)]
     ReclaimStatus {},
+    /// Pauser address and whether claims are paused (Appendix P).
+    #[returns(crate::pause::PauseStatusResponse)]
+    PauseStatus {},
     /// Dry-run of `ClaimNote` for `dest` (the fresh wallet). Errors with the same
     /// reason the execute would; `true` when the claim would pay.
     #[returns(bool)]
