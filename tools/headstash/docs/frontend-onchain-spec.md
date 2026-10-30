@@ -312,3 +312,40 @@ This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because 
   5. Proposal B: set_epoch_campaign, bind_note_circuit, CommunityPoolSpend (funding − 1) uterp directly to the contract.
   6. The claimer feegrant.
 - Why proposal A is needed: gov-only instantiate permission plus owner = gov for publish_manifest. The frontend InstantiateMsg takes no manifest. The only proposal-free alternative is to add the proposer key to the instantiate permission and make it the frontend owner until gov accepts ownership, which is itself a proposal. That puts a single key in control of the page and changes both Instantiate2 addresses (creator ≠ gov). Not adopted.
+
+## Appendix P: Pauser, a fast halt and resume of claims (2026-10-30)
+
+**Goal.** A DAO address can halt and resume claiming right away, without waiting for a governance vote. Halting is separate from claiming, and the pauser gets no power over funds.
+
+**Config.**
+- `InstantiateMsg.pauser: Option<String>` (`#[serde(default)]`). `None` means no pauser; only gov can pause.
+- Stored as `PAUSER: Item<Addr>` (absent = none) and `PAUSED: Item<PauseRecord{height, by}>` (absent = live), in `src/pause.rs`. The config is separate from `HeadstashCfg`, so the existing storage layout is unchanged.
+- `ExecuteMsg::UpdatePauser { pauser: Option<String> }`: owner (gov) only. It sets, rotates or clears the pauser. Clearing it does not resume a paused contract.
+- `QueryMsg::PauseStatus {}` returns `{ pauser, paused, paused_at_height, paused_by }`.
+
+**Pause and resume.**
+- `ExecuteMsg::Pause {}` / `ExecuteMsg::Resume {}`: the sender must be the pauser or the owner (gov). Anyone else gets "unauthorized: only the pauser or the owner can pause/resume".
+- They are not idempotent and give clear errors instead: pausing while paused returns "already paused", and resuming while live returns "not paused".
+- Events: `action=pause` or `action=resume`, `by=<sender>`, `height=<h>`.
+
+**While paused, these are refused with "headstash claims are paused"** (checked at the entry point, before any handler):
+- Claims and payouts: `ClaimNote`, `ProcessHeadstash`, `BridgeMintNote`, `ApplyAcceptedBatch` and `ApplyPublicBatch`.
+- Registration: `RegisterHeadstash`, `RegisterHeadstashSol` and `RegisterNotes`.
+- `sudo` (HashMerchant anchor seals; they move no funds, but they are halted too so a halt stops everything outside gov).
+- The dry-run queries `CheckNoteClaim` and `CheckRegisterNotes`. The claim page relies on these, so it shows the pause before anyone signs.
+
+**Still allowed while paused:**
+- Gov: `EmergencyReclaim` (before the cutoff), `SweepUnclaimed` (burn, after the cutoff), `UpdatePauser`, `Resume` and all owner config ops.
+- `AcceptAnchor`, which is permissionless and only rolls the registration-tree anchor. It moves no funds and registers nobody.
+
+**Precedence.** The reclaimed terminal state wins. `reclaim::ensure_live` runs first in `execute`, so after a reclaim `Pause`, `Resume` and `UpdatePauser` are refused as well. A paused contract can still be reclaimed or swept by gov.
+
+**Cutoff.** Pausing does not move `cutoff_height` (44,444,444). A pause that lasts until the cutoff ends the claim window, and after that the leftovers can only be burned. Gov can mitigate this by resuming (gov can always resume, even if the pauser is gone or compromised), by rotating or clearing the pauser, or by reclaiming to the community pool before the cutoff.
+
+**Security review.**
+- *Power of the pauser:* it can only write and delete `PAUSED`. It has no bank message, no config write and no recipient field, and it isn't checked in any funds path, so it cannot claim, receive, move, reclaim or sweep anything, or change the pauser, the owner, the circuit, the campaign or the frontend.
+- *Worst case for a compromised pauser key:* a denial of service, where it keeps claims paused or toggles them. Gov ends this with `UpdatePauser { pauser: None }` plus `Resume` in one proposal. A pauser cannot block gov: owner calls skip the pause gate except for the listed claim and registration paths, and gov itself never claims.
+- *Front-running:* a pause in the same block as a claim is ordered by the chain. Either the claim pays first, or it is refused with nothing spent (the nullifier is not consumed and the fee grant is unchanged). The grant service refuses while `CheckNoteClaim` errors.
+- *Validation:* the address is checked with `addr_validate` at instantiate and in `UpdatePauser`. Empty strings are refused.
+- *Migration and upgrade:* there are no new storage keys in `HeadstashCfg`. An older contract without `PAUSER` reads as no pauser and live.
+- *Gas:* one extra `may_load` per gated entry.
