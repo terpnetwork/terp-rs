@@ -28,7 +28,7 @@ group = { workspace = true }
 # missing on stock wasmd). Bridge mint uses pure mock_verify; claim proofs need zk-host.
 # cosmwasm_2_1 required for BLS host imports (hash_to_g2) used by WAVS PoP on instantiate.
 # Do not enable `zk` (proof_instance_verify) unless chain wasmvm exposes it.
-cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "zk"] }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "staking", "zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
 cw-storage-plus  = { workspace = true }

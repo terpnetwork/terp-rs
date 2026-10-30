@@ -978,6 +978,7 @@ mod tests {
                     to_json_binary(&CircuitInfoResponse::new(3, Addr::unchecked("circuit-creator"), Binary::from(vec![0xABu8; 72]))).unwrap(),
                 )),
                 WasmQuery::Circuit { zk_id } | WasmQuery::CircuitInfo { zk_id } => SystemResult::Err(SystemError::NoSuchCircuit { zk_id: *zk_id }),
+                WasmQuery::ContractInfo { .. } => super::contract_info(),
                 _ => SystemResult::Err(SystemError::UnsupportedRequest { kind: "wasm".into() }),
             });
         }
@@ -1271,4 +1272,253 @@ mod tests {
         assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 5);
     }
 
+
+    // ---- emergency reclaim (crate::reclaim, spec Appendix R) ----
+    use cosmwasm_std::{BankMsg, Coin, ContractResult, CosmosMsg, DistributionMsg, SystemError, SystemResult, WasmQuery};
+    use std::cell::RefCell;
+
+    thread_local!(static ADMIN: RefCell<Option<String>> = const { RefCell::new(None) });
+    const ESCROW: u128 = 10_000_000_000;
+
+    fn contract_info() -> SystemResult<ContractResult<Binary>> {
+        let admin = ADMIN.with(|a| a.borrow().clone());
+        let v = serde_json::json!({"code_id": 1, "creator": "creator", "admin": admin, "pinned": false, "ibc_port": null});
+        SystemResult::Ok(ContractResult::Ok(Binary::from(serde_json::to_vec(&v).unwrap())))
+    }
+
+    /// Wasm admin as reported by the chain (x/wasm ContractInfo).
+    fn set_admin(deps: &mut TDeps, admin: Option<String>) {
+        ADMIN.with(|a| *a.borrow_mut() = admin);
+        #[cfg(not(feature = "zk-api"))]
+        deps.querier.update_wasm(|q| match q {
+            WasmQuery::ContractInfo { .. } => contract_info(),
+            _ => SystemResult::Err(SystemError::UnsupportedRequest { kind: "wasm".into() }),
+        });
+        #[cfg(feature = "zk-api")]
+        serve_circuit(deps, true);
+    }
+
+    /// Existing-denom (uterp) escrow, owner = admin = "creator" (stands in for x/gov),
+    /// registered, circuit bound and one anchor sealed: claims are live.
+    fn reclaim_fixture() -> (TDeps, Env, Holder, Binary) {
+        let a = holder(1, (0..40).map(|i| (i % 12) as u8).collect(), 0, 1000);
+        let tree = Elig::new(a.leaves());
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let creator = deps.api.addr_make("creator");
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, "uterp")]);
+        let msg = InstantiateMsg {
+            genesis_root: Binary::from(vec![0u8; 32]),
+            distro_hash_domain: Default::default(),
+            genesis_label: None,
+            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uterp".into())),
+            wavs: None,
+            circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+        };
+        instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
+        let mut c = campaign(tree.root(), NOTE_VK_ID);
+        c.denom = derive_nd("uterp");
+        c.cutoff_height = env.block.height + 1000;
+        c.burn_unclaimed = Some(true);
+        set(&mut deps, &env, c).unwrap();
+        #[cfg(feature = "zk-api")]
+        real_zk::register_verifier();
+        serve_circuit(&mut deps, true);
+        bad_proofs(false);
+        set_admin(&mut deps, Some(creator.to_string()));
+        register_all(&mut deps, &env, &a, &tree);
+        owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
+        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+        let (_, anchors) = tree_root(&deps);
+        (deps, env, a, anchors[0].root.clone())
+    }
+
+    /// Apply the bank effect of a response to the mock balance (the mock does not).
+    fn settle(deps: &mut TDeps, env: &Env, r: &Response) -> u128 {
+        let mut out = 0u128;
+        for m in &r.messages {
+            match &m.msg {
+                CosmosMsg::Bank(BankMsg::Send { amount, .. }) | CosmosMsg::Bank(BankMsg::Burn { amount }) => out += amount[0].amount.to_string().parse::<u128>().unwrap(),
+                CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => out += amount[0].amount.to_string().parse::<u128>().unwrap(),
+                _ => {}
+            }
+        }
+        let bal = deps.as_ref().querier.query_balance(env.contract.address.as_str(), "uterp").unwrap().amount.to_string().parse::<u128>().unwrap();
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(bal - out, "uterp")]);
+        out
+    }
+
+    fn reclaim_as(deps: &mut TDeps, env: &Env, who: &str) -> Result<Response, StdError> {
+        let sender = deps.api.addr_make(who);
+        execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), ExecuteMsg::EmergencyReclaim {})
+    }
+
+    fn pool_amount(r: &Response) -> Option<Vec<Coin>> {
+        r.messages.iter().find_map(|m| match &m.msg {
+            CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => Some(amount.clone()),
+            _ => None,
+        })
+    }
+
+    fn status(deps: &TDeps) -> Option<crate::reclaim::ReclaimRecord> {
+        cosmwasm_std::from_json(crate::query(deps.as_ref(), mock_env(), crate::msg::QueryMsg::ReclaimStatus {}).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn reclaim_1_gov_before_cutoff_returns_all_to_pool_and_halts() {
+        let (mut deps, env, a, root) = reclaim_fixture();
+        assert!(status(&deps).is_none());
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(ESCROW, "uterp")]);
+        assert_eq!(r.messages.len(), 1);
+        assert!(!r.messages.iter().any(|m| matches!(m.msg, CosmosMsg::Bank(BankMsg::Burn { .. }))));
+        assert_eq!(settle(&mut deps, &env, &r), ESCROW);
+        let st = status(&deps).unwrap();
+        assert_eq!((st.height, st.amounts), (env.block.height, vec![Coin::new(ESCROW, "uterp")]));
+        // halted: claims, registration, anchors, sweep, second reclaim, owner ops
+        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("reclaimed"));
+        assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("reclaimed"));
+        let b = holder(2, vec![11, 3, 0], 40, 2000);
+        let tree = Elig::new(b.leaves());
+        let list = b.list();
+        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, list.len(), true))).contains("reclaimed"));
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("reclaimed"));
+        // dry-run query halts too
+        let (n, proof) = witness(&deps, &a, "w1", &root, 1, DENOMS_UTERP[0]);
+        let q = crate::query(deps.as_ref(), env.clone(), crate::msg::QueryMsg::CheckNoteClaim {
+            dest: "terp1w1".into(), root: root.clone(), nullifier: Binary::from(n), amount: DENOMS_UTERP[0], proof: Binary::from(proof),
+        });
+        assert!(q.unwrap_err().to_string().contains("reclaimed"));
+    }
+
+    #[test]
+    fn reclaim_2_non_gov_refused() {
+        let (mut deps, env, _, _) = reclaim_fixture();
+        // neither owner nor admin
+        assert!(reclaim_as(&mut deps, &env, "relayer").is_err());
+        assert!(reclaim_as(&mut deps, &env, "frontend-uploader").is_err());
+        // owner but not the wasm admin (e.g. ownership moved but admin did not)
+        let other = deps.api.addr_make("other");
+        set_admin(&mut deps, Some(other.to_string()));
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("admin"));
+        // wasm admin but not the owner
+        assert!(err(reclaim_as(&mut deps, &env, "other")).to_lowercase().contains("owner"));
+        // no admin at all
+        set_admin(&mut deps, None);
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("admin"));
+        assert!(status(&deps).is_none());
+    }
+
+    #[test]
+    fn reclaim_3_after_cutoff_refused_boundary_allowed() {
+        let (mut deps, mut env, _, _) = reclaim_fixture();
+        let cutoff = env.block.height + 1000;
+        env.block.height = cutoff + 1;
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("campaign has ended"));
+        assert!(status(&deps).is_none());
+        // at the cutoff block claims are still open, so reclaim is too
+        env.block.height = cutoff;
+        assert!(pool_amount(&reclaim_as(&mut deps, &env, "creator").unwrap()).is_some());
+    }
+
+    #[test]
+    fn reclaim_4_burn_before_cutoff_refused() {
+        let (mut deps, mut env, _, _) = reclaim_fixture();
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("has not ended"));
+        env.block.height += 1000; // == cutoff
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("has not ended"));
+        // not owner, after cutoff
+        env.block.height += 1;
+        let relayer = deps.api.addr_make("relayer");
+        let r = execute(deps.as_mut(), env.clone(), message_info(&relayer, &[]), ExecuteMsg::SweepUnclaimed {});
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn reclaim_5_burn_after_cutoff_works() {
+        let (mut deps, mut env, a, root) = reclaim_fixture();
+        let r = claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
+        let paid = settle(&mut deps, &env, &r);
+        env.block.height += 1001;
+        let r = owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}).unwrap();
+        assert!(r.messages.iter().any(|m| matches!(&m.msg, CosmosMsg::Bank(BankMsg::Burn { amount }) if amount == &vec![Coin::new(ESCROW - paid, "uterp")])));
+        assert!(pool_amount(&r).is_none());
+        assert_eq!(settle(&mut deps, &env, &r), ESCROW - paid);
+        // claims closed after the cutoff
+        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window"));
+    }
+
+    #[test]
+    fn reclaim_6_claim_after_reclaim_refused() {
+        let (mut deps, env, a, root) = reclaim_fixture();
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        settle(&mut deps, &env, &r);
+        for (i, who) in ["w2", "w3"].iter().enumerate() {
+            assert!(err(claim(&mut deps, &env, &a, who, &root, 2 + i as u8, DENOMS_UTERP[0])).contains("reclaimed"));
+        }
+        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+    }
+
+    #[test]
+    fn reclaim_7_partial_claims_then_reclaim_returns_exact_remainder() {
+        let (mut deps, env, a, root) = reclaim_fixture();
+        let mut paid = 0u128;
+        for (i, amt) in [DENOMS_UTERP[0], DENOMS_UTERP[3], DENOMS_UTERP[5], DENOMS_UTERP[0]].iter().enumerate() {
+            let r = claim(&mut deps, &env, &a, &format!("p{i}"), &root, 1 + i as u8, *amt).unwrap();
+            let s = settle(&mut deps, &env, &r);
+            assert_eq!(s, *amt as u128);
+            paid += s;
+        }
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(ESCROW - paid, "uterp")]);
+        settle(&mut deps, &env, &r);
+        let left = deps.as_ref().querier.query_balance(env.contract.address.as_str(), "uterp").unwrap().amount.to_string().parse::<u128>().unwrap();
+        assert_eq!(left, 0);
+    }
+
+    #[test]
+    fn reclaim_phase_a_without_campaign_and_empty_escrow() {
+        // Phase A: instantiated, no campaign, nothing funded yet beyond the 1 uterp
+        // instantiate deposit. Gov can still close it; an empty escrow still halts.
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let creator = deps.api.addr_make("creator");
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(1u128, "uterp")]);
+        instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), InstantiateMsg {
+            genesis_root: Binary::from(vec![0u8; 32]),
+            distro_hash_domain: Default::default(),
+            genesis_label: None,
+            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uterp".into())),
+            wavs: None,
+            circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+        }).unwrap();
+        set_admin(&mut deps, Some(creator.to_string()));
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(1u128, "uterp")]);
+        settle(&mut deps, &env, &r);
+        assert!(status(&deps).is_some());
+        // empty escrow: no message, still terminal
+        let mut d2 = mock_dependencies();
+        d2.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(1u128, "uterp")]);
+        let c2 = d2.api.addr_make("creator");
+        instantiate(d2.as_mut(), env.clone(), message_info(&c2, &[]), InstantiateMsg {
+            genesis_root: Binary::from(vec![0u8; 32]), distro_hash_domain: Default::default(), genesis_label: None,
+            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new("uterp".into())),
+            wavs: None, circuit_id: None, registration_hook: None, registration_hook_gas_limit: None, frontend_contract: None,
+        }).unwrap();
+        d2.querier.bank.update_balance(env.contract.address.as_str(), vec![]);
+        set_admin(&mut d2, Some(c2.to_string()));
+        let r = reclaim_as(&mut d2, &env, "creator").unwrap();
+        assert!(r.messages.is_empty());
+        assert!(status(&d2).unwrap().amounts.is_empty());
+        assert!(err(owner_run(&mut d2, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+    }
 }

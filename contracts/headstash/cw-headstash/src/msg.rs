@@ -144,6 +144,12 @@ pub enum ExecuteMsg {
     /// Owner: send leftover escrow of the campaign denom to `sweep_recipient`.
     /// The block height must be past the cutoff. This message carries no address.
     SweepUnclaimed {},
+    /// Gov only (sender must be the cw-ownable owner AND the wasm admin, both x/gov).
+    /// Allowed only while height <= cutoff (or before any campaign is set). Sends every
+    /// remaining escrowed coin to the community pool (MsgFundCommunityPool, depositor =
+    /// this contract) and permanently halts the contract. After the cutoff use
+    /// `SweepUnclaimed` (burn). This message carries no address.
+    EmergencyReclaim {},
     /// Owner: two-step ownership transfer (propose, then the new owner accepts).
     /// `renounce_ownership` is rejected so the campaign can never be orphaned.
     UpdateOwnership(cw_ownable::Action),
@@ -301,6 +307,9 @@ pub enum QueryMsg {
     /// Direct-claim binding, the ctx this contract expects, and the paid count.
     #[returns(crate::direct::DirectClaimInfo)]
     DirectClaim {},
+    /// `Some` once governance has run `EmergencyReclaim` (terminal).
+    #[returns(Option<crate::reclaim::ReclaimRecord>)]
+    ReclaimStatus {},
     /// Dry-run of `ClaimNote` for `dest` (the fresh wallet). Errors with the same
     /// reason the execute would; `true` when the claim would pay.
     #[returns(bool)]

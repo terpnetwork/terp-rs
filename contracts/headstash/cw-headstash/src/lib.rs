@@ -4,6 +4,7 @@ pub mod distro;
 pub mod egress;
 pub mod epoch;
 pub mod notes;
+pub mod reclaim;
 pub mod registration;
 pub mod headstash;
 pub mod msg;
@@ -309,6 +310,8 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
+    // Terminal state after an emergency reclaim: nothing executes (Appendix R).
+    reclaim::ensure_live(deps.storage)?;
     // TODO: allowlist for writing to nullifier tree
     match msg {
         ExecuteMsg::ProcessHeadstash { claims } => {
@@ -373,6 +376,7 @@ pub fn execute(
         }
         ExecuteMsg::SetEpochCampaign { campaign } => opaque::<fn(_, _, _) -> _>(epoch::set_campaign)(deps, info, campaign),
         ExecuteMsg::SweepUnclaimed {} => opaque::<fn(_, _, _) -> _>(epoch::sweep_unclaimed)(deps, env, info),
+        ExecuteMsg::EmergencyReclaim {} => opaque::<fn(_, _, _) -> _>(reclaim::emergency_reclaim)(deps, env, info),
         ExecuteMsg::UpdateOwnership(action) => {
             if matches!(action, cw_ownable::Action::RenounceOwnership) {
                 return Err(StdError::msg("renounce_ownership is disabled"));
@@ -473,6 +477,7 @@ pub fn sudo(
     env: Env,
     msg: epoch::HashMerchantSudoMsg,
 ) -> Result<Response, StdError> {
+    reclaim::ensure_live(deps.storage)?;
     epoch::sudo(deps, &env, msg)
 }
 
@@ -522,17 +527,20 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             )?)
         }
         QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility, reward_addr } => {
+            reclaim::ensure_live(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::assert_registration_open(env.block.height, &campaign)?;
             notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
             to_json_binary(&true)
         }
         QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
+            reclaim::ensure_live(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             deps.api.addr_validate(&dest)?;
             direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
             to_json_binary(&true)
         }
+        QueryMsg::ReclaimStatus {} => to_json_binary(&reclaim::query_status(deps.storage)?),
         QueryMsg::DirectClaim {} => to_json_binary(&direct::query_info(deps.storage, &env)?),
         QueryMsg::NoteList { identity } => {
             to_json_binary(&notes::query_note_list(deps.storage, &identity)?)

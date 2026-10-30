@@ -45,7 +45,7 @@ const PUBLIC_RESERVED: Map<&str, ()> = Map::new("epoch_public_nf");
 const PUBLIC_LOGS: Map<&str, ()> = Map::new("epoch_public_log");
 const DENOM_TABLE: Item<Vec<u64>> = Item::new("epoch_denom_table");
 
-const EPOCH_CAMPAIGN: Item<EpochCampaignParams> = Item::new("epoch_campaign");
+pub(crate) const EPOCH_CAMPAIGN: Item<EpochCampaignParams> = Item::new("epoch_campaign");
 const EPOCH_STAGE: Item<StagedBatch> = Item::new("epoch_stage");
 const EPOCH_PAID: Item<bool> = Item::new("epoch_paid");
 /// Vk suffix from the last accepted sudo whose attestation matched the campaign.

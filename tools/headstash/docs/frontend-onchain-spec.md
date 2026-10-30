@@ -262,3 +262,53 @@ This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because 
 - Removing the authenticator impl also removes `on_auth_removed`, which cleared HEADSTASH_CFG, NULLIFIERS and the eligibility roots. Future wiring could otherwise have made that a state wipe that permits double claims.
 - On chain, attaching the contract as a `CosmwasmAuthenticatorV1` stays refused, because the sudo entry point rejects `on_authenticator_added`. The dry run checks this.
 - Disabling is permanent for this code. Only x/gov, as wasm admin, can change it, by migrating to new code.
+
+## Appendix R: Emergency reclaim, burn at cutoff, and contracts-first deploy (2026-10-30)
+
+**Rule.** Before the airdrop ends, governance can *reclaim* the escrow to the community pool. After it ends, the leftovers can only be *burned*. The two windows are disjoint and use the same boundary that claims use:
+
+| block height `h` | claims | `EmergencyReclaim {}` | `SweepUnclaimed {}` (burn) |
+|---|---|---|---|
+| no campaign set (Phase A) | refused (no campaign) | allowed (gov) | refused ("epoch campaign is not set") |
+| `h <= cutoff_height` (44,444,444) | open | allowed (gov) | refused ("campaign has not ended") |
+| `h > cutoff_height` | refused ("window") | refused ("campaign has ended: only the burn sweep…") | allowed (owner = gov), burns (vk3 default, `burn_unclaimed: true` in the render) |
+| after a reclaim | refused | refused | refused |
+
+**`ExecuteMsg::EmergencyReclaim {}`** (new, `src/reclaim.rs`)
+- Auth: the sender must be the cw-ownable owner AND the x/wasm admin of this contract (read live with a `ContractInfo` query). On mainnet both are the x/gov module account (`terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq`), so only a passed proposal can run it. If either one is moved, the other still blocks a single key. Having no admin at all refuses.
+- Destination: the community pool, through `CosmosMsg::Distribution(DistributionMsg::FundCommunityPool)`. terpd v6.4.0 x/wasm (`keeper/handler_plugin_encoders.go`) encodes this as `/cosmos.distribution.v1beta1.MsgFundCommunityPool`, with depositor = the contract. SDK v0.55 x/distribution moves the coins from the contract account into the distribution module and credits `FeePool.CommunityPool`. That is where the funding came from (`MsgCommunityPoolSpend`). The message takes no recipient, so the destination cannot be changed per call. This needs the cosmwasm-std `staking` feature (capability `staking`, which is built in on terpd).
+- Amount: the contract's full bank balance of each configured token-strategy denom (uterp on mainnet), queried at execution time. That is exactly what is left after any claims. A zero balance sends nothing but still enters the terminal state.
+- Terminal state: `RECLAIMED = {height, amounts}` is written. From then on `execute` and `sudo` refuse everything at the entry point ("headstash reclaimed by governance: claims and registration are halted"). That covers claims, registration, anchors, batches, sweep, owner ops and a second reclaim. The `CheckNoteClaim` and `CheckRegisterNotes` dry-run queries refuse the same way. `QueryMsg::ReclaimStatus {}` returns the record. The state cannot be undone except by a gov migration to new code.
+- `SweepUnclaimed` is unchanged: owner only, `h > cutoff`, and it burns.
+
+**Funds-path audit (who can move escrow).**
+- x/gov (owner + admin) can: reclaim (pre-cutoff), sweep/burn (post-cutoff), migrate, and the owner-only config ops listed below.
+- Owner-only ops: Mint/Burn (tokenfactory; the mainnet strategy is ExistingFungible uterp, so they are inapplicable), SetCircuitId, RegisterEligibilityRoot, bridge cfg/reflection/asset/frontend, SetDenomTable, AssignPublicNotes, StageEpochBatch, SetEpochCampaign, BindNoteCircuit, SweepUnclaimed, UpdateOwnership (two-step; renounce is refused).
+- No owner key: the owner is gov from instantiate, so no EOA can run any of the above.
+- Relayer / anyone: ClaimNote pays only `amount` to the sender, after a valid halo2 proof against a sealed anchor, an unspent nullifier, a per-denomination cap and `h <= cutoff`. It needs a bound circuit (gov). AcceptAnchor and registration move no funds. ProcessHeadstash needs a gov-set circuit_id (0 is refused). ApplyPublicBatch and ApplyAcceptedBatch pay only rows staged by the owner (gov). BridgeMintNote and EgressBurn need the gov-set bridge cfg (not set in the mainnet render).
+- WAVS: disabled (`wavs: null`, Appendix W). There is no authenticator, and sudo only takes HashMerchantSudoMsg anchor seals, which move no funds.
+- Frontend contract: holds only page bytes. It has no bank messages. Uploads are permissionless but content-addressed, and the owner (gov) is the only one who can publish or switch manifests.
+- Result: before the cutoff only gov can move the escrow other than by a valid claim, and it can only send it to the community pool. After the cutoff only gov can, and it can only burn.
+
+**Security note.**
+- Reclaim is a gov kill switch. A malicious or captured governance majority could end the airdrop early. That is the same trust gov already has as wasm admin (it could migrate). The reclaim adds nothing beyond that, and it fixes the destination to the community pool instead of an arbitrary address.
+- Reclaim and burn can never both apply: reclaim needs `h <= cutoff` and burn needs `h > cutoff`. Burning early is impossible, and so is reclaiming after the end.
+- Requiring both owner and admin closes the gap where ownership (two-step) or admin (MsgUpdateAdmin by gov) is moved by itself.
+- A claim and a reclaim in the same block are ordered by the chain. Either the claim pays first and the reclaim takes the remainder, or the reclaim halts and the claim is refused. Funds are never double spent.
+
+**Contracts-first deploy (Phase A / Phase B).** Instantiate needs no circuit: `circuit_id: None`, and direct claims stay refused ("direct claims are not enabled") until `BindNoteCircuit`, which is owner (gov) only, set-once and checks ctx + vk_hash. So no contract change is needed for binding later.
+- Phase A (now, no circuit):
+  1. The session grant (proposer → eph).
+  2. The eph stores both wasms. Code upload is `Everybody` on chain, and each store sets `instantiate_permission AnyOfAddresses[gov]`.
+  3. One small proposal A: CommunityPoolSpend 1 uterp → gov; Instantiate2 frontend (owner/admin gov) + publish_manifest; Instantiate2 cw-headstash (owner/admin gov, funds 1 uterp, which is the ExistingFungible minimum).
+  4. Revoke the session.
+  5. Upload the frontend chunks (throwaway key, terp1fx feegrant), which seals the manifest.
+  After A both contracts exist at their predicted addresses and can be funded. Reclaim already works.
+- Phase B (circuit ready):
+  1. A new session grant.
+  2. The circuit store proposal (eph, >64 KiB). Circuit upload is `Nobody`, so gov is required.
+  3. Deposit top-up.
+  4. Revoke.
+  5. Proposal B: set_epoch_campaign, bind_note_circuit, CommunityPoolSpend (funding − 1) uterp directly to the contract.
+  6. The claimer feegrant.
+- Why proposal A is needed: gov-only instantiate permission plus owner = gov for publish_manifest. The frontend InstantiateMsg takes no manifest. The only proposal-free alternative is to add the proposer key to the instantiate permission and make it the frontend owner until gov accepts ownership, which is itself a proposal. That puts a single key in control of the page and changes both Instantiate2 addresses (creator ≠ gov). Not adopted.
