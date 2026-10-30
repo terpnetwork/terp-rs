@@ -379,6 +379,55 @@ pub fn token_ids_from_tx(v: &serde_json::Value) -> Vec<String> {
     ids
 }
 
+fn attr_text(s: &str) -> String {
+    b64_decode_utf8(s).unwrap_or_else(|| s.to_string())
+}
+
+fn b64_decode_utf8(s: &str) -> Option<String> {
+    let bytes = b64_decode(s)?;
+    String::from_utf8(bytes).ok()
+}
+
+fn b64_decode(s: &str) -> Option<Vec<u8>> {
+    fn val(c: u8) -> Option<u8> {
+        match c {
+            b'A'..=b'Z' => Some(c - b'A'),
+            b'a'..=b'z' => Some(c - b'a' + 26),
+            b'0'..=b'9' => Some(c - b'0' + 52),
+            b'+' => Some(62),
+            b'/' => Some(63),
+            _ => None,
+        }
+    }
+    let raw: Vec<u8> = s.bytes().filter(|c| !c.is_ascii_whitespace()).collect();
+    if raw.is_empty() || raw.len() % 4 != 0 {
+        return None;
+    }
+    let mut out = Vec::new();
+    for chunk in raw.chunks(4) {
+        let pad = chunk.iter().rev().take_while(|c| **c == b'=').count();
+        if pad > 2 {
+            return None;
+        }
+        let mut n = 0u32;
+        for (i, c) in chunk.iter().enumerate() {
+            if *c == b'=' {
+                if i < 4 - pad {
+                    return None;
+                }
+                continue;
+            }
+            n = (n << 6) | val(*c)? as u32;
+        }
+        n <<= 6 * pad as u32;
+        let nbytes = 3 - pad;
+        for i in 0..nbytes {
+            out.push((n >> (8 * (2 - i))) as u8);
+        }
+    }
+    Some(out)
+}
+
 fn walk_token_ids(v: &serde_json::Value, ids: &mut Vec<String>) {
     match v {
         serde_json::Value::Object(m) => {
@@ -386,9 +435,11 @@ fn walk_token_ids(v: &serde_json::Value, ids: &mut Vec<String>) {
                 m.get("key").and_then(|x| x.as_str()),
                 m.get("value").and_then(|x| x.as_str()),
             ) {
-                if k == "token_id" || k.ends_with(".token_id") {
-                    if !val.is_empty() && !ids.iter().any(|e| e == val) {
-                        ids.push(val.to_string());
+                let key = attr_text(k);
+                let value = attr_text(val);
+                if key == "token_id" || key.ends_with(".token_id") {
+                    if !value.is_empty() && !ids.iter().any(|e| e == &value) {
+                        ids.push(value);
                     }
                 }
             }
@@ -724,6 +775,16 @@ fn poll_tx(lcd: &str, hash: &str) -> Result<serde_json::Value, String> {
         std::thread::sleep(std::time::Duration::from_secs(2));
         match crate::httpx::get_json(&url) {
             Ok(v) => {
+                // LCD answers 200 with `{"code":5,"message":"tx not found"}` before
+                // the tx is indexed. That is not a committed failure.
+                if v.get("tx_response").is_none() {
+                    last = v
+                        .get("message")
+                        .and_then(|x| x.as_str())
+                        .unwrap_or("tx not indexed")
+                        .to_string();
+                    continue;
+                }
                 if let Some(code) = tx_code(&v) {
                     if code != 0 {
                         let log = v
@@ -867,7 +928,7 @@ mod tests {
     #[test]
     fn fee_matches_house_floor() {
         let _g = crate::checkout::minter_env_lock();
-        unsafe { std::env::remove_var("DREGG_MINT_GAS_PRICE") };
+        std::env::remove_var("DREGG_MINT_GAS_PRICE");
         assert_eq!(fee_uthiol(800_000), 40_000);
     }
 
@@ -901,6 +962,20 @@ mod tests {
             }
         });
         assert_eq!(token_ids_from_tx(&v), vec!["4".to_string(), "5".to_string()]);
+        let encoded = serde_json::json!({
+            "tx_response": {
+                "code": 0,
+                "events": [{
+                    "type": "wasm-mint",
+                    "attributes": [
+                        {"key": "dG9rZW5faWQ=", "value": "MA=="}
+                    ]
+                }]
+            }
+        });
+        assert_eq!(token_ids_from_tx(&encoded), vec!["0".to_string()]);
+        let missing = serde_json::json!({"code": 5, "message": "tx not found"});
+        assert!(missing.get("tx_response").is_none());
         assert_eq!(tx_code(&v), Some(0));
         assert_eq!(tx_hash(&v).as_deref(), Some("AB"));
     }
@@ -931,15 +1006,15 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("runtime.sk");
-        unsafe { std::env::set_var("DREGG_RUNTIME_SK_FILE", &path) };
+        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
         let a = ensure_address().unwrap();
         let b = ensure_address().unwrap();
         assert_eq!(a, b);
         assert_eq!(std::fs::read(&path).unwrap().len(), 32);
         std::fs::write(&path, [1u8; 16]).unwrap();
         assert!(ensure_address().is_err());
-        unsafe { std::env::remove_var("DREGG_RUNTIME_SK_FILE") };
-        unsafe { std::env::remove_var("DREGG_RUNTIME_NO_CREATE") };
+        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
+        std::env::remove_var("DREGG_RUNTIME_NO_CREATE");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -948,12 +1023,12 @@ mod tests {
         let _g = crate::checkout::minter_env_lock();
         let path = std::env::temp_dir().join(format!("dregg-nocreate-{}", std::process::id()));
         let _ = std::fs::remove_file(&path);
-        unsafe { std::env::set_var("DREGG_RUNTIME_SK_FILE", &path) };
-        unsafe { std::env::set_var("DREGG_RUNTIME_NO_CREATE", "1") };
+        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
+        std::env::set_var("DREGG_RUNTIME_NO_CREATE", "1");
         assert!(ensure_address().is_err());
         assert!(!path.exists());
-        unsafe { std::env::remove_var("DREGG_RUNTIME_NO_CREATE") };
-        unsafe { std::env::remove_var("DREGG_RUNTIME_SK_FILE") };
+        std::env::remove_var("DREGG_RUNTIME_NO_CREATE");
+        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
     }
 
     #[test]
@@ -968,7 +1043,7 @@ mod tests {
             fractal: { "alloc": 10000, "proof_hashes": [proof] }
         });
         std::fs::write(&path, body.to_string()).unwrap();
-        unsafe { std::env::set_var("DREGG_PAYMINT_PROOFS_FILE", &path) };
+        std::env::set_var("DREGG_PAYMINT_PROOFS_FILE", &path);
         let msg = svg_mint_msg(fractal, 1);
         let got: serde_json::Value = serde_json::from_slice(&msg).unwrap();
         let expect: serde_json::Value = serde_json::from_str(template).unwrap();
@@ -981,7 +1056,7 @@ mod tests {
             .as_array()
             .unwrap()
             .is_empty());
-        unsafe { std::env::remove_var("DREGG_PAYMINT_PROOFS_FILE") };
+        std::env::remove_var("DREGG_PAYMINT_PROOFS_FILE");
         let _ = std::fs::remove_file(&path);
     }
 }
