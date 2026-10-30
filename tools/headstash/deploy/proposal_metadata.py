@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Write the x/gov v1 ProposalMetadata JSON for the two Headstash 2026 proposals.
+"""Write the x/gov v1 ProposalMetadata JSON for the three Headstash 2026 proposals (A deploy, B1 circuit, B2 fund + bind).
 
 Schema: cosmos-sdk x/gov/types/metadata.go ProposalMetadata
 (title, authors, summary, details, proposal_forum_url, vote_option_context).
 The chain stores only the URI (<= 255 B, MaxMetadataLen); these files are hosted off-chain.
 Usage: proposal_metadata.py decisions.mainnet.json rendered-mainnet/sizes.json
-Output: proposal-metadata/{01-circuit-store.json,02-contract-instantiate.json,SHA256SUMS}
+Output: proposal-metadata/{01-deploy.json,02-circuit-store.json,03-fund-bind.json,SHA256SUMS}
 """
 import hashlib, json, os, sys
 
@@ -25,7 +25,7 @@ COMMUNITIES = ("EVM: buddah-bears, cannabuddies, carta-beta-gang, chronic-token,
                "galacktic-gang, heady-pipe-society, hippie-life-krew, monster-buds, rebud, secret-sesh, shurlok, special-k, "
                "wake-and-bake. Solana: stoned-ape-club.")
 OVERVIEW = """## Headstash 2026 in short
-A private TERP airdrop to holders from 15 EVM NFT communities plus the Solana community stoned-ape-club:
+A private TERP airdrop to holders from 15 EVM communities plus the Solana community stoned-ape-club:
 17,791 eligible identities (15,744 EVM, 2,047 Solana) share 98,841 notes in 12 denominations (1 to 5,000 TERP),
 totalling 66,456,669 TERP of the 67,000,000 TERP budget. 37 addresses were excluded (burn/zero addresses,
 contracts, Safes and program-owned accounts).
@@ -41,7 +41,10 @@ How a claim works:
 
 Governance and safety:
 - x/gov (%s) is the wasm admin and the owner of both contracts. WAVS is disabled for this campaign.
-- Claim cutoff at block 44,444,444. After the cutoff unclaimed TERP is burned (BankMsg::Burn); it does not return to any wallet.
+- Claim cutoff at block 44,444,444.
+- Emergency, before the cutoff: x/gov (and only x/gov, as admin and owner) can execute EmergencyReclaim, which sends the whole
+  contract balance back to the community pool (MsgFundCommunityPool) and permanently halts claims and registration.
+- After the cutoff reclaim is refused: unclaimed TERP can only be burned (SweepUnclaimed, BankMsg::Burn); it does not return to any wallet.
 - The claim page is stored on-chain in a hash-verified frontend contract: every file is checked against a manifest hash published by this proposal.
 - Post-claim privacy via Penumbra is planned; the current frontend only contains a preview stub for it.
 """
@@ -49,42 +52,7 @@ Governance and safety:
 def details(extra):
     return (OVERVIEW % (COMMUNITIES, F["gov"])) + extra + ("\nSource commit: %s\n" % F["src"] if F["src"] else "")
 
-circuit = {
-    "title": "Headstash 2026 (1/2): store the note circuit",
-    "authors": AUTHORS,
-    "summary": ("Stores the Headstash vk_id 3 Halo2 note circuit (K=11, verifying-key hash sha256(params||vk) %s) in the "
-                "circuit module with x/gov as sender. This is step 1 of 2: proposal 2/2 binds this circuit to the cw-headstash "
-                "contract that pays the private airdrop of 66,456,669 TERP to 17,791 identities from 16 partner communities." % F["vk"]),
-    "details": details("""
-## What this proposal does
-Stores the note circuit (vk_id 3, K=11) with x/gov as the sender. Nothing is funded by this proposal.
-
-Hashes to check:
-- verifying key sha256(params||vk): %s
-- note eligibility tree root (depth 17): %s
-- identity tree root (depth 15): %s
-""" % (F["vk"], F["note_root"], F["id_root"])),
-    "proposal_forum_url": forum,
-    "vote_option_context": ("Yes: store the Headstash note circuit so proposal 2/2 can use it. No: do not store it. "
-                            "No with veto: the proposal is spam or harmful. Abstain: no position."),
-}
-contract = {
-    "title": "Headstash 2026 (2/2): instantiate and fund cw-headstash",
-    "authors": AUTHORS,
-    "summary": ("Instantiates cw-headstash (sha256 %s) at %s with x/gov as admin and owner, funds it with 66,456,669 TERP "
-                "from the community pool for a private airdrop to 17,791 identities (98,841 notes) from 15 EVM communities and "
-                "Solana stoned-ape-club, and binds the note circuit from proposal 1/2. Also instantiates the on-chain claim page "
-                "host cw-headstash-frontend (sha256 %s) at %s and publishes page manifest v1 (sha256 %s). Cutoff block "
-                "44,444,444; unclaimed TERP is burned." % (F["wasm"], F["contract"], F["fe_wasm"], F["fe"], F["man"])),
-    "details": details("""
-## What this proposal does
-1. Community pool spend of 66,456,669,000,000 uterp to x/gov.
-2. Instantiate2 of cw-headstash-frontend (admin and owner x/gov) and publish of page manifest v1; the page activates once every chunk is uploaded.
-3. Instantiate2 of cw-headstash (admin and owner x/gov, WAVS disabled) funded with 66,456,669 TERP, bound to the note circuit from proposal 1/2.
-
-The 9,632.607378 TERP leaf rounding remainder and the 533,698.39 TERP not allocated to notes are not sent: they stay in the community pool.
-For comparison, Proposal #32 (December 2023) sent 43,476,089.03 TERP to code 8; that contract now holds 0.
-
+HASHES = """
 Hashes to check:
 - cw_headstash.wasm sha256 %s (%d bytes), predicted address %s
 - cw_headstash_frontend.wasm sha256 %s (%d bytes), predicted address %s
@@ -92,14 +60,62 @@ Hashes to check:
 - verifying key sha256(params||vk) %s
 - note eligibility tree root (depth 17): %s
 - identity tree root (depth 15): %s
-""" % (F["wasm"], F["wasm_b"], F["contract"], F["fe_wasm"], F["fe_b"], F["fe"], F["man"], F["vk"], F["note_root"], F["id_root"])),
+""" % (F["wasm"], F["wasm_b"], F["contract"], F["fe_wasm"], F["fe_b"], F["fe"], F["man"], F["vk"], F["note_root"], F["id_root"])
+VOTE = ("No: do not do it. No with veto: the proposal is spam or harmful. Abstain: no position.")
+deploy = {
+    "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
+    "authors": AUTHORS,
+    "summary": ("Step A of 3, funds nothing: instantiates cw-headstash (sha256 %s) at %s and the on-chain claim page host "
+                "cw-headstash-frontend (sha256 %s) at %s, both with x/gov as admin and owner, and publishes claim page "
+                "manifest v1 (sha256 %s). 1 uterp moves from the community pool (instantiate minimum). No circuit and no "
+                "campaign: claims stay disabled until proposal B2." % (F["wasm"], F["contract"], F["fe_wasm"], F["fe"], F["man"])),
+    "details": details("""
+## What this proposal does
+1. Community pool spend of 1 uterp to x/gov (cw-headstash refuses an instantiate without at least 1 token).
+2. Instantiate2 of cw-headstash-frontend (admin and owner x/gov) and publish of page manifest v1; the page activates once every chunk is uploaded (permissionless, hash-checked).
+3. Instantiate2 of cw-headstash (admin and owner x/gov, WAVS disabled) with that 1 uterp. Claims and registration are refused until B2 binds the circuit.
+
+Nothing else is funded. Next: B1 stores the note circuit, B2 opens the campaign, binds it and funds the contract.
+""" + HASHES),
     "proposal_forum_url": forum,
-    "vote_option_context": ("Yes: fund and launch the Headstash 2026 private airdrop as described. No: do not fund it. "
-                            "No with veto: the proposal is spam or harmful. Abstain: no position."),
+    "vote_option_context": "Yes: deploy both contracts with x/gov as admin and owner. " + VOTE,
+}
+circuit = {
+    "title": "Headstash 2026 (B1): store the note circuit",
+    "authors": AUTHORS,
+    "summary": ("Step B1 of 3: stores the Headstash vk_id 3 Halo2 note circuit (K=11, verifying-key hash sha256(params||vk) %s) "
+                "in the circuit module with x/gov as sender, for the cw-headstash contract deployed by proposal A at %s. "
+                "Nothing is funded; proposal B2 binds this circuit." % (F["vk"], F["contract"])),
+    "details": details("""
+## What this proposal does
+Stores the note circuit (vk_id 3, K=11) with x/gov as the sender. Nothing is funded by this proposal.
+""" + HASHES),
+    "proposal_forum_url": forum,
+    "vote_option_context": "Yes: store the Headstash note circuit so proposal B2 can bind it. " + VOTE,
+}
+fund = {
+    "title": "Headstash 2026 (B2): bind the note circuit and fund cw-headstash",
+    "authors": AUTHORS,
+    "summary": ("Step B2 of 3: opens the campaign on cw-headstash %s (deployed by proposal A, x/gov admin and owner), binds the "
+                "note circuit from B1 and sends 66,456,668.999999 TERP from the community pool straight to the contract "
+                "(66,456,669 TERP with the 1 uterp from A) for a private airdrop to 17,791 identities (98,841 notes) from 15 EVM "
+                "communities and Solana stoned-ape-club. Cutoff block 44,444,444: before it x/gov can reclaim everything to the "
+                "community pool in an emergency; after it unclaimed TERP is burned." % F["contract"]),
+    "details": details("""
+## What this proposal does
+1. SetEpochCampaign on cw-headstash (cutoff 44,444,444, burn of unclaimed after the cutoff).
+2. BindNoteCircuit with the circuit stored by B1 (the contract checks sha256 of the stored circuit against the verifying-key hash).
+3. Community pool spend of 66,456,668,999,999 uterp straight to the contract.
+
+The 9,632.607378 TERP leaf rounding remainder and the 533,698.39 TERP not allocated to notes are not sent: they stay in the community pool.
+For comparison, Proposal #32 (December 2023) sent 43,476,089.03 TERP to code 8; that contract now holds 0.
+""" + HASHES),
+    "proposal_forum_url": forum,
+    "vote_option_context": "Yes: fund and launch the Headstash 2026 private airdrop as described. " + VOTE,
 }
 out = os.path.join(HERE, "proposal-metadata"); os.makedirs(out, exist_ok=True)
 sums = []
-for name, m in (("01-circuit-store.json", circuit), ("02-contract-instantiate.json", contract)):
+for name, m in (("01-deploy.json", deploy), ("02-circuit-store.json", circuit), ("03-fund-bind.json", fund)):
     assert set(m) == {"title", "authors", "summary", "details", "proposal_forum_url", "vote_option_context"}
     assert len(m["summary"].encode()) <= 40 * 255
     b = (json.dumps(m, indent=2, ensure_ascii=False) + "\n").encode()

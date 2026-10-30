@@ -11,7 +11,7 @@
       "amount": [
        {
         "denom": "uterp",
-        "amount": "66456669000000"
+        "amount": "1"
        }
       ]
      },
@@ -130,109 +130,11 @@
       "funds": [
        {
         "denom": "uterp",
-        "amount": "66456669000000"
+        "amount": "1"
        }
       ],
       "salt": "dGthxwhH0MNbequTHTM0zK7w+qG3RHm1SROa72XKndU=",
       "fix_msg": false
-     },
-     {
-      "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
-      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
-      "msg": {
-       "set_epoch_campaign": {
-        "campaign": {
-         "ctx": "BjXVSar6qIc6mAgFOXqeOoAxLRhDOPamspYFSmAyQhs=",
-         "backend": "halo2",
-         "cutoff_height": 44444444,
-         "bech32_hrp": "terp",
-         "denom": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
-         "amounts": [
-          {
-           "amount": 1000000,
-           "cap": 6491
-          },
-          {
-           "amount": 2000000,
-           "cap": 12569
-          },
-          {
-           "amount": 5000000,
-           "cap": 10150
-          },
-          {
-           "amount": 10000000,
-           "cap": 6940
-          },
-          {
-           "amount": 20000000,
-           "cap": 6387
-          },
-          {
-           "amount": 50000000,
-           "cap": 6219
-          },
-          {
-           "amount": 100000000,
-           "cap": 5081
-          },
-          {
-           "amount": 200000000,
-           "cap": 15363
-          },
-          {
-           "amount": 500000000,
-           "cap": 8031
-          },
-          {
-           "amount": 1000000000,
-           "cap": 7978
-          },
-          {
-           "amount": 2000000000,
-           "cap": 5956
-          },
-          {
-           "amount": 5000000000,
-           "cap": 7676
-          }
-         ],
-         "reserved": [],
-         "trusted": [
-          "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
-         ],
-         "trusted_verify_threshold": 1,
-         "trusted_sign_threshold": 1,
-         "max_rows": 25,
-         "allocation_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-         "root_id": 0,
-         "vk_id": 3,
-         "vk_hash": "NNEUN9lXVU9ACDd97OX6wPBH4OnMAS0Vs9CUSKbMU5g=",
-         "sweep_recipient": "",
-         "burn_unclaimed": true,
-         "registration": {
-          "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
-          "eligibility_depth": 17,
-          "min_anonymity_set": 1,
-          "anchor_start_height": 1,
-          "anchor_interval": 3430
-         }
-        }
-       }
-      },
-      "funds": []
-     },
-     {
-      "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
-      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
-      "msg": {
-       "bind_note_circuit": {
-        "zk_id": "{{NOTE_ZK_ID}}"
-       }
-      },
-      "funds": []
      }
     ],
     "initial_deposit": [
@@ -242,13 +144,13 @@
      }
     ],
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
-    "metadata": "{{PROPOSAL_METADATA_URI_CONTRACT}}",
-    "title": "Headstash 2026 (2/2): instantiate and fund cw-headstash",
-    "summary": "Instantiates cw-headstash code {{CODE_ID}} (sha256 76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de) at terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn with gov as admin and owner, funds it with 66456669000000 uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (gov admin and owner) and publishes page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a, activates when every chunk is uploaded). Forum: https://discord.terp.network",
+    "metadata": "{{PROPOSAL_METADATA_URI_DEPLOY}}",
+    "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
+    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 f7873d2dedaccdc3994ae012917c1430793f3e066688f7cd0a47d0573898b997) at terp16eh27rxzgls6uxtdjuvlhfk3gryryy0jf4qcn68ugw2teetq6qgs966e8k and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
     "expedited": false
    }
   ],
-  "memo": "headstash-gov:instantiate",
+  "memo": "headstash-gov:deploy",
   "timeout_height": "0",
   "extension_options": [],
   "non_critical_extension_options": []

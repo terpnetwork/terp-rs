@@ -4,23 +4,27 @@
 usage: render_gov_session.py decisions.mainnet.json --circuit DIR --wasm FILE --fe-wasm FILE --page DIR --prover DIR
        --eph-grantee ADDR [--out DIR] [--proposer-acct N --proposer-seq N --fx-acct N --fx-seq N] [--terpd BIN]
 
-Layout (gov = wasm admin + contract owner, terp1gnfq proposes, terp1fx grants claim fees directly):
-  00-render/                    render.py --partial output (message bodies)
-  10-session-grant/             Zigner doc: produce with gov-session/ bin gov-session-grant (see checklist)
-  11-circuit-proposal.inner.json  MsgSubmitProposal{MsgStoreFullCircuit} proposer=granter, 5,000 TERP initial deposit
-  12-circuit-exec.unsigned.json   MsgExec by the ephemeral key (on-device), fee via the session feegrant
-  13-store-wasm.unsigned.json     normal MsgStoreCode signed by the eph key (sender=eph, instantiate=gov only), fee via session feegrant
-  13b-store-frontend-wasm.unsigned.json  same for cw_headstash_frontend.wasm
-  14-instantiate-proposal.unsigned.json  small proposal: pool->gov, Instantiate2 frontend (gov admin+owner), PublishManifest
-                                  (activate), Instantiate2 cw-headstash (gov admin, funds, frontend_contract), set campaign, bind circuit
-  18-fe-uploader-feegrant.unsigned.json  terp1fx (Zigner): capped, expiring BasicAllowance to a throwaway uploader key
-  19-fe-chunks/NN-fF-iI.unsigned.json  UploadChunk txs signed by the uploader key (direct), fee granter terp1fx; >64 KiB, never Zigner
-  20-fe-uploader-revoke.unsigned.json  terp1fx (Zigner): MsgRevokeAllowance once all chunks landed
-  page-manifest.json               the manifest gov publishes (file + chunk sha256s)
-  15-session-revoke.unsigned.json MsgExec revoke (gov_session.revoke_tx)
-  16-feegrant-terp1fx.unsigned.json  MsgGrantAllowance template from terp1fx (relay issues one per claimer)
-  17-deposit-topup.unsigned.json  MsgDeposit 5,000 TERP from the proposer (x2: one per proposal)
-  sizes.json                     every doc's amino sign-doc bytes vs Zigner 65536
+Layout (gov = wasm admin + contract owner, terp1gnfq proposes, terp1fx grants claim fees directly).
+Phase A (contracts first, no circuit): deploy both contracts, publish + seal the claim page.
+  phase-a/10-session-grant/       Zigner doc (proposer): gov-session-grant, fresh, before the stores
+  phase-a/13-store-wasm.unsigned.json          MsgStoreCode cw_headstash.wasm by the eph key (instantiate = gov only)
+  phase-a/13b-store-frontend-wasm.unsigned.json same for cw_headstash_frontend.wasm
+  phase-a/15-session-revoke.unsigned.json      MsgExec revoke by the eph key
+  phase-a/14-deploy-proposal.unsigned.json     proposal A (proposer, Zigner): pool->gov 1 uterp, Instantiate2 frontend
+                                  (gov admin+owner), PublishManifest, Instantiate2 cw-headstash (gov admin+owner, 1 uterp)
+  phase-a/17-deposit-topup.unsigned.json       MsgDeposit 5,000 TERP for PROPOSAL_ID_DEPLOY
+  phase-a/18-fe-uploader-feegrant.unsigned.json, 19-fe-chunks/, 20-fe-uploader-revoke.unsigned.json  chunk upload + seal
+  phase-a/page-manifest.json
+Phase B (circuit, then gov binds and funds):
+  phase-b/10-session-grant/       second Zigner session doc (proposer)
+  phase-b/11-circuit-proposal.inner.json, 12-circuit-exec.unsigned.json  circuit store proposal via the eph key
+  phase-b/15-session-revoke.unsigned.json
+  phase-b/17-deposit-topup-circuit.unsigned.json  MsgDeposit for PROPOSAL_ID_CIRCUIT
+  phase-b/14-fund-bind-proposal.unsigned.json  proposal B (proposer, Zigner): set campaign, bind circuit, pool spend
+                                  (funding - 1) uterp straight to the contract
+  phase-b/17-deposit-topup-fund.unsigned.json  MsgDeposit for PROPOSAL_ID_FUND
+  phase-b/16-feegrant-terp1fx.unsigned.json    claimer feegrant template (relay issues one per claimer)
+  sizes.json                       every doc's amino sign-doc bytes vs Zigner 65536
 Placeholders kept as {{NAME}}: PROPOSAL_METADATA_URI, FORUM_URL,
 plus later-step CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_*.
 """
@@ -36,8 +40,8 @@ SENTINELS = {  # values that pass render.py checks, swapped back to {{NAME}} aft
     "PROPOSAL_METADATA_URI": "https://placeholder.invalid/PROPOSAL_METADATA_URI",
     "FORUM_URL": "https://placeholder.invalid/FORUM_URL",
 }
-ALLOWED_LEFT = {"PROPOSAL_METADATA_URI", "PROPOSAL_METADATA_URI_CIRCUIT", "PROPOSAL_METADATA_URI_CONTRACT", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
-                "PROPOSAL_ID_CIRCUIT", "PROPOSAL_ID_CONTRACT", "CLAIMER_ADDR", "FE_CODE_ID", "FE_STORE_GAS", "FE_STORE_FEE_UTHIOL",
+ALLOWED_LEFT = {"PROPOSAL_METADATA_URI", "PROPOSAL_METADATA_URI_CIRCUIT", "PROPOSAL_METADATA_URI_DEPLOY", "PROPOSAL_METADATA_URI_FUND", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
+                "PROPOSAL_ID_CIRCUIT", "PROPOSAL_ID_DEPLOY", "PROPOSAL_ID_FUND", "CLAIMER_ADDR", "FE_CODE_ID", "FE_STORE_GAS", "FE_STORE_FEE_UTHIOL",
                 "FE_UPLOADER_ADDR", "FE_UPLOAD_EXPIRATION", "EXEC_FEE_UTHIOL", "EXEC_GAS", "STORE_GAS", "STORE_FEE_UTHIOL", "CLAIM_FEE_UTHIOL", "SEQ"}
 
 
@@ -158,7 +162,7 @@ def main():
         if len(v.encode()) > MAX_METADATA_LEN or not re.fullmatch(r"(ipfs://|https://)\S+", v):
             sys.exit("FATAL %s must be an ipfs:// or https:// URI of at most %d bytes: %r" % (k, MAX_METADATA_LEN, v))
         return v
-    meta_circ, meta_inst = meta("PROPOSAL_METADATA_URI_CIRCUIT"), meta("PROPOSAL_METADATA_URI_CONTRACT")
+    meta_circ, meta_dep, meta_fund = meta("PROPOSAL_METADATA_URI_CIRCUIT"), meta("PROPOSAL_METADATA_URI_DEPLOY"), meta("PROPOSAL_METADATA_URI_FUND")
     forum = dec.get("FORUM_URL", "")
     forum = forum if re.fullmatch(r"https://\S+", str(forum)) else "{{FORUM_URL}}"
     sub = json.loads(rd("submit-proposal.json"))
@@ -171,61 +175,72 @@ def main():
                 "metadata": meta_uri, "title": title, "summary": summary, "expedited": False}
 
     files = {}
-    # 11/12 circuit proposal via the ephemeral session key
-    p_circ = submit([circuit_msg], "Headstash 2026 (1/2): store the note circuit",
-                    "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov. Forum: " + forum, meta_circ)
-    files["11-circuit-proposal.inner.json"] = (p_circ, None)
-    files["12-circuit-exec.unsigned.json"] = (gs.exec_tx(eph, proposer, [p_circ], "{{EXEC_GAS}}", "{{EXEC_FEE_UTHIOL}}", "uthiol"), ("eph", None, None))
-    # 13 wasm store (normal tx, sender = granter) via the session: > 64 KiB so Zigner cannot sign it directly
+    A, B = "phase-a/", "phase-b/"
+    msha = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    def topup(pid_ph): return gs._tx([{"@type": "/cosmos.gov.v1.MsgDeposit", "proposal_id": "{{%s}}" % pid_ph, "depositor": proposer,
+        "amount": [{"denom": "uterp", "amount": str(FULL_DEPOSIT - INIT_DEPOSIT)}]}], 30000000, 750000, "uthiol", "")
+    # ---- Phase A: stores via the session key, then the deploy proposal (no circuit, no campaign, 1 uterp)
     store = {"@type": "/cosmwasm.wasm.v1.MsgStoreCode", "sender": eph,
              "wasm_byte_code": base64.b64encode(gzip.compress(wb, 9, mtime=0)).decode(),
              "instantiate_permission": {"permission": "AnyOfAddresses", "addresses": [GOV]}}
-    files["13-store-wasm.unsigned.json"] = (gs._tx([store], "{{STORE_GAS}}", "{{STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
+    files[A + "13-store-wasm.unsigned.json"] = (gs._tx([store], "{{STORE_GAS}}", "{{STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
     fstore = dict(store, wasm_byte_code=base64.b64encode(gzip.compress(fb_, 9, mtime=0)).decode())
-    files["13b-store-frontend-wasm.unsigned.json"] = (gs._tx([fstore], "{{FE_STORE_GAS}}", "{{FE_STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
-    # 14 instantiate proposal (small, proposer signs on Zigner)
+    files[A + "13b-store-frontend-wasm.unsigned.json"] = (gs._tx([fstore], "{{FE_STORE_GAS}}", "{{FE_STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
+    files[A + "15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
     init = json.loads(rd("01-instantiate.json")); init["owner"] = GOV; init["frontend_contract"] = fe_addr
     camp = json.loads(rd("02-set-epoch-campaign-open.json")) if "02-set-epoch-campaign-open.json" in raw else "{{SET_EPOCH_CAMPAIGN}}"
-    msgs = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
-             "amount": [{"denom": "uterp", "amount": funding}]},
-            {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": "{{FE_CODE_ID}}",
-             "label": dec["CAMPAIGN_LABEL"] + "-frontend", "msg": {"owner": GOV, "max_chunk_bytes": chunk}, "funds": [],
-             "salt": base64.b64encode(bytes.fromhex(fe_salt)).decode(), "fix_msg": False},
-            {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": fe_addr, "msg": {"publish_manifest": {"manifest": manifest}}, "funds": []},
-            {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": "{{CODE_ID}}",
-             "label": dec["CAMPAIGN_LABEL"], "msg": init, "funds": [{"denom": "uterp", "amount": funding}],
-             "salt": base64.b64encode(bytes.fromhex(salt)).decode(), "fix_msg": False},
-            {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": camp, "funds": []},
-            {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
-             "msg": {"bind_note_circuit": {"zk_id": "{{NOTE_ZK_ID}}"}}, "funds": []}]
-    p_inst = submit(msgs, "Headstash 2026 (2/2): instantiate and fund cw-headstash",
-                    "Instantiates cw-headstash code {{CODE_ID}} (sha256 %s) at %s with gov as admin and owner, funds it with %s uterp from the community pool, opens the campaign and binds note circuit {{NOTE_ZK_ID}}. Also instantiates the claim page host cw-headstash-frontend code {{FE_CODE_ID}} (sha256 %s) at %s (gov admin and owner) and publishes page manifest v1 (sha256 %s, activates when every chunk is uploaded). Forum: %s" % (wsha, contract, funding, fsha, fe_addr, hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), forum), meta_inst)
-    files["14-instantiate-proposal.unsigned.json"] = (gs._tx([p_inst], 3000000, 75000, "uthiol", "", "headstash-gov:instantiate"), ("proposer", p_acct, p_seq + 1))
-    files["15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
-    files["16-feegrant-terp1fx.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", "granter": fx, "grantee": "{{CLAIMER_ADDR}}",
+    msgs_a = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
+               "amount": [{"denom": "uterp", "amount": "1"}]},  # ExistingFungible instantiate needs >= 1 token
+              {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": "{{FE_CODE_ID}}",
+               "label": dec["CAMPAIGN_LABEL"] + "-frontend", "msg": {"owner": GOV, "max_chunk_bytes": chunk}, "funds": [],
+               "salt": base64.b64encode(bytes.fromhex(fe_salt)).decode(), "fix_msg": False},
+              {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": fe_addr, "msg": {"publish_manifest": {"manifest": manifest}}, "funds": []},
+              {"@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2", "sender": GOV, "admin": GOV, "code_id": "{{CODE_ID}}",
+               "label": dec["CAMPAIGN_LABEL"], "msg": init, "funds": [{"denom": "uterp", "amount": "1"}],
+               "salt": base64.b64encode(bytes.fromhex(salt)).decode(), "fix_msg": False}]
+    p_dep = submit(msgs_a, "Headstash 2026 (A): deploy cw-headstash and the claim page",
+                   "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 %s) at %s and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 %s) at %s, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 %s). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: %s" % (wsha, contract, fsha, fe_addr, msha, forum), meta_dep)
+    files[A + "14-deploy-proposal.unsigned.json"] = (gs._tx([p_dep], 3000000, 75000, "uthiol", "", "headstash-gov:deploy"), ("proposer", p_acct, p_seq + 1))
+    files[A + "17-deposit-topup.unsigned.json"] = (topup("PROPOSAL_ID_DEPLOY"), ("proposer", p_acct, None))
+    # ---- Phase B: circuit store proposal (new session), then gov sets the campaign, binds the circuit and funds
+    p_circ = submit([circuit_msg], "Headstash 2026 (B1): store the note circuit",
+                    "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov, for the cw-headstash contract deployed by proposal A at %s. Nothing is funded. Forum: %s" % (contract, forum), meta_circ)
+    files[B + "11-circuit-proposal.inner.json"] = (p_circ, None)
+    files[B + "12-circuit-exec.unsigned.json"] = (gs.exec_tx(eph, proposer, [p_circ], "{{EXEC_GAS}}", "{{EXEC_FEE_UTHIOL}}", "uthiol"), ("eph", None, None))
+    files[B + "15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
+    files[B + "17-deposit-topup-circuit.unsigned.json"] = (topup("PROPOSAL_ID_CIRCUIT"), ("proposer", p_acct, None))
+    rest = str(int(funding) - 1)
+    msgs_b = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": camp, "funds": []},
+              {"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
+               "msg": {"bind_note_circuit": {"zk_id": "{{NOTE_ZK_ID}}"}}, "funds": []},
+              {"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": contract,
+               "amount": [{"denom": "uterp", "amount": rest}]}]
+    p_fund = submit(msgs_b, "Headstash 2026 (B2): bind the note circuit and fund cw-headstash",
+                    "Opens the campaign on cw-headstash %s (deployed by proposal A, gov admin and owner), binds note circuit {{NOTE_ZK_ID}} from proposal B1 and sends %s uterp from the community pool straight to the contract (with the 1 uterp from A: %s uterp). Cutoff block 44,444,444: before it gov can EmergencyReclaim everything back to the community pool; after it unclaimed TERP can only be burned. Forum: %s" % (contract, rest, funding, forum), meta_fund)
+    files[B + "14-fund-bind-proposal.unsigned.json"] = (gs._tx([p_fund], 3000000, 75000, "uthiol", "", "headstash-gov:fund-bind"), ("proposer", p_acct, None))
+    files[B + "17-deposit-topup-fund.unsigned.json"] = (topup("PROPOSAL_ID_FUND"), ("proposer", p_acct, None))
+    files[B + "16-feegrant-terp1fx.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", "granter": fx, "grantee": "{{CLAIMER_ADDR}}",
         "allowance": {"@type": "/cosmos.feegrant.v1beta1.BasicAllowance", "spend_limit": [{"denom": "uthiol", "amount": "{{CLAIM_FEE_UTHIOL}}"}], "expiration": None}}],
         200000, 10000, "uthiol", ""), ("terp1fx", fx_acct, fx_seq))
-    files["17-deposit-topup.unsigned.json"] = (gs._tx([{"@type": "/cosmos.gov.v1.MsgDeposit", "proposal_id": "{{PROPOSAL_ID_CIRCUIT}}", "depositor": proposer,
-        "amount": [{"denom": "uterp", "amount": str(FULL_DEPOSIT - INIT_DEPOSIT)}]}], 30000000, 750000, "uthiol", ""), ("proposer", p_acct, None))
 
     # 18-20: chunk uploads (permissionless, content-addressed) by a throwaway key; fees granted by terp1fx
     up_fee = [int(UPLOAD_GAS(len(c)) * GAS_PRICE) + 1 for cs in chunks for c in cs]
     cap = sum(up_fee) + 1_000_000  # +1 THIOL slack for a retry
-    files["18-fe-uploader-feegrant.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", "granter": fx, "grantee": "{{FE_UPLOADER_ADDR}}",
+    files[A + "18-fe-uploader-feegrant.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance", "granter": fx, "grantee": "{{FE_UPLOADER_ADDR}}",
         "allowance": {"@type": "/cosmos.feegrant.v1beta1.BasicAllowance", "spend_limit": [{"denom": "uthiol", "amount": str(cap)}], "expiration": "{{FE_UPLOAD_EXPIRATION}}"}}],
         200000, 10000, "uthiol", "", "headstash-frontend:uploader-feegrant"), ("terp1fx", fx_acct, fx_seq))
     k = 0
     for fi, cs in enumerate(chunks):
         for ci, c in enumerate(cs):
             g = UPLOAD_GAS(len(c))
-            files["19-fe-chunks/%02d-f%d-i%d.unsigned.json" % (k, fi, ci)] = (gs._tx([{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": "{{FE_UPLOADER_ADDR}}", "contract": fe_addr,
+            files[A + "19-fe-chunks/%02d-f%d-i%d.unsigned.json" % (k, fi, ci)] = (gs._tx([{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": "{{FE_UPLOADER_ADDR}}", "contract": fe_addr,
                 "msg": {"upload_chunk": {"version": 1, "file": fi, "index": ci, "data": base64.b64encode(c).decode()}}, "funds": []}],
                 g, int(g * GAS_PRICE) + 1, "uthiol", fx, "headstash-frontend:upload"), ("uploader", None, None)); k += 1
-    files["20-fe-uploader-revoke.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgRevokeAllowance", "granter": fx, "grantee": "{{FE_UPLOADER_ADDR}}"}],
+    files[A + "20-fe-uploader-revoke.unsigned.json"] = (gs._tx([{"@type": "/cosmos.feegrant.v1beta1.MsgRevokeAllowance", "granter": fx, "grantee": "{{FE_UPLOADER_ADDR}}"}],
         100000, 5000, "uthiol", "", "headstash-frontend:uploader-revoke"), ("terp1fx", fx_acct, None))
-    os.makedirs(os.path.join(out, "19-fe-chunks"), exist_ok=True)
-    for f_ in os.listdir(os.path.join(out, "19-fe-chunks")): os.remove(os.path.join(out, "19-fe-chunks", f_))
-    open(os.path.join(out, "page-manifest.json"), "w").write(json.dumps(manifest, indent=1) + "\n")
+    for d_ in ("phase-a", "phase-b", "phase-a/19-fe-chunks"): os.makedirs(os.path.join(out, d_), exist_ok=True)
+    for f_ in os.listdir(os.path.join(out, "phase-a/19-fe-chunks")): os.remove(os.path.join(out, "phase-a/19-fe-chunks", f_))
+    open(os.path.join(out, "phase-a/page-manifest.json"), "w").write(json.dumps(manifest, indent=1) + "\n")
 
     sizes, errs = {}, {}
     for n, (obj, signer) in files.items():
@@ -242,9 +257,10 @@ def main():
         elif signer and signer[0] == "uploader":
             ent.update(signed_by="throwaway uploader key (direct mode, not Zigner); fee granter terp1fx", gas=int(obj["auth_info"]["fee"]["gas_limit"]), fee_uthiol=int(obj["auth_info"]["fee"]["amount"][0]["amount"]))
         sizes[n] = ent
-    g = os.path.join(out, "10-session-grant", "meta.json")
-    if os.path.exists(g):
-        m = json.load(open(g)); sizes["10-session-grant/sign_doc.json"] = {"amino_sign_doc_bytes": m["sign_doc_bytes"], "zigner_ok": m["fits_zigner"],
+    for ph in ("phase-a", "phase-b"):
+      g = os.path.join(out, ph, "10-session-grant", "meta.json")
+      if os.path.exists(g):
+        m = json.load(open(g)); sizes[ph + "/10-session-grant/sign_doc.json"] = {"amino_sign_doc_bytes": m["sign_doc_bytes"], "zigner_ok": m["fits_zigner"],
                                                                            "qr_frames": m["qr_frames"], "signer": "proposer (Zigner)", "types": m["type_urls"]}
     rep = {"contract_addr_predicted": contract, "salt_hex": salt, "wasm_sha256": wsha, "wasm_bytes": len(wb),
            "frontend": {"addr_predicted": fe_addr, "salt_hex": fe_salt, "wasm_sha256": fsha, "wasm_bytes": len(fb_), "wasm_gzip_bytes": len(gzip.compress(fb_, 9, mtime=0)),

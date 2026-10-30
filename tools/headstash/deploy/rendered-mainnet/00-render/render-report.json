@@ -12,7 +12,7 @@
   "notes_total_uterp": 66456669000000,
   "notes_remainder_uterp": 9632607378,
   "unique_amount_identities": null,
-  "ctx_hex": "0635d549aafaa8873a980805397a9e3a80312d184338f6a6b296054a6032421b",
+  "ctx_hex": "e8c9e7128b21633d65a81589d4445bea2a62e37263a0e9b540a6797201604d37",
   "ctx_derivation": "direct_ctx (terp-hs-direct-ctx-v1)",
   "trusted": [
     "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="

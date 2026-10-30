@@ -1,8 +1,8 @@
 {
-  "contract_addr_predicted": "terp1l3qtt2gwvwyshhlsr7l8tac4hmz7xwav5e0gpret92qw85hh83ts7298qn",
+  "contract_addr_predicted": "terp16eh27rxzgls6uxtdjuvlhfk3gryryy0jf4qcn68ugw2teetq6qgs966e8k",
   "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
-  "wasm_sha256": "76c737edaf25bf64ee3c1d93ae4943164d83b1901adcd893e3679ce5d62281de",
-  "wasm_bytes": 1133358,
+  "wasm_sha256": "f7873d2dedaccdc3994ae012917c1430793f3e066688f7cd0a47d0573898b997",
+  "wasm_bytes": 1157184,
   "frontend": {
     "addr_predicted": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
     "salt_hex": "39881335f9a8242299ba3fd20d3069d1b7b813b2df2ac97a587c143857eaba27",
@@ -53,124 +53,158 @@
       }
     ]
   },
-  "wasm_gzip_bytes": 410975,
+  "wasm_gzip_bytes": 418651,
   "files": {
-    "11-circuit-proposal.inner.json": {
-      "tx_json_bytes": 180703,
-      "signer": null
-    },
-    "12-circuit-exec.unsigned.json": {
-      "tx_json_bytes": 181172,
+    "phase-a/13-store-wasm.unsigned.json": {
+      "tx_json_bytes": 558808,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
-    "13-store-wasm.unsigned.json": {
-      "tx_json_bytes": 548572,
-      "signer": "eph",
-      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
-    },
-    "13b-store-frontend-wasm.unsigned.json": {
+    "phase-a/13b-store-frontend-wasm.unsigned.json": {
       "tx_json_bytes": 186054,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
-    "14-instantiate-proposal.unsigned.json": {
-      "tx_json_bytes": 6206,
-      "signer": "proposer",
-      "amino_sign_doc_bytes": 6094,
-      "zigner_ok": true
-    },
-    "15-session-revoke.unsigned.json": {
+    "phase-a/15-session-revoke.unsigned.json": {
       "tx_json_bytes": 1246,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
-    "16-feegrant-terp1fx.unsigned.json": {
-      "tx_json_bytes": 561,
-      "signer": "terp1fx",
-      "amino_sign_doc_bytes": 450,
+    "phase-a/14-deploy-proposal.unsigned.json": {
+      "tx_json_bytes": 4576,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 4464,
       "zigner_ok": true
     },
-    "17-deposit-topup.unsigned.json": {
+    "phase-a/17-deposit-topup.unsigned.json": {
+      "tx_json_bytes": 461,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 353,
+      "zigner_ok": true
+    },
+    "phase-b/11-circuit-proposal.inner.json": {
+      "tx_json_bytes": 180842,
+      "signer": null
+    },
+    "phase-b/12-circuit-exec.unsigned.json": {
+      "tx_json_bytes": 181311,
+      "signer": "eph",
+      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
+    },
+    "phase-b/15-session-revoke.unsigned.json": {
+      "tx_json_bytes": 1246,
+      "signer": "eph",
+      "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
+    },
+    "phase-b/17-deposit-topup-circuit.unsigned.json": {
       "tx_json_bytes": 462,
       "signer": "proposer",
       "amino_sign_doc_bytes": 354,
       "zigner_ok": true
     },
-    "18-fe-uploader-feegrant.unsigned.json": {
+    "phase-b/14-fund-bind-proposal.unsigned.json": {
+      "tx_json_bytes": 2931,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 2823,
+      "zigner_ok": true
+    },
+    "phase-b/17-deposit-topup-fund.unsigned.json": {
+      "tx_json_bytes": 459,
+      "signer": "proposer",
+      "amino_sign_doc_bytes": 351,
+      "zigner_ok": true
+    },
+    "phase-b/16-feegrant-terp1fx.unsigned.json": {
+      "tx_json_bytes": 561,
+      "signer": "terp1fx",
+      "amino_sign_doc_bytes": 450,
+      "zigner_ok": true
+    },
+    "phase-a/18-fe-uploader-feegrant.unsigned.json": {
       "tx_json_bytes": 610,
       "signer": "terp1fx",
       "amino_sign_doc_bytes": 499,
       "zigner_ok": true
     },
-    "19-fe-chunks/00-f0-i0.unsigned.json": {
+    "phase-a/19-fe-chunks/00-f0-i0.unsigned.json": {
       "tx_json_bytes": 3559,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 743232,
       "fee_uthiol": 37162
     },
-    "19-fe-chunks/01-f1-i0.unsigned.json": {
+    "phase-a/19-fe-chunks/01-f1-i0.unsigned.json": {
       "tx_json_bytes": 7707,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 942208,
       "fee_uthiol": 47111
     },
-    "19-fe-chunks/02-f2-i0.unsigned.json": {
+    "phase-a/19-fe-chunks/02-f2-i0.unsigned.json": {
       "tx_json_bytes": 6331,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 876224,
       "fee_uthiol": 43812
     },
-    "19-fe-chunks/03-f3-i0.unsigned.json": {
+    "phase-a/19-fe-chunks/03-f3-i0.unsigned.json": {
       "tx_json_bytes": 4583,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 792320,
       "fee_uthiol": 39617
     },
-    "19-fe-chunks/04-f4-i0.unsigned.json": {
+    "phase-a/19-fe-chunks/04-f4-i0.unsigned.json": {
       "tx_json_bytes": 175341,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 8988608,
       "fee_uthiol": 449431
     },
-    "19-fe-chunks/05-f4-i1.unsigned.json": {
+    "phase-a/19-fe-chunks/05-f4-i1.unsigned.json": {
       "tx_json_bytes": 175341,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 8988608,
       "fee_uthiol": 449431
     },
-    "19-fe-chunks/06-f4-i2.unsigned.json": {
+    "phase-a/19-fe-chunks/06-f4-i2.unsigned.json": {
       "tx_json_bytes": 175341,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 8988608,
       "fee_uthiol": 449431
     },
-    "19-fe-chunks/07-f4-i3.unsigned.json": {
+    "phase-a/19-fe-chunks/07-f4-i3.unsigned.json": {
       "tx_json_bytes": 175341,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 8988608,
       "fee_uthiol": 449431
     },
-    "19-fe-chunks/08-f4-i4.unsigned.json": {
+    "phase-a/19-fe-chunks/08-f4-i4.unsigned.json": {
       "tx_json_bytes": 158317,
       "signer": "uploader",
       "signed_by": "throwaway uploader key (direct mode, not Zigner); fee granter terp1fx",
       "gas": 8171520,
       "fee_uthiol": 408577
     },
-    "20-fe-uploader-revoke.unsigned.json": {
+    "phase-a/20-fe-uploader-revoke.unsigned.json": {
       "tx_json_bytes": 450,
       "signer": "terp1fx",
       "amino_sign_doc_bytes": 343,
       "zigner_ok": true
+    },
+    "phase-a/10-session-grant/sign_doc.json": {
+      "amino_sign_doc_bytes": 1419,
+      "zigner_ok": true,
+      "qr_frames": 1,
+      "signer": "proposer (Zigner)",
+      "types": [
+        "/cosmos.gov.v1.MsgSubmitProposal",
+        "/cosmos.authz.v1beta1.MsgRevoke",
+        "/cosmos.feegrant.v1beta1.MsgRevokeAllowance"
+      ]
     }
   },
   "validate_rendered_proposal": "ok",
@@ -187,8 +221,11 @@
     "FE_UPLOAD_EXPIRATION",
     "NOTE_ZK_ID",
     "PROPOSAL_ID_CIRCUIT",
+    "PROPOSAL_ID_DEPLOY",
+    "PROPOSAL_ID_FUND",
     "PROPOSAL_METADATA_URI_CIRCUIT",
-    "PROPOSAL_METADATA_URI_CONTRACT",
+    "PROPOSAL_METADATA_URI_DEPLOY",
+    "PROPOSAL_METADATA_URI_FUND",
     "STORE_FEE_UTHIOL",
     "STORE_GAS"
   ]
