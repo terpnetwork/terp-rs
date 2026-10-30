@@ -176,6 +176,96 @@
       "code": "polytone-note",
       "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
       "tx": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60"
+    },
+    "whitelist-mtree:permissionless-fractal": {
+      "address": "terp1k5vz89g9z2w0yhg4yfgwwza5d2gg0l9396sjqh27wfck4957pkvq2at0z7",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "whitelist-mtree",
+      "tx": "CCABD46142711FB13C8EC6E61CD7F816C868421BB3BD047F1DE98BD4C1D42E07"
+    },
+    "drop:permissionless-fractal": {
+      "address": "terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44"
+    },
+    "drop:interchain-logos-penumbra": {
+      "address": "terp1yldtf5nsychkasyz3gddemqy45fvl2fxpmc8jrsqvt5fv7ggghysektnqk",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97"
+    },
+    "drop:interchain-logos-osmosis": {
+      "address": "terp12ye4vqzm6fmtatc3q87l2mde3ymajh4mlq0ut2ll8lkf8c9r6qzqmsvx8t",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334"
+    },
+    "drop:interchain-logos-cardano": {
+      "address": "terp1jdjrrf00grgvcgusf36juf7y9gsr962he7wp9c3pfpk27g0ulfmqs4jpvm",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3"
+    },
+    "drop:interchain-logos-bcna": {
+      "address": "terp1fmkfazecjn2pmdxxywksaqsxp69jprsframqeg5da4l3emrx004surkf44",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80"
+    },
+    "drop:interchain-logos-cosmos": {
+      "address": "terp1q3algj0h80vpyx3xelwql9umwmyvl7gzm4nuly3lseqlqg89tresc364de",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0"
+    },
+    "drop:interchain-logos-terp": {
+      "address": "terp12v7q75xl7zm8vjzvxenyyyx4ktfye9a92u93kjrk4rppdyvj0wjspzpa6z",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813"
+    },
+    "drop:interchain-logos-bitcoin": {
+      "address": "terp1sdu5qxlpydhpn0a8g4v3jehzn9lhf96rqalc5mj6d6u4ss3jq47susr279",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA"
+    },
+    "drop:interchain-logos-akash": {
+      "address": "terp18xca496njd5v7vw0vcl0ddqvsw2s554npxhztrtz7t0x6djd7eyq6qdlez",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B"
+    },
+    "drop:interchain-logos-bitsong": {
+      "address": "terp1l6wlwe5kysukwcln9c9rf9en5x6xzx8lzj5hfa5py8svzt78s8tswkutuz",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0"
+    },
+    "drop:interchain-logos-dao": {
+      "address": "terp1tf2jp6qll2x936s2g9f0h7m63dyua7827wcezsc6gsfwgq550n6ss9dtcu",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95"
+    },
+    "drop:interchain-logos-eth": {
+      "address": "terp1a9rkeulfskj7arn8qagvu2ykkp4l664n5zj2jxwm6vfqwudnk7kqht5lnx",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B"
+    },
+    "drop:interchain-logos-monero": {
+      "address": "terp1nphx5lmx4az8ptra2c6n04csa5u3ugcp3stcvq0n5ayw8xupyg7svlgc4t",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A"
+    },
+    "drop:interchain-logos-zec": {
+      "address": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5"
     }
   },
   "proposals": {
@@ -400,6 +490,86 @@
       "step": "execute:12",
       "hash": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60",
       "gas_used": 595509
+    },
+    {
+      "hash": "0587B3EA684C4DACDAB7DD284DD4C65B68A9331FF60EEED4F4C234942FDC5084",
+      "phase": "svg",
+      "step": "factory set_series interchain-logos"
+    },
+    {
+      "hash": "CCABD46142711FB13C8EC6E61CD7F816C868421BB3BD047F1DE98BD4C1D42E07",
+      "phase": "svg",
+      "step": "instantiate whitelist-mtree:permissionless-fractal"
+    },
+    {
+      "hash": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44",
+      "phase": "svg",
+      "step": "instantiate drop:permissionless-fractal"
+    },
+    {
+      "hash": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-penumbra"
+    },
+    {
+      "hash": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-osmosis"
+    },
+    {
+      "hash": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-cardano"
+    },
+    {
+      "hash": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bcna"
+    },
+    {
+      "hash": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-cosmos"
+    },
+    {
+      "hash": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-terp"
+    },
+    {
+      "hash": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bitcoin"
+    },
+    {
+      "hash": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-akash"
+    },
+    {
+      "hash": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bitsong"
+    },
+    {
+      "hash": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-dao"
+    },
+    {
+      "hash": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-eth"
+    },
+    {
+      "hash": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-monero"
+    },
+    {
+      "hash": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-zec"
     }
   ],
   "ibc_channels": {
