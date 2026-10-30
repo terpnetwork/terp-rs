@@ -1,8 +1,8 @@
 {
-  "contract_addr_predicted": "terp16eh27rxzgls6uxtdjuvlhfk3gryryy0jf4qcn68ugw2teetq6qgs966e8k",
+  "contract_addr_predicted": "terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh",
   "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
-  "wasm_sha256": "f7873d2dedaccdc3994ae012917c1430793f3e066688f7cd0a47d0573898b997",
-  "wasm_bytes": 1157184,
+  "wasm_sha256": "e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89",
+  "wasm_bytes": 1172126,
   "frontend": {
     "addr_predicted": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
     "salt_hex": "39881335f9a8242299ba3fd20d3069d1b7b813b2df2ac97a587c143857eaba27",
@@ -53,10 +53,10 @@
       }
     ]
   },
-  "wasm_gzip_bytes": 418651,
+  "wasm_gzip_bytes": 414543,
   "files": {
     "phase-a/13-store-wasm.unsigned.json": {
-      "tx_json_bytes": 558808,
+      "tx_json_bytes": 553328,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
@@ -71,9 +71,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "phase-a/14-deploy-proposal.unsigned.json": {
-      "tx_json_bytes": 4576,
+      "tx_json_bytes": 4590,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 4464,
+      "amino_sign_doc_bytes": 4478,
       "zigner_ok": true
     },
     "phase-a/17-deposit-topup.unsigned.json": {
@@ -194,17 +194,6 @@
       "signer": "terp1fx",
       "amino_sign_doc_bytes": 343,
       "zigner_ok": true
-    },
-    "phase-a/10-session-grant/sign_doc.json": {
-      "amino_sign_doc_bytes": 1419,
-      "zigner_ok": true,
-      "qr_frames": 1,
-      "signer": "proposer (Zigner)",
-      "types": [
-        "/cosmos.gov.v1.MsgSubmitProposal",
-        "/cosmos.authz.v1beta1.MsgRevoke",
-        "/cosmos.feegrant.v1beta1.MsgRevokeAllowance"
-      ]
     }
   },
   "validate_rendered_proposal": "ok",

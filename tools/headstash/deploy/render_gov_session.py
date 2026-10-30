@@ -188,6 +188,7 @@ def main():
     files[A + "13b-store-frontend-wasm.unsigned.json"] = (gs._tx([fstore], "{{FE_STORE_GAS}}", "{{FE_STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
     files[A + "15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
     init = json.loads(rd("01-instantiate.json")); init["owner"] = GOV; init["frontend_contract"] = fe_addr
+    init["pauser"] = dec.get("PAUSER") or None
     camp = json.loads(rd("02-set-epoch-campaign-open.json")) if "02-set-epoch-campaign-open.json" in raw else "{{SET_EPOCH_CAMPAIGN}}"
     msgs_a = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
                "amount": [{"denom": "uterp", "amount": "1"}]},  # ExistingFungible instantiate needs >= 1 token

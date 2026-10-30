@@ -125,7 +125,8 @@
        "registration_hook": null,
        "registration_hook_gas_limit": null,
        "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-       "frontend_contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y"
+       "frontend_contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
+       "pauser": null
       },
       "funds": [
        {
@@ -146,7 +147,7 @@
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
     "metadata": "{{PROPOSAL_METADATA_URI_DEPLOY}}",
     "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
-    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 f7873d2dedaccdc3994ae012917c1430793f3e066688f7cd0a47d0573898b997) at terp16eh27rxzgls6uxtdjuvlhfk3gryryy0jf4qcn68ugw2teetq6qgs966e8k and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
+    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89) at terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
     "expedited": false
    }
   ],
