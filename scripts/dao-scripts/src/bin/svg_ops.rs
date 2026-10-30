@@ -85,8 +85,8 @@ struct Cli {
     /// or `env` (explicit fallback; MAIN_MNEMONIC from the operator's own shell, never the repo .env).
     #[arg(long, default_value = "kms")]
     signer: String,
-    /// operator-exec: loopback approval page for the operator's cold key.
-    #[arg(long, default_value = "127.0.0.1:8741")]
+    /// Loopback approval page. `auto` (default) picks a free random 127.0.0.1 port, retrying if busy.
+    #[arg(long, default_value = "auto")]
     bind: String,
     #[arg(long)]
     broadcast: bool,
@@ -170,6 +170,25 @@ fn print_state(state: &GranteeState, granter: &str) {
     if let Some(f) = &state.feegrant { println!("  feegrant expires {:?} limit {:?}{}", f.expiration_unix, f.limit, f.denom); }
 }
 
+/// Resolve `--bind`: `auto` probes random loopback ports (20000..60000) until one is free;
+/// an explicit addr must be loopback and falls back to a random port if busy.
+fn resolve_bind(bind: &str) -> Result<std::net::SocketAddr> {
+    use rand08::Rng;
+    let free = |a: std::net::SocketAddr| std::net::TcpListener::bind(a).is_ok();
+    if bind != "auto" {
+        let a: std::net::SocketAddr = bind.parse()?;
+        if !a.ip().is_loopback() { bail!("--bind {a} is not loopback"); }
+        if a.port() != 0 && free(a) { return Ok(a); }
+        eprintln!("--bind {a} busy; picking a random loopback port");
+    }
+    let mut rng = rand08::thread_rng();
+    for _ in 0..50 {
+        let a: std::net::SocketAddr = ([127, 0, 0, 1], rng.gen_range(20000u16..60000)).into();
+        if free(a) { return Ok(a); }
+    }
+    bail!("no free loopback port after 50 tries")
+}
+
 fn now_unix() -> u64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0) }
 
 fn main() -> Result<()> {
@@ -225,14 +244,19 @@ fn main() -> Result<()> {
     let mut session = ApprovalSession::open(&granter);
     session.ttl_secs = cli.ttl_secs;
     session.account_index = cli.account_index;
-    session.allowance_limit = planned_spend_limit(4);
+    session.bind = resolve_bind(&cli.bind)?;
+    println!("approval page will bind http://{}", session.bind);
+    session.allowance_limit = planned_spend_limit(4 + msgs.len() as u64);
     let reqs = vec![cw_orch_kms::SigningRequest::new("session-key").body(format!("svg_ops {}: {}", cli.cmd, plan))];
     let anys: Vec<cosmrs::Any> = match cli.cmd.as_str() {
         "exec" => {
-            let m = msg.clone().ok_or_else(|| anyhow!("exec needs --msg"))?;
+            // every --msg/--msg-file goes into ONE tx; the grant covers exactly those calls (+1: x/wasm deletes at 0)
+            if msgs.is_empty() { bail!("exec needs --msg or --msg-file"); }
             if cli.contract.is_empty() { bail!("exec needs --contract"); }
-            session = session.allow_execute(ScopedCall { address: cli.contract.clone(), keys: vec![top_key(&m)?], calls: 2, funds: vec![] }).map_err(|e| anyhow!(e))?;
-            vec![kms_gate::execute_any(&granter, &cli.contract, &m)?]
+            let mut keys: Vec<String> = msgs.iter().map(top_key).collect::<Result<_>>()?;
+            keys.sort(); keys.dedup();
+            session = session.allow_execute(ScopedCall { address: cli.contract.clone(), keys, calls: msgs.len() as u64 + 1, funds: vec![] }).map_err(|e| anyhow!(e))?;
+            msgs.iter().map(|m| kms_gate::execute_any(&granter, &cli.contract, m)).collect::<Result<Vec<_>>>()?
         }
         "instantiate" => {
             let m = msg.clone().ok_or_else(|| anyhow!("instantiate needs --msg"))?;
@@ -270,7 +294,7 @@ fn main() -> Result<()> {
     let d = &run.daemon;
     let res = d.rt_handle.block_on(d.sender().commit_tx_any(anys, Some("svg_ops"))).map(|r| {
         println!("tx {} code {} gas {}", r.txhash, r.code, r.gas_used);
-        if let Ok(a) = r.event_attr_value("wasm", "contract") { println!("created {a}"); }
+        for a in r.event_attr_values("wasm", "contract") { println!("created {a}"); }
     }).map_err(|e| anyhow!("{e}"));
     let closed = run.close().map_err(|e| anyhow!(e));
     res?;
@@ -358,7 +382,7 @@ fn operator_exec(mut cli: Cli, info: cw_orch::environment::ChainInfoOwned, msgs:
         let mut session = ApprovalSession::open(&cli.operator).allow_nested_exec();
         session.ttl_secs = ttl;
         session.account_index = cli.account_index;
-        session.bind = cli.bind.parse()?;
+        session.bind = resolve_bind(&cli.bind)?;
         session.allowance_limit = planned_spend_limit(msgs.len() as u64 + 1);
         let reqs = vec![cw_orch_kms::SigningRequest::new("operator-session").body(format!(
             "operator {} opens a {ttl}s session key to relay its grant from {}: {} message(s) [{}] on {}. The session key may use every grant this operator holds until close.",
