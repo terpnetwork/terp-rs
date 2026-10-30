@@ -4,10 +4,24 @@
   "CONTRACT_ADDR": "{{fill after instantiate}}",
   "CONTRACT_OWNER": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
   "WASM_ADMIN": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-  "WAVS_POO_JSON": "{{WAVS_POO_JSON}}",
+  "WAVS_POO_JSON": {
+    "poos": [
+      {
+        "key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
+        "poo": "917d9787cb2193edba18ebb36f7cf4bbbe1d9bd5b1eb45eb3083cd43019709f552f415bd0bc90007033d35a1579637ac01747e083f02b84bc2ef2f153d50ecdf5f99b81da3a2c26d81643e80c16b6bd5e6a15ec9c922af2922948a1f482bb95e"
+      }
+    ],
+    "msg": {
+      "aggregate_key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
+      "threshold": 1,
+      "total_operators": 1,
+      "nonce": 0
+    }
+  },
+  "_wavs_doc": "Inert 1-of-1 BLS set. Contract has no WAVS operator address field (keys only) and no reachable entry point reads it: the AuthSudoMsg handlers are not wired to the sudo entry point (sudo only parses HashMerchantSudoMsg), and no execute/migrate/claim/anchor path reads cfg.w. Key generated in-process by examples/print_wavs (OsRng), never written; only pubkey + PoP kept. Secret is gone, so nobody can ever sign as this set.",
   "CUTOFF_HEIGHT": 44444444,
   "_cutoff_doc": "auto = latest mainnet height + 2 years at the last-10k-block mean, computed at render time (2026-10-27 example: 39129426). Claims and registration close after it; then the sweep burns what is left.",
-  "ANCHOR_START_HEIGHT": "{{ANCHOR_START_HEIGHT}}",
+  "ANCHOR_START_HEIGHT": 1,
   "ANCHOR_INTERVAL": 3430,
   "_anchor_doc": "Blocks between accepted anchors: 3430 = ~4h at 4.2s. \"auto\" = 4h at the same last-10k-block mean used for CUTOFF_HEIGHT.",
   "MIN_ANONYMITY_SET": 1,

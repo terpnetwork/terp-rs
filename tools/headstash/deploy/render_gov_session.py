@@ -21,7 +21,7 @@ Layout (gov = wasm admin + contract owner, terp1gnfq proposes, terp1fx grants cl
   16-feegrant-terp1fx.unsigned.json  MsgGrantAllowance template from terp1fx (relay issues one per claimer)
   17-deposit-topup.unsigned.json  MsgDeposit 5,000 TERP from the proposer (x2: one per proposal)
   sizes.json                     every doc's amino sign-doc bytes vs Zigner 65536
-Placeholders kept as {{NAME}}: WAVS_POO_JSON, ANCHOR_START_HEIGHT, PROPOSAL_METADATA_URI, FORUM_URL,
+Placeholders kept as {{NAME}}: PROPOSAL_METADATA_URI, FORUM_URL,
 plus later-step CODE_ID, NOTE_ZK_ID, PROPOSAL_ID_*.
 """
 import base64, gzip, hashlib, io, json, os, re, subprocess, sys
@@ -32,12 +32,10 @@ GOV = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
 INIT_DEPOSIT, FULL_DEPOSIT = 5_000_000_000, 10_000_000_000
 ZIGNER_MAX = 65536
 SENTINELS = {  # values that pass render.py checks, swapped back to {{NAME}} after rendering
-    "WAVS_POO_JSON": {"__placeholder__": "WAVS_POO_JSON"},
-    "ANCHOR_START_HEIGHT": "987654321987",
     "PROPOSAL_METADATA_URI": "https://placeholder.invalid/PROPOSAL_METADATA_URI",
     "FORUM_URL": "https://placeholder.invalid/FORUM_URL",
 }
-ALLOWED_LEFT = {"WAVS_POO_JSON", "ANCHOR_START_HEIGHT", "PROPOSAL_METADATA_URI", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
+ALLOWED_LEFT = {"PROPOSAL_METADATA_URI", "FORUM_URL", "CODE_ID", "NOTE_ZK_ID",
                 "PROPOSAL_ID_CIRCUIT", "PROPOSAL_ID_CONTRACT", "CLAIMER_ADDR", "FE_CODE_ID", "FE_STORE_GAS", "FE_STORE_FEE_UTHIOL",
                 "FE_UPLOADER_ADDR", "FE_UPLOAD_EXPIRATION", "EXEC_FEE_UTHIOL", "EXEC_GAS", "STORE_GAS", "STORE_FEE_UTHIOL", "CLAIM_FEE_UTHIOL", "SEQ"}
 
@@ -65,8 +63,7 @@ def page_manifest(dirs, chunk):
 
 
 def unsentinel(text):
-    text = re.sub(r'\{\s*"__placeholder__"\s*:\s*"WAVS_POO_JSON"\s*\}', "{{WAVS_POO_JSON}}", text)
-    for k in ("ANCHOR_START_HEIGHT", "PROPOSAL_METADATA_URI", "FORUM_URL"):
+    for k in ("PROPOSAL_METADATA_URI", "FORUM_URL"):
         text = text.replace(SENTINELS[k], "{{%s}}" % k)
     return text
 

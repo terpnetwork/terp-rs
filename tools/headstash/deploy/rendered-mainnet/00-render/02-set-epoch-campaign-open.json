@@ -20,7 +20,7 @@
     "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
     "eligibility_depth": 17,
     "min_anonymity_set": 1,
-    "anchor_start_height": {{ANCHOR_START_HEIGHT}},
+    "anchor_start_height": 1,
     "anchor_interval": 3430
   }
 }}}

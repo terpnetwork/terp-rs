@@ -121,7 +121,20 @@
          "raw": "uterp"
         }
        },
-       "wavs": {{WAVS_POO_JSON}},
+       "wavs": {
+        "poos": [
+         {
+          "key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
+          "poo": "917d9787cb2193edba18ebb36f7cf4bbbe1d9bd5b1eb45eb3083cd43019709f552f415bd0bc90007033d35a1579637ac01747e083f02b84bc2ef2f153d50ecdf5f99b81da3a2c26d81643e80c16b6bd5e6a15ec9c922af2922948a1f482bb95e"
+         }
+        ],
+        "msg": {
+         "aggregate_key": "95f0e8f5853e10dcbf4c378a630a6a36560f6a66d4b3d47f1c492a68b5d77b48778d6a869a730e576a157a43af88ebb9",
+         "threshold": 1,
+         "total_operators": 1,
+         "nonce": 0
+        }
+       },
        "registration_hook": null,
        "registration_hook_gas_limit": null,
        "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
@@ -215,7 +228,7 @@
           "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
           "eligibility_depth": 17,
           "min_anonymity_set": 1,
-          "anchor_start_height": {{ANCHOR_START_HEIGHT}},
+          "anchor_start_height": 1,
           "anchor_interval": 3430
          }
         }

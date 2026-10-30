@@ -75,9 +75,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "14-instantiate-proposal.unsigned.json": {
-      "tx_json_bytes": 6217,
+      "tx_json_bytes": 6663,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 6112,
+      "amino_sign_doc_bytes": 6551,
       "zigner_ok": true
     },
     "15-session-revoke.unsigned.json": {
@@ -175,7 +175,6 @@
   },
   "validate_rendered_proposal": "ok",
   "placeholders_left": [
-    "ANCHOR_START_HEIGHT",
     "CLAIMER_ADDR",
     "CLAIM_FEE_UTHIOL",
     "CODE_ID",
@@ -191,7 +190,6 @@
     "PROPOSAL_ID_CIRCUIT",
     "PROPOSAL_METADATA_URI",
     "STORE_FEE_UTHIOL",
-    "STORE_GAS",
-    "WAVS_POO_JSON"
+    "STORE_GAS"
   ]
 }
