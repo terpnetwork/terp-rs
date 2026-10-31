@@ -11,7 +11,7 @@ Roles:
 
 Wasm: `cw_headstash.wasm`, sha256 e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89 (1,172,126 B, with gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P)). The predicted address is terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh.
 
-**PAUSER (open, TBD):** `PAUSER` in decisions.mainnet.json is `null`, so no pauser is set at instantiate. Put the DAO address there and re-render before signing, or set it later with a gov `{"update_pauser":{"pauser":"terp1…"}}`. A pauser can only Pause and Resume claims, registration and the grant relay. It cannot move funds, reclaim, sweep or change the pauser.
+**PAUSER (decided):** the foundation DAO terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w (confirmed by you; valid bech32, 32-byte contract address). It is set as `PAUSER` in decisions.mainnet.json and in the A14 instantiate msg (`"pauser"`). It can only Pause and Resume claims, registration and the grant relay. It cannot move funds, reclaim, sweep or change the pauser. Only a gov `update_pauser` proposal can replace it. Metadata hashes are unchanged by this.
 
 Metadata sha256 (changed with this wasm; re-host): 01-deploy.json 67c2d3bca408cb46d423ee652abed6968c1a9f3e4c5b109ef703bd6d4a7f789a, 02-circuit-store.json b9bbd930b4d5507daee76f1c721f082b3183daa03b90e57c51de51ad0b68f73c, 03-fund-bind.json 188d8944a5a5f122bd037b3d52b139cb27157ed2513ee714202437925baf95e9.
 

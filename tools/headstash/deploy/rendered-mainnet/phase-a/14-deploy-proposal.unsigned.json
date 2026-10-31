@@ -126,7 +126,7 @@
        "registration_hook_gas_limit": null,
        "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
        "frontend_contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
-       "pauser": null
+       "pauser": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
       },
       "funds": [
        {

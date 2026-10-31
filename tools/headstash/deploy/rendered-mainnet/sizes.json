@@ -71,9 +71,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "phase-a/14-deploy-proposal.unsigned.json": {
-      "tx_json_bytes": 4590,
+      "tx_json_bytes": 4651,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 4478,
+      "amino_sign_doc_bytes": 4539,
       "zigner_ok": true
     },
     "phase-a/17-deposit-topup.unsigned.json": {
