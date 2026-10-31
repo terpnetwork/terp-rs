@@ -9,7 +9,11 @@ Roles:
 - **U**: a throwaway uploader key for the frontend chunks (direct mode, not Zigner). Its fees come from a capped FX feegrant (doc A18) that is revoked afterwards (doc A20). It holds no funds.
 - **GOV**: the gov module, terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq. It is the wasm admin and the contract owner.
 
-Wasm: `cw_headstash.wasm`, sha256 f7873d2dedaccdc3994ae012917c1430793f3e066688f7cd0a47d0573898b997 (1,157,184 B, with gov EmergencyReclaim, spec Appendix R). The predicted address is terp16eh27rxzgls6uxtdjuvlhfk3gryryy0jf4qcn68ugw2teetq6qgs966e8k.
+Wasm: `cw_headstash.wasm`, sha256 e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89 (1,172,126 B, with gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P)). The predicted address is terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh.
+
+**PAUSER (open, TBD):** `PAUSER` in decisions.mainnet.json is `null`, so no pauser is set at instantiate. Put the DAO address there and re-render before signing, or set it later with a gov `{"update_pauser":{"pauser":"terp1…"}}`. A pauser can only Pause and Resume claims, registration and the grant relay. It cannot move funds, reclaim, sweep or change the pauser.
+
+Metadata sha256 (changed with this wasm; re-host): 01-deploy.json 67c2d3bca408cb46d423ee652abed6968c1a9f3e4c5b109ef703bd6d4a7f789a, 02-circuit-store.json b9bbd930b4d5507daee76f1c721f082b3183daa03b90e57c51de51ad0b68f73c, 03-fund-bind.json 188d8944a5a5f122bd037b3d52b139cb27157ed2513ee714202437925baf95e9.
 
 Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1 (357,352 B). The predicted address is terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`phase-a/page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
 
@@ -69,6 +73,7 @@ After Phase A both contracts are deployed and can be funded. Nothing is spent be
 ## Emergency and end of campaign (gov proposals, not rendered)
 - **Before the cutoff (h ≤ 44,444,444):** a proposal with `MsgExecuteContract{sender GOV, msg {"emergency_reclaim":{}}}` sends the whole contract balance to the community pool (MsgFundCommunityPool from the contract) and halts claims, registration and sweep for good. Only GOV (contract owner and wasm admin) can run it. After the cutoff it is refused.
 - **After the cutoff:** `{"sweep_unclaimed":{}}` burns what is left. Before the cutoff it is refused.
+- **Fast halt (no proposal):** the pauser (or GOV) sends `{"pause":{}}` to stop claims and registration right away, and `{"resume":{}}` to restart them. Pausing does not extend the cutoff. Reclaim and the post-cutoff sweep still work while paused. After a reclaim, resume is refused. Check state with `{"pause_status":{}}`.
 
 ## Afterwards
 - Check that the frontend admin and owner are both GOV, that config `current` is 1, and that U's allowance is gone.
