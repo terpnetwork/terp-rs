@@ -664,7 +664,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     camp_amounts = smart(contract, {"epoch_campaign": {}})["amounts"]
     room = lambda amt: next(int(a["cap"]) for a in camp_amounts if int(a["amount"]) == int(amt)) - paid_n.get(int(amt), 0)
     used = {(c["note"].split("_")[0], int(c["note"].split("_")[1])) for c in R["claims"]}
-    ni = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1)
+    ni = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= bal(contract))
     R["neg_note"] = "evm_%d" % ni
     prn, err = prove("evm", ni, wn, A2)
     forged = bytearray(base64.b64decode(prn["proof"])); forged[100] ^= 1
@@ -699,6 +699,55 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     R["claims"].append({"note": R["neg_note"], "anchor": "A2", "wallet": wn, "amount": prn["amount"], "gas_used": gas_used(res), "fee": claim_spend})
     save()
 
+    # 10a. pauser (PAUSE=1, spec Appendix P): gov sets a pauser key; it halts claims + registration, then resumes
+    if GOV_ROLES and os.environ.get("PAUSE") == "1":
+        st0 = smart(contract, {"pause_status": {}})
+        step("pause_status_initial", st0.get("pauser") is None and st0.get("paused") is False, json.dumps(st0))
+        paddr = new_wallet("pauser")
+        tx("owner", 200000, "bank", "send", OWNER, paddr, "10000000uterp")
+        neg("pause_by_stranger_refused", tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"pause": {}})), "unauthorized")
+        res, pid, st = gov_submit("set_pauser", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
+                                                  "msg": {"update_pauser": {"pauser": paddr}}, "funds": []}], "proposer")
+        st1 = smart(contract, {"pause_status": {}})
+        step("gov_sets_pauser", passed(st) and st1.get("pauser") == paddr, "proposal %s %s %s" % (pid, st and st["status"], json.dumps(st1)))
+        used = {(c["note"].split("_")[0], int(c["note"].split("_")[1])) for c in R["claims"]}
+        paid_n = {}
+        for c in R["claims"]: paid_n[int(c["amount"])] = paid_n.get(int(c["amount"]), 0) + 1
+        pi = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= bal(contract))
+        wp = new_wallet("dclaim_pause")
+        prp, err = prove("evm", pi, wp, A2)
+        step("pause_note_proved", prp is not None, err)
+        res = rec("pause", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"pause": {}})))
+        st2 = smart(contract, {"pause_status": {}})
+        step("pauser_pauses", res.get("code") == 0 and st2.get("paused") is True and st2.get("paused_by") == paddr,
+             "gas %d %s" % (gas_used(res), json.dumps(st2)))
+        neg("pause_twice_refused", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"pause": {}})), "already paused")
+        code, j = grant(wp, "claim", claim_msg(prp)["claim_note"])
+        step("neg_grant_refused_while_paused", code != 200 and not j.get("granted"), "%d %s" % (code, json.dumps(j)[:160]))
+        neg("claim_while_paused_refused", tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prp))), "headstash claims are paused")
+        sbody = reg_body("sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"])
+        neg("register_while_paused_refused", tx("stranger", REGISTER_GAS, "wasm", "execute", contract, json.dumps({"register_notes": sbody})), "headstash claims are paused")
+        try: smart(contract, {"check_note_claim": {"dest": wp, "root": prp["root"], "nullifier": prp["nullifier"], "amount": prp["amount"], "proof": prp["proof"]}}); r_ = "query ok"
+        except Exception as e: r_ = str(e)[-200:]
+        step("neg_check_note_claim_while_paused", "paused" in r_, r_)
+        neg("pauser_cannot_reclaim", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
+        neg("pauser_cannot_update_pauser", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"update_pauser": {"pauser": None}})))
+        neg("pauser_cannot_sweep", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})))
+        neg("resume_by_stranger_refused", tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"resume": {}})), "unauthorized")
+        res = rec("resume", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"resume": {}})))
+        st3 = smart(contract, {"pause_status": {}})
+        step("pauser_resumes", res.get("code") == 0 and st3.get("paused") is False, "gas %d %s" % (gas_used(res), json.dumps(st3)))
+        code, j = grant(wp, "claim", claim_msg(prp)["claim_note"])
+        step("grant_claim_after_resume", code == 200 and j.get("granted"), json.dumps(j)[:200])
+        c0 = bal(contract)
+        res = rec("claim_after_resume", txg("dclaim_pause", CLAIM_GAS, claim_spend, RELAYER, "wasm", "execute", contract, json.dumps(claim_msg(prp))))
+        step("claim_after_resume_ok", res.get("code") == 0 and bal(wp) == prp["amount"] and c0 - bal(contract) == prp["amount"], "gas %d paid %d" % (gas_used(res), prp["amount"]))
+        R["claims"].append({"note": "evm_%d" % pi, "anchor": "A2", "wallet": wp, "amount": prp["amount"], "gas_used": gas_used(res), "fee": claim_spend})
+        # re-pause, then reclaim (if RECLAIM=1) runs while paused: reclaim must still work
+        res = tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"pause": {}}))
+        step("pauser_repauses_before_reclaim", res.get("code") == 0, res.get("raw_log", "")[:120])
+        save()
+
     # 10b. governance emergency reclaim (RECLAIM=1): before the cutoff, partial claims done
     if GOV_ROLES and os.environ.get("RECLAIM") == "1":
         rmsg = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"emergency_reclaim": {}}, "funds": []}]
@@ -714,12 +763,14 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         step("reclaim_credited_to_community_pool", c0 <= p1 - p0 < c0 + 10**9, "pool %d -> %d (+%d; reclaimed %d, rest = block community tax)" % (p0, p1, p1 - p0, c0))
         wc = new_wallet("dclaim_after_reclaim")
         prc, err = prove("sol", 0, wc, A2)
-        neg("claim_after_reclaim_refused", tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc))), "reclaimed by governance")
+        neg("claim_after_reclaim_refused", tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc))), "headstash reclaimed by governance")
         code, j = grant(wc, "claim", claim_msg(prc)["claim_note"])
         step("neg_grant_refused_after_reclaim", code != 200, "%d %s" % (code, json.dumps(j)[:160]))
         sbody = reg_body("sol", lists["sol"], 0, sign("sol", lists["sol"]), notes["sol"])
-        neg("register_after_reclaim_refused", tx("stranger", REGISTER_GAS, "wasm", "execute", contract, json.dumps({"register_notes": sbody})), "reclaimed by governance")
-        neg("sweep_after_reclaim_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})), "reclaimed by governance")
+        neg("register_after_reclaim_refused", tx("stranger", REGISTER_GAS, "wasm", "execute", contract, json.dumps({"register_notes": sbody})), "headstash reclaimed by governance")
+        neg("sweep_after_reclaim_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})), "headstash reclaimed by governance")
+        if os.environ.get("PAUSE") == "1":
+            neg("resume_after_reclaim_refused", tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"resume": {}})), "headstash reclaimed by governance")
         res, pid, st = gov_submit("reclaim_again", rmsg, "proposer")
         step("gov_second_reclaim_fails_terminal", prop_failed(st), "proposal %s %s %s" % (pid, st and st["status"], (st or {}).get("failed_reason", "")[:160]))
         return
