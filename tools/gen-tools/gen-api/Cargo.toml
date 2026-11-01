@@ -9,8 +9,8 @@ name = "gen-api"
 path = "src/main.rs"
 
 [dependencies]
-gen-tools = { workspace = true }
 anyhow = { workspace = true }
-log = { workspace = true }
-env_logger = { workspace = true, features = ["default"] }
 clap = { workspace = true, features = ["derive"] }
+env_logger = { workspace = true, features = ["default"] }
+gen-tools = { workspace = true }
+log = { workspace = true }

@@ -1019,6 +1019,27 @@ class NestedPatchLiftTests(unittest.TestCase):
         )
 
 
+class StampGitSectionTests(unittest.TestCase):
+    def test_rewrites_git_table_and_leaves_zk_git(self):
+        text = """
+[crates.demo.git]
+url = "https://example.invalid/demo"
+branch = "old"
+rev = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[crates.demo.zk_git]
+branch = "old"
+rev = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+"""
+        stamped = dep_common.stamp_git_sections(
+            text,
+            {"demo": {"branch": "security/advisory-bumps", "rev": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}},
+        )
+        self.assertIn('branch = "security/advisory-bumps"', stamped)
+        self.assertIn('rev = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"', stamped)
+        self.assertIn("[crates.demo.zk_git]\nbranch = \"old\"", stamped)
+
+
 class CommittedForkVersionTests(unittest.TestCase):
     def test_cosmwasm_std_checkout_matches_matrix_fork_version(self):
         crates = load_matrix()

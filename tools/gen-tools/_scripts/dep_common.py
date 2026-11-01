@@ -160,6 +160,10 @@ def normalize_matrix_local(local: str) -> Optional[str]:
 # Default workspace roots for switch when no --workspace filter is given.
 # Paths are relative to monorepo_root (terp-core/crates).
 KNOWN_WORKSPACE_ROOTS = [
+    # Bottom of the pin: Zakura, then CosmWasm, then the consumers.
+    "zakura-common/Cargo.toml",
+    "cosmwasm/Cargo.toml",
+    "cw-placeholder/Cargo.toml",
     "abstract/framework/Cargo.toml",
     "abstract/modules/Cargo.toml",
     "abstract/integrations/Cargo.toml",
@@ -167,7 +171,6 @@ KNOWN_WORKSPACE_ROOTS = [
     "cw-orchestrator/Cargo.toml",
     "cw-plus/Cargo.toml",
     "cw-minus/Cargo.toml",
-    "cosmwasm/Cargo.toml",
     "dao-contracts/Cargo.toml",
     "polytone/Cargo.toml",
     "cw-multi-test-fork/Cargo.toml",
@@ -183,6 +186,7 @@ KNOWN_WORKSPACE_ROOTS = [
     "pbjson/Cargo.toml",
     "neutron-std/Cargo.toml",
     "ict-rs/Cargo.toml",
+    "terp-rs/Cargo.toml",
 ]
 
 
@@ -2361,6 +2365,51 @@ def validate_matrix_strict(matrix: dict, mode: str = None) -> list:
                 ))
 
     return issues
+
+
+_CRATE_SECTION_RE = re.compile(r"^\[crates\.([A-Za-z0-9_.-]+)\]\s*$")
+
+
+def stamp_git_sections(text: str, updates: dict) -> str:
+    """Rewrite ``[crates.KEY.git]`` branch and rev lines.
+
+    ``updates`` maps a crate key to ``{"branch": str, "rev": str}``.
+    ``[crates.KEY.zk_git]`` is left alone. A missing ``rev`` or ``commit``
+    line is inserted before the next section.
+    """
+    lines = text.splitlines(keepends=True)
+    out = []
+    current = None
+    inserted = set()
+    for line in lines:
+        header = _CRATE_SECTION_RE.match(line.strip())
+        if header:
+            if current in updates and current not in inserted:
+                rev = updates[current]["rev"]
+                out.append(f'rev = "{rev}"\n')
+                inserted.add(current)
+            name = header.group(1)
+            current = name[: -len(".git")] if name.endswith(".git") and not name.endswith(".zk_git") else None
+            if current not in updates:
+                current = None
+            out.append(line)
+            continue
+        if current in updates:
+            info = updates[current]
+            if re.match(r"\s*branch\s*=", line) and info.get("branch"):
+                nl = "\n" if line.endswith("\n") else ""
+                out.append(f'branch = "{info["branch"]}"{nl}')
+                continue
+            if re.match(r"\s*(?:rev|commit)\s*=", line):
+                field = "commit" if line.strip().startswith("commit") else "rev"
+                nl = "\n" if line.endswith("\n") else ""
+                out.append(f'{field} = "{info["rev"]}"{nl}')
+                inserted.add(current)
+                continue
+        out.append(line)
+    if current in updates and current not in inserted:
+        out.append(f'rev = "{updates[current]["rev"]}"\n')
+    return "".join(out)
 
 
 def matrix_is_clean(matrix: dict, mode: str = None) -> tuple:

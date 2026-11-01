@@ -119,6 +119,15 @@ deps-html:
 deps-serve port="8787":
     {{dep}} html --serve --port {{port}}
 
+# Read-only gate before a local commit or a GitHub pin.
+deps-cover:
+    {{dep}} cover
+
+# Record local HEADs into matrix git.rev. Dry run unless --write is passed
+# to dep.py. Does not commit or push.
+deps-stamp-revs-dry-run:
+    {{dep}} stamp-revs --dry-run
+
 # Heal matrix local/zk_local paths (package-name checked, relative only)
 deps-heal:
     {{dep}} heal -v

@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -54,6 +55,7 @@ from dep_common import (
     lint_unused_patches,
     unused_patch_warnings,
     heal_matrix_locals,
+    stamp_git_sections,
     load_active_mode,
     load_defaults,
     load_dep_config,
@@ -625,6 +627,223 @@ def cmd_git_status(args):
             print(f"  - {b}")
 
 
+def _git_repo(start: Path):
+    cur = start if start.exists() else start.parent
+    while True:
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur or cur == REPO_ROOT:
+            return None
+        cur = cur.parent
+
+
+def _git_text(repo: Path, *args):
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def _package_at(path: Path):
+    cargo = path / "Cargo.toml" if path.is_dir() else path
+    if not cargo.is_file():
+        return None
+    try:
+        import tomllib
+
+        with cargo.open("rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return None
+    return (data.get("package") or {}).get("name")
+
+
+def _stamp_updates(matrix: dict) -> dict:
+    updates = {}
+    for key, info in matrix.items():
+        if not isinstance(info, dict):
+            continue
+        git_info = info.get("git")
+        if not isinstance(git_info, dict):
+            continue
+        url = git_info.get("url")
+        if not isinstance(url, str) or not url or url == "N/A":
+            continue
+        local = info.get("local")
+        if not isinstance(local, str) or not local or local == "N/A":
+            continue
+        repo = _git_repo(REPO_ROOT / local)
+        if repo is None:
+            continue
+        head = _git_text(repo, "rev-parse", "HEAD")
+        branch = _git_text(repo, "branch", "--show-current")
+        if not head or not branch:
+            continue
+        rev = git_info.get("rev") or git_info.get("commit")
+        if rev == head and git_info.get("branch") == branch:
+            continue
+        updates[key] = {"branch": branch, "rev": head}
+    return updates
+
+
+def cmd_stamp_revs(args):
+    """Point matrix git.rev and git.branch at the local checkout HEAD.
+
+    Read-only unless ``--write``. Does not publish and does not touch a
+    dirty worktree's uncommitted files. ``cover`` still reports that dirt.
+    """
+    matrix = load_matrix()
+    updates = _stamp_updates(matrix)
+    print(f"Stamp git revs  crates={len(updates)}  root={REPO_ROOT}")
+    for key in sorted(updates):
+        info = updates[key]
+        print(f"  {key}: branch {info['branch']}  rev {info['rev']}")
+    if not updates:
+        print("OK: matrix git tables already match local HEADs")
+        return
+    if args.dry_run or not args.write:
+        print("[DRY RUN] matrix not written. Pass --write to record these revs.")
+        return
+    text = MATRIX_PATH.read_text()
+    MATRIX_PATH.write_text(stamp_git_sections(text, updates))
+    print(f"wrote {MATRIX_PATH}")
+
+
+def _root_edges(cargo: Path):
+    """Path and git edges in the workspace root manifest.
+
+    Only ``[patch.crates-io]`` and ``[workspace.dependencies]`` count.
+    Member manifests are a different resolve root.
+    """
+    section = ""
+    edges = []
+    for raw in cargo.read_text().splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("["):
+            section = stripped
+            continue
+        if section not in ("[patch.crates-io]", "[workspace.dependencies]"):
+            continue
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, rhs = stripped.split("=", 1)
+        name = name.strip()
+        path_m = re.search(r'\bpath\s*=\s*"([^"]+)"', rhs)
+        git_m = re.search(r'\bgit\s*=\s*"([^"]+)"', rhs)
+        if path_m:
+            edges.append((name, "path", (cargo.parent / path_m.group(1)).resolve()))
+        elif git_m:
+            edges.append((name, "git", git_m.group(1)))
+    return edges
+
+
+def cmd_cover(args):
+    """Fail closed when the core workspaces are not pin-ready.
+
+    A cross-repo path must be a matrix package at that same checkout.
+    The matrix git rev must be that checkout's HEAD. A dirty tree or a
+    HEAD that no remote contains blocks the hierarchical push.
+    """
+    dep_switch = _load_script("dep-switch")
+
+    matrix = load_matrix()
+    ok, errors, _warns = matrix_is_clean(matrix, mode="patch-local")
+    problems = list(errors)
+    by_pkg = {}
+    for key, info in matrix.items():
+        if isinstance(info, dict):
+            by_pkg.setdefault(info.get("package", key), (key, info))
+
+    roots = [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    repos = {}
+    for root in roots:
+        cargo = root / "Cargo.toml"
+        if not cargo.is_file():
+            problems.append(f"missing core workspace {root.relative_to(REPO_ROOT)}")
+            continue
+        repo = _git_repo(root)
+        if repo is not None:
+            repos[repo] = None
+        for name, kind, target in _root_edges(cargo):
+            if kind == "git":
+                if name not in by_pkg:
+                    problems.append(
+                        f"UNCOVERED git {root.relative_to(REPO_ROOT)}: {name} ({target})"
+                    )
+                continue
+            owner = _git_repo(target)
+            if repo is not None and owner == repo:
+                continue
+            found = by_pkg.get(name)
+            if found is None:
+                rel = target
+                try:
+                    rel = target.relative_to(REPO_ROOT)
+                except ValueError:
+                    pass
+                problems.append(
+                    f"UNCOVERED path {root.relative_to(REPO_ROOT)}: {name} -> {rel}"
+                )
+                continue
+            key, info = found
+            local = info.get("local")
+            if not isinstance(local, str) or local in ("", "N/A"):
+                problems.append(f"UNCOVERED path {name}: matrix {key} has no local")
+                continue
+            expect = (REPO_ROOT / local).resolve()
+            if expect != target:
+                problems.append(
+                    f"PATH {name}: {root.relative_to(REPO_ROOT)} -> {target.relative_to(REPO_ROOT)}, matrix {key} is {local}"
+                )
+            committed = dep_switch.committed_package_version(local)
+            fork = info.get("fork_version")
+            if isinstance(fork, str) and fork and fork != "N/A" and committed and committed != fork:
+                problems.append(
+                    f"VERSION {name}: checkout {committed}, matrix fork_version {fork}"
+                )
+            if owner is not None:
+                repos[owner] = None
+
+    for repo in sorted(repos, key=lambda item: str(item)):
+        head = _git_text(repo, "rev-parse", "HEAD")
+        branch = _git_text(repo, "branch", "--show-current")
+        dirty = _git_text(repo, "status", "--porcelain")
+        remote = _git_text(repo, "branch", "-r", "--contains", head) if head else ""
+        rel = repo.relative_to(REPO_ROOT)
+        if dirty:
+            problems.append(f"DIRTY {rel}")
+        if head and not remote:
+            problems.append(f"UNPUBLISHED {rel} {head[:12]} ({branch or 'detached'})")
+        for _key, info in matrix.items():
+            local = info.get("local") if isinstance(info, dict) else None
+            git_info = info.get("git") if isinstance(info, dict) else None
+            if not isinstance(local, str) or not isinstance(git_info, dict):
+                continue
+            if _git_repo(REPO_ROOT / local) != repo:
+                continue
+            rev = git_info.get("rev") or git_info.get("commit")
+            if isinstance(rev, str) and head and rev != head:
+                problems.append(f"REV {rel}: matrix {rev[:12]} HEAD {head[:12]}")
+                break
+
+    print(f"Cover  core={len(KNOWN_WORKSPACE_ROOTS)}  root={REPO_ROOT}")
+    if problems:
+        print(f"  problems: {len(problems)}")
+        for line in problems:
+            print(f"  {line}")
+        print()
+        print("Push stays blocked. Commit the dirty trees locally, stamp revs, then push bottom-up.")
+        print("Order: zakura-common, cosmwasm, then the core consumers. cw-placeholder has no git repo.")
+        sys.exit(1)
+    print("OK: core workspaces match the matrix and every HEAD is on a remote")
+
+
 def cmd_html(args):
     dep_html = _load_script("dep_html")
     if args.serve:
@@ -648,6 +867,20 @@ def main():
 
     p = sub.add_parser("config", help="Show resolved roots and policy")
     p.set_defaults(func=cmd_config)
+
+    p = sub.add_parser(
+        "cover",
+        help="Read-only: core workspaces' local deps match the matrix and are publishable",
+    )
+    p.set_defaults(func=cmd_cover)
+
+    p = sub.add_parser(
+        "stamp-revs",
+        help="Point matrix git.rev and git.branch at each local checkout HEAD",
+    )
+    p.add_argument("--write", action="store_true", help="Write the matrix. Default is a dry run.")
+    p.add_argument("--dry-run", action="store_true", help="Accepted for symmetry; the default already writes nothing")
+    p.set_defaults(func=cmd_stamp_revs)
 
     p = sub.add_parser("validate", help="Strict matrix integrity check (exit 1 on errors)")
     p.add_argument("--mode", choices=list(VALID_MODES), default=None)

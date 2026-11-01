@@ -79,8 +79,9 @@ just deps-patch-git-dry-run dao-contracts
 just deps-patch-local dao-contracts
 just deps-patch-git dao-contracts
 
-# The known core set (abstract, cw-orchestrator, cw-plus, cw-minus, cosmwasm,
-# dao-contracts, polytone, cw-multi-test-fork, clone-cw-multi-test).
+# The known core set is zakura-common, cosmwasm, cw-placeholder, the four
+# abstract roots, cw-orchestrator, cw-plus, cw-minus, dao-contracts, polytone,
+# both cw-multi-test forks, the nested patch roots, and terp-rs.
 just deps-patch-local-core-dry-run
 just deps-patch-git-core-dry-run
 just deps-patch-local-core
