@@ -86,7 +86,7 @@ fn bench_one_claim_proof_native() {
 
     let report = serde_json::json!({
         "halo2": "zakura-halo2-proofs",
-        "floor_planner": "V1+floor-planner-v1-legacy-pdqsort",
+        "floor_planner": "V1",
         "runtime": "native-release",
         "threads": std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
         "k": crate::circuit::K,

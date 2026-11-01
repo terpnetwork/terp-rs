@@ -117,6 +117,7 @@ members = [
     "crates/easy-addr",
     "crates/hm-loyalty-whitelist",
     "crates/hm-nft-oracle",
+    "crates/kms-shard",
     "crates/mtree-tooling",
     "crates/nips",
     "crates/sdk",
@@ -175,9 +176,9 @@ abstract-std = { version = "0.26.1" }
 
 # tools/headstash and tools/svg-mint, now root members.
 aes = "0.8"
-alloy-consensus = { path = "../alloy/crates/consensus", default-features = false }
+alloy-consensus = { version = "=1.0.25", default-features = false }
 alloy-primitives = { version = "1.2.0", default-features = false }
-alloy-rpc-types-eth = { path = "../alloy/crates/rpc-types-eth", default-features = false }
+alloy-rpc-types-eth = { version = "=1.0.25", default-features = false }
 anybuf = "0.5"
 anyhow = "1"
 ark-bls12-381 = "0.5.0"
@@ -189,6 +190,7 @@ av-event-helpers = { path = "crates/av-event-helpers" }
 axum = { version = "0.7", default-features = false }
 base64 = "0.22"
 bech32 = { version = "0.11.0", default-features = false }
+bincode = "1.3"
 bip39 = { version = "2", default-features = false, features = ["std"] }
 bitvec = { version = "1", default-features = false }
 blake2 = "0.10"
@@ -295,6 +297,9 @@ ed25519-dalek = { version = "1.0.1", features = ["std"] }
 ed25519-zebra = { version = "4.2", default-features = false }
 env_logger = { version = "0.11", default-features = false }
 ff = "0.14"
+flock-core = { version = "=0.1.0" }
+flock-hash = { version = "=0.1.0" }
+flock-prover = { version = "=0.1.0" }
 fpe = { version = "0.6", default-features = false }
 frost-ed25519 = { version = "2.2", default-features = false }
 frost_escrow = { path = "crates/frost_escrow" }
@@ -307,10 +312,11 @@ getset = "0.1"
 glob = "0.3"
 group = "0.14"
 halo2-base = { version = "0.4.1" }
-halo2_gadgets = { package = "zakura-halo2-gadgets", version = "=1.3.0-alpha.1", default-features = false }
-halo2_proofs = { package = "zakura-halo2-proofs", version = "=1.3.0-alpha.1", default-features = false, features = ["batch"] }
+halo2_gadgets = { package = "zakura-halo2-gadgets", version = "=5.0.0-rc.3", default-features = false }
+halo2_proofs = { package = "zakura-halo2-proofs", version = "=5.0.0-rc.3", default-features = false, features = ["batch"] }
 hash-market = { path = "tools/hash-market", default-features = false }
 headstash-randomness = { version = "0.1.0" }
+headstash-wire = { path = "tools/headstash/wire" }
 hex = { version = "0.4", default-features = false }
 hkdf = "0.12"
 hm-loyalty-whitelist = { path = "crates/hm-loyalty-whitelist" }
@@ -319,16 +325,11 @@ hm-nft-oracle = { path = "crates/hm-nft-oracle" }
 hmac = "0.12"
 ibc-proto = { version = "0.52.0", default-features = false }
 ics23 = { version = "0.12.0", default-features = false }
-ict-rs = { path = "../ict-rs/ict-rs", default-features = false }
-ict-rs-cw-orch = { path = "../ict-rs/ict-rs-cw-orch" }
+ict-rs = { version = "=0.1.0", default-features = false }
+ict-rs-cw-orch = { version = "=0.1.0" }
 incrementalmerkletree = "0.8.1"
-bincode = "1.3"
-flock-core = { path = "../flock/crates/flock-core" }
-flock-hash = { path = "../flock/crates/flock-hash" }
-flock-prover = { path = "../flock/crates/flock-prover" }
-headstash-wire = { path = "tools/headstash/wire" }
 k256 = { version = "0.13", default-features = false }
-kms-shard = { path = "../kms-shard" }
+kms-shard = { path = "crates/kms-shard" }
 lazy_static = "1"
 log = "0.4"
 lol_alloc = "0.4.1"
@@ -348,7 +349,7 @@ osmosis-std = { version = "0.26.0" }
 osst = { version = "0.1.1", default-features = false }
 ownership-verifier = { path = "contracts/accounts/ownership-verifier" }
 p256 = { version = "0.13", default-features = false }
-pasta_curves = { package = "zakura-pasta-curves", version = "=1.3.0-alpha.1", default-features = false, features = ["default"] }
+pasta_curves = { package = "zakura-pasta-curves", version = "=5.0.0-rc.3", default-features = false, features = ["default"] }
 pathdiff = "0.2"
 pbjson-types = "0.9"
 polytone-any-proxy = { path = "contracts/ibc/polytone-any-proxy", default-features = false }
@@ -365,15 +366,15 @@ rand_core = "0.10"
 rand_core06 = { package = "rand_core", version = "0.6", default-features = false }
 rand_xoshiro = { version = "0.6.0", default-features = false }
 rayon = "1"
-reddsa = { package = "zakura-reddsa", version = "=1.3.0-alpha.1", default-features = false, features = ["std"] }
+reddsa = { package = "zakura-reddsa", version = "=5.0.0-rc.3", default-features = false, features = ["std"] }
 regex = "1"
 reqwest = { version = "0.12", default-features = false }
 revenue-marketplace = { path = "contracts/revenue/marketplace" }
 revenue-reserve-auction = { path = "contracts/revenue/reserve-auction" }
 ripemd = { version = "0.1.3", default-features = false }
 rs_merkle = { version = "1.4.1", default-features = false }
-rusqlite = { version = "0.31", features = ["bundled"] }
 rstest = "0.23"
+rusqlite = { version = "0.31", features = ["bundled"] }
 rustls = { version = "0.23", default-features = false }
 schemars = "0.8"
 secp256k1 = "0.31"
@@ -385,11 +386,13 @@ sha2 = { version = "0.10.8", default-features = false }
 sha3 = "0.10"
 shardtree = "0.6"
 shuffle = { git = "https://github.com/webmaster128/shuffle", branch = "rm-getrandom", version = "0.1.7" }
-sinsemilla = { package = "zakura-sinsemilla", version = "=1.3.0-alpha.1", default-features = false }
+sinsemilla = { package = "zakura-sinsemilla", version = "=5.0.0-rc.3", default-features = false }
 snow = "0.9"
 subtle = { version = "2", default-features = false }
 svg-auction = { path = "contracts/infuser/svg-auction" }
 syn = "1.0.6"
+tempfile = "3"
+tera = "1"
 terp-account = { path = "crates/terp-account" }
 terp-auth = { path = "crates/terp-auth" }
 terp-authenticator-suite = { path = "tests/suite/terp-authenticator-suite" }
@@ -412,8 +415,6 @@ terp-seams = { path = "crates/terp-seams" }
 terp-vsck = { path = "contracts/smart-accounts/terp-vsck" }
 terp-zkjwt = { path = "contracts/smart-accounts/terp-zkjwt" }
 terp-zktls = { path = "contracts/smart-accounts/terp-zktls", default-features = false }
-tempfile = "3"
-tera = "1"
 terp721-account = { path = "contracts/accounts/terp721-account" }
 terp721-account-manifold = { path = "contracts/accounts/terp721-account-manifold" }
 thiserror = { version = "2.0", default-features = false }
@@ -432,9 +433,10 @@ url = "2.2.2"
 visibility = "0.1"
 walkdir = "2"
 whitelist-mtree = { path = "contracts/infuser/whitelist-merkletree" }
-zakura-halo2-gadgets = { package = "zakura-halo2-gadgets", path = "../zakura-common/crates/halo2_gadgets", default-features = false }
-zakura-halo2-proofs = { package = "zakura-halo2-proofs", path = "../zakura-common/crates/halo2_proofs", default-features = false }
-zakura-pasta-curves = { package = "zakura-pasta-curves", path = "../zakura-common/crates/pasta_curves", default-features = false }
+zakura-halo2-gadgets = { version = "=5.0.0-rc.3", default-features = false }
+zakura-halo2-poseidon = { version = "=5.0.0-rc.3", default-features = false }
+zakura-halo2-proofs = { version = "=5.0.0-rc.3", default-features = false }
+zakura-pasta-curves = { version = "=5.0.0-rc.3", default-features = false }
 zap1-verify = "0.2.1"
 zcash_address = { version = "0.13", default-features = false }
 zcash_note_encryption = { version = "0.4", features = ["pre-zip-212"] }
@@ -560,6 +562,11 @@ cw-private-dex = { path = "contracts/revenue/private-dex" }
 cw-norick = { path = "contracts/headstash/no-rick" }
 osmosis-std = { path = "../osmosis-rust/packages/osmosis-std" }
 osmosis-std-derive = { path = "../osmosis-rust/packages/osmosis-std-derive" }
+alloy-consensus = { path = "../alloy/crates/consensus" }
+alloy-rpc-types-eth = { path = "../alloy/crates/rpc-types-eth" }
+flock-core = { path = "../flock/crates/flock-core" }
+flock-hash = { path = "../flock/crates/flock-hash" }
+flock-prover = { path = "../flock/crates/flock-prover" }
 ict-rs = { path = "../ict-rs/ict-rs" }
 ict-rs-cw-orch = { path = "../ict-rs/ict-rs-cw-orch" }
 terp-seams = { path = "crates/terp-seams" }

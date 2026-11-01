@@ -34,7 +34,7 @@ getset = { workspace = true }
 group = { workspace = true }
 halo2-base  = { workspace = true, optional = true }
 halo2_gadgets  = { workspace = true, optional = true }
-halo2_proofs  = { workspace = true, optional = true, features = ["floor-planner-v1-legacy-pdqsort"] }
+halo2_proofs  = { workspace = true, optional = true }
 headstash-randomness  = { workspace = true }
 hex = { workspace = true }
 incrementalmerkletree = { workspace = true }
