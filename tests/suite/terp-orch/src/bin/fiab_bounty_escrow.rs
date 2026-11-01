@@ -579,7 +579,7 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
     unsafe { std::env::set_var("CW_ORCH_WALLET_BALANCE_ASSERTION", "false") };
     let granter = if cli.granter.is_empty() {
         println!("sign the cw-orch-granter challenge at http://127.0.0.1:8741");
-        cw_orch_kms::capture_granter_for_chain_sync("127.0.0.1:8741".parse()?, cli.account_index, "fiab-bounty-escrow", &chain_id)
+        cw_orch_kms::capture_granter_for_chain_opts_sync("127.0.0.1:8741".parse()?, cli.account_index, "fiab-bounty-escrow", &chain_id, cli.ttl_secs, Some(&plan.signer))
             .map_err(|e| anyhow!(e))?
     } else {
         cw_orch_kms::set_approval_chain_id(&chain_id).map_err(|e| anyhow!(e))?;
