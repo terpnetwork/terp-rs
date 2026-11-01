@@ -21,7 +21,11 @@ Modes:
   - dev:       git URLs in ws-deps/members + local paths via [patch.'<url>']
   - zk_dev:    zk_git URLs in ws-deps/members + zk_local paths via [patch.'<url>']
   - patch-local: version lines stay; [patch.crates-io] → path
-  - patch-git:   version lines stay; [patch.crates-io] → git + full rev
+  - patch-git:   a crates.io release stays a version line and its
+                 [patch.crates-io] entry becomes git + full rev.
+                 A crate with no crates.io release becomes git + full rev
+                 on the dependency line itself. There is no crates.io patch
+                 for it: Cargo only patches a registry source.
                  (does not also write [patch.'<git-url>']; Cargo keeps the
                  first replacement and will not chain a path over that git rev)
 
@@ -67,6 +71,7 @@ from dep_common import (
     _path_leaves_repo,
     git_rev,
     is_repo_only,
+    registry_version_literal,
     load_defaults,
     load_matrix,
     matrix_pkg_names,
@@ -662,6 +667,12 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
             # Self-referential: preserve as-is
             if _is_self_referential(ws_toml, info, mode):
                 static_lines.append(line)
+            elif mode == "git-rev" and not registry_version_literal(info):
+                # A git dependency is not a crates.io source. Leaving a path
+                # patch here makes a lone clone fail on a directory it does
+                # not have, and Cargo would not apply the patch anyway.
+                print(f"  [WARN] {ws_toml}: omit crates.io patch {name}: "
+                      f"no crates.io release; the dependency line carries the git rev")
             else:
                 val = build_entry(key, info, mode, ws_toml, defaults=defaults)
                 patch_name = info.get("package", key)
@@ -699,6 +710,8 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         # Self-referential: never touch
         if _is_self_referential(ws_toml, info, mode):
             continue
+        if mode == "git-rev" and not registry_version_literal(info):
+            continue
         val = build_entry(key, info, mode, ws_toml, defaults=defaults)
         refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
         if refusal:
@@ -721,6 +734,8 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
             if crate_filter and pkg not in crate_filter and declared not in crate_filter:
                 continue
             if _is_self_referential(ws_toml, info, mode):
+                continue
+            if mode == "git-rev" and not registry_version_literal(info):
                 continue
             val = build_entry(key, info, mode, ws_toml, defaults=defaults)
             refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
@@ -1158,6 +1173,19 @@ def _collect_member_pkg_names(ws_toml, data):
     return pkg_names
 
 
+def _warn_unpinned_ws_dep(ws_toml, name, info, source_mode):
+    """Say why a workspace path was left in place during a git cut."""
+    if source_mode != "git-rev":
+        return
+    refusal = git_patch_refusal(info)
+    if not refusal:
+        if build_entry(name, info, "git-rev", ws_toml) is None and not git_rev(info, "git"):
+            refusal = "git.rev is not a full sha"
+        else:
+            return
+    print(f"  [WARN] {ws_toml}: keep workspace dep {name}: {refusal}")
+
+
 def _patch_source_ready(key, info, ws_toml, source_mode, defaults):
     """True when this crate can supply the patch that matches a version line.
 
@@ -1262,6 +1290,7 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         if _is_self_referential(ws_toml, info, mode):
             continue
         if not _patch_source_ready(key, info, ws_toml, require_source, defaults):
+            _warn_unpinned_ws_dep(ws_toml, name, info, require_source)
             continue
 
         pkg_name = info.get("package", key)
@@ -1347,6 +1376,7 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         if _is_self_referential(ws_toml, info, mode):
             continue
         if not _patch_source_ready(key, info, ws_toml, require_source, defaults):
+            _warn_unpinned_ws_dep(ws_toml, name, info, require_source)
             continue
 
         # Detect package name collision: external path dep vs workspace member

@@ -2218,3 +2218,67 @@ consumers = ["cw-orchestrator", "terp-rs"]
 url = "https://github.com/rotkonetworks/zeratul"
 branch = "master"
 rev = "3ea453329fda2861de81525bfd4a93c0011e43ba"
+
+# Crates with no crates.io release. patch-git writes git + full rev on the
+# dependency line. A rev that is not on a remote, or a checkout that still
+# paths outside its own repository, stays on the local path.
+
+[crates.cw-headstash]
+description = "Headstash claim contract. Not on crates.io."
+stable = "N/A"
+local = "headstash/contracts/cw-headstash"
+zk_local = "headstash/contracts/cw-headstash"
+consumers = ["ict-rs"]
+
+[crates.cw-headstash.git]
+url = "https://github.com/hard-nett/airdrop"
+branch = "wip/headstash-e2e-20261015"
+rev = "625b017baa75c76d41c9e4b3c1aadaa652a631a1"
+
+[crates.dregg]
+description = "DREGG mint contract inside terp-rs. Not on crates.io."
+stable = "N/A"
+local = "terp-rs/tools/svg-mint/crates/dregg"
+zk_local = "terp-rs/tools/svg-mint/crates/dregg"
+consumers = ["ict-rs"]
+
+[crates.dregg.git]
+url = "https://github.com/permissionlessweb/terp-rs"
+branch = "feat/mint-desk-v98"
+rev = "3628599977e6b21bfd931f3a50e5ac5ad6a451d9"
+
+[crates.hash-market]
+description = "Hash market tools inside terp-rs. Not on crates.io."
+stable = "N/A"
+local = "terp-rs/tools/hash-market"
+zk_local = "terp-rs/tools/hash-market"
+consumers = ["ict-rs"]
+
+[crates.hash-market.git]
+url = "https://github.com/permissionlessweb/terp-rs"
+branch = "feat/mint-desk-v98"
+rev = "3628599977e6b21bfd931f3a50e5ac5ad6a451d9"
+
+[crates.o-line-sdl]
+description = "o-line SDL. Not on crates.io."
+stable = "N/A"
+local = "o-line"
+zk_local = "o-line"
+consumers = ["ict-rs"]
+
+[crates.o-line-sdl.git]
+url = "https://github.com/permissionlessweb/o-line"
+branch = "feat/oline-staging"
+rev = "58a54a5bd5be9a9f3d5d2e81f6236618bcdf1bcf"
+
+[crates.terp-rs]
+description = "terp-rs SDK. Not on crates.io."
+stable = "N/A"
+local = "terp-rs/crates/sdk"
+zk_local = "terp-rs/crates/sdk"
+consumers = ["ict-rs"]
+
+[crates.terp-rs.git]
+url = "https://github.com/permissionlessweb/terp-rs"
+branch = "feat/mint-desk-v98"
+rev = "3628599977e6b21bfd931f3a50e5ac5ad6a451d9"

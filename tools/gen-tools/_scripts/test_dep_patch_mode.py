@@ -120,6 +120,29 @@ class RegistryAndRevTests(unittest.TestCase):
         self.assertEqual(PATCH_MODE_MAP["patch-git"], ("registry", "git-rev"))
         self.assertNotIn("dev", PATCH_MODE_MAP)
 
+    def test_unpublished_registry_line_is_a_full_git_rev(self):
+        info = _crate(
+            "N/A", "terp-rs/tools/hash-market",
+            "https://github.com/permissionlessweb/terp-rs", COS_REV,
+        )
+        entry = build_ws_dep_entry(
+            "hash-market", info, "registry", "ict-rs/Cargo.toml",
+            {"default-features": False},
+        )
+        self.assertEqual(
+            entry,
+            '{ git = "https://github.com/permissionlessweb/terp-rs", '
+            f'rev = "{COS_REV}", default-features = false }}',
+        )
+        self.assertIsNone(registry_version_literal(info))
+
+    def test_missing_rev_does_not_invent_a_version(self):
+        info = _crate("N/A", "headstash/contracts/cw-headstash",
+                      "https://github.com/hard-nett/airdrop")
+        self.assertIsNone(build_ws_dep_entry(
+            "cw-headstash", info, "registry", "ict-rs/Cargo.toml", {},
+        ))
+
 
 class RewriteTests(unittest.TestCase):
     def setUp(self):
@@ -547,6 +570,62 @@ class NestHierarchyTests(unittest.TestCase):
             self.assertNotIn(f'rev = "{rev}"', text)
             self.assertNotIn('version = "3.0.0"', text)
             self.assertIn("not on a remote", buf.getvalue())
+        finally:
+            dep_common.REPO_ROOT = old_common
+            dep_switch.REPO_ROOT = old_switch
+            tmp.cleanup()
+            dep_switch._EDGE_CACHE.clear()
+
+    def test_unpublished_path_becomes_a_git_rev_and_not_a_crates_io_patch(self):
+        dep_switch._EDGE_CACHE.clear()
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name).resolve()
+        old_common, old_switch = dep_common.REPO_ROOT, dep_switch.REPO_ROOT
+        dep_common.REPO_ROOT = root
+        dep_switch.REPO_ROOT = root
+        try:
+            leaf = root / "terp-rs"
+            rev = self._commit(leaf, "[dependencies]\nserde = \"1\"\n")
+            subprocess.run(
+                ["git", "-C", str(leaf), "update-ref", "refs/remotes/origin/main", rev],
+                check=True,
+            )
+            ws = root / "ict-rs"
+            ws.mkdir()
+            (ws / "Cargo.toml").write_text(
+                "\n".join([
+                    "[workspace]",
+                    "members = []",
+                    "",
+                    "[workspace.dependencies]",
+                    'hash-market = { path = "../terp-rs", default-features = false }',
+                    "",
+                    "[patch.crates-io]",
+                    'hash-market = { path = "../terp-rs" }',
+                    "",
+                ])
+            )
+            crates = {
+                "hash-market": _crate(
+                    "N/A", "terp-rs",
+                    "https://github.com/permissionlessweb/terp-rs", rev,
+                ),
+            }
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                dep_switch.rewrite_patches(
+                    "ict-rs/Cargo.toml", crates, "git-rev", ensure=True,
+                )
+                dep_switch.rewrite_ws_deps(
+                    "ict-rs/Cargo.toml", crates, "registry",
+                    require_source="git-rev",
+                )
+            text = (ws / "Cargo.toml").read_text()
+            self.assertIn(f'rev = "{rev}"', text)
+            self.assertIn('default-features = false', text)
+            self.assertNotIn("path =", text)
+            self.assertNotIn("hash-market =", text.split("[patch.crates-io]", 1)[1])
+            self.assertIn("no crates.io release", buf.getvalue())
         finally:
             dep_common.REPO_ROOT = old_common
             dep_switch.REPO_ROOT = old_switch

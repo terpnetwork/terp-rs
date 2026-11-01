@@ -1247,9 +1247,19 @@ def build_ws_dep_entry(key: str, info: dict, mode: str, ws_toml: str,
         parts = [f'version = "{version}"']
     elif mode == "registry":
         version = registry_version_literal(info)
-        if not version:
-            return None
-        parts = [f'version = "{version}"']
+        if version:
+            parts = [f'version = "{version}"']
+        else:
+            # No crates.io release. The line a downloaded crate can build is
+            # the stamped git rev, not a sibling path. patch-git still refuses
+            # the rewrite when that rev is not on a remote or the checkout
+            # itself still points outside its repository.
+            gi = info.get("git") if isinstance(info.get("git"), dict) else {}
+            url = gi.get("url")
+            rev = git_rev(info, "git")
+            if not url or url == "N/A" or not rev:
+                return None
+            parts = [f'git = "{url}"', f'rev = "{rev}"']
     elif mode == "local":
         local = info.get("local", "N/A")
         if local == "N/A":
