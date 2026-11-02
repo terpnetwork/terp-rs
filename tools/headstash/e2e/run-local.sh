@@ -5,6 +5,7 @@ set -euo pipefail
 export PATH="/usr/local/bin:$PATH"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 RESET="${RESET:-1}" "$HERE/bootstrap-chain.sh"
+# NOTE_EX / ZK_EX: halo2 circuit example dir (ZK_EX defaults to NOTE_EX, then /tmp/hm-build-target/release/examples).
 # HARNESS=direct (default): v1 direct on-chain ClaimNote path. HARNESS=lane: off-chain lane path.
 if [ "${HARNESS:-direct}" = "lane" ]; then
   exec /usr/local/bin/python3 "$HERE/run.py"

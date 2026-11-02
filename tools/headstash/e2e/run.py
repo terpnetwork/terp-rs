@@ -22,7 +22,10 @@ RELAY_BIND = "127.0.0.1:18795"
 TERPD = os.environ.get("TERPD", "/tmp/terpd-b2339a9c-build/terpd")
 RELAY_BIN = os.environ.get("RELAY_BIN", "/tmp/hm-build-target/release/headstash-register-relay")
 ELIG_BIN = os.environ.get("ELIG_BIN", "/tmp/hm-build-target/release/headstash-eligibility")
-EX = os.environ.get("ZK_EX", "/tmp/hm-build-target/release/examples")
+# Circuit example binaries (membership_key_com, prove_note_witness, bench_note_proofs) all
+# come from the same halo2 crate target. ZK_EX defaults to NOTE_EX so one target dir serves
+# both; build with: cargo build --release --features circuit,std --example <name>.
+EX = os.environ.get("ZK_EX") or os.environ.get("NOTE_EX") or "/tmp/hm-build-target/release/examples"
 WAVS_BIN = os.environ.get("WAVS_BIN", "/tmp/cwhs-native-target/release/examples/print_wavs")
 WASM = os.environ.get("WASM", "/tmp/hs-p2-opt-out/cw_headstash.wasm")
 OPSIGN = os.path.join(HERE, "..", "..", "hash-market", "scripts", "headstash-operator-sign.py")

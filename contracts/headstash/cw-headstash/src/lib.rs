@@ -12,6 +12,7 @@ pub mod reclaim;
 pub mod pause;
 pub mod registration;
 pub mod headstash;
+pub mod tf_proto;
 pub mod msg;
 pub mod tokenfactory;
 pub mod wavs;
@@ -77,53 +78,20 @@ const MSG_CREATE_DENOM_TYPE_URL: &str = "/osmosis.tokenfactory.v1beta1.MsgCreate
 const MSG_MINT_TYPE_URL: &str = "/osmosis.tokenfactory.v1beta1.MsgMint";
 const MSG_BURN_TYPE_URL: &str = "/osmosis.tokenfactory.v1beta1.MsgBurn";
 
-// Helper functions to create Stargate messages for tokenfactory operations
+// Helper functions to create Stargate messages for tokenfactory operations.
+// Values are protobuf (see tf_proto); wasmd rejects JSON with "Cannot unpack proto message".
 fn msg_create_denom(sender: String, subdenom: String) -> StdResult<CosmosMsg> {
-    #[derive(serde::Serialize)]
-    struct MsgCreateDenom {
-        sender: String,
-        subdenom: String,
-    }
-
-    let msg = MsgCreateDenom { sender, subdenom };
-    let value = to_json_binary(&msg)?;
-
     Ok(CosmosMsg::Stargate {
         type_url: MSG_CREATE_DENOM_TYPE_URL.to_string(),
-        value,
+        value: Binary::from(tf_proto::msg_create_denom(&sender, &subdenom)),
     })
 }
 
 pub(crate) fn msg_mint(sender: String, amount: Uint128, denom: String) -> StdResult<CosmosMsg> {
-    #[derive(serde::Serialize)]
-    struct Coin {
-        denom: String,
-        amount: String,
-    }
-
-    #[derive(serde::Serialize)]
-    struct MsgMint {
-        sender: String,
-        amount: Coin,
-        mint_to_address: String,
-    }
-
-    let coin = Coin {
-        denom,
-        amount: amount.to_string(),
-    };
-
-    let msg = MsgMint {
-        sender: sender.clone(),
-        amount: coin,
-        mint_to_address: sender.clone(), // Mint to sender, then we'll send via BankMsg
-    };
-
-    let value = to_json_binary(&msg)?;
-
+    // Mint to sender, then we'll send via BankMsg
     Ok(CosmosMsg::Stargate {
         type_url: MSG_MINT_TYPE_URL.to_string(),
-        value,
+        value: Binary::from(tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &sender)),
     })
 }
 
@@ -133,35 +101,9 @@ fn msg_burn(
     denom: String,
     burn_from_address: String,
 ) -> StdResult<CosmosMsg> {
-    #[derive(serde::Serialize)]
-    struct Coin {
-        denom: String,
-        amount: String,
-    }
-
-    #[derive(serde::Serialize)]
-    struct MsgBurn {
-        sender: String,
-        amount: Coin,
-        burn_from_address: String,
-    }
-
-    let coin = Coin {
-        denom,
-        amount: amount.to_string(),
-    };
-
-    let msg = MsgBurn {
-        sender,
-        amount: coin,
-        burn_from_address,
-    };
-
-    let value = to_json_binary(&msg)?;
-
     Ok(CosmosMsg::Stargate {
         type_url: MSG_BURN_TYPE_URL.to_string(),
-        value,
+        value: Binary::from(tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &burn_from_address)),
     })
 }
 
@@ -718,13 +660,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
                 .msg_responses[0]
                 .value;
 
-            #[derive(serde::Deserialize)]
-            struct MsgCreateDenomResponse {
-                new_token_denom: String,
-            }
-
-            let response: MsgCreateDenomResponse = cosmwasm_std::from_json(&response_data)?;
-            let new_token_denom = response.new_token_denom;
+            // msg_responses[0].value is the protobuf MsgCreateDenomResponse.
+            let new_token_denom = tf_proto::create_denom_response_denom(response_data.as_slice())?;
 
             DENOM.save(deps.storage, &new_token_denom)?;
 
