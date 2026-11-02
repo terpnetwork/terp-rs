@@ -101,6 +101,7 @@ def validate_rendered_proposal(name, obj, proposer):
             if t.startswith("/cosmwasm.wasm.v1.MsgInstantiateContract"):
                 if m.get("admin") != GOV or m.get("sender") != GOV: errs.append("instantiate admin/sender not gov")
                 if (m.get("msg") or {}).get("owner") not in (None, GOV): errs.append("owner not gov")
+                if "token_strategy" in (m.get("msg") or {}) and "owner" in (m.get("msg") or {}): errs.append("cw-headstash instantiate has unknown field owner")
                 if "token_strategy" in (m.get("msg") or {}) and not (m.get("msg") or {}).get("frontend_contract"): errs.append("cw-headstash instantiate lacks frontend_contract")
             if t == "/cosmwasm.wasm.v1.MsgStoreCode":
                 ip = m.get("instantiate_permission") or {}
@@ -187,7 +188,8 @@ def main():
     fstore = dict(store, wasm_byte_code=base64.b64encode(gzip.compress(fb_, 9, mtime=0)).decode())
     files[A + "13b-store-frontend-wasm.unsigned.json"] = (gs._tx([fstore], "{{FE_STORE_GAS}}", "{{FE_STORE_FEE_UTHIOL}}", "uthiol", proposer, "headstash-gov-session:store-code"), ("eph", None, None))
     files[A + "15-session-revoke.unsigned.json"] = (gs.revoke_tx(eph, proposer, gs.SESSION_TYPES_MAINNET, 600000, 30000, "uthiol", use_feegrant=True), ("eph", None, None))
-    init = json.loads(rd("01-instantiate.json")); init["owner"] = GOV; init["frontend_contract"] = fe_addr
+    # cw-headstash InstantiateMsg has no `owner` (owner = info.sender = gov; cw_serde denies unknown fields)
+    init = json.loads(rd("01-instantiate.json")); init["frontend_contract"] = fe_addr
     init["pauser"] = dec.get("PAUSER") or None
     camp = json.loads(rd("02-set-epoch-campaign-open.json")) if "02-set-epoch-campaign-open.json" in raw else "{{SET_EPOCH_CAMPAIGN}}"
     msgs_a = [{"@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend", "authority": GOV, "recipient": GOV,
