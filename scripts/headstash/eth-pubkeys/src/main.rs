@@ -20,8 +20,7 @@ use alloy_primitives::{B256, U256};
 use alloy_rpc_types_eth::Transaction;
 use anyhow::{Context, Result};
 use k256::ecdsa::{RecoveryId, Signature as K256Sig, VerifyingKey};
-use k256::elliptic_curve::sec1::ToEncodedPoint;
-use reqwest::Client; // ToEncodedPoint used by VerifyingKey::to_encoded_point
+use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use tokio::sync::{Mutex, Semaphore};
@@ -421,10 +420,10 @@ fn recover_pubkeys(tx_json: &Value) -> Option<(String, String, String)> {
     let mut compact = [0u8; 64];
     compact[..32].copy_from_slice(&u256_be32(sig.r()));
     compact[32..].copy_from_slice(&u256_be32(sig.s()));
-    let ksig = K256Sig::from_bytes((&compact).into()).ok()?;
+    let ksig = K256Sig::from_slice(&compact).ok()?;
     let vk = VerifyingKey::recover_from_prehash(hash.as_slice(), &ksig, recid).ok()?;
-    let uncompressed = format!("0x{}", hex::encode(vk.to_encoded_point(false).as_bytes()));
-    let compressed = format!("0x{}", hex::encode(vk.to_encoded_point(true).as_bytes()));
+    let uncompressed = format!("0x{}", hex::encode(vk.to_sec1_point(false).as_bytes()));
+    let compressed = format!("0x{}", hex::encode(vk.to_sec1_point(true).as_bytes()));
     Some((from, compressed, uncompressed))
 }
 

@@ -13,7 +13,7 @@ use terp_account::{Metadata, NFT, TERP_PREFIX, TextRecord};
 use terp721_account::msg::Terp721AccountsQueryMsgFns;
 use terp721_account::state::REVERSE_MAP_KEY;
 
-use ecdsa::signature::rand_core::OsRng;
+
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 // use serde::Deserialize;
 use sha2::Digest;
@@ -258,30 +258,33 @@ fn test_reverse_map_key_limit() -> anyhow::Result<()> {
 
     // create non 'terp1...' addrs
     let mut carbs = vec![];
-    for _ in 0..20 {
+    for i in 0..20u8 {
         // creeate new key
-        let secret_key: ecdsa::SigningKey<k256::Secp256k1> = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
+        let mut seed = [0x11u8; 32];
+        seed[31] = i;
+        let secret_key: ecdsa::SigningKey<k256::Secp256k1> =
+            SigningKey::from_slice(&seed).expect("test key");
         let public_key: ecdsa::VerifyingKey<k256::Secp256k1> = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
         let base64terpaddr = &Binary::new(sender.as_bytes().to_vec()).to_base64();
-        let hraddr = pubkey_to_address(public_key.to_encoded_point(false).as_bytes(), "cosmos")
+        let hraddr = pubkey_to_address(public_key.to_sec1_point(false).as_bytes(), "cosmos")
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         let adr036msgtohash = preamble_msg_arb_036(&hraddr.to_string(), base64terpaddr);
         let msg_digest = Sha256::new().chain(&adr036msgtohash);
         let msg_hash = msg_digest.clone().finalize();
 
-        let signature: Signature = secret_key.sign_prehash_recoverable(&msg_hash).unwrap().0;
+        let (signature, _) = secret_key.sign_prehash_recoverable(&msg_hash);
 
         assert!(
             cosmwasm_crypto::secp256k1_verify(
                 &msg_hash,
                 signature.to_bytes().as_slice(),
-                public_key.to_encoded_point(false).as_bytes()
+                public_key.to_sec1_point(false).as_bytes()
             )
             .unwrap()
         );
 
         let cosmosarb = CosmosArbitrary {
-            pubkey: Binary::from(public_key.to_encoded_point(false).as_bytes()),
+            pubkey: Binary::from(public_key.to_sec1_point(false).as_bytes()),
             signature: Binary::from(signature.to_bytes().as_slice()),
             message: Binary::from(sender.as_bytes().to_vec()), // set the value to be base64 (verify_return_readable handles base64 automatically)
             hrp: Some(hrp.to_string()),

@@ -3,7 +3,6 @@
 
 use bech32::{Bech32, Hrp};
 use k256::ecdsa::{Signature, VerifyingKey};
-use k256::elliptic_curve::sec1::ToEncodedPoint;
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 
@@ -77,7 +76,7 @@ pub fn verify_keplr_arbitrary(
         return Err("ADR-036 signature is 64 bytes".into());
     }
     let vk = VerifyingKey::from_sec1_bytes(&pk).map_err(|e| e.to_string())?;
-    let encoded = vk.to_encoded_point(true);
+    let encoded = vk.to_sec1_point(true);
     let terp = terp1_from_secp256k1_compressed(encoded.as_bytes())?;
     if terp != signer {
         return Err(format!("signer {signer} does not match pubkey {terp}"));
@@ -102,7 +101,7 @@ pub fn sign_keplr_arbitrary(
     use k256::ecdsa::signature::hazmat::PrehashSigner;
     use k256::ecdsa::{Signature, SigningKey};
     let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let terp = terp1_from_secp256k1_compressed(pk.as_bytes())?;
     let doc = sign_doc_json(chain_id, &terp, data);
     let hash = Sha256::digest(doc.as_bytes());

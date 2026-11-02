@@ -63,8 +63,15 @@ pub fn pubkey_to_terp(pubkey: &[u8]) -> Result<String, String> {
 
 /// Fresh compressed-secp256k1 operator. The key stays in the returned `SigningKey`.
 pub fn ephemeral_operator() -> (k256::ecdsa::SigningKey, String) {
-    let sk = k256::ecdsa::SigningKey::random(&mut rand_core::OsRng);
-    let pk = sk.verifying_key().to_encoded_point(true);
+    use rand_core::RngCore;
+    let mut raw = [0u8; 32];
+    let sk = loop {
+        rand_core::OsRng.fill_bytes(&mut raw);
+        if let Ok(sk) = k256::ecdsa::SigningKey::from_slice(&raw) {
+            break sk;
+        }
+    };
+    let pk = sk.verifying_key().to_sec1_point(true);
     let addr = pubkey_to_terp(pk.as_bytes()).expect("33-byte compressed pubkey");
     (sk, addr)
 }
@@ -77,7 +84,7 @@ pub fn sign_tree_write(
     body: &[u8],
 ) -> (String, String) {
     use k256::ecdsa::signature::hazmat::PrehashSigner;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let pubkey = pk.as_bytes();
     let addr = pubkey_to_terp(pubkey).expect("33-byte compressed pubkey");
     let digest = adr36_digest(&addr, &tree_write_challenge(method, path, body));
@@ -161,8 +168,15 @@ mod tests {
     use k256::ecdsa::signature::hazmat::PrehashSigner;
 
     fn sign(method: &str, path: &str, body: &[u8]) -> (String, String, String) {
-        let sk = SigningKey::random(&mut rand_core::OsRng);
-        let pk = sk.verifying_key().to_encoded_point(true);
+        use rand_core::RngCore;
+        let mut raw = [0u8; 32];
+        let sk = loop {
+            rand_core::OsRng.fill_bytes(&mut raw);
+            if let Ok(sk) = SigningKey::from_slice(&raw) {
+                break sk;
+            }
+        };
+        let pk = sk.verifying_key().to_sec1_point(true);
         let pubkey = pk.as_bytes();
         let addr = pubkey_to_terp(pubkey).unwrap();
         let digest = adr36_digest(&addr, &tree_write_challenge(method, path, body));

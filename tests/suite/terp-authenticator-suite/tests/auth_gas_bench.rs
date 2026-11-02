@@ -338,9 +338,7 @@ mod bench {
 
     fn eth_signature(mint: &[u8]) -> Vec<u8> {
         let sk = EthSigningKey::from_slice(&hex::decode(ANVIL0_PRIV).unwrap()).unwrap();
-        let (sig, recid) = sk
-            .sign_prehash_recoverable(&eth_personal_hash(mint))
-            .unwrap();
+        let (sig, recid) = sk.sign_prehash_recoverable(&eth_personal_hash(mint));
         let mut out = sig.to_bytes().as_slice().to_vec();
         out.push(recid.to_byte());
         out

@@ -4,8 +4,8 @@
 //! ZEC: diversifier index `i` (Orchard diversified UA via zcash-devtool when present).
 
 use hmac::{Hmac, Mac};
+use k256::elliptic_curve::sec1::ToSec1Point;
 use k256::SecretKey;
-use k256::elliptic_curve::sec1::ToEncodedPoint;
 use rand::RngCore;
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256, Sha512};
@@ -52,7 +52,7 @@ impl HdEngine {
     pub fn btc_p2wpkh(&self, index: u32, mainnet: bool) -> Result<String, String> {
         let coin = if mainnet { 0 } else { 1 };
         let sk = self.derive(&[84 | HARDEN, coin | HARDEN, HARDEN, HARDEN, index | HARDEN])?;
-        let pk = sk.public_key().to_encoded_point(true);
+        let pk = sk.public_key().to_sec1_point(true);
         let h160 = hash160(pk.as_bytes());
         let hrp = if mainnet { "bc" } else { "bcrt" };
         encode_segwit(hrp, 0, &h160)
@@ -62,7 +62,7 @@ impl HdEngine {
     /// not BIP44 unhardened change/index). Same 0x on Base (shared, not a second index).
     pub fn eth_addr(&self, index: u32) -> Result<String, String> {
         let sk = self.derive(&[44 | HARDEN, 60 | HARDEN, HARDEN, HARDEN, index | HARDEN])?;
-        let uncompressed = sk.public_key().to_encoded_point(false);
+        let uncompressed = sk.public_key().to_sec1_point(false);
         let bytes = uncompressed.as_bytes();
         // 0x04 || X || Y
         let mut keccak = Keccak::v256();
@@ -96,7 +96,7 @@ impl HdEngine {
             seed: seed.to_vec(),
         };
         let sk = hd.derive_cosmos(&[44 | HARDEN, 118 | HARDEN, HARDEN, 0, 0])?;
-        let pk = sk.public_key().to_encoded_point(true);
+        let pk = sk.public_key().to_sec1_point(true);
         let h160 = hash160(pk.as_bytes());
         encode_cosmos("terp", &h160)
     }
@@ -127,7 +127,7 @@ impl HdEngine {
                 mac.update(&k);
             } else {
                 let sk = SecretKey::from_slice(&k).map_err(|e| e.to_string())?;
-                let pk = sk.public_key().to_encoded_point(true);
+                let pk = sk.public_key().to_sec1_point(true);
                 mac.update(pk.as_bytes());
             }
             mac.update(&n.to_be_bytes());

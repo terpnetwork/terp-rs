@@ -52,8 +52,14 @@ impl AuthKey {
     /// The private key is only needed to produce signatures externally.
     pub fn generate() -> Result<(String, String)> {
         use k256::ecdsa::SigningKey;
-        use rand_core::OsRng;
-        let sk = SigningKey::random(&mut OsRng);
+        use rand_core::RngCore;
+        let mut raw = [0u8; 32];
+        let sk = loop {
+            rand_core::OsRng.fill_bytes(&mut raw);
+            if let Ok(sk) = SigningKey::from_slice(&raw) {
+                break sk;
+            }
+        };
         let pk_hex = hex::encode(sk.verifying_key().to_sec1_bytes());
         let sk_hex = hex::encode(sk.to_bytes());
         Ok((sk_hex, pk_hex))

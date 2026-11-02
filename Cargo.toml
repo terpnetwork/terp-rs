@@ -292,7 +292,7 @@ digest = { version = "0.10", default-features = false }
 dotenv = "0.15"
 dregg = { path = "tools/svg-mint/crates/dregg" }
 easy-addr = { path = "crates/easy-addr" }
-ecdsa = "0.16"
+ecdsa = "0.17"
 ed25519-dalek = { version = "2.2", features = ["std"] }
 ed25519-zebra = { version = "4.2", default-features = false }
 env_logger = { version = "0.11", default-features = false }
@@ -328,7 +328,7 @@ ics23 = { version = "0.12.0", default-features = false }
 ict-rs = { version = "=0.1.0", default-features = false }
 ict-rs-cw-orch = { version = "=0.1.0" }
 incrementalmerkletree = "0.8.1"
-k256 = { version = "0.13", default-features = false }
+k256 = { version = "0.14", default-features = false }
 kms-shard = { path = "crates/kms-shard" }
 lazy_static = "1"
 log = "0.4"
@@ -348,7 +348,7 @@ orchard = { version = "0.16", default-features = false }
 osmosis-std = { version = "0.26.0" }
 osst = { version = "0.1.1", default-features = false }
 ownership-verifier = { path = "contracts/accounts/ownership-verifier" }
-p256 = { version = "0.13", default-features = false }
+p256 = { version = "0.14", default-features = false }
 pasta_curves = { package = "zakura-pasta-curves", version = "=5.0.0-rc.3", default-features = false, features = ["default"] }
 pathdiff = "0.2"
 pbjson-types = "0.9"
@@ -563,6 +563,8 @@ cw-norick = { path = "contracts/headstash/no-rick" }
 osmosis-std = { path = "../osmosis-rust/packages/osmosis-std" }
 osmosis-std-derive = { path = "../osmosis-rust/packages/osmosis-std-derive" }
 alloy-consensus = { path = "../alloy/crates/consensus" }
+alloy-primitives = { path = "../alloy/vendor/alloy-primitives" }
+alloy-eip7702 = { path = "../alloy/vendor/alloy-eip7702" }
 alloy-rpc-types-eth = { path = "../alloy/crates/rpc-types-eth" }
 flock-core = { path = "../flock/crates/flock-core" }
 flock-hash = { path = "../flock/crates/flock-hash" }
@@ -575,3 +577,8 @@ frost_escrow = { path = "crates/frost_escrow" }
 
 zakura-orchard = { path = "../zakura-common/crates/orchard" }
 zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }
+
+# ict-rs pins dregg by git rev. Resolve that rev to this workspace copy so
+# the lock does not keep a second dregg still on k256 0.13.
+[patch."https://github.com/permissionlessweb/terp-rs"]
+dregg = { path = "tools/svg-mint/crates/dregg" }

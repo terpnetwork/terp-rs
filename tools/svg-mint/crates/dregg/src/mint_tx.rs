@@ -43,7 +43,7 @@ pub fn ensure_address() -> Result<String, String> {
 
 fn address_of(raw: &[u8]) -> Result<String, String> {
     let sk = SigningKey::from_slice(raw).map_err(|e| e.to_string())?;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())
 }
 
@@ -292,7 +292,7 @@ pub fn tx_raw(
         return Err("runtime sk 32 bytes".into());
     }
     let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let sender = crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())?;
     tx_raw_as(&sk, &sender, contract, msgs, account_number, sequence, chain_id, gas, fee_amount)
 }
@@ -308,7 +308,7 @@ fn tx_raw_as(
     gas: u64,
     fee_amount: u128,
 ) -> Result<Vec<u8>, String> {
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let mut body = Vec::new();
     for msg in msgs {
         let exec = msg_execute(&sender, contract, msg);
@@ -344,7 +344,7 @@ fn sign_direct(
     doc.extend(vi(4, account_number));
     let hash = Sha256::digest(&doc);
     let sig: Signature = sk.sign_prehash(&hash).map_err(|e| e.to_string())?;
-    let sig = sig.normalize_s().unwrap_or(sig);
+    let sig = sig.normalize_s();
     let vk = sk.verifying_key();
     vk.verify_prehash(&hash, &sig)
         .map_err(|_| "runtime signature did not verify".to_string())?;
@@ -1002,7 +1002,7 @@ mod tests {
         assert!(a.starts_with("terp1"));
         let sk = SigningKey::from_slice(&secret).unwrap();
         let vk = k256::ecdsa::VerifyingKey::from(sk);
-        assert_eq!(vk.to_encoded_point(true).as_bytes().len(), 33);
+        assert_eq!(vk.to_sec1_point(true).as_bytes().len(), 33);
     }
 
     #[test]

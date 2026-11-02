@@ -44,13 +44,13 @@ pub fn canonical_batch(root: &[u8; 32], rejected: u32, payouts: &[BatchPayout]) 
 }
 
 fn batch_key(secret: &[u8; 32]) -> Result<SigningKey, WireError> {
-    SigningKey::from_bytes(secret.into()).map_err(|_| WireError::Recover)
+    SigningKey::from_slice(secret).map_err(|_| WireError::Recover)
 }
 
 /// Compressed SEC1 public key, 33 bytes.
 pub fn batch_public(secret: &[u8; 32]) -> [u8; 33] {
     let key = batch_key(secret).expect("batch secret");
-    let point = key.verifying_key().to_encoded_point(true);
+    let point = key.verifying_key().to_sec1_point(true);
     let mut out = [0u8; 33];
     out.copy_from_slice(point.as_bytes());
     out
@@ -98,9 +98,7 @@ pub fn registration_message(eligible_address: &str, y_hex: &str) -> Vec<u8> {
 pub fn sign_personal(secret: &[u8; 32], message: &[u8]) -> Result<[u8; 65], WireError> {
     let key = batch_key(secret)?;
     let hash = personal_sign_hash(message);
-    let (sig, id) = key
-        .sign_prehash_recoverable(&hash)
-        .map_err(|_| WireError::Recover)?;
+    let (sig, id) = key.sign_prehash_recoverable(&hash);
     let mut out = [0u8; 65];
     out[..64].copy_from_slice(&sig.to_bytes());
     out[64] = 27 + id.to_byte();
@@ -122,7 +120,7 @@ fn recover_verifying_key(message: &[u8], signature: &[u8]) -> Result<VerifyingKe
 /// X coordinate of the key that signed `message`. This is the leaf key check.
 pub fn recover_pubkey_x(message: &[u8], signature: &[u8]) -> Result<[u8; 32], WireError> {
     let vk = recover_verifying_key(message, signature)?;
-    let point = vk.to_encoded_point(false);
+    let point = vk.to_sec1_point(false);
     let bytes = point.as_bytes();
     let mut x = [0u8; 32];
     x.copy_from_slice(&bytes[1..33]);
@@ -132,7 +130,7 @@ pub fn recover_pubkey_x(message: &[u8], signature: &[u8]) -> Result<[u8; 32], Wi
 /// Last 20 bytes of Keccak(uncompressed pubkey without the 0x04 prefix).
 pub fn recover_address(message: &[u8], signature: &[u8]) -> Result<[u8; 20], WireError> {
     let vk = recover_verifying_key(message, signature)?;
-    let point = vk.to_encoded_point(false);
+    let point = vk.to_sec1_point(false);
     let hash = keccak256(&point.as_bytes()[1..]);
     let mut addr = [0u8; 20];
     addr.copy_from_slice(&hash[12..]);

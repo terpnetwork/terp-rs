@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn host_recover_matches_ethereum_address() {
-        let sk = SigningKey::from_bytes((&[0x11u8; 32]).into()).unwrap();
+        let sk = SigningKey::from_slice(&[0x11u8; 32]).unwrap();
         let claim = CompleteClaimData {
             identifier: "id".into(),
             owner: "owner".into(),
@@ -207,14 +207,14 @@ mod tests {
             timestampS: 2,
         };
         let hash = keccak256(&claim.serialise());
-        let (sig, recid) = sk.sign_prehash_recoverable(&hash).unwrap();
+        let (sig, recid) = sk.sign_prehash_recoverable(&hash);
         let mut body = hex::encode(sig.to_bytes());
         body.push_str(&hex::encode([recid.to_byte() + 27]));
         let signed = SignedClaim {
             claim,
             signatures: vec![format!("0x{body}")],
         };
-        let vk = sk.verifying_key().to_encoded_point(false);
+        let vk = sk.verifying_key().to_sec1_point(false);
         let addr_hash = Keccak256::digest(&vk.as_bytes()[1..]);
         let expect = append_0x(&hex::encode(&addr_hash[12..]));
 

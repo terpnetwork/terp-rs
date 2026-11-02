@@ -235,9 +235,7 @@ fn verify_secp256k1(
     let sig = b64.decode(sig_b64.trim()).map_err(|_| "bad_sig")?;
     let vk = VerifyingKey::from_sec1_bytes(&pk).map_err(|_| "bad_pubkey")?;
     let mut s = Signature::from_slice(&sig).map_err(|_| "bad_sig")?;
-    if let Some(n) = s.normalize_s() {
-        s = n;
-    }
+    s = s.normalize_s();
     vk.verify_prehash(digest, &s).map_err(|_| "sig_verify")?;
     Ok(pk)
 }
@@ -639,11 +637,11 @@ mod tests {
     use k256::ecdsa::signature::hazmat::PrehashSigner;
 
     fn key() -> SigningKey {
-        SigningKey::from_bytes((&[0x11u8; 32]).into()).expect("test key")
+        SigningKey::from_slice(&[0x11u8; 32]).expect("test key")
     }
 
     fn sign_adr(sk: &SigningKey, signer: &str, message: &str) -> (String, String) {
-        let pk = sk.verifying_key().to_encoded_point(true);
+        let pk = sk.verifying_key().to_sec1_point(true);
         let digest = Sha256::digest(adr036_sign_doc(signer, message.as_bytes()).as_bytes());
         let sig: Signature = sk.sign_prehash(&digest).expect("sign");
         let b64 = base64::engine::general_purpose::STANDARD;
@@ -677,7 +675,7 @@ mod tests {
         let ts = v["ts"].as_u64().unwrap();
         let message = v["message"].as_str().unwrap().to_string();
         let sk = key();
-        let pk = sk.verifying_key().to_encoded_point(true);
+        let pk = sk.verifying_key().to_sec1_point(true);
         let login = terp_address_from_compressed(pk.as_bytes()).unwrap();
         std::env::set_var("ITL_ADMIN_CREDS", &login);
         let (pub_key, signature) = sign_adr(&sk, &login, &message);
@@ -729,7 +727,7 @@ mod tests {
         .unwrap();
         let v: serde_json::Value = serde_json::from_str(&ch.body).unwrap();
         let sk = key();
-        let pk = sk.verifying_key().to_encoded_point(true);
+        let pk = sk.verifying_key().to_sec1_point(true);
         let login = terp_address_from_compressed(pk.as_bytes()).unwrap();
         let body = json!({
             "origin": origin,

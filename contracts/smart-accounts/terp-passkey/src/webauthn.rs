@@ -268,7 +268,7 @@ mod tests {
 
     fn signed(msg: &[u8]) -> (PasskeyRegistration, PasskeyAuthPayload) {
         let sk = SigningKey::from_bytes(&p256::FieldBytes::from([0x11u8; 32])).unwrap();
-        let pk = sk.verifying_key().to_encoded_point(false);
+        let pk = sk.verifying_key().to_sec1_point(false);
         let reg = registration(pk.as_bytes());
         let client = client_data_json(&reg.origin, msg);
         let ad = authenticator_data(&reg.rp_id);

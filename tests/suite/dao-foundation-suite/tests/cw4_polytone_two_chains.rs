@@ -605,7 +605,7 @@ async fn fund_address(chain: &CosmosChain, address: &str) -> Result<(), String> 
 
 fn cold_address(secret: &[u8; 32]) -> Result<String, String> {
     let sk = k256::ecdsa::SigningKey::from_slice(secret).map_err(|err| err.to_string())?;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let hash = ripemd::Ripemd160::digest(sha2::Sha256::digest(pk.as_bytes()));
     bech32::encode::<bech32::Bech32>(
         bech32::Hrp::parse("terp").map_err(|err| err.to_string())?,
@@ -616,12 +616,12 @@ fn cold_address(secret: &[u8; 32]) -> Result<String, String> {
 
 fn sign_amino(secret: &[u8; 32], message: &[u8]) -> Result<(String, String), String> {
     let sk = k256::ecdsa::SigningKey::from_slice(secret).map_err(|err| err.to_string())?;
-    let pk = sk.verifying_key().to_encoded_point(true);
+    let pk = sk.verifying_key().to_sec1_point(true);
     let hash = sha2::Sha256::digest(message);
     let sig: k256::ecdsa::Signature = sk
         .sign_prehash(hash.as_slice())
         .map_err(|err| err.to_string())?;
-    let sig = sig.normalize_s().unwrap_or(sig);
+    let sig = sig.normalize_s();
     let pk_b64 =
         base64::Engine::encode(&base64::engine::general_purpose::STANDARD, pk.as_bytes());
     let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, sig.to_bytes());

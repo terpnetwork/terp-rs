@@ -109,8 +109,6 @@ mod tests {
     use cosmwasm_std::StdError;
     use cosmwasm_std::{Binary, testing::mock_dependencies};
 
-    use ecdsa::signature::rand_core::OsRng;
-
     use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
     // use serde::Deserialize;
     use sha2::Digest;
@@ -127,7 +125,8 @@ mod tests {
     #[test]
     fn test_example() -> Result<(), StdError> {
         // Signing
-        let secret_key: ecdsa::SigningKey<k256::Secp256k1> = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
+        let secret_key: ecdsa::SigningKey<k256::Secp256k1> =
+            SigningKey::from_slice(&[0x11u8; 32]).expect("test key");
         let public_key: ecdsa::VerifyingKey<k256::Secp256k1> = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
 
         let deps = mock_dependencies();
@@ -135,7 +134,7 @@ mod tests {
         // base64 encode address (this is the expected value in the data object of the adr036)
         let base64terpaddr = &Binary::new(terpaddr.as_bytes().to_vec()).to_base64();
         // this is the human readable address derived from the public key of the secret key
-        let hraddr = pubkey_to_address(public_key.to_encoded_point(false).as_bytes(), "cosmos")?;
+        let hraddr = pubkey_to_address(public_key.to_sec1_point(false).as_bytes(), "cosmos")?;
 
         // create adr036 msgs data to sign
         let adr036msgtohash = preamble_msg_arb_036(&hraddr.to_string(), base64terpaddr);
@@ -147,14 +146,14 @@ mod tests {
         // Note: the signature type must be annotated or otherwise inferable as
         // `Signer` has many impls of the `Signer` trait (for both regular and
         // recoverable signature types).
-        let signature: Signature = secret_key.sign_prehash_recoverable(&msg_hash).unwrap().0;
+        let (signature, _) = secret_key.sign_prehash_recoverable(&msg_hash);
 
         // Verification (uncompressed public key)
         assert!(
             cosmwasm_crypto::secp256k1_verify(
                 &msg_hash,
                 signature.to_bytes().as_slice(),
-                public_key.to_encoded_point(false).as_bytes()
+                public_key.to_sec1_point(false).as_bytes()
             )
             .unwrap()
         );
@@ -164,7 +163,7 @@ mod tests {
             cosmwasm_crypto::secp256k1_verify(
                 &msg_hash,
                 signature.to_bytes().as_slice(),
-                public_key.to_encoded_point(true).as_bytes()
+                public_key.to_sec1_point(true).as_bytes()
             )
             .unwrap()
         );
@@ -173,7 +172,7 @@ mod tests {
 
         // CosmosArbitrary Verification (compressed public key)
         CosmosArbitrary {
-            pubkey: Binary::from(public_key.to_encoded_point(false).as_bytes()),
+            pubkey: Binary::from(public_key.to_sec1_point(false).as_bytes()),
             signature: Binary::from(signature.to_bytes().as_slice()),
             message: Binary::from(terpaddr.as_bytes().to_vec()), // set the base64 of the address
             hrp: Some(hrp.to_string()),

@@ -15,7 +15,7 @@ fn signing_key() -> SigningKey {
 
 pub fn passkey_registration() -> PasskeyRegistration {
     let sk = signing_key();
-    let pk = sk.verifying_key().to_encoded_point(false);
+    let pk = sk.verifying_key().to_sec1_point(false);
     PasskeyRegistration {
         origin: PASSKEY_ORIGIN.into(),
         rp_id: PASSKEY_RP_ID.into(),
