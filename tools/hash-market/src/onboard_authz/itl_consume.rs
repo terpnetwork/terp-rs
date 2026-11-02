@@ -24,7 +24,7 @@ use halo2_proofs::{
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
-use rand::rng;
+use rand010::rng;
 use serde_json::{Value as Json, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;

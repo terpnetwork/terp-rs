@@ -38,11 +38,11 @@ layout.
 | `clap` | workspace | CLI argument parsing |
 | `anyhow` | workspace | Error propagation |
 | `log` / `env_logger` | workspace | Diagnostic output |
-| `serde_yaml` | workspace | gen-tools.yaml config loading |
+| `yaml_serde` | 0.10 | gen-tools.yaml config loading |
 | `glob` | workspace | Schema file discovery |
 | `chrono` | workspace | Timestamps in generated headers |
 
-All dependencies come from the workspace Cargo.toml in the terp-core root.
+Dependencies come from the workspace Cargo.toml, except `yaml_serde`, which is pinned in this crate.
 gen-tools does NOT import CosmWasm or Cosmos SDK crates directly — it works
 purely from serialized JSON schema files.
 

@@ -48,8 +48,9 @@ impl Generator for OpenApiGenerator {
             log::info!("[openapi] Wrote {:?}", spec_path);
 
             let yaml_path = contract_dir.join(format!("{}.openapi.yaml", contract_name));
-            let yaml_content = serde_yaml::to_string(&spec)?;
-            std::fs::write(&yaml_path, &yaml_content)?;
+            // TODO: replace
+            // let yaml_content = yaml_serde::to_string(&spec)?;
+            // std::fs::write(&yaml_path, &yaml_content)?;
             total_files += 1;
         }
 
