@@ -417,6 +417,7 @@ def main():
         else:
             TD = DENOM_RAW
         DENOM = derive_nd(TD)
+        token_strategy = {"existing_fungible": {"proof": h2b64(DENOM), "raw": TD}}
     R["token"].update({"nd_hex": DENOM})
     if TD == "uterp" and TOKEN == "existing":
         step("uterp_nd_matches_rendered", DENOM == b.DENOM, DENOM)

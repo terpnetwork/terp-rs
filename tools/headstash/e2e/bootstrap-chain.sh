@@ -4,6 +4,9 @@
 # script prints addresses only. The custody seed is created by path and only
 # the lane process reads it.
 #   RESET=1 bootstrap-chain.sh   -> wipe and re-init the home
+#   NO_LANE=1 -> no headstash-lane: v1 direct claims (vk_id 3) never touch it. The genesis oracle gets a
+#                placeholder custody pubkey (the ed25519 base point) and the sidecar URL points at nothing.
+#   LANE_UP_TIMEOUT=N -> seconds to wait for lane_up (default 300)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TERPD="${TERPD:-/tmp/terpd-b2339a9c-build/terpd}"
@@ -57,8 +60,12 @@ if [ ! -f "$CHAIN_HOME/config/genesis.json" ]; then
   # custody seed + lane operator key: written by path, never printed or read here
   python3 -c 'import os,sys; open(sys.argv[1],"wb").write(os.urandom(32)); os.chmod(sys.argv[1],0o600)' "$CHAIN_HOME/custody.seed"
   python3 -c 'import os,sys; open(sys.argv[1],"wb").write(os.urandom(32)); os.chmod(sys.argv[1],0o600)' "$CHAIN_HOME/operator.key"
-  start_lane
-  CUSTODY_PUB_HEX="$(cat "$(cat "$CHAIN_HOME/lane.data")/custody.pub")"
+  if [ "${NO_LANE:-0}" = 1 ]; then
+    CUSTODY_PUB_HEX="5866666666666666666666666666666666666666666666666666666666666666"
+  else
+    start_lane
+    CUSTODY_PUB_HEX="$(cat "$(cat "$CHAIN_HOME/lane.data")/custody.pub")"
+  fi
   python3 "$HERE/patch_genesis.py" "$CHAIN_HOME" "$CUSTODY_PUB_HEX" "http://$LANE_BIND"
   "$TERPD" genesis validate --home "$CHAIN_HOME" >>"$CHAIN_HOME/init.log" 2>&1
   # browser e2e: the page (served from 127.0.0.1:3921) reads REST directly; loopback-only test chain
@@ -74,7 +81,7 @@ if ! curl -fsS --max-time 2 "$RPC/status" >/dev/null 2>&1; then
     --log_level "*:info,x/hashmerchant:debug" >>"$CHAIN_HOME/terpd.log" 2>&1 &
   echo $! >"$CHAIN_HOME/terpd.pid"
 fi
-curl -fsS --max-time 2 "http://$LANE_BIND/ve/health" >/dev/null 2>&1 || start_lane
+[ "${NO_LANE:-0}" = 1 ] || curl -fsS --max-time 2 "http://$LANE_BIND/ve/health" >/dev/null 2>&1 || start_lane
 for _ in $(seq 1 90); do
   h=$(curl -fsS --max-time 2 "$RPC/status" 2>/dev/null | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["sync_info"]["latest_block_height"])' 2>/dev/null || echo 0)
   [ "$h" -ge 3 ] && break; sleep 1
