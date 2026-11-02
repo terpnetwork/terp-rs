@@ -30,3 +30,10 @@ scripts-ibc-offline: scripts-ibc-unit
 # Validate public/ against the hard invariants. Exits non-zero on error findings.
 scripts-ibc-validate:
     {{ibc}} validate --format json
+
+# Predetermined ICS-20 denoms for shitstrap accepted lists (explicit multi-hop
+# paths in public/ibc-accepted/routes.toml). Regenerates the JSON, then the
+# golden test asserts Rust and Python agree.
+scripts-ibc-accepted:
+    python3 scripts/gen/ibc/derive_accepted_denoms.py public/ibc-accepted/routes.toml public/ibc-accepted/accepted-denoms.json
+    cargo test -p terp-scripts --lib ibc::accepted --test ibc_unit accepted_denoms

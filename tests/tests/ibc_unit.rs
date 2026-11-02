@@ -265,3 +265,15 @@ fn state_json_one_hop_denoms_match_hash() {
     }
     walk(morocco);
 }
+
+#[test]
+fn accepted_denoms_golden_matches_routes_toml() {
+    use terp_scripts::ibc::accepted::{build_accepted_denoms, self_test};
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../public/ibc-accepted");
+    let n = self_test().expect("ICS-20 self-test vectors");
+    let toml_s = std::fs::read_to_string(root.join("routes.toml")).unwrap();
+    let built = build_accepted_denoms(&toml_s, n).unwrap();
+    let golden: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("accepted-denoms.json")).unwrap()).unwrap();
+    assert_eq!(built, golden, "regenerate with `just scripts-ibc-accepted`");
+}
