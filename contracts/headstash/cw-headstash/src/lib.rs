@@ -322,6 +322,7 @@ fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(
             | ExecuteMsg::RegisterHeadstash { .. }
             | ExecuteMsg::RegisterHeadstashSol { .. }
             | ExecuteMsg::RegisterNotes { .. }
+            | ExecuteMsg::AcceptAnchor { .. }
     ) {
         pause::ensure_not_paused(storage)?;
     }
@@ -354,25 +355,31 @@ pub fn execute(
         m @ (ExecuteMsg::Pause {} | ExecuteMsg::Resume {} | ExecuteMsg::UpdatePauser { .. }) => {
             opaque::<fn(_, _, _, _) -> _>(pause_dispatch)(deps, env, info, m)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::ProcessHeadstash { claims } => {
             opaque::<fn(_, _, _) -> _>(crate::headstash::process_headstash)(deps, env, claims)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::SetCircuitId { circuit_id } => {
             opaque::<fn(_, _, _) -> _>(crate::headstash::set_circuit_id)(deps, info, circuit_id)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::RegisterEligibilityRoot {
             root,
             domain,
             label,
         } => opaque::<fn(_, _, _, _, _) -> _>(crate::headstash::register_eligibility_root)(deps, info, root, domain, label),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::Mint { to_address, amount } => {
             opaque::<fn(_, _, _, _, _) -> _>(execute_mint)(deps, env, info, to_address, amount)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::Burn {
             from_address,
             amount,
         } => opaque::<fn(_, _, _, _, _) -> _>(execute_burn)(deps, env, info, from_address, amount),
         // Private-bridge mint router (CLARITY: cw-headstash is the mint)
+        #[cfg(feature = "legacy")]
         ExecuteMsg::UpdateReflection {
             pool_root,
             spent_root,
@@ -388,29 +395,37 @@ pub fn execute(
             source_height,
             tip_height,
         ),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::SetReflectionSnapshot { snapshot } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_reflection_snapshot)(deps, info, snapshot)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::RegisterAsset {
             asset_id,
             local_denom,
             origin,
             status,
         } => opaque::<fn(_, _, _, _, _, _) -> _>(bridge::execute_register_asset)(deps, info, asset_id, local_denom, origin, status),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::SetExternalAssetRegistry { addr } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_external_asset_registry)(deps, info, addr)
         }
         ExecuteMsg::SetFrontendContract { addr } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_frontend_contract)(deps, info, addr)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::BridgeMintNote { claim, proof } => {
             opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, claim, proof)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
             opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, statement, proof)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::SetDenomTable { amounts } => opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
             opaque::<fn(_, _, _) -> _>(epoch::assign_public_notes)(deps, info, nullifiers)
         }
@@ -425,15 +440,18 @@ pub fn execute(
                 .map_err(|e| StdError::msg(e.to_string()))?;
             Ok(Response::new().add_attributes(o.into_attributes()))
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::StageEpochBatch { digests, rows } => {
             opaque::<fn(_, _, _, _, _) -> _>(epoch::stage_batch)(deps, &env, info, digests, rows)
         }
+        #[cfg(feature = "legacy")]
         ExecuteMsg::ApplyAcceptedBatch {
             allocation_root,
             root_id,
             rows,
             vk_hash,
         } => opaque::<fn(_, _, _, _, _, _) -> _>(epoch::apply_accepted_batch)(deps, env, allocation_root, root_id, rows, vk_hash),
+        #[cfg(feature = "legacy")]
         ExecuteMsg::ApplyPublicBatch { rows } => opaque::<fn(_, _, _) -> _>(epoch::apply_public_batch)(deps, env, rows),
         ExecuteMsg::RegisterHeadstash {
             key_com,
@@ -508,8 +526,14 @@ pub fn execute(
             let campaign = epoch::query_campaign(deps.storage)?;
             opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
         }
+        // v0.0.1 mainnet surface: legacy/bridge/epoch-batch paths are compiled out.
+        #[cfg(not(feature = "legacy"))]
+        _ => Err(StdError::msg(DISABLED_IN_BUILD)),
     }
 }
+
+/// Error for every ExecuteMsg variant compiled out of the v0.0.1 build.
+pub const DISABLED_IN_BUILD: &str = "disabled in this build (v0.0.1)";
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
@@ -519,7 +543,15 @@ pub fn sudo(
 ) -> Result<Response, StdError> {
     reclaim::ensure_live(deps.storage)?;
     pause::ensure_not_paused(deps.storage)?;
-    epoch::sudo(deps, &env, msg)
+    #[cfg(feature = "legacy")]
+    {
+        epoch::sudo(deps, &env, msg)
+    }
+    #[cfg(not(feature = "legacy"))]
+    {
+        let _ = (deps, env, msg);
+        Err(StdError::msg(DISABLED_IN_BUILD))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
@@ -1270,6 +1302,7 @@ mod instantiate_tests {
         assert!(err.to_string().contains("empty"));
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn register_second_root_additive_owner() {
         let mut deps = mock_dependencies();
@@ -1324,6 +1357,7 @@ mod instantiate_tests {
         assert_eq!(e1.domain, DistroHashDomain::PoseidonV1);
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn set_circuit_id_and_claim_mock_verify_owner() {
         let mut deps = mock_dependencies();

@@ -1331,6 +1331,7 @@ mod tests {
         (deps, env, root)
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn accepted_batch_pays_once_and_blocks_the_insanity() {
         let (mut deps, env, root) = setup();
@@ -1432,6 +1433,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn public_path_and_private_batch_cannot_pay_the_same_note() {
         let (mut deps, env, root) = setup();
@@ -1547,6 +1549,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn wrong_chain_and_a_bad_opening_are_rejected() {
         let (mut deps, env, _) = setup();
@@ -1616,6 +1619,7 @@ mod tests {
         assert_eq!(map[&key], 30);
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn halo2_vk_is_immutable_and_zero_is_refused() {
         let (mut deps, env, root) = setup();
@@ -1850,6 +1854,7 @@ mod tests {
     }
 
     /// F1: a campaign stored under vk_id 2 (pre-N1 state) pays nothing on any path.
+    #[cfg(feature = "legacy")]
     #[test]
     fn f1_stored_vk2_campaign_moves_no_funds() {
         let (mut deps, env, root) = setup();
@@ -1945,6 +1950,7 @@ mod tests {
         assert!(EPOCH_PAID.may_load(deps.as_ref().storage).unwrap() != Some(true));
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn stage_after_the_attested_sudo_pays_with_the_saved_vk() {
         let (mut deps, env, root) = setup();
@@ -2125,6 +2131,7 @@ mod tests {
         assert_ne!(pending_root_sorted(&[hi, lo]), pending_root(&[hi, lo]));
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn accepted_sudo_pays_the_staged_batch_only_at_the_cutoff() {
         let (mut deps, env, root) = setup();
@@ -2287,6 +2294,7 @@ mod tests {
         assert!(restage.unwrap_err().to_string().contains("already paid"));
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn stage_rejects_a_full_class_a_reserved_note_and_a_bad_denom() {
         let (mut deps, env, root) = setup();
@@ -2351,6 +2359,7 @@ mod tests {
         assert!(denied.is_err());
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn accepted_sudo_pays_an_amount_above_u32_max() {
         let wide = u64::from(u32::MAX) + 9;
@@ -2628,6 +2637,7 @@ mod tests {
         assert_eq!(uterp_of(&app, &contract), Uint256::from(1_000_000u128));
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn sweep_sends_unclaimed_uterp_to_the_configured_recipient() {
         let (mut app, owner, contract, _treasury) = escrow_app(19, 20, true);

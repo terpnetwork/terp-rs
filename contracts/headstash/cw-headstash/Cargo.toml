@@ -9,6 +9,9 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 library = []
+# Pre-v1 paths (ProcessHeadstash, bridge, epoch batches, Mint/Burn, sudo settlement).
+# OFF for the v0.0.1 mainnet build; tests only.
+legacy = []
 interface = ["dep:cw-orch"]
 zk-api = ["cosmwasm-std/zk"]
 

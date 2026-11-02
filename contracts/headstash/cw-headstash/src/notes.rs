@@ -1580,8 +1580,8 @@ mod tests {
             dest: "terp1w1".into(), root: root.clone(), nullifier: Binary::from(n), amount: DENOMS_UTERP[0], proof: Binary::from(proof),
         });
         assert!(q.unwrap_err().to_string().contains("paused"));
-        // anchors still accepted while paused
-        run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).ok();
+        // v0.0.1: anchors are paused too (spec Appendix P / V)
+        assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("paused"));
         let r = as_(&mut deps, &env, "dao", ExecuteMsg::Resume {}).unwrap();
         assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "resume"));
         assert!(!pstatus(&deps).paused);
@@ -1650,5 +1650,97 @@ mod tests {
         assert!(st.pauser.is_none() && !st.paused);
         let j = serde_json::json!({"genesis_root": "AAAA", "token_strategy": {"existing_fungible": {"denom": "uterp"}}});
         let _ = serde_json::from_value::<InstantiateMsg>(j); // pauser omitted still parses (serde default)
+    }
+
+    // ---- v0.0.1 surface (legacy feature OFF): removed variants and pause coverage ----
+
+    fn snap(deps: &TDeps) -> Vec<(Vec<u8>, Vec<u8>)> {
+        use cosmwasm_std::Storage;
+        deps.storage.range(None, None, cosmwasm_std::Order::Ascending).collect()
+    }
+
+    fn removed_variants() -> Vec<(&'static str, serde_json::Value)> {
+        use serde_json::json;
+        let b = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        vec![
+            ("process_headstash", json!({"process_headstash": {"claims": []}})),
+            ("set_circuit_id", json!({"set_circuit_id": {"circuit_id": 3}})),
+            ("register_eligibility_root", json!({"register_eligibility_root": {"root": b}})),
+            ("mint", json!({"mint": {"to_address": "terp1x", "amount": "1"}})),
+            ("burn", json!({"burn": {"from_address": "terp1x", "amount": "1"}})),
+            ("update_reflection", json!({"update_reflection": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9}})),
+            ("set_reflection_snapshot", json!({"set_reflection_snapshot": {"snapshot": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9, "confirmations_k": 6, "max_lc_lag": 64, "frozen": false}}})),
+            ("register_asset", json!({"register_asset": {"asset_id": b, "local_denom": "uterp"}})),
+            ("set_external_asset_registry", json!({"set_external_asset_registry": {"addr": null}})),
+            ("set_bridge_cfg", json!({"set_bridge_cfg": {"cfg": {"dest_domain": b, "confirmations_k": 6, "max_lc_lag": 64, "lc_client_id": "x", "mock_verify": true}}})),
+            ("bridge_mint_note", json!({"bridge_mint_note": {"proof": "", "claim": {"source_chain_tag": "x", "tacit_asset_id": b, "value_u64": 1, "nullifier": b, "dest_commitment": b, "dest_domain": b, "claim_id": b, "source_pool_root": b, "source_burn_root": b, "source_height": 1, "domain_binding": b, "unit_scale": 1, "pool_domain": b, "cm_public": b, "in_burn_set": true, "in_pool_root": true, "src_chain_id": b, "dst_chain_id": b, "lc_client_id": b, "burn_dest_commitment": b}}})),
+            ("bridge_egress_burn", json!({"bridge_egress_burn": {"proof": "", "statement": {"asset_id": b, "value": 1, "cm_spent": b, "nullifier": b, "dest_commitment": b, "dest_kind": "transparent", "root": b, "rcm": b, "owner_binding": b}}})),
+            ("set_denom_table", json!({"set_denom_table": {"amounts": [1]}})),
+            ("assign_public_notes", json!({"assign_public_notes": {"nullifiers": [b]}})),
+            ("stage_epoch_batch", json!({"stage_epoch_batch": {"digests": [], "rows": []}})),
+            ("apply_accepted_batch", json!({"apply_accepted_batch": {"allocation_root": b, "root_id": 0, "rows": []}})),
+            ("apply_public_batch", json!({"apply_public_batch": {"rows": []}})),
+        ]
+    }
+
+    #[cfg(not(feature = "legacy"))]
+    #[test]
+    fn v001_removed_variants_error_and_move_no_funds() {
+        let (mut deps, env, _, _) = reclaim_fixture();
+        let before = snap(&deps);
+        let list = removed_variants();
+        assert_eq!(list.len(), 17);
+        for (name, j) in list {
+            let m: ExecuteMsg = serde_json::from_value(j).unwrap_or_else(|e| panic!("{name}: {e}"));
+            // as the owner (gov) and as a stranger, with funds attached
+            for who in ["creator", "relayer"] {
+                let s = deps.api.addr_make(who);
+                let r = execute(deps.as_mut(), env.clone(), message_info(&s, &[Coin::new(5u128, "uterp")]), m.clone());
+                assert!(err(r).contains(crate::DISABLED_IN_BUILD), "{name} as {who}");
+            }
+        }
+        // sudo settlement is compiled out too
+        let s = crate::sudo(deps.as_mut(), env.clone(), crate::epoch::HashMerchantSudoMsg {
+            hash_merchant: crate::epoch::HashMerchantSudoPayload {
+                chain_uid: "x".into(), algo: "accepted".into(), height: 1, root: "AA==".into(),
+                attestation_count: 2, block_time: 1, oracle_sources: vec![],
+            },
+        });
+        assert!(err(s).contains(crate::DISABLED_IN_BUILD));
+        assert_eq!(snap(&deps), before, "no state (and so no funds) changed");
+        assert_eq!(crate::direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
+    }
+
+    #[test]
+    fn v001_pause_covers_every_fund_or_registration_entry_point() {
+        use serde_json::json;
+        let (mut deps, env, _, _) = pause_fixture();
+        as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
+        let before = snap(&deps);
+        let b = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        let gated = vec![
+            json!({"claim_note": {"root": b, "nullifier": b, "amount": 1, "proof": ""}}),
+            json!({"register_headstash": {"key_com": b, "amount": 1, "signature": b, "eligibility_index": 0, "eligibility_path": []}}),
+            json!({"register_headstash_sol": {"key_com": b, "amount": 1, "pubkey": b, "signature": b, "eligibility_index": 0, "eligibility_path": []}}),
+            json!({"accept_anchor": {}}),
+        ];
+        for j in gated {
+            let m: ExecuteMsg = serde_json::from_value(j.clone()).unwrap();
+            for who in ["creator", "relayer", "dao"] {
+                assert!(err(as_(&mut deps, &env, who, m.clone())).contains(crate::pause::PAUSED_ERR), "{j} as {who}");
+            }
+        }
+        // RegisterNotes is refused with a real signed chunk in pause_2.
+        assert_eq!(snap(&deps), before);
+        // not gated: gov config, reclaim/sweep (pause_5/6), pause controls
+        let c = as_(&mut deps, &env, "creator", ExecuteMsg::SetFrontendContract { addr: None });
+        assert!(c.is_ok(), "{c:?}");
+        let c = as_(&mut deps, &env, "creator", ExecuteMsg::BindNoteCircuit { zk_id: 3 });
+        if let Err(e) = c { assert!(!e.to_string().contains("paused"), "{e}"); }
+        as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
+        // after resume, anchors roll again (no leaves yet: either ok or a non-pause error)
+        if let Err(e) = as_(&mut deps, &env, "relayer", ExecuteMsg::AcceptAnchor {}) {
+            assert!(!e.to_string().contains("paused"), "{e}");
+        }
     }
 }

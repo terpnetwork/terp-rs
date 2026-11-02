@@ -1273,6 +1273,7 @@ mod tests {
         assert_eq!(NEXT_ANCHOR.load(deps.as_ref().storage).unwrap(), next);
     }
 
+    #[cfg(feature = "legacy")]
     #[test]
     fn older_anchor_pays_and_a_later_root_rejects_the_nullifier() {
         let ctx = pallas::Base::from(3u64).to_repr();

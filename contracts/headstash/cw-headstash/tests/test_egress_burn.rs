@@ -1,3 +1,5 @@
+// Legacy bridge path: compiled out of the v0.0.1 build (run with --features legacy).
+#![cfg(feature = "legacy")]
 //! Multitest e2e for Option D `BridgeEgressBurn` on `cw-headstash`.
 //!
 //! Exercises the real execute/query path via `cw-multi-test` ContractWrapper:

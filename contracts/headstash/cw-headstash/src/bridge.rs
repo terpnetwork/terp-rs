@@ -565,27 +565,6 @@ pub fn authorize_bridge_mint_pure(
 // Execute handlers
 // ---------------------------------------------------------------------------
 
-/// Ensure bridge corridor config exists (lazy default for tests / gradual rollout).
-pub fn ensure_bridge_cfg(
-    storage: &mut dyn Storage,
-    dest_domain: Binary,
-    mock_verify: bool,
-) -> StdResult<BridgeCfg> {
-    if let Some(c) = BRIDGE_CFG.may_load(storage)? {
-        return Ok(c);
-    }
-    let c = BridgeCfg {
-        dest_domain,
-        confirmations_k: DEFAULT_CONFIRMATIONS_K,
-        max_lc_lag: DEFAULT_MAX_LC_LAG,
-        lc_client_id: "08-wasm-tacit-reflection-0".into(),
-        mock_verify,
-        egress_zkid: None,
-    };
-    BRIDGE_CFG.save(storage, &c)?;
-    Ok(c)
-}
-
 pub fn execute_update_reflection(
     deps: DepsMut,
     info: MessageInfo,
