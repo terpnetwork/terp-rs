@@ -1343,7 +1343,11 @@
       "drop:interchain-logos-dao": "terp1tf2jp6qll2x936s2g9f0h7m63dyua7827wcezsc6gsfwgq550n6ss9dtcu",
       "drop:interchain-logos-eth": "terp1a9rkeulfskj7arn8qagvu2ykkp4l664n5zj2jxwm6vfqwudnk7kqht5lnx",
       "drop:interchain-logos-monero": "terp1nphx5lmx4az8ptra2c6n04csa5u3ugcp3stcvq0n5ayw8xupyg7svlgc4t",
-      "drop:interchain-logos-zec": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er"
+      "drop:interchain-logos-zec": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er",
+      "drop:latent-benders-2026-10-28": "terp13acw7eezjqnv2zru428lgg3dfx5l88lw6st5aemljvnu85c3xqqswlqpud",
+      "drop:latent-benders-2026-10-29": "terp16prlc0v4vtu58djdypvmjsfnx4y2e3g2gjnw2m65qrun4sayufxqrn9j93",
+      "drop:latent-benders-2026-10-30": "terp1y2nfyahzl55tf8jkzz5refqlkhmnflvr8adhk6pch77jrkr6accshgr0wp",
+      "drop:latent-benders-2026-10-31": "terp1cy8jtf0uyz899q5hlh3g2tne4uwctqzhahk7qpyrehw8gtlna0ms4aewjg"
     },
     "ibc_data": {
       "akash": {
