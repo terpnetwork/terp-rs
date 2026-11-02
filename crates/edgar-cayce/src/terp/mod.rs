@@ -3,9 +3,11 @@
 
 pub mod bounty;
 pub mod chain_watch;
+pub mod ibc_hook;
 pub mod dao;
 pub mod digest;
 pub mod gov;
+pub mod news;
 pub mod node;
 pub mod profile;
 pub mod query;

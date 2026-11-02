@@ -88,6 +88,9 @@ async fn dao_watch_loop(http: std::sync::Arc<serenity::Http>, rest: String, chan
                     if post_watch(&http, dest, &text, &[]).await.is_none() {
                         break;
                     }
+                    if let Err(e) = terp::news::append_line(std::path::Path::new("./data/desk-dao.log"), &text) {
+                        tracing::warn!("desk dao log failed: {e:#}");
+                    }
                 }
             }
             Err(e) => tracing::warn!("dao watch poll failed: {e:#}"),
@@ -153,7 +156,8 @@ async fn chain_watch_loop(
                         });
                     }
                     if note.kind == terp::chain_watch::NoteKind::Stake {
-                        match morning_clip(&note.text) {
+                        let speech = note.speech.as_deref().unwrap_or(note.text.as_str());
+                        match morning_clip(speech) {
                             Ok(body) => files.push(PostedFile {
                                 name: "morning.mp4".into(),
                                 body,
@@ -216,7 +220,70 @@ fn orb_script() -> Option<std::path::PathBuf> {
 }
 
 /// Render the morning board to an MP4. A missing tool posts the text board alone.
+///
+/// `EDGAR_MEDIA_SSH` sends the spoken text to the groot-wan forced command
+/// and reads the mp4 back. Unset, the clip is rendered on this machine.
 fn morning_clip(speech: &str) -> anyhow::Result<Vec<u8>> {
+    if let Some(host) = std::env::var("EDGAR_MEDIA_SSH")
+        .ok()
+        .as_deref()
+        .and_then(terp::news::media_ssh_host)
+    {
+        return morning_clip_remote(host, speech);
+    }
+    morning_clip_local(speech)
+}
+
+fn morning_clip_remote(host: &str, speech: &str) -> anyhow::Result<Vec<u8>> {
+    let key = std::env::var("EDGAR_MEDIA_KEY").unwrap_or_else(|_| "/opt/terp-bot/media_ed25519".into());
+    let known = std::env::var("EDGAR_MEDIA_KNOWN_HOSTS")
+        .unwrap_or_else(|_| "/opt/terp-bot/media_known_hosts".into());
+    let mut child = std::process::Command::new("ssh")
+        .arg("-i")
+        .arg(&key)
+        .arg("-o")
+        .arg("BatchMode=yes")
+        .arg("-o")
+        .arg("IdentitiesOnly=yes")
+        .arg("-o")
+        .arg("StrictHostKeyChecking=yes")
+        .arg("-o")
+        .arg(format!("UserKnownHostsFile={known}"))
+        .arg("-o")
+        .arg("ConnectTimeout=10")
+        .arg("-o")
+        .arg("ProxyCommand=none")
+        .arg("-o")
+        .arg("ServerAliveInterval=15")
+        .arg(host)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()?;
+    {
+        use std::io::Write;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("media ssh stdin closed"))?;
+        let speech = speech.chars().take(1900).collect::<String>();
+        stdin.write_all(speech.as_bytes())?;
+    }
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "media host failed: {}",
+            err.chars().take(300).collect::<String>()
+        ));
+    }
+    if output.stdout.is_empty() || output.stdout.len() > 8 * 1024 * 1024 {
+        return Err(anyhow::anyhow!("media host returned {} bytes", output.stdout.len()));
+    }
+    Ok(output.stdout)
+}
+
+fn morning_clip_local(speech: &str) -> anyhow::Result<Vec<u8>> {
     let script = orb_script().ok_or_else(|| anyhow::anyhow!("morning_orb.py not found"))?;
     let out = std::env::temp_dir().join(format!(
         "edgar-morning-{}.mp4",
@@ -336,6 +403,157 @@ fn discord_http(token: &str) -> anyhow::Result<serenity::Http> {
 /// tracking (offline episodes, escalation, slashing ETA, recovery), and
 /// posts automated messages to the alert channel. This is the internal
 /// Hermes-style watchdog: push, not slash commands.
+async fn ibc_hook_loop(
+    http: std::sync::Arc<serenity::Http>,
+    bind: String,
+    channel: u64,
+    token: Option<String>,
+) {
+    use tokio::io::AsyncWriteExt;
+    use tokio::net::TcpListener;
+
+    let listener = match TcpListener::bind(&bind).await {
+        Ok(listener) => listener,
+        Err(e) => {
+            tracing::warn!("ibc-monitor hook bind {bind} failed: {e}");
+            return;
+        }
+    };
+    info!(%bind, channel, "ibc-monitor hook listening");
+    let memory = std::sync::Arc::new(tokio::sync::Mutex::new(
+        std::collections::HashMap::<String, terp::ibc_hook::HookMemory>::new(),
+    ));
+    let channel_id = serenity::ChannelId::new(channel);
+    loop {
+        let Ok((mut sock, _)) = listener.accept().await else {
+            continue;
+        };
+        let http = http.clone();
+        let token = token.clone();
+        let memory = memory.clone();
+        tokio::spawn(async move {
+            let reply = match read_hook(&mut sock, token.as_deref()).await {
+                HookRead::Deny => b"HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".as_slice(),
+                HookRead::Ignore => b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n".as_slice(),
+                HookRead::Bad => b"HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".as_slice(),
+                HookRead::Alert(alert) => {
+                    let forward = {
+                        let mut mem = memory.lock().await;
+                        let prev = mem.get(&alert.key).cloned();
+                        let yes = terp::ibc_hook::should_forward(prev.as_ref(), &alert.label, alert.hours);
+                        if yes {
+                            mem.insert(
+                                alert.key.clone(),
+                                terp::ibc_hook::HookMemory {
+                                    label: alert.label.clone(),
+                                    hours: alert.hours,
+                                },
+                            );
+                        }
+                        yes
+                    };
+                    if forward {
+                        if let Err(e) = channel_id.say(&http, &alert.message).await {
+                            tracing::warn!("ibc hook post failed: {e}");
+                        }
+                    }
+                    b"HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n".as_slice()
+                }
+            };
+            let _ = sock.write_all(reply).await;
+        });
+    }
+}
+
+enum HookRead {
+    Alert(terp::ibc_hook::HookAlert),
+    Ignore,
+    Deny,
+    Bad,
+}
+
+async fn read_hook(sock: &mut tokio::net::TcpStream, token: Option<&str>) -> HookRead {
+    use tokio::io::AsyncReadExt;
+    use tokio::time::{timeout, Duration, Instant};
+
+    let mut buf = Vec::new();
+    let mut tmp = [0u8; 2048];
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+            break;
+        }
+        if buf.len() > 16_384 {
+            return HookRead::Bad;
+        }
+        let n = match timeout(deadline.saturating_duration_since(Instant::now()), sock.read(&mut tmp)).await {
+            Ok(Ok(0)) | Err(_) => return HookRead::Bad,
+            Ok(Ok(n)) => n,
+            Ok(Err(_)) => return HookRead::Bad,
+        };
+        buf.extend_from_slice(&tmp[..n]);
+    }
+    let header_end = match buf.windows(4).position(|w| w == b"\r\n\r\n") {
+        Some(i) => i + 4,
+        None => return HookRead::Bad,
+    };
+    let head = String::from_utf8_lossy(&buf[..header_end]).to_string();
+    let mut lines = head.split("\r\n");
+    let Some(req) = lines.next() else {
+        return HookRead::Bad;
+    };
+    if !req.starts_with("POST ") {
+        return HookRead::Ignore;
+    }
+    let mut headers = Vec::new();
+    for line in lines {
+        if line.is_empty() {
+            break;
+        }
+        if let Some((k, v)) = line.split_once(':') {
+            headers.push((k.trim().to_ascii_lowercase(), v.trim().to_string()));
+        }
+    }
+    if let Some(expect) = token {
+        let bearer = headers
+            .iter()
+            .find(|(k, _)| k == "authorization")
+            .and_then(|(_, v)| v.strip_prefix("Bearer "))
+            .is_some_and(|got| got == expect);
+        let header = headers
+            .iter()
+            .any(|(k, v)| k == "x-ibc-hook-token" && v == expect);
+        if !bearer && !header {
+            return HookRead::Deny;
+        }
+    }
+    let len = headers
+        .iter()
+        .find(|(k, _)| k == "content-length")
+        .and_then(|(_, v)| v.parse::<usize>().ok())
+        .unwrap_or(0);
+    if len > 65_536 {
+        return HookRead::Bad;
+    }
+    let mut body = buf[header_end..].to_vec();
+    while body.len() < len {
+        let n = match timeout(deadline.saturating_duration_since(Instant::now()), sock.read(&mut tmp)).await {
+            Ok(Ok(0)) | Err(_) => break,
+            Ok(Ok(n)) => n,
+            Ok(Err(_)) => return HookRead::Bad,
+        };
+        body.extend_from_slice(&tmp[..n]);
+    }
+    body.truncate(len);
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&body) else {
+        return HookRead::Bad;
+    };
+    match terp::ibc_hook::parse_hook(&value) {
+        Some(alert) => HookRead::Alert(alert),
+        None => HookRead::Ignore,
+    }
+}
+
 async fn validator_monitor_loop(http: std::sync::Arc<serenity::Http>, rest: String, channel: u64) {
     let poll_secs: u64 = std::env::var("VALIDATOR_POLL_SECS")
         .ok()
@@ -359,6 +577,7 @@ async fn validator_monitor_loop(http: std::sync::Arc<serenity::Http>, rest: Stri
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
     let mut monitor = terp::validator::Monitor::new(remind_secs);
+    let mut join_logged = false;
     let channel_id = serenity::ChannelId::new(channel);
     info!(poll_secs, channel, "validator monitor started");
     loop {
@@ -370,12 +589,33 @@ async fn validator_monitor_loop(http: std::sync::Arc<serenity::Http>, rest: Stri
         };
         match terp::validator::fetch_all(&client, &chain).await {
             Ok(set) => {
+                let attributed = set.iter().filter(|s| s.attributed).count();
+                if attributed != set.len() || !join_logged {
+                    info!(attributed, bonded = set.len(), "validator signing join");
+                    join_logged = attributed == set.len();
+                }
                 terp::validator::write_closest_line(
                     std::path::Path::new("./data/closest-jail.txt"),
                     &set,
                     allowed,
                 );
+                let latest = set.iter().map(|s| s.height).max().unwrap_or(0);
+                let heights = monitor.heights_since(latest);
+                let mut slashes = Vec::new();
+                for height in heights {
+                    match terp::validator::fetch_block_results(&client, &chain.rest, height).await {
+                        Ok(body) => slashes.extend(terp::validator::parse_slash_events(height, &body)),
+                        Err(e) => tracing::warn!(height, "slash scan failed: {e:#}"),
+                    }
+                }
                 let now = chrono::Utc::now().timestamp();
+                for alert in monitor.note_slashes("terp", &set, &slashes) {
+                    info!(kind = alert.kind, valoper = %alert.valoper, "validator alert");
+                    if let Err(e) = channel_id.say(&http, &alert.message).await {
+                        tracing::warn!("validator alert post failed: {e}");
+                        break;
+                    }
+                }
                 for alert in monitor.poll("terp", &set, now, allowed) {
                     if alert.critical {
                         info!(kind = alert.kind, valoper = %alert.valoper, "validator alert");
@@ -587,6 +827,22 @@ async fn main() -> anyhow::Result<()> {
                 // not slash commands. Needs TERP_NODE_REST + alert channel.
                 let http = ctx.http.clone();
                 tokio::spawn(async move {
+                    let bind = std::env::var("IBC_HOOK_BIND").ok().filter(|s| !s.is_empty());
+                    let chan: u64 = std::env::var("IBC_ALERT_CHANNEL_ID")
+                        .ok()
+                        .or_else(|| std::env::var("ACTIVITY_CHANNEL_ID").ok())
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0);
+                    let token = std::env::var("IBC_HOOK_TOKEN").ok().filter(|s| !s.is_empty());
+                    match (bind, chan) {
+                        (Some(bind), c) if c != 0 => ibc_hook_loop(http, bind, c, token).await,
+                        _ => info!(
+                            "ibc-monitor hook off (need IBC_HOOK_BIND + IBC_ALERT_CHANNEL_ID or ACTIVITY_CHANNEL_ID)"
+                        ),
+                    }
+                });
+                let http = ctx.http.clone();
+                tokio::spawn(async move {
                     let rest = terp::node::base_url();
                     let chan: u64 = std::env::var("VALIDATOR_ALERT_CHANNEL_ID")
                         .ok()
@@ -604,13 +860,14 @@ async fn main() -> anyhow::Result<()> {
                     let rest = terp::node::base_url();
                     let chan: u64 = std::env::var("DAO_NOTIFY_CHANNEL_ID")
                         .ok()
+                        .or_else(|| std::env::var("GOV_ALERT_CHANNEL_ID").ok())
                         .and_then(|s| s.parse().ok())
                         .unwrap_or(0);
                     let configured = !terp::dao::configured_daos().is_empty();
                     match (rest, chan, configured) {
                         (Some(rest), c, true) if c != 0 => dao_watch_loop(http, rest, c).await,
                         _ => info!(
-                            "dao watch off (need TERP_NODE_REST + DAO_NOTIFY_CHANNEL_ID + DAO_CONTRACT or DAO_ALLOWLIST)"
+                            "dao watch off (need TERP_NODE_REST and DAO_NOTIFY_CHANNEL_ID or GOV_ALERT_CHANNEL_ID)"
                         ),
                     }
                 });

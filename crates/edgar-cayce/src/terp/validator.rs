@@ -4,16 +4,20 @@
 //! cogs, extended the way validator-team bots do it):
 //! - A background task polls the full bonded set + signing infos on an
 //!   interval and posts **automated messages** to an alert channel. There is
-//!   deliberately no per-validator slash query anymore — monitoring is push,
-//!   `/validator list` is the read model.
+//!   Slash, jail, and unjail are their own posts on the poll that sees
+//!   the edge. `/validator list` stays the read model.
 //! - Missed blocks are attributed exactly: ed25519 consensus pubkey →
-//!   `RIPEMD160(SHA256(pubkey))` → bech32 `{prefix}valcons` → signing-info
-//!   lookup. (The old code scanned signing infos without joining them and
-//!   always reported 0.)
-//! - Offline tracking: first-seen timestamp, escalating warnings, slashing
-//!   ETA from chain slashing params, and back-online/recovering notices.
+//!   the first 20 bytes of `SHA256(pubkey)` → bech32 `{prefix}valcons` →
+//!   signing-info lookup. That is the Tendermint consensus address.
+//!   `RIPEMD160(SHA256)` is the account-address formula and matches none
+//!   of the signing infos.
+//! - Missed-block bands warn before the jail line. A jail, unjail,
+//!   tombstone, or slash event posts on its own, even when the band did
+//!   not move.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+
+use base64::Engine;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -48,6 +52,10 @@ pub struct ValidatorSnapshot {
     /// A zero counter with this flag clear is not a healthy validator.
     #[serde(default)]
     pub attributed: bool,
+    /// Bech32 consensus address. Empty when the pubkey did not decode.
+    /// Slash events name this address.
+    #[serde(default)]
+    pub cons: String,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -74,15 +82,14 @@ impl SlashingParams {
 
 // ── address derivation ──────────────────────────────────────────────────
 
-use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 
 /// Tendermint address: RIPEMD160(SHA256(pubkey)).
 fn tm_address(pubkey: &[u8]) -> [u8; 20] {
+    // Tendermint consensus address: SHA256(ed25519 pubkey)[..20].
     let sha = Sha256::digest(pubkey);
-    let ripe = Ripemd160::digest(sha);
     let mut out = [0u8; 20];
-    out.copy_from_slice(&ripe);
+    out.copy_from_slice(&sha[..20]);
     out
 }
 
@@ -114,7 +121,8 @@ fn bech32_encode(hrp: &str, data: &[u8]) -> String {
     for v in &values {
         let b = polymod >> 25;
         polymod = ((polymod & 0x1ff_ffff) << 5) ^ (*v as u32);
-        for (i, c) in [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_3dd7, 0x2a14_62b3]
+        // BIP173 generators. The fourth word is 0x3d4233dd, not 0x3d423dd7.
+        for (i, c) in [0x3b6a_57b2, 0x2650_8e6d, 0x1ea1_19fa, 0x3d42_33dd, 0x2a14_62b3]
             .iter()
             .enumerate()
         {
@@ -273,10 +281,15 @@ pub async fn fetch_all(
     for v in &validators {
         let valoper = v["operator_address"].as_str().unwrap_or("?").to_string();
         let pubkey = v["consensus_pubkey"]["key"].as_str().unwrap_or("");
-        let joined = if pubkey.is_empty() {
+        let cons = if pubkey.is_empty() {
+            String::new()
+        } else {
+            cons_address(&chain.prefix, pubkey).unwrap_or_default()
+        };
+        let joined = if cons.is_empty() {
             None
         } else {
-            cons_address(&chain.prefix, pubkey).and_then(|a| signing.get(&a).copied())
+            signing.get(&cons).copied()
         };
         let (missed, tomb, attributed) = match joined {
             Some((missed, tomb)) => (missed, tomb, true),
@@ -294,6 +307,7 @@ pub async fn fetch_all(
             tombstoned: tomb,
             height,
             attributed,
+            cons,
         });
     }
     out.sort_by(|a, b| b.tokens.parse::<f64>().unwrap_or(0.0).partial_cmp(&a.tokens.parse::<f64>().unwrap_or(0.0)).unwrap_or(std::cmp::Ordering::Equal));
@@ -359,6 +373,8 @@ pub struct Monitor {
     pub tracked: HashMap<String, Tracked>,
     pub remind_secs: i64,
     attribution_open: bool,
+    last_height: i64,
+    seen_slashes: VecDeque<String>,
 }
 
 impl Monitor {
@@ -367,7 +383,30 @@ impl Monitor {
             tracked: HashMap::new(),
             remind_secs,
             attribution_open: false,
+            last_height: 0,
+            seen_slashes: VecDeque::new(),
         }
+    }
+
+    /// Heights to scan for slash events. The first poll only records the
+    /// tip. A gap larger than 20 blocks keeps the newest 20 so a restart
+    /// does not walk the whole history.
+    pub fn heights_since(&mut self, latest: i64) -> Vec<i64> {
+        if latest <= 0 {
+            return Vec::new();
+        }
+        if self.last_height <= 0 || latest <= self.last_height {
+            self.last_height = latest;
+            return Vec::new();
+        }
+        const CAP: i64 = 20;
+        let start = if latest - self.last_height > CAP {
+            latest - CAP + 1
+        } else {
+            self.last_height + 1
+        };
+        self.last_height = latest;
+        (start..=latest).collect()
     }
 
     /// Diff fresh snapshots against memory → alerts. Pure logic, unit-tested.
@@ -433,12 +472,52 @@ impl Monitor {
                 t.snap = s.clone();
                 continue;
             }
-            if next > t.band {
-                out.push(band_alert(chain, s, allowed_missed, next));
+            let became_tomb = !t.snap.tombstoned && s.tombstoned;
+            let became_jail = !t.snap.jailed && s.jailed;
+            if became_tomb || became_jail {
+                let (kind, message) = if became_tomb {
+                    (
+                        "TOMBSTONED",
+                        format!(
+                            "💀 `{}` tombstoned (missed {}/{allowed_missed})",
+                            s.moniker, s.missed_blocks
+                        ),
+                    )
+                } else {
+                    (
+                        "JAILED",
+                        format!(
+                            "🚨 `{}` jailed (missed {}/{allowed_missed})",
+                            s.moniker, s.missed_blocks
+                        ),
+                    )
+                };
+                out.push(ValidatorAlert {
+                    chain: chain.to_string(),
+                    valoper: s.valoper.clone(),
+                    kind,
+                    message,
+                    critical: true,
+                });
                 t.band = next;
                 t.quiet_polls = 0;
                 t.last_warned = now;
-            } else if next == t.band && next > JailBand::Quiet && now - t.last_warned >= remind_secs {
+                t.snap = s.clone();
+                continue;
+            }
+            if next > t.band {
+                if !s.jailed && !s.tombstoned {
+                    out.push(band_alert(chain, s, allowed_missed, next));
+                }
+                t.band = next;
+                t.quiet_polls = 0;
+                t.last_warned = now;
+            } else if next == t.band
+                && next > JailBand::Quiet
+                && !s.jailed
+                && !s.tombstoned
+                && now - t.last_warned >= remind_secs
+            {
                 out.push(band_alert(chain, s, allowed_missed, next));
                 t.last_warned = now;
                 t.quiet_polls = 0;
@@ -616,6 +695,148 @@ pub fn format_row(s: &ValidatorSnapshot) -> String {
     )
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlashNotice {
+    pub height: i64,
+    pub address: String,
+    pub reason: String,
+    pub burned: String,
+}
+
+pub async fn fetch_block_results(
+    client: &reqwest::Client,
+    chain_rest: &str,
+    height: i64,
+) -> anyhow::Result<serde_json::Value> {
+    let url = rest(
+        chain_rest,
+        &format!("/cosmos/base/tendermint/v1beta1/block_results/{height}"),
+    );
+    get_json(client, &url).await
+}
+
+pub fn parse_slash_events(height: i64, body: &serde_json::Value) -> Vec<SlashNotice> {
+    let mut out = Vec::new();
+    collect_slash(height, body.get("finalize_block_events"), &mut out);
+    collect_slash(height, body.get("begin_block_events"), &mut out);
+    collect_slash(height, body.get("end_block_events"), &mut out);
+    if let Some(txs) = body.get("txs_results").and_then(|v| v.as_array()) {
+        for tx in txs {
+            collect_slash(height, tx.get("events"), &mut out);
+        }
+    }
+    out
+}
+
+fn collect_slash(height: i64, events: Option<&serde_json::Value>, out: &mut Vec<SlashNotice>) {
+    let Some(events) = events.and_then(|v| v.as_array()) else {
+        return;
+    };
+    for event in events {
+        if event.get("type").and_then(|v| v.as_str()) != Some("slash") {
+            continue;
+        }
+        let mut address = String::new();
+        let mut reason = String::new();
+        let mut burned = String::new();
+        let Some(attrs) = event.get("attributes").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for attr in attrs {
+            let key = attr_text(attr.get("key").unwrap_or(&serde_json::Value::Null));
+            let value = attr_text(attr.get("value").unwrap_or(&serde_json::Value::Null));
+            match key.as_str() {
+                "address" => address = value,
+                "reason" => reason = value,
+                "burned_coins" => burned = value,
+                _ => {}
+            }
+        }
+        if address.is_empty() {
+            continue;
+        }
+        out.push(SlashNotice {
+            height,
+            address,
+            reason,
+            burned,
+        });
+    }
+}
+
+fn attr_text(v: &serde_json::Value) -> String {
+    let raw = v.as_str().unwrap_or("").trim();
+    if raw.is_empty() {
+        return String::new();
+    }
+    decode_attr(raw).unwrap_or_else(|| raw.to_string())
+}
+
+fn decode_attr(raw: &str) -> Option<String> {
+    if raw.len() < 4 || raw.len() % 4 != 0 {
+        return None;
+    }
+    if !raw
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
+    {
+        return None;
+    }
+    let bytes = base64::engine::general_purpose::STANDARD.decode(raw).ok()?;
+    let text = String::from_utf8(bytes).ok()?;
+    if text.is_empty() || !text.chars().all(|c| c.is_ascii() && !c.is_control()) {
+        return None;
+    }
+    if text.len() >= raw.len() {
+        return None;
+    }
+    Some(text)
+}
+
+impl Monitor {
+    pub fn note_slashes(
+        &mut self,
+        chain: &str,
+        snaps: &[ValidatorSnapshot],
+        notices: &[SlashNotice],
+    ) -> Vec<ValidatorAlert> {
+        let mut out = Vec::new();
+        for notice in notices {
+            let key = format!("{}:{}:{}", notice.height, notice.address, notice.reason);
+            if self.seen_slashes.iter().any(|seen| seen == &key) {
+                continue;
+            }
+            self.seen_slashes.push_back(key);
+            if self.seen_slashes.len() > 300 {
+                self.seen_slashes.pop_front();
+            }
+            let named = snaps.iter().find(|s| s.cons == notice.address);
+            let moniker = named.map(|s| s.moniker.as_str()).unwrap_or(notice.address.as_str());
+            let reason = if notice.reason.is_empty() {
+                "slash".to_string()
+            } else {
+                notice.reason.clone()
+            };
+            let burned = if notice.burned.is_empty() {
+                String::new()
+            } else {
+                format!(" burned {}", notice.burned)
+            };
+            out.push(ValidatorAlert {
+                chain: chain.to_string(),
+                valoper: named.map(|s| s.valoper.clone()).unwrap_or_default(),
+                kind: "SLASHED",
+                message: format!(
+                    "🚨 `{moniker}` slashed ({reason}) at height {}{burned}",
+                    notice.height
+                ),
+                critical: true,
+            });
+        }
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -698,6 +919,66 @@ mod tests {
     fn cons_address_derives() {
         let a = cons_address("terp", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=").unwrap();
         assert!(a.starts_with("terpvalcons1"));
-        assert_eq!(a, "terpvalcons1hz7tqlmrgj6z4vzz2ryx5m5twhflmw7x7kp57q");
+        assert_eq!(a, "terpvalcons1ve584t0cv27hwmy0cx9ca8uwyqyfw9y9u7c35t");
+    }
+
+    #[test]
+    fn jail_posts_when_the_band_does_not_move() {
+        let mut m = Monitor::new(10_000);
+        assert!(m.poll("terp", &[snap("a", 96, false)], 1, 100).is_empty());
+        let jailed = m.poll("terp", &[snap("a", 96, true)], 2, 100);
+        assert!(jailed.iter().any(|a| a.kind == "JAILED"));
+        assert!(jailed.iter().all(|a| a.kind != "JAIL_LINE"));
+        let mut tomb = snap("a", 96, true);
+        tomb.tombstoned = true;
+        let tombstoned = m.poll("terp", &[tomb], 3, 100);
+        assert!(tombstoned.iter().any(|a| a.kind == "TOMBSTONED"));
+    }
+
+    #[test]
+    fn unjail_posts_on_the_poll_that_sees_it() {
+        let mut m = Monitor::new(10_000);
+        m.poll("terp", &[snap("a", 10, false)], 1, 100);
+        m.poll("terp", &[snap("a", 96, true)], 2, 100);
+        let back = m.poll("terp", &[snap("a", 10, false)], 3, 100);
+        assert!(back.iter().any(|a| a.message.contains("unjailed")));
+    }
+
+    #[test]
+    fn slash_event_names_the_validator_once() {
+        let body = serde_json::json!({
+            "finalize_block_events": [{
+                "type": "slash",
+                "attributes": [
+                    {"key": "YWRkcmVzcw==", "value": "dGVycHZhbGNvbnMxYWJj"},
+                    {"key": "cmVhc29u", "value": "bWlzc2luZ19zaWduYXR1cmU="},
+                    {"key": "burned_coins", "value": "1000uthiol"}
+                ]
+            }]
+        });
+        let notes = parse_slash_events(10, &body);
+        assert_eq!(notes.len(), 1);
+        assert_eq!(notes[0].address, "terpvalcons1abc");
+        assert_eq!(notes[0].reason, "missing_signature");
+        let mut who = snap("alpha", 96, true);
+        who.cons = "terpvalcons1abc".into();
+        let mut m = Monitor::new(10_000);
+        let alerts = m.note_slashes("terp", &[who.clone()], &notes);
+        assert_eq!(alerts[0].kind, "SLASHED");
+        assert!(alerts[0].message.contains("alpha"));
+        assert!(alerts[0].message.contains("missing_signature"));
+        assert!(alerts[0].message.contains("1000uthiol"));
+        assert!(m.note_slashes("terp", &[who], &notes).is_empty());
+    }
+
+    #[test]
+    fn slash_scan_starts_at_the_tip() {
+        let mut m = Monitor::new(10_000);
+        assert!(m.heights_since(1000).is_empty());
+        assert_eq!(m.heights_since(1002), vec![1001, 1002]);
+        let gap = m.heights_since(2000);
+        assert_eq!(gap.len(), 20);
+        assert_eq!(*gap.last().unwrap(), 2000);
+        assert!(m.heights_since(2000).is_empty());
     }
 }

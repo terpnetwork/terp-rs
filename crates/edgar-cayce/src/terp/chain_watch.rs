@@ -1,4 +1,5 @@
-//! Local-node watches for Discord: gov proposals, new IBC channels,
+//! Local-node watches for Discord: gov proposals, new IBC channels and
+//! clients,
 //! and a once-per-UTC-day voting-power diff. The stake post is a short
 //! line plus a Markdown file from `crate::terp::digest`.
 //!
@@ -50,6 +51,12 @@ pub struct WatchState {
     /// means "seed the current set, do not replay it".
     #[serde(default)]
     pub seen_channels: BTreeSet<String>,
+    /// Set on the first client list, including an empty one, so a later
+    /// client is announced instead of being swallowed by a quiet seed.
+    #[serde(default)]
+    pub clients_seeded: bool,
+    #[serde(default)]
+    pub seen_clients: BTreeSet<String>,
     /// `port/channel` → `STATE<TAB>counterparty`. Empty while an older file
     /// only has keys: the next poll records snaps and stays quiet.
     #[serde(default)]
@@ -204,6 +211,10 @@ pub struct ChannelNote {
     pub key: String,
     pub counterparty: String,
     pub state: String,
+    /// Counterparty chain id from the connection's light client. Empty until joined.
+    pub chain_id: String,
+    /// First connection hop (`connection-N`). Empty when the LCD omits it.
+    pub connection: String,
 }
 
 /// `uthiol` base units to a TERP display amount (6 decimal places).
@@ -261,10 +272,19 @@ pub fn parse_channels(v: &Value) -> Vec<ChannelNote> {
         }
         let cp_port = ch["counterparty"]["port_id"].as_str().unwrap_or("?");
         let cp_id = ch["counterparty"]["channel_id"].as_str().unwrap_or("?");
+        let hop = ch["connection_hops"]
+            .as_array()
+            .and_then(|hops| hops.first())
+            .and_then(|h| h.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
         out.push(ChannelNote {
             key: format!("{port}/{id}"),
             counterparty: format!("{cp_port}/{cp_id}"),
             state: ch["state"].as_str().unwrap_or("?").to_string(),
+            chain_id: String::new(),
+            connection: hop,
         });
     }
     out
@@ -455,6 +475,29 @@ fn power_change(
 }
 
 /// Short Discord line plus the Markdown attachment for one UTC day.
+
+fn stake_moves(changes: &[crate::terp::digest::PowerChange]) -> Vec<crate::terp::news::StakeMove> {
+    changes
+        .iter()
+        .filter_map(|c| {
+            let action = match c.kind.as_str() {
+                "joined" => crate::terp::news::StakeAction::Joined,
+                "left" => crate::terp::news::StakeAction::Left,
+                "jailed" => crate::terp::news::StakeAction::Jailed,
+                "unjailed" => crate::terp::news::StakeAction::Unjailed,
+                "stake" if c.delta.trim_start().starts_with('-') => crate::terp::news::StakeAction::Unbonded,
+                "stake" => crate::terp::news::StakeAction::Bonded,
+                "status" => crate::terp::news::StakeAction::StatusChanged,
+                _ => return None,
+            };
+            Some(crate::terp::news::StakeMove {
+                name: c.moniker.clone(),
+                action,
+            })
+        })
+        .collect()
+}
+
 pub fn voting_power_post(
     day: &str,
     prev_bonded: &str,
@@ -538,12 +581,23 @@ fn push_link(msg: &mut String, explorer_base: &str, id: &str) {
     msg.push_str(&proposal_url(explorer_base, id));
 }
 
+pub fn period_phrase(status: &str) -> String {
+    match status {
+        "DEPOSIT_PERIOD" => "deposit period".into(),
+        "VOTING_PERIOD" => "voting period".into(),
+        "PASSED" => "passed".into(),
+        "REJECTED" => "rejected".into(),
+        "FAILED" => "failed".into(),
+        other => other.to_ascii_lowercase().replace('_', " "),
+    }
+}
+
 pub fn format_submitted(p: &ProposalNote, explorer_base: &str) -> String {
     let mut msg = format!(
-        "**Gov proposal #{id} submitted** {title}\n`{status}`",
+        "**Gov proposal #{id} submitted** {title}\nin the {period}",
         id = p.id,
         title = p.title,
-        status = p.status
+        period = period_phrase(&p.status)
     );
     push_summary(&mut msg, &p.summary);
     push_link(&mut msg, explorer_base, &p.id);
@@ -552,10 +606,10 @@ pub fn format_submitted(p: &ProposalNote, explorer_base: &str) -> String {
 
 pub fn format_voting_started(p: &ProposalNote, explorer_base: &str) -> String {
     let mut msg = format!(
-        "**Gov proposal #{id} entered voting** {title}\n`{status}`",
+        "**Gov proposal #{id} entered voting** {title}\nin the {period}",
         id = p.id,
         title = p.title,
-        status = p.status
+        period = period_phrase(&p.status)
     );
     if let Some(end) = p.voting_end {
         msg.push('\n');
@@ -655,15 +709,33 @@ pub fn plan_gov_notes(
     notes
 }
 
+pub fn counterparty_label(ch: &ChannelNote) -> String {
+    let chain = if ch.chain_id.is_empty() {
+        "unknown chain".to_string()
+    } else {
+        ch.chain_id.clone()
+    };
+    format!("{chain} `{}`", ch.counterparty)
+}
+
 pub fn format_channel(ch: &ChannelNote) -> String {
     format!(
-        "**New IBC channel** `{}` ↔ `{}` {}",
-        ch.key, ch.counterparty, ch.state
+        "**New IBC channel** `{}` ↔ {} {}",
+        ch.key,
+        counterparty_label(ch),
+        ch.state
     )
 }
 
 pub fn channel_snap_value(ch: &ChannelNote) -> String {
-    format!("{}\t{}", ch.state, ch.counterparty)
+    format!("{}\t{}\t{}", ch.state, ch.counterparty, ch.chain_id)
+}
+
+fn snap_state_and_counterparty(prev: &str) -> (&str, &str) {
+    let mut parts = prev.split('\t');
+    let state = parts.next().unwrap_or("");
+    let counterparty = parts.next().unwrap_or("");
+    (state, counterparty)
 }
 
 pub fn counterparty_known(cp: &str) -> bool {
@@ -687,6 +759,7 @@ fn note(kind: NoteKind, text: String) -> WatchNote {
         file_name: None,
         file_body: None,
         thread_query: None,
+        speech: None,
     }
 }
 
@@ -697,11 +770,124 @@ fn proposal_note(p: &ProposalNote, text: String) -> WatchNote {
         file_name: None,
         file_body: None,
         thread_query: Some(format!("proposal {} {}", p.id, p.title)),
+        speech: None,
     }
 }
 
 /// New channels, a close after `STATE_OPEN`, and a counterparty that fills in.
 /// The first time snaps are missing, record them and stay quiet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientNote {
+    pub client_id: String,
+    pub chain_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConnectionNote {
+    pub id: String,
+    pub client_id: String,
+}
+
+pub fn parse_connections(v: &Value) -> Vec<ConnectionNote> {
+    let Some(list) = v["connections"].as_array() else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for row in list {
+        let id = row["id"]
+            .as_str()
+            .or_else(|| row["connection_id"].as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        let client_id = row["client_id"].as_str().unwrap_or("").trim().to_string();
+        if id.is_empty() || client_id.is_empty() {
+            continue;
+        }
+        out.push(ConnectionNote { id, client_id });
+    }
+    out
+}
+
+/// Fill `chain_id` from connection hop → client → client state.
+pub fn attach_counterparty_chains(
+    channels: &mut [ChannelNote],
+    connections: &[ConnectionNote],
+    clients: &[ClientNote],
+) {
+    let client_of: BTreeMap<&str, &str> = connections
+        .iter()
+        .map(|c| (c.id.as_str(), c.client_id.as_str()))
+        .collect();
+    let chain_of: BTreeMap<&str, &str> = clients
+        .iter()
+        .map(|c| (c.client_id.as_str(), c.chain_id.as_str()))
+        .collect();
+    for ch in channels.iter_mut() {
+        let Some(client) = client_of.get(ch.connection.as_str()) else {
+            continue;
+        };
+        let Some(chain) = chain_of.get(client).copied().filter(|s| !s.is_empty()) else {
+            continue;
+        };
+        ch.chain_id = chain.to_string();
+    }
+}
+
+pub fn parse_clients(v: &Value) -> Vec<ClientNote> {
+    let Some(list) = v["client_states"].as_array() else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for row in list {
+        let client_id = row["client_id"].as_str().unwrap_or("").trim().to_string();
+        if client_id.is_empty() {
+            continue;
+        }
+        let chain_id = row["client_state"]["chain_id"]
+            .as_str()
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        out.push(ClientNote {
+            client_id,
+            chain_id,
+        });
+    }
+    out
+}
+
+/// New IBC clients. The first poll records the current set and stays quiet,
+/// including when that set is empty.
+pub fn plan_client_notes(state: &mut WatchState, clients: &[ClientNote]) -> Vec<WatchNote> {
+    if !state.clients_seeded {
+        for client in clients {
+            state.seen_clients.insert(client.client_id.clone());
+        }
+        state.clients_seeded = true;
+        info!(
+            clients = state.seen_clients.len(),
+            "ibc clients seeded (no historical alerts)"
+        );
+        return Vec::new();
+    }
+    let mut notes = Vec::new();
+    for client in clients {
+        if !state.seen_clients.insert(client.client_id.clone()) {
+            continue;
+        }
+        let chain = if client.chain_id.is_empty() {
+            String::new()
+        } else {
+            format!(" chain `{}`", client.chain_id)
+        };
+        let text = format!("**New IBC client** `{}`{chain}", client.client_id);
+        push_log(state, format!("client {}", client.client_id));
+        notes.push(note(NoteKind::Channel, text));
+    }
+    notes
+}
+
 pub fn plan_channel_notes(state: &mut WatchState, channels: &[ChannelNote]) -> Vec<WatchNote> {
     if state.seen_channels.is_empty() || state.channel_snap.is_empty() {
         for ch in channels {
@@ -724,15 +910,17 @@ pub fn plan_channel_notes(state: &mut WatchState, channels: &[ChannelNote]) -> V
                 notes.push(note(NoteKind::Channel, text));
             }
             Some(prev) => {
-                let (old_state, old_cp) = prev.split_once('\t').unwrap_or((prev.as_str(), ""));
+                let (old_state, old_cp) = snap_state_and_counterparty(&prev);
                 if old_state.contains("OPEN") && ch.state.contains("CLOSED") {
                     let text = format!("**IBC channel closed** `{}`", ch.key);
                     push_log(state, format!("closed {}", ch.key));
                     notes.push(note(NoteKind::Channel, text));
                 } else if !counterparty_known(old_cp) && counterparty_known(&ch.counterparty) {
                     let text = format!(
-                        "**IBC channel** `{}` counterparty `{}` {}",
-                        ch.key, ch.counterparty, ch.state
+                        "**IBC channel** `{}` ↔ {} {}",
+                        ch.key,
+                        counterparty_label(ch),
+                        ch.state
                     );
                     push_log(state, format!("counterparty {} {}", ch.key, ch.counterparty));
                     notes.push(note(NoteKind::Channel, text));
@@ -866,6 +1054,59 @@ pub async fn list_proposals(client: &reqwest::Client, rest: &str) -> Result<Vec<
     Ok(by_id.into_values().collect())
 }
 
+pub async fn list_clients(client: &reqwest::Client, rest: &str) -> Result<Vec<ClientNote>> {
+    let mut out = Vec::new();
+    let mut key = String::new();
+    for _ in 0..8 {
+        let mut url = format!(
+            "{}/ibc/core/client/v1/client_states?pagination.limit=200",
+            rest.trim_end_matches('/')
+        );
+        if !key.is_empty() {
+            url.push_str("&pagination.key=");
+            url.push_str(&url_encode(&key));
+        }
+        let v = fetch_json(client, &url).await?;
+        out.extend(parse_clients(&v));
+        key = v["pagination"]["next_key"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+        if key.is_empty() {
+            break;
+        }
+    }
+    Ok(out)
+}
+
+pub async fn list_connections(
+    client: &reqwest::Client,
+    rest: &str,
+) -> Result<Vec<ConnectionNote>> {
+    let mut out = Vec::new();
+    let mut key = String::new();
+    for _ in 0..8 {
+        let mut url = format!(
+            "{}/ibc/core/connection/v1/connections?pagination.limit=200",
+            rest.trim_end_matches('/')
+        );
+        if !key.is_empty() {
+            url.push_str("&pagination.key=");
+            url.push_str(&url_encode(&key));
+        }
+        let v = fetch_json(client, &url).await?;
+        out.extend(parse_connections(&v));
+        key = v["pagination"]["next_key"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+        if key.is_empty() {
+            break;
+        }
+    }
+    Ok(out)
+}
+
 pub async fn list_channels(client: &reqwest::Client, rest: &str) -> Result<Vec<ChannelNote>> {
     let mut out = Vec::new();
     let mut key = String::new();
@@ -938,6 +1179,8 @@ pub struct WatchNote {
     /// Proposal id and title. The poster opens a thread, and `/edgar ask`
     /// in that thread prepends this string to the question.
     pub thread_query: Option<String>,
+    /// Spoken clip. Discord still shows `text`.
+    pub speech: Option<String>,
 }
 
 /// One poll. On the first successful seed, returns a baseline line and does
@@ -951,7 +1194,12 @@ pub async fn tick(
     today: &str,
 ) -> Result<Vec<WatchNote>> {
     let proposals = list_proposals(client, rest).await?;
-    let channels = list_channels(client, rest).await?;
+    let mut channels = list_channels(client, rest).await?;
+    let clients = list_clients(client, rest).await?;
+    match list_connections(client, rest).await {
+        Ok(connections) => attach_counterparty_chains(&mut channels, &connections, &clients),
+        Err(e) => tracing::warn!("ibc connection list failed; channel notes omit chain id: {e:#}"),
+    }
     let (bonded, vals) = staking_snapshot(client, rest).await?;
     let now = Utc::now();
     let explorer = explorer_base();
@@ -989,10 +1237,12 @@ pub async fn tick(
             file_name: None,
             file_body: None,
             thread_query: None,
+            speech: None,
         }];
         // Phases were just recorded, so this does not replay submissions.
         // It does emit a 24h reminder for a vote already inside the window.
         notes.extend(plan_gov_notes(state, &proposals, now, &explorer));
+        let _ = plan_client_notes(state, &clients);
         return Ok(notes);
     }
 
@@ -1000,50 +1250,43 @@ pub async fn tick(
     notes.extend(plan_gov_notes(state, &proposals, now, &explorer));
     notes.extend(resolve_left_proposals(client, rest, state, &proposals, &explorer).await?);
     notes.extend(plan_channel_notes(state, &channels));
+    notes.extend(plan_client_notes(state, &clients));
     if let Some(text) = upgrade_countdown(client, rest, state).await {
         push_log(state, text.lines().next().unwrap_or(&text));
         notes.push(note(NoteKind::Notice, text));
     }
     if state.last_stake_day != today {
         let post = voting_power_post(today, &state.bonded, &state.validators, &bonded, &vals);
-        let mut text = post.inline;
-        if state.day_log.is_empty() {
-            text.push_str("\nno gov or IBC changes since the last morning.");
-        } else {
-            text.push_str("\n**Since yesterday**");
-            for line in state.day_log.iter().take(12) {
-                text.push_str("\n- ");
-                text.push_str(line);
-            }
-        }
-        let mut markdown = post.markdown;
-        markdown.push_str("\n\n## Since yesterday\n");
-        if state.day_log.is_empty() {
-            markdown.push_str("none\n");
-        } else {
-            for line in &state.day_log {
-                markdown.push_str("- ");
-                markdown.push_str(line);
-                markdown.push('\n');
-            }
-        }
-        if let Ok(line) = std::fs::read_to_string("./data/closest-jail.txt") {
-            let line = line.trim();
-            if !line.is_empty() {
-                text.push('\n');
-                text.push_str(line);
-                markdown.push('\n');
-                markdown.push_str(line);
-                markdown.push('\n');
-            }
-        }
+        let stake_changes = post.inline.lines().nth(2).unwrap_or("").to_string();
+        let bonded_line = post.inline.lines().nth(1).unwrap_or("").to_string();
+        let jail = std::fs::read_to_string("./data/closest-jail.txt").unwrap_or_default();
+        let dao_lines = crate::terp::news::take_lines(std::path::Path::new("./data/desk-dao.log"));
+        let (contribs, rejected) =
+            crate::terp::news::take_inbox(std::path::Path::new("./data/desk-inbox"));
+        let moves = stake_moves(&collect_power_changes(&state.validators, &vals));
+        let desk = crate::terp::news::compose_desk(
+            today,
+            &bonded_line,
+            &stake_changes,
+            &state.day_log,
+            &dao_lines,
+            &contribs,
+            &rejected,
+            jail.trim(),
+            &moves,
+        );
+        let text = desk.caption.clone();
+        let mut markdown = desk.discord.clone();
+        markdown.push_str("\n\n");
+        markdown.push_str(&post.markdown);
         state.day_log.clear();
         notes.push(WatchNote {
             kind: NoteKind::Stake,
             text,
-            file_name: Some(post.filename),
+            file_name: Some(format!("terp-desk-{today}.md")),
             file_body: Some(markdown),
             thread_query: None,
+            speech: Some(desk.speech),
         });
         state.bonded = bonded;
         state.validators = vals;
@@ -1391,11 +1634,45 @@ mod tests {
     }
 
     #[test]
+    fn init_channel_names_chain_then_channel_id() {
+        let mut state = WatchState::default();
+        state.seen_channels.insert("transfer/channel-0".into());
+        state.channel_snap.insert(
+            "transfer/channel-0".into(),
+            "STATE_OPEN\ttransfer/channel-1\tosmosis-1".into(),
+        );
+        let init = ChannelNote {
+            key: "transfer/channel-12".into(),
+            counterparty: "transfer/".into(),
+            state: "STATE_INIT".into(),
+            chain_id: "osmosis-1".into(),
+            connection: "connection-12".into(),
+        };
+        let notes = plan_channel_notes(&mut state, &[init.clone()]);
+        assert_eq!(notes.len(), 1);
+        assert!(notes[0].text.contains("osmosis-1"));
+        assert!(notes[0].text.contains("transfer/"));
+        assert!(notes[0].text.contains("STATE_INIT"));
+        let opened = ChannelNote {
+            counterparty: "transfer/channel-441".into(),
+            state: "STATE_OPEN".into(),
+            ..init
+        };
+        let notes = plan_channel_notes(&mut state, &[opened.clone()]);
+        assert_eq!(notes.len(), 1);
+        assert!(notes[0].text.contains("channel-441"));
+        assert!(notes[0].text.contains("osmosis-1"));
+        assert!(plan_channel_notes(&mut state, &[opened]).is_empty());
+    }
+
+    #[test]
     fn channel_close_and_counterparty_fill_once() {
         let open = ChannelNote {
             key: "transfer/channel-1".into(),
             counterparty: "transfer/?".into(),
             state: "STATE_OPEN".into(),
+            chain_id: "osmosis-1".into(),
+            connection: "connection-1".into(),
         };
         let mut state = WatchState::default();
         state.seen_channels.insert(open.key.clone());
@@ -1409,6 +1686,7 @@ mod tests {
         let notes = plan_channel_notes(&mut state, &[filled.clone()]);
         assert_eq!(notes.len(), 1);
         assert!(notes[0].text.contains("channel-9"));
+        assert!(notes[0].text.contains("osmosis-1"));
         assert!(plan_channel_notes(&mut state, &[filled]).is_empty());
         let closed = ChannelNote {
             state: "STATE_CLOSED".into(),
@@ -1443,5 +1721,33 @@ mod tests {
             note.thread_query.as_deref(),
             Some("proposal 70 title 70")
         );
+    }
+
+    #[test]
+    fn new_client_is_quiet_on_seed_then_announced() {
+        let mut state = WatchState::default();
+        let existing = ClientNote {
+            client_id: "07-tendermint-1".into(),
+            chain_id: "osmosis-1".into(),
+        };
+        assert!(plan_client_notes(&mut state, &[existing.clone()]).is_empty());
+        assert!(state.clients_seeded);
+        let fresh = ClientNote {
+            client_id: "07-tendermint-99".into(),
+            chain_id: "noble-1".into(),
+        };
+        let notes = plan_client_notes(&mut state, &[existing.clone(), fresh]);
+        assert_eq!(notes.len(), 1);
+        assert!(notes[0].text.contains("07-tendermint-99"));
+        assert!(notes[0].text.contains("noble-1"));
+        assert!(plan_client_notes(&mut state, &[existing]).is_empty());
+        let parsed = parse_clients(&serde_json::json!({
+            "client_states": [{
+                "client_id": "07-tendermint-3",
+                "client_state": {"chain_id": "akashnet-2"}
+            }]
+        }));
+        assert_eq!(parsed[0].client_id, "07-tendermint-3");
+        assert_eq!(parsed[0].chain_id, "akashnet-2");
     }
 }
