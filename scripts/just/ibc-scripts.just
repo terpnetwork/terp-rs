@@ -2,8 +2,8 @@
 # The IBC info pipeline. Binary `terp-ibc` is package `dao-scripts`
 # (`scripts/dao-scripts/src/bin/ibc_info.rs`). The library stays `terp-scripts`.
 #
-# These four recipes are called by name from .github/workflows/ci-core.yml and
-# ci-heavy.yml. Their contract — exit codes, RunReport JSON, capability modes —
+# These four recipes are called by name from .github/workflows/ci.yml
+# (core and heavy jobs). Their contract — exit codes, RunReport JSON, capability modes —
 # is documented in skills/tests.md; keep the two in sync.
 
 ibc := "cargo run -p dao-scripts --bin terp-ibc --"
