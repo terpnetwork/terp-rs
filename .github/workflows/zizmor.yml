@@ -1,0 +1,36 @@
+# GitHub Actions audit. High findings fail the job. Offline persona.
+name: zizmor
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+
+concurrency:
+  group: zizmor-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zizmor:
+    name: Audit GitHub Actions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          online-audits: false
+          advanced-security: false
+          min-severity: high
+          persona: regular

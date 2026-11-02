@@ -13,15 +13,15 @@ bins := "/tmp/ict-rs-bins"
 act-host-core:
     ./scripts/ci/run-host-core.sh
 
-# Tier 1. Parse ci-*.yml and list jobs. Seconds, no compile.
+# Tier 1. Parse ci.yml and list jobs. Seconds, no compile.
 act-wire:
     ./scripts/ci/run-wire.sh
 
-# Tier 3. Full act run of ci-core.yml jobs. Long and fragile on Docker Desktop.
+# Tier 3. Full act run of the core jobs in ci.yml. Long and fragile on Docker Desktop.
 act-core:
     ./scripts/ci/run-core.sh
 
-# Same for ci-extended.yml.
+# Same for the extended jobs in ci.yml.
 act-extended:
     ./scripts/ci/run-extended.sh
 

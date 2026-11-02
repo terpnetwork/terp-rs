@@ -31,13 +31,12 @@ echo "========================================================="
   echo ""
 } >"${LOG}"
 
-for wf in ci-core.yml ci-extended.yml ci-heavy.yml; do
-  path="$(act_workflow_for_act "$wf")"
-  if [[ ! -f "$path" ]]; then
-    echo "MISSING workflow: $path" | tee -a "${LOG}"
-    STATUS=1
-    continue
-  fi
+wf=ci.yml
+path="$(act_workflow_for_act "$wf")"
+if [[ ! -f "$path" ]]; then
+  echo "MISSING workflow: $path" | tee -a "${LOG}"
+  STATUS=1
+else
   echo ""
   echo "--- list jobs: ${wf} ---"
   set +e
@@ -49,11 +48,11 @@ for wf in ci-core.yml ci-extended.yml ci-heavy.yml; do
     echo "FAIL list ${wf} rc=${rc}" | tee -a "${LOG}"
     STATUS=1
   fi
-done
+fi
 
 # Optional: one empty job dry-run if ACT_WIRE_DRY=1 (still needs image)
 if [[ "${ACT_WIRE_DRY:-0}" == "1" ]]; then
-  path="$(act_workflow_for_act ci-core.yml)"
+  path="$(act_workflow_for_act ci.yml)"
   echo ""
   echo "--- dry graph for core-gate (echo only) ---"
   set +e

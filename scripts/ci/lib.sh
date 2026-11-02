@@ -198,7 +198,7 @@ act_run_job() {
 
 # Resolve workflow path for GHA files under crate .github/workflows
 act_workflow_path() {
-  local name="$1" # e.g. ci-core.yml
+  local name="$1" # e.g. ci.yml
   echo "${CRATE_ROOT}/.github/workflows/${name}"
 }
 

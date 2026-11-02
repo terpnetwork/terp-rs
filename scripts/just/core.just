@@ -52,7 +52,7 @@ ci-extended:
 ci-heavy: check
     ./scripts/ci/dense-packs.sh contracts-heavy
 
-# Docker-only IBC multihop harness. Ignored tests; see ci-heavy.yml.
+# Docker-only IBC multihop harness. Ignored tests; see the heavy jobs in ci.yml.
 scripts-ibc-harness:
     cargo test -p terp-scripts --test ibc_multihop_harness -- --ignored --nocapture
 

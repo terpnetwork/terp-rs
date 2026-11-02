@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full act for ci-extended.yml (contracts-core + scripts-integration).
+# Full act for the extended jobs in ci.yml (contracts-core + scripts-integration).
 # Prefer host: just ci-extended
 set -euo pipefail
 # shellcheck source=lib.sh
@@ -9,7 +9,7 @@ act_require
 trap 'act_teardown; act_prune_runs' EXIT INT TERM
 act_teardown quiet
 
-WORKFLOW="$(act_workflow_for_act ci-extended.yml)"
+WORKFLOW="$(act_workflow_for_act ci.yml)"
 [[ -f "${WORKFLOW}" ]] || { echo "missing ${WORKFLOW}" >&2; exit 1; }
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"

@@ -28,9 +28,9 @@
 
 | Tier | File | Trigger intent |
 |------|------|----------------|
-| 0 Core | `/Users/returniflost/abstract/terp-core/crates/terp-rs/.github/workflows/ci-core.yml` | every PR — offline IBC + internal libs |
-| 1 Extended | `/Users/returniflost/abstract/terp-core/crates/terp-rs/.github/workflows/ci-extended.yml` | paths/labels — contracts + non-ignored tests |
-| 2 Heavy | `/Users/returniflost/abstract/terp-core/crates/terp-rs/.github/workflows/ci-heavy.yml` | dispatch / weekly / label `ci-heavy` only |
+| 0 Core | `/Users/returniflost/abstract/terp-core/crates/terp-rs/.github/workflows/ci.yml` jobs `terp-scripts-offline`, `internal-libs` | every PR — offline IBC + internal libs |
+| 1 Extended | same file, jobs `contracts-core`, `scripts-integration` | paths/labels — contracts + non-ignored tests |
+| 2 Heavy | same file, jobs `workspace-check`, `docker-harness` | dispatch / weekly / label `ci-heavy` only |
 | Deprecated stubs | `basic.yml`, `e2e.yml` | ignore for real gates |
 
 ### Package / binary names (post-rename)
@@ -109,8 +109,8 @@ Document and script around:
 
 1. **CWD** must be `crates/terp-rs` (workflows live at `.github/workflows/` relative to that root — this is the git remote `permissionlessweb/terp-rs` layout).
 2. Prefer job-scoped runs:  
-   `act pull_request -W .github/workflows/ci-core.yml -j terp-scripts-offline`  
-   `act pull_request -W .github/workflows/ci-core.yml -j internal-libs`
+   `act pull_request -W .github/workflows/ci.yml -j terp-scripts-offline`  
+   `act pull_request -W .github/workflows/ci.yml -j internal-libs`
 3. Path filters on Extended often **do not apply** under act → use `-j contracts-core` or `workflow_dispatch`.
 4. Cache actions may no-op; first rust build is long — set high timeout.
 5. `dtolnay/rust-toolchain` with `1.86` needs network inside container.
