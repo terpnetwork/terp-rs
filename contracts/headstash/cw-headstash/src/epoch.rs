@@ -117,10 +117,10 @@ pub fn set_campaign(
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let existing_campaign = EPOCH_CAMPAIGN.may_load(deps.storage)?;
-    if existing_campaign.is_none() && campaign.vk_id == crate::notes::RETIRED_VK_ID {
-        // N1: vk_id 2 stays verifiable for the campaign that already uses it, but no
-        // new campaign may be created under it. New membership campaigns use vk_id 3.
-        return Err(StdError::msg("vk id 2 is retired for new campaigns"));
+    // N1/F1: vk_id 2 is retired for new campaigns and for updates of a stored one.
+    crate::notes::reject_retired_vk(&campaign)?;
+    if let Some(existing) = existing_campaign.as_ref() {
+        crate::notes::reject_retired_vk(existing)?;
     }
     validate_campaign(&campaign)?;
     crate::notes::validate_note_campaign(&campaign)?;
@@ -271,6 +271,7 @@ pub fn stage_batch(
     let campaign = EPOCH_CAMPAIGN
         .may_load(deps.storage)?
         .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    crate::notes::reject_retired_vk(&campaign)?;
     // A registration campaign pays more than one batch. The single flag would
     // block the next stage. Repeated quorum roots are refused in settle.
     if campaign.registration.is_none() && EPOCH_PAID.may_load(deps.storage)?.unwrap_or(false) {
@@ -630,6 +631,7 @@ pub fn apply_accepted_batch(
 ) -> Result<Response, StdError> {
     let campaign = EPOCH_CAMPAIGN.may_load(deps.storage)?;
     if let Some(campaign) = campaign.as_ref() {
+        crate::notes::reject_retired_vk(campaign)?;
         if campaign.vk_hash.iter().any(|byte| *byte != 0) {
             let presented = vk_hash.as_slice();
             if presented.len() != 32
@@ -703,6 +705,9 @@ pub fn apply_public_batch(
 ) -> Result<Response, StdError> {
     if rows.is_empty() {
         return Err(StdError::msg("public batch is empty"));
+    }
+    if let Some(campaign) = EPOCH_CAMPAIGN.may_load(deps.storage)? {
+        crate::notes::reject_retired_vk(&campaign)?;
     }
     let table = DENOM_TABLE
         .may_load(deps.storage)?
@@ -889,6 +894,11 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
     let Some(campaign) = EPOCH_CAMPAIGN.may_load(deps.storage)? else {
         return Ok(empty());
     };
+    if campaign.vk_id == crate::notes::RETIRED_VK_ID {
+        // F1: the sudo records the root but pays nothing. It does not error, so a
+        // chain-delivered seal is never wedged by a retired campaign.
+        return Ok((Response::new().add_attribute("retired_vk", "2"), 0));
+    }
     let Some(stage) = EPOCH_STAGE.may_load(deps.storage)? else {
         return Ok(empty());
     };
@@ -1655,7 +1665,7 @@ mod tests {
         )
         .unwrap();
         let mut changed_id = params.clone();
-        changed_id.vk_id = 2;
+        changed_id.vk_id = 4; // vk 2 now fails earlier as retired (F1)
         let id_err = execute(
             deps.as_mut(),
             env.clone(),
@@ -1837,6 +1847,102 @@ mod tests {
             .find(|attr| attr.key == "minted")
             .unwrap()
             .value
+    }
+
+    /// F1: a campaign stored under vk_id 2 (pre-N1 state) pays nothing on any path.
+    #[test]
+    fn f1_stored_vk2_campaign_moves_no_funds() {
+        let (mut deps, env, root) = setup();
+        let creator = deps.api.addr_make("creator");
+        let info = message_info(&creator, &[]);
+        let mut params = campaign(&root);
+        params.backend = "halo2".into();
+        params.vk_id = 1;
+        params.vk_hash = Binary::from([9u8; 32].to_vec());
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: params.clone() },
+        )
+        .unwrap();
+        // Simulate a campaign written before vk_id 2 was retired.
+        let mut legacy = params.clone();
+        legacy.vk_id = crate::notes::RETIRED_VK_ID;
+        EPOCH_CAMPAIGN.save(deps.as_mut().storage, &legacy).unwrap();
+        let retired = |r: Result<Response, StdError>| {
+            let e = r.unwrap_err().to_string();
+            assert!(e.contains(crate::notes::RETIRED_VK_ERR), "{e}");
+        };
+
+        // Rebinding (same or vk_id 2 params) is refused.
+        retired(execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: legacy.clone() },
+        ));
+        retired(execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::SetEpochCampaign { campaign: params.clone() },
+        ));
+
+        // The accepted sudo records the root and pays nothing, without erroring.
+        let dest = deps.api.addr_make("dest").to_string();
+        let real_rows = vec![row(1, &dest, 15, denom())];
+        let hash = accepted_root(root.as_slice(), &real_rows).unwrap();
+        let attested = stored_root_for(&hash, &[9u8; 32]);
+        let mut value = hash.to_vec();
+        value.extend_from_slice(&[9u8; 32]);
+        let res = sudo(deps.as_mut(), &env, accepted_sudo(&attested, &value, 10)).unwrap();
+        assert_eq!(minted_of(&res), "0");
+        assert!(res.messages.is_empty());
+        assert!(res.attributes.iter().any(|a| a.key == "retired_vk" && a.value == "2"));
+        let stored = query_root(deps.as_ref().storage, ALGO_ACCEPTED.into()).unwrap();
+        assert_eq!(stored.root.as_slice(), attested.as_slice());
+
+        // Staging the matching rows is refused.
+        retired(execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::StageEpochBatch {
+                digests: vec![Binary::from([4u8; 32].to_vec())],
+                rows: real_rows.clone(),
+            },
+        ));
+        // Relayer apply of the attested batch is refused.
+        retired(execute(
+            deps.as_mut(),
+            env.clone(),
+            info.clone(),
+            ExecuteMsg::ApplyAcceptedBatch {
+                allocation_root: root.clone(),
+                root_id: 0,
+                rows: real_rows,
+                vk_hash: Binary::from([9u8; 32].to_vec()),
+            },
+        ));
+        // The public path is refused before it reads a row.
+        retired(execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ExecuteMsg::ApplyPublicBatch {
+                rows: vec![PublicOpen {
+                    nullifier: Binary::from([1u8; 32].to_vec()),
+                    index: 0,
+                    destination: dest,
+                    blind: Binary::from([2u8; 32].to_vec()),
+                    commitment: Binary::from([3u8; 32].to_vec()),
+                    tx_hash: String::new(),
+                    log_index: 0,
+                }],
+            },
+        ));
+        assert!(EPOCH_PAID.may_load(deps.as_ref().storage).unwrap() != Some(true));
     }
 
     #[test]

@@ -18,6 +18,17 @@ use zk_headstash::distro_poseidon::note_registration_leaf;
 
 pub const NOTE_VK_ID: u64 = 3;
 pub const RETIRED_VK_ID: u64 = 2;
+/// Error text for any fund-moving path on a vk_id 2 campaign (finding F1).
+pub const RETIRED_VK_ERR: &str = "vk id 2 is retired";
+
+/// F1: vk_id 2 loads its Poseidon tags as free advice, so one allocation can be
+/// claimed under many nullifiers. No path that pays a claimant accepts it.
+pub fn reject_retired_vk(campaign: &EpochCampaignParams) -> StdResult<()> {
+    if campaign.vk_id == RETIRED_VK_ID {
+        return Err(StdError::msg(RETIRED_VK_ERR));
+    }
+    Ok(())
+}
 /// sha256 of the vk_id 3 circuit blob (`note_membership::NOTE_VK_HASH`).
 pub const NOTE_VK_HASH: [u8; 32] = [
     0x34, 0xd1, 0x14, 0x37, 0xd9, 0x57, 0x55, 0x4f, 0x40, 0x08, 0x37, 0x7d, 0xec, 0xe5, 0xfa,

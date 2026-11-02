@@ -247,3 +247,49 @@ count alone for 15; the section 6 hygiene is what prevents grouping.
 * `zk_headstash_bg.wasm` 2,006,266 bytes, sha256 `51681559143fcdb411e00515a745bf880e13c23a77ed28f13a7640b71acbe1c8`
 * Parity: wasm proof (node, `initSync`, 3.35 s incl. keygen) verifies against the native vk_id 3
   (`browser_note_proof_matches_native_vk`).
+
+## 11. Addendum F1/F3 (2026-11-02): vk_id 2 refused on fund-moving paths
+
+Source: `docs/circuit-review/soundness/05-findings.md` (430edab), F1 high, F3 low.
+
+**Problem.** vk_id 2 (`no_ecdsa::MembershipCircuit`) loads its Poseidon tags and Merkle
+layer indices as free advice. A prover can pick another nullifier tag and get a fresh
+nullifier for the same secret, so one allocation can be claimed many times. Before this
+change `set_campaign` refused vk_id 2 only for a *new* campaign. A campaign already
+stored under vk_id 2 could still stage and settle payouts.
+
+**Rule.** `cw-headstash` treats `RETIRED_VK_ID` (2) as non-payable:
+
+| path | behaviour when the stored campaign is vk_id 2 |
+|---|---|
+| `SetEpochCampaign` (new or update) | error `vk id 2 is retired` |
+| `StageEpochBatch` | error `vk id 2 is retired` |
+| `ApplyAcceptedBatch` | error `vk id 2 is retired` |
+| `ApplyPublicBatch` | error `vk id 2 is retired` |
+| hash-merchant accepted sudo (`settle`) | root is recorded, nothing is paid, attribute `retired_vk=2`. The sudo does not error, because a failing sudo would also block a later vk_id 3 root. |
+| `ClaimNote` / `CheckClaim` / `BindCircuit` | already refused: these require `NOTE_VK_ID` (3) |
+| `SweepUnclaimed` | allowed. This is the exit path for funds left in a retired campaign (burn or sweep_recipient). It pays no claimant. |
+
+The vk_id 3 verifying key is unchanged (`34d11437…c5398`, K=11, depth 17). Funds
+from a stored vk_id 2 campaign leave only through sweep, or through a new vk_id 3
+campaign on a new contract. Do not reuse the vk_id 2 key with pinned constants,
+because pinning changes the key.
+
+**F3.** `NoteCircuitImpl<false>` (the unpinned shape) compiles only under `cfg(test)`. A
+const assertion inside `Circuit::configure`/`synthesize`/`without_witnesses` and
+`Default` stops any non-test monomorphisation with `PIN = false`, so a production build
+cannot keygen or prove the unpinned shape. `NoteMembershipCircuit = NoteCircuitImpl<true>`
+and its configure/synthesize code are unchanged.
+
+**Self security review.**
+* Coverage: every `ExecuteMsg` and sudo variant that emits `BankMsg`/mint for claimants
+  either checks the campaign vk_id or requires vk_id 3. The legacy `process_headstash`
+  path verifies against `cfg.cid` and is not tied to the epoch campaign. It is out of
+  scope here and is flagged for review.
+* Lock-in: refusing an *update* of a vk_id 2 campaign also blocks moving its params.
+  This is intended, because `vk is fixed` already stops a vk change, and sweep remains.
+* Denial of service: the sudo path does not error on vk_id 2, so the module's
+  BeginBlock/EndBlock delivery is unaffected.
+* No change to constraints, gates, column order, transcript, params or the vk_id 3 key.
+  The key was regenerated before and after the change and compared.
+EOF'
