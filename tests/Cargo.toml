@@ -61,7 +61,7 @@ zakura-live = ["ict-rs/zakura"]
 
 [dependencies]
 anyhow = { workspace = true }
-async-trait = "0.1.89"
+async-trait = { workspace = true }
 axum = { workspace = true, features = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"] }
 clap = { workspace = true, features = ["derive"] }
 cosmos-sdk-proto = { workspace = true }
@@ -90,20 +90,20 @@ ecdsa = { workspace = true, optional = true }
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 ed25519-zebra = { workspace = true }
 env_logger = { workspace = true, features = ["default"] }
-frost-ed25519 = { version = "2.2", default-features = false, features = ["std", "serialization"] }
+frost-ed25519 = { workspace = true, features = ["std", "serialization"] }
 halo2_proofs = { workspace = true, features = ["multicore"] }
 hash-market = { workspace = true, optional = true, features = ["server", "client", "ve", "blossom", "nostr", "frost", "noise", "privval"] }
 hex = { workspace = true, features = ["std"] }
 ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing", "nostr"] }
 k256 = { workspace = true, features = ["ecdsa", "std"] }
 kms-shard = { workspace = true }
-log = "0.4.30"
+log = { workspace = true }
 nftfi-loan = { workspace = true, optional = true, features = ["interface"] }
 nftfi-raffle = { workspace = true, optional = true, features = ["interface"] }
 nftfi-randomness = { workspace = true, optional = true }
 nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
-prost = "0.13"
-prost-types = "0.13"
+prost = { workspace = true, features = ["std"] }
+prost-types = { workspace = true }
 rand = "0.8"
 reqwest = { version = "0.13.4", features = ["json"] }
 rs_merkle = { workspace = true, optional = true, features = ["std"] }
@@ -111,8 +111,8 @@ rustls = { workspace = true, features = ["ring", "std"] }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 sha2 = { workspace = true }
-snow = "0.9"
-tempfile = "3.27.0"
+snow = { workspace = true }
+tempfile = { workspace = true }
 terp-account = { workspace = true, optional = true, features = ["full"] }
 terp-auth = { workspace = true, optional = true }
 terp-authenticator-suite = { workspace = true, optional = true }
@@ -122,11 +122,11 @@ terp-rs = { workspace = true, features = ["default"] }
 terp-vsck = { workspace = true, features = ["library"], optional = true }
 terp721-account = { workspace = true, optional = true }
 terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 toml = "1.1.2"
-tower = { version = "0.5", default-features = false, features = ["util"] }
-tracing = "0.1"
-tracing-subscriber = "0.3.23"
+tower = { workspace = true, features = ["util"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 which = "8.0.2"
 whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
 zebra-chain = { workspace = true, optional = true }

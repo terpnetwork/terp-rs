@@ -16,7 +16,7 @@ default = ["e2e"]
 e2e = ["dep:tokio", "dep:tracing"]
 # Pulls shitstrap's interchain scripts (Hermes, local alloy). Off for the
 # terp-orch infuser bag; turn on for the deploy binary.
-shitstrap = ["dep:cw-shitstrap"]
+shitstrap = ["dep:cw-shitstrap", "dep:terp-orch"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -45,7 +45,7 @@ serde_json = { workspace = true, features = ["std"] }
 sha2 = { workspace = true, features = ["std"] }
 shlex = "1.3.0"
 svg-collections = { path = "../../tools/svg-collections" }
-terp-orch = { workspace = true, features = ["stack"] }
+terp-orch = { workspace = true, features = ["stack"], optional = true }
 
 # e2e multichain test deps
 tokio = { version = "1", features = ["full"], optional = true }

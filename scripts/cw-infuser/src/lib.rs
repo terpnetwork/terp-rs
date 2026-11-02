@@ -7,11 +7,13 @@ pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5
 pub mod benders;
 pub mod collection;
 pub mod drops;
+#[cfg(feature = "shitstrap")]
 pub mod suite;
 pub mod yijing;
 
 pub mod prelude {
     pub use crate::collection::{SvgCollectionConfig, SvgCollectionSuite, SvgFactory, SeriesConfig};
+    #[cfg(feature = "shitstrap")]
     pub use crate::suite::{CwSvgSuite, CwSvgSuiteDeployData};
 }
 
