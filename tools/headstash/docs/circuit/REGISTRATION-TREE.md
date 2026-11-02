@@ -1,5 +1,14 @@
 # Registration tree
 
+> **Status (2026-11-02).** The table below is the vk_id 2 (spec rev 4) lock, kept for the
+> record. vk_id 2 is retired: the contract refuses it on every fund-moving path. Production is
+> vk_id 3 (rev 5, `note_membership.rs`): claim tree depth **17** (at most 2^17 leaves), leaf
+> Poseidon(`terp-hs-note-leaf-v2`, key_com, amount), nullifier Poseidon(`terp-hs-nf-v1`, secret,
+> ctx) with `ConstantLength<3>`, every tag and layer index pinned with `constrain_constant`,
+> vk_hash `34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398`. See
+> `headstash-denominations-spec.md` section 4. Where this file says 16 frontier elements or 16
+> siblings, vk_id 3 has 17.
+
 Production claims use the K=11 membership circuit already measured on
 `wip/headstash-halo2-noecdsa`. The circuit source stays as it is. Depth,
 Poseidon tags, and the verifying-key id below are the lock. The K=19
@@ -17,12 +26,12 @@ including the ante.
 
 | Item | Value |
 | --- | --- |
-| Tree depth | 16. One campaign holds at most 2^16 leaves. |
+| Tree depth | 16 for vk_id 2 (retired). vk_id 3 uses 17 (2^17 leaves). |
 | Poseidon | Pallas, `P128Pow5T3`, width 3, rate 2. |
 | Tag encoding | `personalization_to_fp`: ASCII bytes at the front of a 32-byte array, the rest zero, then `pallas::Base::from_repr`. |
 | `key_com` | Poseidon(`terp-hs-keycom-v1`, secret). `ConstantLength<2>`. |
 | nullifier | Poseidon(`terp-hs-nf-v1`, secret, ctx). `ConstantLength<3>`. |
-| leaf | Poseidon(`terp-hs-claim-leaf-v1`, key_com, amount). `ConstantLength<3>`. Amount is the u64 as a field element. |
+| leaf | vk_id 2: Poseidon(`terp-hs-claim-leaf-v1`, key_com, amount); vk_id 3: `terp-hs-note-leaf-v2`. `ConstantLength<3>`. Amount is the u64 as a field element. |
 | Merkle node | Poseidon(`terp-hs-distro-crh-v1`, layer, left, right). `ConstantLength<4>`. `layer` is the level as a field element, 0 at the leaves. |
 | Field bytes | 32-byte little-endian `to_repr`. Hex in every signed string is 64 lowercase characters of those bytes. |
 | `vk_id` | 2 |

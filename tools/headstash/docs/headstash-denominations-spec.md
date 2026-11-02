@@ -63,9 +63,13 @@ Production root (2026-10-26 build, `DENOMS=1 eligibility/budget.sh`):
 ```
 key_com    = Poseidon("terp-hs-keycom-v1", secret)                (unchanged)
 claim_leaf = Poseidon("terp-hs-note-leaf-v2", key_com, amount)    (new tag)
-nullifier  = Poseidon("terp-hs-nullifier-v1", secret, ctx)        (unchanged)
+nullifier  = Poseidon("terp-hs-nf-v1", secret, ctx)               (unchanged, ConstantLength<3>)
 public     = [ctx, root, nullifier, dest_lo, dest_hi, amount]     (layout unchanged)
 ```
+
+The nullifier tag is `TAG_NULLIFIER = "terp-hs-nf-v1"` (`note_membership.rs`). The string
+`terp-hs-nullifier-v1` is a different hash: `claim_auth::claim_nullifier` (`ConstantLength<6>` over an
+ephemeral key and a distribution leaf). It is not the note nullifier.
 
 Claim tree depth 17 (contract `DEPTH` 16 to 17). Every Poseidon tag and every Merkle layer
 constant is fixed with `constrain_constant` (fix for N1). `prove_note` refuses non-class
