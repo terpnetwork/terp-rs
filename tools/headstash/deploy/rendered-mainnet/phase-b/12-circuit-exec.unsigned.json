@@ -27,7 +27,7 @@
        }
       ],
       "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
-      "metadata": "{{PROPOSAL_METADATA_URI_CIRCUIT}}",
+      "metadata": "https://s3.terp.network/static/headstash/cid/2dbbb347275fe7b2615a6c6d43fd781cd4c924a164bb0f5fafa97159eb3c8e3d",
       "title": "Headstash 2026 (B1): store the note circuit",
       "summary": "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov, for the cw-headstash contract deployed by proposal A at terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul. Nothing is funded. Forum: https://discord.terp.network",
       "expedited": false

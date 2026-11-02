@@ -71,9 +71,9 @@
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "phase-a/14-deploy-proposal.unsigned.json": {
-      "tx_json_bytes": 4597,
+      "tx_json_bytes": 4674,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 4485,
+      "amino_sign_doc_bytes": 4562,
       "zigner_ok": true
     },
     "phase-a/17-deposit-topup.unsigned.json": {
@@ -83,11 +83,11 @@
       "zigner_ok": true
     },
     "phase-b/11-circuit-proposal.inner.json": {
-      "tx_json_bytes": 180842,
+      "tx_json_bytes": 180918,
       "signer": null
     },
     "phase-b/12-circuit-exec.unsigned.json": {
-      "tx_json_bytes": 181311,
+      "tx_json_bytes": 181387,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
@@ -103,9 +103,9 @@
       "zigner_ok": true
     },
     "phase-b/14-fund-bind-proposal.unsigned.json": {
-      "tx_json_bytes": 2931,
+      "tx_json_bytes": 3010,
       "signer": "proposer",
-      "amino_sign_doc_bytes": 2823,
+      "amino_sign_doc_bytes": 2902,
       "zigner_ok": true
     },
     "phase-b/17-deposit-topup-fund.unsigned.json": {
@@ -194,6 +194,17 @@
       "signer": "terp1fx",
       "amino_sign_doc_bytes": 343,
       "zigner_ok": true
+    },
+    "phase-a/10-session-grant/sign_doc.json": {
+      "amino_sign_doc_bytes": 1419,
+      "zigner_ok": true,
+      "qr_frames": 1,
+      "signer": "proposer (Zigner)",
+      "types": [
+        "/cosmos.gov.v1.MsgSubmitProposal",
+        "/cosmos.authz.v1beta1.MsgRevoke",
+        "/cosmos.feegrant.v1beta1.MsgRevokeAllowance"
+      ]
     }
   },
   "validate_rendered_proposal": "ok",
@@ -212,9 +223,6 @@
     "PROPOSAL_ID_CIRCUIT",
     "PROPOSAL_ID_DEPLOY",
     "PROPOSAL_ID_FUND",
-    "PROPOSAL_METADATA_URI_CIRCUIT",
-    "PROPOSAL_METADATA_URI_DEPLOY",
-    "PROPOSAL_METADATA_URI_FUND",
     "STORE_FEE_UTHIOL",
     "STORE_GAS"
   ]
