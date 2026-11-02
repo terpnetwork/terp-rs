@@ -84,3 +84,34 @@ flowchart LR
 - **The private key never leaves the page.** CSP `connect-src` is restricted to REST and relay, so a hostile instance can't exfiltrate the key. It could still collect registration signatures for its own ctx. Those are bound to `chain_id‖that contract` (`direct_ctx`), so they are useless against the real instance, but they do link the user's EVM identity to the attacker.
 - **How users verify the denom and contract:** the banner shows the raw denom, the `factory/<instance>/<sub>` creator (which must equal the instance for NewFungible), the bank denom metadata, the instance address, code id + checksum, and the frontend address and manifest sha. Users compare these with the gov proposal text.
 - **Relay:** the fee-grant relay is single-instance (`HEADSTASH_CONTRACT`). Use either one relay route per instance (`/relay/<addr>/…`, still the one nginx) or make the relay accept an allowlist. A grant for an unknown instance must be refused.
+
+## Appendix A. Token strategy and end-of-campaign rules
+
+The instance's `token_strategy` decides what sweep and reclaim can do. A frontend
+instance must show which strategy it uses.
+
+| | ExistingFungible (`uterp`, or a pre-funded `factory/...` denom) | NewFungible (mint-on-claim, `factory/<contract>/<sub>`) |
+|---|---|---|
+| Direct claim (`claim_note`) | Paid from escrow. Refused after `cutoff_height`. | Minted to the contract, then sent to the claimant. Refused after `cutoff_height`. |
+| `sweep_unclaimed` (after cutoff) | Burns or returns the escrow balance, as before. | Always refused with `sweep not supported for mint-on-claim tokens`, before or after the cutoff and even when the contract holds the denom. |
+| `emergency_reclaim` (gov: owner and wasm admin, before cutoff) | Sends the escrow to the community pool, records `RECLAIMED`, and halts the contract. | Moves no funds: no `FundCommunityPool` and no bank message for the minted denom. It still records `RECLAIMED`, so `ensure_live` refuses every later claim, registration and execute. |
+
+Supply bounds for NewFungible:
+- On the v1 direct path, total mint is at most the sum over classes of `cap x amount`
+  (`DIRECT_CLASS_PAID` against each class's AmountCap), and it is further bounded by the
+  claim budget. Every successful claim mints exactly one class amount.
+- `initial_mint` in `NewTokenConfig` is minted by the instantiate reply outside every
+  cap. A bounded-supply instance must set `initial_mint: null`. The template should warn
+  when it is set.
+- The `manager` and `minters` fields are stored. Mint and Burn execute messages exist only
+  in the `legacy` build. In the v1 build no address can mint outside claims.
+
+Security notes:
+- A legacy build (`--features legacy`) still has the lane/epoch payout, which pays only
+  after the cutoff. It would still mint NewFungible after the cutoff. Mainnet v1 builds
+  keep `legacy` off, which compiles that path out. Never deploy a legacy build with
+  NewFungible.
+- Reclaim is a kill switch for mint-on-claim: it stops future minting. It cannot recover
+  tokens that were already minted and sent.
+- After a halt or the cutoff, the unclaimed allocation of a NewFungible instance was never
+  minted, so there is nothing to sweep.
