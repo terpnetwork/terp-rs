@@ -27,7 +27,7 @@ start_lane() {
   HEADSTASH_OPERATOR="$(python3 "$OPSIGN" --key "$CHAIN_HOME/operator.key" --address-only)" \
     nohup "$LANE_BIN" >"$CHAIN_HOME/lane.log" 2>&1 &
   echo $! >"$CHAIN_HOME/lane.pid"
-  for _ in $(seq 1 300); do grep -q lane_up "$CHAIN_HOME/lane.log" 2>/dev/null && curl -fsS --max-time 2 "http://$LANE_BIND/ve/health" >/dev/null 2>&1 && break; sleep 1; done
+  for _ in $(seq 1 ${LANE_UP_TIMEOUT:-300}); do grep -q lane_up "$CHAIN_HOME/lane.log" 2>/dev/null && curl -fsS --max-time 2 "http://$LANE_BIND/ve/health" >/dev/null 2>&1 && break; sleep 1; done
   grep -q lane_up "$CHAIN_HOME/lane.log" || { echo "lane did not start" >&2; tail -5 "$CHAIN_HOME/lane.log" >&2; exit 1; }
   echo "$data" >"$CHAIN_HOME/lane.data"
   echo "lane up $LANE_BIND pid $(cat "$CHAIN_HOME/lane.pid") data $data"

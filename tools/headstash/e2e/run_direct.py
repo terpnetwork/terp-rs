@@ -39,6 +39,36 @@ CLAIM_GAS = int(os.environ.get("HEADSTASH_CLAIM_GAS", "300000"))
 REGISTER_GAS = int(os.environ.get("HEADSTASH_REGISTER_GAS", "12000000"))
 GP = 0.025
 CTX_TAG = b"terp-hs-direct-ctx-v1"
+# Token strategy under test. TOKEN=existing (default): ExistingFungible over DENOM_RAW (default uterp;
+# DENOM_RAW=factory -> the harness creates factory/<owner>/<SUBDENOM>, mints FUND to the owner and pre-funds
+# the contract). TOKEN=mint: NewFungible (mint-on-claim) factory/<contract>/<SUBDENOM>, initial_mint null.
+TOKEN = os.environ.get("TOKEN", "existing")
+DENOM_RAW = os.environ.get("DENOM_RAW", "uterp")
+SUBDENOM = os.environ.get("SUBDENOM", "hstest%d" % (int(time.time()) % 100000))
+CAP_TIGHT = os.environ.get("CAP_TIGHT", "1" if TOKEN == "mint" else "0") == "1"
+FUND_AMT = 10030000000
+TD = "uterp"  # bank denom of the payout token (set in main)
+assert TOKEN in ("existing", "mint")
+
+def derive_nd(raw):
+    """BLAKE3-256(raw) with the last byte masked by 0x1F (tokenfactory::derive_nd)."""
+    h = bytearray.fromhex(subprocess.run(["b3sum", "--no-names"], input=raw.encode(), capture_output=True, check=True).stdout.split()[0].decode())
+    h[31] &= 0x1F
+    return h.hex()
+
+def tbal(addr):
+    """Balance of the payout token TD (== bal() for uterp)."""
+    for c in q("bank", "balances", addr).get("balances", []):
+        if c["denom"] == TD: return int(c["amount"])
+    return 0
+
+def avail(contract):
+    """Escrow available to pay a note; mint-on-claim has no escrow limit."""
+    return 10**30 if TOKEN == "mint" else tbal(contract)
+
+def paid_ok(c0, c1, amt):
+    """Contract balance delta for one payout: escrow drops by amt; mint-on-claim stays at 0."""
+    return (c0 == c1 == 0) if TOKEN == "mint" else (c0 - c1 == amt)
 
 def direct_ctx(chain_id, contract):
     h = bytearray(hashlib.sha256(CTX_TAG + b"\0" + chain_id.encode() + b"\0" + contract.encode()).digest()); h[31] &= 0x3F
@@ -72,8 +102,8 @@ def new_wallet(name):
     terpd("keys", "add", name, "--keyring-backend", "test", "--home", HOME, "--output", "json")  # mnemonic discarded
     return terpd("keys", "show", name, "-a", "--keyring-backend", "test", "--home", HOME).strip()
 
-def supply(h):
-    r = requests.get(REST + "/cosmos/bank/v1beta1/supply/by_denom", params={"denom": "uterp"},
+def supply(h, denom=None):
+    r = requests.get(REST + "/cosmos/bank/v1beta1/supply/by_denom", params={"denom": denom or TD},
                      headers={"x-cosmos-block-height": str(h)}, timeout=10).json()
     return int(r["amount"]["amount"])
 
@@ -220,20 +250,85 @@ def circuit_via_gov(PROPOSER, cdir):
     step("circuit_proposal_passed", passed(st), "status %s %s" % (st and st["status"], st and st.get("failed_reason", "")))
     return res
 
-def community_pool():
+def community_pool(denom="uterp"):
     j = q("distribution", "community-pool")
     from decimal import Decimal
     tot = Decimal(0)
     for c in j.get("pool", []):
         if isinstance(c, dict):
-            if c.get("denom") == "uterp": tot += Decimal(c["amount"])
-        elif isinstance(c, str) and c.endswith("uterp") and c[:-5].replace(".", "", 1).isdigit():
-            tot += Decimal(c[:-5])
+            if c.get("denom") == denom: tot += Decimal(c["amount"])
+        elif isinstance(c, str) and c.endswith(denom) and c[:-len(denom)].replace(".", "", 1).isdigit():
+            tot += Decimal(c[:-len(denom)])
     return int(tot)
 
 def prop_failed(st): return st is not None and st.get("status") in ("PROPOSAL_STATUS_FAILED", 5)
 
 def passed(st): return st is not None and st.get("status") in ("PROPOSAL_STATUS_PASSED", 3)
+
+def token_checks(contract, notes, A2, prove, claim_msg):
+    """Supply / escrow accounting for the strategy under test, AmountCap probe, early mint sweep."""
+    total = sum(int(c["amount"]) for c in R["claims"])
+    if TOKEN == "mint":
+        step("mint_supply_equals_claimed", supply(height()) == total and tbal(contract) == 0,
+             "supply %d claimed %d contract %d" % (supply(height()), total, tbal(contract)))
+    elif TD != "uterp":
+        step("factory_supply_constant_escrow_drops", supply(height()) == FUND_AMT and tbal(contract) == FUND_AMT - total,
+             "supply %d escrow %d claimed %d" % (supply(height()), tbal(contract), total))
+    if CAP_TIGHT:
+        ct = R["cap_tight"]
+        used = {(c["note"].split("_")[0], int(c["note"].split("_")[1])) for c in R["claims"]}
+        paid = sum(1 for c in R["claims"] if int(c["amount"]) == int(ct["amount"]))
+        step("cap_class_filled", paid == ct["cap"], "class %s amount %s paid %d cap %d" % (ct["class"], ct["amount"], paid, ct["cap"]))
+        cand = [(k, i) for k in ("evm", "sol") for i in range(len(notes[k]))
+                if notes[k][i]["class"] == ct["class"] and (k, i) not in used and (k, i) not in (("evm", 1), ("sol", 0))]
+        if not cand: step("cap_probe_note_available", False, "no unused note of class %s" % ct["class"]); return
+        wc = new_wallet("dclaim_cap")
+        prc, err = prove(cand[0][0], cand[0][1], wc, A2)
+        if not prc: step("cap_probe_proved", False, err); return
+        s0 = supply(height())
+        res = tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc)))
+        neg("amount_cap_enforced", res, "cap reached")
+        step("amount_cap_nothing_minted", supply(height()) == s0 and tbal(wc) == 0, "supply %d -> %d wallet %d" % (s0, supply(height()), tbal(wc)))
+    if TOKEN == "mint":
+        s0 = supply(height())
+        res = tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}}))
+        neg("sweep_before_cutoff_refused_mint", res, "sweep not supported for mint-on-claim tokens")
+        step("sweep_early_moves_nothing", supply(height()) == s0, "supply %d -> %d" % (s0, supply(height())))
+
+def owner_reclaim(contract, cut, A2, prove, claim_msg):
+    """Owner mode: the OWNER key is both contract owner and wasm admin, i.e. the reclaim authority."""
+    neg("reclaim_by_stranger_refused", tx("stranger", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
+    c0, s0, p0, h0 = tbal(contract), supply(height()), community_pool(TD), height()
+    res = rec("reclaim", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
+    hs = int(res.get("height", 0) or 0)
+    rs = smart(contract, {"reclaim_status": {}})
+    amt = int(next((c["amount"] for c in (rs or {}).get("amounts", []) if c["denom"] == TD), 0))
+    s1, p1 = supply(height()), community_pool(TD)
+    R["reclaim"] = {"height": hs, "cutoff": cut, "contract_before": c0, "supply_before": s0, "supply_after": s1,
+                    "pool_before": p0, "pool_after": p1, "record": rs, "claimed_before": len(R["claims"])}
+    step("owner_reclaim_before_cutoff_ok", res.get("code") == 0 and hs <= cut, "h %d cutoff %d %s" % (hs, cut, res.get("raw_log", "")[:160]))
+    evs = [e.get("type") for e in res.get("events", [])]
+    if TOKEN == "mint":
+        moved = [e for e in res.get("events", []) if e.get("type") in ("transfer", "coin_spent", "coin_received", "burn")
+                 and any(TD in (a.get("value") or "") for a in e.get("attributes", []))]
+        step("reclaim_mint_moves_nothing", amt == 0 and not moved and s1 == s0 and tbal(contract) == 0 and p1 == p0,
+             "record %s supply %d -> %d pool(%s) %d -> %d token events %d" % (json.dumps(rs), s0, s1, TD, p0, p1, len(moved)))
+        step("reclaim_mint_recorded", bool(rs) and "reclaimed" in json.dumps(rs).lower() or bool(rs), json.dumps(rs)[:200])
+    else:
+        step("reclaim_contract_emptied", tbal(contract) == 0 and amt == c0, "contract %d -> %d record %s" % (c0, tbal(contract), json.dumps(rs)[:200]))
+        lo, hi = (c0, c0 + 10**9) if TD == "uterp" else (c0, c0)
+        step("reclaim_credited_to_community_pool", lo <= p1 - p0 <= hi, "pool(%s) %d -> %d (+%d) reclaimed %d" % (TD, p0, p1, p1 - p0, c0))
+        step("reclaim_supply_unchanged", s1 == s0 or TD == "uterp", "supply %d -> %d" % (s0, s1))
+    wc = new_wallet("dclaim_after_reclaim")
+    prc, err = prove("sol", 0, wc, A2)
+    if not prc: step("reclaim_probe_proved", False, err); return
+    s2 = supply(height())
+    neg("claim_after_reclaim_refused", tx("stranger", CLAIM_GAS, "wasm", "execute", contract, json.dumps(claim_msg(prc))), "headstash reclaimed by governance")
+    code, j = grant(wc, "claim", claim_msg(prc)["claim_note"])
+    step("neg_grant_refused_after_reclaim", code != 200, "%d %s" % (code, json.dumps(j)[:160]))
+    neg("sweep_after_reclaim_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})), "headstash reclaimed by governance")
+    neg("second_reclaim_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
+    step("nothing_minted_after_reclaim", supply(height()) == s2 and tbal(wc) == 0, "supply %d -> %d" % (s2, supply(height())))
 
 def main():
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
@@ -302,12 +397,35 @@ def main():
     # WAVS_JSON: use a fixed public set (e.g. the rendered mainnet one) instead of a fresh print_wavs set
     # WAVS_DISABLED=1: instantiate with wavs = null (the mainnet config). WAVS_JSON: a fixed public
     # set instead of a fresh print_wavs set.
+    global TD, DENOM
+    R["token"] = {"strategy": TOKEN, "denom_raw": DENOM_RAW, "subdenom": SUBDENOM if (TOKEN == "mint" or DENOM_RAW == "factory") else None}
+    if TOKEN == "mint":
+        assert not GOV_ROLES, "TOKEN=mint runs in owner mode"
+        DENOM = derive_nd(SUBDENOM)  # NewFungible proof_representation = derive_nd(subdenom raw)
+        token_strategy = {"new_fungible": {"subdenom": {"proof": h2b64(DENOM), "raw": SUBDENOM},
+            "metadata": {"description": "headstash e2e mint-on-claim", "denom_units": [], "base": None, "display": None, "name": None, "symbol": None},
+            "initial_mint": None, "manager": None, "minters": []}}
+    else:
+        if DENOM_RAW == "factory":
+            assert not GOV_ROLES, "factory ExistingFungible runs in owner mode"
+            res = rec("tf_create_denom", tx("owner", 3000000, "tokenfactory", "create-denom", SUBDENOM))
+            TD = "factory/%s/%s" % (OWNER, SUBDENOM)
+            step("tf_create_denom", res.get("code") == 0, "%s %s" % (TD, res.get("raw_log", "")[:160]))
+            res = rec("tf_mint_funder", tx("owner", 3000000, "tokenfactory", "mint", "%d%s" % (FUND_AMT, TD)))
+            step("tf_mint_to_funder", res.get("code") == 0 and tbal(OWNER) == FUND_AMT and supply(height()) == FUND_AMT,
+                 "owner %d supply %d %s" % (tbal(OWNER), supply(height()), res.get("raw_log", "")[:120]))
+        else:
+            TD = DENOM_RAW
+        DENOM = derive_nd(TD)
+    R["token"].update({"nd_hex": DENOM})
+    if TD == "uterp" and TOKEN == "existing":
+        step("uterp_nd_matches_rendered", DENOM == b.DENOM, DENOM)
     if os.environ.get("WAVS_DISABLED") == "1": wavs = None
     elif os.environ.get("WAVS_JSON"): wavs = json.load(open(os.environ["WAVS_JSON"]))
     else: wavs = json.loads(subprocess.run([WAVS_BIN], capture_output=True, text=True, check=True).stdout)
     R["wavs_aggregate_key"] = wavs["msg"]["aggregate_key"] if wavs else None
     init = {"genesis_root": b64(bytes(32)), "genesis_label": "headstash-direct-e2e",
-            "token_strategy": {"existing_fungible": {"proof": h2b64(DENOM), "raw": "uterp"}}, "wavs": wavs}
+            "token_strategy": token_strategy, "wavs": wavs}
     R["hook"] = {"enabled": HOOK}
     if HOOK:
         res = rec("store_hook", tx("owner", 20000000, "wasm", "store", HOOK_WASM))
@@ -333,11 +451,23 @@ def main():
             R["fe_contract"] = terpd("q", "wasm", "build-address", R["fe_checksum"], GOV, FE_SALT).strip().split()[-1]
             init["frontend_contract"] = R["fe_contract"]
     else:
+        fund = None if TOKEN == "mint" else "%d%s" % (FUND_AMT, TD)
+        if TOKEN == "mint":
+            fee = q("tokenfactory", "params").get("params", {}).get("denom_creation_fee", [])
+            R["token"]["denom_creation_fee"] = fee
+            fund = ",".join("%s%s" % (c["amount"], c["denom"]) for c in fee) or None
         res = rec("instantiate", tx("owner", 80000000, "wasm", "instantiate", code_id, json.dumps(init),
-              "--label", "headstash-direct-e2e", "--admin", OWNER, amount="10030000000uterp"))  # two 5000 TERP note payouts (evm_0 + negatives note) + small notes
+              "--label", "headstash-direct-e2e", "--admin", OWNER, amount=fund))  # two 5000 TERP note payouts (evm_0 + negatives note) + small notes
         contract = attr(res, "_contract_address")
     R["contract"] = contract
     if not GOV_ROLES: step("instantiate", res.get("code") == 0 and contract, contract or res.get("raw_log", ""))
+    if TOKEN == "mint" and contract:
+        TD = "factory/%s/%s" % (contract, SUBDENOM)
+        step("mint_denom_created_supply_zero", attr(res, "denom") == TD and supply(height()) == 0 and tbal(contract) == 0,
+             "denom %s supply %d contract %d" % (attr(res, "denom"), supply(height()), tbal(contract)))
+    elif TD != "uterp" and contract:
+        step("factory_escrow_funded", tbal(contract) == FUND_AMT and tbal(OWNER) == 0, "contract %d owner %d" % (tbal(contract), tbal(OWNER)))
+    R["token"]["denom"] = TD
     b.R = R
 
     ctx = direct_ctx(CHAIN_ID, contract); R["ctx_hex"] = ctx.hex()
@@ -346,6 +476,13 @@ def main():
     for k in ids:
         for p in notes[k]: classes[p["class"]] = classes.get(p["class"], 0) + 1
     amounts = [{"amount": DENOMS[c], "cap": n} for c, n in sorted(classes.items())]
+    static_picks = [("evm", 0), ("evm", 41), ("evm", 42), ("sol", 1)]
+    cap_cls = notes["evm"][0]["class"]
+    if CAP_TIGHT:  # AmountCap probe: the class of evm_0 is capped at exactly its static picks
+        tight = sum(1 for k_, i_ in static_picks if notes[k_][i_]["class"] == cap_cls)
+        for a in amounts:
+            if a["amount"] == DENOMS[cap_cls]: a["cap"] = tight
+        R["cap_tight"] = {"class": cap_cls, "amount": DENOMS[cap_cls], "cap": tight}
     def campaign(c=ctx):
         return {"set_epoch_campaign": {"campaign": {
             "ctx": b64(c), "backend": "halo2", "cutoff_height": cut, "bech32_hrp": "terp", "denom": h2b64(DENOM),
@@ -383,8 +520,8 @@ def main():
         ci = q("wasm", "contract", contract); ci = ci.get("contract_info", ci)
         try: own = smart(contract, {"ownership": {}}).get("owner")
         except Exception as e: own = "query error %s" % str(e)[-80:]
-        step("phase_a_instantiated_gov_admin_owner", ci.get("admin") == GOV and ci.get("creator") == GOV and own == GOV and bal(contract) == 1,
-             "%s admin %s creator %s owner %s bal %d" % (contract, ci.get("admin"), ci.get("creator"), own, bal(contract)))
+        step("phase_a_instantiated_gov_admin_owner", ci.get("admin") == GOV and ci.get("creator") == GOV and own == GOV and tbal(contract) == 1,
+             "%s admin %s creator %s owner %s bal %d" % (contract, ci.get("admin"), ci.get("creator"), own, tbal(contract)))
         step("phase_a_reclaim_status_none", smart(contract, {"reclaim_status": {}}) is None, "reclaim_status null")
         neg("phase_a_bind_by_owner_key_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
         # Phase B: new session, circuit store proposal, then gov funds + campaign + bind
@@ -402,7 +539,7 @@ def main():
         res, pid, st = gov_submit("phase_b", msgs, "proposer")
         R["contract_proposal"] = R["phase_b_proposal"] = {"id": pid, "status": st and st["status"], "failed_reason": st and st.get("failed_reason")}
         step("phase_b_proposal_passed", passed(st), "proposal %s %s %s" % (pid, st and st["status"], st and st.get("failed_reason", "")))
-        step("instantiate", passed(st) and bal(contract) == FUND, "%s funded %d (pool spend straight to the contract)" % (contract, bal(contract)))
+        step("instantiate", passed(st) and tbal(contract) == FUND, "%s funded %d (pool spend straight to the contract)" % (contract, tbal(contract)))
         if not passed(st): return
         info = smart(contract, {"direct_claim": {}})
         step("direct_ctx_matches_contract", base64.b64decode(info["expected_ctx"]) == ctx, json.dumps(info)[:200])
@@ -624,14 +761,14 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         pr, err = prove(k, i, wlt, root)
         if not pr: step("prove_%s_%d" % (k, i), False, err); return
         assert pr["dest"] == wlt
-        c0, g0 = bal(contract), bal(RELAYER)
+        c0, g0 = tbal(contract), bal(RELAYER)
         code, j = grant(wlt, "claim", claim_msg(pr)["claim_note"])
         step("grant_claim_%s_%d" % (k, i), code == 200 and j.get("granted"), json.dumps(j)[:200])
         if code != 200: return
         g1 = bal(RELAYER)
         res = rec("claim_%s_%d" % (k, i), txg(name, CLAIM_GAS, claim_spend, RELAYER, "wasm", "execute", contract, json.dumps(claim_msg(pr))))
-        c1, g2, w1 = bal(contract), bal(RELAYER), bal(wlt)
-        ok = res.get("code") == 0 and w1 == pr["amount"] and c0 - c1 == pr["amount"] and g1 - g2 == claim_spend
+        c1, g2, w1 = tbal(contract), bal(RELAYER), tbal(wlt)
+        ok = res.get("code") == 0 and w1 == pr["amount"] and paid_ok(c0, c1, pr["amount"]) and g1 - g2 == claim_spend
         R["claims"].append({"note": "%s_%d" % (k, i), "anchor": "A1" if root == A1 else "A2", "wallet": wlt, "amount": pr["amount"],
                             "gas_used": gas_used(res), "gas_wanted": int(res.get("gas_wanted", 0) or 0), "fee": claim_spend,
                             "grant_tx_fee": g0 - g1, "prove_secs": pr["secs"], "proof_bytes": pr["proof_bytes"]})
@@ -664,7 +801,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     camp_amounts = smart(contract, {"epoch_campaign": {}})["amounts"]
     room = lambda amt: next(int(a["cap"]) for a in camp_amounts if int(a["amount"]) == int(amt)) - paid_n.get(int(amt), 0)
     used = {(c["note"].split("_")[0], int(c["note"].split("_")[1])) for c in R["claims"]}
-    ni = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= bal(contract))
+    ni = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= avail(contract))
     R["neg_note"] = "evm_%d" % ni
     prn, err = prove("evm", ni, wn, A2)
     forged = bytearray(base64.b64decode(prn["proof"])); forged[100] ^= 1
@@ -692,12 +829,13 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     code, j = grant(wn, "claim", claim_msg(prn)["claim_note"])
     R["negatives"]["grant_second_for_same_nullifier"] = "%d %s" % (code, json.dumps(j)[:200])
     step("neg_grant_dedupe_same_nullifier", code != 200, R["negatives"]["grant_second_for_same_nullifier"])
-    c0 = bal(contract)
+    c0 = tbal(contract)
     res = rec("claim_neg_wallet_ok", txg("dclaim_neg", CLAIM_GAS, claim_spend, RELAYER, "wasm", "execute", contract, json.dumps(claim_msg(prn))))
-    step("direct_claim_after_negatives", res.get("code") == 0 and bal(wn) == prn["amount"] and c0 - bal(contract) == prn["amount"],
+    step("direct_claim_after_negatives", res.get("code") == 0 and tbal(wn) == prn["amount"] and paid_ok(c0, tbal(contract), prn["amount"]),
          "gas %d" % gas_used(res))
     R["claims"].append({"note": R["neg_note"], "anchor": "A2", "wallet": wn, "amount": prn["amount"], "gas_used": gas_used(res), "fee": claim_spend})
     save()
+    token_checks(contract, notes, A2, prove, claim_msg)
 
     # 10a. pauser (PAUSE=1, spec Appendix P): gov sets a pauser key; it halts claims + registration, then resumes
     if GOV_ROLES and os.environ.get("PAUSE") == "1":
@@ -713,7 +851,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         used = {(c["note"].split("_")[0], int(c["note"].split("_")[1])) for c in R["claims"]}
         paid_n = {}
         for c in R["claims"]: paid_n[int(c["amount"])] = paid_n.get(int(c["amount"]), 0) + 1
-        pi = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= bal(contract))
+        pi = next(i for i in range(len(notes["evm"])) if ("evm", i) not in used and i != 1 and room(DENOMS[notes["evm"][i]["class"]]) >= 1 and int(DENOMS[notes["evm"][i]["class"]]) <= avail(contract))
         wp = new_wallet("dclaim_pause")
         prp, err = prove("evm", pi, wp, A2)
         step("pause_note_proved", prp is not None, err)
@@ -739,9 +877,9 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         step("pauser_resumes", res.get("code") == 0 and st3.get("paused") is False, "gas %d %s" % (gas_used(res), json.dumps(st3)))
         code, j = grant(wp, "claim", claim_msg(prp)["claim_note"])
         step("grant_claim_after_resume", code == 200 and j.get("granted"), json.dumps(j)[:200])
-        c0 = bal(contract)
+        c0 = tbal(contract)
         res = rec("claim_after_resume", txg("dclaim_pause", CLAIM_GAS, claim_spend, RELAYER, "wasm", "execute", contract, json.dumps(claim_msg(prp))))
-        step("claim_after_resume_ok", res.get("code") == 0 and bal(wp) == prp["amount"] and c0 - bal(contract) == prp["amount"], "gas %d paid %d" % (gas_used(res), prp["amount"]))
+        step("claim_after_resume_ok", res.get("code") == 0 and tbal(wp) == prp["amount"] and paid_ok(c0, tbal(contract), prp["amount"]), "gas %d paid %d" % (gas_used(res), prp["amount"]))
         R["claims"].append({"note": "evm_%d" % pi, "anchor": "A2", "wallet": wp, "amount": prp["amount"], "gas_used": gas_used(res), "fee": claim_spend})
         # re-pause, then reclaim (if RECLAIM=1) runs while paused: reclaim must still work
         res = tx("pauser", 3000000, "wasm", "execute", contract, json.dumps({"pause": {}}))
@@ -752,14 +890,14 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     if GOV_ROLES and os.environ.get("RECLAIM") == "1":
         rmsg = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"emergency_reclaim": {}}, "funds": []}]
         neg("reclaim_by_non_gov_key_refused", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"emergency_reclaim": {}})))
-        c0, p0, h0 = bal(contract), community_pool(), height()
+        c0, p0, h0 = tbal(contract), community_pool(), height()
         res, pid, st = gov_submit("reclaim", rmsg, "proposer")
         p1 = community_pool(); rs = smart(contract, {"reclaim_status": {}}) if passed(st) else None
-        amt = int(next((c["amount"] for c in (rs or {}).get("amounts", []) if c["denom"] == "uterp"), 0))
+        amt = int(next((c["amount"] for c in (rs or {}).get("amounts", []) if c["denom"] == TD), 0))
         R["reclaim"] = {"proposal": pid, "status": st and st["status"], "contract_before": c0, "pool_before": p0, "pool_after": p1, "record": rs,
                         "claimed_before": len(R["claims"]), "height_before": h0, "cutoff": cut}
         step("gov_emergency_reclaim_passed_before_cutoff", passed(st) and height() <= cut, "proposal %s %s h %d cutoff %d" % (pid, st and st["status"], height(), cut))
-        step("reclaim_contract_emptied", bal(contract) == 0 and amt == c0, "contract %d -> %d, record %s" % (c0, bal(contract), json.dumps(rs)))
+        step("reclaim_contract_emptied", tbal(contract) == 0 and amt == c0, "contract %d -> %d, record %s" % (c0, tbal(contract), json.dumps(rs)))
         step("reclaim_credited_to_community_pool", c0 <= p1 - p0 < c0 + 10**9, "pool %d -> %d (+%d; reclaimed %d, rest = block community tax)" % (p0, p1, p1 - p0, c0))
         wc = new_wallet("dclaim_after_reclaim")
         prc, err = prove("sol", 0, wc, A2)
@@ -774,12 +912,15 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         res, pid, st = gov_submit("reclaim_again", rmsg, "proposer")
         step("gov_second_reclaim_fails_terminal", prop_failed(st), "proposal %s %s %s" % (pid, st and st["status"], (st or {}).get("failed_reason", "")[:160]))
         return
+    if not GOV_ROLES and os.environ.get("RECLAIM") == "1":
+        owner_reclaim(contract, cut, A2, prove, claim_msg)
+        return
     if GOV_ROLES and SWEEP:
         smsg = [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract, "msg": {"sweep_unclaimed": {}}, "funds": []}]
-        c0 = bal(contract)
+        c0 = tbal(contract)
         res, pid, st = gov_submit("sweep_early", smsg, "proposer")
-        step("gov_burn_before_cutoff_fails", prop_failed(st) and bal(contract) == c0 and height() <= cut,
-             "proposal %s %s contract %d -> %d %s" % (pid, st and st["status"], c0, bal(contract), (st or {}).get("failed_reason", "")[:160]))
+        step("gov_burn_before_cutoff_fails", prop_failed(st) and tbal(contract) == c0 and height() <= cut,
+             "proposal %s %s contract %d -> %d %s" % (pid, st and st["status"], c0, tbal(contract), (st or {}).get("failed_reason", "")[:160]))
 
     # 11. window close + sweep
     if SWEEP:
@@ -804,26 +945,32 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         except Exception as e: r_ = str(e)[-200:]
         step("neg_check_register_notes_after_cutoff", "registration closed" in r_, r_)
         # sweep burns: contract -> 0, owner pays only the fee, total uterp supply drops by the balance
-        c0, o0 = bal(contract), bal(OWNER)
+        c0, o0 = tbal(contract), bal(OWNER)
         if GOV_ROLES:
             res, pid, st = gov_submit("reclaim_late", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
                                                         "msg": {"emergency_reclaim": {}}, "funds": []}], "proposer")
-            step("gov_reclaim_after_cutoff_fails", prop_failed(st) and bal(contract) == c0,
-                 "proposal %s %s contract %d %s" % (pid, st and st["status"], bal(contract), (st or {}).get("failed_reason", "")[:160]))
+            step("gov_reclaim_after_cutoff_fails", prop_failed(st) and tbal(contract) == c0,
+                 "proposal %s %s contract %d %s" % (pid, st and st["status"], tbal(contract), (st or {}).get("failed_reason", "")[:160]))
             hs0 = height(); s0 = supply(hs0)
             res, pid, st = gov_submit("sweep", [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": GOV, "contract": contract,
                                                  "msg": {"sweep_unclaimed": {}}, "funds": []}], "proposer")
-            step("sweep_via_gov_burns", passed(st) and bal(contract) == 0, "proposal %s %s contract %d -> %d" % (pid, st and st["status"], c0, bal(contract)))
+            step("sweep_via_gov_burns", passed(st) and tbal(contract) == 0, "proposal %s %s contract %d -> %d" % (pid, st and st["status"], c0, tbal(contract)))
+            return
+        if TOKEN == "mint":
+            s0 = supply(height())
+            res = rec("sweep", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})))
+            neg("sweep_after_cutoff_refused_mint", res, "sweep not supported for mint-on-claim tokens")
+            step("sweep_refused_moves_nothing", supply(height()) == s0 and tbal(contract) == 0, "supply %d -> %d" % (s0, supply(height())))
             return
         res = rec("sweep", tx("owner", 3000000, "wasm", "execute", contract, json.dumps({"sweep_unclaimed": {}})))
         fee = int(3000000 * GP + 0.999999); hs = int(res.get("height", 0) or 0)
-        s_before, s_after, minted = supply(hs - 1), supply(hs), minted_at(hs)
+        s_before, s_after, minted = supply(hs - 1), supply(hs), (minted_at(hs) if TD == "uterp" else 0)
         burned = s_before + minted - s_after
         R["sweep_burn"] = {"height": hs, "contract_before": c0, "supply_before": s_before, "supply_after": s_after,
                            "minted_in_block": minted, "burned": burned, "mode": attr(res, "mode"), "amount_attr": attr(res, "amount")}
         burn_ev = [e for e in res.get("events", []) if e.get("type") == "burn"]
-        step("sweep_unclaimed_burns", res.get("code") == 0 and bal(contract) == 0 and o0 - bal(OWNER) == fee and attr(res, "mode") == "burn"
-             and bool(burn_ev), "burned %d contract now %d owner -%d (fee %d) %s" % (c0, bal(contract), o0 - bal(OWNER), fee, res.get("raw_log", "")[:120]))
+        step("sweep_unclaimed_burns", res.get("code") == 0 and tbal(contract) == 0 and o0 - bal(OWNER) == fee and attr(res, "mode") == "burn"
+             and bool(burn_ev), "burned %d contract now %d owner -%d (fee %d) %s" % (c0, tbal(contract), o0 - bal(OWNER), fee, res.get("raw_log", "")[:120]))
         step("sweep_supply_drops_by_balance", burned == c0,
              "supply %d -> %d (+%d minted in block %d) burned %d == contract balance %d" % (s_before, s_after, minted, hs, burned, c0))
 
