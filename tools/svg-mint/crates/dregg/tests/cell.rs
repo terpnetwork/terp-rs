@@ -393,7 +393,7 @@ fn dummy_receipt_refused() {
 fn qc_unsigned_and_threshold() {
     use dregg::qc::{count_valid, sign, Checkpoint, QcError};
     let kp = dregg::qc::generate_operator();
-    let pk = kp.public.to_bytes();
+    let pk = kp.verifying_key().to_bytes();
     let ck = Checkpoint::new(1, [9u8; 32], [8u8; 32], "deposit");
     assert_eq!(count_valid(&ck.digest, &[], &[pk], 1), Err(QcError::Unsigned));
     let s = sign(&kp, &ck.digest);

@@ -1,7 +1,7 @@
 //! Ed25519 M-of-N checkpoints. Same verify family as `cosmos-lock` `count_oracle_sigs`.
 //! HTTP without a verifying QC is not a cell turn.
 
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Signer, Verifier};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -60,10 +60,10 @@ pub fn is_dummy_receipt(r: &[u8; 32]) -> bool {
     r.iter().all(|b| *b == r[0])
 }
 
-pub fn sign(kp: &Keypair, digest: &[u8; 32]) -> OracleSig {
+pub fn sign(kp: &SigningKey, digest: &[u8; 32]) -> OracleSig {
     let sig = kp.sign(digest);
     OracleSig {
-        pubkey: kp.public.to_bytes(),
+        pubkey: kp.verifying_key().to_bytes(),
         signature: sig.to_bytes().to_vec(),
     }
 }
@@ -86,14 +86,14 @@ pub fn count_valid(
         if seen.iter().any(|k| k == &s.pubkey) {
             continue;
         }
-        let pk = PublicKey::from_bytes(&s.pubkey).map_err(|_| QcError::BadKey)?;
+        let pk = VerifyingKey::from_bytes(&s.pubkey).map_err(|_| QcError::BadKey)?;
         if s.signature.len() != 64 {
             continue;
         }
         let mut sb = [0u8; 64];
         sb.copy_from_slice(&s.signature);
-        let sig = Signature::from_bytes(&sb).map_err(|_| QcError::BadKey)?;
-        if pk.verify(digest, &sig).is_ok() {
+        let sig = Signature::from_bytes(&sb);
+        if pk.verify_strict(digest, &sig).is_ok() {
             seen.push(s.pubkey);
             got += 1;
         }
@@ -123,11 +123,9 @@ pub fn require_receipt(
     count_valid(digest, sigs, allowed, threshold).map(|_| ())
 }
 
-pub fn generate_operator() -> Keypair {
+pub fn generate_operator() -> SigningKey {
     use rand::RngCore;
     let mut seed = [0u8; 32];
     rand::rng().fill_bytes(&mut seed);
-    let secret = SecretKey::from_bytes(&seed).expect("ed25519 seed is 32 bytes");
-    let public = PublicKey::from(&secret);
-    Keypair { secret, public }
+    SigningKey::from_bytes(&seed)
 }

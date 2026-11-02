@@ -210,7 +210,7 @@ cosmwasm-schema = { version = "=4.1.0" }
 cosmwasm-std = { version = "=4.1.0", default-features = false, features = ["exports", "iterator", "std"] }
 cosmwasm-vm = { version = "=4.1.0", default-features = false }
 crosslink-light-client = { path = "crates/crosslink/light-client", default-features = false }
-curve25519-dalek = "3.2"
+curve25519-dalek = "4.1"
 cw-admin-factory = { version = "=2.9.0-delta.9" }
 cw-ave = { path = "contracts/ave/cw-ave" }
 cw-ave-factory = { path = "contracts/ave/cw-ave-factory" }
@@ -293,7 +293,7 @@ dotenv = "0.15"
 dregg = { path = "tools/svg-mint/crates/dregg" }
 easy-addr = { path = "crates/easy-addr" }
 ecdsa = "0.16"
-ed25519-dalek = { version = "1.0.1", features = ["std"] }
+ed25519-dalek = { version = "2.2", features = ["std"] }
 ed25519-zebra = { version = "4.2", default-features = false }
 env_logger = { version = "0.11", default-features = false }
 ff = "0.14"

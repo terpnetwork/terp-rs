@@ -14,7 +14,7 @@ use dregg::qc::{Checkpoint, OracleSig, count_valid, sign};
 use dregg::store::Durable;
 use dregg::store::PendingPay;
 use dregg::zip321::payment_request;
-use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature, Verifier};
+use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ struct Fed {
     durable: Durable,
     allowed: Vec<[u8; 32]>,
     threshold: u32,
-    operators: Vec<Keypair>,
+    operators: Vec<SigningKey>,
     epoch: u64,
     /// Terp mint recipient (off-chain only) → deposit nullifier.
     by_recipient: HashMap<String, [u8; 32]>,
@@ -91,16 +91,16 @@ fn operator_sk_file() -> std::path::PathBuf {
     std::path::PathBuf::from(home).join(".terp/svg-mint-fed.sk")
 }
 
-fn keypair_from_raw(raw: &[u8]) -> Keypair {
+fn keypair_from_raw(raw: &[u8]) -> SigningKey {
     assert_eq!(raw.len(), 32, "ed25519 sk 32 bytes");
-    let sk = SecretKey::from_bytes(raw).expect("sk");
-    let pk = PublicKey::from(&sk);
-    Keypair { secret: sk, public: pk }
+    let mut seed = [0u8; 32];
+    seed.copy_from_slice(raw);
+    SigningKey::from_bytes(&seed)
 }
 
 /// Operator secret is one file. A restart loads it. A missing file is written
 /// once. A short or mismatched file exits and is not replaced.
-fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
+fn load_keys() -> (Vec<SigningKey>, Vec<[u8; 32]>, u32) {
     let thresh: u32 = std::env::var("SVG_MINT_FED_THRESHOLD")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -116,7 +116,7 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
                 std::process::exit(1);
             }
         }
-        let pk_bytes = kp.public.to_bytes();
+        let pk_bytes = kp.verifying_key().to_bytes();
         return (vec![kp], vec![pk_bytes], thresh);
     }
     if path.is_file() {
@@ -126,7 +126,7 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
             std::process::exit(1);
         }
         let kp = keypair_from_raw(&raw);
-        let pk_bytes = kp.public.to_bytes();
+        let pk_bytes = kp.verifying_key().to_bytes();
         eprintln!("svg-mint-fed loaded operator pk={}", hex::encode(pk_bytes));
         return (vec![kp], vec![pk_bytes], thresh);
     }
@@ -134,12 +134,12 @@ fn load_keys() -> (Vec<Keypair>, Vec<[u8; 32]>, u32) {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    std::fs::write(&path, kp.secret.as_bytes()).expect("write operator sk");
+    std::fs::write(&path, kp.to_bytes()).expect("write operator sk");
     let _ = std::fs::set_permissions(
         &path,
         std::os::unix::fs::PermissionsExt::from_mode(0o600),
     );
-    let pk_bytes = kp.public.to_bytes();
+    let pk_bytes = kp.verifying_key().to_bytes();
     eprintln!(
         "svg-mint-fed wrote operator sk and pk={}",
         hex::encode(pk_bytes)
@@ -1760,10 +1760,10 @@ fn admin_zid_session(fed: &Arc<Mutex<Fed>>, body: &str) -> Result<serde_json::Va
     pk32.copy_from_slice(&pk_raw);
     let mut sig64 = [0u8; 64];
     sig64.copy_from_slice(&sig_raw);
-    let pk = PublicKey::from_bytes(&pk32).map_err(|_| "publicKey".to_string())?;
-    let sig = Signature::from_bytes(&sig64).map_err(|_| "signature".to_string())?;
+    let pk = VerifyingKey::from_bytes(&pk32).map_err(|_| "publicKey".to_string())?;
+    let sig = Signature::from_bytes(&sig64);
     let msg = hex::decode(challenge).map_err(|_| "challenge hex".to_string())?;
-    pk.verify(&msg, &sig)
+    pk.verify_strict(&msg, &sig)
         .map_err(|_| "zid signature".to_string())?;
 
     let path = std::env::var("DREGG_ADMIN_ZID_PK_PATH").unwrap_or_else(|_| {

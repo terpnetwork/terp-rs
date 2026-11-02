@@ -18,7 +18,7 @@ k256 = { workspace = true, features = ["arithmetic", "ecdsa"] }
 rand = { workspace = true, features = ["std", "thread_rng"] }
 ripemd = { workspace = true, features = ["std"] }
 serde = { workspace = true, features = ["std"] }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 sha2 = { workspace = true, features = ["std"] }
 thiserror = { workspace = true, features = ["std"] }
 tiny-keccak = { workspace = true, features = ["keccak"] }

@@ -896,6 +896,15 @@ fn b64(data: &[u8]) -> String {
 mod tests {
     use super::*;
 
+    // rustc 1.87 made these unsafe. 1.86 still accepts the block.
+    fn env_set(key: &str, val: impl AsRef<std::ffi::OsStr>) {
+        unsafe { std::env::set_var(key, val) }
+    }
+
+    fn env_remove(key: &str) {
+        unsafe { std::env::remove_var(key) }
+    }
+
     #[test]
     fn simulate_accepts_gas_info() {
         let v = serde_json::json!({
@@ -928,7 +937,7 @@ mod tests {
     #[test]
     fn fee_matches_house_floor() {
         let _g = crate::checkout::minter_env_lock();
-        std::env::remove_var("DREGG_MINT_GAS_PRICE");
+        env_remove("DREGG_MINT_GAS_PRICE");
         assert_eq!(fee_uthiol(800_000), 40_000);
     }
 
@@ -1006,15 +1015,15 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("runtime.sk");
-        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
+        env_set("DREGG_RUNTIME_SK_FILE", &path);
         let a = ensure_address().unwrap();
         let b = ensure_address().unwrap();
         assert_eq!(a, b);
         assert_eq!(std::fs::read(&path).unwrap().len(), 32);
         std::fs::write(&path, [1u8; 16]).unwrap();
         assert!(ensure_address().is_err());
-        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
-        std::env::remove_var("DREGG_RUNTIME_NO_CREATE");
+        env_remove("DREGG_RUNTIME_SK_FILE");
+        env_remove("DREGG_RUNTIME_NO_CREATE");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1023,12 +1032,12 @@ mod tests {
         let _g = crate::checkout::minter_env_lock();
         let path = std::env::temp_dir().join(format!("dregg-nocreate-{}", std::process::id()));
         let _ = std::fs::remove_file(&path);
-        std::env::set_var("DREGG_RUNTIME_SK_FILE", &path);
-        std::env::set_var("DREGG_RUNTIME_NO_CREATE", "1");
+        env_set("DREGG_RUNTIME_SK_FILE", &path);
+        env_set("DREGG_RUNTIME_NO_CREATE", "1");
         assert!(ensure_address().is_err());
         assert!(!path.exists());
-        std::env::remove_var("DREGG_RUNTIME_NO_CREATE");
-        std::env::remove_var("DREGG_RUNTIME_SK_FILE");
+        env_remove("DREGG_RUNTIME_NO_CREATE");
+        env_remove("DREGG_RUNTIME_SK_FILE");
     }
 
     #[test]
@@ -1043,7 +1052,7 @@ mod tests {
             fractal: { "alloc": 10000, "proof_hashes": [proof] }
         });
         std::fs::write(&path, body.to_string()).unwrap();
-        std::env::set_var("DREGG_PAYMINT_PROOFS_FILE", &path);
+        env_set("DREGG_PAYMINT_PROOFS_FILE", &path);
         let msg = svg_mint_msg(fractal, 1);
         let got: serde_json::Value = serde_json::from_slice(&msg).unwrap();
         let expect: serde_json::Value = serde_json::from_str(template).unwrap();
@@ -1056,7 +1065,7 @@ mod tests {
             .as_array()
             .unwrap()
             .is_empty());
-        std::env::remove_var("DREGG_PAYMINT_PROOFS_FILE");
+        env_remove("DREGG_PAYMINT_PROOFS_FILE");
         let _ = std::fs::remove_file(&path);
     }
 }

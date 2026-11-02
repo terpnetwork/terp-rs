@@ -18,4 +18,4 @@ hash-market = { workspace = true, features = ["server", "pallas"] }
 hex = { workspace = true, features = ["std"] }
 rand = { workspace = true, features = ["std", "thread_rng"] }
 serde = { workspace = true, features = ["std"] }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
