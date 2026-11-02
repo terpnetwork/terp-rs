@@ -11,6 +11,21 @@ required-features = ["shitstrap"]
 name = "multichain_e2e"
 required-features = ["shitstrap", "e2e"]
 
+[[bin]]
+name = "upload"
+# uses cw_infuser_scripts::suite (shitstrap-gated)
+required-features = ["shitstrap"]
+
+[[bin]]
+name = "create_infusion_minter"
+# uses cw_infuser_scripts::suite (shitstrap-gated)
+required-features = ["shitstrap"]
+
+[[bin]]
+name = "yijing_harmony"
+# uses cw_infuser_scripts::suite (shitstrap-gated)
+required-features = ["shitstrap"]
+
 [features]
 default = ["e2e"]
 e2e = ["dep:tokio", "dep:tracing"]
