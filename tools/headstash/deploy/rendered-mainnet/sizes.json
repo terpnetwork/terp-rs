@@ -1,14 +1,14 @@
 {
-  "contract_addr_predicted": "terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh",
+  "contract_addr_predicted": "terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9",
   "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
-  "wasm_sha256": "e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89",
-  "wasm_bytes": 1172126,
+  "wasm_sha256": "7894e1e2a751edb1cbc3d26b7f142861d79ef8dc8d56de90318aac60f947ef43",
+  "wasm_bytes": 1164541,
   "frontend": {
-    "addr_predicted": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
+    "addr_predicted": "terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9",
     "salt_hex": "39881335f9a8242299ba3fd20d3069d1b7b813b2df2ac97a587c143857eaba27",
-    "wasm_sha256": "fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1",
-    "wasm_bytes": 357352,
-    "wasm_gzip_bytes": 139083,
+    "wasm_sha256": "e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2",
+    "wasm_bytes": 357081,
+    "wasm_gzip_bytes": 139074,
     "max_chunk_bytes": 131072,
     "chunks": 9,
     "upload_gas_total": 47479936,
@@ -53,15 +53,15 @@
       }
     ]
   },
-  "wasm_gzip_bytes": 414543,
+  "wasm_gzip_bytes": 412075,
   "files": {
     "phase-a/13-store-wasm.unsigned.json": {
-      "tx_json_bytes": 553328,
+      "tx_json_bytes": 550040,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },
     "phase-a/13b-store-frontend-wasm.unsigned.json": {
-      "tx_json_bytes": 186054,
+      "tx_json_bytes": 186042,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },

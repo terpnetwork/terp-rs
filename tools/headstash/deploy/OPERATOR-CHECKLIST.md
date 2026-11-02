@@ -9,13 +9,13 @@ Roles:
 - **U**: a throwaway uploader key for the frontend chunks (direct mode, not Zigner). Its fees come from a capped FX feegrant (doc A18) that is revoked afterwards (doc A20). It holds no funds.
 - **GOV**: the gov module, terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq. It is the wasm admin and the contract owner.
 
-Wasm: `cw_headstash.wasm`, sha256 e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89 (1,172,126 B, with gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P)). The predicted address is terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh.
+Wasm: `cw_headstash.wasm`, sha256 7894e1e2a751edb1cbc3d26b7f142861d79ef8dc8d56de90318aac60f947ef43 (1,164,541 B, with gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P)). The predicted address is terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9.
 
 **PAUSER (decided):** the foundation DAO terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w (confirmed by you; valid bech32, 32-byte contract address). It is set as `PAUSER` in decisions.mainnet.json and in the A14 instantiate msg (`"pauser"`). It can only Pause and Resume claims, registration and the grant relay. It cannot move funds, reclaim, sweep or change the pauser. Only a gov `update_pauser` proposal can replace it. Metadata hashes are unchanged by this.
 
-Metadata sha256 (changed with this wasm; re-host): 01-deploy.json 67c2d3bca408cb46d423ee652abed6968c1a9f3e4c5b109ef703bd6d4a7f789a, 02-circuit-store.json b9bbd930b4d5507daee76f1c721f082b3183daa03b90e57c51de51ad0b68f73c, 03-fund-bind.json 188d8944a5a5f122bd037b3d52b139cb27157ed2513ee714202437925baf95e9.
+Metadata sha256 (changed with this wasm; re-host): 01-deploy.json 8a7d30a34a2febb1531dcfcc30e88fdcb3a18ee4d3e32243deb597f9291e55b6, 02-circuit-store.json 5587d42a43dc306d446ccd886fb0451e95db8226f1bf95fd55acbc4b1c46fe58, 03-fund-bind.json a5cdbf4ddd9e7a3ee915b80f008e041cccb48e0a48b6adb11897c0acd29dad65.
 
-Frontend wasm: `cw_headstash_frontend.wasm`, sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1 (357,352 B). The predicted address is terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`phase-a/page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
+Frontend wasm: `cw_headstash_frontend.wasm`, sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2 (357,081 B). The predicted address is terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9 (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`phase-a/page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
 
 ## Read from mainnet, read-only, on 2026-10-28 at height 24,144,476
 - P: acct 0, seq 116. Spendable 10,980.26 TERP and 39,947.5 THIOL.
@@ -46,7 +46,7 @@ Upload is open on mainnet, but both codes are stored with instantiate permission
 | A13 | `13-store-wasm.unsigned.json` (~559 KB) | E (direct) | MsgStoreCode, sender E, instantiate permission GOV only, fee via the feegrant. STORE_GAS ≥ 10M. Record CODE_ID. |
 | A13b | `13b-store-frontend-wasm.unsigned.json` (~186 KB) | E (direct) | Same for the frontend wasm. FE_STORE_GAS ≥ 4M. Record FE_CODE_ID. |
 | A15 | `15-session-revoke.unsigned.json` | E (direct) | MsgExec revoking every grant and the allowance (MsgRevoke last). Run right after A13b. |
-| A14 | `14-deploy-proposal.unsigned.json` | **P on Zigner** | Sign doc 4,464 B with placeholders. **Gov proposal A**: CommunityPoolSpend 1 uterp → GOV, frontend Instantiate2 (admin + owner GOV), publish_manifest, cw-headstash Instantiate2 (admin + owner GOV, frontend_contract set, 1 uterp). No campaign, no circuit: claims are refused until B14. 5,000 TERP initial deposit. Record PROPOSAL_ID_DEPLOY. |
+| A14 | `14-deploy-proposal.unsigned.json` | **P on Zigner** | Sign doc 4,539 B with placeholders (sha256 c9bfdd39e68fb940e0df2cae44e8c0341b35349a99562b32d82ee88cdfc7f610). **Gov proposal A**: CommunityPoolSpend 1 uterp → GOV, frontend Instantiate2 (admin + owner GOV), publish_manifest, cw-headstash Instantiate2 (admin + owner GOV, frontend_contract set, 1 uterp). No campaign, no circuit: claims are refused until B14. 5,000 TERP initial deposit. Record PROPOSAL_ID_DEPLOY. |
 | A17 | `17-deposit-topup.unsigned.json` | **P on Zigner** | Sign doc 353 B. +5,000 TERP on PROPOSAL_ID_DEPLOY. |
 | — | vote | validators | Proposal A passes. Check both contracts: admin, creator and owner GOV; cw-headstash balance 1 uterp, `reclaim_status` null. |
 | A18 | `18-fe-uploader-feegrant.unsigned.json` | **FX on Zigner** | Sign doc 499 B. Capped, expiring BasicAllowance (3,374,003 uthiol) to U. |

@@ -4,7 +4,7 @@
    {
     "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
     "sender": "{{FE_UPLOADER_ADDR}}",
-    "contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
+    "contract": "terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9",
     "msg": {
      "upload_chunk": {
       "version": 1,
