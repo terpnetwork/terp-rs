@@ -336,7 +336,7 @@ This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because 
 
 **Still allowed while paused:**
 - Gov: `EmergencyReclaim` (before the cutoff), `SweepUnclaimed` (burn, after the cutoff), `UpdatePauser`, `Resume` and all owner config ops.
-- `AcceptAnchor`, which is permissionless and only rolls the registration-tree anchor. It moves no funds and registers nobody.
+- ~~`AcceptAnchor`~~: paused too since v0.0.1; see Appendix V.
 
 **Precedence.** The reclaimed terminal state wins. `reclaim::ensure_live` runs first in `execute`, so after a reclaim `Pause`, `Resume` and `UpdatePauser` are refused as well. A paused contract can still be reclaimed or swept by gov.
 
@@ -351,3 +351,35 @@ This differs from the earlier -Oz prover above (3d371778…, 1807402 B) because 
 - *Gas:* one extra `may_load` per gated entry.
 
 **P.build (pauser build note).** With the pauser, `-Os --one-caller-inline-max-function-size=2000` produced a 64307-byte function that arm64 singlepass rejected with ImpossibleRelocation, so the real limit is below the ~69 KB assumed earlier. cw-headstash now builds with `=1000`: largest function 38461 B, cosmwasm-check passes, sha256 `e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89` (1,172,126 B). The frontend stays at `=2000` and its hash is unchanged (`fe096bf1…`). `execute` sends the pause gate and the Pause/Resume/UpdatePauser arms through `#[inline(never)]` helpers (`pause_gate`, `pause_dispatch`).
+
+## Appendix V: v0.0.1 mainnet surface, legacy paths compiled out (2026-11-02)
+
+The mainnet wasm is built **without** the `cw-headstash` cargo feature `legacy` (`default = []`; the mainnet build runs `-p cw-headstash --features zk-api` only). Everything below "Compiled out" exists in `msg.rs` so the JSON schema stays stable, but in this build `execute` has no arm for it: the catch-all returns `disabled in this build (v0.0.1)` before any handler or storage access. Handlers left without callers are dropped from the wasm by the linker.
+
+**Live in v0.0.1 (the whole mainnet surface):**
+- Claims: `ClaimNote` (vk_id 3 direct note proof).
+- Registration: `RegisterHeadstash`, `RegisterHeadstashSol`, `RegisterNotes`, `AcceptAnchor`.
+- Gov setup: `BindNoteCircuit` (once), `SetEpochCampaign`, `SetFrontendContract`.
+- Gov end of life: `SweepUnclaimed` (burn after the cutoff), `EmergencyReclaim` (community pool before the cutoff).
+- Halt: `Pause`, `Resume`, `UpdatePauser`. Ownership: `UpdateOwnership` (renounce refused).
+- `instantiate`, `reply` (tokenfactory create-denom), `migrate` (no-op) and every query (bridge/egress queries stay and read empty state).
+
+`SetFrontendContract` stays: it is owner-only config of the claim-page contract address (§3), moves no funds, and the browser e2e and gov e2e set it. It is not part of the bridge.
+
+**Compiled out (`legacy` only):**
+- Pre-v1 claims: `ProcessHeadstash`, `SetCircuitId`, `RegisterEligibilityRoot`.
+- Token admin: `Mint`, `Burn`.
+- Private bridge: `SetBridgeCfg` (incl. `mock_verify`), `UpdateReflection`, `SetReflectionSnapshot`, `RegisterAsset`, `SetExternalAssetRegistry`, `BridgeMintNote`, `BridgeEgressBurn`.
+- Epoch batches: `SetDenomTable`, `AssignPublicNotes`, `ApplyPublicBatch`, `StageEpochBatch`, `ApplyAcceptedBatch`.
+- `sudo` (x/hashmerchant settlement): returns `disabled in this build (v0.0.1)` after the reclaim and pause checks, so nothing is saved or paid even if the module were enabled for this contract.
+- The unused helper `bridge::ensure_bridge_cfg` was deleted.
+
+**Pause coverage (supersedes the AcceptAnchor line in Appendix P).** While paused, every remaining fund-moving or registration entry point is refused with "headstash claims are paused": `ClaimNote`, `RegisterHeadstash`, `RegisterHeadstashSol`, `RegisterNotes` and now `AcceptAnchor` (plus `sudo`, and the legacy paths in a legacy build). Anchors are not needed while paused: no registration can add leaves and no claim can spend against a root, so freezing the anchor loses nothing. After `Resume` the next `AcceptAnchor` rolls the tree as usual. Gating it also stops a stranger from moving the anchor window during an incident. Still allowed while paused: `EmergencyReclaim`, `SweepUnclaimed`, `Pause`/`Resume`/`UpdatePauser`, `UpdateOwnership`, `BindNoteCircuit`, `SetEpochCampaign`, `SetFrontendContract` and all queries, so gov can always fix or wind down a paused contract.
+
+**Security review (self, v0.0.1 build).**
+- *Surface reduction:* the review of 2026-11 (`consolidate-review-entrypoints`) marked these paths "safe-only-if-gov-never-enables-it": `SetBridgeCfg { mock_verify: true }` + `BridgeMintNote` (mint without a proof), `SetDenomTable`/`AssignPublicNotes` + `ApplyPublicBatch` (pays on a Pedersen opening with no ETH-log proof), `StageEpochBatch` + `sudo`/`ApplyAcceptedBatch`, and `SetCircuitId` + `ProcessHeadstash`. They are now absent, so a bad or rushed gov proposal cannot turn them on; re-enabling needs a new code upload and migrate, which gov reviews as code.
+- *Ordering:* `reclaim::ensure_live` then the pause gate then dispatch. A disabled variant errors in dispatch with no state read or write, whoever sends it and whatever funds are attached (funds bounce with the failed tx). Unit test `v001_removed_variants_error_and_move_no_funds` sends all 17 variants as owner and as a stranger with funds, plus a sudo, and checks the full storage snapshot is unchanged.
+- *Pause test:* `v001_pause_covers_every_fund_or_registration_entry_point` checks the four gated v1 variants for owner, pauser and stranger, that gov config still works while paused, and that anchors roll again after resume. `pause_2` checks `RegisterNotes` with a real signed chunk and `AcceptAnchor`.
+- *Migration:* no storage keys changed. A legacy-built contract that already holds bridge or epoch state keeps it; this build simply cannot act on it.
+- *Instantiate message:* `InstantiateMsg` has no `owner` (the owner is `info.sender`, i.e. gov in the deploy proposal) and `cw_serde` denies unknown fields. The gov-session render used to add `owner` to the cw-headstash instantiate; it no longer does, and the render's own check now fails on it. The frontend contract's instantiate does take `owner` and keeps it.
+- *Residual:* the variants stay in the schema, so wallets and explorers still list them; they always fail. The legacy code is still in the repo and its tests run with `--features legacy`.
