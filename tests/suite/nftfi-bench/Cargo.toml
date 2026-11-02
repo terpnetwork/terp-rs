@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.2"
+edition = "2024"
+license = "Apache-2.0"
+rust-version = "1.86"
+
+[package]
+name = "nftfi-bench"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+description = "Mock gas flows for marketplace, raffle, and nft-loan. Daemon broadcast is opt-in and stays off unless wasm and LOCAL_MNEMONIC are both present, and even then this crate does not upload the harness."
+
+[features]
+default = []
+local = ["cw-orch/daemon"]
+
+[dependencies]
+anyhow = "1"
+cosmwasm-schema = { path = "../../../../cosmwasm/packages/schema" }
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std" }
+cw-orch = { path = "../../../../cw-orchestrator/cw-orch" }
+cw-storage-plus = { path = "../../../../cw-storage-plus" }
+cw721 = { path = "../../../../cw-nfts/packages/cw721" }
+cw721-base = { path = "../../../../cw-nfts/contracts/cw721-base", features = ["library"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
