@@ -4,6 +4,10 @@ use alloc::vec::Vec;
 
 #[cfg(feature = "interface")]
 use cw_orch::anyhow::{self, anyhow};
+#[cfg(feature = "interface")]
+use std::{fs::File, io::{BufWriter, Write}, path::PathBuf};
+#[cfg(feature = "interface")]
+use cosmwasm_std::Checksum;
 // Re-export types needed for test circuits
 pub use gadget::assign_free_advice;
 pub use gadget::secp256k1_chip::{

@@ -43,7 +43,7 @@ memuse = { workspace = true }
 nonempty = { workspace = true }
 num-bigint  = { workspace = true }
 num-traits = { workspace = true }
-pasta_curves  = { workspace = true }
+pasta_curves  = { workspace = true, features = ["bits"] }
 proptest = { workspace = true, optional = true }
 rand010 = { workspace = true, features = ["std", "sys_rng", "thread_rng"] }
 rand_core = { workspace = true }
