@@ -253,6 +253,7 @@ fn run() -> Result<()> {
                 return Ok(());
             }
             let n = batch.ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
+            cw_orch_kms::progress::set_batch(n as u32, plans.len() as u32);
             let plan = plans.into_iter().nth(n.wrapping_sub(1)).ok_or_else(|| anyhow!("no batch {n}"))?;
             return execute(&cli, &cfg, plan);
         }
@@ -295,6 +296,7 @@ fn run() -> Result<()> {
                 return Ok(());
             }
             let n = batch.ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
+            cw_orch_kms::progress::set_batch(n as u32, plans.len() as u32);
             let plan = plans.into_iter().nth(n.wrapping_sub(1)).ok_or_else(|| anyhow!("no batch {n}"))?;
             return execute(&cli, &cfg, plan);
         }
@@ -577,7 +579,7 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
     unsafe { std::env::set_var("CW_ORCH_WALLET_BALANCE_ASSERTION", "false") };
     let granter = if cli.granter.is_empty() {
         println!("sign the cw-orch-granter challenge at http://127.0.0.1:8741");
-        cw_orch_kms::capture_granter_for_chain_sync("127.0.0.1:8741".parse()?, cli.account_index, "fiab-bounty-escrow", &chain_id)
+        cw_orch_kms::capture_granter_for_chain_opts_sync("127.0.0.1:8741".parse()?, cli.account_index, "fiab-bounty-escrow", &chain_id, cli.ttl_secs, Some(&plan.signer))
             .map_err(|e| anyhow!(e))?
     } else {
         cw_orch_kms::set_approval_chain_id(&chain_id).map_err(|e| anyhow!(e))?;
@@ -609,10 +611,25 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
         // cw-orch wraps MsgExec(session) inside commit_tx_any but NOT inside simulate. Without this the
         // simulated tx's signer is the member (inner MsgExec grantee): "expected <member seq>, got 0".
         let sim = session_wrap(run.grantee(), anys.clone());
-        let (gas, fee) = daemon.rt_handle.block_on(daemon.sender().simulate(sim, Some(&memo)))?;
+        use cw_orch_kms::progress::Status;
+        run.step("simulate", Status::Running, None, None);
+        let (gas, fee) = match daemon.rt_handle.block_on(daemon.sender().simulate(sim, Some(&memo))) {
+            Ok(v) => v,
+            Err(e) => { run.step("simulate", Status::Error, None, Some(&e.to_string())); return Err(e.into()); }
+        };
         println!("simulate OK gas={gas} fee={fee}");
-        let resp = daemon.rt_handle.block_on(daemon.sender().commit_tx_any(anys, Some(&memo)))?;
+        run.step("simulate", Status::Confirmed, None, Some(&format!("gas {gas}, fee {fee}")));
+        run.step("broadcast", Status::Running, None, None);
+        let resp = match daemon.rt_handle.block_on(daemon.sender().commit_tx_any(anys, Some(&memo))) {
+            Ok(r) => r,
+            Err(e) => { run.step("broadcast", Status::Error, None, Some(&e.to_string())); return Err(e.into()); }
+        };
         println!("BROADCAST txhash: {}", resp.txhash);
+        if resp.code == 0 {
+            run.step("broadcast", Status::Confirmed, Some(&resp.txhash), None);
+        } else {
+            run.step("broadcast", Status::Error, Some(&resp.txhash), Some(&format!("code {}", resp.code)));
+        }
         Ok(())
     })();
     run.close().map_err(|e| anyhow!(e))?;
