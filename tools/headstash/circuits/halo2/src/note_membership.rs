@@ -67,6 +67,16 @@ pub struct NoteConfig {
 
 /// `PIN = true` is the production circuit. `PIN = false` reproduces the vk_id 2
 /// shape (free tag cells) and exists only so tests can demonstrate finding N1.
+/// F3: `PIN = false` compiles only under `cfg(test)` (see `PinGuard`). Any other
+/// use of it as a `Circuit` or through `Default` is a compile error.
+///
+/// ```compile_fail
+/// let _ = <zk_headstash::note_membership::NoteCircuitImpl<false> as Default>::default();
+/// ```
+/// The pinned production circuit builds the same way:
+/// ```
+/// let _ = <zk_headstash::note_membership::NoteMembershipCircuit as Default>::default();
+/// ```
 #[derive(Clone, Debug)]
 pub struct NoteCircuitImpl<const PIN: bool> {
     pub secret: Value<pallas::Base>,
@@ -82,8 +92,19 @@ pub struct NoteCircuitImpl<const PIN: bool> {
 
 pub type NoteMembershipCircuit = NoteCircuitImpl<true>;
 
+/// F3 (soundness review 05-findings): compile-time guard. Instantiating it with
+/// `PIN = false` outside `cfg(test)` fails const evaluation, so no production
+/// build can keygen, prove or verify the unpinned shape. It adds no cells and no
+/// constraints.
+struct PinGuard<const PIN: bool>;
+impl<const PIN: bool> PinGuard<PIN> {
+    const TEST_ONLY_UNPINNED: () =
+        assert!(PIN || cfg!(test), "NoteCircuitImpl<false> (unpinned tags) is test-only: finding F3");
+}
+
 impl<const PIN: bool> Default for NoteCircuitImpl<PIN> {
     fn default() -> Self {
+        let () = PinGuard::<PIN>::TEST_ONLY_UNPINNED;
         Self {
             secret: Value::unknown(),
             ctx: Value::unknown(),
@@ -106,6 +127,7 @@ impl<const PIN: bool> Circuit<pallas::Base> for NoteCircuitImpl<PIN> {
     }
 
     fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
+        let () = PinGuard::<PIN>::TEST_ONLY_UNPINNED;
         let instance = meta.instance_column();
         meta.enable_equality(instance);
         let advice = [
@@ -138,6 +160,7 @@ impl<const PIN: bool> Circuit<pallas::Base> for NoteCircuitImpl<PIN> {
         config: Self::Config,
         mut layouter: impl Layouter<pallas::Base>,
     ) -> Result<(), plonk::Error> {
+        let () = PinGuard::<PIN>::TEST_ONLY_UNPINNED;
         let secret = load(&mut layouter, config.advice[0], "secret", self.secret)?;
         let ctx = load(&mut layouter, config.advice[1], "ctx", self.ctx)?;
         let amount = load(&mut layouter, config.advice[2], "amount", self.amount.map(pallas::Base::from))?;
