@@ -172,8 +172,8 @@ pub fn sanitize_rich(raw: &str) -> (String, usize, usize) {
 pub const W: u32 = 304;
 pub const H: u32 = 344;
 
-/// Gateways a token may link through (must stay within cw_svg::links::GATEWAY_ALLOWLIST).
-pub const GATEWAYS: [&str; 2] = ["dweb.link", "ipfs.io"];
+/// Frame pages live in the static bucket. The object name is the raw CIDv1.
+pub const FRAME_PAGE: &str = "https://s3.terp.network/static/svg-collections/cas/";
 
 /// `frame` options are the rich-render CIDs, so the token param records its CID.
 pub fn variables(cids: &[String]) -> Vec<VariableDef> {
@@ -190,10 +190,7 @@ pub fn variables(cids: &[String]) -> Vec<VariableDef> {
             name: "frame".into(),
             kind: VariableKind::Options(cids.to_vec()),
         },
-        VariableDef {
-            name: "gateway".into(),
-            kind: VariableKind::Options(GATEWAYS.iter().map(|s| s.to_string()).collect()),
-        },
+
         VariableDef {
             name: "color-ink".into(),
             kind: VariableKind::RgbStyled(vec![
@@ -243,7 +240,9 @@ pub fn template(
         "<text class=\"m\" x=\"8\" y=\"312\">{}</text>\n",
         crate::common::xml_escape(caption)
     ));
-    t.push_str("<a href=\"https://${gateway}/ipfs/${frame}\"><text class=\"m\" x=\"8\" y=\"324\">full render: ipfs://${frame}</text></a>\n");
+    t.push_str(&format!(
+        "<a href=\"{FRAME_PAGE}${{frame}}.html\"><text class=\"m\" x=\"8\" y=\"324\">full render</text></a>\n"
+    ));
     t.push_str("<text class=\"m\" x=\"8\" y=\"336\">Latent Benders: A Study - data: psychedex.org</text>\n</svg>");
     t
 }

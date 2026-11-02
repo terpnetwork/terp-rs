@@ -1376,25 +1376,9 @@
               "status": "ACTIVE"
             },
             "version": "ics20-1"
-          },
-          {
-            "chain_1": {
-              "channel_id": "channel-115",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-6",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
           }
         ],
-        "client_status": "Expired"
+        "client_status": "Active"
       },
       "atomone": {
         "$schema": "../ibc_data.schema.json",
@@ -1428,57 +1412,7 @@
             "version": "ics20-1"
           }
         ],
-        "client_status": "Expired"
-      },
-      "osmosis": {
-        "$schema": "../ibc_data.schema.json",
-        "chain_1": {
-          "chain_id": "osmosis-1",
-          "chain_name": "osmosis",
-          "client_id": "07-tendermint-3708",
-          "connection_id": "connection-11060"
-        },
-        "chain_2": {
-          "chain_id": "morocco-1",
-          "chain_name": "terp",
-          "client_id": "07-tendermint-33",
-          "connection_id": "connection-13"
-        },
-        "channels": [
-          {
-            "chain_1": {
-              "channel_id": "channel-110258",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-11",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          },
-          {
-            "chain_1": {
-              "channel_id": "channel-6738",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-1",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          }
-        ],
-        "client_status": "Expired"
+        "client_status": "Active"
       },
       "evmos": {
         "$schema": "../ibc_data.schema.json",
@@ -1511,7 +1445,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "gitopia": {
         "$schema": "../ibc_data.schema.json",
@@ -1544,7 +1479,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "juno": {
         "$schema": "../ibc_data.schema.json",
@@ -1578,7 +1514,7 @@
             "version": "ics20-1"
           }
         ],
-        "client_status": "Expired"
+        "client_status": "Active"
       },
       "omniflix": {
         "$schema": "../ibc_data.schema.json",
@@ -1611,7 +1547,42 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
+      },
+      "osmosis": {
+        "$schema": "../ibc_data.schema.json",
+        "chain_1": {
+          "chain_id": "osmosis-1",
+          "chain_name": "osmosis",
+          "client_id": "07-tendermint-3708",
+          "connection_id": "connection-11060"
+        },
+        "chain_2": {
+          "chain_id": "morocco-1",
+          "chain_name": "terp",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13"
+        },
+        "channels": [
+          {
+            "chain_1": {
+              "channel_id": "channel-110258",
+              "port_id": "transfer"
+            },
+            "chain_2": {
+              "channel_id": "channel-11",
+              "port_id": "transfer"
+            },
+            "ordering": "unordered",
+            "tags": {
+              "preferred": true,
+              "status": "ACTIVE"
+            },
+            "version": "ics20-1"
+          }
+        ],
+        "client_status": "Active"
       },
       "secret": {
         "$schema": "../ibc_data.schema.json",
@@ -1630,22 +1601,6 @@
         "channels": [
           {
             "chain_1": {
-              "channel_id": "channel-100",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-7",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          },
-          {
-            "chain_1": {
               "channel_id": "channel-165",
               "port_id": "transfer"
             },
@@ -1655,13 +1610,13 @@
             },
             "ordering": "unordered",
             "tags": {
-              "preferred": false,
+              "preferred": true,
               "status": "ACTIVE"
             },
             "version": "ics20-1"
           }
         ],
-        "client_status": "Expired"
+        "client_status": "Active"
       },
       "stargaze": {
         "$schema": "../ibc_data.schema.json",
@@ -1694,7 +1649,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       }
     },
     "ibc_denoms": {
@@ -2147,6 +2103,388 @@
       "terp-recovery": "terp1zqj9ypj9yjakfyvy58ck7maq04uz8mv4gluqv68dmakmmwutv3eq8kk27x",
       "terp-ed25519": "terp1p08mw5wcmxpdhrqjhjpyt2fp29758qp3mgezsf7t8rr7m089qeaq2x5h2l",
       "terp-eth": "terp1q6puz8yp59nj4s3psrq338fyy0gqzha2yltw9cqhe2l0d48jahpsecyl0n"
+    },
+    "ibc_registry": {
+      "source": "public/ibc-data via terp-ibc rebuild-from-public",
+      "generation": {
+        "chains": [
+          "akash",
+          "atomone",
+          "evmos",
+          "secret",
+          "terp",
+          "omniflix",
+          "stargaze",
+          "osmosis",
+          "juno",
+          "gitopia"
+        ],
+        "generated_at": "1788201296",
+        "generator": "terp-scripts/bin/terp-ibc rebuild-from-public",
+        "invariant_findings": 0,
+        "max_hops": 3,
+        "mode": "offline",
+        "source": "public/ibc-data",
+        "total_routes": 18
+      },
+      "lookup": {
+        "akash": {
+          "ibc/A59970786FD461637D5A6D33CCB6B89D3DE769A8656FFC95EF67868B0A9BC600": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-139/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/DDA5EFDDA729FA6C48CFA7F1C69D97E69C2F8C90DC86D89D2ED843D64E818320": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-139/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "atomone": {
+          "ibc/16F86E7E041C8D33FB0ABD6C94981B386877CDE7D945D6D5C742C34D089D1A53": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-13/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/B401AD86FA0A7658F9760E686A9F1CAD828EA33A7043407585BEEDF9F9AD9DCD": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-13/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "evmos": {
+          "ibc/12015172A61A3ED85A082C917F28D87023B6DEFE84C44B99914C051B62427F93": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-101/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/7F04948C1F3CDA862EEAE5364E194806686464854E1D3F023E89DEF945BC1551": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-101/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "gitopia": {
+          "ibc/ADD33E9703A911023E73181FCA39B022094A1832F0C2311152A927E580E28B5F": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-1/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/CF57A83CED6CEC7D706631B5DC53ABC21B7EDA7DF7490732B4361E6D5DD19C73": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-1/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "juno": {
+          "ibc/2F57C5B45E550C3FE93975D8683B7731EFA3A094931241A347548740F89C6422": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-393/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/9579E9609A560A57DB664E35665F293269CD3F625841A2EEE9478E1897AC00DF": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-393/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "omniflix": {
+          "ibc/6DE48C0AB3ED2A3AC54D87A2E73804B7DBA4033A40DEB732C37436E1F9286B8D": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-33/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/EE381F1B7AFA4C4688ECB68BC4EA6168DCB8D8E7754D030EED7FB0F99BD5E62E": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-33/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "osmosis": {
+          "ibc/02DB0C7201ECC8B9753FE51145F91163AC72ECF7DF21F045B6B1BC6063D37222": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-110258/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/B6B6B4518F28E2389375FEA0B1CA04F24135EBCC95F24F808E2EBB157AC84BFF": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-110258/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "secret": {
+          "ibc/98B4A0DF010C354724A8694CAB3C8F1BE47BD4DD40E31F2DF21157BBFE99D6EC": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-165/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/D55D1CDD0721C3F9978F1010B8CF34A171E54E1EA674BEAB4AD554AD3D67A9F1": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-165/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "stargaze": {
+          "ibc/0C31604A03AFA348AE1021B6632E32B662733A4EA3EEB47643A22122E02006F4": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-235/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/D6535E2CABA69C038A97142E48F4D0B9A569DEC246B2966DB996613ADF5302C5": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-235/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        }
+      }
+    },
+    "code_sources": {
+      "oracle-registry": {
+        "wasm": "cw_oracle_registry.wasm",
+        "crate": "contracts/hash-merchant/oracle-registry",
+        "checksum_sha256": "34c0eab85a32636a63072a6593794d8c9822ead3e4fba1eda97043a6c7352afb",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "oracle-aggregator": {
+        "wasm": "cw_oracle_aggregator.wasm",
+        "crate": "contracts/hash-merchant/oracle-aggregator",
+        "checksum_sha256": "0e15a509c8b86818e5266dc82cbbdf53c6020b38ca79780fe958870ce1636b4a",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "oracle-twap-probe": {
+        "wasm": "cw_oracle_twap_probe.wasm",
+        "crate": "contracts/hash-merchant/oracle-twap-probe",
+        "checksum_sha256": "04fa794e9fa40f50ffe68fa29130fa2f77de2d86202bfb09401e08efb247ecba",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "marketplace": {
+        "wasm": "revenue_marketplace.wasm",
+        "crate": "contracts/revenue/marketplace",
+        "checksum_sha256": "18a83231b909b612cc789e1e8cff9bdca37d11133ca9daafec4bd5507864bb3f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "reserve-auction": {
+        "wasm": "revenue_reserve_auction.wasm",
+        "crate": "contracts/revenue/reserve-auction",
+        "checksum_sha256": "b55b4e025575fc6a5982ead25e6a4ca7c774c3ef2c6633adb854463e8e3ea42f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "svg-auction": {
+        "wasm": "svg_auction.wasm",
+        "crate": "contracts/infuser/svg-auction",
+        "checksum_sha256": "575057ddff1d02dadb8c58e583d57c6fee12ad135474ca9fb1ed3205e101a4b6",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "raffle": {
+        "wasm": "nftfi_raffle.wasm",
+        "crate": "contracts/nfts/raffle",
+        "checksum_sha256": "28a9ac5283f4ade77e82ac41ddbbd2790fd7cdac46b7bcce3c241602d0f588c1",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "nft-loan": {
+        "wasm": "nftfi_loan.wasm",
+        "crate": "contracts/nfts/nft-loan",
+        "checksum_sha256": "f25aa65314f89febd587ef0553837ec967606ec1f55c32a54a54a5beb447265c",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "bounty-escrow": {
+        "wasm": "terp_bounty_escrow.wasm",
+        "crate": "contracts/revenue/bounty-escrow",
+        "checksum_sha256": "fec2c96f75cc1b3c003fb3331798077b184038ae89e71baeebb293f90fc52fac",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "passkey": {
+        "wasm": "terp_passkey.wasm",
+        "crate": "contracts/smart-accounts/terp-passkey",
+        "checksum_sha256": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-passkey": {
+        "wasm": "terp_passkey.wasm",
+        "crate": "contracts/smart-accounts/terp-passkey",
+        "checksum_sha256": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "recovery": {
+        "wasm": "terp_recovery.wasm",
+        "crate": "contracts/smart-accounts/terp-recovery",
+        "checksum_sha256": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-recovery": {
+        "wasm": "terp_recovery.wasm",
+        "crate": "contracts/smart-accounts/terp-recovery",
+        "checksum_sha256": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-ed25519": {
+        "wasm": "terp_ed25519.wasm",
+        "crate": "contracts/smart-accounts/terp-ed25519",
+        "checksum_sha256": "6aa970e4c84ab6f7f41cb1235eac7924e5b6a716bc40b37c0ebdb31f89d9f3d5",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-eth": {
+        "wasm": "terp_eth.wasm",
+        "crate": "contracts/smart-accounts/terp-eth",
+        "checksum_sha256": "779dc5fe0097f72d1bac07f44486f54025b0ef12f703a3d8a45bae1995e2773d",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw721-svg": {
+        "wasm": "cw721_svg.wasm",
+        "crate": "contracts/infuser/cw721-svg",
+        "checksum_sha256": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw721_svg": {
+        "wasm": "cw721_svg.wasm",
+        "crate": "contracts/infuser/cw721-svg",
+        "checksum_sha256": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "svg-minter": {
+        "wasm": "cw_svg_minter.wasm",
+        "crate": "contracts/infuser/cw721-svg-minter",
+        "checksum_sha256": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw-svg-minter": {
+        "wasm": "cw_svg_minter.wasm",
+        "crate": "contracts/infuser/cw721-svg-minter",
+        "checksum_sha256": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw-infuser": {
+        "wasm": "cw_infuser.wasm",
+        "crate": "contracts/infuser/cw-infuser",
+        "checksum_sha256": "07465e5a98d2f34e6125975dbd63a068bf7aa48a9bd42e3b19fc65932befde1f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "whitelist-mtree": {
+        "wasm": "whitelist_mtree.wasm",
+        "crate": "contracts/infuser/whitelist-merkletree",
+        "checksum_sha256": "8bb7f71277128a6a29ffc0713fc45715ff40218c2b9f30bce178ce9b123d52dd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      }
     }
   },
   "osmosis-1": {

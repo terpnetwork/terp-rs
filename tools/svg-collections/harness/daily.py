@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Daily curation harness (stdlib only). Talks to a LOCAL open model (ollama) on 127.0.0.1.
+"""Daily curation harness (stdlib only). Talks to opencode2's free model.
 
   daily.py marain-draft  --out poems-draft.json [--n 24]
   daily.py build-cache   --out psychedex-cache-v1.json [--days 30]     (one-off, polite crawl)
@@ -33,7 +33,9 @@ No scheduling, no chain txs: the harness writes files. Committing the record has
 import argparse, hashlib, html, json, os, re, shutil, struct, subprocess, tempfile, time, urllib.request
 
 OLLAMA = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11535")
-MODEL = os.environ.get("SVGC_MODEL", "qwen3.5:0.8b")
+OPENCODE = os.environ.get("OPENCODE_BIN", os.path.expanduser("~/.opencode/bin/opencode2"))
+MODEL = os.environ.get("SVGC_MODEL", "opencode/deepseek-v4.1-flash-free")
+RUNTIME = os.environ.get("SVGC_RUNTIME", "opencode")
 SVGC = os.environ.get("SVGC_BIN", "svgc")
 MAX_ATTEMPTS = 4
 PDX = "https://psychedex.org"
@@ -61,7 +63,7 @@ DOSE_RE = re.compile(r"\b\d+(\.\d+)?\s?(mg|mcg|ug|µg|g|ml|tabs?|hits?|drops?|gr
 def sha(b): return hashlib.sha256(b if isinstance(b, bytes) else b.encode()).hexdigest()
 def canon(o): return json.dumps(o, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
-# ---------------- ollama ----------------
+# ---------------- model ----------------
 def ollama(prompt, seed, temperature=0.8, num_predict=1400):
     body = {"model": MODEL, "prompt": prompt, "stream": False, "think": False,
             "options": {"seed": seed, "temperature": temperature, "num_predict": num_predict}}
@@ -71,12 +73,61 @@ def ollama(prompt, seed, temperature=0.8, num_predict=1400):
         out = json.load(r)
     return out["response"], body["options"]
 
+def opencode_text(stdout):
+    """Join assistant text parts from `opencode2 run --format json`."""
+    parts = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") == "text":
+            part = ev.get("part") or {}
+            if part.get("text"):
+                parts.append(part["text"])
+    return "".join(parts).strip()
+
+def opencode(prompt, seed, temperature=0.8, num_predict=1400):
+    asked = ("Reply with only the requested text. Do not use tools, files, or markdown fences.\n\n" + prompt)
+    proc = subprocess.run(
+        [OPENCODE, "run", "--standalone", "--format", "json", "--model", MODEL, "--log-level", "error", "--", asked],
+        capture_output=True, text=True, timeout=600)
+    text = opencode_text(proc.stdout)
+    if proc.returncode != 0 or not text:
+        err = (proc.stderr or proc.stdout or "empty model reply").strip()
+        raise SystemExit(f"opencode2 refused: {err[:500]}")
+    return text, {"runtime": "opencode2", "model": MODEL, "seed": seed, "temperature": temperature, "num_predict": num_predict}
+
+def complete(prompt, seed, temperature=0.8, num_predict=1400):
+    if RUNTIME == "ollama":
+        return ollama(prompt, seed, temperature, num_predict)
+    return opencode(prompt, seed, temperature, num_predict)
+
 def model_info():
-    with urllib.request.urlopen(OLLAMA + "/api/tags", timeout=30) as r:
-        for m in json.load(r)["models"]:
-            if m["name"] == MODEL:
-                return {"runtime": "ollama", "name": MODEL, "digest": m.get("digest")}
-    raise SystemExit(f"model {MODEL} not present locally")
+    if RUNTIME == "ollama":
+        with urllib.request.urlopen(OLLAMA + "/api/tags", timeout=30) as r:
+            for m in json.load(r)["models"]:
+                if m["name"] == MODEL:
+                    return {"runtime": "ollama", "name": MODEL, "digest": m.get("digest")}
+        raise SystemExit(f"model {MODEL} not present locally")
+    ver = subprocess.run([OPENCODE, "--version"], capture_output=True, text=True, timeout=20)
+    return {"runtime": "opencode2", "name": MODEL, "digest": (ver.stdout or ver.stderr).strip()[:80]}
+
+def preview_svg(lines, hue, title):
+    """A page-ready SVG of the piece. The chain still stores the packed template."""
+    body = [html.escape(line) for line in lines if line.strip()][:28]
+    height = 56 + 16 * max(1, len(body))
+    rows = "\n".join(
+        f'<text x="20" y="{40 + i * 16}" fill="hsl({hue},72%,74%)">{line}</text>'
+        for i, line in enumerate(body))
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 {height}" width="760" height="{height}">\n'
+        f'<rect width="760" height="{height}" fill="#0b0c10"/>\n'
+        f'<text x="20" y="24" fill="{KARA_PALETTE[1]}" font-size="12" font-family="ui-monospace,monospace">{html.escape(title)}</text>\n'
+        f'<g font-family="ui-monospace,monospace" font-size="13">\n{rows}\n</g>\n</svg>\n')
 
 # ---------------- psychedex (public .md pages only; never /api/) ----------------
 def fetch(url, cache):
@@ -522,7 +573,7 @@ def pair_session(seed_hex, picks, practice, inters, pinters, env=None):
     tp = session_prompt(picks, practice, inters, pinters, env)
     best = None
     for attempt in range(2 * MAX_ATTEMPTS):   # keep the run with the fewest Kara steering lines
-        traw0, topts0 = ollama(tp, u32(seed_hex, 700 + attempt), temperature=0.85, num_predict=1600)
+        traw0, topts0 = complete(tp, u32(seed_hex, 700 + attempt), temperature=0.85, num_predict=1600)
         l0, m0 = clean_transcript(traw0)
         if len(l0) < 8 or not {"Kara", "Gippy"} <= {x["speaker"] for x in l0}: continue
         v = kara_violations(l0) + parroted(l0)
@@ -536,7 +587,7 @@ def pair_session(seed_hex, picks, practice, inters, pinters, env=None):
     for pfun, base in ((painting_prompt, 800), (painting_prompt_alt, 900)):
         pp = pfun(summary, hue)
         for attempt in range(2 * MAX_ATTEMPTS):   # prefer symbol-heavy output (the small model likes words)
-            praw, popts = ollama(pp, u32(seed_hex, base + attempt), temperature=0.8, num_predict=1200)
+            praw, popts = complete(pp, u32(seed_hex, base + attempt), temperature=0.8, num_predict=1200)
             inner, title = split_title(clean_painting(praw))
             # Kara draws the frame; drop echoed prompt lines, the echoed symbol list, and verbatim repeats
             inner = [r for r in inner if r.strip() and not re.fullmatch(r"[\s=+|-]+", r) and not META.search(r) and ECHO not in r]
@@ -571,7 +622,7 @@ def cmd_marain(a):
               "and spaces. Themes: light, orbits, ships, minds, kindness, distance, play. No names, no quotes "
               "from books, no numbering.")
     seed = int(sha("marain-draft|" + a.batch)[:8], 16)
-    raw, opts = ollama(prompt, seed, temperature=0.9, num_predict=600)
+    raw, opts = complete(prompt, seed, temperature=0.9, num_predict=600)
     lines, seen = [], set()
     for l in raw.splitlines():
         l = re.sub(r"^[\s\-*\d.)]+", "", l).strip().lower().rstrip(".")
@@ -582,6 +633,8 @@ def cmd_marain(a):
            "candidates": lines}
     rec["record_sha256"] = sha(canon(rec))
     json.dump(rec, open(a.out, "w"), indent=1)
+    preview = preview_svg(lines or ["(no sayings yet)"], 198, f"Marain Orbs draft {a.batch}")
+    open(os.path.splitext(a.out)[0] + ".svg", "w").write(preview)
     print(len(lines), "candidates ->", a.out)
 
 def cmd_symbient(a):
@@ -622,7 +675,7 @@ def cmd_symbient(a):
         rejected = []
         for attempt in range(MAX_ATTEMPTS):
             fseed = u32(seed_hex, 100 + k + 1000 * attempt)
-            raw, opts = ollama(prompt, fseed)
+            raw, opts = complete(prompt, fseed)
             with tempfile.NamedTemporaryFile("w", delete=False) as t: t.write(raw)
             ok = subprocess.run([SVGC, "sanitize", t.name], capture_output=True, text=True); os.unlink(t.name)
             if ok.returncode == 0: break
@@ -661,6 +714,9 @@ def cmd_symbient(a):
               "labels_note": "Interaction labels are AI-assembled data from psychedex.org with their review standing; 'unknown' = unclassified, 'unrated' = prose without a grade."}
     json.dump(record, open(os.path.join(a.out, "day-record.partial.json"), "w"), indent=1)
     json.dump({"prompts": [f["prompt"] for f in frames], "raw": [f["raw"] for f in frames], "session_prompts": ww and ww["prompts"]}, open(os.path.join(a.out, "llm-io.json"), "w"), indent=1)
+    if ww:
+        open(os.path.join(a.out, "preview.svg"), "w").write(
+            preview_svg(ww["painting"].splitlines(), ww["palette"]["gippy_hue"], f"Latent Benders {a.day}"))
     state["used_substances"] = sorted(used | {p["slug"] for p in picks})
     state.update({"day_index": day_index, "pending_record": os.path.join(a.out, "day-record.partial.json"),
                   "exhaustion": {"pool_remaining": remaining, "total_used": len(state["used_substances"])}})
@@ -681,7 +737,7 @@ def rich_html(persona, day, day_index, k, picks, inters, text, practice=None, pi
         k0, k1, k2 = KARA_PALETTE
         wwh = ("<h2>Session: Kara &amp; Gippy</h2><div class=\"t\">" + "".join(f"<p class=\"{e(x['speaker'].lower())}\"><b>{e(x['speaker'])}:</b> {e(x['text'])}</p>" for x in ww["transcript"]) + "</div>"
                "<h2>Painting, curated by Kara &amp; Gippy</h2><pre class=\"p\">" + e(ww["painting"]) + "</pre>"
-               "<p class=\"a\">" + CREDIT + " Transcript and painting were written by a local open model. Interaction labels: <a href=\"https://psychedex.org/\">psychedex.org</a>.</p>")
+               "<p class=\"a\">" + CREDIT + " Transcript and painting were written by opencode/deepseek-v4.1-flash-free. Interaction labels: <a href=\"https://psychedex.org/\">psychedex.org</a>.</p>")
     style_pair = (f".kara b{{color:{KARA_PALETTE[1]}}}.kara{{color:{KARA_PALETTE[2]}}}.gippy b{{color:hsl({hue},80%,68%)}}"
                   f".p{{border:1px solid {KARA_PALETTE[0]};border-left:3px solid hsl({hue},70%,55%);color:hsl({hue},60%,78%)}}")
     return ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"

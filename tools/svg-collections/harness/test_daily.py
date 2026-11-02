@@ -106,14 +106,17 @@ class FreshDraw(unittest.TestCase):
 class CommitReveal(unittest.TestCase):
     def test_commit_then_reveal_verifies(self):
         import tempfile
+        import datetime
         d = tempfile.mkdtemp(); st = {"day_index": -1}
-        c = daily.commit_seed(st, d, "2026-10-20")
-        self.assertEqual(daily.commit_seed(st, d, "2026-10-20"), c)      # idempotent, never re-rolled
-        seed, rec = daily.reveal_seed(st, d, "2026-10-20")
+        day = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+        later = "2099-01-01"
+        c = daily.commit_seed(st, d, day)
+        self.assertEqual(daily.commit_seed(st, d, day), c)      # idempotent, never re-rolled
+        seed, rec = daily.reveal_seed(st, d, day)
         self.assertEqual(daily.sha(bytes.fromhex(seed)), c["commit_sha256"]); self.assertEqual(rec["seed_hex"], seed)
-        open(os.path.join(d, "seeds", "2026-10-20.seed"), "w").write("00" * 32)
-        with self.assertRaises(SystemExit): daily.reveal_seed(st, d, "2026-10-20")
-        with self.assertRaises(SystemExit): daily.reveal_seed(st, d, "2026-10-21")
+        open(os.path.join(d, "seeds", f"{day}.seed"), "w").write("00" * 32)
+        with self.assertRaises(SystemExit): daily.reveal_seed(st, d, day)
+        with self.assertRaises(SystemExit): daily.reveal_seed(st, d, later)
 
 class NoDisclaimerInArt(unittest.TestCase):
     def test_prompt_and_page_carry_no_disclaimer_or_memory(self):
@@ -168,6 +171,20 @@ class Personas(unittest.TestCase):
         self.assertEqual(daily.LABEL.sub("", "WAVE 13: // / ( )"), "// / ( )")                     # the fallback lists no glyphs
     def test_symbol_ratio_prefers_art(self):
         self.assertGreater(daily.symbol_ratio("=~*~=\\n|o.o|"), daily.symbol_ratio("WORDS ONLY HERE"))
+
+    def test_opencode_text_joins_parts(self):
+        raw = '\n'.join([
+            '{"type":"step_start","part":{"type":"step-start"}}',
+            '{"type":"text","part":{"type":"text","text":"orb "}}',
+            '{"type":"text","part":{"type":"text","text":"day"}}',
+        ])
+        self.assertEqual(daily.opencode_text(raw), "orb day")
+
+    def test_preview_svg_shows_the_lines(self):
+        svg = daily.preview_svg(["~*~ horizon", "  o.o"], 200, "Latent Benders")
+        self.assertIn("<svg ", svg)
+        self.assertIn("horizon", svg)
+        self.assertIn("hsl(200,72%,74%)", svg)
 
 if __name__ == "__main__":
     unittest.main()
