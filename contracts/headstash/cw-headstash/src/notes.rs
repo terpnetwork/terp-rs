@@ -1313,17 +1313,46 @@ mod tests {
     /// Existing-denom (uterp) escrow, owner = admin = "creator" (stands in for x/gov),
     /// registered, circuit bound and one anchor sealed: claims are live.
     fn reclaim_fixture() -> (TDeps, Env, Holder, Binary) {
+        tf_fixture(Tok::Uterp)
+    }
+
+    #[derive(Clone, Copy, PartialEq)]
+    enum Tok { Uterp, FactoryExisting, Mint }
+    const FDENOM: &str = "factory/terp1funder/hstest";
+    const SUB: &str = "hstest";
+
+    fn tf_fixture(tok: Tok) -> (TDeps, Env, Holder, Binary) {
         let a = holder(1, (0..40).map(|i| (i % 12) as u8).collect(), 0, 1000);
         let tree = Elig::new(a.leaves());
         let mut deps = mock_dependencies();
         let env = mock_env();
         let creator = deps.api.addr_make("creator");
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, "uterp")]);
+        let api = cosmwasm_std::testing::MockApi::default();
+        let (ts, nd_raw) = match tok {
+            Tok::Uterp => {
+                deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, "uterp")]);
+                (crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&api, "uterp".into())), "uterp")
+            }
+            Tok::FactoryExisting => {
+                deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, FDENOM)]);
+                (crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&api, FDENOM.into())), FDENOM)
+            }
+            Tok::Mint => (
+                crate::tokenfactory::TokenStrategy::NewFungible(NewTokenConfig {
+                    subdenom: HeadstashTokenObject::new(&api, SUB.into()),
+                    metadata: Metadata { description: None, denom_units: vec![DenomUnit { denom: SUB.into(), exponent: 0, aliases: vec![] }], base: None, display: None, name: None, symbol: None },
+                    initial_mint: None,
+                    manager: None,
+                    minters: vec![],
+                }),
+                SUB,
+            ),
+        };
         let msg = InstantiateMsg {
             genesis_root: Binary::from(vec![0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "uterp".into())),
+            token_strategy: ts,
             wavs: None,
             circuit_id: None,
             registration_hook: None,
@@ -1333,9 +1362,13 @@ mod tests {
         };
         instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), msg).unwrap();
         let mut c = campaign(tree.root(), NOTE_VK_ID);
-        c.denom = derive_nd(&cosmwasm_std::testing::MockApi::default(), "uterp");
+        c.denom = derive_nd(&cosmwasm_std::testing::MockApi::default(), nd_raw);
         c.cutoff_height = env.block.height + 1000;
         c.burn_unclaimed = Some(true);
+        if tok == Tok::Mint {
+            // AmountCap is the only bound on total mint: keep one class tight.
+            for ac in c.amounts.iter_mut() { if ac.amount == DENOMS_UTERP[0] { ac.cap = 2; } }
+        }
         set(&mut deps, &env, c).unwrap();
         #[cfg(feature = "zk-api")]
         real_zk::register_verifier();
@@ -1378,6 +1411,111 @@ mod tests {
 
     fn status(deps: &TDeps) -> Option<crate::reclaim::ReclaimRecord> {
         cosmwasm_std::from_json(crate::query(deps.as_ref(), mock_env(), crate::msg::QueryMsg::ReclaimStatus {}).unwrap()).unwrap()
+    }
+
+    fn mdenom(env: &Env) -> String { format!("factory/{}/{}", env.contract.address, SUB) }
+
+    /// (minted amount, sent amount, sent denom) of a claim response.
+    fn mint_and_send(r: &Response) -> (u128, u128, String, bool) {
+        let mut sent = (0u128, String::new());
+        let mut minted = false;
+        for m in &r.messages {
+            match &m.msg {
+                CosmosMsg::Bank(BankMsg::Send { amount, .. }) => sent = (amount[0].amount.to_string().parse::<u128>().unwrap(), amount[0].denom.clone()),
+                #[allow(deprecated)]
+                CosmosMsg::Stargate { .. } | CosmosMsg::Any(_) => minted = true,
+                _ => {}
+            }
+        }
+        (if minted { sent.0 } else { 0 }, sent.0, sent.1, minted)
+    }
+
+    #[test]
+    fn tf_mint_1_claim_mints_then_sends_minted_denom() {
+        let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
+        let r = claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
+        let (minted, sent, denom, has_mint) = mint_and_send(&r);
+        assert!(has_mint);
+        assert_eq!((minted, sent), (DENOMS_UTERP[3] as u128, DENOMS_UTERP[3] as u128));
+        assert_eq!(denom, mdenom(&env));
+        assert_eq!(r.messages.len(), 2);
+    }
+
+    #[test]
+    fn tf_mint_2_replay_refused() {
+        let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
+        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier already exists"));
+        assert!(err(claim(&mut deps, &env, &a, "w9", &root, 1, DENOMS_UTERP[3])).len() > 0);
+    }
+
+    #[test]
+    fn tf_mint_3_amount_cap_bounds_mint() {
+        let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+        claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0]).unwrap();
+        assert!(err(claim(&mut deps, &env, &a, "w3", &root, 3, DENOMS_UTERP[0])).contains("denomination cap reached"));
+    }
+
+    #[test]
+    fn tf_mint_4_sweep_refused_before_and_after_cutoff_even_with_balance() {
+        let (mut deps, mut env, _, _) = tf_fixture(Tok::Mint);
+        let d = mdenom(&env);
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(777u128, d)]);
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains(crate::epoch::SWEEP_MINT_REFUSED));
+        env.block.height += 1001;
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains(crate::epoch::SWEEP_MINT_REFUSED));
+        // still non-owner gated first
+        let relayer = deps.api.addr_make("relayer");
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&relayer, &[]), ExecuteMsg::SweepUnclaimed {}).is_err());
+    }
+
+    #[test]
+    fn tf_mint_5_reclaim_moves_nothing_but_halts_forever() {
+        let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+        // stray minted coins in the contract are not moved either
+        let d = mdenom(&env);
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(5u128, d)]);
+        assert!(reclaim_as(&mut deps, &env, "relayer").is_err());
+        assert!(status(&deps).is_none());
+        let r = reclaim_as(&mut deps, &env, "creator").unwrap();
+        assert!(r.messages.is_empty());
+        let st = status(&deps).unwrap();
+        assert_eq!((st.height, st.amounts.len()), (env.block.height, 0));
+        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("reclaimed"));
+        assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("reclaimed"));
+        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("reclaimed"));
+    }
+
+    #[test]
+    fn tf_mint_6_claims_refused_after_cutoff_reclaim_too() {
+        let (mut deps, mut env, a, root) = tf_fixture(Tok::Mint);
+        env.block.height += 1000; // == cutoff: still open
+        claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+        env.block.height += 1;
+        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window"));
+        assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("campaign has ended"));
+    }
+
+    #[test]
+    fn tf_existing_factory_denom_claim_sweep_reclaim_unchanged() {
+        let (mut deps, mut env, a, root) = tf_fixture(Tok::FactoryExisting);
+        let r = claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
+        let (_, sent, denom, has_mint) = mint_and_send(&r);
+        assert!(!has_mint);
+        assert_eq!((sent, denom.as_str()), (DENOMS_UTERP[3] as u128, FDENOM));
+        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier already exists"));
+        // reclaim before cutoff returns the factory denom escrow
+        let (mut d2, e2, _, _) = tf_fixture(Tok::FactoryExisting);
+        let rr = reclaim_as(&mut d2, &e2, "creator").unwrap();
+        assert_eq!(pool_amount(&rr).unwrap(), vec![Coin::new(ESCROW, FDENOM)]);
+        // sweep after cutoff burns what the mock reports
+        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW - sent, FDENOM)]);
+        env.block.height += 1001;
+        let s = owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}).unwrap();
+        assert!(s.messages.iter().any(|m| matches!(&m.msg, CosmosMsg::Bank(BankMsg::Burn { amount }) if amount == &vec![Coin::new(ESCROW - sent, FDENOM)])));
     }
 
     #[test]

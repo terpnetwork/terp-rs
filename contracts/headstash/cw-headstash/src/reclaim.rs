@@ -52,6 +52,11 @@ pub fn emergency_reclaim(deps: DepsMut, env: Env, info: MessageInfo) -> Result<R
     let cfg = HEADSTASH_CFG.load(deps.storage)?;
     let mut amounts: Vec<Coin> = vec![];
     for ts in cfg.ts.iter() {
+        // Mint-on-claim: no escrow. Reclaim moves nothing for the minted denom
+        // but still records the terminal halt below (Appendix N).
+        if matches!(ts, crate::tokenfactory::TokenStrategy::NewFungible(_)) {
+            continue;
+        }
         let denom = ts.denom(&env.contract.address);
         if amounts.iter().any(|c| c.denom == denom) {
             continue;

@@ -210,6 +210,8 @@ pub fn burns_unclaimed(campaign: &EpochCampaignParams) -> bool {
         .unwrap_or(campaign.vk_id == crate::notes::NOTE_VK_ID)
 }
 
+pub const SWEEP_MINT_REFUSED: &str = "sweep not supported for mint-on-claim tokens";
+
 pub fn sweep_unclaimed(
     deps: DepsMut,
     env: Env,
@@ -219,6 +221,15 @@ pub fn sweep_unclaimed(
     let campaign = EPOCH_CAMPAIGN
         .may_load(deps.storage)?
         .ok_or_else(|| StdError::msg("epoch campaign is not set"))?;
+    // Mint-on-claim tokens have no escrow: unclaimed supply is never minted, so
+    // there is nothing to sweep. Refuse explicitly even if the contract holds
+    // some of the denom (Appendix N).
+    {
+        let cfg = HEADSTASH_CFG.load(deps.storage)?;
+        if matches!(strategy_for(&cfg.ts, &campaign.denom)?, crate::tokenfactory::TokenStrategy::NewFungible(_)) {
+            return Err(StdError::msg(SWEEP_MINT_REFUSED));
+        }
+    }
     let burn = burns_unclaimed(&campaign);
     let recipient = if burn {
         None
