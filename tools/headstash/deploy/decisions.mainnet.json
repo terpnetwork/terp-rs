@@ -22,7 +22,7 @@
   "DEPOSIT_UTERP": "5000000000",
   "PROPOSER": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
   "CODE_ID": "{{fill after store code}}",
-  "WASM_SHA256": "7894e1e2a751edb1cbc3d26b7f142861d79ef8dc8d56de90318aac60f947ef43",
+  "WASM_SHA256": "40197344e760199c65bac129464418613803c65540c26f4c7cf00c56ebc9e980",
   "FE_WASM_SHA256": "e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2",
   "FE_MAX_CHUNK_BYTES": 131072,
   "_frontend_doc": "cw-headstash-frontend (opt-fe.sh). Gov is admin and owner; the proposal instantiates it at a predicted instantiate2 address (salt sha256('headstash-frontend:'+CAMPAIGN_LABEL)), publishes the page manifest (activate) and sets frontend_contract in the cw-headstash instantiate. Chunks (<=128 KiB, content-addressed) are uploaded by a throwaway key fee-granted by OPERATORS[0]; the last chunk seals the version and makes it current. Page = frontend/app.html, app.js, crypto.js + the scripts/build-browser-prover.sh prover. loader.html is NOT published.",

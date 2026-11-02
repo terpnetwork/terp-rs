@@ -124,7 +124,6 @@
        "wavs": null,
        "registration_hook": null,
        "registration_hook_gas_limit": null,
-       "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
        "frontend_contract": "terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9",
        "pauser": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
       },
@@ -147,7 +146,7 @@
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
     "metadata": "{{PROPOSAL_METADATA_URI_DEPLOY}}",
     "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
-    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 7894e1e2a751edb1cbc3d26b7f142861d79ef8dc8d56de90318aac60f947ef43) at terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9 and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2) at terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
+    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 40197344e760199c65bac129464418613803c65540c26f4c7cf00c56ebc9e980) at terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2) at terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
     "expedited": false
    }
   ],

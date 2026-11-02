@@ -9,11 +9,11 @@ Roles:
 - **U**: a throwaway uploader key for the frontend chunks (direct mode, not Zigner). Its fees come from a capped FX feegrant (doc A18) that is revoked afterwards (doc A20). It holds no funds.
 - **GOV**: the gov module, terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq. It is the wasm admin and the contract owner.
 
-Wasm: `cw_headstash.wasm`, sha256 7894e1e2a751edb1cbc3d26b7f142861d79ef8dc8d56de90318aac60f947ef43 (1,164,541 B, with gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P)). The predicted address is terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9.
+Wasm: `cw_headstash.wasm`, sha256 40197344e760199c65bac129464418613803c65540c26f4c7cf00c56ebc9e980 (859,424 B; v0.0.1 build: `--features zk-api`, no `legacy`, so the pre-v1/bridge/epoch-batch paths and sudo are compiled out (spec Appendix V); gov EmergencyReclaim (Appendix R) and the pauser role (Appendix P); largest function 38,344; cosmwasm-check pass). Reproducible: optimizer-arm64:0.17.0-rust1.91, wasm-opt -Os inline 1000. Built copies: `~/hs-backup-20261026/wasm-legacyoff/` on groot-wan. The predicted address is terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul.
 
 **PAUSER (decided):** the foundation DAO terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w (confirmed by you; valid bech32, 32-byte contract address). It is set as `PAUSER` in decisions.mainnet.json and in the A14 instantiate msg (`"pauser"`). It can only Pause and Resume claims, registration and the grant relay. It cannot move funds, reclaim, sweep or change the pauser. Only a gov `update_pauser` proposal can replace it. Metadata hashes are unchanged by this.
 
-Metadata sha256 (changed with this wasm; re-host): 01-deploy.json 8a7d30a34a2febb1531dcfcc30e88fdcb3a18ee4d3e32243deb597f9291e55b6, 02-circuit-store.json 5587d42a43dc306d446ccd886fb0451e95db8226f1bf95fd55acbc4b1c46fe58, 03-fund-bind.json a5cdbf4ddd9e7a3ee915b80f008e041cccb48e0a48b6adb11897c0acd29dad65.
+Metadata sha256 (changed with this wasm; re-host): 01-deploy.json ddcab7b9951fff421f85e0e92d98493e4444660ccc3d0c88d4ebb6e52bf405c9, 02-circuit-store.json 2dbbb347275fe7b2615a6c6d43fd781cd4c924a164bb0f5fafa97159eb3c8e3d, 03-fund-bind.json 12318a439e8cdbd53f88bcff7321efa3476a2bab0168f0fec1a6692cd018fec4.
 
 Frontend wasm: `cw_headstash_frontend.wasm`, sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2 (357,081 B). The predicted address is terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9 (salt sha256("headstash-frontend:"+label)). It is set as `frontend_contract` in the cw-headstash instantiate msg. The page manifest sha256 is 6a90d092… (`phase-a/page-manifest.json`): 5 files and 9 chunks of ≤131,072 B, with the prover at 2774af96… (-Oz, reproducible build). The loader page is NOT part of the manifest, and it is not published.
 
@@ -21,7 +21,7 @@ Frontend wasm: `cw_headstash_frontend.wasm`, sha256 e72eee9b90012ce42fed2c0abd0b
 - P: acct 0, seq 116. Spendable 10,980.26 TERP and 39,947.5 THIOL.
 - FX: acct 19, seq 262. Spendable 2,202.74 THIOL and 8.97 TERP. It is a DelayedVestingAccount whose vesting ended in 2023, so all of it is spendable.
 - Global-fee minimum gas price: 0.05 uthiol. Consensus block max_bytes: 16,777,216.
-- The groot-wan node config has max_tx_bytes 4,194,304 and max_txs_bytes 1 GiB. The ~181 KB MsgExec and the ~547 KB store tx both fit. Confirm the same limits on whichever node you broadcast through.
+- The groot-wan node config has max_tx_bytes 4,194,304 and max_txs_bytes 1 GiB. The ~181 KB MsgExec and the ~403 KB store tx both fit. Confirm the same limits on whichever node you broadcast through.
 
 ## Before you start
 1. Fill the placeholders that are still open, then re-run `render_gov_session.py` (it runs validate_rendered_proposal):
@@ -43,10 +43,10 @@ Upload is open on mainnet, but both codes are stored with instantiate permission
 |---|------|-----------|--------------|
 | A0 | none | operator device | Generate E in memory. **Regenerate `phase-a/10-session-grant/`** with the real E address and P's current sequence using `gov-session/target/release/gov-session-grant --chain-id morocco-1 --granter P --grantee E --account-number 0 --sequence <seq> --ttl-secs 86400 --allowance 300000000 --fee-denom uthiol --type /cosmos.gov.v1.MsgSubmitProposal --type /cosmos.authz.v1beta1.MsgRevoke --type /cosmos.feegrant.v1beta1.MsgRevokeAllowance --out rendered-mainnet/phase-a/10-session-grant`. The committed doc has a placeholder grantee and an expired TTL (2026-10-29 10:51 UTC). Re-render with `--eph-grantee E`. |
 | A10 | `10-session-grant/sign_doc.json` | **P on Zigner** | Three GenericAuthorizations plus a 300 THIOL BasicAllowance to E, TTL 86,400 s. Sign doc 1,419 B, 1 QR frame. |
-| A13 | `13-store-wasm.unsigned.json` (~559 KB) | E (direct) | MsgStoreCode, sender E, instantiate permission GOV only, fee via the feegrant. STORE_GAS ≥ 10M. Record CODE_ID. |
+| A13 | `13-store-wasm.unsigned.json` (~403 KB) | E (direct) | MsgStoreCode, sender E, instantiate permission GOV only, fee via the feegrant. STORE_GAS ≥ 10M. Record CODE_ID. |
 | A13b | `13b-store-frontend-wasm.unsigned.json` (~186 KB) | E (direct) | Same for the frontend wasm. FE_STORE_GAS ≥ 4M. Record FE_CODE_ID. |
 | A15 | `15-session-revoke.unsigned.json` | E (direct) | MsgExec revoking every grant and the allowance (MsgRevoke last). Run right after A13b. |
-| A14 | `14-deploy-proposal.unsigned.json` | **P on Zigner** | Sign doc 4,539 B with placeholders (sha256 c9bfdd39e68fb940e0df2cae44e8c0341b35349a99562b32d82ee88cdfc7f610). **Gov proposal A**: CommunityPoolSpend 1 uterp → GOV, frontend Instantiate2 (admin + owner GOV), publish_manifest, cw-headstash Instantiate2 (admin + owner GOV, frontend_contract set, 1 uterp). No campaign, no circuit: claims are refused until B14. 5,000 TERP initial deposit. Record PROPOSAL_ID_DEPLOY. |
+| A14 | `14-deploy-proposal.unsigned.json` | **P on Zigner** | Sign doc 4,485 B with placeholders, acct 0 seq 116 (sha256 e51a3cbc3d5caa9a374abbd2c74f1e820b17caf327864c5cb80c75c639817688). **Gov proposal A**: CommunityPoolSpend 1 uterp → GOV, frontend Instantiate2 (admin + owner GOV), publish_manifest, cw-headstash Instantiate2 (admin GOV; the contract owner is the instantiating sender = GOV, the msg carries no `owner` field; frontend_contract set, 1 uterp). No campaign, no circuit: claims are refused until B14. 5,000 TERP initial deposit. Record PROPOSAL_ID_DEPLOY. |
 | A17 | `17-deposit-topup.unsigned.json` | **P on Zigner** | Sign doc 353 B. +5,000 TERP on PROPOSAL_ID_DEPLOY. |
 | — | vote | validators | Proposal A passes. Check both contracts: admin, creator and owner GOV; cw-headstash balance 1 uterp, `reclaim_status` null. |
 | A18 | `18-fe-uploader-feegrant.unsigned.json` | **FX on Zigner** | Sign doc 499 B. Capped, expiring BasicAllowance (3,374,003 uthiol) to U. |
@@ -81,6 +81,7 @@ After Phase A both contracts are deployed and can be funded. Nothing is spent be
 - Run `terpd q authz grants P E` and `terpd q feegrant grant P E` for both session keys. Both must come back empty or not found.
 
 ## Verified locally
+Re-run 2026-11-02 on the v0.0.1 legacy-off wasm 40197344 + frontend e72eee9b (same scripts): pause **109/0**, emergency reclaim **90/0**, burn **89/0**, browser `gov_frontend_e2e.py` **57/0**. Earlier runs below:
 Local morocco-1-like chain, terpd v6.4.0, test keys standing in for P/E/FX/U, wasms f7873d2d + fe096bf1, 2026-10-30:
 - `run_direct.py` GOV_ROLES=1 RECLAIM=1 PAUSE=1 (pauser scenario, wasm e8690f93): **109 PASS / 0 FAIL**. Gov sets the pauser. The pauser pauses, and while paused claims, registration, the grant relay and CheckNoteClaim are refused. The pauser cannot reclaim, sweep or change the pauser. After resume a claim succeeds. A re-pause is followed by a gov reclaim, which succeeds while paused, and resume is refused after the reclaim. Reclaim/burn/browser were re-run on e8690f93: 90/0, 89/0, 57/0.
 - `run_direct.py` GOV_ROLES=1 RECLAIM=1 (emergency scenario): **90 PASS / 0 FAIL**. Order: session A (stores, revoke) → proposal A (contracts deployed, admin/creator/owner GOV, balance 1 uterp, reclaim_status null, bind refused) → session B → B1 circuit → B2 campaign+bind+pool spend (balance = FUNDING) → registrations/claims → non-gov reclaim refused → gov EmergencyReclaim passes before cutoff, contract emptied, community pool credited (+reclaimed, plus block community tax) → claim/grant/register/sweep refused → second reclaim proposal FAILED.
@@ -96,6 +97,6 @@ Local morocco-1-like chain, terpd v6.4.0, test keys standing in for P/E/FX/U, wa
 
 ## Not verified
 - Zigner amino rendering of the gov v1 and wasm msg types in steps A14, B14 and the top-ups on a real device.
-- A reproducible build of the f7873d2d and fe096bf1 wasms against SOURCE_COMMIT. The prover is reproducible (2774af96, via scripts/build-browser-prover.sh).
+- (Done 2026-11-02: cw_headstash 40197344 and frontend e72eee9b rebuilt byte-identically from the consolidate tree after a /tmp wipe; SOURCE_COMMIT pinning still to be stated by the build owner.) The prover is reproducible (2774af96, via scripts/build-browser-prover.sh).
 - The real upload gas on mainnet. Doc A18 carries 1 THIOL of headroom over the estimate.
 - Whether the broadcast node's mempool limits match groot-wan's.

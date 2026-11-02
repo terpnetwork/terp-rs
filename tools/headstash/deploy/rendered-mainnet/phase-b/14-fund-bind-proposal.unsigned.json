@@ -7,11 +7,11 @@
      {
       "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
       "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9",
+      "contract": "terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul",
       "msg": {
        "set_epoch_campaign": {
         "campaign": {
-         "ctx": "MJm9Becnmrf17yqsooSs+Z1D3suVSW7HdNtdwk9nYB8=",
+         "ctx": "ob3mat9DLrKuaLt7GR5vUJy5c29xgiWG5vXmTreWUDM=",
          "backend": "halo2",
          "cutoff_height": 44444444,
          "bech32_hrp": "terp",
@@ -94,7 +94,7 @@
      {
       "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
       "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "contract": "terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9",
+      "contract": "terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul",
       "msg": {
        "bind_note_circuit": {
         "zk_id": "{{NOTE_ZK_ID}}"
@@ -105,7 +105,7 @@
      {
       "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
       "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
-      "recipient": "terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9",
+      "recipient": "terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul",
       "amount": [
        {
         "denom": "uterp",
@@ -123,7 +123,7 @@
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
     "metadata": "{{PROPOSAL_METADATA_URI_FUND}}",
     "title": "Headstash 2026 (B2): bind the note circuit and fund cw-headstash",
-    "summary": "Opens the campaign on cw-headstash terp1vgpjcwc9xaupwl22fdyxn6rlwhfy4kz0nqd9jkyy3n3lztm2w8dsar9cs9 (deployed by proposal A, gov admin and owner), binds note circuit {{NOTE_ZK_ID}} from proposal B1 and sends 66456668999999 uterp from the community pool straight to the contract (with the 1 uterp from A: 66456669000000 uterp). Cutoff block 44,444,444: before it gov can EmergencyReclaim everything back to the community pool; after it unclaimed TERP can only be burned. Forum: https://discord.terp.network",
+    "summary": "Opens the campaign on cw-headstash terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul (deployed by proposal A, gov admin and owner), binds note circuit {{NOTE_ZK_ID}} from proposal B1 and sends 66456668999999 uterp from the community pool straight to the contract (with the 1 uterp from A: 66456669000000 uterp). Cutoff block 44,444,444: before it gov can EmergencyReclaim everything back to the community pool; after it unclaimed TERP can only be burned. Forum: https://discord.terp.network",
     "expedited": false
    }
   ],
