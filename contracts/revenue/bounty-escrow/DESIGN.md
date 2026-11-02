@@ -245,7 +245,7 @@ Goal: let a proposer fund a bounty on another chain (e.g. a Zcash shielded escro
 Design sketch (not built):
 1. **Statement.** "There is a note commitment `cm` in the counterparty's commitment tree at anchor `rt`. It pays value ≥ `min` to the escrow's spend policy, it carries a memo binding `bounty_ref`/`details_hash`, and it is unspent." The public inputs are `rt`, the bounty binding, `min` and an escrow-policy id. Everything else is a witness.
 2. **Anchor soundness.** `rt` must be a finalized counterparty root known on Terp, from a light client (e.g. the crosslink / zap1 ics08 clients in `contracts/light-clients`) or a governance-attested root oracle. Without a light client this is only as sound as the attester.
-3. **Proof system.** Halo2 (Orchard-compatible circuits) verified with the zk host functions of the cosmwasm 4.0.0-zk fork (`cosmwasm-std/zk`), or via a verifier contract (`contracts/zk`).
+3. **Proof system.** Halo2 (Orchard-compatible circuits) verified with the zk host functions of the cosmwasm 4.1.0 fork (`cosmwasm-std/zk`), or via a verifier contract (`contracts/zk`).
 4. **Lock and release.** The deposit must stay spendable only under the escrow policy (a FROST threshold or a time-locked script), so a payout or refund on Terp is mirrored by a counterparty spend. That is a bridge-grade problem, and it is the real reason this is a TODO.
 5. **Replay.** Store the bounty binding and a deposit-specific tag (not the nullifier) so one deposit cannot fund two bounties.
 Until all five are specified and audited, `CounterpartyEscrowProof` stays an erroring stub.

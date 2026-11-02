@@ -43,7 +43,7 @@ Bob builds only workspace members whose `[lib] crate-type` contains `cdylib`. It
 
 ## Chain wasm runtime
 
-- `go.mod`: `github.com/CosmWasm/wasmvm/v3 v3.0.7` is replaced by the in-tree fork `./x/wasm/wasmvm` (libwasmvm 4.0.0-zk, host rust-version 1.96). `crates/cosmwasm/packages/vm` pins wasmer `=7.4.2` singlepass.
+- `go.mod`: `github.com/CosmWasm/wasmvm/v3 v3.0.7` is replaced by the in-tree fork `./x/wasm/wasmvm` (libwasmvm 4.1.0, host rust-version 1.96). `crates/cosmwasm/packages/vm` pins wasmer `=7.4.2` singlepass.
 - Capabilities: `wasmkeeper.BuiltInCapabilities()` plus `cosmwasm_3_0`.
 - Gatekeeper allows floats, bulk-memory and sign-ext. It rejects SIMD, threads, exceptions and reference-types instructions (the type subset that rustc ≥1.82 emits is accepted).
 - Guest check: `wasm-tools validate --features=mvp,bulk-memory,sign-extension,mutable-global,saturating-float-to-int <file>`.
