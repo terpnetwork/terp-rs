@@ -266,6 +266,38 @@
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
       "tx": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5"
+    },
+    "drop:latent-benders-2026-10-28": {
+      "address": "terp13acw7eezjqnv2zru428lgg3dfx5l88lw6st5aemljvnu85c3xqqswlqpud",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-28",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-29": {
+      "address": "terp16prlc0v4vtu58djdypvmjsfnx4y2e3g2gjnw2m65qrun4sayufxqrn9j93",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-29",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-30": {
+      "address": "terp1y2nfyahzl55tf8jkzz5refqlkhmnflvr8adhk6pch77jrkr6accshgr0wp",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-30",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-31": {
+      "address": "terp1cy8jtf0uyz899q5hlh3g2tne4uwctqzhahk7qpyrehw8gtlna0ms4aewjg",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-31",
+      "tx": null
     }
   },
   "proposals": {
