@@ -13,11 +13,18 @@ interface = ["std", "circuit", "dep:cw-orch"]
 # Guest wasm (cw-headstash) must leave this off.
 multicore = ["halo2_proofs?/multicore", "dep:rayon"]
 std = ["core3/std", "group/wnaf-memuse", "reddsa/std"]
-# Host-only: axiom base + libsecp C (breaks wasm32 guest / optimizer).
-host-crypto = ["dep:halo2-base", "dep:secp256k1"]
+# Host-only: libsecp C (breaks wasm32 guest / optimizer). In-crate field, no halo2-base.
+host-crypto = ["dep:secp256k1"]
+# wasm-bindgen membership prover for the claim page. wasm32-unknown-unknown only;
+# no libsecp (host-crypto stays off). Build: tools/headstash/scripts/build-browser-prover.sh
+browser = ["circuit", "std", "dep:wasm-bindgen", "dep:getrandom02", "dep:getrandom03", "dep:getrandom04"]
 rpc = []
 test-dependencies = []
 dev-graph = []
+
+[lib]
+# cdylib is only consumed by wasm-pack (browser prover); rlib is what dependents link.
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 aes = { workspace = true }
@@ -32,7 +39,6 @@ ff  = { workspace = true }
 fpe = { workspace = true, features = ["alloc"] }
 getset = { workspace = true }
 group = { workspace = true }
-halo2-base  = { workspace = true, optional = true }
 halo2_gadgets  = { workspace = true, optional = true }
 halo2_proofs  = { workspace = true, optional = true }
 headstash-randomness  = { workspace = true }
@@ -43,12 +49,12 @@ memuse = { workspace = true }
 nonempty = { workspace = true }
 num-bigint  = { workspace = true }
 num-traits = { workspace = true }
-pasta_curves  = { workspace = true }
+pasta_curves  = { workspace = true, features = ["bits"] }
 proptest = { workspace = true, optional = true }
 rand010 = { workspace = true, features = ["std", "sys_rng", "thread_rng"] }
 rand_core = { workspace = true }
 rayon  = { workspace = true, optional = true }
-reddsa = { workspace = true }
+reddsa = { workspace = true, default-features = false, features = ["pallas-pasta"] }
 secp256k1  = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] } 
 serde_json  = { workspace = true }
@@ -61,6 +67,17 @@ zcash_spec = { workspace = true }
 zip32 = { workspace = true }
 zk-cosmwasm = { workspace = true }
 
+# Browser prover only. Optional + wasm32-scoped so native builds and the
+# cw-headstash guest wasm (which never enables `browser`) are unaffected.
+# Each getrandom major in the graph needs its browser backend (0.2 `js`, 0.3/0.4 `wasm_js`).
+# rand 0.10 ThreadRng -> getrandom 0.4; wasm_js needs
+# RUSTFLAGS='--cfg getrandom_backend="wasm_js"' (set by the build script).
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2.122", optional = true }
+getrandom02 = { package = "getrandom", version = "0.2.17", features = ["js"], optional = true }
+getrandom03 = { package = "getrandom", version = "0.3", features = ["wasm_js"], optional = true }
+getrandom04 = { package = "getrandom", version = "0.4", features = ["wasm_js"], optional = true }
+
 [dev-dependencies]
 halo2_gadgets = { workspace = true, features = ["test-dependencies"] }
 hex  = { workspace = true }
@@ -69,3 +86,22 @@ proptest  = { workspace = true }
 shardtree = { workspace = true }
 zcash_note_encryption  = { workspace = true }
 
+[[example]]
+name = "curate_keys"
+path = "../../examples/curate_keys.rs"
+required-features = ["interface", "host-crypto"]
+
+[[example]]
+name = "membership_key_com"
+path = "../../examples/membership_key_com.rs"
+required-features = ["circuit", "std"]
+
+[[example]]
+name = "bench_note_proofs"
+path = "../../examples/bench_note_proofs.rs"
+required-features = ["circuit", "std"]
+
+[[example]]
+name = "prove_note_witness"
+path = "../../examples/prove_note_witness.rs"
+required-features = ["circuit", "std"]

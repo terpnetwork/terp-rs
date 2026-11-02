@@ -1,0 +1,42 @@
+<style>
+:root{font:15px/1.45 system-ui,sans-serif;color:#111;background:#fafaf7}body{max-width:760px;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.4rem}section{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fff}
+label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,textarea,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem}
+button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer}button:disabled{opacity:.45}
+pre{white-space:pre-wrap;word-break:break-all;background:#f2f2ee;padding:.5rem;max-height:16rem;overflow:auto;font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #eee;padding:2px 4px;text-align:left}
+.warn{color:#8a3b00}.ok{color:#11632a}#modal{position:fixed;inset:0;background:#0008;display:none}#modal>div{background:#fff;max-width:640px;margin:6vh auto;padding:1rem 1.5rem;border-radius:6px;max-height:80vh;overflow:auto}
+</style>
+<h1>Terp Headstash claim</h1>
+<p>This page loaded from on-chain chunks in contract <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>, and every chunk passed its sha256 check. <button id="how">How this works</button></p>
+
+<section id="s-import"><h2>1. Create or load your notes file</h2>
+<p class="warn">Your private key is used only on this page, once, to derive your notes. It is never sent anywhere or saved, and it is wiped from memory right after use. The notes file holds per-note secrets, so keep it safe.</p>
+<label for="key">Eligible EVM private key (hex)</label><input id="key" type="password" autocomplete="off" spellcheck="false">
+<label for="elig">Eligibility rows (note_paths .jsonl or .json from the campaign)</label><input id="elig" type="file" accept=".json,.jsonl">
+<label for="reward">Registration reward address (terp1…)</label><input id="reward" spellcheck="false">
+<label for="dest">Where should claimed tokens go?</label>
+<select id="dest-mode"><option value="fresh">A fresh unlinked wallet per note (derived from the note secret, exportable)</option><option value="single">One address I enter</option></select>
+<input id="dest" placeholder="terp1… (only for 'one address')" spellcheck="false">
+<label for="pass">Optional passphrase to encrypt the notes file</label><input id="pass" type="password" autocomplete="new-password">
+<button id="gen">Generate all notes</button>
+<hr><label for="nf">Or re-import an existing notes file</label><input id="nf" type="file" accept=".json"><button id="load">Load notes file</button>
+</section>
+
+<section id="s-notes"><h2>2. Your notes</h2><div id="summary">No notes loaded.</div>
+<button id="register" disabled>Register all notes</button><button id="claim" disabled>Claim all registered notes</button>
+<button id="save" disabled>Download notes file</button><button id="export" disabled>Export claim wallets</button>
+<table id="tbl"></table></section>
+
+<section id="s-pen"><h2>3. Move to Penumbra (preview, sends nothing)</h2>
+<p id="pen-detect"></p><label for="pen">Penumbra address (penumbra1…)</label><input id="pen" spellcheck="false"><button id="pen-check">Check and show transfer parameters</button>
+<pre id="pen-out"></pre></section>
+
+<section><h2>Log</h2><pre id="log"></pre></section>
+<div id="modal"><div><h2>How this works</h2>
+<ol><li><b>Loading.</b> A small loader you saved, whose hash is published in the governance proposal, asks the Headstash contract for its frontend contract. It downloads this page's gzip chunks from the chain and checks every chunk and every file against the sha256 values in the governance-published manifest. Nothing here comes from a web server.</li>
+<li><b>Notes.</b> Your allocation is split into fixed-denomination notes. From your key, the page derives one secret per note: <code>HKDF-SHA256(key, "terp-hs-note-secret-v1", campaign‖identity‖index)</code>. From each secret it derives a key commitment and a nullifier. Your key signs a single registration message (EIP-191) and is then wiped. The notes file stores only the per-note secrets, never your key, and it records each note's status on this device.</li>
+<li><b>Register.</b> Registration publishes your key commitments, signed by your eligible address, in transactions of up to 32 notes. Each one is sent from a throwaway wallet whose fee is covered by a fee grant from the relay.</li>
+<li><b>Claim.</b> Once an anchor that includes your notes has been accepted, each note gets a zero-knowledge proof. The proof shows the note is in the registered set without revealing which one. Each claim is sent from a separate fee-granted wallet derived from that note's secret, so the claims cannot be linked to each other or to your eligible address. The chain rejects a reused nullifier. This page never queries the nullifier set; it tracks status in your file.</li>
+<li><b>Penumbra</b> (preview). This section checks a Penumbra address and shows the IBC transfer parameters. It does not send anything yet.</li></ol>
+<button id="close">Close</button></div></div>

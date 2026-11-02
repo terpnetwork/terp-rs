@@ -3,9 +3,14 @@
 extern "C" fn requires_hash_blake() {}
 
 pub mod bridge;
+pub mod direct;
 pub mod distro;
 pub mod egress;
 pub mod epoch;
+pub mod notes;
+pub mod reclaim;
+pub mod pause;
+pub mod registration;
 pub mod headstash;
 pub mod msg;
 pub mod tokenfactory;
@@ -34,12 +39,10 @@ use crate::{
     wavs::{WavsOperatorSet, WavsProofOfOwnership},
 };
 
-use ark_ff::Zero;
-use cosmwasm_schema::{QueryResponses, cw_serde, serde};
+use cosmwasm_schema::{cw_serde, serde, QueryResponses};
 use cosmwasm_std::{
-    Addr, BLS12_381_G1_GENERATOR as G1, BLS12_381_G2_GENERATOR as G2, BankMsg, Binary, Coin,
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdError, StdResult,
-    Storage, SubMsg, Uint128, coins, from_json, to_json_binary,
+    coins, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Reply, Response, StdError, StdResult, Storage, SubMsg, Uint128,
 };
 use cw_storage_plus::{Bound, Bounder, Item, KeyDeserialize, Map};
 pub use msg::*;
@@ -59,8 +62,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // Reply IDs
 const CREATE_DENOM_REPLY_ID: u64 = 1;
 
-// a historical set of wavs operator keys after rotated. once rotated we list of old keys iwith block height changed as key.
-pub const WAVS_OPERATORS: Map<String, Vec<String>> = Map::new("wavs_operators");
 pub const HEADSTASH_CFG: Item<HeadstashCfg> = Item::new("headstash_params");
 pub(crate) const GENESIS_TREE_ROOT: Item<Binary> = Item::new("root_gen_tree");
 pub(crate) const COMMITMENT_TREE_ROOT: Item<Binary> = Item::new("root_cm_tree");
@@ -164,13 +165,21 @@ fn msg_burn(
     })
 }
 
+/// The only accessor for WAVS state. Fails closed when WAVS is disabled (`wavs: None`).
+pub fn wavs_operator_set(storage: &dyn Storage) -> StdResult<WavsOperatorSet> {
+    HEADSTASH_CFG
+        .load(storage)?
+        .w
+        .ok_or_else(|| StdError::msg("wavs disabled"))
+}
+
 fn save_headstash_cfg(
     storage: &mut dyn Storage,
     genesis_root: Binary,
     distro_hash_domain: DistroHashDomain,
     genesis_label: Option<String>,
     ts: Vec<TokenStrategy>,
-    w: WavsOperatorSet,
+    w: Option<WavsOperatorSet>,
     circuit_id: u64,
 ) -> Result<(), StdError> {
     distro::validate_instantiate_domain(distro_hash_domain)?;
@@ -203,17 +212,23 @@ pub fn instantiate(
 ) -> Result<Response, StdError> {
     // set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
-    msg.wavs.verify()?;
+    // WAVS is optional. None = disabled: nothing stored, no PoP/threshold checks.
+    if let Some(w) = &msg.wavs {
+        w.verify()?;
+    }
     msg.token_strategy.validate(deps.api)?;
     let ts = msg.token_strategy;
     let c = env.contract.address.clone();
     let domain = msg.distro_hash_domain;
     let genesis_label = msg.genesis_label;
     let circuit_id = msg.circuit_id.unwrap_or(0);
+    notes::set_registration_hook(deps.storage, deps.api, msg.registration_hook.clone(), msg.registration_hook_gas_limit)?;
+    bridge::save_frontend_contract(deps.storage, deps.api, msg.frontend_contract.clone())?;
+    pause::save_pauser(deps.storage, deps.api, msg.pauser.clone())?;
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
-            let w = msg.wavs.proof_of_ownership(deps.api, &c)?;
+            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -256,7 +271,7 @@ pub fn instantiate(
             DENOM.save(deps.storage, &denom.raw)?;
 
             // Save config for existing tokens too
-            let w = msg.wavs.proof_of_ownership(deps.api, &c)?;
+            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -279,32 +294,84 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, StdError> {
+    // Campaign creation binds the eligibility root. A code upgrade must not
+    // copy one on afterwards.
+    Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+/// Returns `f` through `black_box`, so the call becomes `call_indirect`. Without
+/// this, wasm-opt -Os inlines every single-caller handler into `execute`, giving one
+/// ~127 KB function that arm64 singlepass rejects (ImpossibleRelocation).
+/// `#[inline(never)]` does not help: it only binds LLVM, not binaryen.
+#[inline(always)]
+fn opaque<F: Copy>(f: F) -> F {
+    core::hint::black_box(f)
+}
+
+
+#[inline(never)]
+fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(), StdError> {
+    if matches!(
+        msg,
+        ExecuteMsg::ClaimNote { .. }
+            | ExecuteMsg::ProcessHeadstash { .. }
+            | ExecuteMsg::BridgeMintNote { .. }
+            | ExecuteMsg::ApplyAcceptedBatch { .. }
+            | ExecuteMsg::ApplyPublicBatch { .. }
+            | ExecuteMsg::RegisterHeadstash { .. }
+            | ExecuteMsg::RegisterHeadstashSol { .. }
+            | ExecuteMsg::RegisterNotes { .. }
+    ) {
+        pause::ensure_not_paused(storage)?;
+    }
+    Ok(())
+}
+
+#[inline(never)]
+fn pause_dispatch(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> Result<Response, StdError> {
+    match msg {
+        ExecuteMsg::Pause {} => pause::pause(deps, env, info),
+        ExecuteMsg::Resume {} => pause::resume(deps, env, info),
+        ExecuteMsg::UpdatePauser { pauser } => pause::update_pauser(deps, info, pauser),
+        _ => Err(StdError::msg("unreachable")),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
+    // Terminal state after an emergency reclaim: nothing executes (Appendix R).
+    reclaim::ensure_live(deps.storage)?;
+    // Pause gate (Appendix P): claims/payouts and registration only.
+    pause_gate(deps.storage, &msg)?;
     // TODO: allowlist for writing to nullifier tree
     match msg {
+        m @ (ExecuteMsg::Pause {} | ExecuteMsg::Resume {} | ExecuteMsg::UpdatePauser { .. }) => {
+            opaque::<fn(_, _, _, _) -> _>(pause_dispatch)(deps, env, info, m)
+        }
         ExecuteMsg::ProcessHeadstash { claims } => {
-            crate::headstash::process_headstash(deps, env, claims)
+            opaque::<fn(_, _, _) -> _>(crate::headstash::process_headstash)(deps, env, claims)
         }
         ExecuteMsg::SetCircuitId { circuit_id } => {
-            crate::headstash::set_circuit_id(deps, info, circuit_id)
+            opaque::<fn(_, _, _) -> _>(crate::headstash::set_circuit_id)(deps, info, circuit_id)
         }
         ExecuteMsg::RegisterEligibilityRoot {
             root,
             domain,
             label,
-        } => crate::headstash::register_eligibility_root(deps, info, root, domain, label),
+        } => opaque::<fn(_, _, _, _, _) -> _>(crate::headstash::register_eligibility_root)(deps, info, root, domain, label),
         ExecuteMsg::Mint { to_address, amount } => {
-            execute_mint(deps, env, info, to_address, amount)
+            opaque::<fn(_, _, _, _, _) -> _>(execute_mint)(deps, env, info, to_address, amount)
         }
         ExecuteMsg::Burn {
             from_address,
             amount,
-        } => execute_burn(deps, env, info, from_address, amount),
+        } => opaque::<fn(_, _, _, _, _) -> _>(execute_burn)(deps, env, info, from_address, amount),
         // Private-bridge mint router (CLARITY: cw-headstash is the mint)
         ExecuteMsg::UpdateReflection {
             pool_root,
@@ -312,7 +379,7 @@ pub fn execute(
             burn_root,
             source_height,
             tip_height,
-        } => bridge::execute_update_reflection(
+        } => opaque::<fn(_, _, _, _, _, _, _) -> _>(bridge::execute_update_reflection)(
             deps,
             info,
             pool_root,
@@ -322,48 +389,141 @@ pub fn execute(
             tip_height,
         ),
         ExecuteMsg::SetReflectionSnapshot { snapshot } => {
-            bridge::execute_set_reflection_snapshot(deps, info, snapshot)
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_reflection_snapshot)(deps, info, snapshot)
         }
         ExecuteMsg::RegisterAsset {
             asset_id,
             local_denom,
             origin,
             status,
-        } => bridge::execute_register_asset(deps, info, asset_id, local_denom, origin, status),
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(bridge::execute_register_asset)(deps, info, asset_id, local_denom, origin, status),
         ExecuteMsg::SetExternalAssetRegistry { addr } => {
-            bridge::execute_set_external_asset_registry(deps, info, addr)
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_external_asset_registry)(deps, info, addr)
         }
-        ExecuteMsg::SetBridgeCfg { cfg } => bridge::execute_set_bridge_cfg(deps, info, cfg),
+        ExecuteMsg::SetFrontendContract { addr } => {
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_frontend_contract)(deps, info, addr)
+        }
+        ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
         ExecuteMsg::BridgeMintNote { claim, proof } => {
-            bridge::execute_bridge_mint_note(deps, env, info, claim, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, claim, proof)
         }
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
-            egress::execute_bridge_egress_burn(deps, env, info, statement, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, statement, proof)
         }
-        ExecuteMsg::SetDenomTable { amounts } => epoch::set_denom_table(deps, info, amounts),
+        ExecuteMsg::SetDenomTable { amounts } => opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts),
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
-            epoch::assign_public_notes(deps, info, nullifiers)
+            opaque::<fn(_, _, _) -> _>(epoch::assign_public_notes)(deps, info, nullifiers)
+        }
+        ExecuteMsg::SetEpochCampaign { campaign } => opaque::<fn(_, _, _) -> _>(epoch::set_campaign)(deps, info, campaign),
+        ExecuteMsg::SweepUnclaimed {} => opaque::<fn(_, _, _) -> _>(epoch::sweep_unclaimed)(deps, env, info),
+        ExecuteMsg::EmergencyReclaim {} => opaque::<fn(_, _, _) -> _>(reclaim::emergency_reclaim)(deps, env, info),
+        ExecuteMsg::UpdateOwnership(action) => {
+            if matches!(action, cw_ownable::Action::RenounceOwnership) {
+                return Err(StdError::msg("renounce_ownership is disabled"));
+            }
+            let o = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)
+                .map_err(|e| StdError::msg(e.to_string()))?;
+            Ok(Response::new().add_attributes(o.into_attributes()))
+        }
+        ExecuteMsg::StageEpochBatch { digests, rows } => {
+            opaque::<fn(_, _, _, _, _) -> _>(epoch::stage_batch)(deps, &env, info, digests, rows)
         }
         ExecuteMsg::ApplyAcceptedBatch {
             allocation_root,
             root_id,
             rows,
-        } => epoch::apply_accepted_batch(deps, env, allocation_root, root_id, rows),
-        ExecuteMsg::ApplyPublicBatch { rows } => epoch::apply_public_batch(deps, env, rows),
+            vk_hash,
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(epoch::apply_accepted_batch)(deps, env, allocation_root, root_id, rows, vk_hash),
+        ExecuteMsg::ApplyPublicBatch { rows } => opaque::<fn(_, _, _) -> _>(epoch::apply_public_batch)(deps, env, rows),
+        ExecuteMsg::RegisterHeadstash {
+            key_com,
+            amount,
+            signature,
+            eligibility_index,
+            eligibility_path,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
+            opaque::<fn(_, _, _, _, _, _, _) -> _>(registration::register)(
+                deps,
+                &campaign,
+                key_com,
+                amount,
+                signature,
+                eligibility_index,
+                eligibility_path,
+            )
+        }
+        ExecuteMsg::RegisterHeadstashSol {
+            key_com,
+            amount,
+            pubkey,
+            signature,
+            eligibility_index,
+            eligibility_path,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(registration::register_sol)(
+                deps,
+                &campaign,
+                key_com,
+                amount,
+                pubkey,
+                signature,
+                eligibility_index,
+                eligibility_path,
+            )
+        }
+        ExecuteMsg::RegisterNotes {
+            signer,
+            signature,
+            list,
+            start,
+            eligibility,
+            reward_addr,
+        } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(notes::register_notes)(
+                deps,
+                &campaign,
+                signer,
+                signature,
+                list,
+                start,
+                eligibility,
+                reward_addr,
+            )
+        }
+        ExecuteMsg::BindNoteCircuit { zk_id } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _) -> _>(direct::bind_circuit)(deps, &env, info, &campaign, zk_id)
+        }
+        ExecuteMsg::ClaimNote { root, nullifier, amount, proof } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(direct::claim_note)(deps, &env, info, &campaign, root, nullifier, amount, proof)
+        }
+        ExecuteMsg::AcceptAnchor {} => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
+        }
     }
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     msg: epoch::HashMerchantSudoMsg,
 ) -> Result<Response, StdError> {
-    epoch::sudo(deps, msg)
+    reclaim::ensure_live(deps.storage)?;
+    pause::ensure_not_paused(deps.storage)?;
+    epoch::sudo(deps, &env, msg)
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Nullifer { null } => Ok(to_json_binary(
@@ -373,6 +533,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             headstash::query_nullifiers(deps, start_after, limit)
         }
         QueryMsg::DistroConfig {} => headstash::query_distro_config(deps),
+        QueryMsg::WavsStatus {} => {
+            let w = HEADSTASH_CFG.load(deps.storage)?.w;
+            to_json_binary(&WavsStatusResponse { enabled: w.is_some(), operator_set: w })
+        }
         QueryMsg::EligibilityRoot { root_id } => headstash::query_eligibility_root(deps, root_id),
         QueryMsg::EligibilityRoots { start_after, limit } => {
             headstash::query_eligibility_roots(deps, start_after, limit)
@@ -383,7 +547,51 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BridgeAsset { asset_id } => bridge::query_asset(deps, asset_id),
         QueryMsg::BridgeConfig {} => bridge::query_bridge_cfg(deps),
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
+        QueryMsg::FrontendContract {} => bridge::query_frontend_contract(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
+        QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
+        QueryMsg::RegistrationTree {} => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            let cfg = campaign
+                .registration
+                .ok_or_else(|| StdError::msg("registration"))?;
+            to_json_binary(&registration::query_tree(deps.storage, &cfg)?)
+        }
+        QueryMsg::RegistrationAnchors { start_after, limit } => {
+            to_json_binary(&registration::query_anchors(deps.storage, start_after, limit)?)
+        }
+        QueryMsg::RegistrationPath { key_com, anchor } => {
+            to_json_binary(&registration::query_path(
+                deps.storage,
+                key_com.as_slice(),
+                anchor.as_slice(),
+            )?)
+        }
+        QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility, reward_addr } => {
+            reclaim::ensure_live(deps.storage)?;
+            pause::ensure_not_paused(deps.storage)?;
+            let campaign = epoch::query_campaign(deps.storage)?;
+            registration::assert_registration_open(env.block.height, &campaign)?;
+            notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
+            to_json_binary(&true)
+        }
+        QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
+            reclaim::ensure_live(deps.storage)?;
+            pause::ensure_not_paused(deps.storage)?;
+            let campaign = epoch::query_campaign(deps.storage)?;
+            deps.api.addr_validate(&dest)?;
+            direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
+            to_json_binary(&true)
+        }
+        QueryMsg::ReclaimStatus {} => to_json_binary(&reclaim::query_status(deps.storage)?),
+        QueryMsg::PauseStatus {} => to_json_binary(&pause::query_status(deps.storage)?),
+        QueryMsg::DirectClaim {} => to_json_binary(&direct::query_info(deps.storage, &env)?),
+        QueryMsg::NoteList { identity } => {
+            to_json_binary(&notes::query_note_list(deps.storage, &identity)?)
+        }
+        QueryMsg::Registered { identity } => {
+            to_json_binary(&registration::is_registered(deps.storage, &identity)?)
+        }
     }
 }
 
@@ -464,6 +672,10 @@ pub fn execute_burn(
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> {
     match msg.id {
+        // reply_on_error only: a failing (or out-of-gas) hook never blocks registration.
+        notes::HOOK_REPLY_ID => Ok(Response::new()
+            .add_attribute("action", "registration_hook_failed")
+            .add_attribute("hook_error", msg.result.unwrap_err())),
         CREATE_DENOM_REPLY_ID => {
             // Extract the new_token_denom from the reply data
             // In CosmWasm v3, the reply data contains the response from the submessage
@@ -514,116 +726,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
     }
 }
 
-impl terp_auth::TerpAccountTrait for CwHeadstash {
-    type InstantiateMsg = InstantiateMsg;
-    type ExecuteMsg = ExecuteMsg;
-    type QueryMsg = QueryMsg;
-    type SudoMsg = terp_auth::AuthSudoMsg;
-    type ContractError = StdError;
-    type AuthMethodStructs = Binary;
-    type AuthProcessResult = Result<Response, Self::ContractError>;
-
-    fn process_sudo_auth(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Self::SudoMsg,
-    ) -> Self::AuthProcessResult {
-        match req {
-            terp_auth::AuthSudoMsg::OnAuthAdded(req) => Self::on_auth_added(deps, env, req),
-            terp_auth::AuthSudoMsg::OnAuthRemoved(req) => Self::on_auth_removed(deps, env, req),
-            terp_auth::AuthSudoMsg::Authenticate(req) => Self::on_auth_request(deps, env, req),
-            terp_auth::AuthSudoMsg::Track(req) => Self::on_auth_track(deps, env, req),
-            terp_auth::AuthSudoMsg::ConfirmExecution(req) => Self::on_auth_confirm(deps, env, req),
-        }
-    }
-
-    fn extended_authenticate(
-        _deps: cosmwasm_std::DepsMut,
-        _auth: Self::AuthMethodStructs,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_added(
-        _deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::OnAuthenticatorAddedRequest,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_removed(
-        deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::OnAuthenticatorRemovedRequest,
-    ) -> Self::AuthProcessResult {
-        // prune state
-        WAVS_OPERATORS.clear(deps.storage);
-        HEADSTASH_CFG.remove(deps.storage);
-        NULLIFIERS.clear(deps.storage);
-        ELIGIBILITY_ROOTS.clear(deps.storage);
-        NEXT_ROOT_ID.remove(deps.storage);
-        Ok(Response::default())
-    }
-
-    // - sign the hash of the proofs being verified per msgs. this lets us recreate the hash on-chain and verify actions,
-    //   then recontstruct action values from proof inputs after verification (i.e coin amounts, auth params, etc.)
-    // confirms wavs operator set authentication.
-    // recomposes aggregated key and signature to enforce threshold minimums
-    fn on_auth_request(
-        deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
-    ) -> Self::AuthProcessResult {
-        let cfg = HEADSTASH_CFG.load(deps.storage)?;
-        let agg_g2 = deps.api.bls12_381_aggregate_g2(&req.signature)?;
-        let msg = to_json_binary(&req.tx_data.msgs)?;
-        // reconstruct msg that was signed (hash of req.tx_data.msgs) (TODO: BENCHMARK)
-        // `Hash-to-curve: H(msg) → G2`
-        let qs = deps
-            .api
-            .bls12_381_hash_to_g2(cosmwasm_std::HashFunction::Sha256, &msg, &G2)?;
-
-        if !cfg.w.msg.threshold.is_zero() {
-            let w: WavsOperatorSet = cfg.w;
-            let agg_g1 = hex::decode(&w.msg.aggregate_key)?;
-            // e(agg_g1, qs) == e(G1, agg_g2)
-            if !deps
-                .api
-                .bls12_381_pairing_equality(&agg_g1, &qs, &G1, &agg_g2)?
-            {
-                return Err(StdError::msg("auth_params"));
-            };
-        }
-
-        Ok(Response::default())
-    }
-
-    fn on_auth_track(
-        _deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        _req: &terp_auth::TrackRequest,
-    ) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-
-    fn on_auth_confirm(
-        _deps: cosmwasm_std::DepsMut,
-        _env: cosmwasm_std::Env,
-        req: &terp_auth::ConfirmExecutionRequest,
-    ) -> Self::AuthProcessResult {
-        let _auth_data: wavs::BlsThresholdAuthData =
-            from_json(&req.authenticator_params.clone().expect("cw-auth params"))?;
-
-        // verifies circuit proofs, reverts any stateful change if errors.
-        // Self::extended_authenticate(deps, params.clone())
-        Ok(Response::default())
-    }
-
-    fn on_hooks(_deps: cosmwasm_std::DepsMut, _env: cosmwasm_std::Env) -> Self::AuthProcessResult {
-        Ok(Response::default())
-    }
-}
+// Smart-account authenticator impl (TerpAccountTrait: on_auth_added/removed/request/track/confirm)
+// removed: it was unreachable (sudo decodes HashMerchantSudoMsg only) and on_auth_removed cleared
+// config, nullifiers and eligibility roots. See spec Appendix W.
 
 /// Map nonce -> indexList of wav operator bls12-381
 /// we want to be able to query:
@@ -691,8 +796,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(3),
+            wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -705,6 +814,33 @@ mod instantiate_tests {
                 .map(|a| a.value.as_str()),
             Some("poseidon-v1")
         );
+    }
+
+    #[test]
+    fn update_ownership_two_step_and_no_renounce() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let owner = deps.api.addr_make("owner");
+        let dao = deps.api.addr_make("dao");
+        let eve = deps.api.addr_make("eve");
+        let api = deps.api;
+        cw_ownable::initialize_owner(deps.as_mut().storage, &api, Some(owner.as_str())).unwrap();
+        let propose = ExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+            new_owner: dao.to_string(),
+            expiry: None,
+        });
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), propose.clone()).is_err());
+        execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), propose).unwrap();
+        let accept = ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership);
+        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), accept.clone()).is_err());
+        execute(deps.as_mut(), env.clone(), message_info(&dao, &[]), accept).unwrap();
+        let o = cw_ownable::get_ownership(deps.as_ref().storage).unwrap();
+        assert_eq!(o.owner, Some(dao.clone()));
+        assert!(cw_ownable::assert_owner(deps.as_ref().storage, &owner).is_err());
+        let renounce = ExecuteMsg::UpdateOwnership(cw_ownable::Action::RenounceOwnership);
+        let err = execute(deps.as_mut(), env, message_info(&dao, &[]), renounce).unwrap_err();
+        assert!(err.to_string().contains("renounce_ownership is disabled"));
+        assert_eq!(cw_ownable::get_ownership(deps.as_ref().storage).unwrap().owner, Some(dao));
     }
 
     // Helper: real BLS PoP for instantiate (see wavs::generate_test_wavs_proof).
@@ -766,8 +902,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(3),
+            wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -813,8 +953,12 @@ mod instantiate_tests {
                 &cosmwasm_std::testing::MockApi::default(),
                 "existing_token".to_string(),
             )),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -846,8 +990,12 @@ mod instantiate_tests {
                 &cosmwasm_std::testing::MockApi::default(),
                 "test".to_string(),
             )),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -883,17 +1031,24 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: invalid_wavs,
+            wavs: Some(invalid_wavs),
 
             circuit_id: None,
+
+            registration_hook: None,
+
+            registration_hook_gas_limit: None,
+
+            frontend_contract: None,
+
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
 
-        assert!(
-            err.to_string()
-                .contains("invalid amount of operators defined")
-        );
+        assert!(err
+            .to_string()
+            .contains("invalid amount of operators defined"));
     }
 
     #[test]
@@ -921,9 +1076,17 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs,
+            wavs: Some(wavs),
 
             circuit_id: None,
+
+            registration_hook: None,
+
+            registration_hook_gas_limit: None,
+
+            frontend_contract: None,
+
+            pauser: None,
         };
 
         let _err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -955,8 +1118,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         instantiate(deps.as_mut(), env, info, msg).unwrap();
@@ -968,11 +1135,106 @@ mod instantiate_tests {
         assert_eq!(cfg.gr, genesis_root);
         assert_eq!(cfg.distro_hash_domain, DistroHashDomain::PoseidonV1);
         assert_eq!(cfg.ts.len(), 1);
-        assert!(cfg.w.msg.nonce == 0);
+        assert!(cfg.w.as_ref().unwrap().msg.nonce == 0);
 
         let elig = distro::require_root(&deps.storage, GENESIS_ROOT_ID).unwrap();
         assert_eq!(elig.root, genesis_root);
         assert_eq!(elig.domain, DistroHashDomain::PoseidonV1);
+    }
+
+    fn wavs_msg(wavs: Option<WavsProofOfOwnership>) -> InstantiateMsg {
+        InstantiateMsg {
+            genesis_root: Binary::from(vec![0xbb; 32]),
+            distro_hash_domain: Default::default(),
+            genesis_label: None,
+            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+                subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "test".to_string()),
+                metadata: mock_metadata(),
+                initial_mint: None,
+                manager: None,
+                minters: vec![],
+            }),
+            wavs,
+            circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
+        }
+    }
+
+    #[test]
+    fn instantiate_wavs_none_disables_wavs() {
+        let mut deps = mock_dependencies();
+        let sender = deps.api.addr_make("sender");
+        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(None)).unwrap();
+        assert!(HEADSTASH_CFG.load(&deps.storage).unwrap().w.is_none());
+        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
+        assert_eq!(st, WavsStatusResponse { enabled: false, operator_set: None });
+        // fail closed
+        assert!(wavs_operator_set(&deps.storage).unwrap_err().to_string().contains("wavs disabled"));
+        // stored config JSON carries no operator set
+        let raw = deps.storage.get(b"headstash_params").unwrap();
+        assert!(String::from_utf8(raw).unwrap().contains("\"w\":null"));
+    }
+
+    #[test]
+    fn instantiate_wavs_some_valid_is_enabled() {
+        let mut deps = mock_dependencies();
+        let sender = deps.api.addr_make("sender");
+        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(valid_wavs_proof(2)))).unwrap();
+        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
+        assert!(st.enabled);
+        assert_eq!(st.operator_set.unwrap().keys.len(), 2);
+        assert_eq!(wavs_operator_set(&deps.storage).unwrap().msg.total_operators, 2);
+    }
+
+    #[test]
+    fn instantiate_wavs_some_invalid_still_rejected() {
+        for bad in 0..3 {
+            let mut deps = mock_dependencies();
+            let sender = deps.api.addr_make("sender");
+            let mut w = valid_wavs_proof(1);
+            match bad {
+                0 => w.poos[0].poo = hex::encode(cosmwasm_std::BLS12_381_G2_GENERATOR), // valid point, wrong PoP
+                1 => w.msg.threshold = 0,
+                _ => w.poos.clear(),
+            }
+            assert!(instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(w))).is_err(), "case {bad}");
+            assert!(HEADSTASH_CFG.may_load(&deps.storage).unwrap().is_none());
+        }
+    }
+
+    #[test]
+    fn wavs_field_absent_from_json_means_disabled() {
+        let mut v = cosmwasm_std::to_json_vec(&wavs_msg(None)).unwrap();
+        let s = String::from_utf8(v.clone()).unwrap().replace(",\"wavs\":null", "");
+        assert!(!s.contains("wavs"));
+        v = s.into_bytes();
+        let m: InstantiateMsg = cosmwasm_std::from_json(&v).unwrap();
+        assert!(m.wavs.is_none());
+    }
+
+    #[test]
+    fn legacy_cfg_with_operator_set_still_decodes() {
+        // configs stored by the previous code (non-optional w) decode as Some
+        let w = valid_wavs_proof(1).proof_of_ownership(&cosmwasm_std::testing::MockApi::default(), &Addr::unchecked("c")).unwrap();
+        let cfg = HeadstashCfg { cid: 0, gr: Binary::from(vec![1; 32]), distro_hash_domain: Default::default(), ts: vec![], w: Some(w.clone()) };
+        let back: HeadstashCfg = cosmwasm_std::from_json(cosmwasm_std::to_json_vec(&cfg).unwrap()).unwrap();
+        assert_eq!(back.w, Some(w));
+    }
+
+    #[test]
+    fn sudo_refuses_smart_account_authenticator_messages() {
+        // only HashMerchantSudoMsg decodes; authenticator hooks (incl. the removed state-wiping
+        // on_authenticator_removed) cannot be dispatched
+        for m in [
+            r#"{"on_authenticator_added":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
+            r#"{"on_authenticator_removed":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
+            r#"{"authenticate":{}}"#, r#"{"track":{}}"#, r#"{"confirm_execution":{}}"#,
+        ] {
+            assert!(cosmwasm_std::from_json::<epoch::HashMerchantSudoMsg>(m.as_bytes()).is_err(), "{m}");
+        }
     }
 
     #[test]
@@ -996,8 +1258,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
@@ -1025,8 +1291,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1075,8 +1345,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: Some(0),
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
 
@@ -1116,8 +1390,12 @@ mod instantiate_tests {
                 manager: None,
                 minters: vec![],
             }),
-            wavs: valid_wavs_proof(1),
+            wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
         instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
 

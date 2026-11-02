@@ -30,6 +30,7 @@ fn payout(byte: u8, dest: &str, amount: u64) -> EpochPayout {
             .proof,
         destination: dest.into(),
         amount,
+        anchor: Binary::default(),
     }
 }
 
@@ -60,8 +61,12 @@ fn deploy(mock: &Mock) -> HeadstashContract<Mock> {
             token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
                 HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), DENOM.into()),
             ),
-            wavs: generate_test_wavs_proof(1),
+            wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         },
         Some(&mock.sender_addr()),
         &[Coin::new(1_000u64, DENOM)],
@@ -117,6 +122,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -140,6 +146,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(2, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -151,6 +158,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![row],
+                vk_hash: Binary::default(),
             },
             &[],
         )
@@ -169,6 +177,7 @@ mod tests {
                 allocation_root: root.clone(),
                 root_id: 0,
                 rows: vec![payout(1, dest.as_str(), 15)],
+                vk_hash: Binary::default(),
             },
             &[],
         );
@@ -210,6 +219,7 @@ mod tests {
                 allocation_root: root,
                 root_id: 0,
                 rows: vec![public_row],
+                vk_hash: Binary::default(),
             },
             &[],
         );

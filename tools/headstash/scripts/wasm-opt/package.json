@@ -1,0 +1,6 @@
+{
+  "name": "headstash-wasm-opt-pin",
+  "private": true,
+  "description": "Pins binaryen wasm-opt for build-browser-prover.sh (npm ci verifies the sha512 integrity in package-lock.json)",
+  "dependencies": { "binaryen": "132.0.0" }
+}

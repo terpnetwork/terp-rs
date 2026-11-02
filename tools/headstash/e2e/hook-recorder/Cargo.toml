@@ -1,0 +1,15 @@
+[package]
+name = "hook-recorder"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "E2E-only cw-headstash registration hook: records registrants, can be told to fail. Not production code."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }

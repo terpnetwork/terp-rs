@@ -8,7 +8,9 @@ use cw_headstash_manifold::msg::{
     ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInitMsg,
     QueryMsg as FactoryQueryMsg,
 };
-use cw_multi_test::{App, ContractWrapper, Executor};
+use cw_multi_test::{Contract, ContractWrapper, Executor};
+include!("common/tf_stargate.rs");
+use tf_stargate::{new_app, TfApp as App};
 use cw_ownable::Ownership;
 use std::collections::HashMap;
 
@@ -84,7 +86,7 @@ pub struct TestEnv {
 
 impl TestEnv {
     pub fn new() -> Self {
-        let mut app = App::default();
+        let mut app = new_app();
 
         // Create test accounts
         let owner = app.api().addr_make("owner");
@@ -92,8 +94,8 @@ impl TestEnv {
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
 
-        // Fund test accounts
-        for account in &test_accounts {
+        // Fund owner (factory-funding tests send from owner) and test accounts
+        for account in std::iter::once(&owner).chain(test_accounts.iter()) {
             app.init_modules(|router, _, storage| {
                 router
                     .bank
@@ -114,7 +116,8 @@ impl TestEnv {
             cw_headstash::execute,
             cw_headstash::instantiate,
             cw_headstash::query,
-        ));
+        )
+        .with_reply(cw_headstash::reply));
         let headstash_code_id = app.store_code(headstash_contract);
 
         // Store factory contract
@@ -202,11 +205,34 @@ pub fn mock_token_strategy_existing() -> TokenStrategy {
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
-    // Mock WAVS proof - in real tests we'd use proper cryptographic mocks
+    // Deterministic valid 1-operator BLS12-381 proof of possession, so instantiate's
+    // operator-count, threshold and pairing checks pass (same as test_bridge_e2e).
+    use ark_bls12_381::{Fr, G1Affine, G2Affine};
+    use ark_ec::AffineRepr;
+    use ark_ff::PrimeField;
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+    use cosmwasm_std::{testing::MockApi, Api, HashFunction, BLS12_381_G2_GENERATOR as G2};
+
+    let api = MockApi::default();
+    let sk = Fr::from_be_bytes_mod_order(&[0x42; 32]);
+    let pk: G1Affine = (G1Affine::generator() * sk).into();
+    let mut pk_bytes = vec![];
+    pk.serialize_compressed(&mut pk_bytes).unwrap();
+    let pop_hash = api
+        .bls12_381_hash_to_g2(HashFunction::Sha256, &pk_bytes, &G2)
+        .unwrap();
+    let h_point = G2Affine::deserialize_compressed(&pop_hash[..]).unwrap();
+    let pop_sig: G2Affine = (h_point * sk).into();
+    let mut sig_bytes = vec![];
+    pop_sig.serialize_compressed(&mut sig_bytes).unwrap();
+
     WavsProofOfOwnership {
-        poos: vec![], // Empty for basic tests
+        poos: vec![cw_headstash::wavs::WavsOpAuth {
+            key: hex::encode(&pk_bytes),
+            poo: hex::encode(&sig_bytes),
+        }],
         msg: cw_headstash::wavs::WavsAuthMetadata {
-            aggregate_key: "mock_key".to_string(),
+            aggregate_key: hex::encode(&pk_bytes),
             threshold: 1,
             total_operators: 1,
             nonce: 0,
@@ -220,8 +246,12 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
+        frontend_contract: None,
+        pauser: None,
     }
 }
 
@@ -233,7 +263,7 @@ fn test_insanity_invalid_wavs_threshold_zero() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 0; // Invalid threshold
+    msg.wavs.as_mut().unwrap().msg.threshold = 0; // Invalid threshold
 
     let err = env
         .app
@@ -255,7 +285,7 @@ fn test_insanity_invalid_wavs_threshold_too_high() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 10; // Higher than total_operators
+    msg.wavs.as_mut().unwrap().msg.threshold = 10; // Higher than total_operators
 
     let err = env
         .app
@@ -277,7 +307,7 @@ fn test_insanity_invalid_wavs_empty_operators() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.poos = vec![]; // No operators but total_operators = 1
+    msg.wavs.as_mut().unwrap().poos = vec![]; // No operators but total_operators = 1
 
     let err = env
         .app
@@ -344,7 +374,17 @@ fn test_insanity_factory_unauthorized_creation() {
         )
         .unwrap_err();
 
-    assert!(err.to_string().contains("Unauthorized"));
+    // manifold surfaces cw_ownable::OwnershipError via ContractError::Ownership("{0}")
+
+    let e = err.to_string();
+
+    assert!(
+
+        e.contains("Unauthorized") || e.contains("not the contract's current owner"),
+
+        "unexpected error: {e}"
+
+    );
 }
 
 #[test]
@@ -367,7 +407,17 @@ fn test_insanity_factory_unauthorized_ownership_transfer() {
         )
         .unwrap_err();
 
-    assert!(err.to_string().contains("Unauthorized"));
+    // manifold surfaces cw_ownable::OwnershipError via ContractError::Ownership("{0}")
+
+    let e = err.to_string();
+
+    assert!(
+
+        e.contains("Unauthorized") || e.contains("not the contract's current owner"),
+
+        "unexpected error: {e}"
+
+    );
 }
 
 // #[test]
@@ -420,7 +470,8 @@ fn test_insanity_factory_insufficient_funding() {
         .unwrap_err();
 
     // Should fail with funding validation error
-    assert!(err.to_string().contains("insufficient"));
+    // manifold rejects under-funding with ContractError::InvalidFundingToken
+    assert!(err.to_string().contains("Invalid funding token"), "unexpected error: {err}");
 }
 
 #[test]

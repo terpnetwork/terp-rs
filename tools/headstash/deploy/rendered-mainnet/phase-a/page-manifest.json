@@ -1,0 +1,67 @@
+{
+ "version": 1,
+ "entry": "app.js",
+ "files": [
+  {
+   "path": "app.html",
+   "content_type": "text/html",
+   "encoding": "gzip",
+   "size": 5023,
+   "sha256": "2e1fd9ebed33c9ff919a7e107c0df1eb8b8dd9c656dae26484d22b02c6a0a69c",
+   "stored_size": 2238,
+   "chunks": [
+    "92c4068a38bc671bc369274c6cb80f8eca9c92d52e7584fbd8beb59c96c5a9e9"
+   ]
+  },
+  {
+   "path": "app.js",
+   "content_type": "text/javascript",
+   "encoding": "gzip",
+   "size": 14638,
+   "sha256": "0d62ead3e030245490116c791bb9fe1f36491826df31f29eaa29186b8061741d",
+   "stored_size": 5347,
+   "chunks": [
+    "86ddee6bce4c57c70844ea85ff13d7bce525cc8712fec43a46b9d6830a454880"
+   ]
+  },
+  {
+   "path": "crypto.js",
+   "content_type": "text/javascript",
+   "encoding": "gzip",
+   "size": 10640,
+   "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c",
+   "stored_size": 4316,
+   "chunks": [
+    "ad7251b3f369d4a19291421668696d2dd7df07c2ec66f7c41b9eea2dd38b87ed"
+   ]
+  },
+  {
+   "path": "zk_headstash.js",
+   "content_type": "text/javascript",
+   "encoding": "gzip",
+   "size": 12777,
+   "sha256": "7993da8952cb3a28c69627f3118de051f8a90253c716a1f571475654db8d6564",
+   "stored_size": 3005,
+   "chunks": [
+    "58e244f012335270d215935bd1a2a33c55b448f01c7f3a7bc5ce1514b7651b11"
+   ]
+  },
+  {
+   "path": "zk_headstash_bg.wasm",
+   "content_type": "application/wasm",
+   "encoding": "gzip",
+   "size": 1801693,
+   "sha256": "2774af96737a634bf979ff21389144bd94119f48213128213e9df1bfe21c5f18",
+   "stored_size": 642593,
+   "chunks": [
+    "fe444c95ebeb9cd3376b41ecc76f069fbbd6d8bc2f49986c6273073b1ff7df59",
+    "b3b7eb9e8e0940f9ba917402329768b6618240b81092954c32c17b47e01a91bc",
+    "ac10dca7fd2cbf49f0d6a00a586de53c62a50fb381f3b4633c780d23ac7ae6a7",
+    "d1509e67925b509049ef5497756c709551f9962a12f55418ad483df23f97d100",
+    "5a68a287353acb77657e502807c755a3592cb397fefe25a427c1a14627a455d6"
+   ]
+  }
+ ],
+ "note": "headstash claim page",
+ "activate": true
+}

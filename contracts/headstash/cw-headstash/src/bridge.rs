@@ -48,6 +48,8 @@ pub const REFLECTION_SNAPSHOT: Item<ReflectionSnapshot> = Item::new("bridge_refl
 
 /// Optional external asset registry contract (hook for later cross-chain wiring).
 pub const EXTERNAL_ASSET_REGISTRY: Item<Option<Addr>> = Item::new("bridge_ext_registry");
+/// On-chain claim UI host (cw-headstash-frontend). Separate item: no migration needed.
+pub const FRONTEND_CONTRACT: Item<Option<Addr>> = Item::new("frontend_contract");
 
 /// Bridge corridor config (dest domain, K, lag, mock-verify flag).
 pub const BRIDGE_CFG: Item<BridgeCfg> = Item::new("bridge_cfg");
@@ -657,6 +659,27 @@ pub fn execute_register_asset(
         .add_attribute("local_denom", local_denom))
 }
 
+pub fn save_frontend_contract(storage: &mut dyn cosmwasm_std::Storage, api: &dyn cosmwasm_std::Api, addr: Option<String>) -> Result<Option<Addr>, StdError> {
+    let v = match addr {
+        Some(a) => Some(api.addr_validate(&a)?),
+        None => None,
+    };
+    FRONTEND_CONTRACT.save(storage, &v)?;
+    Ok(v)
+}
+
+pub fn execute_set_frontend_contract(deps: DepsMut, info: MessageInfo, addr: Option<String>) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let v = save_frontend_contract(deps.storage, deps.api, addr)?;
+    Ok(Response::new()
+        .add_attribute("action", "set_frontend_contract")
+        .add_attribute("addr", v.map(|a| a.to_string()).unwrap_or_else(|| "none".into())))
+}
+
+pub fn query_frontend_contract(deps: Deps) -> StdResult<Binary> {
+    to_json_binary(&FRONTEND_CONTRACT.may_load(deps.storage)?.flatten())
+}
+
 pub fn execute_set_external_asset_registry(
     deps: DepsMut,
     info: MessageInfo,
@@ -1098,6 +1121,26 @@ mod tests {
         execute_set_external_asset_registry(deps.as_mut(), info, Some(ext.to_string())).unwrap();
         let stored = EXTERNAL_ASSET_REGISTRY.load(&deps.storage).unwrap();
         assert_eq!(stored, Some(ext));
+    }
+
+    #[test]
+    fn frontend_contract_owner_only_set_query_clear() {
+        let mut deps = mock_dependencies();
+        let owner = deps.api.addr_make("owner");
+        let eve = deps.api.addr_make("eve");
+        cw_ownable::initialize_owner(&mut deps.storage, &deps.api, Some(owner.as_str())).unwrap();
+        // unset reads as None (pre-existing deployments: no migration needed)
+        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        assert_eq!(q, None);
+        let fe = deps.api.addr_make("frontend");
+        assert!(execute_set_frontend_contract(deps.as_mut(), message_info(&eve, &[]), Some(fe.to_string())).is_err());
+        assert!(execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), Some("not-an-addr".into())).is_err());
+        execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), Some(fe.to_string())).unwrap();
+        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        assert_eq!(q, Some(fe));
+        execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), None).unwrap();
+        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        assert_eq!(q, None);
     }
 
     #[test]

@@ -1,0 +1,175 @@
+{
+ "body": {
+  "messages": [
+   {
+    "@type": "/cosmos.gov.v1.MsgSubmitProposal",
+    "messages": [
+     {
+      "@type": "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
+      "authority": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "recipient": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "amount": [
+       {
+        "denom": "uterp",
+        "amount": "1"
+       }
+      ]
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code_id": "{{FE_CODE_ID}}",
+      "label": "headstash-2026-1-frontend",
+      "msg": {
+       "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+       "max_chunk_bytes": 131072
+      },
+      "funds": [],
+      "salt": "OYgTNfmoJCKZuj/SDTBp0be4E7LfKsl6WHwUOFfquic=",
+      "fix_msg": false
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
+      "msg": {
+       "publish_manifest": {
+        "manifest": {
+         "version": 1,
+         "entry": "app.js",
+         "files": [
+          {
+           "path": "app.html",
+           "content_type": "text/html",
+           "encoding": "gzip",
+           "size": 5023,
+           "sha256": "2e1fd9ebed33c9ff919a7e107c0df1eb8b8dd9c656dae26484d22b02c6a0a69c",
+           "stored_size": 2238,
+           "chunks": [
+            "92c4068a38bc671bc369274c6cb80f8eca9c92d52e7584fbd8beb59c96c5a9e9"
+           ]
+          },
+          {
+           "path": "app.js",
+           "content_type": "text/javascript",
+           "encoding": "gzip",
+           "size": 14638,
+           "sha256": "0d62ead3e030245490116c791bb9fe1f36491826df31f29eaa29186b8061741d",
+           "stored_size": 5347,
+           "chunks": [
+            "86ddee6bce4c57c70844ea85ff13d7bce525cc8712fec43a46b9d6830a454880"
+           ]
+          },
+          {
+           "path": "crypto.js",
+           "content_type": "text/javascript",
+           "encoding": "gzip",
+           "size": 10640,
+           "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c",
+           "stored_size": 4316,
+           "chunks": [
+            "ad7251b3f369d4a19291421668696d2dd7df07c2ec66f7c41b9eea2dd38b87ed"
+           ]
+          },
+          {
+           "path": "zk_headstash.js",
+           "content_type": "text/javascript",
+           "encoding": "gzip",
+           "size": 12777,
+           "sha256": "7993da8952cb3a28c69627f3118de051f8a90253c716a1f571475654db8d6564",
+           "stored_size": 3005,
+           "chunks": [
+            "58e244f012335270d215935bd1a2a33c55b448f01c7f3a7bc5ce1514b7651b11"
+           ]
+          },
+          {
+           "path": "zk_headstash_bg.wasm",
+           "content_type": "application/wasm",
+           "encoding": "gzip",
+           "size": 1801693,
+           "sha256": "2774af96737a634bf979ff21389144bd94119f48213128213e9df1bfe21c5f18",
+           "stored_size": 642593,
+           "chunks": [
+            "fe444c95ebeb9cd3376b41ecc76f069fbbd6d8bc2f49986c6273073b1ff7df59",
+            "b3b7eb9e8e0940f9ba917402329768b6618240b81092954c32c17b47e01a91bc",
+            "ac10dca7fd2cbf49f0d6a00a586de53c62a50fb381f3b4633c780d23ac7ae6a7",
+            "d1509e67925b509049ef5497756c709551f9962a12f55418ad483df23f97d100",
+            "5a68a287353acb77657e502807c755a3592cb397fefe25a427c1a14627a455d6"
+           ]
+          }
+         ],
+         "note": "headstash claim page",
+         "activate": true
+        }
+       }
+      },
+      "funds": []
+     },
+     {
+      "@type": "/cosmwasm.wasm.v1.MsgInstantiateContract2",
+      "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code_id": "{{CODE_ID}}",
+      "label": "headstash-2026-1",
+      "msg": {
+       "genesis_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+       "genesis_label": "headstash-2026-1",
+       "token_strategy": {
+        "existing_fungible": {
+         "proof": "HValh5x4Mz1ReUKjbn6gky5/+hoQJ+Q5J56FF1gOpwY=",
+         "raw": "uterp"
+        }
+       },
+       "wavs": null,
+       "registration_hook": null,
+       "registration_hook_gas_limit": null,
+       "owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+       "frontend_contract": "terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y",
+       "pauser": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
+      },
+      "funds": [
+       {
+        "denom": "uterp",
+        "amount": "1"
+       }
+      ],
+      "salt": "dGthxwhH0MNbequTHTM0zK7w+qG3RHm1SROa72XKndU=",
+      "fix_msg": false
+     }
+    ],
+    "initial_deposit": [
+     {
+      "denom": "uterp",
+      "amount": "5000000000"
+     }
+    ],
+    "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
+    "metadata": "{{PROPOSAL_METADATA_URI_DEPLOY}}",
+    "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
+    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 e8690f93579f61256be93a1f6290691eba0142d79d49ea1c0bc227efae543c89) at terp1y07f7qtvejhgczxk9cf92td083gmch082ezkjq9eunp0hl23fwaq0vu3yh and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1) at terp1cjt5eu0egdrn4u3xpceevmj2ncagg2xt53kq92r584m3yd58lecq9d7f7y, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
+    "expedited": false
+   }
+  ],
+  "memo": "headstash-gov:deploy",
+  "timeout_height": "0",
+  "extension_options": [],
+  "non_critical_extension_options": []
+ },
+ "auth_info": {
+  "signer_infos": [],
+  "fee": {
+   "amount": [
+    {
+     "denom": "uthiol",
+     "amount": "75000"
+    }
+   ],
+   "gas_limit": "3000000",
+   "payer": "",
+   "granter": ""
+  },
+  "tip": null
+ },
+ "signatures": []
+}

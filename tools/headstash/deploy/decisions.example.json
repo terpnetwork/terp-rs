@@ -1,0 +1,42 @@
+{
+  "CHAIN_ID": "morocco-1",
+  "CAMPAIGN_LABEL": "headstash-2026-1",
+  "CONTRACT_ADDR": "{{fill after instantiate}}",
+  "CONTRACT_OWNER": "{{DECISION: TerpNET DAO core or ops multisig}}",
+  "WASM_ADMIN": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+  "WAVS_POO_JSON": null,
+  "_wavs_doc": "null = WAVS disabled (recommended for v1); or a BLS operator-set PoP object from the operators. Only gov (wasm admin, via migrate) can change it later.",
+  "CUTOFF_HEIGHT": "auto",
+  "_cutoff_doc": "auto = latest mainnet height + 2 years at the last-10k-block mean, computed at render time (2026-10-27 example: 39129426). Claims and registration close after it; then the sweep burns what is left.",
+  "ANCHOR_START_HEIGHT": "{{DECISION}}",
+  "ANCHOR_INTERVAL": 3430,
+  "_anchor_doc": "Blocks between accepted anchors: 3430 = ~4h at 4.2s. \"auto\" = 4h at the same last-10k-block mean used for CUTOFF_HEIGHT.",
+  "MIN_ANONYMITY_SET": 1,
+  "REGISTRATION_HOOK": "",
+  "_hook_doc": "Optional. terp1 contract executed (no funds, gas-capped, errors ignored) once per identity when its note list completes, with {headstash_registered:{campaign,id_tag,identity,note_count,reward_addr}}. Immutable after instantiate. Empty = no hook. It publicly links the eligible identity to reward_addr. Optional REGISTRATION_HOOK_GAS_LIMIT (default 500000).",
+  "MAX_ROWS": 25,
+  "BURN_UNCLAIMED": true,
+  "FUNDING_AMOUNT_UTERP": "{{DECISION: leaf total (default) or 67000000000000}}",
+  "DEPOSIT_UTERP": "10000000000",
+  "PROPOSER": "{{DECISION}}",
+  "CODE_ID": "{{fill after store code}}",
+  "WASM_SHA256": "57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d",
+  "SOURCE_COMMIT": "{{DECISION: terp-core commit the artifact was built from}}",
+  "PROPOSAL_METADATA_URI": "{{fill: https URL of the proposal JSON/markdown}}",
+  "FORUM_URL": "{{fill: https URL of the forum post}}",
+  "NOTE_ZK_ID": "{{fill from the proposal store_full_circuit event zk_id}}",
+  "FEEGRANT_FUNDING_SOURCE": "foundation-dao",
+  "OPERATORS": [
+    {
+      "label": "Foundation fee granter",
+      "addr": "{{DECISION: dedicated foundation fee-granter terp1 address}}",
+      "budget_uthiol": "4761700000"
+    }
+  ],
+  "_doc": "Any {{...}} value makes render.py exit 1. foundation-dao takes exactly one operator (the dedicated foundation fee granter); total budget >= 4761.7 THIOL recommended. Dry run: render.py --dry-run --circuit DIR",
+  "LANE_PATH": false,
+  "_lane_only_doc": "Only read when LANE_PATH is true (optional hashmerchant lane path, not v1). With LANE_PATH false these are ignored and nothing lane, custody or oracle related is rendered.",
+  "CUSTODY_PUBKEY_B64": "{{DECISION: lane custody ed25519 pubkey, base64}}",
+  "SIDECAR_LANE_URL": "{{DECISION: https URL validators fetch batches from}}",
+  "FINAL_ANCHOR_B64": "{{fill after the last accepted anchor}}"
+}

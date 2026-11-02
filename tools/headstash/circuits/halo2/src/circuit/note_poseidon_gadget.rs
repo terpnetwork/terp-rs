@@ -51,13 +51,16 @@ fn poseidon_hash<const N: usize>(
     hasher.hash(layouter.namespace(|| label), message)
 }
 
-/// Bind the one-time nullifier inputs to a 32-byte note random string.
+/// Bind the one-time nullifier inputs to a 32-byte note random string
+/// and the campaign context.
 ///
 /// ```text
 /// rho = rseed_lo
 /// psi = rseed_hi
 /// rcm = rseed_lo + rseed_hi
-/// nk  = Poseidon(DST_HKDF, rseed_lo, rseed_hi)
+/// secret  = Poseidon(DST_HKDF, rseed_lo, rseed_hi)
+/// ctx_mix = Poseidon(terp-hs-nk-ctx-v1, ctx_lo, ctx_hi)
+/// nk      = Poseidon(terp-hs-nk-v1, secret, ctx_mix)
 /// ```
 ///
 /// The halves are the secret. The public leaf still hides them behind
@@ -70,13 +73,17 @@ pub(in crate::circuit) fn bind_hiding_nullifier_inputs(
     add_chip: &crate::circuit::gadget::add_chip::AddChip,
     rseed_lo: AssignedCell<pallas::Base, pallas::Base>,
     rseed_hi: AssignedCell<pallas::Base, pallas::Base>,
+    ctx_lo: AssignedCell<pallas::Base, pallas::Base>,
+    ctx_hi: AssignedCell<pallas::Base, pallas::Base>,
     rho: &AssignedCell<pallas::Base, pallas::Base>,
     psi: &AssignedCell<pallas::Base, pallas::Base>,
     rcm_base: &AssignedCell<pallas::Base, pallas::Base>,
     nk: &AssignedCell<pallas::Base, pallas::Base>,
 ) -> Result<(), Error> {
     use crate::circuit::gadget::AddInstruction;
+    use crate::claim_auth::{NK_CTX_TAG, NK_TAG};
     use crate::constants::DST_HKDF;
+    use crate::note_poseidon::personalization_to_fp;
     layouter.assign_region(
         || "rho = rseed_lo",
         |mut region| region.constrain_equal(rho.cell(), rseed_lo.cell()),
@@ -101,11 +108,35 @@ pub(in crate::circuit) fn bind_hiding_nullifier_inputs(
         "dst_nk",
         pallas::Base::from_repr(DST_HKDF).expect("DST_HKDF is canonical"),
     )?;
-    let nk_prf = poseidon_hash(
-        layouter.namespace(|| "nk prf"),
+    let secret = poseidon_hash(
+        layouter.namespace(|| "nk secret"),
         poseidon_config,
-        "nk",
+        "nk_secret",
         [nk_tag, rseed_lo, rseed_hi],
+    )?;
+    let ctx_tag = assign_pinned(
+        layouter.namespace(|| "nk ctx dst"),
+        advice,
+        "dst_nk_ctx",
+        personalization_to_fp(NK_CTX_TAG),
+    )?;
+    let ctx_mix = poseidon_hash(
+        layouter.namespace(|| "nk ctx"),
+        poseidon_config,
+        "nk_ctx",
+        [ctx_tag, ctx_lo, ctx_hi],
+    )?;
+    let scoped_tag = assign_pinned(
+        layouter.namespace(|| "nk scope dst"),
+        advice,
+        "dst_nk_scope",
+        personalization_to_fp(NK_TAG),
+    )?;
+    let nk_prf = poseidon_hash(
+        layouter.namespace(|| "nk scoped"),
+        poseidon_config,
+        "nk_scoped",
+        [scoped_tag, secret, ctx_mix],
     )?;
     layouter.assign_region(
         || "nk bound",
