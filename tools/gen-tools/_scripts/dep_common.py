@@ -92,25 +92,50 @@ def load_dep_config() -> dict:
     return data
 
 
+# Dirs that only exist in the real monorepo root (terp-core/crates). A root
+# without any of them is a wrong guess, e.g. a detached clone such as
+# ~/abstract/terp-rs-deps whose "../../../.." lands on ~/abstract.
+ROOT_MARKERS = ("zakura-common", "cosmwasm", "cw-plus")
+
+
+def _looks_like_monorepo_root(path: Path) -> bool:
+    return path.is_dir() and any((path / m).is_dir() for m in ROOT_MARKERS)
+
+
 def _resolve_monorepo_root(cfg: dict) -> Path:
-    """Resolve monorepo root from config, env, or fallbacks."""
+    """Resolve monorepo root (terp-core/crates).
+
+    Order:
+      1. TERP_DEP_ROOT / DEP_MONOREPO_ROOT (dep.py --root sets TERP_DEP_ROOT)
+      2. paths.monorepo_root in dep-config.toml, relative to _devops/
+         (correct when terp-rs sits at terp-core/crates/terp-rs)
+      3. a sibling terp-core/crates next to a detached terp-rs clone
+         (e.g. ~/abstract/terp-rs-deps -> ~/abstract/terp-core/crates)
+    Every candidate must contain a ROOT_MARKERS dir; otherwise we exit
+    instead of reporting every matrix path as missing.
+    """
     env = os.environ.get("TERP_DEP_ROOT") or os.environ.get("DEP_MONOREPO_ROOT")
     if env:
-        return Path(env).expanduser().resolve()
-
-    rel = cfg.get("paths", {}).get("monorepo_root", "../../../..")
-    root = (DEVOPS_DIR / rel).resolve()
-    if root.is_dir():
+        root = Path(env).expanduser().resolve()
+        if not _looks_like_monorepo_root(root):
+            sys.exit(f"dep: TERP_DEP_ROOT={root} is not the monorepo root "
+                     f"(needs one of {ROOT_MARKERS})")
         return root
 
-    # Fallbacks: walk up from tooling looking for cosmwasm/ or many Cargo workspaces
-    for candidate in (
-        TOOLING_ROOT.parent.parent.parent,  # crates/
-        TOOLING_ROOT.parent.parent.parent.parent,  # terp-core/
-    ):
-        if (candidate / "cosmwasm").is_dir() or (candidate / "cw-plus").is_dir():
-            return candidate.resolve()
-    return TOOLING_ROOT
+    rel = cfg.get("paths", {}).get("monorepo_root", "../../../..")
+    checkout = TOOLING_ROOT.parent.parent  # terp-rs checkout root
+    candidates = [
+        (DEVOPS_DIR / rel).resolve(),
+        (checkout.parent / "terp-core" / "crates").resolve(),
+    ]
+    for root in candidates:
+        if _looks_like_monorepo_root(root):
+            return root
+    sys.exit(
+        "dep: cannot find the monorepo root (terp-core/crates). Tried: "
+        + ", ".join(str(c) for c in candidates)
+        + ". Pass --root PATH or set TERP_DEP_ROOT."
+    )
 
 
 _DEP_CFG = load_dep_config()
