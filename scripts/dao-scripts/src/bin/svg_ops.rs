@@ -215,6 +215,7 @@ fn main() -> Result<()> {
             // +1: x/wasm deletes a MaxCallsLimit grant at 0.
             session = session.allow_execute(ScopedCall { address: cli.contract.clone(), keys, calls: cli.calls + 1, funds: vec![] }).map_err(|e| anyhow!(e))?;
             session.retain = true;
+            session.operator_grant = true;
             session.allowance_limit = planned_spend_limit(cli.calls + 1);
             grant_to(&b, session, &cli.operator, reqs).map_err(|e| anyhow!(e))?;
             println!("operator {} holds a ContractExecutionAuthorization on {} ({} calls, ttl {}s) + fee allowance from {}", cli.operator, cli.contract, cli.calls, cli.ttl_secs, granter);

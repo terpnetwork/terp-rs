@@ -19,7 +19,7 @@ use terp_scripts::ibc::{
     AtomicPublisher, FixtureBackend, PredictedWorld, TerpChannelInfo,
     build_channel_to_chain_map as lib_build_channel_to_chain_map, check_invariants,
     compute_ibc_denom_hash, derive_terp_ibc_denom, file_sha256, finalize_channels_for_ibc_entry,
-    resolve_out_dir,
+    resolve_out_dir, update_public_state_file,
 };
 use terp_scripts::{
     ArtifactRef, CapabilityMode, OutputFormat, RunEnv, RunReport, preflight_missing,
@@ -486,6 +486,16 @@ fn cmd_rebuild_from_public(
     publisher.write_rel("ibc_generation_meta.json", &meta_json)?;
     let promoted = publisher.promote()?;
 
+    let artifacts_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts");
+    let repo_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    match update_public_state_file(public_dir, &artifacts_dir, &repo_dir) {
+        Ok(()) => info!(
+            "merged ibc_registry + code_sources into {}",
+            public_dir.join("state.json").display()
+        ),
+        Err(e) => warn!("state.json overlay skipped: {e}"),
+    }
+
     let mut artifacts = Vec::new();
     for p in promoted {
         let role = p
@@ -498,6 +508,14 @@ fn cmd_rebuild_from_public(
             path: p.display().to_string(),
             sha256: sha,
             role,
+        });
+    }
+    let state_path = public_dir.join("state.json");
+    if state_path.exists() {
+        artifacts.push(ArtifactRef {
+            path: state_path.display().to_string(),
+            sha256: file_sha256(&state_path).ok(),
+            role: "state.json".into(),
         });
     }
 

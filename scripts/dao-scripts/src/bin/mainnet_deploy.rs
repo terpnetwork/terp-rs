@@ -245,7 +245,19 @@ struct Cli {
 // ---------------------------------------------------------------- state
 
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
-struct CodeRec { code_id: u64, checksum: String, tx: Option<String> }
+struct CodeRec {
+    code_id: u64,
+    checksum: String,
+    tx: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    wasm: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    crate_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    git_commit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    git_dirty: Option<bool>,
+}
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
 struct ContractRec { address: String, code: String, admin: Option<String>, tx: Option<String> }
 #[derive(serde::Serialize, serde::Deserialize, Default, Clone)]
@@ -357,6 +369,21 @@ fn artifacts_dir() -> PathBuf {
 
 fn file_of(name: &str) -> Result<&'static str> {
     CODES.iter().chain(DAO_CODES).find(|(n, _)| *n == name).map(|(_, f)| *f).ok_or_else(|| anyhow!("unknown code {name}"))
+}
+
+fn crate_of(name: &str) -> Option<&'static str> {
+    terp_scripts::ibc::CODE_SOURCE_TABLE
+        .iter()
+        .find(|(n, _, _)| *n == name)
+        .map(|(_, _, p)| *p)
+}
+
+fn git_stamp_at_store(repo: &Path) -> (Option<String>, Option<bool>) {
+    let v = terp_scripts::ibc::git_build_stamp(repo);
+    (
+        v.get("commit").and_then(|c| c.as_str()).map(str::to_string),
+        v.get("dirty").and_then(|d| d.as_bool()),
+    )
 }
 
 fn read(dir: &Path, file: &str) -> Result<Vec<u8>> {
@@ -546,7 +573,17 @@ fn run_steps(ctx: &mut Ctx, phase: &str, signer: &Signer, steps: &[Step]) -> Res
                 let on_chain = hex_lower(d.wasm_querier().code(code_id)?.checksum.as_slice());
                 let local = hex_lower(&Sha256::digest(&bytes));
                 if on_chain != local { bail!("stored {file} as {code_id} but chain checksum {on_chain} != {local}"); }
-                ctx.state.codes.insert((*name).into(), CodeRec { code_id, checksum: local, tx: Some(r.txhash.clone()) });
+                let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+                let (git_commit, git_dirty) = git_stamp_at_store(&repo);
+                ctx.state.codes.insert((*name).into(), CodeRec {
+                    code_id,
+                    checksum: local,
+                    tx: Some(r.txhash.clone()),
+                    wasm: Some((*file).into()),
+                    crate_path: crate_of(name).map(str::to_string),
+                    git_commit,
+                    git_dirty,
+                });
                 ctx.state.tx(phase, &format!("store {name}"), &r)?;
                 signer.note(&format!("ok stored {name} code {code_id}"));
             }

@@ -64,6 +64,10 @@ name = "dao_account"
 path = "src/bin/dao_account.rs"
 
 [[bin]]
+name = "juno_liquidity"
+path = "src/bin/juno_liquidity.rs"
+
+[[bin]]
 name = "bounty_dao"
 path = "src/bin/bounty_dao.rs"
 

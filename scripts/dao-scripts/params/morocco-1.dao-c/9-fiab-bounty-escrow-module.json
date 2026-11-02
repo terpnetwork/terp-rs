@@ -1,0 +1,102 @@
+{
+  "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+  "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+  "signer": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+  "creation_policy": "anyone (no pre-propose, no deposit)",
+  "flow": "threshold 1, no veto: propose, vote yes, execute (sole member)",
+  "status": "DRAFT - not broadcast",
+  "escrow_instantiate_msg": {
+    "owner": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+    "approver": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+    "gate": {
+      "use_allowlist": true,
+      "min_stake": "1000000000",
+      "cw4_group": null
+    },
+    "denoms": [
+      {
+        "denom": "uterp",
+        "min_amount": "1000000",
+        "max_amount": "95242000000"
+      },
+      {
+        "denom": "uthiol",
+        "min_amount": "1000000",
+        "max_amount": "202545000000"
+      }
+    ],
+    "allow_partial_payouts": false,
+    "fee_bps": 0,
+    "fee_collector": null,
+    "min_duration_secs": 86400,
+    "max_duration_secs": 7776000,
+    "params_version": "escrow-params/2026-10-18.2-draft.r3+catalog-757b50439015",
+    "params_placeholder": true,
+    "min_submit_stake": "100000000",
+    "min_upload_stake": "10000000",
+    "initial_allowlist": [
+      "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc"
+    ],
+    "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+    "pre_propose_info": {
+      "anyone_may_propose": {}
+    },
+    "creation_gate": {
+      "proposer_gate": {}
+    }
+  },
+  "update_proposal_modules": {
+    "update_proposal_modules": {
+      "to_add": [
+        {
+          "code_id": 104,
+          "msg": "eyJvd25lciI6InRlcnAxbnl3amMybWZ6bDJmdWQ4ZXB6cmxsajJmMnhscG5rMnRmcG5mNDlxaDAyejdjOTdndjJkcTBzdWN3YyIsImFwcHJvdmVyIjoidGVycDFueXdqYzJtZnpsMmZ1ZDhlcHpybGxqMmYyeGxwbmsydGZwbmY0OXFoMDJ6N2M5N2d2MmRxMHN1Y3djIiwiZ2F0ZSI6eyJ1c2VfYWxsb3dsaXN0Ijp0cnVlLCJtaW5fc3Rha2UiOiIxMDAwMDAwMDAwIiwiY3c0X2dyb3VwIjpudWxsfSwiZGVub21zIjpbeyJkZW5vbSI6InV0ZXJwIiwibWluX2Ftb3VudCI6IjEwMDAwMDAiLCJtYXhfYW1vdW50IjoiOTUyNDIwMDAwMDAifSx7ImRlbm9tIjoidXRoaW9sIiwibWluX2Ftb3VudCI6IjEwMDAwMDAiLCJtYXhfYW1vdW50IjoiMjAyNTQ1MDAwMDAwIn1dLCJhbGxvd19wYXJ0aWFsX3BheW91dHMiOmZhbHNlLCJmZWVfYnBzIjowLCJmZWVfY29sbGVjdG9yIjpudWxsLCJtaW5fZHVyYXRpb25fc2VjcyI6ODY0MDAsIm1heF9kdXJhdGlvbl9zZWNzIjo3Nzc2MDAwLCJwYXJhbXNfdmVyc2lvbiI6ImVzY3Jvdy1wYXJhbXMvMjAyNi0xMC0xOC4yLWRyYWZ0LnIzK2NhdGFsb2ctNzU3YjUwNDM5MDE1IiwicGFyYW1zX3BsYWNlaG9sZGVyIjp0cnVlLCJtaW5fc3VibWl0X3N0YWtlIjoiMTAwMDAwMDAwIiwibWluX3VwbG9hZF9zdGFrZSI6IjEwMDAwMDAwIiwiaW5pdGlhbF9hbGxvd2xpc3QiOlsidGVycDFueXdqYzJtZnpsMmZ1ZDhlcHpybGxqMmYyeGxwbmsydGZwbmY0OXFoMDJ6N2M5N2d2MmRxMHN1Y3djIl0sImRhbyI6InRlcnAxbnl3amMybWZ6bDJmdWQ4ZXB6cmxsajJmMnhscG5rMnRmcG5mNDlxaDAyejdjOTdndjJkcTBzdWN3YyIsInByZV9wcm9wb3NlX2luZm8iOnsiYW55b25lX21heV9wcm9wb3NlIjp7fX0sImNyZWF0aW9uX2dhdGUiOnsicHJvcG9zZXJfZ2F0ZSI6e319fQ==",
+          "admin": {
+            "core_module": {}
+          },
+          "funds": [],
+          "label": "fiab-bounty-escrow"
+        }
+      ],
+      "to_disable": []
+    }
+  },
+  "simulation": {
+    "S1_propose_add_module": {
+      "ok": true,
+      "gas_used": 548782
+    },
+    "S2_escrow_instantiate_direct": {
+      "ok": true,
+      "gas_used": 222826
+    }
+  },
+  "propose": {
+    "propose": {
+      "title": "Add the bounty escrow proposal module to FIAB-SUBDAO",
+      "description": "Instantiates a new bounty escrow (code 104) as a FIAB-SUBDAO proposal module through update_proposal_modules. FIAB-SUBDAO is the escrow dao, owner, approver and wasm admin, and it is on the initial allowlist so it can post bounties (gate: allowlist OR 1000 TERP bonded). The config (stake gates 1000/100/10 TERP, uterp/uthiol denom rules, durations, params_version) is copied from the live bounty DAO escrow terp1hpv9m7qwxde58pefcc0d42arrkdljlnzz3dskh8xna6z8z8vhkwq5hnchv. Nothing is migrated.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+              "msg": "eyJ1cGRhdGVfcHJvcG9zYWxfbW9kdWxlcyI6eyJ0b19hZGQiOlt7ImNvZGVfaWQiOjEwNCwibXNnIjoiZXlKdmQyNWxjaUk2SW5SbGNuQXhibmwzYW1NeWJXWjZiREptZFdRNFpYQjZjbXhzYWpKbU1uaHNjRzVyTW5SbWNHNW1ORGx4YURBeWVqZGpPVGRuZGpKa2NUQnpkV04zWXlJc0ltRndjSEp2ZG1WeUlqb2lkR1Z5Y0RGdWVYZHFZekp0Wm5wc01tWjFaRGhsY0hweWJHeHFNbVl5ZUd4d2Jtc3lkR1p3Ym1ZME9YRm9NREo2TjJNNU4yZDJNbVJ4TUhOMVkzZGpJaXdpWjJGMFpTSTZleUoxYzJWZllXeHNiM2RzYVhOMElqcDBjblZsTENKdGFXNWZjM1JoYTJVaU9pSXhNREF3TURBd01EQXdJaXdpWTNjMFgyZHliM1Z3SWpwdWRXeHNmU3dpWkdWdWIyMXpJanBiZXlKa1pXNXZiU0k2SW5WMFpYSndJaXdpYldsdVgyRnRiM1Z1ZENJNklqRXdNREF3TURBaUxDSnRZWGhmWVcxdmRXNTBJam9pT1RVeU5ESXdNREF3TURBaWZTeDdJbVJsYm05dElqb2lkWFJvYVc5c0lpd2liV2x1WDJGdGIzVnVkQ0k2SWpFd01EQXdNREFpTENKdFlYaGZZVzF2ZFc1MElqb2lNakF5TlRRMU1EQXdNREF3SW4xZExDSmhiR3h2ZDE5d1lYSjBhV0ZzWDNCaGVXOTFkSE1pT21aaGJITmxMQ0ptWldWZlluQnpJam93TENKbVpXVmZZMjlzYkdWamRHOXlJanB1ZFd4c0xDSnRhVzVmWkhWeVlYUnBiMjVmYzJWamN5STZPRFkwTURBc0ltMWhlRjlrZFhKaGRHbHZibDl6WldOeklqbzNOemMyTURBd0xDSndZWEpoYlhOZmRtVnljMmx2YmlJNkltVnpZM0p2ZHkxd1lYSmhiWE12TWpBeU5pMHhNQzB4T0M0eUxXUnlZV1owTG5JeksyTmhkR0ZzYjJjdE56VTNZalV3TkRNNU1ERTFJaXdpY0dGeVlXMXpYM0JzWVdObGFHOXNaR1Z5SWpwMGNuVmxMQ0p0YVc1ZmMzVmliV2wwWDNOMFlXdGxJam9pTVRBd01EQXdNREF3SWl3aWJXbHVYM1Z3Ykc5aFpGOXpkR0ZyWlNJNklqRXdNREF3TURBd0lpd2lhVzVwZEdsaGJGOWhiR3h2ZDJ4cGMzUWlPbHNpZEdWeWNERnVlWGRxWXpKdFpucHNNbVoxWkRobGNIcHliR3hxTW1ZeWVHeHdibXN5ZEdad2JtWTBPWEZvTURKNk4yTTVOMmQyTW1SeE1ITjFZM2RqSWwwc0ltUmhieUk2SW5SbGNuQXhibmwzYW1NeWJXWjZiREptZFdRNFpYQjZjbXhzYWpKbU1uaHNjRzVyTW5SbWNHNW1ORGx4YURBeWVqZGpPVGRuZGpKa2NUQnpkV04zWXlJc0luQnlaVjl3Y205d2IzTmxYMmx1Wm04aU9uc2lZVzU1YjI1bFgyMWhlVjl3Y205d2IzTmxJanA3Zlgwc0ltTnlaV0YwYVc5dVgyZGhkR1VpT25zaWNISnZjRzl6WlhKZloyRjBaU0k2ZTMxOWZRPT0iLCJhZG1pbiI6eyJjb3JlX21vZHVsZSI6e319LCJmdW5kcyI6W10sImxhYmVsIjoiZmlhYi1ib3VudHktZXNjcm93In1dLCJ0b19kaXNhYmxlIjpbXX19",
+              "funds": []
+            }
+          }
+        }
+      ]
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": "<next id>",
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": "<next id>"
+    }
+  }
+}
