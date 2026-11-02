@@ -2,6 +2,8 @@
 name = "hash-market"
 version = "0.1.0"
 edition = "2024"
+# bins are declared below; src/bin/*_host.rs are include!d bodies, not bins
+autobins = false
 
 [[bin]]
 name = "hash-market-relay"

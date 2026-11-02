@@ -1,11 +1,11 @@
-//! hash-market-relay binary.
-//!
-//! Nostr relay for HashMerchant root events. Connects to a configured
-//! Terp Network chain via WebSocket, watches for `hashmerchant_root_confirmed`
-//! events, and publishes them as kind:30070 Nostr events.
-//!
-//! Also accepts webhooks for external root injection and serves as a
-//! NIP-77 negentropy sync endpoint.
+// hash-market-relay binary.
+//
+// Nostr relay for HashMerchant root events. Connects to a configured
+// Terp Network chain via WebSocket, watches for `hashmerchant_root_confirmed`
+// events, and publishes them as kind:30070 Nostr events.
+//
+// Also accepts webhooks for external root injection and serves as a
+// NIP-77 negentropy sync endpoint.
 
 use anyhow::{Context, Result};
 use clap::Parser;

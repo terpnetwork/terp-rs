@@ -1,8 +1,8 @@
-//! Hash-market server binary.
-//!
-//! Default mode: **Merkle/BUD host** for NFT whitelist proofs (no vote extensions).
-//! Validator sidecar: set `ve_enabled = true` and build with `--features ve`.
-//! Connect-style price bounds: `[oracle] bounds_enabled = true` + `kind = "price_bound"`.
+// Hash-market server binary.
+//
+// Default mode: **Merkle/BUD host** for NFT whitelist proofs (no vote extensions).
+// Validator sidecar: set `ve_enabled = true` and build with `--features ve`.
+// Connect-style price bounds: `[oracle] bounds_enabled = true` + `kind = "price_bound"`.
 
 use anyhow::Context;
 use clap::Parser;
@@ -313,7 +313,8 @@ async fn main() -> anyhow::Result<()> {
     {
         if std::env::var("ITL_FROST_PERSIST_DIR").is_err() {
             let dir = format!("{}/itl-frost", config.data_dir.as_deref().unwrap_or("data"));
-            std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
+            // SAFETY: one-shot default during startup; nothing reads env concurrently here.
+            unsafe { std::env::set_var("ITL_FROST_PERSIST_DIR", &dir) };
         }
         let frost_bind =
             hash_market::onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;

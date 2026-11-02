@@ -580,5 +580,13 @@ zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }
 
 # ict-rs pins dregg by git rev. Resolve that rev to this workspace copy so
 # the lock does not keep a second dregg still on k256 0.13.
+# cosmos-rust pins tendermint-rs by git (same rev as ../tendermint-rs). Route it to the path
+# fork so one tendermint/k256 is in the graph (cosmrs::crypto::PublicKey From<tendermint::PublicKey>).
+[patch."https://github.com/permissionlessweb/tendermint-rs"]
+tendermint = { path = "../tendermint-rs/tendermint" }
+tendermint-config = { path = "../tendermint-rs/config" }
+tendermint-proto = { path = "../tendermint-rs/proto" }
+tendermint-rpc = { path = "../tendermint-rs/rpc" }
+
 [patch."https://github.com/permissionlessweb/terp-rs"]
 dregg = { path = "tools/svg-mint/crates/dregg" }

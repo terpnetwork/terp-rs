@@ -1,6 +1,6 @@
-//! Local Halo2 Pasta verifier — same statement as zk-wasmvm `verify_halo2_proof`.
-//! Stock terpd without the zk host must fail-closed on-chain; this binary
-//! exercises the **product** circuit, not MockBech32.
+// Local Halo2 Pasta verifier — same statement as zk-wasmvm `verify_halo2_proof`.
+// Stock terpd without the zk host must fail-closed on-chain; this binary
+// exercises the **product** circuit, not MockBech32.
 
 use hash_market::onboard_authz::itl_cashapp::{LIST_CENTS, SKU, synthetic_received_eml};
 use hash_market::onboard_authz::itl_consume::{
