@@ -131,6 +131,43 @@ def start_relay(contract):
         if relay.poll() is not None: break
     return relay, False
 
+KMS_BIN = os.environ.get("KMS_DEPLOY_BIN", "")  # mainnet_deploy: prop 1 goes through generic dao-propose / vote / dao-execute
+KENV = {}
+
+def kms(who, phase, D, name, *extra):
+    a = [KMS_BIN, phase, "--signer", "local-test", "--broadcast", "--network", CHAIN_ID, "--chain-id", CHAIN_ID,
+         "--grpc", "http://127.0.0.1:49091", "--rpc", "http://127.0.0.1:46667", "--lcd", REST, "--gas-denom", "uterp", "--gas-price", "0.025",
+         "--admin", D["core"], "--state", os.path.join(RUN, "kms-state-%s-%s-%s.json" % (name, who, phase)), *extra]
+    env = dict(os.environ, TERP_SCRIPT_BROADCAST="1", TERP_SCRIPT_BROADCAST_CHAIN=CHAIN_ID, LOCAL_MNEMONIC=KENV[who])
+    p = subprocess.run(a, env=env, capture_output=True, text=True)
+    open(os.path.join(RUN, "kms_%s_%s_%s.log" % (name, who, phase)), "w").write(p.stdout + p.stderr)
+    return p
+
+def kms_dao_run(D, name, title, msgs):
+    """dao_m3: generic dao-propose --dao (sha-pinned file) --vote yes; dao_m2: `vote` alias, then dao-execute."""
+    import re
+    body = {"propose": {"msg": {"propose": {"title": title, "description": "local dry run: " + name, "msgs": msgs}}}}
+    f = os.path.join(RUN, "dao_%s.propose.json" % name); json.dump(body, open(f, "w"), indent=1)
+    sha = hashlib.sha256(open(f, "rb").read()).hexdigest()
+    bad = kms("dao_m3", "dao-propose", D, name + "-bad", "--dao", D["core"], "--propose-file", f, "--propose-sha", "00" * 32, "--vote", "yes")
+    step(name + "_kms_sha_mismatch_refused_before_grant", bad.returncode != 0 and "refused before any grant" in bad.stdout + bad.stderr
+         and "dao-propose:" not in bad.stdout, (bad.stdout + bad.stderr)[-200:])
+    p = kms("dao_m3", "dao-propose", D, name, "--dao", D["core"], "--propose-file", f, "--propose-sha", sha, "--vote", "yes")
+    m = re.search(r"proposal (\d+)", p.stdout)
+    step(name + "_kms_dao_propose_resolved_and_voted", p.returncode == 0 and bool(m) and "voted yes" in p.stdout and D["prepropose"] in p.stdout
+         and "instantiate2 check: ok (2 addresses" in p.stdout, (p.stdout + p.stderr)[-300:])
+    if not m: return {}, None, None
+    pid = int(m.group(1))
+    st0 = smart(D["proposal"], {"proposal": {"proposal_id": pid}})["proposal"]["status"]
+    v = kms("dao_m2", "vote", D, name, "--foundation-pre-propose", D["prepropose"], "--proposals", str(pid))
+    st1 = smart(D["proposal"], {"proposal": {"proposal_id": pid}})["proposal"]["status"]
+    step(name + "_legacy_vote_alias", v.returncode == 0 and st0 == "open" and st1 == "passed", "before %s after %s %s" % (st0, st1, (v.stdout + v.stderr)[-200:]))
+    ex = kms("dao_m2", "dao-execute", D, name, "--dao", D["core"], "--proposals", str(pid))
+    st = smart(D["proposal"], {"proposal": {"proposal_id": pid}})["proposal"]["status"]
+    step(name + "_kms_dao_execute_second_member", ex.returncode == 0 and "executed" in ex.stdout and st == "executed", (ex.stdout + ex.stderr)[-300:])
+    R.setdefault("dao_proposals", {})[name] = {"id": pid, "via": "mainnet_deploy dao-propose/vote/dao-execute", "sha": sha, "status": st, "msgs": len(msgs)}
+    return {"code": 0 if ex.returncode == 0 else 1, "raw_log": ex.stdout[-300:]}, pid, st
+
 def main():
     b.R = R
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
@@ -174,7 +211,14 @@ def main():
     step("circuit_blob_hash", hashlib.sha256(blob).hexdigest() == NOTE_VK_HASH, "sha %s" % hashlib.sha256(blob).hexdigest())
 
     # 0. local Foundation DAO
-    m2, m3 = d.new_wallet("dao_m2"), d.new_wallet("dao_m3")
+    if KMS_BIN:  # dao_m2/dao_m3 are mainnet_deploy local-test signers; throwaway phrases stay in this process (never printed or saved)
+        def kms_wallet(n):
+            terpd("keys", "delete", n, "-y", "--keyring-backend", "test", "--home", HOME, check=False)
+            KENV[n] = json.loads(terpd("keys", "add", n, "--keyring-backend", "test", "--home", HOME, "--output", "json"))["mnemonic"]
+            return terpd("keys", "show", n, "-a", "--keyring-backend", "test", "--home", HOME).strip()
+        m2, m3 = kms_wallet("dao_m2"), kms_wallet("dao_m3")
+    else:
+        m2, m3 = d.new_wallet("dao_m2"), d.new_wallet("dao_m3")
     tx("owner", 300000, "bank", "send", OWNER, m2, "50000000uterp"); tx("owner", 300000, "bank", "send", OWNER, m3, "50000000uterp")
     D = setup_dao([OWNER, m2, m3])
     if not D: return
@@ -225,7 +269,7 @@ def main():
                  {"bank": {"send": {"to_address": addr, "amount": [{"denom": denom, "amount": str(ALLOC - 1)}]}}}]
     msgs += [tf_change_admin(DAO, inst[t]["denom"], NULL_ADMIN) for t in TOKENS]  # renounce last
     R["instances"] = {t: {k: (v.hex() if isinstance(v, bytes) else v) for k, v in i.items()} for t, i in inst.items()}
-    ex, pid, st = dao_run(D, "prop1_deploy", "Headstash v0.0.1 dry run: terpy + thioly", msgs)
+    ex, pid, st = (kms_dao_run if KMS_BIN else dao_run)(D, "prop1_deploy", "Headstash v0.0.1 dry run: terpy + thioly", msgs)
     step("dao_prop1_executed", st == "executed", "proposal %s %s gas %d %s" % (pid, st, gas_used(ex), ex.get("raw_log", "")[:300]))
     if st != "executed": return
     for t, i in inst.items():
@@ -243,6 +287,7 @@ def main():
         info = smart(c, {"direct_claim": {}})
         step("%s_direct_ctx_matches" % t, base64.b64decode(info["expected_ctx"]) == i["ctx"], json.dumps(info)[:160])
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
+    if os.environ.get("STOP_AFTER_PROP1") == "1": return
     # tokenfactory is locked: the DAO itself can no longer mint, set metadata or change admin
     for t in TOKENS:
         i = inst[t]; s0 = d.supply(height(), i["denom"])

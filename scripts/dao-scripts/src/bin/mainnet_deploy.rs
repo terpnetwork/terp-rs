@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote", "dao-propose", "dao-vote", "dao-execute"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -218,15 +218,42 @@ struct Cli {
     /// Submit the Foundation proposals but do not cast the member's yes vote.
     #[arg(long)]
     no_vote: bool,
-    /// vote phase: choice to cast (only `yes`).
-    #[arg(long = "vote", default_value = "yes")]
-    vote_choice: String,
+    /// yes | no | abstain. `vote`/`dao-vote`: default yes. `dao-propose`/`dao-execute`: omitted = no vote.
+    #[arg(long = "vote")]
+    vote_choice: Option<String>,
     /// vote phase: Foundation proposal ids, e.g. `9,10`.
     #[arg(long = "proposals", value_delimiter = ',')]
     vote_proposals: Vec<u64>,
     /// vote phase: after voting, execute every listed proposal whose status is `passed`.
     #[arg(long = "execute")]
     vote_execute: bool,
+    /// dao-propose phase: rendered pre-propose `{"propose":{...}}` body (e.g. 20-dao-prop1-deploy.propose.json).
+    #[arg(long)]
+    propose_file: Option<PathBuf>,
+    /// dao-propose phase: required sha256 (hex) of --propose-file; a mismatch refuses before any grant.
+    #[arg(long)]
+    propose_sha: Option<String>,
+    /// generic DAO phases: dao-dao-core address; proposal module + pre-propose are resolved from chain.
+    #[arg(long)]
+    dao: Option<String>,
+    /// generic DAO phases: proposal module override (default: first enabled module of --dao).
+    #[arg(long)]
+    proposal_module: Option<String>,
+    /// generic DAO phases: pre-propose override (default: the module's proposal_creation_policy).
+    #[arg(long)]
+    pre_propose: Option<String>,
+    /// dao-propose: JSON array of CosmosMsg (instead of --propose-file); needs --title. --propose-sha pins it if given.
+    #[arg(long)]
+    msgs_file: Option<PathBuf>,
+    #[arg(long)]
+    title: Option<String>,
+    #[arg(long, default_value = "")]
+    description: String,
+    /// dao-propose --execute: poll until the proposal is `passed` (bounded by --wait-secs).
+    #[arg(long)]
+    wait_pass: bool,
+    #[arg(long, default_value_t = 300)]
+    wait_secs: u64,
     /// JSON array of terp_oracle::AltAsset for raffle/svg-minter oracle_pricing ("$AGGREGATOR" placeholder).
     #[arg(long)]
     oracle_alt_assets: Option<PathBuf>,
@@ -329,6 +356,10 @@ enum Step {
     ExecAs { id: String, contract: String, key: String, msg: Value },
     /// Granter votes yes on the proposal created by step `of`.
     Vote { id: String, module: String, of: String },
+    /// Generic: granter casts `choice` on the proposal created by step `of`.
+    DaoVote { id: String, module: String, of: String, choice: String },
+    /// Generic: execute the proposal created by step `of` once `passed` (polls up to `wait_secs`).
+    DaoExec { id: String, module: String, of: String, wait_secs: u64 },
     /// Free-form step the runtime does itself (e.g. smoke test).
     Custom { id: String, what: String },
 }
@@ -341,6 +372,8 @@ impl Step {
             Step::Exec { id, contract, key, msg } => json!({"execute": id, "contract": contract, "key": key, "msg": msg}),
             Step::ExecAs { id, contract, key, msg } => json!({"execute_as_granter": id, "contract": contract, "key": key, "msg": msg}),
             Step::Vote { id, module, of } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": "yes"}),
+            Step::DaoVote { id, module, of, choice } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": choice}),
+            Step::DaoExec { id, module, of, wait_secs } => json!({"execute_as_granter": id, "module": module, "proposal_of": of, "wait_secs": wait_secs}),
             Step::Custom { id, what } => json!({"custom": id, "what": what}),
         }
     }
@@ -428,7 +461,7 @@ impl Ctx {
             let done = match &s {
                 Step::Store { name, .. } => self.code_on_chain(name)?,
                 Step::Inst { name, .. } => self.contract_on_chain(name),
-                Step::Exec { id, .. } | Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::Custom { id, .. } => self.state.done.contains(id),
+                Step::Exec { id, .. } | Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::DaoVote { id, .. } | Step::DaoExec { id, .. } | Step::Custom { id, .. } => self.state.done.contains(id),
             };
             if done { println!("  skip {}", s.describe()); } else { out.push(s); }
         }
@@ -439,6 +472,11 @@ impl Ctx {
 fn hex_lower(b: &[u8]) -> String { b.iter().map(|x| format!("{x:02x}")).collect() }
 
 // ---------------------------------------------------------------- signer
+
+/// Inner sender: the kms granter, or (local-test) the local key standing in as the member itself.
+fn granter_or_local(signer: &Signer, id: &str) -> Result<String> {
+    match signer { Signer::Local(l) => Ok(l.sender_addr().to_string()), _ => signer.granter().ok_or_else(|| anyhow!("{id}: needs a kms session (granter)")) }
+}
 
 /// One signing context per phase. The KMS variant owns the AuthzSession whose Drop revokes.
 enum Signer { Kms(AuthzSession), Local(Daemon) }
@@ -476,7 +514,7 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
     }
     let builder = ctx.daemon_builder.clone().ok_or_else(|| anyhow!("no builder"))?;
     let granter = ensure_granter(ctx, phase)?;
-    if phase == "vote" && ctx.cli.vote_execute {
+    if ["vote", "dao-vote", "dao-execute"].contains(&phase) && ctx.cli.vote_execute {
         // Wrong-signer check right after the granter challenge, before any grant/fee scan.
         let module = steps.iter().find_map(|s| match s { Step::Custom { id, what } if id == "foundation:vote" => Some(what.clone()), _ => None })
             .ok_or_else(|| anyhow!("vote: no proposal module"))?;
@@ -500,13 +538,13 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
             Step::Custom { id, what } if id == "foundation:vote" => {
                 // what = proposal module; scope: vote (+ execute) on it, MsgExec as the granter.
                 let e = execs.entry(what.clone()).or_default();
-                e.0.insert("vote".into());
-                e.1 += ctx.cli.vote_proposals.len() as u64;
+                if phase != "dao-execute" || ctx.cli.vote_choice.is_some() { e.0.insert("vote".into()); e.1 += ctx.cli.vote_proposals.len() as u64; }
                 if ctx.cli.vote_execute { e.0.insert("execute".into()); e.1 += ctx.cli.vote_proposals.len() as u64; }
             }
             Step::Inst { .. } | Step::Custom { .. } => { session = session.allow_instantiate2(); }
             Step::Exec { contract, key, .. } | Step::ExecAs { contract, key, .. } => { let e = execs.entry(contract.clone()).or_default(); e.0.insert(key.clone()); e.1 += 1; }
-            Step::Vote { module, .. } => { let e = execs.entry(module.clone()).or_default(); e.0.insert("vote".into()); e.1 += 1; }
+            Step::Vote { module, .. } | Step::DaoVote { module, .. } => { let e = execs.entry(module.clone()).or_default(); e.0.insert("vote".into()); e.1 += 1; }
+            Step::DaoExec { module, .. } => { let e = execs.entry(module.clone()).or_default(); e.0.insert("execute".into()); e.1 += 1; }
         }
         actions.push(SigningRequest::new("session-key").body(format!("{phase}: {}", s.describe())));
     }
@@ -580,7 +618,7 @@ fn run_steps(ctx: &mut Ctx, phase: &str, signer: &Signer, steps: &[Step]) -> Res
                 signer.note(&format!("ok {id}"));
             }
             Step::ExecAs { id, contract, key, msg } => {
-                let granter = signer.granter().ok_or_else(|| anyhow!("{id}: needs a kms session (granter)"))?;
+                let granter = granter_or_local(signer, id)?;
                 let any = kms_gate::execute_any(&granter, contract, msg)?;
                 let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
                 if key == "propose" {
@@ -594,11 +632,43 @@ fn run_steps(ctx: &mut Ctx, phase: &str, signer: &Signer, steps: &[Step]) -> Res
                 signer.note(&format!("ok {id}"));
             }
             Step::Vote { id, module, of } => {
-                let granter = signer.granter().ok_or_else(|| anyhow!("{id}: needs a kms session (granter)"))?;
+                let granter = granter_or_local(signer, id)?;
                 let pid = *ctx.state.proposals.get(of).ok_or_else(|| anyhow!("{id}: proposal of {of} unknown"))?;
                 let any = kms_gate::execute_any(&granter, module, &json!({"vote": {"proposal_id": pid, "vote": "yes", "rationale": null}}))?;
                 let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
                 println!("  {id}: voted yes on {pid}");
+                ctx.state.done.insert(id.clone());
+                ctx.state.tx(phase, id, &r)?;
+                signer.note(&format!("ok {id}"));
+            }
+            Step::DaoVote { id, module, of, choice } => {
+                let granter = granter_or_local(signer, id)?;
+                let pid = *ctx.state.proposals.get(of).ok_or_else(|| anyhow!("{id}: proposal of {of} unknown"))?;
+                let any = kms_gate::execute_any(&granter, module, &json!({"vote": {"proposal_id": pid, "vote": choice, "rationale": null}}))?;
+                let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
+                println!("  {id}: voted {choice} on {pid}");
+                ctx.state.done.insert(id.clone());
+                ctx.state.tx(phase, id, &r)?;
+                signer.note(&format!("ok {id}"));
+            }
+            Step::DaoExec { id, module, of, wait_secs } => {
+                let granter = granter_or_local(signer, id)?;
+                let pid = *ctx.state.proposals.get(of).ok_or_else(|| anyhow!("{id}: proposal of {of} unknown"))?;
+                let m = Addr::unchecked(module);
+                let t0 = std::time::Instant::now();
+                loop {
+                    let p: Value = d.wasm_querier().smart_query(&m, &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{id}: {e}"))?;
+                    let st = p["proposal"]["status"].as_str().unwrap_or("").to_string();
+                    if st == "passed" { break; }
+                    if st != "open" || t0.elapsed().as_secs() >= *wait_secs {
+                        bail!("{id}: proposal {pid} status {st} after {}s (not executed; --execute needs passed, use --wait-pass)", t0.elapsed().as_secs());
+                    }
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                }
+                let any = kms_gate::execute_any(&granter, module, &json!({"execute": {"proposal_id": pid}}))?;
+                let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
+                let p: Value = d.wasm_querier().smart_query(&m, &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{e}"))?;
+                println!("  {id}: executed {pid} -> status {}", p["proposal"]["status"]);
                 ctx.state.done.insert(id.clone());
                 ctx.state.tx(phase, id, &r)?;
                 signer.note(&format!("ok {id}"));
@@ -787,24 +857,133 @@ fn daos(ctx: &mut Ctx) -> Result<()> {
 /// or that are no longer open. `--execute`: then executes each listed proposal whose
 /// status is `passed`, and records created DAO cores (code CODE_CORE) by label in state.json;
 /// steward cores are checked against their instantiate2 predictions.
-fn vote(ctx: &mut Ctx) -> Result<()> {
-    if ctx.cli.vote_choice != "yes" { bail!("--vote: only `yes` is supported"); }
-    if ctx.cli.vote_proposals.is_empty() { bail!("--proposals 9,10 required"); }
-    let pre = ctx.cli.foundation_pre_propose.clone();
+struct DaoTarget { core: String, module: String, pre: Option<String> }
+
+/// Resolve core / proposal module / pre-propose from chain. Precedence: --proposal-module,
+/// then --pre-propose, then --dao (first enabled module), else the Foundation pre-propose A.
+fn resolve_dao(ctx: &Ctx) -> Result<DaoTarget> {
     let q = ctx.query()?;
-    let module: String = q.wasm_querier().smart_query(&Addr::unchecked(&pre), &json!({"proposal_module": {}})).map_err(|e| anyhow!("proposal_module: {e}"))?;
+    let w = q.wasm_querier();
+    let sq = |c: &str, m: Value| -> Result<Value> { w.smart_query::<_, Value>(&Addr::unchecked(c), &m).map_err(|e| anyhow!("{c} {m}: {e}")) };
+    let policy = |module: &str| -> Result<Option<String>> {
+        let p = sq(module, json!({"proposal_creation_policy": {}}))?;
+        Ok(p["module"]["addr"].as_str().map(String::from))
+    };
+    let t = if let Some(m) = &ctx.cli.proposal_module {
+        let core = sq(m, json!({"dao": {}}))?.as_str().unwrap_or_default().to_string();
+        let pre = match &ctx.cli.pre_propose { Some(p) => Some(p.clone()), None => policy(m)? };
+        DaoTarget { core, module: m.clone(), pre }
+    } else if let Some(dao) = &ctx.cli.dao {
+        let mods = sq(dao, json!({"proposal_modules": {}}))?;
+        let m = mods.as_array().and_then(|a| a.iter().find(|x| x["status"].as_str().map_or(false, |s| s.eq_ignore_ascii_case("enabled"))))
+            .and_then(|x| x["address"].as_str()).ok_or_else(|| anyhow!("{dao}: no enabled proposal module"))?.to_string();
+        let pre = match &ctx.cli.pre_propose { Some(p) => Some(p.clone()), None => policy(&m)? };
+        DaoTarget { core: dao.clone(), module: m, pre }
+    } else {
+        let pre = ctx.cli.pre_propose.clone().unwrap_or_else(|| ctx.cli.foundation_pre_propose.clone());
+        let module = sq(&pre, json!({"proposal_module": {}}))?.as_str().unwrap_or_default().to_string();
+        let core = sq(&pre, json!({"dao": {}}))?.as_str().unwrap_or_default().to_string();
+        DaoTarget { core, module, pre: Some(pre) }
+    };
+    if t.module.is_empty() || t.core.is_empty() { bail!("could not resolve dao core / proposal module"); }
+    if let Some(pre) = &t.pre {
+        let cfg = sq(pre, json!({"config": {}}))?;
+        if !cfg["deposit_info"].is_null() {
+            bail!("pre-propose {pre} requires a deposit {}: not supported by this phase (no funds in the scoped grant); refusing before any grant", cfg["deposit_info"]);
+        }
+    }
+    println!("  dao {} | proposal module {} | pre-propose {:?}", t.core, t.module, t.pre);
+    Ok(t)
+}
+
+/// Generic DAO proposal: sha-pinned --propose-file (pre-propose body) or --msgs-file + --title.
+/// Submitted as the kms granter (MsgExec via the cw-orch-kms session) to the pre-propose module,
+/// or straight to the proposal module when it has none. Optional --vote, --execute [--wait-pass].
+/// Every instantiate2 in the msgs is re-predicted from the on-chain checksum with the DAO core
+/// as creator; every in-proposal wasm execute / bank send target must be one of them, or (with
+/// no instantiate2 at all) the check is reported as skipped.
+fn dao_propose(ctx: &mut Ctx) -> Result<()> {
+    let (bytes, src) = match (&ctx.cli.propose_file, &ctx.cli.msgs_file) {
+        (Some(f), None) => (std::fs::read(f).map_err(|e| anyhow!("{}: {e}", f.display()))?, f.clone()),
+        (None, Some(f)) => (std::fs::read(f).map_err(|e| anyhow!("{}: {e}", f.display()))?, f.clone()),
+        _ => bail!("dao-propose: exactly one of --propose-file / --msgs-file"),
+    };
+    let got = hex_lower(&Sha256::digest(&bytes));
+    match (&ctx.cli.propose_sha, ctx.cli.propose_file.is_some()) {
+        (Some(w), _) if w.to_lowercase() != got => bail!("refused before any grant: {} sha256 {got} != --propose-sha {w} (nothing was broadcast)", src.display()),
+        (None, true) => bail!("dao-propose: --propose-sha required with --propose-file"),
+        _ => {}
+    }
+    let (title, description, msgs) = if ctx.cli.propose_file.is_some() {
+        let body: Value = serde_json::from_slice(&bytes)?;
+        let p = body["propose"]["msg"]["propose"].clone();
+        let p = if p.is_null() { body["propose"].clone() } else { p };
+        (p["title"].as_str().unwrap_or_default().to_string(), p["description"].as_str().unwrap_or_default().to_string(), p["msgs"].as_array().cloned().unwrap_or_default())
+    } else {
+        let m: Vec<Value> = serde_json::from_slice(&bytes)?;
+        (ctx.cli.title.clone().ok_or_else(|| anyhow!("--msgs-file needs --title"))?, ctx.cli.description.clone(), m)
+    };
+    if msgs.is_empty() || title.is_empty() { bail!("dao-propose: {} has no msgs / title", src.display()); }
+    if let Some(c) = &ctx.cli.vote_choice { if !["yes", "no", "abstain"].contains(&c.as_str()) { bail!("--vote: yes | no | abstain"); } }
+    println!("  {} sha256 {got}: {} msgs, title {title:?}", src.display(), msgs.len());
+    let t = resolve_dao(ctx)?;
+    let prefix = ctx.info.network_info.pub_address_prefix.clone();
+    let q = ctx.query()?;
+    let mut predicted: Vec<String> = Vec::new();
+    for m in &msgs {
+        let i = &m["wasm"]["instantiate2"];
+        if i.is_null() { continue; }
+        let code_id = i["code_id"].as_u64().ok_or_else(|| anyhow!("instantiate2 {}: code_id {:?} is not final", i["label"], i["code_id"]))?;
+        let info = q.wasm_querier().code(code_id).map_err(|e| anyhow!("code {code_id}: {e}"))?;
+        let salt_b = Binary::from_base64(i["salt"].as_str().unwrap_or_default()).map_err(|e| anyhow!("{e}"))?;
+        let a = instantiate2_bech32(&prefix, info.checksum.as_slice(), &canonical(&t.core)?, salt_b.as_slice()).map_err(|e| anyhow!(e))?;
+        println!("  instantiate2 {} code {code_id} ({}) admin {} -> {a}", i["label"], &hex_lower(info.checksum.as_slice())[..12], i["admin"]);
+        predicted.push(a);
+    }
+    drop(q);
+    if predicted.is_empty() { println!("  instantiate2 check: skipped (no instantiate2 msgs)"); } else {
+        for m in &msgs {
+            let tg = m["wasm"]["execute"]["contract_addr"].as_str().or(m["bank"]["send"]["to_address"].as_str());
+            if let Some(tg) = tg { if !predicted.iter().any(|p| p == tg) { bail!("dao-propose: target {tg} is not an instantiate2 address of this proposal (refusing before any grant)"); } }
+        }
+        println!("  instantiate2 check: ok ({} addresses, all in-proposal targets match)", predicted.len());
+    }
+    let (contract, msg) = match &t.pre {
+        Some(pre) => (pre.clone(), json!({"propose": {"msg": {"propose": {"title": title, "description": description, "msgs": msgs}}}})),
+        None => (t.module.clone(), json!({"propose": {"title": title, "description": description, "msgs": msgs, "proposer": null}})),
+    };
+    let pid_key = format!("dao-propose:{}", &got[..16]);
+    let mut steps = vec![Step::ExecAs { id: pid_key.clone(), contract, key: "propose".into(), msg }];
+    if let Some(c) = ctx.cli.vote_choice.clone() {
+        steps.push(Step::DaoVote { id: format!("{pid_key}:vote"), module: t.module.clone(), of: pid_key.clone(), choice: c });
+    }
+    if ctx.cli.vote_execute {
+        let w = if ctx.cli.wait_pass { ctx.cli.wait_secs } else { 0 };
+        steps.push(Step::DaoExec { id: format!("{pid_key}:execute"), module: t.module.clone(), of: pid_key.clone(), wait_secs: w });
+    }
+    execute_steps(ctx, "dao-propose", steps)
+}
+
+/// `vote` (legacy alias of `dao-vote`, default the Foundation module A) / `dao-vote` / `dao-execute`.
+fn vote(ctx: &mut Ctx, phase: &str) -> Result<()> {
+    if phase == "dao-execute" { ctx.cli.vote_execute = true; }
+    if let Some(c) = &ctx.cli.vote_choice { if !["yes", "no", "abstain"].contains(&c.as_str()) { bail!("--vote: yes | no | abstain"); } }
+    if ctx.cli.vote_proposals.is_empty() { bail!("--proposals 9,10 required"); }
+    let r = resolve_dao(ctx)?;
+    let module = r.module.clone();
+    let q = ctx.query()?;
     for pid in &ctx.cli.vote_proposals {
         let p: Value = q.wasm_querier().smart_query(&Addr::unchecked(&module), &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("proposal {pid}: {e}"))?;
         println!("  proposal {pid}: {} | {} | votes {}", p["proposal"]["status"], p["proposal"]["title"], p["proposal"]["votes"]);
     }
-    println!("  proposal module {module}; execute={}", ctx.cli.vote_execute);
+    println!("  dao {} proposal module {module}; vote={:?} execute={}", r.core, ctx.cli.vote_choice, ctx.cli.vote_execute);
     drop(q);
-    execute_steps(ctx, "vote", vec![Step::Custom { id: "foundation:vote".into(), what: module }])
+    execute_steps(ctx, phase, vec![Step::Custom { id: "foundation:vote".into(), what: module }])
 }
 
 fn foundation_vote(ctx: &mut Ctx, phase: &str, signer: &Signer, d: &Daemon, module: &str) -> Result<()> {
     use dao_foundation_suite::ibc_ops::{steward::decode_bech32, CODE_CORE};
-    let granter = signer.granter().ok_or_else(|| anyhow!("vote: needs a kms session (granter)"))?;
+    let granter = granter_or_local(signer, "vote")?;
     let m = Addr::unchecked(module);
     let status = |pid: u64| -> Result<Value> {
         Ok(d.wasm_querier().smart_query::<_, Value>(&m, &json!({"proposal": {"proposal_id": pid}})).map_err(|e| anyhow!("{e}"))?["proposal"].clone())
@@ -819,21 +998,25 @@ fn foundation_vote(ctx: &mut Ctx, phase: &str, signer: &Signer, d: &Daemon, modu
             }
         }
     }
+    let choice = ctx.cli.vote_choice.clone().unwrap_or_else(|| "yes".into());
+    let cast = phase != "dao-execute" || ctx.cli.vote_choice.is_some();
     for pid in ctx.cli.vote_proposals.clone() {
+        if !cast { break; }
         let mine: Value = d.wasm_querier().smart_query(&m, &json!({"get_vote": {"proposal_id": pid, "voter": granter}})).map_err(|e| anyhow!("{e}"))?;
         let p = status(pid)?;
         if !mine["vote"].is_null() { println!("  {pid}: {granter} already voted {}", mine["vote"]["vote"]); continue; }
         if p["status"] != "open" { println!("  {pid}: status {} (no vote cast)", p["status"]); continue; }
         let id = format!("vote:{pid}:{granter}");
-        let any = kms_gate::execute_any(&granter, module, &json!({"vote": {"proposal_id": pid, "vote": "yes", "rationale": null}}))?;
+        let any = kms_gate::execute_any(&granter, module, &json!({"vote": {"proposal_id": pid, "vote": choice, "rationale": null}}))?;
         let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
         ctx.state.tx(phase, &id, &r)?;
         let p = status(pid)?;
-        println!("  {pid}: voted yes -> status {} votes {}", p["status"], p["votes"]);
+        println!("  {pid}: voted {choice} -> status {} votes {}", p["status"], p["votes"]);
         signer.note(&format!("ok {id}"));
     }
     if !ctx.cli.vote_execute { return Ok(()); }
-    let core_sum = d.wasm_querier().code(CODE_CORE)?.checksum.as_slice().to_vec();
+    // Foundation steward labelling only; other chains/DAOs may not have CODE_CORE.
+    let core_sum = d.wasm_querier().code(CODE_CORE).map(|c| c.checksum.as_slice().to_vec()).unwrap_or_default();
     let fbytes = decode_bech32(&ctx.cli.admin).map_err(|e| anyhow!(e))?.1;
     for pid in ctx.cli.vote_proposals.clone() {
         let p = status(pid)?;
@@ -845,7 +1028,7 @@ fn foundation_vote(ctx: &mut Ctx, phase: &str, signer: &Signer, d: &Daemon, modu
         println!("  {pid}: executed -> status {}", status(pid)?["status"]);
         for ev in r.get_events("instantiate") {
             let (Some(a), Some(c)) = (ev.get_first_attribute_value("_contract_address"), ev.get_first_attribute_value("code_id")) else { continue };
-            if c.parse::<u64>().ok() != Some(CODE_CORE) { continue; }
+            if core_sum.is_empty() || c.parse::<u64>().ok() != Some(CODE_CORE) { continue; }
             let info = d.wasm_querier().contract_info(&Addr::unchecked(&a))?;
             let mut label = None;
             for salt in ["steward-akash", "custody-akash", "steward-juno", "bounty-subdao"] {
@@ -1214,7 +1397,8 @@ fn main() -> Result<()> {
             "hs-upload" => hs_upload(&mut ctx)?,
             "bounty-upload" => bounty_upload(&mut ctx)?,
             "daos" => daos(&mut ctx)?,
-            "vote" => vote(&mut ctx)?,
+            "vote" | "dao-vote" | "dao-execute" => vote(&mut ctx, phase)?,
+            "dao-propose" => dao_propose(&mut ctx)?,
             "oracles" => oracles(&mut ctx)?,
             "nftfi" => nftfi(&mut ctx)?,
             "authenticators" => authenticators(&mut ctx)?,
