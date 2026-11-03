@@ -155,7 +155,11 @@ def main():
              "- Submitter: Foundation cw4 member `%s` (weight 1000 of 3000).\n"
              "- Tx target: pre-propose A `%s`; the proposal lands in **proposal module A** `%s` of DAO `%s`.\n"
              "  Votes (50-vote.template.json) and execute (51-execute.template.json) go to module A, not module B.\n"
-             "- Prop 1 ends with MsgChangeAdmin to `%s` for both denoms (after create, metadata, mint, fund).\n") % (SUBMITTER, PREPROPOSE_A, PROP_A, DAO, NULL_ADMIN)
+             "- Prop 1 ends with MsgChangeAdmin to `%s` for both denoms (after create, metadata, mint, fund).\n"
+             "- Every DAO action (prop 1 / prop 2 submit, vote, execute) goes through cw-orch-kms (`mainnet_deploy`, Zigner approval page, "
+             "fees uthiol): MsgExec as the member, fee from the member's session feegrant. Never the terpd CLI. "
+             "The *.unsigned.json files are reference sign docs only; *.propose.json is the body kms submits. "
+             "Vote/execute: `mainnet_deploy vote --proposals <id> [--execute]`.\n") % (SUBMITTER, PREPROPOSE_A, PROP_A, DAO, NULL_ADMIN)
     open(os.path.join(out, "00-upload-plan.md"), "w").write(plan)
     sup = "# Superseded by the DAO flow (2026-11-03)\n\nDo not sign these. They stay in the tree for the record (no deletions).\n\n| file | sha256 prefix | why |\n|---|---|---|\n"
     sup += "".join("| %s | %s | %s |\n" % s for s in SUPERSEDED)
