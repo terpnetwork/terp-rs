@@ -7,6 +7,9 @@ version.workspace = true
 
 autobins = false
 
+[features]
+ibc-info = ["dep:terp-scripts"]
+
 [[bin]]
 name = "dao-scripts"
 path = "src/main.rs"
@@ -22,6 +25,7 @@ path = "src/bin/dels.rs"
 [[bin]]
 name = "terp-ibc"
 path = "src/bin/ibc_info.rs"
+required-features = ["ibc-info"]
 
 [[bin]]
 name = "create_val"
@@ -138,7 +142,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
 terp-rs = { workspace = true, features = ["default"] }
-terp-scripts = { workspace = true, features = ["hash-market"] }
+# Only terp-ibc (src/bin/ibc_info.rs) uses terp-scripts. Optional so mainnet_deploy and the other bins build without it
+# (the tests crate does not compile in-tree today: hash-market onboard/server and tests/src/suite/hashmerchant*).
+terp-scripts = { workspace = true, optional = true, features = ["hash-market"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 

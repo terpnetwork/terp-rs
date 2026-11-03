@@ -15,12 +15,8 @@
 //! - frost inbox nested at `/itl/frost/*` on 127.0.0.1 (not FilePV)
 #[cfg(feature = "rand_core06")]
 extern crate rand_core06 as rand_core;
-#[cfg(feature = "rand010")]
-extern crate rand010 as rand;
-#[cfg(any(feature = "onboard", feature = "pir"))]
-extern crate zakura_pasta_curves as pasta_curves;
 #[cfg(feature = "onboard")]
-extern crate zakura_halo2_proofs as halo2_proofs;
+extern crate rand010 as rand;
 #[cfg(feature = "pir")]
 extern crate zakura_halo2_gadgets as halo2_gadgets;
 

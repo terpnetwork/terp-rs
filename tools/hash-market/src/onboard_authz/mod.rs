@@ -1213,3 +1213,23 @@ mod tests {
         );
     }
 }
+
+/// Feegrant (mint-only AllowedMsgAllowance) used by headstash-register-relay. Ported from terp-rs-headstash-membership-vk.
+pub fn headstash_feegrant(granter: &str, grantee: &str, denom: &str, spend_limit: u64, expiration: &str) -> serde_json::Value {
+    let scope = AllowanceScope::mint_only();
+    debug_assert!(scope.is_sound());
+    serde_json::json!({
+        "@type": "/cosmos.feegrant.v1beta1.MsgGrantAllowance",
+        "granter": granter,
+        "grantee": grantee,
+        "allowance": {
+            "@type": "/cosmos.feegrant.v1beta1.AllowedMsgAllowance",
+            "allowance": {
+                "@type": "/cosmos.feegrant.v1beta1.BasicAllowance",
+                "spend_limit": [{ "denom": denom, "amount": spend_limit.to_string() }],
+                "expiration": expiration
+            },
+            "allowed_messages": scope.allowed
+        }
+    })
+}

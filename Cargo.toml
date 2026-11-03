@@ -584,3 +584,11 @@ zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }
 # the lock does not keep a second dregg still on k256 0.13.
 [patch."https://github.com/permissionlessweb/terp-rs"]
 dregg = { path = "tools/svg-mint/crates/dregg" }
+
+# cosmos-rust (via ict-rs, cw-orch-kms "ict") pins tendermint-rs by git. Route it to the same path fork
+# so one tendermint is in the graph (cosmrs::crypto::PublicKey: From<tendermint::PublicKey>); mirrors ../ict-rs/Cargo.toml.
+[patch."https://github.com/permissionlessweb/tendermint-rs"]
+tendermint = { path = "../tendermint-rs/tendermint" }
+tendermint-config = { path = "../tendermint-rs/config" }
+tendermint-proto = { path = "../tendermint-rs/proto" }
+tendermint-rpc = { path = "../tendermint-rs/rpc" }
