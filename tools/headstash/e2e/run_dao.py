@@ -168,6 +168,98 @@ def kms_dao_run(D, name, title, msgs):
     R.setdefault("dao_proposals", {})[name] = {"id": pid, "via": "mainnet_deploy dao-propose/vote/dao-execute", "sha": sha, "status": st, "msgs": len(msgs)}
     return {"code": 0 if ex.returncode == 0 else 1, "raw_log": ex.stdout[-300:]}, pid, st
 
+def get(path):
+    import urllib.request, urllib.error
+    try: return json.loads(urllib.request.urlopen(REST + path, timeout=20).read())
+    except urllib.error.HTTPError as e: return json.loads(e.read() or b"{}")
+
+def kms_gov_circuit_and_bind(D, inst, TOKENS, PROPOSER, cdir):
+    """x/gov circuit via mainnet_deploy circuit-propose / gov-vote (no terpd for gov/DAO actions), then DAO prop 2
+    from the sha-pinned template with --zk-id. terpd is used only for fixture prep (funding, stake) and REST reads."""
+    m3 = terpd("keys", "show", "dao_m3", "-a", "--keyring-backend", "test", "--home", HOME).strip()
+    GOVADDR = get("/cosmos/auth/v1beta1/module_accounts/gov")["account"]["base_account"]["address"]
+    gp = get("/cosmos/gov/v1/params/deposit")["params"]
+    MIN = int([c for c in gp["min_deposit"] if c["denom"] == "uterp"][0]["amount"])
+    INIT = MIN // 2
+    # fixture: dao_m3 gets funds + a majority stake so its gov vote decides (validator self-bond is 1 TERP)
+    tx("owner", 300000, "bank", "send", R["addresses"]["OWNER_ADDR"], m3, "100000000uterp")
+    val = get("/cosmos/staking/v1beta1/validators")["validators"][0]["operator_address"]
+    tx("dao_m3", 400000, "staking", "delegate", val, "20000000uterp")
+    body = {"@type": "/cosmos.gov.v1.MsgSubmitProposal",
+            "messages": [{"@type": "/cosmwasm.wasm.v1.MsgStoreFullCircuit", "sender": GOVADDR,
+                          "auth": {"circuit_type": "0", "curve_type": "0", "k": "11"},
+                          "params_body": base64.b64encode(open(os.path.join(cdir, "params.bin"), "rb").read()).decode(),
+                          "vk_body": base64.b64encode(open(os.path.join(cdir, "vk_body.bin"), "rb").read()).decode()}],
+            "initial_deposit": [{"denom": "uterp", "amount": str(INIT)}], "proposer": PROPOSER, "metadata": "",
+            "title": "Headstash local: store the note circuit", "summary": "local e2e of mainnet_deploy circuit-propose", "expedited": False}
+    f = os.path.join(RUN, "gov_circuit.inner.json"); json.dump(body, open(f, "w"), indent=1)
+    sha = hashlib.sha256(open(f, "rb").read()).hexdigest()
+    G = ["--wait-secs", "120"]
+    bad = kms("dao_m3", "circuit-propose", D, "circ-badsha", "--proposal-file", f, "--proposal-sha", "00" * 32, "--set-proposer")
+    step("gov_circuit_sha_mismatch_refused_before_grant", bad.returncode != 0 and "refused before any grant" in bad.stdout + bad.stderr
+         and "gov proposal" not in bad.stdout, (bad.stdout + bad.stderr)[-200:])
+    bad = kms("dao_m3", "circuit-propose", D, "circ-proposer", "--proposal-file", f, "--proposal-sha", sha)
+    step("gov_circuit_foreign_proposer_refused_before_grant", bad.returncode != 0 and "refused before any grant: file proposer" in bad.stdout + bad.stderr,
+         (bad.stdout + bad.stderr)[-200:])
+    np0 = len(get("/cosmos/gov/v1/proposals").get("proposals", []))
+    b0 = int(get("/cosmos/bank/v1beta1/balances/%s/by_denom?denom=uterp" % m3)["balance"]["amount"])
+    p = kms("dao_m3", "circuit-propose", D, "circ", "--proposal-file", f, "--proposal-sha", sha, "--set-proposer", "--vote", "yes", *G)
+    out = p.stdout + p.stderr
+    import re
+    m = re.search(r"gov proposal (\d+) \(tx", p.stdout)
+    step("gov_circuit_encoded_round_trip", "/cosmwasm.wasm.v1.MsgStoreFullCircuit" in p.stdout and "round-trip ok" in p.stdout
+         and "min_deposit %duterp" % MIN in p.stdout, out[-400:])
+    step("gov_circuit_submitted_topped_up_voted", p.returncode == 0 and bool(m) and "top-up: deposited %duterp" % (MIN - INIT) in p.stdout
+         and "voted yes on gov proposal" in p.stdout, out[-400:])
+    if not m: return None
+    gpid = int(m.group(1))
+    pp = get("/cosmos/gov/v1/proposals/%d" % gpid)["proposal"]
+    cm = pp["messages"][0]  # the chain's own decode of our proto bytes
+    step("gov_chain_decode_matches_file", cm["@type"] == body["messages"][0]["@type"] and cm["sender"] == GOVADDR
+         and int(cm["auth"]["k"]) == 11 and int(cm["auth"].get("circuit_type", 0)) == 0 and int(cm["auth"].get("curve_type", 0)) == 0
+         and cm["params_body"] == body["messages"][0]["params_body"] and cm["vk_body"] == body["messages"][0]["vk_body"],
+         json.dumps({k: (v if len(str(v)) < 80 else len(str(v))) for k, v in cm.items()}))
+    deps = get("/cosmos/gov/v1/proposals/%d/deposits" % gpid).get("deposits", [])
+    tot = sum(int(c["amount"]) for c in pp.get("total_deposit", []) if c["denom"] == "uterp")
+    step("gov_deposit_from_granter_full_min", pp["proposer"] == m3 and tot == MIN and all(d["depositor"] == m3 for d in deps)
+         and b0 - int(get("/cosmos/bank/v1beta1/balances/%s/by_denom?denom=uterp" % m3)["balance"]["amount"]) >= MIN,
+         "proposer %s total %d deps %s" % (pp["proposer"], tot, json.dumps(deps)[:200]))
+    v = kms("dao_m2", "gov-vote", D, "circ", "--proposals", str(gpid), "--vote", "yes", "--wait-pass", *G)
+    pp = get("/cosmos/gov/v1/proposals/%d" % gpid)["proposal"]
+    step("gov_vote_phase_and_passed", v.returncode == 0 and "PASSED" in v.stdout and pp["status"] == "PROPOSAL_STATUS_PASSED",
+         "%s %s" % (pp["status"], (v.stdout + v.stderr)[-300:]))
+    zk_id = None
+    for z in range(1, 6):
+        try:
+            ci = get("/cosmwasm/wasm/v1/circuit-info/%d" % z)
+            if ci and "code" not in ci: zk_id = z
+        except Exception: pass
+    step("circuit_stored_by_gov", zk_id is not None, "zk_id %s" % zk_id)
+    R["zk_id"] = zk_id
+    if zk_id is None: return None
+    # DAO prop 2 from the template (same shape as dao-flow/40-dao-prop2-bind.template.propose.json)
+    tmpl = {"propose": {"msg": {"propose": {"title": "Headstash local: bind note circuit zk_id {{ZK_ID}}", "description": "local e2e prop 2",
+            "msgs": [{"wasm": {"execute": {"contract_addr": inst[t]["addr"], "funds": [],
+                      "msg": base64.b64encode(b'{"bind_note_circuit":{"zk_id":"{{ZK_ID}}"}}').decode()}}} for t in TOKENS]}}}}
+    tf = os.path.join(RUN, "dao_prop2_bind.template.propose.json"); json.dump(tmpl, open(tf, "w"), indent=1)
+    tsha = hashlib.sha256(open(tf, "rb").read()).hexdigest()
+    bad = kms("dao_m3", "dao-propose", D, "p2-nozk", "--dao", D["core"], "--propose-file", tf, "--propose-sha", tsha, "--vote", "yes")
+    step("prop2_template_without_zk_id_refused", bad.returncode != 0 and "unresolved" in bad.stdout + bad.stderr, (bad.stdout + bad.stderr)[-200:])
+    p = kms("dao_m3", "dao-propose", D, "p2", "--dao", D["core"], "--propose-file", tf, "--propose-sha", tsha, "--zk-id", str(zk_id), "--vote", "yes")
+    m = re.search(r"proposal (\d+)", p.stdout)
+    step("prop2_kms_dao_propose_zk_id", p.returncode == 0 and bool(m) and '"zk_id":%d' % zk_id in p.stdout and "voted yes" in p.stdout, (p.stdout + p.stderr)[-300:])
+    if not m: return zk_id
+    pid = int(m.group(1))
+    kms("dao_m2", "dao-vote", D, "p2", "--dao", D["core"], "--proposals", str(pid))
+    ex = kms("dao_m2", "dao-execute", D, "p2", "--dao", D["core"], "--proposals", str(pid))
+    st = smart(D["proposal"], {"proposal": {"proposal_id": pid}})["proposal"]["status"]
+    step("dao_prop2_bind_executed", ex.returncode == 0 and st == "executed", "proposal %s %s %s" % (pid, st, (ex.stdout + ex.stderr)[-200:]))
+    rb = kms("dao_m3", "dao-propose", D, "p2", "--dao", D["core"], "--propose-file", tf, "--propose-sha", tsha, "--zk-id", str(zk_id), "--vote", "yes")
+    step("prop2_rerun_is_noop", rb.returncode == 0 and "nothing to do" in rb.stdout, rb.stdout[-200:])
+    R.setdefault("dao_proposals", {})["prop2_bind"] = {"id": pid, "via": "mainnet_deploy dao-propose --zk-id", "template_sha": tsha, "status": st}
+    R["circuit_proposal"] = {"id": gpid, "via": "mainnet_deploy circuit-propose / gov-vote", "sha": sha, "status": pp["status"]}
+    return zk_id
+
 def main():
     b.R = R
     addrs = dict(l.strip().split("=", 1) for l in open(os.path.join(HOME, "addresses.env")) if "=" in l)
@@ -287,6 +379,8 @@ def main():
         info = smart(c, {"direct_claim": {}})
         step("%s_direct_ctx_matches" % t, base64.b64decode(info["expected_ctx"]) == i["ctx"], json.dumps(info)[:160])
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
+    if KMS_BIN and os.environ.get("KMS_GOV") == "1":
+        kms_gov_circuit_and_bind(D, inst, TOKENS, PROPOSER, cdir); save(); return
     if os.environ.get("STOP_AFTER_PROP1") == "1": return
     # tokenfactory is locked: the DAO itself can no longer mint, set metadata or change admin
     for t in TOKENS:

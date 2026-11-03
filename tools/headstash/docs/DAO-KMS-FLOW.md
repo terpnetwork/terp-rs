@@ -27,7 +27,7 @@ If the creation policy is `anyone`, the proposal goes straight to the module as
 `{propose:{title,description,msgs,proposer:null}}`. Otherwise it goes to the pre-propose as `{propose:{msg:{propose:{...}}}}`.
 
 **Deposits:** the phase reads the pre-propose `config.deposit_info`. If a deposit is required, it refuses
-before any grant, because the scoped grant carries no funds. Deposit support is still TODO.
+before any grant, because the scoped grant carries no funds. DAO pre-propose deposit support is still TODO (x/gov deposits: see `circuit-propose` below).
 
 ## dao-propose flags
 
@@ -81,3 +81,35 @@ e2e: `KMS_DEPLOY_BIN=... HARNESS=dao STOP_AFTER_PROP1=1 tools/headstash/e2e/run-
 - `circuit-propose` (x/gov MsgSubmitProposal wrapping the circuit store). It needs a generic-authz grant for
   `/cosmos.gov.v1.MsgSubmitProposal` with a deposit and proto encoding of the inner circuit msg, which is a bigger change.
 - Rewriting `daos` on top of the generic path.
+
+## Templates: `--zk-id` / `--param`
+
+`dao-propose` accepts a template propose file containing `{{K}}` placeholders in the title, the description, and the
+base64 `msg` of wasm execute/instantiate/instantiate2/migrate messages. `--param K=V` (repeatable) or
+`--zk-id N` (= `--param ZK_ID=N`) substitutes them. A quoted `"{{K}}"` becomes a bare number when V is an integer.
+The sha pin covers the template file. The state key is sha256(file sha | params), so each value is a distinct proposal.
+It refuses before any grant if a placeholder is unresolved or a param is unused.
+
+Prop 2 (bind): `deploy/rendered-mainnet/dao-flow/40-dao-prop2-bind.template.propose.json`. `--zk-id` comes from
+the passed circuit proposal (`GET /cosmwasm/wasm/v1/circuit-info/N`).
+
+## circuit-propose / gov-propose / gov-vote (x/gov)
+
+`circuit-propose` (alias `gov-propose`) submits a rendered `cosmos.gov.v1.MsgSubmitProposal` JSON with any messages:
+`--proposal-file F --proposal-sha HEX`. The order of checks, all of them before any grant:
+1. sha pin
+2. every message `@type` is known (MsgStoreFullCircuit/MsgStoreCircuit are encoded natively; any other type passes through as `{"@type","@value_b64"}`); an unknown field is refused
+3. proto encode plus a decode round-trip that must equal the file
+4. sender/authority must be the gov module account
+5. the deposit is in the gov `min_deposit` denom (uterp), read from the chain (expedited-aware); the initial deposit must be at least ceil(min x min_initial_deposit_ratio)
+6. a top-up MsgDeposit up to min_deposit, unless `--no-top-up`
+7. the file proposer must equal the signer, otherwise pass `--set-proposer`
+8. the signer uterp balance must cover initial + top-up
+
+Fees are in uthiol (feegrant). authz is a GenericAuthorization for MsgSubmitProposal (+ MsgDeposit, + MsgVote with `--vote`) only,
+revoked afterwards. **authz cannot spend-limit gov deposits:** the deposit is bounded only by the pre-grant balance check and the
+type scoping. `--vote yes|no|abstain` votes from the submitter; `--wait-pass` polls until PASSED.
+
+`gov-vote` refuses before any grant unless the proposal is in its voting period.
+
+Local e2e: `KMS_GOV=1` in run_dao.py (gov circuit proposal passes -> zk_id -> DAO prop 2 template with `--zk-id` -> executed).

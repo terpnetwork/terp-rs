@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote", "dao-propose", "dao-vote", "dao-execute"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote", "dao-propose", "dao-vote", "dao-execute", "circuit-propose", "gov-propose", "gov-vote"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -254,6 +254,24 @@ struct Cli {
     wait_pass: bool,
     #[arg(long, default_value_t = 300)]
     wait_secs: u64,
+    /// circuit-propose / gov-propose: a rendered cosmos.gov.v1.MsgSubmitProposal JSON (any messages).
+    #[arg(long)]
+    proposal_file: Option<PathBuf>,
+    /// sha256 pin of --proposal-file; a mismatch refuses before any grant.
+    #[arg(long)]
+    proposal_sha: Option<String>,
+    /// gov-propose: replace the file's proposer with the signer (the kms granter). Without it a mismatch refuses.
+    #[arg(long)]
+    set_proposer: bool,
+    /// gov-propose: do not top the deposit up to min_deposit with a MsgDeposit (default: top up).
+    #[arg(long)]
+    no_top_up: bool,
+    /// dao-propose: substitute {{ZK_ID}} in a template proposal (shorthand for --param ZK_ID=N).
+    #[arg(long)]
+    zk_id: Option<u64>,
+    /// dao-propose: template substitution K=V for {{K}} inside wasm msgs / title / description.
+    #[arg(long)]
+    param: Vec<String>,
     /// JSON array of terp_oracle::AltAsset for raffle/svg-minter oracle_pricing ("$AGGREGATOR" placeholder).
     #[arg(long)]
     oracle_alt_assets: Option<PathBuf>,
@@ -277,6 +295,25 @@ struct Cli {
     #[arg(long)]
     skip_code: Vec<String>,
 }
+
+// Channel type (tonic) is not a direct dependency here; macros let the compiler infer it.
+macro_rules! gov_proposal { ($ch:expr, $rt:expr, $pid:expr) => {{
+    use cosmos_sdk_proto::cosmos::gov::v1::{query_client::QueryClient, QueryProposalRequest};
+    let pid: u64 = $pid;
+    $rt.block_on(QueryClient::new($ch).proposal(QueryProposalRequest { proposal_id: pid })).map_err(|e| anyhow!("gov proposal {pid}: {e}"))
+        .and_then(|r| r.into_inner().proposal.ok_or_else(|| anyhow!("gov proposal {pid}: empty")))
+}}; }
+macro_rules! gov_deposit_params { ($ch:expr, $rt:expr) => {{
+    use cosmos_sdk_proto::cosmos::gov::v1::{query_client::QueryClient, QueryParamsRequest};
+    $rt.block_on(QueryClient::new($ch).params(QueryParamsRequest { params_type: "deposit".into() })).map_err(|e| anyhow!("gov params: {e}"))
+        .and_then(|r| r.into_inner().params.ok_or_else(|| anyhow!("gov params: empty (pre-v0.47 chain?)")))
+}}; }
+macro_rules! bank_balance { ($ch:expr, $rt:expr, $addr:expr, $denom:expr) => {{
+    use cosmos_sdk_proto::cosmos::bank::v1beta1::{query_client::QueryClient, QueryBalanceRequest};
+    let (addr, denom): (&str, &str) = ($addr, $denom);
+    $rt.block_on(QueryClient::new($ch).balance(QueryBalanceRequest { address: addr.into(), denom: denom.into() })).map_err(|e| anyhow!("balance {addr}: {e}"))
+        .map(|r| r.into_inner().balance.map(|c| c.amount.parse::<u128>().unwrap_or(0)).unwrap_or(0))
+}}; }
 
 // ---------------------------------------------------------------- state
 
@@ -360,6 +397,14 @@ enum Step {
     DaoVote { id: String, module: String, of: String, choice: String },
     /// Generic: execute the proposal created by step `of` once `passed` (polls up to `wait_secs`).
     DaoExec { id: String, module: String, of: String, wait_secs: u64 },
+    /// x/gov: granter submits a MsgSubmitProposal (proto bytes, proposer = granter).
+    GovSubmit { id: String, title: String, msg: Vec<u8>, deposit: String },
+    /// x/gov: granter deposits `amount` on the proposal created by step `of`.
+    GovDeposit { id: String, of: String, amount: u128, denom: String },
+    /// x/gov: granter votes `choice` on proposal `pid` or the one created by step `of`.
+    GovVote { id: String, of: Option<String>, pid: Option<u64>, choice: String },
+    /// x/gov: poll until the proposal is PASSED (no tx).
+    GovWait { id: String, of: Option<String>, pid: Option<u64>, wait_secs: u64 },
     /// Free-form step the runtime does itself (e.g. smoke test).
     Custom { id: String, what: String },
 }
@@ -374,6 +419,11 @@ impl Step {
             Step::Vote { id, module, of } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": "yes"}),
             Step::DaoVote { id, module, of, choice } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": choice}),
             Step::DaoExec { id, module, of, wait_secs } => json!({"execute_as_granter": id, "module": module, "proposal_of": of, "wait_secs": wait_secs}),
+            Step::GovSubmit { id, title, msg, deposit } => json!({"gov_submit_as_granter": id, "title": title, "initial_deposit": deposit,
+                "msg_bytes": msg.len(), "msg_sha256": hex_lower(&Sha256::digest(msg))}),
+            Step::GovDeposit { id, of, amount, denom } => json!({"gov_deposit_as_granter": id, "proposal_of": of, "amount": format!("{amount}{denom}")}),
+            Step::GovVote { id, of, pid, choice } => json!({"gov_vote_as_granter": id, "proposal_of": of, "proposal_id": pid, "vote": choice}),
+            Step::GovWait { id, of, pid, wait_secs } => json!({"gov_wait_passed": id, "proposal_of": of, "proposal_id": pid, "wait_secs": wait_secs}),
             Step::Custom { id, what } => json!({"custom": id, "what": what}),
         }
     }
@@ -461,7 +511,9 @@ impl Ctx {
             let done = match &s {
                 Step::Store { name, .. } => self.code_on_chain(name)?,
                 Step::Inst { name, .. } => self.contract_on_chain(name),
-                Step::Exec { id, .. } | Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::DaoVote { id, .. } | Step::DaoExec { id, .. } | Step::Custom { id, .. } => self.state.done.contains(id),
+                Step::Exec { id, .. } | Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::DaoVote { id, .. } | Step::DaoExec { id, .. } | Step::Custom { id, .. }
+                | Step::GovSubmit { id, .. } | Step::GovDeposit { id, .. } | Step::GovVote { id, .. } => self.state.done.contains(id),
+                Step::GovWait { .. } => false,
             };
             if done { println!("  skip {}", s.describe()); } else { out.push(s); }
         }
@@ -532,6 +584,8 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
     let mut session = ApprovalSession::open(&granter);
     let mut execs: BTreeMap<String, (BTreeSet<String>, u64)> = BTreeMap::new();
     let mut actions = Vec::new();
+    let mut sdk: BTreeSet<&str> = BTreeSet::new();
+    let mut extra_fee_txs = 0u64;
     for s in steps {
         match s {
             Step::Store { file, .. } => { session = session.allow_store(&read(&ctx.dir, file)?).map_err(|e| anyhow!(e))?; }
@@ -545,6 +599,10 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
             Step::Exec { contract, key, .. } | Step::ExecAs { contract, key, .. } => { let e = execs.entry(contract.clone()).or_default(); e.0.insert(key.clone()); e.1 += 1; }
             Step::Vote { module, .. } | Step::DaoVote { module, .. } => { let e = execs.entry(module.clone()).or_default(); e.0.insert("vote".into()); e.1 += 1; }
             Step::DaoExec { module, .. } => { let e = execs.entry(module.clone()).or_default(); e.0.insert("execute".into()); e.1 += 1; }
+            Step::GovSubmit { msg, .. } => { sdk.insert(MSG_SUBMIT_PROPOSAL); extra_fee_txs += 1 + msg.len() as u64 / 25_000; }
+            Step::GovDeposit { .. } => { sdk.insert(MSG_DEPOSIT); }
+            Step::GovVote { .. } => { sdk.insert(MSG_GOV_VOTE); }
+            Step::GovWait { .. } => {}
         }
         actions.push(SigningRequest::new("session-key").body(format!("{phase}: {}", s.describe())));
     }
@@ -553,9 +611,10 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
         // session close then fails revoking a grant that no longer exists.
         session = session.allow_execute(ScopedCall { address, keys: keys.into_iter().collect(), calls: calls + 1, funds: vec![] }).map_err(|e| anyhow!(e))?;
     }
+    for t in sdk { session = session.allow_sdk(t).map_err(|e| anyhow!(e))?; }
     session.ttl_secs = ctx.cli.ttl_secs;
     session.account_index = ctx.cli.account_index;
-    session.allowance_limit = planned_spend_limit(steps.len() as u64 + 1);
+    session.allowance_limit = planned_spend_limit(steps.len() as u64 + 1 + extra_fee_txs);
     session.retain = ctx.cli.retain;
     let run = enable_session(&builder, session, actions).map_err(|e| anyhow!(e))?;
     if Some(run.daemon.sender_addr().to_string()) != ctx.creator {
@@ -672,6 +731,50 @@ fn run_steps(ctx: &mut Ctx, phase: &str, signer: &Signer, steps: &[Step]) -> Res
                 ctx.state.done.insert(id.clone());
                 ctx.state.tx(phase, id, &r)?;
                 signer.note(&format!("ok {id}"));
+            }
+            Step::GovSubmit { id, msg, .. } => {
+                let any = cosmrs::Any { type_url: MSG_SUBMIT_PROPOSAL.into(), value: msg.clone() };
+                let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![any], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
+                let pid: u64 = r.event_attr_value("submit_proposal", "proposal_id").map_err(|e| anyhow!("{id}: no proposal_id event: {e}"))?.parse()?;
+                ctx.state.proposals.insert(id.clone(), pid);
+                println!("  {id}: gov proposal {pid} (tx {}, gas {})", r.txhash, r.gas_used);
+                ctx.state.done.insert(id.clone());
+                ctx.state.tx(phase, id, &r)?;
+                signer.note(&format!("ok {id} -> gov proposal {pid}"));
+            }
+            Step::GovDeposit { id, of, amount, denom } => {
+                let depositor = granter_or_local(signer, id)?;
+                let pid = *ctx.state.proposals.get(of).ok_or_else(|| anyhow!("{id}: proposal of {of} unknown"))?;
+                let m = cosmos_sdk_proto::cosmos::gov::v1::MsgDeposit { proposal_id: pid, depositor,
+                    amount: vec![cosmos_sdk_proto::cosmos::base::v1beta1::Coin { denom: denom.clone(), amount: amount.to_string() }] };
+                let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![kms_gate::any(MSG_DEPOSIT, &m)], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
+                println!("  {id}: deposited {amount}{denom} on gov proposal {pid}");
+                ctx.state.done.insert(id.clone());
+                ctx.state.tx(phase, id, &r)?;
+                signer.note(&format!("ok {id}"));
+            }
+            Step::GovVote { id, of, pid, choice } => {
+                let voter = granter_or_local(signer, id)?;
+                let pid = gov_pid(ctx, id, of, pid)?;
+                let m = cosmos_sdk_proto::cosmos::gov::v1::MsgVote { proposal_id: pid, voter, option: gov_option(choice)?, metadata: String::new() };
+                let r = d.rt_handle.block_on(d.sender().commit_tx_any(vec![kms_gate::any(MSG_GOV_VOTE, &m)], Some(id.as_str()))).map_err(|e| anyhow!("{id}: {e}"))?;
+                println!("  {id}: voted {choice} on gov proposal {pid}");
+                ctx.state.done.insert(id.clone());
+                ctx.state.tx(phase, id, &r)?;
+                signer.note(&format!("ok {id}"));
+            }
+            Step::GovWait { id, of, pid, wait_secs } => {
+                let pid = gov_pid(ctx, id, of, pid)?;
+                let t0 = std::time::Instant::now();
+                loop {
+                    let p = gov_proposal!(d.channel(), &d.rt_handle, pid)?;
+                    match p.status {
+                        3 => { println!("  {id}: gov proposal {pid} PASSED (messages executed by x/gov)"); break; }
+                        4 | 5 => bail!("{id}: gov proposal {pid} ended with status {} (failed_reason {:?})", p.status, p.failed_reason),
+                        _ if t0.elapsed().as_secs() >= *wait_secs => bail!("{id}: gov proposal {pid} still status {} after {wait_secs}s", p.status),
+                        _ => std::thread::sleep(std::time::Duration::from_secs(5)),
+                    }
+                }
             }
             Step::Custom { id, .. } if id == "authenticators:smoke" => smoke(ctx, phase, d)?,
             Step::Custom { id, what } if id == "foundation:vote" => foundation_vote(ctx, phase, signer, d, what)?,
@@ -922,6 +1025,18 @@ fn dao_propose(ctx: &mut Ctx) -> Result<()> {
     } else {
         let m: Vec<Value> = serde_json::from_slice(&bytes)?;
         (ctx.cli.title.clone().ok_or_else(|| anyhow!("--msgs-file needs --title"))?, ctx.cli.description.clone(), m)
+    };
+    let mut params: Vec<(String, String)> = Vec::new();
+    for kv in &ctx.cli.param {
+        let (k, v) = kv.split_once('=').ok_or_else(|| anyhow!("--param {kv}: expected K=V"))?;
+        params.push((k.to_string(), v.to_string()));
+    }
+    if let Some(z) = ctx.cli.zk_id { params.push(("ZK_ID".into(), z.to_string())); }
+    let (title, description, msgs) = substitute_template(&title, &description, msgs, &params)?;
+    let got = if params.is_empty() { got } else {
+        let p: Vec<String> = params.iter().map(|(k, v)| format!("{k}={v}")).collect();
+        println!("  template params {} applied", p.join(","));
+        hex_lower(&Sha256::digest(format!("{got}|{}", p.join(";")).as_bytes()))
     };
     if msgs.is_empty() || title.is_empty() { bail!("dao-propose: {} has no msgs / title", src.display()); }
     if let Some(c) = &ctx.cli.vote_choice { if !["yes", "no", "abstain"].contains(&c.as_str()) { bail!("--vote: yes | no | abstain"); } }
@@ -1399,6 +1514,8 @@ fn main() -> Result<()> {
             "daos" => daos(&mut ctx)?,
             "vote" | "dao-vote" | "dao-execute" => vote(&mut ctx, phase)?,
             "dao-propose" => dao_propose(&mut ctx)?,
+            "circuit-propose" | "gov-propose" => gov_propose(&mut ctx, phase)?,
+            "gov-vote" => gov_vote(&mut ctx)?,
             "oracles" => oracles(&mut ctx)?,
             "nftfi" => nftfi(&mut ctx)?,
             "authenticators" => authenticators(&mut ctx)?,
@@ -1423,4 +1540,330 @@ fn msg_add_authenticator(sender: &str, kind: &str, data: &[u8]) -> Vec<u8> {
         out.push(tag); varint(bytes.len() as u64, &mut out); out.extend_from_slice(bytes);
     }
     out
+}
+
+// ---------------------------------------------------------------- x/gov: gov-propose / circuit-propose / gov-vote
+
+const MSG_SUBMIT_PROPOSAL: &str = "/cosmos.gov.v1.MsgSubmitProposal";
+const MSG_DEPOSIT: &str = "/cosmos.gov.v1.MsgDeposit";
+const MSG_GOV_VOTE: &str = "/cosmos.gov.v1.MsgVote";
+const MSG_STORE_FULL_CIRCUIT: &str = "/cosmwasm.wasm.v1.MsgStoreFullCircuit";
+const MSG_STORE_CIRCUIT: &str = "/cosmwasm.wasm.v1.MsgStoreCircuit";
+
+/// Minimal protobuf wire writer/reader for messages with no Rust proto type in this tree
+/// (the zk circuit msgs live only in the permissionlessweb wasmd fork, proto/cosmwasm/wasm/v1/tx.proto).
+mod pb {
+    use anyhow::{bail, Result};
+    pub fn varint(mut v: u64, out: &mut Vec<u8>) { loop { let b = (v & 0x7f) as u8; v >>= 7; if v == 0 { out.push(b); break } out.push(b | 0x80); } }
+    fn key(field: u32, wt: u64, out: &mut Vec<u8>) { varint(((field as u64) << 3) | wt, out) }
+    /// proto3 scalar: zero is omitted (same as gogoproto Marshal).
+    pub fn uint(field: u32, v: u64, out: &mut Vec<u8>) { if v != 0 { key(field, 0, out); varint(v, out) } }
+    pub fn bytes(field: u32, b: &[u8], out: &mut Vec<u8>) { if !b.is_empty() { key(field, 2, out); varint(b.len() as u64, out); out.extend_from_slice(b) } }
+    /// embedded message: always emitted when present (non-nil pointer / non-nullable).
+    pub fn msg(field: u32, b: &[u8], out: &mut Vec<u8>) { key(field, 2, out); varint(b.len() as u64, out); out.extend_from_slice(b) }
+    pub enum Val<'a> { V(u64), B(&'a [u8]) }
+    fn read_varint(buf: &[u8], i: &mut usize) -> Result<u64> {
+        let mut v = 0u64; let mut shift = 0;
+        loop {
+            let Some(&b) = buf.get(*i) else { bail!("truncated varint") };
+            *i += 1; v |= ((b & 0x7f) as u64) << shift;
+            if b & 0x80 == 0 { return Ok(v) }
+            shift += 7; if shift > 63 { bail!("varint overflow") }
+        }
+    }
+    pub fn fields(buf: &[u8]) -> Result<Vec<(u32, Val<'_>)>> {
+        let mut i = 0; let mut out = Vec::new();
+        while i < buf.len() {
+            let k = read_varint(buf, &mut i)?;
+            let (f, wt) = ((k >> 3) as u32, k & 7);
+            match wt {
+                0 => out.push((f, Val::V(read_varint(buf, &mut i)?))),
+                2 => { let n = read_varint(buf, &mut i)? as usize; if i + n > buf.len() { bail!("truncated field {f}") } out.push((f, Val::B(&buf[i..i + n]))); i += n; }
+                _ => bail!("field {f}: unsupported wire type {wt}"),
+            }
+        }
+        Ok(out)
+    }
+}
+
+fn json_u64(v: &Value, what: &str) -> Result<u64> {
+    match v {
+        Value::Null => Ok(0),
+        Value::Number(n) => n.as_u64().ok_or_else(|| anyhow!("{what}: not a u64")),
+        Value::String(s) => s.parse().map_err(|e| anyhow!("{what}: {s:?}: {e}")),
+        _ => bail!("{what}: not a u64"),
+    }
+}
+fn json_b64(v: &Value, what: &str) -> Result<Vec<u8>> {
+    let s = v.as_str().ok_or_else(|| anyhow!("{what}: base64 string required"))?;
+    Ok(Binary::from_base64(s).map_err(|e| anyhow!("{what}: {e}"))?.to_vec())
+}
+fn only_keys(m: &Value, allowed: &[&str], what: &str) -> Result<()> {
+    for k in m.as_object().ok_or_else(|| anyhow!("{what}: not an object"))?.keys() {
+        if !allowed.contains(&k.as_str()) { bail!("{what}: field {k:?} has no encoder (refusing to drop it)"); }
+    }
+    Ok(())
+}
+
+/// Canonical JSON form of a gov message (what encode() writes and decode() reads back).
+fn gov_msg_canonical(m: &Value) -> Result<Value> {
+    let t = m["@type"].as_str().ok_or_else(|| anyhow!("message without @type"))?;
+    let b64 = |b: Vec<u8>| Binary::from(b).to_base64();
+    Ok(match t {
+        MSG_STORE_FULL_CIRCUIT => {
+            only_keys(m, &["@type", "sender", "auth", "params_body", "vk_body"], t)?;
+            only_keys(&m["auth"], &["circuit_type", "curve_type", "k"], "auth")?;
+            json!({"@type": t, "sender": m["sender"].as_str().unwrap_or_default(),
+                "auth": {"circuit_type": json_u64(&m["auth"]["circuit_type"], "auth.circuit_type")?.to_string(),
+                         "curve_type": json_u64(&m["auth"]["curve_type"], "auth.curve_type")?.to_string(),
+                         "k": json_u64(&m["auth"]["k"], "auth.k")?.to_string()},
+                "params_body": b64(json_b64(&m["params_body"], "params_body")?), "vk_body": b64(json_b64(&m["vk_body"], "vk_body")?)})
+        }
+        MSG_STORE_CIRCUIT => {
+            only_keys(m, &["@type", "sender", "param_key", "vk_body", "instantiate_permission"], t)?;
+            if !m["instantiate_permission"].is_null() { bail!("{t}: instantiate_permission has no encoder; use {{\"@type\",\"@value_b64\"}}"); }
+            json!({"@type": t, "sender": m["sender"].as_str().unwrap_or_default(),
+                "param_key": json_u64(&m["param_key"], "param_key")?.to_string(), "vk_body": b64(json_b64(&m["vk_body"], "vk_body")?)})
+        }
+        _ => {
+            only_keys(m, &["@type", "@value_b64"], t).map_err(|_| anyhow!("{t}: no encoder; pass it as {{\"@type\": \"{t}\", \"@value_b64\": <proto bytes>}}"))?;
+            json!({"@type": t, "@value_b64": b64(json_b64(&m["@value_b64"], "@value_b64")?)})
+        }
+    })
+}
+
+fn gov_msg_encode(m: &Value) -> Result<cosmos_sdk_proto::Any> {
+    let c = gov_msg_canonical(m)?;
+    let t = c["@type"].as_str().unwrap().to_string();
+    let mut out = Vec::new();
+    match t.as_str() {
+        MSG_STORE_FULL_CIRCUIT => {
+            // MsgStoreFullCircuit { sender = 1, auth = 2 CircuitParamAuth { circuit_type = 1, curve_type = 2, k = 3 }, params_body = 3, vk_body = 4 }
+            let mut auth = Vec::new();
+            for (f, k) in [(1, "circuit_type"), (2, "curve_type"), (3, "k")] { pb::uint(f, json_u64(&c["auth"][k], k)?, &mut auth); }
+            pb::bytes(1, c["sender"].as_str().unwrap().as_bytes(), &mut out);
+            pb::msg(2, &auth, &mut out);
+            pb::bytes(3, &json_b64(&c["params_body"], "params_body")?, &mut out);
+            pb::bytes(4, &json_b64(&c["vk_body"], "vk_body")?, &mut out);
+        }
+        MSG_STORE_CIRCUIT => {
+            // MsgStoreCircuit { sender = 1, param_key = 2, vk_body = 3, instantiate_permission = 4 }
+            pb::bytes(1, c["sender"].as_str().unwrap().as_bytes(), &mut out);
+            pb::uint(2, json_u64(&c["param_key"], "param_key")?, &mut out);
+            pb::bytes(3, &json_b64(&c["vk_body"], "vk_body")?, &mut out);
+        }
+        _ => out = json_b64(&c["@value_b64"], "@value_b64")?,
+    }
+    Ok(cosmos_sdk_proto::Any { type_url: t, value: out })
+}
+
+/// Independent wire decode back to canonical JSON (round-trip check).
+fn gov_msg_decode(a: &cosmos_sdk_proto::Any) -> Result<Value> {
+    use pb::Val;
+    let s = |b: &[u8]| String::from_utf8(b.to_vec()).map_err(|e| anyhow!("{e}"));
+    let b64 = |b: &[u8]| Binary::from(b.to_vec()).to_base64();
+    Ok(match a.type_url.as_str() {
+        MSG_STORE_FULL_CIRCUIT => {
+            let (mut sender, mut auth, mut params, mut vk) = (String::new(), [0u64; 3], String::new(), String::new());
+            for (f, v) in pb::fields(&a.value)? {
+                match (f, v) {
+                    (1, Val::B(b)) => sender = s(b)?,
+                    (2, Val::B(b)) => for (g, w) in pb::fields(b)? { match (g, w) { (1..=3, Val::V(x)) => auth[g as usize - 1] = x, (g, _) => bail!("auth: unexpected field {g}") } },
+                    (3, Val::B(b)) => params = b64(b),
+                    (4, Val::B(b)) => vk = b64(b),
+                    (f, _) => bail!("{}: unexpected field {f}", a.type_url),
+                }
+            }
+            json!({"@type": a.type_url, "sender": sender, "auth": {"circuit_type": auth[0].to_string(), "curve_type": auth[1].to_string(), "k": auth[2].to_string()},
+                "params_body": params, "vk_body": vk})
+        }
+        MSG_STORE_CIRCUIT => {
+            let (mut sender, mut key, mut vk) = (String::new(), 0u64, String::new());
+            for (f, v) in pb::fields(&a.value)? {
+                match (f, v) { (1, Val::B(b)) => sender = s(b)?, (2, Val::V(x)) => key = x, (3, Val::B(b)) => vk = b64(b), (f, _) => bail!("{}: unexpected field {f}", a.type_url) }
+            }
+            json!({"@type": a.type_url, "sender": sender, "param_key": key.to_string(), "vk_body": vk})
+        }
+        t => { pb::fields(&a.value).map_err(|e| anyhow!("{t}: @value_b64 is not valid protobuf: {e}"))?; json!({"@type": t, "@value_b64": b64(&a.value)}) }
+    })
+}
+
+fn gov_option(choice: &str) -> Result<i32> {
+    Ok(match choice { "yes" => 1, "abstain" => 2, "no" => 3, "veto" | "no_with_veto" => 4, c => bail!("gov vote {c:?}: yes | no | abstain | veto") })
+}
+
+fn gov_pid(ctx: &Ctx, id: &str, of: &Option<String>, pid: &Option<u64>) -> Result<u64> {
+    match (pid, of) {
+        (Some(p), _) => Ok(*p),
+        (None, Some(o)) => ctx.state.proposals.get(o).copied().ok_or_else(|| anyhow!("{id}: proposal of {o} unknown")),
+        _ => bail!("{id}: no proposal"),
+    }
+}
+
+/// Generic x/gov proposal from a pinned MsgSubmitProposal JSON (`circuit-propose` is the same phase).
+fn gov_propose(ctx: &mut Ctx, phase: &str) -> Result<()> {
+    let f = ctx.cli.proposal_file.clone().ok_or_else(|| anyhow!("{phase}: --proposal-file required"))?;
+    let bytes = std::fs::read(&f).map_err(|e| anyhow!("{}: {e}", f.display()))?;
+    let got = hex_lower(&Sha256::digest(&bytes));
+    let want = ctx.cli.proposal_sha.clone().ok_or_else(|| anyhow!("{phase}: --proposal-sha required"))?;
+    if want.to_lowercase() != got { bail!("refused before any grant: {} sha256 {got} != --proposal-sha {want} (nothing was broadcast)", f.display()); }
+    let body: Value = serde_json::from_slice(&bytes)?;
+    if body["@type"] != MSG_SUBMIT_PROPOSAL { bail!("{phase}: {} is not a {MSG_SUBMIT_PROPOSAL} (got {})", f.display(), body["@type"]); }
+    only_keys(&body, &["@type", "messages", "initial_deposit", "proposer", "metadata", "title", "summary", "expedited"], "MsgSubmitProposal")?;
+    let msgs = body["messages"].as_array().filter(|m| !m.is_empty()).ok_or_else(|| anyhow!("{phase}: no messages"))?;
+    let title = body["title"].as_str().unwrap_or_default().to_string();
+    if title.is_empty() { bail!("{phase}: empty title"); }
+    println!("  {} sha256 {got}: {} message(s), title {title:?}", f.display(), msgs.len());
+
+    let prefix = ctx.info.network_info.pub_address_prefix.clone();
+    let q = ctx.query()?;
+    let gov_addr = kms_gate::query_module_account(&q, "gov", &prefix)?;
+    let mut anys = Vec::new();
+    for (i, m) in msgs.iter().enumerate() {
+        let a = gov_msg_encode(m)?;
+        let back = gov_msg_decode(&a)?;
+        if back != gov_msg_canonical(m)? { bail!("message {i} ({}): proto round-trip mismatch", a.type_url); }
+        for k in ["sender", "authority"] {
+            if let Some(s) = m[k].as_str() { if s != gov_addr { bail!("message {i}: {k} {s} is not the gov module {gov_addr} (x/gov executes as itself)"); } }
+        }
+        let extra = match a.type_url.as_str() {
+            MSG_STORE_FULL_CIRCUIT => format!(" auth {} params {}B vk {}B", back["auth"], json_b64(&back["params_body"], "")?.len(), json_b64(&back["vk_body"], "")?.len()),
+            _ => String::new(),
+        };
+        println!("  message {i}: {} {}B proto, round-trip ok, sender = gov {gov_addr}{extra}", a.type_url, a.value.len());
+        anys.push(a);
+    }
+
+    let coins = body["initial_deposit"].as_array().cloned().unwrap_or_default();
+    if coins.len() != 1 { bail!("{phase}: initial_deposit must be exactly one coin"); }
+    let denom = coins[0]["denom"].as_str().unwrap_or_default().to_string();
+    let initial: u128 = coins[0]["amount"].as_str().unwrap_or_default().parse().map_err(|e| anyhow!("initial_deposit amount: {e}"))?;
+    let params = gov_deposit_params!(q.channel(), &q.rt_handle)?;
+    let expedited = body["expedited"].as_bool().unwrap_or(false);
+    let mins = if expedited { &params.expedited_min_deposit } else { &params.min_deposit };
+    let min: u128 = mins.iter().find(|c| c.denom == denom).ok_or_else(|| anyhow!("{phase}: {denom} is not a gov deposit denom ({mins:?})"))?.amount.parse()?;
+    let ratio = <cosmwasm_std::Decimal as std::str::FromStr>::from_str(&params.min_initial_deposit_ratio).map_err(|e| anyhow!("min_initial_deposit_ratio: {e}"))?;
+    let need_init = cosmwasm_std::Uint128::new(min).mul_ceil(ratio).u128();
+    println!("  gov params: min_deposit {min}{denom}{}, min_initial_deposit_ratio {ratio} -> initial >= {need_init}{denom}; file initial_deposit {initial}{denom}",
+        if expedited { " (expedited)" } else { "" });
+    if initial < need_init { bail!("refused before any grant: initial_deposit {initial}{denom} < {need_init}{denom}"); }
+    let top_up = if !ctx.cli.no_top_up && initial < min { min - initial } else { 0 };
+
+    let signer = operational_owner(ctx, phase)?;
+    let file_proposer = body["proposer"].as_str().unwrap_or_default().to_string();
+    let proposer = if file_proposer == signer { signer.clone() } else if ctx.cli.set_proposer || signer == "<kms-granter>" {
+        println!("  proposer {file_proposer} -> {signer} (--set-proposer)"); signer.clone()
+    } else {
+        bail!("refused before any grant: file proposer {file_proposer} != signer {signer}; pass --set-proposer to submit as {signer}");
+    };
+    if signer != "<kms-granter>" {
+        let have = bank_balance!(q.channel(), &q.rt_handle, &signer, &denom)?;
+        if have < initial + top_up { bail!("refused before any grant: {signer} has {have}{denom}, deposit needs {}{denom} (initial {initial} + top-up {top_up})", initial + top_up); }
+        println!("  {signer}: {have}{denom} >= deposit {}{denom}; it remains after: {}{denom}", initial + top_up, have - initial - top_up);
+    }
+    drop(q);
+
+    let m = cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal {
+        messages: anys,
+        initial_deposit: vec![cosmos_sdk_proto::cosmos::base::v1beta1::Coin { denom: denom.clone(), amount: initial.to_string() }],
+        proposer,
+        metadata: body["metadata"].as_str().unwrap_or_default().into(),
+        title: title.clone(),
+        summary: body["summary"].as_str().unwrap_or_default().into(),
+        expedited,
+    };
+    let msg = cosmos_sdk_proto::prost::Message::encode_to_vec(&m);
+    let id = format!("{phase}:{}", &got[..16]);
+    let mut steps = vec![Step::GovSubmit { id: id.clone(), title, msg, deposit: format!("{initial}{denom}") }];
+    if top_up > 0 { steps.push(Step::GovDeposit { id: format!("{id}:top-up"), of: id.clone(), amount: top_up, denom }); }
+    if let Some(c) = ctx.cli.vote_choice.clone() { gov_option(&c)?; steps.push(Step::GovVote { id: format!("{id}:vote"), of: Some(id.clone()), pid: None, choice: c }); }
+    if ctx.cli.wait_pass { steps.push(Step::GovWait { id: format!("{id}:wait"), of: Some(id.clone()), pid: None, wait_secs: ctx.cli.wait_secs }); }
+    execute_steps(ctx, phase, steps)
+}
+
+fn gov_vote(ctx: &mut Ctx) -> Result<()> {
+    let c = ctx.cli.vote_choice.clone().ok_or_else(|| anyhow!("gov-vote: --vote yes|no|abstain|veto required"))?;
+    gov_option(&c)?;
+    if ctx.cli.vote_proposals.is_empty() { bail!("gov-vote: --proposals required"); }
+    let q = ctx.query()?;
+    let mut steps = Vec::new();
+    for pid in ctx.cli.vote_proposals.clone() {
+        let p = gov_proposal!(q.channel(), &q.rt_handle, pid)?;
+        if p.status != 2 { bail!("refused before any grant: gov proposal {pid} is not in its voting period (status {})", p.status); }
+        println!("  gov proposal {pid}: {:?} in voting period", p.title);
+        steps.push(Step::GovVote { id: format!("gov-vote:{pid}:{c}"), of: None, pid: Some(pid), choice: c.clone() });
+    }
+    drop(q);
+    if ctx.cli.wait_pass {
+        for pid in ctx.cli.vote_proposals.clone() { steps.push(Step::GovWait { id: format!("gov-vote:{pid}:wait"), of: None, pid: Some(pid), wait_secs: ctx.cli.wait_secs }); }
+    }
+    execute_steps(ctx, "gov-vote", steps)
+}
+
+/// dao-propose templates: replace {{K}} inside wasm msgs (base64 JSON), title and description.
+/// `"{{K}}"` (quoted) becomes a JSON number when V is an integer, else a JSON string.
+fn substitute_template(title: &str, description: &str, msgs: Vec<Value>, params: &[(String, String)]) -> Result<(String, String, Vec<Value>)> {
+    let lit = |v: &str| if v.parse::<u64>().is_ok() { v.to_string() } else { Value::String(v.into()).to_string() };
+    let mut used: BTreeSet<String> = BTreeSet::new();
+    let sub = |s: &str, used: &mut BTreeSet<String>, quoted: bool| -> String {
+        let mut s = s.to_string();
+        for (k, v) in params {
+            let ph = format!("{{{{{k}}}}}");
+            if quoted { let q = format!("\"{ph}\""); if s.contains(&q) { used.insert(k.clone()); s = s.replace(&q, &lit(v)); } }
+            if s.contains(&ph) { used.insert(k.clone()); s = s.replace(&ph, v); }
+        }
+        s
+    };
+    let title = sub(title, &mut used, false);
+    let description = sub(description, &mut used, false);
+    let mut out = Vec::new();
+    for mut m in msgs {
+        for path in [["wasm", "execute"], ["wasm", "instantiate"], ["wasm", "instantiate2"], ["wasm", "migrate"]] {
+            // non-inserting lookup: IndexMut would create {"msg":null} objects for absent kinds
+            let b = match m.get(path[0]).and_then(|w| w.get(path[1])).and_then(|k| k.get("msg")).and_then(|v| v.as_str()) { Some(b) => b.to_string(), None => continue };
+            {
+                let b = b.as_str();
+                let raw = String::from_utf8(Binary::from_base64(b).map_err(|e| anyhow!("{e}"))?.to_vec())?;
+                let new = sub(&raw, &mut used, true);
+                if new.contains("{{") { bail!("dao-propose: unresolved {{{{placeholder}}}} in a {} msg: {new} (pass --param / --zk-id)", path[1]); }
+                if new != raw {
+                    let _: Value = serde_json::from_str(&new).map_err(|e| anyhow!("template msg after substitution is not JSON: {e}: {new}"))?;
+                    println!("  template: {} {} -> {new}", path[1], m[path[0]][path[1]]["contract_addr"].as_str().unwrap_or(""));
+                    m[path[0]][path[1]]["msg"] = Value::String(Binary::from(new.into_bytes()).to_base64());
+                }
+            }
+        }
+        if m.to_string().contains("{{") { bail!("dao-propose: unresolved {{{{placeholder}}}} in a msg (pass --param / --zk-id)"); }
+        out.push(m);
+    }
+    if title.contains("{{") || description.contains("{{") { bail!("dao-propose: unresolved {{{{placeholder}}}} in title/description"); }
+    for (k, _) in params { if !used.contains(k) { bail!("dao-propose: --param {k} matches no {{{{{k}}}}} in the proposal"); } }
+    Ok((title, description, out))
+}
+
+#[cfg(test)]
+mod gov_tests {
+    use super::*;
+    #[test]
+    fn store_full_circuit_round_trip() {
+        let m = json!({"@type": MSG_STORE_FULL_CIRCUIT, "sender": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+            "auth": {"circuit_type": "0", "curve_type": "0", "k": "11"}, "params_body": "AAEC", "vk_body": "/w=="});
+        let a = gov_msg_encode(&m).unwrap();
+        // 0a <len> sender | 12 02 18 0b | 1a 03 00 01 02 | 22 01 ff
+        let mut want = vec![0x0a, 43]; want.extend_from_slice(b"terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq");
+        want.extend_from_slice(&[0x12, 0x02, 0x18, 0x0b, 0x1a, 0x03, 0, 1, 2, 0x22, 0x01, 0xff]);
+        assert_eq!(a.value, want);
+        assert_eq!(gov_msg_decode(&a).unwrap(), gov_msg_canonical(&m).unwrap());
+    }
+    #[test]
+    fn template_zk_id() {
+        let msg = Binary::from(br#"{"bind_note_circuit":{"zk_id":"{{ZK_ID}}"}}"#.to_vec()).to_base64();
+        let (t, _, m) = substitute_template("bind {{ZK_ID}}", "", vec![json!({"wasm": {"execute": {"contract_addr": "x", "msg": msg, "funds": []}}})],
+            &[("ZK_ID".into(), "7".into())]).unwrap();
+        assert_eq!(t, "bind 7");
+        let raw = Binary::from_base64(m[0]["wasm"]["execute"]["msg"].as_str().unwrap()).unwrap();
+        assert_eq!(raw.as_slice(), br#"{"bind_note_circuit":{"zk_id":7}}"#);
+        assert!(m[0]["wasm"].get("instantiate2").is_none(), "substitution must not insert absent msg kinds");
+        assert!(substitute_template("t", "", vec![json!({"wasm": {"execute": {"contract_addr": "x", "msg": msg, "funds": []}}})], &[]).is_err());
+    }
 }
