@@ -156,11 +156,11 @@
   "fee": {
    "amount": [
     {
-     "denom": "uterp",
-     "amount": "{{fee}}"
+     "denom": "uthiol",
+     "amount": "82127"
     }
    ],
-   "gas_limit": "{{gas}}",
+   "gas_limit": "1642521",
    "payer": "",
    "granter": ""
   }

@@ -48,7 +48,7 @@
   "fee": {
    "amount": [
     {
-     "denom": "uterp",
+     "denom": "uthiol",
      "amount": "{{fee}}"
     }
    ],

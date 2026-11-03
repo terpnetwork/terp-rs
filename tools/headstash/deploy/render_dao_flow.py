@@ -12,7 +12,7 @@ Sequence (agreed 2026-11-03):
   3. x/gov       circuit only: phase-b/11-12 (vk_id 3, vk 34d11437), unchanged.
   4. DAO prop 2  bind_note_circuit(zk_id) on both instances (after the circuit is stored).
 Nothing is signed or broadcast here. Usage:
-  render_dao_flow.py --decisions decisions.mainnet.json --wasm W --fe-wasm F [--code-id N] [--zk-id 1] [--terpd terpd] [--out DIR]
+  render_dao_flow.py --decisions decisions.mainnet.json --wasm W --fe-wasm F [--code-id N] [--prop1-sim-gas N] [--prop2-sim-gas N] [--zk-id 1] [--terpd terpd] [--out DIR]
 """
 import base64, hashlib, json, os, subprocess, sys
 
@@ -27,6 +27,7 @@ SUBMITTER = "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r"
 # so the renounce target is the all-zero address: valid bech32, no private key, cannot be a contract (32-byte), cannot sign.
 NULL_ADMIN = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw"
 TOKENS = ("terpy", "thioly")
+FEE_DENOM = "uthiol"  # morocco-1 fees are uthiol only; uterp is never a fee denom
 CTX_TAG = b"terp-hs-direct-ctx-v1"
 SUPERSEDED = [
     ("phase-a/13-store-wasm.unsigned.json", "8c38df2a", "eph-key MsgExec store, gov-only instantiate permission: replaced by kms hs-upload (plain store)"),
@@ -121,10 +122,18 @@ def main():
     p2 = {"propose": {"msg": {"propose": {"title": "Headstash v0.0.1: bind the vk_id 3 circuit (zk_id %d)" % zk_id,
           "description": "Binds the x/gov-stored halo2 circuit (vk 34d11437) to both dry-run instances. Check zk_id against the circuit proposal's store event before submitting.",
           "msgs": [wexec(inst[t]["address"], {"bind_note_circuit": {"zk_id": zk_id}}) for t in TOKENS]}}}}
+    # Mainnet fees are uthiol only (FEE_DENOM). --prop1-sim-gas N = gas_used from /cosmos/tx/v1beta1/simulate of the prop 1
+    # tx (sender SUBMITTER): gas_limit = ceil(N * 1.4), fee = ceil(gas_limit * 0.05) uthiol. Same for --prop2-sim-gas.
+    def fee_of(body):
+        sim = opt("--prop1-sim-gas") if body is p1 else opt("--prop2-sim-gas")
+        if not sim:
+            return {"amount": [{"denom": FEE_DENOM, "amount": "{{fee}}"}], "gas_limit": "{{gas}}", "payer": "", "granter": ""}
+        g = -(-int(sim) * 14 // 10); f = -(-g * 5 // 100)
+        return {"amount": [{"denom": FEE_DENOM, "amount": str(f)}], "gas_limit": str(g), "payer": "", "granter": ""}
     def unsigned(body, memo):
         return {"body": {"messages": [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": SUBMITTER,
                  "contract": PREPROPOSE_A, "msg": body, "funds": []}], "memo": memo, "timeout_height": "0", "extension_options": [], "non_critical_extension_options": []},
-                "auth_info": {"signer_infos": [], "fee": {"amount": [{"denom": "uterp", "amount": "{{fee}}"}], "gas_limit": "{{gas}}", "payer": "", "granter": ""}}, "signatures": []}
+                "auth_info": {"signer_infos": [], "fee": fee_of(body)}, "signatures": []}
     files = {
         "20-dao-prop1-deploy.propose.json": p1, "20-dao-prop1-deploy.unsigned.json": unsigned(p1, "headstash v0.0.1 dao prop 1"),
         "40-dao-prop2-bind.propose.json": p2, "40-dao-prop2-bind.unsigned.json": unsigned(p2, "headstash v0.0.1 dao prop 2"),
