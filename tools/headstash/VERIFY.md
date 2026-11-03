@@ -9,12 +9,13 @@ Everything below can be checked with public sources and the public LCD `https://
 |---|---|---|
 | `cw_headstash.wasm` (code 105) | `dd40ded55eb436f296fa8eac0d1794f69c5c7369f5a137b1b52dc2cb18e22c52` | 857,272 B |
 | `cw_headstash_frontend.wasm` (code 106) | `e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2` | — |
-| `Cargo.lock` used for the build (resolved) | `df105de86b0f6dbc8e3952374ed769b884d4f3c30ac14e5cb05038429f69bc4f` | — |
+| `tools/headstash/Cargo.lock.resolved` (lock used for the build) | `df105de86b0f6dbc8e3952374ed769b884d4f3c30ac14e5cb05038429f69bc4f` | — |
 
 ### Sources
 | Repo | URL | Branch | Commit |
 |---|---|---|---|
-| terp-rs (contract source) | https://github.com/permissionlessweb/terp-rs | wip/headstash-consolidate (pending publish) | `4de39b1931806f9354403510c55a09fd8743394c` |
+| terp-rs (contract source) | https://github.com/permissionlessweb/terp-rs | wip/headstash-consolidate | `4de39b1931806f9354403510c55a09fd8743394c` |
+| terp-rs (build script `tools/headstash/deploy/build-cw-headstash.sh`) | same | wip/headstash-consolidate | `9eb196c` (identical copy on this branch) |
 | cosmwasm | https://github.com/permissionlessweb/cosmwasm | security/advisory-bumps | `adace180be362e03c5aabed4b705c37c7f633d94` |
 | cw-minus | https://github.com/permissionlessweb/cw-minus | main | `e9aaeafc9a05c98ba9cb7c970557c316b81a6573` |
 | cw-plus-plus | https://github.com/permissionlessweb/cw-plus-plus | feat/mvp | `efa52358b2978abedecc7c58c27f817af0aa5a37` |
@@ -44,11 +45,14 @@ git clone https://github.com/permissionlessweb/cw-storage-plus && git -C cw-stor
 git clone https://github.com/permissionlessweb/common zakura-common && git -C zakura-common checkout 5df51585a0df2faaceb15cc1e406ecd060265ffc
 for r in cosmwasm cw-minus cw-plus-plus cw-storage-plus zakura-common; do echo "$r $(git -C $r rev-parse HEAD)"; done > MANIFEST.txt
 cd ..
-git clone https://github.com/permissionlessweb/terp-rs src && git -C src checkout 4de39b1931806f9354403510c55a09fd8743394c
-# place the resolved lock (sha256 df105de8…bc4f) at src/Cargo.lock
+git clone -b wip/headstash-consolidate https://github.com/permissionlessweb/terp-rs src
+git -C src show HEAD:tools/headstash/Cargo.lock.resolved > lock.resolved     # sha256 df105de86b0f6dbc8e3952374ed769b884d4f3c30ac14e5cb05038429f69bc4f
+git -C src show 9eb196c:tools/headstash/deploy/build-cw-headstash.sh > build-cw-headstash.sh
+git -C src checkout 4de39b1931806f9354403510c55a09fd8743394c
+cp lock.resolved src/Cargo.lock
 docker pull terpnetwork/optimizer-arm64:0.17.0-rust1.91@sha256:b4d2087efbaf36126e0b992b4313b5c322502bc3bb538582050d324bfd6f5d6f
 SNAP=$PWD/snap CRATES=/Users/returniflost/abstract/terp-core/crates \
-  tools/headstash/deploy/build-cw-headstash.sh $PWD/src $PWD/out
+  bash build-cw-headstash.sh $PWD/src $PWD/out
 sha256sum out/cw_headstash.wasm   # dd40ded55eb436f296fa8eac0d1794f69c5c7369f5a137b1b52dc2cb18e22c52
 ```
 Inside the container: `cargo build -j 4 --ignore-rust-version --release --lib --target wasm32-unknown-unknown -p cw-headstash --features zk-api`, then `wasm-opt -Os --one-caller-inline-max-function-size=1000 --enable-bulk-memory --enable-sign-ext --disable-simd`.
@@ -111,7 +115,5 @@ curl -s https://api.terp.network/cosmwasm/wasm/v1/contract/terp16ww6y3e7y63v98d9
 ```
 
 ## Known gaps
-- terp-rs `4de39b1` must be published (it is not yet on a public branch).
-- The resolved `Cargo.lock` (df105de8…) must be published alongside.
 - The workspace manifest needs the full set of terp-core sibling repos present at `$CRATES` to load.
 - Frontend (code 106) recipe pending.
