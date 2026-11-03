@@ -27,7 +27,7 @@
       "wasm": {
        "instantiate2": {
         "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
-        "code_id": "{{CODE_ID of cw-headstash from hs-upload}}",
+        "code_id": 105,
         "label": "headstash-2026-1-terpy",
         "msg": "eyJnZW5lc2lzX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsImdlbmVzaXNfbGFiZWwiOiJoZWFkc3Rhc2gtMjAyNi0xLXRlcnB5IiwidG9rZW5fc3RyYXRlZ3kiOnsiZXhpc3RpbmdfZnVuZ2libGUiOnsicHJvb2YiOiJuR1Rjc0xNSzY0TlVuZ0JFcTQxUjRPd2s2SWlYNi9JZHBXb3g5OGtQMkE4PSIsInJhdyI6ImZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RlcnB5In19LCJ3YXZzIjpudWxsLCJyZWdpc3RyYXRpb25faG9vayI6bnVsbCwicmVnaXN0cmF0aW9uX2hvb2tfZ2FzX2xpbWl0IjpudWxsLCJwYXVzZXIiOiJ0ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MnciLCJmcm9udGVuZF9jb250cmFjdCI6bnVsbH0=",
         "funds": [
@@ -84,7 +84,7 @@
       "wasm": {
        "instantiate2": {
         "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
-        "code_id": "{{CODE_ID of cw-headstash from hs-upload}}",
+        "code_id": 105,
         "label": "headstash-2026-1-thioly",
         "msg": "eyJnZW5lc2lzX3Jvb3QiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIsImdlbmVzaXNfbGFiZWwiOiJoZWFkc3Rhc2gtMjAyNi0xLXRoaW9seSIsInRva2VuX3N0cmF0ZWd5Ijp7ImV4aXN0aW5nX2Z1bmdpYmxlIjp7InByb29mIjoiQU90VjBFRFdOcSt1bVRoOVY5dHZMSEw5c0RQU0h3V2lEeURleVp3S2loYz0iLCJyYXciOiJmYWN0b3J5L3RlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydy90aGlvbHkifX0sIndhdnMiOm51bGwsInJlZ2lzdHJhdGlvbl9ob29rIjpudWxsLCJyZWdpc3RyYXRpb25faG9va19nYXNfbGltaXQiOm51bGwsInBhdXNlciI6InRlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydyIsImZyb250ZW5kX2NvbnRyYWN0IjpudWxsfQ==",
         "funds": [
