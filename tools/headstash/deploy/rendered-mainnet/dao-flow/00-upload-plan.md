@@ -12,4 +12,11 @@ After it lands, re-render with `--code-id <cw-headstash code id>` so prop 1 is f
 
 # Step 3: x/gov circuit only
 
-Unchanged: phase-b/11-circuit-proposal.inner.json and phase-b/12-circuit-exec.unsigned.json (2709cc7b).
+Unchanged: phase-b/11-circuit-proposal.inner.json and phase-b/12-circuit-exec.unsigned.json (b591de37; metadata = 02 313fb903).
+
+# Who signs what (DAO steps)
+
+- Submitter: Foundation cw4 member `terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r` (weight 1000 of 3000).
+- Tx target: pre-propose A `terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp`; the proposal lands in **proposal module A** `terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g` of DAO `terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w`.
+  Votes (50-vote.template.json) and execute (51-execute.template.json) go to module A, not module B.
+- Prop 1 ends with MsgChangeAdmin to `terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw` for both denoms (after create, metadata, mint, fund).

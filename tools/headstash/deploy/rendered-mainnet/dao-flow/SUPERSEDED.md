@@ -9,7 +9,11 @@ Do not sign these. They stay in the tree for the record (no deletions).
 | phase-a/14-deploy-proposal.unsigned.json | 5e521456 (sign doc) / b14e6bd2 (file) | x/gov instantiate+fund in uterp: replaced by DAO prop 1 (terpy/thioly) |
 | phase-b/14-fund-bind-proposal.unsigned.json | ec35c009 / 300059c0 | x/gov fund+bind: replaced by DAO prop 1 (fund) + DAO prop 2 (bind) |
 
+## Proposal metadata
+
+proposal-metadata/01-deploy.json and 03-fund-bind.json are no longer submitted (their x/gov proposals are superseded above). They stay unedited for the record. Only 02-circuit-store.json is used, by phase-b/12.
+
 ## Kept
 
 - phase-b/11-circuit-proposal.inner.json: circuit MsgStoreFullCircuit (vk_id 3)
-- phase-b/12-circuit-exec.unsigned.json: 2709cc7b: x/gov circuit proposal, the only gov step
+- phase-b/12-circuit-exec.unsigned.json: b591de37: x/gov circuit proposal, the only gov step

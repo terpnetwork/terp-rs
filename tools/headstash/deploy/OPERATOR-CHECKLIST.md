@@ -61,7 +61,7 @@ After Phase A both contracts are deployed and can be funded. Nothing is spent be
 |---|------|-----------|--------------|
 | B0 | none | operator device | Generate a new E. Generate `phase-b/10-session-grant/` with the same command (`--out rendered-mainnet/phase-b/10-session-grant`) and re-render B12/B15 with `--eph-grantee E`. |
 | B10 | `10-session-grant/sign_doc.json` | **P on Zigner** | Second session grant (~1,419 B). |
-| B12 | `12-circuit-exec.unsigned.json` (181,753 B, sha256 2709cc7b0157ac39ef8e98633854c11e30faf4f9df3e9c84eb4d00e9e3d674da; metadata = 02 URI) | E (direct) | MsgExec{MsgSubmitProposal{MsgStoreFullCircuit}}, **gov proposal B1** (circuit upload is Nobody on mainnet). EXEC_GAS ≥ 25M. Record PROPOSAL_ID_CIRCUIT. |
+| B12 | `12-circuit-exec.unsigned.json` (182,041 B, sha256 b591de373d0c0c3e73244c5257f940695713fa55345dc4edb924c228a9a44cf0; metadata = 02 URI) | E (direct) | MsgExec{MsgSubmitProposal{MsgStoreFullCircuit}}, **gov proposal B1** (circuit upload is Nobody on mainnet). EXEC_GAS ≥ 25M. Record PROPOSAL_ID_CIRCUIT. |
 | B15 | `15-session-revoke.unsigned.json` | E (direct) | Revoke the session right after B12. |
 | B17a | `17-deposit-topup-circuit.unsigned.json` | **P on Zigner** | Sign doc 354 B. +5,000 TERP on PROPOSAL_ID_CIRCUIT. |
 | — | vote | validators | B1 passes. Record NOTE_ZK_ID. |

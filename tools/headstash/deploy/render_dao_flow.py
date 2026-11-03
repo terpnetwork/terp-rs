@@ -6,7 +6,9 @@ Sequence (agreed 2026-11-03):
                  No x/gov, no DAO: code upload is Everybody on morocco-1.
   2. DAO prop 1  Foundation DAO (proposal module A, via its pre-propose) creates factory/<DAO>/terpy and /thioly,
                  sets metadata, mints exactly the allocation of each to itself, instantiate2s one cw-headstash per
-                 token (admin = owner = pauser = DAO), opens the identical campaign on each, funds each.
+                 token (admin = owner = pauser = DAO), opens the identical campaign on each, funds each, and last
+                 renounces the tokenfactory admin of both denoms to NULL_ADMIN (no key), fixing supply and metadata.
+                 Submitted by Foundation member SUBMITTER to pre-propose A; it lands in proposal module A.
   3. x/gov       circuit only: phase-b/11-12 (vk_id 3, vk 34d11437), unchanged.
   4. DAO prop 2  bind_note_circuit(zk_id) on both instances (after the circuit is stored).
 Nothing is signed or broadcast here. Usage:
@@ -19,6 +21,11 @@ DAO = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
 PROP_A = "terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g"
 PREPROPOSE_A = "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp"
 GOV = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq"
+# Foundation cw4 member (weight 1000) who signs both DAO proposals (group terp1axqxut3zy6n4cpekk9yrwk4u4rny5c4repn7u696g43cufmcszfqq8n2vm).
+SUBMITTER = "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r"
+# bech32("terp", 20 zero bytes). x/tokenfactory MsgChangeAdmin.ValidateBasic rejects an empty new_admin (AccAddressFromBech32),
+# so the renounce target is the all-zero address: valid bech32, no private key, cannot be a contract (32-byte), cannot sign.
+NULL_ADMIN = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw"
 TOKENS = ("terpy", "thioly")
 CTX_TAG = b"terp-hs-direct-ctx-v1"
 SUPERSEDED = [
@@ -28,7 +35,7 @@ SUPERSEDED = [
     ("phase-b/14-fund-bind-proposal.unsigned.json", "ec35c009 / 300059c0", "x/gov fund+bind: replaced by DAO prop 1 (fund) + DAO prop 2 (bind)"),
 ]
 KEPT = [("phase-b/11-circuit-proposal.inner.json", "circuit MsgStoreFullCircuit (vk_id 3)"),
-        ("phase-b/12-circuit-exec.unsigned.json", "2709cc7b: x/gov circuit proposal, the only gov step")]
+        ("phase-b/12-circuit-exec.unsigned.json", "b591de37: x/gov circuit proposal, the only gov step")]
 
 def opt(k, dflt=None):
     a = sys.argv
@@ -63,6 +70,7 @@ def tf_metadata(denom, sub):
     units = _s(2, _s(1, denom) + _u(2, 0)) + _s(2, _s(1, sub) + _u(2, 6))
     md = _s(1, "%s: headstash v0.0.1 initial dry run (Terp Network Foundation)" % sub) + units + _s(3, denom) + _s(4, sub) + _s(5, sub) + _s(6, sub.upper())
     return stargate("/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata", _s(1, DAO) + _s(2, md))
+def tf_change_admin(denom): return stargate("/osmosis.tokenfactory.v1beta1.MsgChangeAdmin", _s(1, DAO) + _s(2, denom) + _s(3, NULL_ADMIN))
 def wexec(c, m): return {"wasm": {"execute": {"contract_addr": c, "msg": b64(json.dumps(m, separators=(",", ":")).encode()), "funds": []}}}
 
 def main():
@@ -101,16 +109,20 @@ def main():
                  {"bank": {"send": {"to_address": addr, "amount": [{"denom": denom, "amount": str(alloc - 1)}]}}}]
         json.dump(init, open(os.path.join(out, "10-%s-instantiate.json" % t), "w"), indent=1)
         json.dump(camp, open(os.path.join(out, "11-%s-set-epoch-campaign.json" % t), "w"), indent=1)
+    # renounce last: metadata, mint and funding above all need the DAO as admin
+    msgs += [tf_change_admin("factory/%s/%s" % (DAO, t)) for t in TOKENS]
     desc = ("Initial headstash dry run (v0.0.1). Creates two tokenfactory tokens owned by the Foundation DAO, terpy and thioly, "
             "mints exactly the airdrop allocation of each (%s base units, 6 decimals), and deploys one cw-headstash per token "
             "with the identical airdrop set (%d notes, cutoff %s, vk_id 3). Admin, owner and pauser of both: this DAO. "
             "Claims open after x/gov stores the circuit and DAO proposal 2 binds it.") % (alloc, notes, c["cutoff_height"])
+    desc += (" Last, the DAO hands the tokenfactory admin of both denoms to %s (the all-zero address, no key), so neither "
+             "supply nor metadata can change again.") % NULL_ADMIN
     p1 = {"propose": {"msg": {"propose": {"title": "Headstash v0.0.1 initial dry run: terpy + thioly", "description": desc, "msgs": msgs}}}}
     p2 = {"propose": {"msg": {"propose": {"title": "Headstash v0.0.1: bind the vk_id 3 circuit (zk_id %d)" % zk_id,
           "description": "Binds the x/gov-stored halo2 circuit (vk 34d11437) to both dry-run instances. Check zk_id against the circuit proposal's store event before submitting.",
           "msgs": [wexec(inst[t]["address"], {"bind_note_circuit": {"zk_id": zk_id}}) for t in TOKENS]}}}}
     def unsigned(body, memo):
-        return {"body": {"messages": [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": "{{FOUNDATION_MEMBER (cw4 member key)}}",
+        return {"body": {"messages": [{"@type": "/cosmwasm.wasm.v1.MsgExecuteContract", "sender": SUBMITTER,
                  "contract": PREPROPOSE_A, "msg": body, "funds": []}], "memo": memo, "timeout_height": "0", "extension_options": [], "non_critical_extension_options": []},
                 "auth_info": {"signer_infos": [], "fee": {"amount": [{"denom": "uterp", "amount": "{{fee}}"}], "gas_limit": "{{gas}}", "payer": "", "granter": ""}}, "signatures": []}
     files = {
@@ -128,14 +140,21 @@ def main():
             "| cw-headstash | artifacts/mainnet/cw_headstash.wasm | %s | %d |\n| cw-headstash-frontend | artifacts/mainnet/cw_headstash_frontend.wasm | %s | %d |\n\n"
             "hs-upload refuses to store a file whose sha256 differs from the pin. kms stores raw wasm with instantiate permission Everybody.\n"
             "After it lands, re-render with `--code-id <cw-headstash code id>` so prop 1 is final.\n"
-            "\n# Step 3: x/gov circuit only\n\nUnchanged: phase-b/11-circuit-proposal.inner.json and phase-b/12-circuit-exec.unsigned.json (2709cc7b).\n") % (
+            "\n# Step 3: x/gov circuit only\n\nUnchanged: phase-b/11-circuit-proposal.inner.json and phase-b/12-circuit-exec.unsigned.json (b591de37; metadata = 02 313fb903).\n") % (
             dec["WASM_SHA256"], len(wb), dec["FE_WASM_SHA256"], len(fb))
+    plan += ("\n# Who signs what (DAO steps)\n\n"
+             "- Submitter: Foundation cw4 member `%s` (weight 1000 of 3000).\n"
+             "- Tx target: pre-propose A `%s`; the proposal lands in **proposal module A** `%s` of DAO `%s`.\n"
+             "  Votes (50-vote.template.json) and execute (51-execute.template.json) go to module A, not module B.\n"
+             "- Prop 1 ends with MsgChangeAdmin to `%s` for both denoms (after create, metadata, mint, fund).\n") % (SUBMITTER, PREPROPOSE_A, PROP_A, DAO, NULL_ADMIN)
     open(os.path.join(out, "00-upload-plan.md"), "w").write(plan)
     sup = "# Superseded by the DAO flow (2026-11-03)\n\nDo not sign these. They stay in the tree for the record (no deletions).\n\n| file | sha256 prefix | why |\n|---|---|---|\n"
     sup += "".join("| %s | %s | %s |\n" % s for s in SUPERSEDED)
+    sup += ("\n## Proposal metadata\n\nproposal-metadata/01-deploy.json and 03-fund-bind.json are no longer submitted (their x/gov "
+            "proposals are superseded above). They stay unedited for the record. Only 02-circuit-store.json is used, by phase-b/12.\n")
     sup += "\n## Kept\n\n" + "".join("- %s: %s\n" % k for k in KEPT)
     open(os.path.join(out, "SUPERSEDED.md"), "w").write(sup)
-    report = {"dao": DAO, "proposal_module_A": PROP_A, "pre_propose_A": PREPROPOSE_A, "gov": GOV, "code_id": code_id, "zk_id": zk_id,
+    report = {"dao": DAO, "proposal_module_A": PROP_A, "pre_propose_A": PREPROPOSE_A, "gov": GOV, "submitter": SUBMITTER, "null_admin": NULL_ADMIN, "code_id": code_id, "zk_id": zk_id,
               "allocation_each": str(alloc), "notes": notes, "cutoff_height": c["cutoff_height"], "vk_id": c["vk_id"], "instances": inst,
               "prop1_msgs": len(msgs), "files": {n: sha(open(os.path.join(out, n), "rb").read()) for n in sorted(os.listdir(out)) if n != "render-report.json"}}
     json.dump(report, open(os.path.join(out, "render-report.json"), "w"), indent=1)

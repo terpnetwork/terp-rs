@@ -29,6 +29,7 @@ DAO_SHA = {"core": "9cac5bcc", "single": "601d91b5", "prepropose": "2c87d60c", "
 FE_WASM = os.environ.get("FE_WASM", "")
 GOV = d.GOV
 TOKENS = ("terpy", "thioly")
+NULL_ADMIN = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw"  # bech32 of 20 zero bytes; empty new_admin fails ValidateBasic
 d.SWEEP = False  # flow(): no owner-key sweep/reclaim; the DAO does those below
 
 # ------------------------------------------------------------------ protobuf (tokenfactory, bank metadata)
@@ -50,6 +51,7 @@ def tf_metadata(sender, denom, sub):
     units = _s(2, _s(1, denom) + _u(2, 0)) + _s(2, _s(1, sub) + _u(2, 6))
     md = _s(1, "%s: headstash v0.0.1 dry-run token (Terp Foundation)" % sub) + units + _s(3, denom) + _s(4, sub) + _s(5, sub) + _s(6, sub.upper())
     return any_msg("/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata", _s(1, sender) + _s(2, md))
+def tf_change_admin(sender, denom, new): return any_msg("/osmosis.tokenfactory.v1beta1.MsgChangeAdmin", _s(1, sender) + _s(2, denom) + _s(3, new))
 def wasm_exec(contract, msg): return {"wasm": {"execute": {"contract_addr": contract, "msg": b64(json.dumps(msg).encode()), "funds": []}}}
 
 # ------------------------------------------------------------------ local Foundation DAO
@@ -182,20 +184,21 @@ def main():
 
     # 1. plain uploads (normal account, no gov / DAO)
     whs = open(d.WASM, "rb").read(); hs_sha = hashlib.sha256(whs).hexdigest()
-    res, code_id = store("proposer", d.WASM, 250000000, anyof=[DAO, GOV])
+    res, code_id = store("proposer", d.WASM, 250000000)  # Everybody, as cw-orch-kms stores
     ci = q("wasm", "code-info", code_id) if code_id else {}
     step("plain_store_cw_headstash", res.get("code") == 0 and (ci.get("checksum") or ci.get("data_hash") or "").lower() == hs_sha
-         and ci.get("creator") == PROPOSER and sorted(ci.get("instantiate_permission", {}).get("addresses", [])) == sorted([DAO, GOV]),
+         and ci.get("creator") == PROPOSER and ci.get("instantiate_permission", {}).get("permission") == "Everybody",
          "code %s sha %s creator %s perm %s gas %d" % (code_id, hs_sha[:16], ci.get("creator"), json.dumps(ci.get("instantiate_permission")), gas_used(res)))
     R["code_id"] = code_id; R["wasm_sha256"] = hs_sha
     if FE_WASM and os.path.exists(FE_WASM):
         fsha = hashlib.sha256(open(FE_WASM, "rb").read()).hexdigest()
-        res, fcid = store("proposer", FE_WASM, 120000000, anyof=[DAO, GOV])
+        res, fcid = store("proposer", FE_WASM, 120000000)
         fci = q("wasm", "code-info", fcid) if fcid else {}
         step("plain_store_frontend", res.get("code") == 0 and (fci.get("checksum") or fci.get("data_hash") or "").lower() == fsha,
              "code %s sha %s gas %d" % (fcid, fsha[:16], gas_used(res)))
         R["fe_code_id"] = fcid; R["fe_sha256"] = fsha
-    d.neg("stranger_cannot_instantiate_headstash_code", tx("stranger", 3000000, "wasm", "instantiate", code_id, "{}", "--label", "x", "--no-admin"))
+    zb = terpd("debug", "addr", "0000000000000000000000000000000000000000")
+    step("null_admin_is_20_zero_bytes", NULL_ADMIN in zb, zb.strip().replace("\n", " ")[:200])
 
     # 2. DAO proposal 1: create denoms, metadata, mint allocation, instantiate2, campaign, fund
     cut = {"thioly": height() + d.CUT_AHEAD, "terpy": height() + 2 * d.CUT_AHEAD}
@@ -214,12 +217,13 @@ def main():
             "max_rows": 8, "allocation_root": b64(bytes(32)), "root_id": 0, "vk_id": 3, "vk_hash": h2b64(NOTE_VK_HASH), "sweep_recipient": "",
             "registration": {"eligibility_root": h2b64(ntree["root_hex"]), "eligibility_depth": 17, "min_anonymity_set": 2,
                              "anchor_start_height": 1, "anchor_interval": 1}}}}
-        inst[t] = {"addr": addr, "denom": denom, "nd": nd, "ctx": ctx, "label": label, "salt": salt, "cut": cut[t]}
+        inst[t] = {"addr": addr, "denom": denom, "nd": nd, "ctx": ctx, "label": label, "salt": salt, "cut": cut[t], "init": init}
         msgs += [tf_create(DAO, t), tf_metadata(DAO, denom, t), tf_mint(DAO, denom, ALLOC, DAO),
                  {"wasm": {"instantiate2": {"admin": DAO, "code_id": int(code_id), "label": label, "msg": b64(json.dumps(init).encode()),
                                             "funds": [{"denom": denom, "amount": "1"}], "salt": b64(bytes.fromhex(salt))}}},
                  wasm_exec(addr, camp),
                  {"bank": {"send": {"to_address": addr, "amount": [{"denom": denom, "amount": str(ALLOC - 1)}]}}}]
+    msgs += [tf_change_admin(DAO, inst[t]["denom"], NULL_ADMIN) for t in TOKENS]  # renounce last
     R["instances"] = {t: {k: (v.hex() if isinstance(v, bytes) else v) for k, v in i.items()} for t, i in inst.items()}
     ex, pid, st = dao_run(D, "prop1_deploy", "Headstash v0.0.1 dry run: terpy + thioly", msgs)
     step("dao_prop1_executed", st == "executed", "proposal %s %s gas %d %s" % (pid, st, gas_used(ex), ex.get("raw_log", "")[:300]))
@@ -234,11 +238,33 @@ def main():
              "supply %d alloc %d contract %d dao %d" % (sup, ALLOC, tbal_of(c, i["denom"]), tbal_of(DAO, i["denom"])))
         md = q("bank", "denom-metadata", i["denom"]); md = md.get("metadata", md)
         step("%s_denom_metadata" % t, md.get("display") == t and md.get("symbol") == t.upper() and any(u.get("exponent") == 6 for u in md.get("denom_units", [])), json.dumps(md)[:200])
-        ta = q("tokenfactory", "denom-authority-metadata", i["denom"])
-        step("%s_tf_admin_is_dao" % t, json.dumps(ta).find(DAO) >= 0, json.dumps(ta)[:200])
+        ta = q("tokenfactory", "denom-authority-metadata", i["denom"]); adm = ta.get("authority_metadata", ta).get("admin")
+        step("%s_tf_admin_renounced" % t, adm == NULL_ADMIN, json.dumps(ta)[:200])
         info = smart(c, {"direct_claim": {}})
         step("%s_direct_ctx_matches" % t, base64.b64decode(info["expected_ctx"]) == i["ctx"], json.dumps(info)[:160])
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
+    # tokenfactory is locked: the DAO itself can no longer mint, set metadata or change admin
+    for t in TOKENS:
+        i = inst[t]; s0 = d.supply(height(), i["denom"])
+        for nm, m in (("mint", tf_mint(DAO, i["denom"], 1, DAO)), ("setmetadata", tf_metadata(DAO, i["denom"], t + "x")),
+                      ("changeadmin", tf_change_admin(DAO, i["denom"], DAO))):
+            ex, pid, st = dao_run(D, "neg_%s_%s" % (t, nm), "%s %s after renounce (must fail)" % (t, nm), [m])
+            step("%s_dao_%s_after_renounce_fails" % (t, nm), st == "execution_failed", "proposal %s %s" % (pid, st))
+        ta = q("tokenfactory", "denom-authority-metadata", i["denom"]); md = q("bank", "denom-metadata", i["denom"]); md = md.get("metadata", md)
+        step("%s_locked_state_unchanged" % t, ta.get("authority_metadata", ta).get("admin") == NULL_ADMIN and d.supply(height(), i["denom"]) == s0 == ALLOC
+             and md.get("display") == t, "admin %s supply %d" % (ta.get("authority_metadata", ta).get("admin"), d.supply(height(), i["denom"])))
+    # instantiate permission is Everybody: a stranger instance (same code, label, salt) is separate and leaves the DAO instances alone
+    i = inst["terpy"]; snap = {t: (smart(inst[t]["addr"], {"ownership": {}}).get("owner"), tbal_of(inst[t]["addr"], inst[t]["denom"]),
+                                   json.dumps(smart(inst[t]["addr"], {"direct_claim": {}}), sort_keys=True)) for t in TOKENS}
+    sinit = dict(i["init"], token_strategy={"existing_fungible": {"proof": h2b64(d.derive_nd("uterp")), "raw": "uterp"}}, pauser=None)
+    rs = tx("stranger", 8000000, "wasm", "instantiate2", code_id, json.dumps(sinit), i["salt"], "--hex", "--label", i["label"], "--no-admin", "--amount", "1uterp")
+    sa = attr(rs, "_contract_address")
+    sci = q("wasm", "contract", sa) if sa else {}; sci = sci.get("contract_info", sci)
+    after = {t: (smart(inst[t]["addr"], {"ownership": {}}).get("owner"), tbal_of(inst[t]["addr"], inst[t]["denom"]),
+                 json.dumps(smart(inst[t]["addr"], {"direct_claim": {}}), sort_keys=True)) for t in TOKENS}
+    step("stranger_instance_isolated_from_dao_instances", rs.get("code") == 0 and sa and sa not in (inst["terpy"]["addr"], inst["thioly"]["addr"])
+         and sci.get("creator") != DAO and after == snap and all(after[t][0] == DAO and after[t][1] == ALLOC for t in TOKENS),
+         "stranger %s creator %s code %s %s" % (sa, sci.get("creator"), rs.get("code"), rs.get("raw_log", "")[:200]))
     d.neg("dao_member_key_is_not_owner_reclaim", tx("owner", 3000000, "wasm", "execute", inst["thioly"]["addr"], json.dumps({"emergency_reclaim": {}})))
 
     # 3. x/gov: circuit only (direct store refused: circuit_upload_access Nobody)

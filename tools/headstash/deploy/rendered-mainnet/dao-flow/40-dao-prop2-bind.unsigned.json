@@ -3,7 +3,7 @@
   "messages": [
    {
     "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
-    "sender": "{{FOUNDATION_MEMBER (cw4 member key)}}",
+    "sender": "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r",
     "contract": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp",
     "msg": {
      "propose": {

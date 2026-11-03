@@ -3,7 +3,7 @@
   "msg": {
    "propose": {
     "title": "Headstash v0.0.1 initial dry run: terpy + thioly",
-    "description": "Initial headstash dry run (v0.0.1). Creates two tokenfactory tokens owned by the Foundation DAO, terpy and thioly, mints exactly the airdrop allocation of each (66456669000000 base units, 6 decimals), and deploys one cw-headstash per token with the identical airdrop set (98841 notes, cutoff 44444444, vk_id 3). Admin, owner and pauser of both: this DAO. Claims open after x/gov stores the circuit and DAO proposal 2 binds it.",
+    "description": "Initial headstash dry run (v0.0.1). Creates two tokenfactory tokens owned by the Foundation DAO, terpy and thioly, mints exactly the airdrop allocation of each (66456669000000 base units, 6 decimals), and deploys one cw-headstash per token with the identical airdrop set (98841 notes, cutoff 44444444, vk_id 3). Admin, owner and pauser of both: this DAO. Claims open after x/gov stores the circuit and DAO proposal 2 binds it. Last, the DAO hands the tokenfactory admin of both denoms to terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw (the all-zero address, no key), so neither supply nor metadata can change again.",
     "msgs": [
      {
       "stargate": {
@@ -117,6 +117,18 @@
          }
         ]
        }
+      }
+     },
+     {
+      "stargate": {
+       "type_url": "/osmosis.tokenfactory.v1beta1.MsgChangeAdmin",
+       "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSTWZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RlcnB5Git0ZXJwMXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxNWZmbmR3"
+      }
+     },
+     {
+      "stargate": {
+       "type_url": "/osmosis.tokenfactory.v1beta1.MsgChangeAdmin",
+       "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSTmZhY3RvcnkvdGVycDE0dzJxdmE2ZHg2d2NzbXE1ZnZwbGg3Y3I3bnZwdGVqem55dnBlNWhwNW10eXFoeHhqYW1zejNrdzJ3L3RoaW9seRordGVycDFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcXFxcTVmZm5kdw=="
       }
      }
     ]

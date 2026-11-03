@@ -20,8 +20,8 @@
   }
  ],
  "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
- "metadata": "https://s3.terp.network/static/headstash/cid/4047b6bebd4832962b35cf5f198127928675f48385709daf2e1526daec1ca062",
- "title": "Headstash 2026 (B1): store the note circuit",
- "summary": "Stores the Headstash vk_id 3 note circuit (sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) as gov, for the cw-headstash contract deployed by proposal A at terp1ed7t2p9g5myjp9phv2r2x8vmu7gu5dazzyq4sr7eja99vfynslgqp60r86. Nothing is funded. Forum: https://discord.terp.network",
+ "metadata": "https://s3.terp.network/static/headstash/cid/313fb9036c2f204efa6e25cdac79d134427d24e397ab3b0a59a968cf4595f602",
+ "title": "Headstash 2026: store the note circuit",
+ "summary": "Stores the Headstash vk_id 3 Halo2 note circuit (K=11, verifying-key hash sha256(params||vk) 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398) in the circuit module with x/gov as sender. This is the only x/gov step of the initial headstash dry run: the Foundation DAO deploys two cw-headstash instances, terpy at terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q and thioly at terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7, and binds this circuit to both in Foundation DAO proposal 2. Nothing is funded by this proposal. Forum: https://discord.terp.network",
  "expedited": false
 }
