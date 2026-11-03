@@ -653,20 +653,29 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
         CREATE_DENOM_REPLY_ID => {
             // Extract the new_token_denom from the reply data
             // In CosmWasm v3, the reply data contains the response from the submessage
-            let response_data = &msg
-                .result
-                .into_result()
-                .map_err(|e| StdError::msg(e.to_string()))?
-                .msg_responses[0]
+            let sub = msg.result.into_result().map_err(|e| StdError::msg(e.to_string()))?;
+            // msg_responses[0].value is the protobuf MsgCreateDenomResponse. A missing
+            // response is an error, not an index panic.
+            let response_data = &sub
+                .msg_responses
+                .first()
+                .ok_or_else(|| StdError::msg("MsgCreateDenom: no msg response"))?
                 .value;
-
-            // msg_responses[0].value is the protobuf MsgCreateDenomResponse.
             let new_token_denom = tf_proto::create_denom_response_denom(response_data.as_slice())?;
+
+            // Claims mint and send `TokenStrategy::denom()` (factory/<contract>/<subdenom>),
+            // so the chain-reported denom must be exactly that; otherwise fail instantiate
+            // instead of saving a DENOM that payouts never use.
+            let cfg = HEADSTASH_CFG.may_load(deps.storage)?;
+            if let Some(expected) = cfg.as_ref().and_then(|c| c.ts.first()).map(|t| t.denom(&env.contract.address)) {
+                if expected != new_token_denom {
+                    return Err(StdError::msg("MsgCreateDenomResponse: unexpected denom"));
+                }
+            }
 
             DENOM.save(deps.storage, &new_token_denom)?;
 
             // Check if we need to do initial minting
-            let cfg = HEADSTASH_CFG.may_load(deps.storage)?;
             if let Some(config) = cfg {
                 if let Some(token_strategy) = config.ts.first() {
                     let initial_mints = token_strategy.get_initial_mints();
@@ -1387,5 +1396,59 @@ mod instantiate_tests {
 
         let err = process_headstash(deps.as_mut(), env, vec![claim]).unwrap_err();
         assert!(err.to_string().contains("unregistered eligibility root_id"));
+    }
+
+    /// CreateDenom reply hardening (TF-DENOM-SECURITY-REVIEW F-1/F-2): an empty
+    /// msg_responses or a chain-reported denom other than factory/<contract>/<subdenom>
+    /// fails instantiate instead of panicking or saving a DENOM payouts never use.
+    #[test]
+    #[allow(deprecated)]
+    fn create_denom_reply_rejects_missing_or_unexpected_denom() {
+        use cosmwasm_std::{MsgResponse, SubMsgResponse, SubMsgResult};
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = message_info(&deps.api.addr_make("creator"), &[]);
+        let msg = InstantiateMsg {
+            genesis_root: Binary::from(vec![0u8; 32]),
+            distro_hash_domain: Default::default(),
+            genesis_label: None,
+            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+                subdenom: HeadstashTokenObject {
+                    proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), "test"),
+                    raw: "test".into(),
+                },
+                metadata: mock_metadata(),
+                initial_mint: None,
+                manager: None,
+                minters: vec![],
+            }),
+            wavs: None,
+            circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
+        };
+        instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
+        let mk = |responses: Vec<MsgResponse>| Reply {
+            id: CREATE_DENOM_REPLY_ID,
+            payload: Binary::default(),
+            gas_used: 0,
+            result: SubMsgResult::Ok(SubMsgResponse { events: vec![], data: None, msg_responses: responses }),
+        };
+        let resp = |denom: &str| {
+            let mut v = vec![0x0a, denom.len() as u8];
+            v.extend_from_slice(denom.as_bytes());
+            MsgResponse { type_url: "/osmosis.tokenfactory.v1beta1.MsgCreateDenomResponse".into(), value: Binary::from(v) }
+        };
+        let err = reply(deps.as_mut(), env.clone(), mk(vec![])).unwrap_err();
+        assert!(err.to_string().contains("no msg response"), "{err}");
+        let other = format!("factory/{}/other", env.contract.address);
+        let err = reply(deps.as_mut(), env.clone(), mk(vec![resp(&other)])).unwrap_err();
+        assert!(err.to_string().contains("unexpected denom"), "{err}");
+        assert!(DENOM.may_load(&deps.storage).unwrap().is_none());
+        let good = format!("factory/{}/test", env.contract.address);
+        reply(deps.as_mut(), env.clone(), mk(vec![resp(&good)])).unwrap();
+        assert_eq!(DENOM.load(&deps.storage).unwrap(), good);
     }
 }
