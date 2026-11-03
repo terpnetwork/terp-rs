@@ -2,7 +2,7 @@
 """Render the Foundation-DAO dry-run flow for the initial headstash (v0.0.1), offline.
 
 Sequence (agreed 2026-11-03):
-  1. hs-upload   plain MsgStoreCode of cw-headstash + frontend via cw-orch-kms (mainnet_deploy --phase hs-upload).
+  1. hs-upload   plain MsgStoreCode of cw-headstash + frontend via cw-orch-kms (mainnet_deploy hs-upload).
                  No x/gov, no DAO: code upload is Everybody on morocco-1.
   2. DAO prop 1  Foundation DAO (proposal module A, via its pre-propose) creates factory/<DAO>/terpy and /thioly,
                  sets metadata, mints exactly the allocation of each to itself, instantiate2s one cw-headstash per
@@ -135,7 +135,7 @@ def main():
     }
     for n, v in files.items(): json.dump(v, open(os.path.join(out, n), "w"), indent=1)
     plan = ("# Step 1: plain upload (cw-orch-kms, no gov)\n\n"
-            "    cargo run --release --bin mainnet_deploy -- --phase hs-upload --signer kms   # Zigner signs one session grant\n\n"
+            "    cargo run --release --bin mainnet_deploy -- hs-upload --signer kms   # Zigner signs one session grant\n\n"
             "| code | artifact | sha256 | bytes |\n|---|---|---|---|\n"
             "| cw-headstash | artifacts/mainnet/cw_headstash.wasm | %s | %d |\n| cw-headstash-frontend | artifacts/mainnet/cw_headstash_frontend.wasm | %s | %d |\n\n"
             "hs-upload refuses to store a file whose sha256 differs from the pin. kms stores raw wasm with instantiate permission Everybody.\n"

@@ -1,6 +1,6 @@
 # Step 1: plain upload (cw-orch-kms, no gov)
 
-    cargo run --release --bin mainnet_deploy -- --phase hs-upload --signer kms   # Zigner signs one session grant
+    cargo run --release --bin mainnet_deploy -- hs-upload --signer kms   # Zigner signs one session grant
 
 | code | artifact | sha256 | bytes |
 |---|---|---|---|
