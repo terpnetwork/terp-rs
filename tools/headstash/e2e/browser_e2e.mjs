@@ -17,7 +17,8 @@ try {
   await page.locator("body[data-ready='1'], body[data-error]").waitFor({ timeout: 180000 });
   const err = await page.locator("body").getAttribute("data-error"); if (err) throw new Error("loader: " + err);
   out.loaded = true; out.load_ms = Date.now() - t0; out.version = await page.locator("#fe-ver").textContent();
-  if (phase === "register") {
+  if (phase === "load") { out.title = await page.title(); out.has_app = (await page.locator("#fe-ver").count()) > 0; }
+  else if (phase === "register") {
     await page.fill("#key", inp.key_hex); await page.setInputFiles("#elig", inp.elig); await page.fill("#reward", inp.reward);
     await page.click("#gen"); await page.locator("#log", { hasText: /generated \d+ notes|ERROR/ }).waitFor({ timeout: 600000 });
     out.key_field_cleared = (await page.inputValue("#key")) === ""; last = null;

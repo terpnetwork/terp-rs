@@ -1,0 +1,51 @@
+{
+ "propose": {
+  "msg": {
+   "propose": {
+    "title": "Headstash claim page: on-chain frontend (cw-headstash-frontend)",
+    "description": "Publishes the Headstash claim page on chain and points both headstash instances at it. 1) instantiate2 cw-headstash-frontend (code 106, checksum E72EEE9B90012CE42FED2C0ABD0B1FCC31B868168FA79D30D2F9D6FDD616CAC2) at terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu with admin and owner = this DAO, max_chunk_bytes 131072, salt 'headstash-frontend:v1', label 'headstash-frontend-v1'. 2) publish_manifest v1 (activate on completion), manifest sha256 cac6977abbd0f9b3281a8458e7fcde0b2ef1de96e8700aca5c1e7ceb906557e7, files: app.html 5023 B (gzip 2238, 1 chunk) sha256 2e1fd9ebed33c9ff919a7e107c0df1eb8b8dd9c656dae26484d22b02c6a0a69c; app.js 14638 B (gzip 5347, 1 chunk) sha256 0d62ead3e030245490116c791bb9fe1f36491826df31f29eaa29186b8061741d; crypto.js 10640 B (gzip 4316, 1 chunk) sha256 dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c; zk_headstash.js 10923 B (gzip 2754, 1 chunk) sha256 37a98d349275cb4a2c6e93f7278c4fc0c26c4120766d8f49add45448b0f8a964; zk_headstash_bg.wasm 2006266 B (gzip 664342, 6 chunks) sha256 51681559143fcdb411e00515a745bf880e13c23a77ed28f13a7640b71acbe1c8. 3) set_frontend_contract terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu on terpy (terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q), thioly (terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7). After execution the 10 chunks are uploaded permissionlessly (UploadChunk is sha-checked against this manifest); version 1 becomes current when the last chunk lands. Nothing is paid out and no funds move.",
+    "msgs": [
+     {
+      "wasm": {
+       "instantiate2": {
+        "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+        "code_id": 106,
+        "label": "headstash-frontend-v1",
+        "msg": "eyJvd25lciI6InRlcnAxNHcycXZhNmR4Nndjc21xNWZ2cGxoN2NyN252cHRlanpueXZwZTVocDVtdHlxaHh4amFtc3oza3cydyIsIm1heF9jaHVua19ieXRlcyI6MTMxMDcyfQ==",
+        "funds": [],
+        "salt": "aGVhZHN0YXNoLWZyb250ZW5kOnYx"
+       }
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+        "msg": "eyJwdWJsaXNoX21hbmlmZXN0Ijp7Im1hbmlmZXN0Ijp7InZlcnNpb24iOjEsImVudHJ5IjoiYXBwLmpzIiwiZmlsZXMiOlt7InBhdGgiOiJhcHAuaHRtbCIsImNvbnRlbnRfdHlwZSI6InRleHQvaHRtbCIsImVuY29kaW5nIjoiZ3ppcCIsInNpemUiOjUwMjMsInNoYTI1NiI6IjJlMWZkOWViZWQzM2M5ZmY5MTlhN2UxMDdjMGRmMWViOGI4ZGQ5YzY1NmRhZTI2NDg0ZDIyYjAyYzZhMGE2OWMiLCJzdG9yZWRfc2l6ZSI6MjIzOCwiY2h1bmtzIjpbIjkyYzQwNjhhMzhiYzY3MWJjMzY5Mjc0YzZjYjgwZjhlY2E5YzkyZDUyZTc1ODRmYmQ4YmViNTljOTZjNWE5ZTkiXX0seyJwYXRoIjoiYXBwLmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MTQ2MzgsInNoYTI1NiI6IjBkNjJlYWQzZTAzMDI0NTQ5MDExNmM3OTFiYjlmZTFmMzY0OTE4MjZkZjMxZjI5ZWFhMjkxODZiODA2MTc0MWQiLCJzdG9yZWRfc2l6ZSI6NTM0NywiY2h1bmtzIjpbIjg2ZGRlZTZiY2U0YzU3YzcwODQ0ZWE4NWZmMTNkN2JjZTUyNWNjODcxMmZlYzQzYTQ2YjlkNjgzMGE0NTQ4ODAiXX0seyJwYXRoIjoiY3J5cHRvLmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MTA2NDAsInNoYTI1NiI6ImRkMmIxMThjZTAyNzA0YjUyN2VlZDQyODFlZWQ1ZjIxNzk5NmY0YTUyMzJmMzI1ZTJhODg2ZmQ1YmRhNzVlNGMiLCJzdG9yZWRfc2l6ZSI6NDMxNiwiY2h1bmtzIjpbImFkNzI1MWIzZjM2OWQ0YTE5MjkxNDIxNjY4Njk2ZDJkZDdkZjA3YzJlYzY2ZjdjNDFiOWVlYTJkZDM4Yjg3ZWQiXX0seyJwYXRoIjoiemtfaGVhZHN0YXNoLmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MTA5MjMsInNoYTI1NiI6IjM3YTk4ZDM0OTI3NWNiNGEyYzZlOTNmNzI3OGM0ZmMwYzI2YzQxMjA3NjZkOGY0OWFkZDQ1NDQ4YjBmOGE5NjQiLCJzdG9yZWRfc2l6ZSI6Mjc1NCwiY2h1bmtzIjpbIjhkMzZiNDAwYTkzOWIyYTBiYjUwMzVhNTMxODBkZjczOTYyYmRiYzM5Nzc5OWQ4MzNjZGVmM2ViNjdjZTZiODAiXX0seyJwYXRoIjoiemtfaGVhZHN0YXNoX2JnLndhc20iLCJjb250ZW50X3R5cGUiOiJhcHBsaWNhdGlvbi93YXNtIiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MjAwNjI2Niwic2hhMjU2IjoiNTE2ODE1NTkxNDNmY2RiNDExZTAwNTE1YTc0NWJmODgwZTEzYzIzYTc3ZWQyOGYxM2E3NjQwYjcxYWNiZTFjOCIsInN0b3JlZF9zaXplIjo2NjQzNDIsImNodW5rcyI6WyIwNWM2YjM1ZWQyMTNkN2I4Y2ZhMzM0ODk4MDU1NTFhOWYzYzFiNWE1ZjY3MmI1MDk0NTU3M2M4NWJhMzdhYmFiIiwiZTI5MWYxY2Q1NDUzZDZiMzhkYTViODI5ZmNkZTgyNDcwOTgwOWIyYWIyZjI4NmQ5ZDBjOWJmMjQ0MmZjNDk5NyIsImY0MGFlYmI5MGZkY2JmNDlkYWRlN2FkNzVkNWExMDllMmZhYzMxMGIyODExMWM1MmY4MjQ0ZDVhMDM0ZGRkNzQiLCIwNDUxMDA4MTc4YmNhYmYxN2VkMjBhMWVkNDRiMDQxOGVkYTJhZjEwYWJmNDY1OWFmN2NjMWNhYzEwM2Q1YzRjIiwiZmU3ODYxNWY2ODdiMDQ2YmIzMjgyNTE0ZjFiNGYxNzE5YTBkZjdiOGU0MWNmMDkxOGU2NjViYzZjZjI3YmM3ZCIsIjZkZWJjYzJjYzNkNmYxZGFhN2I2ZWI2ZWUwOTVlNjY3MjhhMzZjMTlmMGFmZmZkODlkN2JlMGJiYTY5MTA3YzgiXX1dLCJub3RlIjoiaGVhZHN0YXNoIGNsYWltIHBhZ2UiLCJhY3RpdmF0ZSI6dHJ1ZX19fQ==",
+        "funds": []
+       }
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+        "msg": "eyJzZXRfZnJvbnRlbmRfY29udHJhY3QiOnsiYWRkciI6InRlcnAxZ255bDkyZHljeWh3bXc3c2dteDBkNnZ0OTQzdmY2anRsdWxybWNzMmo5N3M4Njh3aDJ0cWs3ajdjdSJ9fQ==",
+        "funds": []
+       }
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+        "msg": "eyJzZXRfZnJvbnRlbmRfY29udHJhY3QiOnsiYWRkciI6InRlcnAxZ255bDkyZHljeWh3bXc3c2dteDBkNnZ0OTQzdmY2anRsdWxybWNzMmo5N3M4Njh3aDJ0cWs3ajdjdSJ9fQ==",
+        "funds": []
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

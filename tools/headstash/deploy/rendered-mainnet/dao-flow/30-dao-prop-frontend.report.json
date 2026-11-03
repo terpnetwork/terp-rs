@@ -1,0 +1,87 @@
+{
+ "dao": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+ "code_id": 106,
+ "checksum": "E72EEE9B90012CE42FED2C0ABD0B1FCC31B868168FA79D30D2F9D6FDD616CAC2",
+ "salt": "headstash-frontend:v1",
+ "salt_b64": "aGVhZHN0YXNoLWZyb250ZW5kOnYx",
+ "label": "headstash-frontend-v1",
+ "predicted_frontend": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+ "targets": {
+  "terpy": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+  "thioly": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+ },
+ "manifest_pin_sha256": "cac6977abbd0f9b3281a8458e7fcde0b2ef1de96e8700aca5c1e7ceb906557e7",
+ "bundle_sha256": "17b5419d26ed0c28aced5f51a76b35401fdffbbb065a518416583c76761b892f",
+ "files": [
+  {
+   "path": "app.html",
+   "raw_size": 5023,
+   "gzip_size": 2238,
+   "sha256": "2e1fd9ebed33c9ff919a7e107c0df1eb8b8dd9c656dae26484d22b02c6a0a69c",
+   "chunks": 1
+  },
+  {
+   "path": "app.js",
+   "raw_size": 14638,
+   "gzip_size": 5347,
+   "sha256": "0d62ead3e030245490116c791bb9fe1f36491826df31f29eaa29186b8061741d",
+   "chunks": 1
+  },
+  {
+   "path": "crypto.js",
+   "raw_size": 10640,
+   "gzip_size": 4316,
+   "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash.js",
+   "raw_size": 10923,
+   "gzip_size": 2754,
+   "sha256": "37a98d349275cb4a2c6e93f7278c4fc0c26c4120766d8f49add45448b0f8a964",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash_bg.wasm",
+   "raw_size": 2006266,
+   "gzip_size": 664342,
+   "sha256": "51681559143fcdb411e00515a745bf880e13c23a77ed28f13a7640b71acbe1c8",
+   "chunks": 6
+  }
+ ],
+ "chunks_total": 10,
+ "stored_bytes": 678997,
+ "propose_file": "deploy/rendered-mainnet/dao-flow/30-dao-prop-frontend.propose.json",
+ "propose_sha256": "18ac49f2d52f449f05ad5d3def65bdef91f6fd1d1191d592c140a35d1cf93f5f",
+ "chunks_file": "deploy/rendered-mainnet/dao-flow/30-dao-prop-frontend.chunks.json",
+ "chunks_sha256": "54e91c3b5b8466bd6ee210766254db8c8a5d81936761dab57c35b6eca68b252d",
+ "loaders": {
+  "terpy": {
+   "file": "deploy/rendered-mainnet/dao-flow/loader-terpy.html",
+   "sha256": "53e4a82898a860f4e87fb2985ab58bea89b72e3636c8d8a5be0b06e3104b7a20",
+   "headstash": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q"
+  },
+  "thioly": {
+   "file": "deploy/rendered-mainnet/dao-flow/loader-thioly.html",
+   "sha256": "1f87a58324d1f9aa8de5281b45c90c51c60495c0d3fd72c79c5c61b75f1aa69e",
+   "headstash": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+  }
+ },
+ "loader_cfg": {
+  "rest": "https://api.terp.network",
+  "relay": "https://terp.network",
+  "chain_id": "morocco-1",
+  "denom": "uthiol",
+  "gas_price": "0.05",
+  "claim_gas": 400000,
+  "register_gas": 12000000
+ },
+ "checks": {
+  "code_checksum": true,
+  "terpy_owner_is_dao": true,
+  "terpy_frontend_contract": null,
+  "thioly_owner_is_dao": true,
+  "thioly_frontend_contract": null,
+  "predicted_address_free": true
+ }
+}

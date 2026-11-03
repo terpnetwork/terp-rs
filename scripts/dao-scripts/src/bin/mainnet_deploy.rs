@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote", "dao-propose", "dao-vote", "dao-execute", "circuit-propose", "gov-propose", "gov-vote"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote", "dao-propose", "dao-vote", "dao-execute", "circuit-propose", "gov-propose", "gov-vote", "chunk-upload"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -249,6 +249,19 @@ struct Cli {
     title: Option<String>,
     #[arg(long, default_value = "")]
     description: String,
+    /// dao-propose: an existing contract that a proposal with instantiate2 msgs may also execute
+    /// (repeatable). Refused unless it exists on chain with admin or cw-ownable owner == the DAO core.
+    #[arg(long = "allow-target")]
+    allow_target: Vec<String>,
+    /// chunk-upload: JSON plan {"contract"?, "version", "files":[{"path"?, "chunks":[base64]}]}.
+    #[arg(long)]
+    chunks_file: Option<PathBuf>,
+    /// chunk-upload: sha256 pin of --chunks-file; a mismatch refuses before any grant.
+    #[arg(long)]
+    chunks_sha: Option<String>,
+    /// chunk-upload: frontend (cw-headstash-frontend) contract; overrides the plan's "contract".
+    #[arg(long = "frontend")]
+    frontend_addr: Option<String>,
     /// dao-propose --execute: poll until the proposal is `passed` (bounded by --wait-secs).
     #[arg(long)]
     wait_pass: bool,
@@ -414,7 +427,7 @@ impl Step {
         match self {
             Step::Store { name, file } => json!({"store": name, "file": file}),
             Step::Inst { name, code, msg, admin } => json!({"instantiate2": name, "code": code, "admin": admin, "msg": msg}),
-            Step::Exec { id, contract, key, msg } => json!({"execute": id, "contract": contract, "key": key, "msg": msg}),
+            Step::Exec { id, contract, key, msg } => json!({"execute": id, "contract": contract, "key": key, "msg": elide(msg)}),
             Step::ExecAs { id, contract, key, msg } => json!({"execute_as_granter": id, "contract": contract, "key": key, "msg": msg}),
             Step::Vote { id, module, of } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": "yes"}),
             Step::DaoVote { id, module, of, choice } => json!({"vote_as_granter": id, "module": module, "proposal_of": of, "vote": choice}),
@@ -1055,13 +1068,25 @@ fn dao_propose(ctx: &mut Ctx) -> Result<()> {
         println!("  instantiate2 {} code {code_id} ({}) admin {} -> {a}", i["label"], &hex_lower(info.checksum.as_slice())[..12], i["admin"]);
         predicted.push(a);
     }
+    let mut allowed: Vec<String> = Vec::new();
+    for a in &ctx.cli.allow_target {
+        let ci = q.wasm_querier().contract_info(&Addr::unchecked(a)).map_err(|e| anyhow!("--allow-target {a}: not a contract on chain: {e}"))?;
+        let admin = ci.admin.as_ref().map(|x| x.to_string());
+        let owner: Option<String> = q.wasm_querier().smart_query::<_, Value>(&Addr::unchecked(a), &json!({"ownership": {}})).ok()
+            .and_then(|o| o["owner"].as_str().map(String::from));
+        if admin.as_deref() != Some(t.core.as_str()) && owner.as_deref() != Some(t.core.as_str()) {
+            bail!("--allow-target {a}: neither admin {admin:?} nor owner {owner:?} is the DAO {} (refusing before any grant)", t.core);
+        }
+        println!("  allow-target {a}: code {} admin {admin:?} owner {owner:?} (DAO-controlled)", ci.code_id);
+        allowed.push(a.clone());
+    }
     drop(q);
     if predicted.is_empty() { println!("  instantiate2 check: skipped (no instantiate2 msgs)"); } else {
         for m in &msgs {
             let tg = m["wasm"]["execute"]["contract_addr"].as_str().or(m["bank"]["send"]["to_address"].as_str());
-            if let Some(tg) = tg { if !predicted.iter().any(|p| p == tg) { bail!("dao-propose: target {tg} is not an instantiate2 address of this proposal (refusing before any grant)"); } }
+            if let Some(tg) = tg { if !predicted.iter().any(|p| p == tg) && !allowed.iter().any(|p| p == tg) { bail!("dao-propose: target {tg} is not an instantiate2 address of this proposal nor an --allow-target (refusing before any grant)"); } }
         }
-        println!("  instantiate2 check: ok ({} addresses, all in-proposal targets match)", predicted.len());
+        println!("  instantiate2 check: ok ({} addresses, all in-proposal targets match; {} allow-target)", predicted.len(), allowed.len());
     }
     let (contract, msg) = match &t.pre {
         Some(pre) => (pre.clone(), json!({"propose": {"msg": {"propose": {"title": title, "description": description, "msgs": msgs}}}})),
@@ -1077,6 +1102,66 @@ fn dao_propose(ctx: &mut Ctx) -> Result<()> {
         steps.push(Step::DaoExec { id: format!("{pid_key}:execute"), module: t.module.clone(), of: pid_key.clone(), wait_secs: w });
     }
     execute_steps(ctx, "dao-propose", steps)
+}
+
+/// Shorten huge string fields (e.g. chunk `data`) in plan / approval text to their size + sha256.
+fn elide(v: &Value) -> Value {
+    match v {
+        Value::String(s) if s.len() > 4096 => json!(format!("<{} chars sha256 {}>", s.len(), hex_lower(&Sha256::digest(s.as_bytes())))),
+        Value::Array(a) => Value::Array(a.iter().map(elide).collect()),
+        Value::Object(o) => Value::Object(o.iter().map(|(k, x)| (k.clone(), elide(x))).collect()),
+        x => x.clone(),
+    }
+}
+
+/// `chunk-upload`: generic cw-headstash-frontend chunk upload. `UploadChunk` is permissionless and
+/// sha-checked on chain; every chunk is re-checked here against the on-chain manifest before any
+/// grant, chunks already stored are skipped, and the session key is the sender (fees via feegrant).
+fn chunk_upload(ctx: &mut Ctx) -> Result<()> {
+    let f = ctx.cli.chunks_file.clone().ok_or_else(|| anyhow!("chunk-upload: --chunks-file required"))?;
+    let bytes = std::fs::read(&f).map_err(|e| anyhow!("{}: {e}", f.display()))?;
+    let got = hex_lower(&Sha256::digest(&bytes));
+    if let Some(w) = &ctx.cli.chunks_sha { if w.to_lowercase() != got { bail!("refused before any grant: {} sha256 {got} != --chunks-sha {w} (nothing was broadcast)", f.display()); } }
+    let plan: Value = serde_json::from_slice(&bytes)?;
+    let contract = ctx.cli.frontend_addr.clone().or_else(|| plan["contract"].as_str().map(String::from))
+        .ok_or_else(|| anyhow!("chunk-upload: --frontend or plan \"contract\" required"))?;
+    let version = plan["version"].as_u64().ok_or_else(|| anyhow!("chunk-upload: plan \"version\" missing"))? as u32;
+    let files = plan["files"].as_array().cloned().ok_or_else(|| anyhow!("chunk-upload: plan \"files\" missing"))?;
+    println!("  {} sha256 {got}: {} files -> {contract} v{version}", f.display(), files.len());
+    let q = ctx.query()?;
+    let c = Addr::unchecked(&contract);
+    q.wasm_querier().contract_info(&c).map_err(|e| anyhow!("chunk-upload: {contract} is not a contract on chain: {e}"))?;
+    let m: Value = q.wasm_querier().smart_query(&c, &json!({"manifest": {"version": version}}))
+        .map_err(|e| anyhow!("chunk-upload: manifest v{version} not on {contract} (execute the publish proposal first): {e}"))?;
+    let mfiles = m["files"].as_array().cloned().unwrap_or_default();
+    if mfiles.len() != files.len() { bail!("chunk-upload: plan has {} files, on-chain manifest v{version} has {}", files.len(), mfiles.len()); }
+    let tag = &contract[contract.len().saturating_sub(12)..];
+    let (mut total, mut stored, mut steps) = (0usize, 0usize, Vec::new());
+    for (fi, (pf, mf)) in files.iter().zip(&mfiles).enumerate() {
+        let chunks = pf["chunks"].as_array().cloned().unwrap_or_default();
+        let hashes = mf["chunks"].as_array().cloned().unwrap_or_default();
+        if chunks.len() != hashes.len() { bail!("chunk-upload: file {fi} ({}) has {} chunks, manifest {}", mf["path"], chunks.len(), hashes.len()); }
+        for (ci, (b, h)) in chunks.iter().zip(&hashes).enumerate() {
+            let data = Binary::from_base64(b.as_str().unwrap_or_default()).map_err(|e| anyhow!("file {fi} chunk {ci}: {e}"))?;
+            let hh = hex_lower(&Sha256::digest(data.as_slice()));
+            if Some(hh.as_str()) != h.as_str().map(|x| x.to_lowercase()).as_deref() {
+                bail!("refused before any grant: file {fi} chunk {ci} sha256 {hh} != on-chain manifest {h}");
+            }
+            total += 1;
+            let have = q.wasm_querier().smart_query::<_, Binary>(&c, &json!({"chunk": {"version": version, "file": fi, "index": ci}})).is_ok();
+            if have { stored += 1; continue; }
+            steps.push(Step::Exec { id: format!("chunk-upload:{tag}:v{version}:{fi}:{ci}"), contract: contract.clone(), key: "upload_chunk".into(),
+                msg: json!({"upload_chunk": {"version": version, "file": fi, "index": ci, "data": data}}) });
+        }
+    }
+    println!("  chunk check: ok ({total} chunks match the on-chain manifest; {stored} already stored, {} to upload)", steps.len());
+    drop(q);
+    execute_steps(ctx, "chunk-upload", steps)?;
+    if ctx.cli.broadcast {
+        let st: Value = ctx.query()?.wasm_querier().smart_query(&c, &json!({"status": {"version": version}})).map_err(|e| anyhow!("{e}"))?;
+        println!("  status v{version}: {st}");
+    }
+    Ok(())
 }
 
 /// `vote` (legacy alias of `dao-vote`, default the Foundation module A) / `dao-vote` / `dao-execute`.
@@ -1514,6 +1599,7 @@ fn main() -> Result<()> {
             "daos" => daos(&mut ctx)?,
             "vote" | "dao-vote" | "dao-execute" => vote(&mut ctx, phase)?,
             "dao-propose" => dao_propose(&mut ctx)?,
+            "chunk-upload" => chunk_upload(&mut ctx)?,
             "circuit-propose" | "gov-propose" => gov_propose(&mut ctx, phase)?,
             "gov-vote" => gov_vote(&mut ctx)?,
             "oracles" => oracles(&mut ctx)?,

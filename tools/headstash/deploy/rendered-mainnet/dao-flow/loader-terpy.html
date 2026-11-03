@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network; img-src data:">
+<title>Terp Headstash (on-chain loader)</title></head><body><p id="st">Loading the claim page from chain…</p>
+<script type="module">
+// ERC-8244-style loader: everything below the config comes from the Headstash frontend contract, sha256-verified.
+const CFG = {"rest":"https://api.terp.network","relay":"https://terp.network","chain_id":"morocco-1","headstash":"terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q","hrp":"terp","denom":"uthiol","gas_price":0.05,"claim_gas":400000,"register_gas":12000000};
+const PIN = "cac6977abbd0f9b3281a8458e7fcde0b2ef1de96e8700aca5c1e7ceb906557e7"; // optional: sha256 of canonical manifest JSON, from the gov proposal ("" = trust headstash config)
+const st = (t) => (document.getElementById("st").textContent = t);
+const te = new TextEncoder(), hex = (b) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
+const sha = async (b) => hex(await crypto.subtle.digest("SHA-256", b));
+const q = async (a, m) => { const r = await fetch(`${CFG.rest}/cosmwasm/wasm/v1/contract/${a}/smart/${btoa(JSON.stringify(m))}`); const j = await r.json(); if (!r.ok) throw new Error(j.message); return j.data; };
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+try {
+  const fe = (await q(CFG.headstash, { frontend_contract: {} }));
+  const feAddr = typeof fe === "string" ? fe : fe && (fe.address || fe.frontend_contract);
+  if (!feAddr) throw new Error("headstash has no frontend_contract configured");
+  const man = await q(feAddr, { manifest: {} });
+  if (PIN && (await sha(te.encode(JSON.stringify(man)))) !== PIN) throw new Error("manifest does not match pinned hash");
+  const files = {}, urls = {};
+  for (const [fi, f] of man.files.entries()) {
+    const parts = [];
+    for (const [ci, want] of f.chunks.entries()) {
+      st(`verifying ${f.path} chunk ${ci + 1}/${f.chunks.length}`);
+      const d = unb64(await q(feAddr, { chunk: { version: man.version, file: fi, index: ci } }));
+      if ((await sha(d)) !== want) throw new Error(`chunk hash mismatch ${f.path}#${ci}`);
+      parts.push(d);
+    }
+    let raw = new Uint8Array(await new Blob(parts).arrayBuffer());
+    if (f.encoding === "gzip") raw = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+    if (raw.length !== f.size || (await sha(raw)) !== f.sha256) throw new Error(`file hash mismatch ${f.path}`);
+    files[f.path] = raw; urls[f.path] = URL.createObjectURL(new Blob([raw], { type: f.content_type }));
+  }
+  document.body.innerHTML = new TextDecoder().decode(files["app.html"]);
+  const app = await import(urls[man.entry]);
+  await app.start({ files, manifest: man, urls, config: { ...CFG, frontend: feAddr } });
+} catch (e) { st("Refusing to load: " + e.message); document.body.dataset.error = e.message; }
+</script></body></html>

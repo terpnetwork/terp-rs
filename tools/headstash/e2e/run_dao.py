@@ -143,19 +143,19 @@ def kms(who, phase, D, name, *extra):
     open(os.path.join(RUN, "kms_%s_%s_%s.log" % (name, who, phase)), "w").write(p.stdout + p.stderr)
     return p
 
-def kms_dao_run(D, name, title, msgs):
+def kms_dao_run(D, name, title, msgs, extra=(), n_inst=2):
     """dao_m3: generic dao-propose --dao (sha-pinned file) --vote yes; dao_m2: `vote` alias, then dao-execute."""
     import re
     body = {"propose": {"msg": {"propose": {"title": title, "description": "local dry run: " + name, "msgs": msgs}}}}
     f = os.path.join(RUN, "dao_%s.propose.json" % name); json.dump(body, open(f, "w"), indent=1)
     sha = hashlib.sha256(open(f, "rb").read()).hexdigest()
-    bad = kms("dao_m3", "dao-propose", D, name + "-bad", "--dao", D["core"], "--propose-file", f, "--propose-sha", "00" * 32, "--vote", "yes")
+    bad = kms("dao_m3", "dao-propose", D, name + "-bad", "--dao", D["core"], "--propose-file", f, "--propose-sha", "00" * 32, "--vote", "yes", *extra)
     step(name + "_kms_sha_mismatch_refused_before_grant", bad.returncode != 0 and "refused before any grant" in bad.stdout + bad.stderr
          and "dao-propose:" not in bad.stdout, (bad.stdout + bad.stderr)[-200:])
-    p = kms("dao_m3", "dao-propose", D, name, "--dao", D["core"], "--propose-file", f, "--propose-sha", sha, "--vote", "yes")
+    p = kms("dao_m3", "dao-propose", D, name, "--dao", D["core"], "--propose-file", f, "--propose-sha", sha, "--vote", "yes", *extra)
     m = re.search(r"proposal (\d+)", p.stdout)
     step(name + "_kms_dao_propose_resolved_and_voted", p.returncode == 0 and bool(m) and "voted yes" in p.stdout and D["prepropose"] in p.stdout
-         and "instantiate2 check: ok (2 addresses" in p.stdout, (p.stdout + p.stderr)[-300:])
+         and ("instantiate2 check: ok (%d addresses" % n_inst) in p.stdout, (p.stdout + p.stderr)[-300:])
     if not m: return {}, None, None
     pid = int(m.group(1))
     st0 = smart(D["proposal"], {"proposal": {"proposal_id": pid}})["proposal"]["status"]
@@ -167,6 +167,84 @@ def kms_dao_run(D, name, title, msgs):
     step(name + "_kms_dao_execute_second_member", ex.returncode == 0 and "executed" in ex.stdout and st == "executed", (ex.stdout + ex.stderr)[-300:])
     R.setdefault("dao_proposals", {})[name] = {"id": pid, "via": "mainnet_deploy dao-propose/vote/dao-execute", "sha": sha, "status": st, "msgs": len(msgs)}
     return {"code": 0 if ex.returncode == 0 else 1, "raw_log": ex.stdout[-300:]}, pid, st
+
+def fe_prop(D, inst):
+    """Frontend DAO proposal, same shape as the mainnet render (render_frontend_prop.py): instantiate2
+    cw-headstash-frontend + publish_manifest + set_frontend_contract on both instances, through
+    mainnet_deploy dao-propose --allow-target / vote / dao-execute; then mainnet_deploy chunk-upload,
+    on-chain checks, and the loader served from 127.0.0.1 resolving the page from this chain."""
+    import render_frontend_prop as rf, browser_e2e as be
+    DAO = D["core"]; code = int(R["fe_code_id"]); ci = q("wasm", "code-info", str(code)); chk = (ci.get("checksum") or ci.get("data_hash")).lower()
+    prover = os.environ.get("HSFE_PROVER_DIR", "/tmp/hsfe/prover")
+    m, chunks, fs = rf.bundle(rf.DEFAULT_PAGE, prover); pin = rf.manifest_pin(m)
+    salt = b"headstash-frontend:v1"; targets = [inst[t]["addr"] for t in TOKENS]
+    fe, msgs = rf.proposal_msgs(DAO, code, chk, salt, "headstash-frontend-v1", targets, m)
+    alt = terpd("q", "wasm", "build-address", chk, DAO, salt.hex()).strip().split()[-1]
+    step("fe_predicted_address_matches_terpd_build_address", fe == alt, "%s vs %s" % (fe, alt))
+    R["fe_prop"] = {"predicted": fe, "pin": pin, "bundle_sha256": rf.bundle_sha(fs), "chunks": sum(len(c) for c in chunks), "files": fs}
+    # without --allow-target the instantiate2 target check refuses the existing instances before any grant
+    body = {"propose": {"msg": {"propose": {"title": "fe noallow", "description": "x", "msgs": msgs}}}}
+    f0 = os.path.join(RUN, "dao_fe_noallow.propose.json"); json.dump(body, open(f0, "w"))
+    p0 = kms("dao_m3", "dao-propose", D, "fe-noallow", "--dao", DAO, "--propose-file", f0, "--propose-sha", hashlib.sha256(open(f0, "rb").read()).hexdigest())
+    step("fe_prop_without_allow_target_refused", p0.returncode != 0 and "is not an instantiate2 address of this proposal nor an --allow-target" in p0.stdout + p0.stderr,
+         (p0.stdout + p0.stderr)[-200:])
+    # --allow-target of a contract the DAO does not control is refused
+    p1 = kms("dao_m3", "dao-propose", D, "fe-badallow", "--dao", DAO, "--propose-file", f0, "--propose-sha", hashlib.sha256(open(f0, "rb").read()).hexdigest(),
+             "--allow-target", targets[0], "--allow-target", R["addresses"]["OWNER_ADDR"])
+    step("fe_allow_target_non_contract_refused", p1.returncode != 0 and "not a contract on chain" in p1.stdout + p1.stderr, (p1.stdout + p1.stderr)[-200:])
+    allow = sum((["--allow-target", t] for t in targets), [])
+    ex, pid, st = kms_dao_run(D, "fe_prop", "Headstash claim page: on-chain frontend (cw-headstash-frontend)", msgs, extra=allow, n_inst=1)
+    step("fe_prop_executed", st == "executed", "proposal %s %s" % (pid, st))
+    if st != "executed": return
+    cinfo = q("wasm", "contract", fe); cinfo = cinfo.get("contract_info", cinfo)
+    own = smart(fe, {"ownership": {}}).get("owner")
+    step("fe_instantiated_at_predicted_dao_admin_owner", str(cinfo.get("code_id")) == str(code) and cinfo.get("admin") == DAO and cinfo.get("creator") == DAO and own == DAO,
+         "%s code %s admin %s creator %s owner %s" % (fe, cinfo.get("code_id"), cinfo.get("admin"), cinfo.get("creator"), own))
+    raw = get("/cosmwasm/wasm/v1/contract/%s/smart/%s" % (fe, base64.b64encode(json.dumps({"manifest": {"version": 1}}).encode()).decode()))["data"]
+    step("fe_manifest_on_chain_equals_rendered_and_pin", raw == m and rf.manifest_pin(raw) == pin, "pin %s" % pin)
+    for t in TOKENS:
+        got = smart(inst[t]["addr"], {"frontend_contract": {}})
+        step("%s_frontend_contract_set" % t, got == fe, "%s -> %s" % (inst[t]["addr"], got))
+    s0 = smart(fe, {"status": {"version": 1}})
+    # chunk upload: generic mainnet_deploy chunk-upload (session key sends, fees by feegrant on mainnet)
+    plan = rf.chunk_plan(fe, m, chunks)
+    cf = os.path.join(RUN, "fe.chunks.json"); json.dump(plan, open(cf, "w")); csha = hashlib.sha256(open(cf, "rb").read()).hexdigest()
+    bad = json.loads(json.dumps(plan)); c0 = bytearray(base64.b64decode(bad["files"][0]["chunks"][0])); c0[0] ^= 1
+    bad["files"][0]["chunks"][0] = base64.b64encode(bytes(c0)).decode()
+    bf = os.path.join(RUN, "fe.chunks.tampered.json"); json.dump(bad, open(bf, "w"))
+    pb = kms("dao_m3", "chunk-upload", D, "fe-tampered", "--chunks-file", bf, "--chunks-sha", hashlib.sha256(open(bf, "rb").read()).hexdigest())
+    step("fe_tampered_chunk_refused_before_grant", pb.returncode != 0 and "refused before any grant: file 0 chunk 0" in pb.stdout + pb.stderr, (pb.stdout + pb.stderr)[-200:])
+    pu = kms("dao_m3", "chunk-upload", D, "fe", "--chunks-file", cf, "--chunks-sha", csha, "--frontend", fe)
+    s1 = smart(fe, {"status": {"version": 1}}); cfg = smart(fe, {"config": {}})
+    n = sum(len(c) for c in chunks)
+    step("fe_chunk_upload_kms", pu.returncode == 0 and s0.get("uploaded") == 0 and s1 == {"version": 1, "uploaded": n, "total": n, "complete": True} and cfg.get("current") == 1,
+         "before %s after %s current %s" % (json.dumps(s0), json.dumps(s1), cfg.get("current")))
+    pr = kms("dao_m3", "chunk-upload", D, "fe-rerun", "--chunks-file", cf, "--chunks-sha", csha)
+    step("fe_chunk_upload_rerun_idempotent", pr.returncode == 0 and ("%d already stored, 0 to upload" % n) in pr.stdout, (pr.stdout + pr.stderr)[-200:])
+    good = 0
+    for fi, cs in enumerate(chunks):
+        for ci_, c in enumerate(cs):
+            d_ = base64.b64decode(smart(fe, {"chunk": {"version": 1, "file": fi, "index": ci_}}))
+            good += hashlib.sha256(d_).hexdigest() == m["files"][fi]["chunks"][ci_] and d_ == c
+    step("fe_chunks_queried_hash_verified", good == n, "%d/%d chunks" % (good, n))
+    # loader from 127.0.0.1 resolves the page from this chain (pinned manifest) for each instance
+    work = os.path.join(RUN, "fe-loader"); os.makedirs(work, exist_ok=True)
+    srv = be.serve(work)
+    try:
+        for t in TOKENS:
+            lt = rf.loader(rf.DEFAULT_PAGE, REST, d.RELAY_URL, CHAIN_ID, inst[t]["addr"], "uterp", d.GP, 400000, d.REGISTER_GAS, pin)
+            open(os.path.join(work, "loader-%s.html" % t), "w").write(lt)
+            o = be.browser("load", {"url": "http://127.0.0.1:%d/loader-%s.html" % (be.PORT, t)})
+            R.setdefault("fe_loader", {})[t] = {k: o.get(k) for k in ("ok", "loaded", "load_ms", "version", "title", "has_app", "error")}
+            step("%s_loader_127001_resolves_page_from_chain" % t, o.get("ok") is True and o.get("loaded") is True and o.get("has_app") is True,
+                 json.dumps(R["fe_loader"][t])[:300])
+        # a wrong pin is refused by the loader
+        lt = rf.loader(rf.DEFAULT_PAGE, REST, d.RELAY_URL, CHAIN_ID, inst["terpy"]["addr"], "uterp", d.GP, 400000, d.REGISTER_GAS, "0" * 64)
+        open(os.path.join(work, "loader-badpin.html"), "w").write(lt)
+        o = be.browser("load", {"url": "http://127.0.0.1:%d/loader-badpin.html" % be.PORT})
+        step("loader_wrong_pin_refused", o.get("ok") is False and "manifest does not match pinned hash" in (o.get("error") or ""), (o.get("error") or "")[:200])
+    finally:
+        srv.shutdown()
 
 def get(path):
     import urllib.request, urllib.error
@@ -379,6 +457,9 @@ def main():
         info = smart(c, {"direct_claim": {}})
         step("%s_direct_ctx_matches" % t, base64.b64decode(info["expected_ctx"]) == i["ctx"], json.dumps(info)[:160])
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
+    if KMS_BIN and FE_WASM and os.environ.get("FE_PROP") == "1":
+        fe_prop(D, inst); save()
+        if os.environ.get("STOP_AFTER_FE") == "1": return
     if KMS_BIN and os.environ.get("KMS_GOV") == "1":
         kms_gov_circuit_and_bind(D, inst, TOKENS, PROPOSER, cdir); save(); return
     if os.environ.get("STOP_AFTER_PROP1") == "1": return
