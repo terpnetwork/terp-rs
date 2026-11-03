@@ -54,7 +54,7 @@ const PHASES: &[&str] = &[
     "preflight", "upload", "daos", "oracles", "nftfi", "authenticators", "svg", "verify",
 ];
 /// Run only by name (`polytone`), never by `all`: needs a live relayer + connection.
-const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "vote"];
+const EXTRA_PHASES: &[&str] = &["polytone", "dao-upload", "bounty-upload", "hs-upload", "vote"];
 
 /// Already-instantiated morocco-1 code ids superseded by the fresh build (no migrate, by design).
 /// Recorded as `previous` so the report shows old vs new.
@@ -92,6 +92,15 @@ const DAO_CODES: &[(&str, &str)] = &[
 /// `migrate` entrypoint: an explicit, owner-approved exception (2026-10-27). Only the
 /// `bounty-upload` phase stores it; nothing here instantiates it.
 const BOUNTY_CODES: &[(&str, &str)] = &[("bounty-escrow", "mainnet/terp_bounty_escrow.wasm")];
+
+/// Headstash v0.0.1 (cw-headstash + its frontend), hermetic arm64 builds (terpnetwork/optimizer-arm64:0.17.0-rust1.91,
+/// src 4de39b1 / 129fe5e), written to artifacts/mainnet/. Plain MsgStoreCode (code upload is Everybody on morocco-1):
+/// no x/gov and no DAO proposal. Instantiation is the Foundation DAO's (dao-flow prop 1); only the vk_id 3 circuit goes
+/// through x/gov (phase-b/12). Only the `hs-upload` phase stores these, and only when each file matches its pinned sha256.
+const HS_CODES: &[(&str, &str, &str)] = &[
+    ("cw-headstash", "mainnet/cw_headstash.wasm", "dd40ded55eb436f296fa8eac0d1794f69c5c7369f5a137b1b52dc2cb18e22c52"),
+    ("cw-headstash-frontend", "mainnet/cw_headstash_frontend.wasm", "e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2"),
+];
 
 /// Codes already on morocco-1 that this runtime reuses and never re-stores.
 const EXTERNAL_CODES: &[(&str, u64)] = &[
@@ -356,7 +365,7 @@ fn artifacts_dir() -> PathBuf {
 }
 
 fn file_of(name: &str) -> Result<&'static str> {
-    CODES.iter().chain(DAO_CODES).find(|(n, _)| *n == name).map(|(_, f)| *f).ok_or_else(|| anyhow!("unknown code {name}"))
+    CODES.iter().chain(DAO_CODES).copied().chain(HS_CODES.iter().map(|(n, f, _)| (*n, *f))).find(|(n, _)| *n == name).map(|(_, f)| f).ok_or_else(|| anyhow!("unknown code {name}"))
 }
 
 fn read(dir: &Path, file: &str) -> Result<Vec<u8>> {
@@ -694,6 +703,16 @@ fn upload(ctx: &mut Ctx) -> Result<()> {
 fn bounty_upload(ctx: &mut Ctx) -> Result<()> {
     let steps = BOUNTY_CODES.iter().map(|(name, file)| Step::Store { name, file }).collect();
     execute_steps(ctx, "bounty-upload", steps)
+}
+
+fn hs_upload(ctx: &mut Ctx) -> Result<()> {
+    for (name, file, pinned) in HS_CODES {
+        let got = hex_lower(&Sha256::digest(&read(&ctx.dir, file)?));
+        if got != *pinned { bail!("{name}: {file} sha256 {got} != pinned {pinned} (rebuild hermetically, do not upload)"); }
+    }
+    let steps = HS_CODES.iter().filter(|(n, _, _)| !ctx.cli.skip_code.iter().any(|s| s == n))
+        .map(|(name, file, _)| Step::Store { name, file }).collect();
+    execute_steps(ctx, "hs-upload", steps)
 }
 
 fn dao_upload(ctx: &mut Ctx) -> Result<()> {
@@ -1192,6 +1211,7 @@ fn main() -> Result<()> {
             "preflight" => preflight(&mut ctx)?,
             "upload" => upload(&mut ctx)?,
             "dao-upload" => dao_upload(&mut ctx)?,
+            "hs-upload" => hs_upload(&mut ctx)?,
             "bounty-upload" => bounty_upload(&mut ctx)?,
             "daos" => daos(&mut ctx)?,
             "vote" => vote(&mut ctx)?,

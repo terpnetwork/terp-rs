@@ -114,3 +114,11 @@ Fresh `deploy-rehearsal-1` + `all`; two mock Zigner phones (granter on 8741, ope
 | session-key grants after close | 0 authz, no feegrant (both keys) |
 | revoke-operator | code 0; grants 0 authz, feegrant none |
 | docs signed | granter 2 (grant, revoke), operator 4 (2 per session) |
+
+### hs-upload (headstash v0.0.1, 2026-11-03)
+
+`--phase hs-upload` (an extra phase that runs only when named) stores `artifacts/mainnet/cw_headstash.wasm` and
+`artifacts/mainnet/cw_headstash_frontend.wasm` as raw wasm under the kms session. These are plain uploads, so there is no
+x/gov or DAO proposal. Both files are pinned by sha256 in `HS_CODES`, and a mismatch aborts before anything is signed.
+The Foundation DAO instantiates them (see tools/headstash/deploy/rendered-mainnet/dao-flow/). Only the circuit goes
+through x/gov.

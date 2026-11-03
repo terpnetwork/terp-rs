@@ -1,0 +1,49 @@
+{
+ "dao": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+ "proposal_module_A": "terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g",
+ "pre_propose_A": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp",
+ "gov": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+ "code_id": null,
+ "zk_id": 1,
+ "allocation_each": "66456669000000",
+ "notes": 98841,
+ "cutoff_height": 44444444,
+ "vk_id": 3,
+ "instances": {
+  "terpy": {
+   "label": "headstash-2026-1-terpy",
+   "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/terpy",
+   "address": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+   "salt_hex": "73658f5e3be5d73643829971833b555eeaa47f7fe6ca4eec35559206ff8903c9",
+   "nd_b64": "nGTcsLMK64NUngBEq41R4Owk6IiX6/IdpWox98kP2A8=",
+   "ctx_b64": "IiZl8vvKo940RKj52zRmGcgrtSl4+nbLRYHiBTG0LRE=",
+   "allocation": "66456669000000"
+  },
+  "thioly": {
+   "label": "headstash-2026-1-thioly",
+   "denom": "factory/terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w/thioly",
+   "address": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+   "salt_hex": "e93e59521503dece90f8589607afc4f7f4de17029e700ed7dd9bb5f3e7b349c1",
+   "nd_b64": "AOtV0EDWNq+umTh9V9tvLHL9sDPSHwWiDyDeyZwKihc=",
+   "ctx_b64": "OEUvUSFhgHanY0Am3jAlD8PPSCcA1f1FdY+ARWAIODg=",
+   "allocation": "66456669000000"
+  }
+ },
+ "prop1_msgs": 12,
+ "files": {
+  "00-upload-plan.md": "2e3cf28f7ed22f27c198716dec77ef9b2e3467bb51bce12b317f068e497cb762",
+  "10-terpy-instantiate.json": "c091bdc9d42e8480572488486c97f9e7eca60f8d259aaefb435cc6c5b98b41c9",
+  "10-thioly-instantiate.json": "ae5475f50669d6cc3bd4df90b0dee4bbda248e782819a467b67f759cb5bdcd36",
+  "11-terpy-set-epoch-campaign.json": "709d05da003f16a8fa6ee748b18f14b759ba2bccfb40ea96314932e59fbf0417",
+  "11-thioly-set-epoch-campaign.json": "0b162a6d24f122d77cfdf1db6b65c7bf0b574cbe84b1cc9e81ce71a4add474a9",
+  "20-dao-prop1-deploy.propose.json": "d32b6a551d9b12e376a73d7aa0e80923005e2412cb215d36de31514ce28ea24e",
+  "20-dao-prop1-deploy.unsigned.json": "aeffb4503861735f6717c1194779dd1f608eb79bb982eecbb722517e5601e733",
+  "40-dao-prop2-bind.propose.json": "ddf41003b7c91f45284bab8fa3615f979dfe5ee592c3f6e890d36c25a4ce9720",
+  "40-dao-prop2-bind.unsigned.json": "ceaa8e73c11cf73caa37948c6bff16bf0528d71d6c136a7ee679647c1cfb4179",
+  "50-vote.template.json": "06ab563ffd3cf2d986cbcebaa9166fd40bfee1349f1b81696da6eabba938be6c",
+  "51-execute.template.json": "c1a3497958d63c8a88ce896b958001b811d11a6c687feb7286b20308fcaddcad",
+  "60-dao-reclaim.template.json": "f23c98aa89ee1e75005e484c8887af80a6e0a6a3bb63856c1220b6387391dac0",
+  "61-dao-sweep.template.json": "21cd5a0f5560cd9ff8bdbae33d5b1a050e4923d83bddbab2d0460218ac036cf5",
+  "SUPERSEDED.md": "abb48c20b3d700bd5ff2eb8b942600642169377ddd1143cb21c6669593fb9b99"
+ }
+}

@@ -10,4 +10,5 @@ RESET="${RESET:-1}" "$HERE/bootstrap-chain.sh"
 if [ "${HARNESS:-direct}" = "lane" ]; then
   exec /usr/local/bin/python3 "$HERE/run.py"
 fi
+[ "${HARNESS:-direct}" = "dao" ] && exec /usr/local/bin/python3 "$HERE/run_dao.py"
 exec /usr/local/bin/python3 "$HERE/run_direct.py"
