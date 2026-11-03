@@ -1,8 +1,8 @@
 {
-  "contract_addr_predicted": "terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul",
+  "contract_addr_predicted": "terp1ed7t2p9g5myjp9phv2r2x8vmu7gu5dazzyq4sr7eja99vfynslgqp60r86",
   "salt_hex": "746b61c70847d0c35b7aab931d3334ccaef0faa1b74479b549139aef65ca9dd5",
-  "wasm_sha256": "40197344e760199c65bac129464418613803c65540c26f4c7cf00c56ebc9e980",
-  "wasm_bytes": 859424,
+  "wasm_sha256": "dd40ded55eb436f296fa8eac0d1794f69c5c7369f5a137b1b52dc2cb18e22c52",
+  "wasm_bytes": 857272,
   "frontend": {
     "addr_predicted": "terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9",
     "salt_hex": "39881335f9a8242299ba3fd20d3069d1b7b813b2df2ac97a587c143857eaba27",
@@ -53,10 +53,10 @@
       }
     ]
   },
-  "wasm_gzip_bytes": 301708,
+  "wasm_gzip_bytes": 299797,
   "files": {
     "phase-a/13-store-wasm.unsigned.json": {
-      "tx_json_bytes": 402884,
+      "tx_json_bytes": 400336,
       "signer": "eph",
       "signed_by": "on-device ephemeral key (direct mode, not Zigner)"
     },

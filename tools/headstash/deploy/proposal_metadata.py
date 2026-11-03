@@ -44,7 +44,7 @@ Governance and safety:
 - Claim cutoff at block 44,444,444.
 - Emergency, before the cutoff: x/gov (and only x/gov, as admin and owner) can execute EmergencyReclaim, which sends the whole
   contract balance back to the community pool (MsgFundCommunityPool) and permanently halts claims and registration.
-- Pause: x/gov, and an optional pauser address if one is set (none at deploy: PAUSER is null), can Pause/Resume claims and registration at once.
+- Pause: x/gov, and the pauser set at deploy (the foundation DAO terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w), can Pause/Resume claims and registration at once.
   The pauser can do nothing else (no funds, no config). Reclaim and the post-cutoff burn still work while paused; a pause does not extend the cutoff.
 - After the cutoff reclaim is refused: unclaimed TERP can only be burned (SweepUnclaimed, BankMsg::Burn); it does not return to any wallet.
 - The claim page is stored on-chain in a hash-verified frontend contract: every file is checked against a manifest hash published by this proposal.

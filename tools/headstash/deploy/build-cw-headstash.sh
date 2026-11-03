@@ -6,7 +6,7 @@
 #   SNAP      pinned sibling snapshot (default ~/hs-backup-20261026/build-snapshot-20261102, see its
 #             MANIFEST.txt). Each sibling copy is mounted over $CRATES/<name>, so the live siblings
 #             (cosmwasm, cw-minus, cw-plus-plus, cw-storage-plus, zakura-common) are never read.
-# Recipe (the one that produced v0.0.1 40197344…): optimizer-arm64:0.17.0-rust1.91 (its RUSTFLAGS),
+# Recipe (the one that produced v0.0.1 40197344… and, after the tf-denom fold, dd40ded5…): optimizer-arm64:0.17.0-rust1.91 (its RUSTFLAGS),
 #   host ~/.cargo registry and git caches, -j 4, a fresh target dir, --ignore-rust-version (zakura-common
 #   declares 1.97), then wasm-opt -Os --one-caller-inline-max-function-size=1000 --enable-bulk-memory
 #   --enable-sign-ext --disable-simd.

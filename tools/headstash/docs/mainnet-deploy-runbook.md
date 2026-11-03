@@ -163,7 +163,7 @@ sha256 `57b784f44979b76fdd917468ef36898c853089b07b52e11f8f5d1f176f270a3d`, 1,099
 4. **Bind** (owner): `rendered/06-bind-note-circuit.json` (set `NOTE_ZK_ID` from the proposal's store event). The contract
    checks sha256(circuit data) == vk_hash and refuses a rebind ("circuit is fixed").
 5. **Relay** with fee grants: `HEADSTASH_FEEGRANT=1`, `HEADSTASH_GAS_PRICE=0.05uthiol`,
-   `HEADSTASH_CLAIM_GAS` (400000 default), bind 127.0.0.1:18795 (not 8791) behind the single nginx,
+   `HEADSTASH_CLAIM_GAS=400000` (set it explicitly: the relay source's built-in default is 300,000, which is below a mint-on-claim claim at ~302k), bind 127.0.0.1:18795 (not 8791) behind the single nginx,
    no IP logging. The granter key holds the THIOL budget below.
 6. **Claims**: the page waits until the note's registration is in an accepted anchor plus 0–2
    random extra anchor intervals, creates a fresh wallet per note, requests a grant (one tx,
@@ -190,7 +190,7 @@ Claim gas used 262,462–262,602, but fees are charged on the 400,000 limit. Gra
 | with 1.3× registration gas adjustment | 95.2 B | 4,761.7 |
 
 Recommendation: fund the granter with ~4,800 THIOL (top up in tranches; unspent allowances
-expire). Lowering `HEADSTASH_CLAIM_GAS` to 300,000 (claims use ~262.6k) saves ~494 THIOL.
+expire). Lowering `HEADSTASH_CLAIM_GAS` to 300,000 (claims use ~262.6k) saves ~494 THIOL. Do not lower it for a NewFungible (mint-on-claim) campaign: those claims use ~302k, and 300k fails with out of gas (code 11). v0.0.1 stays at 400,000, which is what the 4,761.7 THIOL budget assumes.
 
 ### Direct-path e2e evidence
 `RESET=1 tools/headstash/e2e/run-local.sh` (`run_direct.py`) on groot-wan, 2026-10-26 21:08 local (UTC-4):

@@ -144,9 +144,9 @@
      }
     ],
     "proposer": "terp1gnfqzr25fgds7zn7m6njd795aat5yaf6vk7hd9",
-    "metadata": "https://s3.terp.network/static/headstash/cid/ddcab7b9951fff421f85e0e92d98493e4444660ccc3d0c88d4ebb6e52bf405c9",
+    "metadata": "https://s3.terp.network/static/headstash/cid/c58128ae4be5ca2546d5477209b6adee731e3e0113d49450eaeaabc8654fdef9",
     "title": "Headstash 2026 (A): deploy cw-headstash and the claim page",
-    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 40197344e760199c65bac129464418613803c65540c26f4c7cf00c56ebc9e980) at terp14dq8qx6wa76g5szm8h54nykng5tp224u6qkd7qx250jy39r7fzps5cm0ul and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2) at terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
+    "summary": "Deploys only, funds nothing: instantiates cw-headstash code {{CODE_ID}} (sha256 dd40ded55eb436f296fa8eac0d1794f69c5c7369f5a137b1b52dc2cb18e22c52) at terp1ed7t2p9g5myjp9phv2r2x8vmu7gu5dazzyq4sr7eja99vfynslgqp60r86 and cw-headstash-frontend code {{FE_CODE_ID}} (sha256 e72eee9b90012ce42fed2c0abd0b1fcc31b868168fa79d30d2f9d6fdd616cac2) at terp1llutyfy858ehucaleypljfgut9srz34kd5c06p27hzacv0gfyjwqg0e5n9, both with gov as admin and owner, and publishes claim page manifest v1 (sha256 6a90d09291b07d7795e612fb7daef7bb0a87ea7fa81d829c3b019f197a2cc40a). 1 uterp moves from the community pool (instantiate minimum). No circuit, no campaign: claims stay disabled until proposal B. Forum: https://discord.terp.network",
     "expedited": false
    }
   ],
