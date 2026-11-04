@@ -63,6 +63,9 @@ impl TypeSource {
 // ---------------------------------------------------------------------------
 
 /// Discovers available type definitions and resolves them into a unified format.
+/// One contract's name and its resolved type map.
+pub type ContractTypes = (String, BTreeMap<String, serde_json::Value>);
+
 pub struct SourceResolver;
 
 impl SourceResolver {
@@ -159,10 +162,7 @@ impl SourceResolver {
     /// discovered source directory. Generators that emit per-contract files
     /// (TS codegen, OpenAPI) should use this. Generators that process all types
     /// together (Go, Python, Zod) can use `resolve()` and get a flat map.
-    #[allow(clippy::type_complexity)]
-    pub fn resolve_grouped(
-        ctx: &GenerationContext,
-    ) -> (String, Vec<(String, BTreeMap<String, serde_json::Value>)>) {
+    pub fn resolve_grouped(ctx: &GenerationContext) -> (String, Vec<ContractTypes>) {
         let sources = Self::discover(ctx);
 
         // Try each source in priority order — use the first one with data
