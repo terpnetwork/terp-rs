@@ -1,0 +1,105 @@
+{
+ "dao": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+ "code_id": 107,
+ "checksum": "23D6C7E3E718CFF8E8399CB6C3F7868ED74B159F782C25CF47DE9514D693DCA3",
+ "salt": "headstash-frontend:v1",
+ "salt_b64": "aGVhZHN0YXNoLWZyb250ZW5kOnYx",
+ "label": "headstash-frontend-v1",
+ "predicted_frontend": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+ "mode": "migrate",
+ "manifest_version": 2,
+ "keep_last": 2,
+ "new_label": "headstash-frontend-v2",
+ "targets": {
+  "terpy": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+  "thioly": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+ },
+ "manifest_pin_sha256": "f8ee4d5ce7456c07c0a87916a107fc7f59ade63e08d0fc97e951e2e90e3076a8",
+ "bundle_sha256": "147995e32ee3ddfe57a258ead94f7df538014124e936464adfa19be4ca101f07",
+ "files": [
+  {
+   "path": "app.html",
+   "raw_size": 7798,
+   "gzip_size": 2680,
+   "sha256": "cf4b8de5f8d5a1823c8a2de97bf6141820efdf81b8ef6293c70198001a139d0d",
+   "chunks": 1
+  },
+  {
+   "path": "app.js",
+   "raw_size": 31529,
+   "gzip_size": 10719,
+   "sha256": "88623d1e03b9d4aff1df6eca2ff83291f7d229334db01de763868984aa196fc5",
+   "chunks": 1
+  },
+  {
+   "path": "crypto.js",
+   "raw_size": 10640,
+   "gzip_size": 4316,
+   "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c",
+   "chunks": 1
+  },
+  {
+   "path": "v2lib.js",
+   "raw_size": 13294,
+   "gzip_size": 5306,
+   "sha256": "92eeff65e7dfc8bb8727d89ec5a8c45cf4fbbd7aea5f1cc43e6d25bd9707a0f7",
+   "chunks": 1
+  },
+  {
+   "path": "steps.json",
+   "raw_size": 4175,
+   "gzip_size": 1763,
+   "sha256": "1993cfc0bf59df7e4fad746fbe1f23c0c82bc011bfcb9a788096f17c62c31591",
+   "chunks": 1
+  },
+  {
+   "path": "zafu-client.js",
+   "raw_size": 366294,
+   "gzip_size": 41371,
+   "sha256": "e158dba470c989046cb12be3c6dee026bb2ef2c37eb410a518811275748c0704",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash.js",
+   "raw_size": 12918,
+   "gzip_size": 3048,
+   "sha256": "58764660b3a2dd660fa927ac118637ecbaa00dbd95d036e9208b6fcd5d34e0a5",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash_bg.wasm",
+   "raw_size": 1807932,
+   "gzip_size": 647573,
+   "sha256": "f85689997b68bf32800c98fb791688979169109ed39042e23472c2d45fa49926",
+   "chunks": 5
+  }
+ ],
+ "chunks_total": 12,
+ "stored_bytes": 716776,
+ "propose_file": "deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.propose.json",
+ "propose_sha256": "1c6dcbe3a593fd6ee8aa743f9c96cb803b1e46a5e459c94103f98fa7e4e0dd10",
+ "chunks_file": "deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.chunks.json",
+ "chunks_sha256": "4cc40a33a4d164df48a288d3bedd6870225fa3e813ecb5e2458e9b1dde74ff8f",
+ "loaders": {
+  "terpy": {
+   "file": "deploy/rendered-mainnet/dao-flow/loader-terpy.html",
+   "sha256": "2adc2559612faad0092d3707aaa9429fd3640ba3f9c36d90d645d042fd1b0fc7",
+   "headstash": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q"
+  },
+  "thioly": {
+   "file": "deploy/rendered-mainnet/dao-flow/loader-thioly.html",
+   "sha256": "339db9b193fd940c1f4c4673950f027b4ae739476dd7ccbbc04b07a36620300a",
+   "headstash": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+  }
+ },
+ "loader_cfg": {
+  "rest": "https://api.terp.network",
+  "relay": "https://terp.network",
+  "chain_id": "morocco-1",
+  "denom": "uthiol",
+  "gas_price": "0.05",
+  "claim_gas": 400000,
+  "register_gas": 12000000
+ },
+ "checks": {}
+}

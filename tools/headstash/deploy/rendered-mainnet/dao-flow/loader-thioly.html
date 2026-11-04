@@ -1,10 +1,10 @@
 <!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network; img-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link; img-src data:">
 <title>Terp Headstash (on-chain loader)</title></head><body><p id="st">Loading the claim page from chain…</p>
 <script type="module">
 // ERC-8244-style loader: everything below the config comes from the Headstash frontend contract, sha256-verified.
-const CFG = {"rest":"https://api.terp.network","relay":"https://terp.network","chain_id":"morocco-1","headstash":"terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7","hrp":"terp","denom":"uthiol","gas_price":0.05,"claim_gas":400000,"register_gas":12000000};
-const PIN = "cac6977abbd0f9b3281a8458e7fcde0b2ef1de96e8700aca5c1e7ceb906557e7"; // optional: sha256 of canonical manifest JSON, from the gov proposal ("" = trust headstash config)
+const CFG = {"rest":"https://api.terp.network","relay":"https://terp.network","chain_id":"morocco-1","headstash":"terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7","hrp":"terp","denom":"uthiol","gas_price":0.05,"claim_gas":400000,"register_gas":12000000,"forward_gas":900000};
+const PIN = "f8ee4d5ce7456c07c0a87916a107fc7f59ade63e08d0fc97e951e2e90e3076a8"; // optional: sha256 of canonical manifest JSON, from the gov proposal ("" = trust headstash config)
 const st = (t) => (document.getElementById("st").textContent = t);
 const te = new TextEncoder(), hex = (b) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
 const sha = async (b) => hex(await crypto.subtle.digest("SHA-256", b));

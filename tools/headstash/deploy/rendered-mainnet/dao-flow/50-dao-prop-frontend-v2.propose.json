@@ -1,0 +1,45 @@
+{
+ "propose": {
+  "msg": {
+   "propose": {
+    "title": "Headstash claim page: migrate frontend to v2 code + publish manifest v2",
+    "description": "Upgrades the Headstash claim page in place. 1) migrate cw-headstash-frontend terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu to code 107 (checksum 23D6C7E3E718CFF8E8399CB6C3F7868ED74B159F782C25CF47DE9514D693DCA3); state is preserved (versions, chunks, owner). Label set to 'headstash-frontend-v2'. 2) publish_manifest v2 (activate on completion), manifest sha256 f8ee4d5ce7456c07c0a87916a107fc7f59ade63e08d0fc97e951e2e90e3076a8, files: app.html 7798 B (gzip 2680, 1 chunk) sha256 cf4b8de5f8d5a1823c8a2de97bf6141820efdf81b8ef6293c70198001a139d0d; app.js 31529 B (gzip 10719, 1 chunk) sha256 88623d1e03b9d4aff1df6eca2ff83291f7d229334db01de763868984aa196fc5; crypto.js 10640 B (gzip 4316, 1 chunk) sha256 dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c; v2lib.js 13294 B (gzip 5306, 1 chunk) sha256 92eeff65e7dfc8bb8727d89ec5a8c45cf4fbbd7aea5f1cc43e6d25bd9707a0f7; steps.json 4175 B (gzip 1763, 1 chunk) sha256 1993cfc0bf59df7e4fad746fbe1f23c0c82bc011bfcb9a788096f17c62c31591; zafu-client.js 366294 B (gzip 41371, 1 chunk) sha256 e158dba470c989046cb12be3c6dee026bb2ef2c37eb410a518811275748c0704; zk_headstash.js 12918 B (gzip 3048, 1 chunk) sha256 58764660b3a2dd660fa927ac118637ecbaa00dbd95d036e9208b6fcd5d34e0a5; zk_headstash_bg.wasm 1807932 B (gzip 647573, 5 chunks) sha256 f85689997b68bf32800c98fb791688979169109ed39042e23472c2d45fa49926. 3) set_keep_last 2. Targets already point at terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu, so no new instance and no set_frontend_contract. After execution the 12 chunks are uploaded permissionlessly (sha-checked); v2 becomes current when the last chunk lands. No funds move.",
+    "msgs": [
+     {
+      "wasm": {
+       "migrate": {
+        "contract_addr": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+        "new_code_id": 107,
+        "msg": "e30="
+       }
+      }
+     },
+     {
+      "stargate": {
+       "type_url": "/cosmwasm.wasm.v1.MsgUpdateContractLabel",
+       "value": "Cj90ZXJwMTR3MnF2YTZkeDZ3Y3NtcTVmdnBsaDdjcjdudnB0ZWp6bnl2cGU1aHA1bXR5cWh4eGphbXN6M2t3MncSFWhlYWRzdGFzaC1mcm9udGVuZC12Mho/dGVycDFnbnlsOTJkeWN5aHdtdzdzZ214MGQ2dnQ5NDN2ZjZqdGx1bHJtY3Myajk3czg2OHdoMnRxazdqN2N1"
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+        "msg": "eyJwdWJsaXNoX21hbmlmZXN0Ijp7Im1hbmlmZXN0Ijp7InZlcnNpb24iOjIsImVudHJ5IjoiYXBwLmpzIiwiZmlsZXMiOlt7InBhdGgiOiJhcHAuaHRtbCIsImNvbnRlbnRfdHlwZSI6InRleHQvaHRtbCIsImVuY29kaW5nIjoiZ3ppcCIsInNpemUiOjc3OTgsInNoYTI1NiI6ImNmNGI4ZGU1ZjhkNWExODIzYzhhMmRlOTdiZjYxNDE4MjBlZmRmODFiOGVmNjI5M2M3MDE5ODAwMWExMzlkMGQiLCJzdG9yZWRfc2l6ZSI6MjY4MCwiY2h1bmtzIjpbImVlZmYyMDRmNmRlZjMyZDIxOGNjNDkyZTk4MDkzY2FiMmU4YjU1ZjM2YjNmYmI1MzFiZjlkYTgzYTBiMWY0ZWMiXX0seyJwYXRoIjoiYXBwLmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MzE1MjksInNoYTI1NiI6Ijg4NjIzZDFlMDNiOWQ0YWZmMWRmNmVjYTJmZjgzMjkxZjdkMjI5MzM0ZGIwMWRlNzYzODY4OTg0YWExOTZmYzUiLCJzdG9yZWRfc2l6ZSI6MTA3MTksImNodW5rcyI6WyI0ZTQxYWNkMDU4MjFlOWQ1ZmVlNTBkY2Q5OTRkOWM0YWM3ODMwZTc0OWI4N2U3YzQ3NGU0YmU4ZmE1ODA3YTc3Il19LHsicGF0aCI6ImNyeXB0by5qcyIsImNvbnRlbnRfdHlwZSI6InRleHQvamF2YXNjcmlwdCIsImVuY29kaW5nIjoiZ3ppcCIsInNpemUiOjEwNjQwLCJzaGEyNTYiOiJkZDJiMTE4Y2UwMjcwNGI1MjdlZWQ0MjgxZWVkNWYyMTc5OTZmNGE1MjMyZjMyNWUyYTg4NmZkNWJkYTc1ZTRjIiwic3RvcmVkX3NpemUiOjQzMTYsImNodW5rcyI6WyJhZDcyNTFiM2YzNjlkNGExOTI5MTQyMTY2ODY5NmQyZGQ3ZGYwN2MyZWM2NmY3YzQxYjllZWEyZGQzOGI4N2VkIl19LHsicGF0aCI6InYybGliLmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MTMyOTQsInNoYTI1NiI6IjkyZWVmZjY1ZTdkZmM4YmI4NzI3ZDg5ZWM1YThjNDVjZjRmYmJkN2FlYTVmMWNjNDNlNmQyNWJkOTcwN2EwZjciLCJzdG9yZWRfc2l6ZSI6NTMwNiwiY2h1bmtzIjpbIjM2NWIyN2Q5MjBjNDY0ZmZiMGM2NDQ5YmIxMTFmM2I4MTA1OTI0N2MwNzMzNzA2MDlhOTExY2YyNmExM2ExMGUiXX0seyJwYXRoIjoic3RlcHMuanNvbiIsImNvbnRlbnRfdHlwZSI6ImFwcGxpY2F0aW9uL2pzb24iLCJlbmNvZGluZyI6Imd6aXAiLCJzaXplIjo0MTc1LCJzaGEyNTYiOiIxOTkzY2ZjMGJmNTlkZjdlNGZhZDc0NmZiZTFmMjNjMGM4MmJjMDExYmZjYjlhNzg4MDk2ZjE3YzYyYzMxNTkxIiwic3RvcmVkX3NpemUiOjE3NjMsImNodW5rcyI6WyI3Yzk0ZmMwODNkOTFjYzA3YTI4NTNjYmU0MmMyNTRhZGMyYzBkNzFiNzRjYmIyNmUzNWZmYjBmNDJkOWMwMTc5Il19LHsicGF0aCI6InphZnUtY2xpZW50LmpzIiwiY29udGVudF90eXBlIjoidGV4dC9qYXZhc2NyaXB0IiwiZW5jb2RpbmciOiJnemlwIiwic2l6ZSI6MzY2Mjk0LCJzaGEyNTYiOiJlMTU4ZGJhNDcwYzk4OTA0NmNiMTJiZTNjNmRlZTAyNmJiMmVmMmMzN2ViNDEwYTUxODgxMTI3NTc0OGMwNzA0Iiwic3RvcmVkX3NpemUiOjQxMzcxLCJjaHVua3MiOlsiZWY1YWMzM2E2YjhhYjg5ODFhOThhY2M4Y2I0MjhjMDcwZTc2NzczY2M1MTI4OWY2MmU3OTA4ODAxNGU5OTMyYyJdfSx7InBhdGgiOiJ6a19oZWFkc3Rhc2guanMiLCJjb250ZW50X3R5cGUiOiJ0ZXh0L2phdmFzY3JpcHQiLCJlbmNvZGluZyI6Imd6aXAiLCJzaXplIjoxMjkxOCwic2hhMjU2IjoiNTg3NjQ2NjBiM2EyZGQ2NjBmYTkyN2FjMTE4NjM3ZWNiYWEwMGRiZDk1ZDAzNmU5MjA4YjZmY2Q1ZDM0ZTBhNSIsInN0b3JlZF9zaXplIjozMDQ4LCJjaHVua3MiOlsiMGQ1OTg4YjNhNWYyMmUxOWY1NzE3MzM5YTk0NzU3ODU0NDdjZDdhY2MwZDhkN2I4OWIxZTFiN2FiMDIwZTU4OSJdfSx7InBhdGgiOiJ6a19oZWFkc3Rhc2hfYmcud2FzbSIsImNvbnRlbnRfdHlwZSI6ImFwcGxpY2F0aW9uL3dhc20iLCJlbmNvZGluZyI6Imd6aXAiLCJzaXplIjoxODA3OTMyLCJzaGEyNTYiOiJmODU2ODk5OTdiNjhiZjMyODAwYzk4ZmI3OTE2ODg5NzkxNjkxMDllZDM5MDQyZTIzNDcyYzJkNDVmYTQ5OTI2Iiwic3RvcmVkX3NpemUiOjY0NzU3MywiY2h1bmtzIjpbIjU5NzFmNDE1ODE5NzhmMzRhMDI5MjI2YTU1NzM2NDc2YjFkZmZmZWEyODY4OWYyNDQ1OTY2MjYyNDc5MzI3NTUiLCJkYmU5ZWQ2MGIwZjhlYjkyZjFkYWZhNTc3OWIyNTNlYmQyNmRiMWQyZGU2MDA5NTE4YzU1M2MwMDdiYTBhNzgwIiwiODkwYjZlMDBlNGUyOTVlYWUwZjk2MWNjMzcyZWQwMzM0MjQyYjlhNzkyYWMyNzgzZTkwYTgxNWRmOGZiNGMxNSIsIjIyOGUwZWY0ODVkZDQ3NjAxZjBjOTVkODI1N2I3OTZmMWE0NTZiZDY3YTYzOTczZjQ2ZDYxZThlMTliZThkNWEiLCJmOGI0OTJlYzI3ODA1OTE4NzNkZmM5MjNiMTI0ZjhlNDYyYjVjYTJhNTk5MzkwMzQyOTA3ZmU3MDJiNzg3YTZmIl19XSwibm90ZSI6ImhlYWRzdGFzaCBjbGFpbSBwYWdlIiwiYWN0aXZhdGUiOnRydWV9fX0=",
+        "funds": []
+       }
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+        "msg": "eyJzZXRfa2VlcF9sYXN0Ijp7ImtlZXBfbGFzdCI6Mn19",
+        "funds": []
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

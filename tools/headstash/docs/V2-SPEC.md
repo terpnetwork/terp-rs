@@ -503,17 +503,25 @@ Chain B is a terpd stand-in, so the Penumbra forward error-acks and refunds to t
 Manual checks still needed: Web Store install id; default hybrid side-panel approval; pressing "no, thank you" (Denied
 message); locked-wallet path (NeedsLogin message); Penumbra disabled message; no extension installed message.
 
-## H. CSP for /headstash (draft diff, NOT applied)
+## H. CSP for /headstash (diff, NOT applied)
 
-Extra connect-src (exactly): `https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link` (no arweave).
-The loader meta CSP gets the same list via `render_frontend_prop.py --extra-connect` (default).
-nginx diff for operators (inside `location ^~ /headstash/ { alias /var/www/headstash/; index loader-terpy.html;`):
+Extra connect-src (exactly): `https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link` (no arweave;
+s3.terp.network is the initial HAL host). The loader meta CSP gets the same list via `render_frontend_prop.py --extra-connect`
+(default). Both policies apply (intersection), so nginx must carry the same list. On groot2 the `/headstash` locations
+`set $tn_cache headstash` and the policy comes from `map $tn_cache $tn_csp` (line 140, `add_header ... $tn_csp always`);
+the diff edits only that map entry: `deploy/rendered-mainnet/dao-flow/51-nginx-headstash-csp-v2.diff`
+(dry-run `patch -p1` clean against the live file, sha256 3b75dad9...; then `nginx -t` and reload, operator step).
 
-```diff
-+    add_header Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
-+    add_header X-Content-Type-Options nosniff always;
-+    add_header Referrer-Policy no-referrer always;
-```
+## H.1 Mainnet v2 frontend proposal (rendered, not submitted)
+
+`deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.*`: Foundation DAO migrates the EXISTING frontend
+terp1gnyl92...7cu (code 106, admin+owner = DAO, serving v1) in place to the new frontend code, sets label
+`headstash-frontend-v2` (MsgUpdateContractLabel), `publish_manifest` v2 (activate) and `set_keep_last 2`. No new
+instance; terpy/thioly already point at it. The new code is stored first by the plain permissionless upload
+(`mainnet_deploy hs-upload`, same as v1); the render uses the PREDICTED code id 107 (mainnet latest is 106 at render
+time). Re-render with the real id and `--verify-lcd https://api.terp.network` once the upload lands. Chunks are uploaded
+after execution with `mainnet_deploy chunk-upload` (permissionless, sha-checked); v2 becomes current on the last chunk.
+Loaders `loader-{terpy,thioly}.html` are re-rendered pinned to the v2 manifest (v1 copies archived in the backup dir).
 
 ## I. Optimizer function budget (ImpossibleRelocation) fix
 

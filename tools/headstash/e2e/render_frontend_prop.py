@@ -57,7 +57,7 @@ def gz(raw):
     bio = io.BytesIO()
     with gzip.GzipFile(fileobj=bio, mode="wb", compresslevel=9, mtime=0, filename="") as f: f.write(raw)
     return bio.getvalue()
-def bundle(page_dir, prover_dir, chunk=CHUNK):
+def bundle(page_dir, prover_dir, chunk=CHUNK, version=1):
     dirs = {"page": page_dir, "prover": prover_dir}; ents, chunks, fs = [], [], []
     for d, n in PAGE_FILES:
         raw = open(os.path.join(dirs[d], n), "rb").read(); st = gz(raw)
@@ -65,7 +65,7 @@ def bundle(page_dir, prover_dir, chunk=CHUNK):
         fs.append({"path": n, "raw_size": len(raw), "gzip_size": len(st), "sha256": hashlib.sha256(raw).hexdigest(), "chunks": len(cs)})
         ents.append({"path": n, "content_type": CT.get(os.path.splitext(n)[1], "application/octet-stream"), "encoding": "gzip", "size": len(raw),
                      "sha256": hashlib.sha256(raw).hexdigest(), "stored_size": len(st), "chunks": [hashlib.sha256(c).hexdigest() for c in cs]})
-    m = {"version": 1, "entry": "app.js", "files": ents, "note": "headstash claim page", "activate": True}
+    m = {"version": int(version), "entry": "app.js", "files": ents, "note": "headstash claim page", "activate": True}
     return m, chunks, fs
 def manifest_pin(m):  # == loader: sha256(JSON.stringify(<manifest as returned by the contract>))
     return hashlib.sha256(json.dumps(m, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
@@ -80,6 +80,24 @@ def proposal_msgs(dao, code_id, checksum_hex, salt, label, targets, m, hrp="terp
             {"wasm": {"execute": {"contract_addr": fe, "msg": b64j({"publish_manifest": {"manifest": m}}), "funds": []}}}]
     msgs += [{"wasm": {"execute": {"contract_addr": t, "msg": b64j({"set_frontend_contract": {"addr": fe}}), "funds": []}}} for t in targets]
     return fe, msgs
+def _pb_str(field, v):
+    b = v.encode(); n = len(b); var = b""
+    while True:
+        x = n & 0x7f; n >>= 7
+        var += bytes([x | (0x80 if n else 0)])
+        if not n: break
+    return bytes([(field << 3) | 2]) + var + b
+def label_msg(admin, contract, label):  # wasmd MsgUpdateContractLabel {sender=1, new_label=2, contract=3}
+    v = _pb_str(1, admin) + _pb_str(2, label) + _pb_str(3, contract)
+    return {"stargate": {"type_url": "/cosmwasm.wasm.v1.MsgUpdateContractLabel", "value": base64.b64encode(v).decode()}}
+def migrate_msgs(dao, fe, code_id, m, label=None, keep_last=None):
+    """Migrate an existing cw-headstash-frontend (admin = DAO) in place, then publish manifest v2.
+    No new instance; targets keep pointing at fe, so no set_frontend_contract."""
+    msgs = [{"wasm": {"migrate": {"contract_addr": fe, "new_code_id": int(code_id), "msg": b64j({})}}}]
+    if label: msgs.append(label_msg(dao, fe, label))
+    msgs.append({"wasm": {"execute": {"contract_addr": fe, "msg": b64j({"publish_manifest": {"manifest": m}}), "funds": []}}})
+    if keep_last: msgs.append({"wasm": {"execute": {"contract_addr": fe, "msg": b64j({"set_keep_last": {"keep_last": int(keep_last)}}), "funds": []}}})
+    return msgs
 def chunk_plan(fe, m, chunks):
     return {"contract": fe, "version": m["version"],
             "files": [{"path": e["path"], "chunks": [base64.b64encode(c).decode() for c in cs]} for e, cs in zip(m["files"], chunks)]}
@@ -108,13 +126,19 @@ def main():
     ap.add_argument("--extra-connect", default="https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link", help="space-separated extra connect-src origins (HAL host, IPFS gateways)"); ap.add_argument("--hrp", default="terp")
     ap.add_argument("--title", default="Headstash claim page: on-chain frontend (cw-headstash-frontend)")
     ap.add_argument("--out", required=True); ap.add_argument("--prefix", default="30-dao-prop-frontend")
+    ap.add_argument("--migrate-frontend", help="existing frontend ADDR (admin = --dao): migrate to --code-id + publish --manifest-version, no new instance")
+    ap.add_argument("--manifest-version", type=int, default=1); ap.add_argument("--keep-last", type=int)
+    ap.add_argument("--new-label", help="with --migrate-frontend: MsgUpdateContractLabel")
     ap.add_argument("--verify-lcd", help="read-only LCD: check code checksum, target owners, frontend_contract unset, address free")
     a = ap.parse_args()
     if a.claim_gas != 400000: print("WARNING: claim gas %d != 400000 (deploy packet)" % a.claim_gas, file=sys.stderr)
     targets = [t.split("=", 1) for t in a.target]
-    m, chunks, fs = bundle(a.page_dir, a.prover_dir)
+    m, chunks, fs = bundle(a.page_dir, a.prover_dir, version=a.manifest_version)
     pin = manifest_pin(m); salt = a.salt.encode()
-    fe, msgs = proposal_msgs(a.dao, a.code_id, a.checksum.lower(), salt, a.label, [t[1] for t in targets], m, a.hrp)
+    if a.migrate_frontend:
+        fe = a.migrate_frontend; msgs = migrate_msgs(a.dao, fe, a.code_id, m, a.new_label, a.keep_last)
+    else:
+        fe, msgs = proposal_msgs(a.dao, a.code_id, a.checksum.lower(), salt, a.label, [t[1] for t in targets], m, a.hrp)
     checks = {}
     if a.verify_lcd:
         ci = lcd(a.verify_lcd, "/cosmwasm/wasm/v1/code/%d" % a.code_id)["code_info"]
@@ -122,8 +146,16 @@ def main():
         for n, t in targets:
             checks[n + "_owner_is_dao"] = smart(a.verify_lcd, t, {"ownership": {}})["owner"] == a.dao
             checks[n + "_frontend_contract"] = smart(a.verify_lcd, t, {"frontend_contract": {}})
-        try: lcd(a.verify_lcd, "/cosmwasm/wasm/v1/contract/" + fe); checks["predicted_address_free"] = False
-        except Exception: checks["predicted_address_free"] = True
+        if a.migrate_frontend:
+            info = lcd(a.verify_lcd, "/cosmwasm/wasm/v1/contract/" + fe)["contract_info"]
+            checks["frontend_admin_is_dao"] = info.get("admin") == a.dao
+            checks["frontend_old_code_id"] = int(info["code_id"])
+            checks["frontend_next_version"] = smart(a.verify_lcd, fe, {"config": {}}).get("next_version")
+            checks["manifest_version_matches_next"] = checks["frontend_next_version"] in (None, a.manifest_version)
+            for n, t in targets: checks[n + "_points_at_frontend"] = checks[n + "_frontend_contract"] == fe
+        else:
+            try: lcd(a.verify_lcd, "/cosmwasm/wasm/v1/contract/" + fe); checks["predicted_address_free"] = False
+            except Exception: checks["predicted_address_free"] = True
     files = "; ".join("%s %d B (gzip %d, %d chunk%s) sha256 %s" % (f["path"], f["raw_size"], f["gzip_size"], f["chunks"], "s" * (f["chunks"] > 1), f["sha256"]) for f in fs)
     desc = ("Publishes the Headstash claim page on chain and points both headstash instances at it. "
             "1) instantiate2 cw-headstash-frontend (code %d, checksum %s) at %s with admin and owner = this DAO, max_chunk_bytes %d, salt %r, label %r. "
@@ -132,6 +164,15 @@ def main():
             "After execution the %d chunks are uploaded permissionlessly (UploadChunk is sha-checked against this manifest); "
             "version 1 becomes current when the last chunk lands. Nothing is paid out and no funds move."
             ) % (a.code_id, a.checksum.upper(), fe, CHUNK, a.salt, a.label, pin, files, fe, ", ".join("%s (%s)" % (n, t) for n, t in targets), sum(len(c) for c in chunks))
+    if a.migrate_frontend:
+        desc = ("Upgrades the Headstash claim page in place. "
+                "1) migrate cw-headstash-frontend %s to code %d (checksum %s); state is preserved (versions, chunks, owner). %s"
+                "2) publish_manifest v%d (activate on completion), manifest sha256 %s, files: %s. %s"
+                "Targets already point at %s, so no new instance and no set_frontend_contract. "
+                "After execution the %d chunks are uploaded permissionlessly (sha-checked); v%d becomes current when the last chunk lands. "
+                "No funds move.") % (fe, a.code_id, a.checksum.upper(),
+                ("Label set to %r. " % a.new_label) if a.new_label else "", a.manifest_version, pin, files,
+                ("3) set_keep_last %d. " % a.keep_last) if a.keep_last else "", fe, sum(len(c) for c in chunks), a.manifest_version)
     body = {"propose": {"msg": {"propose": {"title": a.title, "description": desc, "msgs": msgs}}}}
     os.makedirs(a.out, exist_ok=True)
     pf = os.path.join(a.out, a.prefix + ".propose.json"); json.dump(body, open(pf, "w"), indent=1); open(pf, "a").write("\n")
@@ -143,7 +184,7 @@ def main():
         loaders[n] = {"file": lf, "sha256": hashlib.sha256(lt.encode()).hexdigest(), "headstash": t}
     sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
     rep = {"dao": a.dao, "code_id": a.code_id, "checksum": a.checksum.upper(), "salt": a.salt, "salt_b64": base64.b64encode(salt).decode(), "label": a.label,
-           "predicted_frontend": fe, "targets": dict(targets), "manifest_pin_sha256": pin, "bundle_sha256": bundle_sha(fs), "files": fs,
+           "predicted_frontend": fe, "mode": "migrate" if a.migrate_frontend else "instantiate2", "manifest_version": a.manifest_version, "keep_last": a.keep_last, "new_label": a.new_label, "targets": dict(targets), "manifest_pin_sha256": pin, "bundle_sha256": bundle_sha(fs), "files": fs,
            "chunks_total": sum(len(c) for c in chunks), "stored_bytes": sum(e["stored_size"] for e in m["files"]),
            "propose_file": pf, "propose_sha256": sha(pf), "chunks_file": cf, "chunks_sha256": sha(cf), "loaders": loaders,
            "loader_cfg": {"rest": a.rest, "relay": a.relay, "chain_id": a.chain_id, "denom": a.denom, "gas_price": a.gas_price,
