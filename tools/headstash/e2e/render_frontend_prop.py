@@ -16,7 +16,7 @@ Outputs in --out: <prefix>.propose.json, <prefix>.chunks.json, loader-<name>.htm
 import argparse, base64, gzip, hashlib, io, json, os, sys, urllib.request
 
 CT = {".js": "text/javascript", ".wasm": "application/wasm", ".html": "text/html", ".json": "application/json", ".css": "text/css"}
-PAGE_FILES = [("page", "app.html"), ("page", "app.js"), ("page", "crypto.js"), ("page", "v2lib.js"), ("page", "steps.json"), ("prover", "zk_headstash.js"), ("prover", "zk_headstash_bg.wasm")]
+PAGE_FILES = [("page", "app.html"), ("page", "app.js"), ("page", "crypto.js"), ("page", "v2lib.js"), ("page", "steps.json"), ("page", "zafu-client.js"), ("prover", "zk_headstash.js"), ("prover", "zk_headstash_bg.wasm")]
 CHUNK = 128 * 1024
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PAGE = os.path.normpath(os.path.join(HERE, "..", "frontend"))
@@ -105,7 +105,7 @@ def main():
     ap.add_argument("--rest", required=True); ap.add_argument("--relay", required=True); ap.add_argument("--chain-id", required=True)
     ap.add_argument("--denom", required=True); ap.add_argument("--gas-price", required=True); ap.add_argument("--claim-gas", type=int, default=400000)
     ap.add_argument("--register-gas", type=int, default=12000000); ap.add_argument("--forward-gas", type=int, default=900000)
-    ap.add_argument("--extra-connect", default="", help="space-separated extra connect-src origins (HAL host, IPFS gateways)"); ap.add_argument("--hrp", default="terp")
+    ap.add_argument("--extra-connect", default="https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link", help="space-separated extra connect-src origins (HAL host, IPFS gateways)"); ap.add_argument("--hrp", default="terp")
     ap.add_argument("--title", default="Headstash claim page: on-chain frontend (cw-headstash-frontend)")
     ap.add_argument("--out", required=True); ap.add_argument("--prefix", default="30-dao-prop-frontend")
     ap.add_argument("--verify-lcd", help="read-only LCD: check code checksum, target owners, frontend_contract unset, address free")

@@ -267,18 +267,44 @@ async function anchorCheck() {
 
 // ---- R4/R5: destination ----
 const destMode = () => document.querySelector("input[name=dest-mode]:checked").value;
-function zafuDetect() {
-  const p = window[Symbol.for("penumbra")];
-  $("zafu-detect").textContent = window.__hsTestPenumbra ? "Test Penumbra provider injected (harness)." : p ? "Zafu/Prax detected: open Zafu → Receive → IBC deposit address, then paste the one-time address here." : "No Penumbra wallet detected: paste a one-time address from Zafu.";
+// Zafu (Penumbra) via the documented web-extension path: window[Symbol.for("penumbra")][origin].connect() -> MessagePort ->
+// @penumbra-zone/transport-dom channel transport -> generated connect-rpc ViewService client (zafu-client.js, bundled on chain).
+// Each forward claim asks for AddressByIndex at a FRESH {account, randomizer} and proves it with IndexByAddress (docs/V2-SPEC.md §Zafu).
+let ZC = null, zafu = null, book = null;
+const zafuSet = (state, msg) => { $("zafu-detect").textContent = msg; $("zafu-detect").dataset.state = state; $("zafu-connect").hidden = state === "connected"; $("zafu-disconnect").hidden = state !== "connected"; };
+async function zafuLib() { if (!ZC) ZC = await import(cfg.urls["zafu-client.js"]); return ZC; }
+async function zafuDetect() {
+  const L = await zafuLib(), ps = L.providers(window);
+  if (!ps.length) return zafuSet("missing", "No Penumbra wallet detected. Install Zafu (or paste a one-time address below)."), null;
+  const pick = ps.find((p) => p.provider.manifest && /zafu/i.test(String(p.provider.manifest))) || ps[0];
+  if (!zafu) zafuSet("found", `Penumbra wallet found (${pick.origin.slice(19, 27)}…): press Connect Zafu.`);
+  return pick;
 }
-// Production Zafu exposes a connect-rpc transport (ViewService.ephemeralAddress); wiring it needs @penumbra-zone/client (open item).
-// Until then the page accepts an injected provider with `ephemeralAddress()` (used by the e2e harness) or a pasted address.
-async function zafuAddress() {
-  const t = window.__hsTestPenumbra; if (t && t.ephemeralAddress) return t.ephemeralAddress();
-  throw new Error(window[Symbol.for("penumbra")] ? "automatic Zafu request is not wired yet: paste the IBC deposit (one-time) address from Zafu" : "no Penumbra wallet detected");
+async function zafuConnect() {
+  const L = await zafuLib(), pick = await zafuDetect(); if (!pick) throw new Error("no Penumbra wallet detected: install Zafu, reload the page, or paste an address");
+  zafuSet("pending", "Waiting for approval in Zafu…");
+  try {
+    await pick.provider.connect(); // approval popup on first use; rejects with cause Denied / NeedsLogin / NotHandled
+    const client = L.makeViewClient(pick.provider);
+    zafu = { origin: pick.origin, provider: pick.provider, client };
+    zafuSet("connected", `Connected to Zafu (${pick.origin.slice(19, 27)}…). A fresh address is requested for every forward claim.`);
+  } catch (e) { zafu = null; zafuSet("error", V.zafuErrorText(e)); throw new Error(V.zafuErrorText(e)); }
 }
-async function receiverFor(first) {
-  if (window.__hsTestPenumbra && !$("recv-any").checked) { const a = await zafuAddress(); $("recv").value = a; return a; }
+async function zafuDisconnect() {
+  const z = zafu; zafu = null;
+  try { if (z && typeof z.provider.disconnect === "function") await z.provider.disconnect(); } catch (e) { log("Zafu disconnect: " + (e.message || e)); }
+  zafuSet("found", "Disconnected from Zafu. Connect again, or paste a one-time address.");
+}
+/** A fresh diversified address for `owner` (note nullifier): new index, wallet-proved, recorded so it is never reused. */
+async function zafuAddress(owner) {
+  if (!zafu) await zafuConnect();
+  const L = await zafuLib(), idx = book.allocate(V.parseAccount($("zafu-account").value));
+  let a; try { a = await L.addressAtIndex(zafu.client, idx); } catch (e) { throw new Error(V.zafuErrorText(e)); }
+  V.checkPenumbra(a.address, C.bech32Decode); await guard.check(a.address, owner);
+  book.record(idx, a.address, owner); $("recv").value = a.address; return a.address;
+}
+async function receiverFor(first, owner) {
+  if (zafu && !$("recv-any").checked) return zafuAddress(owner);
   if (!first) return null;
   return $("recv").value.trim();
 }
@@ -303,7 +329,7 @@ async function claim() {
       const w = await claimWallet(n.s); await guard.use(w.addr, "claim", n.n);
       let dest = w.addr, t = null;
       if (mode === "forward") {
-        const recv = await receiverFor(k === 0); if (!recv) { log("forward: each note needs a new one-time address; paste the next one and claim again"); break; }
+        const recv = await receiverFor(k === 0, n.n); if (!recv) { log("forward: each note needs a new one-time address; paste the next one and claim again"); break; }
         checkReceiver(recv); await guard.check(recv, n.n);
         n.fa = (n.fa || 0) + 1; const fb = await fallbackWallet(n.s, n.fa); await guard.use(fb.addr, "fallback", n.n);
         await guard.use(recv, "receiver", n.n);
@@ -358,8 +384,8 @@ function info(id) {
 
 export async function start({ files, manifest, config, urls }) {
   C = await import(urls["crypto.js"]); V = await import(urls["v2lib.js"]); ({ hex, unhex, cat, b64, unb64, te, sha256 } = C);
-  STEPS = JSON.parse(new TextDecoder().decode(files["steps.json"])); guard = new V.ReuseGuard(window.localStorage);
-  cfg = { ...config }; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
+  STEPS = JSON.parse(new TextDecoder().decode(files["steps.json"])); guard = new V.ReuseGuard(window.localStorage); book = new V.IndexBook(window.localStorage);
+  cfg = { ...config, urls }; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
   const url = URL.createObjectURL(new Blob([files["zk_headstash.js"]], { type: "text/javascript" }));
   Z = await import(url); await Z.default({ module_or_path: files["zk_headstash_bg.wasm"] });
   document.querySelectorAll("button.info").forEach((b) => (b.onclick = () => info(b.dataset.info)));
@@ -367,9 +393,10 @@ export async function start({ files, manifest, config, urls }) {
   document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.onchange = rewardChange));
   document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => ($("fwd-box").hidden = destMode() !== "forward")));
   $("derive").onclick = derive; $("load").onclick = load; $("register").onclick = register; $("anchor-check").onclick = anchorCheck; $("claim").onclick = claim;
-  $("save").onclick = save; $("export").onclick = exportWallets; $("zafu").onclick = () => guarded("dst-err", async () => { $("recv").value = await zafuAddress(); });
+  $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
+  $("zafu").onclick = () => guarded("dst-err", async () => { await zafuAddress("preview"); });
   $("reward-export").onclick = () => download("headstash-reward-key.json", JSON.stringify({ address: state.reward_addr, priv_hex: state.reward_priv }, null, 1));
-  zafuDetect();
+  zafuDetect().catch((e) => zafuSet("error", "Zafu client failed to load: " + e.message));
   const qp = new URLSearchParams(location.search), hs = qp.get("hs");
   let codes = qp.get("code");
   if (!codes) codes = await lcd(`/cosmwasm/wasm/v1/contract/${hs || cfg.headstash}`).then((j) => j.contract_info.code_id).catch(() => "");

@@ -114,3 +114,49 @@ export function missingSteps(html, steps) {
 // ---- R7: instance listing ----
 export const codeContractsPath = (codeId, key) => `/cosmwasm/wasm/v1/code/${encodeURIComponent(codeId)}/contracts?pagination.limit=100${key ? "&pagination.key=" + encodeURIComponent(key) : ""}`;
 export function parseNumList(s) { return String(s || "").split(/[\s,]+/).filter(Boolean).map((x) => { if (!/^\d{1,10}$/.test(x)) throw new Error("code id must be a number: " + x); return x; }); }
+
+// ---- R5: Zafu diversified-address index allocation (see docs/V2-SPEC.md §Zafu) ----
+// Penumbra AddressIndex = {account: u32, randomizer: 12 bytes}; diversifier = AES-128(dk, account_le32 || randomizer).
+// Every claim gets a FRESH index: a CSPRNG randomizer (never all-zero, which is the account's default address),
+// recorded locally together with the address the wallet proved for it, so no index or address is ever reused here.
+export const ZAFU_INDEX_KEY = "terp-hs-zafu-indices-v1";
+export const RANDOMIZER_LEN = 12;
+export function parseAccount(v) {
+  const s = String(v ?? "").trim(); if (!/^\d{1,10}$/.test(s)) throw new Error("account must be a whole number");
+  const n = Number(s); if (n > 0xffffffff) throw new Error("account must fit in u32"); return n;
+}
+export class IndexBook {
+  constructor(storage, rng = (b) => crypto.getRandomValues(b)) { this.s = storage; this.rng = rng; }
+  _all() { try { const a = JSON.parse(this.s.getItem(ZAFU_INDEX_KEY) || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
+  static key(account, randomizer) { return account + ":" + hexOf(randomizer); }
+  /** A fresh {account, randomizer}: 12 random bytes, non-zero, never handed out before on this device. */
+  allocate(account) {
+    account = parseAccount(account); const used = new Set(this._all().map((r) => r.k));
+    for (let i = 0; i < 8; i++) {
+      const r = this.rng(new Uint8Array(RANDOMIZER_LEN));
+      if (!(r instanceof Uint8Array) || r.length !== RANDOMIZER_LEN) throw new Error("rng must fill 12 bytes");
+      if (r.every((x) => x === 0) || used.has(IndexBook.key(account, r))) continue;
+      return { account, randomizer: Uint8Array.from(r) };
+    }
+    throw new Error("could not draw a fresh address index (rng is broken)");
+  }
+  /** Record the index and the address the wallet proved for it. Refuses any reuse of either. */
+  record(idx, address, owner) {
+    if (!idx || !(idx.randomizer instanceof Uint8Array) || idx.randomizer.length !== RANDOMIZER_LEN || idx.randomizer.every((x) => x === 0)) throw new Error("refusing a zero / malformed randomizer");
+    const a = this._all(), k = IndexBook.key(parseAccount(idx.account), idx.randomizer), addr = String(address).trim().toLowerCase();
+    if (a.some((r) => r.k === k)) throw new ReuseError("address index already used on this device");
+    if (a.some((r) => r.a === addr)) throw new ReuseError("address already used on this device");
+    a.push({ k, a: addr, owner: owner || null, t: Date.now() }); this.s.setItem(ZAFU_INDEX_KEY, JSON.stringify(a)); return true;
+  }
+  count() { return this._all().length; }
+}
+/** Map a Penumbra provider failure (Error.cause = PenumbraRequestFailure) to user text. */
+export function zafuErrorText(e) {
+  const c = e && (e.cause && typeof e.cause === "object" ? e.cause.cause : e.cause), m = String((e && e.message) || e);
+  if (c === "Denied") return "Zafu: connection was declined. Approve this site in Zafu to request an address.";
+  if (c === "NeedsLogin") return "Zafu is locked: unlock it, then connect again.";
+  if (c === "NotHandled") return "Zafu did not handle the request (site not allowed or extension reloaded): reload the page and retry.";
+  if (/network not enabled|network not active/.test(m)) return "Zafu: enable and select the Penumbra network in Zafu, then retry.";
+  if (/timed out/i.test(m)) return "Zafu did not answer in time: open Zafu and check for a pending approval.";
+  return "Zafu error: " + m;
+}

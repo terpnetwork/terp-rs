@@ -34,7 +34,7 @@ SHOTS = os.environ.get("HSFE_SHOTS", "/tmp/hsfe-v2/shots")
 R = rd.R
 
 def page_files():
-    names = [(PAGE, n) for n in ("app.html", "app.js", "crypto.js", "v2lib.js", "steps.json")] + [(PROVER, "zk_headstash.js"), (PROVER, "zk_headstash_bg.wasm")]
+    names = [(PAGE, n) for n in ("app.html", "app.js", "crypto.js", "v2lib.js", "steps.json", "zafu-client.js")] + [(PROVER, "zk_headstash.js"), (PROVER, "zk_headstash_bg.wasm")]
     return [{"path": n, "raw": open(os.path.join(d, n), "rb").read(), "stored": fb.gz(open(os.path.join(d, n), "rb").read()),
              "ct": fb.CT.get(os.path.splitext(n)[1], "application/octet-stream")} for d, n in names]
 be.page_files = page_files
@@ -116,7 +116,9 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         res = tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}}))
         rd.step("v2_accept_anchor", res.get("code") == 0, res.get("raw_log", "")[:120])
         c0 = be.bal(contract); bb0 = rf.b_balances(recv_b)
-        b = browser("v2b", {"url": url, "notes": nr, "recv_b": recv_b, "v2lib": os.path.join(PAGE, "v2lib.js"), "out": os.path.join(work, "notes-after-claim.json"), "shots": SHOTS})
+        b = browser("v2b", {"url": url, "notes": nr, "recv_b": recv_b, "v2lib": os.path.join(PAGE, "v2lib.js"), "out": os.path.join(work, "notes-after-claim.json"), "shots": SHOTS,
+                              "zafu_ext": os.environ.get("HSFE_ZAFU_EXT", "/tmp/zafu-ext/unpacked"), "zafu_profile": os.environ.get("HSFE_ZAFU_PROFILE", "/tmp/zafu-e2e/profile-onboarded"),
+                              "zafu_pass": os.environ.get("HSFE_ZAFU_PASS", "hs-e2e-pass-1")})
         R["browser_v2b"] = keep(b, "log"); R["browser_v2b_log"] = b.get("log", "")[-8000:]
         ok2, nf2 = be.canon_ok(os.path.join(work, "notes-after-claim.json")) if b.get("saved") else (False, {})
         spent = [n for n in nf2.get("notes", []) if n["st"] == "spent"]
@@ -124,8 +126,13 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         rd.step("v2_ephemeral_claim", len(eph) == 1 and be.bal(eph[0]["dest"]) == int(eph[0]["amt"]), "%s holds %s" % (eph[0]["dest"], be.bal(eph[0]["dest"])) if eph else json.dumps(b.get("error")))
         zf = [n for n in fwd if n["fwd"]["receiver"].startswith("penumbra1")]; bf = [n for n in fwd if n["fwd"]["receiver"] == recv_b]
         R["forwards"] = [n["fwd"] for n in fwd]
+        rd.step("v2_real_zafu_connected", b.get("real_zafu") and b.get("zafu_state") == "connected" and b.get("zafu_approvals", 0) >= 1, "%s approvals=%s: %s" % (b.get("zafu_state"), b.get("zafu_approvals"), (b.get("zafu_text") or "")[:120]))
+        bk = b.get("zafu_book") or []; nz = [e for e in bk if e.get("k", "").split(":")[-1].strip("0")]
+        rd.step("v2_zafu_fresh_nonzero_indices", len(bk) == 3 and len(nz) == 3 and len({e["k"] for e in bk}) == 3 and b.get("zafu_addrs_distinct") and zf and zf[0]["fwd"]["receiver"] == bk[0]["a"],
+                "%d indices %s; addrs %s" % (len(bk), [e["k"] for e in bk], b.get("zafu_addr_prefixes")))
+        rd.step("v2_zafu_disconnect", b.get("zafu_after_disconnect") == "found", str(b.get("zafu_after_disconnect")))
         okz = zf and rf.wait_for(lambda: be.bal(zf[0]["fwd"]["fallback"]) == int(zf[0]["amt"]), 150)
-        rd.step("v2_forward_zafu_shaped_receiver_refunded_to_fresh_fallback", bool(okz), "receiver %s… (test Penumbra provider; chain B is terpd so it error-acks) fallback %s bal %s" % (zf[0]["fwd"]["receiver"][:30], zf[0]["fwd"]["fallback"], be.bal(zf[0]["fwd"]["fallback"])) if zf else "no zafu forward")
+        rd.step("v2_forward_zafu_receiver_refunded_to_fresh_fallback", bool(okz), "receiver %s… (real Zafu AddressByIndex; chain B is terpd so it error-acks) fallback %s bal %s" % (zf[0]["fwd"]["receiver"][:30], zf[0]["fwd"]["fallback"], be.bal(zf[0]["fwd"]["fallback"])) if zf else "no zafu forward")
         okb = bf and rf.wait_for(lambda: sum(v - bb0.get(d, 0) for d, v in rf.b_balances(recv_b).items() if d.startswith("ibc/")) == int(bf[0]["amt"]), 150)
         rd.step("v2_forward_received_on_chain_b", bool(okb), "recv %s balances %s" % (recv_b, rf.b_balances(recv_b)))
         fbs = [n["fwd"]["fallback"] for n in fwd]; dsts = [n["dest"] for n in eph] + fbs + [n["fwd"]["receiver"] for n in fwd]

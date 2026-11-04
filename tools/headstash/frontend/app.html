@@ -70,7 +70,9 @@ details{margin-top:.6rem}summary{cursor:pointer}
 <div id="fwd-box" hidden>
 <label for="fwd-channel">IBC channel (allowlisted by the contract)</label><select id="fwd-channel"></select>
 <label for="recv">One-time Penumbra address (new for every note)</label><input id="recv" autocomplete="off" spellcheck="false" placeholder="penumbra1…">
-<button id="zafu">Get a one-time address from Zafu</button> <span id="zafu-detect"></span>
+<div id="zafu-box"><button id="zafu-connect">Connect Zafu</button> <button id="zafu-disconnect" hidden>Disconnect Zafu</button>
+<label class="inl" for="zafu-account">Zafu account #</label> <input id="zafu-account" value="0" inputmode="numeric" size="6">
+<button id="zafu">Preview a fresh address</button> <span id="zafu-detect" data-state="none" role="status"></span></div>
 <label class="inl"><input type="checkbox" id="recv-any">Advanced: allow a non-Penumbra receiver (testnets)</label>
 <p id="fwd-preview" role="status"></p></div>
 <label for="claim-max">Notes to claim in this run</label><input id="claim-max" type="number" min="1" value="1000">

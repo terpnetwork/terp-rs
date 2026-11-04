@@ -443,3 +443,62 @@ Finding (read-only LCD): terpy `terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kw
     - timeout (60 s, relayer stopped): `resolve_forward` before the grace period is refused; the timeout refund goes to the fallback
     - the same receiver + fallback reused for a new note is accepted
   - Report: `/tmp/headstash-mvk-chain/run-1793767578/report.json` (copy in the git-ignored `tools/headstash/e2e/out/v2b/`).
+
+## G. Zafu wiring (t172u) — real extension, exact AddressIndex, no hand-rolled formats
+
+All references are to Zafu source `rotkonetworks/zafu` @ `e200751929e1382125fda98e0708a993d0b3a0b6` and to the
+pinned npm packages bundled into `frontend/zafu-client.js` (see `frontend/zafu/package.json`). The extension tested is the
+release asset `zafu-prod-v29.5.3.zip`, sha256 `2ad54a7a68a298b71e05d9ac55ac381043f87b98969ba280cef4063cf641b271`
+(matches the GitHub release digest).
+
+### G.1 Discovery and transport (documented path only)
+* Provider record: `globalThis[Symbol.for('penumbra')]`, keyed by extension origin —
+  `apps/extension/src/content-scripts/injected-penumbra-global.ts:6`, consumer example `packages/zid/src/provider.ts:52`.
+  The page accepts only keys matching `^chrome-extension://[a-p]{32}$` with a `connect` function (`zafu/entry.js providers()`).
+  The production manifest has no `key`, so the id differs between Web Store and unpacked installs; the page therefore
+  discovers by origin pattern, never by a hard-coded id.
+* `provider.connect()` → `MessagePort`, or rejects with `cause: PenumbraRequestFailure` (`@penumbra-zone/client/dist/client.d.ts:91`,
+  `dist/error.d.ts:1,15`). Denied/NeedsLogin are returned at `apps/extension/src/message/listen/content-script-connect.ts:59,66,87,94`.
+  The page maps these with `V.zafuErrorText` (unit-tested).
+* Transport: `createChannelTransport({ getPort, jsonOptions:{typeRegistry}, defaultTimeoutMs })` from
+  `@penumbra-zone/transport-dom/create` (`dist/create.d.ts:22,24`) — the same constructor Zafu itself uses
+  (`apps/extension/src/clients.ts:10,64`, `direct-client.ts:91`). Client: `createClient(ViewService, transport)` with the
+  generated `ViewService` from `@penumbra-zone/protobuf/penumbra/view/v1/view_connect` (`view_connect.d.ts:125 addressByIndex`,
+  `:158 indexByAddress`).
+
+### G.2 Fresh diversified addresses
+* `AddressIndex = { account: u32, randomizer: bytes }` (`core/keys/v1/keys_pb.d.ts:210-212`); Penumbra derives the diversifier
+  from the full 16 bytes `account_le ‖ randomizer[12]`, and an all-zero randomizer is the account's default address.
+* The page calls `ViewService.AddressByIndex({addressIndex:{account, randomizer}})` with a FRESH 12-byte non-zero randomizer
+  per claim (`V.IndexBook.allocate`). Zafu's own callers pass only `{account}` (`state/penumbra-send.ts:132`,
+  `routes/popup/approval/transaction/fixture.ts:16`); `ephemeralAddress` (`state/ibc-withdraw.ts:150`) is NOT used because it
+  ignores the caller's randomizer and so cannot be recorded/proved.
+* Proof of ownership/shape (`zafu/entry.js addressAtIndex`): inner must be exactly 80 bytes; `bech32mAddress` /
+  `addressFromBech32m` (`@penumbra-zone/bech32m/dist/penumbra.d.ts:3,6`) must round-trip with prefix `penumbra1` (143 chars);
+  then `IndexByAddress` must return the SAME account and randomizer (empty randomizer read as zeros → rejected). Zafu itself uses
+  `indexByAddress` as its "is this mine" check (`state/tx-approval.ts:107`).
+* The page then re-checks the string with its own decoder (`V.checkPenumbra`), the reuse guard (`guard.check`), and records
+  `{account:randomizer → address, owner nullifier}` in `localStorage["terp-hs-zafu-indices-v1"]` (`V.IndexBook.record`), which
+  refuses any repeated index or address. The receiver is additionally `guard.use`d before the forward is signed.
+
+### G.3 Preconditions observed on the real extension
+* Penumbra calls require the Penumbra network to be enabled and active, else `'penumbra network not enabled'`
+  (`apps/extension/src/wallet-services.ts:60`). A fresh Zafu wallet defaults to Zcash only — users must enable Penumbra.
+* The wallet must be unlocked (NeedsLogin otherwise). First connect opens an origin approval; surface is
+  `approvalSurface: 'hybrid'|'sidebar'|'popup'` (`packages/storage-chrome/src/versions/v5.ts:129`, setting at
+  `routes/popup/settings/settings-appearance.tsx:124`).
+* Zafu content scripts run on https and on `http://127.0.0.1/*` (any port), which is what the local e2e uses.
+
+### G.4 Bundle
+`frontend/zafu-client.js` (esbuild 0.28.2 ESM, minified, es2022; `zafu/build.sh`): ~358 KB raw / ~41 KB gzip, shipped as its own
+manifest file (3 × 128 KiB chunks) and imported lazily only when the claim page starts. Importing `ViewService` from the protobuf
+index instead of `view_connect` would add ~130 KB.
+
+### G.5 What the e2e proves vs. harness
+Real: the released Zafu extension, an onboarded throwaway wallet, `connect()` → MessagePort → ViewService
+`AddressByIndex` at fresh non-zero indices and `IndexByAddress` confirmation, the page's connect/disconnect UI, and the on-chain
+forward to that address. Harness-only: test keyring wallet created offline (seed never displayed), storage prefs
+`approvalSurface:"popup"` + Penumbra enabled/active, unlock via `popup.html`, and an automated click on "connect".
+Chain B is a terpd stand-in, so the Penumbra forward error-acks and refunds to the fallback.
+Manual checks still needed: Web Store install id; default hybrid side-panel approval; pressing "no, thank you" (Denied
+message); locked-wallet path (NeedsLogin message); Penumbra disabled message; no extension installed message.

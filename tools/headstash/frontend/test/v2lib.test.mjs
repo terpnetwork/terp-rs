@@ -94,3 +94,69 @@ test("code id list parsing", () => {
   assert.deepEqual(V.parseNumList("12, 14 15"), ["12", "14", "15"]); assert.throws(() => V.parseNumList("12,x"), /number/);
   assert.equal(V.codeContractsPath(3, "a+b"), "/cosmwasm/wasm/v1/code/3/contracts?pagination.limit=100&pagination.key=a%2Bb");
 });
+
+// ---- Zafu index allocation + address validation ----
+test("IndexBook: fresh 12-byte non-zero randomizers, exact {account, randomizer} shape", () => {
+  const b = new V.IndexBook(new V.MemStorage()), seen = new Set();
+  for (let i = 0; i < 200; i++) {
+    const x = b.allocate(i % 3); assert.deepEqual(Object.keys(x).sort(), ["account", "randomizer"]);
+    assert.equal(x.account, i % 3); assert.ok(x.randomizer instanceof Uint8Array); assert.equal(x.randomizer.length, 12);
+    assert.ok(x.randomizer.some((v) => v)); const k = V.IndexBook.key(x.account, x.randomizer); assert.ok(!seen.has(k)); seen.add(k);
+    b.record(x, "penumbra1addr" + i, "n" + i);
+  }
+  assert.equal(b.count(), 200);
+});
+test("IndexBook: zero randomizer and used indices are skipped; broken rng fails closed", () => {
+  const st = new V.MemStorage(), fixed = Uint8Array.from({ length: 12 }, (_, i) => i + 1);
+  const seq = [new Uint8Array(12), fixed, fixed, Uint8Array.from(fixed, (v) => v ^ 0xff)]; let n = 0;
+  const b = new V.IndexBook(st, (buf) => { buf.set(seq[n++ % seq.length]); return buf; });
+  const a = b.allocate(0); assert.deepEqual([...a.randomizer], [...fixed]); b.record(a, "penumbra1a", "x");
+  const c = b.allocate(0); assert.deepEqual([...c.randomizer], [...seq[3]]);
+  const z = new V.IndexBook(st, (buf) => buf.fill(0)); assert.throws(() => z.allocate(0), /fresh address index/);
+  assert.throws(() => new V.IndexBook(st, () => new Uint8Array(11)).allocate(0), /12 bytes/);
+});
+test("IndexBook: record refuses index or address reuse, and zero/malformed randomizers", () => {
+  const b = new V.IndexBook(new V.MemStorage()), r = Uint8Array.from({ length: 12 }, () => 7);
+  b.record({ account: 1, randomizer: r }, "penumbra1aaa", "o1");
+  assert.throws(() => b.record({ account: 1, randomizer: r }, "penumbra1bbb", "o2"), V.ReuseError);
+  assert.throws(() => b.record({ account: 2, randomizer: r }, "PENUMBRA1AAA ", "o2"), V.ReuseError);
+  b.record({ account: 2, randomizer: r }, "penumbra1ccc", "o3"); // same randomizer, other account = other index
+  assert.throws(() => b.record({ account: 0, randomizer: new Uint8Array(12) }, "penumbra1d", "o"), /zero/);
+  assert.throws(() => b.record({ account: 0, randomizer: new Uint8Array(16).fill(1) }, "penumbra1e", "o"), /malformed/);
+  assert.throws(() => b.record({ account: 0, randomizer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] }, "penumbra1f", "o"), /malformed/);
+});
+test("parseAccount: u32 only", () => {
+  assert.equal(V.parseAccount("0"), 0); assert.equal(V.parseAccount(" 4294967295 "), 4294967295);
+  for (const s of ["-1", "1.5", "4294967296", "", "0x1", "abc"]) assert.throws(() => V.parseAccount(s), s);
+});
+test("Penumbra address validation: bech32m, hrp penumbra, exactly 80 bytes", () => {
+  const ok = V.bech32mEncode("penumbra", Uint8Array.from({ length: 80 }, (_, i) => i));
+  assert.equal(V.checkPenumbra(ok, bech32Decode), ok); assert.ok(ok.startsWith("penumbra1")); assert.equal(ok.length, 143);
+  assert.throws(() => V.checkPenumbra(V.bech32mEncode("penumbra", new Uint8Array(79)), bech32Decode), /80/);
+  assert.throws(() => V.checkPenumbra(V.bech32mEncode("penumbra", new Uint8Array(81)), bech32Decode), /80/);
+  assert.throws(() => V.checkPenumbra(V.bech32mEncode("penumbrafullviewingkey", new Uint8Array(80)), bech32Decode));
+  const bad = ok.slice(0, -1) + (ok.endsWith("q") ? "p" : "q"); assert.throws(() => V.checkPenumbra(bad, bech32Decode));
+});
+test("zafuErrorText maps provider failures", () => {
+  assert.match(V.zafuErrorText(new Error("Connection request failed", { cause: "Denied" })), /declined/);
+  assert.match(V.zafuErrorText(new Error("x", { cause: new Error("Connection request failed", { cause: "NeedsLogin" }) })), /locked/);
+  assert.match(V.zafuErrorText(new Error("[unknown] penumbra network not enabled")), /enable and select/);
+});
+
+// ---- zafu-client.js (bundled @penumbra-zone libs): addressAtIndex proof checks against a fake ViewService ----
+test("zafu-client addressAtIndex: accepts only a round-tripping address whose IndexByAddress matches", async () => {
+  const Z = await import("../zafu-client.js"), inner = Uint8Array.from({ length: 80 }, (_, i) => (i * 7) & 255), r = Uint8Array.from({ length: 12 }, (_, i) => i + 1);
+  const mk = (o = {}) => ({ addressByIndex: async (q) => { assert.equal(q.addressIndex.account, 3); assert.deepEqual([...q.addressIndex.randomizer], [...r]); return { address: { inner: o.inner || inner } }; },
+    indexByAddress: async () => (o.noidx ? {} : { addressIndex: { account: o.acct ?? 3, randomizer: o.r || r } }) });
+  const a = await Z.addressAtIndex(mk(), { account: 3, randomizer: r });
+  assert.equal(a.address, V.bech32mEncode("penumbra", inner)); V.checkPenumbra(a.address, bech32Decode);
+  assert.deepEqual([...Z.decodeAddress(a.address)], [...inner]);
+  await assert.rejects(Z.addressAtIndex(mk({ inner: new Uint8Array(79) }), { account: 3, randomizer: r }), /malformed/);
+  await assert.rejects(Z.addressAtIndex(mk({ noidx: true }), { account: 3, randomizer: r }), /does not recognise/);
+  await assert.rejects(Z.addressAtIndex(mk({ acct: 4 }), { account: 3, randomizer: r }), /different index/);
+  await assert.rejects(Z.addressAtIndex(mk({ r: new Uint8Array(12) }), { account: 3, randomizer: r }), /different index/);
+  await assert.rejects(Z.addressAtIndex(mk(), { account: 3, randomizer: new Uint8Array(16) }), /12 bytes/);
+  assert.deepEqual(Z.providers({}), []);
+  const g = { [Symbol.for("penumbra")]: { ["chrome-extension://" + "a".repeat(32)]: { connect() {} }, "https://evil": { connect() {} }, ["chrome-extension://" + "b".repeat(32)]: {} } };
+  assert.deepEqual(Z.providers(g).map((p) => p.origin), ["chrome-extension://" + "a".repeat(32)]);
+});

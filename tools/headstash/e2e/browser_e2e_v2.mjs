@@ -1,13 +1,28 @@
 // Playwright driver for browser_e2e_v2.py (claim page v2). Reads JSON from stdin; prints one JSON line.
-// Injected TEST providers (not real wallets): window.ethereum (EIP-1193; signs in Node with the page's own crypto.js,
-// EIP-191 personal_sign) and window.__hsTestPenumbra.ephemeralAddress() (random 80-byte bech32m "penumbra1…" addresses).
+// EVM side: an injected TEST EIP-1193 provider (window.ethereum; signs in Node with the page's own crypto.js, EIP-191).
+// Penumbra side: the REAL Zafu extension (inp.zafu_ext = unpacked release dir) in a persistent profile copied from an
+// onboarded throwaway wallet (inp.zafu_profile, password inp.zafu_pass). Harness-only steps: storage prefs
+// {approvalSurface:"popup", Penumbra network enabled+active}, unlocking via popup.html, and clicking "connect" in the approval popup.
 import { createRequire } from "module"; import { pathToFileURL } from "url"; const require = createRequire(process.env.NODE_PATH + "/");
 const { chromium } = require("playwright");
 const phase = process.argv[2];
 const inp = JSON.parse(await new Promise((r) => { let s = ""; process.stdin.on("data", (d) => (s += d)); process.stdin.on("end", () => r(s)); }));
 const out = { phase, ok: false };
-const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1100, height: 900 } });
+const fs = await import("fs");
+let browser = null, ctx, zx = null;
+if (inp.zafu_ext) {
+  const prof = `${inp.zafu_profile}-run-${phase}-${process.pid}`; fs.cpSync(inp.zafu_profile, prof, { recursive: true });
+  ctx = await chromium.launchPersistentContext(prof, { channel: "chromium", headless: true, acceptDownloads: true, viewport: { width: 1100, height: 900 },
+    args: [`--disable-extensions-except=${inp.zafu_ext}`, `--load-extension=${inp.zafu_ext}`] });
+  const sw = ctx.serviceWorkers()[0] || (await ctx.waitForEvent("serviceworker")); const extId = sw.url().split("/")[2];
+  await sw.evaluate(async () => chrome.storage.local.set({ approvalSurface: "popup", enabledNetworks: ["zcash", "penumbra"], activeNetwork: "penumbra" }));
+  const lp = await ctx.newPage(); await lp.goto(`chrome-extension://${extId}/popup.html`); await lp.waitForTimeout(2500);
+  if (await lp.locator("input[type=password]").count()) { await lp.locator("input[type=password]").first().fill(inp.zafu_pass); await lp.keyboard.press("Enter"); await lp.waitForTimeout(3000); }
+  zx = { extId, approvals: 0 };
+  ctx.on("page", async (p) => { try { await p.waitForLoadState(); if (!p.url().includes("#/approval/origin")) return; await p.waitForTimeout(1200);
+    await p.getByText("connect", { exact: true }).click(); zx.approvals++; } catch (e) { console.error("approval click: " + e.message); } });
+  await lp.close();
+} else { browser = await chromium.launch({ headless: true }); ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1100, height: 900 } }); }
 const page = await ctx.newPage();
 page.on("console", (m) => m.type() === "error" && console.error("console " + m.text().slice(0, 200)));
 let last = null; page.on("download", (d) => (last = d));
@@ -36,14 +51,7 @@ if (inp.key_hex) {
   });
   await page.addInitScript(() => { window.ethereum = { isMetaMask: true, request: ({ method, params }) => window.__hsEth(method, params || []) }; });
 }
-// test Penumbra provider
-const V = await import(pathToFileURL(inp.v2lib || inp.crypto?.replace("crypto.js", "v2lib.js") || "").href).catch(() => null);
-const pen = { list: [], repeat: false };
-await page.exposeFunction("__hsPen", async () => {
-  if (pen.repeat && pen.list.length) return pen.list[0];
-  const a = V.bech32mEncode("penumbra", crypto.getRandomValues(new Uint8Array(80))); pen.list.push(a); return a;
-});
-await page.addInitScript(() => { window.__hsTestPenumbra = { ephemeralAddress: () => window.__hsPen() }; });
+const pen = { list: [] };
 
 try {
   const t0 = Date.now(); await page.goto(inp.url);
@@ -106,14 +114,26 @@ try {
     await runClaim("07-claim-ephemeral");
     await page.check("input[name=dest-mode][value=forward]"); await page.waitForTimeout(300);
     out.channels = await page.locator("#fwd-channel option").allTextContents();
+    out.zafu_detect = await text("#zafu-detect");
+    if (!zx) throw new Error("forward-zafu needs the real Zafu extension (zafu_ext)");
+    await page.click("#zafu-connect");
+    await page.locator("#zafu-detect[data-state='connected'], #zafu-detect[data-state='error']").waitFor({ timeout: 90000 });
+    out.zafu_state = await attr("#zafu-detect", "data-state"); out.zafu_text = await text("#zafu-detect"); out.zafu_approvals = zx.approvals;
+    await shot("08a-zafu-connected");
     await runClaim("08-forward-zafu"); out.fwd_preview = await text("#fwd-preview");
+    const z1 = await page.inputValue("#recv"); pen.list.push(z1);
+    for (let i = 0; i < 2; i++) { await page.click("#zafu"); await until(async () => (await page.inputValue("#recv")) !== pen.list[pen.list.length - 1] || (await text("#dst-err")), 30000); pen.list.push(await page.inputValue("#recv")); }
+    out.zafu_book = await page.evaluate(() => JSON.parse(localStorage.getItem("terp-hs-zafu-indices-v1") || "[]"));
+    out.zafu_addrs_distinct = new Set(pen.list).size === pen.list.length && pen.list.every((x) => /^penumbra1[02-9ac-hj-np-z]{134}$/.test(x));
+    out.zafu_addr_prefixes = pen.list.map((x) => x.slice(0, 18));
+    await page.click("#zafu-disconnect"); out.zafu_after_disconnect = await attr("#zafu-detect", "data-state");
     await page.check("#recv-any"); await page.fill("#recv", inp.recv_b);
     await runClaim("09-forward-chain-b");
-    await page.uncheck("#recv-any"); pen.repeat = true;
+    await page.fill("#recv", z1); // the Zafu address already used by claim 08: must be refused by the reuse guard
     await runClaim("10-reuse-refused"); out.reuse_err = out["10-reuse-refused_err"];
     await page.click("#save"); await saveLast(inp.out);
     out.counts = JSON.parse((await attr("#summary", "data-counts")) || "{}");
   }
   out.ok = true;
 } catch (e) { out.error = String(e.message || e).slice(0, 400); await shot("error").catch(() => {}); }
-out.penumbra_addrs = pen.list.length; out.log = await text("#log"); await browser.close(); console.log(JSON.stringify(out));
+out.penumbra_addrs = pen.list.length; out.real_zafu = !!zx; out.log = await text("#log"); await (browser ? browser.close() : ctx.close()); console.log(JSON.stringify(out));

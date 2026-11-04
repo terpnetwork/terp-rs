@@ -1,0 +1,14 @@
+{
+  "name": "headstash-zafu-client",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "esbuild entry.js --bundle --format=esm --minify --legal-comments=eof --target=es2022 --outfile=../zafu-client.js" },
+  "dependencies": {
+    "@bufbuild/protobuf": "1.10.0",
+    "@connectrpc/connect": "1.6.1",
+    "@penumbra-zone/bech32m": "18.0.0",
+    "@penumbra-zone/protobuf": "11.0.0",
+    "@penumbra-zone/transport-dom": "7.5.2"
+  },
+  "devDependencies": { "esbuild": "0.28.2" }
+}
