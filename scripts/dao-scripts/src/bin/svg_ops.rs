@@ -792,11 +792,10 @@ fn simulate_as(
             auth_info_bytes: auth.encode_to_vec(),
             signatures: vec![vec![]],
         };
-        #[allow(deprecated)]
         let r = ServiceClient::new(ch)
             .simulate(SimulateRequest {
-                tx: None,
                 tx_bytes: raw.encode_to_vec(),
+                ..Default::default()
             })
             .await
             .map_err(|e| anyhow!("simulate: {}", e.message()))?

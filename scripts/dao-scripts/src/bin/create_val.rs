@@ -116,14 +116,14 @@ fn broadcast(chain: &Daemon, args: &Args, public: &[u8]) -> anyhow::Result<()> {
             max_change_rate: "10000000000000000".into(),
         }),
         min_self_delegation: "1".into(),
-        #[allow(deprecated)]
-        delegator_address: delegator,
         validator_address: validator,
         pubkey: Some(Any {
             type_url: "/cosmos.crypto.ed25519.PubKey".into(),
             value: key.encode_to_vec(),
         }),
         value: Some(Coin { denom, amount }),
+        // delegator_address is deprecated: the SDK derives the self-delegator from validator_address.
+        ..Default::default()
     };
     let any = Any {
         type_url: "/cosmos.staking.v1beta1.MsgCreateValidator".into(),

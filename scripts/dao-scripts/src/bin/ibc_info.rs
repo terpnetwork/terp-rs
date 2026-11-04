@@ -1345,16 +1345,13 @@ fn build_image_sync(counterparty_chain: &str, counterparty_base_denom: &str) -> 
 }
 
 /// Build a complete assetlist-compliant asset entry for any trace type
-#[allow(clippy::too_many_arguments)]
 fn build_ibc_asset_entry(
     asset: &serde_json::Value,
     ibc_denom: &str,
     traces: &[serde_json::Value],
-    _trace_path: &str,
     symbol: &str,
     counterparty_chain: &str,
     counterparty_denom: &str,
-    _dest_channel: &str,
     via_chain: Option<&str>,
 ) -> serde_json::Value {
     let display_denom = asset["display"].as_str().unwrap_or("");
@@ -1494,11 +1491,6 @@ fn derive_ibc_asset_list(
                     } else {
                         base_denom
                     };
-                    let dest_channel = if has_traces && !traces.is_empty() {
-                        traces[0]["chain"]["channel_id"].as_str().unwrap_or("")
-                    } else {
-                        ""
-                    };
 
                     println!("↻ {} - derived via {}", symbol, trace_path);
                     println!("  ✓ IBC denom: {}", ibc_hash);
@@ -1526,11 +1518,9 @@ fn derive_ibc_asset_list(
                         asset,
                         &ibc_hash,
                         &effective_traces,
-                        &trace_path,
                         symbol,
                         &cp_chain,
                         cp_denom,
-                        dest_channel,
                         None,
                     ));
                 }
@@ -1557,7 +1547,7 @@ fn derive_ibc_asset_list(
 
             println!("⏭ {} - non-IBC trace, using base denom", symbol);
             ibc_denoms.push(build_ibc_asset_entry(
-                asset, base_denom, &traces, "", symbol, cp_chain, cp_denom, "", None,
+                asset, base_denom, &traces, symbol, cp_chain, cp_denom, None,
             ));
         }
     }

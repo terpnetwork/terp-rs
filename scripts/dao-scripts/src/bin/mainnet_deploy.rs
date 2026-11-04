@@ -381,14 +381,6 @@ enum Step {
         msg: Value,
         admin: Option<String>,
     },
-    // Plan files may still carry direct executes; no built-in step emits one today.
-    #[allow(dead_code)]
-    Exec {
-        id: String,
-        contract: String,
-        key: String,
-        msg: Value,
-    },
     /// Execute with the granter (cold key / DAO member) as the inner sender, via MsgExec.
     ExecAs {
         id: String,
@@ -416,12 +408,6 @@ impl Step {
                 msg,
                 admin,
             } => json!({"instantiate2": name, "code": code, "admin": admin, "msg": msg}),
-            Step::Exec {
-                id,
-                contract,
-                key,
-                msg,
-            } => json!({"execute": id, "contract": contract, "key": key, "msg": msg}),
             Step::ExecAs {
                 id,
                 contract,
@@ -573,10 +559,9 @@ impl Ctx {
             let done = match &s {
                 Step::Store { name, .. } => self.code_on_chain(name)?,
                 Step::Inst { name, .. } => self.contract_on_chain(name),
-                Step::Exec { id, .. }
-                | Step::ExecAs { id, .. }
-                | Step::Vote { id, .. }
-                | Step::Custom { id, .. } => self.state.done.contains(id),
+                Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::Custom { id, .. } => {
+                    self.state.done.contains(id)
+                }
             };
             if done {
                 println!("  skip {}", s.describe());
@@ -725,7 +710,7 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
             Step::Inst { .. } | Step::Custom { .. } => {
                 session = session.allow_instantiate2();
             }
-            Step::Exec { contract, key, .. } | Step::ExecAs { contract, key, .. } => {
+            Step::ExecAs { contract, key, .. } => {
                 let e = execs.entry(contract.clone()).or_default();
                 e.0.insert(key.clone());
                 e.1 += 1;
@@ -872,20 +857,6 @@ fn run_steps(ctx: &mut Ctx, phase: &str, signer: &Signer, steps: &[Step]) -> Res
                 ctx.state.tx(phase, &format!("instantiate2 {name}"), &r)?;
                 println!("  {name} = {address}");
                 signer.note(&format!("ok instantiated {name} {address}"));
-            }
-            Step::Exec {
-                id,
-                contract,
-                key,
-                msg,
-            } => {
-                let r = d
-                    .execute(msg, &[], &Addr::unchecked(contract))
-                    .map_err(|e| anyhow!("{id}: {e}"))?;
-                record_drop(ctx, id, key, &r);
-                ctx.state.done.insert(id.clone());
-                ctx.state.tx(phase, id, &r)?;
-                signer.note(&format!("ok {id}"));
             }
             Step::ExecAs {
                 id,
