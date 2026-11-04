@@ -24,6 +24,12 @@ name = "fiab_bounty_escrow"
 path = "src/bin/fiab_bounty_escrow.rs"
 required-features = ["gov"]
 
+# Silo-auth capability whitelist (whitelist-mtree). Preview by default; signs only via cw-orch-kms with --execute.
+[[bin]]
+name = "silo_whitelist"
+path = "src/bin/silo_whitelist.rs"
+required-features = ["gov"]
+
 [[bin]]
 name = "cw-ave-deploy"
 path = "src/bin/cw_ave_deploy.rs"

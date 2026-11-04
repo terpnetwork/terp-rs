@@ -1,0 +1,16 @@
+{
+  "_source": "morocco-1 read-only queries 2026-11-04 at height 24301422: dao-dao-core 2.8.0-alpha.2 proposal_modules, dao-proposal-single config / proposal_creation_policy, dao-voting-cw4 -> cw4-group list_members",
+  "chain_id": "morocco-1",
+  "dao_core": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+  "proposal_single": "terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g",
+  "pre_propose_single": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp",
+  "dao_members": [
+    "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r",
+    "terp1k52j0jk2t03e6cdnkpzwu7pacvufl640ekfjdh",
+    "terp1rtyf4ulzhsc9septhfchlxyveuwytx7l7v8vln"
+  ],
+  "label": "silo-auth-capabilities",
+  "wasm_sha256": "FILL: sha256 of the optimizer-built whitelist_mtree.wasm from cw-infuser a9d8c44",
+  "contract_supports_update_root": true,
+  "lcd": null
+}
