@@ -21,7 +21,7 @@
   "risks": "Save the notes file: it holds your secrets. Never sign the seed message on another site."},
  "anchor": {"title": "6. Wait for an anchor",
   "what": "Claims prove membership in an accepted registration-tree anchor. This shows the latest anchor and how many notes it covers.",
-  "reveals": "Nothing.",
+  "reveals": "Nothing new: accepting reads the public anchor from chain state; no request carries your notes.",
   "risks": "Claiming right after a small anchor gives a small anonymity set; waiting for more registrations improves privacy."},
  "destination": {"title": "7. Destination",
   "what": "Default: each note is claimed to its own fresh ephemeral account. Optional: forward over IBC to a one-time Penumbra address from Zafu, on a channel the contract allowlists; a fresh fallback account (refund on failure/timeout) is derived per forward.",
