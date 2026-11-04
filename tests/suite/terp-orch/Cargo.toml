@@ -24,6 +24,13 @@ name = "fiab_bounty_escrow"
 path = "src/bin/fiab_bounty_escrow.rs"
 required-features = ["gov"]
 
+# terp-beacon deploy: store / instantiate-beacon / configure-beacon / wire-raffle.
+# Dry run by default (offline preview JSON). Broadcast needs --broadcast and TERP_BEACON_BROADCAST=1.
+[[bin]]
+name = "terp_beacon_deploy"
+path = "src/bin/terp_beacon_deploy.rs"
+required-features = ["gov"]
+
 [[bin]]
 name = "cw-ave-deploy"
 path = "src/bin/cw_ave_deploy.rs"
@@ -72,6 +79,10 @@ gov = [
     "dep:cosmos-sdk-proto",
     "dep:ibc-proto",
     "dep:dotenvy",
+    "dep:env_logger",
+    "dep:terp-beacon",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
 ]
 # Live deploy commands (Daemon). Off for library tests.
 deploy-bins = [
