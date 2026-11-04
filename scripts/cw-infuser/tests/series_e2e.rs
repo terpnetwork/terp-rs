@@ -6,14 +6,21 @@ use cw_infuser_scripts::collection::{
 };
 use cw_orch::prelude::*;
 
-const PACKED: &[u8] = b"SVP1\x00<svg xmlns=\"http://www.w3.org/2000/svg\"/>";
+const TEMPLATE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg"/>"#;
+
+/// Real SVP container from the codec encoder (not hand-made bytes).
+fn packed() -> Binary {
+    let (packed, _) =
+        svg_collections::common::check_and_pack(TEMPLATE, &[]).expect("pack template");
+    Binary::from(packed)
+}
 
 fn cfg(creator: &Addr, i: u8, window: u64) -> SvgCollectionConfig {
     SvgCollectionConfig {
         name: format!("t{i}"),
         symbol: "TST".into(),
         seed: Binary::from([i; 32].to_vec()),
-        packed: Binary::from(PACKED.to_vec()),
+        packed: packed(),
         total: 10_000,
         price_tiers: vec![],
         mint_start_time: None,
@@ -48,10 +55,17 @@ fn benders_one_per_day_enforced_by_factory() {
         .instantiate_in_series(&f, "latent-benders", &cfg(&c1, 1, 86_400))
         .unwrap();
     let st = suite.query(&a1).unwrap();
-    assert_eq!((st.total, st.mint_start_time), (10_000, None));
+    // cw721-svg defaults an unset start to the instantiate block time
+    assert_eq!(
+        (st.total, st.mint_start_time),
+        (10_000, Some(chain.block_info().unwrap().time))
+    );
+    // the end is whole seconds from the block (cw721-svg truncates sub-seconds)
     assert_eq!(
         st.mint_end_time,
-        Some(chain.block_info().unwrap().time.plus_seconds(86_400))
+        Some(cosmwasm_std::Timestamp::from_seconds(
+            chain.block_info().unwrap().time.seconds() + 86_400
+        ))
     );
 
     // free mint by anyone inside the window

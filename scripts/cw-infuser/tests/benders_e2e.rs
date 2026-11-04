@@ -70,7 +70,15 @@ fn day_record_to_collection_on_mock() {
         (cfg.total, cfg.price_tiers.len(), cfg.mint_end_after_secs),
         (10_000, 0, Some(86_400))
     );
-    let end = chain.block_info().unwrap().time.plus_seconds(86_400);
+    // The contract stores mint_end_time at whole-second precision.
+    let end = cosmwasm_std::Timestamp::from_seconds(
+        chain
+            .block_info()
+            .unwrap()
+            .time
+            .plus_seconds(86_400)
+            .seconds(),
+    );
 
     let mut suite = SvgCollectionSuite::new(chain.clone());
     let addr = suite.instantiate(&cfg).unwrap();
