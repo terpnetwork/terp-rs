@@ -543,7 +543,7 @@ largest function 52 489 B, scan `ok`.
   - `v2_zafu_unpacked_non_store_id_connects`: the real extension is loaded unpacked. Its ID equals the Chrome path hash, not the store ID. It connects, and the status shows that ID.
   - `v2_wallet_any_announced_provider_user_picks`: two fake announcers with arbitrary IDs both appear, and selecting the second one updates the status.
 
-## R12 — Templatized theme (on-chain CSS tokens), Apricot Glow (IMPLEMENTED)
+## R12 — Templatized theme (on-chain CSS tokens) (IMPLEMENTED; default theme now Azure Calcium, see R13.4)
 
 - Tokens (light and dark each): `bg surface surfaceAlt text textMuted border borderStrong accent onAccent focus`. Each value is `#RRGGBB`. `radius_px` is optional and must be 0..24. Unknown fields or tokens are rejected (`deny_unknown_fields`).
 - Storage:
@@ -553,8 +553,8 @@ largest function 52 489 B, scan `ok`.
 - Fallback: the headstash contract theme, then the manifest default, then the built-in neutral theme. The first valid candidate wins as a whole; its tokens are then merged over the built-in theme. An invalid candidate is skipped and reported in `data-theme-rejected`.
 - Rendering: the page CSS uses only `var(--hs-*)` (checked by grep). `<style id="hs-theme">` is built with textContent from validated hex values only. The mode follows `prefers-color-scheme`, and a toggle stores the choice in localStorage (`terp-hs-theme-mode-v1`). CSP is unchanged.
 - Contrast (unit test, WCAG): text and textMuted on bg/surface are ≥4.5, and onAccent on accent is ≥4.5. Accent on bg is only required to reach ≥3 (non-text UI). Status messages use the text colour plus an accent border, because there are no ok/err tokens (open question).
-- Renderer: `render_frontend_prop.py --theme <file|none>`, Apricot Glow by default (`frontend/themes/apricot-glow.json`). Use `--theme none` for v1-compatible manifests.
-- Rendered (not submitted):
+- Renderer: `render_frontend_prop.py --theme <file|none>`, Azure Calcium by default (`frontend/themes/azure-calcium.json`; Apricot Glow was the default until R13 and is kept archived). Use `--theme none` for v1-compatible manifests. `52-*` is rendered by `e2e/render_theme_prop.py`.
+- Rendered (not submitted) — historical, superseded by R13 renders:
   - `50-dao-prop-frontend-v2.*` was re-rendered with the Apricot Glow manifest default. New manifest PIN `2a4ed441fbed82dd153a3082d1286790c8fdcf5a9a230e893714e15430522d9f`, which supersedes f8ee4d5c. 12 chunks, frontend checksum 8798FAD4…, still the predicted code 107. The loaders are re-pinned.
   - New `52-dao-prop-headstash-theme.propose.json`: `set_theme` with Apricot Glow on terpy and thioly. Canonical theme sha256 996a1f26….
 - Verification (groot-wan, 2026-11-04):
@@ -562,3 +562,112 @@ largest function 52 489 B, scan `ok`.
   - run_dao migrate_prop 66/0; run_forward 63/0.
   - browser_e2e_v2 with the real Zafu extension 52/0 (includes the R12 and R7a steps).
   - Results: `/tmp/hsfe-v2/theme-results.txt`.
+
+## R13 — Bottom-sheet layout, progressive disclosure, privacy set, Azure Calcium (IMPLEMENTED)
+
+The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are to be read as described in RFC 2119.
+
+### R13.1 Sheet layout
+
+1. The landing view (`<main id="landing">`) MUST show only Headstash lookup: code ids, Browse, the instance list, the current selection and the instance info modal. It MUST NOT render any eligibility, registration, notes-file, wallet, Zafu, anchor, privacy or claim control. An `?hs=` parameter MAY preselect the default instance, but it MUST NOT open the sheet or fetch the HAL by itself.
+2. Opening a Headstash (its "Open" button) MUST select it (instance query, HAL fetch and verify, privacy set) and then open a bottom sheet `<dialog id="hs-sheet" class="sheet">` with `showModal()`.
+3. The sheet MUST:
+   - be modal (`aria-modal="true"`, `aria-labelledby` its title) and keep keyboard focus inside itself;
+   - close on Esc and on a labelled close button (`#sheet-close`);
+   - return focus to the element that opened it;
+   - be anchored to the bottom edge, full width up to 860 px, max height 92 dvh, and scroll internally;
+   - slide up (`hs-up`, 0.28 s). Under `prefers-reduced-motion: reduce` it MUST NOT animate.
+   On narrow screens (≤ 600 px) it MUST fill the width (up to 96 dvh high, with tighter padding).
+4. After the sheet closes, a "Resume open Headstash" button MUST reopen it without losing state.
+5. The sheet MUST group every Headstash tool into five components in flow order: `eligibility`, `register`, `save`, `wallet`, `claim` (`section.comp#sec-*`). Each has a header toggle (`aria-controls`/`aria-expanded`), a status badge, a one-line hint, and the component's info button(s).
+6. Info buttons MUST sit in the always-visible headers so every R5 info modal stays reachable. The info dialog stacks above the sheet. The log MUST move into a collapsed `<details>` inside the sheet.
+
+### R13.2 Progressive disclosure
+
+1. Each component MUST stay `locked` (toggle disabled, body hidden, hint states the missing prerequisite) until its prerequisite is met:
+
+| component | unlocked when | done when |
+|---|---|---|
+| eligibility | a Headstash is selected | an eligible address is found, or a notes file is loaded |
+| register | eligibility done | every note is registered |
+| save | notes exist | the notes file was saved or loaded |
+| wallet | at least one note is registered | a destination is confirmed (`#dest-ok`) |
+| claim | registered notes and a confirmed destination | every note is spent |
+
+2. Only the first unlocked, not-done component (`current`) MUST be expanded automatically. The others MUST be collapsed to their summary line. The user MAY expand a done component; it collapses again when the current step changes.
+3. Changing the destination mode MUST void the confirmation, which re-locks claim.
+4. Every existing behaviour (R1–R12, R7a) MUST be kept, including element ids, info modals and the theme toggle.
+
+### R13.3 Privacy set
+
+1. Definition: privacy set = registered − claimed.
+   - registered = `registration_tree.count` (all registered commitments).
+   - claimed = `direct_claim.claimed` (the `DIRECT_CLAIMED` counter, present since v0.0.1, so migrated instances are correct).
+   - Both are public contract state. No contract change is needed.
+   - Lane/public claims are not counted. A forward refund does not decrement `claimed`.
+2. The page MUST read the set from the chain when a Headstash is selected, after registration, after a notes file loads, before every claim attempt, after every claim attempt, and on "Refresh".
+3. The page MUST reject malformed counts (non-integers, or claimed > registered).
+4. The page MUST show the set:
+   - in the register component after registration (`#reg-privacy`);
+   - in the claim component (`#privacy`, with registered/claimed/set/suggested-minimum and a meter).
+5. Threshold: T = max(64, 4 × `min_anonymity_set`) (`V.privacyThreshold`). When set < T the page MUST recommend waiting for the set to grow (`#privacy-advice`).
+6. Mandatory confirm: when set < T, or when the set cannot be read, the claim button MUST be disabled until the user ticks `#privacy-ack`. `claim()` MUST re-check the gate itself (`V.privacyGateOpen`), so a forced click MUST fail before any proof or relay request.
+7. Extension point (delayed-claim relay): `#delay-relay[data-extension="delayed-claim-relay"]` and `V.DelayedClaimRelay` / `V.DELAYED_CLAIM_RELAYS` / `V.delayedRelays()` are reserved. This build ships no relay (`DELAYED_CLAIM_RELAYS` is a frozen empty list) and MUST NOT contact one. A future relay MUST:
+   - be listed in that registry with an `https:` origin;
+   - expose `submit(claim, {not_before, not_after}) → {ticket}` and `status(ticket)`;
+   - be offered only at the confirm step, as an alternative to claiming now;
+   - be specified (trust, metadata it learns, cancellation) before it is enabled.
+
+### R13.4 Azure Calcium
+
+1. Azure Calcium (`frontend/themes/azure-calcium.json`, `V.AZURE_CALCIUM`) MUST be the default in the manifest (renderer `DEFAULT_THEME`) and in the page. Apricot Glow is kept only as the archived `themes/apricot-glow.json`.
+2. The renderer report MUST record `theme_file` relative to the repository root.
+3. Contrast (WCAG 2.x):
+
+| pair | light | dark |
+|---|---|---|
+| text / bg | 10.21 | 16.16 |
+| text / surface | 10.73 | 14.69 |
+| textMuted / bg | 6.67 | 9.42 |
+| textMuted / surface | 7.01 | 8.57 |
+| textMuted / surfaceAlt | 6.15 | 7.21 |
+| accent / bg | 4.31 | 9.38 |
+| accent / surface | 4.53 | 8.53 |
+| onAccent / accent | 4.67 | 7.92 |
+
+   Light accent/bg (4.31) is below 4.5. It passes the 3:1 bar for non-text UI and accent is not used as a text colour (links use `text`). Open decision: darken the light accent to reach 4.5.
+
+### R13.5 Flow
+
+```mermaid
+stateDiagram-v2
+  [*] --> Browse
+  Browse --> Browse: Browse instances (code ids)
+  Browse --> Select: Open
+  Select --> Sheet: instance + HAL + privacy set
+  state Sheet {
+    [*] --> Eligibility
+    Eligibility --> Register: eligible address
+    Eligibility --> Wallet: notes file loaded (returning)
+    Register --> SaveNote: notes derived
+    SaveNote --> Register: saved, continue registration
+    Register --> Wallet: all notes registered (privacy set shown)
+    Wallet --> Claim: destination confirmed
+    Claim --> Wallet: destination mode changed
+    state Claim {
+      [*] --> Privacy
+      Privacy --> Ready: set >= threshold
+      Privacy --> Confirm: set < threshold or unknown
+      Confirm --> Ready: user confirms
+      Confirm --> Wait: wait for the set to grow
+      Confirm --> DelayRelay: future delayed-claim relay (extension point, not shipped)
+      Ready --> Claimed: claim tx
+    }
+  }
+  Sheet --> Browse: Esc / close (Resume reopens)
+  note right of Sheet: only the current component is expanded
+```
+
+### R13 verification (groot-wan, 2026-11-04)
+
+See `/tmp/hsfe-v2/azure-results.txt`.
