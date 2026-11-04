@@ -135,7 +135,7 @@ pub fn generate_k1_through_k20() -> io::Result<Vec<ParamArtifact>> {
     std::fs::write(dir.join("SHA256SUMS"), sums)?;
     std::fs::write(
         dir.join("manifest.json"),
-        serde_json::to_vec_pretty(&rows).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+        serde_json::to_vec_pretty(&rows).map_err(io::Error::other)?,
     )?;
     Ok(rows)
 }

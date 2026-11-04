@@ -93,61 +93,61 @@ impl IBCAssetRoutingTable {
                     }
                 } else {
                     // IBC asset on this chain — trace further
-                    if let Some(traces) = asset["traces"].as_array() {
-                        if let Some(ibc_trace) = traces.iter().find(|t| {
+                    if let Some(traces) = asset["traces"].as_array()
+                        && let Some(ibc_trace) = traces.iter().find(|t| {
                             matches!(
                                 t["type"].as_str().unwrap_or(""),
                                 "ibc" | "ibc-cw20" | "ibc-bridge"
                             )
-                        }) {
-                            let cp_chain = ibc_trace["counterparty"]["chain_name"]
-                                .as_str()
-                                .unwrap_or("");
-                            let cp_denom = ibc_trace["counterparty"]["base_denom"]
-                                .as_str()
-                                .unwrap_or("");
-                            let source_trace = ibc_trace["chain"]["path"].as_str().unwrap_or("");
+                        })
+                    {
+                        let cp_chain = ibc_trace["counterparty"]["chain_name"]
+                            .as_str()
+                            .unwrap_or("");
+                        let cp_denom = ibc_trace["counterparty"]["base_denom"]
+                            .as_str()
+                            .unwrap_or("");
+                        let source_trace = ibc_trace["chain"]["path"].as_str().unwrap_or("");
 
-                            for dest_chain in graph.edges.keys() {
-                                if dest_chain == source_chain {
-                                    continue;
+                        for dest_chain in graph.edges.keys() {
+                            if dest_chain == source_chain {
+                                continue;
+                            }
+
+                            let found_routes =
+                                graph.find_routes(source_chain, dest_chain, max_hops);
+
+                            for route in found_routes {
+                                // Nest transfer prefixes for every hop (dest looking back)
+                                let mut prefix = String::new();
+                                for hop in route.iter().rev() {
+                                    prefix.push_str(&format!("transfer/{}/", hop.to_channel));
                                 }
+                                let full_trace = if source_trace.is_empty() {
+                                    format!("{prefix}{cp_denom}")
+                                } else {
+                                    format!("{prefix}{source_trace}")
+                                };
 
-                                let found_routes =
-                                    graph.find_routes(source_chain, dest_chain, max_hops);
+                                let ibc_denom = compute_ibc_denom_hash(&full_trace);
+                                // Prefer-direct relative to the physical transfer origin of this leg
+                                let preferred =
+                                    graph.route_is_preferred(source_chain, dest_chain, &route);
+                                let hop_count = hop_count_from_trace_path(&full_trace);
 
-                                for route in found_routes {
-                                    // Nest transfer prefixes for every hop (dest looking back)
-                                    let mut prefix = String::new();
-                                    for hop in route.iter().rev() {
-                                        prefix.push_str(&format!("transfer/{}/", hop.to_channel));
-                                    }
-                                    let full_trace = if source_trace.is_empty() {
-                                        format!("{prefix}{cp_denom}")
-                                    } else {
-                                        format!("{prefix}{source_trace}")
-                                    };
+                                let entry = IBCAssetRoute {
+                                    symbol: symbol.to_string(),
+                                    origin_chain: cp_chain.to_string(),
+                                    origin_denom: cp_denom.to_string(),
+                                    dest_chain: dest_chain.clone(),
+                                    dest_denom: ibc_denom.clone(),
+                                    trace_path: full_trace,
+                                    route: route.clone(),
+                                    hop_count,
+                                    preferred,
+                                };
 
-                                    let ibc_denom = compute_ibc_denom_hash(&full_trace);
-                                    // Prefer-direct relative to the physical transfer origin of this leg
-                                    let preferred =
-                                        graph.route_is_preferred(source_chain, dest_chain, &route);
-                                    let hop_count = hop_count_from_trace_path(&full_trace);
-
-                                    let entry = IBCAssetRoute {
-                                        symbol: symbol.to_string(),
-                                        origin_chain: cp_chain.to_string(),
-                                        origin_denom: cp_denom.to_string(),
-                                        dest_chain: dest_chain.clone(),
-                                        dest_denom: ibc_denom.clone(),
-                                        trace_path: full_trace,
-                                        route: route.clone(),
-                                        hop_count,
-                                        preferred,
-                                    };
-
-                                    routes.entry(dest_chain.clone()).or_default().push(entry);
-                                }
+                                routes.entry(dest_chain.clone()).or_default().push(entry);
                             }
                         }
                     }
@@ -265,16 +265,16 @@ pub fn derive_terp_ibc_denom(
     }
 
     // No direct channel — route through the source chain
-    if !source_chain.is_empty() {
-        if let Some(info) = terp_channels.get(source_chain) {
-            let full_path = if source_trace_path.is_empty() {
-                format!("transfer/{}/{}", info.terp_channel_id, counterparty_base)
-            } else {
-                format!("transfer/{}/{}", info.terp_channel_id, source_trace_path)
-            };
-            let hash = compute_ibc_denom_hash(&full_path);
-            return Some((hash, full_path, counterparty_chain.to_string()));
-        }
+    if !source_chain.is_empty()
+        && let Some(info) = terp_channels.get(source_chain)
+    {
+        let full_path = if source_trace_path.is_empty() {
+            format!("transfer/{}/{}", info.terp_channel_id, counterparty_base)
+        } else {
+            format!("transfer/{}/{}", info.terp_channel_id, source_trace_path)
+        };
+        let hash = compute_ibc_denom_hash(&full_path);
+        return Some((hash, full_path, counterparty_chain.to_string()));
     }
 
     None

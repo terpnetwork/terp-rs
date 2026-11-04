@@ -98,6 +98,7 @@ pub mod config;
 /// ```
 pub struct SidecarFleet {
     /// Test name identifier
+    #[allow(dead_code)] // kept for Debug/log context
     name: String,
     /// cw-orch Daemon for chain interactions
     daemon: Option<Daemon>,

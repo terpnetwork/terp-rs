@@ -646,9 +646,9 @@ fn bech32_polymod(values: &[u8]) -> u32 {
     for v in values {
         let b = chk >> 25;
         chk = ((chk & 0x1ffffff) << 5) ^ (*v as u32);
-        for i in 0..5 {
+        for (i, g) in GEN.iter().enumerate() {
             if (b >> i) & 1 == 1 {
-                chk ^= GEN[i];
+                chk ^= g;
             }
         }
     }
@@ -664,8 +664,8 @@ fn bech32_encode(hrp: &str, data: &[u8]) -> String {
     values.extend_from_slice(&[0; 6]);
     let polymod = bech32_polymod(&values) ^ 1;
     let mut checksum = [0u8; 6];
-    for i in 0..6 {
-        checksum[i] = ((polymod >> (5 * (5 - i))) & 31) as u8;
+    for (i, c) in checksum.iter_mut().enumerate() {
+        *c = ((polymod >> (5 * (5 - i))) & 31) as u8;
     }
     let mut out = String::from(hrp);
     out.push('1');
@@ -942,7 +942,7 @@ mod tests {
         assert!(draft.info.contains("linux/amd64"));
         assert!(draft.info.contains("linux/arm64"));
         assert!(!draft.info.contains("darwin"));
-        let raw = encode_msg_submit_upgrade(PARENT_CORE, &draft);
+        let raw = encode_msg_submit_upgrade(PARENT_CORE, draft);
         let text = String::from_utf8_lossy(&raw);
         assert!(text.contains(&draft.height.to_string()));
         for url in bins.values() {
@@ -965,7 +965,7 @@ mod tests {
             1
         );
         assert_eq!(*raw.last().unwrap(), 1);
-        match gov_submit_upgrade_any_msg(PARENT_CORE, &draft) {
+        match gov_submit_upgrade_any_msg(PARENT_CORE, draft) {
             CosmosMsg::Any(any) => assert_eq!(any.type_url, "/cosmos.gov.v1.MsgSubmitProposal"),
             other => panic!("{other:?}"),
         }

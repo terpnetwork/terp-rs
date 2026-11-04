@@ -15,11 +15,31 @@ use std::collections::BTreeMap;
 /// Known denoms observed live on Terp (`/ibc/apps/transfer/v1/denoms/{hash}`, 2026-10-31)
 /// and Osmosis (`denom_hashes`). (trace_path, base, expected)
 pub const SELF_TEST_VECTORS: &[(&str, &str, &str)] = &[
-    ("transfer/channel-9", "uakt", "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF"),
-    ("transfer/channel-11/transfer/channel-73", "ubtsg", "ibc/5FFFDD494CE1478FB87727208AE1F94EE80467037291F02AC3BA108CA8868028"),
-    ("transfer/channel-11", "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC", "ibc/9FC418778218616ADEC741B8E402C856EBF2AADAD93A8D7EA322F798480F641C"),
-    ("transfer/channel-750", "uusdc", "ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4"),
-    ("transfer/channel-79703", "upenumbra", "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372"),
+    (
+        "transfer/channel-9",
+        "uakt",
+        "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF",
+    ),
+    (
+        "transfer/channel-11/transfer/channel-73",
+        "ubtsg",
+        "ibc/5FFFDD494CE1478FB87727208AE1F94EE80467037291F02AC3BA108CA8868028",
+    ),
+    (
+        "transfer/channel-11",
+        "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+        "ibc/9FC418778218616ADEC741B8E402C856EBF2AADAD93A8D7EA322F798480F641C",
+    ),
+    (
+        "transfer/channel-750",
+        "uusdc",
+        "ibc/498A0751C798A0D9A389AA3691123DADA57DAA4FE165D5C75894505B876BA6E4",
+    ),
+    (
+        "transfer/channel-79703",
+        "upenumbra",
+        "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372",
+    ),
 ];
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +68,10 @@ pub struct AcceptedRoute {
 }
 
 pub fn trace_from_hops(hops: &[String]) -> String {
-    hops.iter().map(|c| format!("transfer/{c}")).collect::<Vec<_>>().join("/")
+    hops.iter()
+        .map(|c| format!("transfer/{c}"))
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 pub fn ibc_denom_for(trace_path: &str, base: &str) -> String {
@@ -89,12 +112,17 @@ pub fn build_accepted_denoms(routes_toml: &str, self_tests_passed: usize) -> Res
             variants.push(json!({"via": r.via, "trace_path": p, "base_denom": a.base,
                 "ibc_denom": d, "status": r.status, "note": r.note}));
         }
-        assets.insert(name.clone(), json!({"canonical": a.canonical, "origin": a.origin,
-            "base_denom": a.base, "variants": variants}));
+        assets.insert(
+            name.clone(),
+            json!({"canonical": a.canonical, "origin": a.origin,
+            "base_denom": a.base, "variants": variants}),
+        );
         accepted.insert(name.clone(), Value::Array(ok));
     }
-    Ok(json!({"chain_id": file.dest_chain, "spec": "ICS-20 sha256(path/base)",
-        "self_tests_passed": self_tests_passed, "assets": assets, "shitstrap_accepted": accepted}))
+    Ok(
+        json!({"chain_id": file.dest_chain, "spec": "ICS-20 sha256(path/base)",
+        "self_tests_passed": self_tests_passed, "assets": assets, "shitstrap_accepted": accepted}),
+    )
 }
 
 #[cfg(test)]
@@ -109,6 +137,9 @@ mod tests {
     #[test]
     fn multi_hop_trace_order_is_receiving_side_first() {
         let hops = vec!["channel-16".to_string(), "channel-4".to_string()];
-        assert_eq!(trace_from_hops(&hops), "transfer/channel-16/transfer/channel-4");
+        assert_eq!(
+            trace_from_hops(&hops),
+            "transfer/channel-16/transfer/channel-4"
+        );
     }
 }

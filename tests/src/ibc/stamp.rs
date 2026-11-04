@@ -3,7 +3,7 @@
 //! Does not call cw-orch APIs. Extra keys (`ibc_registry`, `code_sources`) sit
 //! beside `code_ids` / `ibc_data` so DaemonState still reads the usual maps.
 
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -11,27 +11,95 @@ use std::process::Command;
 
 /// Logical contract id → (wasm file, source crate relative to terp-rs).
 pub const CODE_SOURCE_TABLE: &[(&str, &str, &str)] = &[
-    ("oracle-registry", "cw_oracle_registry.wasm", "contracts/hash-merchant/oracle-registry"),
-    ("oracle-aggregator", "cw_oracle_aggregator.wasm", "contracts/hash-merchant/oracle-aggregator"),
-    ("oracle-twap-probe", "cw_oracle_twap_probe.wasm", "contracts/hash-merchant/oracle-twap-probe"),
-    ("marketplace", "revenue_marketplace.wasm", "contracts/revenue/marketplace"),
-    ("reserve-auction", "revenue_reserve_auction.wasm", "contracts/revenue/reserve-auction"),
-    ("svg-auction", "svg_auction.wasm", "contracts/infuser/svg-auction"),
+    (
+        "oracle-registry",
+        "cw_oracle_registry.wasm",
+        "contracts/hash-merchant/oracle-registry",
+    ),
+    (
+        "oracle-aggregator",
+        "cw_oracle_aggregator.wasm",
+        "contracts/hash-merchant/oracle-aggregator",
+    ),
+    (
+        "oracle-twap-probe",
+        "cw_oracle_twap_probe.wasm",
+        "contracts/hash-merchant/oracle-twap-probe",
+    ),
+    (
+        "marketplace",
+        "revenue_marketplace.wasm",
+        "contracts/revenue/marketplace",
+    ),
+    (
+        "reserve-auction",
+        "revenue_reserve_auction.wasm",
+        "contracts/revenue/reserve-auction",
+    ),
+    (
+        "svg-auction",
+        "svg_auction.wasm",
+        "contracts/infuser/svg-auction",
+    ),
     ("raffle", "nftfi_raffle.wasm", "contracts/nfts/raffle"),
     ("nft-loan", "nftfi_loan.wasm", "contracts/nfts/nft-loan"),
-    ("bounty-escrow", "terp_bounty_escrow.wasm", "contracts/revenue/bounty-escrow"),
-    ("passkey", "terp_passkey.wasm", "contracts/smart-accounts/terp-passkey"),
-    ("terp-passkey", "terp_passkey.wasm", "contracts/smart-accounts/terp-passkey"),
-    ("recovery", "terp_recovery.wasm", "contracts/smart-accounts/terp-recovery"),
-    ("terp-recovery", "terp_recovery.wasm", "contracts/smart-accounts/terp-recovery"),
-    ("terp-ed25519", "terp_ed25519.wasm", "contracts/smart-accounts/terp-ed25519"),
-    ("terp-eth", "terp_eth.wasm", "contracts/smart-accounts/terp-eth"),
+    (
+        "bounty-escrow",
+        "terp_bounty_escrow.wasm",
+        "contracts/revenue/bounty-escrow",
+    ),
+    (
+        "passkey",
+        "terp_passkey.wasm",
+        "contracts/smart-accounts/terp-passkey",
+    ),
+    (
+        "terp-passkey",
+        "terp_passkey.wasm",
+        "contracts/smart-accounts/terp-passkey",
+    ),
+    (
+        "recovery",
+        "terp_recovery.wasm",
+        "contracts/smart-accounts/terp-recovery",
+    ),
+    (
+        "terp-recovery",
+        "terp_recovery.wasm",
+        "contracts/smart-accounts/terp-recovery",
+    ),
+    (
+        "terp-ed25519",
+        "terp_ed25519.wasm",
+        "contracts/smart-accounts/terp-ed25519",
+    ),
+    (
+        "terp-eth",
+        "terp_eth.wasm",
+        "contracts/smart-accounts/terp-eth",
+    ),
     ("cw721-svg", "cw721_svg.wasm", "contracts/infuser/cw721-svg"),
     ("cw721_svg", "cw721_svg.wasm", "contracts/infuser/cw721-svg"),
-    ("svg-minter", "cw_svg_minter.wasm", "contracts/infuser/cw721-svg-minter"),
-    ("cw-svg-minter", "cw_svg_minter.wasm", "contracts/infuser/cw721-svg-minter"),
-    ("cw-infuser", "cw_infuser.wasm", "contracts/infuser/cw-infuser"),
-    ("whitelist-mtree", "whitelist_mtree.wasm", "contracts/infuser/whitelist-merkletree"),
+    (
+        "svg-minter",
+        "cw_svg_minter.wasm",
+        "contracts/infuser/cw721-svg-minter",
+    ),
+    (
+        "cw-svg-minter",
+        "cw_svg_minter.wasm",
+        "contracts/infuser/cw721-svg-minter",
+    ),
+    (
+        "cw-infuser",
+        "cw_infuser.wasm",
+        "contracts/infuser/cw-infuser",
+    ),
+    (
+        "whitelist-mtree",
+        "whitelist_mtree.wasm",
+        "contracts/infuser/whitelist-merkletree",
+    ),
 ];
 
 /// Git HEAD + dirty flag for `dir` (terp-rs checkout).
@@ -47,7 +115,11 @@ pub fn git_build_stamp(dir: &Path) -> Value {
 }
 
 fn git_out(dir: &Path, args: &[&str]) -> Option<String> {
-    let o = Command::new("git").args(args).current_dir(dir).output().ok()?;
+    let o = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .ok()?;
     if !o.status.success() {
         return None;
     }
@@ -134,10 +206,10 @@ pub fn load_ibc_data_by_counterparty(public_dir: &Path) -> Map<String, Value> {
         let Some(cp) = counterparty_from_ibc_stem(stem) else {
             continue;
         };
-        if let Ok(text) = fs::read_to_string(&path) {
-            if let Ok(v) = serde_json::from_str::<Value>(&text) {
-                map.insert(cp, v);
-            }
+        if let Ok(text) = fs::read_to_string(&path)
+            && let Ok(v) = serde_json::from_str::<Value>(&text)
+        {
+            map.insert(cp, v);
         }
     }
     map
@@ -209,7 +281,10 @@ mod tests {
     fn checksums_and_counterparty() {
         let m = parse_checksums("aa  cw_oracle_registry.wasm\nbb  other.wasm\n");
         assert_eq!(m.get("cw_oracle_registry.wasm").unwrap(), "aa");
-        assert_eq!(counterparty_from_ibc_stem("akash-terp").as_deref(), Some("akash"));
+        assert_eq!(
+            counterparty_from_ibc_stem("akash-terp").as_deref(),
+            Some("akash")
+        );
         assert_eq!(
             counterparty_from_ibc_stem("osmosis-terp").as_deref(),
             Some("osmosis")

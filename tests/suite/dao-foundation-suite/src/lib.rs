@@ -18,15 +18,21 @@ pub mod ibc_ops;
 
 pub mod actions;
 
+#[cfg(test)]
 use std::str::FromStr;
 
-use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty, Uint256, WasmMsg, to_json_binary};
+use cosmwasm_std::{Addr, Binary, Empty, Uint256, to_json_binary};
+#[cfg(test)]
+use cosmwasm_std::{CosmosMsg, WasmMsg};
+#[cfg(test)]
 use cw_multi_test::AppResponse;
+#[cfg(test)]
 use cw_orch::mock::Mock;
 use cw_orch::prelude::*;
 use cw_utils::Duration;
 use cw20::Cw20Coin;
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
+#[cfg(test)]
 use dao_testing::DaoDaoSuite;
 
 const ROOT: &str = "foundation";
@@ -55,6 +61,7 @@ pub struct Codes {
     pub voting_cw20_balance: u64,
 }
 
+#[cfg(test)]
 fn upload(suite: &DaoDaoSuite<Mock>, chain: &Mock) -> Codes {
     suite.dao_core.upload().unwrap();
     suite.proposal.prop_single.upload().unwrap();
@@ -101,6 +108,7 @@ fn upload(suite: &DaoDaoSuite<Mock>, chain: &Mock) -> Codes {
     }
 }
 
+#[cfg(test)]
 fn uploaded_code_id(resp: &AppResponse) -> u64 {
     resp.events
         .iter()
@@ -289,6 +297,7 @@ pub fn instantiate_msg(
     }
 }
 
+#[cfg(test)]
 fn dao_named(chain: &Mock, resp: &AppResponse, name: &str) -> Addr {
     resp.events
         .iter()
@@ -398,6 +407,8 @@ fn assert_voting_child<Chain: QueryHandler>(
     }
 }
 
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 fn spawn(
     suite: &mut DaoDaoSuite<Mock>,
     chain: &Mock,

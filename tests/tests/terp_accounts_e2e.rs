@@ -13,7 +13,6 @@ use terp_account::{Metadata, NFT, TERP_PREFIX, TextRecord};
 use terp721_account::msg::Terp721AccountsQueryMsgFns;
 use terp721_account::state::REVERSE_MAP_KEY;
 
-
 use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
 // use serde::Deserialize;
 use sha2::Digest;

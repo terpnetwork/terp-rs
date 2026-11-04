@@ -74,12 +74,12 @@ pub fn validate_asset_entry(asset: &Value, path: &str) -> Vec<String> {
                             errs.push(format!("{path}.traces[{i}].counterparty: missing '{f}'"));
                         }
                     }
-                    if let Some(ch) = cp["channel_id"].as_str() {
-                        if !ch.starts_with("channel-") {
-                            errs.push(format!(
-                                "{path}.traces[{i}].counterparty.channel_id: invalid pattern '{ch}'"
-                            ));
-                        }
+                    if let Some(ch) = cp["channel_id"].as_str()
+                        && !ch.starts_with("channel-")
+                    {
+                        errs.push(format!(
+                            "{path}.traces[{i}].counterparty.channel_id: invalid pattern '{ch}'"
+                        ));
                     }
                     let ch = &t["chain"];
                     for f in &["channel_id", "path"] {
@@ -87,12 +87,12 @@ pub fn validate_asset_entry(asset: &Value, path: &str) -> Vec<String> {
                             errs.push(format!("{path}.traces[{i}].chain: missing '{f}'"));
                         }
                     }
-                    if let Some(ch_id) = ch["channel_id"].as_str() {
-                        if !ch_id.starts_with("channel-") {
-                            errs.push(format!(
-                                "{path}.traces[{i}].chain.channel_id: invalid pattern '{ch_id}'"
-                            ));
-                        }
+                    if let Some(ch_id) = ch["channel_id"].as_str()
+                        && !ch_id.starts_with("channel-")
+                    {
+                        errs.push(format!(
+                            "{path}.traces[{i}].chain.channel_id: invalid pattern '{ch_id}'"
+                        ));
                     }
                 }
             }
@@ -163,10 +163,11 @@ pub fn validate_ibc_data_entry(entry: &Value, key: &str) -> Vec<String> {
         }
 
         for side in &["chain_1", "chain_2"] {
-            if let Some(cid) = ch[side]["channel_id"].as_str() {
-                if cid != "*" && !cid.starts_with("channel-") {
-                    errs.push(format!("{cp}.{side}.channel_id: invalid pattern '{cid}'"));
-                }
+            if let Some(cid) = ch[side]["channel_id"].as_str()
+                && cid != "*"
+                && !cid.starts_with("channel-")
+            {
+                errs.push(format!("{cp}.{side}.channel_id: invalid pattern '{cid}'"));
             }
         }
 

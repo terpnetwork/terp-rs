@@ -78,12 +78,11 @@ impl AtomicPublisher {
         // Best-effort cleanup of empty staging tree
         let _ = fs::remove_dir_all(&self.staging);
         let staging_root = self.out.join("_staging");
-        if staging_root.is_dir() {
-            if let Ok(mut rd) = fs::read_dir(&staging_root) {
-                if rd.next().is_none() {
-                    let _ = fs::remove_dir(&staging_root);
-                }
-            }
+        if staging_root.is_dir()
+            && let Ok(mut rd) = fs::read_dir(&staging_root)
+            && rd.next().is_none()
+        {
+            let _ = fs::remove_dir(&staging_root);
         }
         Ok(promoted)
     }

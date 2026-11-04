@@ -28,6 +28,7 @@ pub fn ordering_to_str(ord_val: &serde_json::Value) -> String {
 /// 1. If any raw transfer channel already has `tags.preferred == true`, keep only those
 ///    (and demote other transfers).
 /// 2. Else mark the first transfer preferred when `client_status == "Active"`.
+///
 /// Non-transfer ports are never preferred (excluded from routing graph anyway).
 pub fn finalize_channels_for_ibc_entry(
     raw_channels: &[Value],

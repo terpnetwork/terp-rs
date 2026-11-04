@@ -143,10 +143,7 @@ pub const SUITE_COVERAGE: &[SuiteCoverage] = &[
 ];
 
 pub fn print_coverage() {
-    println!(
-        "{:<22} {:<16} {:<14} {}",
-        "ID", "FEATURE", "INCLUSION", "RESUME"
-    );
+    println!("{:<22} {:<16} {:<14} RESUME", "ID", "FEATURE", "INCLUSION");
     for s in SUITE_COVERAGE {
         println!(
             "{:<22} {:<16} {:<14} {}",

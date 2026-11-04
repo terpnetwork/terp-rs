@@ -205,19 +205,19 @@ pub fn check_invariants(world: &PredictedWorld) -> DiffReport {
         for (dest, chain_lookup) in obj {
             if let Some(entries) = chain_lookup.as_object() {
                 for (denom, meta) in entries {
-                    if let Some(hc) = meta["hop_count"].as_u64() {
-                        if let Some(tp) = meta["trace_path"].as_str() {
-                            let expected = hop_count_from_trace_path(tp) as u64;
-                            if hc != expected {
-                                report.push_at(
-                                    DiffSeverity::Error,
-                                    "hop_count",
-                                    format!(
-                                        "lookup hop_count {hc} != path segments {expected} for {denom}"
-                                    ),
-                                    format!("lookup.{dest}.{denom}"),
-                                );
-                            }
+                    if let Some(hc) = meta["hop_count"].as_u64()
+                        && let Some(tp) = meta["trace_path"].as_str()
+                    {
+                        let expected = hop_count_from_trace_path(tp) as u64;
+                        if hc != expected {
+                            report.push_at(
+                                DiffSeverity::Error,
+                                "hop_count",
+                                format!(
+                                    "lookup hop_count {hc} != path segments {expected} for {denom}"
+                                ),
+                                format!("lookup.{dest}.{denom}"),
+                            );
                         }
                     }
                 }

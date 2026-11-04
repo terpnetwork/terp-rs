@@ -56,10 +56,10 @@ impl MerchantSuiteConfig {
 
 impl SubprocessConfig for MerchantSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
 
         // Check well-known locations relative to CARGO_MANIFEST_DIR
@@ -134,10 +134,10 @@ pub struct MerchantClientSuiteConfig {
 
 impl SubprocessConfig for MerchantClientSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -349,8 +349,6 @@ impl HashMerchantSuite {
         Ok(statuses)
     }
 
-    /// Feed a provider's data directly by calling the internal gRPC endpoint.
-
     /// Enable embedded `/onboard/*` on the sidecar (no second onboard-runtime).
     /// Rebuild `MerchantSuiteConfig` so TOML includes `[onboard]`.
     pub fn with_onboard_roles(
@@ -532,10 +530,10 @@ impl MerkleServerConfig {
 
 impl SubprocessConfig for MerkleServerConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -743,6 +741,15 @@ impl TerpSidecar for MerkleServerSuite {
 
     fn endpoint(&self, name: &str) -> Option<String> {
         self.endpoints.get(name).cloned()
+    }
+}
+
+/// Random secp256k1 key from 32 OS-random bytes (retry on the ~2^-128 invalid scalar).
+fn random_secret() -> k256::SecretKey {
+    loop {
+        if let Ok(k) = k256::SecretKey::from_slice(&rand::random::<[u8; 32]>()) {
+            return k;
+        }
     }
 }
 
@@ -1467,14 +1474,5 @@ mod test {
         let hs: serde_json::Value = hs_get.json().await.unwrap();
         assert_eq!(hs["root"], tree_input["merkle_root"]);
         assert_eq!(hs["tree_id"], tree_id);
-    }
-}
-
-/// Random secp256k1 key from 32 OS-random bytes (retry on the ~2^-128 invalid scalar).
-fn random_secret() -> k256::SecretKey {
-    loop {
-        if let Ok(k) = k256::SecretKey::from_slice(&rand::random::<[u8; 32]>()) {
-            return k;
-        }
     }
 }

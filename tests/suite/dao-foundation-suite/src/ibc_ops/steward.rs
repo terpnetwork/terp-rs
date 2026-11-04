@@ -122,7 +122,7 @@ pub fn load_steward_accounts(path: &Path) -> Result<StewardAccounts, String> {
 
 pub fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     let s = s.trim().trim_start_matches("0x");
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err("odd hex length".into());
     }
     (0..s.len())
@@ -257,7 +257,9 @@ fn instantiate_by_parent(spec: &DaoInit) -> CosmosMsg {
 
 fn parent_text(parent: Option<&str>) -> String {
     match parent {
-        Some(p) => format!("Its parent (dao admin and wasm admin) is the Terp x/gov module account {p}; the Foundation is not the parent."),
+        Some(p) => format!(
+            "Its parent (dao admin and wasm admin) is the Terp x/gov module account {p}; the Foundation is not the parent."
+        ),
         None => "Foundation is not the parent.".into(),
     }
 }
@@ -266,7 +268,8 @@ fn oversight(name: &str, chain: &str, member: &str, parent: Option<&str>) -> Dao
     DaoInit {
         name: name.into(),
         description: format!(
-            "Liquidity steward oversight for {chain}. Foundation creates this DAO. {} One cw4 member ({member}) adds the rest once the committee is final.", parent_text(parent)
+            "Liquidity steward oversight for {chain}. Foundation creates this DAO. {} One cw4 member ({member}) adds the rest once the committee is final.",
+            parent_text(parent)
         ),
         member: member.into(),
         dao_admin: parent.map(String::from),
@@ -276,11 +279,18 @@ fn oversight(name: &str, chain: &str, member: &str, parent: Option<&str>) -> Dao
     }
 }
 
-fn custody(name: &str, chain: &str, member: &str, steward_contract: &str, parent: Option<&str>) -> DaoInit {
+fn custody(
+    name: &str,
+    chain: &str,
+    member: &str,
+    steward_contract: &str,
+    parent: Option<&str>,
+) -> DaoInit {
     DaoInit {
         name: name.into(),
         description: format!(
-            "Custody DAO for {chain} liquidity. {steward_contract} can veto a proposal for 48 hours, including before it passes. Early execute is off. {} One cw4 member ({member}).", parent_text(parent)
+            "Custody DAO for {chain} liquidity. {steward_contract} can veto a proposal for 48 hours, including before it passes. Early execute is off. {} One cw4 member ({member}).",
+            parent_text(parent)
         ),
         member: member.into(),
         dao_admin: parent.map(String::from),
@@ -371,7 +381,14 @@ pub fn build_steward_plan(
     polytone_note: Option<&str>,
     remote_codes: Option<&RemoteCodeIds>,
 ) -> Result<StewardPlan, String> {
-    build_steward_plan_with_parent(accounts, creator_bech32, checksum, polytone_note, remote_codes, None)
+    build_steward_plan_with_parent(
+        accounts,
+        creator_bech32,
+        checksum,
+        polytone_note,
+        remote_codes,
+        None,
+    )
 }
 
 /// Same plan, with `parent` (the Terp x/gov module account) as dao admin and
@@ -416,7 +433,12 @@ pub fn build_steward_plan_with_parent(
             &accounts.steward_akash,
             parent,
         )),
-        instantiate2(&oversight("steward-juno", "Juno", &accounts.steward_juno, parent)),
+        instantiate2(&oversight(
+            "steward-juno",
+            "Juno",
+            &accounts.steward_juno,
+            parent,
+        )),
         instantiate2(&custody(
             "custody-akash",
             "Akash",
@@ -438,7 +460,9 @@ pub fn build_steward_plan_with_parent(
     };
     let foundation_proposal = foundation_proposal_wrapper(
         "Create Akash and Juno steward and custody DAOs",
-        &format!("Foundation instantiates two oversight DAOs and two custody DAOs. {admin_text} custody-akash is vetoed by the steward-akash contract and custody-juno by the steward-juno contract. The veto window is 48 hours, the vetoer may veto before passage, and early execute is off. Each DAO has one cw4 member from steward-accounts.json. SubDAOs are separate proposals those custody DAOs submit after this executes."),
+        &format!(
+            "Foundation instantiates two oversight DAOs and two custody DAOs. {admin_text} custody-akash is vetoed by the steward-akash contract and custody-juno by the steward-juno contract. The veto window is 48 hours, the vetoer may veto before passage, and early execute is off. Each DAO has one cw4 member from steward-accounts.json. SubDAOs are separate proposals those custody DAOs submit after this executes."
+        ),
         foundation_msgs,
     );
 
@@ -589,8 +613,13 @@ pub fn juno_custody_instantiate(proxy: &str, juno_gov: &str, codes: &RemoteCodeI
     CosmosMsg::Wasm(WasmMsg::Instantiate {
         admin: Some(juno_gov.into()),
         code_id: codes.core,
-        msg: to_json_binary(&dao_init_msg(&spec, codes.voting_cw4, codes.cw4_group, codes.proposal_single))
-            .expect("core msg"),
+        msg: to_json_binary(&dao_init_msg(
+            &spec,
+            codes.voting_cw4,
+            codes.cw4_group,
+            codes.proposal_single,
+        ))
+        .expect("core msg"),
         funds: vec![],
         label: "custody-juno".into(),
     })
@@ -605,13 +634,17 @@ pub fn build_steward_plan_tuned(
     juno: &JunoRemote,
 ) -> Result<StewardPlan, String> {
     if checksum.len() != 32 {
-        return Err(format!("code checksum is {} bytes, expected 32", checksum.len()));
+        return Err(format!(
+            "code checksum is {} bytes, expected 32",
+            checksum.len()
+        ));
     }
     let (hrp, creator) = decode_bech32(creator_bech32)?;
     if hrp != "terp" {
         return Err(format!("creator prefix is {hrp}, expected terp"));
     }
-    let predict = |salt: &str| predictable_contract_address(checksum, &creator, salt.as_bytes(), "terp");
+    let predict =
+        |salt: &str| predictable_contract_address(checksum, &creator, salt.as_bytes(), "terp");
     let steward_akash = predict("steward-akash")?;
     let steward_juno = predict("steward-juno")?;
     let custody_akash = predict("custody-akash")?;
@@ -621,17 +654,37 @@ pub fn build_steward_plan_tuned(
     addresses.insert("custody-akash".into(), custody_akash.clone());
 
     let msgs = vec![
-        instantiate2(&oversight("steward-akash", "Akash", &accounts.steward_akash, parent)),
-        instantiate2(&oversight("steward-juno", "Juno", &accounts.steward_juno, parent)),
-        instantiate2(&custody("custody-akash", "Akash", &accounts.custody_akash, &steward_akash, parent)),
+        instantiate2(&oversight(
+            "steward-akash",
+            "Akash",
+            &accounts.steward_akash,
+            parent,
+        )),
+        instantiate2(&oversight(
+            "steward-juno",
+            "Juno",
+            &accounts.steward_juno,
+            parent,
+        )),
+        instantiate2(&custody(
+            "custody-akash",
+            "Akash",
+            &accounts.custody_akash,
+            &steward_akash,
+            parent,
+        )),
     ];
     let admin_text = match parent {
-        Some(p) => format!("The Foundation is not their parent: dao admin and wasm admin are the Terp x/gov module account {p}."),
+        Some(p) => format!(
+            "The Foundation is not their parent: dao admin and wasm admin are the Terp x/gov module account {p}."
+        ),
         None => "The Foundation is not their parent: each core is its own admin.".into(),
     };
     let foundation_proposal = foundation_proposal_wrapper(
         "Create the Akash and Juno steward DAOs and the Akash custody DAO",
-        &format!("Foundation instantiates steward-akash, steward-juno and custody-akash on Terp. {admin_text} steward-akash can veto custody-akash for 48 hours, including before a proposal passes; early execute is off. Each DAO has one cw4 member from steward-accounts.json. steward-juno later creates the Juno custody DAO on Juno through Polytone, and custody-akash opens a Polytone account on Osmosis; both are separate proposals of those DAOs."),
+        &format!(
+            "Foundation instantiates steward-akash, steward-juno and custody-akash on Terp. {admin_text} steward-akash can veto custody-akash for 48 hours, including before a proposal passes; early execute is off. Each DAO has one cw4 member from steward-accounts.json. steward-juno later creates the Juno custody DAO on Juno through Polytone, and custody-akash opens a Polytone account on Osmosis; both are separate proposals of those DAOs."
+        ),
         msgs,
     );
 
@@ -731,16 +784,33 @@ pub fn assert_no_foundation_admin(msg: &CosmosMsg, foundation: &str) -> Result<(
 
 /// Steward guard: Foundation is never wasm or DAO admin; the only accepted
 /// admin is `parent` (the x/gov module account), or unset when `parent` is None.
-pub fn assert_steward_admin(msg: &CosmosMsg, foundation: &str, parent: Option<&str>) -> Result<(), String> {
+pub fn assert_steward_admin(
+    msg: &CosmosMsg,
+    foundation: &str,
+    parent: Option<&str>,
+) -> Result<(), String> {
     assert_no_foundation_admin(msg, foundation)?;
     let v = serde_json::to_value(msg).map_err(|e| e.to_string())?;
-    let inst = v.get("wasm").and_then(|w| w.get("instantiate2").or_else(|| w.get("instantiate"))).ok_or("not a wasm instantiate")?;
-    let bytes = Binary::from_base64(inst.get("msg").and_then(|m| m.as_str()).ok_or("instantiate msg missing")?).map_err(|e| e.to_string())?;
+    let inst = v
+        .get("wasm")
+        .and_then(|w| w.get("instantiate2").or_else(|| w.get("instantiate")))
+        .ok_or("not a wasm instantiate")?;
+    let bytes = Binary::from_base64(
+        inst.get("msg")
+            .and_then(|m| m.as_str())
+            .ok_or("instantiate msg missing")?,
+    )
+    .map_err(|e| e.to_string())?;
     let init: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-    for (what, got) in [("wasm admin", inst.get("admin")), ("dao admin", init.get("admin"))] {
+    for (what, got) in [
+        ("wasm admin", inst.get("admin")),
+        ("dao admin", init.get("admin")),
+    ] {
         let got = got.and_then(|a| a.as_str());
         if got != parent {
-            return Err(format!("{what} is {got:?}, expected {parent:?} (gov module parent)"));
+            return Err(format!(
+                "{what} is {got:?}, expected {parent:?} (gov module parent)"
+            ));
         }
     }
     Ok(())
@@ -869,31 +939,80 @@ mod tests {
         let accounts = load_steward_accounts(&path).unwrap();
         let gov = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq";
         let proxy = "juno1proxyproxyproxy";
-        let juno = JunoRemote { note: Some("terp1note"), proxy: Some(proxy), juno_gov: JUNO_GOV, codes: JUNO_DAO_CODES };
-        let plan = build_steward_plan_tuned(&accounts, PARENT_CORE, &golden_checksum(), Some("terp1osmonote"), Some(gov), &juno).unwrap();
+        let juno = JunoRemote {
+            note: Some("terp1note"),
+            proxy: Some(proxy),
+            juno_gov: JUNO_GOV,
+            codes: JUNO_DAO_CODES,
+        };
+        let plan = build_steward_plan_tuned(
+            &accounts,
+            PARENT_CORE,
+            &golden_checksum(),
+            Some("terp1osmonote"),
+            Some(gov),
+            &juno,
+        )
+        .unwrap();
         assert_eq!(plan.addresses.len(), 3);
         assert!(!plan.addresses.contains_key("custody-juno"));
-        let msgs = plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"].as_array().unwrap().clone();
+        let msgs = plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"]
+            .as_array()
+            .unwrap()
+            .clone();
         assert_eq!(msgs.len(), 3);
         for m in &msgs {
             let c: CosmosMsg = serde_json::from_value(m.clone()).unwrap();
             assert_steward_admin(&c, PARENT_CORE, Some(gov)).unwrap();
         }
-        let j = &plan.subdaos.iter().find(|s| s.file_stem == "steward-juno-custody-on-juno").unwrap().body;
+        let j = &plan
+            .subdaos
+            .iter()
+            .find(|s| s.file_stem == "steward-juno-custody-on-juno")
+            .unwrap()
+            .body;
         assert_eq!(j["ready"], true);
-        let note_msg = &j["create_custody"]["propose"]["msg"]["propose"]["msgs"][0]["wasm"]["execute"];
+        let note_msg =
+            &j["create_custody"]["propose"]["msg"]["propose"]["msgs"][0]["wasm"]["execute"];
         assert_eq!(note_msg["contract_addr"], "terp1note");
-        let exec: serde_json::Value = serde_json::from_slice(&Binary::from_base64(note_msg["msg"].as_str().unwrap()).unwrap()).unwrap();
+        let exec: serde_json::Value = serde_json::from_slice(
+            &Binary::from_base64(note_msg["msg"].as_str().unwrap()).unwrap(),
+        )
+        .unwrap();
         let inst = &exec["execute"]["msgs"][0];
         assert_eq!(inst["wasm"]["instantiate"]["admin"], JUNO_GOV);
         assert_eq!(inst["wasm"]["instantiate"]["code_id"], 4862);
         let init = decode_init(inst);
         assert_eq!(init["admin"], JUNO_GOV);
-        let prop: serde_json::Value = serde_json::from_slice(&Binary::from_base64(init["proposal_modules_instantiate_info"][0]["msg"].as_str().unwrap()).unwrap()).unwrap();
+        let prop: serde_json::Value = serde_json::from_slice(
+            &Binary::from_base64(
+                init["proposal_modules_instantiate_info"][0]["msg"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
         assert_eq!(prop["veto"]["vetoer"], JUNO_GOV);
-        let voting: serde_json::Value = serde_json::from_slice(&Binary::from_base64(init["voting_module_instantiate_info"]["msg"].as_str().unwrap()).unwrap()).unwrap();
-        assert_eq!(voting["group_contract"]["new"]["initial_members"], serde_json::json!([{"addr": proxy, "weight": 1}]));
-        let a = &plan.subdaos.iter().find(|s| s.file_stem == "custody-akash-osmosis-account").unwrap().body;
+        let voting: serde_json::Value = serde_json::from_slice(
+            &Binary::from_base64(
+                init["voting_module_instantiate_info"]["msg"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            voting["group_contract"]["new"]["initial_members"],
+            serde_json::json!([{"addr": proxy, "weight": 1}])
+        );
+        let a = &plan
+            .subdaos
+            .iter()
+            .find(|s| s.file_stem == "custody-akash-osmosis-account")
+            .unwrap()
+            .body;
         assert_eq!(a["dao"], plan.addresses["custody-akash"]);
         assert_eq!(a["ready"], true);
     }

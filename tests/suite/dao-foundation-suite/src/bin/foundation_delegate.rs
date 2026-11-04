@@ -67,7 +67,7 @@ struct Args {
     bounty_init: Option<PathBuf>,
 }
 
-fn write_bounty(args: &Args, out_dir: &PathBuf) -> Result<()> {
+fn write_bounty(args: &Args, out_dir: &Path) -> Result<()> {
     let member = args
         .member
         .as_deref()
@@ -128,7 +128,7 @@ fn write_bounty(args: &Args, out_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn write_next(args: &Args, out_dir: &PathBuf) -> Result<()> {
+fn write_next(args: &Args, out_dir: &Path) -> Result<()> {
     let veto = foundation_proposal_wrapper(
         DROP_VETO_TITLE,
         DROP_VETO_DESCRIPTION,

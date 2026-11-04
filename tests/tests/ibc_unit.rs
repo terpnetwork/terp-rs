@@ -277,6 +277,7 @@ fn accepted_denoms_golden_matches_routes_toml() {
     let toml_s = std::fs::read_to_string(root.join("routes.toml")).unwrap();
     let built = build_accepted_denoms(&toml_s, n).unwrap();
     let golden: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(root.join("accepted-denoms.json")).unwrap()).unwrap();
+        serde_json::from_str(&std::fs::read_to_string(root.join("accepted-denoms.json")).unwrap())
+            .unwrap();
     assert_eq!(built, golden, "regenerate with `just scripts-ibc-accepted`");
 }

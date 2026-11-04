@@ -124,10 +124,10 @@ async fn reply_vs_instantiate2_gas() {
                 builder.load_network(false);
                 let daemon = builder.build().expect("daemon");
                 assert_eq!(daemon.sender_addr().as_str(), member_addr);
-                let mut rows = Vec::new();
-                rows.push(framework(&daemon, "reply", &reply_dir));
-                rows.push(framework(&daemon, "init2", &init2_dir));
-                rows
+                vec![
+                    framework(&daemon, "reply", &reply_dir),
+                    framework(&daemon, "init2", &init2_dir),
+                ]
             }))
         });
         handle.join().expect("daemon thread")

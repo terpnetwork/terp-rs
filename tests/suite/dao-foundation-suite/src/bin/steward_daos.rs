@@ -5,8 +5,8 @@
 //! payloads. Sends nothing. There is no `--broadcast`.
 
 use anyhow::{Context, Result, bail};
-use cw_orch::prelude::TxHandler;
 use clap::Parser;
+use cw_orch::prelude::TxHandler;
 use dao_foundation_suite::ibc_ops::native_delegation::{CODE_CORE, PARENT_CORE};
 use dao_foundation_suite::ibc_ops::steward::{
     RemoteCodeIds, build_steward_plan, decode_hex, load_steward_accounts,
@@ -209,8 +209,7 @@ fn submit_foundation(args: &Args, proposal: &serde_json::Value) -> Result<()> {
     let mut builder = cw_orch::prelude::DaemonBuilder::new(info);
     builder.load_network(false).is_test(true);
     let actions = vec![
-        cw_orch_kms::SigningRequest::new("session-key")
-            .body("propose steward and custody DAOs"),
+        cw_orch_kms::SigningRequest::new("session-key").body("propose steward and custody DAOs"),
     ];
     let run = cw_orch_kms::enable_session(&builder, session, actions)
         .map_err(|err| anyhow::anyhow!(err))?;
