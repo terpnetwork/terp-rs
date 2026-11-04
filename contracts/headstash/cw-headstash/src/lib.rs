@@ -7,6 +7,7 @@ pub mod direct;
 pub mod distro;
 pub mod egress;
 pub mod epoch;
+pub mod forward;
 pub mod notes;
 pub mod reclaim;
 pub mod pause;
@@ -152,7 +153,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, StdError> {
-    // set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
     // WAVS is optional. None = disabled: nothing stored, no PoP/threshold checks.
     if let Some(w) = &msg.wavs {
@@ -236,10 +237,48 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, StdError> {
-    // Campaign creation binds the eligibility root. A code upgrade must not
-    // copy one on afterwards.
-    Ok(Response::new().add_attribute("action", "migrate"))
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, StdError> {
+    // State-preserving: no storage is rewritten. Campaign creation binds the
+    // eligibility root; a code upgrade must not copy one on afterwards. New v2
+    // state (forward channels, pending forwards, HAL source) starts empty.
+    let from = match cw2::get_contract_version(deps.storage) {
+        Ok(v) => {
+            if v.contract != CONTRACT_NAME {
+                return Err(StdError::msg(format!("cannot migrate from {}", v.contract)));
+            }
+            if semver3(&v.version) > semver3(CONTRACT_VERSION) {
+                return Err(StdError::msg(format!("cannot downgrade from {}", v.version)));
+            }
+            v.version
+        }
+        // v0.0.1 (mainnet code 105) never wrote cw2: require the headstash config instead.
+        Err(_) => {
+            if HEADSTASH_CFG.may_load(deps.storage)?.is_none() {
+                return Err(StdError::msg("not a cw-headstash instance"));
+            }
+            "none".to_string()
+        }
+    };
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_attribute("from_version", from)
+        .add_attribute("to_version", CONTRACT_VERSION))
+}
+
+fn semver3(v: &str) -> (u64, u64, u64) {
+    let mut it = v.split(['.', '-', '+']).map(|p| p.parse::<u64>().unwrap_or(0));
+    (it.next().unwrap_or(0), it.next().unwrap_or(0), it.next().unwrap_or(0))
+}
+
+/// ICS-20 source callbacks for `ClaimNoteForward` (refund on timeout / error ack).
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn ibc_source_callback(
+    deps: DepsMut,
+    env: Env,
+    msg: cosmwasm_std::IbcSourceCallbackMsg,
+) -> StdResult<cosmwasm_std::IbcBasicResponse> {
+    forward::source_callback(deps, env, msg)
 }
 
 /// Returns `f` through `black_box`, so the call becomes `call_indirect`. Without
@@ -257,6 +296,7 @@ fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(
     if matches!(
         msg,
         ExecuteMsg::ClaimNote { .. }
+            | ExecuteMsg::ClaimNoteForward { .. }
             | ExecuteMsg::ProcessHeadstash { .. }
             | ExecuteMsg::BridgeMintNote { .. }
             | ExecuteMsg::ApplyAcceptedBatch { .. }
@@ -468,6 +508,17 @@ pub fn execute(
             let campaign = epoch::query_campaign(deps.storage)?;
             opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
         }
+        ExecuteMsg::ClaimNoteForward { root, nullifier, amount, proof, forward } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(forward::claim_note_forward)(deps, &env, &campaign, root, nullifier, amount, proof, forward)
+        }
+        ExecuteMsg::SetForwardChannel { channel_id, timeout_seconds, enabled } => {
+            opaque::<fn(_, _, _, _, _) -> _>(forward::set_forward_channel)(deps, &info, channel_id, timeout_seconds, enabled)
+        }
+        ExecuteMsg::ResolveForward { channel_id, sequence } => {
+            opaque::<fn(_, _, _, _, _) -> _>(forward::resolve_forward)(deps, &env, &info, channel_id, sequence)
+        }
+        ExecuteMsg::SetHalSource { source } => opaque::<fn(_, _, _) -> _>(forward::set_hal_source)(deps, &info, source),
         // v0.0.1 mainnet surface: legacy/bridge/epoch-batch paths are compiled out.
         #[cfg(not(feature = "legacy"))]
         _ => Err(StdError::msg(DISABLED_IN_BUILD)),
@@ -523,6 +574,21 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
         QueryMsg::FrontendContract {} => bridge::query_frontend_contract(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
+        QueryMsg::ForwardChannels {} => to_json_binary(&forward::query_channels(deps.storage)?),
+        QueryMsg::HalSource {} => to_json_binary(&forward::HAL_SOURCE.may_load(deps.storage)?),
+        QueryMsg::PendingForward { channel_id, sequence } => {
+            to_json_binary(&forward::PENDING.may_load(deps.storage, (channel_id.as_str(), sequence))?)
+        }
+        QueryMsg::PendingForwards { start_after, limit } => to_json_binary(&forward::query_pending(deps.storage, start_after, limit)?),
+        QueryMsg::ForwardDestination { forward } => {
+            to_json_binary(&forward::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &forward))
+        }
+        QueryMsg::CheckNoteForward { root, nullifier, amount, proof, forward } => {
+            let campaign = epoch::query_campaign(deps.storage)?;
+            let (dest, ..) = forward::check_target(deps, &env, &forward)?;
+            direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
+            to_json_binary(&true)
+        }
         QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
         QueryMsg::RegistrationTree {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
@@ -646,6 +712,7 @@ pub fn execute_burn(
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> {
     match msg.id {
+        forward::FORWARD_REPLY_ID => forward::reply(deps, msg),
         // reply_on_error only: a failing (or out-of-gas) hook never blocks registration.
         notes::HOOK_REPLY_ID => Ok(Response::new()
             .add_attribute("action", "registration_hook_failed")

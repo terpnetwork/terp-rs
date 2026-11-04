@@ -133,6 +133,8 @@ SESSION_ALLOWANCE = 300000000  # feegrant cap sized for a ~175 KB MsgExec (mainn
 # "max_chunk_bytes": int}. With it, the eph key also stores the frontend wasm, and the contract proposal instantiates the
 # frontend (gov admin + owner), publishes the manifest (activate) and sets frontend_contract in the cw-headstash instantiate.
 FE_GOV = None
+# Optional v2 forward hook (set by run_forward.py): called with flow() locals after the positive claims; flow then returns.
+FWD_HOOK = None
 EPH_KEY = "eph"
 FE_SALT = hashlib.sha256(b"headstash-frontend-gov-e2e").hexdigest()
 
@@ -787,6 +789,9 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     R["gas"]["grant_tx_fee"] = [c["grant_tx_fee"] for c in R["claims"]]
     st = smart(contract, {"direct_claim": {}})
     step("direct_claim_counter", st.get("claimed") == len(picks), json.dumps(st)[:200])
+    if FWD_HOOK:
+        FWD_HOOK(locals())
+        return
 
     # 10. negatives against real proofs
     name0, w0, pr0, k0, i0 = first

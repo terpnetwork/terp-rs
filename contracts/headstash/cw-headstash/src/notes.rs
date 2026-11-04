@@ -1050,7 +1050,7 @@ mod tests {
             let c = pallas::Base::from_repr(ctx()).unwrap();
             let nullifier = zk_headstash::no_ecdsa::claim_nullifier(secret, c).to_repr().to_vec();
             let key_com = registration_key_commitment(secret).to_repr();
-            let dest = format!("terp1{who}");
+            let dest = if who.starts_with("hsfwd1") { who.to_string() } else { format!("terp1{who}") };
             let path = crate::registration::query_path(deps.as_ref().storage, &key_com, root.as_slice());
             let out = match path {
                 Ok(p) if class == Some(h.classes[idx] as usize) => {
@@ -1879,6 +1879,318 @@ mod tests {
         // after resume, anchors roll again (no leaves yet: either ok or a non-pause error)
         if let Err(e) = as_(&mut deps, &env, "relayer", ExecuteMsg::AcceptAnchor {}) {
             assert!(!e.to_string().contains("paused"), "{e}");
+        }
+    }
+
+    // ---- v2 forwarded claims (crate::forward, V2-SPEC §F) ----
+    mod forward_v2 {
+        use super::*;
+        use crate::forward::{self as fw, ForwardTarget, HalSource};
+        use crate::{query, msg::{MigrateMsg, QueryMsg}};
+        use cosmwasm_std::{
+            HexBinary, IbcAckCallbackMsg, IbcAcknowledgement, IbcEndpoint, IbcMsg, IbcPacket, IbcSourceCallbackMsg,
+            IbcTimeout, IbcTimeoutCallbackMsg, MsgResponse, Order, Reply, SubMsgResponse, SubMsgResult, Timestamp,
+        };
+
+        const RCV: &str = "penumbra1testreceiveraddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
+        fn target(deps: &TDeps, ch: &str, rcv: &str, fb: &str, memo: Option<&str>) -> ForwardTarget {
+            ForwardTarget { channel_id: ch.into(), receiver: rcv.into(), memo: memo.map(Into::into), fallback: deps.api.addr_make(fb).to_string() }
+        }
+
+        /// Bound circuit, one accepted anchor, channel-0 allowed. Returns the anchor root.
+        fn fwd_fixture() -> (TDeps, Env, Holder, Binary) {
+            let (mut deps, env, a, _b, tree) = direct_fixture();
+            register_all(&mut deps, &env, &a, &tree);
+            owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
+            run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
+            let root = tree_root(&deps).1[0].root.clone();
+            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            (deps, env, a, root)
+        }
+
+        fn fclaim(deps: &mut TDeps, env: &Env, h: &Holder, root: &Binary, nf: u8, amount: u64, proved: &ForwardTarget, sent: ForwardTarget) -> Result<Response, StdError> {
+            let dest = fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), proved);
+            let (nullifier, proof) = witness(deps, h, &dest, root, nf, amount);
+            let anyone = deps.api.addr_make("relayer-anyone");
+            execute(deps.as_mut(), env.clone(), message_info(&anyone, &[]), ExecuteMsg::ClaimNoteForward { root: root.clone(), nullifier, amount, proof, forward: sent })
+        }
+
+        #[allow(deprecated)]
+        fn ack_reply(deps: &mut TDeps, env: &Env, seq: u64) -> Result<Response, StdError> {
+            let mut v = vec![0x08u8];
+            let mut s = seq;
+            loop {
+                let b = (s & 0x7f) as u8;
+                s >>= 7;
+                if s == 0 { v.push(b); break; }
+                v.push(b | 0x80);
+            }
+            crate::reply(deps.as_mut(), env.clone(), Reply {
+                id: fw::FORWARD_REPLY_ID,
+                payload: Binary::default(),
+                gas_used: 0,
+                result: SubMsgResult::Ok(SubMsgResponse { events: vec![], data: None, msg_responses: vec![MsgResponse {
+                    type_url: "/ibc.applications.transfer.v1.MsgTransferResponse".into(), value: Binary::from(v) }] }),
+            })
+        }
+
+        fn packet(ch: &str, seq: u64, port: &str) -> IbcPacket {
+            IbcPacket::new(Binary::from(b"{}".to_vec()), IbcEndpoint { port_id: port.into(), channel_id: ch.into() },
+                IbcEndpoint { port_id: "transfer".into(), channel_id: "channel-9".into() }, seq, IbcTimeout::with_timestamp(Timestamp::from_seconds(1)))
+        }
+
+        fn refund_of(r: &cosmwasm_std::IbcBasicResponse) -> Option<(String, Coin)> {
+            r.messages.iter().find_map(|m| match &m.msg {
+                CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => Some((to_address.clone(), amount[0].clone())),
+                _ => None,
+            })
+        }
+
+        #[test]
+        fn forward_destination_shape_and_binding() {
+            let (deps, env, ..) = fwd_fixture();
+            let t = target(&deps, "channel-0", RCV, "fb1", None);
+            let d = fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &t);
+            assert!(d.starts_with("hsfwd1") && d.len() == 49 && d.len() <= 62, "{d}");
+            assert!(d[6..].bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_'));
+            direct::pack_destination(&d).unwrap();
+            // every field changes the destination
+            let base = d.clone();
+            for t2 in [target(&deps, "channel-1", RCV, "fb1", None), target(&deps, "channel-0", "penumbra1other", "fb1", None),
+                       target(&deps, "channel-0", RCV, "fb2", None), target(&deps, "channel-0", RCV, "fb1", Some("{\"a\":1}"))] {
+                assert_ne!(fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &t2), base);
+            }
+            assert_ne!(fw::forward_destination("other-chain", env.contract.address.as_str(), &t), base);
+            assert_ne!(fw::forward_destination(&env.block.chain_id, "terp1othercontract", &t), base);
+            // query helper returns the same string
+            let q: String = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::ForwardDestination { forward: t }).unwrap()).unwrap();
+            assert_eq!(q, base);
+        }
+
+        #[test]
+        fn forward_claim_sends_ics20_with_callback_and_records_pending() {
+            let (mut deps, env, a, root) = fwd_fixture();
+            let t = target(&deps, "channel-0", RCV, "fb1", Some("{\"note\":\"hi\"}"));
+            let r = fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[3], &t, t.clone()).unwrap();
+            // mint-on-claim fixture: MsgMint to the contract precedes the transfer
+            assert!(matches!(&r.messages[0].msg, CosmosMsg::Stargate { type_url, .. } if type_url.ends_with("MsgMint")));
+            let sm = r.messages.iter().find(|m| matches!(m.msg, CosmosMsg::Ibc(_))).unwrap();
+            assert!(r.messages.iter().all(|m| !matches!(&m.msg, CosmosMsg::Bank(BankMsg::Send { .. }))), "no local payout");
+            assert_eq!((sm.id, sm.reply_on.clone()), (fw::FORWARD_REPLY_ID, cosmwasm_std::ReplyOn::Success));
+            let CosmosMsg::Ibc(IbcMsg::Transfer { channel_id, to_address, amount, timeout, memo }) = &sm.msg else { panic!("not a transfer") };
+            assert_eq!((channel_id.as_str(), to_address.as_str()), ("channel-0", RCV));
+            assert_eq!(amount.amount.to_string(), DENOMS_UTERP[3].to_string());
+            assert_eq!(timeout.timestamp().unwrap().seconds(), env.block.time.seconds() + 600);
+            let m: serde_json::Value = serde_json::from_str(memo.as_deref().unwrap()).unwrap();
+            assert_eq!(m["src_callback"]["address"], env.contract.address.as_str());
+            assert_eq!(m["note"], "hi");
+            assert!(m.get("dest_callback").is_none());
+            // reply stores the pending record under (channel, sequence)
+            ack_reply(&mut deps, &env, 300).unwrap();
+            let p: Option<fw::PendingForward> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(),
+                QueryMsg::PendingForward { channel_id: "channel-0".into(), sequence: 300 }).unwrap()).unwrap();
+            let p = p.unwrap();
+            assert_eq!((p.fallback.as_str(), p.receiver.as_str(), p.coin.amount.to_string()), (t.fallback.as_str(), RCV, DENOMS_UTERP[3].to_string()));
+            assert!(!fw::INFLIGHT.exists(deps.as_ref().storage));
+            // one spend per note: the same nullifier cannot be forwarded again, nor claimed directly
+            let t2 = target(&deps, "channel-0", "penumbra1elsewhere", "fb9", None);
+            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[3], &t2, t2.clone())).contains("nullifier"));
+            assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier"));
+            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+        }
+
+        #[test]
+        fn address_reuse_is_not_enforced_on_chain_only_note_spend_is() {
+            // V2-SPEC F.5: fresh fallback / unused receiver are frontend rules. The contract
+            // accepts a repeated receiver and fallback for a different note.
+            let (mut deps, env, a, root) = fwd_fixture();
+            let t = target(&deps, "channel-0", RCV, "fb1", None);
+            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            ack_reply(&mut deps, &env, 1).unwrap();
+            fclaim(&mut deps, &env, &a, &root, 2, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            ack_reply(&mut deps, &env, 2).unwrap();
+            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 2);
+            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("nullifier"));
+        }
+
+        #[test]
+        fn forward_rejects_unallowed_channel_and_bad_fields() {
+            let (mut deps, env, a, root) = fwd_fixture();
+            let stranger = deps.api.addr_make("stranger");
+            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]),
+                ExecuteMsg::SetForwardChannel { channel_id: "channel-7".into(), timeout_seconds: 600, enabled: true }).is_err());
+            for (ch, to) in [("chan-1", 600), ("channel-", 600), ("channel-1", 59), ("channel-1", 7 * 86_400 + 1)] {
+                assert!(owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: ch.into(), timeout_seconds: to, enabled: true }).is_err(), "{ch} {to}");
+            }
+            let t = target(&deps, "channel-7", RCV, "fb1", None);
+            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("channel not allowed"));
+            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: false }).unwrap();
+            let t = target(&deps, "channel-0", RCV, "fb1", None);
+            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("channel not allowed"));
+            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            let long = "x".repeat(fw::MAX_MEMO + 1);
+            let cases: Vec<(ForwardTarget, &str)> = vec![
+                (target(&deps, "channel-0", "", "fb1", None), "receiver"),
+                (target(&deps, "channel-0", &"p".repeat(fw::MAX_RECEIVER + 1), "fb1", None), "receiver"),
+                (target(&deps, "channel-0", "pen umbra", "fb1", None), "receiver"),
+                (target(&deps, "channel-0", RCV, "fb1", Some(&long)), "memo too long"),
+                (target(&deps, "channel-0", RCV, "fb1", Some("not json")), "JSON object"),
+                (target(&deps, "channel-0", RCV, "fb1", Some("[1]")), "JSON object"),
+                (target(&deps, "channel-0", RCV, "fb1", Some("{\"src_callback\":{\"address\":\"x\"}}")), "callbacks"),
+                (target(&deps, "channel-0", RCV, "fb1", Some("{\"dest_callback\":{\"address\":\"x\"}}")), "callbacks"),
+                (ForwardTarget { fallback: "notanaddress".into(), ..target(&deps, "channel-0", RCV, "fb1", None) }, "fallback"),
+                (ForwardTarget { fallback: env.contract.address.to_string(), ..target(&deps, "channel-0", RCV, "fb1", None) }, "fallback"),
+            ];
+            for (t, want) in cases {
+                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains(want), "{want}");
+            }
+            // nothing was spent by the rejected attempts
+            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
+            // paused: forward is gated like ClaimNote
+            let c = deps.api.addr_make("creator");
+            execute(deps.as_mut(), env.clone(), message_info(&c, &[]), ExecuteMsg::Pause {}).ok();
+            if crate::pause::PAUSED.may_load(deps.as_ref().storage).unwrap().is_some() {
+                let t = target(&deps, "channel-0", RCV, "fb1", None);
+                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("paused"));
+            }
+        }
+
+        /// Real halo2 proofs (zk-api): a proof made for one forward target does not verify
+        /// for any other channel, receiver, memo or fallback.
+        #[cfg(feature = "zk-api")]
+        #[test]
+        fn tampered_forward_destination_fails_real_proof() {
+            let (mut deps, env, a, root) = fwd_fixture();
+            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-1".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            let t = target(&deps, "channel-0", RCV, "fb1", None);
+            for bad in [target(&deps, "channel-1", RCV, "fb1", None), target(&deps, "channel-0", "penumbra1attacker", "fb1", None),
+                        target(&deps, "channel-0", RCV, "attacker", None), target(&deps, "channel-0", RCV, "fb1", Some("{\"forward\":{}}"))] {
+                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, bad)).contains("invalid note proof"));
+            }
+            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
+            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+        }
+
+        #[test]
+        fn callbacks_refund_timeout_and_ack_error_to_fallback() {
+            let (mut deps, env, a, root) = fwd_fixture();
+            let mut fbs = vec![];
+            for (i, nf) in [1u8, 2, 3].into_iter().enumerate() {
+                let t = target(&deps, "channel-0", &format!("penumbra1r{i}"), &format!("fb{i}"), None);
+                fclaim(&mut deps, &env, &a, &root, nf, DENOMS_UTERP[2], &t, t.clone()).unwrap();
+                ack_reply(&mut deps, &env, 10 + i as u64).unwrap();
+                fbs.push(t.fallback);
+            }
+            let relayer = cosmwasm_std::Addr::unchecked("relayer");
+            // timeout -> refund to the bound fallback, exactly the coin
+            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(),
+                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(packet("channel-0", 10, "transfer"), relayer.clone()))).unwrap();
+            let (to, coin) = refund_of(&r).unwrap();
+            assert_eq!((to.as_str(), coin.amount.to_string()), (fbs[0].as_str(), DENOMS_UTERP[2].to_string()));
+            // a second callback for the same packet pays nothing
+            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(),
+                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(packet("channel-0", 10, "transfer"), relayer.clone()))).unwrap();
+            assert!(refund_of(&r).is_none());
+            // error ack -> refund
+            let err_ack = IbcAcknowledgement::new(br#"{"error":"ABCI code: 1: error handling packet: see events for details"}"#.to_vec());
+            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Acknowledgement(
+                IbcAckCallbackMsg::new(err_ack, packet("channel-0", 11, "transfer"), relayer.clone()))).unwrap();
+            assert_eq!(refund_of(&r).unwrap().0, fbs[1]);
+            // success ack -> no refund, pending cleared
+            let ok_ack = IbcAcknowledgement::new(br#"{"result":"AQ=="}"#.to_vec());
+            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Acknowledgement(
+                IbcAckCallbackMsg::new(ok_ack.clone(), packet("channel-0", 12, "transfer"), relayer.clone()))).unwrap();
+            assert!(refund_of(&r).is_none());
+            assert_eq!(fw::PENDING.range(deps.as_ref().storage, None, None, Order::Ascending).count(), 0);
+            // unknown packet / other port: no-op
+            for p in [packet("channel-0", 99, "transfer"), packet("channel-0", 12, "wasm.x")] {
+                let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(p, relayer.clone()))).unwrap();
+                assert!(refund_of(&r).is_none());
+            }
+        }
+
+        #[test]
+        fn resolve_forward_owner_only_after_grace_to_bound_fallback() {
+            let (mut deps, mut env, a, root) = fwd_fixture();
+            let t = target(&deps, "channel-0", RCV, "fb1", None);
+            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            ack_reply(&mut deps, &env, 4).unwrap();
+            let m = ExecuteMsg::ResolveForward { channel_id: "channel-0".into(), sequence: 4 };
+            assert!(err(owner_run(&mut deps, &env, m.clone())).contains("grace"));
+            env.block.time = env.block.time.plus_seconds(600 + fw::RESOLVE_GRACE + 1);
+            let stranger = deps.api.addr_make("stranger");
+            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), m.clone()).is_err());
+            let r = owner_run(&mut deps, &env, m.clone()).unwrap();
+            assert!(r.messages.iter().any(|x| matches!(&x.msg, CosmosMsg::Bank(BankMsg::Send { to_address, .. }) if *to_address == t.fallback)));
+            assert!(err(owner_run(&mut deps, &env, m)).contains("no pending"));
+        }
+
+        #[test]
+        fn hal_source_validation_owner_only_and_query() {
+            let (mut deps, env, ..) = fwd_fixture();
+            let sha = Some(HexBinary::from(vec![7u8; 32]));
+            let cid = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi".to_string();
+            let ok = |u: &str| HalSource { uri: u.into(), sha256: sha.clone(), cid: None };
+            for u in ["ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/elig.json", "ar://abc_DEF-123", "https://x.example/e.json",
+                      "ipns://k51q/e", "headstash.terp.network/v2/elig.json", "host.example:8443/e.json"] {
+                fw::validate_hal(&ok(u)).unwrap_or_else(|e| panic!("{u}: {e}"));
+            }
+            for u in ["", "javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "file:///etc/passwd", "vbscript:x", "blob:x",
+                      "http://x.example/e", "ftp://x", "ipfs:bafy", "a b", "x\"y", "x<y", "x\\y", &"a".repeat(513), "host/?q=javascript:x"] {
+                assert!(fw::validate_hal(&ok(u)).is_err(), "{u:?}");
+            }
+            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: None }).unwrap_err().to_string().contains("sha256 or cid"));
+            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: Some(HexBinary::from(vec![1u8; 31])), cid: None }).is_err());
+            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: Some("short".into()) }).is_err());
+            fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: Some(cid.clone()) }).unwrap();
+            let stranger = deps.api.addr_make("stranger");
+            let src = HalSource { uri: format!("ipfs://{cid}"), sha256: sha.clone(), cid: Some(cid.clone()) };
+            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), ExecuteMsg::SetHalSource { source: Some(src.clone()) }).is_err());
+            owner_run(&mut deps, &env, ExecuteMsg::SetHalSource { source: Some(src.clone()) }).unwrap();
+            let q: Option<HalSource> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap()).unwrap();
+            assert_eq!(q, Some(src));
+            owner_run(&mut deps, &env, ExecuteMsg::SetHalSource { source: None }).unwrap();
+            let q: Option<HalSource> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap()).unwrap();
+            assert!(q.is_none());
+        }
+
+        #[test]
+        fn transfer_sequence_decodes_protobuf() {
+            assert_eq!(fw::transfer_sequence(&[0x08, 0x05]).unwrap(), 5);
+            assert_eq!(fw::transfer_sequence(&[0x08, 0xac, 0x02]).unwrap(), 300);
+            assert_eq!(fw::transfer_sequence(&[0x12, 0x01, 0x41, 0x08, 0x07]).unwrap(), 7);
+            assert!(fw::transfer_sequence(&[]).is_err());
+            assert!(fw::transfer_sequence(&[0x08]).is_err());
+        }
+
+        fn state(deps: &TDeps) -> Vec<(Vec<u8>, Vec<u8>)> {
+            deps.storage.range(None, None, Order::Ascending).filter(|(k, _)| k.as_slice() != b"contract_info").collect()
+        }
+
+        #[test]
+        fn migrate_preserves_state_from_v001_without_cw2_and_refuses_bad_sources() {
+            let (mut deps, env, a, root) = fwd_fixture();
+            claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
+            // mainnet code 105 instances have no cw2 entry
+            deps.storage.remove(b"contract_info");
+            let before = state(&deps);
+            let r = crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap();
+            assert!(r.attributes.iter().any(|x| x.key == "from_version" && x.value == "none"));
+            assert_eq!(state(&deps), before, "migrate rewrote state");
+            let v = cw2::get_contract_version(deps.as_ref().storage).unwrap();
+            assert_eq!((v.contract.as_str(), v.version.as_str()), ("cw-headstash", env!("CARGO_PKG_VERSION")));
+            // idempotent same-version migrate
+            crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap();
+            assert!(err(claim(&mut deps, &env, &a, "w2", &root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+            // downgrade and foreign contract refused
+            cw2::set_contract_version(deps.as_mut().storage, "cw-headstash", "99.0.0").unwrap();
+            assert!(crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap_err().to_string().contains("downgrade"));
+            cw2::set_contract_version(deps.as_mut().storage, "cw20-base", "0.0.1").unwrap();
+            assert!(crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).is_err());
+            // not a headstash at all
+            let mut empty = cosmwasm_std::testing::mock_dependencies();
+            assert!(crate::migrate(empty.as_mut(), env, MigrateMsg {}).unwrap_err().to_string().contains("not a cw-headstash"));
         }
     }
 }

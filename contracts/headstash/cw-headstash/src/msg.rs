@@ -233,6 +233,25 @@ pub enum ExecuteMsg {
         amount: u64,
         proof: Binary,
     },
+    /// Anyone: direct vk_id 3 claim forwarded over an allowlisted ICS-20 channel.
+    /// The proof destination is `forward_destination(chain, contract, forward)`
+    /// (`hsfwd1…`), so channel, receiver, memo and fallback are all proof-bound.
+    /// Address reuse is not checked on-chain (frontend rule). Refunds on
+    /// timeout / error ack go to `forward.fallback` via the ICS-20 source callback.
+    ClaimNoteForward {
+        root: Binary,
+        nullifier: Binary,
+        amount: u64,
+        proof: Binary,
+        forward: crate::forward::ForwardTarget,
+    },
+    /// Owner: add / update / disable an ICS-20 channel for forwards.
+    SetForwardChannel { channel_id: String, timeout_seconds: u64, enabled: bool },
+    /// Owner: refund a forward whose callback never arrived, to its bound fallback
+    /// only, after timeout + 1 day.
+    ResolveForward { channel_id: String, sequence: u64 },
+    /// Owner: where the UI fetches the eligible set (HAL) and its integrity commitment.
+    SetHalSource { source: Option<crate::forward::HalSource> },
 }
 
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
@@ -338,6 +357,33 @@ pub enum QueryMsg {
         /// may omit it or must repeat the same value.
         #[serde(default)]
         reward_addr: Option<String>,
+    },
+    /// Allowlisted forward channels.
+    #[returns(Vec<crate::forward::ForwardChannel>)]
+    ForwardChannels {},
+    /// HAL (eligible set) URI and integrity commitment, if set.
+    #[returns(Option<crate::forward::HalSource>)]
+    HalSource {},
+    #[returns(Option<crate::forward::PendingForward>)]
+    PendingForward { channel_id: String, sequence: u64 },
+    #[returns(Vec<crate::forward::PendingForward>)]
+    PendingForwards {
+        #[serde(default)]
+        start_after: Option<(String, u64)>,
+        #[serde(default)]
+        limit: Option<u32>,
+    },
+    /// The proof destination string (`hsfwd1…`) for a forward target.
+    #[returns(String)]
+    ForwardDestination { forward: crate::forward::ForwardTarget },
+    /// Dry-run of `ClaimNoteForward`.
+    #[returns(bool)]
+    CheckNoteForward {
+        root: Binary,
+        nullifier: Binary,
+        amount: u64,
+        proof: Binary,
+        forward: crate::forward::ForwardTarget,
     },
     /// Dry-run of `ClaimNote` for `dest` (the fresh wallet).
     #[returns(bool)]

@@ -227,8 +227,30 @@ pub fn check_claim(
 }
 
 /// Anyone. Pays `amount` to `info.sender` when the proof verifies under the pinned circuit.
-pub fn claim_note(
+/// Proof check for `dest` plus the spend bookkeeping shared by `ClaimNote` and
+/// `ClaimNoteForward`. Returns the nullifier hex.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn record_claim(
     deps: DepsMut,
+    env: &Env,
+    campaign: &EpochCampaignParams,
+    dest: &str,
+    root: &Binary,
+    nullifier: &Binary,
+    amount: u64,
+    proof: &Binary,
+) -> Result<String, StdError> {
+    let (paid, key) = check_claim(deps.as_ref(), env, campaign, dest, root, nullifier, amount, proof)?;
+    // Shared nullifier set with the lane path, same root scope: one spend per note.
+    verify_nullifier_stateful(deps.storage, key)?;
+    DIRECT_CLASS_PAID.save(deps.storage, amount, &(paid + 1))?;
+    let n = DIRECT_CLAIMED.may_load(deps.storage)?.unwrap_or(0) + 1;
+    DIRECT_CLAIMED.save(deps.storage, &n)?;
+    Ok(hex::encode(nullifier.as_slice()))
+}
+
+pub fn claim_note(
+    mut deps: DepsMut,
     env: &Env,
     info: MessageInfo,
     campaign: &EpochCampaignParams,
@@ -237,12 +259,7 @@ pub fn claim_note(
     amount: u64,
     proof: Binary,
 ) -> Result<Response, StdError> {
-    let (paid, key) = check_claim(deps.as_ref(), env, campaign, info.sender.as_str(), &root, &nullifier, amount, &proof)?;
-    // Shared nullifier set with the lane path, same root scope: one spend per note.
-    verify_nullifier_stateful(deps.storage, key)?;
-    DIRECT_CLASS_PAID.save(deps.storage, amount, &(paid + 1))?;
-    let n = DIRECT_CLAIMED.may_load(deps.storage)?.unwrap_or(0) + 1;
-    DIRECT_CLAIMED.save(deps.storage, &n)?;
+    record_claim(deps.branch(), env, campaign, info.sender.as_str(), &root, &nullifier, amount, &proof)?;
     let hcfg = HEADSTASH_CFG.load(deps.storage)?;
     let strategy = crate::epoch::strategy_for(&hcfg.ts, &campaign.denom)?;
     let res = Response::new().add_attribute("action", "claim_note").add_attribute("amount", amount.to_string());

@@ -29,6 +29,7 @@ cosmwasm-schema  = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "stargate", "staking", "zk"] }
 cw-orch = { workspace = true, optional = true }
 cw-ownable = { workspace = true }
+cw2 = { workspace = true }
 cw-storage-plus  = { workspace = true }
 ff = { workspace = true }
 getrandom = { workspace = true, features = ["custom"] }
