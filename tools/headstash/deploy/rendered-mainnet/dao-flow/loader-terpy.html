@@ -4,7 +4,7 @@
 <script type="module">
 // ERC-8244-style loader: everything below the config comes from the Headstash frontend contract, sha256-verified.
 const CFG = {"rest":"https://api.terp.network","relay":"https://terp.network","chain_id":"morocco-1","headstash":"terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q","hrp":"terp","denom":"uthiol","gas_price":0.05,"claim_gas":400000,"register_gas":12000000,"forward_gas":900000};
-const PIN = "df3c69fe0ad72ef2d413a0d99fdc868abc4fe577103e25e4e37694252384d492"; // optional: sha256 of canonical manifest JSON, from the gov proposal ("" = trust headstash config)
+const PIN = "32023d57e7fb05b75a6c772a56ff2a2643e358d989f1c32d630562b22f1ae3ae"; // optional: sha256 of canonical manifest JSON, from the gov proposal ("" = trust headstash config)
 const st = (t) => (document.getElementById("st").textContent = t);
 const te = new TextEncoder(), hex = (b) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, "0")).join("");
 const sha = async (b) => hex(await crypto.subtle.digest("SHA-256", b));
