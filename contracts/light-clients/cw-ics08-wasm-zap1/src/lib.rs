@@ -64,29 +64,33 @@ pub struct IbcV2Fields {
     pub app_data_hash_hex: String,
 }
 
+/// Body of [`ExecuteMsg::AttestPacket`]; same JSON fields as the former
+/// struct variant (externally tagged newtype is wire-identical).
 #[cosmwasm_schema::cw_serde]
-#[allow(clippy::large_enum_variant)]
+pub struct AttestPacketMsg {
+    pub source_client: String,
+    pub dest_client: String,
+    pub sequence: u64,
+    pub timeout_timestamp_ns: u64,
+    pub app_data_hash_hex: String,
+    pub note_hex: String,
+    pub amount_zat: u64,
+    pub frost_group_hex: String,
+    pub leaf_hex: String,
+    pub merkle_root_hex: String,
+    pub event_kind: String,
+    pub wallet_or_serial: String,
+    pub proof: Vec<Zap1ProofStepMsg>,
+}
+
+#[cosmwasm_schema::cw_serde]
 pub enum ExecuteMsg {
     CreateClient {
         source_client: String,
         dest_client: String,
     },
     /// IBC v2 packet + ZAP1 Merkle. Tampered `app_data_hash` is rejected.
-    AttestPacket {
-        source_client: String,
-        dest_client: String,
-        sequence: u64,
-        timeout_timestamp_ns: u64,
-        app_data_hash_hex: String,
-        note_hex: String,
-        amount_zat: u64,
-        frost_group_hex: String,
-        leaf_hex: String,
-        merkle_root_hex: String,
-        event_kind: String,
-        wallet_or_serial: String,
-        proof: Vec<Zap1ProofStepMsg>,
-    },
+    AttestPacket(Box<AttestPacketMsg>),
 }
 
 #[cosmwasm_schema::cw_serde]
@@ -114,19 +118,33 @@ fn parse_hex32(s: &str) -> StdResult<[u8; 32]> {
     v.try_into().map_err(|_| StdError::msg("expected 32 bytes"))
 }
 
+/// Arguments for [`verify_zap1_ibcv2`].
+pub struct VerifyZap1Ibcv2Params<'a> {
+    pub event_kind: &'a str,
+    pub wallet_or_serial: &'a str,
+    pub note: &'a [u8; 32],
+    pub amount_zat: u64,
+    pub frost_group: &'a [u8; 32],
+    pub leaf: &'a [u8; 32],
+    pub merkle_root: &'a [u8; 32],
+    pub proof: &'a [([u8; 32], bool)],
+}
+
 /// Pure verify used by the wasm entry point and by PIR (same fields as IBC v2).
-#[allow(clippy::too_many_arguments)]
 pub fn verify_zap1_ibcv2(
     ibc: &IbcV2Fields,
-    event_kind: &str,
-    wallet_or_serial: &str,
-    note: &[u8; 32],
-    amount_zat: u64,
-    frost_group: &[u8; 32],
-    leaf: &[u8; 32],
-    merkle_root: &[u8; 32],
-    proof: &[([u8; 32], bool)],
+    args: VerifyZap1Ibcv2Params<'_>,
 ) -> Result<[u8; 32], String> {
+    let VerifyZap1Ibcv2Params {
+        event_kind,
+        wallet_or_serial,
+        note,
+        amount_zat,
+        frost_group,
+        leaf,
+        merkle_root,
+        proof,
+    } = args;
     if ibc.source_client.is_empty() || ibc.dest_client.is_empty() {
         return Err("empty ibc client id".into());
     }
@@ -201,21 +219,22 @@ pub fn execute(
             }
             Ok(Response::new().add_attribute("action", "create_client"))
         }
-        ExecuteMsg::AttestPacket {
-            source_client,
-            dest_client,
-            sequence,
-            timeout_timestamp_ns,
-            app_data_hash_hex,
-            note_hex,
-            amount_zat,
-            frost_group_hex,
-            leaf_hex,
-            merkle_root_hex,
-            event_kind,
-            wallet_or_serial,
-            proof,
-        } => {
+        ExecuteMsg::AttestPacket(msg) => {
+            let AttestPacketMsg {
+                source_client,
+                dest_client,
+                sequence,
+                timeout_timestamp_ns,
+                app_data_hash_hex,
+                note_hex,
+                amount_zat,
+                frost_group_hex,
+                leaf_hex,
+                merkle_root_hex,
+                event_kind,
+                wallet_or_serial,
+                proof,
+            } = *msg;
             let ibc = IbcV2Fields {
                 source_client: source_client.clone(),
                 dest_client: dest_client.clone(),
@@ -233,14 +252,16 @@ pub fn execute(
             }
             let hash = verify_zap1_ibcv2(
                 &ibc,
-                &event_kind,
-                &wallet_or_serial,
-                &note,
-                amount_zat,
-                &frost,
-                &leaf,
-                &root,
-                &steps,
+                VerifyZap1Ibcv2Params {
+                    event_kind: &event_kind,
+                    wallet_or_serial: &wallet_or_serial,
+                    note: &note,
+                    amount_zat,
+                    frost_group: &frost,
+                    leaf: &leaf,
+                    merkle_root: &root,
+                    proof: &steps,
+                },
             )
             .map_err(StdError::msg)?;
             let hexh = hex::encode(hash);
@@ -295,14 +316,16 @@ mod tests {
         };
         let err = verify_zap1_ibcv2(
             &ibc,
-            "hosting_payment",
-            "x",
-            &[2u8; 32],
-            1,
-            &[3u8; 32],
-            &leaf,
-            &[4u8; 32],
-            &[],
+            VerifyZap1Ibcv2Params {
+                event_kind: "hosting_payment",
+                wallet_or_serial: "x",
+                note: &[2u8; 32],
+                amount_zat: 1,
+                frost_group: &[3u8; 32],
+                leaf: &leaf,
+                merkle_root: &[4u8; 32],
+                proof: &[],
+            },
         )
         .unwrap_err();
         assert!(err.contains("leaf") || err.contains("merkle") || err.contains("tampered"));
