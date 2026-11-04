@@ -57,7 +57,30 @@ def gz(raw):
     bio = io.BytesIO()
     with gzip.GzipFile(fileobj=bio, mode="wb", compresslevel=9, mtime=0, filename="") as f: f.write(raw)
     return bio.getvalue()
-def bundle(page_dir, prover_dir, chunk=CHUNK, version=1):
+# ---- R12 theme (same rules as contracts/headstash/*/src/theme.rs and frontend/v2lib.js validateTheme)
+THEME_TOKENS = ("bg", "surface", "surfaceAlt", "text", "textMuted", "border", "borderStrong", "accent", "onAccent", "focus")
+DEFAULT_THEME = os.path.join(DEFAULT_PAGE, "themes", "apricot-glow.json")
+def canon_theme(t):
+    """Validate and return the theme exactly as the contracts serialize it (BTreeMap order, radius_px only if set)."""
+    import re
+    if not isinstance(t, dict) or set(t) - {"light", "dark", "radius_px"}: raise ValueError("theme: bad fields")
+    out = {}; n = 0
+    for m in ("light", "dark"):
+        v = t.get(m, {})
+        if not isinstance(v, dict): raise ValueError("theme.%s: not an object" % m)
+        for k, c in v.items():
+            if k not in THEME_TOKENS: raise ValueError("theme.%s: unknown token %r" % (m, k))
+            if not isinstance(c, str) or not re.fullmatch(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", c): raise ValueError("theme.%s.%s: bad colour" % (m, k))
+        out[m] = dict(sorted(v.items())); n += len(v)
+    if t.get("radius_px") is not None:
+        r = t["radius_px"]
+        if not isinstance(r, int) or isinstance(r, bool) or not 0 <= r <= 24: raise ValueError("theme.radius_px: 0..24")
+        out["radius_px"] = r
+    if not n: raise ValueError("theme: no tokens")
+    return out
+def load_theme(path):
+    j = json.load(open(path)); return canon_theme(j.get("theme", j))
+def bundle(page_dir, prover_dir, chunk=CHUNK, version=1, theme=None):
     dirs = {"page": page_dir, "prover": prover_dir}; ents, chunks, fs = [], [], []
     for d, n in PAGE_FILES:
         raw = open(os.path.join(dirs[d], n), "rb").read(); st = gz(raw)
@@ -66,6 +89,7 @@ def bundle(page_dir, prover_dir, chunk=CHUNK, version=1):
         ents.append({"path": n, "content_type": CT.get(os.path.splitext(n)[1], "application/octet-stream"), "encoding": "gzip", "size": len(raw),
                      "sha256": hashlib.sha256(raw).hexdigest(), "stored_size": len(st), "chunks": [hashlib.sha256(c).hexdigest() for c in cs]})
     m = {"version": int(version), "entry": "app.js", "files": ents, "note": "headstash claim page", "activate": True}
+    if theme is not None: m["theme"] = canon_theme(theme)  # last: matches Manifest field order
     return m, chunks, fs
 def manifest_pin(m):  # == loader: sha256(JSON.stringify(<manifest as returned by the contract>))
     return hashlib.sha256(json.dumps(m, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
@@ -129,11 +153,13 @@ def main():
     ap.add_argument("--migrate-frontend", help="existing frontend ADDR (admin = --dao): migrate to --code-id + publish --manifest-version, no new instance")
     ap.add_argument("--manifest-version", type=int, default=1); ap.add_argument("--keep-last", type=int)
     ap.add_argument("--new-label", help="with --migrate-frontend: MsgUpdateContractLabel")
+    ap.add_argument("--theme", default=DEFAULT_THEME, help="R12 manifest default theme JSON (default: Apricot Glow); 'none' to omit (required for code 106 / v1)")
     ap.add_argument("--verify-lcd", help="read-only LCD: check code checksum, target owners, frontend_contract unset, address free")
     a = ap.parse_args()
     if a.claim_gas != 400000: print("WARNING: claim gas %d != 400000 (deploy packet)" % a.claim_gas, file=sys.stderr)
     targets = [t.split("=", 1) for t in a.target]
-    m, chunks, fs = bundle(a.page_dir, a.prover_dir, version=a.manifest_version)
+    theme = None if a.theme == "none" else load_theme(a.theme)
+    m, chunks, fs = bundle(a.page_dir, a.prover_dir, version=a.manifest_version, theme=theme)
     pin = manifest_pin(m); salt = a.salt.encode()
     if a.migrate_frontend:
         fe = a.migrate_frontend; msgs = migrate_msgs(a.dao, fe, a.code_id, m, a.new_label, a.keep_last)
@@ -173,6 +199,7 @@ def main():
                 "No funds move.") % (fe, a.code_id, a.checksum.upper(),
                 ("Label set to %r. " % a.new_label) if a.new_label else "", a.manifest_version, pin, files,
                 ("3) set_keep_last %d. " % a.keep_last) if a.keep_last else "", fe, sum(len(c) for c in chunks), a.manifest_version)
+    if m.get("theme"): desc += " The manifest carries the R12 default UI theme (light/dark colour tokens only, validated on chain and in the page)."
     body = {"propose": {"msg": {"propose": {"title": a.title, "description": desc, "msgs": msgs}}}}
     os.makedirs(a.out, exist_ok=True)
     pf = os.path.join(a.out, a.prefix + ".propose.json"); json.dump(body, open(pf, "w"), indent=1); open(pf, "a").write("\n")
@@ -184,7 +211,7 @@ def main():
         loaders[n] = {"file": lf, "sha256": hashlib.sha256(lt.encode()).hexdigest(), "headstash": t}
     sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
     rep = {"dao": a.dao, "code_id": a.code_id, "checksum": a.checksum.upper(), "salt": a.salt, "salt_b64": base64.b64encode(salt).decode(), "label": a.label,
-           "predicted_frontend": fe, "mode": "migrate" if a.migrate_frontend else "instantiate2", "manifest_version": a.manifest_version, "keep_last": a.keep_last, "new_label": a.new_label, "targets": dict(targets), "manifest_pin_sha256": pin, "bundle_sha256": bundle_sha(fs), "files": fs,
+           "predicted_frontend": fe, "mode": "migrate" if a.migrate_frontend else "instantiate2", "manifest_version": a.manifest_version, "keep_last": a.keep_last, "new_label": a.new_label, "targets": dict(targets), "manifest_pin_sha256": pin, "theme": m.get("theme"), "theme_file": None if a.theme == "none" else a.theme, "bundle_sha256": bundle_sha(fs), "files": fs,
            "chunks_total": sum(len(c) for c in chunks), "stored_bytes": sum(e["stored_size"] for e in m["files"]),
            "propose_file": pf, "propose_sha256": sha(pf), "chunks_file": cf, "chunks_sha256": sha(cf), "loaders": loaders,
            "loader_cfg": {"rest": a.rest, "relay": a.relay, "chain_id": a.chain_id, "denom": a.denom, "gas_price": a.gas_price,

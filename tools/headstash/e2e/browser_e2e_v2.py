@@ -38,6 +38,42 @@ def page_files():
     return [{"path": n, "raw": open(os.path.join(d, n), "rb").read(), "stored": fb.gz(open(os.path.join(d, n), "rb").read()),
              "ct": fb.CT.get(os.path.splitext(n)[1], "application/octet-stream")} for d, n in names]
 be.page_files = page_files
+import render_frontend_prop as rfp
+MANIFEST_THEME = rfp.load_theme(rfp.DEFAULT_THEME)       # R12: manifest default = Apricot Glow
+_fb_manifest = fb.manifest
+def _manifest_with_theme(fs, chunk, version=1):
+    m, chunks = _fb_manifest(fs, chunk, version); m["theme"] = MANIFEST_THEME; return m, chunks
+fb.manifest = _manifest_with_theme
+# headstash theme for the e2e: Apricot Glow with two tokens changed, so its source is distinguishable from the manifest default
+HS_THEME = rfp.canon_theme({"light": dict(MANIFEST_THEME["light"], surface="#FFFDF9", accent="#7A5F3A"), "dark": dict(MANIFEST_THEME["dark"], surface="#2A1B06"), "radius_px": 12})
+MALICIOUS = {"light": {"bg": "red;}body{background:url(http://127.0.0.1:1/x.png)}"}, "dark": {"bg": "#000"}}
+def rgb(h): return "rgb(%d, %d, %d)" % tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+def theme_checks(contract, url):
+    th = lambda tag, **kw: browser("theme", dict({"url": url, "tag": tag, "shots": SHOTS}, **kw))
+    a = th("manifest"); R["theme_manifest"] = keep(a, "log")
+    ok = a.get("ok") and all(a.get(m, {}).get("source") == "manifest" and a[m].get("mode") == m and a[m].get("body_bg") == rgb(MANIFEST_THEME[m]["bg"]) for m in ("light", "dark"))
+    rd.step("v2_theme_fallback_manifest_default", bool(ok), "light %s / dark %s, source %s" % (a.get("light", {}).get("body_bg"), a.get("dark", {}).get("body_bg"), a.get("light", {}).get("source")) if a.get("ok") else a.get("error", ""))
+    bad_tx = tx("owner", 400000, "wasm", "execute", contract, json.dumps({"set_theme": {"theme": MALICIOUS}}))
+    other = tx("stranger", 400000, "wasm", "execute", contract, json.dumps({"set_theme": {"theme": HS_THEME}}))
+    rd.step("v2_theme_contract_rejects_malicious_and_non_owner", bad_tx.get("code") != 0 and other.get("code") != 0 and smart(contract, {"theme": {}}) is None,
+            "malicious: %s | non-owner: %s" % (bad_tx.get("raw_log", "")[:100], other.get("raw_log", "")[:100]))
+    res = tx("owner", 400000, "wasm", "execute", contract, json.dumps({"set_theme": {"theme": HS_THEME}}))
+    rd.step("v2_theme_set_on_headstash", res.get("code") == 0 and smart(contract, {"theme": {}}) == HS_THEME, res.get("raw_log", "")[:120])
+    b = th("headstash", toggle=True); R["theme_headstash"] = keep(b, "log")
+    ok = b.get("ok") and all(b.get(m, {}).get("source") == "headstash" and b[m].get("surface").upper() == HS_THEME[m]["surface"] and b[m].get("body_bg") == rgb(HS_THEME[m]["bg"]) and b[m].get("radius") == "12px" for m in ("light", "dark"))
+    rd.step("v2_theme_loaded_from_headstash_contract", bool(ok), "light surface %s, dark surface %s, radius %s" % (b.get("light", {}).get("surface"), b.get("dark", {}).get("surface"), b.get("light", {}).get("radius")) if b.get("ok") else b.get("error", ""))
+    rd.step("v2_theme_light_and_dark_render", bool(b.get("ok")) and b["light"]["body_bg"] != b["dark"]["body_bg"] and b["light"]["btn_bg"] == rgb(HS_THEME["light"]["accent"]) and b["dark"]["btn_bg"] == rgb(HS_THEME["dark"]["accent"]),
+            "light body %s btn %s | dark body %s btn %s" % tuple(b.get(m, {}).get(k) for m in ("light", "dark") for k in ("body_bg", "btn_bg")))
+    t1, t2, t3 = b.get("after_toggle", {}), b.get("after_reload", {}), b.get("after_toggle2", {})
+    rd.step("v2_theme_toggle_persists", t1.get("mode") == "light" and t1.get("stored") == "light" and t2.get("mode") == "light" and t3.get("mode") == "dark" and t3.get("stored") == "dark",
+            "dark pref -> toggle %s (stored %s) -> reload %s -> toggle %s" % (t1.get("mode"), t1.get("stored"), t2.get("mode"), t3.get("mode")))
+    c = th("malicious", tamper=MALICIOUS); R["theme_malicious"] = keep(c, "log")
+    l = c.get("light", {})
+    ok = c.get("ok") and l.get("source") == "manifest" and l.get("rejected") == "headstash" and "url(" not in l.get("css", "x") and "red" not in l.get("css", "x") and l.get("body_bg") == rgb(MANIFEST_THEME["light"]["bg"])
+    rd.step("v2_theme_malicious_rejected_in_page", bool(ok), "source %s rejected %s; %s" % (l.get("source"), l.get("rejected"), (c.get("log_rejects") or [""])[0][:140]))
+    for n in ("light", "dark"):  # canonical screenshot names
+        import shutil; s = os.path.join(SHOTS, "theme-headstash-%s.png" % n)
+        if os.path.exists(s): shutil.copyfile(s, os.path.join(SHOTS, "theme-%s.png" % n))
 
 def raw_cid(digest):
     b = bytes([1, 0x55, 0x12, 32]) + digest
@@ -94,6 +130,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     srv = be.serve(work)
     try:
         url = "http://127.0.0.1:%d/loader.html" % PORT
+        theme_checks(contract, url)
         nr = os.path.join(work, "notes-after-register.json")
         a = browser("v2a", {"url": url, "key_hex": "%064x" % evm_priv, "evm_addr": "0x" + (evm_addr.hex() if isinstance(evm_addr, (bytes, bytearray)) else str(evm_addr).replace("0x", "")), "crypto": os.path.join(PAGE, "crypto.js"), "v2lib": os.path.join(PAGE, "v2lib.js"),
                             "tampered": tampered, "contract": contract, "out_derive": os.path.join(work, "notes-after-derive.json"), "out": nr, "shots": SHOTS})

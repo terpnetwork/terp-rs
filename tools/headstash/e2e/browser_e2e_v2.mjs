@@ -53,6 +53,8 @@ if (inp.key_hex) {
 }
 const pen = { list: [] };
 
+// R12 tamper: serve a malicious headstash theme from the LCD (base64 of {"theme":{}}); the page must reject it
+if (phase === "theme" && inp.tamper) await page.route("**/smart/eyJ0aGVtZSI6e319*", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: inp.tamper }) }));
 try {
   const t0 = Date.now(); await page.goto(inp.url);
   await page.locator("body[data-ready='1'], body[data-error]").waitFor({ timeout: 180000 });
@@ -98,7 +100,7 @@ try {
     if (await text("#reg-err")) throw new Error("register: " + (await text("#reg-err")));
     await saveLast(inp.out); out.counts = JSON.parse((await attr("#summary", "data-counts")) || "{}");
     await shot("05-registered");
-  } else {
+  } else if (phase === "v2b") {
     await page.setInputFiles("#nf", inp.notes); await page.click("#load");
     await until(async () => /loaded \d+ notes|ERROR/.test(await text("#log")) || (await text("#reg-err")), 60000);
     await page.click("#anchor-check"); await page.waitForTimeout(1500); out.anchor = await text("#anchor-out");
@@ -133,6 +135,23 @@ try {
     await runClaim("10-reuse-refused"); out.reuse_err = out["10-reuse-refused_err"];
     await page.click("#save"); await saveLast(inp.out);
     out.counts = JSON.parse((await attr("#summary", "data-counts")) || "{}");
+  } else if (phase === "theme") {
+    const rd = () => page.evaluate(() => { const de = document.documentElement, cs = getComputedStyle(de);
+      return { mode: de.dataset.theme, source: de.dataset.themeSource, rejected: de.dataset.themeRejected || "", bg: cs.getPropertyValue("--hs-bg").trim(), surface: cs.getPropertyValue("--hs-surface").trim(),
+        accent: cs.getPropertyValue("--hs-accent").trim(), radius: cs.getPropertyValue("--hs-radius").trim(), body_bg: getComputedStyle(document.body).backgroundColor,
+        btn_bg: getComputedStyle(document.querySelector("#browse")).backgroundColor, css: document.getElementById("hs-theme")?.textContent || "", toggle: document.getElementById("theme-toggle")?.textContent,
+        stored: localStorage.getItem("terp-hs-theme-mode-v1") }; });
+    const tag = inp.tag;
+    await page.emulateMedia({ colorScheme: "light" }); await page.waitForTimeout(300); out.light = await rd(); await shot(`${tag}-light`);
+    await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(300); out.dark = await rd(); await shot(`${tag}-dark`);
+    out.log_rejects = ((await text("#log")).match(/theme from \w+ rejected[^\n]*/g) || []).slice(0, 3);
+    if (inp.toggle) {
+      await page.click("#theme-toggle"); await page.waitForTimeout(200); out.after_toggle = await rd();
+      await page.reload(); await page.locator("body[data-ready='1'], body[data-error]").waitFor({ timeout: 180000 });
+      await page.locator("#hal-status[data-state='ok'], #hal-status[data-state='error']").waitFor({ timeout: 120000 });
+      out.after_reload = await rd(); await shot(`${tag}-toggled-light-under-dark-pref`);
+      await page.click("#theme-toggle"); await page.waitForTimeout(200); out.after_toggle2 = await rd();
+    }
   }
   out.ok = true;
 } catch (e) { out.error = String(e.message || e).slice(0, 400); await shot("error").catch(() => {}); }
