@@ -7,8 +7,7 @@ pub struct TagBuilder {
 }
 
 impl TagBuilder {
-    #[allow(clippy::should_implement_trait)]
-    pub fn add(mut self, tag: Tag) -> Self {
+    pub fn tag(mut self, tag: Tag) -> Self {
         self.tags.push(tag);
         self
     }
