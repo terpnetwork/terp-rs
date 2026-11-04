@@ -226,24 +226,6 @@ impl RpcPool {
         self.batch_rpc(&calls).await
     }
 
-    #[allow(dead_code)]
-    async fn batch_get_code(&self, addrs: &[String]) -> Result<Vec<Option<Value>>> {
-        let calls: Vec<(String, Value)> = addrs
-            .iter()
-            .map(|a| ("eth_getCode".into(), json!([a, "latest"])))
-            .collect();
-        self.batch_rpc(&calls).await
-    }
-
-    #[allow(dead_code)]
-    async fn batch_get_nonce(&self, addrs: &[String]) -> Result<Vec<Option<Value>>> {
-        let calls: Vec<(String, Value)> = addrs
-            .iter()
-            .map(|a| ("eth_getTransactionCount".into(), json!([a, "latest"])))
-            .collect();
-        self.batch_rpc(&calls).await
-    }
-
     /// One round-trip: getCode[i] then getTransactionCount[i] for each addr.
     async fn batch_code_and_nonce(
         &self,

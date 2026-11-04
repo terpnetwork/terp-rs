@@ -37,8 +37,6 @@ struct Row {
     community: String,
     addr: String,
     pk_compressed: String,
-    #[allow(dead_code)] // present in the input JSON; only the compressed form is used
-    pk_uncompressed: String,
     token: String,
     value: u64,
 }
@@ -61,7 +59,6 @@ fn load_ok_rows(dir: &Path) -> anyhow::Result<Vec<Row>> {
             let addr = rec.get(0).unwrap_or("").trim();
             let amount = rec.get(1).unwrap_or("0");
             let pk_c = rec.get(2).unwrap_or("").trim();
-            let pk_u = rec.get(3).unwrap_or("").trim();
             let status = rec.get(5).unwrap_or("").trim();
             if status != "ok" || !pk_c.starts_with("0x") {
                 continue;
@@ -74,7 +71,6 @@ fn load_ok_rows(dir: &Path) -> anyhow::Result<Vec<Row>> {
                 community: name.clone(),
                 addr: addr.to_string(),
                 pk_compressed: pk_c.to_string(),
-                pk_uncompressed: pk_u.to_string(),
                 token: name.clone(),
                 value,
             });
