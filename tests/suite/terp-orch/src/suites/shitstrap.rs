@@ -85,11 +85,10 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CwShitstrapSuite<Chain> 
                     &[],
                 )?;
 
-                for (_, init) in d.shit.iter().enumerate() {
-                    let _res = suite.factory.create_native_shit_strap_contract(
-                        init.clone(),
-                        format!("{}", init.title),
-                    )?;
+                for init in d.shit.iter() {
+                    let _res = suite
+                        .factory
+                        .create_native_shit_strap_contract(init.clone(), init.title.to_string())?;
                 }
 
                 Ok(suite)
@@ -105,24 +104,27 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CwShitstrapSuite<Chain> 
 
 /// Single shitstrap: 20 THIOL in -> 1 TERP out.
 pub fn shit_deploy_data_single(admin: Addr) -> Option<CwShitstrapSuiteDeployData> {
-    let mut dd = CwShitstrapSuiteDeployData::default();
-    dd.admin = Some(admin.clone());
-    dd.shit = vec![ShitInitMsg {
-        daos: Vec::new(),
-        owner: Some(admin.to_string()),
-        accepted: vec![cw_shit_denom::PossibleShit::native_denom(
-            "uthiol",
-            50_000_000_000_000_000u128,
-        )],
-        cutoff: 500_000_000_000u128.into(),
-        shitmos: UncheckedDenom::Native("uterp".into()),
-        title: "terp".into(),
-        description: "terp".into(),
-    }];
+    let dd = CwShitstrapSuiteDeployData {
+        admin: Some(admin.clone()),
+        shit: vec![ShitInitMsg {
+            daos: Vec::new(),
+            owner: Some(admin.to_string()),
+            accepted: vec![cw_shit_denom::PossibleShit::native_denom(
+                "uthiol",
+                50_000_000_000_000_000u128,
+            )],
+            cutoff: 500_000_000_000u128.into(),
+            shitmos: UncheckedDenom::Native("uterp".into()),
+            title: "terp".into(),
+            description: "terp".into(),
+        }],
+    };
     Some(dd)
 }
 
 /// Multiple shistraps with spot-price-based exchange rates.
+// Entries are toggled by commenting individual pushes, so keep push form.
+#[allow(clippy::vec_init_then_push)]
 pub fn shit_deploy_data_full(admin: Addr) -> Option<CwShitstrapSuiteDeployData> {
     let mut dd = CwShitstrapSuiteDeployData::default();
     let cut = 710_000_000_000u128;
