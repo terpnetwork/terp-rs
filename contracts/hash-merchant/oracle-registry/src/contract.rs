@@ -176,10 +176,25 @@ fn execute_polytone_callback(
     {
         return Err(ContractError::Unauthorized {});
     }
+    // Closed registry: the initiator must be allowed to Submit.
+    may_submit(
+        deps.as_ref(),
+        &MessageInfo {
+            sender: cb.initiator.clone(),
+            funds: vec![],
+        },
+    )?;
     let hint: CallbackHint = cosmwasm_std::from_json(&cb.initiator_msg)?;
+    if hint.height > env.block.height {
+        return Err(ContractError::FutureHeight {});
+    }
     let bins = match cb.result {
-        PolytoneCallback::Query(PolytoneQueryResult::Success(v)) => v,
-        _ => return Err(ContractError::InvalidMid {}),
+        PolytoneCallback::Query(PolytoneQueryResult::Ok(v)) => v,
+        PolytoneCallback::Query(PolytoneQueryResult::Err(e)) => {
+            return Ok(callback_skipped("query_error", &e.error));
+        }
+        PolytoneCallback::Execute(_) => return Ok(callback_skipped("execute", "")),
+        PolytoneCallback::FatalError(e) => return Ok(callback_skipped("fatal_error", &e)),
     };
     let raw = bins.first().ok_or(ContractError::InvalidMid {})?;
     let mid = mid_from_query_binary(raw)?;
@@ -197,6 +212,14 @@ fn execute_polytone_callback(
             position_id: None,
         },
     )
+}
+
+/// Remote error or non-query callback. Records nothing.
+fn callback_skipped(kind: &str, error: &str) -> Response {
+    Response::new()
+        .add_attribute("action", "polytone_callback_skipped")
+        .add_attribute("kind", kind)
+        .add_attribute("error", error)
 }
 
 #[derive(serde::Deserialize)]
@@ -884,11 +907,12 @@ pub fn ibc2_packet_timeout(
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _msg: MigrateMsg,
     _info: cosmwasm_std::MigrateInfo,
 ) -> Result<Response, ContractError> {
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "migrate"))
 }
 

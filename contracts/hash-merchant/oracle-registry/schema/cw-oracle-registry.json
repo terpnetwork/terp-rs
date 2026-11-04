@@ -1,6 +1,6 @@
 {
   "contract_name": "cw-oracle-registry",
-  "contract_version": "0.0.2",
+  "contract_version": "0.0.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -22,6 +22,14 @@
           {
             "type": "null"
           }
+        ]
+      },
+      "ibc2_source_client": {
+        "description": "Optional IBC v2 client. `RegisterIbcV2` sets this after instantiate.",
+        "default": null,
+        "type": [
+          "string",
+          "null"
         ]
       },
       "note": {
@@ -190,6 +198,84 @@
         "additionalProperties": false
       },
       {
+        "description": "Admin: bind this chain's IBC v2 client. Destination port is `dex-quote`.",
+        "type": "object",
+        "required": [
+          "register_ibc_v2"
+        ],
+        "properties": {
+          "register_ibc_v2": {
+            "type": "object",
+            "required": [
+              "source_client"
+            ],
+            "properties": {
+              "source_client": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Ask the dex-quote counterparty for posted liquidity. The ack files the mid.",
+        "type": "object",
+        "required": [
+          "request_quote"
+        ],
+        "properties": {
+          "request_quote": {
+            "type": "object",
+            "required": [
+              "market_id",
+              "pair"
+            ],
+            "properties": {
+              "market_id": {
+                "type": "string"
+              },
+              "pair": {
+                "$ref": "#/definitions/DexPair"
+              },
+              "position_id": {
+                "description": "Empty selects the counterparty's best opened position on `pair`.",
+                "default": "",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Several quotes in one IBC v2 packet. Each success files its own observation.",
+        "type": "object",
+        "required": [
+          "request_quotes"
+        ],
+        "properties": {
+          "request_quotes": {
+            "type": "object",
+            "required": [
+              "quotes"
+            ],
+            "properties": {
+              "quotes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/DexQuoteRequestItem"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Polytone note ACK. Wire tag `{ \"callback\": { ... } }` matches `polytone::callbacks::CallbackMessage`.",
         "type": "object",
         "required": [
@@ -208,6 +294,23 @@
         "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
         "type": "string"
       },
+      "Attribute": {
+        "description": "A key value pair that is used in the context of event attributes in logs",
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
@@ -224,6 +327,82 @@
           },
           "denom": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DexPair": {
+        "description": "Trading pair inside a dex-quote request and ack. Asset ids are counterparty strings.",
+        "type": "object",
+        "required": [
+          "asset_1",
+          "asset_2"
+        ],
+        "properties": {
+          "asset_1": {
+            "type": "string"
+          },
+          "asset_2": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DexQuoteRequestItem": {
+        "description": "One row of `RequestQuotes`. Height is the block that sends the packet.",
+        "type": "object",
+        "required": [
+          "market_id",
+          "pair"
+        ],
+        "properties": {
+          "market_id": {
+            "type": "string"
+          },
+          "pair": {
+            "$ref": "#/definitions/DexPair"
+          },
+          "position_id": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Event": {
+        "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]), which then get magically converted to bytes for Tendermint somewhere between the Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/main/learn/advanced/events [*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
+        "type": "object",
+        "required": [
+          "attributes",
+          "type"
+        ],
+        "properties": {
+          "attributes": {
+            "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/main/learn/advanced/events",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "type": {
+            "description": "The event type. This is renamed to \"ty\" because \"type\" is reserved in Rust. This sucks, we know.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MsgResponse": {
+        "type": "object",
+        "required": [
+          "type_url",
+          "value"
+        ],
+        "properties": {
+          "type_url": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/definitions/Binary"
           }
         },
         "additionalProperties": false
@@ -290,6 +469,7 @@
         "additionalProperties": false
       },
       "PolytoneError": {
+        "description": "polytone `ErrorResponse`.",
         "type": "object",
         "required": [
           "error",
@@ -306,26 +486,35 @@
         "additionalProperties": false
       },
       "PolytoneExecOk": {
+        "description": "polytone `ExecutionResponse`.",
         "type": "object",
         "required": [
-          "executed_by"
+          "executed_by",
+          "result"
         ],
         "properties": {
           "executed_by": {
             "type": "string"
+          },
+          "result": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SubMsgResponse"
+            }
           }
         },
         "additionalProperties": false
       },
       "PolytoneExecResult": {
+        "description": "polytone `Result<ExecutionResponse, String>`.",
         "oneOf": [
           {
             "type": "object",
             "required": [
-              "success"
+              "Ok"
             ],
             "properties": {
-              "success": {
+              "Ok": {
                 "$ref": "#/definitions/PolytoneExecOk"
               }
             },
@@ -334,10 +523,10 @@
           {
             "type": "object",
             "required": [
-              "error"
+              "Err"
             ],
             "properties": {
-              "error": {
+              "Err": {
                 "type": "string"
               }
             },
@@ -346,14 +535,15 @@
         ]
       },
       "PolytoneQueryResult": {
+        "description": "polytone `Result<Vec<Binary>, ErrorResponse>`: serde writes `{\"Ok\":..}` / `{\"Err\":..}`.",
         "oneOf": [
           {
             "type": "object",
             "required": [
-              "success"
+              "Ok"
             ],
             "properties": {
-              "success": {
+              "Ok": {
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Binary"
@@ -365,10 +555,10 @@
           {
             "type": "object",
             "required": [
-              "error"
+              "Err"
             ],
             "properties": {
-              "error": {
+              "Err": {
                 "$ref": "#/definitions/PolytoneError"
               }
             },
@@ -398,8 +588,51 @@
             "enum": [
               "ve_quorum"
             ]
+          },
+          {
+            "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+            "type": "string",
+            "enum": [
+              "dex_quote"
+            ]
           }
         ]
+      },
+      "SubMsgResponse": {
+        "description": "The information we get back from a successful sub message execution",
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "properties": {
+          "data": {
+            "deprecated": true,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "events": {
+            "description": "The Cosmos SDK events emitted by the submessage.\n\nThis is only filled if the submessage was itself a [`crate::WasmMsg`]. The reason for this is that events are [not part of consensus] and therefore not guaranteed to be deterministic, so the VM only returns events of wasm messages, which we know are deterministic.\n\n[not part of consensus]: https://github.com/tendermint/tendermint/blob/eed27addecb339cfaeba8fda774e6ab37cdb3774/spec/abci/abci.md#events",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Event"
+            }
+          },
+          "msg_responses": {
+            "description": "The responses from the messages emitted by the submessage. In most cases, this is equivalent to the Cosmos SDK's [MsgResponses], which usually contains a [single message]. However, wasmd allows chains to translate a single contract message into multiple SDK messages. In that case all the MsgResponses from each are concatenated into this flattened `Vec`.\n\n[MsgResponses]: https://github.com/cosmos/cosmos-sdk/blob/316750cc8cd8b3296fa233f4da2e39cbcdc34517/proto/cosmos/base/abci/v1beta1/abci.proto#L106-L109 [single message]: https://github.com/cosmos/cosmos-sdk/blob/v0.50.4/baseapp/baseapp.go#L1020-L1023",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/MsgResponse"
+            }
+          }
+        },
+        "additionalProperties": false
       },
       "Uint256": {
         "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
@@ -598,6 +831,18 @@
             }
           ]
         },
+        "ibc2_dest_port": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ibc2_source_client": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "note": {
           "anyOf": [
             {
@@ -695,6 +940,13 @@
               "format": "uint64",
               "minimum": 0.0
             },
+            "position_id": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "recorder": {
               "$ref": "#/definitions/Addr"
             },
@@ -728,6 +980,13 @@
               "type": "string",
               "enum": [
                 "ve_quorum"
+              ]
+            },
+            {
+              "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+              "type": "string",
+              "enum": [
+                "dex_quote"
               ]
             }
           ]
@@ -765,6 +1024,13 @@
           ],
           "format": "uint64",
           "minimum": 0.0
+        },
+        "position_id": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "recorder": {
           "$ref": "#/definitions/Addr"
@@ -807,6 +1073,13 @@
               "type": "string",
               "enum": [
                 "ve_quorum"
+              ]
+            },
+            {
+              "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+              "type": "string",
+              "enum": [
+                "dex_quote"
               ]
             }
           ]

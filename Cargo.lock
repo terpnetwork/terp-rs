@@ -4109,7 +4109,7 @@ dependencies = [
 
 [[package]]
 name = "cw-oracle-registry"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

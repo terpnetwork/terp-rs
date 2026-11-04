@@ -30,6 +30,13 @@
       "format": "uint64",
       "minimum": 0.0
     },
+    "position_id": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "recorder": {
       "$ref": "#/definitions/Addr"
     },
@@ -71,6 +78,13 @@
           "type": "string",
           "enum": [
             "ve_quorum"
+          ]
+        },
+        {
+          "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+          "type": "string",
+          "enum": [
+            "dex_quote"
           ]
         }
       ]
