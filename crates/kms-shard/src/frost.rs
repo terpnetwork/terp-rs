@@ -9,6 +9,12 @@ use crate::scheme::{
     SigningNonces, SCHEME_ID,
 };
 
+/// Every participant's key share plus the group public key, as produced by DKG.
+pub type DkgOutput<S> = (
+    Vec<(ParticipantId, <S as ConsensusScheme>::Share)>,
+    <S as ConsensusScheme>::GroupPublic,
+);
+
 /// Run  t-of-n DKG among ids 1..=n. Host shuttles public packages only.
 pub fn dkg_all<
     S: ConsensusScheme<
@@ -21,7 +27,7 @@ pub fn dkg_all<
     n: u16,
     t: u16,
     rng: &mut impl CryptoRngCore,
-) -> Result<(Vec<(ParticipantId, S::Share)>, S::GroupPublic), Error> {
+) -> Result<DkgOutput<S>, Error> {
     let ids: Vec<ParticipantId> = (1..=n).collect();
     let mut r1_sec = BTreeMap::new();
     let mut r1_pub = BTreeMap::new();
