@@ -502,3 +502,25 @@ forward to that address. Harness-only: test keyring wallet created offline (seed
 Chain B is a terpd stand-in, so the Penumbra forward error-acks and refunds to the fallback.
 Manual checks still needed: Web Store install id; default hybrid side-panel approval; pressing "no, thank you" (Denied
 message); locked-wallet path (NeedsLogin message); Penumbra disabled message; no extension installed message.
+
+## H. CSP for /headstash (draft diff, NOT applied)
+
+Extra connect-src (exactly): `https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link` (no arweave).
+The loader meta CSP gets the same list via `render_frontend_prop.py --extra-connect` (default).
+nginx diff for operators (inside `location ^~ /headstash/ { alias /var/www/headstash/; index loader-terpy.html;`):
+
+```diff
++    add_header Content-Security-Policy "default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
++    add_header X-Content-Type-Options nosniff always;
++    add_header Referrer-Policy no-referrer always;
+```
+
+## I. Optimizer function budget (ImpossibleRelocation) fix
+
+Cause: binaryen one-caller inlining folded the whole `ExecuteMsg` serde deserializer (incl. 16
+legacy/bridge/epoch-batch variants compiled out of dispatch but still in the enum) into the
+exported `execute` (75 444 B > 69 396 B budget). Fix: those 16 variants are now
+`#[cfg(feature = "legacy")]` in `msg.rs` (they fail to parse: `unknown variant`);
+`register_eligibility_root` stays (manifold builds it) and returns `DISABLED_IN_BUILD`.
+Standard terp-optimizer flags (image RUSTFLAGS, `-Os --enable-bulk-memory --enable-sign-ext --disable-simd`):
+largest function 52 489 B, scan `ok`.

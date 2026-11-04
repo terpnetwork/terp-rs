@@ -293,24 +293,32 @@ fn opaque<F: Copy>(f: F) -> F {
 
 #[inline(never)]
 fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(), StdError> {
-    if matches!(
+    #[allow(unused_mut)]
+    let mut gated = matches!(
         msg,
         ExecuteMsg::ClaimNote { .. }
             | ExecuteMsg::ClaimNoteForward { .. }
-            | ExecuteMsg::ProcessHeadstash { .. }
-            | ExecuteMsg::BridgeMintNote { .. }
-            | ExecuteMsg::ApplyAcceptedBatch { .. }
-            | ExecuteMsg::ApplyPublicBatch { .. }
             | ExecuteMsg::RegisterHeadstash { .. }
             | ExecuteMsg::RegisterHeadstashSol { .. }
             | ExecuteMsg::RegisterNotes { .. }
             | ExecuteMsg::AcceptAnchor { .. }
-    ) {
+    );
+    #[cfg(feature = "legacy")]
+    {
+        gated = gated
+            || matches!(
+                msg,
+                ExecuteMsg::ProcessHeadstash { .. }
+                    | ExecuteMsg::BridgeMintNote { .. }
+                    | ExecuteMsg::ApplyAcceptedBatch { .. }
+                    | ExecuteMsg::ApplyPublicBatch { .. }
+            );
+    }
+    if gated {
         pause::ensure_not_paused(storage)?;
     }
     Ok(())
 }
-
 #[inline(never)]
 fn pause_dispatch(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> Result<Response, StdError> {
     match msg {
@@ -519,9 +527,11 @@ pub fn execute(
             opaque::<fn(_, _, _, _, _) -> _>(forward::resolve_forward)(deps, &env, &info, channel_id, sequence)
         }
         ExecuteMsg::SetHalSource { source } => opaque::<fn(_, _, _) -> _>(forward::set_hal_source)(deps, &info, source),
-        // v0.0.1 mainnet surface: legacy/bridge/epoch-batch paths are compiled out.
+        // Kept in the enum (manifold builds it); disabled in the v0.0.1 surface.
         #[cfg(not(feature = "legacy"))]
-        _ => Err(StdError::msg(DISABLED_IN_BUILD)),
+        ExecuteMsg::RegisterEligibilityRoot { .. } => Err(StdError::msg(DISABLED_IN_BUILD)),
+        // v0.0.1 mainnet surface: legacy/bridge/epoch-batch variants are compiled
+        // out of ExecuteMsg itself (they fail to parse), keeping the entry small.
     }
 }
 

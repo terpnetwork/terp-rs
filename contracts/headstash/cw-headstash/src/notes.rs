@@ -1829,7 +1829,20 @@ mod tests {
         let list = removed_variants();
         assert_eq!(list.len(), 17);
         for (name, j) in list {
-            let m: ExecuteMsg = serde_json::from_value(j).unwrap_or_else(|e| panic!("{name}: {e}"));
+            // Compiled out of ExecuteMsg (keeps the execute entry under the optimizer's
+            // function budget): must be rejected at parse time. Only
+            // register_eligibility_root stays parseable (manifold builds it).
+            let m: ExecuteMsg = match serde_json::from_value(j.clone()) {
+                Err(e) => {
+                    assert!(e.to_string().contains("unknown variant"), "{name}: {e}");
+                    assert!(cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&j).unwrap()).is_err(), "{name}");
+                    continue;
+                }
+                Ok(m) => {
+                    assert_eq!(name, "register_eligibility_root");
+                    m
+                }
+            };
             // as the owner (gov) and as a stranger, with funds attached
             for who in ["creator", "relayer"] {
                 let s = deps.api.addr_make(who);

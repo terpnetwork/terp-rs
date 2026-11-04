@@ -1,0 +1,119 @@
+{
+  "machine": "Linux-7.0.12-linuxkit-aarch64-with",
+  "artifacts": [
+    {
+      "path": "/out/cw_headstash.wasm",
+      "artifact": "cw_headstash.wasm",
+      "bytes": 927290,
+      "functions": 1052,
+      "largest": 52489,
+      "largest_fn": "func[519]",
+      "longest_udiv_tail": 5147,
+      "longest_udiv_fn": "func[1053]",
+      "arm64": "PASS",
+      "x86_64": "PASS",
+      "verified_on": "arm64:compiled",
+      "offender": null,
+      "notes": [],
+      "top": [
+        {
+          "index": 519,
+          "name": null,
+          "body": 52489,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 557,
+          "name": null,
+          "body": 45696,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 458,
+          "name": null,
+          "body": 42090,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 830,
+          "name": null,
+          "body": 14847,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 1053,
+          "name": null,
+          "body": 14250,
+          "udiv": 7,
+          "tail": 5147,
+          "walk_ok": true
+        }
+      ]
+    },
+    {
+      "path": "/out/cw_headstash_frontend.wasm",
+      "artifact": "cw_headstash_frontend.wasm",
+      "bytes": 389830,
+      "functions": 549,
+      "largest": 18481,
+      "largest_fn": "func[182]",
+      "longest_udiv_tail": 5147,
+      "longest_udiv_fn": "func[552]",
+      "arm64": "PASS",
+      "x86_64": "PASS",
+      "verified_on": "arm64:compiled",
+      "offender": null,
+      "notes": [],
+      "top": [
+        {
+          "index": 182,
+          "name": null,
+          "body": 18481,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 89,
+          "name": null,
+          "body": 17852,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 352,
+          "name": null,
+          "body": 14681,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 552,
+          "name": null,
+          "body": 14250,
+          "udiv": 7,
+          "tail": 5147,
+          "walk_ok": true
+        },
+        {
+          "index": 223,
+          "name": null,
+          "body": 12012,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        }
+      ]
+    }
+  ]
+}

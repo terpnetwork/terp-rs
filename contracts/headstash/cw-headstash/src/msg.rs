@@ -50,10 +50,12 @@ pub struct MigrateMsg {}
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Verify claims and distribute. Each claim binds to a registered `root_id`.
+    #[cfg(feature = "legacy")]
     ProcessHeadstash {
         claims: Vec<HeadstashNote>,
     },
     /// Owner: bind wasmvm store-circuit id used by `proof_instance_verify`.
+    #[cfg(feature = "legacy")]
     SetCircuitId {
         circuit_id: u64,
     },
@@ -69,10 +71,12 @@ pub enum ExecuteMsg {
         #[serde(default)]
         label: Option<String>,
     },
+    #[cfg(feature = "legacy")]
     Mint {
         to_address: String,
         amount: Uint128,
     },
+    #[cfg(feature = "legacy")]
     Burn {
         from_address: String,
         amount: Uint128,
@@ -82,6 +86,7 @@ pub enum ExecuteMsg {
     // Private-bridge mint surface (cw-headstash is the mint router — CLARITY)
     // -------------------------------------------------------------------------
     /// Advance reflection / LC attested roots (owner/operator).
+    #[cfg(feature = "legacy")]
     UpdateReflection {
         pool_root: Binary,
         spent_root: Binary,
@@ -90,10 +95,12 @@ pub enum ExecuteMsg {
         tip_height: u64,
     },
     /// Replace full reflection snapshot (includes K, lag, frozen).
+    #[cfg(feature = "legacy")]
     SetReflectionSnapshot {
         snapshot: ReflectionSnapshot,
     },
     /// Register asset in **internal** registry (never mints balances).
+    #[cfg(feature = "legacy")]
     RegisterAsset {
         /// 32-byte Terp asset id (or mapped tacit id used as key).
         asset_id: Binary,
@@ -106,6 +113,7 @@ pub enum ExecuteMsg {
         status: Option<AssetStatus>,
     },
     /// Optional external asset registry contract address (hook; not required for demos).
+    #[cfg(feature = "legacy")]
     SetExternalAssetRegistry {
         addr: Option<String>,
     },
@@ -114,11 +122,13 @@ pub enum ExecuteMsg {
         addr: Option<String>,
     },
     /// Owner-set bridge corridor config (dest domain, K, lag, mock_verify).
+    #[cfg(feature = "legacy")]
     SetBridgeCfg {
         cfg: BridgeCfg,
     },
     /// One-shot bridge mint → SEAM-NOTE-OUT note result.
     /// Proof verify is **mock/stub** in Round 2 (`mock_verify` or cfg(test)).
+    #[cfg(feature = "legacy")]
     BridgeMintNote {
         claim: BridgeMintClaimPublic,
         /// Opaque membership / reflection receipt (mock or SP1 later).
@@ -127,6 +137,7 @@ pub enum ExecuteMsg {
     /// Option D private-bridge **egress burn** (ZEC SEAM → preauth dest).
     /// Dual-path: `BridgeCfg.mock_verify` / cfg(test) lab, or `zk-api` + `egress_zkid`.
     /// Spent under egress-nf-v0 domain (≠ pool-nf, ≠ bridge mint ν).
+    #[cfg(feature = "legacy")]
     BridgeEgressBurn {
         statement: EgressBurnStatement,
         /// Opaque membership / spend proof (mock or Halo2 later).
@@ -134,10 +145,12 @@ pub enum ExecuteMsg {
     },
 
     /// Owner: fixed CHT amounts for the public Ethereum path. Index `i` pays `amounts[i]`.
+    #[cfg(feature = "legacy")]
     SetDenomTable {
         amounts: Vec<u64>,
     },
     /// Owner: these nullifiers are paid only by the public batch, not the Halo2 batch.
+    #[cfg(feature = "legacy")]
     AssignPublicNotes {
         nullifiers: Vec<Binary>,
     },
@@ -165,12 +178,14 @@ pub enum ExecuteMsg {
     /// `renounce_ownership` is rejected so the campaign can never be orphaned.
     UpdateOwnership(cw_ownable::Action),
     /// Owner: the rows and proof digests an accepted sudo can pay.
+    #[cfg(feature = "legacy")]
     StageEpochBatch {
         digests: Vec<Binary>,
         rows: Vec<crate::epoch::EpochPayout>,
     },
     /// Pay a Halo2 epoch batch whose aggregate is the stored `headstash-accepted` root.
     /// Does not verify the proof.
+    #[cfg(feature = "legacy")]
     ApplyAcceptedBatch {
         allocation_root: Binary,
         root_id: u64,
@@ -181,6 +196,7 @@ pub enum ExecuteMsg {
         vk_hash: Binary,
     },
     /// Pay opened Pedersen destinations for Ethereum logs of fixed denomination indexes.
+    #[cfg(feature = "legacy")]
     ApplyPublicBatch {
         rows: Vec<crate::epoch::PublicOpen>,
     },
