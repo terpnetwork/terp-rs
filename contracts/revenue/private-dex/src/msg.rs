@@ -86,7 +86,6 @@ pub struct SwapStatementPublic {
 }
 
 #[cw_serde]
-#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     // --- Owner admin (astroport-style config / pause surface) ---
     /// Create a virtual pool (factory-lite; multi-pool map like pair registry).
@@ -114,7 +113,7 @@ pub enum ExecuteMsg {
     /// Transparent analog: `crates/dex` `ExecuteMsg::Swap { offer_asset, max_spread, ... }`
     /// but offer is a **proven note spend**, not a bank push.
     SettleSwap {
-        statement: SwapStatementPublic,
+        statement: Box<SwapStatementPublic>,
         proof: Binary,
     },
 }

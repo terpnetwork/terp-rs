@@ -144,7 +144,7 @@ fn settle_swap_mock_verify_updates_reserves_and_nullifier() {
         trader.clone(),
         addr.clone(),
         &ExecuteMsg::SettleSwap {
-            statement: st.clone(),
+            statement: Box::new(st.clone()),
             proof: Binary::from(b"mock-proof".as_slice()),
         },
         &[],
@@ -175,7 +175,7 @@ fn settle_swap_mock_verify_updates_reserves_and_nullifier() {
             trader,
             addr,
             &ExecuteMsg::SettleSwap {
-                statement: statement_for(1000, 0xAB),
+                statement: Box::new(statement_for(1000, 0xAB)),
                 proof: Binary::from(b"mock-proof-2".as_slice()),
             },
             &[],
@@ -198,7 +198,7 @@ fn settle_rejects_empty_proof_under_mock() {
             trader,
             addr,
             &ExecuteMsg::SettleSwap {
-                statement: statement_for(1000, 0x01),
+                statement: Box::new(statement_for(1000, 0x01)),
                 proof: Binary::default(),
             },
             &[],
@@ -219,7 +219,7 @@ fn settle_rejects_curve_mismatch() {
             trader,
             addr,
             &ExecuteMsg::SettleSwap {
-                statement: st,
+                statement: Box::new(st),
                 proof: Binary::from(b"p".as_slice()),
             },
             &[],
@@ -249,7 +249,7 @@ fn paused_pool_rejects_swap() {
             trader,
             addr,
             &ExecuteMsg::SettleSwap {
-                statement: statement_for(1000, 0x03),
+                statement: Box::new(statement_for(1000, 0x03)),
                 proof: Binary::from(b"p".as_slice()),
             },
             &[],
@@ -270,7 +270,7 @@ fn bad_root_rejected() {
             trader,
             addr,
             &ExecuteMsg::SettleSwap {
-                statement: st,
+                statement: Box::new(st),
                 proof: Binary::from(b"p".as_slice()),
             },
             &[],
@@ -306,7 +306,7 @@ fn production_cfg_cfg_test_still_allows_mock_path() {
         trader,
         addr,
         &ExecuteMsg::SettleSwap {
-            statement: statement_for(500, 0x55),
+            statement: Box::new(statement_for(500, 0x55)),
             proof: Binary::from(b"test-proof".as_slice()),
         },
         &[],
