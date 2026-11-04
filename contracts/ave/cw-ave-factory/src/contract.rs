@@ -1,6 +1,4 @@
 use av_event_helpers::get_license_addr;
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{Addr, Coin};
 use cosmwasm_std::{
     BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdResult,
