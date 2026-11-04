@@ -22,7 +22,7 @@ pub const UNIVERSAL_ERROR_ACK: [u8; 32] = [
     0x45, 0x7a, 0xbe, 0xf8, 0x58, 0x91, 0x78, 0xdb, 0x8d, 0x10, 0xc9, 0x4b, 0x4a, 0xb5, 0x11, 0xab,
 ];
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -50,7 +50,7 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate_oracle_registry"))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -69,12 +69,14 @@ pub fn execute(
             deps,
             env,
             info.sender,
-            market_id,
-            source,
-            source_chain,
-            pool_id,
-            height,
-            mid,
+            ExecuteSubmitParams {
+                market_id,
+                source,
+                source_chain,
+                pool_id,
+                height,
+                mid,
+            },
         ),
         ExecuteMsg::SetRelayer { addr, allowed } => {
             only_admin(deps.as_ref(), &info)?;
@@ -112,7 +114,7 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::HashMerchant {
@@ -130,12 +132,14 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 deps,
                 env,
                 admin,
-                chain_uid,
-                SourceKind::VeQuorum,
-                "hashmerchant".into(),
-                None,
-                height,
-                root,
+                ExecuteSubmitParams {
+                    market_id: chain_uid,
+                    source: SourceKind::VeQuorum,
+                    source_chain: "hashmerchant".into(),
+                    pool_id: None,
+                    height,
+                    mid: root,
+                },
             )
         }
     }
@@ -183,13 +187,15 @@ fn execute_polytone_callback(
         &mut deps,
         env,
         cb.initiator,
-        hint.market_id,
-        SourceKind::Polytone,
-        hint.source_chain,
-        hint.pool_id,
-        hint.height,
-        mid,
-        None,
+        RecordObservationParams {
+            market_id: hint.market_id,
+            source: SourceKind::Polytone,
+            source_chain: hint.source_chain,
+            pool_id: hint.pool_id,
+            height: hint.height,
+            mid,
+            position_id: None,
+        },
     )
 }
 
@@ -214,18 +220,30 @@ fn mid_from_query_binary(raw: &Binary) -> Result<String, ContractError> {
     Ok(trimmed.to_string())
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Arguments for [`execute_submit`].
+struct ExecuteSubmitParams {
+    pub market_id: String,
+    pub source: SourceKind,
+    pub source_chain: String,
+    pub pool_id: Option<u64>,
+    pub height: u64,
+    pub mid: String,
+}
+
 fn execute_submit(
     mut deps: DepsMut,
     env: Env,
     recorder: cosmwasm_std::Addr,
-    market_id: String,
-    source: SourceKind,
-    source_chain: String,
-    pool_id: Option<u64>,
-    height: u64,
-    mid: String,
+    args: ExecuteSubmitParams,
 ) -> Result<Response, ContractError> {
+    let ExecuteSubmitParams {
+        market_id,
+        source,
+        source_chain,
+        pool_id,
+        height,
+        mid,
+    } = args;
     may_submit(
         deps.as_ref(),
         &MessageInfo {
@@ -237,29 +255,44 @@ fn execute_submit(
         &mut deps,
         env,
         recorder,
+        RecordObservationParams {
+            market_id,
+            source,
+            source_chain,
+            pool_id,
+            height,
+            mid,
+            position_id: None,
+        },
+    )
+}
+
+/// Arguments for [`record_observation`].
+struct RecordObservationParams {
+    pub market_id: String,
+    pub source: SourceKind,
+    pub source_chain: String,
+    pub pool_id: Option<u64>,
+    pub height: u64,
+    pub mid: String,
+    pub position_id: Option<String>,
+}
+
+fn record_observation(
+    deps: &mut DepsMut,
+    env: Env,
+    recorder: cosmwasm_std::Addr,
+    args: RecordObservationParams,
+) -> Result<Response, ContractError> {
+    let RecordObservationParams {
         market_id,
         source,
         source_chain,
         pool_id,
         height,
         mid,
-        None,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn record_observation(
-    deps: &mut DepsMut,
-    env: Env,
-    recorder: cosmwasm_std::Addr,
-    market_id: String,
-    source: SourceKind,
-    source_chain: String,
-    pool_id: Option<u64>,
-    height: u64,
-    mid: String,
-    position_id: Option<String>,
-) -> Result<Response, ContractError> {
+        position_id,
+    } = args;
     if market_id.trim().is_empty() {
         return Err(ContractError::EmptyMarket {});
     }
@@ -315,7 +348,7 @@ fn record_observation(
     Ok(res)
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Config {} => {
@@ -627,7 +660,7 @@ fn into_ibc(res: Response) -> IbcBasicResponse {
     out
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_send(
     deps: DepsMut,
     _env: Env,
@@ -667,7 +700,7 @@ fn outbound_quotes(value: &Binary) -> Result<Vec<DexQuoteRequest>, ContractError
     Err(ContractError::InvalidMid {})
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_receive(
     _deps: DepsMut,
     _env: Env,
@@ -676,7 +709,7 @@ pub fn ibc2_packet_receive(
     Err(ContractError::Ibc2Unregistered {})
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_ack(
     mut deps: DepsMut,
     env: Env,
@@ -737,13 +770,15 @@ pub fn ibc2_packet_ack(
         &mut deps,
         env,
         recorder,
-        req.market_id,
-        SourceKind::DexQuote,
-        client,
-        None,
-        req.height,
-        mid,
-        Some(position_id),
+        RecordObservationParams {
+            market_id: req.market_id,
+            source: SourceKind::DexQuote,
+            source_chain: client,
+            pool_id: None,
+            height: req.height,
+            mid,
+            position_id: Some(position_id),
+        },
     )?;
     Ok(into_ibc(res))
 }
@@ -813,13 +848,15 @@ fn ack_batch(
             &mut deps,
             env.clone(),
             env.contract.address.clone(),
-            market_id,
-            SourceKind::DexQuote,
-            client.clone(),
-            None,
-            height,
-            mid,
-            Some(position_id),
+            RecordObservationParams {
+                market_id,
+                source: SourceKind::DexQuote,
+                source_chain: client.clone(),
+                pool_id: None,
+                height,
+                mid,
+                position_id: Some(position_id),
+            },
         ) {
             Ok(_) => recorded += 1,
             Err(ContractError::AlreadyRecorded {}) => {}
@@ -831,7 +868,7 @@ fn ack_batch(
         .add_attribute("recorded", recorded.to_string()))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn ibc2_packet_timeout(
     mut deps: DepsMut,
     _env: Env,
