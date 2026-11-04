@@ -105,19 +105,13 @@ mod tests {
         let addr = hs.address().expect("addr");
         let err = wasm_sudo(&mock, &addr, &sudo_msg(ALGO_ACCEPTED, &[9u8; 32], 2)).unwrap_err();
         assert!(err.contains(crate::DISABLED_IN_BUILD), "{err}");
-        let err = hs
-            .execute(
-                &ExecuteMsg::ApplyAcceptedBatch {
-                    allocation_root: Binary::from(vec![0u8; 32]),
-                    root_id: 0,
-                    rows: vec![payout(1, dest.as_str(), 15)],
-                    vk_hash: Binary::default(),
-                },
-                &[],
-            )
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains(crate::DISABLED_IN_BUILD), "{err}");
+        // ApplyAcceptedBatch is compiled out of ExecuteMsg itself in v0.0.1 (keeps `execute` under the
+        // arm64 singlepass function budget): the message cannot even be parsed.
+        let raw = serde_json::json!({"apply_accepted_batch": {
+            "allocation_root": Binary::from(vec![0u8; 32]), "root_id": 0,
+            "rows": [payout(1, dest.as_str(), 15)], "vk_hash": Binary::default()}});
+        let err = cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&raw).unwrap()).unwrap_err().to_string();
+        assert!(err.contains("unknown variant"), "{err}");
         assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
     }
 
