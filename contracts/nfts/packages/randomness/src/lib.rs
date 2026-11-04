@@ -1,8 +1,9 @@
 //! Draw entropy for the raffle contract.
 //!
 //! Atlas used a Nois proxy and, later, a Drand verifier contract
-//! (`packages/randomness` plus `contracts/raffles/src/randomness`). Neither
-//! Nois nor a Drand client is in this workspace. Draws go through
+//! (`packages/randomness` plus `contracts/raffles/src/randomness`). This
+//! workspace ships `contracts/nfts/terp-beacon`, an in-contract drand
+//! verifier derived from Nois. Draws go through
 //! [`RandomnessSource`]:
 //!
 //! * `Seed` — a configured provider (or anyone, when the provider is unset)
@@ -12,7 +13,7 @@
 //! * `Callback` — `RequestDraw` calls [`VerifierExecuteMsg::Provide`] on an
 //!   external verifier. The successful reply must include wasm attributes
 //!   `raffle_id`, `round`, `randomness` (base64 of 32 bytes), and `owner`.
-//!   The verifier is not shipped here.
+//!   `terp-beacon` implements `Provide` and is the verifier the nftfi suite wires.
 //!
 //! See `contracts/nfts/RANDOMNESS.md`.
 
