@@ -17,8 +17,6 @@ pub const NORICK_CONTRACT: &str = "norick";
 // ────────────────────────────────────────────────────────────────────────────
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     AnyMsg, Binary, Checksum, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
     StdResult, VerificationError, to_json_binary,
