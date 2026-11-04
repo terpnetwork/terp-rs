@@ -562,49 +562,6 @@ fn build_transfer_msg(
     }
 }
 
-/// Send accumulated tokens to owner. Used on cutoff in both ShitStrap and ShitStrapAndMint reply success.
-fn send_accumulated_to_owner(
-    deps: &Deps,
-    exclude_denom: &str,
-    exclude_shit_amount: Uint256,
-    overflow: Uint256,
-    recipient: &Addr,
-) -> Result<Vec<CosmosMsg>, ContractError> {
-    let mut msgs = vec![];
-
-    for owned in SHITSTRAP_STATE.range(deps.storage, None, None, cosmwasm_std::Order::Ascending) {
-        let tokens = owned?;
-        let denom_key = &tokens.0;
-        let total_amount = tokens.1;
-
-        let is_cw20 = match POSSIBLE_SHIT.may_load(deps.storage, denom_key.to_string())? {
-            Some(d) => matches!(d.token, UncheckedDenom::Cw20(_)),
-            None => unimplemented!(),
-        };
-
-        // ensure we do not recalculate  current sent
-        let send_amount = if denom_key == exclude_denom {
-            total_amount - (exclude_shit_amount - overflow)
-        } else {
-            total_amount
-        };
-
-        if send_amount.is_zero() {
-            continue;
-        }
-
-        let msg = build_transfer_msg(
-            is_cw20,
-            denom_key.to_string(),
-            send_amount,
-            recipient.clone(),
-        )?;
-        msgs.push(msg);
-    }
-
-    Ok(msgs)
-}
-
 /// Entry point to participate in shitstrap.
 /// recp - if set, will recieve funds from shitstrap action
 /// shitter - the address set to recieve the funds from the shitstrap action
@@ -632,17 +589,37 @@ pub fn execute_shit_strap_internal(
     let new_val = deposit.new_val;
     let cutoff = config.cutoff;
 
+    // Amounts actually consumed by this deposit. Without a cutoff the whole
+    // deposit is forwarded to the owner and its full value paid in SHITMOS.
+    let mut shitmos_amount = deposit.shit_value;
+    let mut owner_amount = shit.amount;
+    let mut stored_val = new_val;
+
     if new_val >= cutoff {
-        // Normal ShitStrap cutoff — distribute to owner, refund overflow
-        let (_, return_amount) = calculate_shit_return(new_val, cutoff, deposit.shit_rate.into())?;
+        // Cutoff reached: only the part up to `cutoff` is accepted. The overflow
+        // (in deposit units) is refunded to the shitter, the owner receives the
+        // remainder, and SHITMOS is paid only for the accepted value.
+        let (overflow, return_amount) =
+            calculate_shit_return(new_val, cutoff, deposit.shit_rate.into())?;
+        owner_amount = shit.amount.checked_sub(return_amount)?;
+        shitmos_amount = deposit.shit_value.checked_sub(overflow)?;
+        stored_val = cutoff;
+
+        SHITSTRAP_STATE.update::<_, ContractError>(
+            deps.storage,
+            deposit.denom_key.clone(),
+            |prev| Ok(prev.unwrap_or_default().checked_sub(return_amount)?),
+        )?;
 
         //  refunds always are obligated to shitter, even if there is some recp.
-        msgs.push(build_transfer_msg(
-            matches!(deposit.received_denom, CheckedDenom::Cw20(_)),
-            deposit.received_denom.to_string(),
-            return_amount,
-            shitter.clone(),
-        )?);
+        if !return_amount.is_zero() {
+            msgs.push(build_transfer_msg(
+                matches!(deposit.received_denom, CheckedDenom::Cw20(_)),
+                deposit.received_denom.to_string(),
+                return_amount,
+                shitter.clone(),
+            )?);
+        }
 
         let mut updated = config.clone();
         updated.full_of_shit = true;
@@ -650,36 +627,36 @@ pub fn execute_shit_strap_internal(
         attrs.push(Attribute::new("cutoff_reached", "true"));
     }
 
-    // send all funds we just shitstrap into the actions
+    // send the SHITMOS earned by this deposit into the actions
     let send_shitmos = match nft {
         Some(nft) => into_cosmos_msg(
             nft.c,
             &nft.msg,
-            vec![config.shitmos_addr.to_cw_coin(deposit.shit_value)?],
+            vec![config.shitmos_addr.to_cw_coin(shitmos_amount)?],
         )?,
         None => config.shitmos_addr.get_transfer_to_message(
             &match recp {
                 Some(r) => deps.api.addr_validate(&r)?,
                 None => shitter,
             },
-            deposit.shit_value,
+            shitmos_amount,
         )?,
     };
 
-    // transfer funds that were shitstrapped to the owner.
+    // transfer the accepted part of the deposit to the owner.
     let send_shit = build_transfer_msg(
         match deposit.received_denom {
             CheckedDenom::Native(_) => false,
             CheckedDenom::Cw20(_) => true,
         },
         deposit.denom_key.to_string(),
-        shit.amount,
+        owner_amount,
         config.owner.clone(),
     )?;
     msgs.extend(vec![send_shitmos, send_shit]);
 
-    // Save updated total value
-    CURRENT_SHITSTRAP_VALUE.save(deps.storage, &new_val)?;
+    // Save updated total value (never above cutoff)
+    CURRENT_SHITSTRAP_VALUE.save(deps.storage, &stored_val)?;
     Ok(Response::new().add_messages(msgs).add_attributes(attrs))
 }
 
@@ -727,16 +704,6 @@ pub fn execute_flush(deps: DepsMut, sender: Addr) -> Result<Response, ContractEr
         .shitmos_addr
         .get_transfer_to_message(&config.owner, config.cutoff - current_shit_value)?;
     msgs.push(send_shitmos);
-
-    // Send all collected tokens to owner
-    let own_msgs = send_accumulated_to_owner(
-        &deps.as_ref(),
-        "",
-        Uint256::zero(),
-        Uint256::zero(),
-        &config.owner,
-    )?;
-    msgs.extend(own_msgs);
 
     Ok(Response::new()
         .add_attribute("flusher", sender.to_string())
