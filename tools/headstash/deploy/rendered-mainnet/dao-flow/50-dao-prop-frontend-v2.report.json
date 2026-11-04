@@ -14,7 +14,7 @@
   "terpy": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
   "thioly": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
  },
- "manifest_pin_sha256": "bfac3a4425c62aeb0866870a3faecbe55135b65441a2fe4f18deb92cb939eb7f",
+ "manifest_pin_sha256": "0b0703ef6c67b7053908c04f0dff21cae5a7b3b100ee63eb8f7e5695b748bae3",
  "theme": {
   "light": {
    "accent": "#4078AC",
@@ -42,20 +42,20 @@
   }
  },
  "theme_file": "tools/headstash/frontend/themes/azure-calcium.json",
- "bundle_sha256": "cecfc1ec3711a0cf015f86f360791190127e7d9008e540b5db32d1d8be03f882",
+ "bundle_sha256": "7193959c7792212015ff716090650d2db5856f218c2c648e3b18f6959faa84cd",
  "files": [
   {
    "path": "app.html",
-   "raw_size": 24457,
-   "gzip_size": 6711,
-   "sha256": "87fecc10d44f0e583fd19119f30a27ba54bd3c6e93087806eb2c7fe5f78f6250",
+   "raw_size": 32267,
+   "gzip_size": 8483,
+   "sha256": "0039e5e7eca8095ce5fe04f2155a432c2fb5b94982638b62c086d8f2707087d6",
    "chunks": 1
   },
   {
    "path": "app.js",
-   "raw_size": 61332,
-   "gzip_size": 20021,
-   "sha256": "82b0d18d6d3fe1e91b0b735f5627c2fc7b3d6acaa09cf3f9b9ffbfcc8ef02234",
+   "raw_size": 68843,
+   "gzip_size": 22486,
+   "sha256": "2e2cc8484b6985a16f6b047bd0eb1d5282575f8e8295912f00609411fa3fd25b",
    "chunks": 1
   },
   {
@@ -67,9 +67,9 @@
   },
   {
    "path": "v2lib.js",
-   "raw_size": 30084,
-   "gzip_size": 11316,
-   "sha256": "124c7c007f37bb3a26e0ec3e68f3984a0563fbc2a2357ee39d9eb1dadbab5ebd",
+   "raw_size": 31568,
+   "gzip_size": 11754,
+   "sha256": "f3ecf22a2145052c911cffb41cde02de19b0444381ad081ab0b60a8bca336a09",
    "chunks": 1
   },
   {
@@ -102,20 +102,20 @@
   }
  ],
  "chunks_total": 12,
- "stored_bytes": 736932,
+ "stored_bytes": 741607,
  "propose_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.propose.json",
- "propose_sha256": "bdb70d977e7197f315a844bb0244ff9ed48b861b6d97b5f268639a802ff66f84",
+ "propose_sha256": "e0b40ae8105bed668c375b167b4d27d4e18d6f9dd525148298caa1b85cb41e69",
  "chunks_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.chunks.json",
- "chunks_sha256": "ba1e392fdb10131cdfafd0783055621b259d366457b7cb52f7b78ba52d8c3a2b",
+ "chunks_sha256": "76b2084c08f5616eb8339dbadb73c90661fd3557dd1fe10c619ff419cb537f8c",
  "loaders": {
   "terpy": {
    "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-terpy.html",
-   "sha256": "1f116bf8faaaba3462e2e7c31c25b6d3d01f64106b33a6dc3ed379d0c1bc07e7",
+   "sha256": "33b5c40dd8f03b0a5e168193c1e577ff71306107c44041fdff7ff33d72dec233",
    "headstash": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q"
   },
   "thioly": {
    "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-thioly.html",
-   "sha256": "99330fc1878334ae52a96ef864404b18062892e8eeeea049c18fbb8605c7a1fd",
+   "sha256": "e2978ec4d88eef37de0782ee62564a9c1c6d22bc3280f79509c6249edd8de604",
    "headstash": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
   }
  },

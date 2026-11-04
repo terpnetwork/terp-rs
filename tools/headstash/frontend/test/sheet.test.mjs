@@ -36,7 +36,7 @@ test("components in flow order, each with toggle and collapsed body; info button
   const inl = { eligibility: ["hal", "eligibility", "rawkey", "notesfile"], register: ["reward", "passphrase", "register"], save: ["export"], wallet: ["destination"], claim: ["anchor", "privacy", "claim"] };
   for (const [s, ids] of Object.entries(inl)) assert.deepEqual([...bodyOf(s).matchAll(/data-info="([a-z]+)"/g)].map((x) => x[1]), ids, s);
   // each one is adjacent to its field: inside the heading, legend, label or button row it explains
-  for (const [ctx, id] of [["<h3>Eligibility set (HAL) ", "hal"], ["<h3>Check your address", "eligibility"], ["<legend>Reward address ", "reward"], ['<label for="pass">', "passphrase"], ['<button id="register" disabled>Register notes</button>', "register"], ["<legend>Claim to ", "destination"], ['<button id="anchor-check">', "anchor"], ['<h3 id="privacy-h">', "privacy"], ['<button id="claim" disabled>Claim</button>', "claim"]]) {
+  for (const [ctx, id] of [["<h3>Eligibility list ", "hal"], ["<h3>Check your address", "eligibility"], ["<legend>Reward address ", "reward"], ['<label for="pass">', "passphrase"], ['<button id="register" disabled>Register notes</button>', "register"], ["<legend>Claim to ", "destination"], ['<button id="anchor-check">', "anchor"], ['<h3 id="privacy-h">', "privacy"], ['<button id="claim" disabled>Claim</button>', "claim"]]) {
     const i = sheet.indexOf(ctx); assert.ok(i >= 0, ctx); assert.ok(sheet.slice(i, i + 260).includes(`data-info="${id}"`), id);
   }
 });

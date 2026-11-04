@@ -62,7 +62,8 @@ sequenceDiagram
 ## R2 — Users MUST NOT set the public note set by hand; web retrieval of the HAL
 
 **Design.**
-- The page resolves `hal_cid` from the selected headstash (R8/R9). It fetches it, in order: (a) the local cache (IndexedDB keyed by CID); (b) `https://terp.network/headstash/hal/<cid>/…` (same origin, CSP-friendly); (c) public gateways in a fixed list via `https://<gw>/ipfs/<cid>?format=car`.
+- **Opt-in fetch (MUST, fix4).** Selecting a headstash never fetches the HAL automatically. The page shows the on-chain source (URI, sha256, CID, root) and the user starts the download with "Fetch and verify list". Until then the address check asks the user to fetch first; nothing about the user is sent either way.
+- The page resolves `hal_cid` from the selected headstash (R8/R9). Once the user asks, it fetches it, in order: (a) the local cache (IndexedDB keyed by CID); (b) `https://terp.network/headstash/hal/<cid>/…` (same origin, CSP-friendly); (c) public gateways in a fixed list via `https://<gw>/ipfs/<cid>?format=car`.
 - **Verification in the browser (MUST).** Fetch the CAR (trustless gateway format), verify every block hash against its CID and walk the DAG from the root CID. Use `@ipld/car` + `multiformats` (sha256 via WebCrypto). Bundle these into the page; no remote script. Never trust a gateway's `200` for plain `/ipfs/<cid>/file` responses.
 - Then check the root against the chain (R1). If either check fails, the user sees a red state and claim/registration are disabled.
 - An "advanced" disclosure lets users load a local HAL file. It goes through the same two checks; it never replaces the CID.

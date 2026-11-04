@@ -75,29 +75,35 @@ async function instanceInfo(a) {
   const bal = await lcd(`/cosmos/bank/v1beta1/balances/${a}`).catch(() => ({ balances: [] }));
   return { addr: a, label: ci.label, admin: ci.admin, creator: ci.creator, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp, rt, dc, tokens: V.instanceTokens(bal.balances, cfg.denom), balances: bal.balances || [] };
 }
-let defaultHs = null;
-function critChips(i) {
-  const box = el("div", { className: "chips crit" }), c = i.camp || {}, r = c.registration || {};
-  for (const x of c.amounts || []) box.append(chip("", `${amt(x.amount)} ×${x.cap}`));
-  if (r.min_anonymity_set != null) box.append(chip("min set", r.min_anonymity_set));
-  if (c.cutoff_height != null) box.append(chip("cutoff", `block ${c.cutoff_height}`));
-  return box;
+let defaultHs = null; const infos = new Map();
+// ---- fix4: key/value tables (truncated monospace values, click to copy) + Parameters modal ----
+function kvValue(v) {
+  const b = el("button", { type: "button", className: "kvv", title: v }, el("span", { textContent: v }));
+  b.dataset.copy = v; b.setAttribute("aria-label", `Copy ${v}`);
+  b.onclick = async (e) => { e.stopPropagation(); const ok = await copyText(v); b.dataset.copied = ok ? "1" : "0"; toast(ok ? `Copied ${v.length > 24 ? v.slice(0, 12) + "…" + v.slice(-8) : v}` : "Copy failed: select the value manually"); };
+  return b;
 }
-function paramsDropdown(i, root) { const d = el("details", { className: "params" }, el("summary", { textContent: "All parameters" }), paramChips(i, root)); return d; }
-function paramChips(i, root) {
-  const box = el("div", { className: "chips" }), c = i.camp || {}, r = c.registration || {};
-  for (const x of c.amounts || []) box.append(chip("note", `${amt(x.amount)} ×${x.cap}`));
-  if (cfg.denom) box.append(chip("denom", cfg.denom));
-  if (r.min_anonymity_set != null) box.append(chip("min set", r.min_anonymity_set));
-  if (c.cutoff_height != null) box.append(chip("cutoff", `block ${c.cutoff_height}`));
-  if (i.rt) box.append(chip("registered", i.rt.count), chip("anchors", i.rt.anchor_count ?? (i.rt.latest_anchor ? 1 : 0)));
-  if (i.dc) box.append(chip("claimed", i.dc.claimed ?? 0));
-  const fc = i.channels ? i.channels.filter((x) => x.enabled).map((x) => x.channel_id) : null;
-  if (i.tokens) box.append(chip("tokens", i.tokens.map(V.prettyDenom).join(" ") || "none", { title: i.tokens.join(" ") }));
-  if (i.creator) box.append(chip("creator", V.shortAddr(i.creator), { title: i.creator }));
-  box.append(chip("forward", fc ? fc.join(" ") || "none" : "?"), chip("HAL", i.hal ? "set" : "unset", i.hal ? { title: i.hal.uri } : {}), chip("admin", i.admin ? V.shortAddr(i.admin) : "none", i.admin ? { title: i.admin } : {}), chip("root", root ? root.slice(0, 10) + "…" : "?", root ? { title: root } : {}));
-  return box;
+/** rows: [label, value, copy?]; copy values render as one-line truncated monospace buttons that copy the full value. */
+function kvTable(t, rows) {
+  t.replaceChildren(...rows.filter(Boolean).map(([k, v, cp]) => { const r = el("tr", {}, el("th", { scope: "row", textContent: k }), el("td", {}, cp && v ? kvValue(String(v)) : el("span", { className: "kvt", textContent: v == null || v === "" ? "–" : String(v) }))); r.dataset.k = k; return r; }));
+  t.dataset.rows = t.rows.length; return t;
 }
+function paramRows(i, root) {
+  const c = i.camp || {}, r = c.registration || {}, fc = i.channels ? i.channels.filter((x) => x.enabled !== false).map((x) => x.channel_id) : null;
+  const st = i.pause ? (i.pause.paused || i.pause.claims_paused ? "paused" : "active") : null;
+  return [["Contract", i.addr, 1], ["Label", i.label || i.ci?.label || "(no label)"], ["Code id", i.code_id ?? i.ci?.code_id], st && ["Status", st],
+    ["Creator", i.creator || i.ci?.creator, 1], ["Admin", i.admin || i.ci?.admin || "none", !!(i.admin || i.ci?.admin)],
+    ...(c.amounts || []).map((x, k) => [`Note class ${k}`, `${amt(x.amount)} × ${x.cap}`]), ["Denom", cfg.denom],
+    ["Min anonymity set", r.min_anonymity_set], ["Anchor interval", r.anchor_interval != null ? `${r.anchor_interval} blocks` : null], ["Cutoff", c.cutoff_height != null ? `block ${c.cutoff_height}` : null],
+    i.rt && ["Registered", i.rt.count], i.rt && ["Anchors", i.rt.anchor_count ?? (i.rt.latest_anchor ? 1 : 0)], i.dc && ["Claimed", i.dc.claimed ?? 0],
+    ["Tokens held", i.tokens ? i.tokens.map(V.prettyDenom).join(" ") || "none" : null], ["Forward channels", fc ? fc.join(" ") || "none (forward_channels is empty)" : "?"],
+    ["Eligibility list", i.hal ? i.hal.uri : "not set", !!i.hal], ["Eligibility root", root, !!root]];
+}
+function paramsOpen(i, root) {
+  $("params-title").textContent = `Parameters: ${i.label || i.ci?.label || "Headstash"}`; $("params-sub").textContent = "Public contract state read from the chain. Click a value to copy it.";
+  kvTable($("params-kv"), paramRows(i, root)); $("params-dlg").dataset.addr = i.addr; $("params-dlg").showModal();
+}
+const paramsBtn = (fn, a) => { const b = el("button", { type: "button", className: "ghost", textContent: "Parameters" }); b.dataset.params = a; b.setAttribute("aria-haspopup", "dialog"); b.setAttribute("aria-label", "Parameters of Headstash " + a); b.onclick = (e) => { e.stopPropagation(); fn(); }; return b; };
 async function browse() {
   return guarded("inst-err", async () => {
     const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
@@ -110,11 +116,13 @@ async function browse() {
           const i = await instanceInfo(a).catch((e) => ({ addr: a, error: e.message }));
           const paused = i.pause && (i.pause.paused || i.pause.claims_paused) ? "paused" : i.pause ? "active" : "?";
           const root = rootHex(i.camp?.registration?.eligibility_root);
-          const params = el("div", {}, chip("", i.error ? "error" : paused), critChips(i), paramsDropdown(i, root));
+          infos.set(a, { ...i, root });
+          const status = el("div", { className: "chips" }, chip("", i.error ? "error" : paused));
           const btn = el("button", { textContent: "Open" });
           btn.setAttribute("aria-label", "Open Headstash " + a); btn.setAttribute("aria-haspopup", "dialog"); btn.dataset.addr = a; btn.onclick = () => openInstance(a, btn);
           const who_ = el("span", { className: "muted sub" }); if (i.creator) who_.append("by ", copyChip(i.creator));
-          const tr = el("tr", {}, el("td", {}, el("b", { textContent: i.label || "(no label)" }), el("br"), copyChip(a), el("br"), who_), el("td", { textContent: String(code) }), i.error ? el("td", { textContent: i.error }) : el("td", {}, params), el("td", {}, btn));
+          const act = el("div", { className: "inst-act" }, ...(i.error ? [] : [paramsBtn(() => paramsOpen({ ...i, code_id: i.code_id ?? code }, root), a)]), btn);
+          const tr = el("tr", {}, el("td", {}, el("b", { textContent: i.label || "(no label)" }), el("br"), copyChip(a), el("br"), who_), i.error ? el("td", { textContent: i.error }) : el("td", {}, status), el("td", {}, act));
           tr.dataset.addr = a; tr.dataset.creator = i.creator || ""; tr.dataset.tokens = (i.tokens || []).join(" ");
           rows.push(tr); acc.push({ addr: a, creator: i.creator, admin: i.admin, tokens: i.tokens || [], label: i.label, row: tr });
           n++;
@@ -132,12 +140,12 @@ async function browse() {
 }
 // ---- fix3: filters (token from bank balances + configured denom; creator from contract info), combined ----
 function applyFilters() {
-  const keep = new Set(V.filterInstances(all, { tokens: [...filt.tokens], creators: [...filt.creators] }).map((i) => i.addr));
+  const keep = new Set(V.filterInstances(all, { tokens: [...filt.tokens], creators: [...filt.creators], q: $("inst-q").value }).map((i) => i.addr));
   for (const i of all) i.row.hidden = !keep.has(i.addr);
   $("inst-list").dataset.shown = keep.size;
   const lbl = (k, set) => set.size ? `${k}: ${[...set].map((v) => (k === "Token" ? V.prettyDenom(v) : V.shortAddr(v))).join(", ")}` : `${k}: all`;
   $("f-token").textContent = lbl("Token", filt.tokens); $("f-creator").textContent = lbl("Creator", filt.creators);
-  $("f-clear").hidden = !filt.tokens.size && !filt.creators.size;
+  $("f-clear").hidden = !filt.tokens.size && !filt.creators.size && !$("inst-q").value.trim();
   $("f-count").textContent = all.length ? `${keep.size} of ${all.length} shown` : "";
 }
 let fkind = "tokens";
@@ -163,9 +171,16 @@ function detailsRender() {
   if (inst) {
     const ci = inst.ci || {}, h = inst.hal;
     box.push(el("h3", { textContent: "Open Headstash" }), el("dl", {}, ...kv("Label", ci.label || "–"), ...kv("Contract", copyChip(inst.addr)), ...kv("Code id", ci.code_id), ...kv("Creator", ci.creator ? copyChip(ci.creator) : "–"), ...kv("Admin", ci.admin ? copyChip(ci.admin) : "none"),
-      ...kv("HAL URI", h ? h.uri : "not set"), ...kv("HAL commitment", h ? `sha256 ${h.sha256 || "–"}  cid ${h.cid || "–"}` : "–"), ...kv("Eligibility root", inst.root)), el("h4", { textContent: "Configuration" }), paramChips({ ...inst, ...ci, tokens: inst.tokens, rt: priv && anc ? { count: anc.count, anchor_count: anc.accepted ? 1 : 0 } : null }, inst.root));
+      ...kv("HAL URI", h ? h.uri : "not set"), ...kv("HAL commitment", h ? `sha256 ${h.sha256 || "–"}  cid ${h.cid || "–"}` : "–"), ...kv("Eligibility root", inst.root)), el("h4", { textContent: "Configuration" }), kvTable(el("table", { className: "kv" }), paramRows({ ...inst, ...ci, addr: inst.addr, tokens: inst.tokens, rt: priv && anc ? { count: anc.count, anchor_count: anc.accepted ? 1 : 0 } : null }, inst.root)));
   } else box.push(el("p", { className: "muted", textContent: "Open a Headstash to see its contract details here." }));
   $("details-body").replaceChildren(...box);
+}
+function verifyRender() {
+  const fs = feManifest && Array.isArray(feManifest.files) ? feManifest.files : [];
+  const nch = fs.reduce((s, f) => s + (Array.isArray(f.chunks) ? f.chunks.length : 0), 0), bytes = fs.reduce((s, f) => s + (Number(f.stored_size) || 0), 0);
+  kvTable($("verify-kv"), [["Frontend contract", feConfig && feConfig.frontend, 1], ["Manifest version", feManifest ? feManifest.version : null],
+    ["On-chain chunks", fs.length ? `${nch} chunks in ${fs.length} files (${(bytes / 1024).toFixed(0)} KiB stored, gzip)` : null], ["Chain", cfg.chain_id], ["LCD", cfg.rest, 1], ["Register relay", cfg.relay, 1],
+    ...fs.map((f) => [`sha256 ${f.path}`, f.sha256, 1])]);
 }
 function detailsOpen() { detailsRender(); $("details-dlg").showModal(); }
 // ---- fix3 P0: registration status comes from the chain, never only from the file ----
@@ -195,17 +210,24 @@ function clearNotes() {
 function teardown() {
   if (instScope) instScope.dispose(); instScope = new V.Scope();
   clearNotes(); elig = null; inst = null; priv = null; anc = null; chash = "";
-  for (const id of ["anchor-reason", "reg-privacy", "sheet-creator", "sheet-crit"]) $(id).replaceChildren();
-  for (const id of ["elig-out", "hal-src", "hal-err", "elig-err"]) $(id).textContent = "";
-  $("elig-out").dataset.notes = ""; $("derive").disabled = true; setHal("idle", "Not loaded."); $("sheet-label").textContent = "Headstash";
+  for (const id of ["anchor-reason", "reg-privacy", "sheet-creator", "sheet-crit", "hal-kv", "bridge-kv"]) $(id).replaceChildren();
+  for (const id of ["elig-out", "hal-err", "elig-err", "bridge-err"]) $(id).textContent = "";
+  $("bridge").hidden = true; $("elig-out").dataset.notes = ""; $("derive").disabled = true; setHal("idle", "Not fetched."); $("hal-fetch").disabled = false; $("sheet-label").textContent = "Headstash";
   anchorPoll();
 }
 // ---- fix3: MetaMask connect / disconnect / account + chain change ----
+// fix4: one fixed-size card; both buttons always rendered (disabled, never hidden) so nothing moves between states
+const CHAINS = { "0x1": "Ethereum", "0xa": "Optimism", "0x38": "BNB Chain", "0x89": "Polygon", "0x2105": "Base", "0xa4b1": "Arbitrum One", "0xaa36a7": "Sepolia" };
+const chainName = (c) => (c ? CHAINS[String(c).toLowerCase()] || `chain ${parseInt(c, 16) || c}` : "–");
 function mmUi() {
-  const on = !!(who && who.kind === "eip1193");
-  $("mm-disconnect").hidden = !on; $("mm-connect").textContent = on ? "Switch account" : "Connect MetaMask";
-  $("mm-account").textContent = on ? `Connected: 0x${who.id}` : who ? `Using pasted key 0x${who.id}` : "Not connected";
+  const on = !!(who && who.kind === "eip1193"), a = who ? `0x${who.id}` : "";
+  $("acct").dataset.state = on ? "on" : who ? "key" : "off";
+  $("mm-disconnect").hidden = false; $("mm-disconnect").disabled = !on; $("mm-connect").textContent = on ? "Switch account" : "Connect";
+  $("mm-addr").textContent = who ? `${a.slice(0, 8)}…${a.slice(-6)}` : "Not connected"; $("mm-addr").title = a; $("mm-copy").disabled = !who; $("mm-copy").dataset.copy = a;
+  $("mm-net").textContent = on ? chainName(who.chain) : who ? "pasted key" : "–";
+  $("mm-account").textContent = on ? "Connected · looked up locally" : who ? "Using pasted key" : "Not connected";
 }
+function eligPrompt() { $("elig-out").textContent = `Fetch the eligibility list above to check ${who ? "0x" + who.id : "your address"} locally.`; $("elig-out").dataset.notes = ""; $("elig-out").dataset.need = "fetch"; }
 function walletBind() {
   const eth = window.ethereum; if (!eth || walletScope || typeof eth.on !== "function") return;
   walletScope = new V.Scope(); walletScope.on(eth, "accountsChanged", onAccounts); walletScope.on(eth, "chainChanged", onChain);
@@ -220,10 +242,10 @@ async function onAccounts(acc) {
       if (!saved) { who = { kind: "eip1193", id, addr: "0x" + id }; mmUi(); $("elig-out").textContent = `MetaMask switched to 0x${id}, but the notes derived for 0x${state.identity} are not saved yet. Save them (step 3), then switch again.`; return; }
       clearNotes();
     }
-    who = { kind: "eip1193", id, addr: "0x" + id }; mmUi(); if (elig) showElig();
+    who = { kind: "eip1193", id, addr: "0x" + id, chain: who && who.chain }; mmUi(); if (elig) showElig(); else eligPrompt();
   });
 }
-function onChain(c) { log(`MetaMask chain changed to ${c} (notes do not depend on the EVM chain); re-reading the account`); if (window.ethereum) window.ethereum.request({ method: "eth_accounts" }).then(onAccounts).catch(() => {}); }
+function onChain(c) { if (who && who.kind === "eip1193") { who.chain = c; mmUi(); } log(`MetaMask chain changed to ${c} (notes do not depend on the EVM chain); re-reading the account`); if (window.ethereum) window.ethereum.request({ method: "eth_accounts" }).then(onAccounts).catch(() => {}); }
 function mmLocalDisconnect(msg) {
   who = null; if (state && saved) clearNotes(); else if (state) msg += " Your derived notes were kept because they are not saved yet.";
   $("elig-out").textContent = msg; $("elig-out").dataset.notes = ""; $("derive").disabled = true; mmUi();
@@ -251,14 +273,16 @@ async function selectInstance(a) {
     const ctx = hex(await directCtx());
     const exp = dc && (dc.expected_ctx || dc.ctx); if (exp && rootHex(exp) !== ctx) throw new Error("direct-claim ctx mismatch: wrong chain id or contract");
     inst = { addr: a, camp, hal, ci, tokens: V.instanceTokens(bal.balances, cfg.denom), channels: listOf(ch, "channels").filter((c) => c.enabled), root: rootHex(camp?.registration?.eligibility_root) };
-    $("sheet-crit").replaceChildren(critChips(inst));
+    $("sheet-crit").replaceChildren(paramsBtn(() => paramsOpen({ ...inst, ...inst.ci, addr: inst.addr, rt: priv && anc ? { count: anc.count, anchor_count: anc.accepted ? 1 : 0 } : null, dc: priv ? { claimed: priv.claimed } : null }, inst.root), a));
     if (!inst.root) throw new Error("instance has no registration eligibility root");
-    $("hal-src").textContent = hal ? `${hal.uri}  sha256=${hal.sha256 || "–"}  cid=${hal.cid || "–"}` : "not set";
+    kvTable($("hal-kv"), hal ? [["Source", hal.uri, 1], ["sha256", hal.sha256, !!hal.sha256], ["IPFS CID", hal.cid, !!hal.cid], ["Eligibility root", inst.root, 1]] : [["Source", "not set"]]);
+    $("hal-fetch").disabled = !hal; setHal("idle", hal ? "Not fetched. Fetching downloads the public list from the source above and checks it against the on-chain sha256/CID and root; nothing about you is sent." : "This Headstash has no eligibility list source set.");
     $("fwd-channel").replaceChildren(...inst.channels.map((c) => el("option", { value: c.channel_id, textContent: `${c.channel_id} (timeout ${c.timeout_seconds}s)` })));
     fwdState();
     log(`selected ${a}; root ${inst.root.slice(0, 16)}…; ${inst.channels.length} forward channel(s)`);
     await privacyRefresh();
-    if (hal) await halFetch();
+    // fix4: the eligibility list is never fetched automatically; the user opts in with "Fetch and verify list"
+    if (who) eligPrompt();
     return true;
   });
 }
@@ -382,18 +406,18 @@ async function halLocal() {
 // ---- R2: eligibility via MetaMask (address only; lookup is local) ----
 function showElig() {
   const rows = elig.get(who.id) || [];
-  const tot = rows.reduce((a, r) => a + (r.amount != null ? Number(r.amount) : 0), 0);
+  const tot = rows.reduce((a, r) => a + (r.amount != null ? Number(r.amount) : 0), 0); $("elig-out").dataset.need = "";
   $("elig-out").textContent = rows.length ? `0x${who.id} is eligible: ${rows.length} notes${tot ? `, ${tot} ${cfg.denom}` : ""}.` : `0x${who.id} is not in this eligibility set.`;
   $("elig-out").dataset.notes = rows.length; $("derive").disabled = !rows.length || !!state;
 }
 async function mmConnect() {
   return guarded("elig-err", async () => {
-    if (!elig) throw new Error("verify the HAL first (step 2)");
     const eth = window.ethereum; if (!eth) throw new Error("no MetaMask (EIP-1193) provider found");
     const acc = await eth.request({ method: "eth_requestAccounts" }); if (!acc || !acc[0]) throw new Error("no account shared");
     const id = acc[0].toLowerCase().replace(/^0x/, ""); if (!/^[0-9a-f]{40}$/.test(id)) throw new Error("bad account from wallet");
     if (state && state.identity !== id && saved) clearNotes();
-    who = { kind: "eip1193", id, addr: "0x" + id }; walletBind(); mmUi(); showElig();
+    const chain = await eth.request({ method: "eth_chainId" }).catch(() => null);
+    who = { kind: "eip1193", id, addr: "0x" + id, chain }; walletBind(); mmUi(); if (elig) showElig(); else eligPrompt();
   });
 }
 async function keyUse() {
@@ -460,7 +484,7 @@ async function derive() {
     if (who.kind === "eip1193") sig = await personalSign(msg);
     else { const m = te.encode(msg), s = await C.sign(rawKey, C.keccak256(cat(te.encode("\x19Ethereum Signed Message:\n" + m.length), m))); sig = cat(s.r, s.s, new Uint8Array([27 + (s.rec & 1)])); }
     ikm.fill(0); if (rawKey) { rawKey.fill(0); rawKey = null; }
-    state = { v: 1, ui: 2, derivation: who.kind === "eip1193" ? "eip1193-seed-v2" : "raw-key-v1", chain_id: cfg.chain_id, contract: cfg.headstash, identity: who.id,
+    state = { v: 1, ui: 2, derivation: who.kind === "eip1193" ? "eip1193-seed-v2" : "raw-key-v1", chain_id: cfg.chain_id, contract: cfg.headstash, identity: who.id, eligible_address: "0x" + who.id, headstash_label: (inst && inst.ci && inst.ci.label) || undefined,
       created: Math.floor(Date.now() / 1000), reward_addr: reward, reward_priv: rewardW ? hex(rewardW.priv) : undefined,
       registration: { list_hash: hex(lh), signature: hex(sig) }, notes };
     log(`derived ${notes.length} notes; list_hash ${hex(lh).slice(0, 16)}…`); render(); await save();
@@ -483,7 +507,7 @@ function download(name, text) { const a = el("a", { href: URL.createObjectURL(ne
 // fix2: the notes file downloads once (at derive). Later status changes (registered / claimed) are offered as an explicit,
 // differently named re-save; the first file stays valid (re-registering or re-claiming a note is recognised and skipped).
 let dirty = null; const SAVE_LABEL = "Save notes file";
-function saveName() { return V.notesFileName(chash, state && state.identity, dirty); }
+function saveName() { return V.notesFileName({ label: (inst && inst.ci && inst.ci.label) || (state && state.headstash_label), contractHash: chash, identity: state && state.identity, status: dirty }); }
 function saveUi() {
   $("save").textContent = dirty ? `Save updated notes (now marked ${dirty})` : SAVE_LABEL; $("save").dataset.dirty = dirty || "";
   $("save-note").textContent = dirty ? `Optional: your notes are now marked ${dirty}. The file you already saved still works for claiming; saving again writes ${saveName()} so it does not overwrite or duplicate the first file.` : "";
@@ -502,7 +526,7 @@ async function load() {
     const want = o.sha256; delete o.sha256;
     if (o.v !== 1 || hex(await sha256(te.encode(canon(o)))) !== want) throw new Error("notes file checksum mismatch or unknown version");
     if (o.chain_id !== cfg.chain_id) throw new Error("notes file is for another chain");
-    V.checkNotesContract(o, inst ? inst.addr : null);
+    V.checkNotesContract(o, inst ? inst.addr : null); V.checkNotesIdentity(o, who && who.kind === "eip1193" ? who.id : null);
     state = o; if (o.reward_priv) rewardW = await wallet(unhex(o.reward_priv)); $("reward-addr").textContent = o.reward_addr;
     saved = true; log(`loaded ${o.notes.length} notes (checksum ok)`); await chainSync(); render(); await privacyRefresh();
   });
@@ -648,8 +672,32 @@ async function claimRun() {
       render();
     }
     $("claim-out").textContent = `${done} note(s) ${mode === "forward" ? "forwarded" : "claimed"} in this run.`; $("claim-out").dataset.done = done;
-    if (done) markDirty("claimed"); log(`claim run finished: ${done} note(s)`);
+    if (done) { markDirty("claimed"); await bridgeShow(mode); } log(`claim run finished: ${done} note(s)`);
   }
+}
+// ---- fix4: post-claim suggestion: IBC to a fresh diversified Penumbra address of the user's wallet ----
+// Same approach as usdc-penumbra src/zafu.js diversifiedAddress(viewClient, account) (ViewService AddressByIndex),
+// but with a fresh random {account, randomizer} index from IndexBook so no address is ever reused for two claims.
+let bridgeAddr = null;
+function bridgeKv(pick) {
+  const ch = inst && inst.channels.length ? inst.channels.map((c) => c.channel_id).join(" ") : "none allowlisted";
+  kvTable($("bridge-kv"), [["Penumbra wallet", pick ? walletLabel(pick) : "none detected"], ["Deposit address", bridgeAddr || (pick ? "not generated yet" : "needs a Penumbra wallet"), !!bridgeAddr], ["IBC channel", ch]]);
+}
+async function bridgeShow(mode) {
+  const b = $("bridge"), n = inst ? inst.channels.length : 0; b.hidden = false; b.dataset.mode = mode;
+  let pick = null; try { pick = await zafuDetect(); } catch (e) { log("Penumbra wallet detection failed: " + e.message); }
+  b.dataset.wallet = pick ? "found" : "missing";
+  $("zafu-install").hidden = !!pick; $("bridge-recheck").hidden = !!pick; $("bridge-addr").hidden = !pick;
+  $("bridge-why").textContent = mode === "forward" ? "These notes were already forwarded to Penumbra over IBC. For any later claim, use a new deposit address from your wallet." :
+    "Your tokens are now in fresh claim accounts on Terp. To keep them private, bridge them over IBC to a shielded Penumbra address. Use a new diversified address from your Zafu wallet: it cannot be linked to your other Penumbra addresses.";
+  $("bridge-reason").dataset.reason = !pick ? "no-wallet" : n ? "channel" : "no-channel";
+  $("bridge-reason").textContent = (!pick ? "No Penumbra wallet was detected in this browser. Install Zafu, then reload this page or check again. " : "") +
+    (n ? `This Headstash allowlists ${inst.channels[0].channel_id}: future claims can forward straight to Penumbra (step 4, "Forward to Penumbra").` :
+      "This page cannot send the IBC transfer for you: this Headstash's contract allowlists no IBC channel (forward_channels is empty). Generate the address here, then send from your claim account with an IBC transfer in a Terp wallet that holds the exported claim key (step 3, Export claim account keys).");
+  bridgeKv(pick);
+}
+async function bridgeNewAddr() {
+  return guarded("bridge-err", async () => { bridgeAddr = await zafuAddress("bridge"); bridgeKv(await zafuDetect()); log(`fresh Penumbra deposit address ${bridgeAddr.slice(0, 24)}…`); });
 }
 async function exportWallets() {
   const out = [];
@@ -739,8 +787,11 @@ export async function start({ files, manifest, config, urls }) {
   $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-wallet").onchange = () => { if (!zafu) zafuDetect(); }; $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
   $("zafu").onclick = () => guarded("dst-err", async () => { await zafuAddress("preview"); });
   $("reward-export").onclick = () => download("headstash-reward-key.json", JSON.stringify({ address: state.reward_addr, priv_hex: state.reward_priv }, null, 1));
-  $("browse-codes").onclick = browse; $("f-token").onclick = () => filterOpen("tokens"); $("f-creator").onclick = () => filterOpen("creators");
+  $("browse-codes").onclick = () => { $("code-form").hidden = true; $("code-toggle").setAttribute("aria-expanded", "false"); return browse(); }; $("f-token").onclick = () => filterOpen("tokens"); $("f-creator").onclick = () => filterOpen("creators");
   $("f-clear").onclick = () => { filt.tokens.clear(); filt.creators.clear(); applyFilters(); }; $("filter-q").oninput = filterRender;
+  $("inst-q").oninput = applyFilters; $("code-toggle").onclick = () => { const f = $("code-form"), o = f.hidden; f.hidden = !o; $("code-toggle").setAttribute("aria-expanded", String(o)); if (o) $("code-ids").focus(); };
+  $("mm-copy").onclick = async () => { const a = $("mm-copy").dataset.copy; if (a) toast((await copyText(a)) ? `Copied ${a.slice(0, 8)}…${a.slice(-6)}` : "Copy failed"); };
+  $("bridge-addr").onclick = bridgeNewAddr; $("bridge-recheck").onclick = () => bridgeShow($("bridge").dataset.mode || "ephemeral"); verifyRender();
   $("details-btn").onclick = detailsOpen; $("sheet-details-btn").onclick = detailsOpen; walletBind(); mmUi();
   zafuDetect().catch((e) => zafuSet("error", "Zafu client failed to load: " + e.message));
   const qp = new URLSearchParams(location.search), hs = qp.get("hs");

@@ -39,17 +39,18 @@ test("copy chips: accessible label, full address in title, toast is an aria-live
   assert.match(html, /<div id="toast" role="status" aria-live="polite"><\/div>/);
   assert.match(js, /\$\("sheet-hs"\)\.replaceChildren\(copyChip\(a\)\)/); assert.match(js, /el\("br"\), copyChip\(a\)/);
 });
-test("parameters and privacy set render as chips, not raw text", () => {
-  assert.match(js, /paramsDropdown\(i, root\)/); assert.ok(!/Privacy set now \$\{p\.set\}/.test(js));
+test("parameters render in a key/value table (fix4), privacy set as chips", () => {
+  assert.match(js, /paramsBtn\(\(\) => paramsOpen\(/); assert.ok(!/Privacy set now \$\{p\.set\}/.test(js));
   assert.match(html, /<div id="reg-privacy" class="chips" role="status"><\/div>/); assert.match(html, /\.chip\{/);
-  for (const k of ["min set", "cutoff", "denom", "registered", "claimed"]) assert.ok(js.includes(`chip("${k}"`), k);
+  const pr = js.slice(js.indexOf("function paramRows"), js.indexOf("function paramsOpen"));
+  for (const k of ["Min anonymity set", "Cutoff", "Denom", "Registered", "Claimed"]) assert.ok(pr.includes(`["${k}"`), k);
 });
 test("notes file downloads once; later saves are explicit and differently named", () => {
   const reg = js.slice(js.indexOf("async function register()"), js.indexOf("async function anchorCheck()"));
   assert.ok(!/await save\(\)/.test(reg), "register must not re-download"); assert.match(reg, /markDirty\("registered"\)/);
   const cl = js.slice(js.indexOf("async function claimRun()"), js.indexOf("async function exportWallets()"));
   assert.ok(!/await save\(\)/.test(cl), "claim must not re-download");
-  assert.match(js, /Save updated notes \(now marked \$\{dirty\}\)/); assert.match(js, /V\.notesFileName\(chash, state && state\.identity, dirty\)/);
+  assert.match(js, /Save updated notes \(now marked \$\{dirty\}\)/); assert.match(js, /V\.notesFileName\(\{ label: .*contractHash: chash, identity: state && state\.identity, status: dirty \}\)/);
 });
 test("forward option shows an inline reason when no channel is allowlisted", () => {
   assert.match(html, /value="forward" disabled>/); assert.match(html, /id="fwd-reason" class="lock" role="status"/);

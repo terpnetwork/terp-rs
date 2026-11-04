@@ -322,11 +322,25 @@ export function claimChain(notes, anchor) {
 }
 
 // ---- fix3 ----
-/** Saved notes filename, unique per Headstash contract and account: headstash-notes-<sha256(contract)[0..8]>-<identity[0..6]>[-status].json */
-export function notesFileName(contractHashHex, identity, status) {
-  const h = String(contractHashHex || "").toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 8) || "00000000";
-  const a = String(identity || "").toLowerCase().replace(/^0x/, "").replace(/^sol:/, "s").replace(/[^0-9a-z]/g, "").slice(0, 6) || "anon";
-  return `headstash-notes-${h}-${a}${status ? "-" + String(status).replace(/[^a-z0-9]/gi, "") : ""}.json`;
+/** fix4 saved notes filename: headstash-notes-<label-or-contract8>-<0x + eligible address[0..6]>[-status].json
+ *  label: the instance label slugged (a-z0-9-, max 24); falls back to sha256(contract)[0..8]. The full eligible address
+ *  and contract are inside the file (identity / eligible_address / contract) and checked on load. */
+export function notesFileName({ label, contractHash, identity, status } = {}) {
+  const slug = String(label || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24).replace(/-+$/, "");
+  const h = slug || String(contractHash || "").toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 8) || "00000000";
+  const id = String(identity || "").toLowerCase().replace(/^0x/, "");
+  const a = /^[0-9a-f]{40}$/.test(id) ? "0x" + id.slice(0, 6) : id.replace(/^sol:/, "s").replace(/[^0-9a-z]/g, "").slice(0, 6) || "anon";
+  const st = String(status || "").replace(/[^a-z0-9]/gi, "") || "new";
+  return `headstash-notes-${h}-${a}-${st}.json`;
+}
+/** A loaded notes file must be for the connected eligible address (when one is connected), and its full address field must agree with identity. */
+export function checkNotesIdentity(o, connectedId) {
+  const id = String((o && o.identity) || "").toLowerCase().replace(/^0x/, "");
+  if (!id) throw new Error("this notes file has no eligible address");
+  if (o.eligible_address != null && String(o.eligible_address).toLowerCase() !== "0x" + id) throw new Error("this notes file is inconsistent: its eligible_address does not match its identity");
+  const c = connectedId ? String(connectedId).toLowerCase().replace(/^0x/, "") : null;
+  if (c && c !== id) throw new Error(`this notes file is for eligible address 0x${id.slice(0, 6)}…${id.slice(-4)}, but MetaMask is connected as 0x${c.slice(0, 6)}…${c.slice(-4)}. Switch account or disconnect, then load it again.`);
+  return true;
 }
 /** A loaded notes file must belong to the selected Headstash; refuse (never auto-switch) on mismatch. */
 export function checkNotesContract(o, contract) {
@@ -376,8 +390,9 @@ export function prettyDenom(d) {
 export function instanceTokens(balances, denom) { const s = new Set(); for (const b of balances || []) if (b && b.denom) s.add(b.denom); if (denom) s.add(denom); return [...s].sort(); }
 /** Token AND creator filters combine; an empty filter matches all. */
 export function filterInstances(list, f = {}) {
-  const T = new Set(f.tokens || []), K = new Set(f.creators || []);
-  return (list || []).filter((i) => (!T.size || (i.tokens || []).some((t) => T.has(t))) && (!K.size || K.has(i.creator) || K.has(i.admin)));
+  const T = new Set(f.tokens || []), K = new Set(f.creators || []), q = String(f.q || "").trim().toLowerCase();
+  const hit = (i) => !q || [i.label, i.addr, i.creator, i.admin].some((v) => v && String(v).toLowerCase().includes(q));
+  return (list || []).filter((i) => (!T.size || (i.tokens || []).some((t) => T.has(t))) && (!K.size || K.has(i.creator) || K.has(i.admin)) && hit(i));
 }
 export function filterOptions(list, kind) {
   const m = new Map();

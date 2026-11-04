@@ -5,14 +5,15 @@ const here = (f) => new URL("../" + f, import.meta.url);
 const V = await import(here("v2lib.js"));
 const js = readFileSync(here("app.js"), "utf8"), html = readFileSync(here("app.html"), "utf8");
 
-test("fix3 filename: unique per contract hash + account, with status suffix", () => {
-  const h = "a1b2c3d4e5f6", id = "f3e03d49aa00bb";
-  assert.equal(V.notesFileName(h, id), "headstash-notes-a1b2c3d4-f3e03d.json");
-  assert.equal(V.notesFileName(h, "0x" + id, "registered"), "headstash-notes-a1b2c3d4-f3e03d-registered.json");
-  assert.equal(V.notesFileName(h, id, "claimed"), "headstash-notes-a1b2c3d4-f3e03d-claimed.json");
-  assert.notEqual(V.notesFileName("ffff0000", id), V.notesFileName(h, id));
-  assert.notEqual(V.notesFileName(h, "254768d4"), V.notesFileName(h, id));
-  assert.match(js, /function saveName\(\) \{ return V\.notesFileName\(chash/); assert.match(js, /chash = hex\(await sha256\(te\.encode\(a\)\)\)/);
+test("fix4 filename: headstash-notes-<label-or-contract8>-<0x…6>-<status>.json", () => {
+  const h = "a1b2c3d4e5f6", id = "f3e03d49aa00bb11223344556677889900aabbcc";
+  assert.equal(V.notesFileName({ contractHash: h, identity: id }), "headstash-notes-a1b2c3d4-0xf3e03d-new.json");
+  assert.equal(V.notesFileName({ label: "Resin Drop #2", contractHash: h, identity: "0x" + id, status: "registered" }), "headstash-notes-resin-drop-2-0xf3e03d-registered.json");
+  assert.equal(V.notesFileName({ label: "", contractHash: h, identity: id, status: "claimed" }), "headstash-notes-a1b2c3d4-0xf3e03d-claimed.json");
+  assert.notEqual(V.notesFileName({ contractHash: "ffff0000", identity: id }), V.notesFileName({ contractHash: h, identity: id }));
+  assert.notEqual(V.notesFileName({ contractHash: h, identity: "254768d4" + id.slice(8) }), V.notesFileName({ contractHash: h, identity: id }));
+  assert.ok(V.notesFileName({ label: "x".repeat(80), contractHash: h, identity: id }).length < 60);
+  assert.match(js, /function saveName\(\) \{ return V\.notesFileName\(\{ label/); assert.match(js, /chash = hex\(await sha256\(te\.encode\(a\)\)\)/);
 });
 test("fix3 load refuses a notes file for another Headstash (no auto-switch)", () => {
   assert.throws(() => V.checkNotesContract({ contract: "terp1aaaaaaaaaaaaaaaaaaaa" }, "terp1bbbbbbbbbbbbbbbbbbbb"), /belongs to Headstash terp1aaaa.*not the open one/);
@@ -75,13 +76,13 @@ test("fix3 filters: tokens from bank balances + denom, creators; filters combine
 });
 test("fix3 footer Details modal + layout: code-id form, critical chips, label/creator title", () => {
   const land = html.slice(html.indexOf('<main id="landing">'), html.indexOf("</main>"));
-  assert.match(land, /<footer class="foot"><button id="details-btn"/); assert.ok(html.includes('id="sheet-details-btn"'));
+  assert.match(land, /<footer class="foot verify" id="verify"[^>]*>.*<button id="details-btn"/s); assert.ok(html.includes('id="sheet-details-btn"'));
   const dd = html.slice(html.indexOf('<dialog id="details-dlg"'), html.indexOf("</dialog>", html.indexOf('<dialog id="details-dlg"')));
   assert.ok(dd.includes('id="fe-addr"') && dd.includes('id="fe-ver"')); assert.ok(!html.slice(0, html.indexOf("<main")).includes('id="fe-addr"'));
   const dr = js.slice(js.indexOf("function detailsRender"), js.indexOf("function detailsOpen"));
   for (const k of ["Code id", "Admin", "Creator", "HAL URI", "HAL commitment", "sha256", "Configuration"]) assert.ok(dr.includes(k), k);
-  assert.match(land, /<details id="code-form"[^>]*><summary>By code id<\/summary>.*id="code-ids"/s);
-  assert.match(js, /critChips\(i\), paramsDropdown\(i, root\)/); assert.match(js, /"All parameters"/);
+  assert.match(land, /<div id="code-form" class="pop"[^>]*hidden>.*id="code-ids"/s);
+  assert.match(js, /paramsBtn\(\(\) => paramsOpen\(\{ \.\.\.i, code_id/); assert.ok(!/critChips|paramsDropdown/.test(js));
   assert.match(html, /<h2 id="sheet-title"><span id="sheet-label">Headstash<\/span> <span id="sheet-hs"><\/span><\/h2><div id="sheet-creator"/);
   assert.match(js, /\$\("sheet-label"\)\.textContent = ci\.label/); assert.match(js, /"creator ", copyChip\(ci\.creator\)/);
 });

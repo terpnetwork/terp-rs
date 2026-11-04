@@ -41,6 +41,9 @@ const expand = async (x) => { if (await page.locator(`#sec-${x}-body`).isHidden(
 const sheetOpen = () => page.evaluate(() => document.getElementById("hs-sheet").open);
 const openHs = async (addr) => { await until(async () => (await page.locator(`#inst-list button[data-addr="${addr}"]`).count()) > 0, 30000);
   await page.click(`#inst-list button[data-addr="${addr}"]`); await until(sheetOpen, 30000);
+  // fix4: the HAL is opt-in; record that nothing was fetched on select, then press "Fetch and verify list"
+  await until(async () => Number(await attr("#hal-kv", "data-rows")) > 0, 30000); out.hal_auto_state = await attr("#hal-status", "data-state");
+  await page.evaluate(() => document.getElementById("hal-fetch").click());
   await page.locator("#hal-status[data-state='ok'], #hal-status[data-state='error']").waitFor({ timeout: 120000 }); };
 const CLAIM_UI = ["#claim", "#mm-connect", "#derive", "#register", "#save", "#zafu-connect", "#privacy", "#hal-fetch", "#nf", "#claim-pick"];
 const landingHides = async () => { const vis = []; for (const q of CLAIM_UI) if (await page.locator(q).isVisible()) vis.push(q); return { sheet_open: await sheetOpen(), visible: vis }; };

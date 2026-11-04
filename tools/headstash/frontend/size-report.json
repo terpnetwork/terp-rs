@@ -1,0 +1,106 @@
+{
+  "v": 1,
+  "chunk_bytes": 131072,
+  "encoding_uploaded": "gzip -9 (mtime 0)",
+  "files": [
+    {
+      "path": "app.html",
+      "raw": 32267,
+      "gzip": 8483,
+      "brotli": 7339,
+      "chunks": 1,
+      "chunk_sizes": [
+        8483
+      ],
+      "sha256": "0039e5e7eca8095ce5fe04f2155a432c2fb5b94982638b62c086d8f2707087d6"
+    },
+    {
+      "path": "app.js",
+      "raw": 68843,
+      "gzip": 22486,
+      "brotli": 19800,
+      "chunks": 1,
+      "chunk_sizes": [
+        22486
+      ],
+      "sha256": "2e2cc8484b6985a16f6b047bd0eb1d5282575f8e8295912f00609411fa3fd25b"
+    },
+    {
+      "path": "crypto.js",
+      "raw": 10640,
+      "gzip": 4316,
+      "brotli": 3959,
+      "chunks": 1,
+      "chunk_sizes": [
+        4316
+      ],
+      "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c"
+    },
+    {
+      "path": "v2lib.js",
+      "raw": 31568,
+      "gzip": 11754,
+      "brotli": 10418,
+      "chunks": 1,
+      "chunk_sizes": [
+        11754
+      ],
+      "sha256": "f3ecf22a2145052c911cffb41cde02de19b0444381ad081ab0b60a8bca336a09"
+    },
+    {
+      "path": "steps.json",
+      "raw": 6484,
+      "gzip": 2576,
+      "brotli": 2079,
+      "chunks": 1,
+      "chunk_sizes": [
+        2576
+      ],
+      "sha256": "68ea936ad3453fbd61e2ed2d1fb93efdce49dcf4bc34b4a0befaa6b0017b209b"
+    },
+    {
+      "path": "zafu-client.js",
+      "raw": 366294,
+      "gzip": 41371,
+      "brotli": 35007,
+      "chunks": 1,
+      "chunk_sizes": [
+        41371
+      ],
+      "sha256": "e158dba470c989046cb12be3c6dee026bb2ef2c37eb410a518811275748c0704"
+    },
+    {
+      "path": "zk_headstash.js",
+      "raw": 12918,
+      "gzip": 3048,
+      "brotli": 2692,
+      "chunks": 1,
+      "chunk_sizes": [
+        3048
+      ],
+      "sha256": "58764660b3a2dd660fa927ac118637ecbaa00dbd95d036e9208b6fcd5d34e0a5"
+    },
+    {
+      "path": "zk_headstash_bg.wasm",
+      "raw": 1807932,
+      "gzip": 647573,
+      "brotli": 464913,
+      "chunks": 5,
+      "chunk_sizes": [
+        131072,
+        131072,
+        131072,
+        131072,
+        123285
+      ],
+      "sha256": "f85689997b68bf32800c98fb791688979169109ed39042e23472c2d45fa49926"
+    }
+  ],
+  "total": {
+    "files": 8,
+    "raw": 2336946,
+    "gzip": 741607,
+    "brotli": 546207,
+    "chunks": 12
+  }
+}
