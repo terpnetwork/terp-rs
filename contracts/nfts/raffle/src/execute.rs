@@ -96,13 +96,15 @@ pub fn execute(
         } => update_config(
             deps,
             info,
-            owner,
-            fee_addr,
-            minimum_raffle_duration,
-            max_tickets_per_raffle,
-            raffle_fee,
-            creation_coins,
-            randomness,
+            UpdateConfigParams {
+                owner,
+                fee_addr,
+                minimum_raffle_duration,
+                max_tickets_per_raffle,
+                raffle_fee,
+                creation_coins,
+                randomness,
+            },
         ),
         ExecuteMsg::ToggleLock { lock } => toggle_lock(deps, info, lock),
         ExecuteMsg::UpdateOraclePricing { pricing } => update_oracle_pricing(deps, info, pricing),
@@ -650,18 +652,31 @@ fn refund_tickets(
     Ok(msgs)
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Arguments for [`update_config`].
+struct UpdateConfigParams {
+    pub owner: Option<String>,
+    pub fee_addr: Option<String>,
+    pub minimum_raffle_duration: Option<u64>,
+    pub max_tickets_per_raffle: Option<u32>,
+    pub raffle_fee: Option<Decimal>,
+    pub creation_coins: Option<Vec<Coin>>,
+    pub randomness: Option<nftfi_randomness::RandomnessSourceMsg>,
+}
+
 fn update_config(
     deps: DepsMut,
     info: MessageInfo,
-    owner: Option<String>,
-    fee_addr: Option<String>,
-    minimum_raffle_duration: Option<u64>,
-    max_tickets_per_raffle: Option<u32>,
-    raffle_fee: Option<Decimal>,
-    creation_coins: Option<Vec<Coin>>,
-    randomness: Option<nftfi_randomness::RandomnessSourceMsg>,
+    args: UpdateConfigParams,
 ) -> Result<Response, ContractError> {
+    let UpdateConfigParams {
+        owner,
+        fee_addr,
+        minimum_raffle_duration,
+        max_tickets_per_raffle,
+        raffle_fee,
+        creation_coins,
+        randomness,
+    } = args;
     let mut cfg = CONFIG.load(deps.storage)?;
     if info.sender != cfg.owner {
         return Err(ContractError::Unauthorized);
