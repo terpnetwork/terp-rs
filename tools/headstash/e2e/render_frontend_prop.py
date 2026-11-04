@@ -59,7 +59,8 @@ def gz(raw):
     return bio.getvalue()
 # ---- R12 theme (same rules as contracts/headstash/*/src/theme.rs and frontend/v2lib.js validateTheme)
 THEME_TOKENS = ("bg", "surface", "surfaceAlt", "text", "textMuted", "border", "borderStrong", "accent", "onAccent", "focus")
-DEFAULT_THEME = os.path.join(DEFAULT_PAGE, "themes", "apricot-glow.json")
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))  # report paths are repo-relative
+DEFAULT_THEME = os.path.join(DEFAULT_PAGE, "themes", "azure-calcium.json")
 def canon_theme(t):
     """Validate and return the theme exactly as the contracts serialize it (BTreeMap order, radius_px only if set)."""
     import re
@@ -153,7 +154,7 @@ def main():
     ap.add_argument("--migrate-frontend", help="existing frontend ADDR (admin = --dao): migrate to --code-id + publish --manifest-version, no new instance")
     ap.add_argument("--manifest-version", type=int, default=1); ap.add_argument("--keep-last", type=int)
     ap.add_argument("--new-label", help="with --migrate-frontend: MsgUpdateContractLabel")
-    ap.add_argument("--theme", default=DEFAULT_THEME, help="R12 manifest default theme JSON (default: Apricot Glow); 'none' to omit (required for code 106 / v1)")
+    ap.add_argument("--theme", default=DEFAULT_THEME, help="R12 manifest default theme JSON (default: Azure Calcium); 'none' to omit (required for code 106 / v1)")
     ap.add_argument("--verify-lcd", help="read-only LCD: check code checksum, target owners, frontend_contract unset, address free")
     a = ap.parse_args()
     if a.claim_gas != 400000: print("WARNING: claim gas %d != 400000 (deploy packet)" % a.claim_gas, file=sys.stderr)
@@ -211,7 +212,7 @@ def main():
         loaders[n] = {"file": lf, "sha256": hashlib.sha256(lt.encode()).hexdigest(), "headstash": t}
     sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
     rep = {"dao": a.dao, "code_id": a.code_id, "checksum": a.checksum.upper(), "salt": a.salt, "salt_b64": base64.b64encode(salt).decode(), "label": a.label,
-           "predicted_frontend": fe, "mode": "migrate" if a.migrate_frontend else "instantiate2", "manifest_version": a.manifest_version, "keep_last": a.keep_last, "new_label": a.new_label, "targets": dict(targets), "manifest_pin_sha256": pin, "theme": m.get("theme"), "theme_file": None if a.theme == "none" else a.theme, "bundle_sha256": bundle_sha(fs), "files": fs,
+           "predicted_frontend": fe, "mode": "migrate" if a.migrate_frontend else "instantiate2", "manifest_version": a.manifest_version, "keep_last": a.keep_last, "new_label": a.new_label, "targets": dict(targets), "manifest_pin_sha256": pin, "theme": m.get("theme"), "theme_file": None if a.theme == "none" else os.path.relpath(os.path.abspath(a.theme), REPO_ROOT), "bundle_sha256": bundle_sha(fs), "files": fs,
            "chunks_total": sum(len(c) for c in chunks), "stored_bytes": sum(e["stored_size"] for e in m["files"]),
            "propose_file": pf, "propose_sha256": sha(pf), "chunks_file": cf, "chunks_sha256": sha(cf), "loaders": loaders,
            "loader_cfg": {"rest": a.rest, "relay": a.relay, "chain_id": a.chain_id, "denom": a.denom, "gas_price": a.gas_price,
