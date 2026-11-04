@@ -110,8 +110,19 @@ try {
     await page.click("#hal-fetch"); await page.locator("#hal-status[data-state='ok']").waitFor({ timeout: 60000 }).catch(() => {});
     out.hal_restored = await attr("#hal-status", "data-state");
     // info modal on every step: the sheet's component headers (always visible, also for locked components)
+    // inline placement: every sheet info button lives in a component body, beside its field (heading, legend, label or button row), never in a header
+    out.info_place = await page.evaluate(() => [...document.querySelectorAll("#hs-sheet button.info[data-info]")].map((b) => ({ id: b.dataset.info, head: !!b.closest(".comp-head"),
+      sec: b.closest("section.comp")?.dataset.sec || "", ctx: (b.closest("h3,legend,label,.row,.danger") || {}).tagName || "" })));
+    // Advanced disclosure: the raw-key option is collapsed by default, warns, and opens only on request
+    out.adv = await page.evaluate(() => { const d = document.getElementById("adv-rawkey"); return { exists: !!d, open: d?.open, key_inside: !!d?.querySelector("#key") && !!d?.querySelector("#key-use"),
+      warn: d?.querySelector(".danger")?.textContent.slice(0, 60) || "", }; });
+    out.adv.key_visible = await page.locator("#key").isVisible();
+    await page.click("#adv-rawkey > summary"); out.adv.key_visible_after_open = await page.locator("#key").isVisible(); await shot("03b-advanced-rawkey");
     const btns = page.locator("#hs-sheet button.info[data-info]"); const nb = await btns.count(); out.modals += nb;
-    for (let i = 0; i < nb; i++) { if (i === 1) { await btns.nth(i).click(); await shot("03-info-modal-eligibility"); await page.click("#info-close"); } if (await infoOk(btns.nth(i))) out.modals_ok++; }
+    // buttons in still-locked components are revealed in the harness only (the user sees them once the component unlocks)
+    for (let i = 0; i < nb; i++) { const b = btns.nth(i); if (!(await b.isVisible())) await b.evaluate((x) => { for (let e = x; e; e = e.parentElement) { if (e.hidden && e.classList.contains("comp-body")) { e.hidden = false; e.dataset.e2eReveal = "1"; } if (e.tagName === "DETAILS") e.open = true; } });
+      if (i === 1) { await b.click(); await shot("03-info-modal-eligibility"); await page.click("#info-close"); } if (await infoOk(b)) out.modals_ok++; }
+    await page.evaluate(() => { document.querySelectorAll("[data-e2e-reveal]").forEach((e) => { e.hidden = true; delete e.dataset.e2eReveal; }); document.getElementById("adv-rawkey").open = false; });
     out.sheet_open_after_modals = await sheetOpen();
     // eligibility: address from the EIP-1193 provider, lookup local; no request may carry the address
     const tA = Date.now(); await page.click("#mm-connect");

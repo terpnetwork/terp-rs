@@ -33,6 +33,16 @@ OUT = os.environ.get("BROWSER_OUT", "/tmp/hsfe-v2/browser-e2e-v2.json")
 SHOTS = os.environ.get("HSFE_SHOTS", "/tmp/hsfe-v2/shots")
 R = rd.R
 
+def btn_mix_ok(css, th):
+    """buttons are an accent tint: color-mix(in srgb, accent 14%, surface), driven only by the --hs-* theme values"""
+    import re
+    m = re.match(r"color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)", css or "")
+    if not m: return False
+    hx = lambda h: [int(h.lstrip("#")[k:k + 2], 16) / 255 for k in (0, 2, 4)]
+    exp = [.14 * a + .86 * s for a, s in zip(hx(th["accent"]), hx(th["surface"]))]
+    return all(abs(float(g) - e) < .01 for g, e in zip(m.groups(), exp))
+
+
 def page_files():
     names = [(PAGE, n) for n in ("app.html", "app.js", "crypto.js", "v2lib.js", "steps.json", "zafu-client.js")] + [(PROVER, "zk_headstash.js"), (PROVER, "zk_headstash_bg.wasm")]
     return [{"path": n, "raw": open(os.path.join(d, n), "rb").read(), "stored": fb.gz(open(os.path.join(d, n), "rb").read()),
@@ -66,7 +76,7 @@ def theme_checks(contract, url):
     b = th("headstash", toggle=True); R["theme_headstash"] = keep(b, "log")
     ok = b.get("ok") and all(b.get(m, {}).get("source") == "headstash" and b[m].get("surface").upper() == HS_THEME[m]["surface"] and b[m].get("body_bg") == rgb(HS_THEME[m]["bg"]) and b[m].get("radius") == "12px" for m in ("light", "dark"))
     rd.step("v2_theme_loaded_from_headstash_contract", bool(ok), "light surface %s, dark surface %s, radius %s" % (b.get("light", {}).get("surface"), b.get("dark", {}).get("surface"), b.get("light", {}).get("radius")) if b.get("ok") else b.get("error", ""))
-    rd.step("v2_theme_light_and_dark_render", bool(b.get("ok")) and b["light"]["body_bg"] != b["dark"]["body_bg"] and b["light"]["btn_bg"] == rgb(HS_THEME["light"]["accent"]) and b["dark"]["btn_bg"] == rgb(HS_THEME["dark"]["accent"]),
+    rd.step("v2_theme_light_and_dark_render", bool(b.get("ok")) and b["light"]["body_bg"] != b["dark"]["body_bg"] and btn_mix_ok(b["light"]["btn_bg"], HS_THEME["light"]) and btn_mix_ok(b["dark"]["btn_bg"], HS_THEME["dark"]),
             "light body %s btn %s | dark body %s btn %s" % tuple(b.get(m, {}).get(k) for m in ("light", "dark") for k in ("body_bg", "btn_bg")))
     t1, t2, t3 = b.get("after_toggle", {}), b.get("after_reload", {}), b.get("after_toggle2", {})
     rd.step("v2_theme_toggle_persists", t1.get("mode") == "light" and t1.get("stored") == "light" and t2.get("mode") == "light" and t3.get("mode") == "dark" and t3.get("stored") == "dark",
@@ -169,6 +179,10 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         rd.step("v2_hal_fetched_and_verified", a.get("hal_state") == "ok" and a.get("hal_sha") == hal["sha256"], a.get("hal_text", "")[:200])
         rd.step("v2_hal_tampered_local_file_refused", a.get("hal_tamper_state") == "error" and a.get("hal_restored") == "ok", a.get("hal_tamper_err", "")[:200])
         rd.step("v2_info_modal_every_step", a.get("modals_ok") == a.get("modals") and (a.get("modals") or 0) >= 10 and a.get("sheet_open_after_modals") is True, "%s/%s" % (a.get("modals_ok"), a.get("modals")))
+        ip = a.get("info_place") or []
+        rd.step("v2_info_inline_beside_fields", len(ip) >= 12 and not any(x["head"] for x in ip) and all(x["sec"] and x["ctx"] for x in ip), json.dumps([(x["id"], x["sec"], x["ctx"]) for x in ip])[:300])
+        ad = a.get("adv") or {}
+        rd.step("v2_raw_key_behind_advanced", bool(ad.get("exists") and ad.get("open") is False and ad.get("key_inside") and ad.get("key_visible") is False and ad.get("key_visible_after_open") is True and ad.get("warn", "").startswith("Warning")), json.dumps(ad))
         rd.step("v2_eligibility_local_via_eip1193", a.get("elig_notes") == len(notes["evm"]) and a.get("leak") == [], "notes %s; requests during lookup %d, carrying the address %s" % (a.get("elig_notes"), a.get("lookup_requests", -1), a.get("leak")))
         ok, nf = be.canon_ok(nr) if a.get("saved") else (False, {})
         st = [n["st"] for n in nf.get("notes", [])]
