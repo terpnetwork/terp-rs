@@ -554,3 +554,11 @@ largest function 52 489 B, scan `ok`.
 - Rendering: the page CSS uses only `var(--hs-*)` (checked by grep). `<style id="hs-theme">` is built with textContent from validated hex values only. The mode follows `prefers-color-scheme`, and a toggle stores the choice in localStorage (`terp-hs-theme-mode-v1`). CSP is unchanged.
 - Contrast (unit test, WCAG): text and textMuted on bg/surface are ≥4.5, and onAccent on accent is ≥4.5. Accent on bg is only required to reach ≥3 (non-text UI). Status messages use the text colour plus an accent border, because there are no ok/err tokens (open question).
 - Renderer: `render_frontend_prop.py --theme <file|none>`, Apricot Glow by default (`frontend/themes/apricot-glow.json`). Use `--theme none` for v1-compatible manifests.
+- Rendered (not submitted):
+  - `50-dao-prop-frontend-v2.*` was re-rendered with the Apricot Glow manifest default. New manifest PIN `2a4ed441fbed82dd153a3082d1286790c8fdcf5a9a230e893714e15430522d9f`, which supersedes f8ee4d5c. 12 chunks, frontend checksum 8798FAD4…, still the predicted code 107. The loaders are re-pinned.
+  - New `52-dao-prop-headstash-theme.propose.json`: `set_theme` with Apricot Glow on terpy and thioly. Canonical theme sha256 996a1f26….
+- Verification (groot-wan, 2026-11-04):
+  - cw-headstash default 217/0, legacy 244/0; frontend 19/0; node 24/0.
+  - run_dao migrate_prop 66/0; run_forward 63/0.
+  - browser_e2e_v2 with the real Zafu extension 52/0 (includes the R12 and R7a steps).
+  - Results: `/tmp/hsfe-v2/theme-results.txt`.

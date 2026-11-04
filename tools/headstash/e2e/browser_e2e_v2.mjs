@@ -148,7 +148,8 @@ try {
     const tag = inp.tag;
     if (inp.fake_wallets) { await until(async () => (await attr("#zafu-wallet", "data-count")) !== null, 20000);
       out.wallet_options = await page.locator("#zafu-wallet option").allTextContents(); out.wallet_select_visible = (await attr("#zafu-wallet", "hidden")) === null;
-      await page.selectOption("#zafu-wallet", "1"); await page.waitForTimeout(200); out.wallet_detect = await text("#zafu-detect"); }
+      await page.evaluate(() => { const s = document.getElementById("zafu-wallet"); s.value = "1"; s.dispatchEvent(new Event("change")); }); // section may be collapsed before a headstash is chosen
+      await until(async () => (await text("#zafu-detect")).includes("selected chrome-extension://b"), 5000); out.wallet_detect = await text("#zafu-detect"); }
     await page.emulateMedia({ colorScheme: "light" }); await page.waitForTimeout(300); out.light = await rd(); await shot(`${tag}-light`);
     await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(300); out.dark = await rd(); await shot(`${tag}-dark`);
     out.log_rejects = ((await text("#log")).match(/theme from \w+ rejected[^\n]*/g) || []).slice(0, 3);
