@@ -670,7 +670,7 @@ pub fn hash_tag(tag: &str) -> Hash32 {
 pub fn fresh_btc_deposit_addr(suite_label: &str, index: u64) -> String {
     format!(
         "sim-btc-{}",
-        &hex_prefix(&hash_tag(&format!("{suite_label}:{index}")), 16)
+        hex_prefix(&hash_tag(&format!("{suite_label}:{index}")), 16)
     )
 }
 

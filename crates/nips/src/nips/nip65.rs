@@ -86,7 +86,7 @@ impl RelayListMetadata {
             .filter(|r| {
                 r.marker
                     .as_ref()
-                    .map_or(true, |m| matches!(m, RelayMarker::Read))
+                    .is_none_or(|m| matches!(m, RelayMarker::Read))
             })
             .collect()
     }
@@ -98,7 +98,7 @@ impl RelayListMetadata {
             .filter(|r| {
                 r.marker
                     .as_ref()
-                    .map_or(true, |m| matches!(m, RelayMarker::Write))
+                    .is_none_or(|m| matches!(m, RelayMarker::Write))
             })
             .collect()
     }

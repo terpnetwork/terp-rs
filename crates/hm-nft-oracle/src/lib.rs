@@ -266,15 +266,15 @@ pub fn assert_payment(bound: &MintPriceBound, funds: &[Coin]) -> Result<Uint128,
 
 /// Whether this sudo payload matches policy filters.
 pub fn sudo_matches_filter(policy: &PricePolicy, p: &HashMerchantSudoPayload) -> bool {
-    if let Some(ref uid) = policy.chain_uid {
-        if uid != &p.chain_uid {
-            return false;
-        }
+    if let Some(ref uid) = policy.chain_uid
+        && uid != &p.chain_uid
+    {
+        return false;
     }
-    if let Some(ref algo) = policy.algo {
-        if algo != &p.algo {
-            return false;
-        }
+    if let Some(ref algo) = policy.algo
+        && algo != &p.algo
+    {
+        return false;
     }
     true
 }
@@ -291,15 +291,14 @@ pub fn decode_price_value(
     let v: serde_json::Value =
         serde_json::from_slice(value).map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
 
-    if let Some(expected) = &policy.asset_id {
-        if let Some(asset) = v.get("asset").and_then(|x| x.as_str()) {
-            if asset != expected {
-                return Err(OracleError::AssetMismatch {
-                    expected: expected.clone(),
-                    got: asset.to_string(),
-                });
-            }
-        }
+    if let Some(expected) = &policy.asset_id
+        && let Some(asset) = v.get("asset").and_then(|x| x.as_str())
+        && asset != expected
+    {
+        return Err(OracleError::AssetMismatch {
+            expected: expected.clone(),
+            got: asset.to_string(),
+        });
     }
 
     let asset_id = v
@@ -369,7 +368,7 @@ fn usd_times_scale(price_usd: &str, scale: Uint128) -> Result<Uint128, OracleErr
         .and_then(|w| w.checked_add(frac_u))
         .ok_or(OracleError::MathOverflow)?;
     // mid = price_e8 * scale / 1e8
-    let mid = (price_e8 as u128)
+    let mid = price_e8
         .checked_mul(scale.u128())
         .ok_or(OracleError::MathOverflow)?
         .checked_div(100_000_000)
@@ -427,6 +426,7 @@ pub fn assert_oracle_cannot_modify_supply() -> Result<(), OracleError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use cosmwasm_std::coin;

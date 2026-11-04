@@ -63,8 +63,15 @@ fn m_exec(deps: DepsMut, env: Env, info: MessageInfo, m: MExec) -> StdResult<Res
         MExec::Mint {} => {
             let pricing = PRICING.load(deps.storage)?;
             let (price, payee) = PRICE.load(deps.storage)?;
-            let s = settle_payment(&deps.querier, env.block.height, pricing.as_ref(), &price, &info.funds)?;
-            let n = MINTED.load(deps.storage)?; MINTED.save(deps.storage, &(n + 1))?;
+            let s = settle_payment(
+                &deps.querier,
+                env.block.height,
+                pricing.as_ref(),
+                &price,
+                &info.funds,
+            )?;
+            let n = MINTED.load(deps.storage)?;
+            MINTED.save(deps.storage, &(n + 1))?;
             let mut r = Response::new()
                 .add_attribute("alt", s.alt.to_string())
                 .add_message(BankMsg::Send {
@@ -241,7 +248,11 @@ impl W {
             )
             .unwrap()
     }
-    fn mint(&mut self, minter: &Addr, funds: &[Coin]) -> Result<cw_multi_test::AppResponse, String> {
+    fn mint(
+        &mut self,
+        minter: &Addr,
+        funds: &[Coin],
+    ) -> Result<cw_multi_test::AppResponse, String> {
         self.app
             .execute_contract(self.buyer.clone(), minter.clone(), &MExec::Mint {}, funds)
             .map_err(|e| format!("{e:?} {e}"))
@@ -339,19 +350,30 @@ fn enforced_alt_exact_overpay_underpay() {
     let m = w.minter(Some(pricing(true, vec![f], PricingPolicy::default())));
     let before = w.bal(&w.buyer.clone(), ALT);
     let r = w.mint(&m, &coins(2_000_000, ALT)).unwrap();
-    assert!(r.events.iter().any(|e| e.attributes.iter().any(|a| a.key == "alt" && a.value == "true")));
+    assert!(r.events.iter().any(|e| {
+        e.attributes
+            .iter()
+            .any(|a| a.key == "alt" && a.value == "true")
+    }));
     assert_eq!(w.bal(&w.payee.clone(), ALT), Uint256::from(2_000_000u128));
     // overpay: refund
     w.mint(&m, &coins(3_000_000, ALT)).unwrap();
     assert_eq!(w.bal(&w.payee.clone(), ALT), Uint256::from(4_000_000u128));
-    assert_eq!(before - w.bal(&w.buyer.clone(), ALT), Uint256::from(4_000_000u128));
+    assert_eq!(
+        before - w.bal(&w.buyer.clone(), ALT),
+        Uint256::from(4_000_000u128)
+    );
     // underpay
     assert!(err_str(w.mint(&m, &coins(1_999_999, ALT))).contains("below the required"));
     // default asset still exact
     w.mint(&m, &coins(25_000_000, BASE)).unwrap();
     // unknown alt
     assert!(err_str(w.mint(&m, &coins(1_000, "uosmo"))).contains("not accepted"));
-    let n: u64 = w.app.wrap().query_wasm_smart(&m, &MQuery::Minted {}).unwrap();
+    let n: u64 = w
+        .app
+        .wrap()
+        .query_wasm_smart(&m, &MQuery::Minted {})
+        .unwrap();
     assert_eq!(n, 3);
 }
 
@@ -591,7 +613,13 @@ fn aggregate_and_raw_queries() {
     assert_eq!(a.entries.len(), 3);
     assert!(a.entries[0].price.is_some());
     assert!(a.entries[1].error.as_ref().unwrap().contains("OSMO/TERP"));
-    assert!(a.entries[2].error.as_ref().unwrap().contains("not accepted"));
+    assert!(
+        a.entries[2]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("not accepted")
+    );
 
     // raw: passthrough to a configured oracle
     let raw: Binary = w
@@ -641,11 +669,19 @@ fn wire_types_match_real_contracts() {
         .twap(w.registry.as_str(), "ATOM/TERP", l.height - 1, l.height)
         .unwrap();
     assert_eq!(t.n, 2);
-    assert_eq!(q.aggregator_registry(w.aggregator.as_str()).unwrap(), w.registry);
-    assert_eq!(q.median(w.aggregator.as_str(), "ATOM/TERP", 2).unwrap().n, 2);
+    assert_eq!(
+        q.aggregator_registry(w.aggregator.as_str()).unwrap(),
+        w.registry
+    );
+    assert_eq!(
+        q.median(w.aggregator.as_str(), "ATOM/TERP", 2).unwrap().n,
+        2
+    );
     assert_eq!(q.probe(w.probe.as_str(), 9).unwrap().pool_id, 9);
     // generic raw typed query
-    let c: reg::ConfigResponse = q.raw(w.registry.as_str(), &reg::QueryMsg::Config {}).unwrap();
+    let c: reg::ConfigResponse = q
+        .raw(w.registry.as_str(), &reg::QueryMsg::Config {})
+        .unwrap();
     assert!(c.open_submit);
 }
 

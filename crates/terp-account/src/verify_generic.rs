@@ -68,10 +68,6 @@ impl CosmosArbitrary {
         self.verify(api)?;
         pubkey_to_address(&self.pubkey, &self.hrp().expect("must have prefix"))
     }
-
-    fn get_address(&self) -> Result<String, StdError> {
-        pubkey_to_address(&self.pubkey, &self.hrp.clone().unwrap_or("terp".into()))
-    }
 }
 
 /// inject the data to be signed within the json struct
@@ -109,7 +105,7 @@ mod tests {
     use cosmwasm_std::StdError;
     use cosmwasm_std::{Binary, testing::mock_dependencies};
 
-    use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
+    use k256::ecdsa::{SigningKey, VerifyingKey};
     // use serde::Deserialize;
     use sha2::Digest;
     use sha2::Sha256;

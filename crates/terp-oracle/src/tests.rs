@@ -79,7 +79,11 @@ fn base_in_alt_basic() {
 
 #[test]
 fn directions_agree_on_inverse() {
-    for (base, p) in [(1u128, "3"), (999_999, "7.77"), (10_u128.pow(12), "0.000123")] {
+    for (base, p) in [
+        (1u128, "3"),
+        (999_999, "7.77"),
+        (10_u128.pow(12), "0.000123"),
+    ] {
         let a = base_to_alt(u(base), d(p), Quote::AltInBase, 6, 6).unwrap();
         let inv = invert(d(p)).unwrap();
         let b = base_to_alt(u(base), inv, Quote::BaseInAlt, 6, 6).unwrap();
@@ -92,10 +96,22 @@ fn directions_agree_on_inverse() {
 #[test]
 fn rounds_up() {
     // 1 uterp at 3 TERP/ATOM = 0.333.. uatom -> 1
-    assert_eq!(base_to_alt(u(1), d("3"), Quote::AltInBase, 6, 6).unwrap(), u(1));
-    assert_eq!(base_to_alt(u(10), d("3"), Quote::AltInBase, 6, 6).unwrap(), u(4));
-    assert_eq!(base_to_alt(u(9), d("3"), Quote::AltInBase, 6, 6).unwrap(), u(3));
-    assert_eq!(base_to_alt(u(1), d("0.000001"), Quote::BaseInAlt, 6, 6).unwrap(), u(1));
+    assert_eq!(
+        base_to_alt(u(1), d("3"), Quote::AltInBase, 6, 6).unwrap(),
+        u(1)
+    );
+    assert_eq!(
+        base_to_alt(u(10), d("3"), Quote::AltInBase, 6, 6).unwrap(),
+        u(4)
+    );
+    assert_eq!(
+        base_to_alt(u(9), d("3"), Quote::AltInBase, 6, 6).unwrap(),
+        u(3)
+    );
+    assert_eq!(
+        base_to_alt(u(1), d("0.000001"), Quote::BaseInAlt, 6, 6).unwrap(),
+        u(1)
+    );
 }
 
 #[test]
@@ -111,23 +127,38 @@ fn decimals_scale() {
         u(500_000)
     );
     // 0 decimals both sides
-    assert_eq!(base_to_alt(u(7), d("2"), Quote::BaseInAlt, 0, 0).unwrap(), u(14));
+    assert_eq!(
+        base_to_alt(u(7), d("2"), Quote::BaseInAlt, 0, 0).unwrap(),
+        u(14)
+    );
 }
 
 #[test]
 fn zero_amount_and_zero_price() {
-    assert_eq!(base_to_alt(u(0), d("5"), Quote::AltInBase, 6, 6).unwrap(), u(0));
+    assert_eq!(
+        base_to_alt(u(0), d("5"), Quote::AltInBase, 6, 6).unwrap(),
+        u(0)
+    );
     assert_eq!(
         base_to_alt(u(1), d("0"), Quote::AltInBase, 6, 6).unwrap_err(),
         OracleError::ZeroPrice
     );
     assert_eq!(invert(d("0")).unwrap_err(), OracleError::ZeroPrice);
-    assert_eq!(deviation(d("1"), d("0")).unwrap_err(), OracleError::ZeroPrice);
+    assert_eq!(
+        deviation(d("1"), d("0")).unwrap_err(),
+        OracleError::ZeroPrice
+    );
 }
 
 #[test]
 fn tiny_price_huge_result_overflows() {
-    let r = base_to_alt(Uint256::MAX, d("0.000000000000000001"), Quote::AltInBase, 0, 24);
+    let r = base_to_alt(
+        Uint256::MAX,
+        d("0.000000000000000001"),
+        Quote::AltInBase,
+        0,
+        24,
+    );
     assert_eq!(r.unwrap_err(), OracleError::Overflow);
     let r = base_to_alt(Uint256::MAX, Decimal256::MAX, Quote::BaseInAlt, 0, 24);
     assert_eq!(r.unwrap_err(), OracleError::Overflow);
@@ -137,16 +168,31 @@ fn tiny_price_huge_result_overflows() {
 fn max_values_within_range_do_not_overflow() {
     // u128::MAX base at price 1, equal decimals -> identity
     let base = Uint256::from(u128::MAX);
-    assert_eq!(base_to_alt(base, d("1"), Quote::AltInBase, 24, 24).unwrap(), base);
-    assert_eq!(base_to_alt(base, d("1"), Quote::BaseInAlt, 24, 24).unwrap(), base);
+    assert_eq!(
+        base_to_alt(base, d("1"), Quote::AltInBase, 24, 24).unwrap(),
+        base
+    );
+    assert_eq!(
+        base_to_alt(base, d("1"), Quote::BaseInAlt, 24, 24).unwrap(),
+        base
+    );
 }
 
 #[test]
 fn alt_to_base_rounds_down_and_inverts() {
     let alt = base_to_alt(u(10), d("3"), Quote::AltInBase, 6, 6).unwrap(); // 4
-    assert_eq!(alt_to_base(alt, d("3"), Quote::AltInBase, 6, 6).unwrap(), u(12));
-    assert_eq!(alt_to_base(u(1), d("3"), Quote::BaseInAlt, 6, 6).unwrap(), u(0));
-    assert_eq!(alt_to_base(u(2_000_000), d("0.08"), Quote::BaseInAlt, 6, 6).unwrap(), u(25_000_000));
+    assert_eq!(
+        alt_to_base(alt, d("3"), Quote::AltInBase, 6, 6).unwrap(),
+        u(12)
+    );
+    assert_eq!(
+        alt_to_base(u(1), d("3"), Quote::BaseInAlt, 6, 6).unwrap(),
+        u(0)
+    );
+    assert_eq!(
+        alt_to_base(u(2_000_000), d("0.08"), Quote::BaseInAlt, 6, 6).unwrap(),
+        u(25_000_000)
+    );
     assert_eq!(
         alt_to_base(u(1), d("0"), Quote::AltInBase, 6, 6).unwrap_err(),
         OracleError::ZeroPrice
@@ -156,10 +202,19 @@ fn alt_to_base_rounds_down_and_inverts() {
 #[test]
 fn slippage() {
     assert_eq!(apply_slippage(u(1000), None).unwrap(), u(1000));
-    assert_eq!(apply_slippage(u(1000), Some(Decimal::zero())).unwrap(), u(1000));
-    assert_eq!(apply_slippage(u(1000), Some(Decimal::percent(1))).unwrap(), u(990));
+    assert_eq!(
+        apply_slippage(u(1000), Some(Decimal::zero())).unwrap(),
+        u(1000)
+    );
+    assert_eq!(
+        apply_slippage(u(1000), Some(Decimal::percent(1))).unwrap(),
+        u(990)
+    );
     // ceil: 999 * 0.99 = 989.01 -> 990
-    assert_eq!(apply_slippage(u(999), Some(Decimal::percent(1))).unwrap(), u(990));
+    assert_eq!(
+        apply_slippage(u(999), Some(Decimal::percent(1))).unwrap(),
+        u(990)
+    );
     assert!(apply_slippage(u(1), Some(Decimal::one())).is_err());
 }
 
@@ -167,8 +222,14 @@ fn slippage() {
 fn parse_price_strings() {
     assert_eq!(parse_price("1.5").unwrap(), d("1.5"));
     assert_eq!(parse_price(" 2 ").unwrap(), d("2"));
-    assert!(matches!(parse_price("x"), Err(OracleError::BadPrice { .. })));
-    assert!(matches!(parse_price("-1"), Err(OracleError::BadPrice { .. })));
+    assert!(matches!(
+        parse_price("x"),
+        Err(OracleError::BadPrice { .. })
+    ));
+    assert!(matches!(
+        parse_price("-1"),
+        Err(OracleError::BadPrice { .. })
+    ));
 }
 
 // ---------- aggregation ----------
@@ -190,15 +251,31 @@ fn combine_modes() {
 
 #[test]
 fn median_even_and_single() {
-    assert_eq!(combine(&vals(&[("4", 1), ("1", 1), ("2", 1), ("3", 1)]), AggregateMethod::Median).unwrap(), d("2.5"));
-    assert_eq!(combine(&vals(&[("7", 1)]), AggregateMethod::Median).unwrap(), d("7"));
+    assert_eq!(
+        combine(
+            &vals(&[("4", 1), ("1", 1), ("2", 1), ("3", 1)]),
+            AggregateMethod::Median
+        )
+        .unwrap(),
+        d("2.5")
+    );
+    assert_eq!(
+        combine(&vals(&[("7", 1)]), AggregateMethod::Median).unwrap(),
+        d("7")
+    );
 }
 
 #[test]
 fn combine_empty_and_zero_weights() {
-    assert!(matches!(combine(&[], AggregateMethod::Median), Err(OracleError::NoObservations { .. })));
+    assert!(matches!(
+        combine(&[], AggregateMethod::Median),
+        Err(OracleError::NoObservations { .. })
+    ));
     // Mean treats weight 0 as 1; Weighted skips it
-    assert_eq!(combine(&vals(&[("2", 0), ("4", 0)]), AggregateMethod::Mean).unwrap(), d("3"));
+    assert_eq!(
+        combine(&vals(&[("2", 0), ("4", 0)]), AggregateMethod::Mean).unwrap(),
+        d("3")
+    );
     assert!(combine(&vals(&[("2", 0)]), AggregateMethod::Weighted).is_err());
 }
 
@@ -206,9 +283,18 @@ fn combine_empty_and_zero_weights() {
 fn history_weighted_is_block_gap_twap() {
     // heights 10 (v=1), 13 (v=4), 14 (v=10): weights 3, 1, 1 -> (3+4+10)/5
     let rows = vals(&[("10", 14), ("1", 10), ("4", 13)]);
-    assert_eq!(combine_history(&rows, AggregateMethod::Weighted).unwrap(), d("3.4"));
-    assert_eq!(combine_history(&rows, AggregateMethod::Median).unwrap(), d("4"));
-    assert_eq!(combine_history(&rows, AggregateMethod::Mean).unwrap(), d("5"));
+    assert_eq!(
+        combine_history(&rows, AggregateMethod::Weighted).unwrap(),
+        d("3.4")
+    );
+    assert_eq!(
+        combine_history(&rows, AggregateMethod::Median).unwrap(),
+        d("4")
+    );
+    assert_eq!(
+        combine_history(&rows, AggregateMethod::Mean).unwrap(),
+        d("5")
+    );
 }
 
 #[test]
@@ -227,7 +313,11 @@ fn evaluate_happy_path() {
         &a,
         &PricingPolicy::default(),
         100,
-        vec![Ok(pt("10", Some(90))), Ok(pt("12", Some(95))), Ok(pt("11", Some(99)))],
+        vec![
+            Ok(pt("10", Some(90))),
+            Ok(pt("12", Some(95))),
+            Ok(pt("11", Some(99))),
+        ],
     )
     .unwrap();
     assert_eq!(r.price, d("11"));
@@ -242,7 +332,13 @@ fn evaluate_happy_path() {
 #[test]
 fn evaluate_base_in_alt_inverts_display() {
     let a = alt(Quote::BaseInAlt, AggregateMethod::Median, 1);
-    let r = evaluate(&a, &PricingPolicy::default(), 1, vec![Ok(pt("0.08", Some(1)))]).unwrap();
+    let r = evaluate(
+        &a,
+        &PricingPolicy::default(),
+        1,
+        vec![Ok(pt("0.08", Some(1)))],
+    )
+    .unwrap();
     assert_eq!(r.price, d("0.08"));
     assert_eq!(r.alt_in_base, d("12.5"));
 }
@@ -297,7 +393,11 @@ fn stale_feed_dropped_when_others_meet_min_sources() {
         &a,
         &p,
         100,
-        vec![Ok(pt("10", Some(99))), Ok(pt("50", Some(1))), Ok(pt("12", Some(98)))],
+        vec![
+            Ok(pt("10", Some(99))),
+            Ok(pt("50", Some(1))),
+            Ok(pt("12", Some(98))),
+        ],
     )
     .unwrap();
     assert_eq!(r.sources, 2);
@@ -364,10 +464,21 @@ fn deviation_guard() {
         max_deviation: Some(Decimal::percent(5)),
         ..Default::default()
     };
-    let ok = vec![Ok(pt("100", Some(1))), Ok(pt("104", Some(1))), Ok(pt("101", Some(1)))];
+    let ok = vec![
+        Ok(pt("100", Some(1))),
+        Ok(pt("104", Some(1))),
+        Ok(pt("101", Some(1))),
+    ];
     assert!(evaluate(&a, &p, 1, ok).is_ok());
-    let bad = vec![Ok(pt("100", Some(1))), Ok(pt("120", Some(1))), Ok(pt("101", Some(1)))];
-    assert!(matches!(evaluate(&a, &p, 1, bad), Err(OracleError::Deviation { .. })));
+    let bad = vec![
+        Ok(pt("100", Some(1))),
+        Ok(pt("120", Some(1))),
+        Ok(pt("101", Some(1))),
+    ];
+    assert!(matches!(
+        evaluate(&a, &p, 1, bad),
+        Err(OracleError::Deviation { .. })
+    ));
 }
 
 #[test]
@@ -379,7 +490,13 @@ fn weighted_uses_observations_mean_uses_weight() {
     let mut p2 = pt("20", Some(1));
     p2.observations = 1;
     p2.weight = 3;
-    let r = evaluate(&a, &PricingPolicy::default(), 1, vec![Ok(p1.clone()), Ok(p2.clone())]).unwrap();
+    let r = evaluate(
+        &a,
+        &PricingPolicy::default(),
+        1,
+        vec![Ok(p1.clone()), Ok(p2.clone())],
+    )
+    .unwrap();
     assert_eq!(r.price, d("12.5"));
     a.combine = AggregateMethod::Mean;
     let r = evaluate(&a, &PricingPolicy::default(), 1, vec![Ok(p1), Ok(p2)]).unwrap();
@@ -459,7 +576,9 @@ fn settle_zero_paid_rejected() {
 #[test]
 fn validate_ok() {
     let api = MockApi::default();
-    pricing(true, PricingPolicy::default()).validate(&api).unwrap();
+    pricing(true, PricingPolicy::default())
+        .validate(&api)
+        .unwrap();
     OraclePricing {
         enforce: false,
         alt_assets: vec![],
@@ -547,7 +666,13 @@ fn find_and_oracles() {
 
 #[test]
 fn labels() {
-    assert_eq!(FeedKind::Spot { market_id: "A".into() }.label(), "spot:A");
+    assert_eq!(
+        FeedKind::Spot {
+            market_id: "A".into()
+        }
+        .label(),
+        "spot:A"
+    );
     assert_eq!(FeedKind::ProbeTwap { pool_id: 7 }.label(), "probe:7");
     assert_eq!(
         FeedKind::History {

@@ -29,9 +29,9 @@ fn polymod(values: &[u8]) -> u32 {
     for v in values {
         let top = chk >> 25;
         chk = ((chk & 0x1ff_ffff) << 5) ^ (*v as u32);
-        for i in 0..5 {
+        for (i, g) in GEN.iter().enumerate() {
             if (top >> i) & 1 == 1 {
-                chk ^= GEN[i];
+                chk ^= g;
             }
         }
     }

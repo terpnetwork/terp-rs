@@ -41,13 +41,13 @@ pub fn evaluate(
         });
     }
     let observations: u32 = points.iter().map(|p| p.observations).sum();
-    if let Some(min_obs) = policy.min_observations {
-        if observations < min_obs {
-            return Err(OracleError::NotEnoughObservations {
-                got: observations,
-                min: min_obs,
-            });
-        }
+    if let Some(min_obs) = policy.min_observations
+        && observations < min_obs
+    {
+        return Err(OracleError::NotEnoughObservations {
+            got: observations,
+            min: min_obs,
+        });
     }
     let weighted: Vec<(Decimal256, u64)> = points
         .iter()
@@ -66,14 +66,14 @@ pub fn evaluate(
     let mut max_dev = Decimal256::zero();
     for p in &points {
         let d = deviation(p.value, price)?;
-        if let Some(max) = policy.max_deviation {
-            if d > Decimal256::from(max) {
-                return Err(OracleError::Deviation {
-                    feed: p.feed.clone(),
-                    deviation: d.to_string(),
-                    max: max.to_string(),
-                });
-            }
+        if let Some(max) = policy.max_deviation
+            && d > Decimal256::from(max)
+        {
+            return Err(OracleError::Deviation {
+                feed: p.feed.clone(),
+                deviation: d.to_string(),
+                max: max.to_string(),
+            });
         }
         if d > max_dev {
             max_dev = d;

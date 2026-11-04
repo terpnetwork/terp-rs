@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
 
     let proto_files: Vec<PathBuf> = chain_proto_files
         .into_iter()
-        .chain(vendor_proto_files.into_iter())
+        .chain(vendor_proto_files)
         .collect();
 
     if proto_files.is_empty() {
@@ -291,14 +291,14 @@ fn main() -> anyhow::Result<()> {
 
                         // Check if the struct contains problematic cosmos types
                         let mut has_problematic_type = false;
-                        for l in struct_start..=struct_end {
-                            if lines[l].contains("ibc_proto::cosmos::base::v1beta1::Coin")
-                                || lines[l].contains("ibc_proto::cosmos::base::v1beta1::DecCoin")
-                                || lines[l].contains("ibc::core::commitment::v1::MerkleProof")
-                                || lines[l].contains("cosmos::base::query::v1beta1::PageRequest")
-                                || lines[l].contains("cosmos::base::query::v1beta1::PageResponse")
-                                || lines[l].contains("Option<ConsensusState>")
-                                || lines[l].contains("IdentifiedClientState")
+                        for l in &lines[struct_start..=struct_end] {
+                            if l.contains("ibc_proto::cosmos::base::v1beta1::Coin")
+                                || l.contains("ibc_proto::cosmos::base::v1beta1::DecCoin")
+                                || l.contains("ibc::core::commitment::v1::MerkleProof")
+                                || l.contains("cosmos::base::query::v1beta1::PageRequest")
+                                || l.contains("cosmos::base::query::v1beta1::PageResponse")
+                                || l.contains("Option<ConsensusState>")
+                                || l.contains("IdentifiedClientState")
                             {
                                 has_problematic_type = true;
                                 break;

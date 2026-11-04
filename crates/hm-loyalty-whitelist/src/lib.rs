@@ -210,6 +210,7 @@ pub fn leaf_hash_binary(address: &str) -> Result<HexBinary, WhitelistError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

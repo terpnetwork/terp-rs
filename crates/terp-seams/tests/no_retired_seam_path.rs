@@ -17,10 +17,10 @@ fn walk_tomls(dir: &Path, out: &mut Vec<(String, String)>) {
         }
         if p.is_dir() {
             walk_tomls(&p, out);
-        } else if name == "Cargo.toml" {
-            if let Ok(s) = fs::read_to_string(&p) {
-                out.push((p.display().to_string(), s));
-            }
+        } else if name == "Cargo.toml"
+            && let Ok(s) = fs::read_to_string(&p)
+        {
+            out.push((p.display().to_string(), s));
         }
     }
 }

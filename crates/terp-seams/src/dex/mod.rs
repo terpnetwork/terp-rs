@@ -691,6 +691,7 @@ pub fn spend_opening_from_seam_sketch(n: &SeamNoteSketch) -> SwapActionResult<Sp
 /// Build a SEAM sketch with abstract harness leaf (cm_encoding = 0x03).
 ///
 /// Registry-resolved `asset_id` must already be the 32-byte Terp id.
+#[allow(clippy::too_many_arguments)]
 pub fn seam_sketch_abstract_leaf(
     asset_id: AssetId32,
     value: u64,
@@ -983,10 +984,10 @@ pub fn validate_swap_action(action: &SwapActionV0) -> SwapActionResult<u128> {
     if w.note_out.asset_id != p.asset_out {
         return Err(SwapActionError::ErrWrongAsset);
     }
-    if let Some(ref ch) = w.note_change {
-        if ch.asset_id != p.asset_in {
-            return Err(SwapActionError::ErrWrongAsset);
-        }
+    if let Some(ref ch) = w.note_change
+        && ch.asset_id != p.asset_in
+    {
+        return Err(SwapActionError::ErrWrongAsset);
     }
 
     check_note_conservation(w)?;
@@ -1088,10 +1089,10 @@ pub fn apply_swap_action(
     if pool.status != PoolStatus::Active {
         return Err(SwapActionError::ErrSchema);
     }
-    if let Some(root) = state.allowed_root {
-        if action.public.root != root {
-            return Err(SwapActionError::ErrBadRoot);
-        }
+    if let Some(root) = state.allowed_root
+        && action.public.root != root
+    {
+        return Err(SwapActionError::ErrBadRoot);
     }
 
     let delta_out = validate_swap_action(action)?;

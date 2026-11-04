@@ -265,7 +265,7 @@ async fn upload_blob(
 
     Ok(Json(serde_json::json!({
         "url": descriptor.url,
-        "sha256": hex::encode(&descriptor.sha256),
+        "sha256": hex::encode(descriptor.sha256),
         "size": descriptor.size,
         "type": descriptor.mime_type,
         "uploaded": descriptor.uploaded,
@@ -289,7 +289,7 @@ async fn list_blobs(
         AuthScope::Server => state.store.list(),
     };
 
-    let hex_hashes: Vec<String> = hashes.iter().map(|h| hex::encode(h)).collect();
+    let hex_hashes: Vec<String> = hashes.iter().map(hex::encode).collect();
     Ok(Json(serde_json::json!({ "blobs": hex_hashes })))
 }
 

@@ -78,7 +78,7 @@ pub enum NotePersistError {
 // Constants
 // ---------------------------------------------------------------------------
 
-/// ASCII `terp-note-out-v0` + NUL pad to 16.
+// ASCII `terp-note-out-v0` + NUL pad to 16.
 
 // ---------------------------------------------------------------------------
 // Types
@@ -403,24 +403,23 @@ pub fn from_headstash_instance(
     pool_domain: [u8; 32],
     rcm: Option<[u8; 32]>,
 ) -> SeamNoteOutV0 {
-    let mut n = SeamNoteOutV0::default();
-    n.origin = ORIGIN_HEADSTASH;
-    n.asset_id = inst.nd;
-    n.value = inst.v;
-    n.owner_binding = inst.recp_raw;
-    n.cm_public = inst.cmx;
-    n.cm_encoding = CM_ORCHARD_CMX;
-    n.nullifier_lineage = inst.nf;
-    n.nullifier_domain = NF_HEADSTASH_CLAIM;
-    n.provenance_anchor = inst.anchor;
-    n.claim_id = [0u8; 32];
-    n.source_chain_tag_hash = [0u8; 32];
-    if let Some(r) = rcm {
-        n.rcm = r;
-        n.rcm_flag = 1;
+    SeamNoteOutV0 {
+        origin: ORIGIN_HEADSTASH,
+        asset_id: inst.nd,
+        value: inst.v,
+        owner_binding: inst.recp_raw,
+        cm_public: inst.cmx,
+        cm_encoding: CM_ORCHARD_CMX,
+        nullifier_lineage: inst.nf,
+        nullifier_domain: NF_HEADSTASH_CLAIM,
+        provenance_anchor: inst.anchor,
+        claim_id: [0u8; 32],
+        source_chain_tag_hash: [0u8; 32],
+        rcm: rcm.unwrap_or_default(),
+        rcm_flag: u8::from(rcm.is_some()),
+        pool_domain,
+        ..SeamNoteOutV0::default()
     }
-    n.pool_domain = pool_domain;
-    n
 }
 
 pub fn from_claim_output_h6(
@@ -471,27 +470,27 @@ pub fn from_bridge_mint(m: &BridgeMintPublic, v_burn: u64) -> Result<SeamNoteOut
     if m.value_u64 != v_burn {
         return Err(SeamError::ConservationBreak);
     }
-    let mut n = SeamNoteOutV0::default();
-    n.origin = ORIGIN_BRIDGE_MINT;
-    n.asset_id = terp_asset_id(&m.source_chain_tag, &m.tacit_asset_id, m.unit_scale);
-    n.value = m.value_u64;
-    n.owner_binding = m.dest_commitment;
-    n.cm_public = m.cm_public;
-    n.cm_encoding = m.cm_encoding;
-    if n.cm_encoding != CM_TACIT_KECCAK_LEAF && n.cm_encoding != CM_ABSTRACT_LEAF_V0 {
+    if m.cm_encoding != CM_TACIT_KECCAK_LEAF && m.cm_encoding != CM_ABSTRACT_LEAF_V0 {
         return Err(SeamError::BadCmEncoding);
     }
-    n.nullifier_lineage = m.nullifier;
-    n.nullifier_domain = NF_BRIDGE_BURN;
-    n.provenance_anchor = m.source_burn_root; // H-1 preferred
-    n.claim_id = m.claim_id;
-    n.source_chain_tag_hash = source_chain_tag_hash(&m.source_chain_tag);
-    if m.rcm != [0u8; 32] {
-        n.rcm = m.rcm;
-        n.rcm_flag = 1;
-    }
-    n.pool_domain = m.pool_domain;
-    Ok(n)
+    let has_rcm = m.rcm != [0u8; 32];
+    Ok(SeamNoteOutV0 {
+        origin: ORIGIN_BRIDGE_MINT,
+        asset_id: terp_asset_id(&m.source_chain_tag, &m.tacit_asset_id, m.unit_scale),
+        value: m.value_u64,
+        owner_binding: m.dest_commitment,
+        cm_public: m.cm_public,
+        cm_encoding: m.cm_encoding,
+        nullifier_lineage: m.nullifier,
+        nullifier_domain: NF_BRIDGE_BURN,
+        provenance_anchor: m.source_burn_root, // H-1 preferred
+        claim_id: m.claim_id,
+        source_chain_tag_hash: source_chain_tag_hash(&m.source_chain_tag),
+        rcm: if has_rcm { m.rcm } else { [0u8; 32] },
+        rcm_flag: u8::from(has_rcm),
+        pool_domain: m.pool_domain,
+        ..SeamNoteOutV0::default()
+    })
 }
 
 /// §4.3 DEX consumability (structural).

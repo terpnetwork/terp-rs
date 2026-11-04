@@ -77,9 +77,7 @@ pub enum DenomError {
 
 impl PartialEq for DenomError {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
+        core::mem::discriminant(self) == core::mem::discriminant(other)
     }
 }
 
@@ -104,11 +102,10 @@ pub enum UncheckedDenom {
     Cw20(String),
 }
 
-impl ToString for UncheckedDenom {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for UncheckedDenom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UncheckedDenom::Native(c) => c.into(),
-            UncheckedDenom::Cw20(c) => c.into(),
+            UncheckedDenom::Native(c) | UncheckedDenom::Cw20(c) => f.write_str(c),
         }
     }
 }

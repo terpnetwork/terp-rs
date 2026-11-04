@@ -21,14 +21,18 @@ pub enum OracleError {
     BadPrice { feed: String, reason: String },
     #[error("oracle price is zero")]
     ZeroPrice,
-    #[error("feed {feed} is stale: observed at height {observed}, now {current}, max age {max_age} blocks")]
+    #[error(
+        "feed {feed} is stale: observed at height {observed}, now {current}, max age {max_age} blocks"
+    )]
     Stale {
         feed: String,
         observed: u64,
         current: u64,
         max_age: u64,
     },
-    #[error("feed {feed} has height {observed} above the current height {current}; staleness needs local heights")]
+    #[error(
+        "feed {feed} has height {observed} above the current height {current}; staleness needs local heights"
+    )]
     FutureObservation {
         feed: String,
         observed: u64,

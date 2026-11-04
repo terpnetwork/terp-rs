@@ -230,7 +230,7 @@ impl NipMetadata for Deletion {
     }
 
     fn to_tags(&self) -> Vec<Tag> {
-        self.event_ids.iter().map(|id| Tag::e(id)).collect()
+        self.event_ids.iter().map(Tag::e).collect()
     }
 
     fn content(&self) -> String {

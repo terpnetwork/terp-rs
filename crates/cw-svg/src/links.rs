@@ -188,9 +188,7 @@ mod tests {
     #[test]
     fn allows_ipfs_gateway_and_same_doc() {
         let vars = vec![opt("cid", &[CID]), opt("gw", &["ipfs.io", "dweb.link"])];
-        let t = format!(
-            "<svg><a href=\"ipfs://${{cid}}\"><text>x</text></a><a href=\"https://${{gw}}/ipfs/${{cid}}/index.html\"/><use xlink:href=\"#p\"/></svg>"
-        );
+        let t = "<svg><a href=\"ipfs://${cid}\"><text>x</text></a><a href=\"https://${gw}/ipfs/${cid}/index.html\"/><use xlink:href=\"#p\"/></svg>".to_string();
         validate_links(&t, &vars).unwrap();
     }
     #[test]
@@ -217,7 +215,7 @@ mod tests {
             "<a href=ipfs://x/>".to_string(),
             "<a xlink:href=\"data:text/html,hi\"/>".to_string(),
             "<a href=\"https://ipfs.io.evil/ipfs/x\"/>".to_string(),
-            format!("<a href=\"ipfs://${{nope}}\"/>"),
+            "<a href=\"ipfs://${nope}\"/>".to_string(),
         ] {
             assert!(validate_links(&t, &vars).is_err(), "{t}");
         }

@@ -540,10 +540,10 @@ impl NipMetadata for CalendarEventMetadata {
                 }
                 "role" => {
                     // role tags reference a participant pubkey with a role
-                    if tag.len() >= 3 {
-                        if let Some(pos) = participants.iter().position(|p| p.pubkey == tag[1]) {
-                            participants[pos].role = Some(tag[2].clone());
-                        }
+                    if tag.len() >= 3
+                        && let Some(pos) = participants.iter().position(|p| p.pubkey == tag[1])
+                    {
+                        participants[pos].role = Some(tag[2].clone());
                     }
                 }
                 _ => {}
@@ -917,28 +917,26 @@ impl NipMetadata for RSVPMetadata {
                         event_author_pubkey = Some(v.clone());
                     }
                 }
-                "l" => {
-                    if tag.len() >= 3 {
-                        let value = tag[1].as_str();
-                        let namespace = tag[2].as_str();
-                        match namespace {
-                            "status" => {
-                                status = match value {
-                                    "accepted" => Some(RSVPStatus::Accepted),
-                                    "declined" => Some(RSVPStatus::Declined),
-                                    "tentative" => Some(RSVPStatus::Tentative),
-                                    _ => None,
-                                };
-                            }
-                            "freebusy" => {
-                                free_busy = match value {
-                                    "free" => Some(FreeBusyStatus::Free),
-                                    "busy" => Some(FreeBusyStatus::Busy),
-                                    _ => None,
-                                };
-                            }
-                            _ => {}
+                "l" if tag.len() >= 3 => {
+                    let value = tag[1].as_str();
+                    let namespace = tag[2].as_str();
+                    match namespace {
+                        "status" => {
+                            status = match value {
+                                "accepted" => Some(RSVPStatus::Accepted),
+                                "declined" => Some(RSVPStatus::Declined),
+                                "tentative" => Some(RSVPStatus::Tentative),
+                                _ => None,
+                            };
                         }
+                        "freebusy" => {
+                            free_busy = match value {
+                                "free" => Some(FreeBusyStatus::Free),
+                                "busy" => Some(FreeBusyStatus::Busy),
+                                _ => None,
+                            };
+                        }
+                        _ => {}
                     }
                 }
                 _ => {}

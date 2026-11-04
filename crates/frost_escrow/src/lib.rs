@@ -82,6 +82,7 @@ pub fn verify_encoded(pk: &[u8], digest: &[u8], sig: &[u8]) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spend_package_from_release(
     escrow_addr: impl Into<String>,
     dest_display: impl Into<String>,

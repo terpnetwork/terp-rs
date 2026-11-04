@@ -905,6 +905,7 @@ pub struct InstantiateMsgSketch {
 /// Round-2 production surface lives on **`cw-headstash`** (not a freestanding
 /// `cw-bridge-mint`). See `crates/headstash/contracts/cw-headstash/src/msg.rs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsgSketch {
     /// Advance reflection / LC attested roots (who posts LC updates — ops Q).
     UpdateReflection {

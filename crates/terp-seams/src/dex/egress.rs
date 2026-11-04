@@ -211,10 +211,10 @@ pub fn validate_egress_burn(
         return Err(EgressError::ErrDestMismatch);
     }
     // Fail-closed: optional external G4 seal must match statement dest.
-    if let Some(seal) = sealed_dest {
-        if public.dest_commitment != *seal {
-            return Err(EgressError::ErrDestMismatch);
-        }
+    if let Some(seal) = sealed_dest
+        && public.dest_commitment != *seal
+    {
+        return Err(EgressError::ErrDestMismatch);
     }
 
     let derived = egress_nullifier(&public.cm_spent, &witness.rcm);
@@ -244,10 +244,10 @@ pub fn apply_egress_burn(
     witness: &EgressBurnWitness,
     sealed_dest: Option<&[u8; 32]>,
 ) -> EgressResult<EgressBurnEvidenceV0> {
-    if let Some(root) = state.allowed_root {
-        if public.root != root {
-            return Err(EgressError::ErrBadRoot);
-        }
+    if let Some(root) = state.allowed_root
+        && public.root != root
+    {
+        return Err(EgressError::ErrBadRoot);
     }
 
     validate_egress_burn(public, witness, sealed_dest)?;
@@ -322,6 +322,7 @@ pub fn build_egress_burn_from_settle(opening: &SettleLikeOpening) -> EgressResul
 ///
 /// Uses abstract leaf recompute when `cm` is derived from openings; caller may
 /// pass the settle `cm_out` directly as `cm`.
+#[allow(clippy::too_many_arguments)]
 pub fn settle_opening_from_note_fields(
     asset_id: AssetId32,
     value: u64,

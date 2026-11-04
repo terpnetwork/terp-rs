@@ -66,13 +66,24 @@ fn into_oracle_query_splits() {
         QueryMsg::Count { id: 3 }.into_oracle_query().unwrap_err(),
         QueryMsg::Count { id: 3 }
     );
-    assert_eq!(QueryMsg::Config {}.into_oracle_query().unwrap_err(), QueryMsg::Config {});
+    assert_eq!(
+        QueryMsg::Config {}.into_oracle_query().unwrap_err(),
+        QueryMsg::Config {}
+    );
 }
 
 #[test]
 fn schema_lists_oracle_responses() {
     let r = QueryMsg::response_schemas();
-    for k in ["config", "count", "oracle_pricing", "oracle_price", "oracle_aggregate", "oracle_quote", "oracle_raw"] {
+    for k in [
+        "config",
+        "count",
+        "oracle_pricing",
+        "oracle_price",
+        "oracle_aggregate",
+        "oracle_quote",
+        "oracle_raw",
+    ] {
         assert!(r.contains_key(k), "{k}");
     }
     assert!(serde_json_check(&r["oracle_price"]).contains("PriceResponse"));
