@@ -101,7 +101,9 @@ fn instantiate_and_config() {
     assert!(cfg.mock_verify);
     assert_eq!(cfg.zkid, Some(42));
     assert_eq!(cfg.next_pool_id, 1);
-    assert!(!cfg.zk_api_compiled);
+    // Reports the build, not a fixed value: terp-orch's zk suite enables
+    // cw-private-dex/zk-api, and cargo unifies features across the workspace.
+    assert_eq!(cfg.zk_api_compiled, cfg!(feature = "zk-api"));
 }
 
 #[test]
