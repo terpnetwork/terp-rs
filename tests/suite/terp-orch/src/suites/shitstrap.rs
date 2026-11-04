@@ -123,58 +123,24 @@ pub fn shit_deploy_data_single(admin: Addr) -> Option<CwShitstrapSuiteDeployData
 }
 
 /// Multiple shistraps with spot-price-based exchange rates.
-// Entries are toggled by commenting individual pushes, so keep push form.
-#[allow(clippy::vec_init_then_push)]
 pub fn shit_deploy_data_full(admin: Addr) -> Option<CwShitstrapSuiteDeployData> {
     let mut dd = CwShitstrapSuiteDeployData::default();
     let cut = 710_000_000_000u128;
 
-    let mut shit = Vec::new();
-
-    // // atom @ $1.81
-    // shit.push(build_shit_init(
-    //     &admin,
-    //     &tf_denom(&admin, "atom"),
-    //     calc_rates(Decimal::from_ratio(181u128, 100u128)),
-    //     cut,
-    //     "atom",
-    // ));
-
-    // btc @ $66,350
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "btc"),
-        calc_rates(Decimal::from_ratio(66350u128, 1u128)),
-        cut,
-        "btc",
-    ));
-
-    // akt @ $0.29
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "akt"),
-        calc_rates(Decimal::from_ratio(29u128, 100u128)),
-        cut,
-        "akt",
-    ));
-
-    // // um @ $0.007
-    // shit.push(build_shit_init(
-    //     &admin,
-    //     &tf_denom(&admin, "um"),
-    //     calc_rates(Decimal::from_ratio(7u128, 1000u128)),
-    //     cut,
-    //     "um",
-    // ));
-
-    // eth @ $1,956.12
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "eth"),
-        calc_rates(Decimal::from_ratio(195612u128, 100u128)),
-        cut,
-        "eth",
-    ));
+    // Toggle an entry by commenting its line: (subdenom, spot price).
+    let rates = [
+        // ("atom", Decimal::from_ratio(181u128, 100u128)), // atom @ $1.81
+        ("btc", Decimal::from_ratio(66350u128, 1u128)), // btc @ $66,350
+        ("akt", Decimal::from_ratio(29u128, 100u128)),  // akt @ $0.29
+        // ("um", Decimal::from_ratio(7u128, 1000u128)), // um @ $0.007
+        ("eth", Decimal::from_ratio(195612u128, 100u128)), // eth @ $1,956.12
+    ];
+    let shit = rates
+        .into_iter()
+        .map(|(sub, rate)| {
+            build_shit_init(&admin, &tf_denom(&admin, sub), calc_rates(rate), cut, sub)
+        })
+        .collect();
 
     dd.admin = Some(admin);
     dd.shit = shit;

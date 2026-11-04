@@ -25,7 +25,7 @@ use serde::Serialize;
 use zk_cosmwasm::CircuitFooter;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};
 use zk_headstash::suite::HeadstashCircuitSuite;
-use zk_headstash::suite::suite::HeadstashProofBuilder;
+use zk_headstash::suite::builders::HeadstashProofBuilder;
 
 const HEADSTASH_K: u32 = 18;
 
