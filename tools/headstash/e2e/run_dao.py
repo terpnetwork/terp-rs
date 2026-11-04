@@ -318,6 +318,89 @@ def fe_v2_prune(D, inst):
     step("fe_v2_still_serves_v2", mc.get("version") == 2 and good == n2, "%d/%d v2 chunks hash-verified" % (good, n2))
     R["fe_v2"].update({"v1_chunks": n1, "v2_chunks": n2, "prune_limit": lim, "prune_calls": 1 + k})
 
+def fe_v2_migrate_prop(D, inst):
+    """t172 item 3: the mainnet-shaped migrate proposal from REAL v1 state (code-106 bytes, no cw2, v1 current):
+    one DAO proposal rendered by render_frontend_prop.migrate_msgs = migrate to FE_V2_WASM + MsgUpdateContractLabel
+    + publish_manifest v2 (activate) + set_keep_last 2. No new instance; targets keep pointing at the same address.
+    Then chunk-upload, v2 auto-activates, loaders re-rendered pinned to the v2 manifest resolve the page."""
+    import render_frontend_prop as rf, browser_e2e as be, subprocess as sp
+    fe = R.get("fe_prop", {}).get("predicted"); DAO = D["core"]
+    if not fe: step("fe_mig_has_v1_frontend", False, "fe_prop did not run"); return
+    v2sha = hashlib.sha256(open(FE_V2_WASM, "rb").read()).hexdigest()
+    res, c2 = store("proposer", FE_V2_WASM, 120000000)
+    step("fe_mig_store_code", res.get("code") == 0 and bool(c2), "code %s sha %s" % (c2, v2sha[:16]))
+    ci0 = q("wasm", "contract", fe); ci0 = ci0.get("contract_info", ci0); c1 = str(ci0.get("code_id"))
+    m1 = smart(fe, {"manifest": {"version": 1}})
+    prover = os.environ.get("HSFE_PROVER_DIR", "/tmp/hsfe/prover")
+    chk = (lambda c: (c.get("checksum") or c.get("data_hash")).lower())(q("wasm", "code-info", str(c2)))
+    out = os.path.join(RUN, "fe-mig-render"); label = "headstash-frontend-v2"
+    targs = sum((["--target", "%s=%s" % (t, inst[t]["addr"])] for t in TOKENS), [])
+    r = sp.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(rf.__file__)), "render_frontend_prop.py"),
+                "--dao", DAO, "--code-id", str(c2), "--checksum", chk, *targs, "--prover-dir", prover,
+                "--rest", REST, "--relay", d.RELAY_URL, "--chain-id", CHAIN_ID, "--denom", "uterp", "--gas-price", str(d.GP),
+                "--migrate-frontend", fe, "--manifest-version", "2", "--keep-last", "2", "--new-label", label,
+                "--title", "Headstash claim page: migrate frontend + publish v2", "--out", out, "--prefix", "31-dao-prop-frontend-migrate",
+                "--verify-lcd", REST], capture_output=True, text=True)
+    rep = json.load(open(os.path.join(out, "31-dao-prop-frontend-migrate.report.json"))) if r.returncode == 0 else {}
+    ck_ = rep.get("checks", {})
+    step("fe_mig_render_verify_lcd", r.returncode == 0 and rep.get("mode") == "migrate" and ck_.get("code_checksum") and ck_.get("frontend_admin_is_dao")
+         and str(ck_.get("frontend_old_code_id")) == c1 and ck_.get("manifest_version_matches_next") and all(ck_.get(t + "_points_at_frontend") for t in TOKENS),
+         json.dumps(ck_)[:300] + (r.stderr[-200:] if r.returncode else ""))
+    if r.returncode: return
+    body = json.load(open(rep["propose_file"])); msgs = body["propose"]["msg"]["propose"]["msgs"]
+    step("fe_mig_prop_shape", [list(x)[0] + "." + list(x[list(x)[0]])[0] for x in msgs] == ["wasm.migrate", "stargate.type_url", "wasm.execute", "wasm.execute"]
+         or [next(iter(x)) for x in msgs] == ["wasm", "stargate", "wasm", "wasm"], json.dumps([next(iter(x)) for x in msgs]))
+    ex, pid, st = dao_run(D, "fe_mig", "Frontend: migrate + publish v2", msgs)
+    ci = q("wasm", "contract", fe); ci = ci.get("contract_info", ci)
+    step("fe_mig_prop_executed_in_place", st == "executed" and str(ci.get("code_id")) == str(c2) and ci.get("label") == label and ci.get("admin") == DAO,
+         "prop %s %s code %s->%s label %r %s" % (pid, st, c1, ci.get("code_id"), ci.get("label"), (ex.get("raw_log") or "")[:200]))
+    if st != "executed": return
+    cfg = smart(fe, {"config": {}})
+    step("fe_mig_v1_kept_v2_staged_keep_last", cfg.get("current") == 1 and cfg.get("next_version") == 3 and cfg.get("keep_last") == 2
+         and smart(fe, {"manifest": {"version": 1}}) == m1, json.dumps(cfg))
+    for t in TOKENS:
+        step("%s_fe_mig_target_unchanged" % t, smart(inst[t]["addr"], {"frontend_contract": {}}) == fe, fe)
+    cf = rep["chunks_file"]
+    pu = kms("dao_m3", "chunk-upload", D, "fe-mig", "--chunks-file", cf, "--chunks-sha", rep["chunks_sha256"], "--frontend", fe)
+    m2 = smart(fe, {"manifest": {"version": 2}}); cfg = smart(fe, {"config": {}})
+    step("fe_mig_v2_uploaded_auto_current", pu.returncode == 0 and cfg.get("current") == 2 and smart(fe, {"status": {"version": 2}}).get("complete") is True,
+         "%s %s" % (json.dumps(cfg), (pu.stdout + pu.stderr)[-160:]))
+    step("fe_mig_onchain_manifest_matches_pin", rf.manifest_pin(m2) == rep["manifest_pin_sha256"] and smart(fe, {"manifest": {}}) == m2, rep["manifest_pin_sha256"])
+    srv = be.serve(os.path.dirname(rep["loaders"][TOKENS[0]]["file"]))
+    try:
+        for t in TOKENS:
+            o = be.browser("load", {"url": "http://127.0.0.1:%d/%s" % (be.PORT, os.path.basename(rep["loaders"][t]["file"]))})
+            R.setdefault("fe_mig_loader", {})[t] = {k: o.get(k) for k in ("ok", "loaded", "version", "has_app", "error")}
+            step("%s_fe_mig_loader_pinned_v2_resolves" % t, o.get("ok") is True and o.get("loaded") is True and o.get("has_app") is True,
+                 json.dumps(R["fe_mig_loader"][t])[:300])
+    finally:
+        srv.shutdown(); srv.server_close()
+    # prune v1 (now superseded: v2 is current) in bounded batches through one DAO proposal; v2 keeps serving
+    import struct
+    def raw(key):
+        r = get("/cosmwasm/wasm/v1/contract/%s/raw/%s" % (fe, base64.b64encode(key).decode()))
+        return r.get("data")
+    def ns(name, k): return struct.pack(">H", len(name)) + name.encode() + k
+    def ck(v, f, i): return b"c" + struct.pack(">IHI", v, f, i)
+    n1 = sum(len(f["chunks"]) for f in m1["files"]); lim = int(os.environ.get("FE_PRUNE_LIMIT", "4")); k = -(-n1 // lim)
+    ex, pid, st = dao_run(D, "fe_mig_prune_v1", "Frontend: prune v1", [wasm_exec(fe, {"prune_version": {"version": 1, "limit": lim}})] * k)
+    ps = smart(fe, {"prune_status": {"version": 1}})
+    step("fe_mig_prune_v1_completed", st == "executed" and ps.get("state") == "pruned" and ps.get("removed") == n1,
+         "prop %s %s, %d calls x limit %d: %s" % (pid, st, k, lim, json.dumps(ps)))
+    left = [(fi, c_) for fi, f in enumerate(m1["files"]) for c_ in range(len(f["chunks"])) if raw(ck(1, fi, c_)) is not None]
+    step("fe_mig_v1_raw_chunks_gone", not left and raw(ns("manifests", struct.pack(">I", 1))) is None, "%d/%d v1 chunk keys left" % (len(left), n1))
+    vs = [v.get("version") for v in smart(fe, {"versions": {}}).get("versions", [])]
+    step("fe_mig_versions_only_v2_after_prune", vs == [2] and smart(fe, {"manifest": {}}) == m2, json.dumps(vs))
+    srv = be.serve(os.path.dirname(rep["loaders"][TOKENS[0]]["file"]))
+    try:
+        for t in TOKENS:
+            o = be.browser("load", {"url": "http://127.0.0.1:%d/%s" % (be.PORT, os.path.basename(rep["loaders"][t]["file"]))})
+            step("%s_fe_mig_loader_resolves_after_prune" % t, o.get("ok") is True and o.get("loaded") is True and o.get("has_app") is True, json.dumps(o)[:200])
+    finally:
+        srv.shutdown(); srv.server_close()
+    R["fe_mig"] = {"code_id": c2, "sha256": v2sha, "from_code": c1, "pin_v2": rep["manifest_pin_sha256"], "propose_sha256": rep["propose_sha256"],
+                   "render_dir": out, "loaders": {t: rep["loaders"][t]["sha256"] for t in TOKENS}, "v1_chunks_pruned": n1, "prune_calls": k}
+
 def get(path):
     import urllib.request, urllib.error
     try: return json.loads(urllib.request.urlopen(REST + path, timeout=20).read())
@@ -531,7 +614,8 @@ def main():
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
     if KMS_BIN and FE_WASM and os.environ.get("FE_PROP") == "1":
         fe_prop(D, inst); save()
-        if FE_V2_WASM: fe_v2_prune(D, inst); save()
+        if FE_V2_WASM and os.environ.get("FE_V2_MODE") == "migrate_prop": fe_v2_migrate_prop(D, inst); save()
+        elif FE_V2_WASM: fe_v2_prune(D, inst); save()
         if os.environ.get("STOP_AFTER_FE") == "1": return
     if KMS_BIN and os.environ.get("KMS_GOV") == "1":
         kms_gov_circuit_and_bind(D, inst, TOKENS, PROPOSER, cdir); save(); return
