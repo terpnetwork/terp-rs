@@ -1,4 +1,4 @@
-mod authenticator;
+pub mod authenticator;
 mod helpers;
 mod macros;
 mod types;
@@ -62,7 +62,7 @@ pub trait TerpAccountTrait {
     fn on_auth_request(
         deps: DepsMut,
         env: Env,
-        req: &Box<AuthenticationRequest>,
+        req: &AuthenticationRequest,
     ) -> Self::AuthProcessResult;
     /// Logic to process stateful events. We expect an authentication request to have been valid, so we can update stateful data based on the message and params.\
     /// Notes: Changes committed always if auth succeeds (not reverted on exec failure). For composites: Called on all subs (AnyOf) or used subs (AllOf).

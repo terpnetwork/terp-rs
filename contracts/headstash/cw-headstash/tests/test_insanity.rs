@@ -5,11 +5,9 @@ use cw_headstash::tokenfactory::{
 };
 use cw_headstash::wavs::WavsProofOfOwnership;
 use cw_headstash_manifold::msg::{
-    ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInitMsg,
-    QueryMsg as FactoryQueryMsg,
+    ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInitMsg, QueryMsg as FactoryQueryMsg,
 };
 use cw_multi_test::{App, ContractWrapper, Executor};
-use cw_ownable::Ownership;
 use std::collections::HashMap;
 
 // Mock tokenfactory module for testing
@@ -64,10 +62,10 @@ impl MockTokenFactory {
     }
 
     pub fn get_balance(&self, addr: &Addr, denom: &str) -> Uint128 {
-        self.balances
+        *self
+            .balances
             .get(&(addr.clone(), denom.to_string()))
             .unwrap_or(&Uint128::zero())
-            .clone()
     }
 }
 
@@ -80,6 +78,12 @@ pub struct TestEnv {
     pub factory_addr: Addr,
     pub tokenfactory: MockTokenFactory,
     pub test_accounts: Vec<Addr>,
+}
+
+impl Default for TestEnv {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestEnv {

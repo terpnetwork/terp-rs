@@ -65,7 +65,7 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountBls {
     fn on_auth_request(
         deps: cosmwasm_std::DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let cfg = BLS_CONFIG.load(deps.storage)?;
         let payload: BlsAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {

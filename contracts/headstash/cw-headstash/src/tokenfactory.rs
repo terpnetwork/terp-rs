@@ -53,10 +53,10 @@ fn create_msg_mint(sender: String, amount: Uint128, denom: String) -> StdResult<
 
     let value = to_json_binary(&msg)?;
 
-    Ok(CosmosMsg::Stargate {
+    Ok(CosmosMsg::Any(cosmwasm_std::AnyMsg {
         type_url: MSG_MINT_TYPE_URL.to_string(),
         value,
-    })
+    }))
 }
 
 fn create_msg_burn(
@@ -91,13 +91,14 @@ fn create_msg_burn(
 
     let value = to_json_binary(&msg)?;
 
-    Ok(CosmosMsg::Stargate {
+    Ok(CosmosMsg::Any(cosmwasm_std::AnyMsg {
         type_url: MSG_BURN_TYPE_URL.to_string(),
         value,
-    })
+    }))
 }
 
 #[cosmwasm_schema::cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum TokenStrategy {
     /// Create new token via TokenFactory
     NewFungible(NewTokenConfig),

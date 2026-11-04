@@ -103,10 +103,7 @@ pub fn fetch_witness_for_claim(
 impl ClaimInfo {
     pub fn hash(&self) -> String {
         let mut hasher = Keccak256::new();
-        let hash_str = format!(
-            "{}\n{}\n{}",
-            &self.provider, &self.parameters, &self.context
-        );
+        let hash_str = format!("{}\n{}\n{}", self.provider, self.parameters, self.context);
         hasher.update(&hash_str);
 
         let hash = hasher.finalize().to_vec();
@@ -118,10 +115,7 @@ impl CompleteClaimData {
     pub fn serialise(&self) -> String {
         format!(
             "{}\n{}\n{}\n{}",
-            &self.identifier,
-            &self.owner.to_string(),
-            &self.timestampS.to_string(),
-            &self.epoch.to_string()
+            self.identifier, self.owner, self.timestampS, self.epoch
         )
     }
 }

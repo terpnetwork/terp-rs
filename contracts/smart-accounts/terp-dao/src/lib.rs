@@ -8,7 +8,6 @@ use crate::state::DAO;
 
 use terp_account::traits::default::TerpAccountTrait;
 
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw2::set_contract_version;
 use serde::{Deserialize, Serialize};
@@ -100,9 +99,9 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
         _env: cosmwasm_std::Env,
         _req: &terp_auth::OnAuthenticatorAddedRequest,
     ) -> Self::AuthProcessResult {
-        /// check if dao member
-        ///
-        /// - save auth by addr prefix to binary object for params (to be typed-defined later for things like filters/rate-limits)
+        // check if dao member
+        //
+        // - save auth by addr prefix to binary object for params (to be typed-defined later for things like filters/rate-limits)
         todo!()
     }
 
@@ -117,7 +116,7 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     fn on_auth_request(
         _deps: cosmwasm_std::DepsMut,
         _env: cosmwasm_std::Env,
-        _req: &Box<terp_auth::AuthenticationRequest>,
+        _req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         // ensure still dao-member (raw-request)
 

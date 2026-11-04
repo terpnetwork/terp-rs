@@ -175,7 +175,7 @@ impl TerpAccountTrait for Ed25519Authenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let registered = PUBLIC_KEY.load(deps.storage)?;
         let default_msg = req.sign_mode_tx_data.sign_mode_direct.as_slice();
@@ -241,13 +241,8 @@ impl TerpAccountTrait for Ed25519Authenticator {
                 // When public_keys expanded to N and messages is 1: shape (1,n,n) ✓
                 // When both expanded: if messages was None we have len-1 msg → (1,n,n) ✓
                 // If user supplied N messages and 1 key: shape (n,n,1) ✓
-                let pk_for_batch: Vec<&[u8]> = if pk_refs.len() == 1 {
-                    pk_refs
-                } else if msg_refs.len() == 1 && pk_refs.len() == n {
-                    pk_refs
-                } else {
-                    pk_refs
-                };
+                // All shapes pass the key list through unchanged.
+                let pk_for_batch: Vec<&[u8]> = pk_refs;
 
                 verify_batch(deps.api, &msg_refs, &sig_refs, &pk_for_batch)?;
                 Ok(Response::new()

@@ -79,30 +79,30 @@ pub struct HeadstashInstances {
 }
 
 /// Implement CosmWasm Instance as a Halo2 Circuit Instance Struct
-impl Into<Instance> for HeadstashInstances {
-    fn into(self) -> Instance {
+impl From<HeadstashInstances> for Instance {
+    fn from(val: HeadstashInstances) -> Self {
         let mut inst = Instance::from_parts(
             Anchor::from_bytes(
-                self.anchor
+                val.anchor
                     .as_slice()
                     .try_into()
                     .expect("Invalid anchor bytes"),
             )
             .expect("bad anchor"),
-            NoteDenom::from(self.nd.to_array().expect("nd bytes")),
-            NoteValue::from(self.v),
-            RecpAddr::try_from(self.recp.as_slice()).expect("recp bytes"),
+            NoteDenom::from(val.nd.to_array().expect("nd bytes")),
+            NoteValue::from(val.v),
+            RecpAddr::try_from(val.recp.as_slice()).expect("recp bytes"),
             Nullifier::from_bytes(
-                self.nf
+                val.nf
                     .as_slice()
                     .try_into()
                     .expect("Invalid nullifier bytes"),
             )
             .expect("darn"),
-            ExtractedNoteCommitment::from_bytes(&self.cmx.to_array().expect("cmx bytes"))
+            ExtractedNoteCommitment::from_bytes(&val.cmx.to_array().expect("cmx bytes"))
                 .expect("ExtractedNoteCommitment"),
         );
-        inst.e = self.e.to_array().expect("challenge bytes");
+        inst.e = val.e.to_array().expect("challenge bytes");
         inst
     }
 }
@@ -132,7 +132,7 @@ pub fn process_headstash(
     let mut n = HashSet::new();
     let mut cts = HashMap::new();
 
-    for claim in &claims {
+    if let Some(claim) = claims.first() {
         let root_id = claim.root_id;
         // Claim must reference a registered eligibility root (additive set).
         // Anchor must equal the registered root bytes (depth-32 Poseidon path root for new drops).
@@ -167,7 +167,7 @@ pub fn process_headstash(
         if !cfg
             .ts
             .iter()
-            .any(|e| &e.proof_representation() == &claim.i.nd)
+            .any(|e| e.proof_representation() == claim.i.nd)
         {
             return Err(StdError::msg("incorrect token denom"));
         }
@@ -185,7 +185,7 @@ pub fn process_headstash(
             }
             let ok = deps
                 .api
-                .proof_instance_verify(cfg.cid.into(), &claim.p, &inst.to_vm_public_inputs())
+                .proof_instance_verify(cfg.cid, &claim.p, &inst.to_vm_public_inputs())
                 .map_err(|e| StdError::msg(e.to_string()))?;
             if !ok {
                 return Err(StdError::msg("invalid headstash proof"));
@@ -282,9 +282,7 @@ pub fn verify_nullifier_stateful(
     nullifier: String,
 ) -> Result<(), StdError> {
     NULLIFIERS.update(storage, nullifier, |n| match n {
-        Some(_) => {
-            return Err(StdError::msg("nullifier already exists"));
-        }
+        Some(_) => Err(StdError::msg("nullifier already exists")),
         None => Ok(()),
     })?;
     Ok(())

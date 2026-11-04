@@ -13,9 +13,7 @@ pub use auth::{FROST_SIG_LEN, encode_group_vk, encode_signature};
 pub use error::ContractError;
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw_storage_plus::Item;
 use cw2::set_contract_version;
 use sha2::{Digest, Sha256};

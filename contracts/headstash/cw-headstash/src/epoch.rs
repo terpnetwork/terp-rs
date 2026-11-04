@@ -268,7 +268,7 @@ pub fn set_denom_table(
     amounts: Vec<u64>,
 ) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    if amounts.is_empty() || amounts.iter().any(|amount| *amount == 0) {
+    if amounts.is_empty() || amounts.contains(&0) {
         return Err(StdError::msg("denomination table needs positive amounts"));
     }
     let mut seen = HashSet::new();
@@ -654,7 +654,7 @@ mod tests {
         let dest = deps.api.addr_make("dest").to_string();
         let denom = denom();
         let payout = row(1, &dest, 15, denom.clone());
-        let hash = accepted_root(root.as_slice(), &[payout.clone()]).unwrap();
+        let hash = accepted_root(root.as_slice(), std::slice::from_ref(&payout)).unwrap();
         let attested = attested_root(&hash);
         assert_ne!(attested, hash);
         let sudo_msg = HashMerchantSudoMsg {
@@ -771,7 +771,7 @@ mod tests {
         .unwrap();
 
         let private = row(4, &dest, 10, denom());
-        let hash = accepted_root(root.as_slice(), &[private.clone()]).unwrap();
+        let hash = accepted_root(root.as_slice(), std::slice::from_ref(&private)).unwrap();
         sudo(
             deps.as_mut(),
             HashMerchantSudoMsg {

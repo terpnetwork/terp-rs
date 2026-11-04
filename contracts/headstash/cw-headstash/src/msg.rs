@@ -26,6 +26,7 @@ pub struct InstantiateMsg {
 
 #[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     /// Verify claims and distribute. Each claim binds to a registered `root_id`.
     ProcessHeadstash {

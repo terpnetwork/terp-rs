@@ -189,7 +189,7 @@ impl TerpAccountTrait for DreggAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<AuthenticationRequest>,
+        req: &AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let cfg = CONFIG.load(deps.storage)?;
         if cfg.claim_ceiling != "settlement_only" {

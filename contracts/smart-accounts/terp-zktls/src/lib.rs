@@ -12,9 +12,7 @@ pub mod claims;
 mod error;
 mod state;
 
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult, to_json_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult, to_json_binary};
 
 // version info for migration info
 use cw2::set_contract_version;
@@ -153,7 +151,7 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountZkTls {
     fn on_auth_request(
         deps: cosmwasm_std::DepsMut,
         env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let mut resp = Response::new().add_attribute("action", "auth_req");
         let Proof {
@@ -194,7 +192,7 @@ impl terp_account::traits::default::TerpAccountTrait for TerpAccountZkTls {
                 }
                 Ok(resp)
             }
-            None => return Err(ContractError::NotFoundErr {}),
+            None => Err(ContractError::NotFoundErr {}),
         }
     }
 

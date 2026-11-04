@@ -124,7 +124,7 @@ mod tests {
         assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
 
         let row = payout(1, dest.as_str(), 15);
-        let hash = accepted_root(root.as_slice(), &[row.clone()]).unwrap();
+        let hash = accepted_root(root.as_slice(), std::slice::from_ref(&row)).unwrap();
         let attested = attested_root(&hash);
         wasm_sudo(&mock, &addr, &sudo_msg(ALGO_ACCEPTED, &attested, 4)).unwrap();
         let stored: crate::epoch::EpochRootResponse = hs
@@ -198,7 +198,8 @@ mod tests {
         )
         .unwrap();
         let public_row = payout(4, dest.as_str(), 10);
-        let public_hash = accepted_root(root.as_slice(), &[public_row.clone()]).unwrap();
+        let public_hash =
+            accepted_root(root.as_slice(), std::slice::from_ref(&public_row)).unwrap();
         wasm_sudo(
             &mock,
             &addr,

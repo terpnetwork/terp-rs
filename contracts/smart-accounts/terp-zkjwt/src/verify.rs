@@ -46,7 +46,7 @@ fn check_envelope(issuer: &IssuerConfig, payload: &ZkJwtAuthPayload) -> Result<(
         });
     }
     if payload.claim_commitment.len() != CLAIM_COMMITMENT_LEN
-        && !(payload.claim_commitment.len() > 0 && payload.claim_commitment.len() <= 64)
+        && !(!payload.claim_commitment.is_empty() && payload.claim_commitment.len() <= 64)
     {
         // allow 1..=64 during migration; prefer 32
         if payload.claim_commitment.is_empty() || payload.claim_commitment.len() > 64 {

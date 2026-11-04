@@ -10,7 +10,6 @@ use cw_headstash_manifold::msg::{
 };
 
 use cw_multi_test::{App, ContractWrapper, Executor};
-use cw_ownable::Ownership;
 use std::collections::HashMap;
 
 // Mock tokenfactory module for testing
@@ -65,10 +64,10 @@ impl MockTokenFactory {
     }
 
     pub fn get_balance(&self, addr: &Addr, denom: &str) -> Uint128 {
-        self.balances
+        *self
+            .balances
             .get(&(addr.clone(), denom.to_string()))
             .unwrap_or(&Uint128::zero())
-            .clone()
     }
 }
 
@@ -81,6 +80,12 @@ pub struct TestEnv {
     pub factory_addr: Addr,
     pub tokenfactory: MockTokenFactory,
     pub test_accounts: Vec<Addr>,
+}
+
+impl Default for TestEnv {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestEnv {
@@ -320,7 +325,7 @@ fn test_integration_factory_funding() {
             env.owner.clone(),
             env.factory_addr.clone(),
             &create_msg,
-            &[funding_amount.clone()],
+            std::slice::from_ref(&funding_amount),
         )
         .unwrap();
 

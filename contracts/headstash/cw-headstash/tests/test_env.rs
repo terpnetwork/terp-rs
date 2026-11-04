@@ -3,22 +3,16 @@
 
 use cosmwasm_std::{Addr, Binary, Coin, Uint128};
 use cw_multi_test::{App, ContractWrapper, Executor};
-use cw_ownable::Ownership;
-use hex;
 use std::collections::HashMap;
 
 // Import contract messages
-use cw_headstash::msg::{
-    InstantiateMsg as HeadstashInstantiateMsg,
-    QueryMsg as HeadstashQueryMsg,
-};
+use cw_headstash::msg::InstantiateMsg as HeadstashInstantiateMsg;
 use cw_headstash::tokenfactory::{
     DenomUnit, HeadstashTokenObject, InitialMint, Metadata, NewTokenConfig, TokenStrategy,
 };
 use cw_headstash::wavs::WavsProofOfOwnership;
 use cw_headstash_manifold::msg::{
     ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInstantiateMsg,
-    QueryMsg as FactoryQueryMsg,
 };
 // Import our local metadata struct
 
@@ -75,10 +69,10 @@ impl MockTokenFactory {
     }
 
     pub fn get_balance(&self, addr: &Addr, denom: &str) -> Uint128 {
-        self.balances
+        *self
+            .balances
             .get(&(addr.clone(), denom.to_string()))
             .unwrap_or(&Uint128::zero())
-            .clone()
     }
 }
 
@@ -91,6 +85,12 @@ pub struct TestEnv {
     pub factory_addr: Addr,
     pub tokenfactory: MockTokenFactory,
     pub test_accounts: Vec<Addr>,
+}
+
+impl Default for TestEnv {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestEnv {
@@ -251,7 +251,7 @@ pub fn mock_wavs_proof_with_operators(count: usize) -> WavsProofOfOwnership {
     for i in 0..count {
         // Use deterministic mock keys for reproducible tests
         // Convert BLS points to hex strings as expected by WavsOpAuth
-        let mock_public_g1_hex = hex::encode(&G1);
+        let mock_public_g1_hex = hex::encode(G1);
         let mock_proof_hex = hex::encode(format!("mock_proof_{}", i).as_bytes());
 
         poos.push(cw_headstash::wavs::WavsOpAuth {
