@@ -57,7 +57,7 @@ test("confirm gate: small or unknown set blocks a claim until the user confirms"
   assert.equal(V.privacyGateOpen(small, false), false); assert.equal(V.privacyGateOpen(small, true), true);
   assert.equal(V.privacyGateOpen(big, false), true); assert.equal(V.privacyGateOpen(null, false), false); assert.equal(V.privacyGateOpen(null, true), true);
   assert.match(js, /if \(!V\.privacyGateOpen\(priv, \$\("privacy-ack"\)\.checked\)\) throw new Error/);   // enforced in claim(), not only by the disabled button
-  assert.match(js, /\$\("claim"\)\.disabled = !\(claimable && V\.privacyGateOpen\(priv, \$\("privacy-ack"\)\.checked\)\)/);
+  assert.match(js, /\$\("claim"\)\.disabled = !\(claimable && gate\.ok && V\.privacyGateOpen\(priv, \$\("privacy-ack"\)\.checked\)\)/);
 });
 test("delayed-claim relay: labelled extension point only, no service shipped", () => {
   assert.deepEqual(V.DELAYED_CLAIM_RELAYS, []); assert.ok(Object.isFrozen(V.DELAYED_CLAIM_RELAYS)); assert.deepEqual(V.delayedRelays(), []);

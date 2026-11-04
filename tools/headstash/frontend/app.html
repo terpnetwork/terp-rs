@@ -18,7 +18,7 @@ table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px
 code{word-break:break-all}small,.muted{color:var(--hs-textMuted)}
 .warn,.ok,.err{color:var(--hs-text);border-left:3px solid var(--hs-accent);padding-left:.5rem}.warn{border-left-style:dashed}.err{font-weight:600;border-left-width:6px}.err:empty,.ok:empty{display:none}
 [data-state=ok]{color:var(--hs-text);font-weight:600}[data-state=ok]::before{content:"\2713  "}[data-state=error]{color:var(--hs-text);font-weight:600}[data-state=error]::before{content:"\2716  "}
-#info-dlg{max-width:620px;line-height:1.55;padding:1.1rem 1.3rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
+#info-dlg{max-width:620px;line-height:1.55;padding:1.1rem 1.3rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r)}dialog.modal{max-width:680px;width:calc(100% - 2rem);max-height:86vh;overflow:auto;line-height:1.5;padding:1.1rem 1.3rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r)}.flist{max-height:50vh;overflow:auto;margin:.6rem 0;border:1px solid var(--hs-border);border-radius:var(--hs-r);padding:.3rem}.fopt{display:flex;gap:.5rem;align-items:center;padding:.3rem .4rem}.fopt small{margin-left:auto}ul.pins{font-size:12px;max-height:30vh;overflow:auto;word-break:break-all}.foot{margin-top:1.5rem;padding-top:.6rem;border-top:1px solid var(--hs-border)}.sheet-head .ttl{flex:1;min-width:0}.sub{font-size:13px}details.params>summary,details.inline>summary{cursor:pointer;color:var(--hs-accent)}details.inline{display:inline-block}#claim-gate[data-ok=true]{color:var(--hs-ok,inherit)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
 details{margin-top:.6rem}summary{cursor:pointer}
 /* R13: bottom sheet (slides up from the bottom; native modal dialog = aria-modal + focus containment + Esc) */
 dialog.sheet{position:fixed;inset:auto 0 0 0;margin:0 auto;width:100%;max-width:860px;max-height:92vh;max-height:92dvh;overflow:auto;box-sizing:border-box;padding:0 1rem 1rem;color:var(--hs-text);background:var(--hs-bg);border:1px solid var(--hs-borderStrong);border-bottom:0;border-radius:calc(var(--hs-radius) * 2) calc(var(--hs-radius) * 2) 0 0}
@@ -38,20 +38,22 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 .chip{display:inline-flex;align-items:center;gap:.3rem;margin:.12rem .25rem .12rem 0;padding:.08rem .55rem;min-height:24px;border:1px solid var(--hs-border);border-radius:999px;background:var(--hs-surfaceAlt);color:var(--hs-text);font:500 12.5px/1.3 var(--hs-mono);white-space:nowrap;vertical-align:middle}.chip>i{font-style:normal;color:var(--hs-textMuted);font-family:var(--hs-sans)}.chips{display:flex;flex-wrap:wrap;align-items:center;gap:.1rem;margin:.3rem 0}button.chip{margin:.12rem .25rem .12rem 0;padding:.08rem .6rem;min-height:28px;font-weight:500;cursor:copy;border-color:var(--hs-borderStrong);background:var(--hs-surfaceAlt)}button.chip:hover:not(:disabled){border-color:var(--hs-accent);background:var(--hs-surfaceAlt)}button.chip::after{content:"\29C9";font-family:var(--hs-sans);color:var(--hs-textMuted)}.steps{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem;margin:.4rem 0;padding:0;list-style:none}.steps li{display:inline-flex;align-items:center}.steps li+li::before{content:"\2192";margin:0 .35rem;color:var(--hs-textMuted)}.steps .chip[data-state=done]{border-color:var(--hs-accent)}.steps .chip[data-state=done]::before{content:"\2713"}.steps .chip[data-state=current]{border:2px solid var(--hs-accent);font-weight:700}.steps .chip[data-state=todo]{color:var(--hs-textMuted)}.reason{border:1px solid var(--hs-borderStrong);border-left:6px solid var(--hs-accent);border-radius:var(--hs-r);background:var(--hs-surfaceAlt);padding:.5rem .7rem;font-size:13.5px}.reason:empty{display:none}.reason[data-state=accepted]{border-left-width:3px}.lock{font-size:13px;color:var(--hs-textMuted);border-left:3px solid var(--hs-borderStrong);padding-left:.5rem}.lock::before{content:"\1F512  "}#toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);z-index:10;padding:.45rem .9rem;border-radius:999px;background:var(--hs-text);color:var(--hs-bg);font-size:13.5px;font-weight:600}#toast:empty{display:none}#claim-pick label.inl{margin:.15rem .8rem .15rem 0}
 </style>
 <header><h1>Terp Headstash claim</h1><button id="theme-toggle" type="button" aria-label="Switch light/dark theme" aria-pressed="false">dark</button>
-<p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Pick a Headstash below to open its claim tools. Every field has an <b>i</b> button beside it explaining what it does, what it reveals and the risks.</p></header>
+<p>Loaded from on-chain chunks; every chunk passed its sha256 check (see <b>Details</b> in the footer). Pick a Headstash below to open its claim tools. Every field has an <b>i</b> button beside it explaining what it does, what it reveals and the risks.</p></header>
 <main id="landing">
 <section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">Find a Headstash <button class="info" data-step="instance" data-info="instance" aria-label="About choosing a Headstash">i</button></h2>
 <p class="muted">Selected: <span id="hs-cur"></span></p>
-<label for="code-ids">Code id(s) to browse</label><input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14">
-<button id="browse">Browse instances</button> <button id="sheet-resume" class="ghost" hidden>Resume open Headstash</button>
+<div class="row"><button id="browse">Browse instances</button> <details id="code-form" class="inline"><summary>By code id</summary><label for="code-ids">Code id(s)</label> <input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14"> <button id="browse-codes" type="button">Browse these</button></details></div>
+<div class="row" id="filters"><button id="f-token" class="ghost" type="button" aria-haspopup="dialog">Token: all</button> <button id="f-creator" class="ghost" type="button" aria-haspopup="dialog">Creator: all</button> <button id="f-clear" class="ghost" type="button" hidden>Clear filters</button> <span id="f-count" class="muted"></span></div>
+ <button id="sheet-resume" class="ghost" hidden>Resume open Headstash</button>
 <p class="err" id="inst-err" role="alert"></p>
-<table id="inst-list" aria-label="Headstash instances"><thead><tr><th>address / label</th><th>code</th><th>status</th><th>parameters</th><th></th></tr></thead><tbody></tbody></table>
+<table id="inst-list" aria-label="Headstash instances"><thead><tr><th>label / address / creator</th><th>code</th><th>status &amp; key parameters</th><th></th></tr></thead><tbody></tbody></table>
 </section>
+<footer class="foot"><button id="details-btn" class="ghost" type="button" aria-haspopup="dialog">Details</button> <span class="muted">frontend contract, chunk pins and on-chain config</span></footer>
 </main>
 
 <dialog id="hs-sheet" class="sheet" aria-modal="true" aria-labelledby="sheet-title">
 <div class="grip" aria-hidden="true"></div>
-<div class="sheet-head"><h2 id="sheet-title">Headstash <span id="sheet-hs"></span></h2><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
+<div class="sheet-head"><div class="ttl"><h2 id="sheet-title"><span id="sheet-label">Headstash</span> <span id="sheet-hs"></span></h2><div id="sheet-creator" class="muted sub"></div><div id="sheet-crit"></div></div><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
 
 <section class="comp" id="sec-eligibility" data-sec="eligibility" data-status="locked">
 <div class="comp-head"><button class="toggle" id="sec-eligibility-toggle" aria-controls="sec-eligibility-body" aria-expanded="false">1. Eligibility<span class="badge" id="sec-eligibility-badge"></span><span class="hint" id="sec-eligibility-hint"></span></button></div>
@@ -64,7 +66,7 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <label for="hal-file">HAL file</label><input id="hal-file" type="file" accept=".json"></details>
 <p class="err" id="hal-err" role="alert"></p>
 <h3>Check your address (MetaMask, looked up locally) <button class="info" type="button" data-step="eligibility" data-info="eligibility" aria-label="About the eligibility check">i</button></h3>
-<button id="mm-connect">Connect MetaMask</button>
+<div class="row"><button id="mm-connect">Connect MetaMask</button> <button id="mm-disconnect" class="ghost" type="button" hidden>Disconnect</button> <span id="mm-account" class="muted">Not connected</span></div>
 <p id="elig-out" role="status"></p>
 <details id="adv-rawkey" class="adv"><summary>Advanced</summary>
 <div class="danger" role="note"><b>Warning: do not paste a private key unless you have no other choice.</b> MetaMask is enough to check, register and claim. This fallback is only for wallets whose signatures are not deterministic. A key pasted into any web page can be stolen by a malicious build, extension or screen recorder; if you use it, move funds off that key afterwards. <span class="row">Details <button class="info" type="button" data-step="rawkey" data-info="rawkey" aria-label="About the raw private key option">i</button></span></div>
@@ -138,11 +140,15 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <div id="delay-relay" data-extension="delayed-claim-relay" data-count="0" hidden></div>
 </div>
 <fieldset id="claim-pick"><legend>Notes to claim in this run</legend><div id="claim-pick-list" class="chips"></div><p id="claim-pick-sum" class="muted"></p></fieldset>
+<p id="claim-gate" class="lock" role="status"></p>
 <div class="row"><button id="claim" disabled>Claim</button><button class="info" type="button" data-step="claim" data-info="claim" aria-label="About proving and submitting">i</button></div><p id="claim-out" role="status"></p>
 <p class="err" id="claim-err" role="alert"></p>
 </div></section>
 
 <div id="toast" role="status" aria-live="polite"></div>
 <details id="log-box"><summary>Activity log</summary><pre id="log" aria-live="polite"></pre></details>
+<footer class="foot"><button id="sheet-details-btn" class="ghost" type="button" aria-haspopup="dialog">Details</button></footer>
 </dialog>
+<dialog id="details-dlg" class="modal" aria-labelledby="details-title"><h2 id="details-title">On-chain details</h2><p class="muted">Frontend contract <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span></p><div id="details-body"></div><form method="dialog"><button>Close</button></form></dialog>
+<dialog id="filter-dlg" class="modal" aria-labelledby="filter-title"><h2 id="filter-title">Filter</h2><input id="filter-q" type="search" placeholder="Search" aria-label="Search options"><div id="filter-list" class="flist" role="group" aria-label="Options"></div><form method="dialog"><button id="filter-done">Done</button></form></dialog>
 <dialog id="info-dlg" aria-labelledby="info-title"><h2 id="info-title"></h2><dl><dt>What it does</dt><dd id="info-what"></dd><dt>What it reveals</dt><dd id="info-reveals"></dd><dt>Risks</dt><dd id="info-risks"></dd></dl><form method="dialog"><button id="info-close" autofocus>Close</button></form></dialog>

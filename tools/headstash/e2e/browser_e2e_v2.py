@@ -192,7 +192,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         rl, cp = a.get("reward_lock") or {}, a.get("copy") or {}
         rd.step("fix2_reward_address_locked_no_error", rl.get("lock_visible") is True and rl.get("disabled_after") is True and not rl.get("err") and rl.get("addr_same") is True, json.dumps(rl)[:240])
         rd.step("fix2_copy_chip_sheet_title", bool(cp) and "\u2026" in cp.get("text", "") and cp.get("title") == contract and contract in (cp.get("aria") or "") and cp.get("toast", "").startswith("Copied") and cp.get("toast_live") == "polite", json.dumps(cp)[:240])
-        rd.step("fix2_single_download_then_explicit_resave", a.get("downloads_on_register") == 0 and a.get("downloads") == ["headstash-notes.v1.json", "headstash-notes.v1-registered.json"] and "now marked registered" in (a.get("save_label") or ""),
+        rd.step("fix2_single_download_then_explicit_resave", a.get("downloads_on_register") == 0 and len(a.get("downloads") or []) == 2 and re.fullmatch(r"headstash-notes-[0-9a-f]{8}-[0-9a-z]{6}\.json", a["downloads"][0]) and a["downloads"][1] == a["downloads"][0][:-5] + "-registered.json" and "now marked registered" in (a.get("save_label") or ""),
                 "%s; register downloads %s; label '%s'" % (a.get("downloads"), a.get("downloads_on_register"), a.get("save_label")))
         rd.step("v2_page_registered_all_notes", ok and len(st) == len(notes["evm"]) and set(st) == {"registered"}, json.dumps(a.get("counts")))
         if set(st) != {"registered"}: return

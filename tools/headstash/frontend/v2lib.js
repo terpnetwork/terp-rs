@@ -320,3 +320,68 @@ export function claimChain(notes, anchor) {
   let cur = false;
   return s.map(([id, label, done]) => { const st = done ? "done" : cur ? "todo" : ((cur = true), "current"); return { id, label, state: st }; });
 }
+
+// ---- fix3 ----
+/** Saved notes filename, unique per Headstash contract and account: headstash-notes-<sha256(contract)[0..8]>-<identity[0..6]>[-status].json */
+export function notesFileName(contractHashHex, identity, status) {
+  const h = String(contractHashHex || "").toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 8) || "00000000";
+  const a = String(identity || "").toLowerCase().replace(/^0x/, "").replace(/^sol:/, "s").replace(/[^0-9a-z]/g, "").slice(0, 6) || "anon";
+  return `headstash-notes-${h}-${a}${status ? "-" + String(status).replace(/[^a-z0-9]/gi, "") : ""}.json`;
+}
+/** A loaded notes file must belong to the selected Headstash; refuse (never auto-switch) on mismatch. */
+export function checkNotesContract(o, contract) {
+  if (!o || !o.contract) throw new Error("this notes file has no Headstash contract address, so it cannot be checked against the selected Headstash");
+  if (o.contract !== contract) throw new Error(`this notes file belongs to Headstash ${shortAddr(o.contract)}, not the open one (${shortAddr(contract)}). Open that Headstash first, or choose the file saved for this one.`);
+  return true;
+}
+/** Registration status from the chain (note_list {identity} -> {n, next} or null): notes at index < next are registered. Returns how many notes changed. */
+export function syncRegistered(notes, nl) {
+  const next = nl && nl.next != null ? Number(nl.next) : 0; let changed = 0;
+  (notes || []).forEach((x, j) => { const r = j < next; x.chain = r ? "registered" : "unregistered"; if (r && x.st === "new") { x.st = "registered"; changed++; } });
+  return changed;
+}
+/** Claim gate: chain-registered notes AND an accepted anchor (AND a destination + privacy ack, checked by the caller). */
+export function claimGate(notes, anchor) {
+  const ns = notes || [], reg = ns.filter((n) => n.chain === "registered" && (n.st === "registered" || n.st === "submitted"));
+  if (!ns.length) return { ok: false, reason: "Load or derive your notes first." };
+  if (!reg.length) return { ok: false, reason: ns.some((n) => n.chain === "registered") ? "Every registered note is already claimed." : "The chain has none of these notes registered yet: register them in step 2." };
+  if (!anchor) return { ok: false, reason: "Anchor state unknown: press Refresh." };
+  if (!anchor.accepted) {
+    const solo = anchor.count === 1 ? " Only 1 registration exists so far, yours; the anchor needs other people's registrations too." : "";
+    return { ok: false, reason: `Claim waits for an accepted anchor. ${anchor.reason}${solo}` };
+  }
+  return { ok: true, reason: `${reg.length} registered note(s) ready to claim; ${anchor.reason}` };
+}
+/** Tracks timers and listeners so a Headstash switch can dispose all of them (no growth across switches). */
+export class Scope {
+  constructor(api = globalThis) { this.api = api; this.timers = new Set(); this.listeners = []; }
+  interval(fn, ms) { const id = this.api.setInterval(fn, ms); this.timers.add(id); return id; }
+  on(t, ev, fn) { if (t.addEventListener) t.addEventListener(ev, fn); else t.on(ev, fn); this.listeners.push([t, ev, fn]); return fn; }
+  dispose() {
+    for (const id of this.timers) this.api.clearInterval(id); this.timers.clear();
+    for (const [t, ev, fn] of this.listeners) { if (t.removeEventListener) t.removeEventListener(ev, fn); else if (t.removeListener) t.removeListener(ev, fn); else if (t.off) t.off(ev, fn); }
+    this.listeners = [];
+  }
+  get size() { return { timers: this.timers.size, listeners: this.listeners.length }; }
+}
+/** Pretty token names: factory/<creator>/<sub> -> sub, u<x> -> X, ibc/<hash> -> IBC <hash6>… */
+export function prettyDenom(d) {
+  const s = String(d || ""), m = /^factory\/([^/]+)\/(.+)$/.exec(s);
+  if (m) return m[2];
+  if (/^ibc\//i.test(s)) return `IBC ${s.slice(4, 10)}…`;
+  if (/^u[a-z]{2,12}$/.test(s)) return s.slice(1).toUpperCase();
+  return s;
+}
+/** Tokens a Headstash holds (bank balances of the contract) plus its configured denom. */
+export function instanceTokens(balances, denom) { const s = new Set(); for (const b of balances || []) if (b && b.denom) s.add(b.denom); if (denom) s.add(denom); return [...s].sort(); }
+/** Token AND creator filters combine; an empty filter matches all. */
+export function filterInstances(list, f = {}) {
+  const T = new Set(f.tokens || []), K = new Set(f.creators || []);
+  return (list || []).filter((i) => (!T.size || (i.tokens || []).some((t) => T.has(t))) && (!K.size || K.has(i.creator) || K.has(i.admin)));
+}
+export function filterOptions(list, kind) {
+  const m = new Map();
+  for (const i of list || []) for (const v of kind === "tokens" ? i.tokens || [] : [i.creator].filter(Boolean)) m.set(v, (m.get(v) || 0) + 1);
+  return [...m].map(([value, n]) => ({ value, n, label: kind === "tokens" ? prettyDenom(value) : shortAddr(value) })).sort((a, b) => a.label.localeCompare(b.label));
+}
+export function searchOptions(opts, q) { const s = String(q || "").toLowerCase().trim(); return s ? opts.filter((o) => (o.value + " " + o.label).toLowerCase().includes(s)) : opts; }

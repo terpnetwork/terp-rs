@@ -4,6 +4,7 @@ const $ = (id) => document.getElementById(id);
 let cfg, Z, STEPS, guard, state = null, inst = null, elig = null, who = null, rawKey = null, rewardW = null;
 // R13 sheet + progressive disclosure state; R13 privacy set
 let priv = null, saved = false, destOk = false, cur = null, opener = null; const expanded = new Set();
+let instScope = null, walletScope = null, all = [], chash = ""; const filt = { tokens: new Set(), creators: new Set() };
 const log = (...a) => { const l = $("log"); l.textContent += new Date().toISOString().slice(11, 19) + " " + a.join(" ") + "\n"; l.scrollTop = 1e9; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errOut = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ""; if (e) log("ERROR", e.message || String(e)); };
@@ -71,9 +72,18 @@ const amt = (x) => V.fmtAmount(x, cfg.denom);
 async function instanceInfo(a) {
   const ci = (await lcd(`/cosmwasm/wasm/v1/contract/${a}`)).contract_info || {};
   const [pause, hal, ch, camp, rt, dc] = await Promise.all([{ pause_status: {} }, { hal_source: {} }, { forward_channels: {} }, { epoch_campaign: {} }, { registration_tree: {} }, { direct_claim: {} }].map((q) => smartAt(a, q).catch(() => undefined)));
-  return { addr: a, label: ci.label, admin: ci.admin, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp, rt, dc };
+  const bal = await lcd(`/cosmos/bank/v1beta1/balances/${a}`).catch(() => ({ balances: [] }));
+  return { addr: a, label: ci.label, admin: ci.admin, creator: ci.creator, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp, rt, dc, tokens: V.instanceTokens(bal.balances, cfg.denom), balances: bal.balances || [] };
 }
 let defaultHs = null;
+function critChips(i) {
+  const box = el("div", { className: "chips crit" }), c = i.camp || {}, r = c.registration || {};
+  for (const x of c.amounts || []) box.append(chip("", `${amt(x.amount)} ×${x.cap}`));
+  if (r.min_anonymity_set != null) box.append(chip("min set", r.min_anonymity_set));
+  if (c.cutoff_height != null) box.append(chip("cutoff", `block ${c.cutoff_height}`));
+  return box;
+}
+function paramsDropdown(i, root) { const d = el("details", { className: "params" }, el("summary", { textContent: "All parameters" }), paramChips(i, root)); return d; }
 function paramChips(i, root) {
   const box = el("div", { className: "chips" }), c = i.camp || {}, r = c.registration || {};
   for (const x of c.amounts || []) box.append(chip("note", `${amt(x.amount)} ×${x.cap}`));
@@ -83,13 +93,15 @@ function paramChips(i, root) {
   if (i.rt) box.append(chip("registered", i.rt.count), chip("anchors", i.rt.anchor_count ?? (i.rt.latest_anchor ? 1 : 0)));
   if (i.dc) box.append(chip("claimed", i.dc.claimed ?? 0));
   const fc = i.channels ? i.channels.filter((x) => x.enabled).map((x) => x.channel_id) : null;
+  if (i.tokens) box.append(chip("tokens", i.tokens.map(V.prettyDenom).join(" ") || "none", { title: i.tokens.join(" ") }));
+  if (i.creator) box.append(chip("creator", V.shortAddr(i.creator), { title: i.creator }));
   box.append(chip("forward", fc ? fc.join(" ") || "none" : "?"), chip("HAL", i.hal ? "set" : "unset", i.hal ? { title: i.hal.uri } : {}), chip("admin", i.admin ? V.shortAddr(i.admin) : "none", i.admin ? { title: i.admin } : {}), chip("root", root ? root.slice(0, 10) + "…" : "?", root ? { title: root } : {}));
   return box;
 }
 async function browse() {
   return guarded("inst-err", async () => {
     const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
-    const tb = $("inst-list").tBodies[0]; tb.replaceChildren(); let n = 0;
+    const tb = $("inst-list").tBodies[0]; tb.replaceChildren(); let n = 0; all = [];
     for (const code of codes) {
       let key = null;
       do {
@@ -98,10 +110,13 @@ async function browse() {
           const i = await instanceInfo(a).catch((e) => ({ addr: a, error: e.message }));
           const paused = i.pause && (i.pause.paused || i.pause.claims_paused) ? "paused" : i.pause ? "active" : "?";
           const root = rootHex(i.camp?.registration?.eligibility_root);
-          const params = paramChips(i, root);
+          const params = el("div", {}, chip("", i.error ? "error" : paused), critChips(i), paramsDropdown(i, root));
           const btn = el("button", { textContent: "Open" });
           btn.setAttribute("aria-label", "Open Headstash " + a); btn.setAttribute("aria-haspopup", "dialog"); btn.dataset.addr = a; btn.onclick = () => openInstance(a, btn);
-          tb.append(el("tr", {}, el("td", {}, copyChip(a), el("br"), i.label || ""), el("td", { textContent: String(code) }), el("td", {}, chip("", i.error ? "error" : paused)), i.error ? el("td", { textContent: i.error }) : el("td", {}, params), el("td", {}, btn)));
+          const who_ = el("span", { className: "muted sub" }); if (i.creator) who_.append("by ", copyChip(i.creator));
+          const tr = el("tr", {}, el("td", {}, el("b", { textContent: i.label || "(no label)" }), el("br"), copyChip(a), el("br"), who_), el("td", { textContent: String(code) }), i.error ? el("td", { textContent: i.error }) : el("td", {}, params), el("td", {}, btn));
+          tr.dataset.addr = a; tr.dataset.creator = i.creator || ""; tr.dataset.tokens = (i.tokens || []).join(" ");
+          tb.append(tr); all.push({ addr: a, creator: i.creator, admin: i.admin, tokens: i.tokens || [], label: i.label, row: tr });
           n++;
         }
         key = j.pagination && j.pagination.next_key;
@@ -110,18 +125,123 @@ async function browse() {
     // the page's default Headstash (loader HEADSTASH or ?hs=) is listed first
     const dr = defaultHs && [...tb.rows].find((r) => r.querySelector(`button[data-addr="${defaultHs}"]`));
     if (dr) { tb.prepend(dr); dr.dataset.default = "1"; dr.cells[0].append(el("br"), el("span", { className: "badge", textContent: "default" })); }
-    $("inst-list").dataset.count = n; log(`listed ${n} instance(s) for code ${codes.join(",")}`);
+    $("inst-list").dataset.count = n; applyFilters(); log(`listed ${n} instance(s) for code ${codes.join(",")}`);
+  });
+}
+// ---- fix3: filters (token from bank balances + configured denom; creator from contract info), combined ----
+function applyFilters() {
+  const keep = new Set(V.filterInstances(all, { tokens: [...filt.tokens], creators: [...filt.creators] }).map((i) => i.addr));
+  for (const i of all) i.row.hidden = !keep.has(i.addr);
+  $("inst-list").dataset.shown = keep.size;
+  const lbl = (k, set) => set.size ? `${k}: ${[...set].map((v) => (k === "Token" ? V.prettyDenom(v) : V.shortAddr(v))).join(", ")}` : `${k}: all`;
+  $("f-token").textContent = lbl("Token", filt.tokens); $("f-creator").textContent = lbl("Creator", filt.creators);
+  $("f-clear").hidden = !filt.tokens.size && !filt.creators.size;
+  $("f-count").textContent = all.length ? `${keep.size} of ${all.length} shown` : "";
+}
+let fkind = "tokens";
+function filterRender() {
+  const set = filt[fkind], opts = V.searchOptions(V.filterOptions(all, fkind), $("filter-q").value);
+  $("filter-list").replaceChildren(...(opts.length ? opts.map((o) => {
+    const cb = el("input", { type: "checkbox", checked: set.has(o.value), value: o.value });
+    cb.onchange = () => { cb.checked ? set.add(o.value) : set.delete(o.value); applyFilters(); };
+    return el("label", { className: "fopt", title: o.value }, cb, el("span", { textContent: o.label }), el("small", { className: "muted", textContent: ` ${o.value === o.label ? "" : o.value + " · "}${o.n} instance${o.n === 1 ? "" : "s"}` }));
+  }) : [el("p", { className: "muted", textContent: "No matches." })]));
+}
+function filterOpen(kind) { fkind = kind; $("filter-title").textContent = kind === "tokens" ? "Filter by token" : "Filter by creator"; $("filter-q").value = ""; filterRender(); $("filter-dlg").showModal(); $("filter-q").focus(); }
+// ---- fix3: footer Details modal (on-chain page + contract details) ----
+let feManifest = null, feConfig = null;
+function detailsRender() {
+  const kv = (k, v) => [el("dt", { textContent: k }), el("dd", {}, v instanceof Node ? v : String(v ?? "–"))];
+  const page = [...kv("Frontend contract", feConfig ? copyChip(feConfig.frontend) : "–"), ...kv("Manifest version", feManifest ? feManifest.version : "–"), ...kv("Chain", `${cfg.chain_id} via ${cfg.rest}`), ...kv("Register relay", cfg.relay)];
+  const files = feManifest && (feManifest.files || feManifest.chunks) ? Object.entries(feManifest.files || feManifest.chunks).map(([k, f]) => {
+    const name = f && f.path ? f.path : (Array.isArray(feManifest.files) ? (f.name || f.path || k) : k), sha = f && (f.sha256 || f.hash || f.digest) || (typeof f === "string" ? f : "");
+    return el("li", {}, el("code", { textContent: name }), " ", el("small", { className: "mono", textContent: sha ? "sha256 " + sha : "" }));
+  }) : [];
+  const box = [el("h3", { textContent: "This page" }), el("dl", {}, ...page), el("p", { className: "muted", textContent: "Every chunk below was checked against its sha256 pin before this page ran." }), el("ul", { className: "pins" }, ...files)];
+  if (inst) {
+    const ci = inst.ci || {}, h = inst.hal;
+    box.push(el("h3", { textContent: "Open Headstash" }), el("dl", {}, ...kv("Label", ci.label || "–"), ...kv("Contract", copyChip(inst.addr)), ...kv("Code id", ci.code_id), ...kv("Creator", ci.creator ? copyChip(ci.creator) : "–"), ...kv("Admin", ci.admin ? copyChip(ci.admin) : "none"),
+      ...kv("HAL URI", h ? h.uri : "not set"), ...kv("HAL commitment", h ? `sha256 ${h.sha256 || "–"}  cid ${h.cid || "–"}` : "–"), ...kv("Eligibility root", inst.root)), el("h4", { textContent: "Configuration" }), paramChips({ ...inst, ...ci, tokens: inst.tokens, rt: priv && anc ? { count: anc.count, anchor_count: anc.accepted ? 1 : 0 } : null }, inst.root));
+  } else box.push(el("p", { className: "muted", textContent: "Open a Headstash to see its contract details here." }));
+  $("details-body").replaceChildren(...box);
+}
+function detailsOpen() { detailsRender(); $("details-dlg").showModal(); }
+// ---- fix3 P0: registration status comes from the chain, never only from the file ----
+async function chainSync() {
+  if (!state || !inst || state.contract !== inst.addr) return 0;
+  const nl = await smart({ note_list: { identity: state.identity } }).then((x) => x ?? null).catch((e) => { log("note_list query failed: " + e.message); return undefined; });
+  if (nl === undefined) return 0;
+  const ch = V.syncRegistered(state.notes, nl); state.chain_next = nl ? Number(nl.next) : 0;
+  if (ch) { log(`chain: ${ch} note(s) already registered for ${state.identity.slice(0, 8)}… (note_list next=${nl.next}); status taken from the chain`); markDirty("registered"); }
+  return ch;
+}
+// ---- fix3: per-instance teardown so switching needs no reload ----
+function clearNotes() {
+  state = null; saved = false; dirty = null; destOk = false; rewardW = null; expanded.clear();
+  for (const id of ["tbl", "claim-pick-list", "claim-chain"]) $(id).replaceChildren();
+  for (const id of ["summary", "claim-out", "claim-pick-sum", "reg-err", "claim-err", "dst-err", "reward-err", "claim-gate"]) $(id).textContent = "";
+  $("nf").value = ""; $("register").disabled = true; rewardLock(); saveUi(); rewardChange();
+}
+function teardown() {
+  if (instScope) instScope.dispose(); instScope = new V.Scope();
+  clearNotes(); elig = null; inst = null; priv = null; anc = null; chash = "";
+  for (const id of ["anchor-reason", "reg-privacy", "sheet-creator", "sheet-crit"]) $(id).replaceChildren();
+  for (const id of ["elig-out", "hal-src", "hal-err", "elig-err"]) $(id).textContent = "";
+  $("elig-out").dataset.notes = ""; $("derive").disabled = true; setHal("idle", "Not loaded."); $("sheet-label").textContent = "Headstash";
+  anchorPoll();
+}
+// ---- fix3: MetaMask connect / disconnect / account + chain change ----
+function mmUi() {
+  const on = !!(who && who.kind === "eip1193");
+  $("mm-disconnect").hidden = !on; $("mm-connect").textContent = on ? "Switch account" : "Connect MetaMask";
+  $("mm-account").textContent = on ? `Connected: 0x${who.id}` : who ? `Using pasted key 0x${who.id}` : "Not connected";
+}
+function walletBind() {
+  const eth = window.ethereum; if (!eth || walletScope || typeof eth.on !== "function") return;
+  walletScope = new V.Scope(); walletScope.on(eth, "accountsChanged", onAccounts); walletScope.on(eth, "chainChanged", onChain);
+}
+async function onAccounts(acc) {
+  return guarded("elig-err", async () => {
+    const id = acc && acc[0] ? String(acc[0]).toLowerCase().replace(/^0x/, "") : null;
+    if (!id) return mmLocalDisconnect("MetaMask no longer shares an account with this page.");
+    if (who && who.id === id) return;
+    log(`MetaMask account changed to 0x${id}`);
+    if (state && state.identity !== id) {
+      if (!saved) { who = { kind: "eip1193", id, addr: "0x" + id }; mmUi(); $("elig-out").textContent = `MetaMask switched to 0x${id}, but the notes derived for 0x${state.identity} are not saved yet. Save them (step 3), then switch again.`; return; }
+      clearNotes();
+    }
+    who = { kind: "eip1193", id, addr: "0x" + id }; mmUi(); if (elig) showElig();
+  });
+}
+function onChain(c) { log(`MetaMask chain changed to ${c} (notes do not depend on the EVM chain); re-reading the account`); if (window.ethereum) window.ethereum.request({ method: "eth_accounts" }).then(onAccounts).catch(() => {}); }
+function mmLocalDisconnect(msg) {
+  who = null; if (state && saved) clearNotes(); else if (state) msg += " Your derived notes were kept because they are not saved yet.";
+  $("elig-out").textContent = msg; $("elig-out").dataset.notes = ""; $("derive").disabled = true; mmUi();
+}
+async function mmDisconnect() {
+  return guarded("elig-err", async () => {
+    let revoked = false;
+    try { if (window.ethereum) { await window.ethereum.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] }); revoked = true; } }
+    catch (e) { log("wallet_revokePermissions not supported: " + (e.message || e) + "; disconnecting locally"); }
+    mmLocalDisconnect(revoked ? "Disconnected: MetaMask permission revoked." : "Disconnected on this page (this wallet cannot revoke permissions; remove the site in MetaMask to fully disconnect).");
   });
 }
 async function selectInstance(a) {
   return guarded("inst-err", async () => {
-    if (state && state.contract !== a) throw new Error("a notes file for another instance is loaded: reload the page to switch");
+    if (state && state.contract !== a && !saved) throw new Error("save the notes for the open Headstash first (step 3), then switch");
+    if ((inst && inst.addr !== a) || (state && state.contract !== a)) teardown();
     cfg.headstash = a; $("hs-cur").replaceChildren(copyChip(a)); $("sheet-hs").replaceChildren(copyChip(a)); elig = null; inst = null; priv = null;
     const [camp, hal, ch, dc, th] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null), smart({ theme: {} }).catch(() => null)]);
+    const ci = (await lcd(`/cosmwasm/wasm/v1/contract/${a}`).catch(() => ({}))).contract_info || {};
+    const bal = await lcd(`/cosmos/bank/v1beta1/balances/${a}`).catch(() => ({ balances: [] }));
+    chash = hex(await sha256(te.encode(a)));
+    $("sheet-label").textContent = ci.label || "Headstash";
+    $("sheet-creator").replaceChildren(...(ci.creator ? ["creator ", copyChip(ci.creator)] : []));
     themeCands.headstash = th ?? null; themeApply();
     const ctx = hex(await directCtx());
     const exp = dc && (dc.expected_ctx || dc.ctx); if (exp && rootHex(exp) !== ctx) throw new Error("direct-claim ctx mismatch: wrong chain id or contract");
-    inst = { addr: a, camp, hal, channels: listOf(ch, "channels").filter((c) => c.enabled), root: rootHex(camp?.registration?.eligibility_root) };
+    inst = { addr: a, camp, hal, ci, tokens: V.instanceTokens(bal.balances, cfg.denom), channels: listOf(ch, "channels").filter((c) => c.enabled), root: rootHex(camp?.registration?.eligibility_root) };
+    $("sheet-crit").replaceChildren(critChips(inst));
     if (!inst.root) throw new Error("instance has no registration eligibility root");
     $("hal-src").textContent = hal ? `${hal.uri}  sha256=${hal.sha256 || "–"}  cid=${hal.cid || "–"}` : "not set";
     $("fwd-channel").replaceChildren(...inst.channels.map((c) => el("option", { value: c.channel_id, textContent: `${c.channel_id} (timeout ${c.timeout_seconds}s)` })));
@@ -177,11 +297,13 @@ function flow() {
     $(`sec-${s}-hint`).textContent = !un ? HINT[s] : !show ? summaryOf(s) : "";
   }
   const claimable = !!state && state.notes.some((n) => n.st === "registered" || n.st === "submitted");
-  $("claim").disabled = !(claimable && V.privacyGateOpen(priv, $("privacy-ack").checked));
+  const gate = V.claimGate(state ? state.notes : [], anc); $("claim-gate").textContent = state ? gate.reason : ""; $("claim-gate").dataset.ok = String(gate.ok);
+  $("claim").disabled = !(claimable && gate.ok && V.privacyGateOpen(priv, $("privacy-ack").checked));
 }
 // ---- R13: privacy set = registration_tree.count − direct_claim.claimed (public contract state) ----
 async function privacyRefresh() {
   if (!inst && !cfg.headstash) return;
+  if (state && inst) { if (await chainSync()) render(); }
   try {
     const [rt, dc, blk] = await Promise.all([smart({ registration_tree: {} }), smart({ direct_claim: {} }), lcd("/cosmos/base/tendermint/v1beta1/blocks/latest").catch(() => null)]); priv = V.privacySet(rt, dc);
     const ht = blk && blk.block && blk.block.header ? blk.block.header.height : null;
@@ -203,7 +325,7 @@ function anchorShow() {
   const chk = s.checked ? s.checked.toLocaleTimeString() : "";
   box.replaceChildren(el("b", { textContent: s.reason }), nums, el("p", { className: "muted", textContent: `${s.eta ? s.eta + " " : ""}Checked ${chk}; this page re-checks every ${ANCHOR_POLL_S} s while the sheet is open.` }));
 }
-function anchorPoll() { clearInterval(ancTimer); ancTimer = setInterval(() => { if ($("hs-sheet").open && inst && anc && anc.state !== "accepted") privacyRefresh(); }, ANCHOR_POLL_S * 1000); }
+function anchorPoll() { if (!instScope) instScope = new V.Scope(); ancTimer = instScope.interval(() => { if ($("hs-sheet").open && inst && (!anc || anc.state !== "accepted")) privacyRefresh(); }, ANCHOR_POLL_S * 1000); }
 function privacyShow() {
   const p = priv, box = $("privacy");
   $("privacy-reg").textContent = p ? p.registered : "–"; $("privacy-claimed").textContent = p ? p.claimed : "–"; $("privacy-set").textContent = p ? p.set : "–"; $("privacy-min").textContent = p ? p.threshold : "–";
@@ -226,7 +348,7 @@ function setHal(st, t) { $("hal-status").dataset.state = st; $("hal-status").tex
 async function useHal(bytes, origin) {
   const v = await V.verifyHal(bytes, inst.hal), p = V.parseHal(bytes, inst.root);
   elig = p.byIdentity; setHal("ok", `Verified (${v.passed.join(" + ")}; sha256 ${v.sha256.slice(0, 16)}…) from ${origin}: ${p.hal.rows.length} notes for ${elig.size} identities, root matches chain.`);
-  $("hal-status").dataset.sha = v.sha256; log("HAL verified", v.sha256);
+  $("hal-status").dataset.sha = v.sha256; log("HAL verified", v.sha256); if (who && !state) showElig();
 }
 async function halFetch() {
   return guarded("hal-err", async () => {
@@ -260,7 +382,8 @@ async function mmConnect() {
     const eth = window.ethereum; if (!eth) throw new Error("no MetaMask (EIP-1193) provider found");
     const acc = await eth.request({ method: "eth_requestAccounts" }); if (!acc || !acc[0]) throw new Error("no account shared");
     const id = acc[0].toLowerCase().replace(/^0x/, ""); if (!/^[0-9a-f]{40}$/.test(id)) throw new Error("bad account from wallet");
-    who = { kind: "eip1193", id, addr: "0x" + id }; showElig();
+    if (state && state.identity !== id && saved) clearNotes();
+    who = { kind: "eip1193", id, addr: "0x" + id }; walletBind(); mmUi(); showElig();
   });
 }
 async function keyUse() {
@@ -350,7 +473,7 @@ function download(name, text) { const a = el("a", { href: URL.createObjectURL(ne
 // fix2: the notes file downloads once (at derive). Later status changes (registered / claimed) are offered as an explicit,
 // differently named re-save; the first file stays valid (re-registering or re-claiming a note is recognised and skipped).
 let dirty = null; const SAVE_LABEL = "Save notes file";
-function saveName() { return dirty ? `headstash-notes.v1-${dirty}.json` : "headstash-notes.v1.json"; }
+function saveName() { return V.notesFileName(chash, state && state.identity, dirty); }
 function saveUi() {
   $("save").textContent = dirty ? `Save updated notes (now marked ${dirty})` : SAVE_LABEL; $("save").dataset.dirty = dirty || "";
   $("save-note").textContent = dirty ? `Optional: your notes are now marked ${dirty}. The file you already saved still works for claiming; saving again writes ${saveName()} so it does not overwrite or duplicate the first file.` : "";
@@ -369,16 +492,17 @@ async function load() {
     const want = o.sha256; delete o.sha256;
     if (o.v !== 1 || hex(await sha256(te.encode(canon(o)))) !== want) throw new Error("notes file checksum mismatch or unknown version");
     if (o.chain_id !== cfg.chain_id) throw new Error("notes file is for another chain");
-    if (o.contract !== cfg.headstash) { await selectInstance(o.contract); if (cfg.headstash !== o.contract) throw new Error("could not select the notes file's instance"); }
+    V.checkNotesContract(o, inst ? inst.addr : null);
     state = o; if (o.reward_priv) rewardW = await wallet(unhex(o.reward_priv)); $("reward-addr").textContent = o.reward_addr;
-    saved = true; log(`loaded ${o.notes.length} notes (checksum ok)`); render(); await privacyRefresh();
+    saved = true; log(`loaded ${o.notes.length} notes (checksum ok)`); await chainSync(); render(); await privacyRefresh();
   });
 }
 
 // ---- register ----
 async function register() {
   return guarded("reg-err", async () => {
-    const all = state.notes; if (!all.some((n) => n.st === "new")) return log("nothing to register");
+    await chainSync(); render();
+    const all = state.notes; if (!all.some((n) => n.st === "new")) { $("summary").dataset.chain = "registered"; return log("nothing to register: the chain already has every note registered"); }
     const list = all.map((n) => ({ class: n.cls, key_com: b64(unhex(n.k)) }));
     for (let start = 0; start < all.length; start += 32) {
       const chunk = all.slice(start, start + 32); if (chunk.every((n) => n.st !== "new")) continue;
@@ -386,7 +510,8 @@ async function register() {
       const body = { signer: { evm: { address: b64(unhex(state.identity)) } }, signature: first ? b64(unhex(state.registration.signature)) : null, list, start,
         eligibility: chunk.map((n) => ({ index: n.li, path: n.p.map((x) => b64(unhex(x))) })), reward_addr: first ? state.reward_addr : null };
       const w = await wallet(C.reduceN(crypto.getRandomValues(new Uint8Array(32))));
-      const g = await grant(w.addr, "register", body);
+      const g = await grant(w.addr, "register", body).catch(async (e) => { if (/already registered/i.test(e.message)) { await chainSync(); return null; } throw e; });
+      if (!g) { render(); continue; }
       const res = await execTx(w, { register_notes: body }, cfg.register_gas, g.granter);
       if (res.code === 0 || /already registered/i.test(res.raw_log || "")) { chunk.forEach((n) => { n.st = "registered"; n.rtx = res.txhash; }); log(`registered notes ${start}..${start + chunk.length - 1} tx ${res.txhash}`); }
       else throw new Error(`register chunk ${start} failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
@@ -582,11 +707,11 @@ export async function start({ files, manifest, config, urls }) {
   C = await import(urls["crypto.js"]); V = await import(urls["v2lib.js"]); ({ hex, unhex, cat, b64, unb64, te, sha256 } = C);
   themeInit(manifest);
   STEPS = JSON.parse(new TextDecoder().decode(files["steps.json"])); guard = new V.ReuseGuard(window.localStorage); book = new V.IndexBook(window.localStorage);
-  cfg = { ...config, urls }; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
+  cfg = { ...config, urls }; feManifest = manifest; feConfig = config; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
   const url = URL.createObjectURL(new Blob([files["zk_headstash.js"]], { type: "text/javascript" }));
   Z = await import(url); await Z.default({ module_or_path: files["zk_headstash_bg.wasm"] });
   document.querySelectorAll("button.info").forEach((b) => (b.onclick = () => info(b.dataset.info)));
-  $("browse").onclick = browse; $("hal-fetch").onclick = halFetch; $("hal-file").onchange = halLocal; $("mm-connect").onclick = mmConnect; $("key-use").onclick = keyUse;
+  $("browse").onclick = browse; $("hal-fetch").onclick = halFetch; $("hal-file").onchange = halLocal; $("mm-connect").onclick = mmConnect; $("mm-disconnect").onclick = mmDisconnect; $("key-use").onclick = keyUse;
   document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.onchange = rewardChange));
   document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => { $("fwd-box").hidden = destMode() !== "forward"; destOk = false; flow(); }));
   $("dest-ok").onclick = () => guarded("dst-err", async () => {
@@ -604,6 +729,9 @@ export async function start({ files, manifest, config, urls }) {
   $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-wallet").onchange = () => { if (!zafu) zafuDetect(); }; $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
   $("zafu").onclick = () => guarded("dst-err", async () => { await zafuAddress("preview"); });
   $("reward-export").onclick = () => download("headstash-reward-key.json", JSON.stringify({ address: state.reward_addr, priv_hex: state.reward_priv }, null, 1));
+  $("browse-codes").onclick = browse; $("f-token").onclick = () => filterOpen("tokens"); $("f-creator").onclick = () => filterOpen("creators");
+  $("f-clear").onclick = () => { filt.tokens.clear(); filt.creators.clear(); applyFilters(); }; $("filter-q").oninput = filterRender;
+  $("details-btn").onclick = detailsOpen; $("sheet-details-btn").onclick = detailsOpen; walletBind(); mmUi();
   zafuDetect().catch((e) => zafuSet("error", "Zafu client failed to load: " + e.message));
   const qp = new URLSearchParams(location.search), hs = qp.get("hs");
   let codes = qp.get("code");
@@ -612,7 +740,7 @@ export async function start({ files, manifest, config, urls }) {
   defaultHs = cfg.headstash;
   $("code-ids").value = codes || ""; $("hs-cur").textContent = "none yet (open one below)";
   themeCands.headstash = await smart({ theme: {} }).catch(() => null); themeApply(); // the default instance's theme styles the landing view
-  await rewardChange(); fwdState(); anchorPoll();
+  instScope = new V.Scope(); await rewardChange(); fwdState(); anchorPoll();
   document.body.dataset.ready = "1"; log("app ready; prover loaded");
   // R13: the landing view only lists Headstash instances; nothing claim-related is shown until one is opened
   if (codes) await browse();
