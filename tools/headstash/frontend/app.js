@@ -50,13 +50,42 @@ async function execTx(w, msg, gas, granter) {
 const rootHex = (r) => (r == null ? null : /^[0-9a-f]{64}$/i.test(r) ? r.toLowerCase() : hex(unb64(r)));
 const listOf = (x, k) => (Array.isArray(x) ? x : (x && (x[k] || x.channels)) || []);
 
+// ---- fix2: chips, copy chips, toast ----
+const chip = (label, value, extra = {}) => { const c = el("span", { className: "chip", ...extra }); if (label) c.append(el("i", { textContent: label })); c.append(String(value)); return c; };
+let toastT = 0;
+function toast(msg) { const t = $("toast"); t.textContent = msg; clearTimeout(toastT); toastT = setTimeout(() => (t.textContent = ""), 2500); }
+async function copyText(s) {
+  try { await navigator.clipboard.writeText(s); return true; } catch {}
+  const ta = el("textarea", { value: s }); ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch {} ta.remove(); return ok;
+}
+function copyChip(addr) {
+  const b = el("button", { type: "button", className: "chip copy", textContent: V.shortAddr(addr), title: addr });
+  b.dataset.copy = addr; b.setAttribute("aria-label", `Copy address ${addr}`);
+  b.onclick = async (e) => { e.stopPropagation(); const ok = await copyText(addr); b.dataset.copied = ok ? "1" : "0"; toast(ok ? `Copied ${V.shortAddr(addr)}` : "Copy failed: select the address manually"); };
+  return b;
+}
+const amt = (x) => V.fmtAmount(x, cfg.denom);
+
 // ---- R7: browse instances by code id ----
 async function instanceInfo(a) {
   const ci = (await lcd(`/cosmwasm/wasm/v1/contract/${a}`)).contract_info || {};
-  const [pause, hal, ch, camp] = await Promise.all([{ pause_status: {} }, { hal_source: {} }, { forward_channels: {} }, { epoch_campaign: {} }].map((q) => smartAt(a, q).catch(() => undefined)));
-  return { addr: a, label: ci.label, admin: ci.admin, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp };
+  const [pause, hal, ch, camp, rt, dc] = await Promise.all([{ pause_status: {} }, { hal_source: {} }, { forward_channels: {} }, { epoch_campaign: {} }, { registration_tree: {} }, { direct_claim: {} }].map((q) => smartAt(a, q).catch(() => undefined)));
+  return { addr: a, label: ci.label, admin: ci.admin, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp, rt, dc };
 }
 let defaultHs = null;
+function paramChips(i, root) {
+  const box = el("div", { className: "chips" }), c = i.camp || {}, r = c.registration || {};
+  for (const x of c.amounts || []) box.append(chip("note", `${amt(x.amount)} ×${x.cap}`));
+  if (cfg.denom) box.append(chip("denom", cfg.denom));
+  if (r.min_anonymity_set != null) box.append(chip("min set", r.min_anonymity_set));
+  if (c.cutoff_height != null) box.append(chip("cutoff", `block ${c.cutoff_height}`));
+  if (i.rt) box.append(chip("registered", i.rt.count), chip("anchors", i.rt.anchor_count ?? (i.rt.latest_anchor ? 1 : 0)));
+  if (i.dc) box.append(chip("claimed", i.dc.claimed ?? 0));
+  const fc = i.channels ? i.channels.filter((x) => x.enabled).map((x) => x.channel_id) : null;
+  box.append(chip("forward", fc ? fc.join(" ") || "none" : "?"), chip("HAL", i.hal ? "set" : "unset", i.hal ? { title: i.hal.uri } : {}), chip("admin", i.admin ? V.shortAddr(i.admin) : "none", i.admin ? { title: i.admin } : {}), chip("root", root ? root.slice(0, 10) + "…" : "?", root ? { title: root } : {}));
+  return box;
+}
 async function browse() {
   return guarded("inst-err", async () => {
     const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
@@ -69,10 +98,10 @@ async function browse() {
           const i = await instanceInfo(a).catch((e) => ({ addr: a, error: e.message }));
           const paused = i.pause && (i.pause.paused || i.pause.claims_paused) ? "paused" : i.pause ? "active" : "?";
           const root = rootHex(i.camp?.registration?.eligibility_root);
-          const params = `admin ${i.admin || "none"}; HAL ${i.hal ? i.hal.uri : "unset"}; forward channels ${i.channels ? i.channels.filter((c) => c.enabled).map((c) => c.channel_id).join(" ") || "none" : "?"}; root ${root ? root.slice(0, 12) + "…" : "?"}`;
+          const params = paramChips(i, root);
           const btn = el("button", { textContent: "Open" });
           btn.setAttribute("aria-label", "Open Headstash " + a); btn.setAttribute("aria-haspopup", "dialog"); btn.dataset.addr = a; btn.onclick = () => openInstance(a, btn);
-          tb.append(el("tr", {}, el("td", {}, el("code", { textContent: a }), el("br"), i.label || ""), el("td", { textContent: String(code) }), el("td", { textContent: i.error ? "error" : paused }), el("td", { textContent: i.error || params }), el("td", {}, btn)));
+          tb.append(el("tr", {}, el("td", {}, copyChip(a), el("br"), i.label || ""), el("td", { textContent: String(code) }), el("td", {}, chip("", i.error ? "error" : paused)), i.error ? el("td", { textContent: i.error }) : el("td", {}, params), el("td", {}, btn)));
           n++;
         }
         key = j.pagination && j.pagination.next_key;
@@ -87,7 +116,7 @@ async function browse() {
 async function selectInstance(a) {
   return guarded("inst-err", async () => {
     if (state && state.contract !== a) throw new Error("a notes file for another instance is loaded: reload the page to switch");
-    cfg.headstash = a; $("hs-cur").textContent = a; $("sheet-hs").textContent = a; elig = null; inst = null; priv = null;
+    cfg.headstash = a; $("hs-cur").replaceChildren(copyChip(a)); $("sheet-hs").replaceChildren(copyChip(a)); elig = null; inst = null; priv = null;
     const [camp, hal, ch, dc, th] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null), smart({ theme: {} }).catch(() => null)]);
     themeCands.headstash = th ?? null; themeApply();
     const ctx = hex(await directCtx());
@@ -96,12 +125,19 @@ async function selectInstance(a) {
     if (!inst.root) throw new Error("instance has no registration eligibility root");
     $("hal-src").textContent = hal ? `${hal.uri}  sha256=${hal.sha256 || "–"}  cid=${hal.cid || "–"}` : "not set";
     $("fwd-channel").replaceChildren(...inst.channels.map((c) => el("option", { value: c.channel_id, textContent: `${c.channel_id} (timeout ${c.timeout_seconds}s)` })));
-    document.querySelector('input[name=dest-mode][value=forward]').disabled = !inst.channels.length;
+    fwdState();
     log(`selected ${a}; root ${inst.root.slice(0, 16)}…; ${inst.channels.length} forward channel(s)`);
     await privacyRefresh();
     if (hal) await halFetch();
     return true;
   });
+}
+// fix2: the forward option is only offered when the contract allowlists an enabled IBC channel; otherwise say why, inline.
+function fwdState() {
+  const r = document.querySelector("input[name=dest-mode][value=forward]"), n = inst ? inst.channels.length : 0;
+  r.disabled = !n; $("fwd-reason").hidden = !!n; $("fwd-reason").dataset.reason = !inst ? "loading" : n ? "" : "no-channel";
+  $("fwd-reason").textContent = !inst ? "Checking this Headstash for allowlisted forward channels…" : n ? "" : "Forward to Penumbra is unavailable for this Headstash: its contract allowlists no IBC forward channel (forward_channels is empty). Claims go to a fresh ephemeral account instead.";
+  if (r.disabled && r.checked) { document.querySelector("input[name=dest-mode][value=ephemeral]").checked = true; $("fwd-box").hidden = true; }
 }
 // ---- R13: bottom sheet (native modal <dialog>: aria-modal, focus containment, Esc) ----
 async function openInstance(a, btn) {
@@ -146,10 +182,28 @@ function flow() {
 // ---- R13: privacy set = registration_tree.count − direct_claim.claimed (public contract state) ----
 async function privacyRefresh() {
   if (!inst && !cfg.headstash) return;
-  try { const [rt, dc] = await Promise.all([smart({ registration_tree: {} }), smart({ direct_claim: {} })]); priv = V.privacySet(rt, dc); }
-  catch (e) { priv = null; log("privacy set unavailable: " + e.message); }
+  try {
+    const [rt, dc, blk] = await Promise.all([smart({ registration_tree: {} }), smart({ direct_claim: {} }), lcd("/cosmos/base/tendermint/v1beta1/blocks/latest").catch(() => null)]); priv = V.privacySet(rt, dc);
+    const ht = blk && blk.block && blk.block.header ? blk.block.header.height : null;
+    anc = V.anchorStatus(rt, ht, inst && inst.camp && inst.camp.registration ? inst.camp.registration.anchor_interval : null); anc.checked = new Date();
+  }
+  catch (e) { priv = null; anc = null; log("privacy set unavailable: " + e.message); }
   privacyShow();
 }
+let anc = null, ancTimer = 0;
+const ANCHOR_POLL_S = 15;
+function anchorShow() {
+  const box = $("anchor-reason"), s = anc;
+  $("claim-chain").replaceChildren(...V.claimChain(state ? state.notes : [], s).map((x) => { const c = chip("", x.label); c.dataset.step = x.id; c.dataset.state = x.state;
+    if (x.state === "current") c.setAttribute("aria-current", "step"); c.title = { done: "done", current: "current step", todo: "waiting" }[x.state]; return el("li", {}, c); }));
+  if (!s) { box.replaceChildren(); box.dataset.state = "unknown"; return; }
+  box.dataset.state = s.state; Object.assign(box.dataset, { count: s.count, min: s.min, next: s.next, height: s.height ?? "" });
+  const nums = el("div", { className: "chips" }, chip("registered", s.count), chip("min anonymity set", s.min), chip("anchor covers", s.accepted ? s.leaves : "none"), chip("next anchor ≥ block", s.next), chip("now block", s.height ?? "?"));
+  if (s.interval) nums.append(chip("anchor interval", `${s.interval} block${s.interval === 1 ? "" : "s"}`));
+  const chk = s.checked ? s.checked.toLocaleTimeString() : "";
+  box.replaceChildren(el("b", { textContent: s.reason }), nums, el("p", { className: "muted", textContent: `${s.eta ? s.eta + " " : ""}Checked ${chk}; this page re-checks every ${ANCHOR_POLL_S} s while the sheet is open.` }));
+}
+function anchorPoll() { clearInterval(ancTimer); ancTimer = setInterval(() => { if ($("hs-sheet").open && inst && anc && anc.state !== "accepted") privacyRefresh(); }, ANCHOR_POLL_S * 1000); }
 function privacyShow() {
   const p = priv, box = $("privacy");
   $("privacy-reg").textContent = p ? p.registered : "–"; $("privacy-claimed").textContent = p ? p.claimed : "–"; $("privacy-set").textContent = p ? p.set : "–"; $("privacy-min").textContent = p ? p.threshold : "–";
@@ -158,7 +212,10 @@ function privacyShow() {
   $("privacy-meter").value = p ? Math.min(1, p.set / p.threshold) : 0;
   $("privacy-advice").textContent = p ? V.privacyAdvice(p) : "Could not read the privacy set from the chain. Confirm below to claim anyway.";
   $("privacy-ack-l").hidden = !!p && !p.small;
-  $("reg-privacy").textContent = p && state && state.notes.some((n) => n.st !== "new") ? `Privacy set now ${p.set} (registered ${p.registered} − claimed ${p.claimed}); suggested minimum before claiming: ${p.threshold}.` : "";
+  const rp = $("reg-privacy");
+  if (p && state && state.notes.some((n) => n.st !== "new")) { rp.replaceChildren(el("span", { textContent: "Privacy set now" }), chip("set", p.set), el("span", { textContent: "=" }), chip("registered", p.registered), el("span", { textContent: "−" }), chip("claimed", p.claimed), el("span", { textContent: "· suggested minimum before claiming" }), chip("min", p.threshold)); Object.assign(rp.dataset, { set: p.set, registered: p.registered, claimed: p.claimed, threshold: p.threshold }); }
+  else rp.replaceChildren();
+  anchorShow();
   // EXTENSION POINT (R13): a delayed-claim relay would be listed here; this build has none (V.DELAYED_CLAIM_RELAYS is empty).
   const rel = V.delayedRelays(); $("delay-relay").hidden = !rel.length; $("delay-relay").dataset.count = rel.length;
   flow();
@@ -227,7 +284,9 @@ async function rewardAddr() {
   if (!rewardW) rewardW = await wallet(C.reduceN(crypto.getRandomValues(new Uint8Array(32))));
   return rewardW.addr;
 }
-async function rewardChange() { return guarded("reward-err", async () => { if (state) throw new Error("reward address is fixed once notes are derived"); $("reward-addr").textContent = await rewardAddr(); }); }
+// fix2: once notes exist the reward address is bound into the registration signature: the radios are disabled and labelled, never an error.
+function rewardLock() { const l = !!state; document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.disabled = l)); $("reward-lock").hidden = !l; $("reward-addr").dataset.locked = String(l); }
+async function rewardChange() { if (state) return rewardLock(); return guarded("reward-err", async () => { $("reward-addr").textContent = await rewardAddr(); }); }
 
 // ---- derivation ----
 async function directCtx() { const h = await sha256(te.encode(`terp-hs-direct-ctx-v1\0${cfg.chain_id}\0${cfg.headstash}`)); h[31] &= 0x3f; return h; }
@@ -288,7 +347,16 @@ async function fileBytes() {
   return out;
 }
 function download(name, text) { const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "application/json" })), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
-async function save() { download("headstash-notes.v1.json", await fileBytes()); saved = true; log("notes file saved"); flow(); }
+// fix2: the notes file downloads once (at derive). Later status changes (registered / claimed) are offered as an explicit,
+// differently named re-save; the first file stays valid (re-registering or re-claiming a note is recognised and skipped).
+let dirty = null; const SAVE_LABEL = "Save notes file";
+function saveName() { return dirty ? `headstash-notes.v1-${dirty}.json` : "headstash-notes.v1.json"; }
+function saveUi() {
+  $("save").textContent = dirty ? `Save updated notes (now marked ${dirty})` : SAVE_LABEL; $("save").dataset.dirty = dirty || "";
+  $("save-note").textContent = dirty ? `Optional: your notes are now marked ${dirty}. The file you already saved still works for claiming; saving again writes ${saveName()} so it does not overwrite or duplicate the first file.` : "";
+}
+async function save() { const name = saveName(); download(name, await fileBytes()); saved = true; dirty = null; log(`notes file saved as ${name}`); saveUi(); flow(); }
+function markDirty(what) { dirty = what; saveUi(); log(`notes now marked ${what}: use "Save updated notes" in step 3 to keep a copy with this status`); }
 async function load() {
   return guarded("reg-err", async () => {
     const f = $("nf").files[0]; if (!f) throw new Error("choose a notes file");
@@ -324,12 +392,12 @@ async function register() {
       else throw new Error(`register chunk ${start} failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
       render();
     }
-    log("registered all notes"); render(); await save(); await privacyRefresh();
+    log("registered all notes"); markDirty("registered"); render(); await privacyRefresh();
   });
 }
 async function anchorCheck() {
   return guarded("claim-err", async () => {
-    const rt = await smart({ registration_tree: {} });
+    const rt = await smart({ registration_tree: {} }); await privacyRefresh();
     $("anchor-out").textContent = rt.latest_anchor ? `Latest anchor ${hex(unb64(rt.latest_anchor.root)).slice(0, 16)}… covering ${rt.latest_anchor.leaf_count} registrations (tree size ${rt.count}, minimum anonymity set ${rt.min_anonymity_set}).` : "No accepted anchor yet: claims open after the next anchor.";
   });
 }
@@ -405,9 +473,10 @@ async function claim() {
 }
 async function claimRun() {
   {
-    const mode = destMode(), max = Math.max(1, parseInt($("claim-max").value, 10) || 1);
-    const rt = await smart({ registration_tree: {} }); if (!rt.latest_anchor) throw new Error("no accepted anchor yet: wait for the next anchor, then claim");
-    const root = rt.latest_anchor.root, rh = hex(unb64(root)), todo = state.notes.filter((x) => x.st === "registered" || x.st === "submitted").slice(0, max);
+    const mode = destMode(), pick = new Set([...document.querySelectorAll("input[name=claim-note]:checked")].map((x) => Number(x.value)));
+    const rt = await smart({ registration_tree: {} }); if (!rt.latest_anchor) { const s = V.anchorStatus(rt, anc ? anc.height : null); throw new Error(`no accepted anchor yet: ${s.reason}`); }
+    const root = rt.latest_anchor.root, rh = hex(unb64(root)), todo = state.notes.filter((x) => (x.st === "registered" || x.st === "submitted") && pick.has(x.i));
+    if (!todo.length) throw new Error("select at least one note to claim");
     let ch = null; if (mode === "forward") { ch = $("fwd-channel").value; if (!V.validChannel(ch) || !inst.channels.some((c) => c.channel_id === ch)) throw new Error("pick an allowlisted forward channel"); }
     let done = 0;
     for (const [k, n] of todo.entries()) {
@@ -444,7 +513,7 @@ async function claimRun() {
       render();
     }
     $("claim-out").textContent = `${done} note(s) ${mode === "forward" ? "forwarded" : "claimed"} in this run.`; $("claim-out").dataset.done = done;
-    await save();
+    if (done) markDirty("claimed"); log(`claim run finished: ${done} note(s)`);
   }
 }
 async function exportWallets() {
@@ -463,8 +532,24 @@ function render() {
   $("derive").disabled = true; $("register").disabled = !by.new; 
   $("save").disabled = false; $("export").disabled = false; $("reward-export").disabled = !state.reward_priv;
   const head = el("tr", {}, ...["#", "class", "status", "destination"].map((h) => el("th", { textContent: h })));
+  pickRender(); rewardLock(); saveUi();
   $("tbl").replaceChildren(head, ...state.notes.map((n) => el("tr", {}, ...[n.i, n.cls, n.st, n.fwd ? `${n.fwd.channel_id} → ${n.fwd.receiver.slice(0, 22)}…` : n.dest].map((x) => el("td", { textContent: String(x) })))));
   flow();
+}
+const noteAmt = (n) => { const x = inst && inst.camp && inst.camp.amounts ? inst.camp.amounts[n.cls] : null; return x ? x.amount : null; };
+function pickRender() {
+  const box = $("claim-pick-list"), prev = new Map([...box.querySelectorAll("input[name=claim-note]")].map((x) => [Number(x.value), x.checked]));
+  const cl = state.notes.filter((n) => n.st === "registered" || n.st === "submitted");
+  box.replaceChildren(...cl.map((n) => { const cb = el("input", { type: "checkbox", name: "claim-note", value: String(n.i), checked: prev.has(n.i) ? prev.get(n.i) : true }); cb.onchange = pickSum;
+    const a = noteAmt(n); return el("label", { className: "inl" }, cb, chip("note", `#${n.i}`), a != null ? chip("amount", amt(a)) : chip("class", n.cls)); }));
+  if (!cl.length) box.append(el("span", { className: "muted", textContent: state.notes.some((n) => n.st === "new") ? "Register your notes first." : "No unclaimed notes left." }));
+  pickSum();
+}
+function pickSum() {
+  const sel = state ? state.notes.filter((n) => [...document.querySelectorAll("input[name=claim-note]:checked")].some((x) => Number(x.value) === n.i)) : [];
+  const tot = sel.reduce((s, n) => s + (Number(noteAmt(n)) || 0), 0);
+  $("claim-pick-sum").textContent = sel.length ? `${sel.length} note${sel.length === 1 ? "" : "s"} selected${tot ? `, ${amt(tot)} in total` : ""}. Each note is proved and claimed separately.` : "No note selected.";
+  $("claim-pick").dataset.selected = sel.length;
 }
 function info(id) {
   const s = STEPS[id]; if (!s) return; $("info-title").textContent = s.title; $("info-what").textContent = s.what; $("info-reveals").textContent = s.reveals; $("info-risks").textContent = s.risks;
@@ -527,7 +612,7 @@ export async function start({ files, manifest, config, urls }) {
   defaultHs = cfg.headstash;
   $("code-ids").value = codes || ""; $("hs-cur").textContent = "none yet (open one below)";
   themeCands.headstash = await smart({ theme: {} }).catch(() => null); themeApply(); // the default instance's theme styles the landing view
-  await rewardChange();
+  await rewardChange(); fwdState(); anchorPoll();
   document.body.dataset.ready = "1"; log("app ready; prover loaded");
   // R13: the landing view only lists Headstash instances; nothing claim-related is shown until one is opened
   if (codes) await browse();

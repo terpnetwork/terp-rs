@@ -189,17 +189,25 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         rd.step("v2_notes_derived_from_wallet_signature", nf.get("derivation") == "eip1193-seed-v2" and a.get("seed_signs") == 2 and "%064x" % evm_priv not in open(nr).read() if ok else False,
                 "derivation %s, seed signatures %s, reward %s" % (nf.get("derivation"), a.get("seed_signs"), nf.get("reward_addr")))
         rd.step("v2_reward_default_ephemeral", bool(nf.get("reward_priv")) and nf.get("reward_addr", "").startswith("terp1"), nf.get("reward_addr", ""))
+        rl, cp = a.get("reward_lock") or {}, a.get("copy") or {}
+        rd.step("fix2_reward_address_locked_no_error", rl.get("lock_visible") is True and rl.get("disabled_after") is True and not rl.get("err") and rl.get("addr_same") is True, json.dumps(rl)[:240])
+        rd.step("fix2_copy_chip_sheet_title", bool(cp) and "\u2026" in cp.get("text", "") and cp.get("title") == contract and contract in (cp.get("aria") or "") and cp.get("toast", "").startswith("Copied") and cp.get("toast_live") == "polite", json.dumps(cp)[:240])
+        rd.step("fix2_single_download_then_explicit_resave", a.get("downloads_on_register") == 0 and a.get("downloads") == ["headstash-notes.v1.json", "headstash-notes.v1-registered.json"] and "now marked registered" in (a.get("save_label") or ""),
+                "%s; register downloads %s; label '%s'" % (a.get("downloads"), a.get("downloads_on_register"), a.get("save_label")))
         rd.step("v2_page_registered_all_notes", ok and len(st) == len(notes["evm"]) and set(st) == {"registered"}, json.dumps(a.get("counts")))
         if set(st) != {"registered"}: return
         rt = smart(contract, {"registration_tree": {}})
         while height() < int(rt.get("next_anchor_height", 0)): time.sleep(1)
         res = tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}}))
         rd.step("v2_accept_anchor", res.get("code") == 0, res.get("raw_log", "")[:120])
+        rd.step("fix2_browse_parameter_chips", (a.get("param_chips") or 0) >= 8, "%s chips in the instance list" % a.get("param_chips"))
         c0 = be.bal(contract); bb0 = rf.b_balances(recv_b)
         b = browser("v2b", {"url": url, "contract": contract, "notes": nr, "recv_b": recv_b, "v2lib": os.path.join(PAGE, "v2lib.js"), "out": os.path.join(work, "notes-after-claim.json"), "shots": SHOTS,
                               "zafu_ext": os.environ.get("HSFE_ZAFU_EXT", "/tmp/zafu-ext/unpacked"), "zafu_profile": os.environ.get("HSFE_ZAFU_PROFILE", "/tmp/zafu-e2e/profile-onboarded"),
                               "zafu_pass": os.environ.get("HSFE_ZAFU_PASS", "hs-e2e-pass-1")})
         R["browser_v2b"] = keep(b, "log"); R["browser_v2b_log"] = b.get("log", "")[-8000:]
+        ar = b.get("anchor_reason") or {}
+        rd.step("fix2_anchor_reason_and_chain_chips", ar.get("state") in ("accepted", "stale", "due") and ar.get("count", "").isdigit() and ar.get("min", "").isdigit() and len(ar.get("chain") or []) == 3 and ar.get("chain")[0] == "registered:done" and (ar.get("picks") or 0) >= 1 and ar.get("fwd_enabled") is True and ar.get("fwd_reason_hidden") is True, json.dumps(ar)[:300])
         ok2, nf2 = be.canon_ok(os.path.join(work, "notes-after-claim.json")) if b.get("saved") else (False, {})
         spent = [n for n in nf2.get("notes", []) if n["st"] == "spent"]
         eph = [n for n in spent if n.get("mode") == "ephemeral"]; fwd = [n for n in spent if n.get("mode") == "forward"]

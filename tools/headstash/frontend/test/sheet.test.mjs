@@ -10,7 +10,7 @@ const sheet = html.slice(html.indexOf('<dialog id="hs-sheet"'), html.indexOf("</
 
 test("landing view holds only browse/lookup; every claim tool lives inside the sheet", () => {
   for (const id of ["code-ids", "browse", "inst-list", "inst-err"]) assert.ok(landing.includes(`id="${id}"`), id);
-  const tools = ["hal-fetch", "mm-connect", "key", "nf", "load", "pass", "derive", "register", "save", "export", "reward-export", "dest-mode", "fwd-channel", "recv", "zafu-connect", "zafu-wallet", "anchor-check", "privacy", "privacy-ack", "claim-max", "claim", "dest-ok", "log"];
+  const tools = ["hal-fetch", "mm-connect", "key", "nf", "load", "pass", "derive", "register", "save", "export", "reward-export", "dest-mode", "fwd-channel", "recv", "zafu-connect", "zafu-wallet", "anchor-check", "privacy", "privacy-ack", "claim-pick", "claim", "dest-ok", "log"];
   for (const id of tools) { assert.ok(!landing.includes(`id="${id}"`) && !landing.includes(`name="${id}"`), "landing leaks " + id); assert.ok(sheet.includes(`id="${id}"`) || sheet.includes(`name="${id}"`), "sheet lacks " + id); }
 });
 test("sheet is an accessible modal bottom sheet", () => {

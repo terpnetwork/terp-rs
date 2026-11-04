@@ -25,7 +25,7 @@ if (inp.zafu_ext) {
 } else { browser = await chromium.launch({ headless: true }); ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1100, height: 900 } }); }
 const page = await ctx.newPage();
 page.on("console", (m) => m.type() === "error" && console.error("console " + m.text().slice(0, 200)));
-let last = null; page.on("download", (d) => (last = d));
+let last = null, dls = []; page.on("download", (d) => { last = d; dls.push(d.suggestedFilename()); });
 const reqs = []; page.on("request", (r) => reqs.push({ t: Date.now(), url: r.url(), body: r.postData() || "" }));
 const shot = async (n) => { await page.screenshot({ path: `${inp.shots}/${phase}-${n}.png`, fullPage: true }); (out.shots ||= []).push(`${inp.shots}/${phase}-${n}.png`); };
 const text = (s) => page.locator(s).textContent().catch(() => "");
@@ -42,7 +42,7 @@ const sheetOpen = () => page.evaluate(() => document.getElementById("hs-sheet").
 const openHs = async (addr) => { await until(async () => (await page.locator(`#inst-list button[data-addr="${addr}"]`).count()) > 0, 30000);
   await page.click(`#inst-list button[data-addr="${addr}"]`); await until(sheetOpen, 30000);
   await page.locator("#hal-status[data-state='ok'], #hal-status[data-state='error']").waitFor({ timeout: 120000 }); };
-const CLAIM_UI = ["#claim", "#mm-connect", "#derive", "#register", "#save", "#zafu-connect", "#privacy", "#hal-fetch", "#nf", "#claim-max"];
+const CLAIM_UI = ["#claim", "#mm-connect", "#derive", "#register", "#save", "#zafu-connect", "#privacy", "#hal-fetch", "#nf", "#claim-pick"];
 const landingHides = async () => { const vis = []; for (const q of CLAIM_UI) if (await page.locator(q).isVisible()) vis.push(q); return { sheet_open: await sheetOpen(), visible: vis }; };
 
 // test EIP-1193 provider
@@ -136,10 +136,26 @@ try {
     await until(async () => (await attr("#summary", "data-counts")) || (await text("#reg-err")), 600000);
     if (await text("#reg-err")) throw new Error("derive: " + (await text("#reg-err")));
     await saveLast(inp.out_derive); out.reward_addr = await text("#reward-addr"); out.sections_derived = await sections();
-    const n0 = await logCount(/notes file saved/g); last = null; await page.click("#register");
-    await until(async () => (await logCount(/notes file saved/g)) > n0 || (await text("#reg-err")), 900000);
+    // fix2: reward address locked visibly (radios disabled, inline note), a forced change raises no error
+    out.reward_lock = await page.evaluate(() => { const rs = [...document.querySelectorAll("input[name=reward-mode]")]; const k = rs.find((r) => r.value === "keplr");
+      k.disabled = false; k.click(); k.dispatchEvent(new Event("change")); return { disabled_before: true, lock_visible: !document.getElementById("reward-lock").hidden, lock_text: document.getElementById("reward-lock").textContent }; });
+    await page.waitForTimeout(400);
+    out.param_chips = await page.evaluate(() => document.querySelectorAll("#inst-list td .chips .chip").length);
+    out.reward_lock.err = await text("#reward-err"); out.reward_lock.addr_same = (await text("#reward-addr")) === out.reward_addr;
+    out.reward_lock.disabled_after = await page.evaluate(() => [...document.querySelectorAll("input[name=reward-mode]")].every((r) => r.disabled));
+    await page.check("input[name=reward-mode][value=ephemeral]", { force: true }).catch(() => {});
+    // fix2: copy chip in the sheet title
+    out.copy = await page.evaluate(() => { const b = document.querySelector("#sheet-hs button.chip"); return b ? { text: b.textContent, title: b.title, aria: b.getAttribute("aria-label") } : null; });
+    await page.click("#sheet-hs button.chip"); await until(async () => !!(await text("#toast")), 3000);
+    out.copy.toast = await text("#toast"); out.copy.toast_live = await attr("#toast", "aria-live"); out.copy.copied = await attr("#sheet-hs button.chip", "data-copied");
+    await page.locator(".sheet-head").screenshot({ path: `${inp.shots}/fix2-sheet-header.png` }).catch(() => {});
+    const d0 = dls.length; out.downloads_before_register = dls.slice();
+    const n0 = await logCount(/registered all notes/g); last = null; await page.click("#register");
+    await until(async () => (await logCount(/registered all notes/g)) > n0 || (await text("#reg-err")), 900000);
     if (await text("#reg-err")) throw new Error("register: " + (await text("#reg-err")));
-    await saveLast(inp.out); out.counts = JSON.parse((await attr("#summary", "data-counts")) || "{}");
+    await page.waitForTimeout(1500); out.downloads_on_register = dls.length - d0;
+    await expand("save"); out.save_label = await text("#save"); out.save_note = await text("#save-note");
+    await page.click("#save"); await saveLast(inp.out); out.downloads = dls.slice(); out.counts = JSON.parse((await attr("#summary", "data-counts")) || "{}");
     await shot("05-registered"); out.sections_registered = await sections();
     out.privacy = await page.evaluate(() => ({ ...document.getElementById("privacy").dataset })); out.reg_privacy = await text("#reg-privacy");
     for (const m of ["light", "dark"]) { await page.emulateMedia({ colorScheme: m }); await page.waitForTimeout(300); await page.locator("#reg-privacy").scrollIntoViewIfNeeded(); await vshot(`azure-register-${m}`); }
@@ -155,6 +171,9 @@ try {
     out.sections_dest = await sections();
     // anchor check lives in the claim component (unlocked after the destination is confirmed)
     await page.click("#anchor-check"); await page.waitForTimeout(1500); out.anchor = await text("#anchor-out");
+    out.anchor_reason = await page.evaluate(() => ({ ...document.getElementById("anchor-reason").dataset, text: document.getElementById("anchor-reason").textContent,
+      chain: [...document.querySelectorAll("#claim-chain .chip")].map((c) => c.dataset.step + ":" + c.dataset.state), picks: document.querySelectorAll("input[name=claim-note]").length,
+      fwd_enabled: !document.querySelector("input[name=dest-mode][value=forward]").disabled, fwd_reason_hidden: document.getElementById("fwd-reason").hidden }));
     await shot("06-loaded-anchor");
     // R13 confirm gate: small privacy set -> claim disabled + confirmation shown; a forced click must not send anything
     await until(async () => (await attr("#privacy", "data-small")) !== null, 15000);
@@ -169,13 +188,13 @@ try {
       out.gate.disabled_after = await page.evaluate(() => document.getElementById("claim").disabled); out.gate.log_delta = (await logCount(/submitted|proof|proving/gi)) - n0; }
     await page.check("#privacy-ack"); out.gate.enabled_after_ack = await page.evaluate(() => !document.getElementById("claim").disabled);
     const runClaim = async (name) => {
-      const n0 = await logCount(/notes file saved/g), e0 = await text("#claim-err"); last = null; const t1 = Date.now();
-      await page.click("#claim");
-      await until(async () => (await logCount(/notes file saved/g)) > n0 || ((await text("#claim-err")) && (await text("#claim-err")) !== e0), 1800000);
+      const n0 = await logCount(/claim run finished/g), e0 = await text("#claim-err"); last = null; const t1 = Date.now();
+      await pickOne(); await page.click("#claim");
+      await until(async () => (await logCount(/claim run finished/g)) > n0 || ((await text("#claim-err")) && (await text("#claim-err")) !== e0), 1800000);
       out[name + "_ms"] = Date.now() - t1; out[name + "_err"] = await text("#claim-err"); out[name + "_out"] = await text("#claim-out");
       await shot(name);
     };
-    await page.fill("#claim-max", "1");
+    const pickOne = () => page.evaluate(() => { const cs = [...document.querySelectorAll("input[name=claim-note]")]; cs.forEach((c, i) => { c.checked = i === 0; c.dispatchEvent(new Event("change")); }); return cs.length; });
     await runClaim("07-claim-ephemeral");
     await expand("wallet"); await page.check("input[name=dest-mode][value=forward]"); await page.waitForTimeout(300);
     out.claim_relocked_on_dest_change = (await attr("#sec-claim", "data-status")) === "locked";

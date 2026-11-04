@@ -281,3 +281,42 @@ export const DELAYED_CLAIM_RELAYS = Object.freeze([]);
 export function delayedRelays(list = DELAYED_CLAIM_RELAYS) {
   return list.filter((r) => r && typeof r.id === "string" && typeof r.name === "string" && /^https:\/\/[^/\s]+$/.test(r.origin || "") && typeof r.submit === "function" && typeof r.status === "function");
 }
+
+// ---- fix2: display helpers (pure, unit-tested) ----
+/** terp1yyca…jf8 style: head + ellipsis + tail; short strings pass through. */
+export function shortAddr(a, head = 9, tail = 3) { const s = String(a ?? ""); return s.length > head + tail + 1 ? `${s.slice(0, head)}…${s.slice(-tail)}` : s; }
+/** Micro-denom amounts as display units: 1000000000 uterp -> "1,000 TERP"; other denoms unchanged. */
+export function fmtAmount(amount, denom) {
+  const d = String(denom || ""), n = Number(amount);
+  if (!Number.isFinite(n)) return `${amount} ${d}`.trim();
+  if (/^u[a-z]{2,}$/.test(d)) return `${(n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 6 })} ${d.slice(1).toUpperCase()}`;
+  return `${n.toLocaleString("en-US")} ${d}`.trim();
+}
+/**
+ * Why claims are (not yet) possible, from public contract state only:
+ * registration_tree {count, min_anonymity_set, next_anchor_height, latest_anchor} and the latest block height.
+ * state: "waiting-set" (count < min_anonymity_set; accept_anchor fails "anonymity set"), "due" (an anchor may be accepted now),
+ * "waiting-height" (next_anchor_height not reached), "accepted" (latest anchor covers every registration), "stale" (accepted but newer registrations wait).
+ */
+export function anchorStatus(rt, height, interval) {
+  if (!rt || typeof rt !== "object") throw new Error("anchor status: no registration_tree response");
+  const count = Number(rt.count) || 0, min = Number(rt.min_anonymity_set) || 0, next = Number(rt.next_anchor_height) || 0;
+  const h = height == null || height === "" ? null : Number(height), la = rt.latest_anchor || null, leaves = la ? Number(la.leaf_count) || 0 : 0;
+  const iv = interval == null ? null : Number(interval);
+  const base = { count, min, next, height: h, interval: iv, accepted: !!la, leaves, need: Math.max(0, min - count) };
+  if (count < min) return { ...base, state: "waiting-set", reason: `Anchor blocked: ${count} of ${min} registrations needed for the minimum anonymity set (${min - count} more).`,
+    eta: `The next anchor can be accepted once ${min - count} more note${min - count === 1 ? " is" : "s are"} registered${iv ? `; after that, at most ${iv} block${iv === 1 ? "" : "s"} apart` : ""}.` };
+  if (la && leaves >= count) return { ...base, state: "accepted", reason: `Anchor accepted: covers all ${leaves} registrations.`, eta: "" };
+  const due = h == null || h >= next;
+  return { ...base, state: due ? (la ? "stale" : "due") : "waiting-height",
+    reason: due ? `${count} registrations meet the minimum of ${min}: an anchor can be accepted now${la ? ` (latest anchor covers ${leaves})` : ""}.` : `Next anchor allowed at block ${next} (now ${h}).`,
+    eta: due ? "Waiting for the next accept_anchor call (anyone may send it)." : `About ${next - h} block${next - h === 1 ? "" : "s"} to go.` };
+}
+/** Claim dependency chain for the step chips: Registered -> Anchor accepted -> Claim. Each step: done | current | todo. */
+export function claimChain(notes, anchor) {
+  const ns = notes || [], reg = ns.some((n) => n.st !== "new"), spent = ns.length > 0 && ns.every((n) => n.st === "spent");
+  const anc = !!anchor && anchor.accepted;
+  const s = [["registered", "Registered", reg], ["anchor", "Anchor accepted", reg && anc], ["claim", "Claim", spent]];
+  let cur = false;
+  return s.map(([id, label, done]) => { const st = done ? "done" : cur ? "todo" : ((cur = true), "current"); return { id, label, state: st }; });
+}

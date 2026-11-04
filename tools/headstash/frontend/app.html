@@ -35,12 +35,13 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 .privacy{border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius);padding:.6rem .8rem;background:var(--hs-surfaceAlt)}.privacy[data-small=true]{border-left:6px solid var(--hs-accent)}
 .nums{display:flex;flex-wrap:wrap;gap:1.2rem;margin:.3rem 0}.nums b{display:block;font-size:1.3rem}meter{width:100%;height:10px}
 @media (max-width:600px){body{margin:1rem auto}dialog.sheet{max-height:96dvh;padding:0 .6rem .8rem}.comp-body{padding:.2rem .6rem .8rem}}
+.chip{display:inline-flex;align-items:center;gap:.3rem;margin:.12rem .25rem .12rem 0;padding:.08rem .55rem;min-height:24px;border:1px solid var(--hs-border);border-radius:999px;background:var(--hs-surfaceAlt);color:var(--hs-text);font:500 12.5px/1.3 var(--hs-mono);white-space:nowrap;vertical-align:middle}.chip>i{font-style:normal;color:var(--hs-textMuted);font-family:var(--hs-sans)}.chips{display:flex;flex-wrap:wrap;align-items:center;gap:.1rem;margin:.3rem 0}button.chip{margin:.12rem .25rem .12rem 0;padding:.08rem .6rem;min-height:28px;font-weight:500;cursor:copy;border-color:var(--hs-borderStrong);background:var(--hs-surfaceAlt)}button.chip:hover:not(:disabled){border-color:var(--hs-accent);background:var(--hs-surfaceAlt)}button.chip::after{content:"\29C9";font-family:var(--hs-sans);color:var(--hs-textMuted)}.steps{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem;margin:.4rem 0;padding:0;list-style:none}.steps li{display:inline-flex;align-items:center}.steps li+li::before{content:"\2192";margin:0 .35rem;color:var(--hs-textMuted)}.steps .chip[data-state=done]{border-color:var(--hs-accent)}.steps .chip[data-state=done]::before{content:"\2713"}.steps .chip[data-state=current]{border:2px solid var(--hs-accent);font-weight:700}.steps .chip[data-state=todo]{color:var(--hs-textMuted)}.reason{border:1px solid var(--hs-borderStrong);border-left:6px solid var(--hs-accent);border-radius:var(--hs-r);background:var(--hs-surfaceAlt);padding:.5rem .7rem;font-size:13.5px}.reason:empty{display:none}.reason[data-state=accepted]{border-left-width:3px}.lock{font-size:13px;color:var(--hs-textMuted);border-left:3px solid var(--hs-borderStrong);padding-left:.5rem}.lock::before{content:"\1F512  "}#toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);z-index:10;padding:.45rem .9rem;border-radius:999px;background:var(--hs-text);color:var(--hs-bg);font-size:13.5px;font-weight:600}#toast:empty{display:none}#claim-pick label.inl{margin:.15rem .8rem .15rem 0}
 </style>
 <header><h1>Terp Headstash claim</h1><button id="theme-toggle" type="button" aria-label="Switch light/dark theme" aria-pressed="false">dark</button>
 <p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Pick a Headstash below to open its claim tools. Every field has an <b>i</b> button beside it explaining what it does, what it reveals and the risks.</p></header>
 <main id="landing">
 <section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">Find a Headstash <button class="info" data-step="instance" data-info="instance" aria-label="About choosing a Headstash">i</button></h2>
-<p class="muted">Selected: <code id="hs-cur"></code></p>
+<p class="muted">Selected: <span id="hs-cur"></span></p>
 <label for="code-ids">Code id(s) to browse</label><input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14">
 <button id="browse">Browse instances</button> <button id="sheet-resume" class="ghost" hidden>Resume open Headstash</button>
 <p class="err" id="inst-err" role="alert"></p>
@@ -50,7 +51,7 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 
 <dialog id="hs-sheet" class="sheet" aria-modal="true" aria-labelledby="sheet-title">
 <div class="grip" aria-hidden="true"></div>
-<div class="sheet-head"><h2 id="sheet-title">Headstash <code id="sheet-hs"></code></h2><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
+<div class="sheet-head"><h2 id="sheet-title">Headstash <span id="sheet-hs"></span></h2><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
 
 <section class="comp" id="sec-eligibility" data-sec="eligibility" data-status="locked">
 <div class="comp-head"><button class="toggle" id="sec-eligibility-toggle" aria-controls="sec-eligibility-body" aria-expanded="false">1. Eligibility<span class="badge" id="sec-eligibility-badge"></span><span class="hint" id="sec-eligibility-hint"></span></button></div>
@@ -81,20 +82,22 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <div class="comp-body" id="sec-register-body" hidden>
 <fieldset><legend>Reward address <button class="info" type="button" data-step="reward" data-info="reward" aria-label="About the reward address">i</button></legend>
 <label class="inl"><input type="radio" name="reward-mode" value="ephemeral" checked>New in-browser key (default)</label>
-<label class="inl"><input type="radio" name="reward-mode" value="keplr">Keplr</label></fieldset>
+<label class="inl"><input type="radio" name="reward-mode" value="keplr">Keplr</label>
+<p id="reward-lock" class="lock" hidden>Locked: this reward address is part of the signed registration for the notes already derived. To use a different one, reload the page and derive again before registering.</p></fieldset>
 <p>Reward address: <code id="reward-addr">–</code></p>
 <p class="err" id="reward-err" role="alert"></p>
 <label for="pass">Notes file passphrase (optional, recommended) <button class="info" type="button" data-step="passphrase" data-info="passphrase" aria-label="About the passphrase">i</button></label><input id="pass" type="password" autocomplete="new-password">
 <div class="row"><button id="derive" disabled>Derive notes (sign seed) and save</button><button id="register" disabled>Register notes</button><button class="info" type="button" data-step="register" data-info="register" aria-label="About registering notes">i</button></div>
 <p id="summary" role="status"></p>
-<p id="reg-privacy" class="ok" role="status"></p>
+<div id="reg-privacy" class="chips" role="status"></div>
 <p class="err" id="reg-err" role="alert"></p>
 </div></section>
 
 <section class="comp" id="sec-save" data-sec="save" data-status="locked">
 <div class="comp-head"><button class="toggle" id="sec-save-toggle" aria-controls="sec-save-body" aria-expanded="false">3. Save notes<span class="badge" id="sec-save-badge"></span><span class="hint" id="sec-save-hint"></span></button></div>
 <div class="comp-body" id="sec-save-body" hidden>
-<p class="muted row"><button class="info" type="button" data-step="export" data-info="export" aria-label="About saving and exporting">i</button> The notes file is the only way to claim later. Keep it offline; it is re-saved after every registration and claim.</p>
+<p class="muted row"><button class="info" type="button" data-step="export" data-info="export" aria-label="About saving and exporting">i</button> The notes file is the only way to claim later. Keep it offline. It is downloaded once, when the notes are derived.</p>
+<p id="save-note" class="ok" role="status"></p>
 <button id="save" disabled>Save notes file</button><button id="export" disabled>Export claim account keys</button><button id="reward-export" disabled>Export reward key</button>
 <table id="tbl" aria-label="Notes"></table>
 </div></section>
@@ -104,7 +107,8 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <div class="comp-body" id="sec-wallet-body" hidden>
 <fieldset><legend>Claim to <button class="info" type="button" data-step="destination" data-info="destination" aria-label="About the claim destination">i</button></legend>
 <label class="inl"><input type="radio" name="dest-mode" value="ephemeral" checked>Fresh ephemeral account per note (default)</label>
-<label class="inl"><input type="radio" name="dest-mode" value="forward">Forward to Penumbra (Zafu)</label></fieldset>
+<label class="inl"><input type="radio" name="dest-mode" value="forward" disabled>Forward to Penumbra (Zafu)</label>
+<p id="fwd-reason" class="lock" role="status">Checking this Headstash for allowlisted forward channels…</p></fieldset>
 <div id="fwd-box" hidden>
 <label for="fwd-channel">IBC channel (allowlisted by the contract)</label><select id="fwd-channel"></select>
 <label for="recv">One-time Penumbra address (new for every note)</label><input id="recv" autocomplete="off" spellcheck="false" placeholder="penumbra1…">
@@ -121,6 +125,8 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <div class="comp-head"><button class="toggle" id="sec-claim-toggle" aria-controls="sec-claim-body" aria-expanded="false">5. Claim<span class="badge" id="sec-claim-badge"></span><span class="hint" id="sec-claim-hint"></span></button></div>
 <div class="comp-body" id="sec-claim-body" hidden>
 <div class="row"><button id="anchor-check">Check latest anchor</button><button class="info" type="button" data-step="anchor" data-info="anchor" aria-label="About anchors">i</button></div><p id="anchor-out" role="status"></p>
+<ol id="claim-chain" class="steps" aria-label="Claim steps"></ol>
+<div id="anchor-reason" class="reason" role="status" aria-live="polite"></div>
 <div id="privacy" class="privacy" role="group" aria-labelledby="privacy-h" data-small="unknown">
 <h3 id="privacy-h">Privacy set <button class="info" type="button" data-step="privacy" data-info="privacy" aria-label="About the privacy set">i</button></h3>
 <div class="nums"><span>Registered<b id="privacy-reg">–</b></span><span>Claimed<b id="privacy-claimed">–</b></span><span>Privacy set (registered − claimed)<b id="privacy-set">–</b></span><span>Suggested minimum<b id="privacy-min">–</b></span></div>
@@ -131,11 +137,12 @@ section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px
 <!-- R13 extension point: a future delayed-claim relay renders its option here (V.delayedRelays(); empty in this build). -->
 <div id="delay-relay" data-extension="delayed-claim-relay" data-count="0" hidden></div>
 </div>
-<label for="claim-max">Notes to claim in this run</label><input id="claim-max" type="number" min="1" value="1000">
+<fieldset id="claim-pick"><legend>Notes to claim in this run</legend><div id="claim-pick-list" class="chips"></div><p id="claim-pick-sum" class="muted"></p></fieldset>
 <div class="row"><button id="claim" disabled>Claim</button><button class="info" type="button" data-step="claim" data-info="claim" aria-label="About proving and submitting">i</button></div><p id="claim-out" role="status"></p>
 <p class="err" id="claim-err" role="alert"></p>
 </div></section>
 
+<div id="toast" role="status" aria-live="polite"></div>
 <details id="log-box"><summary>Activity log</summary><pre id="log" aria-live="polite"></pre></details>
 </dialog>
 <dialog id="info-dlg" aria-labelledby="info-title"><h2 id="info-title"></h2><dl><dt>What it does</dt><dd id="info-what"></dd><dt>What it reveals</dt><dd id="info-reveals"></dd><dt>Risks</dt><dd id="info-risks"></dd></dl><form method="dialog"><button id="info-close" autofocus>Close</button></form></dialog>
