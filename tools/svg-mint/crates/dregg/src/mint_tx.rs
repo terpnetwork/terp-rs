@@ -52,9 +52,7 @@ fn load_or_create_secret() -> Result<Vec<u8>, String> {
     if path.is_file() {
         let raw = std::fs::read(&path).map_err(|e| format!("runtime sk: {e}"))?;
         if raw.len() != 32 {
-            return Err(
-                "dregg runtime sk file is not 32 bytes; refusing to replace it".into(),
-            );
+            return Err("dregg runtime sk file is not 32 bytes; refusing to replace it".into());
         }
         return Ok(raw);
     }
@@ -69,7 +67,7 @@ fn load_or_create_secret() -> Result<Vec<u8>, String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&path, &raw).map_err(|e| format!("write runtime sk: {e}"))?;
+    std::fs::write(&path, raw).map_err(|e| format!("write runtime sk: {e}"))?;
     set_mode_600(&path);
     Ok(raw.to_vec())
 }
@@ -103,17 +101,30 @@ fn paymint_path() -> PathBuf {
 /// The alloc is the merkle leaf cap, not a decreasing counter.
 pub fn paymint_for(collection: &str) -> PaymintProof {
     let Ok(text) = std::fs::read_to_string(paymint_path()) else {
-        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+        return PaymintProof {
+            alloc: 0,
+            proof_hashes: Vec::new(),
+        };
     };
     let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
-        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+        return PaymintProof {
+            alloc: 0,
+            proof_hashes: Vec::new(),
+        };
     };
     let Some(row) = v.get(collection) else {
-        return PaymintProof { alloc: 0, proof_hashes: Vec::new() };
+        return PaymintProof {
+            alloc: 0,
+            proof_hashes: Vec::new(),
+        };
     };
-    let alloc = row.get("alloc").and_then(|n| {
-        n.as_u64().or_else(|| n.as_str().and_then(|s| s.parse().ok()))
-    }).unwrap_or(0) as u32;
+    let alloc = row
+        .get("alloc")
+        .and_then(|n| {
+            n.as_u64()
+                .or_else(|| n.as_str().and_then(|s| s.parse().ok()))
+        })
+        .unwrap_or(0) as u32;
     let proof_hashes = row
         .get("proof_hashes")
         .and_then(|p| p.as_array())
@@ -124,7 +135,10 @@ pub fn paymint_for(collection: &str) -> PaymintProof {
                 .collect()
         })
         .unwrap_or_default();
-    PaymintProof { alloc, proof_hashes }
+    PaymintProof {
+        alloc,
+        proof_hashes,
+    }
 }
 
 fn paymint_used_path() -> PathBuf {
@@ -145,7 +159,10 @@ fn paymint_used(collection: &str) -> u64 {
         return 0;
     };
     v.get(collection)
-        .and_then(|n| n.as_u64().or_else(|| n.as_str().and_then(|s| s.parse().ok())))
+        .and_then(|n| {
+            n.as_u64()
+                .or_else(|| n.as_str().and_then(|s| s.parse().ok()))
+        })
         .unwrap_or(0)
 }
 
@@ -157,7 +174,10 @@ fn note_paymint_used(collection: &str, n: u64) {
         .unwrap_or_else(|| serde_json::json!({}));
     let prev = v.get(collection).and_then(|n| n.as_u64()).unwrap_or(0);
     if let Some(obj) = v.as_object_mut() {
-        obj.insert(collection.to_string(), serde_json::json!(prev.saturating_add(n)));
+        obj.insert(
+            collection.to_string(),
+            serde_json::json!(prev.saturating_add(n)),
+        );
     }
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
@@ -231,11 +251,7 @@ pub fn fee_uthiol(gas: u64) -> u128 {
     let g = gas as u128;
     let q = g.saturating_mul(num) / den;
     let rem = g.saturating_mul(num) % den;
-    if rem == 0 {
-        q
-    } else {
-        q.saturating_add(1)
-    }
+    if rem == 0 { q } else { q.saturating_add(1) }
 }
 
 fn gas_price_ratio() -> (u128, u128) {
@@ -244,7 +260,11 @@ fn gas_price_ratio() -> (u128, u128) {
     if let Some((w, f)) = raw.split_once('.') {
         let den = 10u128.pow(f.len() as u32);
         let whole: u128 = w.parse().unwrap_or(0);
-        let part: u128 = if f.is_empty() { 0 } else { f.parse().unwrap_or(0) };
+        let part: u128 = if f.is_empty() {
+            0
+        } else {
+            f.parse().unwrap_or(0)
+        };
         let num = whole.saturating_mul(den).saturating_add(part);
         if num == 0 || den == 0 {
             (5, 100)
@@ -253,11 +273,7 @@ fn gas_price_ratio() -> (u128, u128) {
         }
     } else {
         let n: u128 = raw.parse().unwrap_or(0);
-        if n == 0 {
-            (5, 100)
-        } else {
-            (n, 1)
-        }
+        if n == 0 { (5, 100) } else { (n, 1) }
     }
 }
 
@@ -278,6 +294,7 @@ pub fn lcd_base() -> Result<String, String> {
 }
 
 /// SIGN_MODE_DIRECT tx bytes for one or more wasm executes. No funds attached.
+#[allow(clippy::too_many_arguments)]
 pub fn tx_raw(
     secret32: &[u8],
     contract: &str,
@@ -294,9 +311,20 @@ pub fn tx_raw(
     let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
     let pk = sk.verifying_key().to_sec1_point(true);
     let sender = crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())?;
-    tx_raw_as(&sk, &sender, contract, msgs, account_number, sequence, chain_id, gas, fee_amount)
+    tx_raw_as(
+        &sk,
+        &sender,
+        contract,
+        msgs,
+        account_number,
+        sequence,
+        chain_id,
+        gas,
+        fee_amount,
+    )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn tx_raw_as(
     sk: &SigningKey,
     sender: &str,
@@ -311,7 +339,7 @@ fn tx_raw_as(
     let pk = sk.verifying_key().to_sec1_point(true);
     let mut body = Vec::new();
     for msg in msgs {
-        let exec = msg_execute(&sender, contract, msg);
+        let exec = msg_execute(sender, contract, msg);
         body.extend(ld(1, &any(MSG_TYPE, &exec)));
     }
     let pk_msg = ld(1, pk.as_bytes());
@@ -437,10 +465,11 @@ fn walk_token_ids(v: &serde_json::Value, ids: &mut Vec<String>) {
             ) {
                 let key = attr_text(k);
                 let value = attr_text(val);
-                if key == "token_id" || key.ends_with(".token_id") {
-                    if !value.is_empty() && !ids.iter().any(|e| e == &value) {
-                        ids.push(value);
-                    }
+                if (key == "token_id" || key.ends_with(".token_id"))
+                    && !value.is_empty()
+                    && !ids.iter().any(|e| e == &value)
+                {
+                    ids.push(value);
                 }
             }
             for child in m.values() {
@@ -590,9 +619,8 @@ pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
         Ok(s) => s,
         Err(e) => return SimVerdict::Unproven(e),
     };
-    let acct = match crate::httpx::get_json(&format!(
-        "{lcd}/cosmos/auth/v1beta1/accounts/{sender}"
-    )) {
+    let acct = match crate::httpx::get_json(&format!("{lcd}/cosmos/auth/v1beta1/accounts/{sender}"))
+    {
         Ok(v) => v,
         Err(e) => return SimVerdict::Unproven(clip_reason(&e)),
     };
@@ -639,11 +667,7 @@ pub struct PaidMint {
 /// Broadcast the mint, wait for the committed tx, then transfer the new tokens
 /// to `recipient`. If the mint is committed and the transfer fails, the `Err`
 /// still starts with `minted {hash}` so the caller does not mint again.
-pub fn broadcast_paid_mint(
-    contract: &str,
-    recipient: &str,
-    nfts: u32,
-) -> Result<PaidMint, String> {
+pub fn broadcast_paid_mint(contract: &str, recipient: &str, nfts: u32) -> Result<PaidMint, String> {
     if !contract.starts_with("terp1") {
         return Err("mint contract must be terp1".into());
     }
@@ -677,10 +701,7 @@ pub fn broadcast_paid_mint(
                 transfer_tx: xfer,
             })
         }
-        Err(e) => Err(format!(
-            "minted {hash} ids {} transfer: {e}",
-            ids.join(",")
-        )),
+        Err(e) => Err(format!("minted {hash} ids {} transfer: {e}", ids.join(","))),
     }
 }
 
@@ -696,9 +717,7 @@ pub fn finish_transfer(
     }
     let ids = if known_ids.is_empty() {
         let lcd = lcd_base()?;
-        let v = crate::httpx::get_json(&format!(
-            "{lcd}/cosmos/tx/v1beta1/txs/{mint_hash}"
-        ))?;
+        let v = crate::httpx::get_json(&format!("{lcd}/cosmos/tx/v1beta1/txs/{mint_hash}"))?;
         let code = tx_code(&v).ok_or_else(|| format!("mint {mint_hash} not committed"))?;
         if code != 0 {
             return Err(format!("mint {mint_hash} code {code}"));
@@ -727,9 +746,7 @@ fn submit(
 ) -> Result<(String, Vec<String>), String> {
     let lcd = lcd_base()?;
     let sender = address_of(secret)?;
-    let acct = crate::httpx::get_json(&format!(
-        "{lcd}/cosmos/auth/v1beta1/accounts/{sender}"
-    ))?;
+    let acct = crate::httpx::get_json(&format!("{lcd}/cosmos/auth/v1beta1/accounts/{sender}"))?;
     let (account_number, sequence) = account_number_sequence(&acct)?;
     let gas = mint_gas().saturating_mul(msgs.len() as u64);
     let fee = fee_uthiol(gas);
@@ -929,9 +946,15 @@ mod tests {
     #[test]
     fn simulate_insufficient_fees_is_unproven() {
         let v = serde_json::json!({"code": 13, "message": "insufficient fees; got: 0uthiol"});
-        assert!(matches!(classify_simulate(400, &v), SimVerdict::Unproven(_)));
+        assert!(matches!(
+            classify_simulate(400, &v),
+            SimVerdict::Unproven(_)
+        ));
         let missing = serde_json::json!({"code": 5, "message": "account terp1abc not found"});
-        assert!(matches!(classify_simulate(404, &missing), SimVerdict::Unproven(_)));
+        assert!(matches!(
+            classify_simulate(404, &missing),
+            SimVerdict::Unproven(_)
+        ));
     }
 
     #[test]
@@ -970,7 +993,10 @@ mod tests {
                 }]
             }
         });
-        assert_eq!(token_ids_from_tx(&v), vec!["4".to_string(), "5".to_string()]);
+        assert_eq!(
+            token_ids_from_tx(&v),
+            vec!["4".to_string(), "5".to_string()]
+        );
         let encoded = serde_json::json!({
             "tx_response": {
                 "code": 0,
@@ -993,8 +1019,17 @@ mod tests {
     fn direct_signature_verifies_and_address_is_stable() {
         let secret = [7u8; 32];
         let msg = svg_mint_msg("terp1contract", 1);
-        let raw = tx_raw(&secret, "terp1contract", &[msg], 1, 0, "morocco-1", 800_000, 40_000)
-            .unwrap();
+        let raw = tx_raw(
+            &secret,
+            "terp1contract",
+            &[msg],
+            1,
+            0,
+            "morocco-1",
+            800_000,
+            40_000,
+        )
+        .unwrap();
         assert!(raw.len() > 80);
         let a = address_of(&secret).unwrap();
         let b = address_of(&secret).unwrap();
@@ -1008,10 +1043,7 @@ mod tests {
     #[test]
     fn key_file_is_created_once() {
         let _g = crate::checkout::minter_env_lock();
-        let dir = std::env::temp_dir().join(format!(
-            "dregg-runtime-sk-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("dregg-runtime-sk-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("runtime.sk");
@@ -1061,10 +1093,12 @@ mod tests {
         let bare = svg_mint_msg(logo, 1);
         let bare_v: serde_json::Value = serde_json::from_slice(&bare).unwrap();
         assert_eq!(bare_v["update_extension"]["msg"]["mint"]["alloc"], 0);
-        assert!(bare_v["update_extension"]["msg"]["mint"]["proof_hashes"]
-            .as_array()
-            .unwrap()
-            .is_empty());
+        assert!(
+            bare_v["update_extension"]["msg"]["mint"]["proof_hashes"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
         env_remove("DREGG_PAYMINT_PROOFS_FILE");
         let _ = std::fs::remove_file(&path);
     }

@@ -215,14 +215,14 @@ impl ProtoBuilder {
             return out;
         }
 
-        if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array()) {
-            if allof.len() == 1 {
-                let inner = self.field_type(&allof[0], name, "value");
-                out.push_str(&format!("message {name} {{\n"));
-                let card = if inner.repeated { "repeated " } else { "" };
-                out.push_str(&format!("  {card}{} value = 1;\n}}\n", inner.ty));
-                return out;
-            }
+        if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array())
+            && allof.len() == 1
+        {
+            let inner = self.field_type(&allof[0], name, "value");
+            out.push_str(&format!("message {name} {{\n"));
+            let card = if inner.repeated { "repeated " } else { "" };
+            out.push_str(&format!("  {card}{} value = 1;\n}}\n", inner.ty));
+            return out;
         }
 
         out.push_str(&format!("message {name} {{\n"));
@@ -263,12 +263,12 @@ impl ProtoBuilder {
                 },
             );
         }
-        if let Some(props) = variant.get("properties").and_then(|v| v.as_object()) {
-            if props.len() == 1 {
-                let (field, field_schema) = props.iter().next().unwrap();
-                let ty = self.field_type(field_schema, parent, field);
-                return (sanitize_field_name(field), ty);
-            }
+        if let Some(props) = variant.get("properties").and_then(|v| v.as_object())
+            && props.len() == 1
+        {
+            let (field, field_schema) = props.iter().next().unwrap();
+            let ty = self.field_type(field_schema, parent, field);
+            return (sanitize_field_name(field), ty);
         }
         let field = format!("variant_{}", idx + 1);
         let ty = self.field_type(variant, parent, &field);
@@ -297,10 +297,10 @@ impl ProtoBuilder {
             ty.repeated = false;
             return ty;
         }
-        if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array()) {
-            if allof.len() == 1 {
-                return self.field_type(&allof[0], parent, field);
-            }
+        if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array())
+            && allof.len() == 1
+        {
+            return self.field_type(&allof[0], parent, field);
         }
         if let Some(ref_path) = schema.get("$ref").and_then(|v| v.as_str()) {
             let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
@@ -320,21 +320,20 @@ impl ProtoBuilder {
                 optional: false,
             };
         }
-        if let Some(types) = schema.get("type").and_then(|v| v.as_array()) {
-            if let Some(t) = types
+        if let Some(types) = schema.get("type").and_then(|v| v.as_array())
+            && let Some(t) = types
                 .iter()
                 .find_map(|t| t.as_str().filter(|s| *s != "null"))
-            {
-                let mut single = schema.clone();
-                if let Some(obj) = single.as_object_mut() {
-                    obj.insert("type".to_string(), Value::String(t.to_string()));
-                }
-                let mut ty = self.field_type(&single, parent, field);
-                if types.iter().any(|t| t.as_str() == Some("null")) && !ty.repeated {
-                    ty.optional = true;
-                }
-                return ty;
+        {
+            let mut single = schema.clone();
+            if let Some(obj) = single.as_object_mut() {
+                obj.insert("type".to_string(), Value::String(t.to_string()));
             }
+            let mut ty = self.field_type(&single, parent, field);
+            if types.iter().any(|t| t.as_str() == Some("null")) && !ty.repeated {
+                ty.optional = true;
+            }
+            return ty;
         }
 
         match schema.get("type").and_then(|v| v.as_str()) {
@@ -453,7 +452,7 @@ impl ProtoBuilder {
             );
         }
 
-        let clean_package = package_name.replace('-', "_").replace('.', "_");
+        let clean_package = package_name.replace(['-', '.'], "_");
         let mut output = String::new();
         output.push_str("syntax = \"proto3\";\n");
         output.push_str(&format!("package {clean_package}.contract.v1;\n\n"));
@@ -752,7 +751,7 @@ fn generate_type_url_registry(proto_dir: &Path) -> anyhow::Result<String> {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map_or(false, |ext| ext == "proto"))
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "proto"))
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();

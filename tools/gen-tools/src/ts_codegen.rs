@@ -58,7 +58,7 @@ impl Generator for TsCodegenGenerator {
             let mut message_types: Vec<(String, Value)> = Vec::new();
             let mut response_types: Vec<(String, Value)> = Vec::new();
 
-            for (_type_key, schema_value) in schemas {
+            for schema_value in schemas.values() {
                 // schema_value is the full merged schema JSON for this contract
                 collect_types_and_defs(
                     schema_value,
@@ -153,7 +153,7 @@ pub fn collect_types_and_defs(
             let title = msg_val
                 .get("title")
                 .and_then(|v| v.as_str())
-                .unwrap_or_else(|| key)
+                .unwrap_or(key)
                 .to_string();
             message_types.push((title.clone(), msg_val.clone()));
 
@@ -387,10 +387,10 @@ fn schema_to_union_type(
     }
 
     // Simple object → interface
-    if schema.get("type").and_then(|v| v.as_str()) == Some("object") {
-        if let Some(iface) = schema_to_interface(title, schema, all_defs, _emitted) {
-            return Some(iface);
-        }
+    if schema.get("type").and_then(|v| v.as_str()) == Some("object")
+        && let Some(iface) = schema_to_interface(title, schema, all_defs, _emitted)
+    {
+        return Some(iface);
     }
 
     // AllOf → intersection type
@@ -416,11 +416,11 @@ fn schema_to_union_type(
 fn variant_oneof_to_type(variant: &Value, all_defs: &HashMap<String, Value>) -> String {
     // Single-key object: extract the key as the variant discriminator
     if let Some(props) = variant.get("properties").and_then(|v| v.as_object()) {
-        if props.len() == 1 {
-            if let Some((field_name, field_schema)) = props.iter().next() {
-                let field_type = json_schema_to_ts(field_schema, all_defs);
-                return format!("{{ {}: {} }}", field_name, field_type);
-            }
+        if props.len() == 1
+            && let Some((field_name, field_schema)) = props.iter().next()
+        {
+            let field_type = json_schema_to_ts(field_schema, all_defs);
+            return format!("{{ {}: {} }}", field_name, field_type);
         }
         // Multi-property variant
         let required = variant
@@ -474,48 +474,48 @@ fn schema_to_interface(
     }
 
     // type: 'object' with properties → interface
-    if schema.get("type").and_then(|v| v.as_str()) == Some("object") {
-        if let Some(props) = schema.get("properties").and_then(|v| v.as_object()) {
-            let required = schema
-                .get("required")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|r| r.as_str())
-                        .collect::<HashSet<_>>()
-                })
-                .unwrap_or_default();
+    if schema.get("type").and_then(|v| v.as_str()) == Some("object")
+        && let Some(props) = schema.get("properties").and_then(|v| v.as_object())
+    {
+        let required = schema
+            .get("required")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|r| r.as_str())
+                    .collect::<HashSet<_>>()
+            })
+            .unwrap_or_default();
 
-            out.push_str(&format!("export interface {} {{\n", pname));
-            for (field_name, field_schema) in props {
-                let opt = if !required.contains(field_name.as_str()) {
-                    "?"
-                } else {
-                    ""
-                };
-                let field_doc = field_schema.get("description").and_then(|v| v.as_str());
-                if let Some(doc) = field_doc {
-                    out.push_str(&format!("  /** {} */\n", doc));
-                }
-                let ft = json_schema_to_ts(field_schema, all_defs);
-                out.push_str(&format!("  {}{}: {};\n", field_name, opt, ft));
+        out.push_str(&format!("export interface {} {{\n", pname));
+        for (field_name, field_schema) in props {
+            let opt = if !required.contains(field_name.as_str()) {
+                "?"
+            } else {
+                ""
+            };
+            let field_doc = field_schema.get("description").and_then(|v| v.as_str());
+            if let Some(doc) = field_doc {
+                out.push_str(&format!("  /** {} */\n", doc));
             }
-            out.push_str("}\n");
-            return Some(out);
+            let ft = json_schema_to_ts(field_schema, all_defs);
+            out.push_str(&format!("  {}{}: {};\n", field_name, opt, ft));
         }
+        out.push_str("}\n");
+        return Some(out);
     }
 
     // No properties but enum → emit as type alias
-    if schema.get("type").and_then(|v| v.as_str()) == Some("string") {
-        if let Some(variants) = schema.get("enum").and_then(|v| v.as_array()) {
-            let vals: Vec<String> = variants
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|s| format!("'{}'", s))
-                .collect();
-            out.push_str(&format!("export type {} = {};\n", pname, vals.join(" | ")));
-            return Some(out);
-        }
+    if schema.get("type").and_then(|v| v.as_str()) == Some("string")
+        && let Some(variants) = schema.get("enum").and_then(|v| v.as_array())
+    {
+        let vals: Vec<String> = variants
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| format!("'{}'", s))
+            .collect();
+        out.push_str(&format!("export type {} = {};\n", pname, vals.join(" | ")));
+        return Some(out);
     }
 
     None
@@ -699,7 +699,7 @@ fn generate_client_file(
         let method = camel_case(variant);
         let response_type = query_response_map
             .get(&method)
-            .map(|s| s.clone())
+            .cloned()
             .unwrap_or_else(|| "unknown".to_string());
         let param_type = format!(
             "Extract<{}Type, {{ {}: unknown }}>['{}']",

@@ -184,6 +184,7 @@ fn cmd_lab_commit(_dir: &std::path::Path, _args: &[String]) -> ExitCode {
     die("unknown command lab-commit-spend");
 }
 
+#[cfg(feature = "lab")]
 fn arg_val(args: &[String], name: &str) -> String {
     args.iter()
         .position(|a| a == name)

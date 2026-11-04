@@ -109,12 +109,14 @@ pub fn screen() -> Screen {
     for addr in configured {
         match crate::mint_tx::simulate_empty_mint(&addr) {
             crate::mint_tx::SimVerdict::Accepted => screen.admitted.push(addr),
-            crate::mint_tx::SimVerdict::Rejected(reason) => {
-                screen.rejected.push(CollectionNote { address: addr, reason })
-            }
-            crate::mint_tx::SimVerdict::Unproven(reason) => {
-                screen.unproven.push(CollectionNote { address: addr, reason })
-            }
+            crate::mint_tx::SimVerdict::Rejected(reason) => screen.rejected.push(CollectionNote {
+                address: addr,
+                reason,
+            }),
+            crate::mint_tx::SimVerdict::Unproven(reason) => screen.unproven.push(CollectionNote {
+                address: addr,
+                reason,
+            }),
         }
     }
     cache_put(key, screen.clone());

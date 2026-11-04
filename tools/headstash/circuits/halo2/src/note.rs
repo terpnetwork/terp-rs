@@ -320,16 +320,6 @@ impl Note {
         self.commitment_inner().unwrap()
     }
 
-    /// Derives the commitment to this note.
-    ///
-    /// This is the internal fallible API, used to check at construction time that the
-    /// note has a commitment. Once you have a [`Note`] object, use `note.commitment()`
-    /// instead.
-    ///
-    /// Defined in [Zcash Protocol Spec § 3.2: Notes][notes].
-    ///
-    /// [notes]: https://zips.z.cash/protocol/nu5.pdf#notes
-
     /// One-time nullifier inputs, each a Poseidon PRF under its own DST.
     ///
     /// `rho` and `psi` are the halves of this note's 32-byte `rseed`.
@@ -391,7 +381,7 @@ impl Note {
         #[cfg(feature = "host-crypto")]
         {
             let bound = self.hiding_binding();
-            return Nullifier::derive(&bound.nk, bound.rho.0, bound.psi, self.commitment());
+            Nullifier::derive(&bound.nk, bound.rho.0, bound.psi, self.commitment())
         }
         #[cfg(not(feature = "host-crypto"))]
         {

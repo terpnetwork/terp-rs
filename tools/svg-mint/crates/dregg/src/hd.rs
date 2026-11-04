@@ -4,8 +4,8 @@
 //! ZEC: diversifier index `i` (Orchard diversified UA via zcash-devtool when present).
 
 use hmac::{Hmac, Mac};
-use k256::elliptic_curve::sec1::ToSec1Point;
 use k256::SecretKey;
+use k256::elliptic_curve::sec1::ToSec1Point;
 use rand::RngCore;
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256, Sha512};
@@ -42,7 +42,9 @@ impl HdEngine {
         }
         let mut seed = vec![0u8; 32];
         rand::rng().fill_bytes(&mut seed);
-        eprintln!("svg-mint-fed wrote a new hd seed file at {seed_path}; the seed value is not logged");
+        eprintln!(
+            "svg-mint-fed wrote a new hd seed file at {seed_path}; the seed value is not logged"
+        );
         let _ = std::fs::write(&seed_path, hex::encode(&seed));
         Self { seed }
     }

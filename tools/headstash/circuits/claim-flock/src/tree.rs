@@ -270,7 +270,7 @@ mod tests {
 
     fn decode_hex(s: &str) -> Vec<u8> {
         let s = s.trim().trim_start_matches("0x");
-        assert!(s.len() % 2 == 0, "hex length");
+        assert!(s.len().is_multiple_of(2), "hex length");
         (0..s.len() / 2)
             .map(|i| u8::from_str_radix(&s[2 * i..2 * i + 2], 16).expect("hex"))
             .collect()

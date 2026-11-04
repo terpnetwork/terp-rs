@@ -188,7 +188,6 @@ impl SpendValidatingKey {
 
     /// Converts this spend validating key to its serialized form,
     /// I2LEOSP_256(ak).
-    #[cfg_attr(feature = "unstable-frost", visibility::make(pub))]
     pub(crate) fn to_bytes(&self) -> [u8; 32] {
         // This is correct because the wrapped point must have ỹ = 0, and
         // so the point repr is the same as I2LEOSP of its x-coordinate.
@@ -200,7 +199,6 @@ impl SpendValidatingKey {
     /// Attempts to parse a byte slice as a spend validating key, `I2LEOSP_256(ak)`.
     ///
     /// Returns `None` if the given slice does not contain a valid spend validating key.
-    #[cfg_attr(feature = "unstable-frost", visibility::make(pub))]
     pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
         <[u8; 32]>::try_from(bytes)
             .ok()
@@ -1098,7 +1096,7 @@ pub mod testing {
         /// Generate a uniformly distributed Orchard ephemeral secret key.
         pub fn arb_elig_sk()(
             esk in prop::array::uniform32(prop::num::u8::ANY)
-                .prop_map(|b| EligibleSk::from_bytes(b))
+                .prop_map(EligibleSk::from_bytes)
 
         ) -> EligibleSk {
             esk

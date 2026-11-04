@@ -328,7 +328,7 @@ fn test_secp256k1_key_pairing_invalid() {
     let secp = Secp256k1::new();
 
     let sk_bytes = [0x42; 32];
-    let sk_secp = SecretKey::from_byte_array(sk_bytes).unwrap();
+    let _sk_secp = SecretKey::from_byte_array(sk_bytes).unwrap();
 
     let wrong_sk_bytes = [0x43; 32];
     let wrong_sk_secp = SecretKey::from_byte_array(wrong_sk_bytes).unwrap();
@@ -542,8 +542,8 @@ fn test_eth_key_pairing_with_crt() {
     let pk_y_bytes: [u8; 32] = pk_bytes[33..65].try_into().unwrap();
 
     let sk_fq = secp_fq_from_le(sk.secret_bytes());
-    let pk_x_fp = secp_fp_from_le(pk_x_bytes);
-    let pk_y_fp = secp_fp_from_le(pk_y_bytes);
+    let _pk_x_fp = secp_fp_from_le(pk_x_bytes);
+    let _pk_y_fp = secp_fp_from_le(pk_y_bytes);
 
     // Verify CRT decomposition with 4x64-bit limbs
     let sk_limbs = crate::spec::decompose_biguint_simple(&fe_to_biguint(&sk_fq), 4, 64);

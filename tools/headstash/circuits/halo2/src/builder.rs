@@ -269,7 +269,7 @@ impl SpendInfo {
             {
                 use crate::circuit::gadget::secp256k1_chip::secp_coord_be_to_pallas_base;
                 use crate::distro_poseidon::poseidon_distro_leaf;
-                
+
                 let (epk_x_be, epk_y_be) = self.note.elig_sk().epk().xy();
                 use crate::claim_auth::{claim_rseed_com, rseed_halves};
                 let (lo, hi) = rseed_halves(self.note.rseed().as_bytes());

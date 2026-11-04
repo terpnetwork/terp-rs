@@ -151,6 +151,7 @@ pub struct Durable {
 }
 
 impl Durable {
+    #[allow(clippy::type_complexity)]
     pub fn open(
         path: impl AsRef<Path>,
     ) -> std::io::Result<(Self, Cell, RailBooks, HashMap<Commit, PendingPay>, u32, u64)> {
@@ -207,8 +208,7 @@ impl Durable {
             hd_index,
             bogo_seen,
         };
-        let bytes = serde_json::to_vec(&snap)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let bytes = serde_json::to_vec(&snap).map_err(std::io::Error::other)?;
         let mut f = fs::File::create(&tmp)?;
         f.write_all(&bytes)?;
         f.sync_all()?;

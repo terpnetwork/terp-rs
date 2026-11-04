@@ -395,8 +395,8 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("unauthorized"));
-        let err2 = execute(deps.as_mut(), mock_env(), message_info(&runtime, &[]), msg)
-            .unwrap_err();
+        let err2 =
+            execute(deps.as_mut(), mock_env(), message_info(&runtime, &[]), msg).unwrap_err();
         let es = err2.to_string();
         assert!(
             es.contains("dummy receipt") || es.contains("threshold"),

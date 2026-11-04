@@ -475,10 +475,12 @@ mod tests {
         std::fs::write(&cookie, "rpcuser:rpcpass\n").unwrap();
         unsafe { std::env::set_var("ZCASH_PUBLIC_RPC", format!("http://127.0.0.1:{port}")) };
         unsafe { std::env::set_var("ZCASH_PRIVATE_RPC", format!("http://127.0.0.1:{port}")) };
-        unsafe { std::env::set_var(
-            "ZCASH_PRIVATE_RPC_COOKIE",
-            cookie.to_string_lossy().as_ref(),
-        ) };
+        unsafe {
+            std::env::set_var(
+                "ZCASH_PRIVATE_RPC_COOKIE",
+                cookie.to_string_lossy().as_ref(),
+            )
+        };
         unsafe { std::env::remove_var("ZCASH_PUBLIC_RPC_COOKIE") };
         // First call is public (no cookie) — spawn a second listener in the same
         // process by probing private only via getblockcount helper path:

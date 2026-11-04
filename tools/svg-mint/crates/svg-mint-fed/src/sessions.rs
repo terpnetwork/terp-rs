@@ -160,7 +160,7 @@ impl Log {
             .filter(|r| before.map(|b| r.id < b).unwrap_or(true))
             .cloned()
             .collect();
-        rows.sort_by(|a, b| b.id.cmp(&a.id));
+        rows.sort_by_key(|r| std::cmp::Reverse(r.id));
         let more = rows.len() > limit;
         rows.truncate(limit);
         let next = if more {

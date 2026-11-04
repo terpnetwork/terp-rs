@@ -72,7 +72,7 @@ pub fn sanitize(raw: &str) -> Result<Sanitized, String> {
             match ch {
                 '\t' => {
                     s.push(' ');
-                    while s.len() % 4 != 0 {
+                    while !s.len().is_multiple_of(4) {
                         s.push(' ')
                     }
                 }
@@ -142,7 +142,7 @@ pub fn sanitize_rich(raw: &str) -> (String, usize, usize) {
             match ch {
                 '\t' => {
                     s.push(' ');
-                    while s.len() % 4 != 0 {
+                    while !s.len().is_multiple_of(4) {
                         s.push(' ')
                     }
                 }
@@ -190,7 +190,6 @@ pub fn variables(cids: &[String]) -> Vec<VariableDef> {
             name: "frame".into(),
             kind: VariableKind::Options(cids.to_vec()),
         },
-
         VariableDef {
             name: "color-ink".into(),
             kind: VariableKind::RgbStyled(vec![

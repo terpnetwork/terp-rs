@@ -6,8 +6,8 @@
 //! - [`ValueSum`], the sum of note values within an Orchard [`Action`] or [`Bundle`].
 //!   It is a signed 64-bit integer (with range [`VALUE_SUM_RANGE`]).
 //! - `valueBalanceOrchard`, which is a signed 63-bit integer. This is represented
-//!    by a user-defined type parameter on [`Bundle`], returned by
-//!    [`Bundle::value_balance`] and [`Builder::value_balance`].
+//!   by a user-defined type parameter on [`Bundle`], returned by
+//!   [`Bundle::value_balance`] and [`Builder::value_balance`].
 //!
 //! If your specific instantiation of the Orchard protocol requires a smaller bound on
 //! valid note values (for example, Zcash's `MAX_MONEY` fits into a 51-bit integer), you
@@ -86,7 +86,7 @@ impl fmt::Display for OverflowError {
 impl std::error::Error for OverflowError {}
 
 /// NoteDenom
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct NoteDenom {
     bytes: [u8; 32],
 }
@@ -134,12 +134,6 @@ impl From<[u8; 32]> for NoteDenom {
     fn from(value: [u8; 32]) -> Self {
         // if len < 32 || last 3 bits are not 0, we must hash into new note-denom (autoaware)
         NoteDenom { bytes: value }
-    }
-}
-
-impl Default for NoteDenom {
-    fn default() -> Self {
-        Self { bytes: [0u8; 32] }
     }
 }
 
@@ -559,10 +553,8 @@ impl HeadstashValue {
         if self.nd != other.nd {
             return None;
         }
+        // MAX_NOTE_VALUE == u64::MAX, so checked_add is the full bound.
         let new_amount = self.v.inner().checked_add(other.v.inner())?;
-        if new_amount > MAX_NOTE_VALUE {
-            return None;
-        }
         Some(Self {
             v: NoteValue::from(new_amount),
             nd: self.nd,
@@ -872,7 +864,7 @@ mod tests {
     fn make_note_denom(bytes: [u8; 32]) -> NoteDenom {
         // Assuming NoteDenom has a constructor or can be created from bytes
         // Adjust this based on actual NoteDenom implementation
-        NoteDenom::try_from(bytes).unwrap()
+        NoteDenom::from(bytes)
     }
 
     #[test]

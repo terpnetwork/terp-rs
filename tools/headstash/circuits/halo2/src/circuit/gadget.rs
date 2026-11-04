@@ -174,4 +174,3 @@ pub(in crate::circuit) fn derive_nullifier<
 // Legacy Sinsemilla leaf (recovery). New paths use distro_poseidon_gadget.
 #[allow(unused_imports)]
 pub(in crate::circuit) use crate::circuit::headstash_merkle_tree::derive_leaf;
-pub(in crate::circuit) use crate::circuit::note_commit::gadgets::note_commit;

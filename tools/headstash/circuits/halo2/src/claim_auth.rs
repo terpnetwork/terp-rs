@@ -63,7 +63,7 @@ const KECCAK_ROT: [[u32; 5]; 5] = [
 ];
 
 fn keccak_f(a: &mut [u64; 25]) {
-    for round in 0..24 {
+    for rc in &KECCAK_ROUNDS {
         let mut c = [0u64; 5];
         for x in 0..5 {
             c[x] = a[x] ^ a[x + 5] ^ a[x + 10] ^ a[x + 15] ^ a[x + 20];
@@ -93,7 +93,7 @@ fn keccak_f(a: &mut [u64; 25]) {
                     b[x + 5 * y] ^ ((!b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y]);
             }
         }
-        a[0] ^= KECCAK_ROUNDS[round];
+        a[0] ^= *rc;
     }
 }
 
@@ -308,7 +308,6 @@ pub fn claim_nullifier(
 #[cfg(all(test, feature = "host-crypto"))]
 mod tests {
     use super::*;
-    use ff::PrimeField;
     use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 
     #[test]

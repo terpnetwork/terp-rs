@@ -34,7 +34,7 @@ pub fn topo_push_order(matrix: &MatrixFile) -> Vec<GraphNode> {
         }
         for consumer in &entry.consumers {
             // consumer is a crate name that depends on `key`
-            consumers_map.entry(&consumer).or_default().push(key);
+            consumers_map.entry(consumer).or_default().push(key);
             has_incoming.insert(key.as_str());
         }
     }
@@ -44,7 +44,7 @@ pub fn topo_push_order(matrix: &MatrixFile) -> Vec<GraphNode> {
     let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::new();
 
     // consumer depends on producer: edge producer -> consumer
-    for (key, _) in &matrix.crates {
+    for key in matrix.crates.keys() {
         if !matrix.crates[key].repo_only.unwrap_or(false) {
             in_degree.entry(key).or_insert(0);
             adjacency.entry(key).or_default();
@@ -158,34 +158,34 @@ pub fn execute_push(
     let mut results = Vec::new();
 
     for node in &order {
-        if let Some(entry) = matrix.crates.get(&node.key) {
-            if let Some(_git) = &entry.git {
-                // Extract local path to determine git repo location
-                let local_path = entry
-                    .local
-                    .clone()
-                    .or_else(|| entry.zk_local.clone())
-                    .unwrap_or_default();
+        if let Some(entry) = matrix.crates.get(&node.key)
+            && let Some(_git) = &entry.git
+        {
+            // Extract local path to determine git repo location
+            let local_path = entry
+                .local
+                .clone()
+                .or_else(|| entry.zk_local.clone())
+                .unwrap_or_default();
 
-                if dry_run {
+            if dry_run {
+                results.push(format!(
+                    "[dry-run] cd {} && git push (depth {})",
+                    local_path, node.depth
+                ));
+            } else if !local_path.is_empty() {
+                let output = std::process::Command::new("git")
+                    .args(["-C", &local_path, "push"])
+                    .output()?;
+                if output.status.success() {
+                    results.push(format!("✓ git push {}", node.key));
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
                     results.push(format!(
-                        "[dry-run] cd {} && git push (depth {})",
-                        local_path, node.depth
+                        "✗ git push {}: {}",
+                        node.key,
+                        stderr.lines().next().unwrap_or("unknown")
                     ));
-                } else if !local_path.is_empty() {
-                    let output = std::process::Command::new("git")
-                        .args(["-C", &local_path, "push"])
-                        .output()?;
-                    if output.status.success() {
-                        results.push(format!("✓ git push {}", node.key));
-                    } else {
-                        let stderr = String::from_utf8_lossy(&output.stderr);
-                        results.push(format!(
-                            "✗ git push {}: {}",
-                            node.key,
-                            stderr.lines().next().unwrap_or("unknown")
-                        ));
-                    }
                 }
             }
         }

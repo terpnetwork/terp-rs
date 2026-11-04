@@ -52,7 +52,7 @@ impl Generator for RustGenGenerator {
 
             let mut emitted: HashSet<String> = HashSet::new();
 
-            for (_stem, merged) in schemas {
+            for merged in schemas.values() {
                 // Extract message types (instantiate, execute, query, migrate, sudo)
                 let msg_keys = ["instantiate", "execute", "query", "migrate", "sudo"];
                 for key in &msg_keys {
@@ -92,15 +92,15 @@ impl Generator for RustGenGenerator {
                 }
 
                 // Definitions — only emit if this schema has message types
-                if has_types {
-                    if let Some(defs) = merged.get("definitions").and_then(|v| v.as_object()) {
-                        for (def_name, def_schema) in defs {
-                            let pascal = to_pascal_case(def_name);
-                            if emitted.insert(pascal.clone()) {
-                                let s = schema_to_struct(&pascal, def_schema, "", &HashMap::new());
-                                if !s.is_empty() {
-                                    struct_code.push_str(&format!("{s}\n\n"));
-                                }
+                if has_types
+                    && let Some(defs) = merged.get("definitions").and_then(|v| v.as_object())
+                {
+                    for (def_name, def_schema) in defs {
+                        let pascal = to_pascal_case(def_name);
+                        if emitted.insert(pascal.clone()) {
+                            let s = schema_to_struct(&pascal, def_schema, "", &HashMap::new());
+                            if !s.is_empty() {
+                                struct_code.push_str(&format!("{s}\n\n"));
                             }
                         }
                     }
@@ -316,7 +316,7 @@ fn schema_to_struct(
         Some("array") => {
             let inner = schema
                 .get("items")
-                .map(|i| json_type_to_rust(i))
+                .map(json_type_to_rust)
                 .unwrap_or_else(|| "String".into());
             format!(
                 "#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]\n\
@@ -385,7 +385,7 @@ fn json_type_to_rust(schema: &serde_json::Value) -> String {
             "array" => {
                 let inner = schema
                     .get("items")
-                    .map(|i| json_type_to_rust(i))
+                    .map(json_type_to_rust)
                     .unwrap_or_else(|| "String".to_string());
                 format!("Vec<{inner}>")
             }
@@ -398,7 +398,7 @@ fn json_type_to_rust(schema: &serde_json::Value) -> String {
 }
 
 fn to_pascal_case(s: &str) -> String {
-    let s = s.replace(|c: char| c == '-' || c == '_' || c == '.', " ");
+    let s = s.replace(['-', '_', '.'], " ");
     let mut result = String::with_capacity(s.len());
     let mut capitalize = true;
     for ch in s.chars() {

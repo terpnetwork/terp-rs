@@ -123,18 +123,13 @@ pub const POSEIDON_DISTRO_CRH_ARITY: usize = 4;
 /// New pure helpers default to [`DistroHashDomain::PoseidonV1`]. Legacy Sinsemilla
 /// genesis trees remain available as [`DistroHashDomain::SinsemillaLegacy`] for
 /// reading historical roots only — do not register new manifold roots under legacy.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum DistroHashDomain {
     /// Historical Sinsemilla leaf / MerkleCRH personalizations (Orchard-family).
     SinsemillaLegacy,
     /// Poseidon-v1 public inclusion set (this module).
+    #[default]
     PoseidonV1,
-}
-
-impl Default for DistroHashDomain {
-    fn default() -> Self {
-        DistroHashDomain::PoseidonV1
-    }
 }
 
 impl DistroHashDomain {

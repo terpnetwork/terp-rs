@@ -45,7 +45,7 @@ pub mod interface {
     impl<Chain: ZkCwEnv> Deploy<Chain> for NoRickCircuitSuite<Chain> {
         type Error = CwOrchError;
         type DeployData = NoRickDeployData;
-        fn deploy_on(chain: Chain, data: Self::DeployData) -> Result<Self, Self::Error> {
+        fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
             Ok(Self::store_on(chain.clone())?)
         }
 

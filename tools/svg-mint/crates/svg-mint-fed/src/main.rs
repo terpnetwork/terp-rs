@@ -135,10 +135,7 @@ fn load_keys() -> (Vec<SigningKey>, Vec<[u8; 32]>, u32) {
         let _ = std::fs::create_dir_all(parent);
     }
     std::fs::write(&path, kp.to_bytes()).expect("write operator sk");
-    let _ = std::fs::set_permissions(
-        &path,
-        std::os::unix::fs::PermissionsExt::from_mode(0o600),
-    );
+    let _ = std::fs::set_permissions(&path, std::os::unix::fs::PermissionsExt::from_mode(0o600));
     let pk_bytes = kp.verifying_key().to_bytes();
     eprintln!(
         "svg-mint-fed wrote operator sk and pk={}",
@@ -149,8 +146,7 @@ fn load_keys() -> (Vec<SigningKey>, Vec<[u8; 32]>, u32) {
 
 fn main() {
     let bind = std::env::var("SVG_MINT_FED_BIND").unwrap_or_else(|_| "127.0.0.1:8421".into());
-    let store_path = std::env::var("SVG_MINT_FED_STORE")
-        .unwrap_or_else(|_| {
+    let store_path = std::env::var("SVG_MINT_FED_STORE").unwrap_or_else(|_| {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
         format!("{home}/.terp/svg-mint-fed-cell.json")
     });
@@ -596,9 +592,11 @@ fn spawn_note_watchers(fed: Arc<Mutex<Fed>>) {
         }
     });
     let f_mint = fed.clone();
-    std::thread::spawn(move || loop {
-        try_broadcast_mints(&f_mint);
-        std::thread::sleep(std::time::Duration::from_secs(20));
+    std::thread::spawn(move || {
+        loop {
+            try_broadcast_mints(&f_mint);
+            std::thread::sleep(std::time::Duration::from_secs(20));
+        }
     });
 }
 
@@ -966,7 +964,6 @@ fn watch_zec_zrt(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     Ok(())
 }
 
-
 fn zcash_cookie_rpc(method: &str, params: serde_json::Value) -> Result<serde_json::Value, String> {
     let url = std::env::var("ZCASH_PRIVATE_RPC")
         .or_else(|_| std::env::var("ZCASHD_RPC"))
@@ -1040,8 +1037,6 @@ fn watch_zec_house_mempool(fed: &Arc<Mutex<Fed>>) -> Result<(), String> {
     Ok(())
 }
 
-
-
 fn zec_paid_fallback(fed: &Arc<Mutex<Fed>>, rec: &str) -> u128 {
     let f = fed.lock().unwrap();
     f.pending
@@ -1058,7 +1053,6 @@ fn zec_paid_fallback(fed: &Arc<Mutex<Fed>>, rec: &str) -> u128 {
         .unwrap_or(prices::zec_zat() as u128)
 }
 
-
 fn note_mempool(fed: &Arc<Mutex<Fed>>, rec: &str, txid: &str, zat: u128) {
     let mut f = fed.lock().unwrap();
     f.sessions.advance(rec, "mempool", txid, zat as u64, "");
@@ -1074,8 +1068,6 @@ fn note_mempool(fed: &Arc<Mutex<Fed>>, rec: &str, txid: &str, zat: u128) {
         }),
     );
 }
-
-
 
 fn urlencoding_decode(s: &str) -> String {
     let mut out = String::new();
@@ -1095,7 +1087,6 @@ fn urlencoding_decode(s: &str) -> String {
     }
     out
 }
-
 
 fn http_json_local(url: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
     dregg::httpx::post_json(url, body)
@@ -1343,7 +1334,8 @@ fn try_broadcast_mints(fed: &Arc<Mutex<Fed>>) {
             .pending_mints()
             .into_iter()
             .filter_map(|p| {
-                if !p.collection.starts_with("terp1") || !dregg::collections::contains(&p.collection)
+                if !p.collection.starts_with("terp1")
+                    || !dregg::collections::contains(&p.collection)
                 {
                     return None;
                 }
@@ -1373,9 +1365,9 @@ fn try_broadcast_mints(fed: &Arc<Mutex<Fed>>) {
                 if let Some((hash, ids)) = partial_mint(&e) {
                     let mut f = fed.lock().unwrap();
                     if f.cell.record_chain_mint(&p.n, &hash, &ids).is_ok() {
-                        let _ = f
-                            .durable
-                            .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
+                        let _ =
+                            f.durable
+                                .save(&f.cell, &f.books, &f.pending, f.hd_index, f.bogo_seen);
                     }
                 }
                 eprintln!("svg-mint-fed mint: {e}");
@@ -1404,7 +1396,12 @@ fn partial_mint(err: &str) -> Option<(String, Vec<String>)> {
     Some((hash, ids))
 }
 
-fn settle_paid_mint(fed: &Arc<Mutex<Fed>>, n: &[u8; 32], recipient: &str, paid: &dregg::mint_tx::PaidMint) {
+fn settle_paid_mint(
+    fed: &Arc<Mutex<Fed>>,
+    n: &[u8; 32],
+    recipient: &str,
+    paid: &dregg::mint_tx::PaidMint,
+) {
     let mut f = fed.lock().unwrap();
     if f.cell.phase(n) != Some(Phase::Entitled) {
         return;
@@ -1986,7 +1983,7 @@ fn checkout_action(
 }
 
 fn status_for(fed: &Fed, rec: &str) -> serde_json::Value {
-    let st = checkout_now(fed);
+    let _st = checkout_now(fed);
     let n = fed.by_recipient.get(rec);
     let mut phase = n
         .and_then(|n| fed.cell.phase(n))
@@ -2101,7 +2098,7 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
             (200, p)
         }
         (m, p) if m == "GET" && p.starts_with("/v1/query/paid") => {
-            let q = p.splitn(2, '?').nth(1).unwrap_or("");
+            let q = p.split_once('?').map(|x| x.1).unwrap_or("");
             let mut rec = String::new();
             let mut c_hex = String::new();
             for pair in q.split('&') {
@@ -2525,7 +2522,7 @@ fn handle(mut stream: TcpStream, fed: Arc<Mutex<Fed>>) -> std::io::Result<()> {
                     .split("collection=")
                     .nth(1)
                     .and_then(|s| s.split('&').next())
-                    .map(|s| urlencoding_decode(s));
+                    .map(urlencoding_decode);
                 match issue_pay_target(&fed, &rec, qty, col.as_deref()) {
                     Ok(v) => (200, v),
                     Err(e) if e.starts_with("checkout closed") => (

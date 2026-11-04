@@ -10,9 +10,9 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 use terp_seams::bridge::{
-    AssetRegistry, BridgeMintClaim, BridgeMintPublic, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG,
-    Hash32, MintedSet, ReflectionSnapshot, authorize_bridge_mint, derive_claim_id_with_dest,
-    derive_domain_binding, label_hash, terp_asset_id_from_tacit,
+    BridgeMintClaim, BridgeMintPublic, DEFAULT_CONFIRMATIONS_K, DEFAULT_MAX_LC_LAG, Hash32,
+    ReflectionSnapshot, derive_claim_id_with_dest, derive_domain_binding, label_hash,
+    terp_asset_id_from_tacit,
 };
 
 /// Provisional corridor deposit nullifier domain (not Tacit LC burn ν).

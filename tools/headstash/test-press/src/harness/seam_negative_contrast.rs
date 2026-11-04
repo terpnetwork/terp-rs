@@ -8,19 +8,15 @@
 
 use sha2::{Digest, Sha256};
 use terp_seams::dex::{
-    AssetId, DestKind, EgressBurnEvidenceV0, MODE_FROST_ESCROW_RELEASE,
-    MODE_THRESHOLD_ESCROW_RELEASE, NoteIn, OracleBoundParams, OracleMid, Pool, PoolStatus,
-    SeamError, SeamState, SwapPublic, ThresholdEscrowAuth, apply_egress_burn, apply_swap,
-    authorize_escrow_release, build_egress_burn_from_settle, check_oracle_bound, oracle_mint_note,
-    oracle_update_reserves, quote_exact_in, settle_opening_from_note_fields,
+    AssetId, MODE_FROST_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE, Pool, PoolStatus,
+    ThresholdEscrowAuth, authorize_escrow_release,
 };
 use terp_seams::dex::{
     DualHomePrepV0, EscrowLiabilityV0, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
     LpSeedReceiptV0, PoolSeedPolicy, authorize_create_pool_reserves, mint_lp_zec_note,
 };
 
-use super::account_curation::{AccountRole, ChainKind, curate_lab_accounts};
-use super::seam_multi_cycle::{CYCLE_GAMMA, CYCLE_GAMMA_DEN, MultiCycleWorld, SeamAsset};
+use super::seam_multi_cycle::{CYCLE_GAMMA, CYCLE_GAMMA_DEN};
 
 // ---------------------------------------------------------------------------
 // Catalog: contrast id → product goal contrasted
@@ -448,7 +444,7 @@ mod tests {
         let digest = threshold_committee::escrow_release_digest(
             &evidence.burn.nullifier,
             &evidence.burn.dest_commitment,
-            evidence.burn.value,
+            evidence.burn.value.into(),
             &evidence.burn.asset_id,
         );
         let combined = lab_sign_with_threshold(&committee, &digest).unwrap();

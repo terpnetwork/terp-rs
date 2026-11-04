@@ -252,7 +252,7 @@ mod tests {
     fn test_recp_addr_clone() {
         let test_bytes = create_test_bytes();
         let recp_addr = RecpAddr(test_bytes);
-        let cloned = recp_addr.clone();
+        let cloned = recp_addr;
 
         assert_eq!(recp_addr.to_canonical_bytes(), cloned.to_canonical_bytes());
     }
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn test_recp_to_fp_single_bit_difference() {
         // Test avalanche effect: small change in input should cause large change in output
-        let mut bytes1 = [0u8; 32];
+        let bytes1 = [0u8; 32];
         let mut bytes2 = [0u8; 32];
         bytes2[0] = 1; // Only change first bit
 
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn test_recp_to_fp_change_in_first_half() {
         // Change only in first 16 bytes
-        let mut bytes1 = [0u8; 32];
+        let bytes1 = [0u8; 32];
         let mut bytes2 = [0u8; 32];
         bytes2[8] = 1; // Change in first half
 
@@ -422,7 +422,7 @@ mod tests {
     #[test]
     fn test_recp_to_fp_change_in_second_half() {
         // Change only in second 16 bytes
-        let mut bytes1 = [0u8; 32];
+        let bytes1 = [0u8; 32];
         let mut bytes2 = [0u8; 32];
         bytes2[24] = 1; // Change in second half
 
@@ -507,7 +507,7 @@ mod tests {
             *byte = i as u8;
         }
 
-        let mut bytes2 = bytes1.clone();
+        let mut bytes2 = bytes1;
         bytes2.reverse();
 
         let recp1 = make_recp_addr(bytes1);

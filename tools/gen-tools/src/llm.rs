@@ -143,7 +143,7 @@ fn collect_schema_context(ctx: &GenerationContext) -> anyhow::Result<String> {
         for entry in std::fs::read_dir(&contract.schema_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
+            if path.extension().is_some_and(|ext| ext == "json") {
                 let content = std::fs::read_to_string(&path)?;
                 let parsed: serde_json::Value = serde_json::from_str(&content)?;
                 context.push_str(&format!(

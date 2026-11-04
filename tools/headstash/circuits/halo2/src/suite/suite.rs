@@ -24,9 +24,7 @@ use crate::{
     address::RecpAddr,
     builder::SpendInfo,
     circuit::{Circuit, ProvingKey},
-    distro_poseidon::{
-        DISTRO_HASH_DOMAIN_POSEIDON_V1, DistroHashDomain, poseidon_distro_crh, poseidon_distro_leaf,
-    },
+    distro_poseidon::{DISTRO_HASH_DOMAIN_POSEIDON_V1, poseidon_distro_crh, poseidon_distro_leaf},
     keys::{EligibleSk, FullViewingKey, NullifierDerivingKey, SpendingKey},
     note::{ExtractedNoteCommitment, Note, RandomSeed, Rho},
     tree::MerklePath,
@@ -37,7 +35,6 @@ use ff::{Field, FromUniformBytes, PrimeField, PrimeFieldBits};
 use hex::decode;
 use pasta_curves::pallas::Base;
 use pasta_curves::{Fp, arithmetic::CurveAffine, group::Curve, pallas};
-use rand_core::Rng;
 use serde_json::{Value, json};
 use sinsemilla::HashDomain;
 use std::error::Error;
@@ -84,10 +81,10 @@ pub fn build_headstash_keys_to(
     vk_path: impl AsRef<std::path::Path>,
 ) -> Result<crate::circuit::ProvingKey, BoxError> {
     let path = vk_path.as_ref();
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)?;
     }
     eprintln!("headstash keygen → {}", path.display());
     eprintln!(
@@ -405,7 +402,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
                 continue;
             }
             // push *count* copies of the denomination value
-            work_items.extend(std::iter::repeat(fixed_amount).take(count as usize));
+            work_items.extend(core::iter::repeat_n(fixed_amount, count as usize));
             remainder %= fixed_amount;
         }
         debug_assert_eq!(remainder, 0, "remainder not zero after denomination split");
@@ -479,7 +476,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
 
         #[cfg(feature = "multicore")]
         while c.len() > 1 {
-            if c.len() % 2 != 0 {
+            if !c.len().is_multiple_of(2) {
                 c.push(pallas::Base::ZERO);
             }
             let lp = l;
@@ -540,7 +537,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
         <Self as HeadstashBitwiseInstance>::extend_with_base_field_bits(&mut message, left);
         <Self as HeadstashBitwiseInstance>::extend_with_base_field_bits(&mut message, right);
         let point = domain.hash_to_point(message.into_iter()).unwrap();
-        point.to_affine().coordinates().unwrap().x().clone()
+        *point.to_affine().coordinates().unwrap().x()
     }
 
     /// Leaf hash (default: **Poseidon-v1**).
@@ -592,14 +589,13 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
         bits.extend(fdi.to_le_bits().iter().by_vals().take(64));
         bits.push(false);
         assert_eq!(bits.len(), 640);
-        Ok(HashDomain::new(LEAF_PERSONALIZATION)
+        Ok(*HashDomain::new(LEAF_PERSONALIZATION)
             .hash_to_point(bits.into_iter())
             .expect("leaf hash should succeed")
             .to_affine()
             .coordinates()
             .unwrap()
-            .x()
-            .clone())
+            .x())
     }
 
     /// Build Merkle root from leaves using **Poseidon-v1** CRH (ADR default domain).
@@ -613,7 +609,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
 
         #[cfg(feature = "multicore")]
         while c.len() > 1 {
-            if c.len() % 2 != 0 {
+            if !c.len().is_multiple_of(2) {
                 c.push(pallas::Base::ZERO);
             }
             let lp = l;
@@ -663,7 +659,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
                 remainder %= fixed_amount;
                 continue;
             }
-            work_items.extend(std::iter::repeat(fixed_amount).take(count as usize));
+            work_items.extend(core::iter::repeat_n(fixed_amount, count as usize));
             remainder %= fixed_amount;
         }
         debug_assert_eq!(remainder, 0, "remainder not zero after denomination split");
@@ -1363,14 +1359,14 @@ pub trait MerkleTestDataBuilder: HeadstashSinsemillaTree {
 
         let mut levels: Vec<Vec<Fp>> = Vec::new();
         let mut current_level = leaves;
-        if current_level.len() % 2 != 0 {
+        if !current_level.len().is_multiple_of(2) {
             current_level.push(Fp::ZERO);
         }
         levels.push(current_level.clone());
 
         let mut layer = 0u32;
         while current_level.len() > 1 {
-            let mut next_level = Vec::with_capacity((current_level.len() + 1) / 2);
+            let mut next_level = Vec::with_capacity(current_level.len().div_ceil(2));
             for chunk in current_level.chunks(2) {
                 let left = chunk[0];
                 let right = if chunk.len() > 1 { chunk[1] } else { Fp::ZERO };
@@ -1407,14 +1403,14 @@ pub trait MerkleTestDataBuilder: HeadstashSinsemillaTree {
 
         let mut levels: Vec<Vec<Fp>> = Vec::new();
         let mut current_level = leaves;
-        if current_level.len() % 2 != 0 {
+        if !current_level.len().is_multiple_of(2) {
             current_level.push(Fp::ZERO);
         }
         levels.push(current_level.clone());
 
         let mut layer = 0u32;
         while current_level.len() > 1 {
-            let mut next_level = Vec::with_capacity((current_level.len() + 1) / 2);
+            let mut next_level = Vec::with_capacity(current_level.len().div_ceil(2));
             for chunk in current_level.chunks(2) {
                 let left = chunk[0];
                 let right = if chunk.len() > 1 { chunk[1] } else { Fp::ZERO };
@@ -1688,7 +1684,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
     ) -> Result<SpendInfo, BoxError> {
         let leaf = poseidon_distro_leaf_from_note(note);
         let (merkle_path, _anchor) = auth_path.to_circuit_path_and_root_poseidon_v1(leaf);
-        SpendInfo::new(fvk.clone(), note.clone(), merkle_path)
+        SpendInfo::new(fvk.clone(), *note, merkle_path)
             .ok_or_else(|| "Failed to create SpendInfo".into())
     }
 
@@ -1725,7 +1721,7 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let note = Note::from_parts(hv, recp, esk, rho, rseed).expect("correct note parts");
 
         let spend_info =
-            SpendInfo::new(fvk, note.clone(), merkle_path).ok_or("SpendInfo creation failed")?;
+            SpendInfo::new(fvk, note, merkle_path).ok_or("SpendInfo creation failed")?;
 
         let nf = note.nullifier();
         let cmx = ExtractedNoteCommitment::from(note.commitment());
@@ -1773,9 +1769,8 @@ pub trait HeadstashProofBuilder: HeadstashBitwiseInstance + MerkleTestDataBuilde
         let recp = RecpAddr::new(leaf_data.raw_addr);
         let note = Note::from_parts(hv, recp, esk, rho, rseed).expect("note");
 
-        let spend_info =
-            SpendInfo::new(fvk, note.clone(), merkle_path).ok_or("SpendInfo failed")?;
-        let mut circuit = Circuit::from_action_context_unchecked(spend_info, note.clone());
+        let spend_info = SpendInfo::new(fvk, note, merkle_path).ok_or("SpendInfo failed")?;
+        let mut circuit = Circuit::from_action_context_unchecked(spend_info, note);
 
         let nf = note.nullifier();
         let cmx = ExtractedNoteCommitment::from(note.commitment());
@@ -1827,7 +1822,7 @@ pub trait HeadstashLaunchpadInstance: HeadstashBitwiseInstance + HeadstashIpfsIn
         let nf = n.nullifier();
         let cmx = ExtractedNoteCommitment::from(n.commitment());
 
-        let c = SpendInfo::new(fvk, n.clone(), mp).expect("headstash claim");
+        let c = SpendInfo::new(fvk, n, mp).expect("headstash claim");
 
         // generate proof, unchecked as we rho is not deterministically derived
         let mut instances =
@@ -2065,12 +2060,12 @@ pub trait HeadstashTestDataGenerator:
             accounts_json.push(json!({
                 "account_index": account.index,
                 "private_keys": {
-                    "spending_key": general_purpose::STANDARD.encode(&account.sk_bytes),
+                    "spending_key": general_purpose::STANDARD.encode(account.sk_bytes),
                     "eligible_sk": general_purpose::STANDARD.encode(account.esk.secret_bytes()),
                 },
                 "public_keys": {
-                    "epk_x": general_purpose::STANDARD.encode(&epkx),
-                    "epk_y": general_purpose::STANDARD.encode(&epky),
+                    "epk_x": general_purpose::STANDARD.encode(epkx),
+                    "epk_y": general_purpose::STANDARD.encode(epky),
                 },
                 "leaf_data": {
                     "epk_x_native": format!("{:?}", leaf.epk_x_native),
@@ -2152,7 +2147,6 @@ mod test {
 
     use super::*;
     use std::boxed::Box;
-    use std::collections::HashMap;
 
     #[test]
     pub fn test_note_accuracy() -> Result<(), Box<dyn std::error::Error>> {
@@ -2389,7 +2383,7 @@ mod test {
         let result = suite.generate_inclusion_test_case(8, 3);
         assert!(result.is_ok());
 
-        let (leaves_data, tree, idx, path, root) = result.unwrap();
+        let (leaves_data, _tree, idx, path, root) = result.unwrap();
 
         assert_eq!(leaves_data.len(), 8);
         assert_eq!(idx, 3);
@@ -2411,7 +2405,7 @@ mod test {
         // Default compute path is Poseidon-v1.
         assert_eq!(suite.compute_leaf_from_data(&data).unwrap(), pos);
         assert_eq!(
-            DistroHashDomain::default().as_str(),
+            crate::distro_poseidon::DistroHashDomain::default().as_str(),
             DISTRO_HASH_DOMAIN_POSEIDON_V1
         );
     }
@@ -2484,7 +2478,7 @@ mod test {
     #[test]
     fn test_zkvm_circuit_public_layout() {
         // Spec for CosmwasmCircuit / CircuitFooter public inputs (build_and_write).
-        use crate::circuit::{Instance, K};
+        use crate::circuit::K;
         assert_eq!(K, 18, "zkvm circuit K");
         // Instance wire: 6 * 32 = 168 bytes (anchor, nd, v, recp, nf, cmx).
         // Footer `i` field in ProvingKey::build_and_write is 6.
@@ -2648,8 +2642,8 @@ mod test {
             assert_eq!(arr[i], *sibling);
         }
         // Remaining elements should be zero
-        for i in path.siblings.len()..32 {
-            assert_eq!(arr[i], Fp::ZERO);
+        for v in &arr[path.siblings.len()..32] {
+            assert_eq!(*v, Fp::ZERO);
         }
     }
 

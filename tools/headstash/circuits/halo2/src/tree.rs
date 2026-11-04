@@ -343,7 +343,7 @@ mod tests {
             constants::MERKLE_DEPTH_ORCHARD,
             tree::{EMPTY_ROOTS, MerkleHashOrchard, MerklePath, UNCOMMITTED_DISTRO},
         },
-        group::ff::{Field, PrimeField},
+        group::ff::PrimeField,
         incrementalmerkletree::{Hashable, Level},
         pasta_curves::pallas,
     };

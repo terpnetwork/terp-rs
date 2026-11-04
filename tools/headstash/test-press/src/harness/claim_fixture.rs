@@ -160,7 +160,7 @@ pub fn build_suite_backed_claim_fixture(
     selected_index: usize,
 ) -> Result<ClaimFixture, ClaimFixtureError> {
     use cw_orch::prelude::Mock;
-    use ff::PrimeField;
+
     use zk_headstash::suite::HeadstashCircuitSuite;
     use zk_headstash::suite::suite::HeadstashProofBuilder;
 

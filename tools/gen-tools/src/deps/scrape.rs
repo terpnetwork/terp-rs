@@ -144,41 +144,40 @@ fn scan_cargo_toml(
     }
 
     // Check workspace.dependencies
-    if let Some(ws) = data.get("workspace").and_then(|w| w.get("dependencies")) {
-        if let Some(table) = ws.as_table() {
-            for (name, value) in table {
-                if pkg_names.contains(name) {
-                    let mode = detect_mode_str(Some(value));
-                    result.forked_deps.push(DepRef {
-                        package: name.clone(),
-                        source: path.to_string_lossy().to_string(),
-                        mode,
-                        in_matrix: true,
-                        is_fork: true,
-                        features: extract_features(value),
-                    });
-                }
+    if let Some(ws) = data.get("workspace").and_then(|w| w.get("dependencies"))
+        && let Some(table) = ws.as_table()
+    {
+        for (name, value) in table {
+            if pkg_names.contains(name) {
+                let mode = detect_mode_str(Some(value));
+                result.forked_deps.push(DepRef {
+                    package: name.clone(),
+                    source: path.to_string_lossy().to_string(),
+                    mode,
+                    in_matrix: true,
+                    is_fork: true,
+                    features: extract_features(value),
+                });
             }
         }
     }
 
     // Check patch.crates-io
-    if let Some(patches) = data.get("patch") {
-        if let Some(crates_io) = patches.get("crates-io") {
-            if let Some(table) = crates_io.as_table() {
-                for (name, value) in table {
-                    if pkg_names.contains(name) {
-                        let mode = detect_mode_str(Some(value));
-                        result.forked_deps.push(DepRef {
-                            package: name.clone(),
-                            source: path.to_string_lossy().to_string(),
-                            mode,
-                            in_matrix: true,
-                            is_fork: true,
-                            features: extract_features(value),
-                        });
-                    }
-                }
+    if let Some(patches) = data.get("patch")
+        && let Some(crates_io) = patches.get("crates-io")
+        && let Some(table) = crates_io.as_table()
+    {
+        for (name, value) in table {
+            if pkg_names.contains(name) {
+                let mode = detect_mode_str(Some(value));
+                result.forked_deps.push(DepRef {
+                    package: name.clone(),
+                    source: path.to_string_lossy().to_string(),
+                    mode,
+                    in_matrix: true,
+                    is_fork: true,
+                    features: extract_features(value),
+                });
             }
         }
     }
@@ -187,13 +186,13 @@ fn scan_cargo_toml(
 }
 
 fn extract_features(dep_value: &toml::Value) -> Vec<String> {
-    if let toml::Value::Table(tbl) = dep_value {
-        if let Some(toml::Value::Array(arr)) = tbl.get("features") {
-            return arr
-                .iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect();
-        }
+    if let toml::Value::Table(tbl) = dep_value
+        && let Some(toml::Value::Array(arr)) = tbl.get("features")
+    {
+        return arr
+            .iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
     }
     vec![]
 }
