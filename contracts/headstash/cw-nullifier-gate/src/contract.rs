@@ -1,5 +1,3 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
     to_json_binary,
@@ -66,7 +64,7 @@ pub fn sudo(
     match msg {
         AuthenticatorSudoMsg::OnAuthenticatorAdded(req) => on_authenticator_added(deps, req),
         AuthenticatorSudoMsg::OnAuthenticatorRemoved(req) => on_authenticator_removed(deps, req),
-        AuthenticatorSudoMsg::Authenticate(req) => authenticate(deps, req),
+        AuthenticatorSudoMsg::Authenticate(req) => authenticate(deps, *req),
         AuthenticatorSudoMsg::Track(req) => track(deps, req),
         AuthenticatorSudoMsg::ConfirmExecution(req) => confirm_execution(deps, req),
     }
