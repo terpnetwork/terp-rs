@@ -407,18 +407,27 @@ fn assert_voting_child<Chain: QueryHandler>(
     }
 }
 
+/// Arguments for [`spawn`].
 #[cfg(test)]
-#[allow(clippy::too_many_arguments)]
-fn spawn(
-    suite: &mut DaoDaoSuite<Mock>,
-    chain: &Mock,
-    parent_key: &str,
-    parent: &Addr,
-    name: &str,
-    codes: &Codes,
-    kind: VotingKind,
-    member: &Addr,
-) -> Addr {
+struct SpawnParams<'a> {
+    pub parent_key: &'a str,
+    pub parent: &'a Addr,
+    pub name: &'a str,
+    pub codes: &'a Codes,
+    pub kind: VotingKind,
+    pub member: &'a Addr,
+}
+
+#[cfg(test)]
+fn spawn(suite: &mut DaoDaoSuite<Mock>, chain: &Mock, args: SpawnParams<'_>) -> Addr {
+    let SpawnParams {
+        parent_key,
+        parent,
+        name,
+        codes,
+        kind,
+        member,
+    } = args;
     let init = instantiate_msg(name, codes, voting_module(codes, kind, member, name));
     let msg = CosmosMsg::Wasm(WasmMsg::Instantiate {
         admin: Some(parent.to_string()),
@@ -462,42 +471,50 @@ fn nested_subdaos_read_child_addresses_from_reply_events() {
     let cw20 = spawn(
         &mut suite,
         &chain,
-        ROOT,
-        &root,
-        "cw20-subdao",
-        &codes,
-        VotingKind::Cw20Staked,
-        &member,
+        SpawnParams {
+            parent_key: ROOT,
+            parent: &root,
+            name: "cw20-subdao",
+            codes: &codes,
+            kind: VotingKind::Cw20Staked,
+            member: &member,
+        },
     );
     let cw721 = spawn(
         &mut suite,
         &chain,
-        "cw20-subdao",
-        &cw20,
-        "cw721-subdao",
-        &codes,
-        VotingKind::Cw721Staked,
-        &member,
+        SpawnParams {
+            parent_key: "cw20-subdao",
+            parent: &cw20,
+            name: "cw721-subdao",
+            codes: &codes,
+            kind: VotingKind::Cw721Staked,
+            member: &member,
+        },
     );
     let roles = spawn(
         &mut suite,
         &chain,
-        "cw721-subdao",
-        &cw721,
-        "cw721-roles-subdao",
-        &codes,
-        VotingKind::Cw721Roles,
-        &member,
+        SpawnParams {
+            parent_key: "cw721-subdao",
+            parent: &cw721,
+            name: "cw721-roles-subdao",
+            codes: &codes,
+            kind: VotingKind::Cw721Roles,
+            member: &member,
+        },
     );
     let _balance = spawn(
         &mut suite,
         &chain,
-        "cw721-roles-subdao",
-        &roles,
-        "cw20-balance-subdao",
-        &codes,
-        VotingKind::Cw20Balance,
-        &member,
+        SpawnParams {
+            parent_key: "cw721-roles-subdao",
+            parent: &roles,
+            name: "cw20-balance-subdao",
+            codes: &codes,
+            kind: VotingKind::Cw20Balance,
+            member: &member,
+        },
     );
 }
 
