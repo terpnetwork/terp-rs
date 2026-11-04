@@ -47,7 +47,7 @@ mod tests {
     fn build_test_tree() -> MerkleTree<SortingBlake3Hasher> {
         let addrs: Vec<String> = TEST_WHITELIST
             .iter()
-            .map(|s| format!("{}{}", s.to_string(), super::TEST_WL_ALLOCATION.to_string()))
+            .map(|s| format!("{}{}", s, super::TEST_WL_ALLOCATION))
             .collect();
         hash_and_build_tree(&addrs)
     }
@@ -189,7 +189,7 @@ mod tests {
         let proof = tree.proof(&[0]);
         let res = query_has_member(
             deps.as_ref(),
-            format!("{}{}", ADDR_0.to_string(), TEST_WL_ALLOCATION),
+            format!("{}{}", ADDR_0, TEST_WL_ALLOCATION),
             proof.proof_hashes_hex(),
         )
         .unwrap();
@@ -199,7 +199,7 @@ mod tests {
         let proof = tree.proof(&[1]);
         let res = query_has_member(
             deps.as_ref(),
-            format!("{}{}", ADDR_1.to_string(), TEST_WL_ALLOCATION),
+            format!("{}{}", ADDR_1, TEST_WL_ALLOCATION),
             proof.proof_hashes_hex(),
         )
         .unwrap();
@@ -209,7 +209,7 @@ mod tests {
         let proof = tree.proof(&[3]);
         let res = query_has_member(
             deps.as_ref(),
-            format!("{}{}", ADDR_3.to_string(), TEST_WL_ALLOCATION),
+            format!("{}{}", ADDR_3, TEST_WL_ALLOCATION),
             proof.proof_hashes_hex(),
         )
         .unwrap();
@@ -219,7 +219,7 @@ mod tests {
         let wrong_proof = tree.proof(&[1]);
         let res = query_has_member(
             deps.as_ref(),
-            format!("{}{}", ADDR_0.to_string(), TEST_WL_ALLOCATION),
+            format!("{}{}", ADDR_0, TEST_WL_ALLOCATION),
             wrong_proof.proof_hashes_hex(),
         )
         .unwrap();
@@ -229,7 +229,7 @@ mod tests {
         let bad_proof = vec!["x".to_string(), "x".to_string()];
         query_has_member(
             deps.as_ref(),
-            format!("{}{}", ADDR_0.to_string(), TEST_WL_ALLOCATION),
+            format!("{}{}", ADDR_0, TEST_WL_ALLOCATION),
             bad_proof,
         )
         .unwrap_err();

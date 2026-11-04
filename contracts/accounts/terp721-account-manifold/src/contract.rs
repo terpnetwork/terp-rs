@@ -261,9 +261,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let then = cw2::get_contract_version(deps.storage)?;
-    if then.version >= CONTRACT_VERSION.to_owned()
-        || then.contract != ACCOUNT_MANIFOLD_CONTRACT.to_owned()
-    {
+    if then.version.as_str() >= CONTRACT_VERSION || then.contract != ACCOUNT_MANIFOLD_CONTRACT {
         return Err(ContractError::Std(StdError::msg(
             "unable to migrate terp721-account minter.",
         )));

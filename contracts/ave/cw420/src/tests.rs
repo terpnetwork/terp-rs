@@ -1,5 +1,7 @@
 use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-use cosmwasm_std::{Addr, Api, Coin, DepsMut, MessageInfo, OwnedDeps, Querier, Storage, SubMsg, from_json};
+use cosmwasm_std::{
+    Addr, Api, Coin, DepsMut, MessageInfo, OwnedDeps, Querier, Storage, SubMsg, from_json,
+};
 
 fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
     message_info(&Addr::unchecked(sender), funds)
@@ -318,7 +320,10 @@ fn add_remove_hooks() {
         addr: contract2.clone(),
     };
     let err = execute(deps.as_mut(), mock_env(), admin_info.clone(), remove_msg).unwrap_err();
-    assert!(matches!(err, ContractError::Hook(HookError::HookNotRegistered {})));
+    assert!(matches!(
+        err,
+        ContractError::Hook(HookError::HookNotRegistered {})
+    ));
 
     // add second contract
     let add_msg2 = ExecuteMsg::AddHook {

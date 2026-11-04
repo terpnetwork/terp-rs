@@ -142,14 +142,13 @@ pub fn validate_params(params: &AuthenticatorParams) -> Result<(), ContractError
             "max_nullifiers_per_tx must be >= 1".into(),
         ));
     }
-    if params.require_session {
-        if let Some(ref s) = params.session_id {
-            if s.is_empty() {
-                return Err(ContractError::InvalidParams(
-                    "session_id in params is empty but require_session".into(),
-                ));
-            }
-        }
+    if params.require_session
+        && let Some(ref s) = params.session_id
+        && s.is_empty()
+    {
+        return Err(ContractError::InvalidParams(
+            "session_id in params is empty but require_session".into(),
+        ));
     }
     Ok(())
 }

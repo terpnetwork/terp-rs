@@ -440,7 +440,7 @@ impl Suite {
         });
     }
     /// create -> approve -> assign -> submit -> accept
-    fn to_accepted(&mut self, r: &str, amount: u128) -> u64 {
+    fn run_to_accepted(&mut self, r: &str, amount: u128) -> u64 {
         let id = self.create_ok(r, amount);
         let (ap, h) = (self.approver.clone(), self.hunter.clone());
         self.exec(&ap, &ExecuteMsg::Approve { id }, &[]).unwrap();
@@ -801,7 +801,10 @@ fn mainnet_chain_id_follows_dev_chain_guard() {
     };
     let r = app.instantiate_contract(code, owner.clone(), &m, &[], "x", None);
     if cfg!(feature = "dev-chain-guard") {
-        assert_eq!(decode(&r.unwrap_err()), ContractError::MainnetGuard("morocco-1".into()));
+        assert_eq!(
+            decode(&r.unwrap_err()),
+            ContractError::MainnetGuard("morocco-1".into())
+        );
     } else {
         r.expect("mainnet build instantiates on morocco-1");
     }
@@ -844,7 +847,7 @@ fn create_requires_exact_deposit() {
 
     // exact deposit -> Pending, funds held by the contract
     let res = s
-        .create(&p, "d1", reward.clone(), &[reward.clone()])
+        .create(&p, "d1", reward.clone(), std::slice::from_ref(&reward))
         .unwrap();
     assert_eq!(attr(&res, "status"), "pending");
     let id: u64 = attr(&res, "bounty_id").parse().unwrap();
@@ -1277,7 +1280,7 @@ fn expiry_refunds_but_never_after_submission() {
 #[test]
 fn payout_requires_the_approver() {
     let mut s = setup();
-    let id = s.to_accepted("pay", 10_000_000);
+    let id = s.run_to_accepted("pay", 10_000_000);
     for who in [
         s.owner.clone(),
         s.proposer.clone(),
@@ -1333,7 +1336,7 @@ fn payout_requires_the_approver() {
 fn partial_payouts_off_by_default() {
     let mut s = setup();
     let ap = s.approver.clone();
-    let id = s.to_accepted("p0", 10_000_000);
+    let id = s.run_to_accepted("p0", 10_000_000);
     assert_eq!(
         s.exec(
             &ap,
@@ -1356,7 +1359,7 @@ fn partial_payouts_then_settle_remainder() {
     let p0 = s.bal(&p, UTERP);
 
     // milestone 1 of 2, then remaining paid
-    let a = s.to_accepted("m", 10_000_000);
+    let a = s.run_to_accepted("m", 10_000_000);
     let res = s
         .exec(
             &ap,
@@ -1411,7 +1414,7 @@ fn partial_payouts_then_settle_remainder() {
     assert_eq!(s.bounty(a).status, BountyStatus::Paid);
 
     // partial, then the rest goes back to the proposer
-    let b = s.to_accepted("n", 10_000_000);
+    let b = s.run_to_accepted("n", 10_000_000);
     assert!(matches!(
         s.exec(&ap, &ExecuteMsg::SettleRemainder { id: b }, &[])
             .unwrap_err(),

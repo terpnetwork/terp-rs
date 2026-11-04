@@ -71,6 +71,7 @@ pub fn execute(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_create_pool(
     deps: DepsMut,
     info: MessageInfo,
@@ -166,10 +167,10 @@ fn execute_settle_swap(
     }
 
     // Root window (stub) — pure apply_swap_action allowed_root check.
-    if let Some(ref allowed) = cfg.allowed_root {
-        if &statement.root != allowed {
-            return Err(ContractError::BadRoot {});
-        }
+    if let Some(ref allowed) = cfg.allowed_root
+        && &statement.root != allowed
+    {
+        return Err(ContractError::BadRoot {});
     }
 
     // Orient reserves (astroport: offer_pool / ask_pool from pair assets).

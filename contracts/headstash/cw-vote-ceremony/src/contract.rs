@@ -166,6 +166,7 @@ fn ensure_admin(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn start_ceremony(
     deps: DepsMut,
     info: MessageInfo,
@@ -307,10 +308,10 @@ fn register(
                 .ok_or_else(|| ContractError::GateDenied {
                     reason: "leaf_commit not attested by clerk".into(),
                 })?;
-            if let Some(owner) = rec.consumed_by {
-                if owner != info.sender.as_str() {
-                    return Err(ContractError::LeafConsumed { addr: owner });
-                }
+            if let Some(owner) = rec.consumed_by
+                && owner != info.sender.as_str()
+            {
+                return Err(ContractError::LeafConsumed { addr: owner });
             }
         }
         RegistrationGate::DaoMember => {

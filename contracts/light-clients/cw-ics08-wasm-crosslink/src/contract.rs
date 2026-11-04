@@ -53,10 +53,7 @@ pub fn sudo(
         SudoMsg::UpdateStateOnMisbehaviour(misbehaviour_msg) => {
             sudo::misbehaviour(deps, misbehaviour_msg)?
         }
-        SudoMsg::VerifyUpgradeAndUpdateState(_) => {
-            return Err(ContractError::InvalidClientMessage);
-        }
-        SudoMsg::MigrateClientStore(_) => {
+        SudoMsg::VerifyUpgradeAndUpdateState(_) | SudoMsg::MigrateClientStore(_) => {
             return Err(ContractError::InvalidClientMessage);
         }
     };

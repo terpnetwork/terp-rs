@@ -1,7 +1,7 @@
 use cw_orch::prelude::*;
 
 use crate::{
-    execute, instantiate, migrate, query, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, execute, instantiate, migrate, query,
 };
 
 #[cw_orch::interface(

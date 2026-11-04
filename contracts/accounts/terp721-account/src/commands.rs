@@ -43,7 +43,7 @@ pub mod manifest {
         only_owner(deps.as_ref(), &info.sender, &account)?;
         // prevent any changes if account is in cooldown
         let market = &ACCOUNT_MANIFOLD.load(deps.storage)?;
-        ensure_not_in_cooldown(deps.as_ref(), &market, &account)?;
+        ensure_not_in_cooldown(deps.as_ref(), market, &account)?;
 
         #[cfg(feature = "abstract")]
         let mut ownership: Ownership<String> = Ownership {
@@ -56,11 +56,10 @@ pub mod manifest {
             .config
             .nft_info
             .load(deps.storage, &account)
-            .and_then(|prev_token_info| {
+            .map(|prev_token_info| {
                 if let Some(address) = prev_token_info.token_uri {
                     if !prev_token_info.extension.account_ownership {
                         REVERSE_MAP.remove(deps.storage, &Addr::unchecked(address));
-                        Ok(())
                     } else {
                         #[cfg(not(feature = "abstract"))]
                         REVERSE_MAP.remove(deps.storage, &Addr::unchecked(address));
@@ -94,11 +93,7 @@ pub mod manifest {
                                 }
                             }
                         }
-
-                        Ok(())
                     }
-                } else {
-                    Ok(())
                 }
             })
             .unwrap_or(());
@@ -133,9 +128,7 @@ pub mod manifest {
                 #[cfg(not(feature = "abstract"))]
                 {
                     let addr = deps.api.addr_validate(&address)?;
-                    Ok::<std::string::String, ContractError>(
-                        validate_address(deps.as_ref(), &info.sender, addr).map(|_| address)?,
-                    )
+                    validate_address(deps.as_ref(), &info.sender, addr).map(|_| address)
                 }
             })
             .transpose()?;
@@ -221,7 +214,7 @@ pub mod manifest {
         expires: Option<Expiration>,
     ) -> Result<Response, ContractError> {
         let market = ACCOUNT_MANIFOLD.load(deps.storage)?;
-        if &market != &info.sender {
+        if market != info.sender {
             return Err(ContractError::UnauthorizedCreatorOrAdmin {});
         }
 
@@ -375,10 +368,7 @@ pub mod manifest {
         let max = SUDO_PARAMS.load(deps.storage)?.max_reverse_map_key_limit;
         let count = REVMAP_LIMIT.may_load(deps.storage, &canonv.to_string())?;
 
-        if count.is_none() {
-            return Err(ContractError::AccountNotFound {});
-        } else {
-            let mut count = count.unwrap();
+        if let Some(mut count) = count {
             // Calculate new count after adding and removing
             let mut new_count = count + to_add.len() as u32;
 
@@ -441,6 +431,8 @@ pub mod manifest {
                     }
                 }
             }
+        } else {
+            return Err(ContractError::AccountNotFound {});
         }
 
         Ok(Response::new().add_attributes(attr))
@@ -500,11 +492,11 @@ pub mod manifest {
             .load(deps.storage, token_id)?;
 
         // keep reverse mapping if tokenized ownership has been validated
-        if let Some(token_uri) = token.token_uri.clone() {
-            if !metadata.account_ownership {
-                REVERSE_MAP.remove(deps.storage, &Addr::unchecked(token_uri));
-                token.token_uri = None;
-            }
+        if let Some(token_uri) = token.token_uri.clone()
+            && !metadata.account_ownership
+        {
+            REVERSE_MAP.remove(deps.storage, &Addr::unchecked(token_uri));
+            token.token_uri = None;
         }
 
         Terp721AccountContract::default()
@@ -893,11 +885,9 @@ pub mod manifest {
         )?;
 
         match res {
-            Some(_) => {
-                return Err(ContractError::AccountCannotBeTransfered {
-                    reason: "Account is in cooldown".to_string(),
-                });
-            }
+            Some(_) => Err(ContractError::AccountCannotBeTransfered {
+                reason: "Account is in cooldown".to_string(),
+            }),
             None => Ok(()),
         }
     }
@@ -1072,10 +1062,10 @@ fn validate_address(deps: Deps, sender: &Addr, addr: Addr) -> Result<Addr, Contr
         let collection_info: Ownership<Addr> = deps
             .querier
             .query_wasm_smart(&addr, &Terp721AccountsQueryMsg::Minter {})?;
-        if let Some(col_owner) = &collection_info.owner {
-            if col_owner == sender {
-                return Ok(addr);
-            }
+        if let Some(col_owner) = &collection_info.owner
+            && col_owner == sender
+        {
+            return Ok(addr);
         }
     }
 

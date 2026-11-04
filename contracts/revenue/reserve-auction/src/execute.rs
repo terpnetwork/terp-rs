@@ -118,9 +118,7 @@ fn create_auction(
     validate_reserve(deps.storage, &reserve_price)?;
 
     let mut response = Response::new();
-    if config.create_auction_fee.amount.is_zero() {
-        nonpayable(&info)?;
-    } else if already_escrowed {
+    if config.create_auction_fee.amount.is_zero() || already_escrowed {
         nonpayable(&info)?;
     } else {
         let paid = one_coin(&info)?;
@@ -238,8 +236,8 @@ fn place_bid(
     let min = auction.min_bid_amount(config.min_bid_increment_percent);
     ensure!(
         has_coins(
-            &[Coin::new(paid, &auction.denom())],
-            &Coin::new(min, &auction.denom())
+            &[Coin::new(paid, auction.denom())],
+            &Coin::new(min, auction.denom())
         ),
         ContractError::BidTooLow
     );

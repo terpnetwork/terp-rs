@@ -139,18 +139,18 @@ fn create_raffle(
     if ticket_price.amount < Uint256::one() {
         return Err(ContractError::InvalidTicketCost);
     }
-    if let Some(comment) = &options.comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &options.comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     if options.duration < cfg.minimum_raffle_duration {
         return Err(ContractError::DurationTooShort);
     }
-    if let (Some(asked), Some(cap)) = (options.max_ticket_number, cfg.max_tickets_per_raffle) {
-        if asked > cap {
-            return Err(ContractError::TicketCap);
-        }
+    if let (Some(asked), Some(cap)) = (options.max_ticket_number, cfg.max_tickets_per_raffle)
+        && asked > cap
+    {
+        return Err(ContractError::TicketCap);
     }
     if assets.is_empty() {
         return Err(ContractError::NoAssets);
@@ -321,10 +321,10 @@ fn buy_ticket(
             return Err(ContractError::UserLimit);
         }
     }
-    if let Some(max) = raffle.options.max_ticket_number {
-        if raffle.ticket_count.saturating_add(ticket_count) > max {
-            return Err(ContractError::RaffleLimit);
-        }
+    if let Some(max) = raffle.options.max_ticket_number
+        && raffle.ticket_count.saturating_add(ticket_count) > max
+    {
+        return Err(ContractError::RaffleLimit);
     }
     for n in 0..ticket_count {
         TICKETS.save(deps.storage, (raffle_id, raffle.ticket_count + n), &buyer)?;
@@ -343,10 +343,14 @@ fn buy_ticket(
         ALT_USER_TICKETS.update(deps.storage, (raffle_id, &buyer), |n| -> StdResult<_> {
             Ok(n.unwrap_or(0) + ticket_count)
         })?;
-        let mut pot = ALT_POT.may_load(deps.storage, raffle_id)?.unwrap_or_default();
+        let mut pot = ALT_POT
+            .may_load(deps.storage, raffle_id)?
+            .unwrap_or_default();
         add_coin(&mut pot, alt)?;
         ALT_POT.save(deps.storage, raffle_id, &pot)?;
-        let mut mine = ALT_PAID.may_load(deps.storage, (raffle_id, &buyer))?.unwrap_or_default();
+        let mut mine = ALT_PAID
+            .may_load(deps.storage, (raffle_id, &buyer))?
+            .unwrap_or_default();
         add_coin(&mut mine, alt)?;
         ALT_PAID.save(deps.storage, (raffle_id, &buyer), &mine)?;
         extra.push(cosmwasm_std::attr("paid_alt", alt.to_string()));
@@ -355,11 +359,12 @@ fn buy_ticket(
         .into_iter()
         .map(|c| bank(info.sender.to_string(), c))
         .collect();
-    if let Some(max) = raffle.options.max_ticket_number {
-        if raffle.ticket_count >= max && env.block.time >= raffle.options.start {
-            let elapsed = env.block.time.seconds() - raffle.options.start.seconds();
-            raffle.options.duration = elapsed;
-        }
+    if let Some(max) = raffle.options.max_ticket_number
+        && raffle.ticket_count >= max
+        && env.block.time >= raffle.options.start
+    {
+        let elapsed = env.block.time.seconds() - raffle.options.start.seconds();
+        raffle.options.duration = elapsed;
     }
     RAFFLES.save(deps.storage, raffle_id, &raffle)?;
     Ok(Response::new()
@@ -382,10 +387,10 @@ fn draw(
     let RandomnessSource::Seed { provider } = &cfg.randomness else {
         return Err(ContractError::WrongRandomnessSource);
     };
-    if let Some(provider) = provider {
-        if info.sender != provider {
-            return Err(ContractError::Unauthorized);
-        }
+    if let Some(provider) = provider
+        && info.sender != provider
+    {
+        return Err(ContractError::Unauthorized);
     }
     if seed.len() != 32 {
         return Err(ContractError::InvalidSeed);
@@ -556,7 +561,10 @@ fn pay_pot(
             ));
         }
         if !fee.is_zero() {
-            msgs.push(bank(cfg.fee_addr.to_string(), Coin::new(fee, pot.denom.clone())));
+            msgs.push(bank(
+                cfg.fee_addr.to_string(),
+                Coin::new(fee, pot.denom.clone()),
+            ));
         }
     }
     Ok(msgs)
@@ -642,6 +650,7 @@ fn refund_tickets(
     Ok(msgs)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_config(
     deps: DepsMut,
     info: MessageInfo,
@@ -703,7 +712,12 @@ fn update_oracle_pricing(
     }
     Ok(Response::new()
         .add_attribute("action", "update_oracle_pricing")
-        .add_attribute("enforce", pricing.map(|p| p.enforce.to_string()).unwrap_or("none".into())))
+        .add_attribute(
+            "enforce",
+            pricing
+                .map(|p| p.enforce.to_string())
+                .unwrap_or("none".into()),
+        ))
 }
 
 fn toggle_lock(deps: DepsMut, info: MessageInfo, lock: bool) -> Result<Response, ContractError> {

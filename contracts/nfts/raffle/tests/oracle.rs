@@ -33,7 +33,9 @@ fn pricing(enforce: bool, registry: &Addr, policy: PricingPolicy) -> OraclePrici
             base_denom: BASE.into(),
             feeds: vec![Feed {
                 oracle: registry.to_string(),
-                kind: FeedKind::Spot { market_id: "ATOM/TERP".into() },
+                kind: FeedKind::Spot {
+                    market_id: "ATOM/TERP".into(),
+                },
                 weight: None,
             }],
             combine: AggregateMethod::Median,
@@ -70,7 +72,13 @@ fn world(mk: impl Fn(&Addr) -> Option<OraclePricing>) -> W {
         .instantiate_contract(
             rid,
             owner.clone(),
-            &reg::InstantiateMsg { admin: owner.to_string(), open_submit: true, bounty: None, note: None, ibc2_source_client: None },
+            &reg::InstantiateMsg {
+                admin: owner.to_string(),
+                open_submit: true,
+                bounty: None,
+                note: None,
+                ibc2_source_client: None,
+            },
             &[],
             "registry",
             None,
@@ -79,11 +87,22 @@ fn world(mk: impl Fn(&Addr) -> Option<OraclePricing>) -> W {
     let drop = svg::lab().into_iter().next().unwrap();
     let nft_id = app.store_code(svg::contract());
     let nft = app
-        .instantiate_contract(nft_id, owner.clone(), &drop.instantiate_msg(owner.as_str()), &[], "nft", None)
+        .instantiate_contract(
+            nft_id,
+            owner.clone(),
+            &drop.instantiate_msg(owner.as_str()),
+            &[],
+            "nft",
+            None,
+        )
         .unwrap();
     let raffle_code = app.store_code(Box::new(
-        ContractWrapper::new_with_empty(nftfi_raffle::execute, nftfi_raffle::instantiate, nftfi_raffle::query)
-            .with_reply_empty(nftfi_raffle::reply),
+        ContractWrapper::new_with_empty(
+            nftfi_raffle::execute,
+            nftfi_raffle::instantiate,
+            nftfi_raffle::query,
+        )
+        .with_reply_empty(nftfi_raffle::reply),
     ));
     let raffle = app
         .instantiate_contract(
@@ -105,7 +124,17 @@ fn world(mk: impl Fn(&Addr) -> Option<OraclePricing>) -> W {
             None,
         )
         .unwrap();
-    let mut w = W { app, owner, alice, bob, fee, nft, raffle, registry, token: 0 };
+    let mut w = W {
+        app,
+        owner,
+        alice,
+        bob,
+        fee,
+        nft,
+        raffle,
+        registry,
+        token: 0,
+    };
     w.push("12.5");
     w
 }
@@ -140,7 +169,9 @@ impl W {
         let token_id = self.token.to_string();
         self.token += 1;
         let owner = self.owner.clone();
-        self.app.execute_contract(owner.clone(), self.nft.clone(), &svg::mint_msg(1), &[]).unwrap();
+        self.app
+            .execute_contract(owner.clone(), self.nft.clone(), &svg::mint_msg(1), &[])
+            .unwrap();
         self.app
             .execute_contract(
                 owner.clone(),
@@ -184,12 +215,22 @@ impl W {
             .parse()
             .unwrap()
     }
-    fn buy(&mut self, who: &Addr, id: u64, count: u32, funds: &[Coin]) -> Result<AppResponse, String> {
+    fn buy(
+        &mut self,
+        who: &Addr,
+        id: u64,
+        count: u32,
+        funds: &[Coin],
+    ) -> Result<AppResponse, String> {
         self.app
             .execute_contract(
                 who.clone(),
                 self.raffle.clone(),
-                &ExecuteMsg::BuyTicket { raffle_id: id, ticket_count: count, on_behalf_of: None },
+                &ExecuteMsg::BuyTicket {
+                    raffle_id: id,
+                    ticket_count: count,
+                    on_behalf_of: None,
+                },
                 funds,
             )
             .map_err(|e| format!("{e:?} {e}"))
@@ -197,16 +238,23 @@ impl W {
     fn finish(&mut self, id: u64) -> AppResponse {
         self.advance(1, 101);
         // Under-minimum raffles are already Finished and skip the draw.
-        let _ = self.app
+        let _ = self.app.execute_contract(
+            self.owner.clone(),
+            self.raffle.clone(),
+            &ExecuteMsg::Draw {
+                raffle_id: id,
+                seed: Binary::from([9u8; 32]),
+            },
+            &[],
+        );
+        self.advance(1, 0);
+        self.app
             .execute_contract(
                 self.owner.clone(),
                 self.raffle.clone(),
-                &ExecuteMsg::Draw { raffle_id: id, seed: Binary::from([9u8; 32]) },
+                &ExecuteMsg::ClaimRaffle { raffle_id: id },
                 &[],
-            );
-        self.advance(1, 0);
-        self.app
-            .execute_contract(self.owner.clone(), self.raffle.clone(), &ExecuteMsg::ClaimRaffle { raffle_id: id }, &[])
+            )
             .unwrap()
     }
     fn bal(&self, a: &Addr, d: &str) -> u128 {
@@ -214,7 +262,10 @@ impl W {
         v.to_string().parse().unwrap()
     }
     fn alt_pot(&self, id: u64) -> AltPotResponse {
-        self.app.wrap().query_wasm_smart(&self.raffle, &QueryMsg::AltPot { raffle_id: id }).unwrap()
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.raffle, &QueryMsg::AltPot { raffle_id: id })
+            .unwrap()
     }
 }
 
@@ -231,8 +282,11 @@ fn no_pricing_is_unchanged() {
     assert!(w.buy(&alice, id, 1, &coins(PRICE + 1, BASE)).is_err());
     w.buy(&bob, id, 2, &coins(2 * PRICE, BASE)).unwrap();
     assert_eq!(w.alt_pot(id).alt_tickets, 0);
-    let p: Option<OraclePricing> =
-        w.app.wrap().query_wasm_smart(&w.raffle, &QueryMsg::OraclePricing {}).unwrap();
+    let p: Option<OraclePricing> = w
+        .app
+        .wrap()
+        .query_wasm_smart(&w.raffle, &QueryMsg::OraclePricing {})
+        .unwrap();
     assert!(p.is_none());
 }
 
@@ -246,12 +300,19 @@ fn not_enforced_quotes_but_rejects_alt() {
         .wrap()
         .query_wasm_smart(
             &w.raffle,
-            &QueryMsg::OracleQuote { base: Coin::new(PRICE, BASE), asset: PriceAsset::native(ALT) },
+            &QueryMsg::OracleQuote {
+                base: Coin::new(PRICE, BASE),
+                asset: PriceAsset::native(ALT),
+            },
         )
         .unwrap();
     assert_eq!(q.required, Uint256::from(2_000_000u128));
     assert!(!q.enforced);
-    assert!(w.buy(&alice, id, 1, &coins(2_000_000, ALT)).unwrap_err().contains("not enforced"));
+    assert!(
+        w.buy(&alice, id, 1, &coins(2_000_000, ALT))
+            .unwrap_err()
+            .contains("not enforced")
+    );
     w.buy(&alice, id, 1, &coins(PRICE, BASE)).unwrap();
 }
 
@@ -259,12 +320,26 @@ fn not_enforced_quotes_but_rejects_alt() {
 fn enforced_alt_and_base_pots_split_on_claim() {
     let mut w = world(|r| Some(pricing(true, r, PricingPolicy::default())));
     let id = w.create(None);
-    let (alice, bob, owner, fee) = (w.alice.clone(), w.bob.clone(), w.owner.clone(), w.fee.clone());
+    let (alice, bob, owner, fee) = (
+        w.alice.clone(),
+        w.bob.clone(),
+        w.owner.clone(),
+        w.fee.clone(),
+    );
     // 2 tickets = 50 TERP = 4 ATOM; overpay 0.5 ATOM, refunded to sender.
     let r = w.buy(&alice, id, 2, &coins(4_500_000, ALT)).unwrap();
-    assert!(r.events.iter().flat_map(|e| &e.attributes).any(|a| a.key == "paid_alt"));
+    assert!(
+        r.events
+            .iter()
+            .flat_map(|e| &e.attributes)
+            .any(|a| a.key == "paid_alt")
+    );
     assert_eq!(w.bal(&alice, ALT), START - 4_000_000);
-    assert!(w.buy(&bob, id, 1, &coins(1_999_999, ALT)).unwrap_err().contains("below"));
+    assert!(
+        w.buy(&bob, id, 1, &coins(1_999_999, ALT))
+            .unwrap_err()
+            .contains("below")
+    );
     w.buy(&bob, id, 1, &coins(PRICE, BASE)).unwrap();
     let pot = w.alt_pot(id);
     assert_eq!(pot.alt_tickets, 2);
@@ -293,7 +368,10 @@ fn price_moves_change_required_alt() {
 
 #[test]
 fn stale_price_rejected_until_fresh() {
-    let policy = PricingPolicy { max_staleness_blocks: Some(5), ..Default::default() };
+    let policy = PricingPolicy {
+        max_staleness_blocks: Some(5),
+        ..Default::default()
+    };
     let mut w = world(move |r| Some(pricing(true, r, policy.clone())));
     let id = w.create(None);
     let alice = w.alice.clone();
@@ -327,22 +405,44 @@ fn update_oracle_pricing_owner_only_and_validated() {
     let mut w = world(|_| None);
     let (owner, alice, registry) = (w.owner.clone(), w.alice.clone(), w.registry.clone());
     let p = pricing(true, &registry, PricingPolicy::default());
-    let msg = ExecuteMsg::UpdateOraclePricing { pricing: Some(p.clone()) };
-    assert!(w.app.execute_contract(alice.clone(), w.raffle.clone(), &msg, &[]).is_err());
+    let msg = ExecuteMsg::UpdateOraclePricing {
+        pricing: Some(p.clone()),
+    };
+    assert!(
+        w.app
+            .execute_contract(alice.clone(), w.raffle.clone(), &msg, &[])
+            .is_err()
+    );
     let mut bad = p.clone();
     bad.alt_assets[0].feeds.clear();
-    assert!(w
+    assert!(
+        w.app
+            .execute_contract(
+                owner.clone(),
+                w.raffle.clone(),
+                &ExecuteMsg::UpdateOraclePricing { pricing: Some(bad) },
+                &[]
+            )
+            .is_err()
+    );
+    w.app
+        .execute_contract(owner.clone(), w.raffle.clone(), &msg, &[])
+        .unwrap();
+    let got: Option<OraclePricing> = w
         .app
-        .execute_contract(owner.clone(), w.raffle.clone(), &ExecuteMsg::UpdateOraclePricing { pricing: Some(bad) }, &[])
-        .is_err());
-    w.app.execute_contract(owner.clone(), w.raffle.clone(), &msg, &[]).unwrap();
-    let got: Option<OraclePricing> =
-        w.app.wrap().query_wasm_smart(&w.raffle, &QueryMsg::OraclePricing {}).unwrap();
+        .wrap()
+        .query_wasm_smart(&w.raffle, &QueryMsg::OraclePricing {})
+        .unwrap();
     assert_eq!(got, Some(p));
     let id = w.create(None);
     w.buy(&alice, id, 1, &coins(2_000_000, ALT)).unwrap();
     w.app
-        .execute_contract(owner, w.raffle.clone(), &ExecuteMsg::UpdateOraclePricing { pricing: None }, &[])
+        .execute_contract(
+            owner,
+            w.raffle.clone(),
+            &ExecuteMsg::UpdateOraclePricing { pricing: None },
+            &[],
+        )
         .unwrap();
     assert!(w.buy(&alice, id, 1, &coins(2_000_000, ALT)).is_err());
 }

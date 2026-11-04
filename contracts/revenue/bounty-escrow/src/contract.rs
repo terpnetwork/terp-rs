@@ -124,12 +124,12 @@ fn validate_gate(
     g: ProposerGateMsg,
     creation_gate: &CreationGate,
 ) -> Result<ProposerGate, ContractError> {
-    if let Some(ms) = g.min_stake {
-        if ms.is_zero() {
-            return Err(ContractError::InvalidInput(
-                "min_stake must be > 0 when set".into(),
-            ));
-        }
+    if let Some(ms) = g.min_stake
+        && ms.is_zero()
+    {
+        return Err(ContractError::InvalidInput(
+            "min_stake must be > 0 when set".into(),
+        ));
     }
     let gate = ProposerGate {
         use_allowlist: g.use_allowlist,

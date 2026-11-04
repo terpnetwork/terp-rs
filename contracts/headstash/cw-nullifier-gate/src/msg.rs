@@ -58,6 +58,7 @@ pub struct GateInfoResponse {
 }
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum AuthenticatorSudoMsg {
     OnAuthenticatorAdded(OnAuthenticatorAddedRequest),
     OnAuthenticatorRemoved(OnAuthenticatorRemovedRequest),

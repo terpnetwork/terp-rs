@@ -97,14 +97,14 @@ pub fn parse_client_message(bz: &[u8]) -> Result<ParsedHeader, ContractError> {
     if let Ok(h) = decode_tm_header(bz) {
         return Ok(h);
     }
-    if let Ok(any) = Any::decode(bz) {
-        if !any.value.is_empty() {
-            if let Ok(h) = decode_tm_header(&any.value) {
-                return Ok(h);
-            }
-            if any.value.first() == Some(&b'{') {
-                return parse_client_message(&any.value);
-            }
+    if let Ok(any) = Any::decode(bz)
+        && !any.value.is_empty()
+    {
+        if let Ok(h) = decode_tm_header(&any.value) {
+            return Ok(h);
+        }
+        if any.value.first() == Some(&b'{') {
+            return parse_client_message(&any.value);
         }
     }
     Err(ContractError::InvalidClientMessage)

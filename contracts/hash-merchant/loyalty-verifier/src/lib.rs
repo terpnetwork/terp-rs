@@ -237,6 +237,7 @@ pub fn compute_action_bind(
     hex::encode(h.finalize())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_claim_private(
     deps: DepsMut,
     env: Env,

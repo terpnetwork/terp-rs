@@ -73,7 +73,7 @@ fn verify_proof(client: &ClientState, update: &SettlementUpdate) -> Result<(), C
         if update.proof[0] == "0" {
             return Err(ContractError::VerifyFailed("mock forge reject".into()));
         }
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(feature = "mock-verify"))]

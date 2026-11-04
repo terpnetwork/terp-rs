@@ -592,7 +592,7 @@ fn accept_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
     ensure!(
-        has_coins(&[bid.terms.price.clone()], &terms.price),
+        has_coins(std::slice::from_ref(&bid.terms.price), &terms.price),
         ContractError::InvalidInput("min output is greater than bid price".into())
     );
     let ask = existing_or_new_ask(
@@ -783,7 +783,10 @@ fn accept_collection_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
     ensure!(
-        has_coins(&[collection_bid.terms.price.clone()], &terms.price),
+        has_coins(
+            std::slice::from_ref(&collection_bid.terms.price),
+            &terms.price
+        ),
         ContractError::InvalidInput("min output is greater than collection bid price".into())
     );
     let ask = existing_or_new_ask(

@@ -16,7 +16,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::AltPot { raffle_id } => to_json_binary(&AltPotResponse {
             alt_tickets: ALT_TICKETS.may_load(deps.storage, raffle_id)?.unwrap_or(0),
-            pot: ALT_POT.may_load(deps.storage, raffle_id)?.unwrap_or_default(),
+            pot: ALT_POT
+                .may_load(deps.storage, raffle_id)?
+                .unwrap_or_default(),
         }),
         QueryMsg::Config {} => to_json_binary(&CONFIG.load(deps.storage)?),
         QueryMsg::Raffle { raffle_id } => {

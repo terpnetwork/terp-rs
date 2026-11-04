@@ -137,7 +137,7 @@ fn ensure_admin(deps: Deps, sender: &Addr) -> Result<(), ContractError> {
         .query_creator_ownership(deps.storage)?
         .owner
     {
-        Some(ow) if &ow == sender => Ok(()),
+        Some(ow) if ow == sender => Ok(()),
         _ => Err(ContractError::Unauthorized {}),
     }
 }

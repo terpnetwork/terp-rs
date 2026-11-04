@@ -14,7 +14,9 @@ impl<Chain: CwEnv> Uploadable for NftfiRaffle<Chain> {
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(
-            ContractWrapper::new_with_empty(execute, instantiate, query).with_reply_empty(reply).with_migrate(migrate),
+            ContractWrapper::new_with_empty(execute, instantiate, query)
+                .with_reply_empty(reply)
+                .with_migrate(migrate),
         )
     }
 }

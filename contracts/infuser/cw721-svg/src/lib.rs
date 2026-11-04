@@ -39,7 +39,7 @@ pub mod entry {
     use crate::contract::{MigrateMsg, SvgTemplateResponse, SvgTokenUriResponse};
     use cosmwasm_std::{
         Binary, Deps, DepsMut, Env, Event, MessageInfo, Response, StdError, StdResult, Timestamp,
-        from_json, to_json_binary,
+        to_json_binary,
     };
     use cw721::msg::Cw721InstantiateMsg;
     use cw721::traits::{Cw721Execute, Cw721Query};

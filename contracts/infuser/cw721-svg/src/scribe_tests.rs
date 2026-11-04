@@ -25,7 +25,7 @@ fn template() -> (String, Vec<VariableDef>) {
     let mut t =
         String::from("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"-40 -40 80 80\">");
     for c in 0..9 {
-        let (x, y) = ((c % 3) as i32 * 25 - 25, (c / 3) as i32 * 25 - 25);
+        let (x, y) = ((c % 3) * 25 - 25, (c / 3) * 25 - 25);
         t.push_str(&format!("<circle cx=\"{x}\" cy=\"{y}\" r=\"10\" fill=\"rgb(255,200,90)\" opacity=\"0\"><animate attributeName=\"opacity\" values=\"${{scribe.c{c}}}\" dur=\"${{scribe.dur}}s\" calcMode=\"discrete\" repeatCount=\"indefinite\"/></circle>"));
     }
     t.push_str("<text y=\"38\">${scribe}</text></svg>");

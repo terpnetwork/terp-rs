@@ -7,8 +7,8 @@
 use cosmwasm_std::{
     Binary, DepsMut, Env, IbcBasicResponse, IbcChannelCloseMsg, IbcChannelConnectMsg,
     IbcChannelOpenMsg, IbcChannelOpenResponse, IbcOrder, IbcPacketAckMsg, IbcPacketReceiveMsg,
-    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult, WasmMsg,
-    from_json, to_json_binary,
+    IbcPacketTimeoutMsg, IbcReceiveResponse, Never, StdError, StdResult, WasmMsg, from_json,
+    to_json_binary,
 };
 
 use crate::ContractError;

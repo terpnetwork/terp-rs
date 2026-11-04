@@ -6,7 +6,10 @@ use crosslink_light_client::{ZcashDeserialize, verify};
 
 use crate::ContractError;
 use crate::custom_query::CrosslinkCustomQuery;
-use crate::msg::*;
+use crate::msg::{
+    CheckForMisbehaviourMsg, CheckForMisbehaviourResult, StatusResult, TimestampAtHeightMsg,
+    TimestampAtHeightResult, VerifyClientMessageMsg,
+};
 use crate::state;
 
 /// Verify a client message.

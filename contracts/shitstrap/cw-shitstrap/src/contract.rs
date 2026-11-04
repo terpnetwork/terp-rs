@@ -387,14 +387,14 @@ pub fn ibc_destination_callback(
                 } => {
                     if &me.to_string() != contract_addr {
                         return Err(ContractError::IbcCallbackError {
-                            e: format!("only msgs to {} accepted", &me),
+                            e: format!("only msgs to {} accepted", me),
                         });
                     }
                     // require each specs funds to be accepted shit
                     for coin in funds {
                         if !SHITSTRAP_STATE.has(deps.storage, coin.denom.clone()) {
                             return Err(ContractError::IbcCallbackError {
-                                e: format!("sent shit not accepted: {}", &coin.denom),
+                                e: format!("sent shit not accepted: {}", coin.denom),
                             });
                         };
                         //  Must not exceed available funds for this denom
@@ -409,13 +409,13 @@ pub fn ibc_destination_callback(
 
                 _ => {
                     return Err(ContractError::IbcCallbackError {
-                        e: format!("only WasmMsg::Execute accepted"),
+                        e: "only WasmMsg::Execute accepted".to_string(),
                     });
                 }
             },
             _ => {
                 return Err(ContractError::IbcCallbackError {
-                    e: format!("only CosmosMsg::Wasm accepted"),
+                    e: "only CosmosMsg::Wasm accepted".to_string(),
                 });
             }
         }
@@ -578,10 +578,7 @@ fn send_accumulated_to_owner(
         let total_amount = tokens.1;
 
         let is_cw20 = match POSSIBLE_SHIT.may_load(deps.storage, denom_key.to_string())? {
-            Some(d) => match d.token {
-                UncheckedDenom::Cw20(_) => true,
-                _ => false,
-            },
+            Some(d) => matches!(d.token, UncheckedDenom::Cw20(_)),
             None => unimplemented!(),
         };
 
@@ -861,8 +858,7 @@ pub fn calculate_shit_return(
     shit_rate: Uint256,
 ) -> Result<(Uint256, Uint256), ContractError> {
     let overflow = new_val - cutoff;
-    let return_to_shitter_amnt =
-        overflow.multiply_ratio(10u128.pow(MAX_DEC_PRECISION as u32), shit_rate);
+    let return_to_shitter_amnt = overflow.multiply_ratio(10u128.pow(MAX_DEC_PRECISION), shit_rate);
     Ok((overflow, return_to_shitter_amnt))
 }
 
@@ -983,8 +979,6 @@ pub enum ContractError {
 
 impl PartialEq for ContractError {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
+        core::mem::discriminant(self) == core::mem::discriminant(other)
     }
 }

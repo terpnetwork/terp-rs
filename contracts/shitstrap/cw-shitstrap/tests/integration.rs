@@ -10,7 +10,7 @@ pub fn unit_shit_rate() {
     let deps = mock_dependencies();
     let matched = PossibleShit {
         shit_rate: Uint128::from(222222000000000000u128),
-        token: UncheckedDenom::from(UncheckedDenom::Native("test".into())),
+        token: UncheckedDenom::Native("test".into()),
     };
     let shit_amount = Uint128::from(100100u128);
 
@@ -275,7 +275,7 @@ impl ShitSuite {
                 })
                 .unwrap(),
             }),
-            &vec![],
+            &[],
         )?)
     }
 
@@ -297,7 +297,7 @@ impl ShitSuite {
                 dao: None,
                 recp: None,
             },
-            &vec![coin(amount, denom)],
+            &[coin(amount, denom)],
         )?)
     }
 }
@@ -312,8 +312,8 @@ fn test_bad_init() -> TestResult {
         PossibleShit::native_denom("uatom4", 1_000_000u128),
     ];
 
-    let title = "a".repeat(101).into();
-    let description = "y".repeat(1001).into();
+    let title = "a".repeat(101);
+    let description = "y".repeat(1001);
     let cutoff = Uint128::zero();
 
     // create default testing suite
@@ -326,7 +326,7 @@ fn test_bad_init() -> TestResult {
     let mut init_msg = InstantiateMsg {
         owner: Some(shit.owner.to_string()),
         accepted: possible.clone(),
-        cutoff: cutoff.into(),
+        cutoff,
         shitmos: cw_shit_denom::UncheckedDenom::Native("ushit".into()),
         title,
         description,
@@ -473,7 +473,7 @@ fn test_shitstrap() -> TestResult {
                 dao: None,
                 recp: None,
             },
-            &vec![coin(first_deposit, "uatom")],
+            &[coin(first_deposit, "uatom")],
         )
         .unwrap_err();
     assert!(
@@ -483,8 +483,9 @@ fn test_shitstrap() -> TestResult {
     let cw20_id = shit.app.store_code(cw20_contract());
     let cw20 = &init_bad_cw20(&mut shit.app, cw20_id, shit.owner.clone()).to_string();
     // error with wrong cw20 token
+    let owner = shit.owner.to_string();
     let err = shit
-        .participate_cw20(&shit.owner.to_string(), first_deposit, cw20)
+        .participate_cw20(&owner, first_deposit, cw20)
         .unwrap_err();
     assert!(
         err.to_string()
@@ -502,7 +503,7 @@ fn test_shitstrap() -> TestResult {
                 dao: None,
                 recp: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap_err();
     assert!(
@@ -525,7 +526,7 @@ fn test_shitstrap() -> TestResult {
                 dao: None,
                 recp: None,
             },
-            &vec![coin(22, "uatom")],
+            &[coin(22, "uatom")],
         )
         .unwrap_err();
 
@@ -538,7 +539,7 @@ fn test_shitstrap() -> TestResult {
     assert_eq!(og_owner_bal.amount, Uint256::new(DEFAULT_BALANCE));
 
     // participate in shitstrap with correct token
-    shit.participate_native(&s1.to_string(), 221_000_000, "uatom")?;
+    shit.participate_native(s1.as_ref(), 221_000_000, "uatom")?;
 
     // confirm shit_rate is calculated correctly
     let res: Uint128 = shit
@@ -572,7 +573,7 @@ fn test_shitstrap() -> TestResult {
             dao: None,
             recp: None,
         },
-        &vec![coin(2000000u128, "uatom")],
+        &[coin(2000000u128, "uatom")],
     )?;
 
     // move forward in time
@@ -585,7 +586,7 @@ fn test_shitstrap() -> TestResult {
         .app
         .wrap()
         .query_wasm_smart(shit.shitstrap, &QueryMsg::FullOfShit {})?;
-    assert_eq!(res, true);
+    assert!(res);
 
     // confirm balances
     let balance = shit.app.wrap().query_balance(shitstrap.clone(), "uatom")?;
@@ -607,7 +608,7 @@ fn test_shitstrap() -> TestResult {
                 dao: None,
                 recp: None,
             },
-            &vec![coin(2_000_000u128, "uatom")],
+            &[coin(2_000_000u128, "uatom")],
         )
         .unwrap_err();
     assert!(
@@ -641,8 +642,8 @@ fn test_fee_destination() -> TestResult {
     let mut shit = default_init(
         app,
         vec![
-            PossibleShit::native_denom("uatom", atom_shit_ratio.clone().into()),
-            PossibleShit::native_cw20(cw20, cw20_shit_ratio.clone().into()),
+            PossibleShit::native_denom("uatom", atom_shit_ratio.into()),
+            PossibleShit::native_cw20(cw20, cw20_shit_ratio.into()),
         ],
         222000000u128,
     );
@@ -669,7 +670,7 @@ fn test_fee_destination() -> TestResult {
     );
 
     // user 1 funds with native
-    let res = shit.participate_native(&s1.to_string(), 100_000_000, "uatom")?;
+    let res = shit.participate_native(s1.as_ref(), 100_000_000, "uatom")?;
 
     // confirm shit_rate is calculated correctly
     let has_shit: Uint128 = shit
@@ -756,8 +757,8 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
     let mut shit = default_init(
         app,
         vec![
-            PossibleShit::native_denom("uatom", atom_shit_ratio.clone().into()),
-            PossibleShit::native_cw20(cw20, cw20_shit_ratio.clone().into()),
+            PossibleShit::native_denom("uatom", atom_shit_ratio.into()),
+            PossibleShit::native_cw20(cw20, cw20_shit_ratio.into()),
         ],
         222000000u128,
     );
@@ -780,7 +781,7 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
                 dao: None,
                 recp: None,
             },
-            &vec![coin(first_deposit, "usilk")],
+            &[coin(first_deposit, "usilk")],
         )
         .unwrap_err();
     assert!(
@@ -835,7 +836,7 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
                 })
                 .unwrap(),
             }),
-            &vec![],
+            &[],
         )
         .unwrap_err();
     assert!(
@@ -844,7 +845,7 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
     );
 
     // user 1 funds with native
-    shit.participate_native(&s1.to_string(), 100_000_000, "uatom")?;
+    shit.participate_native(s1.as_ref(), 100_000_000, "uatom")?;
     // confirm shit_rate is calculated correctly
     let res: Uint128 = shit
         .app
@@ -871,7 +872,7 @@ fn test_mult_participants_mult_possible_shit() -> TestResult {
     );
 
     // user 2 funds with coin. should reflect 50% shit weight of native
-    shit.participate_cw20(&s3.to_string(), 100_000_000, cw20)?;
+    shit.participate_cw20(s3.as_ref(), 100_000_000, cw20)?;
 
     // confirm shit_rate is calculated correctly
     let res: Uint128 = shit
@@ -931,7 +932,7 @@ fn test_cw20_receive() -> TestResult {
                 },
                 dao: None,
             },
-            &vec![],
+            &[],
         )
         .unwrap_err();
 
@@ -956,7 +957,7 @@ fn test_cw20_receive() -> TestResult {
                 })
                 .unwrap(),
             }),
-            &vec![],
+            &[],
         )
         .unwrap_err();
 

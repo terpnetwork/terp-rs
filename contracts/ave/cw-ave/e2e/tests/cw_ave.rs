@@ -11,7 +11,7 @@ use cw4::Member;
 use cw_ave_e2e::{license_fee, upload_ave};
 use terp_orch::TerpArtifactStack;
 
-/// INIT UNIT TESTS
+// INIT UNIT TESTS
 // calling contract with funds:
 // -  suite.products.ave.execute(execute_msg, coins)
 // calling contract w/out funds (queries & execute)
@@ -44,10 +44,9 @@ use terp_orch::TerpArtifactStack;
 // CHECKIN GUEST
 // only event ushers can checkin guest
 
-/// EVENT SEGMENT ACCESS
-/// - single - works normal
-/// - single - errors on incorrect segment for a guest
-///
+// EVENT SEGMENT ACCESS
+// - single - works normal
+// - single - errors on incorrect segment for a guest
 
 struct TestEnv<Env: CwEnv> {
     mock: Env,
@@ -109,7 +108,7 @@ impl TestEnv<MockBech32> {
             .ave_factory
             .execute(
                 &FactoryExecuteMsg::CreateNativeAvEventContract {
-                    instantiate_msg: instantiate_msg,
+                    instantiate_msg,
                     label: "checkin".into(),
                 },
                 &[license_fee(&chain.env_info().chain_id)?],

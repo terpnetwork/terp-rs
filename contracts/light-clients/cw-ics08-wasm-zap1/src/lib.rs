@@ -10,8 +10,7 @@
 //! to 16 bytes. Guest `simd128` stays off.
 
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    to_json_binary,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_json_binary,
 };
 use cw_storage_plus::Map;
 use sha2::{Digest, Sha256};
@@ -26,9 +25,9 @@ pub use interface::CwIcs08WasmZap1Contract;
 pub fn tagged_hash(tag: &[u8], parts: &[&[u8]]) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update(tag);
-    h.update(&[tag.len() as u8]);
+    h.update([tag.len() as u8]);
     for p in parts {
-        h.update(&(p.len() as u64).to_le_bytes());
+        h.update((p.len() as u64).to_le_bytes());
         h.update(p);
     }
     h.finalize().into()
@@ -66,6 +65,7 @@ pub struct IbcV2Fields {
 }
 
 #[cosmwasm_schema::cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     CreateClient {
         source_client: String,
@@ -115,6 +115,7 @@ fn parse_hex32(s: &str) -> StdResult<[u8; 32]> {
 }
 
 /// Pure verify used by the wasm entry point and by PIR (same fields as IBC v2).
+#[allow(clippy::too_many_arguments)]
 pub fn verify_zap1_ibcv2(
     ibc: &IbcV2Fields,
     event_kind: &str,

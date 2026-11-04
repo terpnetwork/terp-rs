@@ -1,9 +1,7 @@
 use abstract_std::objects::gov_type::GovernanceDetails;
 use abstract_std::objects::ownership::{self, Ownership};
 use cosmwasm_schema::{QueryResponses, cw_serde};
-use cosmwasm_std::{
-    Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-};
+use cosmwasm_std::{Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult};
 use cw_storage_plus::Item;
 use thiserror::Error;
 #[cfg(not(target_arch = "wasm32"))]

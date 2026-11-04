@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, entry_point};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -61,7 +61,10 @@ mod migrate_tests {
             deps.as_mut(),
             mock_env(),
             MigrateMsg {},
-            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+            cosmwasm_std::MigrateInfo {
+                sender: admin,
+                old_migrate_version: None,
+            },
         )
         .unwrap();
         assert_eq!(res.attributes[0].value, "migrate");

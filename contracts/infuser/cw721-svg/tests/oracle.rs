@@ -33,7 +33,9 @@ fn pricing(enforce: bool, registry: &Addr, policy: PricingPolicy) -> OraclePrici
             base_denom: BASE.into(),
             feeds: vec![Feed {
                 oracle: registry.to_string(),
-                kind: FeedKind::Spot { market_id: "ATOM/TERP".into() },
+                kind: FeedKind::Spot {
+                    market_id: "ATOM/TERP".into(),
+                },
                 weight: None,
             }],
             combine: AggregateMethod::Median,
@@ -52,8 +54,11 @@ fn world(tiers: Vec<PriceTier>) -> W {
     let buyer = app.api().addr_make("buyer");
     let payee = app.api().addr_make("payee");
     for d in [BASE, ALT] {
-        app.sudo(SudoMsg::Bank(BankSudo::Mint { to_address: buyer.to_string(), amount: coins(START, d) }))
-            .unwrap();
+        app.sudo(SudoMsg::Bank(BankSudo::Mint {
+            to_address: buyer.to_string(),
+            amount: coins(START, d),
+        }))
+        .unwrap();
     }
     let rid = app.store_code(Box::new(ContractWrapper::new(
         cw_oracle_registry::contract::execute,
@@ -64,7 +69,13 @@ fn world(tiers: Vec<PriceTier>) -> W {
         .instantiate_contract(
             rid,
             creator.clone(),
-            &reg::InstantiateMsg { admin: creator.to_string(), open_submit: true, bounty: None, note: None, ibc2_source_client: None },
+            &reg::InstantiateMsg {
+                admin: creator.to_string(),
+                open_submit: true,
+                bounty: None,
+                note: None,
+                ibc2_source_client: None,
+            },
             &[],
             "registry",
             None,
@@ -75,7 +86,10 @@ fn world(tiers: Vec<PriceTier>) -> W {
         cw721_svg::entry::instantiate,
         cw721_svg::entry::query,
     )));
-    let v = vec![VariableDef { name: "a".into(), kind: VariableKind::Options(vec!["x".into(), "y".into()]) }];
+    let v = vec![VariableDef {
+        name: "a".into(),
+        kind: VariableKind::Options(vec!["x".into(), "y".into()]),
+    }];
     let t = "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>${a}</text></svg>";
     let nft = app
         .instantiate_contract(
@@ -103,13 +117,24 @@ fn world(tiers: Vec<PriceTier>) -> W {
             None,
         )
         .unwrap();
-    let mut w = W { app, factory, creator, buyer, payee, registry, nft };
+    let mut w = W {
+        app,
+        factory,
+        creator,
+        buyer,
+        payee,
+        registry,
+        nft,
+    };
     w.push("12.5");
     w
 }
 
 fn tier(until: u64, amount: u128) -> PriceTier {
-    PriceTier { until_count: until, price: Coin::new(amount, BASE) }
+    PriceTier {
+        until_count: until,
+        price: Coin::new(amount, BASE),
+    }
 }
 
 impl W {
@@ -143,7 +168,9 @@ impl W {
             .execute_contract(
                 who.clone(),
                 self.nft.clone(),
-                &ExecuteMsg::UpdateExtension { msg: SvgExecuteMsgExt::SetOraclePricing { pricing } },
+                &ExecuteMsg::UpdateExtension {
+                    msg: SvgExecuteMsgExt::SetOraclePricing { pricing },
+                },
                 &[],
             )
             .map_err(|e| format!("{e:?} {e}"))
@@ -154,7 +181,12 @@ impl W {
                 self.buyer.clone(),
                 self.nft.clone(),
                 &ExecuteMsg::UpdateExtension {
-                    msg: SvgExecuteMsgExt::Mint(cw_svg::MintMsg { alloc: 0, amnt, proof_hashes: vec![], ext: None }),
+                    msg: SvgExecuteMsgExt::Mint(cw_svg::MintMsg {
+                        alloc: 0,
+                        amnt,
+                        proof_hashes: vec![],
+                        ext: None,
+                    }),
                 },
                 funds,
             )
@@ -187,9 +219,18 @@ fn no_pricing_default_mint_unchanged() {
 #[test]
 fn set_pricing_auth_owner_or_instantiator() {
     let mut w = world(vec![tier(20, PRICE)]);
-    let (buyer, factory, creator, reg) = (w.buyer.clone(), w.factory.clone(), w.creator.clone(), w.registry.clone());
+    let (buyer, factory, creator, reg) = (
+        w.buyer.clone(),
+        w.factory.clone(),
+        w.creator.clone(),
+        w.registry.clone(),
+    );
     let p = pricing(true, &reg, PricingPolicy::default());
-    assert!(w.set(&buyer, Some(p.clone())).unwrap_err().contains("nauthorized"));
+    assert!(
+        w.set(&buyer, Some(p.clone()))
+            .unwrap_err()
+            .contains("nauthorized")
+    );
     w.set(&factory, Some(p.clone())).unwrap();
     w.set(&creator, None).unwrap();
     let mut bad = p.clone();
@@ -203,17 +244,33 @@ fn set_pricing_auth_owner_or_instantiator() {
 #[test]
 fn enforced_alt_mint_with_refund_and_base_still_exact() {
     let mut w = world(vec![tier(20, PRICE)]);
-    let (creator, reg, buyer, payee) = (w.creator.clone(), w.registry.clone(), w.buyer.clone(), w.payee.clone());
-    w.set(&creator, Some(pricing(true, &reg, PricingPolicy::default()))).unwrap();
+    let (creator, reg, buyer, payee) = (
+        w.creator.clone(),
+        w.registry.clone(),
+        w.buyer.clone(),
+        w.payee.clone(),
+    );
+    w.set(
+        &creator,
+        Some(pricing(true, &reg, PricingPolicy::default())),
+    )
+    .unwrap();
     let q: QuoteResponse = w
-        .q(SvgQueryMsgExt::OracleQuote { base: Coin::new(2 * PRICE, BASE), asset: PriceAsset::native(ALT) })
+        .q(SvgQueryMsgExt::OracleQuote {
+            base: Coin::new(2 * PRICE, BASE),
+            asset: PriceAsset::native(ALT),
+        })
         .unwrap();
     assert_eq!(q.required, Uint256::from(4_000_000u128));
     w.mint(2, &coins(4_500_000, ALT)).unwrap();
     assert_eq!(w.bal(&payee, ALT), 4_000_000);
     assert_eq!(w.bal(&buyer, ALT), START - 4_000_000);
     assert_eq!(w.bal(&w.nft.clone(), ALT), 0);
-    assert!(w.mint(1, &coins(1_999_999, ALT)).unwrap_err().contains("below"));
+    assert!(
+        w.mint(1, &coins(1_999_999, ALT))
+            .unwrap_err()
+            .contains("below")
+    );
     assert!(w.mint(1, &coins(PRICE + 1, BASE)).is_err());
     w.mint(1, &coins(PRICE, BASE)).unwrap();
     assert_eq!(w.bal(&payee, BASE), PRICE);
@@ -223,8 +280,16 @@ fn enforced_alt_mint_with_refund_and_base_still_exact() {
 fn not_enforced_rejects_alt() {
     let mut w = world(vec![tier(20, PRICE)]);
     let (creator, reg) = (w.creator.clone(), w.registry.clone());
-    w.set(&creator, Some(pricing(false, &reg, PricingPolicy::default()))).unwrap();
-    assert!(w.mint(1, &coins(2_000_000, ALT)).unwrap_err().contains("not enforced"));
+    w.set(
+        &creator,
+        Some(pricing(false, &reg, PricingPolicy::default())),
+    )
+    .unwrap();
+    assert!(
+        w.mint(1, &coins(2_000_000, ALT))
+            .unwrap_err()
+            .contains("not enforced")
+    );
     w.mint(1, &coins(PRICE, BASE)).unwrap();
 }
 
@@ -233,13 +298,21 @@ fn stale_rejected_and_tiers_drive_base() {
     // Tier 1: first 1 at 25 TERP, then 50 TERP.
     let mut w = world(vec![tier(1, PRICE), tier(20, 2 * PRICE)]);
     let (creator, reg) = (w.creator.clone(), w.registry.clone());
-    let policy = PricingPolicy { max_staleness_blocks: Some(5), ..Default::default() };
+    let policy = PricingPolicy {
+        max_staleness_blocks: Some(5),
+        ..Default::default()
+    };
     w.set(&creator, Some(pricing(true, &reg, policy))).unwrap();
     // Spans both tiers: 25 + 50 = 75 TERP = 6 ATOM.
     assert!(w.mint(2, &coins(5_999_999, ALT)).is_err());
     w.mint(2, &coins(6_000_000, ALT)).unwrap();
     w.advance(10);
-    assert!(w.mint(1, &coins(4_000_000, ALT)).unwrap_err().to_lowercase().contains("stale"));
+    assert!(
+        w.mint(1, &coins(4_000_000, ALT))
+            .unwrap_err()
+            .to_lowercase()
+            .contains("stale")
+    );
     w.push("12.5");
     w.mint(1, &coins(4_000_000, ALT)).unwrap();
 }
@@ -248,7 +321,11 @@ fn stale_rejected_and_tiers_drive_base() {
 fn free_mint_ignores_pricing() {
     let mut w = world(vec![]);
     let (creator, reg) = (w.creator.clone(), w.registry.clone());
-    w.set(&creator, Some(pricing(true, &reg, PricingPolicy::default()))).unwrap();
+    w.set(
+        &creator,
+        Some(pricing(true, &reg, PricingPolicy::default())),
+    )
+    .unwrap();
     assert!(w.mint(1, &coins(1, ALT)).is_err());
     w.mint(1, &[]).unwrap();
 }

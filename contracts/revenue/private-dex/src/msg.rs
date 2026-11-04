@@ -86,6 +86,7 @@ pub struct SwapStatementPublic {
 }
 
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     // --- Owner admin (astroport-style config / pause surface) ---
     /// Create a virtual pool (factory-lite; multi-pool map like pair registry).

@@ -157,10 +157,10 @@ fn list(
     if cfg.locks.is_locked() {
         return Err(ContractError::Locked);
     }
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     if let Some(terms) = &terms {
         terms.check()?;
@@ -254,6 +254,7 @@ fn withdraw_listing(
         .add_attribute("loan_id", loan_id.to_string()))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn make_offer(
     deps: DepsMut,
     env: Env,
@@ -269,10 +270,10 @@ fn make_offer(
         return Err(ContractError::Locked);
     }
     terms.check()?;
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     let borrower = deps.api.addr_validate(&borrower)?;
     let lender = match on_behalf_of {
@@ -350,10 +351,10 @@ fn accept_loan(
     if cfg.locks.is_locked() {
         return Err(ContractError::Locked);
     }
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     let borrower = deps.api.addr_validate(&borrower)?;
     let collateral = load_collateral(deps.storage, &borrower, loan_id)?;

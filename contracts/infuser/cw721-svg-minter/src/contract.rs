@@ -1,5 +1,3 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, WasmMsg,
     instantiate2_address, to_json_binary,
@@ -13,8 +11,8 @@ use crate::msg::MigrateMsg;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
     COLLECTION_NONCE, DEFAULT_SERIES_WINDOW_SECS, DREGG_CHANNEL, DREGG_IBC_ONLY, DREGG_PORT,
-    ORACLE_PRICING, RUNTIME_MINTERS, SERIES, SERIES_RECENT, SVG_CODE_ID, SeriesConfig, SvgCollection,
-    svg_collections,
+    ORACLE_PRICING, RUNTIME_MINTERS, SERIES, SERIES_RECENT, SVG_CODE_ID, SeriesConfig,
+    SvgCollection, svg_collections,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "cw-svg-minter";
@@ -191,11 +189,12 @@ fn check_series(
     now: u64,
     msg: &cw721_svg::InstantiateMsg,
 ) -> Result<Vec<u64>, ContractError> {
-    let cfg = SERIES
-        .may_load(deps.storage, series)?
-        .ok_or_else(|| ContractError::UnknownSeries {
-            series: series.to_string(),
-        })?;
+    let cfg =
+        SERIES
+            .may_load(deps.storage, series)?
+            .ok_or_else(|| ContractError::UnknownSeries {
+                series: series.to_string(),
+            })?;
     let is_owner = cw_ownable::is_owner(deps.storage, sender)?;
     if !cfg.operators.is_empty() && !is_owner && !cfg.operators.iter().any(|o| o == sender.as_str())
     {
@@ -225,28 +224,28 @@ fn check_series(
     // window count only looks at entries inside the window
     let w = cfg.window_secs.unwrap_or(DEFAULT_SERIES_WINDOW_SECS);
     let in_window: Vec<u64> = recent.iter().copied().filter(|t| now < t + w).collect();
-    if let (Some(min), Some(last)) = (cfg.min_interval_secs, recent.last()) {
-        if now < last + min {
-            return Err(ContractError::SeriesTooSoon {
-                series: series.to_string(),
-                next_at: last + min,
-            });
-        }
+    if let (Some(min), Some(last)) = (cfg.min_interval_secs, recent.last())
+        && now < last + min
+    {
+        return Err(ContractError::SeriesTooSoon {
+            series: series.to_string(),
+            next_at: last + min,
+        });
     }
-    if let Some(max) = cfg.max_per_window {
-        if in_window.len() >= max as usize {
-            let next_at = if max == 0 {
-                u64::MAX
-            } else {
-                in_window[in_window.len() - max as usize] + w
-            };
-            return Err(ContractError::SeriesWindowFull {
-                series: series.to_string(),
-                max,
-                window: w,
-                next_at,
-            });
-        }
+    if let Some(max) = cfg.max_per_window
+        && in_window.len() >= max as usize
+    {
+        let next_at = if max == 0 {
+            u64::MAX
+        } else {
+            in_window[in_window.len() - max as usize] + w
+        };
+        return Err(ContractError::SeriesWindowFull {
+            series: series.to_string(),
+            max,
+            window: w,
+            next_at,
+        });
     }
     recent.push(now);
     Ok(recent)
@@ -262,7 +261,13 @@ fn create_collection(
 ) -> Result<Response, ContractError> {
     let mut is_series_operator = false;
     if let Some(s) = &series {
-        let recent = check_series(&deps, &info.sender, s, env.block.time.seconds(), &instantiate_msg)?;
+        let recent = check_series(
+            &deps,
+            &info.sender,
+            s,
+            env.block.time.seconds(),
+            &instantiate_msg,
+        )?;
         SERIES_RECENT.save(deps.storage, s, &recent)?;
         is_series_operator = true;
     }
@@ -387,7 +392,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Series { series } => {
             let config = SERIES.may_load(deps.storage, &series)?;
-            let recent = SERIES_RECENT.may_load(deps.storage, &series)?.unwrap_or_default();
+            let recent = SERIES_RECENT
+                .may_load(deps.storage, &series)?
+                .unwrap_or_default();
             let now = env.block.time.seconds();
             let next_allowed_at = config.as_ref().and_then(|c| {
                 let w = c.window_secs.unwrap_or(DEFAULT_SERIES_WINDOW_SECS);

@@ -86,8 +86,8 @@ mod tests {
     fn sample() -> SwapStatementPublic {
         SwapStatementPublic {
             pool_id: 1,
-            asset_in: Binary::from([b'H', b'U', b'B'].as_slice()),
-            asset_out: Binary::from([b'B'].as_slice()),
+            asset_in: Binary::from(b"HUB".as_slice()),
+            asset_out: Binary::from(b"B".as_slice()),
             root: Binary::from([1u8; 32].as_slice()),
             nullifiers: vec![Binary::from([2u8; 32].as_slice())],
             cm_out: vec![Binary::from([3u8; 32].as_slice())],

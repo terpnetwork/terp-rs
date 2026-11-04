@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{
-    entry_point, from_json, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, Ibc2Msg, Ibc2PacketAckMsg, Ibc2PacketReceiveMsg, Ibc2PacketSendMsg,
-    Ibc2PacketTimeoutMsg, Ibc2Payload, IbcBasicResponse, IbcReceiveResponse, MessageInfo, Order,
-    Response, StdAck, Timestamp, Uint128,
+    BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, Ibc2Msg, Ibc2PacketAckMsg,
+    Ibc2PacketReceiveMsg, Ibc2PacketSendMsg, Ibc2PacketTimeoutMsg, Ibc2Payload, IbcBasicResponse,
+    IbcReceiveResponse, MessageInfo, Order, Response, StdAck, Timestamp, Uint128, from_json,
+    to_json_binary,
 };
 
 use crate::error::ContractError;
@@ -167,10 +167,10 @@ fn execute_polytone_callback(
     cb: PolytoneCallbackMessage,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    if let Some(note) = &cfg.note {
-        if info.sender != *note {
-            return Err(ContractError::Unauthorized {});
-        }
+    if let Some(note) = &cfg.note
+        && info.sender != *note
+    {
+        return Err(ContractError::Unauthorized {});
     }
     let hint: CallbackHint = cosmwasm_std::from_json(&cb.initiator_msg)?;
     let bins = match cb.result {
@@ -200,12 +200,11 @@ struct TwapBody {
 }
 
 fn mid_from_query_binary(raw: &Binary) -> Result<String, ContractError> {
-    if let Ok(v) = cosmwasm_std::from_json::<TwapBody>(raw) {
-        if let Some(s) = v.arithmetic_twap.or(v.mid) {
-            if !s.trim().is_empty() {
-                return Ok(s);
-            }
-        }
+    if let Ok(v) = cosmwasm_std::from_json::<TwapBody>(raw)
+        && let Some(s) = v.arithmetic_twap.or(v.mid)
+        && !s.trim().is_empty()
+    {
+        return Ok(s);
     }
     let as_str = String::from_utf8(raw.to_vec()).map_err(|_| ContractError::InvalidMid {})?;
     let trimmed = as_str.trim().trim_matches('"');
@@ -215,6 +214,7 @@ fn mid_from_query_binary(raw: &Binary) -> Result<String, ContractError> {
     Ok(trimmed.to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_submit(
     mut deps: DepsMut,
     env: Env,
@@ -247,6 +247,7 @@ fn execute_submit(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn record_observation(
     deps: &mut DepsMut,
     env: Env,
@@ -295,20 +296,20 @@ fn record_observation(
         .add_attribute("first", "true");
 
     let cfg = CONFIG.load(deps.storage)?;
-    if let Some(bounty) = cfg.bounty.clone() {
-        if !bounty.amount.is_zero() {
-            let bal = deps
-                .querier
-                .query_balance(&env.contract.address, &bounty.denom)?;
-            if bal.amount >= bounty.amount {
-                res = res.add_message(BankMsg::Send {
-                    to_address: recorder.to_string(),
-                    amount: vec![Coin {
-                        denom: bounty.denom,
-                        amount: bounty.amount,
-                    }],
-                });
-            }
+    if let Some(bounty) = cfg.bounty.clone()
+        && !bounty.amount.is_zero()
+    {
+        let bal = deps
+            .querier
+            .query_balance(&env.contract.address, &bounty.denom)?;
+        if bal.amount >= bounty.amount {
+            res = res.add_message(BankMsg::Send {
+                to_address: recorder.to_string(),
+                amount: vec![Coin {
+                    denom: bounty.denom,
+                    amount: bounty.amount,
+                }],
+            });
         }
     }
     Ok(res)

@@ -145,11 +145,10 @@ pub fn execute(
             forbidden,
             proof,
         } => {
-            if !deps.api.proof_instance_verify(
-                cid.into(),
-                &proof,
-                &to_cosmwasm_instance(&forbidden),
-            )? {
+            if !deps
+                .api
+                .proof_instance_verify(cid, &proof, &to_cosmwasm_instance(&forbidden))?
+            {
                 return Err(ContractError::InalidProof {});
             }
             Ok(Response::new().add_attribute("action", "proove"))
@@ -160,7 +159,7 @@ pub fn execute(
             proof,
         } => {
             let subdenom = match deps.api.proof_instance_verify(
-                cid.into(),
+                cid,
                 &proof,
                 &to_cosmwasm_instance(&forbidden),
             )? {
@@ -216,7 +215,7 @@ pub fn sudo(_deps: DepsMut, _env: Env, _msg: SudoMsg) -> Result<Response, Contra
 /// serialize instances into set of circuit field bytes with lenth `I`,specifically for cosmwasm-std api
 pub fn to_cosmwasm_instance(forbidden: &str) -> Vec<u8> {
     let instances = to_halo2_instance(forbidden);
-    let mut bytes = Vec::with_capacity(1 * 32);
+    let mut bytes = Vec::with_capacity(32);
     for instance_row in instances.iter() {
         for scalar in instance_row.iter() {
             // to_repr() returns a 32-byte little-endian representation
@@ -232,7 +231,7 @@ pub fn to_cosmwasm_instance(forbidden: &str) -> Vec<u8> {
 /// [1] = str_to_field(forbidden) (the forbidden word)
 pub fn to_halo2_instance(f: &str) -> [[vesta::Scalar; 1]; 1] {
     let mut instance = [vesta::Scalar::zero(); 1];
-    instance[0] = str_to_field(&f);
+    instance[0] = str_to_field(f);
     [instance]
 }
 /// string to field

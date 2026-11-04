@@ -119,7 +119,7 @@ pub fn update_state(
         }],
     };
 
-    Ok(serde_json::to_vec(&result).map_err(ContractError::SerializeConsensusStateFailed)?)
+    serde_json::to_vec(&result).map_err(ContractError::SerializeConsensusStateFailed)
 }
 
 /// Handle misbehaviour.
