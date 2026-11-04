@@ -172,10 +172,10 @@ export const BUILTIN_THEME = Object.freeze({
   dark: { bg: "#121212", surface: "#1E1E1E", surfaceAlt: "#2A2A2A", text: "#EEEEEE", textMuted: "#AAAAAA", border: "#3A3A3A", borderStrong: "#777777", accent: "#8AB4F8", onAccent: "#111111", focus: "#8AB4F8" },
   radius_px: 6,
 });
-// Apricot Glow (permissionless.money/alpha/wd-colours/apricot-glow.html): the manifest default and the terpy/thioly headstash theme.
-export const APRICOT_GLOW = Object.freeze({
-  light: { bg: "#FEF4E7", surface: "#FFFBF6", surfaceAlt: "#F9EAD7", text: "#473926", textMuted: "#675336", border: "#E6D6C1", borderStrong: "#E8B773", accent: "#896D46", onAccent: "#FFFFFF", focus: "#896D46" },
-  dark: { bg: "#170D02", surface: "#241704", surfaceAlt: "#332612", text: "#F4EADD", textMuted: "#C2B3A0", border: "#41331F", borderStrong: "#896D46", accent: "#E8B773", onAccent: "#271F14", focus: "#E8B773" },
+// Azure Calcium: the manifest default and the terpy/thioly headstash theme (frontend/themes/azure-calcium.json).
+export const AZURE_CALCIUM = Object.freeze({
+  light: { bg: "#EFF7FF", surface: "#F9FCFF", surfaceAlt: "#DEEFFF", text: "#233E58", textMuted: "#325A80", border: "#C8DBEF", borderStrong: "#A0D0FF", accent: "#4078AC", onAccent: "#FFFFFF", focus: "#4078AC" },
+  dark: { bg: "#05101B", surface: "#0B1B2B", surfaceAlt: "#192A3A", text: "#E2EDF9", textMuted: "#A6B8CA", border: "#253748", borderStrong: "#4078AC", accent: "#76BBFC", onAccent: "#132230", focus: "#76BBFC" },
 });
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const plain = (o) => o !== null && typeof o === "object" && !Array.isArray(o) && Object.getPrototypeOf(o) === Object.prototype;
@@ -232,3 +232,52 @@ export function luminance(c) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 export function contrast(a, b) { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => p - q); return (y + 0.05) / (x + 0.05); }
+
+// ---- R13: privacy set (registered − claimed) and the delayed-claim relay extension point ----
+/** Floor of the suggested privacy set; the effective threshold is max(PRIVACY_FLOOR, PRIVACY_ANCHOR_FACTOR × min_anonymity_set). */
+export const PRIVACY_FLOOR = 64;
+export const PRIVACY_ANCHOR_FACTOR = 4;
+const count = (x, what) => {
+  const n = typeof x === "string" && /^\d{1,16}$/.test(x) ? Number(x) : x;
+  if (!Number.isSafeInteger(n) || n < 0) throw new Error(`privacy set: bad ${what} count from chain`);
+  return n;
+};
+export function privacyThreshold(minAnon) {
+  const m = minAnon == null ? 0 : count(minAnon, "min_anonymity_set");
+  return Math.max(PRIVACY_FLOOR, PRIVACY_ANCHOR_FACTOR * m);
+}
+/**
+ * From the on-chain queries `registration_tree` (count = registered leaves) and `direct_claim` (claimed = ClaimNote +
+ * ClaimNoteForward successes). Lane/public claims are not counted by the contract (see V2-SPEC R13).
+ */
+export function privacySet(rt, dc) {
+  if (!rt || typeof rt !== "object") throw new Error("privacy set: no registration_tree response");
+  if (!dc || typeof dc !== "object") throw new Error("privacy set: no direct_claim response");
+  const registered = count(rt.count, "registered"), claimed = count(dc.claimed ?? 0, "claimed");
+  if (claimed > registered) throw new Error("privacy set: claimed exceeds registered");
+  const anchored = rt.latest_anchor ? count(rt.latest_anchor.leaf_count, "anchored") : 0;
+  const threshold = privacyThreshold(rt.min_anonymity_set), set = registered - claimed;
+  return { registered, claimed, set, anchored, threshold, small: set < threshold };
+}
+export function privacyAdvice(p) {
+  if (p.small) return `Only ${p.set} registered note${p.set === 1 ? " is" : "s are"} still unclaimed. Your claim hides among them, so claiming now gives a small privacy set. We suggest waiting until it reaches at least ${p.threshold}. You can still claim now after confirming below.`;
+  return `${p.set} registered notes are still unclaimed (suggested minimum ${p.threshold}): your claim blends into a healthy privacy set.`;
+}
+/** Claim is allowed when the set is not small, or the user explicitly confirmed. Unknown set (query failed) also requires the confirm. */
+export const privacyGateOpen = (p, ack) => !!ack || (!!p && !p.small);
+/**
+ * EXTENSION POINT (not implemented): delayed-claim relay.
+ * A relay receives an already-proved claim and submits it later so the claim time does not link to the user's session.
+ * @typedef {Object} DelayedClaimRelay
+ * @property {string} id         stable identifier
+ * @property {string} name       shown to the user
+ * @property {string} origin     https origin; MUST also be in the loader CSP connect-src
+ * @property {(claim: {msg: object, kind: "claim_note"|"claim_note_forward", chain_id: string, contract: string},
+ *             opts: {not_before: number, not_after: number}) => Promise<{ticket: string}>} submit
+ * @property {(ticket: string) => Promise<{state: "queued"|"submitted"|"failed", txhash?: string}>} status
+ * This build ships NO relay: the list is empty and the page never shows a relay option.
+ */
+export const DELAYED_CLAIM_RELAYS = Object.freeze([]);
+export function delayedRelays(list = DELAYED_CLAIM_RELAYS) {
+  return list.filter((r) => r && typeof r.id === "string" && typeof r.name === "string" && /^https:\/\/[^/\s]+$/.test(r.origin || "") && typeof r.submit === "function" && typeof r.status === "function");
+}

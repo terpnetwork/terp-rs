@@ -2,11 +2,13 @@
 let C, V, hex, unhex, cat, b64, unb64, te, sha256;
 const $ = (id) => document.getElementById(id);
 let cfg, Z, STEPS, guard, state = null, inst = null, elig = null, who = null, rawKey = null, rewardW = null;
+// R13 sheet + progressive disclosure state; R13 privacy set
+let priv = null, saved = false, destOk = false, cur = null, opener = null; const expanded = new Set();
 const log = (...a) => { const l = $("log"); l.textContent += new Date().toISOString().slice(11, 19) + " " + a.join(" ") + "\n"; l.scrollTop = 1e9; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errOut = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ""; if (e) log("ERROR", e.message || String(e)); };
 const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); kids.forEach((k) => e.append(k)); return e; };
-async function guarded(errId, fn) { errOut(errId, null); try { return await fn(); } catch (e) { errOut(errId, e); } }
+async function guarded(errId, fn) { errOut(errId, null); try { return await fn(); } catch (e) { errOut(errId, e); } finally { flow(); } }
 
 // ---- chain IO (LCD + relay + HAL origin; CSP connect-src enforces this) ----
 async function lcd(path) { const r = await fetch(cfg.rest + path); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || "LCD " + r.status); return j; }
@@ -67,8 +69,8 @@ async function browse() {
           const paused = i.pause && (i.pause.paused || i.pause.claims_paused) ? "paused" : i.pause ? "active" : "?";
           const root = rootHex(i.camp?.registration?.eligibility_root);
           const params = `admin ${i.admin || "none"}; HAL ${i.hal ? i.hal.uri : "unset"}; forward channels ${i.channels ? i.channels.filter((c) => c.enabled).map((c) => c.channel_id).join(" ") || "none" : "?"}; root ${root ? root.slice(0, 12) + "…" : "?"}`;
-          const btn = el("button", { textContent: a === cfg.headstash ? "Selected" : "Select", disabled: a === cfg.headstash });
-          btn.setAttribute("aria-label", "Select instance " + a); btn.dataset.addr = a; btn.onclick = () => selectInstance(a);
+          const btn = el("button", { textContent: "Open" });
+          btn.setAttribute("aria-label", "Open Headstash " + a); btn.setAttribute("aria-haspopup", "dialog"); btn.dataset.addr = a; btn.onclick = () => openInstance(a, btn);
           tb.append(el("tr", {}, el("td", {}, el("code", { textContent: a }), el("br"), i.label || ""), el("td", { textContent: String(code) }), el("td", { textContent: i.error ? "error" : paused }), el("td", { textContent: i.error || params }), el("td", {}, btn)));
           n++;
         }
@@ -81,8 +83,7 @@ async function browse() {
 async function selectInstance(a) {
   return guarded("inst-err", async () => {
     if (state && state.contract !== a) throw new Error("a notes file for another instance is loaded: reload the page to switch");
-    cfg.headstash = a; $("hs-cur").textContent = a; elig = null; inst = null;
-    document.querySelectorAll("#inst-list button[data-addr]").forEach((b) => { b.disabled = b.dataset.addr === a; b.textContent = b.disabled ? "Selected" : "Select"; });
+    cfg.headstash = a; $("hs-cur").textContent = a; $("sheet-hs").textContent = a; elig = null; inst = null; priv = null;
     const [camp, hal, ch, dc, th] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null), smart({ theme: {} }).catch(() => null)]);
     themeCands.headstash = th ?? null; themeApply();
     const ctx = hex(await directCtx());
@@ -93,8 +94,70 @@ async function selectInstance(a) {
     $("fwd-channel").replaceChildren(...inst.channels.map((c) => el("option", { value: c.channel_id, textContent: `${c.channel_id} (timeout ${c.timeout_seconds}s)` })));
     document.querySelector('input[name=dest-mode][value=forward]').disabled = !inst.channels.length;
     log(`selected ${a}; root ${inst.root.slice(0, 16)}…; ${inst.channels.length} forward channel(s)`);
+    await privacyRefresh();
     if (hal) await halFetch();
+    return true;
   });
+}
+// ---- R13: bottom sheet (native modal <dialog>: aria-modal, focus containment, Esc) ----
+async function openInstance(a, btn) {
+  opener = btn || null;
+  if (cfg.headstash !== a || !inst) { if (!(await selectInstance(a))) return; }
+  openSheet();
+}
+function openSheet() {
+  const d = $("hs-sheet"); if (!d.open) d.showModal(); $("sheet-resume").hidden = false; flow();
+  const f = cur ? $(`sec-${cur}-toggle`) : $("sheet-close"); f.focus();
+}
+const SECS = ["eligibility", "register", "save", "wallet", "claim"];
+const HINT = { eligibility: "Select a Headstash first.", register: "Needs an eligible address (1) or a loaded notes file.", save: "Needs derived notes (2).",
+  wallet: "Needs registered notes (2).", claim: "Needs registered notes and a confirmed destination (4)." };
+function progress() {
+  const notes = state ? state.notes : [], eligible = !!(who && elig && (elig.get(who.id) || []).length);
+  const reg = notes.some((n) => n.st !== "new"), allReg = notes.length > 0 && notes.every((n) => n.st !== "new");
+  // [unlocked, done] — each component unlocks only once its prerequisite is met
+  return { eligibility: [!!inst, eligible || !!state], register: [eligible || !!state, allReg], save: [!!state, saved], wallet: [reg, destOk],
+    claim: [reg && destOk, notes.length > 0 && notes.every((n) => n.st === "spent")] };
+}
+function summaryOf(s) {
+  if (s === "eligibility") return $("elig-out").textContent || (state ? `notes file loaded (${state.notes.length} notes)` : "");
+  if (s === "register") return $("summary").textContent;
+  if (s === "save") return saved ? "Notes file saved." : "";
+  if (s === "wallet") return destMode() === "forward" ? `Forward to Penumbra via ${$("fwd-channel").value || "?"}` : "Fresh ephemeral account per note";
+  return $("claim-out").textContent;
+}
+function flow() {
+  if (!cfg || !$("sec-claim")) return; const p = progress();
+  const next = SECS.find((s) => p[s][0] && !p[s][1]) || null;
+  if (next !== cur) { cur = next; expanded.clear(); }
+  for (const s of SECS) {
+    const [un, done] = p[s], st = !un ? "locked" : s === cur ? "current" : done ? "done" : "open", show = un && (s === cur || expanded.has(s));
+    const tg = $(`sec-${s}-toggle`); $(`sec-${s}`).dataset.status = st; $(`sec-${s}-body`).hidden = !show; tg.disabled = !un; tg.setAttribute("aria-expanded", String(show));
+    $(`sec-${s}-badge`).textContent = { locked: "locked", current: "next step", done: "done", open: "" }[st];
+    $(`sec-${s}-hint`).textContent = !un ? HINT[s] : !show ? summaryOf(s) : "";
+  }
+  const claimable = !!state && state.notes.some((n) => n.st === "registered" || n.st === "submitted");
+  $("claim").disabled = !(claimable && V.privacyGateOpen(priv, $("privacy-ack").checked));
+}
+// ---- R13: privacy set = registration_tree.count − direct_claim.claimed (public contract state) ----
+async function privacyRefresh() {
+  if (!inst && !cfg.headstash) return;
+  try { const [rt, dc] = await Promise.all([smart({ registration_tree: {} }), smart({ direct_claim: {} })]); priv = V.privacySet(rt, dc); }
+  catch (e) { priv = null; log("privacy set unavailable: " + e.message); }
+  privacyShow();
+}
+function privacyShow() {
+  const p = priv, box = $("privacy");
+  $("privacy-reg").textContent = p ? p.registered : "–"; $("privacy-claimed").textContent = p ? p.claimed : "–"; $("privacy-set").textContent = p ? p.set : "–"; $("privacy-min").textContent = p ? p.threshold : "–";
+  if (p) Object.assign(box.dataset, { registered: p.registered, claimed: p.claimed, set: p.set, threshold: p.threshold, anchored: p.anchored });
+  box.dataset.small = p ? String(p.small) : "unknown";
+  $("privacy-meter").value = p ? Math.min(1, p.set / p.threshold) : 0;
+  $("privacy-advice").textContent = p ? V.privacyAdvice(p) : "Could not read the privacy set from the chain. Confirm below to claim anyway.";
+  $("privacy-ack-l").hidden = !!p && !p.small;
+  $("reg-privacy").textContent = p && state && state.notes.some((n) => n.st !== "new") ? `Privacy set now ${p.set} (registered ${p.registered} − claimed ${p.claimed}); suggested minimum before claiming: ${p.threshold}.` : "";
+  // EXTENSION POINT (R13): a delayed-claim relay would be listed here; this build has none (V.DELAYED_CLAIM_RELAYS is empty).
+  const rel = V.delayedRelays(); $("delay-relay").hidden = !rel.length; $("delay-relay").dataset.count = rel.length;
+  flow();
 }
 
 // ---- R1: HAL fetch + verify ----
@@ -221,21 +284,22 @@ async function fileBytes() {
   return out;
 }
 function download(name, text) { const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "application/json" })), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
-async function save() { download("headstash-notes.v1.json", await fileBytes()); log("notes file saved"); }
+async function save() { download("headstash-notes.v1.json", await fileBytes()); saved = true; log("notes file saved"); flow(); }
 async function load() {
   return guarded("reg-err", async () => {
     const f = $("nf").files[0]; if (!f) throw new Error("choose a notes file");
     let o = JSON.parse(await f.text());
     if (o.enc === "pbkdf2-aesgcm") {
-      const k = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: unb64(o.salt), iterations: 600000 }, await crypto.subtle.importKey("raw", te.encode($("pass").value), "PBKDF2", false, ["deriveKey"]), { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+      const k = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: unb64(o.salt), iterations: 600000 }, await crypto.subtle.importKey("raw", te.encode($("pass-load").value || $("pass").value), "PBKDF2", false, ["deriveKey"]), { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
       try { o = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(o.iv) }, k, unb64(o.ct)))); } catch { throw new Error("wrong passphrase"); }
+      if ($("pass-load").value) { $("pass").value = $("pass-load").value; $("pass-load").value = ""; } // re-saves stay encrypted with the same passphrase
     }
     const want = o.sha256; delete o.sha256;
     if (o.v !== 1 || hex(await sha256(te.encode(canon(o)))) !== want) throw new Error("notes file checksum mismatch or unknown version");
     if (o.chain_id !== cfg.chain_id) throw new Error("notes file is for another chain");
     if (o.contract !== cfg.headstash) { await selectInstance(o.contract); if (cfg.headstash !== o.contract) throw new Error("could not select the notes file's instance"); }
     state = o; if (o.reward_priv) rewardW = await wallet(unhex(o.reward_priv)); $("reward-addr").textContent = o.reward_addr;
-    log(`loaded ${o.notes.length} notes (checksum ok)`); render();
+    saved = true; log(`loaded ${o.notes.length} notes (checksum ok)`); render(); await privacyRefresh();
   });
 }
 
@@ -256,7 +320,7 @@ async function register() {
       else throw new Error(`register chunk ${start} failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
       render();
     }
-    log("registered all notes"); render(); await save();
+    log("registered all notes"); render(); await save(); await privacyRefresh();
   });
 }
 async function anchorCheck() {
@@ -330,6 +394,13 @@ function checkReceiver(r) {
 // ---- claim ----
 async function claim() {
   return guarded("claim-err", async () => {
+    await privacyRefresh();
+    if (!V.privacyGateOpen(priv, $("privacy-ack").checked)) throw new Error("the privacy set is below the suggested minimum: wait for it to grow, or tick the confirmation to claim now");
+    try { await claimRun(); } finally { await privacyRefresh(); }
+  });
+}
+async function claimRun() {
+  {
     const mode = destMode(), max = Math.max(1, parseInt($("claim-max").value, 10) || 1);
     const rt = await smart({ registration_tree: {} }); if (!rt.latest_anchor) throw new Error("no accepted anchor yet: wait for the next anchor, then claim");
     const root = rt.latest_anchor.root, rh = hex(unb64(root)), todo = state.notes.filter((x) => x.st === "registered" || x.st === "submitted").slice(0, max);
@@ -370,7 +441,7 @@ async function claim() {
     }
     $("claim-out").textContent = `${done} note(s) ${mode === "forward" ? "forwarded" : "claimed"} in this run.`; $("claim-out").dataset.done = done;
     await save();
-  });
+  }
 }
 async function exportWallets() {
   const out = [];
@@ -385,10 +456,11 @@ function render() {
   if (!state) return; const by = {}; state.notes.forEach((n) => (by[n.st] = (by[n.st] || 0) + 1));
   $("summary").textContent = `0x${state.identity}: ${state.notes.length} notes — ` + Object.entries(by).map(([k, v]) => `${k} ${v}`).join(", ");
   $("summary").dataset.counts = JSON.stringify(by);
-  $("derive").disabled = true; $("register").disabled = !by.new; $("claim").disabled = !(by.registered || by.submitted);
+  $("derive").disabled = true; $("register").disabled = !by.new; 
   $("save").disabled = false; $("export").disabled = false; $("reward-export").disabled = !state.reward_priv;
   const head = el("tr", {}, ...["#", "class", "status", "destination"].map((h) => el("th", { textContent: h })));
   $("tbl").replaceChildren(head, ...state.notes.map((n) => el("tr", {}, ...[n.i, n.cls, n.st, n.fwd ? `${n.fwd.channel_id} → ${n.fwd.receiver.slice(0, 22)}…` : n.dest].map((x) => el("td", { textContent: String(x) })))));
+  flow();
 }
 function info(id) {
   const s = STEPS[id]; if (!s) return; $("info-title").textContent = s.title; $("info-what").textContent = s.what; $("info-reveals").textContent = s.reveals; $("info-risks").textContent = s.risks;
@@ -427,7 +499,18 @@ export async function start({ files, manifest, config, urls }) {
   document.querySelectorAll("button.info").forEach((b) => (b.onclick = () => info(b.dataset.info)));
   $("browse").onclick = browse; $("hal-fetch").onclick = halFetch; $("hal-file").onchange = halLocal; $("mm-connect").onclick = mmConnect; $("key-use").onclick = keyUse;
   document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.onchange = rewardChange));
-  document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => ($("fwd-box").hidden = destMode() !== "forward")));
+  document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => { $("fwd-box").hidden = destMode() !== "forward"; destOk = false; flow(); }));
+  $("dest-ok").onclick = () => guarded("dst-err", async () => {
+    if (destMode() === "forward") {
+      const ch = $("fwd-channel").value; if (!V.validChannel(ch) || !inst || !inst.channels.some((c) => c.channel_id === ch)) throw new Error("pick an allowlisted forward channel");
+      if (!zafu && !$("recv").value.trim()) throw new Error("connect Zafu or paste a one-time address first");
+    }
+    destOk = true;
+  });
+  SECS.forEach((s) => ($(`sec-${s}-toggle`).onclick = () => { if (s === cur) return; expanded.has(s) ? expanded.delete(s) : expanded.add(s); flow(); }));
+  $("sheet-close").onclick = () => $("hs-sheet").close(); $("sheet-resume").onclick = () => { opener = $("sheet-resume"); openSheet(); };
+  $("hs-sheet").addEventListener("close", () => { const f = opener && opener.isConnected ? opener : $("sheet-resume"); if (f && !f.hidden) f.focus(); });
+  $("privacy-ack").onchange = () => flow(); $("privacy-refresh").onclick = () => guarded("claim-err", privacyRefresh);
   $("derive").onclick = derive; $("load").onclick = load; $("register").onclick = register; $("anchor-check").onclick = anchorCheck; $("claim").onclick = claim;
   $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-wallet").onchange = () => { if (!zafu) zafuDetect(); }; $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
   $("zafu").onclick = () => guarded("dst-err", async () => { await zafuAddress("preview"); });
@@ -436,8 +519,11 @@ export async function start({ files, manifest, config, urls }) {
   const qp = new URLSearchParams(location.search), hs = qp.get("hs");
   let codes = qp.get("code");
   if (!codes) codes = await lcd(`/cosmwasm/wasm/v1/contract/${hs || cfg.headstash}`).then((j) => j.contract_info.code_id).catch(() => "");
-  $("code-ids").value = codes || ""; $("hs-cur").textContent = cfg.headstash;
+  if (hs) cfg.headstash = checkTerp(hs);
+  $("code-ids").value = codes || ""; $("hs-cur").textContent = "none yet (open one below)";
+  themeCands.headstash = await smart({ theme: {} }).catch(() => null); themeApply(); // the default instance's theme styles the landing view
   await rewardChange();
   document.body.dataset.ready = "1"; log("app ready; prover loaded");
-  await selectInstance(hs ? checkTerp(hs) : cfg.headstash);
+  // R13: the landing view only lists Headstash instances; nothing claim-related is shown until one is opened
+  if (codes) await browse();
 }

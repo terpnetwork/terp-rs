@@ -1,38 +1,62 @@
 {
- "instance": {"title": "1. Choose a Headstash instance",
+ "instance": {
+  "title": "1. Choose a Headstash instance",
   "what": "Lists every contract instantiated from the Headstash code id (read from the chain's LCD) with its parameters: pause state, eligibility root, HAL source, forward channels. You pick which one to claim from.",
   "reveals": "Nothing about you. The page only reads public contract state from the configured LCD.",
-  "risks": "Anyone can instantiate the same code. Check the admin/owner and label match the announced campaign before continuing."},
- "hal": {"title": "2. Fetch and verify the eligibility set (HAL)",
+  "risks": "Anyone can instantiate the same code. Check the admin/owner and label match the announced campaign before continuing."
+ },
+ "hal": {
+  "title": "2. Fetch and verify the eligibility set (HAL)",
   "what": "Downloads the published eligibility list from the URI stored in the contract and checks its sha256 (or raw CID) against the hash pinned on chain, then checks its eligibility root equals the contract's root.",
   "reveals": "Your IP address to the HAL host (or IPFS gateway), the same for every visitor. It does not reveal which entry is yours: the whole set is downloaded and searched locally.",
-  "risks": "If verification fails the page refuses to continue. The advanced override accepts a local file, which is verified the same way."},
- "eligibility": {"title": "3. Check eligibility with MetaMask",
+  "risks": "If verification fails the page refuses to continue. The advanced override accepts a local file, which is verified the same way."
+ },
+ "eligibility": {
+  "title": "3. Check eligibility with MetaMask",
   "what": "Asks MetaMask for your address only and looks it up in the verified set, inside this browser.",
   "reveals": "Nothing leaves the browser: no server is asked whether you are eligible.",
-  "risks": "The advanced raw-key option handles a private key in page memory; prefer MetaMask."},
- "reward": {"title": "4. Reward address",
+  "risks": "The advanced raw-key option handles a private key in page memory; prefer MetaMask."
+ },
+ "reward": {
+  "title": "4. Reward address",
   "what": "Where registration rewards go. By default a new in-browser key is generated (saved inside your notes file); you can use Keplr instead.",
   "reveals": "The reward address is public on chain and linked to your EVM address by the registration signature.",
-  "risks": "Using a Keplr account you already use links it to your EVM identity. The ephemeral key is lost if you lose the notes file."},
- "register": {"title": "5. Derive notes and register",
+  "risks": "Using a Keplr account you already use links it to your EVM identity. The ephemeral key is lost if you lose the notes file."
+ },
+ "register": {
+  "title": "5. Derive notes and register",
   "what": "MetaMask signs a fixed seed message (deterministic) from which your note secrets are derived, then signs the registration message. Note commitments are registered on chain using a fee grant from the relay.",
   "reveals": "Registration publicly links your EVM address to note commitments (not to later claims). The relay sees the registration request it pays for.",
-  "risks": "Save the notes file: it holds your secrets. Never sign the seed message on another site."},
- "anchor": {"title": "6. Wait for an anchor",
+  "risks": "Save the notes file: it holds your secrets. Never sign the seed message on another site."
+ },
+ "anchor": {
+  "title": "6. Wait for an anchor",
   "what": "Claims prove membership in an accepted registration-tree anchor. This shows the latest anchor and how many notes it covers.",
   "reveals": "Nothing new: accepting reads the public anchor from chain state; no request carries your notes.",
-  "risks": "Claiming right after a small anchor gives a small anonymity set; waiting for more registrations improves privacy."},
- "destination": {"title": "7. Destination",
+  "risks": "Claiming right after a small anchor gives a small anonymity set; waiting for more registrations improves privacy."
+ },
+ "destination": {
+  "title": "7. Destination",
   "what": "Default: each note is claimed to its own fresh ephemeral account. Optional: forward over IBC to a one-time Penumbra address from Zafu, on a channel the contract allowlists; a fresh fallback account (refund on failure/timeout) is derived per forward.",
   "reveals": "The destination account (or the Penumbra receiver + fallback) is public on chain for that note.",
-  "risks": "Reusing an address links claims. This device keeps a local record and refuses any address used before."},
- "claim": {"title": "8. Prove and submit",
+  "risks": "Reusing an address links claims. This device keeps a local record and refuses any address used before."
+ },
+ "claim": {
+  "title": "8. Prove and submit",
   "what": "Builds a zero-knowledge proof in your browser for each note, asks the relay for a one-time fee grant, and submits from the note's claim account.",
   "reveals": "The relay sees the proof request it pays for (no secret). The chain sees the nullifier, amount and destination.",
-  "risks": "Proving takes time and memory. Keep the tab open; failed notes can be retried."},
- "export": {"title": "9. Save and export",
+  "risks": "Proving takes time and memory. Keep the tab open; failed notes can be retried."
+ },
+ "export": {
+  "title": "9. Save and export",
   "what": "Download the (optionally passphrase-encrypted) notes file, or export the per-note claim account keys to move the funds.",
   "reveals": "Nothing is sent anywhere; files are created locally.",
-  "risks": "The exported keys control the claimed funds: store them offline."}
+  "risks": "The exported keys control the claimed funds: store them offline."
+ },
+ "privacy": {
+  "title": "Privacy set (registered − claimed)",
+  "what": "Shows how many registered notes are still unclaimed, read from the contract (registration_tree.count minus direct_claim.claimed). Your claim is indistinguishable among those notes, so a larger set means better privacy. When it is below the suggested minimum the page recommends waiting and asks you to confirm before claiming.",
+  "reveals": "Nothing about you: two public contract queries, the same for every visitor.",
+  "risks": "Claiming while the set is small makes it easier to link your claim to your registration by timing. Waiting costs nothing except time. A future delayed-claim relay will be offered here; none exists in this version."
+ }
 }

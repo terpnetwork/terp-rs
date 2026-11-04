@@ -85,8 +85,8 @@ test("penumbra address check (bech32m, 80 bytes)", () => {
 });
 test("every form step has an info modal entry and button", () => {
   const html = readFileSync(here("app.html"), "utf8"), steps = JSON.parse(readFileSync(here("steps.json"), "utf8"));
-  const ids = [...html.matchAll(/data-step="([a-z-]+)"/g)].map((m) => m[1]);
-  assert.ok(ids.length >= 9); assert.deepEqual(V.missingSteps(html, steps), []);
+  const ids = [...new Set([...html.matchAll(/data-info="([a-z-]+)"/g)].map((m) => m[1]))];
+  assert.ok(ids.length >= 10); assert.deepEqual(ids.sort(), Object.keys(steps).sort()); assert.deepEqual(V.missingSteps(html, steps), []);
   assert.deepEqual(V.missingSteps(html.replace('data-info="hal"', ""), steps), ["hal"]);
   const s2 = { ...steps }; delete s2.claim; assert.deepEqual(V.missingSteps(html, s2), ["claim"]);
 });

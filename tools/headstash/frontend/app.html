@@ -1,71 +1,100 @@
 <style>
 :root{font:15px/1.45 system-ui,sans-serif;color:var(--hs-text);background:var(--hs-bg);color-scheme:light dark}body{max-width:860px;margin:2rem auto;padding:0 1rem;color:var(--hs-text);background:var(--hs-bg)}
-#theme-toggle{float:right}h1{font-size:1.4rem}h2{font-size:1.1rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}
+#theme-toggle{float:right}h1{font-size:1.4rem}h2{font-size:1.1rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}h3{font-size:1rem;margin:.8rem 0 .3rem;display:flex;gap:.5rem;align-items:center}
 a{color:var(--hs-text);text-decoration-color:var(--hs-accent);text-decoration-thickness:2px}
-section{border:1px solid var(--hs-border);border-radius:var(--hs-radius);padding:1rem;margin:1rem 0;background:var(--hs-surface)}section[aria-disabled=true]{opacity:.55}
+section{border:1px solid var(--hs-border);border-radius:var(--hs-radius);padding:1rem;margin:1rem 0;background:var(--hs-surface)}
 label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius)}
 input[type=radio],input[type=checkbox]{width:auto;margin-right:.4rem;accent-color:var(--hs-accent)}label.inl{display:inline-flex;align-items:center;font-weight:400;margin-right:1.2rem}
 button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer;color:var(--hs-onAccent);background:var(--hs-accent);border:1px solid var(--hs-accent);border-radius:var(--hs-radius)}button:disabled{opacity:.45;cursor:default}
-button.info,button#theme-toggle{margin:0;padding:0 .5rem;font-weight:700;color:var(--hs-text);border:1px solid var(--hs-borderStrong);background:var(--hs-surface)}button.info{border-radius:50%}
+button.info,button#theme-toggle,button.ghost{margin:0;padding:0 .5rem;font-weight:700;color:var(--hs-text);border:1px solid var(--hs-borderStrong);background:var(--hs-surface)}button.info{border-radius:50%}
 :focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
 pre{white-space:pre-wrap;word-break:break-all;color:var(--hs-text);background:var(--hs-surfaceAlt);padding:.5rem;max-height:14rem;overflow:auto;font-size:12px;border-radius:var(--hs-radius)}
 table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--hs-border);padding:3px 4px;text-align:left;vertical-align:top}
 code{word-break:break-all}small,.muted{color:var(--hs-textMuted)}
 .warn,.ok,.err{color:var(--hs-text);border-left:3px solid var(--hs-accent);padding-left:.5rem}.warn{border-left-style:dashed}.err{font-weight:600;border-left-width:6px}.err:empty,.ok:empty{display:none}
 [data-state=ok]{color:var(--hs-text);font-weight:600}[data-state=ok]::before{content:"\2713  "}[data-state=error]{color:var(--hs-text);font-weight:600}[data-state=error]::before{content:"\2716  "}
-dialog{max-width:620px;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
+#info-dlg{max-width:620px;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
 details{margin-top:.6rem}summary{cursor:pointer}
+/* R13: bottom sheet (slides up from the bottom; native modal dialog = aria-modal + focus containment + Esc) */
+dialog.sheet{position:fixed;inset:auto 0 0 0;margin:0 auto;width:100%;max-width:860px;max-height:92vh;max-height:92dvh;overflow:auto;box-sizing:border-box;padding:0 1rem 1rem;color:var(--hs-text);background:var(--hs-bg);border:1px solid var(--hs-borderStrong);border-bottom:0;border-radius:calc(var(--hs-radius) * 2) calc(var(--hs-radius) * 2) 0 0}
+dialog.sheet[open]{animation:hs-up .28s ease-out}@keyframes hs-up{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){dialog.sheet[open]{animation:none}}
+.sheet-head{position:sticky;top:0;z-index:1;display:flex;gap:.6rem;align-items:center;padding:.4rem 0 .6rem;background:var(--hs-bg);border-bottom:1px solid var(--hs-border)}.sheet-head h2{flex:1;margin:0;min-width:0}
+.grip{width:44px;height:4px;border-radius:2px;background:var(--hs-borderStrong);margin:.5rem auto .2rem}
+section.comp{padding:0;margin:.7rem 0;overflow:hidden}.comp-head{display:flex;align-items:center;gap:.4rem;padding:.3rem .6rem;background:var(--hs-surface)}
+.comp-head button.toggle{flex:1;margin:0;text-align:left;color:var(--hs-text);background:none;border:0;padding:.45rem .2rem;font-weight:700}.comp-head button.toggle:disabled{opacity:1}
+.comp-body{padding:.2rem 1rem 1rem;border-top:1px solid var(--hs-border)}.badge{font-size:12px;font-weight:600;border:1px solid var(--hs-borderStrong);border-radius:999px;padding:0 .5rem;margin-left:.5rem;color:var(--hs-textMuted)}
+section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px}section.comp[data-status=locked] .comp-head{color:var(--hs-textMuted)}section.comp[data-status=locked] .toggle{color:var(--hs-textMuted)}
+.hint{display:block;font-weight:400;font-size:13px;color:var(--hs-textMuted)}
+.privacy{border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius);padding:.6rem .8rem;background:var(--hs-surfaceAlt)}.privacy[data-small=true]{border-left:6px solid var(--hs-accent)}
+.nums{display:flex;flex-wrap:wrap;gap:1.2rem;margin:.3rem 0}.nums b{display:block;font-size:1.3rem}meter{width:100%;height:10px}
+@media (max-width:600px){body{margin:1rem auto}dialog.sheet{max-height:96dvh;padding:0 .6rem .8rem}.comp-body{padding:.2rem .6rem .8rem}}
 </style>
 <header><h1>Terp Headstash claim</h1><button id="theme-toggle" type="button" aria-label="Switch light/dark theme" aria-pressed="false">dark</button>
-<p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Every step has an <b>i</b> button explaining what it does, what it reveals and the risks.</p></header>
-<main>
-<section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">1. Headstash instance <button class="info" data-info="instance" aria-label="About step 1">i</button></h2>
-<p>Selected: <code id="hs-cur"></code></p>
+<p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Pick a Headstash below to open its claim tools. Every step has an <b>i</b> button explaining what it does, what it reveals and the risks.</p></header>
+<main id="landing">
+<section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">Find a Headstash <button class="info" data-step="instance" data-info="instance" aria-label="About choosing a Headstash">i</button></h2>
+<p class="muted">Selected: <code id="hs-cur"></code></p>
 <label for="code-ids">Code id(s) to browse</label><input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14">
-<button id="browse">Browse instances</button>
+<button id="browse">Browse instances</button> <button id="sheet-resume" class="ghost" hidden>Resume open Headstash</button>
 <p class="err" id="inst-err" role="alert"></p>
 <table id="inst-list" aria-label="Headstash instances"><thead><tr><th>address / label</th><th>code</th><th>status</th><th>parameters</th><th></th></tr></thead><tbody></tbody></table>
 </section>
+</main>
 
-<section data-step="hal" aria-labelledby="h-hal"><h2 id="h-hal">2. Eligibility set (HAL) <button class="info" data-info="hal" aria-label="About step 2">i</button></h2>
+<dialog id="hs-sheet" class="sheet" aria-modal="true" aria-labelledby="sheet-title">
+<div class="grip" aria-hidden="true"></div>
+<div class="sheet-head"><h2 id="sheet-title">Headstash <code id="sheet-hs"></code></h2><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
+
+<section class="comp" id="sec-eligibility" data-sec="eligibility" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-eligibility-toggle" aria-controls="sec-eligibility-body" aria-expanded="false">1. Eligibility<span class="badge" id="sec-eligibility-badge"></span><span class="hint" id="sec-eligibility-hint"></span></button><button class="info" data-step="hal" data-info="hal" aria-label="About the eligibility set">i</button><button class="info" data-step="eligibility" data-info="eligibility" aria-label="About the eligibility check">i</button></div>
+<div class="comp-body" id="sec-eligibility-body" hidden>
+<h3>Eligibility set (HAL)</h3>
 <p>Source on chain: <code id="hal-src">–</code></p>
 <p id="hal-status" role="status" data-state="idle">Not loaded.</p>
 <button id="hal-fetch">Fetch and verify</button>
 <details><summary>Advanced: use a local HAL file (verified against the on-chain hash)</summary>
 <label for="hal-file">HAL file</label><input id="hal-file" type="file" accept=".json"></details>
 <p class="err" id="hal-err" role="alert"></p>
-</section>
-
-<section data-step="eligibility" aria-labelledby="h-elig"><h2 id="h-elig">3. Eligibility (MetaMask, local lookup) <button class="info" data-info="eligibility" aria-label="About step 3">i</button></h2>
+<h3>Check your address (MetaMask, looked up locally)</h3>
 <button id="mm-connect">Connect MetaMask</button>
 <p id="elig-out" role="status"></p>
 <details><summary>Advanced: raw EVM private key instead of MetaMask</summary>
 <label for="key">EVM private key (hex), wiped after use</label><input id="key" type="password" autocomplete="off" spellcheck="false">
 <button id="key-use">Use this key</button></details>
 <p class="err" id="elig-err" role="alert"></p>
-</section>
+<h3>Returning? Load your notes file</h3>
+<label for="nf">Notes file</label><input id="nf" type="file" accept=".json">
+<label for="pass-load">Passphrase (if the file is encrypted)</label><input id="pass-load" type="password" autocomplete="current-password">
+<button id="load">Load notes file</button>
+</div></section>
 
-<section data-step="reward" aria-labelledby="h-rew"><h2 id="h-rew">4. Reward address <button class="info" data-info="reward" aria-label="About step 4">i</button></h2>
+<section class="comp" id="sec-register" data-sec="register" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-register-toggle" aria-controls="sec-register-body" aria-expanded="false">2. Register<span class="badge" id="sec-register-badge"></span><span class="hint" id="sec-register-hint"></span></button><button class="info" data-step="reward" data-info="reward" aria-label="About the reward address">i</button><button class="info" data-step="register" data-info="register" aria-label="About registering notes">i</button></div>
+<div class="comp-body" id="sec-register-body" hidden>
 <fieldset><legend>Reward address</legend>
 <label class="inl"><input type="radio" name="reward-mode" value="ephemeral" checked>New in-browser key (default)</label>
 <label class="inl"><input type="radio" name="reward-mode" value="keplr">Keplr</label></fieldset>
 <p>Reward address: <code id="reward-addr">–</code></p>
 <p class="err" id="reward-err" role="alert"></p>
-</section>
-
-<section data-step="register" aria-labelledby="h-reg"><h2 id="h-reg">5. Derive notes and register <button class="info" data-info="register" aria-label="About step 5">i</button></h2>
 <label for="pass">Notes file passphrase (optional, recommended)</label><input id="pass" type="password" autocomplete="new-password">
 <button id="derive" disabled>Derive notes (sign seed) and save</button><button id="register" disabled>Register notes</button>
-<label for="nf">…or load an existing notes file</label><input id="nf" type="file" accept=".json"><button id="load">Load</button>
 <p id="summary" role="status"></p>
+<p id="reg-privacy" class="ok" role="status"></p>
 <p class="err" id="reg-err" role="alert"></p>
-</section>
+</div></section>
 
-<section data-step="anchor" aria-labelledby="h-anc"><h2 id="h-anc">6. Anchor <button class="info" data-info="anchor" aria-label="About step 6">i</button></h2>
-<button id="anchor-check">Check latest anchor</button><p id="anchor-out" role="status"></p>
-</section>
+<section class="comp" id="sec-save" data-sec="save" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-save-toggle" aria-controls="sec-save-body" aria-expanded="false">3. Save notes<span class="badge" id="sec-save-badge"></span><span class="hint" id="sec-save-hint"></span></button><button class="info" data-step="export" data-info="export" aria-label="About saving and exporting">i</button></div>
+<div class="comp-body" id="sec-save-body" hidden>
+<p class="muted">The notes file is the only way to claim later. Keep it offline; it is re-saved after every registration and claim.</p>
+<button id="save" disabled>Save notes file</button><button id="export" disabled>Export claim account keys</button><button id="reward-export" disabled>Export reward key</button>
+<table id="tbl" aria-label="Notes"></table>
+</div></section>
 
-<section data-step="destination" aria-labelledby="h-dst"><h2 id="h-dst">7. Destination <button class="info" data-info="destination" aria-label="About step 7">i</button></h2>
+<section class="comp" id="sec-wallet" data-sec="wallet" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-wallet-toggle" aria-controls="sec-wallet-body" aria-expanded="false">4. Connect wallet / destination<span class="badge" id="sec-wallet-badge"></span><span class="hint" id="sec-wallet-hint"></span></button><button class="info" data-step="destination" data-info="destination" aria-label="About the claim destination">i</button></div>
+<div class="comp-body" id="sec-wallet-body" hidden>
 <fieldset><legend>Claim to</legend>
 <label class="inl"><input type="radio" name="dest-mode" value="ephemeral" checked>Fresh ephemeral account per note (default)</label>
 <label class="inl"><input type="radio" name="dest-mode" value="forward">Forward to Penumbra (Zafu)</label></fieldset>
@@ -77,19 +106,29 @@ details{margin-top:.6rem}summary{cursor:pointer}
 <button id="zafu">Preview a fresh address</button> <span id="zafu-detect" data-state="none" role="status"></span></div>
 <label class="inl"><input type="checkbox" id="recv-any">Advanced: allow a non-Penumbra receiver (testnets)</label>
 <p id="fwd-preview" role="status"></p></div>
-<label for="claim-max">Notes to claim in this run</label><input id="claim-max" type="number" min="1" value="1000">
+<button id="dest-ok">Use this destination</button>
 <p class="err" id="dst-err" role="alert"></p>
-</section>
+</div></section>
 
-<section data-step="claim" aria-labelledby="h-clm"><h2 id="h-clm">8. Prove and submit <button class="info" data-info="claim" aria-label="About step 8">i</button></h2>
+<section class="comp" id="sec-claim" data-sec="claim" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-claim-toggle" aria-controls="sec-claim-body" aria-expanded="false">5. Claim<span class="badge" id="sec-claim-badge"></span><span class="hint" id="sec-claim-hint"></span></button><button class="info" data-step="anchor" data-info="anchor" aria-label="About anchors">i</button><button class="info" data-step="privacy" data-info="privacy" aria-label="About the privacy set">i</button><button class="info" data-step="claim" data-info="claim" aria-label="About proving and submitting">i</button></div>
+<div class="comp-body" id="sec-claim-body" hidden>
+<button id="anchor-check">Check latest anchor</button><p id="anchor-out" role="status"></p>
+<div id="privacy" class="privacy" role="group" aria-labelledby="privacy-h" data-small="unknown">
+<h3 id="privacy-h">Privacy set</h3>
+<div class="nums"><span>Registered<b id="privacy-reg">–</b></span><span>Claimed<b id="privacy-claimed">–</b></span><span>Privacy set (registered − claimed)<b id="privacy-set">–</b></span><span>Suggested minimum<b id="privacy-min">–</b></span></div>
+<meter id="privacy-meter" min="0" max="1" value="0" aria-label="Privacy set relative to the suggested minimum"></meter>
+<p id="privacy-advice" role="status"></p>
+<label class="inl" id="privacy-ack-l" hidden><input type="checkbox" id="privacy-ack">I understand the privacy set is small and want to claim now anyway.</label>
+<button id="privacy-refresh" class="ghost">Refresh</button>
+<!-- R13 extension point: a future delayed-claim relay renders its option here (V.delayedRelays(); empty in this build). -->
+<div id="delay-relay" data-extension="delayed-claim-relay" data-count="0" hidden></div>
+</div>
+<label for="claim-max">Notes to claim in this run</label><input id="claim-max" type="number" min="1" value="1000">
 <button id="claim" disabled>Claim</button><p id="claim-out" role="status"></p>
 <p class="err" id="claim-err" role="alert"></p>
-</section>
+</div></section>
 
-<section data-step="export" aria-labelledby="h-exp"><h2 id="h-exp">9. Save and export <button class="info" data-info="export" aria-label="About step 9">i</button></h2>
-<button id="save" disabled>Save notes file</button><button id="export" disabled>Export claim account keys</button><button id="reward-export" disabled>Export reward key</button>
-<table id="tbl" aria-label="Notes"></table>
-</section>
-<section aria-label="Activity log"><h2>Log</h2><pre id="log" aria-live="polite"></pre></section>
-</main>
+<details id="log-box"><summary>Activity log</summary><pre id="log" aria-live="polite"></pre></details>
+</dialog>
 <dialog id="info-dlg" aria-labelledby="info-title"><h2 id="info-title"></h2><dl><dt>What it does</dt><dd id="info-what"></dd><dt>What it reveals</dt><dd id="info-reveals"></dd><dt>Risks</dt><dd id="info-risks"></dd></dl><form method="dialog"><button id="info-close" autofocus>Close</button></form></dialog>
