@@ -14,48 +14,48 @@
   "terpy": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
   "thioly": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
  },
- "manifest_pin_sha256": "2a4ed441fbed82dd153a3082d1286790c8fdcf5a9a230e893714e15430522d9f",
+ "manifest_pin_sha256": "df3c69fe0ad72ef2d413a0d99fdc868abc4fe577103e25e4e37694252384d492",
  "theme": {
   "light": {
-   "accent": "#896D46",
-   "bg": "#FEF4E7",
-   "border": "#E6D6C1",
-   "borderStrong": "#E8B773",
-   "focus": "#896D46",
+   "accent": "#4078AC",
+   "bg": "#EFF7FF",
+   "border": "#C8DBEF",
+   "borderStrong": "#A0D0FF",
+   "focus": "#4078AC",
    "onAccent": "#FFFFFF",
-   "surface": "#FFFBF6",
-   "surfaceAlt": "#F9EAD7",
-   "text": "#473926",
-   "textMuted": "#675336"
+   "surface": "#F9FCFF",
+   "surfaceAlt": "#DEEFFF",
+   "text": "#233E58",
+   "textMuted": "#325A80"
   },
   "dark": {
-   "accent": "#E8B773",
-   "bg": "#170D02",
-   "border": "#41331F",
-   "borderStrong": "#896D46",
-   "focus": "#E8B773",
-   "onAccent": "#271F14",
-   "surface": "#241704",
-   "surfaceAlt": "#332612",
-   "text": "#F4EADD",
-   "textMuted": "#C2B3A0"
+   "accent": "#76BBFC",
+   "bg": "#05101B",
+   "border": "#253748",
+   "borderStrong": "#4078AC",
+   "focus": "#76BBFC",
+   "onAccent": "#132230",
+   "surface": "#0B1B2B",
+   "surfaceAlt": "#192A3A",
+   "text": "#E2EDF9",
+   "textMuted": "#A6B8CA"
   }
  },
- "theme_file": "/Users/returniflost/abstract/terp-core/crates/terp-rs-consolidate/tools/headstash/frontend/themes/apricot-glow.json",
- "bundle_sha256": "98f219c731c7391b34bea8288a42f91c3b21ae1a3f3b3f6ae350e9b80d10cb78",
+ "theme_file": "tools/headstash/frontend/themes/azure-calcium.json",
+ "bundle_sha256": "7962c9e3e82c94b6f233691060bb512412a9c6280bc48f1a100f7741fd0f8749",
  "files": [
   {
    "path": "app.html",
-   "raw_size": 9095,
-   "gzip_size": 2964,
-   "sha256": "5ce227c5eef3e24677d806a59e321b38542434251fcf0c9d6089170319078773",
+   "raw_size": 14997,
+   "gzip_size": 4455,
+   "sha256": "d903f288a19610d6ffc3527104e3a0860b574923e5c15b2e96a3cb829adbc7b2",
    "chunks": 1
   },
   {
    "path": "app.js",
-   "raw_size": 34517,
-   "gzip_size": 11679,
-   "sha256": "047a27f251e4723cfa1d3ee52fad3a9d3faf7c5c4e87fe2325ea76fda09d55bd",
+   "raw_size": 40798,
+   "gzip_size": 13760,
+   "sha256": "fba65373fe21b13f1fbf99e423e2f73356df1ad716ce5590c1f69b67b57d46a4",
    "chunks": 1
   },
   {
@@ -67,16 +67,16 @@
   },
   {
    "path": "v2lib.js",
-   "raw_size": 18189,
-   "gzip_size": 7074,
-   "sha256": "bdc11643701687c8db1ef36e22d7dd1dfc0626e5c4fe73131c7e48926dcdf249",
+   "raw_size": 21608,
+   "gzip_size": 8415,
+   "sha256": "3a71329eb46abcaf3c6b0d598ff5a87909c74faf5b9a75012f03ba50dc14d0c6",
    "chunks": 1
   },
   {
    "path": "steps.json",
-   "raw_size": 4175,
-   "gzip_size": 1763,
-   "sha256": "1993cfc0bf59df7e4fad746fbe1f23c0c82bc011bfcb9a788096f17c62c31591",
+   "raw_size": 4948,
+   "gzip_size": 2065,
+   "sha256": "98d66a9cbf61fac022a82eba5eb594013405e849fb8a3afc7f509543eca0ac36",
    "chunks": 1
   },
   {
@@ -102,20 +102,20 @@
   }
  ],
  "chunks_total": 12,
- "stored_bytes": 719788,
+ "stored_bytes": 725003,
  "propose_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.propose.json",
- "propose_sha256": "de974e0146027628d909f341c81afa1918aaffc09ac8f6be1963983599ad91d0",
+ "propose_sha256": "56b8d61cf66e385977ae22d556995f5c7f0eb3513fe6d22341b2a374f74d6ce4",
  "chunks_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.chunks.json",
- "chunks_sha256": "f596a11bc56b3c98d66fa6761b204a52268ecb4e5c0b9f55ed936d0b0f58baea",
+ "chunks_sha256": "6426007c30f9a792abab0ca0654ca385923d7f8a6700cd62d7e7d9cbdd1b886b",
  "loaders": {
   "terpy": {
    "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-terpy.html",
-   "sha256": "2f575b1bd9121404e545c62639ea0c504be23060e56ed2e89583f5eba9a744aa",
+   "sha256": "7bbd229cea035da7ab4f44789c83b4000f54b1eb5be1b10af209243e5785c6f7",
    "headstash": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q"
   },
   "thioly": {
    "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-thioly.html",
-   "sha256": "ff0cde892bd4b3444a2458a7210cbc1e99376b709a01152bfcc4f0563f54ae61",
+   "sha256": "31c313ca5f6c5fff558b2d59f4dbc7ff39e440e81084c42765b91f5d924de9a8",
    "headstash": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
   }
  },
