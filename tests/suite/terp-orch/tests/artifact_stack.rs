@@ -54,7 +54,10 @@ fn mock_upload_and_instantiate_all() {
     let norick = stack.products.norick.code_id().expect("cw-norick uploaded");
     assert!(norick > 0, "cw-norick has no code id");
     let rows = assert_bound(&stack);
-    assert!(rows.iter().any(|(id, _, _)| *id == "svg-auction"), "svg-auction missing from stack");
+    assert!(
+        rows.iter().any(|(id, _, _)| *id == "svg-auction"),
+        "svg-auction missing from stack"
+    );
     // Wasm admin is the deploy admin (FOUNDATION_DAO on live deploys), so it can migrate.
     let auction = &stack.products.svg_auction;
     let code_id = auction.code_id().expect("svg-auction code id");

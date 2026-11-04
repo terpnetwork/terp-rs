@@ -24,6 +24,29 @@ name = "fiab_bounty_escrow"
 path = "src/bin/fiab_bounty_escrow.rs"
 required-features = ["gov"]
 
+# AAA DAO Touch Vinyl reserve auctions. Dry run by default; signs only via cw-orch-kms with --broadcast.
+[[bin]]
+name = "aaa_tvl_auction"
+path = "src/bin/aaa_tvl_auction.rs"
+required-features = ["gov"]
+
+# Touch Vinyls token_uri -> s3.terp.network blossom. Dry run by default.
+[[bin]]
+name = "aaa_tvl_metadata"
+path = "src/bin/aaa_tvl_metadata.rs"
+required-features = ["gov"]
+
+[[bin]]
+name = "aaa_dao_prop3"
+path = "src/bin/aaa_dao_prop3.rs"
+required-features = ["gov"]
+
+# ZecHub DAO voter gift (ZEC + Penumbra SVG). Dry run by default; signs only via cw-orch-kms with --broadcast.
+[[bin]]
+name = "zechub_voter_gift"
+path = "src/bin/zechub_voter_gift.rs"
+required-features = ["gov"]
+
 # terp-beacon deploy: store / instantiate-beacon / configure-beacon / wire-raffle.
 # Dry run by default (offline preview JSON). Broadcast needs --broadcast and TERP_BEACON_BROADCAST=1.
 [[bin]]
@@ -80,6 +103,8 @@ gov = [
     "dep:ibc-proto",
     "dep:dotenvy",
     "dep:env_logger",
+    "dep:revenue-reserve-auction",
+    "revenue-reserve-auction/interface",
     "dep:terp-beacon",
     "dep:nftfi-raffle",
     "dep:nftfi-randomness",
@@ -237,3 +262,7 @@ zk-headstash = { workspace = true, optional = true, features = ["interface", "ho
 
 [dev-dependencies]
 hex = { workspace = true, features = ["std"] }
+
+[[example]]
+name = "fiab_grpc_repro"
+required-features = ["gov"]

@@ -23,11 +23,11 @@ use cosmwasm_std::Binary;
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
+#[path = "fiab_bounty_escrow/curate.rs"]
+mod curate;
 /// Seed set: export-seed / upload-seed / create-bounties (see seed.rs).
 #[path = "fiab_bounty_escrow/seed.rs"]
 mod seed;
-#[path = "fiab_bounty_escrow/curate.rs"]
-mod curate;
 
 /// Verified offline on 2026-10-28 (python protobuf + terpd 6.2.1 tx decode).
 const VERIFIED_GRANT_SHA256: &str =
@@ -220,7 +220,10 @@ fn run() -> Result<()> {
         &std::fs::read(cli.pack.join("config.json")).context("read <pack>/config.json")?,
     )?;
     let s = |k: &str| -> Result<String> {
-        cfg[k].as_str().map(str::to_string).ok_or_else(|| anyhow!("config.{k} missing"))
+        cfg[k]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("config.{k} missing"))
     };
     let core = s("fiab_core")?;
     let module = s("fiab_proposal_module")?;
@@ -232,33 +235,81 @@ fn run() -> Result<()> {
     let escrow = cli.escrow.clone().unwrap_or(predicted.clone());
 
     match &cli.step {
-        Step::ExportSeed { catalog, horizon, deadline, public_base, payout_denom, terp_usd } => {
-            let payout = if payout_denom == "split" { seed::Payout::Split }
-                else { seed::Payout::Single { denom: payout_denom.clone(), price_usd: terp_usd.clone() } };
+        Step::ExportSeed {
+            catalog,
+            horizon,
+            deadline,
+            public_base,
+            payout_denom,
+            terp_usd,
+        } => {
+            let payout = if payout_denom == "split" {
+                seed::Payout::Split
+            } else {
+                seed::Payout::Single {
+                    denom: payout_denom.clone(),
+                    price_usd: terp_usd.clone(),
+                }
+            };
             return seed::export_seed(&cli.pack, catalog, horizon, deadline, public_base, &payout);
         }
-        Step::UploadSeed { params_version, check_remote } => {
+        Step::UploadSeed {
+            params_version,
+            check_remote,
+        } => {
             return seed::upload_seed(&cli.pack, params_version, cli.execute, *check_remote);
         }
-        Step::CreateBounties { params_version, batch_size, batch, spent_calls, spent_uterp, spent_uthiol } => {
+        Step::CreateBounties {
+            params_version,
+            batch_size,
+            batch,
+            spent_calls,
+            spent_uterp,
+            spent_uthiol,
+        } => {
             let spent = std::collections::BTreeMap::from([
-                ("uterp".to_string(), *spent_uterp), ("uthiol".to_string(), *spent_uthiol)]);
-            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
-            let plans = seed::create_bounties_plans(&cfg, &core, &member, &escrow, &cli.pack, params_version,
-                *batch_size, *spent_calls, &spent, now)?;
-            for p in &plans { print_and_write(&cli.pack, p)?; }
+                ("uterp".to_string(), *spent_uterp),
+                ("uthiol".to_string(), *spent_uthiol),
+            ]);
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs() as i64;
+            let plans = seed::create_bounties_plans(
+                &cfg,
+                &core,
+                &member,
+                &escrow,
+                &cli.pack,
+                params_version,
+                *batch_size,
+                *spent_calls,
+                &spent,
+                now,
+            )?;
+            for p in &plans {
+                print_and_write(&cli.pack, p)?;
+            }
             println!("{} batch(es)", plans.len());
             if !cli.execute {
-                println!("mode: PREVIEW (nothing signed). Sign one batch with --batch N --execute and FIAB_ESCROW_EXECUTE=1.");
+                println!(
+                    "mode: PREVIEW (nothing signed). Sign one batch with --batch N --execute and FIAB_ESCROW_EXECUTE=1."
+                );
                 return Ok(());
             }
-            let n = batch.ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
+            let n = batch
+                .ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
             cw_orch_kms::progress::set_batch(n as u32, plans.len() as u32);
-            let plan = plans.into_iter().nth(n.wrapping_sub(1)).ok_or_else(|| anyhow!("no batch {n}"))?;
+            let plan = plans
+                .into_iter()
+                .nth(n.wrapping_sub(1))
+                .ok_or_else(|| anyhow!("no batch {n}"))?;
             return execute(&cli, &cfg, plan);
         }
         Step::GrpcCheck => {
-            let url = cli.grpc_url.clone().ok_or_else(|| anyhow!("grpc-check needs --grpc-url or GRPC_URL"))?;
+            let url = cli
+                .grpc_url
+                .clone()
+                .ok_or_else(|| anyhow!("grpc-check needs --grpc-url or GRPC_URL"))?;
             let chain_id = cfg["chain_id"].as_str().unwrap().to_string();
             let rt = cw_orch::tokio::runtime::Runtime::new()?;
             match rt.block_on(cw_orch::daemon::GrpcChannel::connect(&[url], &chain_id)) {
@@ -267,37 +318,94 @@ fn run() -> Result<()> {
             }
             return Ok(());
         }
-        Step::Curate { action, ids, all_pending, manifest, assume_fresh_seed, reason, batch_size, batch, spent_calls } => {
+        Step::Curate {
+            action,
+            ids,
+            all_pending,
+            manifest,
+            assume_fresh_seed,
+            reason,
+            batch_size,
+            batch,
+            spent_calls,
+        } => {
             let action = curate::Action::parse(action)?;
-            if ids.is_empty() && !*all_pending { bail!("curate needs --ids or --all-pending"); }
+            if ids.is_empty() && !*all_pending {
+                bail!("curate needs --ids or --all-pending");
+            }
             let (states, source) = match assume_fresh_seed {
                 Some(pv) => {
-                    if cli.execute { bail!("--assume-fresh-seed is preview-only; --execute reads status from chain"); }
-                    (curate::assumed_fresh(&cli.pack, pv, ids, *all_pending)?,
-                     format!("ASSUMED fresh escrow, seed {pv} created in manifest order as ids 1..N, all pending (not read from chain)"))
+                    if cli.execute {
+                        bail!(
+                            "--assume-fresh-seed is preview-only; --execute reads status from chain"
+                        );
+                    }
+                    (
+                        curate::assumed_fresh(&cli.pack, pv, ids, *all_pending)?,
+                        format!(
+                            "ASSUMED fresh escrow, seed {pv} created in manifest order as ids 1..N, all pending (not read from chain)"
+                        ),
+                    )
                 }
                 None => {
-                    let lcd = cfg["lcd"].as_str().ok_or_else(|| anyhow!("config.lcd missing"))?;
-                    (curate::chain_states(lcd, &escrow, ids, *all_pending)?, format!("chain: LCD smart query on {escrow}"))
+                    let lcd = cfg["lcd"]
+                        .as_str()
+                        .ok_or_else(|| anyhow!("config.lcd missing"))?;
+                    (
+                        curate::chain_states(lcd, &escrow, ids, *all_pending)?,
+                        format!("chain: LCD smart query on {escrow}"),
+                    )
                 }
             };
             let refs: Option<Vec<String>> = match manifest.as_ref().or(assume_fresh_seed.as_ref()) {
-                Some(pv) => Some(seed::load_manifest(&cli.pack, pv)?.0["bounties"].as_array().unwrap()
-                    .iter().filter_map(|e| e["id"].as_str().map(str::to_string)).collect()),
+                Some(pv) => Some(
+                    seed::load_manifest(&cli.pack, pv)?.0["bounties"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter_map(|e| e["id"].as_str().map(str::to_string))
+                        .collect(),
+                ),
                 None => None,
             };
-            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs() as i64;
             curate::validate(action, &states, refs.as_deref(), now)?;
-            let plans = curate::plans(&cfg, &core, &member, &escrow, action, reason, &states, *batch_size, *spent_calls, &source)?;
-            for p in &plans { print_and_write(&cli.pack, p)?; }
-            println!("curate {}: {} bounties in {} batch(es); status source: {source}", action.key(), states.len(), plans.len());
+            let plans = curate::plans(
+                &cfg,
+                &core,
+                &member,
+                &escrow,
+                action,
+                reason,
+                &states,
+                *batch_size,
+                *spent_calls,
+                &source,
+            )?;
+            for p in &plans {
+                print_and_write(&cli.pack, p)?;
+            }
+            println!(
+                "curate {}: {} bounties in {} batch(es); status source: {source}",
+                action.key(),
+                states.len(),
+                plans.len()
+            );
             if !cli.execute {
-                println!("mode: PREVIEW (nothing signed). Sign one batch with --execute ... --batch N and FIAB_ESCROW_EXECUTE=1, GRPC_URL set.");
+                println!(
+                    "mode: PREVIEW (nothing signed). Sign one batch with --execute ... --batch N and FIAB_ESCROW_EXECUTE=1, GRPC_URL set."
+                );
                 return Ok(());
             }
-            let n = batch.ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
+            let n = batch
+                .ok_or_else(|| anyhow!("--execute needs --batch N (one batch per approval)"))?;
             cw_orch_kms::progress::set_batch(n as u32, plans.len() as u32);
-            let plan = plans.into_iter().nth(n.wrapping_sub(1)).ok_or_else(|| anyhow!("no batch {n}"))?;
+            let plan = plans
+                .into_iter()
+                .nth(n.wrapping_sub(1))
+                .ok_or_else(|| anyhow!("no batch {n}"))?;
             return execute(&cli, &cfg, plan);
         }
         _ => {}
@@ -352,7 +460,10 @@ fn run() -> Result<()> {
         Step::ProposeFile { file } => {
             let mut p: Value = serde_json::from_slice(&std::fs::read(file)?)?;
             if p.get("_TEMPLATE").is_some() {
-                bail!("{} is a template; fill it with gen_04_lifecycle.py first", file.display());
+                bail!(
+                    "{} is a template; fill it with gen_04_lifecycle.py first",
+                    file.display()
+                );
             }
             if let Some(o) = p.as_object_mut() {
                 o.retain(|k, _| !k.starts_with('_'));
@@ -378,12 +489,18 @@ fn run() -> Result<()> {
             json!({"execute": {"proposal_id": proposal_id}}),
         ),
         Step::CreateBounty { inner } => create_bounty_plan(&cfg, &core, &member, &escrow, inner)?,
-        Step::ExportSeed { .. } | Step::UploadSeed { .. } | Step::CreateBounties { .. } | Step::Curate { .. } | Step::GrpcCheck => unreachable!(),
+        Step::ExportSeed { .. }
+        | Step::UploadSeed { .. }
+        | Step::CreateBounties { .. }
+        | Step::Curate { .. }
+        | Step::GrpcCheck => unreachable!(),
     };
 
     print_and_write(&cli.pack, &plan)?;
     if !cli.execute {
-        println!("mode: PREVIEW (nothing signed). Re-run with --execute and FIAB_ESCROW_EXECUTE=1 to sign via cw-orch-kms.");
+        println!(
+            "mode: PREVIEW (nothing signed). Re-run with --execute and FIAB_ESCROW_EXECUTE=1 to sign via cw-orch-kms."
+        );
         return Ok(());
     }
     execute(&cli, &cfg, plan)
@@ -408,15 +525,29 @@ fn exec_plan(step: &str, module: &str, member: &str, key: &str, msg: Value) -> P
         note: format!("FIAB member calls {key} on the FIAB proposal module"),
         session: json!({"executes": [{"address": module, "keys": [key], "calls": 1, "funds": []}],
                         "type_urls": [T_EXEC]}),
-        msgs: vec![(any(T_EXEC, &m), json!({"@type": T_EXEC, "sender": member,
-                    "contract": module, "msg": msg, "funds": []}))],
-        kind: SessionKind::Execute { contract: module.into(), key: key.into() },
+        msgs: vec![(
+            any(T_EXEC, &m),
+            json!({"@type": T_EXEC, "sender": member,
+                    "contract": module, "msg": msg, "funds": []}),
+        )],
+        kind: SessionKind::Execute {
+            contract: module.into(),
+            key: key.into(),
+        },
     }
 }
 
-fn create_bounty_plan(cfg: &Value, core: &str, member: &str, escrow: &str, path: &Path) -> Result<Plan> {
+fn create_bounty_plan(
+    cfg: &Value,
+    core: &str,
+    member: &str,
+    escrow: &str,
+    path: &Path,
+) -> Result<Plan> {
     let tx: Value = serde_json::from_slice(&std::fs::read(path)?)?;
-    let msgs = tx["body"]["messages"].as_array().ok_or_else(|| anyhow!("no body.messages"))?;
+    let msgs = tx["body"]["messages"]
+        .as_array()
+        .ok_or_else(|| anyhow!("no body.messages"))?;
     if msgs.len() != 1 {
         bail!("want exactly one inner message");
     }
@@ -431,7 +562,10 @@ fn create_bounty_plan(cfg: &Value, core: &str, member: &str, escrow: &str, path:
     if m["funds"] != json!([cb["reward"]]) {
         bail!("funds must equal [reward]");
     }
-    if cb["details_hash"].as_str().map(|h| h.chars().all(|c| c == '0')) == Some(true)
+    if cb["details_hash"]
+        .as_str()
+        .map(|h| h.chars().all(|c| c == '0'))
+        == Some(true)
         && std::env::var("ALLOW_EXAMPLE").ok().as_deref() != Some("1")
     {
         bail!("details_hash is all zero (example); refusing");
@@ -443,9 +577,15 @@ fn create_bounty_plan(cfg: &Value, core: &str, member: &str, escrow: &str, path:
         sender: core.into(),
         contract: escrow.into(),
         msg: serde_json::to_vec(&m["msg"])?,
-        funds: vec![Coin { denom: denom.clone(), amount: amount.clone() }],
+        funds: vec![Coin {
+            denom: denom.clone(),
+            amount: amount.clone(),
+        }],
     };
-    let exec = MsgExec { grantee: member.into(), msgs: vec![any(T_EXEC, &inner)] };
+    let exec = MsgExec {
+        grantee: member.into(),
+        msgs: vec![any(T_EXEC, &inner)],
+    };
     let _ = cfg;
     Ok(Plan {
         step: format!("03-create-bounty-{}", cb["bounty_ref"].as_str().unwrap_or("x")),
@@ -470,10 +610,13 @@ fn instantiate_proposal(cfg: &Value, code_id: u64, predicted: &str) -> Result<Va
         "funds": [], "label": cfg["label"], "salt": salt}], "to_disable": []}});
     let desc = format!(
         "Instantiates terp-bounty-escrow (code {code_id}, sha256 {}) registered as a FIAB proposal module (DAO DAO update_proposal_modules, admin = FIAB core). Predicted address (instantiate2, salt '{}'): {predicted}. FIAB core is owner, approver and DAO; only FIAB (allowlist) can create bounties. No funds move in this proposal. Per-bounty funding happens later via a capped authz grant (separate proposal).",
-        cfg["wasm_sha256"].as_str().unwrap(), cfg["salt_utf8"].as_str().unwrap()
+        cfg["wasm_sha256"].as_str().unwrap(),
+        cfg["salt_utf8"].as_str().unwrap()
     );
-    Ok(json!({"propose": {"title": "Add the Terp bounty escrow to FIAB-SUBDAO", "description": desc,
-        "msgs": [{"wasm": {"execute": {"contract_addr": core, "msg": b64json(&inner)?, "funds": []}}}]}}))
+    Ok(
+        json!({"propose": {"title": "Add the Terp bounty escrow to FIAB-SUBDAO", "description": desc,
+        "msgs": [{"wasm": {"execute": {"contract_addr": core, "msg": b64json(&inner)?, "funds": []}}}]}}),
+    )
 }
 
 fn grant_bytes(cfg: &Value, escrow: &str) -> Result<(Vec<u8>, String)> {
@@ -482,18 +625,32 @@ fn grant_bytes(cfg: &Value, escrow: &str) -> Result<(Vec<u8>, String)> {
         .as_array()
         .unwrap()
         .iter()
-        .map(|c| Coin { denom: c["denom"].as_str().unwrap().into(), amount: c["amount"].as_str().unwrap().into() })
+        .map(|c| Coin {
+            denom: c["denom"].as_str().unwrap().into(),
+            amount: c["amount"].as_str().unwrap().into(),
+        })
         .collect::<Vec<_>>();
     let mut sorted = coins.iter().map(|c| c.denom.clone()).collect::<Vec<_>>();
     sorted.sort();
     if sorted != coins.iter().map(|c| c.denom.clone()).collect::<Vec<_>>() {
         bail!("CombinedLimit amounts must be sorted by denom");
     }
-    let keys = g["accepted_keys"].as_array().unwrap().iter().map(|k| k.as_str().unwrap().to_string()).collect();
+    let keys = g["accepted_keys"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|k| k.as_str().unwrap().to_string())
+        .collect();
     let auth = ContractExecutionAuthorization {
         grants: vec![ContractGrant {
             contract: escrow.into(),
-            limit: Some(any(T_COMBINED, &CombinedLimit { calls_remaining: g["calls_remaining"].as_u64().unwrap(), amounts: coins })),
+            limit: Some(any(
+                T_COMBINED,
+                &CombinedLimit {
+                    calls_remaining: g["calls_remaining"].as_u64().unwrap(),
+                    amounts: coins,
+                },
+            )),
             filter: Some(any(T_KEYS, &AcceptedMessageKeysFilter { keys })),
         }],
     };
@@ -503,7 +660,10 @@ fn grant_bytes(cfg: &Value, escrow: &str) -> Result<(Vec<u8>, String)> {
         grantee: g["grantee"].as_str().unwrap().into(),
         grant: Some(Grant {
             authorization: Some(any(T_CEA, &auth)),
-            expiration: Some(Timestamp { seconds: rfc3339_utc(exp)?, nanos: 0 }),
+            expiration: Some(Timestamp {
+                seconds: rfc3339_utc(exp)?,
+                nanos: 0,
+            }),
         }),
     };
     Ok((msg.encode_to_vec(), exp.to_string()))
@@ -511,22 +671,45 @@ fn grant_bytes(cfg: &Value, escrow: &str) -> Result<(Vec<u8>, String)> {
 
 fn grant_proposal(cfg: &Value, escrow: &str, bytes: &[u8]) -> Result<Value> {
     let g = &cfg["grant"];
-    let amounts = g["amounts"].as_array().unwrap().iter()
-        .map(|c| format!("{}{}", c["amount"].as_str().unwrap(), c["denom"].as_str().unwrap()))
-        .collect::<Vec<_>>().join(", ");
+    let amounts = g["amounts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            format!(
+                "{}{}",
+                c["amount"].as_str().unwrap(),
+                c["denom"].as_str().unwrap()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
     let grantee = g["grantee"].as_str().unwrap();
-    let desc = format!("Grants {grantee} (FIAB's sole member) authz to execute ONLY create_bounty on the FIAB bounty escrow {escrow} on FIAB's behalf: max {} calls and max {amounts} total funds, expiring {}. Bounties still start Pending and need a FIAB proposal to approve. Revocable at any time by a MsgRevoke proposal (02b).",
-        g["calls_remaining"], g["expiration_rfc3339"].as_str().unwrap());
-    Ok(json!({"propose": {"title": "FIAB: capped authz for bounty creation on the escrow", "description": desc,
-        "msgs": [{"stargate": {"type_url": T_GRANT, "value": Binary::from(bytes).to_base64()}}]}}))
+    let desc = format!(
+        "Grants {grantee} (FIAB's sole member) authz to execute ONLY create_bounty on the FIAB bounty escrow {escrow} on FIAB's behalf: max {} calls and max {amounts} total funds, expiring {}. Bounties still start Pending and need a FIAB proposal to approve. Revocable at any time by a MsgRevoke proposal (02b).",
+        g["calls_remaining"],
+        g["expiration_rfc3339"].as_str().unwrap()
+    );
+    Ok(
+        json!({"propose": {"title": "FIAB: capped authz for bounty creation on the escrow", "description": desc,
+        "msgs": [{"stargate": {"type_url": T_GRANT, "value": Binary::from(bytes).to_base64()}}]}}),
+    )
 }
 
 fn revoke_proposal(cfg: &Value) -> Result<Value> {
     let grantee = cfg["grant"]["grantee"].as_str().unwrap();
-    let msg = MsgRevoke { granter: cfg["fiab_core"].as_str().unwrap().into(), grantee: grantee.into(), msg_type_url: T_EXEC.into() };
-    let desc = format!("Revokes the authz grant from FIAB core to {grantee} for {T_EXEC}. Existing bounties and escrowed funds are unaffected; open bounties can still be cancelled/rejected by FIAB proposals (refunds go to FIAB).");
-    Ok(json!({"propose": {"title": "FIAB: revoke bounty-creation authz grant", "description": desc,
-        "msgs": [{"stargate": {"type_url": T_REVOKE, "value": Binary::from(msg.encode_to_vec()).to_base64()}}]}}))
+    let msg = MsgRevoke {
+        granter: cfg["fiab_core"].as_str().unwrap().into(),
+        grantee: grantee.into(),
+        msg_type_url: T_EXEC.into(),
+    };
+    let desc = format!(
+        "Revokes the authz grant from FIAB core to {grantee} for {T_EXEC}. Existing bounties and escrowed funds are unaffected; open bounties can still be cancelled/rejected by FIAB proposals (refunds go to FIAB)."
+    );
+    Ok(
+        json!({"propose": {"title": "FIAB: revoke bounty-creation authz grant", "description": desc,
+        "msgs": [{"stargate": {"type_url": T_REVOKE, "value": Binary::from(msg.encode_to_vec()).to_base64()}}]}}),
+    )
 }
 
 fn print_and_write(pack: &Path, plan: &Plan) -> Result<()> {
@@ -550,7 +733,11 @@ fn print_and_write(pack: &Path, plan: &Plan) -> Result<()> {
     println!("== {} ({})", plan.step, plan.note);
     println!("signer (cw-orch-kms granter): {}", plan.signer);
     for (a, v) in &plan.msgs {
-        println!("message {}:\n{}", a.type_url, serde_json::to_string_pretty(v)?);
+        println!(
+            "message {}:\n{}",
+            a.type_url,
+            serde_json::to_string_pretty(v)?
+        );
     }
     println!("wrote {}", path.display());
     Ok(())
@@ -567,26 +754,41 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
         chain_id: chain_id.clone(),
         gas_denom: "uthiol".into(),
         gas_price: 0.05,
-        grpc_urls: vec![cli.grpc_url.clone()
-            .ok_or_else(|| anyhow!("--execute needs --grpc-url or GRPC_URL (a morocco-1 gRPC endpoint)"))?],
+        grpc_urls: vec![cli.grpc_url.clone().ok_or_else(|| {
+            anyhow!("--execute needs --grpc-url or GRPC_URL (a morocco-1 gRPC endpoint)")
+        })?],
         rpc_urls: vec![],
         lcd_url: cfg["lcd"].as_str().map(str::to_string),
         fcd_url: None,
-        network_info: NetworkInfoOwned { chain_name: "terp".into(), pub_address_prefix: "terp".into(), coin_type: 118 },
+        network_info: NetworkInfoOwned {
+            chain_name: "terp".into(),
+            pub_address_prefix: "terp".into(),
+            coin_type: 118,
+        },
         kind: ChainKind::Mainnet,
     };
     // SAFETY: set before cw-orch reads it; nothing else races on the env.
     unsafe { std::env::set_var("CW_ORCH_WALLET_BALANCE_ASSERTION", "false") };
     let granter = if cli.granter.is_empty() {
         println!("sign the cw-orch-granter challenge at http://127.0.0.1:8741");
-        cw_orch_kms::capture_granter_for_chain_opts_sync("127.0.0.1:8741".parse()?, cli.account_index, "fiab-bounty-escrow", &chain_id, cli.ttl_secs, Some(&plan.signer))
-            .map_err(|e| anyhow!(e))?
+        cw_orch_kms::capture_granter_for_chain_opts_sync(
+            "127.0.0.1:8741".parse()?,
+            cli.account_index,
+            "fiab-bounty-escrow",
+            &chain_id,
+            cli.ttl_secs,
+            Some(&plan.signer),
+        )
+        .map_err(|e| anyhow!(e))?
     } else {
         cw_orch_kms::set_approval_chain_id(&chain_id).map_err(|e| anyhow!(e))?;
         cli.granter.clone()
     };
     if granter != plan.signer {
-        bail!("granter {granter} is not this step's signer {}", plan.signer);
+        bail!(
+            "granter {granter} is not this step's signer {}",
+            plan.signer
+        );
     }
     let mut builder = DaemonBuilder::new(chain);
     builder.load_network(false);
@@ -594,7 +796,12 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
     session = match &plan.kind {
         SessionKind::Store(wasm) => session.allow_store(wasm).map_err(|e| anyhow!(e))?,
         SessionKind::Execute { contract, key } => session
-            .allow_execute(cw_orch_kms::ScopedCall { address: contract.clone(), keys: vec![key.clone()], calls: 1, funds: vec![] })
+            .allow_execute(cw_orch_kms::ScopedCall {
+                address: contract.clone(),
+                keys: vec![key.clone()],
+                calls: 1,
+                funds: vec![],
+            })
             .map_err(|e| anyhow!(e))?,
         SessionKind::NestedExec => session.allow_nested_exec(),
     };
@@ -613,22 +820,44 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
         let sim = session_wrap(run.grantee(), anys.clone());
         use cw_orch_kms::progress::Status;
         run.step("simulate", Status::Running, None, None);
-        let (gas, fee) = match daemon.rt_handle.block_on(daemon.sender().simulate(sim, Some(&memo))) {
+        let (gas, fee) = match daemon
+            .rt_handle
+            .block_on(daemon.sender().simulate(sim, Some(&memo)))
+        {
             Ok(v) => v,
-            Err(e) => { run.step("simulate", Status::Error, None, Some(&e.to_string())); return Err(e.into()); }
+            Err(e) => {
+                run.step("simulate", Status::Error, None, Some(&e.to_string()));
+                return Err(e.into());
+            }
         };
         println!("simulate OK gas={gas} fee={fee}");
-        run.step("simulate", Status::Confirmed, None, Some(&format!("gas {gas}, fee {fee}")));
+        run.step(
+            "simulate",
+            Status::Confirmed,
+            None,
+            Some(&format!("gas {gas}, fee {fee}")),
+        );
         run.step("broadcast", Status::Running, None, None);
-        let resp = match daemon.rt_handle.block_on(daemon.sender().commit_tx_any(anys, Some(&memo))) {
+        let resp = match daemon
+            .rt_handle
+            .block_on(daemon.sender().commit_tx_any(anys, Some(&memo)))
+        {
             Ok(r) => r,
-            Err(e) => { run.step("broadcast", Status::Error, None, Some(&e.to_string())); return Err(e.into()); }
+            Err(e) => {
+                run.step("broadcast", Status::Error, None, Some(&e.to_string()));
+                return Err(e.into());
+            }
         };
         println!("BROADCAST txhash: {}", resp.txhash);
         if resp.code == 0 {
             run.step("broadcast", Status::Confirmed, Some(&resp.txhash), None);
         } else {
-            run.step("broadcast", Status::Error, Some(&resp.txhash), Some(&format!("code {}", resp.code)));
+            run.step(
+                "broadcast",
+                Status::Error,
+                Some(&resp.txhash),
+                Some(&format!("code {}", resp.code)),
+            );
         }
         Ok(())
     })();
@@ -641,7 +870,13 @@ fn execute(cli: &Cli, cfg: &Value, plan: Plan) -> Result<()> {
 /// The outer MsgExec(session) that commit_tx_any adds when authz_granter is set; simulate needs it explicitly.
 fn session_wrap(session_grantee: &str, msgs: Vec<Any>) -> Vec<Any> {
     use cosmos_sdk_proto::cosmos::authz::v1beta1::MsgExec;
-    vec![any(T_AUTHZ_EXEC, &MsgExec { grantee: session_grantee.into(), msgs })]
+    vec![any(
+        T_AUTHZ_EXEC,
+        &MsgExec {
+            grantee: session_grantee.into(),
+            msgs,
+        },
+    )]
 }
 
 #[cfg(test)]
@@ -650,7 +885,13 @@ mod exec_tests {
     use cosmos_sdk_proto::cosmos::authz::v1beta1::MsgExec;
     #[test]
     fn simulate_body_is_session_wrapped() {
-        let inner = any(T_AUTHZ_EXEC, &MsgExec { grantee: "member".into(), msgs: vec![] });
+        let inner = any(
+            T_AUTHZ_EXEC,
+            &MsgExec {
+                grantee: "member".into(),
+                msgs: vec![],
+            },
+        );
         let w = session_wrap("session", vec![inner.clone()]);
         assert_eq!(w.len(), 1);
         assert_eq!(w[0].type_url, T_AUTHZ_EXEC);
@@ -660,7 +901,10 @@ mod exec_tests {
     }
 }
 fn any<M: Message>(type_url: &str, m: &M) -> Any {
-    Any { type_url: type_url.into(), value: m.encode_to_vec() }
+    Any {
+        type_url: type_url.into(),
+        value: m.encode_to_vec(),
+    }
 }
 
 fn b64json(v: &Value) -> Result<String> {
@@ -672,42 +916,68 @@ fn sha256_hex(bytes: &[u8]) -> Result<String> {
     if bytes.starts_with(&[0x1f, 0x8b]) {
         bail!("unexpected gzip magic");
     }
-    Ok(hexenc(cw_orch_kms::wasm_checksum(bytes).map_err(|e| anyhow!(e))?))
+    Ok(hexenc(
+        cw_orch_kms::wasm_checksum(bytes).map_err(|e| anyhow!(e))?,
+    ))
 }
 
 fn predicted_escrow(cfg: &Value) -> Result<String> {
     let checksum = hexdec(cfg["wasm_sha256"].as_str().unwrap())?;
     let creator = bech32_data(cfg["fiab_core"].as_str().unwrap())?;
-    cw_orch_kms::instantiate2_bech32("terp", &checksum, &creator, cfg["salt_utf8"].as_str().unwrap().as_bytes())
-        .map_err(|e| anyhow!(e))
+    cw_orch_kms::instantiate2_bech32(
+        "terp",
+        &checksum,
+        &creator,
+        cfg["salt_utf8"].as_str().unwrap().as_bytes(),
+    )
+    .map_err(|e| anyhow!(e))
 }
 
 /// Minimal bech32 (BIP-173) decode to data bytes, checksum verified.
 fn bech32_data(addr: &str) -> Result<Vec<u8>> {
     const CS: &str = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-    let pos = addr.rfind('1').ok_or_else(|| anyhow!("bech32: no separator"))?;
+    let pos = addr
+        .rfind('1')
+        .ok_or_else(|| anyhow!("bech32: no separator"))?;
     let (hrp, data) = (&addr[..pos], &addr[pos + 1..]);
-    let vals: Vec<u8> = data.chars().map(|c| CS.find(c).map(|i| i as u8)).collect::<Option<_>>()
+    let vals: Vec<u8> = data
+        .chars()
+        .map(|c| CS.find(c).map(|i| i as u8))
+        .collect::<Option<_>>()
         .ok_or_else(|| anyhow!("bech32: bad char"))?;
     let mut chk: Vec<u8> = hrp.bytes().map(|b| b >> 5).collect();
     chk.push(0);
     chk.extend(hrp.bytes().map(|b| b & 31));
     chk.extend(&vals);
-    let gens = [0x3b6a57b2u32, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+    let gens = [
+        0x3b6a57b2u32,
+        0x26508e6d,
+        0x1ea119fa,
+        0x3d4233dd,
+        0x2a1462b3,
+    ];
     let mut p = 1u32;
     for v in chk {
         let b = p >> 25;
         p = ((p & 0x1ffffff) << 5) ^ v as u32;
         for (i, g) in gens.iter().enumerate() {
-            if (b >> i) & 1 == 1 { p ^= g; }
+            if (b >> i) & 1 == 1 {
+                p ^= g;
+            }
         }
     }
-    if p != 1 { bail!("bech32: bad checksum"); }
+    if p != 1 {
+        bail!("bech32: bad checksum");
+    }
     let (mut acc, mut bits, mut out) = (0u32, 0u32, vec![]);
     for v in &vals[..vals.len() - 6] {
         acc = (acc << 5) | *v as u32;
         bits += 5;
-        if bits >= 8 { bits -= 8; out.push((acc >> bits) as u8); acc &= (1 << bits) - 1; }
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
     }
     Ok(out)
 }
@@ -715,9 +985,18 @@ fn bech32_data(addr: &str) -> Result<Vec<u8>> {
 /// "YYYY-MM-DDTHH:MM:SSZ" -> unix seconds (UTC only).
 fn rfc3339_utc(s: &str) -> Result<i64> {
     let b = s.as_bytes();
-    if b.len() != 20 || b[19] != b'Z' { bail!("expiration must be YYYY-MM-DDTHH:MM:SSZ"); }
+    if b.len() != 20 || b[19] != b'Z' {
+        bail!("expiration must be YYYY-MM-DDTHH:MM:SSZ");
+    }
     let n = |r: std::ops::Range<usize>| -> Result<i64> { Ok(s[r].parse()?) };
-    let (y, m, d, hh, mm, ss) = (n(0..4)?, n(5..7)?, n(8..10)?, n(11..13)?, n(14..16)?, n(17..19)?);
+    let (y, m, d, hh, mm, ss) = (
+        n(0..4)?,
+        n(5..7)?,
+        n(8..10)?,
+        n(11..13)?,
+        n(14..16)?,
+        n(17..19)?,
+    );
     let (y2, m2) = if m <= 2 { (y - 1, m + 9) } else { (y, m - 3) };
     let era = y2.div_euclid(400);
     let yoe = y2 - era * 400;
@@ -727,8 +1006,15 @@ fn rfc3339_utc(s: &str) -> Result<i64> {
     Ok(days * 86400 + hh * 3600 + mm * 60 + ss)
 }
 
-fn hexenc<T: AsRef<[u8]>>(b: T) -> String { b.as_ref().iter().map(|x| format!("{:02x}", x)).collect() }
+fn hexenc<T: AsRef<[u8]>>(b: T) -> String {
+    b.as_ref().iter().map(|x| format!("{:02x}", x)).collect()
+}
 fn hexdec(s: &str) -> Result<Vec<u8>> {
-    if s.len() % 2 != 0 { bail!("odd hex length"); }
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(|e| anyhow!(e))).collect()
+    if s.len() % 2 != 0 {
+        bail!("odd hex length");
+    }
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).map_err(|e| anyhow!(e)))
+        .collect()
 }
