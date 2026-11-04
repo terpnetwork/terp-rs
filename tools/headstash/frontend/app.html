@@ -72,7 +72,7 @@ details{margin-top:.6rem}summary{cursor:pointer}
 <div id="fwd-box" hidden>
 <label for="fwd-channel">IBC channel (allowlisted by the contract)</label><select id="fwd-channel"></select>
 <label for="recv">One-time Penumbra address (new for every note)</label><input id="recv" autocomplete="off" spellcheck="false" placeholder="penumbra1…">
-<div id="zafu-box"><button id="zafu-connect">Connect Zafu</button> <button id="zafu-disconnect" hidden>Disconnect Zafu</button>
+<div id="zafu-box"><label for="zafu-wallet" id="zafu-wallet-l" hidden>Penumbra wallet (announced by the browser; any build, no ID allowlist)</label><select id="zafu-wallet" hidden></select><button id="zafu-connect">Connect Zafu</button> <button id="zafu-disconnect" hidden>Disconnect Zafu</button>
 <label class="inl" for="zafu-account">Zafu account #</label> <input id="zafu-account" value="0" inputmode="numeric" size="6">
 <button id="zafu">Preview a fresh address</button> <span id="zafu-detect" data-state="none" role="status"></span></div>
 <label class="inl"><input type="checkbox" id="recv-any">Advanced: allow a non-Penumbra receiver (testnets)</label>

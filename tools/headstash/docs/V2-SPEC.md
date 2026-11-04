@@ -532,3 +532,25 @@ exported `execute` (75 444 B > 69 396 B budget). Fix: those 16 variants are now
 `register_eligibility_root` stays (manifold builds it) and returns `DISABLED_IN_BUILD`.
 Standard terp-optimizer flags (image RUSTFLAGS, `-Os --enable-bulk-memory --enable-sign-ext --disable-simd`):
 largest function 52 489 B, scan `ok`.
+
+## R7a — Penumbra wallet discovery: no extension-ID pin (IMPLEMENTED)
+
+- The page MUST NOT pin or allowlist a Zafu/Chrome extension ID or origin. Users can build or modify the wallet themselves, and an unpacked build gets a path-derived ID.
+- Discovery: bc3e157 did not hardcode an ID. It did prefer a provider whose manifest URL matched `/zafu/` and fell back to the first one silently. Now every provider announced under `window[Symbol.for("penumbra")]` is listed (format check only: `chrome-extension://[a-p]{32}` with a `connect` function). The list shows each wallet's announced origin and manifest URL. If more than one announces, a `#zafu-wallet` picker is shown and the user chooses. The connected status names the origin.
+- The announced manifest is not fetched (CSP `connect-src` is unchanged). The label is the origin plus the manifest URL.
+- Safety does not depend on the wallet's identity. Every returned address must pass bech32m decoding, `IndexByAddress` ownership at the requested `{account, randomizer}`, and the IndexBook no-reuse check. A malicious wallet can only refuse service, or return addresses that fail these checks and are rejected.
+- e2e:
+  - `v2_zafu_unpacked_non_store_id_connects`: the real extension is loaded unpacked. Its ID equals the Chrome path hash, not the store ID. It connects, and the status shows that ID.
+  - `v2_wallet_any_announced_provider_user_picks`: two fake announcers with arbitrary IDs both appear, and selecting the second one updates the status.
+
+## R12 — Templatized theme (on-chain CSS tokens), Apricot Glow (IMPLEMENTED)
+
+- Tokens (light and dark each): `bg surface surfaceAlt text textMuted border borderStrong accent onAccent focus`. Each value is `#RRGGBB`. `radius_px` is optional and must be 0..24. Unknown fields or tokens are rejected (`deny_unknown_fields`).
+- Storage:
+  - The cw-headstash-frontend `Manifest.theme` is optional and is the last field, so v1 manifests keep their PIN.
+  - cw-headstash has an owner-only `SetTheme{theme: Option<Theme>}` (`None` clears) and a `Theme{}` query.
+- Validation runs in both contracts (`theme.rs`) and again in the page (`v2lib.validateTheme`).
+- Fallback: the headstash contract theme, then the manifest default, then the built-in neutral theme. The first valid candidate wins as a whole; its tokens are then merged over the built-in theme. An invalid candidate is skipped and reported in `data-theme-rejected`.
+- Rendering: the page CSS uses only `var(--hs-*)` (checked by grep). `<style id="hs-theme">` is built with textContent from validated hex values only. The mode follows `prefers-color-scheme`, and a toggle stores the choice in localStorage (`terp-hs-theme-mode-v1`). CSP is unchanged.
+- Contrast (unit test, WCAG): text and textMuted on bg/surface are ≥4.5, and onAccent on accent is ≥4.5. Accent on bg is only required to reach ≥3 (non-text UI). Status messages use the text colour plus an accent border, because there are no ok/err tokens (open question).
+- Renderer: `render_frontend_prop.py --theme <file|none>`, Apricot Glow by default (`frontend/themes/apricot-glow.json`). Use `--theme none` for v1-compatible manifests.

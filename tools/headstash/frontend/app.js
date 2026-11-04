@@ -274,11 +274,23 @@ const destMode = () => document.querySelector("input[name=dest-mode]:checked").v
 let ZC = null, zafu = null, book = null;
 const zafuSet = (state, msg) => { $("zafu-detect").textContent = msg; $("zafu-detect").dataset.state = state; $("zafu-connect").hidden = state === "connected"; $("zafu-disconnect").hidden = state !== "connected"; };
 async function zafuLib() { if (!ZC) ZC = await import(cfg.urls["zafu-client.js"]); return ZC; }
+// No extension-ID pin or allowlist (user-built / modified wallets are fine): any provider announced under
+// window[Symbol.for("penumbra")] is listed with its announced origin + manifest and the user picks. Safety comes from
+// checking every returned address (bech32m + IndexByAddress ownership + IndexBook no-reuse), not from the wallet's identity.
+let wallets = [];
+const walletLabel = (w) => `${w.origin}${w.manifest ? " (manifest " + w.manifest.slice(0, 120) + ")" : ""}`;
 async function zafuDetect() {
   const L = await zafuLib(), ps = L.providers(window);
-  if (!ps.length) return zafuSet("missing", "No Penumbra wallet detected. Install Zafu (or paste a one-time address below)."), null;
-  const pick = ps.find((p) => p.provider.manifest && /zafu/i.test(String(p.provider.manifest))) || ps[0];
-  if (!zafu) zafuSet("found", `Penumbra wallet found (${pick.origin.slice(19, 27)}…): press Connect Zafu.`);
+  if (!ps.length) return zafuSet("missing", "No Penumbra wallet detected. Install Zafu or another Penumbra wallet (or paste a one-time address below)."), null;
+  if (ps.length !== wallets.length || ps.some((p, i) => p.origin !== wallets[i].origin)) {
+    const prev = wallets[Number($("zafu-wallet").value)]?.origin;
+    wallets = ps.map((p) => ({ ...p, manifest: typeof p.provider.manifest === "string" ? p.provider.manifest : "" }));
+    const sel = $("zafu-wallet"); sel.replaceChildren(...wallets.map((w, i) => el("option", { value: String(i), textContent: walletLabel(w) })));
+    sel.value = String(Math.max(0, wallets.findIndex((w) => w.origin === prev))); sel.hidden = $("zafu-wallet-l").hidden = wallets.length < 2;
+    sel.dataset.count = wallets.length;
+  }
+  const pick = wallets[Number($("zafu-wallet").value)] || wallets[0];
+  if (!zafu) zafuSet("found", `${wallets.length > 1 ? wallets.length + " Penumbra wallets announced; selected " : "Penumbra wallet announced: "}${walletLabel(pick)}. Press Connect Zafu.`);
   return pick;
 }
 async function zafuConnect() {
@@ -288,7 +300,7 @@ async function zafuConnect() {
     await pick.provider.connect(); // approval popup on first use; rejects with cause Denied / NeedsLogin / NotHandled
     const client = L.makeViewClient(pick.provider);
     zafu = { origin: pick.origin, provider: pick.provider, client };
-    zafuSet("connected", `Connected to Zafu (${pick.origin.slice(19, 27)}…). A fresh address is requested for every forward claim.`);
+    zafuSet("connected", `Connected to Penumbra wallet ${walletLabel(pick)}. A fresh address is requested for every forward claim.`);
   } catch (e) { zafu = null; zafuSet("error", V.zafuErrorText(e)); throw new Error(V.zafuErrorText(e)); }
 }
 async function zafuDisconnect() {
@@ -417,7 +429,7 @@ export async function start({ files, manifest, config, urls }) {
   document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.onchange = rewardChange));
   document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => ($("fwd-box").hidden = destMode() !== "forward")));
   $("derive").onclick = derive; $("load").onclick = load; $("register").onclick = register; $("anchor-check").onclick = anchorCheck; $("claim").onclick = claim;
-  $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
+  $("save").onclick = save; $("export").onclick = exportWallets; $("zafu-connect").onclick = () => guarded("dst-err", zafuConnect); $("zafu-wallet").onchange = () => { if (!zafu) zafuDetect(); }; $("zafu-disconnect").onclick = () => guarded("dst-err", zafuDisconnect);
   $("zafu").onclick = () => guarded("dst-err", async () => { await zafuAddress("preview"); });
   $("reward-export").onclick = () => download("headstash-reward-key.json", JSON.stringify({ address: state.reward_addr, priv_hex: state.reward_priv }, null, 1));
   zafuDetect().catch((e) => zafuSet("error", "Zafu client failed to load: " + e.message));

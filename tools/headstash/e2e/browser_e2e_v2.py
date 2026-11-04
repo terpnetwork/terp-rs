@@ -50,7 +50,11 @@ MALICIOUS = {"light": {"bg": "red;}body{background:url(http://127.0.0.1:1/x.png)
 def rgb(h): return "rgb(%d, %d, %d)" % tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
 def theme_checks(contract, url):
     th = lambda tag, **kw: browser("theme", dict({"url": url, "tag": tag, "shots": SHOTS}, **kw))
-    a = th("manifest"); R["theme_manifest"] = keep(a, "log")
+    fakes = ["chrome-extension://" + "a" * 32, "chrome-extension://" + "b" * 16 + "c" * 16]
+    a = th("manifest", fake_wallets=fakes); R["theme_manifest"] = keep(a, "log")
+    wo = a.get("wallet_options") or []
+    rd.step("v2_wallet_any_announced_provider_user_picks", len(wo) == 2 and all(f in " ".join(wo) for f in fakes) and a.get("wallet_select_visible") and fakes[1] in (a.get("wallet_detect") or ""),
+            "%d options; picked: %s" % (len(wo), (a.get("wallet_detect") or "")[:120]))
     ok = a.get("ok") and all(a.get(m, {}).get("source") == "manifest" and a[m].get("mode") == m and a[m].get("body_bg") == rgb(MANIFEST_THEME[m]["bg"]) for m in ("light", "dark"))
     rd.step("v2_theme_fallback_manifest_default", bool(ok), "light %s / dark %s, source %s" % (a.get("light", {}).get("body_bg"), a.get("dark", {}).get("body_bg"), a.get("light", {}).get("source")) if a.get("ok") else a.get("error", ""))
     bad_tx = tx("owner", 400000, "wasm", "execute", contract, json.dumps({"set_theme": {"theme": MALICIOUS}}))
@@ -165,6 +169,8 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         R["forwards"] = [n["fwd"] for n in fwd]
         rd.step("v2_real_zafu_connected", b.get("real_zafu") and b.get("zafu_state") == "connected" and b.get("zafu_approvals", 0) >= 1, "%s approvals=%s: %s" % (b.get("zafu_state"), b.get("zafu_approvals"), (b.get("zafu_text") or "")[:120]))
         bk = b.get("zafu_book") or []; nz = [e for e in bk if e.get("k", "").split(":")[-1].strip("0")]
+        rd.step("v2_zafu_unpacked_non_store_id_connects", b.get("zafu_ext_id_unpacked") is True and b.get("zafu_state") == "connected" and (b.get("zafu_ext_id") or "-") in (b.get("zafu_text") or ""),
+                "ext id %s (= unpacked path hash: %s); %s" % (b.get("zafu_ext_id"), b.get("zafu_ext_id_unpacked"), (b.get("zafu_text") or "")[:100]))
         rd.step("v2_zafu_fresh_nonzero_indices", len(bk) == 3 and len(nz) == 3 and len({e["k"] for e in bk}) == 3 and b.get("zafu_addrs_distinct") and zf and zf[0]["fwd"]["receiver"] == bk[0]["a"],
                 "%d indices %s; addrs %s" % (len(bk), [e["k"] for e in bk], b.get("zafu_addr_prefixes")))
         rd.step("v2_zafu_disconnect", b.get("zafu_after_disconnect") == "found", str(b.get("zafu_after_disconnect")))

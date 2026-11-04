@@ -54,6 +54,8 @@ if (inp.key_hex) {
 const pen = { list: [] };
 
 // R12 tamper: serve a malicious headstash theme from the LCD (base64 of {"theme":{}}); the page must reject it
+if (phase === "theme" && inp.fake_wallets) await page.addInitScript((os) => { const s = Symbol.for("penumbra"); const g = (window[s] ||= {});
+  for (const o of os) g[o] = { manifest: o + "/manifest.json", connect: async () => { throw new Error("fake wallet: test only"); }, isConnected: () => false, request: async () => {}, disconnect: async () => {} }; }, inp.fake_wallets);
 if (phase === "theme" && inp.tamper) await page.route("**/smart/eyJ0aGVtZSI6e319*", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: inp.tamper }) }));
 try {
   const t0 = Date.now(); await page.goto(inp.url);
@@ -120,6 +122,8 @@ try {
     if (!zx) throw new Error("forward-zafu needs the real Zafu extension (zafu_ext)");
     await page.click("#zafu-connect");
     await page.locator("#zafu-detect[data-state='connected'], #zafu-detect[data-state='error']").waitFor({ timeout: 90000 });
+    { const crypto = await import("crypto"); const h = crypto.createHash("sha256").update(fs.realpathSync(inp.zafu_ext)).digest("hex").slice(0, 32);
+      out.zafu_ext_id = zx.extId; out.zafu_ext_id_unpacked = [...h].map((c) => "abcdefghijklmnop"[parseInt(c, 16)]).join("") === zx.extId; }
     out.zafu_state = await attr("#zafu-detect", "data-state"); out.zafu_text = await text("#zafu-detect"); out.zafu_approvals = zx.approvals;
     await shot("08a-zafu-connected");
     await runClaim("08-forward-zafu"); out.fwd_preview = await text("#fwd-preview");
@@ -142,6 +146,9 @@ try {
         btn_bg: getComputedStyle(document.querySelector("#browse")).backgroundColor, css: document.getElementById("hs-theme")?.textContent || "", toggle: document.getElementById("theme-toggle")?.textContent,
         stored: localStorage.getItem("terp-hs-theme-mode-v1") }; });
     const tag = inp.tag;
+    if (inp.fake_wallets) { await until(async () => (await attr("#zafu-wallet", "data-count")) !== null, 20000);
+      out.wallet_options = await page.locator("#zafu-wallet option").allTextContents(); out.wallet_select_visible = (await attr("#zafu-wallet", "hidden")) === null;
+      await page.selectOption("#zafu-wallet", "1"); await page.waitForTimeout(200); out.wallet_detect = await text("#zafu-detect"); }
     await page.emulateMedia({ colorScheme: "light" }); await page.waitForTimeout(300); out.light = await rd(); await shot(`${tag}-light`);
     await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(300); out.dark = await rd(); await shot(`${tag}-dark`);
     out.log_rejects = ((await text("#log")).match(/theme from \w+ rejected[^\n]*/g) || []).slice(0, 3);
