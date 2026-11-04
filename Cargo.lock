@@ -7965,6 +7965,7 @@ dependencies = [
  "reqwest 0.12.28",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sha3 0.10.9",
  "tokio",
  "zakura-pasta-curves",
@@ -13629,6 +13630,21 @@ checksum = "28d567dcbaf0049cb8ac2608a76cd95ff9e4412e1899d389ee400918ca7537f5"
 dependencies = [
  "digest 0.11.3",
  "rand_core 0.10.1",
+]
+
+[[package]]
+name = "silo-cap-root"
+version = "0.1.0"
+dependencies = [
+ "abstract-cw-multi-test",
+ "blake3",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw2",
+ "hex",
+ "serde",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

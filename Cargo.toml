@@ -59,6 +59,7 @@ members = [
     "contracts/infuser/svg-auction/e2e",
     "contracts/infuser/whitelist-merkletree",
     "contracts/infuser/whitelist-merkletree/e2e",
+    "contracts/infuser/silo-cap-root",
     "contracts/light-clients/cw-ics08-wasm-crosslink",
     "contracts/light-clients/cw-ics08-wasm-crosslink/e2e",
     "contracts/light-clients/cw-ics08-wasm-dregg",

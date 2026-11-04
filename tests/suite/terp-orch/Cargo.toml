@@ -24,11 +24,12 @@ name = "fiab_bounty_escrow"
 path = "src/bin/fiab_bounty_escrow.rs"
 required-features = ["gov"]
 
-# Silo-auth capability whitelist (whitelist-mtree). Preview by default; signs only via cw-orch-kms with --execute.
+# silo-cap-root self-deploy from our own wallet (no DAO / gov). Preview by default;
+# signs only via cw-orch-kms with --execute and SILO_CAP_ROOT_EXECUTE=1.
 [[bin]]
-name = "silo_whitelist"
-path = "src/bin/silo_whitelist.rs"
-required-features = ["gov"]
+name = "silo_cap_root"
+path = "src/bin/silo_cap_root.rs"
+required-features = ["self-deploy"]
 
 [[bin]]
 name = "cw-ave-deploy"
@@ -78,6 +79,13 @@ gov = [
     "dep:cosmos-sdk-proto",
     "dep:ibc-proto",
     "dep:dotenvy",
+]
+# silo_cap_root: cw-orch-kms self-deploy only (no gov/ibc deps).
+self-deploy = [
+    "cw-orch/daemon",
+    "dep:cw-orch-kms",
+    "dep:clap",
+    "dep:cosmos-sdk-proto",
 ]
 # Live deploy commands (Daemon). Off for library tests.
 deploy-bins = [

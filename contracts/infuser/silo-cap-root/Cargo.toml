@@ -1,0 +1,27 @@
+[package]
+name        = "silo-cap-root"
+description = "Minimal admin-rotated blake3 Merkle root for silo-auth capabilities (root only; no claims, no proofs)"
+version     = "0.1.0"
+edition     = { workspace = true }
+homepage    = { workspace = true }
+repository  = { workspace = true }
+license     = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std    = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2             = { workspace = true }
+thiserror       = { workspace = true }
+serde           = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+blake3        = { workspace = true }
+hex           = { workspace = true }
