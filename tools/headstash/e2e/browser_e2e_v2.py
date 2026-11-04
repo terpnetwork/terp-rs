@@ -39,13 +39,13 @@ def page_files():
              "ct": fb.CT.get(os.path.splitext(n)[1], "application/octet-stream")} for d, n in names]
 be.page_files = page_files
 import render_frontend_prop as rfp
-MANIFEST_THEME = rfp.load_theme(rfp.DEFAULT_THEME)       # R12: manifest default = Apricot Glow
+MANIFEST_THEME = rfp.load_theme(rfp.DEFAULT_THEME)       # R12: manifest default = Azure Calcium
 _fb_manifest = fb.manifest
 def _manifest_with_theme(fs, chunk, version=1):
     m, chunks = _fb_manifest(fs, chunk, version); m["theme"] = MANIFEST_THEME; return m, chunks
 fb.manifest = _manifest_with_theme
-# headstash theme for the e2e: Apricot Glow with two tokens changed, so its source is distinguishable from the manifest default
-HS_THEME = rfp.canon_theme({"light": dict(MANIFEST_THEME["light"], surface="#FFFDF9", accent="#7A5F3A"), "dark": dict(MANIFEST_THEME["dark"], surface="#2A1B06"), "radius_px": 12})
+# headstash theme for the e2e: Azure Calcium with two tokens changed, so its source is distinguishable from the manifest default
+HS_THEME = rfp.canon_theme({"light": dict(MANIFEST_THEME["light"], surface="#F4F9FF", accent="#3A6E9E"), "dark": dict(MANIFEST_THEME["dark"], surface="#0B1A2A"), "radius_px": 12})
 MALICIOUS = {"light": {"bg": "red;}body{background:url(http://127.0.0.1:1/x.png)}"}, "dark": {"bg": "#000"}}
 def rgb(h): return "rgb(%d, %d, %d)" % tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
 def theme_checks(contract, url):
@@ -75,9 +75,15 @@ def theme_checks(contract, url):
     l = c.get("light", {})
     ok = c.get("ok") and l.get("source") == "manifest" and l.get("rejected") == "headstash" and "url(" not in l.get("css", "x") and "red" not in l.get("css", "x") and l.get("body_bg") == rgb(MANIFEST_THEME["light"]["bg"])
     rd.step("v2_theme_malicious_rejected_in_page", bool(ok), "source %s rejected %s; %s" % (l.get("source"), l.get("rejected"), (c.get("log_rejects") or [""])[0][:140]))
-    for n in ("light", "dark"):  # canonical screenshot names
-        import shutil; s = os.path.join(SHOTS, "theme-headstash-%s.png" % n)
+    import shutil
+    for n in ("light", "dark"):  # canonical screenshot names; the landing in pure Azure Calcium (manifest default)
+        s = os.path.join(SHOTS, "theme-headstash-%s.png" % n)
         if os.path.exists(s): shutil.copyfile(s, os.path.join(SHOTS, "theme-%s.png" % n))
+        s = os.path.join(SHOTS, "theme-manifest-%s.png" % n)
+        if os.path.exists(s): shutil.copyfile(s, os.path.join(SHOTS, "azure-landing-%s.png" % n))
+    # the claim phases (and their screenshots) run on the manifest default: put Azure Calcium back on the headstash
+    res = tx("owner", 400000, "wasm", "execute", contract, json.dumps({"set_theme": {"theme": MANIFEST_THEME}}))
+    rd.step("v2_theme_reset_to_azure", res.get("code") == 0 and smart(contract, {"theme": {}}) == MANIFEST_THEME, res.get("raw_log", "")[:120])
 
 def raw_cid(digest):
     b = bytes([1, 0x55, 0x12, 32]) + digest
@@ -139,11 +145,30 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         a = browser("v2a", {"url": url, "key_hex": "%064x" % evm_priv, "evm_addr": "0x" + (evm_addr.hex() if isinstance(evm_addr, (bytes, bytearray)) else str(evm_addr).replace("0x", "")), "crypto": os.path.join(PAGE, "crypto.js"), "v2lib": os.path.join(PAGE, "v2lib.js"),
                             "tampered": tampered, "contract": contract, "out_derive": os.path.join(work, "notes-after-derive.json"), "out": nr, "shots": SHOTS})
         R["browser_v2a"] = keep(a, "log"); R["browser_v2a_log"] = a.get("log", "")[-6000:]
+        la = a.get("landing") or {}
+        rd.step("v2_landing_hides_claim_ui", a.get("loaded") is True and la.get("sheet_open") is False and la.get("visible") == [] and "none" in (a.get("hs_cur_before") or ""),
+                "sheet open %s; visible claim tools %s; selected '%s'" % (la.get("sheet_open"), la.get("visible"), a.get("hs_cur_before")))
+        sh = a.get("sheet") or {}
+        rd.step("v2_sheet_open_close_focus", sh.get("open") is True and sh.get("aria_modal") == "true" and sh.get("focus_in") is True and sh.get("tab_escapes") == 0 and sh.get("bottom") == 0
+                and sh.get("esc_closed") is True and sh.get("focus_back") is True and sh.get("close_btn_closed") is True and sh.get("focus_back_resume") is True and sh.get("anim") == "hs-up" and sh.get("anim_reduced") == "none",
+                json.dumps(sh)[:300])
+        exp = [("sections_open", {"eligibility": "current+open", "register": "locked", "save": "locked", "wallet": "locked", "claim": "locked"}),
+               ("sections_eligible", {"eligibility": "done", "register": "current+open", "save": "locked", "wallet": "locked", "claim": "locked"}),
+               ("sections_derived", {"eligibility": "done", "register": "current+open", "save": "done", "wallet": "locked", "claim": "locked"}),
+               ("sections_registered", {"eligibility": "done", "register": "done", "save": "done", "wallet": "current+open", "claim": "locked"})]
+        bad = [(k, a.get(k)) for k, v in exp if a.get(k) != v]
+        rd.step("v2_progressive_reveal", not bad, "open→eligible→derived→registered as expected" if not bad else json.dumps(bad)[:300])
+        def chain_priv():
+            rt = smart(contract, {"registration_tree": {}}); dc = smart(contract, {"direct_claim": {}})
+            return int(rt["count"]), int(dc["claimed"])
+        pa = a.get("privacy") or {}; cr, cc = chain_priv()
+        rd.step("v2_privacy_set_matches_chain_after_register", pa.get("registered") == str(cr) and pa.get("claimed") == str(cc) and pa.get("set") == str(cr - cc) and str(cr - cc) in (a.get("reg_privacy") or ""),
+                "page %s/%s/%s vs chain registered %d claimed %d; '%s'" % (pa.get("registered"), pa.get("claimed"), pa.get("set"), cr, cc, (a.get("reg_privacy") or "")[:120]))
         rd.step("v2_page_loaded_from_chain", a.get("loaded") is True, a.get("error", "") or "manifest v%s, %d ms" % (a.get("version"), a.get("load_ms", 0)))
         rd.step("v2_browse_instances_by_code_id", (a.get("instances") or 0) >= 1 and a.get("selected") == contract, "code %s: %s instance(s)" % (a.get("code_ids"), a.get("instances")))
         rd.step("v2_hal_fetched_and_verified", a.get("hal_state") == "ok" and a.get("hal_sha") == hal["sha256"], a.get("hal_text", "")[:200])
         rd.step("v2_hal_tampered_local_file_refused", a.get("hal_tamper_state") == "error" and a.get("hal_restored") == "ok", a.get("hal_tamper_err", "")[:200])
-        rd.step("v2_info_modal_every_step", a.get("modals_ok") == a.get("modals") and (a.get("modals") or 0) >= 9, "%s/%s" % (a.get("modals_ok"), a.get("modals")))
+        rd.step("v2_info_modal_every_step", a.get("modals_ok") == a.get("modals") and (a.get("modals") or 0) >= 10 and a.get("sheet_open_after_modals") is True, "%s/%s" % (a.get("modals_ok"), a.get("modals")))
         rd.step("v2_eligibility_local_via_eip1193", a.get("elig_notes") == len(notes["evm"]) and a.get("leak") == [], "notes %s; requests during lookup %d, carrying the address %s" % (a.get("elig_notes"), a.get("lookup_requests", -1), a.get("leak")))
         ok, nf = be.canon_ok(nr) if a.get("saved") else (False, {})
         st = [n["st"] for n in nf.get("notes", [])]
@@ -157,7 +182,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         res = tx("stranger", 5000000, "wasm", "execute", contract, json.dumps({"accept_anchor": {}}))
         rd.step("v2_accept_anchor", res.get("code") == 0, res.get("raw_log", "")[:120])
         c0 = be.bal(contract); bb0 = rf.b_balances(recv_b)
-        b = browser("v2b", {"url": url, "notes": nr, "recv_b": recv_b, "v2lib": os.path.join(PAGE, "v2lib.js"), "out": os.path.join(work, "notes-after-claim.json"), "shots": SHOTS,
+        b = browser("v2b", {"url": url, "contract": contract, "notes": nr, "recv_b": recv_b, "v2lib": os.path.join(PAGE, "v2lib.js"), "out": os.path.join(work, "notes-after-claim.json"), "shots": SHOTS,
                               "zafu_ext": os.environ.get("HSFE_ZAFU_EXT", "/tmp/zafu-ext/unpacked"), "zafu_profile": os.environ.get("HSFE_ZAFU_PROFILE", "/tmp/zafu-e2e/profile-onboarded"),
                               "zafu_pass": os.environ.get("HSFE_ZAFU_PASS", "hs-e2e-pass-1")})
         R["browser_v2b"] = keep(b, "log"); R["browser_v2b_log"] = b.get("log", "")[-8000:]
@@ -181,6 +206,13 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
         fbs = [n["fwd"]["fallback"] for n in fwd]; dsts = [n["dest"] for n in eph] + fbs + [n["fwd"]["receiver"] for n in fwd]
         rd.step("v2_all_destinations_distinct", len(dsts) == len(set(dsts)) and len(fbs) == 2, json.dumps(dsts)[:300])
         rd.step("v2_receiver_reuse_refused_locally", "already used" in (b.get("reuse_err") or ""), (b.get("reuse_err") or "")[:200])
+        g = b.get("gate") or {}
+        rd.step("v2_privacy_confirm_gate", g.get("small") == "true" and g.get("claim_disabled") is True and g.get("ack_visible") is True and "privacy set" in (g.get("forced_err") or "") and g.get("forced_posts") == []
+                and g.get("log_delta") == 0 and g.get("disabled_after") is True and g.get("enabled_after_ack") is True and g.get("relay_hidden") is True and b.get("claim_locked_before_dest") is True and b.get("claim_relocked_on_dest_change") is True,
+                "set %s < %s; forced: '%s'; posts %s; advice '%s'" % (g.get("set"), g.get("threshold"), (g.get("forced_err") or "")[:90], g.get("forced_posts"), (g.get("advice") or "")[:90]))
+        pe = b.get("privacy_end") or {}; cr, cc = chain_priv()
+        rd.step("v2_privacy_set_matches_chain_after_claims", pe.get("registered") == str(cr) and pe.get("claimed") == str(cc) and pe.get("set") == str(cr - cc) and cc >= 3,
+                "page %s/%s/%s vs chain registered %d claimed %d" % (pe.get("registered"), pe.get("claimed"), pe.get("set"), cr, cc))
         rd.step("v2_pending_forwards_cleared", rf.wait_for(lambda: len(smart(contract, {"pending_forwards": {}})) == 0, 90), "")
         R["prove_ms"] = [n.get("prove_ms") for n in spent]; R["escrow_delta"] = c0 - be.bal(contract)
     finally:
