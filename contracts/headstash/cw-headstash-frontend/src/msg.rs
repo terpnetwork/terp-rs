@@ -7,6 +7,9 @@ pub const MAX_CHUNKS_PER_FILE: usize = 512;
 /// wasmvm refuses storage values over 128 KiB ("Value too big ... limit is 131072"), measured on the local chain.
 pub const HARD_MAX_CHUNK: u32 = 128 * 1024;
 pub const MAX_PATH: usize = 64;
+/// Chunk slots visited per PruneVersion call when `limit` is omitted / the hard cap.
+pub const DEFAULT_PRUNE_LIMIT: u32 = 50;
+pub const MAX_PRUNE_LIMIT: u32 = 250;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -54,6 +57,26 @@ pub enum ExecuteMsg {
     UploadChunk { version: u32, file: u16, index: u32, data: Binary },
     /// Owner: point `current` at a complete version.
     SetCurrent { version: u32 },
+    /// Owner: delete one non-current version (chunks, then manifest + progress) in bounded
+    /// batches of at most `limit` chunk slots (default DEFAULT_PRUNE_LIMIT, cap MAX_PRUNE_LIMIT).
+    /// Resumes from the stored cursor on each call; once started, the version accepts no uploads.
+    PruneVersion { version: u32, limit: Option<u32> },
+}
+
+#[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct PruneStatusResponse {
+    pub version: u32,
+    /// "live" | "pruning" | "pruned" | "unknown"
+    pub state: String,
+    pub next_file: u16,
+    pub next_index: u32,
+    /// Chunk keys actually deleted so far.
+    pub removed: u32,
+    /// Chunk slots still to visit (0 once pruned).
+    pub remaining: u32,
 }
 
 #[cw_serde]
@@ -92,4 +115,6 @@ pub enum QueryMsg {
     Status { version: u32 },
     #[returns(VersionsResponse)]
     Versions { start_after: Option<u32>, limit: Option<u32> },
+    #[returns(PruneStatusResponse)]
+    PruneStatus { version: u32 },
 }

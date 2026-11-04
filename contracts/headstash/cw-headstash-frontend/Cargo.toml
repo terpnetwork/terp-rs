@@ -16,6 +16,7 @@ interface = ["dep:cw-orch", "dep:flate2", "dep:anyhow"]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw-ownable = { workspace = true }
+cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
 anyhow = { workspace = true, optional = true }
 cw-orch = { workspace = true, optional = true }

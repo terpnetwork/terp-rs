@@ -1,11 +1,11 @@
 //! cw-orch interface + release helper: gzip -> chunk -> publish -> upload -> verify.
-use crate::{execute, instantiate, msg::*, query};
+use crate::{execute, instantiate, migrate, msg::*, query};
 use cosmwasm_std::{Binary, Empty, HexBinary};
 use cw_orch::prelude::*;
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = "cw_headstash_frontend")]
+#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, id = "cw_headstash_frontend")]
 pub struct FrontendContract;
 
 impl<Chain: CwEnv> Uploadable for FrontendContract<Chain> {
@@ -13,7 +13,7 @@ impl<Chain: CwEnv> Uploadable for FrontendContract<Chain> {
         artifacts_dir_from_workspace!().find_wasm_path_from_crates_label("cw_headstash_frontend").unwrap()
     }
     fn wrapper() -> Box<dyn MockContract<Empty>> {
-        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query))
+        Box::new(ContractWrapper::new_with_empty(execute, instantiate, query).with_migrate(migrate))
     }
 }
 

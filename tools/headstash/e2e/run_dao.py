@@ -27,6 +27,7 @@ from run import R, log, step, save, b64, h2b64, terpd, q, height, tx, attr, smar
 DAO_WASM = os.environ.get("DAO_WASM_DIR", "/tmp/hsdao/wasm")
 DAO_SHA = {"core": "9cac5bcc", "single": "601d91b5", "prepropose": "2c87d60c", "voting": "84e520f8", "group": "3b194aac"}
 FE_WASM = os.environ.get("FE_WASM", "")
+FE_V2_WASM = os.environ.get("FE_V2_WASM", "")  # new cw-headstash-frontend build: migrate + prune e2e after fe_prop
 GOV = d.GOV
 TOKENS = ("terpy", "thioly")
 NULL_ADMIN = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw"  # bech32 of 20 zero bytes; empty new_admin fails ValidateBasic
@@ -246,6 +247,77 @@ def fe_prop(D, inst):
     finally:
         srv.shutdown()
 
+def fe_v2_prune(D, inst):
+    """Frontend v2 (requirement 11): the v1 frontend (code 106 bytes, no cw2) instantiated by fe_prop is migrated to
+    FE_V2_WASM, v2 is published + uploaded, made current, and v1 is pruned in bounded batches through DAO proposals
+    (the DAO is admin and owner). Checks: legacy migrate, refusals, resume across calls, raw keys gone, v2 still served."""
+    import render_frontend_prop as rf, struct
+    fe = R.get("fe_prop", {}).get("predicted"); DAO = D["core"]
+    if not fe: step("fe_v2_has_v1_frontend", False, "fe_prop did not run"); return
+    v2sha = hashlib.sha256(open(FE_V2_WASM, "rb").read()).hexdigest()
+    res, c2 = store("proposer", FE_V2_WASM, 120000000)
+    step("fe_v2_store_code", res.get("code") == 0 and bool(c2), "code %s sha %s" % (c2, v2sha[:16]))
+    R["fe_v2"] = {"code_id": c2, "sha256": v2sha}
+    def raw(key):
+        r = get("/cosmwasm/wasm/v1/contract/%s/raw/%s" % (fe, base64.b64encode(key).decode()))
+        return r.get("data")
+    def ns(name, k): return struct.pack(">H", len(name)) + name.encode() + k
+    def ck(v, f, i): return b"c" + struct.pack(">IHI", v, f, i)
+    m1 = smart(fe, {"manifest": {"version": 1}}); n1 = sum(len(f["chunks"]) for f in m1["files"])
+    step("fe_v2_v1_has_no_cw2", not raw(b"contract_info"), "raw contract_info empty on code 106")
+    # only the admin (DAO) may migrate
+    d.neg("fe_v2_migrate_by_non_admin_refused", tx("owner", 3000000, "wasm", "migrate", fe, c2, "{}"))
+    ex, pid, st = dao_run(D, "fe_v2_migrate", "Frontend: migrate to v2 (prunable)", [{"wasm": {"migrate": {"contract_addr": fe, "new_code_id": int(c2), "msg": b64(b"{}")}}}])
+    ci = q("wasm", "contract", fe); ci = ci.get("contract_info", ci)
+    cw2 = raw(b"contract_info"); cw2 = json.loads(base64.b64decode(cw2)) if cw2 else {}
+    step("fe_v2_migrated_from_v1_no_cw2", st == "executed" and str(ci.get("code_id")) == str(c2) and cw2.get("contract") == "crates.io:cw-headstash-frontend",
+         "prop %s %s code %s cw2 %s" % (pid, st, ci.get("code_id"), cw2))
+    step("fe_v2_v1_state_kept_after_migrate", smart(fe, {"config": {}}).get("current") == 1 and smart(fe, {"manifest": {}}) == m1
+         and smart(fe, {"prune_status": {"version": 1}}).get("state") == "live", "current 1, manifest identical")
+    # publish v2 (same bundle, version 2, activate false) and upload it with mainnet_deploy chunk-upload
+    m, chunks, fs = rf.bundle(rf.DEFAULT_PAGE, os.environ.get("HSFE_PROVER_DIR", "/tmp/hsfe/prover"))
+    m2 = dict(m, version=2, activate=False, note="headstash claim page v2")
+    ex, pid, st = dao_run(D, "fe_v2_publish", "Frontend: publish v2", [wasm_exec(fe, {"publish_manifest": {"manifest": m2}})])
+    step("fe_v2_published", st == "executed", "prop %s %s" % (pid, st))
+    plan = rf.chunk_plan(fe, m2, chunks); cf = os.path.join(RUN, "fe.v2.chunks.json"); json.dump(plan, open(cf, "w"))
+    pu = kms("dao_m3", "chunk-upload", D, "fe-v2", "--chunks-file", cf, "--chunks-sha", hashlib.sha256(open(cf, "rb").read()).hexdigest(), "--frontend", fe)
+    s2 = smart(fe, {"status": {"version": 2}}); n2 = s2.get("total")
+    step("fe_v2_uploaded_not_auto_activated", pu.returncode == 0 and s2.get("complete") is True and smart(fe, {"config": {}}).get("current") == 1,
+         "%s %s" % (json.dumps(s2), (pu.stdout + pu.stderr)[-160:]))
+    # refuse to prune the current version (v1 is still current): proposal execution fails, nothing removed
+    ex, pid, st = dao_run(D, "fe_v2_prune_current", "Frontend: prune current (must fail)", [wasm_exec(fe, {"prune_version": {"version": 1, "limit": 5}})])
+    step("fe_v2_prune_current_refused", st != "executed" and smart(fe, {"prune_status": {"version": 1}}).get("state") == "live" and raw(ck(1, 0, 0)) is not None,
+         "prop %s %s" % (pid, st))
+    ex, pid, st = dao_run(D, "fe_v2_set_current", "Frontend: set current v2", [wasm_exec(fe, {"set_current": {"version": 2}})])
+    step("fe_v2_set_current", st == "executed" and smart(fe, {"config": {}}).get("current") == 2, "prop %s %s" % (pid, st))
+    # batch 1: one bounded call, cursor stored
+    lim = int(os.environ.get("FE_PRUNE_LIMIT", "4"))
+    ex, pid, st = dao_run(D, "fe_v2_prune_b1", "Frontend: prune v1 batch 1", [wasm_exec(fe, {"prune_version": {"version": 1, "limit": lim}})])
+    ps = smart(fe, {"prune_status": {"version": 1}})
+    step("fe_v2_prune_batch1_partial", st == "executed" and ps.get("state") == "pruning" and ps.get("removed") == min(lim, n1) and ps.get("remaining") == n1 - lim,
+         "%s (n1 %d)" % (json.dumps(ps), n1))
+    step("fe_v2_upload_to_pruning_version_refused", d.tx_fails(tx("owner", 3000000, "wasm", "execute", fe, json.dumps({"upload_chunk": {"version": 1, "file": 0, "index": 0, "data": b64(chunks[0][0])}}))) if hasattr(d, "tx_fails")
+         else tx("owner", 3000000, "wasm", "execute", fe, json.dumps({"upload_chunk": {"version": 1, "file": 0, "index": 0, "data": b64(chunks[0][0])}})).get("code") != 0, "being pruned")
+    # remaining batches: resume from the cursor, one bounded call per message
+    k = -(-(n1 - lim) // lim)
+    ex, pid, st = dao_run(D, "fe_v2_prune_rest", "Frontend: prune v1 remaining batches", [wasm_exec(fe, {"prune_version": {"version": 1, "limit": lim}})] * k)
+    ps = smart(fe, {"prune_status": {"version": 1}})
+    step("fe_v2_prune_resumed_to_completion", st == "executed" and ps.get("state") == "pruned" and ps.get("removed") == n1, "%d more calls: %s" % (k, json.dumps(ps)))
+    left = [(fi, ci_) for fi, f in enumerate(m1["files"]) for ci_ in range(len(f["chunks"])) if raw(ck(1, fi, ci_)) is not None]
+    meta = [n for n, key in (("manifest", ns("manifests", struct.pack(">I", 1))), ("progress", ns("progress", struct.pack(">I", 1))),
+                             ("pruning", ns("pruning", struct.pack(">I", 1)))) if raw(key) is not None]
+    step("fe_v2_v1_raw_keys_gone", not left and not meta and raw(ns("pruned", struct.pack(">I", 1))) is not None,
+         "%d/%d chunk keys left, meta left %s" % (len(left), n1, meta))
+    vs = smart(fe, {"versions": {}}).get("versions", [])
+    step("fe_v2_versions_only_v2", [v.get("version") for v in vs] == [2], json.dumps(vs)[:200])
+    mc = smart(fe, {"manifest": {}}); good = 0
+    for fi, cs in enumerate(chunks):
+        for ci_, c in enumerate(cs):
+            d_ = base64.b64decode(smart(fe, {"chunk": {"version": 2, "file": fi, "index": ci_}}))
+            good += hashlib.sha256(d_).hexdigest() == mc["files"][fi]["chunks"][ci_] and d_ == c
+    step("fe_v2_still_serves_v2", mc.get("version") == 2 and good == n2, "%d/%d v2 chunks hash-verified" % (good, n2))
+    R["fe_v2"].update({"v1_chunks": n1, "v2_chunks": n2, "prune_limit": lim, "prune_calls": 1 + k})
+
 def get(path):
     import urllib.request, urllib.error
     try: return json.loads(urllib.request.urlopen(REST + path, timeout=20).read())
@@ -459,6 +531,7 @@ def main():
         d.neg("%s_bind_before_circuit_refused" % t, tx("owner", 3000000, "wasm", "execute", c, json.dumps({"bind_note_circuit": {"zk_id": 1}})))
     if KMS_BIN and FE_WASM and os.environ.get("FE_PROP") == "1":
         fe_prop(D, inst); save()
+        if FE_V2_WASM: fe_v2_prune(D, inst); save()
         if os.environ.get("STOP_AFTER_FE") == "1": return
     if KMS_BIN and os.environ.get("KMS_GOV") == "1":
         kms_gov_circuit_and_bind(D, inst, TOKENS, PROPOSER, cdir); save(); return
