@@ -291,7 +291,6 @@ dao-voting-cw20-staked = { version = "=2.9.0-delta.9" }
 dao-voting-cw4 = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-roles = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-staked = { version = "=2.9.0-delta.9" }
-drand-verify = { version = "0.6.2", default-features = false }
 digest = { version = "0.10", default-features = false }
 dotenv = { package = "dotenvy", version = "0.15" }
 dregg = { path = "tools/svg-mint/crates/dregg" }

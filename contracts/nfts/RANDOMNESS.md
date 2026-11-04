@@ -36,6 +36,6 @@ raffle with `Callback { verifier: <beacon> }`. For a raffle ending at `end`,
 `Provide` answers with drand round `round_after(end)`: the first quicknet round
 published strictly after `end`, with randomness `sha256(signature)`. Until a
 relayer submits that round with `AddRound` (verified on chain with
-`drand-verify`), `RequestDraw` fails and can be retried. The quicknet e2e is
+the CosmWasm bls12_381 host functions), `RequestDraw` fails and can be retried. The quicknet e2e is
 `tests/tests/nftfi_flows.rs::raffle_draw_with_quicknet_beacon`.
 

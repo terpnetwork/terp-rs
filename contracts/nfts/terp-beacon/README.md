@@ -1,6 +1,6 @@
 # terp-beacon
 
-A CosmWasm drand beacon for Terp raffles. It verifies League of Entropy beacons in-contract and speaks the same request and callback JSON as nois-proxy, so a raffle contract can point `nois_proxy_addr` here without a code change.
+A CosmWasm drand beacon for Terp raffles. It verifies League of Entropy beacons on chain through the CosmWasm BLS12-381 host API (wasmvm 2.1+) and speaks the same request and callback JSON as nois-proxy, so a raffle contract can point `nois_proxy_addr` here without a code change.
 
 Randomness for a round is `sha256(drand_signature)`, the same derivation drand and nois use.
 
@@ -232,12 +232,14 @@ Job ids are at most 64 bytes. A second request with the same requester and job i
 | update_config | 26167 |
 | add_round (quicknet 33655511) | 20300 |
 
+Optimized wasm (`wasm-opt -Oz`): 433,907 bytes, sha256 `cd2084720a64a3d16edbb55cf84ebd62a087782da9c27aabddf61d909bcd7b16`.
+
 ## Attribution
 
 This contract is derived from, and stays wire-compatible with, the Nois contracts:
 
 - [noislabs/nois-contracts](https://github.com/noislabs/nois-contracts), in particular `nois-drand` (round verification and submission) and `nois-proxy` (the `GetNextRandomness` / `GetRandomnessAfter` request and `NoisReceive` callback JSON, `round_after`, and the 5 second safety margin).
-- [noislabs/drand-verify](https://github.com/noislabs/drand-verify) performs the BLS12-381 drand signature verification (`drand-verify` crate).
+- [noislabs/drand-verify](https://github.com/noislabs/drand-verify) is the reference for the verification rules (message `sha256(prev_sig || round_be)`, the RFC 9380 DSTs, and the pairing equations). The contract now calls `bls12_381_hash_to_g1/g2` and `bls12_381_pairing_equality` on the host instead of linking the crate.
 
 Both are Apache-2.0. Credit for the protocol design and verification code belongs to the Nois authors.
 

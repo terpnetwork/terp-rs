@@ -55,7 +55,7 @@ pub fn instantiate(
         prices,
         callback_gas_limit,
     };
-    ensure_pubkey(&config)?;
+    ensure_pubkey(deps.api, &config)?;
 
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -186,7 +186,7 @@ fn execute_add_round(
     reject_funds(&info)?;
     let config = CONFIG.load(deps.storage)?;
     let previous = resolve_previous_signature(deps.storage, &config, round, previous_signature)?;
-    let randomness = verify_round(&config, round, signature.as_slice(), &previous)?;
+    let randomness = verify_round(deps.api, &config, round, signature.as_slice(), &previous)?;
     let published = round_publish_time(config.genesis_time, config.period_seconds, round)?;
     let key = (BeaconSource::Drand.source_id(), round);
     if let Some(existing) = BEACONS.may_load(deps.storage, key)? {

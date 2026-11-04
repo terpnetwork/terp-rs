@@ -1,8 +1,26 @@
 use crate::error::ContractError;
 use crate::msg::DrandScheme;
 use crate::state::Config;
-use cosmwasm_std::{HexBinary, Timestamp};
-use drand_verify::{G1Pubkey, G2PubkeyRfc, Pubkey, derive_randomness};
+use cosmwasm_std::{
+    Api, BLS12_381_G1_GENERATOR, BLS12_381_G2_GENERATOR, HashFunction, HexBinary, Timestamp,
+};
+use sha2::{Digest, Sha256};
+
+/// RFC 9380 hash-to-G2 suite used by drand for G2 signatures (pedersen-bls-chained).
+/// Same constant as drand-verify `DOMAIN_HASH_TO_G2`.
+const DST_G2: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
+/// RFC 9380 hash-to-G1 suite used by drand for G1 signatures (bls-unchained-g1-rfc9380, quicknet).
+/// Same constant as drand-verify `DOMAIN_HASH_TO_G1`.
+const DST_G1: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_";
+
+/// drand beacon message: `sha256(previous_signature || round_be)`.
+/// Unchained schemes pass an empty `previous_signature`, giving `sha256(round_be)`.
+fn beacon_message(round: u64, previous_signature: &[u8]) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    hasher.update(previous_signature);
+    hasher.update(round.to_be_bytes());
+    hasher.finalize().into()
+}
 
 /// First round whose publish time is strictly after `after`.
 ///
@@ -54,29 +72,34 @@ pub fn round_publish_time(
     Ok(Timestamp::from_nanos(nanos))
 }
 
-pub fn ensure_pubkey(config: &Config) -> Result<(), ContractError> {
-    match config.scheme {
+/// Validates the configured public key with the host BLS API.
+///
+/// Aggregating a single point decodes it and checks curve and subgroup
+/// membership, so an invalid encoding is rejected at instantiate.
+pub fn ensure_pubkey(api: &dyn Api, config: &Config) -> Result<(), ContractError> {
+    let valid = match config.scheme {
         DrandScheme::PedersenBlsChained => {
-            let pk_bytes: [u8; 48] = config
-                .pubkey
-                .as_slice()
-                .try_into()
-                .map_err(|_| ContractError::InvalidPubkey)?;
-            G1Pubkey::from_fixed(pk_bytes).map_err(|_| ContractError::InvalidPubkey)?;
+            config.pubkey.len() == 48 && api.bls12_381_aggregate_g1(&config.pubkey).is_ok()
         }
         DrandScheme::BlsUnchainedG1Rfc9380 => {
-            let pk_bytes: [u8; 96] = config
-                .pubkey
-                .as_slice()
-                .try_into()
-                .map_err(|_| ContractError::InvalidPubkey)?;
-            G2PubkeyRfc::from_fixed(pk_bytes).map_err(|_| ContractError::InvalidPubkey)?;
+            config.pubkey.len() == 96 && api.bls12_381_aggregate_g2(&config.pubkey).is_ok()
         }
+    };
+    if !valid {
+        return Err(ContractError::InvalidPubkey);
     }
     Ok(())
 }
 
+/// Verifies a drand beacon with the host BLS12-381 API and returns
+/// `sha256(signature)` as the round randomness.
+///
+/// - pedersen-bls-chained (mainnet default): G1 pubkey, G2 signature,
+///   `e(g1, sig) == e(pk, H2(sha256(prev_sig || round_be)))`.
+/// - bls-unchained-g1-rfc9380 (quicknet): G2 pubkey, G1 signature,
+///   `e(sig, g2) == e(H1(sha256(round_be)), pk)`.
 pub fn verify_round(
+    api: &dyn Api,
     config: &Config,
     round: u64,
     signature: &[u8],
@@ -90,30 +113,49 @@ pub fn verify_round(
             if previous_signature.is_empty() {
                 return Err(ContractError::MissingPreviousSignature);
             }
-            let pk_bytes: [u8; 48] = config
-                .pubkey
-                .as_slice()
-                .try_into()
-                .map_err(|_| ContractError::InvalidPubkey)?;
-            let pk = G1Pubkey::from_fixed(pk_bytes).map_err(|_| ContractError::InvalidPubkey)?;
-            pk.verify(round, previous_signature, signature)
+            if config.pubkey.len() != 48 {
+                return Err(ContractError::InvalidPubkey);
+            }
+            if signature.len() != 96 {
+                return Err(ContractError::InvalidSignature);
+            }
+            let msg = beacon_message(round, previous_signature);
+            let msg_g2 = api
+                .bls12_381_hash_to_g2(HashFunction::Sha256, &msg, DST_G2)
+                .map_err(|_| ContractError::InvalidSignature)?;
+            api.bls12_381_pairing_equality(
+                &BLS12_381_G1_GENERATOR,
+                signature,
+                &config.pubkey,
+                &msg_g2,
+            )
         }
         DrandScheme::BlsUnchainedG1Rfc9380 => {
             if !previous_signature.is_empty() {
                 return Err(ContractError::UnexpectedPreviousSignature);
             }
-            let pk_bytes: [u8; 96] = config
-                .pubkey
-                .as_slice()
-                .try_into()
-                .map_err(|_| ContractError::InvalidPubkey)?;
-            let pk = G2PubkeyRfc::from_fixed(pk_bytes).map_err(|_| ContractError::InvalidPubkey)?;
-            pk.verify(round, b"", signature)
+            if config.pubkey.len() != 96 {
+                return Err(ContractError::InvalidPubkey);
+            }
+            if signature.len() != 48 {
+                return Err(ContractError::InvalidSignature);
+            }
+            let msg = beacon_message(round, b"");
+            let msg_g1 = api
+                .bls12_381_hash_to_g1(HashFunction::Sha256, &msg, DST_G1)
+                .map_err(|_| ContractError::InvalidSignature)?;
+            api.bls12_381_pairing_equality(
+                signature,
+                &BLS12_381_G2_GENERATOR,
+                &msg_g1,
+                &config.pubkey,
+            )
         }
     };
     match verified {
         Ok(true) => {}
         Ok(false) | Err(_) => return Err(ContractError::InvalidSignature),
     }
-    Ok(HexBinary::from(derive_randomness(signature)))
+    let randomness: [u8; 32] = Sha256::digest(signature).into();
+    Ok(HexBinary::from(randomness))
 }
