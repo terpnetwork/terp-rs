@@ -954,16 +954,16 @@ fn reply_rejects_unknown_ids() {
     let err = reply(
         deps.as_mut(),
         env_at(TEST_TIME),
-        #[allow(deprecated)]
         cosmwasm_std::Reply {
             id: 99,
             payload: Binary::default(),
             gas_used: 0,
-            result: cosmwasm_std::SubMsgResult::Ok(cosmwasm_std::SubMsgResponse {
-                events: vec![],
-                data: None,
-                msg_responses: vec![],
-            }),
+            // Built from JSON so the deprecated `data` field is left unset (None)
+            // without naming it.
+            result: cosmwasm_std::SubMsgResult::Ok(
+                cosmwasm_std::from_json(br#"{"events":[],"msg_responses":[]}"#)
+                    .expect("SubMsgResponse json"),
+            ),
         },
     )
     .unwrap_err();
