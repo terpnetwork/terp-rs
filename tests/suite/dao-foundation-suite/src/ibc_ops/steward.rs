@@ -838,7 +838,8 @@ mod tests {
 
     #[test]
     fn accounts_file_is_the_initial_member_of_each_dao() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../steward-accounts.json");
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/steward-accounts.json");
         let accounts = load_steward_accounts(&path).unwrap();
         let plan =
             build_steward_plan(&accounts, PARENT_CORE, &golden_checksum(), None, None).unwrap();
@@ -935,7 +936,8 @@ mod tests {
 
     #[test]
     fn tuned_plan_drops_terp_custody_juno_and_builds_juno_custody() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../steward-accounts.json");
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/steward-accounts.json");
         let accounts = load_steward_accounts(&path).unwrap();
         let gov = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq";
         let proxy = "juno1proxyproxyproxy";
