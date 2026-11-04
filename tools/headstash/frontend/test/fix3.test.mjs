@@ -68,6 +68,8 @@ test("fix3 filters: tokens from bank balances + denom, creators; filters combine
   assert.deepEqual(V.filterInstances(L, { tokens: ["factory/x/pine"], creators: ["c1"] }).map((i) => i.addr), ["c"]);
   const opts = V.filterOptions(L, "tokens"); assert.deepEqual(opts.map((o) => o.label), ["pine", "TERP"]); assert.equal(opts[0].n, 2);
   assert.deepEqual(V.searchOptions(opts, "pin").map((o) => o.value), ["factory/x/pine"]);
+  assert.match(js, /nullifer: \{ null: `0:\$\{n\.n\}` \}/); assert.match(js, /return ch \+ sp;/);
+  assert.match(js, /if \(gen !== browseGen\) return;/); assert.match(js, /tb\.replaceChildren\(\.\.\.rows\); all = acc;/);
   assert.match(js, /\/cosmos\/bank\/v1beta1\/balances\/\$\{a\}/); assert.match(js, /creator: ci\.creator/);
   assert.ok(html.includes('id="filter-dlg"') && html.includes('id="filter-q"') && /\.flist\{max-height:50vh;overflow:auto/.test(html));
 });

@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 let cfg, Z, STEPS, guard, state = null, inst = null, elig = null, who = null, rawKey = null, rewardW = null;
 // R13 sheet + progressive disclosure state; R13 privacy set
 let priv = null, saved = false, destOk = false, cur = null, opener = null; const expanded = new Set();
-let instScope = null, walletScope = null, all = [], chash = ""; const filt = { tokens: new Set(), creators: new Set() };
+let browseGen = 0, instScope = null, walletScope = null, all = [], chash = ""; const filt = { tokens: new Set(), creators: new Set() };
 const log = (...a) => { const l = $("log"); l.textContent += new Date().toISOString().slice(11, 19) + " " + a.join(" ") + "\n"; l.scrollTop = 1e9; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const errOut = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ""; if (e) log("ERROR", e.message || String(e)); };
@@ -101,7 +101,7 @@ function paramChips(i, root) {
 async function browse() {
   return guarded("inst-err", async () => {
     const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
-    const tb = $("inst-list").tBodies[0]; tb.replaceChildren(); let n = 0; all = [];
+    const tb = $("inst-list").tBodies[0], gen = ++browseGen, rows = [], acc = []; let n = 0;
     for (const code of codes) {
       let key = null;
       do {
@@ -116,12 +116,14 @@ async function browse() {
           const who_ = el("span", { className: "muted sub" }); if (i.creator) who_.append("by ", copyChip(i.creator));
           const tr = el("tr", {}, el("td", {}, el("b", { textContent: i.label || "(no label)" }), el("br"), copyChip(a), el("br"), who_), el("td", { textContent: String(code) }), i.error ? el("td", { textContent: i.error }) : el("td", {}, params), el("td", {}, btn));
           tr.dataset.addr = a; tr.dataset.creator = i.creator || ""; tr.dataset.tokens = (i.tokens || []).join(" ");
-          tb.append(tr); all.push({ addr: a, creator: i.creator, admin: i.admin, tokens: i.tokens || [], label: i.label, row: tr });
+          rows.push(tr); acc.push({ addr: a, creator: i.creator, admin: i.admin, tokens: i.tokens || [], label: i.label, row: tr });
           n++;
         }
         key = j.pagination && j.pagination.next_key;
       } while (key);
     }
+    if (gen !== browseGen) return; // a newer browse superseded this one (no duplicate rows or counts)
+    tb.replaceChildren(...rows); all = acc;
     // the page's default Headstash (loader HEADSTASH or ?hs=) is listed first
     const dr = defaultHs && [...tb.rows].find((r) => r.querySelector(`button[data-addr="${defaultHs}"]`));
     if (dr) { tb.prepend(dr); dr.dataset.default = "1"; dr.cells[0].append(el("br"), el("span", { className: "badge", textContent: "default" })); }
@@ -172,8 +174,16 @@ async function chainSync() {
   const nl = await smart({ note_list: { identity: state.identity } }).then((x) => x ?? null).catch((e) => { log("note_list query failed: " + e.message); return undefined; });
   if (nl === undefined) return 0;
   const ch = V.syncRegistered(state.notes, nl); state.chain_next = nl ? Number(nl.next) : 0;
+  // claimed status from the chain too: genesis root is root_id 0, keys are "{root_id}:{nullifier hex}"
+  let sp = 0;
+  for (const n of state.notes) {
+    if (n.st === "spent" || !n.n) continue;
+    const hit = await smart({ nullifer: { null: `0:${n.n}` } }).catch(() => false);
+    if (hit === true) { n.st = "spent"; sp++; }
+  }
+  if (sp) { log(`chain: ${sp} note(s) already claimed (nullifier spent); status taken from the chain`); markDirty("claimed"); }
   if (ch) { log(`chain: ${ch} note(s) already registered for ${state.identity.slice(0, 8)}… (note_list next=${nl.next}); status taken from the chain`); markDirty("registered"); }
-  return ch;
+  return ch + sp;
 }
 // ---- fix3: per-instance teardown so switching needs no reload ----
 function clearNotes() {
