@@ -14451,6 +14451,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "terp-beacon-e2e"
+version = "0.0.2"
+dependencies = [
+ "cw-orch",
+ "terp-orch",
+]
+
+[[package]]
 name = "terp-bls"
 version = "0.0.2"
 dependencies = [
@@ -14749,6 +14757,7 @@ dependencies = [
  "svg-auction",
  "terp-account",
  "terp-authenticator-suite",
+ "terp-beacon",
  "terp-bls",
  "terp-bounty-escrow",
  "terp-dao",
@@ -14902,6 +14911,7 @@ dependencies = [
  "terp-account",
  "terp-auth",
  "terp-authenticator-suite",
+ "terp-beacon",
  "terp-bounty-escrow",
  "terp-orch",
  "terp-rs",

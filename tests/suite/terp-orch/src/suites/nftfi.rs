@@ -1,7 +1,12 @@
-//! Loan, raffle, and one cw721-svg collection, deployed together.
+//! Loan, raffle, drand beacon, and one cw721-svg collection, deployed together.
 //!
 //! `terp_orch::TerpArtifactStack` carries the same contracts on
-//! `products.loan`, `products.raffle`, and `infuser.svg`.
+//! `products.loan`, `products.raffle`, `products.terp_beacon`, and `infuser.svg`.
+//!
+//! [`NftfiSuite::deploy_on`] instantiates `terp-beacon` first and points the
+//! raffle at it with `RandomnessSourceMsg::Callback { verifier: beacon }`.
+//! `RequestDraw` then calls the beacon `Provide` entrypoint, which answers
+//! with the first drand round published after the raffle end.
 //!
 //! Scripts and end-to-end tests call [`NftfiSuite::deploy_on`]. The collection
 //! is a [`nftfi_utils::svg::SvgDrop`], so a caller defines the template instead
@@ -13,6 +18,8 @@ use cw721_svg::Cw721SvgContractSuite;
 use nftfi_loan::NftfiLoan;
 use nftfi_raffle::NftfiRaffle;
 use nftfi_utils::svg::SvgDrop;
+use terp_beacon::TerpBeacon;
+use terp_beacon::msg::InstantiateMsg as BeaconInstantiateMsg;
 
 #[derive(Clone)]
 pub struct NftfiDeployData {
@@ -24,6 +31,8 @@ pub struct NftfiDeployData {
     pub loan_fee: Decimal,
     pub creation_coins: Option<Vec<Coin>>,
     pub listing_fee_coins: Option<Vec<Coin>>,
+    /// Beacon instantiate message. `admin` is replaced by [`Self::admin`].
+    pub beacon: BeaconInstantiateMsg,
 }
 
 impl NftfiDeployData {
@@ -39,6 +48,7 @@ impl NftfiDeployData {
             loan_fee: Decimal::percent(10),
             creation_coins: Some(vec![coin(100, "uterp")]),
             listing_fee_coins: Some(vec![coin(50, "uterp")]),
+            beacon: terp_beacon::networks::QUICKNET.instantiate_msg("", vec![], 0),
         }
     }
 }
@@ -47,6 +57,7 @@ pub struct NftfiSuite<Chain> {
     pub chain: Chain,
     pub loan: NftfiLoan<Chain>,
     pub raffle: NftfiRaffle<Chain>,
+    pub beacon: TerpBeacon<Chain>,
     pub collection: Cw721SvgContractSuite<Chain>,
 }
 
@@ -56,6 +67,7 @@ impl<Chain: CwEnv> NftfiSuite<Chain> {
             chain: chain.clone(),
             loan: NftfiLoan::new(chain.clone()),
             raffle: NftfiRaffle::new(chain.clone()),
+            beacon: TerpBeacon::new(chain.clone()),
             collection: Cw721SvgContractSuite::new(chain),
         }
     }
@@ -70,6 +82,7 @@ impl<Chain: CwEnv> Deploy<Chain> for NftfiSuite<Chain> {
         suite.collection.upload()?;
         suite.loan.upload()?;
         suite.raffle.upload()?;
+        suite.beacon.upload()?;
         Ok(suite)
     }
 
@@ -78,6 +91,7 @@ impl<Chain: CwEnv> Deploy<Chain> for NftfiSuite<Chain> {
             Box::new(&mut self.collection),
             Box::new(&mut self.loan),
             Box::new(&mut self.raffle),
+            Box::new(&mut self.beacon),
         ]
     }
 
@@ -89,10 +103,13 @@ impl<Chain: CwEnv> Deploy<Chain> for NftfiSuite<Chain> {
         let suite = Self::store_on(chain)?;
         let admin = &data.admin;
         suite.collection.instantiate(
-            &data.collection.instantiate_msg(&admin.to_string()),
+            &data.collection.instantiate_msg(admin.as_str()),
             Some(admin),
             &[],
         )?;
+        let mut beacon_msg = data.beacon;
+        beacon_msg.admin = admin.to_string();
+        suite.beacon.instantiate(&beacon_msg, Some(admin), &[])?;
         suite.raffle.instantiate(
             &nftfi_raffle::InstantiateMsg {
                 name: format!("{} raffle", data.collection.name),
@@ -103,7 +120,9 @@ impl<Chain: CwEnv> Deploy<Chain> for NftfiSuite<Chain> {
                 raffle_fee: data.raffle_fee,
                 oracle_pricing: None,
                 creation_coins: data.creation_coins,
-                randomness: nftfi_randomness::RandomnessSourceMsg::Seed { provider: None },
+                randomness: nftfi_randomness::RandomnessSourceMsg::Callback {
+                    verifier: suite.beacon.address()?.to_string(),
+                },
             },
             Some(admin),
             &[],

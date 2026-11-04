@@ -45,6 +45,7 @@ orch-suite = [
     "dep:nftfi-raffle",
     "dep:nftfi-randomness",
     "dep:nftfi-utils",
+    "dep:terp-beacon",
     "dep:rs_merkle",
     "dep:terp-account",
     "dep:terp-bounty-escrow",
@@ -102,6 +103,7 @@ nftfi-loan = { workspace = true, optional = true, features = ["interface"] }
 nftfi-raffle = { workspace = true, optional = true, features = ["interface"] }
 nftfi-randomness = { workspace = true, optional = true }
 nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
+terp-beacon = { workspace = true, optional = true, features = ["interface", "fixtures"] }
 prost = { workspace = true, features = ["std"] }
 prost-types = { workspace = true }
 rand = "0.8"

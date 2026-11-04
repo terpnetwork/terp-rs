@@ -19,10 +19,10 @@
 use cw_orch::prelude::*;
 use terp_orch::TerpArtifactStack;
 
-/// verify + private-dex + 6 authenticators + 6 accounts + 4 light clients + 24 instantiated products.
+/// verify + private-dex + 6 authenticators + 6 accounts + 4 light clients + 25 instantiated products (terp-beacon included).
 /// cw-norick is uploaded in the same deploy and checked by code id; its instantiate
 /// message is tokenfactory MsgCreateDenom, which the mock router does not execute.
-const ARTIFACTS: usize = 42;
+const ARTIFACTS: usize = 43;
 
 fn assert_bound<Chain: CwEnv>(
     stack: &TerpArtifactStack<Chain>,

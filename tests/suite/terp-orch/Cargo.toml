@@ -103,6 +103,7 @@ stack = [
     "dep:nftfi-raffle",
     "dep:nftfi-randomness",
     "dep:nftfi-loan",
+    "dep:terp-beacon",
     "dep:revenue-marketplace",
     "dep:revenue-reserve-auction",
     "dep:terp-bounty-escrow",
@@ -198,6 +199,7 @@ nftfi-loan = { workspace = true, optional = true, features = ["library", "interf
 nftfi-raffle = { workspace = true, optional = true, features = ["library", "interface"] }
 nftfi-randomness = { workspace = true, optional = true }
 nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
+terp-beacon = { workspace = true, optional = true, features = ["library", "interface"] }
 ownership-verifier = { workspace = true, optional = true }
 polytone-any-proxy = { workspace = true, optional = true, features = ["library"] }
 rand = { version = "0.10", optional = true, features = ["std", "sys_rng"] }
