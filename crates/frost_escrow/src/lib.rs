@@ -82,38 +82,52 @@ pub fn verify_encoded(pk: &[u8], digest: &[u8], sig: &[u8]) -> Result<()> {
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn spend_package_from_release(
-    escrow_addr: impl Into<String>,
-    dest_display: impl Into<String>,
-    owner_binding: impl AsRef<[u8]>,
-    amount_zat: impl Into<u128>,
-    fee_zat: impl Into<u64>,
-    burn_nullifier: impl AsRef<[u8]>,
-    asset_id: impl AsRef<[u8]>,
-    object_a_sig_hex: impl Into<String>,
-) -> ZcashSpendPackageV0 {
+/// Released-burn inputs for [`spend_package_from_release`]. Byte fields longer
+/// than 32 bytes are truncated; shorter ones are zero-padded.
+#[derive(Clone, Debug)]
+pub struct ReleaseSpend<'a> {
+    pub escrow_addr: String,
+    pub dest_display: String,
+    pub owner_binding: &'a [u8],
+    pub amount_zat: u128,
+    pub fee_zat: u64,
+    pub burn_nullifier: &'a [u8],
+    pub asset_id: &'a [u8],
+    pub object_a_sig_hex: String,
+}
+
+pub fn spend_package_from_release(release: ReleaseSpend<'_>) -> ZcashSpendPackageV0 {
+    let ReleaseSpend {
+        escrow_addr,
+        dest_display,
+        owner_binding,
+        amount_zat,
+        fee_zat,
+        burn_nullifier,
+        asset_id,
+        object_a_sig_hex,
+    } = release;
     let mut dest = [0u8; 32];
-    let ob = owner_binding.as_ref();
+    let ob = owner_binding;
     let n = ob.len().min(32);
     dest[..n].copy_from_slice(&ob[..n]);
     let mut null = [0u8; 32];
-    let bn = burn_nullifier.as_ref();
+    let bn = burn_nullifier;
     let n2 = bn.len().min(32);
     null[..n2].copy_from_slice(&bn[..n2]);
     let mut aid = [0u8; 32];
-    let a = asset_id.as_ref();
+    let a = asset_id;
     let n3 = a.len().min(32);
     aid[..n3].copy_from_slice(&a[..n3]);
     ZcashSpendPackageV0 {
-        escrow_addr: escrow_addr.into(),
-        dest_display: dest_display.into(),
+        escrow_addr,
+        dest_display,
         dest_commitment: dest,
-        amount_zat: amount_zat.into() as u64,
-        fee_zat: fee_zat.into(),
+        amount_zat: amount_zat as u64,
+        fee_zat,
         burn_nullifier: null,
         asset_id: aid,
-        object_a_sig_hex: object_a_sig_hex.into(),
+        object_a_sig_hex,
         raw: vec![],
     }
 }
