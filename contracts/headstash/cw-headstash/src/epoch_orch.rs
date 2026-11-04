@@ -91,6 +91,35 @@ fn wasm_sudo(
 mod tests {
     use super::*;
 
+    /// v0.0.1 (no `legacy` feature) compiles the epoch-batch path and sudo out on purpose
+    /// (b9a91aa); the mainnet surface must refuse both.
+    #[cfg(not(feature = "legacy"))]
+    #[test]
+    fn v001_build_refuses_sudo_and_epoch_batches() {
+        let mock = Mock::new("creator");
+        let dest = MockApi::default().addr_make("dest");
+        let hs = deploy(&mock);
+        let addr = hs.address().expect("addr");
+        let err = wasm_sudo(&mock, &addr, &sudo_msg(ALGO_ACCEPTED, &[9u8; 32], 2)).unwrap_err();
+        assert!(err.contains(crate::DISABLED_IN_BUILD), "{err}");
+        let err = hs
+            .execute(
+                &ExecuteMsg::ApplyAcceptedBatch {
+                    allocation_root: Binary::from(vec![0u8; 32]),
+                    root_id: 0,
+                    rows: vec![payout(1, dest.as_str(), 15)],
+                    vk_hash: Binary::default(),
+                },
+                &[],
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains(crate::DISABLED_IN_BUILD), "{err}");
+        assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
+    }
+
+    /// The epoch-batch flow only exists in the `legacy` build (b9a91aa); run it there.
+    #[cfg(feature = "legacy")]
     #[test]
     fn mock_chain_pays_once_and_keeps_the_paths_apart() {
         let mock = Mock::new("creator");
