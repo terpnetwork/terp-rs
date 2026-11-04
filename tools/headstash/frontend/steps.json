@@ -15,7 +15,7 @@
   "title": "3. Check eligibility with MetaMask",
   "what": "Asks MetaMask for your address only and looks it up in the verified set, inside this browser.",
   "reveals": "Nothing leaves the browser: no server is asked whether you are eligible.",
-  "risks": "The advanced raw-key option handles a private key in page memory; prefer MetaMask."
+  "risks": "None for the MetaMask path: only your address is read. The raw-key fallback lives under Advanced with its own i button."
  },
  "reward": {
   "title": "4. Reward address",
@@ -58,5 +58,23 @@
   "what": "Shows how many registered notes are still unclaimed, read from the contract (registration_tree.count minus direct_claim.claimed). Your claim is indistinguishable among those notes, so a larger set means better privacy. When it is below the suggested minimum the page recommends waiting and asks you to confirm before claiming.",
   "reveals": "Nothing about you: two public contract queries, the same for every visitor.",
   "risks": "Claiming while the set is small makes it easier to link your claim to your registration by timing. Waiting costs nothing except time. A future delayed-claim relay will be offered here; none exists in this version."
+ },
+ "rawkey": {
+  "title": "Advanced: raw EVM private key",
+  "what": "Fallback for wallets whose signatures are not deterministic. The page derives note secrets from the key (HKDF info terp-hs-note-secret-v1) and signs the registration message locally, instead of asking MetaMask. The key is only needed until registration: claims use the note secrets in your notes file, never the EVM key.",
+  "reveals": "Nothing is sent: the key stays in page memory and is wiped after use. The chain sees the same registration as the MetaMask path.",
+  "risks": "Pasting a private key into any web page is dangerous: a malicious build, extension or screen recorder can steal it. Prefer MetaMask. If you use this, move funds off that key afterwards."
+ },
+ "notesfile": {
+  "title": "Load a notes file",
+  "what": "Re-opens notes you derived earlier (on any device) so you can continue: register, check anchors or claim. Encrypted files need the passphrase you set.",
+  "reveals": "Nothing leaves the browser: the file is read and decrypted locally.",
+  "risks": "The notes file holds your claim secrets. Anyone with the file (and passphrase) can claim your notes."
+ },
+ "passphrase": {
+  "title": "Notes file passphrase",
+  "what": "Encrypts the downloaded notes file so a copy on disk is not enough to claim.",
+  "reveals": "Nothing: encryption happens in the browser.",
+  "risks": "If you forget the passphrase the file cannot be opened; MetaMask users can re-derive notes by signing the seed message again."
  }
 }

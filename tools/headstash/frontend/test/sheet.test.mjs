@@ -22,15 +22,23 @@ test("sheet is an accessible modal bottom sheet", () => {
   assert.match(js, /\$\("hs-sheet"\)\.showModal\(\)|d\.showModal\(\)/);           // native modal: focus containment + Esc
   assert.match(html, /@media \(max-width:600px\)/);
 });
-test("components in flow order, each with toggle, collapsed body, and info buttons in the always-visible header", () => {
+test("components in flow order, each with toggle and collapsed body; info buttons inline beside their fields", () => {
   const secs = [...sheet.matchAll(/<section class="comp" id="sec-([a-z]+)" data-sec="\1" data-status="locked">/g)].map((m) => m[1]);
   assert.deepEqual(secs, ["eligibility", "register", "save", "wallet", "claim"]);
   for (const s of secs) {
     assert.ok(sheet.includes(`id="sec-${s}-toggle" aria-controls="sec-${s}-body" aria-expanded="false"`), s);
     assert.ok(sheet.includes(`<div class="comp-body" id="sec-${s}-body" hidden>`), s);
   }
-  const heads = [...sheet.matchAll(/<div class="comp-head">(.*?)<\/div>/g)].map((m) => [...m[1].matchAll(/data-info="([a-z]+)"/g)].map((x) => x[1]));
-  assert.deepEqual(heads, [["hal", "eligibility"], ["reward", "register"], ["export"], ["destination"], ["anchor", "privacy", "claim"]]);
+  // info buttons sit inline beside the field they explain: none left bunched in the component headers
+  const heads = [...sheet.matchAll(/<div class="comp-head">(.*?)<\/div>/g)].map((m) => [...m[1].matchAll(/data-info="([a-z]+)"/g)].length);
+  assert.deepEqual(heads, [0, 0, 0, 0, 0]);
+  const bodyOf = (s) => { const i = sheet.indexOf(`<div class="comp-body" id="sec-${s}-body"`); return sheet.slice(i, sheet.indexOf("</section>", i)); };
+  const inl = { eligibility: ["hal", "eligibility", "rawkey", "notesfile"], register: ["reward", "passphrase", "register"], save: ["export"], wallet: ["destination"], claim: ["anchor", "privacy", "claim"] };
+  for (const [s, ids] of Object.entries(inl)) assert.deepEqual([...bodyOf(s).matchAll(/data-info="([a-z]+)"/g)].map((x) => x[1]), ids, s);
+  // each one is adjacent to its field: inside the heading, legend, label or button row it explains
+  for (const [ctx, id] of [["<h3>Eligibility set (HAL) ", "hal"], ["<h3>Check your address", "eligibility"], ["<legend>Reward address ", "reward"], ['<label for="pass">', "passphrase"], ['<button id="register" disabled>Register notes</button>', "register"], ["<legend>Claim to ", "destination"], ['<button id="anchor-check">', "anchor"], ['<h3 id="privacy-h">', "privacy"], ['<button id="claim" disabled>Claim</button>', "claim"]]) {
+    const i = sheet.indexOf(ctx); assert.ok(i >= 0, ctx); assert.ok(sheet.slice(i, i + 260).includes(`data-info="${id}"`), id);
+  }
 });
 test("privacy set = registered − claimed from registration_tree + direct_claim", () => {
   const p = V.privacySet({ count: 43, min_anonymity_set: 2, latest_anchor: { root: "x", leaf_count: 40 } }, { claimed: 3 });
@@ -62,4 +70,18 @@ test("Azure Calcium is the default theme and matches frontend/themes/azure-calci
   const f = JSON.parse(readFileSync(new URL("../themes/azure-calcium.json", import.meta.url), "utf8"));
   assert.equal(f.name, "Azure Calcium"); assert.deepEqual(f.theme, JSON.parse(JSON.stringify(V.AZURE_CALCIUM)));
   assert.equal(V.AZURE_CALCIUM.light.bg, "#EFF7FF"); assert.equal(V.AZURE_CALCIUM.dark.accent, "#76BBFC");
+});
+test("raw EVM key lives only under a collapsed Advanced disclosure with a strong warning", () => {
+  const i = sheet.indexOf('<details id="adv-rawkey" class="adv">'); assert.ok(i > 0); const d = sheet.slice(i, sheet.indexOf("</details>", i));
+  assert.ok(!/<details id="adv-rawkey"[^>]*\bopen\b/.test(sheet), "collapsed by default");
+  assert.match(d, /<summary>Advanced<\/summary>/); assert.match(d, /class="danger" role="note"><b>Warning: do not paste a private key/);
+  for (const id of ['id="key"', 'id="key-use"', 'data-info="rawkey"']) assert.ok(d.includes(id), id);
+  assert.equal(sheet.split('id="key"').length, 2, "single key input");
+});
+test("system font stack, monospace for addresses, tabular numbers, 44px targets, no external fonts, colours only via --hs-*", () => {
+  assert.ok(html.includes('--hs-sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif'));
+  assert.ok(html.includes("--hs-mono:ui-monospace,SFMono-Regular,Menlo,monospace") && html.includes("font-variant-numeric:tabular-nums"));
+  assert.match(html, /button\{[^}]*min-height:44px/); assert.match(html, /input,select\{[^}]*min-height:44px/); assert.match(html, /button\.info::after\{content:"";position:absolute;inset:-8px\}/);
+  assert.ok(!/@import|@font-face|url\(\s*["']?https?:/i.test(html), "no external fetch");
+  const css = html.slice(0, html.indexOf("</style>")); assert.deepEqual(css.match(/#[0-9a-f]{3,8}\b(?![-\w])/gi) || [], [], "colours only via --hs-*");
 });

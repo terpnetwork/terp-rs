@@ -56,6 +56,7 @@ async function instanceInfo(a) {
   const [pause, hal, ch, camp] = await Promise.all([{ pause_status: {} }, { hal_source: {} }, { forward_channels: {} }, { epoch_campaign: {} }].map((q) => smartAt(a, q).catch(() => undefined)));
   return { addr: a, label: ci.label, admin: ci.admin, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp };
 }
+let defaultHs = null;
 async function browse() {
   return guarded("inst-err", async () => {
     const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
@@ -77,6 +78,9 @@ async function browse() {
         key = j.pagination && j.pagination.next_key;
       } while (key);
     }
+    // the page's default Headstash (loader HEADSTASH or ?hs=) is listed first
+    const dr = defaultHs && [...tb.rows].find((r) => r.querySelector(`button[data-addr="${defaultHs}"]`));
+    if (dr) { tb.prepend(dr); dr.dataset.default = "1"; dr.cells[0].append(el("br"), el("span", { className: "badge", textContent: "default" })); }
     $("inst-list").dataset.count = n; log(`listed ${n} instance(s) for code ${codes.join(",")}`);
   });
 }
@@ -520,6 +524,7 @@ export async function start({ files, manifest, config, urls }) {
   let codes = qp.get("code");
   if (!codes) codes = await lcd(`/cosmwasm/wasm/v1/contract/${hs || cfg.headstash}`).then((j) => j.contract_info.code_id).catch(() => "");
   if (hs) cfg.headstash = checkTerp(hs);
+  defaultHs = cfg.headstash;
   $("code-ids").value = codes || ""; $("hs-cur").textContent = "none yet (open one below)";
   themeCands.headstash = await smart({ theme: {} }).catch(() => null); themeApply(); // the default instance's theme styles the landing view
   await rewardChange();
