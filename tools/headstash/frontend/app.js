@@ -685,6 +685,7 @@ function bridgeKv(pick) {
 }
 async function bridgeShow(mode) {
   const b = $("bridge"), n = inst ? inst.channels.length : 0; b.hidden = false; b.dataset.mode = mode;
+  expanded.add("claim"); flow(); // the claim step is done now; keep it open so the suggestion is visible
   let pick = null; try { pick = await zafuDetect(); } catch (e) { log("Penumbra wallet detection failed: " + e.message); }
   b.dataset.wallet = pick ? "found" : "missing";
   $("zafu-install").hidden = !!pick; $("bridge-recheck").hidden = !!pick; $("bridge-addr").hidden = !pick;
@@ -694,7 +695,7 @@ async function bridgeShow(mode) {
   $("bridge-reason").textContent = (!pick ? "No Penumbra wallet was detected in this browser. Install Zafu, then reload this page or check again. " : "") +
     (n ? `This Headstash allowlists ${inst.channels[0].channel_id}: future claims can forward straight to Penumbra (step 4, "Forward to Penumbra").` :
       "This page cannot send the IBC transfer for you: this Headstash's contract allowlists no IBC channel (forward_channels is empty). Generate the address here, then send from your claim account with an IBC transfer in a Terp wallet that holds the exported claim key (step 3, Export claim account keys).");
-  bridgeKv(pick);
+  bridgeKv(pick); b.scrollIntoView({ block: "nearest" });
 }
 async function bridgeNewAddr() {
   return guarded("bridge-err", async () => { bridgeAddr = await zafuAddress("bridge"); bridgeKv(await zafuDetect()); log(`fresh Penumbra deposit address ${bridgeAddr.slice(0, 24)}…`); });

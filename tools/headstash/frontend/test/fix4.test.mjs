@@ -60,7 +60,7 @@ test("fix4 post-claim bridge panel: wallet detect, install link when absent, rea
   assert.match(b, /<a id="zafu-install" class="btn" href="https:\/\/zafu\.pro" target="_blank" rel="noopener noreferrer" hidden>/);
   assert.match(js, /if \(done\) \{ markDirty\("claimed"\); await bridgeShow\(mode\); \}/);
   const bs = js.slice(js.indexOf("async function bridgeShow"), js.indexOf("async function bridgeNewAddr"));
-  assert.match(bs, /zafuDetect\(\)/); assert.match(bs, /\$\("zafu-install"\)\.hidden = !!pick/); assert.match(bs, /forward_channels is empty/);
+  assert.match(bs, /zafuDetect\(\)/); assert.match(bs, /expanded\.add\("claim"\); flow\(\);/); assert.match(bs, /\$\("zafu-install"\)\.hidden = !!pick/); assert.match(bs, /forward_channels is empty/);
   assert.match(js, /bridgeAddr = await zafuAddress\("bridge"\)/);
   const za = js.slice(js.indexOf("async function zafuAddress"), js.indexOf("async function receiverFor"));
   assert.match(za, /book\.allocate\(/); assert.match(za, /guard\.check\(a\.address, owner\)/); assert.match(za, /book\.record\(/);

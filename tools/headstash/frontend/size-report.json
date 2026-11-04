@@ -16,14 +16,14 @@
     },
     {
       "path": "app.js",
-      "raw": 68843,
-      "gzip": 22486,
-      "brotli": 19800,
+      "raw": 68989,
+      "gzip": 22565,
+      "brotli": 19860,
       "chunks": 1,
       "chunk_sizes": [
-        22486
+        22565
       ],
-      "sha256": "2e2cc8484b6985a16f6b047bd0eb1d5282575f8e8295912f00609411fa3fd25b"
+      "sha256": "081432a7c7d5eba05fe0c9fa23508f47d34b6e648ff976aeca51fb692735a781"
     },
     {
       "path": "crypto.js",
@@ -98,9 +98,9 @@
   ],
   "total": {
     "files": 8,
-    "raw": 2336946,
-    "gzip": 741607,
-    "brotli": 546207,
+    "raw": 2337092,
+    "gzip": 741686,
+    "brotli": 546267,
     "chunks": 12
   }
 }
