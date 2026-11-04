@@ -279,3 +279,82 @@ fn migrate_from_v1_state_and_version_guards() {
     let mut empty = mock_dependencies();
     assert!(migrate(empty.as_mut(), mock_env(), MigrateMsg {}, mi).unwrap_err().to_string().contains("not a cw-headstash-frontend v1 state"));
 }
+
+fn kl_pub(deps: &mut cosmwasm_std::OwnedDeps<cosmwasm_std::testing::MockStorage, cosmwasm_std::testing::MockApi, cosmwasm_std::testing::MockQuerier>, gov: &cosmwasm_std::Addr, v: u32, activate: bool) -> usize {
+    let data: Vec<u8> = (0..40u32).map(|i| (i * 7 + v) as u8).collect();
+    let (m, chunks) = manifest(v, &data, 8, activate);
+    execute(deps.as_mut(), mock_env(), message_info(gov, &[]), ExecuteMsg::PublishManifest { manifest: m }).unwrap();
+    for (i, c) in chunks.iter().enumerate() {
+        execute(deps.as_mut(), mock_env(), message_info(gov, &[]), ExecuteMsg::UploadChunk { version: v, file: 0, index: i as u32, data: Binary::from(c.clone()) }).unwrap();
+    }
+    chunks.len()
+}
+
+fn kl(deps: &cosmwasm_std::OwnedDeps<cosmwasm_std::testing::MockStorage, cosmwasm_std::testing::MockApi, cosmwasm_std::testing::MockQuerier>) -> KeepLastResponse {
+    from_json(query(deps.as_ref(), mock_env(), QueryMsg::KeepLast {}).unwrap()).unwrap()
+}
+
+#[test]
+fn keep_last_prunes_oldest_beyond_n_permissionlessly_never_current_or_staged() {
+    let (mut deps, gov, anyone) = setup(8);
+    for v in 1..=5 { kl_pub(&mut deps, &gov, v, false); }
+    // v6 staged above current, incomplete, activate=true: must never be a candidate.
+    let (m6, _) = manifest(6, &[1u8; 24], 8, true);
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::PublishManifest { manifest: m6 }).unwrap();
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetCurrent { version: 4 }).unwrap();
+    // policy disabled -> nothing
+    assert!(execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: None }).is_err());
+    // only owner sets policy, bounded
+    assert!(execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(2) }).is_err());
+    assert!(execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(0) }).is_err());
+    assert!(execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(MAX_KEEP_LAST + 1) }).is_err());
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(2) }).unwrap();
+    // keep current(4) + one older (3): 1 and 2 obsolete, oldest first, batched by `limit`.
+    assert_eq!(kl(&deps).next_target, Some(1));
+    let mut calls = 0;
+    while kl(&deps).next_target.is_some() {
+        execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: Some(2) }).unwrap();
+        calls += 1;
+        assert!(calls < 20);
+    }
+    assert_eq!(calls, 3 + 3, "5 chunks each, 2 per call");
+    for v in [1u32, 2] {
+        let s: PruneStatusResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::PruneStatus { version: v }).unwrap()).unwrap();
+        assert_eq!(s.state, "pruned");
+    }
+    for v in [3u32, 4, 5, 6] {
+        let s: PruneStatusResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::PruneStatus { version: v }).unwrap()).unwrap();
+        assert_ne!(s.state, "pruned", "v{v}");
+    }
+    assert!(execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: None }).is_err());
+    // keep_last = 1: only current survives below-or-equal; v3 goes, v5/v6 (above current) stay.
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(1) }).unwrap();
+    assert_eq!(kl(&deps).next_target, Some(3));
+    execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: Some(250) }).unwrap();
+    assert_eq!(kl(&deps).next_target, None);
+    let cfg: ConfigResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
+    assert_eq!(cfg.current, Some(4));
+    assert_eq!(cfg.keep_last, Some(1));
+    let b: Binary = from_json(query(deps.as_ref(), mock_env(), QueryMsg::Chunk { version: 4, file: 0, index: 0 }).unwrap()).unwrap();
+    assert!(!b.is_empty());
+    // disabling the policy stops PruneOld
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: None }).unwrap();
+    assert_eq!(kl(&deps).keep_last, None);
+}
+
+#[test]
+fn keep_last_resumes_owner_started_prune_and_no_current_means_no_target() {
+    let (mut deps, gov, anyone) = setup(8);
+    kl_pub(&mut deps, &gov, 1, false);
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetKeepLast { keep_last: Some(3) }).unwrap();
+    assert_eq!(kl(&deps).next_target, None, "no current yet");
+    kl_pub(&mut deps, &gov, 2, false);
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::SetCurrent { version: 2 }).unwrap();
+    assert_eq!(kl(&deps).next_target, None, "within keep_last");
+    // owner starts pruning v1 explicitly; PruneOld finishes it for them.
+    execute(deps.as_mut(), mock_env(), message_info(&gov, &[]), ExecuteMsg::PruneVersion { version: 1, limit: Some(1) }).unwrap();
+    assert_eq!(kl(&deps).next_target, Some(1));
+    execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: None }).unwrap();
+    let s: PruneStatusResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::PruneStatus { version: 1 }).unwrap()).unwrap();
+    assert_eq!(s.state, "pruned");
+}

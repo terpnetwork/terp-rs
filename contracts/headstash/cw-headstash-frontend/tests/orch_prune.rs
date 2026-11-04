@@ -43,3 +43,33 @@ fn migrate_publish_v2_prune_v1_mock() {
     let got = fetch_verified(&fe, None).unwrap();
     assert_eq!(got[0].1, files("v2", 64 * 3).remove(0).raw);
 }
+
+#[test]
+fn keep_last_prune_old_mock() {
+    let chain = Mock::new("gov");
+    let fe = FrontendContract::new(chain.clone());
+    fe.upload().unwrap();
+    fe.instantiate(&InstantiateMsg { owner: None, max_chunk_bytes: Some(64) }, None, &[]).unwrap();
+    let mut n = vec![];
+    for v in 1..=4u32 {
+        let r = build_release(v, "app.html", files(&format!("v{v}"), 64 * 5), 64, true, None);
+        n.push(r.chunks.len());
+        upload_release(&fe, &r, true).unwrap();
+    }
+    let cfg: ConfigResponse = fe.query(&QueryMsg::Config {}).unwrap();
+    assert_eq!(cfg.current, Some(4));
+    fe.execute(&ExecuteMsg::SetKeepLast { keep_last: Some(2) }, &[]).unwrap();
+    let anyone = chain.addr_make("anyone");
+    let mut calls = 0;
+    loop {
+        let k: KeepLastResponse = fe.query(&QueryMsg::KeepLast {}).unwrap();
+        if k.next_target.is_none() { break; }
+        fe.call_as(&anyone).execute(&ExecuteMsg::PruneOld { limit: Some(3) }, &[]).unwrap();
+        calls += 1;
+    }
+    assert_eq!(calls, (n[0] + 2) / 3 + (n[1] + 2) / 3);
+    let vs: VersionsResponse = fe.query(&QueryMsg::Versions { start_after: None, limit: None }).unwrap();
+    assert_eq!(vs.versions.iter().map(|s| s.version).collect::<Vec<_>>(), vec![3, 4]);
+    let got = fetch_verified(&fe, None).unwrap();
+    assert_eq!(got[0].1, files("v4", 64 * 5).remove(0).raw);
+}

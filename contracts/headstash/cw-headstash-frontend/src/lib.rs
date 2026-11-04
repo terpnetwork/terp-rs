@@ -21,6 +21,8 @@ const PROGRESS: Map<u32, u32> = Map::new("progress");
 const PRUNING: Map<u32, (u16, u32, u32)> = Map::new("pruning");
 /// Fully pruned versions -> chunk keys removed (tombstone; version numbers are never reused).
 const PRUNED: Map<u32, u32> = Map::new("pruned");
+/// keep-last-N retention policy (absent = disabled).
+const KEEP_LAST: Item<u32> = Item::new("keep_last");
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-headstash-frontend";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -176,6 +178,21 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| err(e.to_string()))?;
             prune(deps.storage, version, limit)
         }
+        ExecuteMsg::SetKeepLast { keep_last } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| err(e.to_string()))?;
+            match keep_last {
+                Some(n) if n == 0 || n > MAX_KEEP_LAST => return Err(err(format!("keep_last must be 1..={MAX_KEEP_LAST}"))),
+                Some(n) => KEEP_LAST.save(deps.storage, &n)?,
+                None => KEEP_LAST.remove(deps.storage),
+            }
+            Ok(Response::new()
+                .add_attribute("action", "set_keep_last")
+                .add_attribute("keep_last", keep_last.map_or("none".into(), |n| n.to_string())))
+        }
+        ExecuteMsg::PruneOld { limit } => {
+            let target = keep_last_target(deps.storage)?.ok_or_else(|| err("nothing to prune under keep_last"))?;
+            Ok(prune(deps.storage, target, limit)?.add_attribute("policy", "keep_last"))
+        }
         ExecuteMsg::UpdateOwnership(a) => {
             let o = cw_ownable::update_ownership(deps, &env.block, &info.sender, a).map_err(|e| err(e.to_string()))?;
             Ok(Response::new().add_attributes(o.into_attributes()))
@@ -241,6 +258,30 @@ fn prune(storage: &mut dyn Storage, version: u32, limit: Option<u32>) -> StdResu
     Ok(r)
 }
 
+/// Next version PruneOld acts on. A version already being pruned is resumed first (lowest
+/// one). Otherwise: with current = c and keep_last = n, the live versions below c are listed
+/// newest first; the first n-1 are kept, and if any remain the OLDEST live version is returned.
+/// Versions above c (staged, possibly pending activation) are never candidates. O(n) reads.
+fn keep_last_target(storage: &dyn Storage) -> StdResult<Option<u32>> {
+    let Some(n) = KEEP_LAST.may_load(storage)? else { return Ok(None) };
+    let Some(cur) = CURRENT.load(storage)? else { return Ok(None) };
+    if let Some(v) = PRUNING.keys(storage, None, None, Order::Ascending).next() {
+        let v = v?;
+        if v != cur {
+            return Ok(Some(v));
+        }
+    }
+    let below: Vec<u32> = MANIFESTS
+        .keys(storage, None, Some(Bound::exclusive(cur)), Order::Descending)
+        .take(n as usize)
+        .collect::<StdResult<_>>()?;
+    if (below.len() as u32) < n {
+        return Ok(None); // at most n-1 older versions retained: nothing obsolete
+    }
+    let oldest = MANIFESTS.keys(storage, None, Some(Bound::exclusive(cur)), Order::Ascending).next().transpose()?;
+    Ok(oldest)
+}
+
 fn prune_status(storage: &dyn Storage, version: u32) -> StdResult<PruneStatusResponse> {
     let blank = |state: &str, removed| PruneStatusResponse { version, state: state.into(), next_file: 0, next_index: 0, removed, remaining: 0 };
     if let Some(removed) = PRUNED.may_load(storage, version)? {
@@ -303,6 +344,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             max_chunk_bytes: MAX_CHUNK.load(deps.storage)?,
             current: CURRENT.load(deps.storage)?,
             next_version: NEXT_VERSION.load(deps.storage)?,
+            keep_last: KEEP_LAST.may_load(deps.storage)?,
+        }),
+        QueryMsg::KeepLast {} => to_json_binary(&KeepLastResponse {
+            keep_last: KEEP_LAST.may_load(deps.storage)?,
+            next_target: keep_last_target(deps.storage)?,
         }),
         QueryMsg::Manifest { version } => {
             let v = match version {

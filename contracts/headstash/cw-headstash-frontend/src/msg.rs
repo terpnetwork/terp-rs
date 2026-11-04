@@ -10,6 +10,8 @@ pub const MAX_PATH: usize = 64;
 /// Chunk slots visited per PruneVersion call when `limit` is omitted / the hard cap.
 pub const DEFAULT_PRUNE_LIMIT: u32 = 50;
 pub const MAX_PRUNE_LIMIT: u32 = 250;
+/// Upper bound for the keep-last-N retention policy (bounds PruneOld's key scan).
+pub const MAX_KEEP_LAST: u32 = 64;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -61,6 +63,13 @@ pub enum ExecuteMsg {
     /// batches of at most `limit` chunk slots (default DEFAULT_PRUNE_LIMIT, cap MAX_PRUNE_LIMIT).
     /// Resumes from the stored cursor on each call; once started, the version accepts no uploads.
     PruneVersion { version: u32, limit: Option<u32> },
+    /// Owner: retention policy. Keep `current` plus the newest `keep_last - 1` complete-or-not
+    /// versions below it; `None` disables the policy. 1..=MAX_KEEP_LAST.
+    SetKeepLast { keep_last: Option<u32> },
+    /// Permissionless: prune, in one bounded batch of at most `limit` chunk slots, the oldest
+    /// version that the keep-last policy marks obsolete (or resume one already being pruned).
+    /// Never touches `current` or any version above it.
+    PruneOld { limit: Option<u32> },
 }
 
 #[cw_serde]
@@ -84,6 +93,15 @@ pub struct ConfigResponse {
     pub max_chunk_bytes: u32,
     pub current: Option<u32>,
     pub next_version: u32,
+    #[serde(default)]
+    pub keep_last: Option<u32>,
+}
+
+#[cw_serde]
+pub struct KeepLastResponse {
+    pub keep_last: Option<u32>,
+    /// Version PruneOld would work on next (a version already being pruned first), if any.
+    pub next_target: Option<u32>,
 }
 
 #[cw_serde]
@@ -117,4 +135,6 @@ pub enum QueryMsg {
     Versions { start_after: Option<u32>, limit: Option<u32> },
     #[returns(PruneStatusResponse)]
     PruneStatus { version: u32 },
+    #[returns(KeepLastResponse)]
+    KeepLast {},
 }
