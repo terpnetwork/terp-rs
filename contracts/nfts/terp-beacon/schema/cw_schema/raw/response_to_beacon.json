@@ -1,0 +1,75 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_beacon_msg_BeaconResponse",
+      "type": "struct",
+      "properties": {
+        "attestation_count": {
+          "value": 5
+        },
+        "deliverable": {
+          "value": 6
+        },
+        "published": {
+          "value": 3
+        },
+        "randomness": {
+          "value": 2
+        },
+        "round": {
+          "value": 1
+        },
+        "signature": {
+          "value": 2
+        },
+        "source": {
+          "value": 4
+        },
+        "verified_at": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "terp_beacon_source_BeaconSource",
+      "description": "Where a beacon value came from.\n\nVerified drand outputs are stored under [`BeaconSource::Drand`].\nAttestor signatures over a drand output are stored under [`BeaconSource::Attestor`].\nBoth are keyed by source id plus round (attestations also include the attestor key).\n\n[`RESERVED_IBC_SOURCE_ID`] is the id a future IBC v2 client should use when a\nhash-market runtime starts aggregating beacons. That client should verify the\npacket, then write the same [`crate::state::StoredBeacon`] record the drand\npath writes. There is no IBC entry point in this contract.",
+      "type": "enum",
+      "cases": {
+        "attestor": {
+          "type": "unit"
+        },
+        "drand": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

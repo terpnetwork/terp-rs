@@ -1,0 +1,347 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Verify a drand beacon and store `sha256(signature)` as the round randomness.\n\n`previous_signature` is required for [`DrandScheme::PedersenBlsChained`] unless round-1 is already stored. It must be omitted for quicknet.",
+      "type": "object",
+      "required": [
+        "add_round"
+      ],
+      "properties": {
+        "add_round": {
+          "type": "object",
+          "required": [
+            "round",
+            "signature"
+          ],
+          "properties": {
+            "previous_signature": {
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/HexBinary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "round": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "signature": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Attest a stored drand round. The signer must be a registered attestor.\n\nMessage is documented in the crate README and [`crate::attestor`].",
+      "type": "object",
+      "required": [
+        "attest"
+      ],
+      "properties": {
+        "attest": {
+          "type": "object",
+          "required": [
+            "pubkey",
+            "round",
+            "signature"
+          ],
+          "properties": {
+            "pubkey": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "round": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "signature": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_attestor"
+      ],
+      "properties": {
+        "add_attestor": {
+          "type": "object",
+          "required": [
+            "pubkey"
+          ],
+          "properties": {
+            "pubkey": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_attestor"
+      ],
+      "properties": {
+        "remove_attestor": {
+          "type": "object",
+          "required": [
+            "pubkey"
+          ],
+          "properties": {
+            "pubkey": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "transfer_admin"
+      ],
+      "properties": {
+        "transfer_admin": {
+          "type": "object",
+          "required": [
+            "new_admin"
+          ],
+          "properties": {
+            "new_admin": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_config"
+      ],
+      "properties": {
+        "update_config": {
+          "type": "object",
+          "properties": {
+            "callback_gas_limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "prices": {
+              "description": "`Some` replaces the price list. An empty list makes requests free.",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Coin"
+              }
+            },
+            "required_attestations": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdraw"
+      ],
+      "properties": {
+        "withdraw": {
+          "type": "object",
+          "required": [
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "description": "Omit to withdraw the full balance of `denom`.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint256"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "denom": {
+              "type": "string"
+            },
+            "recipient": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Deliver up to the per-tx callback batch. Permissionless.",
+      "type": "object",
+      "required": [
+        "process_queue"
+      ],
+      "properties": {
+        "process_queue": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Pull entrypoint for `nftfi-raffle` (`RandomnessSourceMsg::Callback`).\n\nThe sender is the raffle contract. The beacon reads raffle `raffle_id` from the sender, takes the first drand round published strictly after the raffle end (`start + duration`), and answers with the attributes the raffle reply reads: `raffle_id`, `round`, `randomness` (base64, 32 bytes) and `owner`. Fails when that round is not stored or not yet deliverable under `required_attestations`.",
+      "type": "object",
+      "required": [
+        "provide"
+      ],
+      "properties": {
+        "provide": {
+          "type": "object",
+          "required": [
+            "owner",
+            "raffle_id"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string"
+            },
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Same JSON as `nois::ProxyExecuteMsg::GetNextRandomness`.",
+      "type": "object",
+      "required": [
+        "get_next_randomness"
+      ],
+      "properties": {
+        "get_next_randomness": {
+          "type": "object",
+          "required": [
+            "job_id"
+          ],
+          "properties": {
+            "job_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Same JSON as `nois::ProxyExecuteMsg::GetRandomnessAfter`.",
+      "type": "object",
+      "required": [
+        "get_randomness_after"
+      ],
+      "properties": {
+        "get_randomness_after": {
+          "type": "object",
+          "required": [
+            "after",
+            "job_id"
+          ],
+          "properties": {
+            "after": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "job_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Timestamp": {
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint64"
+        }
+      ]
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    },
+    "Uint64": {
+      "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+      "type": "string"
+    }
+  }
+}

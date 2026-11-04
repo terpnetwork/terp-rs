@@ -74,6 +74,7 @@ members = [
     "contracts/nfts/packages/utils",
     "contracts/nfts/raffle",
     "contracts/nfts/raffle/e2e",
+    "contracts/nfts/terp-beacon",
     "contracts/revenue/bounty-escrow",
     "contracts/revenue/bounty-escrow/e2e",
     "contracts/revenue/marketplace",
@@ -289,6 +290,7 @@ dao-voting-cw20-staked = { version = "=2.9.0-delta.9" }
 dao-voting-cw4 = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-roles = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-staked = { version = "=2.9.0-delta.9" }
+drand-verify = { version = "0.6.2", default-features = false }
 digest = { version = "0.10", default-features = false }
 dotenv = { package = "dotenvy", version = "0.15" }
 dregg = { path = "tools/svg-mint/crates/dregg" }
@@ -396,6 +398,7 @@ tera = "1"
 terp-account = { path = "crates/terp-account" }
 terp-auth = { path = "crates/terp-auth" }
 terp-authenticator-suite = { path = "tests/suite/terp-authenticator-suite" }
+terp-beacon = { path = "contracts/nfts/terp-beacon" }
 terp-bls = { path = "contracts/smart-accounts/terp-bls", default-features = false }
 terp-bounty-escrow = { path = "contracts/revenue/bounty-escrow" }
 terp-dao = { path = "contracts/smart-accounts/terp-dao", default-features = false }

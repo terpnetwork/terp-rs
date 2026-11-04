@@ -2295,3 +2295,10 @@ consumers = ["ict-rs"]
 url = "https://github.com/permissionlessweb/terp-rs"
 branch = "feat/mint-desk-v98"
 rev = "3628599977e6b21bfd931f3a50e5ac5ad6a451d9"
+
+# --- added 2026-11-04: terp-beacon (contracts/nfts/terp-beacon) drand BLS verification ---
+[crates.drand-verify]
+description = "noislabs drand-verify: drand BLS12-381 beacon verification for terp-beacon (crates.io only)"
+stable = "0.6.2"
+local = "N/A"
+consumers = ["terp-rs"]

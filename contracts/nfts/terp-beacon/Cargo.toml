@@ -1,0 +1,45 @@
+[package]
+name = "terp-beacon"
+version = { workspace = true }
+edition = { workspace = true }
+license = "Apache-2.0"
+publish = false
+description = "Drand randomness beacon with a nois-proxy compatible entrypoint for Terp raffles"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+doc = false
+
+[features]
+default = ["interface"]
+# Disable instantiate/execute/query exports when the crate is used as a library.
+library = []
+interface = ["dep:cw-orch"]
+# Real drand round fixtures for integration tests. Not compiled into the wasm build.
+fixtures = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+drand-verify = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+
+[[test]]
+name = "gas"
+required-features = ["fixtures"]
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+hex = { workspace = true }
+k256 = { workspace = true, features = ["ecdsa"] }
+serde_json = { workspace = true, features = ["std"] }
