@@ -122,6 +122,20 @@ pub struct SettleLikeOpening {
     pub path_position: u64,
 }
 
+/// Swap output note fields for [`settle_opening_from_note_fields`]; the
+/// commitment `cm` is recomputed from these.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SettleNoteFields {
+    pub asset_id: AssetId32,
+    pub value: u64,
+    pub dest_seal: [u8; 32],
+    pub rcm: [u8; 32],
+    pub dest_kind: DestKind,
+    pub root: Cm32,
+    pub source_pool_id: Option<u64>,
+    pub path_position: u64,
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -322,17 +336,17 @@ pub fn build_egress_burn_from_settle(opening: &SettleLikeOpening) -> EgressResul
 ///
 /// Uses abstract leaf recompute when `cm` is derived from openings; caller may
 /// pass the settle `cm_out` directly as `cm`.
-#[allow(clippy::too_many_arguments)]
-pub fn settle_opening_from_note_fields(
-    asset_id: AssetId32,
-    value: u64,
-    dest_seal: [u8; 32],
-    rcm: [u8; 32],
-    dest_kind: DestKind,
-    root: Cm32,
-    source_pool_id: Option<u64>,
-    path_position: u64,
-) -> SettleLikeOpening {
+pub fn settle_opening_from_note_fields(fields: SettleNoteFields) -> SettleLikeOpening {
+    let SettleNoteFields {
+        asset_id,
+        value,
+        dest_seal,
+        rcm,
+        dest_kind,
+        root,
+        source_pool_id,
+        path_position,
+    } = fields;
     let cm = abstract_leaf_cm_local(&asset_id, value, &dest_seal, &rcm);
     SettleLikeOpening {
         asset_id,
@@ -422,16 +436,16 @@ mod tests {
     }
 
     fn demo_opening_fixed(dest: [u8; 32], value: u64) -> SettleLikeOpening {
-        settle_opening_from_note_fields(
-            demo_zec_asset(),
+        settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: demo_zec_asset(),
             value,
-            dest,
-            arr32(0xB2),
-            DestKind::Shielded,
-            arr32(0x11),
-            Some(1),
-            0,
-        )
+            dest_seal: dest,
+            rcm: arr32(0xB2),
+            dest_kind: DestKind::Shielded,
+            root: arr32(0x11),
+            source_pool_id: Some(1),
+            path_position: 0,
+        })
     }
 
     #[test]
@@ -613,16 +627,16 @@ mod tests {
     fn hub_asset_still_builds_structurally() {
         // Any registered 32B asset shape works at pure layer (ZEC id in product).
         let dest = arr32(0xD5);
-        let opening = settle_opening_from_note_fields(
-            asset_id_hub(),
-            1,
-            dest,
-            arr32(0xB2),
-            DestKind::Transparent,
-            arr32(0x11),
-            None,
-            9,
-        );
+        let opening = settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: asset_id_hub(),
+            value: 1,
+            dest_seal: dest,
+            rcm: arr32(0xB2),
+            dest_kind: DestKind::Transparent,
+            root: arr32(0x11),
+            source_pool_id: None,
+            path_position: 9,
+        });
         let burn = build_egress_burn_from_settle(&opening).expect("hub asset ok pure");
         assert_eq!(burn.public.asset_id, asset_id_hub());
     }

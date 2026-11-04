@@ -905,7 +905,6 @@ pub struct InstantiateMsgSketch {
 /// Round-2 production surface lives on **`cw-headstash`** (not a freestanding
 /// `cw-bridge-mint`). See `crates/headstash/contracts/cw-headstash/src/msg.rs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsgSketch {
     /// Advance reflection / LC attested roots (who posts LC updates — ops Q).
     UpdateReflection {
@@ -937,7 +936,7 @@ pub enum ExecuteMsgSketch {
     SetExternalAssetRegistry { addr: Option<String> },
     /// One-shot bridge mint → SEAM-NOTE-OUT note append (proof bytes opaque / mock).
     BridgeMintNote {
-        public: BridgeMintPublic,
+        public: Box<BridgeMintPublic>,
         /// Opaque membership / reflection receipt (mock or SP1 later).
         proof: Vec<u8>,
     },
