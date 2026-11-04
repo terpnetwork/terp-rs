@@ -9,7 +9,7 @@ use cw_headstash_manifold::msg::{
     ExecuteMsg as FactoryExecuteMsg, InstantiateMsg as FactoryInitMsg, QueryMsg as FactoryQueryMsg,
 };
 
-use cw_multi_test::{App, ContractWrapper, Executor};
+use cw_multi_test::{ContractWrapper, Executor};
 use std::collections::HashMap;
 
 // Mock tokenfactory module for testing
@@ -73,7 +73,7 @@ impl MockTokenFactory {
 
 // Test environment following DA0-DA0 pattern
 pub struct TestEnv {
-    pub app: App,
+    pub app: crate::tokenfactory_stargate::TfApp,
     pub owner: Addr,
     pub factory_code_id: u64,
     pub headstash_code_id: u64,
@@ -90,10 +90,20 @@ impl Default for TestEnv {
 
 impl TestEnv {
     pub fn new() -> Self {
-        let mut app = App::default();
+        let mut app = crate::tokenfactory_stargate::tf_app();
 
         // Create test accounts
         let owner = app.api().addr_make("owner");
+        app.init_modules(|router, _, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &owner,
+                    vec![Coin::new(Uint128::new(1_000_000), "uosmo")],
+                )
+                .unwrap();
+        });
         let test_accounts: Vec<Addr> = (0..5)
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
@@ -116,11 +126,14 @@ impl TestEnv {
         let tokenfactory = MockTokenFactory::new();
 
         // Store headstash contract
-        let headstash_contract = Box::new(ContractWrapper::new(
-            cw_headstash::execute,
-            cw_headstash::instantiate,
-            cw_headstash::query,
-        ));
+        let headstash_contract = Box::new(
+            ContractWrapper::new(
+                cw_headstash::execute,
+                cw_headstash::instantiate,
+                cw_headstash::query,
+            )
+            .with_reply(cw_headstash::reply),
+        );
         let headstash_code_id = app.store_code(headstash_contract);
 
         // Store factory contract
@@ -208,16 +221,8 @@ pub fn mock_token_strategy_existing() -> TokenStrategy {
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
-    // Mock WAVS proof - in real tests we'd use proper cryptographic mocks
-    WavsProofOfOwnership {
-        poos: vec![], // Empty for basic tests
-        msg: cw_headstash::wavs::WavsAuthMetadata {
-            aggregate_key: "mock_key".to_string(),
-            threshold: 1,
-            total_operators: 1,
-            nonce: 0,
-        },
-    }
+    // One real operator: instantiate verifies the PoP pairing.
+    crate::wavs_fixture::valid_wavs_proof(1)
 }
 
 pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {

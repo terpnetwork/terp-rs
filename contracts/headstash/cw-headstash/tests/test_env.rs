@@ -2,7 +2,7 @@
 // Focus on auxiliary functions and tokenfactory interactions
 
 use cosmwasm_std::{Addr, Binary, Coin, Uint128};
-use cw_multi_test::{App, ContractWrapper, Executor};
+use cw_multi_test::{ContractWrapper, Executor};
 use std::collections::HashMap;
 
 // Import contract messages
@@ -78,7 +78,7 @@ impl MockTokenFactory {
 
 // Test environment following DA0-DA0 pattern
 pub struct TestEnv {
-    pub app: App,
+    pub app: crate::tokenfactory_stargate::TfApp,
     pub owner: Addr,
     pub factory_code_id: u64,
     pub headstash_code_id: u64,
@@ -95,10 +95,20 @@ impl Default for TestEnv {
 
 impl TestEnv {
     pub fn new() -> Self {
-        let mut app = App::default();
+        let mut app = crate::tokenfactory_stargate::tf_app();
 
         // Create test accounts
         let owner = app.api().addr_make("owner");
+        app.init_modules(|router, _, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &owner,
+                    vec![Coin::new(Uint128::new(1_000_000), "uosmo")],
+                )
+                .unwrap();
+        });
         let test_accounts: Vec<Addr> = (0..5)
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
@@ -117,11 +127,14 @@ impl TestEnv {
         let tokenfactory = MockTokenFactory::new();
 
         // Store headstash contract
-        let headstash_contract = Box::new(ContractWrapper::new(
-            cw_headstash::execute,
-            cw_headstash::instantiate,
-            cw_headstash::query,
-        ));
+        let headstash_contract = Box::new(
+            ContractWrapper::new(
+                cw_headstash::execute,
+                cw_headstash::instantiate,
+                cw_headstash::query,
+            )
+            .with_reply(cw_headstash::reply),
+        );
         let headstash_code_id = app.store_code(headstash_contract);
 
         // Store factory contract
@@ -231,44 +244,12 @@ pub fn mock_token_strategy_existing() -> TokenStrategy {
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
-    // Mock WAVS proof - disabled for basic tests
-    WavsProofOfOwnership {
-        poos: vec![], // Empty for basic tests
-        msg: cw_headstash::wavs::WavsAuthMetadata {
-            aggregate_key: "mock_key".to_string(),
-            threshold: 0,
-            total_operators: 0,
-            nonce: 0,
-        },
-    }
+    // One real operator: instantiate verifies the PoP pairing.
+    crate::wavs_fixture::valid_wavs_proof(1)
 }
 
 pub fn mock_wavs_proof_with_operators(count: usize) -> WavsProofOfOwnership {
-    use cosmwasm_std::BLS12_381_G1_GENERATOR as G1;
-
-    // Generate mock BLS keypairs and proofs for testing
-    let mut poos = vec![];
-    for i in 0..count {
-        // Use deterministic mock keys for reproducible tests
-        // Convert BLS points to hex strings as expected by WavsOpAuth
-        let mock_public_g1_hex = hex::encode(G1);
-        let mock_proof_hex = hex::encode(format!("mock_proof_{}", i).as_bytes());
-
-        poos.push(cw_headstash::wavs::WavsOpAuth {
-            key: mock_public_g1_hex, // G1 point as hex string
-            poo: mock_proof_hex,     // Proof as hex string
-        });
-    }
-
-    WavsProofOfOwnership {
-        poos,
-        msg: cw_headstash::wavs::WavsAuthMetadata {
-            aggregate_key: "mock_aggregate_key".to_string(),
-            threshold: count, // Require all operators
-            total_operators: count,
-            nonce: 0,
-        },
-    }
+    crate::wavs_fixture::valid_wavs_proof(count)
 }
 
 pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {

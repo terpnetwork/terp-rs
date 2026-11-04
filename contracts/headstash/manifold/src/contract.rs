@@ -237,10 +237,14 @@ fn validate_funding(
             let coin = info
                 .funds
                 .iter()
-                .find(|c| c.denom == *denom && c.amount >= funding.amount)
+                .find(|c| c.denom == *denom)
                 .ok_or(ContractError::InvalidFundingToken {})?;
             if coin.amount < funding.amount {
-                return Err(ContractError::InvalidFundingToken {});
+                return Err(ContractError::InsufficientFunding {
+                    denom: denom.clone(),
+                    sent: coin.amount,
+                    required: funding.amount,
+                });
             }
         }
         FundingToken::Cw20 { contract_addr } => {
