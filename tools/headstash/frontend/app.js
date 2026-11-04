@@ -83,7 +83,8 @@ async function selectInstance(a) {
     if (state && state.contract !== a) throw new Error("a notes file for another instance is loaded: reload the page to switch");
     cfg.headstash = a; $("hs-cur").textContent = a; elig = null; inst = null;
     document.querySelectorAll("#inst-list button[data-addr]").forEach((b) => { b.disabled = b.dataset.addr === a; b.textContent = b.disabled ? "Selected" : "Select"; });
-    const [camp, hal, ch, dc] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null)]);
+    const [camp, hal, ch, dc, th] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null), smart({ theme: {} }).catch(() => null)]);
+    themeCands.headstash = th ?? null; themeApply();
     const ctx = hex(await directCtx());
     const exp = dc && (dc.expected_ctx || dc.ctx); if (exp && rootHex(exp) !== ctx) throw new Error("direct-claim ctx mismatch: wrong chain id or contract");
     inst = { addr: a, camp, hal, channels: listOf(ch, "channels").filter((c) => c.enabled), root: rootHex(camp?.registration?.eligibility_root) };
@@ -382,8 +383,31 @@ function info(id) {
   $("info-dlg").dataset.step = id; $("info-dlg").showModal();
 }
 
+// ---- R12: theme (headstash contract > manifest default > built-in), light/dark toggle ----
+const themeCands = { headstash: null, manifest: null };
+function themeApply() {
+  const p = V.pickTheme([["headstash", themeCands.headstash], ["manifest", themeCands.manifest]]);
+  let s = document.getElementById("hs-theme");
+  if (!s) { s = document.createElement("style"); s.id = "hs-theme"; document.head.appendChild(s); }
+  s.textContent = V.themeCss(p.theme); // only validated #hex values and integer px reach here
+  const de = document.documentElement; de.dataset.themeSource = p.source; de.dataset.themeRejected = p.rejected.map((r) => r.source).join(",");
+  for (const r of p.rejected) log(`theme from ${r.source} rejected: ${r.error}`);
+}
+function themeMode(m) {
+  document.documentElement.dataset.theme = m; const b = $("theme-toggle");
+  if (b) { b.textContent = m === "dark" ? "light" : "dark"; b.setAttribute("aria-pressed", String(m === "dark")); }
+}
+function themeInit(manifest) {
+  themeCands.manifest = manifest && manifest.theme != null ? manifest.theme : null; themeApply();
+  const mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  themeMode(V.initialMode(window.localStorage, !!(mq && mq.matches)));
+  if (mq && mq.addEventListener) mq.addEventListener("change", (e) => { let s = null; try { s = localStorage.getItem(V.THEME_MODE_KEY); } catch {} if (!s) themeMode(e.matches ? "dark" : "light"); });
+  $("theme-toggle").onclick = () => { const m = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; try { localStorage.setItem(V.THEME_MODE_KEY, m); } catch {} themeMode(m); };
+}
+
 export async function start({ files, manifest, config, urls }) {
   C = await import(urls["crypto.js"]); V = await import(urls["v2lib.js"]); ({ hex, unhex, cat, b64, unb64, te, sha256 } = C);
+  themeInit(manifest);
   STEPS = JSON.parse(new TextDecoder().decode(files["steps.json"])); guard = new V.ReuseGuard(window.localStorage); book = new V.IndexBook(window.localStorage);
   cfg = { ...config, urls }; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
   const url = URL.createObjectURL(new Blob([files["zk_headstash.js"]], { type: "text/javascript" }));

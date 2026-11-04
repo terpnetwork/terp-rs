@@ -69,7 +69,7 @@ pub fn build_release(version: u32, entry: &str, files: Vec<ReleaseFile>, chunk_b
             chunks: hashes,
         });
     }
-    Release { manifest: Manifest { version, entry: entry.into(), files: entries, note, activate }, chunks }
+    Release { manifest: Manifest { version, entry: entry.into(), files: entries, note, activate, theme: None }, chunks }
 }
 
 /// Re-download every file of `version` and check chunk + raw sha256. Returns raw files.

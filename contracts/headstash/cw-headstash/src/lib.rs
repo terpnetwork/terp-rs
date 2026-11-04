@@ -14,6 +14,7 @@ pub mod pause;
 pub mod registration;
 pub mod headstash;
 pub mod tf_proto;
+pub mod theme;
 pub mod msg;
 pub mod tokenfactory;
 pub mod wavs;
@@ -403,6 +404,7 @@ pub fn execute(
         ExecuteMsg::SetFrontendContract { addr } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_frontend_contract)(deps, info, addr)
         }
+        ExecuteMsg::SetTheme { theme } => opaque::<fn(_, _, _) -> _>(theme::execute_set_theme)(deps, info, theme),
         #[cfg(feature = "legacy")]
         ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
         #[cfg(feature = "legacy")]
@@ -583,6 +585,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BridgeConfig {} => bridge::query_bridge_cfg(deps),
         QueryMsg::ExternalAssetRegistry {} => bridge::query_external_asset_registry(deps),
         QueryMsg::FrontendContract {} => bridge::query_frontend_contract(deps),
+        QueryMsg::Theme {} => theme::query_theme(deps),
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
         QueryMsg::ForwardChannels {} => to_json_binary(&forward::query_channels(deps.storage)?),
         QueryMsg::HalSource {} => to_json_binary(&forward::HAL_SOURCE.may_load(deps.storage)?),

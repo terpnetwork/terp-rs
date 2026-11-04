@@ -1,20 +1,22 @@
 <style>
-:root{font:15px/1.45 system-ui,sans-serif;color:#111;background:#fafaf7}body{max-width:860px;margin:2rem auto;padding:0 1rem}
-h1{font-size:1.4rem}h2{font-size:1.1rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}
-section{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fff}section[aria-disabled=true]{opacity:.55}
-label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem}
-input[type=radio],input[type=checkbox]{width:auto;margin-right:.4rem}label.inl{display:inline-flex;align-items:center;font-weight:400;margin-right:1.2rem}
-button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer}button:disabled{opacity:.45;cursor:default}
-button.info{margin:0;padding:0 .5rem;border-radius:50%;font-weight:700;border:1px solid #888;background:#fff}
-:focus-visible{outline:3px solid #1a5fb4;outline-offset:2px}
-pre{white-space:pre-wrap;word-break:break-all;background:#f2f2ee;padding:.5rem;max-height:14rem;overflow:auto;font-size:12px}
-table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #eee;padding:3px 4px;text-align:left;vertical-align:top}
-code{word-break:break-all}.warn{color:#8a3b00}.ok{color:#11632a}.err{color:#a40000;font-weight:600}.err:empty,.ok:empty{display:none}
-[data-state=ok]{color:#11632a;font-weight:600}[data-state=error]{color:#a40000;font-weight:600}
-dialog{max-width:620px;border:1px solid #888;border-radius:8px}dialog::backdrop{background:#0006}dt{font-weight:700;margin-top:.6rem}
+:root{font:15px/1.45 system-ui,sans-serif;color:var(--hs-text);background:var(--hs-bg);color-scheme:light dark}body{max-width:860px;margin:2rem auto;padding:0 1rem;color:var(--hs-text);background:var(--hs-bg)}
+#theme-toggle{float:right}h1{font-size:1.4rem}h2{font-size:1.1rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}
+a{color:var(--hs-text);text-decoration-color:var(--hs-accent);text-decoration-thickness:2px}
+section{border:1px solid var(--hs-border);border-radius:var(--hs-radius);padding:1rem;margin:1rem 0;background:var(--hs-surface)}section[aria-disabled=true]{opacity:.55}
+label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius)}
+input[type=radio],input[type=checkbox]{width:auto;margin-right:.4rem;accent-color:var(--hs-accent)}label.inl{display:inline-flex;align-items:center;font-weight:400;margin-right:1.2rem}
+button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer;color:var(--hs-onAccent);background:var(--hs-accent);border:1px solid var(--hs-accent);border-radius:var(--hs-radius)}button:disabled{opacity:.45;cursor:default}
+button.info,button#theme-toggle{margin:0;padding:0 .5rem;font-weight:700;color:var(--hs-text);border:1px solid var(--hs-borderStrong);background:var(--hs-surface)}button.info{border-radius:50%}
+:focus-visible{outline:3px solid var(--hs-focus);outline-offset:2px}
+pre{white-space:pre-wrap;word-break:break-all;color:var(--hs-text);background:var(--hs-surfaceAlt);padding:.5rem;max-height:14rem;overflow:auto;font-size:12px;border-radius:var(--hs-radius)}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--hs-border);padding:3px 4px;text-align:left;vertical-align:top}
+code{word-break:break-all}small,.muted{color:var(--hs-textMuted)}
+.warn,.ok,.err{color:var(--hs-text);border-left:3px solid var(--hs-accent);padding-left:.5rem}.warn{border-left-style:dashed}.err{font-weight:600;border-left-width:6px}.err:empty,.ok:empty{display:none}
+[data-state=ok]{color:var(--hs-text);font-weight:600}[data-state=ok]::before{content:"\2713  "}[data-state=error]{color:var(--hs-text);font-weight:600}[data-state=error]::before{content:"\2716  "}
+dialog{max-width:620px;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
 details{margin-top:.6rem}summary{cursor:pointer}
 </style>
-<header><h1>Terp Headstash claim</h1>
+<header><h1>Terp Headstash claim</h1><button id="theme-toggle" type="button" aria-label="Switch light/dark theme" aria-pressed="false">dark</button>
 <p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Every step has an <b>i</b> button explaining what it does, what it reveals and the risks.</p></header>
 <main>
 <section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">1. Headstash instance <button class="info" data-info="instance" aria-label="About step 1">i</button></h2>

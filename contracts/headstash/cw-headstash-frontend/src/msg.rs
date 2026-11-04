@@ -47,6 +47,10 @@ pub struct Manifest {
     /// Become `current` automatically once all chunks land.
     #[serde(default)]
     pub activate: bool,
+    /// R12: default UI theme tokens for the page (light/dark). Validated by theme::validate_theme.
+    /// Omitted from the JSON when unset, so manifests without a theme hash (PIN) exactly as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub theme: Option<crate::theme::Theme>,
 }
 
 #[cw_ownable_execute]

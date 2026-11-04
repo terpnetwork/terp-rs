@@ -160,3 +160,75 @@ export function zafuErrorText(e) {
   if (/timed out/i.test(m)) return "Zafu did not answer in time: open Zafu and check for a pending approval.";
   return "Zafu error: " + m;
 }
+
+// ---- R12: on-chain theme tokens (same rules as cw-headstash / cw-headstash-frontend theme.rs) ----
+export const THEME_TOKENS = ["bg", "surface", "surfaceAlt", "text", "textMuted", "border", "borderStrong", "accent", "onAccent", "focus"];
+export const THEME_MODES = ["light", "dark"];
+export const THEME_MODE_KEY = "terp-hs-theme-mode-v1";
+export const RADIUS_MAX = 24;
+const HEXC = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+export const BUILTIN_THEME = Object.freeze({
+  light: { bg: "#FAFAF7", surface: "#FFFFFF", surfaceAlt: "#F2F2EE", text: "#111111", textMuted: "#555555", border: "#CCCCCC", borderStrong: "#888888", accent: "#1A5FB4", onAccent: "#FFFFFF", focus: "#1A5FB4" },
+  dark: { bg: "#121212", surface: "#1E1E1E", surfaceAlt: "#2A2A2A", text: "#EEEEEE", textMuted: "#AAAAAA", border: "#3A3A3A", borderStrong: "#777777", accent: "#8AB4F8", onAccent: "#111111", focus: "#8AB4F8" },
+  radius_px: 6,
+});
+// Apricot Glow (permissionless.money/alpha/wd-colours/apricot-glow.html): the manifest default and the terpy/thioly headstash theme.
+export const APRICOT_GLOW = Object.freeze({
+  light: { bg: "#FEF4E7", surface: "#FFFBF6", surfaceAlt: "#F9EAD7", text: "#473926", textMuted: "#675336", border: "#E6D6C1", borderStrong: "#E8B773", accent: "#896D46", onAccent: "#FFFFFF", focus: "#896D46" },
+  dark: { bg: "#170D02", surface: "#241704", surfaceAlt: "#332612", text: "#F4EADD", textMuted: "#C2B3A0", border: "#41331F", borderStrong: "#896D46", accent: "#E8B773", onAccent: "#271F14", focus: "#E8B773" },
+});
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+const plain = (o) => o !== null && typeof o === "object" && !Array.isArray(o) && Object.getPrototypeOf(o) === Object.prototype;
+/** Throws on anything outside the whitelist; returns a fresh, frozen copy (never the input object). */
+export function validateTheme(t) {
+  if (!plain(t)) throw new Error("theme: not an object");
+  for (const k of Object.keys(t)) if (!["light", "dark", "radius_px"].includes(k)) throw new Error("theme: unknown field " + JSON.stringify(k).slice(0, 40));
+  const out = { light: {}, dark: {} }; let n = 0;
+  for (const m of THEME_MODES) {
+    const v = own(t, m) ? t[m] : {};
+    if (!plain(v)) throw new Error(`theme.${m}: not an object`);
+    const ks = Object.keys(v); if (ks.length > THEME_TOKENS.length) throw new Error(`theme.${m}: too many tokens`);
+    for (const k of ks) {
+      if (!THEME_TOKENS.includes(k)) throw new Error(`theme.${m}: unknown token ` + JSON.stringify(k).slice(0, 40));
+      const c = v[k]; if (typeof c !== "string" || !HEXC.test(c)) throw new Error(`theme.${m}.${k}: colour must be #RGB or #RRGGBB`);
+      out[m][k] = c; n++;
+    }
+  }
+  if (own(t, "radius_px") && t.radius_px !== null) {
+    const r = t.radius_px; if (!Number.isInteger(r) || r < 0 || r > RADIUS_MAX) throw new Error("theme.radius_px: integer 0.." + RADIUS_MAX);
+    out.radius_px = r;
+  }
+  if (!n) throw new Error("theme: no tokens");
+  return Object.freeze(out);
+}
+/** First valid theme in order (headstash > manifest > built-in); missing tokens fall back to the built-in. */
+export function pickTheme(cands) {
+  const rejected = [];
+  for (const [source, t] of cands) {
+    if (t === null || t === undefined) continue;
+    try { const v = validateTheme(t); return { source, theme: mergeTheme(v), rejected }; } catch (e) { rejected.push({ source, error: e.message }); }
+  }
+  return { source: "builtin", theme: mergeTheme(BUILTIN_THEME), rejected };
+}
+export function mergeTheme(v) {
+  const o = { light: { ...BUILTIN_THEME.light, ...v.light }, dark: { ...BUILTIN_THEME.dark, ...v.dark }, radius_px: v.radius_px ?? BUILTIN_THEME.radius_px };
+  return o;
+}
+/** CSS text with --hs-* custom properties; re-validates every value, so nothing else can reach the stylesheet. */
+export function themeCss(t) {
+  const v = validateTheme(t), r = v.radius_px ?? BUILTIN_THEME.radius_px;
+  const blk = (m) => THEME_TOKENS.filter((k) => own(v[m], k)).map((k) => `--hs-${k}:${v[m][k]}`).concat(`--hs-radius:${r}px`).join(";");
+  return `:root[data-theme=light]{${blk("light")}}\n:root[data-theme=dark]{${blk("dark")}}\n`;
+}
+export function initialMode(storage, prefersDark) {
+  let s = null; try { s = storage && storage.getItem(THEME_MODE_KEY); } catch {}
+  return s === "light" || s === "dark" ? s : (prefersDark ? "dark" : "light");
+}
+// WCAG 2.x relative luminance / contrast ratio
+export function luminance(c) {
+  if (!HEXC.test(c)) throw new Error("bad colour");
+  let h = c.slice(1); if (h.length === 3) h = [...h].map((x) => x + x).join("");
+  const [r, g, b] = [0, 2, 4].map((i) => { const x = parseInt(h.slice(i, i + 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+export function contrast(a, b) { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => p - q); return (y + 0.05) / (x + 0.05); }

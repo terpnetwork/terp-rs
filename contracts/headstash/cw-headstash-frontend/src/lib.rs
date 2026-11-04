@@ -1,6 +1,7 @@
 //! cw-headstash-frontend: content-addressed on-chain host for the Headstash claim UI.
 //! Gov publishes a manifest (file + chunk sha256s); anyone uploads matching chunks.
 pub mod msg;
+pub mod theme;
 #[cfg(feature = "interface")]
 pub mod interface;
 
@@ -60,6 +61,9 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: Instantiate
 }
 
 pub fn validate_manifest(m: &Manifest, next: u32, max_chunk: u32) -> StdResult<()> {
+    if let Some(t) = &m.theme {
+        theme::validate_theme(t)?;
+    }
     if m.version != next {
         return Err(err(format!("version must be {next}")));
     }

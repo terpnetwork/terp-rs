@@ -121,6 +121,10 @@ pub enum ExecuteMsg {
     SetFrontendContract {
         addr: Option<String>,
     },
+    /// Owner (x/gov): set (validated, R12) or clear the claim-page UI theme tokens.
+    SetTheme {
+        theme: Option<crate::theme::Theme>,
+    },
     /// Owner-set bridge corridor config (dest domain, K, lag, mock_verify).
     #[cfg(feature = "legacy")]
     SetBridgeCfg {
@@ -322,6 +326,9 @@ pub enum QueryMsg {
     /// cw-headstash-frontend address hosting the claim UI (if configured).
     #[returns(Option<Addr>)]
     FrontendContract {},
+    /// Claim-page UI theme tokens (R12), if set.
+    #[returns(Option<crate::theme::Theme>)]
+    Theme {},
     /// Hashmerchant root stored for `headstash-pending` or `headstash-accepted`.
     #[returns(crate::epoch::EpochRootResponse)]
     EpochRoot { algo: String },

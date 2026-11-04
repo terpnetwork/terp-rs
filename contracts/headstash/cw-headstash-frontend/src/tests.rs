@@ -22,6 +22,7 @@ fn manifest(version: u32, data: &[u8], chunk: usize, activate: bool) -> (Manifes
         }],
         note: None,
         activate,
+        theme: None,
     };
     (m, chunks)
 }
@@ -357,4 +358,30 @@ fn keep_last_resumes_owner_started_prune_and_no_current_means_no_target() {
     execute(deps.as_mut(), mock_env(), message_info(&anyone, &[]), ExecuteMsg::PruneOld { limit: None }).unwrap();
     let s: PruneStatusResponse = from_json(query(deps.as_ref(), mock_env(), QueryMsg::PruneStatus { version: 1 }).unwrap()).unwrap();
     assert_eq!(s.state, "pruned");
+}
+
+#[test]
+fn manifest_theme_validated_and_pin_compatible() {
+    let (mut m, chunks) = manifest(1, b"hello world", 4, true);
+    // no theme -> JSON identical to the pre-R12 shape (no "theme" key), so v1 PINs are unchanged
+    assert!(!cosmwasm_std::to_json_string(&m).unwrap().contains("theme"));
+    m.theme = Some(crate::theme::apricot_glow());
+    assert!(validate_manifest(&m, 1, 4).is_ok());
+    let j = cosmwasm_std::to_json_string(&m).unwrap();
+    assert!(j.ends_with(r##""activate":true,"theme":{"light":{"accent":"#896D46","bg":"#FEF4E7","border":"#E6D6C1","borderStrong":"#E8B773","focus":"#896D46","onAccent":"#FFFFFF","surface":"#FFFBF6","surfaceAlt":"#F9EAD7","text":"#473926","textMuted":"#675336"},"dark":{"accent":"#E8B773","bg":"#170D02","border":"#41331F","borderStrong":"#896D46","focus":"#E8B773","onAccent":"#271F14","surface":"#241704","surfaceAlt":"#332612","text":"#F4EADD","textMuted":"#C2B3A0"}}}"##), "{j}");
+    for (k, v) in [("bg", "red;}body{"), ("bg", "url(x)"), ("evil", "#fff"), ("bg", "#fffffff")] {
+        let mut b = m.clone();
+        b.theme.as_mut().unwrap().dark.insert(k.into(), v.into());
+        assert!(validate_manifest(&b, 1, 4).is_err(), "{k}={v}");
+    }
+    // stored + returned verbatim through publish / query
+    let (mut deps, gov, _) = setup(4);
+    ex(&mut deps, &gov, ExecuteMsg::PublishManifest { manifest: m.clone() }).unwrap();
+    let _ = chunks;
+    let q: Manifest = from_json(query(deps.as_ref(), mock_env(), QueryMsg::Manifest { version: Some(1) }).unwrap()).unwrap();
+    assert_eq!(q, m);
+    let mut bad = m.clone();
+    bad.version = 2;
+    bad.theme.as_mut().unwrap().light.insert("bg".into(), "expression(1)".into());
+    assert!(ex(&mut deps, &gov, ExecuteMsg::PublishManifest { manifest: bad }).is_err());
 }
