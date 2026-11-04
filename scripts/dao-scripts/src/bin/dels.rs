@@ -1351,6 +1351,13 @@ mod tests {
     use super::*;
 
     // Loads array of validators getting new delegations from file, returning the total new delegations
+    /// In-crate fixture: 33 synthetic terpvaloper addresses
+    /// (bech32(sha256("delegation-fixture/val-NN")[:20])) summing to the obligated total.
+    const FIXTURE_DELS_FILE: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/new-delegations.csv"
+    );
+
     fn load_new_delegations(fp: &str, has_header: bool) -> AllAlignedDelegations {
         let file = File::open(fp).expect("Could not open file");
 
@@ -1414,9 +1421,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs src/bin/data/new-delegations.csv, which is not checked in"]
     fn test_load_obligated_delegations_file() -> anyhow::Result<()> {
-        let aad = load_new_delegations(NEW_DELS_FILE, false);
+        let aad = load_new_delegations(FIXTURE_DELS_FILE, false);
         // Check the calculated total from the struct
 
         // Calculate and check the sum of individual
@@ -1445,11 +1451,10 @@ mod tests {
 
     // Usage in test
     #[test]
-    #[ignore = "needs src/bin/data/new-delegations.csv, which is not checked in"]
     fn test_yes_no_load_obligated_delegations_file() -> anyhow::Result<()> {
         // Try with both header settings to see which matches expected value
-        let aad_with_header = load_new_delegations(NEW_DELS_FILE, true);
-        let aad_without_header = load_new_delegations(NEW_DELS_FILE, false);
+        let aad_with_header = load_new_delegations(FIXTURE_DELS_FILE, true);
+        let aad_without_header = load_new_delegations(FIXTURE_DELS_FILE, false);
 
         println!(
             "With header: {} delegations, total {}",

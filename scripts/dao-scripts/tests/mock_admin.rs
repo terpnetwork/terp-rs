@@ -150,12 +150,12 @@ fn fiab_parent_is_wasm_and_dao_admin_and_gets_the_seed() {
 }
 
 #[test]
-#[ignore = "needs ../../steward-accounts.json, which is not checked in"]
 fn steward_daos_are_self_owned_and_custody_is_vetoed_by_steward() {
     let mut app = morocco_app();
     let checksum = app.wrap().query_wasm_code_info(CODE_CORE).unwrap().checksum;
     let accounts = load_steward_accounts(
-        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../steward-accounts.json"),
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/steward-accounts.json"),
     )
     .expect("steward-accounts.json");
     let plan = build_steward_plan(&accounts, PARENT_CORE, checksum.as_slice(), None, None).unwrap();
