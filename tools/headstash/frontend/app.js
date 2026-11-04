@@ -1,14 +1,17 @@
-let C, hex, unhex, cat, b64, unb64, te, sha256;
+// Headstash claim page v2 (R1-R9). Loaded by loader.html from the frontend contract; every file sha256-verified.
+let C, V, hex, unhex, cat, b64, unb64, te, sha256;
 const $ = (id) => document.getElementById(id);
-let cfg, Z, state = null;
+let cfg, Z, STEPS, guard, state = null, inst = null, elig = null, who = null, rawKey = null, rewardW = null;
 const log = (...a) => { const l = $("log"); l.textContent += new Date().toISOString().slice(11, 19) + " " + a.join(" ") + "\n"; l.scrollTop = 1e9; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const errOut = (id, e) => { $(id).textContent = e ? (e.message || String(e)) : ""; if (e) log("ERROR", e.message || String(e)); };
+const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); kids.forEach((k) => e.append(k)); return e; };
+async function guarded(errId, fn) { errOut(errId, null); try { return await fn(); } catch (e) { errOut(errId, e); } }
 
-// ---- chain IO (REST + relay only; CSP connect-src enforces this) ----
-async function smart(addr, q) {
-  const r = await fetch(`${cfg.rest}/cosmwasm/wasm/v1/contract/${addr}/smart/${b64(te.encode(JSON.stringify(q)))}`);
-  const j = await r.json(); if (!r.ok) throw new Error(j.message || r.status); return j.data;
-}
+// ---- chain IO (LCD + relay + HAL origin; CSP connect-src enforces this) ----
+async function lcd(path) { const r = await fetch(cfg.rest + path); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.message || "LCD " + r.status); return j; }
+async function smartAt(addr, q) { return (await lcd(`/cosmwasm/wasm/v1/contract/${addr}/smart/${b64(te.encode(JSON.stringify(q)))}`)).data; }
+const smart = (q) => smartAt(cfg.headstash, q);
 async function grant(grantee, kind, body) {
   const r = await fetch(`${cfg.relay}/headstash/feegrant`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ grantee, [kind]: body }) });
   const j = await r.json().catch(() => ({})); if (r.status !== 200 || !j.granted) throw new Error("fee grant refused: " + JSON.stringify(j).slice(0, 200)); return j;
@@ -42,6 +45,121 @@ async function execTx(w, msg, gas, granter) {
   }
   return { code: -1, raw_log: "not included after 60s", txhash: tr.txhash };
 }
+const rootHex = (r) => (r == null ? null : /^[0-9a-f]{64}$/i.test(r) ? r.toLowerCase() : hex(unb64(r)));
+const listOf = (x, k) => (Array.isArray(x) ? x : (x && (x[k] || x.channels)) || []);
+
+// ---- R7: browse instances by code id ----
+async function instanceInfo(a) {
+  const ci = (await lcd(`/cosmwasm/wasm/v1/contract/${a}`)).contract_info || {};
+  const [pause, hal, ch, camp] = await Promise.all([{ pause_status: {} }, { hal_source: {} }, { forward_channels: {} }, { epoch_campaign: {} }].map((q) => smartAt(a, q).catch(() => undefined)));
+  return { addr: a, label: ci.label, admin: ci.admin, code_id: ci.code_id, pause, hal, channels: listOf(ch, "channels"), camp };
+}
+async function browse() {
+  return guarded("inst-err", async () => {
+    const codes = V.parseNumList($("code-ids").value); if (!codes.length) throw new Error("enter at least one code id");
+    const tb = $("inst-list").tBodies[0]; tb.replaceChildren(); let n = 0;
+    for (const code of codes) {
+      let key = null;
+      do {
+        const j = await lcd(V.codeContractsPath(code, key));
+        for (const a of j.contracts || []) {
+          const i = await instanceInfo(a).catch((e) => ({ addr: a, error: e.message }));
+          const paused = i.pause && (i.pause.paused || i.pause.claims_paused) ? "paused" : i.pause ? "active" : "?";
+          const root = rootHex(i.camp?.registration?.eligibility_root);
+          const params = `admin ${i.admin || "none"}; HAL ${i.hal ? i.hal.uri : "unset"}; forward channels ${i.channels ? i.channels.filter((c) => c.enabled).map((c) => c.channel_id).join(" ") || "none" : "?"}; root ${root ? root.slice(0, 12) + "…" : "?"}`;
+          const btn = el("button", { textContent: a === cfg.headstash ? "Selected" : "Select", disabled: a === cfg.headstash });
+          btn.setAttribute("aria-label", "Select instance " + a); btn.dataset.addr = a; btn.onclick = () => selectInstance(a);
+          tb.append(el("tr", {}, el("td", {}, el("code", { textContent: a }), el("br"), i.label || ""), el("td", { textContent: String(code) }), el("td", { textContent: i.error ? "error" : paused }), el("td", { textContent: i.error || params }), el("td", {}, btn)));
+          n++;
+        }
+        key = j.pagination && j.pagination.next_key;
+      } while (key);
+    }
+    $("inst-list").dataset.count = n; log(`listed ${n} instance(s) for code ${codes.join(",")}`);
+  });
+}
+async function selectInstance(a) {
+  return guarded("inst-err", async () => {
+    if (state && state.contract !== a) throw new Error("a notes file for another instance is loaded: reload the page to switch");
+    cfg.headstash = a; $("hs-cur").textContent = a; elig = null; inst = null;
+    document.querySelectorAll("#inst-list button[data-addr]").forEach((b) => { b.disabled = b.dataset.addr === a; b.textContent = b.disabled ? "Selected" : "Select"; });
+    const [camp, hal, ch, dc] = await Promise.all([smart({ epoch_campaign: {} }), smart({ hal_source: {} }).catch(() => null), smart({ forward_channels: {} }).catch(() => []), smart({ direct_claim: {} }).catch(() => null)]);
+    const ctx = hex(await directCtx());
+    const exp = dc && (dc.expected_ctx || dc.ctx); if (exp && rootHex(exp) !== ctx) throw new Error("direct-claim ctx mismatch: wrong chain id or contract");
+    inst = { addr: a, camp, hal, channels: listOf(ch, "channels").filter((c) => c.enabled), root: rootHex(camp?.registration?.eligibility_root) };
+    if (!inst.root) throw new Error("instance has no registration eligibility root");
+    $("hal-src").textContent = hal ? `${hal.uri}  sha256=${hal.sha256 || "–"}  cid=${hal.cid || "–"}` : "not set";
+    $("fwd-channel").replaceChildren(...inst.channels.map((c) => el("option", { value: c.channel_id, textContent: `${c.channel_id} (timeout ${c.timeout_seconds}s)` })));
+    document.querySelector('input[name=dest-mode][value=forward]').disabled = !inst.channels.length;
+    log(`selected ${a}; root ${inst.root.slice(0, 16)}…; ${inst.channels.length} forward channel(s)`);
+    if (hal) await halFetch();
+  });
+}
+
+// ---- R1: HAL fetch + verify ----
+function setHal(st, t) { $("hal-status").dataset.state = st; $("hal-status").textContent = t; }
+async function useHal(bytes, origin) {
+  const v = await V.verifyHal(bytes, inst.hal), p = V.parseHal(bytes, inst.root);
+  elig = p.byIdentity; setHal("ok", `Verified (${v.passed.join(" + ")}; sha256 ${v.sha256.slice(0, 16)}…) from ${origin}: ${p.hal.rows.length} notes for ${elig.size} identities, root matches chain.`);
+  $("hal-status").dataset.sha = v.sha256; log("HAL verified", v.sha256);
+}
+async function halFetch() {
+  return guarded("hal-err", async () => {
+    if (!inst) throw new Error("select an instance first"); if (!inst.hal) throw new Error("this instance has no HAL source; ask the operator to set_hal_source");
+    elig = null; setHal("busy", "Fetching…"); const errs = [];
+    for (const u of V.resolveHal(inst.hal)) {
+      try { const r = await fetch(u, { credentials: "omit", referrerPolicy: "no-referrer" }); if (!r.ok) throw new Error("HTTP " + r.status); return await useHal(new Uint8Array(await r.arrayBuffer()), new URL(u).host); }
+      catch (e) { errs.push(`${u}: ${e.message}`); if (/mismatch|refus|format|another eligibility/.test(e.message)) break; }
+    }
+    setHal("error", "Verification failed: page will not use this data."); throw new Error(errs.join("; "));
+  });
+}
+async function halLocal() {
+  return guarded("hal-err", async () => {
+    if (!inst || !inst.hal) throw new Error("select an instance with a HAL source first");
+    elig = null; const f = $("hal-file").files[0]; if (!f) return;
+    try { await useHal(new Uint8Array(await f.arrayBuffer()), "local file"); } catch (e) { setHal("error", "Verification failed: page will not use this data."); throw e; }
+  });
+}
+
+// ---- R2: eligibility via MetaMask (address only; lookup is local) ----
+function showElig() {
+  const rows = elig.get(who.id) || [];
+  const tot = rows.reduce((a, r) => a + (r.amount != null ? Number(r.amount) : 0), 0);
+  $("elig-out").textContent = rows.length ? `0x${who.id} is eligible: ${rows.length} notes${tot ? `, ${tot} ${cfg.denom}` : ""}.` : `0x${who.id} is not in this eligibility set.`;
+  $("elig-out").dataset.notes = rows.length; $("derive").disabled = !rows.length || !!state;
+}
+async function mmConnect() {
+  return guarded("elig-err", async () => {
+    if (!elig) throw new Error("verify the HAL first (step 2)");
+    const eth = window.ethereum; if (!eth) throw new Error("no MetaMask (EIP-1193) provider found");
+    const acc = await eth.request({ method: "eth_requestAccounts" }); if (!acc || !acc[0]) throw new Error("no account shared");
+    const id = acc[0].toLowerCase().replace(/^0x/, ""); if (!/^[0-9a-f]{40}$/.test(id)) throw new Error("bad account from wallet");
+    who = { kind: "eip1193", id, addr: "0x" + id }; showElig();
+  });
+}
+async function keyUse() {
+  return guarded("elig-err", async () => {
+    if (!elig) throw new Error("verify the HAL first (step 2)");
+    const k = unhex($("key").value.trim()); $("key").value = ""; if (!C.privOk(k)) { k.fill(0); throw new Error("invalid secp256k1 private key"); }
+    if (rawKey) rawKey.fill(0); rawKey = k; who = { kind: "raw", id: hex(C.keccak256(C.pubkey(k).uncompressed).slice(12)) }; showElig();
+  });
+}
+const sigBytes = (h) => { const s = unhex(h.replace(/^0x/, "")); if (s.length !== 65) throw new Error("wallet returned a bad signature"); s[64] = 27 + ((s[64] >= 27 ? s[64] - 27 : s[64]) & 1); return s; };
+async function personalSign(msg) { return sigBytes(await window.ethereum.request({ method: "personal_sign", params: ["0x" + hex(te.encode(msg)), who.addr] })); }
+
+// ---- R3: reward address ----
+async function rewardAddr() {
+  const mode = document.querySelector("input[name=reward-mode]:checked").value;
+  if (mode === "keplr") {
+    const k = window.keplr; if (!k) throw new Error("Keplr not found");
+    await k.enable(cfg.chain_id); const key = await k.getKey(cfg.chain_id); rewardW = null;
+    return checkTerp(key.bech32Address);
+  }
+  if (!rewardW) rewardW = await wallet(C.reduceN(crypto.getRandomValues(new Uint8Array(32))));
+  return rewardW.addr;
+}
+async function rewardChange() { return guarded("reward-err", async () => { if (state) throw new Error("reward address is fixed once notes are derived"); $("reward-addr").textContent = await rewardAddr(); }); }
 
 // ---- derivation ----
 async function directCtx() { const h = await sha256(te.encode(`terp-hs-direct-ctx-v1\0${cfg.chain_id}\0${cfg.headstash}`)); h[31] &= 0x3f; return h; }
@@ -50,47 +168,49 @@ async function listHash(ctx, tag, ident, notes) {
   notes.forEach((n, i) => parts.push(new Uint8Array([n.cls]), C.u16le(i), unhex(n.k)));
   return sha256(cat(...parts));
 }
-async function claimWallet(s) { return await wallet(C.reduceN(await C.hkdf(unhex(s), te.encode("terp-hs-claim-key-v1"), new Uint8Array(), 32))); }
-function parseRows(text) {
-  const t = text.trim(); if (t.startsWith("[")) return JSON.parse(t);
-  return t.split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l));
-}
+const hk = async (s, info, extra = new Uint8Array()) => C.reduceN(await C.hkdf(unhex(s), te.encode(info), extra, 32));
+async function claimWallet(s) { return wallet(await hk(s, "terp-hs-claim-key-v1")); }
+async function fallbackWallet(s, attempt) { return wallet(await hk(s, "terp-hs-fwd-fallback-v1", C.u32le(attempt))); }
 function checkTerp(a) { const d = C.bech32Decode(a); if (d.hrp !== cfg.hrp || (d.bytes.length !== 20 && d.bytes.length !== 32)) throw new Error("not a " + cfg.hrp + " address: " + a); return a; }
+const seedMessage = (ctx) => `terp-headstash-note-seed-v2\nchain: ${cfg.chain_id}\ncontract: ${cfg.headstash}\nctx: ${ctx}\n\nSigning derives your private Headstash notes. Only sign this on the Headstash claim page.`;
 
-async function generate() {
-  const keyIn = $("key"); let priv;
-  try {
-    priv = unhex(keyIn.value.trim()); keyIn.value = "";
-    if (!C.privOk(priv)) throw new Error("invalid secp256k1 private key");
-    const f = $("elig").files[0]; if (!f) throw new Error("choose the eligibility rows file");
-    const reward = checkTerp($("reward").value.trim());
-    const single = $("dest-mode").value === "single" ? checkTerp($("dest").value.trim()) : null;
-    const ident = C.keccak256(C.pubkey(priv).uncompressed).slice(12), id = hex(ident);
-    const rows = parseRows(await f.text()).filter((r) => String(r.identity).toLowerCase().replace(/^0x/, "") === id).sort((a, b) => a.note_index - b.note_index);
-    if (!rows.length) throw new Error("no eligibility rows for 0x" + id);
-    const ctx = await directCtx(), ch = hex(ctx);
-    log(`deriving ${rows.length} notes for 0x${id}`);
+async function derive() {
+  return guarded("reg-err", async () => {
+    if (!who || !elig) throw new Error("check eligibility first"); if (state) throw new Error("notes already derived");
+    const rows = elig.get(who.id) || []; if (!rows.length) throw new Error("not eligible");
+    const reward = await rewardAddr(); $("reward-addr").textContent = reward;
+    const ctx = await directCtx(), ch = hex(ctx), ident = unhex(who.id);
+    let ikm, info;
+    if (who.kind === "eip1193") {
+      log("asking the wallet to sign the note seed (twice, to confirm it is deterministic)");
+      const a = await personalSign(seedMessage(ch)), b = await personalSign(seedMessage(ch));
+      if (hex(a) !== hex(b)) throw new Error("this wallet's signatures are not deterministic, so notes could not be re-derived: use the advanced raw-key option");
+      ikm = await sha256(a.slice(0, 64)); info = "terp-hs-note-secret-v2";
+    } else { if (!rawKey) throw new Error("enter the key again"); ikm = rawKey; info = "terp-hs-note-secret-v1"; }
     const notes = [];
     for (const r of rows) {
-      const wide = await C.hkdf(priv, te.encode("terp-hs-note-secret-v1"), cat(ctx, ident, C.u32le(r.note_index)), 64);
+      const wide = await C.hkdf(ikm, te.encode(info), cat(ctx, ident, C.u32le(r.note_index)), 64);
       const s = Z.note_secret_from_wide_hex(hex(wide)); wide.fill(0);
       const n = { c: ch, i: r.note_index, li: r.leaf_index, p: r.path, cls: r.class, amt: r.amount != null ? String(r.amount) : null, s, k: Z.membership_key_com_hex(s), n: Z.note_nullifier_hex(s, ch), st: "new" };
-      n.dest = single || (await claimWallet(s)).addr; notes.push(n);
+      n.dest = (await claimWallet(s)).addr; notes.push(n);
     }
     const lh = await listHash(ctx, 1, ident, notes);
-    const msg = `headstash-register-notes-v3:${ch}:${hex(lh)}:${notes.length}:${reward}`, m = te.encode(msg);
-    const sig = await C.sign(priv, C.keccak256(cat(te.encode("\x19Ethereum Signed Message:\n" + m.length), m)));
-    state = { v: 1, chain_id: cfg.chain_id, contract: cfg.headstash, identity: id, created: Math.floor(Date.now() / 1000), reward_addr: reward,
-      registration: { list_hash: hex(lh), signature: hex(cat(sig.r, sig.s, new Uint8Array([27 + (sig.rec & 1)]))) }, notes };
-    log(`generated ${notes.length} notes; list_hash ${hex(lh).slice(0, 16)}…; key wiped`);
-    render(); await save();
-  } catch (e) { log("ERROR", e.message); } finally { if (priv) priv.fill(0); keyIn.value = ""; }
+    const msg = `headstash-register-notes-v3:${ch}:${hex(lh)}:${notes.length}:${reward}`;
+    let sig;
+    if (who.kind === "eip1193") sig = await personalSign(msg);
+    else { const m = te.encode(msg), s = await C.sign(rawKey, C.keccak256(cat(te.encode("\x19Ethereum Signed Message:\n" + m.length), m))); sig = cat(s.r, s.s, new Uint8Array([27 + (s.rec & 1)])); }
+    ikm.fill(0); if (rawKey) { rawKey.fill(0); rawKey = null; }
+    state = { v: 1, ui: 2, derivation: who.kind === "eip1193" ? "eip1193-seed-v2" : "raw-key-v1", chain_id: cfg.chain_id, contract: cfg.headstash, identity: who.id,
+      created: Math.floor(Date.now() / 1000), reward_addr: reward, reward_priv: rewardW ? hex(rewardW.priv) : undefined,
+      registration: { list_hash: hex(lh), signature: hex(sig) }, notes };
+    log(`derived ${notes.length} notes; list_hash ${hex(lh).slice(0, 16)}…`); render(); await save();
+  });
 }
 
 // ---- notes file ----
 const canon = (o) => Array.isArray(o) ? "[" + o.map(canon).join(",") + "]" : o && typeof o === "object" ? "{" + Object.keys(o).sort().filter((k) => o[k] !== undefined).map((k) => JSON.stringify(k) + ":" + canon(o[k])).join(",") + "}" : JSON.stringify(o);
 async function fileBytes() {
-  const o = { ...state }; delete o.sha256; o.sha256 = hex(await sha256(te.encode(canon(o))));
+  const o = JSON.parse(JSON.stringify(state)); delete o.sha256; o.sha256 = hex(await sha256(te.encode(canon(o))));
   let out = JSON.stringify(o, null, 1); const pass = $("pass").value;
   if (pass) {
     const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
@@ -99,91 +219,162 @@ async function fileBytes() {
   }
   return out;
 }
-async function save() { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([await fileBytes()], { type: "application/json" })); a.download = "headstash-notes.v1.json"; document.body.appendChild(a); a.click(); a.remove(); log("notes file saved"); }
+function download(name, text) { const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "application/json" })), download: name }); document.body.appendChild(a); a.click(); a.remove(); }
+async function save() { download("headstash-notes.v1.json", await fileBytes()); log("notes file saved"); }
 async function load() {
-  try {
-    let o = JSON.parse(await $("nf").files[0].text());
+  return guarded("reg-err", async () => {
+    const f = $("nf").files[0]; if (!f) throw new Error("choose a notes file");
+    let o = JSON.parse(await f.text());
     if (o.enc === "pbkdf2-aesgcm") {
       const k = await crypto.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt: unb64(o.salt), iterations: 600000 }, await crypto.subtle.importKey("raw", te.encode($("pass").value), "PBKDF2", false, ["deriveKey"]), { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-      o = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(o.iv) }, k, unb64(o.ct))));
+      try { o = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(o.iv) }, k, unb64(o.ct)))); } catch { throw new Error("wrong passphrase"); }
     }
     const want = o.sha256; delete o.sha256;
     if (o.v !== 1 || hex(await sha256(te.encode(canon(o)))) !== want) throw new Error("notes file checksum mismatch or unknown version");
-    if (o.chain_id !== cfg.chain_id || o.contract !== cfg.headstash) throw new Error("notes file is for another chain/contract");
-    state = o; log(`loaded ${o.notes.length} notes (checksum ok)`); render();
-  } catch (e) { log("ERROR load:", e.message); }
+    if (o.chain_id !== cfg.chain_id) throw new Error("notes file is for another chain");
+    if (o.contract !== cfg.headstash) { await selectInstance(o.contract); if (cfg.headstash !== o.contract) throw new Error("could not select the notes file's instance"); }
+    state = o; if (o.reward_priv) rewardW = await wallet(unhex(o.reward_priv)); $("reward-addr").textContent = o.reward_addr;
+    log(`loaded ${o.notes.length} notes (checksum ok)`); render();
+  });
 }
 
-// ---- register / claim ----
+// ---- register ----
 async function register() {
-  const todo = state.notes.filter((n) => n.st === "new"); if (!todo.length) return log("nothing to register");
-  const all = state.notes, list = all.map((n) => ({ class: n.cls, key_com: b64(unhex(n.k)) }));
-  for (let start = 0; start < all.length; start += 32) {
-    const chunk = all.slice(start, start + 32); if (chunk.every((n) => n.st !== "new")) continue;
-    const first = start === 0;
-    const body = { signer: { evm: { address: b64(unhex(state.identity)) } }, signature: first ? b64(unhex(state.registration.signature)) : null, list, start,
-      eligibility: chunk.map((n) => ({ index: n.li, path: n.p.map((x) => b64(unhex(x))) })), reward_addr: first ? state.reward_addr : null };
-    const w = await wallet(C.reduceN(crypto.getRandomValues(new Uint8Array(32))));
-    try {
+  return guarded("reg-err", async () => {
+    const all = state.notes; if (!all.some((n) => n.st === "new")) return log("nothing to register");
+    const list = all.map((n) => ({ class: n.cls, key_com: b64(unhex(n.k)) }));
+    for (let start = 0; start < all.length; start += 32) {
+      const chunk = all.slice(start, start + 32); if (chunk.every((n) => n.st !== "new")) continue;
+      const first = start === 0;
+      const body = { signer: { evm: { address: b64(unhex(state.identity)) } }, signature: first ? b64(unhex(state.registration.signature)) : null, list, start,
+        eligibility: chunk.map((n) => ({ index: n.li, path: n.p.map((x) => b64(unhex(x))) })), reward_addr: first ? state.reward_addr : null };
+      const w = await wallet(C.reduceN(crypto.getRandomValues(new Uint8Array(32))));
       const g = await grant(w.addr, "register", body);
       const res = await execTx(w, { register_notes: body }, cfg.register_gas, g.granter);
       if (res.code === 0 || /already registered/i.test(res.raw_log || "")) { chunk.forEach((n) => { n.st = "registered"; n.rtx = res.txhash; }); log(`registered notes ${start}..${start + chunk.length - 1} tx ${res.txhash}`); }
-      else { log(`register chunk ${start} failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`); break; }
-    } catch (e) { log("ERROR register:", e.message); break; }
-    render();
-  }
-  render(); await save();
+      else throw new Error(`register chunk ${start} failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
+      render();
+    }
+    log("registered all notes"); render(); await save();
+  });
 }
+async function anchorCheck() {
+  return guarded("claim-err", async () => {
+    const rt = await smart({ registration_tree: {} });
+    $("anchor-out").textContent = rt.latest_anchor ? `Latest anchor ${hex(unb64(rt.latest_anchor.root)).slice(0, 16)}… covering ${rt.latest_anchor.leaf_count} registrations (tree size ${rt.count}, minimum anonymity set ${rt.min_anonymity_set}).` : "No accepted anchor yet: claims open after the next anchor.";
+  });
+}
+
+// ---- R4/R5: destination ----
+const destMode = () => document.querySelector("input[name=dest-mode]:checked").value;
+function zafuDetect() {
+  const p = window[Symbol.for("penumbra")];
+  $("zafu-detect").textContent = window.__hsTestPenumbra ? "Test Penumbra provider injected (harness)." : p ? "Zafu/Prax detected: open Zafu → Receive → IBC deposit address, then paste the one-time address here." : "No Penumbra wallet detected: paste a one-time address from Zafu.";
+}
+// Production Zafu exposes a connect-rpc transport (ViewService.ephemeralAddress); wiring it needs @penumbra-zone/client (open item).
+// Until then the page accepts an injected provider with `ephemeralAddress()` (used by the e2e harness) or a pasted address.
+async function zafuAddress() {
+  const t = window.__hsTestPenumbra; if (t && t.ephemeralAddress) return t.ephemeralAddress();
+  throw new Error(window[Symbol.for("penumbra")] ? "automatic Zafu request is not wired yet: paste the IBC deposit (one-time) address from Zafu" : "no Penumbra wallet detected");
+}
+async function receiverFor(first) {
+  if (window.__hsTestPenumbra && !$("recv-any").checked) { const a = await zafuAddress(); $("recv").value = a; return a; }
+  if (!first) return null;
+  return $("recv").value.trim();
+}
+function checkReceiver(r) {
+  if (!V.validReceiver(r)) throw new Error("receiver must be 1-256 printable characters");
+  if (!$("recv-any").checked) V.checkPenumbra(r, C.bech32Decode);
+  return r;
+}
+
+// ---- claim ----
 async function claim() {
-  const rt = await smart(cfg.headstash, { registration_tree: {} });
-  if (!rt.latest_anchor) return log("no accepted anchor yet: wait for the next anchor, then claim");
-  const root = rt.latest_anchor.root, rootHex = hex(unb64(root));
-  for (const n of state.notes.filter((x) => x.st === "registered" || x.st === "submitted")) {
-    let pth;
-    try { pth = await smart(cfg.headstash, { registration_path: { key_com: b64(unhex(n.k)), anchor: root } }); }
-    catch (e) { log(`note ${n.i}: not in the latest anchor yet (${e.message.slice(0, 80)})`); continue; }
-    try {
+  return guarded("claim-err", async () => {
+    const mode = destMode(), max = Math.max(1, parseInt($("claim-max").value, 10) || 1);
+    const rt = await smart({ registration_tree: {} }); if (!rt.latest_anchor) throw new Error("no accepted anchor yet: wait for the next anchor, then claim");
+    const root = rt.latest_anchor.root, rh = hex(unb64(root)), todo = state.notes.filter((x) => x.st === "registered" || x.st === "submitted").slice(0, max);
+    let ch = null; if (mode === "forward") { ch = $("fwd-channel").value; if (!V.validChannel(ch) || !inst.channels.some((c) => c.channel_id === ch)) throw new Error("pick an allowlisted forward channel"); }
+    let done = 0;
+    for (const [k, n] of todo.entries()) {
+      let pth;
+      try { pth = await smart({ registration_path: { key_com: b64(unhex(n.k)), anchor: root } }); }
+      catch (e) { log(`note ${n.i}: not in the latest anchor yet (${e.message.slice(0, 80)})`); continue; }
+      const w = await claimWallet(n.s); await guard.use(w.addr, "claim", n.n);
+      let dest = w.addr, t = null;
+      if (mode === "forward") {
+        const recv = await receiverFor(k === 0); if (!recv) { log("forward: each note needs a new one-time address; paste the next one and claim again"); break; }
+        checkReceiver(recv); await guard.check(recv, n.n);
+        n.fa = (n.fa || 0) + 1; const fb = await fallbackWallet(n.s, n.fa); await guard.use(fb.addr, "fallback", n.n);
+        await guard.use(recv, "receiver", n.n);
+        t = { channel_id: ch, receiver: recv, memo: null, fallback: fb.addr };
+        dest = await V.forwardDestination(cfg.chain_id, cfg.headstash, t);
+        const q = await smart({ forward_destination: { forward: t } }); const qd = typeof q === "string" ? q : q && (q.destination || q.forward_destination);
+        if (qd !== dest) throw new Error(`forward destination mismatch (page ${dest}, contract ${qd}): refusing`);
+        $("fwd-preview").textContent = `note ${n.i}: ${ch} → ${recv.slice(0, 24)}…, fallback ${fb.addr}`;
+      }
       log(`note ${n.i}: proving…`); await sleep(30);
       const t0 = performance.now();
-      const pr = JSON.parse(Z.prove_note_witness_browser(JSON.stringify({ secret_hex: n.s, ctx_hex: n.c, root_hex: rootHex, destination: n.dest, amount: String(pth.amount), index: pth.index, siblings_hex: pth.siblings })));
-      const p = pr.body.split(":");
-      if (p[3] !== n.n) throw new Error("nullifier mismatch between notes file and proof");
+      const pr = JSON.parse(Z.prove_note_witness_browser(JSON.stringify({ secret_hex: n.s, ctx_hex: n.c, root_hex: rh, destination: dest, amount: String(pth.amount), index: pth.index, siblings_hex: pth.siblings })));
+      const p = pr.body.split(":"); if (p[3] !== n.n) throw new Error("nullifier mismatch between notes file and proof");
       n.prove_ms = Math.round(performance.now() - t0); n.amt = p[5];
       const msg = { root, nullifier: b64(unhex(p[3])), amount: Number(p[5]), proof: b64(unhex(pr.proof_hex)) };
-      const w = await claimWallet(n.s), g = await grant(w.addr, "claim", msg);
+      if (t) msg.forward = t;
+      const g = await grant(w.addr, t ? "claim_forward" : "claim", msg);
       n.st = "submitted"; render();
-      const res = await execTx(w, { claim_note: msg }, cfg.claim_gas, g.granter); n.tx = res.txhash;
-      if (res.code === 0 || /nullifier.*(spent|used)|already (claimed|spent)/i.test(res.raw_log || "")) { n.st = "spent"; log(`note ${n.i}: claimed ${p[5]} → ${n.dest} (proof ${n.prove_ms} ms) tx ${res.txhash}`); }
-      else log(`note ${n.i}: claim failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
-    } catch (e) { log(`ERROR note ${n.i}:`, e.message); }
-    render();
-  }
-  await save();
+      const res = await execTx(w, t ? { claim_note_forward: msg } : { claim_note: msg }, t ? cfg.forward_gas || 900000 : cfg.claim_gas, g.granter); n.tx = res.txhash;
+      if (res.code === 0 || /nullifier.*(spent|used)|already (claimed|spent)/i.test(res.raw_log || "")) {
+        n.st = "spent"; n.mode = mode; done++; if (t) n.fwd = { ...t, destination: dest };
+        log(`note ${n.i}: ${t ? "forwarded" : "claimed"} ${p[5]} → ${t ? t.receiver.slice(0, 20) + "… via " + ch : dest} (proof ${n.prove_ms} ms) tx ${res.txhash}`);
+      } else throw new Error(`note ${n.i}: claim failed code ${res.code}: ${(res.raw_log || "").slice(0, 200)}`);
+      render();
+    }
+    $("claim-out").textContent = `${done} note(s) ${mode === "forward" ? "forwarded" : "claimed"} in this run.`; $("claim-out").dataset.done = done;
+    await save();
+  });
 }
 async function exportWallets() {
-  const out = []; for (const n of state.notes) { const w = await claimWallet(n.s); out.push({ note: n.i, address: w.addr, priv_hex: hex(w.priv) }); }
-  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" })); a.download = "headstash-claim-wallets.json"; a.click();
+  const out = [];
+  for (const n of state.notes) {
+    const w = await claimWallet(n.s), e = { note: n.i, address: w.addr, priv_hex: hex(w.priv) };
+    if (n.fa) { e.fallbacks = []; for (let a = 1; a <= n.fa; a++) { const f = await fallbackWallet(n.s, a); e.fallbacks.push({ attempt: a, address: f.addr, priv_hex: hex(f.priv) }); } }
+    out.push(e);
+  }
+  download("headstash-claim-wallets.json", JSON.stringify(out, null, 1));
 }
 function render() {
   if (!state) return; const by = {}; state.notes.forEach((n) => (by[n.st] = (by[n.st] || 0) + 1));
   $("summary").textContent = `0x${state.identity}: ${state.notes.length} notes — ` + Object.entries(by).map(([k, v]) => `${k} ${v}`).join(", ");
   $("summary").dataset.counts = JSON.stringify(by);
-  $("register").disabled = !by.new; $("claim").disabled = !(by.registered || by.submitted); $("save").disabled = false; $("export").disabled = false;
-  $("tbl").innerHTML = "<tr><th>#</th><th>class</th><th>status</th><th>destination</th></tr>" + state.notes.map((n) => `<tr><td>${n.i}</td><td>${n.cls}</td><td>${n.st}</td><td>${n.dest}</td></tr>`).join("");
+  $("derive").disabled = true; $("register").disabled = !by.new; $("claim").disabled = !(by.registered || by.submitted);
+  $("save").disabled = false; $("export").disabled = false; $("reward-export").disabled = !state.reward_priv;
+  const head = el("tr", {}, ...["#", "class", "status", "destination"].map((h) => el("th", { textContent: h })));
+  $("tbl").replaceChildren(head, ...state.notes.map((n) => el("tr", {}, ...[n.i, n.cls, n.st, n.fwd ? `${n.fwd.channel_id} → ${n.fwd.receiver.slice(0, 22)}…` : n.dest].map((x) => el("td", { textContent: String(x) })))));
 }
-function penumbra() {
-  const a = $("pen").value.trim();
-  try { const d = C.bech32Decode(a, true); if (d.hrp !== "penumbra") throw new Error("hrp must be penumbra"); $("pen-out").textContent = JSON.stringify({ valid: true, note: "PREVIEW ONLY. Nothing is sent. The channel and timeout are not set yet.", ibc_transfer: { source_port: "transfer", source_channel: "<TBD>", denom: cfg.denom, receiver: a, timeout: "<TBD>" }, tip: "Use a fresh diversified address for each note so claims stay unlinkable." }, null, 1); }
-  catch (e) { $("pen-out").textContent = "invalid Penumbra address: " + e.message; }
+function info(id) {
+  const s = STEPS[id]; if (!s) return; $("info-title").textContent = s.title; $("info-what").textContent = s.what; $("info-reveals").textContent = s.reveals; $("info-risks").textContent = s.risks;
+  $("info-dlg").dataset.step = id; $("info-dlg").showModal();
 }
 
 export async function start({ files, manifest, config, urls }) {
-  C = await import(urls["crypto.js"]); ({ hex, unhex, cat, b64, unb64, te, sha256 } = C);
-  cfg = config; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
+  C = await import(urls["crypto.js"]); V = await import(urls["v2lib.js"]); ({ hex, unhex, cat, b64, unb64, te, sha256 } = C);
+  STEPS = JSON.parse(new TextDecoder().decode(files["steps.json"])); guard = new V.ReuseGuard(window.localStorage);
+  cfg = { ...config }; $("fe-addr").textContent = config.frontend; $("fe-ver").textContent = manifest.version;
   const url = URL.createObjectURL(new Blob([files["zk_headstash.js"]], { type: "text/javascript" }));
   Z = await import(url); await Z.default({ module_or_path: files["zk_headstash_bg.wasm"] });
-  $("how").onclick = () => ($("modal").style.display = "block"); $("close").onclick = () => ($("modal").style.display = "none");
-  $("gen").onclick = generate; $("load").onclick = load; $("register").onclick = register; $("claim").onclick = claim; $("save").onclick = save; $("export").onclick = exportWallets; $("pen-check").onclick = penumbra;
-  $("pen-detect").textContent = window[Symbol.for("penumbra")] ? "Zafu/Prax wallet detected." : "No Penumbra wallet (Zafu/Prax) detected. You can still paste an address.";
+  document.querySelectorAll("button.info").forEach((b) => (b.onclick = () => info(b.dataset.info)));
+  $("browse").onclick = browse; $("hal-fetch").onclick = halFetch; $("hal-file").onchange = halLocal; $("mm-connect").onclick = mmConnect; $("key-use").onclick = keyUse;
+  document.querySelectorAll("input[name=reward-mode]").forEach((r) => (r.onchange = rewardChange));
+  document.querySelectorAll("input[name=dest-mode]").forEach((r) => (r.onchange = () => ($("fwd-box").hidden = destMode() !== "forward")));
+  $("derive").onclick = derive; $("load").onclick = load; $("register").onclick = register; $("anchor-check").onclick = anchorCheck; $("claim").onclick = claim;
+  $("save").onclick = save; $("export").onclick = exportWallets; $("zafu").onclick = () => guarded("dst-err", async () => { $("recv").value = await zafuAddress(); });
+  $("reward-export").onclick = () => download("headstash-reward-key.json", JSON.stringify({ address: state.reward_addr, priv_hex: state.reward_priv }, null, 1));
+  zafuDetect();
+  const qp = new URLSearchParams(location.search), hs = qp.get("hs");
+  let codes = qp.get("code");
+  if (!codes) codes = await lcd(`/cosmwasm/wasm/v1/contract/${hs || cfg.headstash}`).then((j) => j.contract_info.code_id).catch(() => "");
+  $("code-ids").value = codes || ""; $("hs-cur").textContent = cfg.headstash;
+  await rewardChange();
   document.body.dataset.ready = "1"; log("app ready; prover loaded");
+  await selectInstance(hs ? checkTerp(hs) : cfg.headstash);
 }

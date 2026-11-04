@@ -16,7 +16,7 @@ Outputs in --out: <prefix>.propose.json, <prefix>.chunks.json, loader-<name>.htm
 import argparse, base64, gzip, hashlib, io, json, os, sys, urllib.request
 
 CT = {".js": "text/javascript", ".wasm": "application/wasm", ".html": "text/html", ".json": "application/json", ".css": "text/css"}
-PAGE_FILES = [("page", "app.html"), ("page", "app.js"), ("page", "crypto.js"), ("prover", "zk_headstash.js"), ("prover", "zk_headstash_bg.wasm")]
+PAGE_FILES = [("page", "app.html"), ("page", "app.js"), ("page", "crypto.js"), ("page", "v2lib.js"), ("page", "steps.json"), ("prover", "zk_headstash.js"), ("prover", "zk_headstash_bg.wasm")]
 CHUNK = 128 * 1024
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PAGE = os.path.normpath(os.path.join(HERE, "..", "frontend"))
@@ -83,10 +83,10 @@ def proposal_msgs(dao, code_id, checksum_hex, salt, label, targets, m, hrp="terp
 def chunk_plan(fe, m, chunks):
     return {"contract": fe, "version": m["version"],
             "files": [{"path": e["path"], "chunks": [base64.b64encode(c).decode() for c in cs]} for e, cs in zip(m["files"], chunks)]}
-def loader(page_dir, rest, relay, chain, headstash, denom, gp, cg, rg, pin):
+def loader(page_dir, rest, relay, chain, headstash, denom, gp, cg, rg, pin, extra_connect="", fg=900000):
     lt = open(os.path.join(page_dir, "loader.html")).read()
     for k, v in {"__REST__": rest, "__RELAY__": relay, "__CHAIN__": chain, "__HEADSTASH__": headstash, "__DENOM__": denom,
-                 "__GP__": str(gp), "__CG__": str(cg), "__RG__": str(rg), "__MANIFEST_SHA__": pin}.items():
+                 "__GP__": str(gp), "__CG__": str(cg), "__RG__": str(rg), "__FG__": str(fg), "__EXTRA_CONNECT__": extra_connect, "__MANIFEST_SHA__": pin}.items():
         lt = lt.replace(k, v)
     assert "__" not in lt.split("<script")[1].split("const st")[0], "unfilled placeholder"
     return lt
@@ -104,7 +104,8 @@ def main():
     ap.add_argument("--page-dir", default=DEFAULT_PAGE); ap.add_argument("--prover-dir", required=True)
     ap.add_argument("--rest", required=True); ap.add_argument("--relay", required=True); ap.add_argument("--chain-id", required=True)
     ap.add_argument("--denom", required=True); ap.add_argument("--gas-price", required=True); ap.add_argument("--claim-gas", type=int, default=400000)
-    ap.add_argument("--register-gas", type=int, default=12000000); ap.add_argument("--hrp", default="terp")
+    ap.add_argument("--register-gas", type=int, default=12000000); ap.add_argument("--forward-gas", type=int, default=900000)
+    ap.add_argument("--extra-connect", default="", help="space-separated extra connect-src origins (HAL host, IPFS gateways)"); ap.add_argument("--hrp", default="terp")
     ap.add_argument("--title", default="Headstash claim page: on-chain frontend (cw-headstash-frontend)")
     ap.add_argument("--out", required=True); ap.add_argument("--prefix", default="30-dao-prop-frontend")
     ap.add_argument("--verify-lcd", help="read-only LCD: check code checksum, target owners, frontend_contract unset, address free")
@@ -137,7 +138,7 @@ def main():
     cf = os.path.join(a.out, a.prefix + ".chunks.json"); json.dump(chunk_plan(fe, m, chunks), open(cf, "w")); open(cf, "a").write("\n")
     loaders = {}
     for n, t in targets:
-        lt = loader(a.page_dir, a.rest, a.relay, a.chain_id, t, a.denom, a.gas_price, a.claim_gas, a.register_gas, pin)
+        lt = loader(a.page_dir, a.rest, a.relay, a.chain_id, t, a.denom, a.gas_price, a.claim_gas, a.register_gas, pin, a.extra_connect, a.forward_gas)
         lf = os.path.join(a.out, "loader-%s.html" % n); open(lf, "w").write(lt)
         loaders[n] = {"file": lf, "sha256": hashlib.sha256(lt.encode()).hexdigest(), "headstash": t}
     sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()

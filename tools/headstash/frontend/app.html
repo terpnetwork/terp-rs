@@ -1,42 +1,91 @@
 <style>
-:root{font:15px/1.45 system-ui,sans-serif;color:#111;background:#fafaf7}body{max-width:760px;margin:2rem auto;padding:0 1rem}
-h1{font-size:1.4rem}section{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fff}
-label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,textarea,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem}
-button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer}button:disabled{opacity:.45}
-pre{white-space:pre-wrap;word-break:break-all;background:#f2f2ee;padding:.5rem;max-height:16rem;overflow:auto;font-size:12px}
-table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #eee;padding:2px 4px;text-align:left}
-.warn{color:#8a3b00}.ok{color:#11632a}#modal{position:fixed;inset:0;background:#0008;display:none}#modal>div{background:#fff;max-width:640px;margin:6vh auto;padding:1rem 1.5rem;border-radius:6px;max-height:80vh;overflow:auto}
+:root{font:15px/1.45 system-ui,sans-serif;color:#111;background:#fafaf7}body{max-width:860px;margin:2rem auto;padding:0 1rem}
+h1{font-size:1.4rem}h2{font-size:1.1rem;margin:0 0 .4rem;display:flex;gap:.5rem;align-items:center}
+section{border:1px solid #ccc;border-radius:6px;padding:1rem;margin:1rem 0;background:#fff}section[aria-disabled=true]{opacity:.55}
+label{display:block;margin:.5rem 0 .2rem;font-weight:600}input,select{width:100%;box-sizing:border-box;font:inherit;padding:.35rem}
+input[type=radio],input[type=checkbox]{width:auto;margin-right:.4rem}label.inl{display:inline-flex;align-items:center;font-weight:400;margin-right:1.2rem}
+button{font:inherit;padding:.45rem .9rem;margin:.5rem .5rem 0 0;cursor:pointer}button:disabled{opacity:.45;cursor:default}
+button.info{margin:0;padding:0 .5rem;border-radius:50%;font-weight:700;border:1px solid #888;background:#fff}
+:focus-visible{outline:3px solid #1a5fb4;outline-offset:2px}
+pre{white-space:pre-wrap;word-break:break-all;background:#f2f2ee;padding:.5rem;max-height:14rem;overflow:auto;font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid #eee;padding:3px 4px;text-align:left;vertical-align:top}
+code{word-break:break-all}.warn{color:#8a3b00}.ok{color:#11632a}.err{color:#a40000;font-weight:600}.err:empty,.ok:empty{display:none}
+[data-state=ok]{color:#11632a;font-weight:600}[data-state=error]{color:#a40000;font-weight:600}
+dialog{max-width:620px;border:1px solid #888;border-radius:8px}dialog::backdrop{background:#0006}dt{font-weight:700;margin-top:.6rem}
+details{margin-top:.6rem}summary{cursor:pointer}
 </style>
-<h1>Terp Headstash claim</h1>
-<p>This page loaded from on-chain chunks in contract <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>, and every chunk passed its sha256 check. <button id="how">How this works</button></p>
-
-<section id="s-import"><h2>1. Create or load your notes file</h2>
-<p class="warn">Your private key is used only on this page, once, to derive your notes. It is never sent anywhere or saved, and it is wiped from memory right after use. The notes file holds per-note secrets, so keep it safe.</p>
-<label for="key">Eligible EVM private key (hex)</label><input id="key" type="password" autocomplete="off" spellcheck="false">
-<label for="elig">Eligibility rows (note_paths .jsonl or .json from the campaign)</label><input id="elig" type="file" accept=".json,.jsonl">
-<label for="reward">Registration reward address (terp1…)</label><input id="reward" spellcheck="false">
-<label for="dest">Where should claimed tokens go?</label>
-<select id="dest-mode"><option value="fresh">A fresh unlinked wallet per note (derived from the note secret, exportable)</option><option value="single">One address I enter</option></select>
-<input id="dest" placeholder="terp1… (only for 'one address')" spellcheck="false">
-<label for="pass">Optional passphrase to encrypt the notes file</label><input id="pass" type="password" autocomplete="new-password">
-<button id="gen">Generate all notes</button>
-<hr><label for="nf">Or re-import an existing notes file</label><input id="nf" type="file" accept=".json"><button id="load">Load notes file</button>
+<header><h1>Terp Headstash claim</h1>
+<p>Loaded from on-chain chunks in <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span>; every chunk passed its sha256 check. Every step has an <b>i</b> button explaining what it does, what it reveals and the risks.</p></header>
+<main>
+<section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">1. Headstash instance <button class="info" data-info="instance" aria-label="About step 1">i</button></h2>
+<p>Selected: <code id="hs-cur"></code></p>
+<label for="code-ids">Code id(s) to browse</label><input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14">
+<button id="browse">Browse instances</button>
+<p class="err" id="inst-err" role="alert"></p>
+<table id="inst-list" aria-label="Headstash instances"><thead><tr><th>address / label</th><th>code</th><th>status</th><th>parameters</th><th></th></tr></thead><tbody></tbody></table>
 </section>
 
-<section id="s-notes"><h2>2. Your notes</h2><div id="summary">No notes loaded.</div>
-<button id="register" disabled>Register all notes</button><button id="claim" disabled>Claim all registered notes</button>
-<button id="save" disabled>Download notes file</button><button id="export" disabled>Export claim wallets</button>
-<table id="tbl"></table></section>
+<section data-step="hal" aria-labelledby="h-hal"><h2 id="h-hal">2. Eligibility set (HAL) <button class="info" data-info="hal" aria-label="About step 2">i</button></h2>
+<p>Source on chain: <code id="hal-src">–</code></p>
+<p id="hal-status" role="status" data-state="idle">Not loaded.</p>
+<button id="hal-fetch">Fetch and verify</button>
+<details><summary>Advanced: use a local HAL file (verified against the on-chain hash)</summary>
+<label for="hal-file">HAL file</label><input id="hal-file" type="file" accept=".json"></details>
+<p class="err" id="hal-err" role="alert"></p>
+</section>
 
-<section id="s-pen"><h2>3. Move to Penumbra (preview, sends nothing)</h2>
-<p id="pen-detect"></p><label for="pen">Penumbra address (penumbra1…)</label><input id="pen" spellcheck="false"><button id="pen-check">Check and show transfer parameters</button>
-<pre id="pen-out"></pre></section>
+<section data-step="eligibility" aria-labelledby="h-elig"><h2 id="h-elig">3. Eligibility (MetaMask, local lookup) <button class="info" data-info="eligibility" aria-label="About step 3">i</button></h2>
+<button id="mm-connect">Connect MetaMask</button>
+<p id="elig-out" role="status"></p>
+<details><summary>Advanced: raw EVM private key instead of MetaMask</summary>
+<label for="key">EVM private key (hex), wiped after use</label><input id="key" type="password" autocomplete="off" spellcheck="false">
+<button id="key-use">Use this key</button></details>
+<p class="err" id="elig-err" role="alert"></p>
+</section>
 
-<section><h2>Log</h2><pre id="log"></pre></section>
-<div id="modal"><div><h2>How this works</h2>
-<ol><li><b>Loading.</b> A small loader you saved, whose hash is published in the governance proposal, asks the Headstash contract for its frontend contract. It downloads this page's gzip chunks from the chain and checks every chunk and every file against the sha256 values in the governance-published manifest. Nothing here comes from a web server.</li>
-<li><b>Notes.</b> Your allocation is split into fixed-denomination notes. From your key, the page derives one secret per note: <code>HKDF-SHA256(key, "terp-hs-note-secret-v1", campaign‖identity‖index)</code>. From each secret it derives a key commitment and a nullifier. Your key signs a single registration message (EIP-191) and is then wiped. The notes file stores only the per-note secrets, never your key, and it records each note's status on this device.</li>
-<li><b>Register.</b> Registration publishes your key commitments, signed by your eligible address, in transactions of up to 32 notes. Each one is sent from a throwaway wallet whose fee is covered by a fee grant from the relay.</li>
-<li><b>Claim.</b> Once an anchor that includes your notes has been accepted, each note gets a zero-knowledge proof. The proof shows the note is in the registered set without revealing which one. Each claim is sent from a separate fee-granted wallet derived from that note's secret, so the claims cannot be linked to each other or to your eligible address. The chain rejects a reused nullifier. This page never queries the nullifier set; it tracks status in your file.</li>
-<li><b>Penumbra</b> (preview). This section checks a Penumbra address and shows the IBC transfer parameters. It does not send anything yet.</li></ol>
-<button id="close">Close</button></div></div>
+<section data-step="reward" aria-labelledby="h-rew"><h2 id="h-rew">4. Reward address <button class="info" data-info="reward" aria-label="About step 4">i</button></h2>
+<fieldset><legend>Reward address</legend>
+<label class="inl"><input type="radio" name="reward-mode" value="ephemeral" checked>New in-browser key (default)</label>
+<label class="inl"><input type="radio" name="reward-mode" value="keplr">Keplr</label></fieldset>
+<p>Reward address: <code id="reward-addr">–</code></p>
+<p class="err" id="reward-err" role="alert"></p>
+</section>
+
+<section data-step="register" aria-labelledby="h-reg"><h2 id="h-reg">5. Derive notes and register <button class="info" data-info="register" aria-label="About step 5">i</button></h2>
+<label for="pass">Notes file passphrase (optional, recommended)</label><input id="pass" type="password" autocomplete="new-password">
+<button id="derive" disabled>Derive notes (sign seed) and save</button><button id="register" disabled>Register notes</button>
+<label for="nf">…or load an existing notes file</label><input id="nf" type="file" accept=".json"><button id="load">Load</button>
+<p id="summary" role="status"></p>
+<p class="err" id="reg-err" role="alert"></p>
+</section>
+
+<section data-step="anchor" aria-labelledby="h-anc"><h2 id="h-anc">6. Anchor <button class="info" data-info="anchor" aria-label="About step 6">i</button></h2>
+<button id="anchor-check">Check latest anchor</button><p id="anchor-out" role="status"></p>
+</section>
+
+<section data-step="destination" aria-labelledby="h-dst"><h2 id="h-dst">7. Destination <button class="info" data-info="destination" aria-label="About step 7">i</button></h2>
+<fieldset><legend>Claim to</legend>
+<label class="inl"><input type="radio" name="dest-mode" value="ephemeral" checked>Fresh ephemeral account per note (default)</label>
+<label class="inl"><input type="radio" name="dest-mode" value="forward">Forward to Penumbra (Zafu)</label></fieldset>
+<div id="fwd-box" hidden>
+<label for="fwd-channel">IBC channel (allowlisted by the contract)</label><select id="fwd-channel"></select>
+<label for="recv">One-time Penumbra address (new for every note)</label><input id="recv" autocomplete="off" spellcheck="false" placeholder="penumbra1…">
+<button id="zafu">Get a one-time address from Zafu</button> <span id="zafu-detect"></span>
+<label class="inl"><input type="checkbox" id="recv-any">Advanced: allow a non-Penumbra receiver (testnets)</label>
+<p id="fwd-preview" role="status"></p></div>
+<label for="claim-max">Notes to claim in this run</label><input id="claim-max" type="number" min="1" value="1000">
+<p class="err" id="dst-err" role="alert"></p>
+</section>
+
+<section data-step="claim" aria-labelledby="h-clm"><h2 id="h-clm">8. Prove and submit <button class="info" data-info="claim" aria-label="About step 8">i</button></h2>
+<button id="claim" disabled>Claim</button><p id="claim-out" role="status"></p>
+<p class="err" id="claim-err" role="alert"></p>
+</section>
+
+<section data-step="export" aria-labelledby="h-exp"><h2 id="h-exp">9. Save and export <button class="info" data-info="export" aria-label="About step 9">i</button></h2>
+<button id="save" disabled>Save notes file</button><button id="export" disabled>Export claim account keys</button><button id="reward-export" disabled>Export reward key</button>
+<table id="tbl" aria-label="Notes"></table>
+</section>
+<section aria-label="Activity log"><h2>Log</h2><pre id="log" aria-live="polite"></pre></section>
+</main>
+<dialog id="info-dlg" aria-labelledby="info-title"><h2 id="info-title"></h2><dl><dt>What it does</dt><dd id="info-what"></dd><dt>What it reveals</dt><dd id="info-reveals"></dd><dt>Risks</dt><dd id="info-risks"></dd></dl><form method="dialog"><button id="info-close" autofocus>Close</button></form></dialog>

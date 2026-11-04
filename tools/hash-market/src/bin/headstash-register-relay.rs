@@ -910,6 +910,8 @@ pub struct GrantCfg {
     /// Exactly one tx fee; the client pays fee == spend limit so the allowance is pruned.
     pub claim_spend: u64,
     pub register_spend: u64,
+    /// `claim_forward` (ClaimNoteForward: proof + IBC transfer), HEADSTASH_FORWARD_GAS.
+    pub forward_spend: u64,
     pub ttl: Duration,
     pub global: (usize, Duration),
 }
@@ -970,6 +972,16 @@ async fn grant_handle<C: Chain>(app: &App<C>, ip: String, req: Request) -> Resul
             "dest": grantee, "root": s(c, "root")?, "nullifier": nullifier, "amount": amount, "proof": s(c, "proof")?
         }});
         (format!("nf:{}", hex::encode(nf)), q, g.claim_spend, "claim")
+    } else if let Some(c) = v.get("claim_forward") {
+        // Same nullifier key as `claim`: one grant per note whichever way it is claimed.
+        let nullifier = s(c, "nullifier")?;
+        let nf = decode_bin32(&nullifier).ok_or(Reject::Bad("nullifier"))?;
+        let amount = c.get("amount").and_then(|a| a.as_u64().or_else(|| a.as_str().and_then(|x| x.parse().ok()))).ok_or(Reject::Bad("amount"))?;
+        let fwd = c.get("forward").filter(|f| f.is_object()).cloned().ok_or(Reject::Bad("forward"))?;
+        let q = json!({"check_note_forward": {
+            "root": s(c, "root")?, "nullifier": nullifier, "amount": amount, "proof": s(c, "proof")?, "forward": fwd
+        }});
+        (format!("nf:{}", hex::encode(nf)), q, g.forward_spend, "claim_forward")
     } else if let Some(r) = v.get("register") {
         let signer = r.get("signer").ok_or(Reject::Bad("grant"))?;
         let start = r.get("start").and_then(Value::as_u64).ok_or(Reject::Bad("chunk"))?;
@@ -1155,6 +1167,7 @@ async fn main() -> anyhow::Result<()> {
             denom: chain.gas_price.1.clone(),
             claim_spend: fee(env_num("HEADSTASH_CLAIM_GAS", 300_000)),
             register_spend: fee(env_num("HEADSTASH_REGISTER_GAS", 12_000_000)),
+            forward_spend: fee(env_num("HEADSTASH_FORWARD_GAS", 900_000)),
             ttl: Duration::from_secs(env_num("HEADSTASH_GRANT_TTL_SECS", 600)),
             global: (env_num("HEADSTASH_GRANTS_PER_MIN", 60), Duration::from_secs(60)),
         }

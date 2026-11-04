@@ -90,7 +90,7 @@ def flow(contract, ctx, ids, notes, evm_priv, sol_sk, sol_pk, evm_addr, RELAYER,
     work = os.path.join(rd.RUN, "browser"); os.makedirs(work, exist_ok=True)
     lt = open(os.path.join(PAGE, "loader.html")).read()
     for k, v in {"__REST__": REST, "__RELAY__": rd.RELAY_URL, "__CHAIN__": rd.CHAIN_ID, "__HEADSTASH__": contract, "__DENOM__": "uterp",
-                 "__GP__": str(rd.GP), "__CG__": str(rd.CLAIM_GAS), "__RG__": str(rd.REGISTER_GAS), "__MANIFEST_SHA__": ""}.items():
+                 "__GP__": str(rd.GP), "__CG__": str(rd.CLAIM_GAS), "__RG__": str(rd.REGISTER_GAS), "__FG__": "900000", "__EXTRA_CONNECT__": "", "__MANIFEST_SHA__": ""}.items():
         lt = lt.replace(k, v)
     open(os.path.join(work, "loader.html"), "w").write(lt)
     R["page"]["loader_bytes"] = len(lt.encode()); R["page"]["loader_sha256"] = hashlib.sha256(lt.encode()).hexdigest()

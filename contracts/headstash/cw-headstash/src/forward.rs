@@ -388,3 +388,18 @@ pub fn query_pending(storage: &dyn Storage, start_after: Option<(String, u64)>, 
     PENDING.range(storage, start, None, Order::Ascending).take(lim).map(|r| r.map(|(_, v)| v)).collect()
 }
 
+
+#[cfg(test)]
+mod frontend_vectors {
+    use super::*;
+    /// Same vectors as tools/headstash/frontend/test/v2lib.test.mjs (claim page computes the destination locally).
+    #[test]
+    fn forward_destination_matches_claim_page() {
+        let t = |c: &str, r: &str, m: Option<&str>, f: &str| ForwardTarget { channel_id: c.into(), receiver: r.into(), memo: m.map(Into::into), fallback: f.into() };
+        assert_eq!(forward_destination("terp-local-1", "terp1contract", &t("channel-7", "penumbra1xyz", None, "terp1fallback")),
+                   "hsfwd1l3oJE1L5SZTc5Dc42Mim0GCH3GE4JmKom3DyMt0OmjM");
+        assert_eq!(forward_destination("90u-4", "terp1abc", &t("channel-0", "osmo1r", Some("hello"), "terp1fb")),
+                   "hsfwd1F_KbPO0Hl2dNEgw3H3QyJAoYhxxqFjsMnHsvN6XmaRY");
+        assert_eq!(forward_destination("a", "b", &t("channel-1", "r", Some(""), "f")), forward_destination("a", "b", &t("channel-1", "r", None, "f")));
+    }
+}
