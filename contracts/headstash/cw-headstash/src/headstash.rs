@@ -120,6 +120,42 @@ pub(crate) fn add_credit<K: Eq + std::hash::Hash>(map: &mut HashMap<K, u64>, key
     *map.entry(key).or_insert(0) += amount;
 }
 
+/// Verifies a claim proof via wasmvm `proof_instance_verify` against `cfg.cid`.
+#[cfg(feature = "zk-api")]
+fn verify_claim_proof(
+    api: &dyn cosmwasm_std::Api,
+    cfg: &HeadstashCfg,
+    proof: &Binary,
+    inst: &Instance,
+) -> StdResult<()> {
+    if cfg.cid == 0 {
+        return Err(StdError::msg(
+            "circuit_id is 0: SetCircuitId after store-circuit before real verify",
+        ));
+    }
+    let ok = api
+        .proof_instance_verify(cfg.cid, proof, &inst.to_vm_public_inputs())
+        .map_err(|e| StdError::msg(e.to_string()))?;
+    if !ok {
+        return Err(StdError::msg("invalid headstash proof"));
+    }
+    Ok(())
+}
+
+/// Without `zk-api` there is no on-chain verifier, so every claim is rejected.
+#[cfg(not(feature = "zk-api"))]
+fn verify_claim_proof(
+    _api: &dyn cosmwasm_std::Api,
+    _cfg: &HeadstashCfg,
+    _proof: &Binary,
+    _inst: &Instance,
+) -> StdResult<()> {
+    Err(StdError::msg(
+        "headstash claim proof verify requires zk-api feature + zk wasmvm, \
+             or claim_mock_verify=true for lab (use BridgeMintNote for corridor mint)",
+    ))
+}
+
 /// Validates nullifiers uniqueness & distribute funds
 pub fn process_headstash(
     deps: DepsMut,
@@ -176,29 +212,7 @@ pub fn process_headstash(
         // - lab: `claim_mock_verify` + non-empty proof bytes (policy still enforced above)
         // - production: `zk-api` + wasmvm `proof_instance_verify` against cfg.cid
 
-        #[cfg(feature = "zk-api")]
-        {
-            if cfg.cid == 0 {
-                return Err(StdError::msg(
-                    "circuit_id is 0: SetCircuitId after store-circuit before real verify",
-                ));
-            }
-            let ok = deps
-                .api
-                .proof_instance_verify(cfg.cid, &claim.p, &inst.to_vm_public_inputs())
-                .map_err(|e| StdError::msg(e.to_string()))?;
-            if !ok {
-                return Err(StdError::msg("invalid headstash proof"));
-            }
-        }
-        #[cfg(not(feature = "zk-api"))]
-        {
-            let _ = (&cfg.cid, &claim.p, &claim.i);
-            return Err(StdError::msg(
-                "headstash claim proof verify requires zk-api feature + zk wasmvm, \
-                     or claim_mock_verify=true for lab (use BridgeMintNote for corridor mint)",
-            ));
-        }
+        verify_claim_proof(deps.api, &cfg, &claim.p, &inst)?;
 
         // verify recp integrity
         claim.verify_recp_posiedon_hash()?;

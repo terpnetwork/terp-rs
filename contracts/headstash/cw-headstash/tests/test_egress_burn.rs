@@ -209,7 +209,7 @@ fn e2e_egress_burn_happy_path_is_spent() {
 
     let res = env
         .exec_user(&ExecuteMsg::BridgeEgressBurn {
-            statement: statement.clone(),
+            statement: Box::new(statement.clone()),
             proof: mock_egress_proof_bytes(),
         })
         .expect("BridgeEgressBurn happy");
@@ -248,14 +248,14 @@ fn e2e_egress_double_burn_same_nu_reject() {
     let statement = env.setup_egress_happy();
 
     env.exec_user(&ExecuteMsg::BridgeEgressBurn {
-        statement: statement.clone(),
+        statement: Box::new(statement.clone()),
         proof: mock_egress_proof_bytes(),
     })
     .expect("first burn");
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeEgressBurn {
-            statement: statement.clone(),
+            statement: Box::new(statement.clone()),
             proof: mock_egress_proof_bytes(),
         })
         .expect_err("second burn must fail");
@@ -280,7 +280,7 @@ fn e2e_egress_dest_mismatch_reject() {
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeEgressBurn {
-            statement: statement.clone(),
+            statement: Box::new(statement.clone()),
             proof: mock_egress_proof_bytes(),
         })
         .expect_err("dest mismatch must reject");
@@ -303,7 +303,7 @@ fn e2e_egress_empty_proof_under_mock_reject() {
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeEgressBurn {
-            statement: statement.clone(),
+            statement: Box::new(statement.clone()),
             proof: Binary::default(),
         })
         .expect_err("empty proof under mock must reject");
@@ -328,7 +328,7 @@ fn e2e_egress_transparent_dest_kind_ok() {
 
     let res = env
         .exec_user(&ExecuteMsg::BridgeEgressBurn {
-            statement: statement.clone(),
+            statement: Box::new(statement.clone()),
             proof: mock_egress_proof_bytes(),
         })
         .expect("transparent dest kind ok");

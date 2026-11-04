@@ -303,7 +303,7 @@ fn e2e_bridge_mint_happy_path_is_minted() {
 
     let res = env
         .exec_user(&ExecuteMsg::BridgeMintNote {
-            claim: claim.clone(),
+            claim: Box::new(claim.clone()),
             proof: mock_proof(),
         })
         .expect("BridgeMintNote happy");
@@ -355,14 +355,14 @@ fn e2e_bridge_double_mint_same_nu_reject() {
     let claim = env.setup_bridge_happy();
 
     env.exec_user(&ExecuteMsg::BridgeMintNote {
-        claim: claim.clone(),
+        claim: Box::new(claim.clone()),
         proof: mock_proof(),
     })
     .expect("first mint");
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeMintNote {
-            claim: claim.clone(),
+            claim: Box::new(claim.clone()),
             proof: mock_proof(),
         })
         .expect_err("second mint must fail");
@@ -387,7 +387,7 @@ fn e2e_bridge_h1_spent_only_reject() {
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeMintNote {
-            claim: claim.clone(),
+            claim: Box::new(claim.clone()),
             proof: mock_proof(),
         })
         .expect_err("H-1 spent-only must reject");
@@ -414,7 +414,7 @@ fn e2e_bridge_unregistered_asset_reject() {
 
     let err = env
         .exec_user(&ExecuteMsg::BridgeMintNote {
-            claim: claim.clone(),
+            claim: Box::new(claim.clone()),
             proof: mock_proof(),
         })
         .expect_err("unregistered asset must reject");
@@ -457,7 +457,7 @@ fn e2e_bridge_update_reflection_then_mint() {
     assert_eq!(tip.tip_height, 100 + DEFAULT_CONFIRMATIONS_K);
 
     env.exec_user(&ExecuteMsg::BridgeMintNote {
-        claim: claim.clone(),
+        claim: Box::new(claim.clone()),
         proof: mock_proof(),
     })
     .expect("mint after UpdateReflection");
@@ -476,7 +476,7 @@ fn e2e_bridge_not_configured_reject() {
     // No SetBridgeCfg / snapshot — mint must fail BridgeNotConfigured.
     let err = env
         .exec_user(&ExecuteMsg::BridgeMintNote {
-            claim,
+            claim: Box::new(claim),
             proof: mock_proof(),
         })
         .expect_err("unconfigured bridge");

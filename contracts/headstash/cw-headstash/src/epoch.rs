@@ -619,7 +619,7 @@ mod tests {
             genesis_root: root.clone(),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "cht".into(),
@@ -639,7 +639,7 @@ mod tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: generate_test_wavs_proof(1),
             circuit_id: None,
         };

@@ -195,7 +195,7 @@ pub fn mock_metadata() -> Metadata {
 }
 
 pub fn mock_token_strategy_new() -> TokenStrategy {
-    TokenStrategy::NewFungible(NewTokenConfig {
+    TokenStrategy::NewFungible(Box::new(NewTokenConfig {
         subdenom: HeadstashTokenObject::new(
             &cosmwasm_std::testing::MockApi::default(),
             "headstash".to_string(),
@@ -207,7 +207,7 @@ pub fn mock_token_strategy_new() -> TokenStrategy {
         }]),
         manager: None,
         minters: vec![],
-    })
+    }))
 }
 
 pub fn mock_token_strategy_existing() -> TokenStrategy {

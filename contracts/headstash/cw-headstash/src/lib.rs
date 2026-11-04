@@ -53,6 +53,7 @@ pub struct CwHeadstashStructs {}
 pub struct CwHeadstash {}
 
 // Version info for migration
+#[cfg(feature = "interface")]
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 
 // Reply IDs
@@ -333,10 +334,10 @@ pub fn execute(
         }
         ExecuteMsg::SetBridgeCfg { cfg } => bridge::execute_set_bridge_cfg(deps, info, cfg),
         ExecuteMsg::BridgeMintNote { claim, proof } => {
-            bridge::execute_bridge_mint_note(deps, env, info, claim, proof)
+            bridge::execute_bridge_mint_note(deps, env, info, *claim, proof)
         }
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
-            egress::execute_bridge_egress_burn(deps, env, info, statement, proof)
+            egress::execute_bridge_egress_burn(deps, env, info, *statement, proof)
         }
         ExecuteMsg::SetDenomTable { amounts } => epoch::set_denom_table(deps, info, amounts),
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
@@ -679,7 +680,7 @@ mod instantiate_tests {
                 .unwrap(),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject {
                     proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), "test"),
                     raw: "test".into(),
@@ -688,7 +689,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(3),
             circuit_id: None,
         };
@@ -745,7 +746,7 @@ mod instantiate_tests {
                 .unwrap(),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject {
                     proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), "test"),
                     raw: "test".into(),
@@ -763,7 +764,7 @@ mod instantiate_tests {
                 ]),
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(3),
             circuit_id: None,
         };
@@ -867,7 +868,7 @@ mod instantiate_tests {
             genesis_root: Binary::from([0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -876,7 +877,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: invalid_wavs,
 
             circuit_id: None,
@@ -905,7 +906,7 @@ mod instantiate_tests {
             genesis_root: Binary::from([0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -914,7 +915,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs,
 
             circuit_id: None,
@@ -939,7 +940,7 @@ mod instantiate_tests {
             genesis_root: genesis_root.clone(),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -948,7 +949,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
         };
@@ -980,7 +981,7 @@ mod instantiate_tests {
             genesis_root: Binary::default(),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -989,7 +990,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
         };
@@ -1009,7 +1010,7 @@ mod instantiate_tests {
             genesis_root: Binary::from(vec![0x11; 32]),
             distro_hash_domain: DistroHashDomain::PoseidonV1,
             genesis_label: Some("drop-0".into()),
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -1018,7 +1019,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
         };
@@ -1059,7 +1060,7 @@ mod instantiate_tests {
             genesis_root: Binary::from(vec![0xab; 32]),
             distro_hash_domain: DistroHashDomain::PoseidonV1,
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -1068,7 +1069,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(1),
             circuit_id: Some(0),
         };
@@ -1100,7 +1101,7 @@ mod instantiate_tests {
             genesis_root: Binary::from(vec![0x11; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(
                     &cosmwasm_std::testing::MockApi::default(),
                     "test".to_string(),
@@ -1109,7 +1110,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: valid_wavs_proof(1),
             circuit_id: None,
         };

@@ -98,10 +98,9 @@ fn create_msg_burn(
 }
 
 #[cosmwasm_schema::cw_serde]
-#[allow(clippy::large_enum_variant)]
 pub enum TokenStrategy {
     /// Create new token via TokenFactory
-    NewFungible(NewTokenConfig),
+    NewFungible(Box<NewTokenConfig>),
     /// Use existing denom (must pre-fund contract)
     ExistingFungible(HeadstashTokenObject),
 }
