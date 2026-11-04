@@ -68,14 +68,16 @@ pub async fn run_price_bound_feeder(
         match fetch_and_ingest(
             &client,
             &state,
-            &provider,
-            &market_id,
-            weight,
-            &policy,
-            &runtime_id,
-            &chain_uid,
-            &algo,
-            publish_ve,
+            FetchAndIngestParams {
+                provider: &provider,
+                default_market: &market_id,
+                weight,
+                policy: &policy,
+                runtime_id: &runtime_id,
+                chain_uid: &chain_uid,
+                algo: &algo,
+                publish_ve,
+            },
         )
         .await
         {
@@ -96,19 +98,33 @@ pub async fn run_price_bound_feeder(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Arguments for [`fetch_and_ingest`].
+struct FetchAndIngestParams<'a> {
+    pub provider: &'a ProviderConfig,
+    pub default_market: &'a str,
+    pub weight: f64,
+    pub policy: &'a AggregationPolicy,
+    pub runtime_id: &'a str,
+    pub chain_uid: &'a str,
+    pub algo: &'a str,
+    pub publish_ve: bool,
+}
+
 async fn fetch_and_ingest(
     client: &reqwest::Client,
     state: &AppState,
-    provider: &ProviderConfig,
-    default_market: &str,
-    weight: f64,
-    policy: &AggregationPolicy,
-    runtime_id: &str,
-    chain_uid: &str,
-    algo: &str,
-    publish_ve: bool,
+    args: FetchAndIngestParams<'_>,
 ) -> anyhow::Result<Option<i128>> {
+    let FetchAndIngestParams {
+        provider,
+        default_market,
+        weight,
+        policy,
+        runtime_id,
+        chain_uid,
+        algo,
+        publish_ve,
+    } = args;
     let resp = client.get(&provider.address).send().await?;
     if !resp.status().is_success() {
         anyhow::bail!("ticker HTTP {}", resp.status());

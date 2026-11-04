@@ -6,7 +6,6 @@
 //!
 //! Round constants: SHA256("itl-poseidon-pallas-t3-v1" || i) reduced into Fp.
 //! MDS: Cauchy 1/(i+j+3). Consume Halo2 gadgets must use this same hash.
-#![allow(clippy::needless_range_loop)] // limb / MDS index arithmetic reads clearer indexed
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -70,9 +69,9 @@ impl Fp {
     fn add(self, rhs: Self) -> Self {
         let mut out = [0u64; 4];
         let mut carry = 0u128;
-        for i in 0..4 {
+        for (i, o) in out.iter_mut().enumerate() {
             carry += self.0[i] as u128 + rhs.0[i] as u128;
-            out[i] = carry as u64;
+            *o = carry as u64;
             carry >>= 64;
         }
         if carry > 0 || gte4(&out, &P) {
@@ -85,13 +84,13 @@ impl Fp {
     fn sub(self, rhs: Self) -> Self {
         let mut out = [0u64; 4];
         let mut borrow = 0i128;
-        for i in 0..4 {
+        for (i, o) in out.iter_mut().enumerate() {
             let v = self.0[i] as i128 - rhs.0[i] as i128 - borrow;
             if v < 0 {
-                out[i] = (v + (1i128 << 64)) as u64;
+                *o = (v + (1i128 << 64)) as u64;
                 borrow = 1;
             } else {
-                out[i] = v as u64;
+                *o = v as u64;
                 borrow = 0;
             }
         }
@@ -289,9 +288,9 @@ fn mds() -> &'static [[Fp; T]; T] {
     static MDS: OnceLock<[[Fp; T]; T]> = OnceLock::new();
     MDS.get_or_init(|| {
         let mut m = [[Fp::ZERO; T]; T];
-        for i in 0..T {
-            for j in 0..T {
-                m[i][j] = Fp::from_u64((i + j + 3) as u64).inv();
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = Fp::from_u64((i + j + 3) as u64).inv();
             }
         }
         m

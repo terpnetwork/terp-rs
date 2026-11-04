@@ -8,8 +8,6 @@
 //!
 //! On-chain verify is `deps.api.verify_halo2_proof` after `MsgStoreCodeWithCircuit`.
 //! Local tests prove/verify here. MockBech32 is not a success path.
-#![allow(clippy::needless_range_loop)] // limb / MDS index arithmetic reads clearer indexed
-#![allow(clippy::type_complexity)] // halo2 assigned-cell tuples
 
 use super::itl_ingress::{ict_mock_refused, is_mock_bech32};
 use super::poseidon::{
@@ -92,13 +90,16 @@ fn round_constants() -> &'static [Base] {
     })
 }
 
+/// (current, sibling) cells returned by the Merkle mux step.
+type CellPair = (AssignedCell<Base, Base>, AssignedCell<Base, Base>);
+
 fn mds() -> &'static [[Base; T]; T] {
     static MDS: OnceLock<[[Base; T]; T]> = OnceLock::new();
     MDS.get_or_init(|| {
         let mut m = [[Base::ZERO; T]; T];
-        for i in 0..T {
-            for j in 0..T {
-                m[i][j] = Base::from((i + j + 3) as u64).invert().expect("mds denom");
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = Base::from((i + j + 3) as u64).invert().expect("mds denom");
             }
         }
         m
@@ -336,7 +337,7 @@ impl Chip {
         cur: &AssignedCell<Base, Base>,
         sib: Value<Base>,
         bit: Value<Base>,
-    ) -> Result<(AssignedCell<Base, Base>, AssignedCell<Base, Base>), Error> {
+    ) -> Result<CellPair, Error> {
         layouter.assign_region(
             || "mux",
             |mut region| {
@@ -702,22 +703,14 @@ fn setup_keys() -> Result<
     Ok((params, pk))
 }
 
-fn keys() -> Result<
-    &'static (
-        halo2_proofs::poly::commitment::Params<vesta::Affine>,
-        plonk::ProvingKey<vesta::Affine>,
-    ),
-    String,
-> {
-    static KYS: OnceLock<
-        Result<
-            (
-                halo2_proofs::poly::commitment::Params<vesta::Affine>,
-                plonk::ProvingKey<vesta::Affine>,
-            ),
-            String,
-        >,
-    > = OnceLock::new();
+/// IPA params and proving key for the consume circuit.
+type ProverKeys = (
+    halo2_proofs::poly::commitment::Params<vesta::Affine>,
+    plonk::ProvingKey<vesta::Affine>,
+);
+
+fn keys() -> Result<&'static ProverKeys, String> {
+    static KYS: OnceLock<Result<ProverKeys, String>> = OnceLock::new();
     match KYS.get_or_init(setup_keys) {
         Ok(k) => Ok(k),
         Err(e) => Err(e.clone()),

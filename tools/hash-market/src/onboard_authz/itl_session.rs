@@ -41,8 +41,6 @@ struct Challenge {
     artist_id: String,
     ts: u64,
     message: String,
-    #[allow(dead_code)] // part of the signed wire payload; not read server-side
-    challenge_hex: String,
 }
 
 #[derive(Clone)]
@@ -399,7 +397,6 @@ struct ChallengeBody {
     #[serde(default)]
     origin: String,
     #[serde(default)]
-    #[allow(dead_code)] // accepted on the wire; not yet consumed
     artist_id: String,
 }
 
@@ -408,7 +405,6 @@ struct VerifyBody {
     #[serde(default)]
     origin: String,
     #[serde(default)]
-    #[allow(dead_code)] // accepted on the wire; not yet consumed
     artist_id: String,
     nonce: String,
     ts: u64,
@@ -461,7 +457,6 @@ fn challenge(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
             artist_id,
             ts,
             message: message.clone(),
-            challenge_hex: challenge_hex.clone(),
         },
     );
     SessionResponse::json(
@@ -510,6 +505,11 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     if ch.origin != origin {
         return SessionResponse::err(403, "origin");
     }
+    // The challenge hash commits to artist_id; a verify that names a
+    // different artist than the challenge was issued for is rejected.
+    if !parsed.artist_id.is_empty() && parsed.artist_id != ch.artist_id {
+        return SessionResponse::err(403, "artist_id");
+    }
     if parsed.login_id.is_empty() || parsed.login_id.len() > 128 {
         return SessionResponse::err(400, "login_id");
     }
@@ -547,7 +547,6 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
         .to_string(),
     );
     resp.set_cookie = Some(cookie_header(&token, TTL_SECS));
-    let _ = ch.artist_id;
     resp
 }
 

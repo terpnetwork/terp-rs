@@ -39,12 +39,14 @@ pub async fn run_poll_loop(
         match poll_once(
             eth,
             &http,
-            sidecar_url,
-            runtime_id,
-            chain_uid,
-            storage_keys,
-            account_address,
-            last_height,
+            PollOnceParams {
+                sidecar_url,
+                runtime_id,
+                chain_uid,
+                storage_keys,
+                account_address,
+                last_height,
+            },
         )
         .await
         {
@@ -64,17 +66,29 @@ pub async fn run_poll_loop(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Arguments for [`poll_once`].
+struct PollOnceParams<'a> {
+    pub sidecar_url: &'a str,
+    pub runtime_id: &'a str,
+    pub chain_uid: &'a str,
+    pub storage_keys: &'a [String],
+    pub account_address: &'a str,
+    pub last_height: u64,
+}
+
 async fn poll_once(
     eth: &EthClient,
     http: &reqwest::Client,
-    sidecar_url: &str,
-    runtime_id: &str,
-    chain_uid: &str,
-    storage_keys: &[String],
-    account_address: &str,
-    last_height: u64,
+    args: PollOnceParams<'_>,
 ) -> Result<Option<u64>> {
+    let PollOnceParams {
+        sidecar_url,
+        runtime_id,
+        chain_uid,
+        storage_keys,
+        account_address,
+        last_height,
+    } = args;
     // Get latest block
     let block_hex = eth.block_number().await?;
     let block = eth.get_block_by_number(&block_hex, false).await?;

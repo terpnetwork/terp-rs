@@ -4,7 +4,6 @@
 // Validator sidecar: set `ve_enabled = true` and build with `--features ve`.
 // Connect-style price bounds: `[oracle] bounds_enabled = true` + `kind = "price_bound"`.
 
-use hash_market::oracle::ProviderKind;
 use anyhow::Context;
 use clap::Parser;
 
@@ -410,7 +409,7 @@ async fn main() -> anyhow::Result<()> {
         for (idx, provider) in config
             .providers
             .iter()
-            .filter(|p| p.provider_kind() == ProviderKind::StateRoot)
+            .filter(|p| p.provider_kind() == hash_market::oracle::ProviderKind::StateRoot)
             .enumerate()
         {
             let transport_mode = match provider.mode.as_str() {

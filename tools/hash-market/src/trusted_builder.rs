@@ -128,6 +128,7 @@ async fn list_claims(State(state): State<Arc<AppState>>) -> Json<Vec<TrustedBuil
     Json(map.values().cloned().collect())
 }
 
+#[cfg(feature = "ve")]
 fn chrono_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
