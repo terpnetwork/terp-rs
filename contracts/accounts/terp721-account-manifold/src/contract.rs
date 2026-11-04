@@ -242,15 +242,17 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             // fair_burn_bps,
         } => sudo_update_params(
             deps,
-            min_account_length,
-            max_account_length,
-            base_price,
-            base_delegation,
-            trading_fee_bps,
-            min_price,
-            ask_interval,
-            cooldown_duration,
-            cooldown_cancel_fee,
+            SudoUpdateParamsParams {
+                min_account_length,
+                max_account_length,
+                base_price,
+                base_delegation,
+                trading_fee_bps,
+                min_price,
+                ask_interval,
+                cooldown_duration,
+                cooldown_cancel_fee,
+            },
         ),
         SudoMsg::UpdateAccountCollection { collection } => {
             sudo_update_account_collection(deps, api.addr_validate(&collection)?)
