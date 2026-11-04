@@ -6,13 +6,16 @@
 //! This runner does not start Docker and does not verify a Halo2 proof.
 
 use crate::epoch::{
-    ALGO_ACCEPTED, ALGO_PENDING, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
-    HashMerchantSudoPayload, PublicOpen, accepted_root, attested_root, pedersen_commit, root_b64,
+    ALGO_ACCEPTED, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
+    HashMerchantSudoPayload, root_b64,
 };
 use crate::interface::HeadstashContract;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::tokenfactory::HeadstashTokenObject;
-use crate::wavs::generate_test_wavs_proof;
+#[cfg(feature = "legacy")]
+use crate::epoch::{ALGO_PENDING, PublicOpen, accepted_root, attested_root, pedersen_commit};
+#[cfg(feature = "legacy")]
+use crate::msg::QueryMsg;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::{Binary, Coin, Uint256};
 use cw_orch::prelude::*;
