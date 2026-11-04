@@ -4,12 +4,12 @@
     {
       "path": "/out/cw_headstash.wasm",
       "artifact": "cw_headstash.wasm",
-      "bytes": 927290,
-      "functions": 1052,
-      "largest": 52489,
-      "largest_fn": "func[519]",
+      "bytes": 954251,
+      "functions": 1069,
+      "largest": 54550,
+      "largest_fn": "func[562]",
       "longest_udiv_tail": 5147,
-      "longest_udiv_fn": "func[1053]",
+      "longest_udiv_fn": "func[1070]",
       "arm64": "PASS",
       "x86_64": "PASS",
       "verified_on": "arm64:compiled",
@@ -17,43 +17,43 @@
       "notes": [],
       "top": [
         {
-          "index": 519,
+          "index": 562,
           "name": null,
-          "body": 52489,
+          "body": 54550,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
         },
         {
-          "index": 557,
+          "index": 563,
           "name": null,
-          "body": 45696,
+          "body": 46491,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
         },
         {
-          "index": 458,
+          "index": 461,
           "name": null,
-          "body": 42090,
+          "body": 44166,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
         },
         {
-          "index": 830,
+          "index": 671,
+          "name": null,
+          "body": 15127,
+          "udiv": 0,
+          "tail": 0,
+          "walk_ok": true
+        },
+        {
+          "index": 847,
           "name": null,
           "body": 14847,
           "udiv": 0,
           "tail": 0,
-          "walk_ok": true
-        },
-        {
-          "index": 1053,
-          "name": null,
-          "body": 14250,
-          "udiv": 7,
-          "tail": 5147,
           "walk_ok": true
         }
       ]
@@ -61,12 +61,12 @@
     {
       "path": "/out/cw_headstash_frontend.wasm",
       "artifact": "cw_headstash_frontend.wasm",
-      "bytes": 389830,
-      "functions": 549,
-      "largest": 18481,
-      "largest_fn": "func[182]",
+      "bytes": 406204,
+      "functions": 560,
+      "largest": 19876,
+      "largest_fn": "func[93]",
       "longest_udiv_tail": 5147,
-      "longest_udiv_fn": "func[552]",
+      "longest_udiv_fn": "func[563]",
       "arm64": "PASS",
       "x86_64": "PASS",
       "verified_on": "arm64:compiled",
@@ -74,23 +74,23 @@
       "notes": [],
       "top": [
         {
-          "index": 182,
+          "index": 93,
           "name": null,
-          "body": 18481,
+          "body": 19876,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
         },
         {
-          "index": 89,
+          "index": 220,
           "name": null,
-          "body": 17852,
+          "body": 17910,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
         },
         {
-          "index": 352,
+          "index": 364,
           "name": null,
           "body": 14681,
           "udiv": 0,
@@ -98,7 +98,7 @@
           "walk_ok": true
         },
         {
-          "index": 552,
+          "index": 563,
           "name": null,
           "body": 14250,
           "udiv": 7,
@@ -106,9 +106,9 @@
           "walk_ok": true
         },
         {
-          "index": 223,
+          "index": 233,
           "name": null,
-          "body": 12012,
+          "body": 11919,
           "udiv": 0,
           "tail": 0,
           "walk_ok": true
