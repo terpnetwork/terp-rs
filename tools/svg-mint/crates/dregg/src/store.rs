@@ -150,11 +150,19 @@ pub struct Durable {
     path: PathBuf,
 }
 
+/// What [`Durable::open`] restores: the handle, cell, rail books, pending pays,
+/// next HD index and the BOGO counter.
+pub type Opened = (
+    Durable,
+    Cell,
+    RailBooks,
+    HashMap<Commit, PendingPay>,
+    u32,
+    u64,
+);
+
 impl Durable {
-    #[allow(clippy::type_complexity)]
-    pub fn open(
-        path: impl AsRef<Path>,
-    ) -> std::io::Result<(Self, Cell, RailBooks, HashMap<Commit, PendingPay>, u32, u64)> {
+    pub fn open(path: impl AsRef<Path>) -> std::io::Result<Opened> {
         let path = path.as_ref().to_path_buf();
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;

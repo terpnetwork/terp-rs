@@ -293,17 +293,23 @@ pub fn lcd_base() -> Result<String, String> {
     Err("DREGG_MINTER_LCD unset".into())
 }
 
+/// Signer account state, chain and fee for one SIGN_MODE_DIRECT tx.
+#[derive(Debug, Clone, Copy)]
+pub struct TxParams<'a> {
+    pub account_number: u64,
+    pub sequence: u64,
+    pub chain_id: &'a str,
+    pub gas: u64,
+    /// Fee in uthiol.
+    pub fee_amount: u128,
+}
+
 /// SIGN_MODE_DIRECT tx bytes for one or more wasm executes. No funds attached.
-#[allow(clippy::too_many_arguments)]
 pub fn tx_raw(
     secret32: &[u8],
     contract: &str,
     msgs: &[Vec<u8>],
-    account_number: u64,
-    sequence: u64,
-    chain_id: &str,
-    gas: u64,
-    fee_amount: u128,
+    params: &TxParams<'_>,
 ) -> Result<Vec<u8>, String> {
     if secret32.len() != 32 {
         return Err("runtime sk 32 bytes".into());
@@ -311,31 +317,23 @@ pub fn tx_raw(
     let sk = SigningKey::from_slice(secret32).map_err(|e| e.to_string())?;
     let pk = sk.verifying_key().to_sec1_point(true);
     let sender = crate::adr36::terp1_from_secp256k1_compressed(pk.as_bytes())?;
-    tx_raw_as(
-        &sk,
-        &sender,
-        contract,
-        msgs,
-        account_number,
-        sequence,
-        chain_id,
-        gas,
-        fee_amount,
-    )
+    tx_raw_as(&sk, &sender, contract, msgs, params)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn tx_raw_as(
     sk: &SigningKey,
     sender: &str,
     contract: &str,
     msgs: &[Vec<u8>],
-    account_number: u64,
-    sequence: u64,
-    chain_id: &str,
-    gas: u64,
-    fee_amount: u128,
+    params: &TxParams<'_>,
 ) -> Result<Vec<u8>, String> {
+    let TxParams {
+        account_number,
+        sequence,
+        chain_id,
+        gas,
+        fee_amount,
+    } = *params;
     let pk = sk.verifying_key().to_sec1_point(true);
     let mut body = Vec::new();
     for msg in msgs {
@@ -639,11 +637,13 @@ pub fn simulate_empty_mint(contract: &str) -> SimVerdict {
         &sender,
         contract,
         &[svg_mint_msg(contract, 1)],
-        account_number,
-        sequence,
-        &chain_id(),
-        gas,
-        fee,
+        &TxParams {
+            account_number,
+            sequence,
+            chain_id: &chain_id(),
+            gas,
+            fee_amount: fee,
+        },
     ) {
         Ok(b) => b,
         Err(e) => return SimVerdict::Unproven(clip_reason(&e)),
@@ -754,11 +754,13 @@ fn submit(
         secret,
         contract,
         msgs,
-        account_number,
-        sequence,
-        &chain_id(),
-        gas,
-        fee,
+        &TxParams {
+            account_number,
+            sequence,
+            chain_id: &chain_id(),
+            gas,
+            fee_amount: fee,
+        },
     )?;
     let body = serde_json::json!({
         "tx_bytes": b64(&raw),
@@ -1023,11 +1025,13 @@ mod tests {
             &secret,
             "terp1contract",
             &[msg],
-            1,
-            0,
-            "morocco-1",
-            800_000,
-            40_000,
+            &TxParams {
+                account_number: 1,
+                sequence: 0,
+                chain_id: "morocco-1",
+                gas: 800_000,
+                fee_amount: 40_000,
+            },
         )
         .unwrap();
         assert!(raw.len() > 80);
