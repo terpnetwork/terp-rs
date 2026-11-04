@@ -96,6 +96,7 @@ pub async fn run_price_bound_feeder(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn fetch_and_ingest(
     client: &reqwest::Client,
     state: &AppState,

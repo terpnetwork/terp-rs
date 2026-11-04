@@ -123,15 +123,14 @@ impl OnboardRuntime {
             } else {
                 GrantPurpose::Register
             };
-            if purpose != GrantPurpose::Mint {
-                if let Err(e) =
+            if purpose != GrantPurpose::Mint
+                && let Err(e) =
                     OnboardRuntime::require_paid_commit(&parsed.address, parsed.c.as_deref())
-                {
-                    return Some(HttpResponse {
-                        status: 402,
-                        body: json!({"ok": false, "error": e}).to_string(),
-                    });
-                }
+            {
+                return Some(HttpResponse {
+                    status: 402,
+                    body: json!({"ok": false, "error": e}).to_string(),
+                });
             }
             if path.ends_with("passkey-grant") && !self.broadcast {
                 return Some(HttpResponse {
@@ -247,7 +246,7 @@ mod tests {
     use crate::onboard_authz::OnboardRoles;
 
     fn rt() -> OnboardRuntime {
-        let _ = std::env::set_var("ONBOARD_SKIP_PAID", "1");
+        unsafe { std::env::set_var("ONBOARD_SKIP_PAID", "1") };
         OnboardRuntime {
             roles: OnboardRoles {
                 runtime: "terp1dao".into(),

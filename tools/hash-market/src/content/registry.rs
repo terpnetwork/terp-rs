@@ -102,12 +102,11 @@ impl ContentRegistry {
             if ent.path().extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            if let Ok(bytes) = fs::read(ent.path()) {
-                if let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes) {
-                    if let Some(cid) = &rec.ipfs_cid {
-                        idx.insert(cid.clone(), rec.sha256.clone());
-                    }
-                }
+            if let Ok(bytes) = fs::read(ent.path())
+                && let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes)
+                && let Some(cid) = &rec.ipfs_cid
+            {
+                idx.insert(cid.clone(), rec.sha256.clone());
             }
         }
         Ok(())
@@ -194,10 +193,10 @@ impl ContentRegistry {
             if ent.path().extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            if let Ok(bytes) = fs::read(ent.path()) {
-                if let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes) {
-                    out.push(rec);
-                }
+            if let Ok(bytes) = fs::read(ent.path())
+                && let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes)
+            {
+                out.push(rec);
             }
         }
         out.sort_by(|a, b| a.sha256.cmp(&b.sha256));

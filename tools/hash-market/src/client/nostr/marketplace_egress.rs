@@ -174,14 +174,14 @@ pub fn product_to_nip15(
         ],
         vec!["sku".into(), meta.sku.clone()],
     ];
-    if let Some(cid) = &meta.content_cid {
-        if !cid.is_empty() {
-            tags.push(vec!["cid".into(), cid.clone()]);
-            if let Ok(parsed) = parse_cid(cid) {
-                if parsed.kind == CidKind::BudSha256 {
-                    tags.push(vec!["bud".into(), parsed.value]);
-                }
-            }
+    if let Some(cid) = &meta.content_cid
+        && !cid.is_empty()
+    {
+        tags.push(vec!["cid".into(), cid.clone()]);
+        if let Ok(parsed) = parse_cid(cid)
+            && parsed.kind == CidKind::BudSha256
+        {
+            tags.push(vec!["bud".into(), parsed.value]);
         }
     }
     if let Some(seller) = &meta.seller {
@@ -249,10 +249,10 @@ pub fn purchase_confirmation_to_nostr(action: &MarketplaceChainAction, pubkey: &
     if let Some(c) = &action.contract {
         tags.push(vec!["contract".into(), c.clone()]);
     }
-    if let Some(cid) = &action.content_cid {
-        if !cid.is_empty() {
-            tags.push(vec!["cid".into(), cid.clone()]);
-        }
+    if let Some(cid) = &action.content_cid
+        && !cid.is_empty()
+    {
+        tags.push(vec!["cid".into(), cid.clone()]);
     }
 
     let mut event = Nip01Event {

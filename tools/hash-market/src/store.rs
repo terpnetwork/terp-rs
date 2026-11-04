@@ -249,10 +249,10 @@ impl HeadstashStore {
         let mut keys = Vec::new();
         for entry in std::fs::read_dir(&dir)? {
             let entry = entry?;
-            if let Some(name) = entry.file_name().to_str() {
-                if let Some(key) = name.strip_suffix(".json") {
-                    keys.push(key.to_string());
-                }
+            if let Some(name) = entry.file_name().to_str()
+                && let Some(key) = name.strip_suffix(".json")
+            {
+                keys.push(key.to_string());
             }
         }
         keys.sort();
@@ -296,10 +296,10 @@ impl HeadstashStore {
         let mut keys = Vec::new();
         for entry in std::fs::read_dir(&dir)? {
             let entry = entry?;
-            if let Some(name) = entry.file_name().to_str() {
-                if let Some(key) = name.strip_suffix(".bin") {
-                    keys.push(key.to_string());
-                }
+            if let Some(name) = entry.file_name().to_str()
+                && let Some(key) = name.strip_suffix(".bin")
+            {
+                keys.push(key.to_string());
             }
         }
         keys.sort();
@@ -513,10 +513,10 @@ impl CashuMeshStore {
         };
         let mut out = Vec::new();
         for id in keys {
-            if let Some(d) = self.get_mint(&id)? {
-                if filter.as_ref().map(|f| &d.status == f).unwrap_or(true) {
-                    out.push(d);
-                }
+            if let Some(d) = self.get_mint(&id)?
+                && filter.as_ref().map(|f| &d.status == f).unwrap_or(true)
+            {
+                out.push(d);
             }
         }
         Ok(out)
@@ -617,13 +617,13 @@ fn validate_mint_descriptor(path_id: &str, desc: &MintDescriptor) -> Result<()> 
     if !desc.mint_id.is_empty() && desc.mint_id != path_id {
         bail!("mint_id mismatch: path={path_id} body={}", desc.mint_id);
     }
-    if let Some(ref sha) = desc.content_sha256 {
-        if !sha.is_empty() {
-            anyhow::ensure!(
-                sha.len() == 64 && sha.chars().all(|c| c.is_ascii_hexdigit()),
-                "content_sha256 must be 64-hex when set"
-            );
-        }
+    if let Some(ref sha) = desc.content_sha256
+        && !sha.is_empty()
+    {
+        anyhow::ensure!(
+            sha.len() == 64 && sha.chars().all(|c| c.is_ascii_hexdigit()),
+            "content_sha256 must be 64-hex when set"
+        );
     }
     Ok(())
 }
@@ -635,10 +635,10 @@ fn list_json_stem_keys(dir: &Path) -> Result<Vec<String>> {
     let mut keys = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
-        if let Some(name) = entry.file_name().to_str() {
-            if let Some(key) = name.strip_suffix(".json") {
-                keys.push(key.to_string());
-            }
+        if let Some(name) = entry.file_name().to_str()
+            && let Some(key) = name.strip_suffix(".json")
+        {
+            keys.push(key.to_string());
         }
     }
     keys.sort();
@@ -1355,7 +1355,7 @@ impl BlobStore for TreeStore {
             uploaded,
         };
 
-        let path = self.dir.join("f").join(hex::encode(&hash));
+        let path = self.dir.join("f").join(hex::encode(hash));
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| BlobStoreError::Other(e.to_string()))?;
         }

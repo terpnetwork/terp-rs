@@ -22,16 +22,18 @@ pub struct Attestation {
 
 fn value_bytes(hex_or_raw: &str) -> Vec<u8> {
     let t = hex_or_raw.trim();
-    if t.len() % 2 == 0 && !t.is_empty() && t.chars().all(|c| c.is_ascii_hexdigit()) {
-        if let Ok(b) = decode_hex(t) {
-            return b;
-        }
+    if t.len().is_multiple_of(2)
+        && !t.is_empty()
+        && t.chars().all(|c| c.is_ascii_hexdigit())
+        && let Ok(b) = decode_hex(t)
+    {
+        return b;
     }
     t.as_bytes().to_vec()
 }
 
 fn decode_hex(s: &str) -> Result<Vec<u8>, ()> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err(());
     }
     (0..s.len())

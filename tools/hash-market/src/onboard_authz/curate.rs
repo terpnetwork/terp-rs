@@ -112,19 +112,18 @@ pub fn load_infra(extra_path: Option<&Path>) -> InfraFile {
     let mut infra: InfraFile =
         serde_json::from_str(EMBEDDED_INFRA).expect("embedded infra-codes.json");
     if let Some(p) = extra_path {
-        if let Ok(raw) = std::fs::read_to_string(p) {
-            if let Ok(over) = serde_json::from_str::<Value>(&raw) {
-                merge_state_json(&mut infra, &over);
-            }
+        if let Ok(raw) = std::fs::read_to_string(p)
+            && let Ok(over) = serde_json::from_str::<Value>(&raw)
+        {
+            merge_state_json(&mut infra, &over);
         }
     } else if let Ok(p) = std::env::var("ONBOARD_STATE_JSON") {
         let path = Path::new(&p);
-        if path.is_file() {
-            if let Ok(raw) = std::fs::read_to_string(path) {
-                if let Ok(over) = serde_json::from_str::<Value>(&raw) {
-                    merge_state_json(&mut infra, &over);
-                }
-            }
+        if path.is_file()
+            && let Ok(raw) = std::fs::read_to_string(path)
+            && let Ok(over) = serde_json::from_str::<Value>(&raw)
+        {
+            merge_state_json(&mut infra, &over);
         }
     }
     infra
@@ -150,10 +149,10 @@ fn merge_state_json(infra: &mut InfraFile, over: &Value) {
         }
         if let Some(defs) = v.get("default").and_then(|x| x.as_object()) {
             for (k, n) in defs {
-                if let Some(s) = n.as_str() {
-                    if !s.is_empty() {
-                        entry.default.insert(k.clone(), s.to_string());
-                    }
+                if let Some(s) = n.as_str()
+                    && !s.is_empty()
+                {
+                    entry.default.insert(k.clone(), s.to_string());
                 }
             }
         }
@@ -188,10 +187,10 @@ impl GrantPreset {
         let mut instances = BTreeMap::new();
         if let Some(c) = chain {
             for k in self.default_addr_keys {
-                if let Some(a) = c.default.get(*k) {
-                    if !a.is_empty() {
-                        instances.insert((*k).to_string(), a.clone());
-                    }
+                if let Some(a) = c.default.get(*k)
+                    && !a.is_empty()
+                {
+                    instances.insert((*k).to_string(), a.clone());
                 }
             }
         }
@@ -506,8 +505,8 @@ mod tests {
 
     #[test]
     fn wallet_proxy_grant_is_runtime_to_hashmerchant() {
-        std::env::remove_var("ONBOARD_FROM_ADDR");
-        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        unsafe { std::env::remove_var("ONBOARD_FROM_ADDR") };
+        unsafe { std::env::remove_var("ONBOARD_ALLOW_COLLAPSE") };
         let infra = load_infra(None);
         let roles = OnboardRoles {
             runtime: "terp1runtimeaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),

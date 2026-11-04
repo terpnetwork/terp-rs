@@ -132,33 +132,33 @@ pub fn metadata_to_nip52_event(
         .unwrap_or(pubkey);
 
     // Prefer full Nostr event JSON if body looks like one.
-    if let Some(raw) = body {
-        if let Ok(v) = serde_json::from_slice::<serde_json::Value>(raw) {
-            if v.get("kind").is_some() && v.get("tags").is_some() && v.get("content").is_some() {
-                return nip01_from_json_value(&v, pubkey, now, meta, action);
-            }
-        }
+    if let Some(raw) = body
+        && let Ok(v) = serde_json::from_slice::<serde_json::Value>(raw)
+        && v.get("kind").is_some()
+        && v.get("tags").is_some()
+        && v.get("content").is_some()
+    {
+        return nip01_from_json_value(&v, pubkey, now, meta, action);
     }
 
     // On-chain e_json may be CalendarEventMetadata or full event.
-    if meta.on_chain {
-        if let Some(ej) = meta.e_json.as_deref() {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(ej) {
-                if v.get("kind").is_some() && v.get("tags").is_some() {
-                    return nip01_from_json_value(&v, pubkey, now, meta, action);
-                }
-                // CalendarEventMetadata-shaped: synthesize tags from known fields
-                return Ok(synthesize_from_metadata_json(
-                    &v,
-                    meta.kind,
-                    pubkey,
-                    now,
-                    meta,
-                    action,
-                    Some(ej),
-                ));
-            }
+    if meta.on_chain
+        && let Some(ej) = meta.e_json.as_deref()
+        && let Ok(v) = serde_json::from_str::<serde_json::Value>(ej)
+    {
+        if v.get("kind").is_some() && v.get("tags").is_some() {
+            return nip01_from_json_value(&v, pubkey, now, meta, action);
         }
+        // CalendarEventMetadata-shaped: synthesize tags from known fields
+        return Ok(synthesize_from_metadata_json(
+            &v,
+            meta.kind,
+            pubkey,
+            now,
+            meta,
+            action,
+            Some(ej),
+        ));
     }
 
     // Off-chain: body is event description JSON; cid is pointer.
@@ -185,10 +185,10 @@ pub fn metadata_to_nip52_event(
     let mut tags = base_tags(meta, action);
     if let Some(cid) = &meta.cid {
         tags.push(vec!["cid".into(), cid.clone()]);
-        if let Ok(parsed) = parse_cid(cid) {
-            if parsed.kind == CidKind::BudSha256 {
-                tags.push(vec!["bud".into(), parsed.value]);
-            }
+        if let Ok(parsed) = parse_cid(cid)
+            && parsed.kind == CidKind::BudSha256
+        {
+            tags.push(vec!["bud".into(), parsed.value]);
         }
     }
     if let Some(d) = &meta.d_tag {
@@ -349,13 +349,12 @@ fn nip01_from_json_value(
             tags.push(t);
         }
     }
-    if let Some(cid) = &meta.cid {
-        if !tags
+    if let Some(cid) = &meta.cid
+        && !tags
             .iter()
             .any(|t| t.first().map(|s| s.as_str()) == Some("cid"))
-        {
-            tags.push(vec!["cid".into(), cid.clone()]);
-        }
+    {
+        tags.push(vec!["cid".into(), cid.clone()]);
     }
     let pk = v
         .get("pubkey")

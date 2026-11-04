@@ -151,13 +151,11 @@ fn walk_ids(v: &Value, out: &mut Vec<u64>) {
             if let Some(id) = m.get("id").and_then(|x| {
                 x.as_u64()
                     .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
-            }) {
-                if m.contains_key("type")
-                    || m.contains_key("authenticator_type")
-                    || m.contains_key("config")
-                {
-                    out.push(id);
-                }
+            }) && (m.contains_key("type")
+                || m.contains_key("authenticator_type")
+                || m.contains_key("config"))
+            {
+                out.push(id);
             }
             for x in m.values() {
                 walk_ids(x, out);

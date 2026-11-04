@@ -8,6 +8,8 @@
 //!
 //! On-chain verify is `deps.api.verify_halo2_proof` after `MsgStoreCodeWithCircuit`.
 //! Local tests prove/verify here. MockBech32 is not a success path.
+#![allow(clippy::needless_range_loop)] // limb / MDS index arithmetic reads clearer indexed
+#![allow(clippy::type_complexity)] // halo2 assigned-cell tuples
 
 use super::itl_ingress::{ict_mock_refused, is_mock_bech32};
 use super::poseidon::{
@@ -789,7 +791,7 @@ pub fn parse_vk_footer(blob: &[u8]) -> Result<(u8, u8, u32, u32), &'static str> 
 
 fn b64(data: &[u8]) -> String {
     const CH: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
@@ -847,20 +849,11 @@ pub fn verify_consume_msg(proof: &[u8], nullifier: &[u8; 32], event_id_fp: &[u8;
 }
 
 /// In-process door. Ushers public; guests are not a ListMembers roster.
+#[derive(Default)]
 pub struct ConsumeEngine {
     ushers: HashSet<String>,
     nullifiers: HashSet<[u8; 32]>,
     guest_root: Option<[u8; 32]>,
-}
-
-impl Default for ConsumeEngine {
-    fn default() -> Self {
-        Self {
-            ushers: HashSet::new(),
-            nullifiers: HashSet::new(),
-            guest_root: None,
-        }
-    }
 }
 
 impl ConsumeEngine {
@@ -1020,7 +1013,10 @@ mod tests {
         assert_eq!(msg["@type"], MSG_STORE_CODE_WITH_CIRCUIT);
         assert_eq!(msg["prover_id"], 0);
         assert!(msg.get("verifying_key").is_some());
-        assert_eq!(msg["instantiate_permission"]["permission"], "ACCESS_TYPE_EVERYBODY");
+        assert_eq!(
+            msg["instantiate_permission"]["permission"],
+            "ACCESS_TYPE_EVERYBODY"
+        );
         assert!(
             !msg["@type"].as_str().unwrap().ends_with("MsgStoreCode")
                 || msg["@type"].as_str().unwrap().contains("Circuit")

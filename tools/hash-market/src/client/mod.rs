@@ -4,7 +4,7 @@
 //! - `MinioIpfsClient` — local Kubo RPC + MinIO for CID fetch/pin
 //! - `NostrRelayClient` — connects to Nostr relay via NEG-OPEN + fetches roots
 //! - `HttpWebhookClient` — POSTs root confirmations to HTTP endpoints
-
+//!
 //! Client polling loop: eth_getProof → Pallas transform → encode → POST to sidecar.
 
 pub mod eth;
@@ -64,6 +64,7 @@ pub async fn run_poll_loop(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn poll_once(
     eth: &EthClient,
     http: &reqwest::Client,
@@ -90,7 +91,7 @@ async fn poll_once(
 
     // Transform storage hash to Pallas
     let state_root = block.state_root_bytes()?;
-    let pallas_leaves = pasta::transform_proofs(&[state_root.clone()]);
+    let pallas_leaves = pasta::transform_proofs(std::slice::from_ref(&state_root));
     let root = if let Some(leaf) = pallas_leaves.first() {
         leaf.0.to_vec()
     } else {

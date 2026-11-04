@@ -6,6 +6,7 @@
 //!
 //! Round constants: SHA256("itl-poseidon-pallas-t3-v1" || i) reduced into Fp.
 //! MDS: Cauchy 1/(i+j+3). Consume Halo2 gadgets must use this same hash.
+#![allow(clippy::needless_range_loop)] // limb / MDS index arithmetic reads clearer indexed
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -247,7 +248,7 @@ pub fn hex_encode(bytes: &[u8]) -> String {
 
 pub fn hex_decode(s: &str) -> Result<Vec<u8>, &'static str> {
     let s = s.trim();
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err("odd_hex");
     }
     let mut out = Vec::with_capacity(s.len() / 2);
@@ -459,7 +460,11 @@ impl PoseidonTree {
         for level in 0..self.depth {
             let sibling = i ^ 1;
             let sib = self.node(level as u32, sibling);
-            let (l, r) = if i % 2 == 0 { (cur, sib) } else { (sib, cur) };
+            let (l, r) = if i.is_multiple_of(2) {
+                (cur, sib)
+            } else {
+                (sib, cur)
+            };
             cur = poseidon2(l, r);
             i /= 2;
             self.nodes.insert(((level + 1) as u32, i), cur);
@@ -499,7 +504,11 @@ impl MerklePath {
         let mut cur = leaf;
         let mut i = self.index;
         for sib in &self.siblings {
-            let (l, r) = if i % 2 == 0 { (cur, *sib) } else { (*sib, cur) };
+            let (l, r) = if i.is_multiple_of(2) {
+                (cur, *sib)
+            } else {
+                (*sib, cur)
+            };
             cur = poseidon2(l, r);
             i /= 2;
         }

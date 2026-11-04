@@ -96,7 +96,7 @@ fn live_mock_cashapp_receipt_http() {
         &format!("{base}/inject"),
         Some(&format!(r#"{{"payRef":"{pay}","amountCents":2500}}"#)),
     );
-    assert!(inj.contains(&pay) || inj.contains("txId"), "{inj}");
+    assert!(inj.contains(pay) || inj.contains("txId"), "{inj}");
     let rec = curl(&format!("{base}/cashapp/receipts/{pay}.json"), None);
     assert!(rec.contains("\"payRef\""), "{rec}");
     assert!(rec.contains("D-"), "{rec}");

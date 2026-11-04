@@ -32,10 +32,13 @@ fn parent(left: [u8; 32], right: [u8; 32]) -> [u8; 32] {
     *blake3::hash(&combined).as_bytes()
 }
 
+/// address → (allocation, proof_hashes_hex)
+pub type ProofMap = HashMap<String, (u32, Vec<String>)>;
+
 /// Build a merkle tree from (address, allocation) pairs and return proofs for every entry.
 ///
 /// Returns `(root_hex, address → (allocation, proof_hashes_hex))`.
-pub fn build(entries: &[(String, u32)]) -> Result<(String, HashMap<String, (u32, Vec<String>)>)> {
+pub fn build(entries: &[(String, u32)]) -> Result<(String, ProofMap)> {
     if entries.is_empty() {
         bail!("entry list is empty");
     }
@@ -93,7 +96,7 @@ fn build_layers(leaves: Vec<[u8; 32]>) -> ([u8; 32], Vec<Vec<[u8; 32]>>) {
         if current.len() == 1 {
             break;
         }
-        let mut next = Vec::with_capacity((current.len() + 1) / 2);
+        let mut next = Vec::with_capacity(current.len().div_ceil(2));
         let mut padded = current.clone();
         if padded.len() % 2 == 1 {
             let last = *padded.last().unwrap();

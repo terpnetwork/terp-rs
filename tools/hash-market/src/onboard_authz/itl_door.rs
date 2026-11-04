@@ -131,7 +131,7 @@ pub fn try_handle(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::onboard_authz::itl_session::{self, mint_test_cookie};
+    use crate::onboard_authz::itl_session::mint_test_cookie;
 
     #[test]
     fn unpaid_double_and_removed_usher_are_refused() {

@@ -36,9 +36,12 @@ struct Config {
     webhook_urls: Vec<String>,
     #[serde(default)]
     kubo_api_url: Option<String>,
+    // Accepted in config; consumed once the chain watcher announces (see watch_chain_ws).
     #[serde(default)]
+    #[allow(dead_code)]
     announce_name: String,
     #[serde(default)]
+    #[allow(dead_code)]
     announce_description: String,
 }
 
@@ -126,6 +129,8 @@ async fn watch_chain_ws(
 }
 
 /// Relay client that POSTs to configured webhooks and logs roots.
+// Constructed from config but only driven once watch_chain_ws parses events.
+#[allow(dead_code)]
 struct HttpWebhookRelay {
     urls: Vec<String>,
     client: reqwest::Client,
@@ -139,6 +144,7 @@ impl HttpWebhookRelay {
         }
     }
 
+    #[allow(dead_code)]
     async fn send(&self, confirmation: &RootConfirmation) {
         let body = serde_json::to_value(confirmation).unwrap_or_default();
         for url in &self.urls {

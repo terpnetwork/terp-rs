@@ -79,10 +79,10 @@ fn kill_wait(child: &mut Child) {
 
 #[test]
 fn missing_key_stays_persistence_off_ram_only() {
-    std::env::remove_var("ITL_FROST_PERSIST_KEY");
+    unsafe { std::env::remove_var("ITL_FROST_PERSIST_KEY") };
     assert_eq!(persist_required(), Err("persistence_off"));
     let dir = tmp_dir("off");
-    std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
+    unsafe { std::env::set_var("ITL_FROST_PERSIST_DIR", &dir) };
     let mut a = FrostInbox::from_env().unwrap();
     assert!(!a.persist_on());
     let rc = hash_market::onboard_authz::itl_frost_rotate::FrostCommittee::new(
@@ -108,7 +108,7 @@ fn missing_key_stays_persistence_off_ram_only() {
     );
     assert!(!dir.join("inbox.seal").exists());
     let _ = std::fs::remove_dir_all(&dir);
-    std::env::remove_var("ITL_FROST_PERSIST_DIR");
+    unsafe { std::env::remove_var("ITL_FROST_PERSIST_DIR") };
 }
 
 #[test]

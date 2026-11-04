@@ -190,17 +190,19 @@ fn spawn_ztreamer() -> Ztreamer {
     }
     let bin = root().join("crates/ztreamer/target/release/ztreamer");
     assert!(bin.is_file(), "ZTREAMER_BIN missing at {}", bin.display());
+    let mut guard = Ztreamer(None);
     let child = Command::new(&bin)
         .args(["--bind", ZTREAMER_BIND])
         .stdout(Stdio::null())
         .stderr(Stdio::inherit())
         .spawn()
         .expect("ztreamer spawn");
+    guard.0 = Some(child);
     for _ in 0..50 {
         if std::net::TcpStream::connect(ZTREAMER_BIND).is_ok() {
-            std::env::set_var("ZCLI_ENDPOINT", format!("http://{ZTREAMER_BIND}"));
-            std::env::set_var("ZTREAMER_GRPC", ZTREAMER_BIND);
-            return Ztreamer(Some(child));
+            unsafe { std::env::set_var("ZCLI_ENDPOINT", format!("http://{ZTREAMER_BIND}")) };
+            unsafe { std::env::set_var("ZTREAMER_GRPC", ZTREAMER_BIND) };
+            return guard;
         }
         std::thread::sleep(Duration::from_millis(100));
     }

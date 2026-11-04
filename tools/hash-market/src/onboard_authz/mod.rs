@@ -311,18 +311,17 @@ pub trait GrantBroadcaster: Send + Sync {
 }
 
 pub fn txhash_from_broadcast(v: &Value) -> Option<String> {
-    if let Some(h) = v.get("txhash").and_then(|x| x.as_str()) {
-        if !h.is_empty() {
-            return Some(h.to_string());
-        }
+    if let Some(h) = v.get("txhash").and_then(|x| x.as_str())
+        && !h.is_empty()
+    {
+        return Some(h.to_string());
     }
     let stdout = v.get("stdout").and_then(|x| x.as_str()).unwrap_or("");
-    if let Ok(j) = serde_json::from_str::<Value>(stdout) {
-        if let Some(h) = j.get("txhash").and_then(|x| x.as_str()) {
-            if !h.is_empty() {
-                return Some(h.to_string());
-            }
-        }
+    if let Ok(j) = serde_json::from_str::<Value>(stdout)
+        && let Some(h) = j.get("txhash").and_then(|x| x.as_str())
+        && !h.is_empty()
+    {
+        return Some(h.to_string());
     }
     None
 }
@@ -428,28 +427,28 @@ fn terpd_bin() -> String {
 
 fn terpd_node_flags() -> Vec<String> {
     let mut v = Vec::new();
-    if let Ok(n) = std::env::var("ONBOARD_NODE") {
-        if !n.is_empty() {
-            v.push("--node".into());
-            v.push(n);
-        }
+    if let Ok(n) = std::env::var("ONBOARD_NODE")
+        && !n.is_empty()
+    {
+        v.push("--node".into());
+        v.push(n);
     }
     v
 }
 
 fn terpd_keyring_flags() -> Vec<String> {
     let mut v = Vec::new();
-    if let Ok(b) = std::env::var("ONBOARD_KEYRING_BACKEND") {
-        if !b.is_empty() {
-            v.push("--keyring-backend".into());
-            v.push(b);
-        }
+    if let Ok(b) = std::env::var("ONBOARD_KEYRING_BACKEND")
+        && !b.is_empty()
+    {
+        v.push("--keyring-backend".into());
+        v.push(b);
     }
-    if let Ok(d) = std::env::var("ONBOARD_KEYRING_DIR") {
-        if !d.is_empty() {
-            v.push("--keyring-dir".into());
-            v.push(d);
-        }
+    if let Ok(d) = std::env::var("ONBOARD_KEYRING_DIR")
+        && !d.is_empty()
+    {
+        v.push("--keyring-dir".into());
+        v.push(d);
     }
     v
 }
@@ -734,10 +733,10 @@ impl OnboardRuntime {
         if v.get("paid").and_then(|x| x.as_bool()) != Some(true) {
             return Err(format!("nft payment not confirmed for this C: {body}"));
         }
-        if let Some(dest) = v.get("recipient").and_then(|x| x.as_str()) {
-            if dest != recipient {
-                return Err("pedersen C dest != grant address".into());
-            }
+        if let Some(dest) = v.get("recipient").and_then(|x| x.as_str())
+            && dest != recipient
+        {
+            return Err("pedersen C dest != grant address".into());
         }
         Ok(())
     }
@@ -849,24 +848,23 @@ impl OnboardRuntime {
         let mut send_bc = json!(null);
         let mut feegrant_broadcast = json!(null);
         let runway_needed = extra.get("runway").is_some();
-        if let Some(b) = &self.broadcaster {
-            if self.broadcast {
-                let _seq = self.grant_tx_mu.lock().unwrap_or_else(|p| p.into_inner());
-                if purpose == GrantPurpose::Register || purpose == GrantPurpose::Onboard {
-                    if let Some(amt) = extra
-                        .get("runway")
-                        .and_then(|r| r.get("amount"))
-                        .and_then(|x| x.as_str())
-                    {
-                        send_bc = b.broadcast_bank_send(address, amt);
-                        runway_txhash = match txhash_from_broadcast(&send_bc) {
-                            Some(h) => json!(h),
-                            None => Value::Null,
-                        };
-                    }
-                }
-                feegrant_broadcast = b.broadcast_authz_exec(&exec);
+        if let Some(b) = &self.broadcaster
+            && self.broadcast
+        {
+            let _seq = self.grant_tx_mu.lock().unwrap_or_else(|p| p.into_inner());
+            if (purpose == GrantPurpose::Register || purpose == GrantPurpose::Onboard)
+                && let Some(amt) = extra
+                    .get("runway")
+                    .and_then(|r| r.get("amount"))
+                    .and_then(|x| x.as_str())
+            {
+                send_bc = b.broadcast_bank_send(address, amt);
+                runway_txhash = match txhash_from_broadcast(&send_bc) {
+                    Some(h) => json!(h),
+                    None => Value::Null,
+                };
             }
+            feegrant_broadcast = b.broadcast_authz_exec(&exec);
         }
         let fg_hash = txhash_from_broadcast(&feegrant_broadcast);
         let send_ok = !self.broadcast || !runway_needed || runway_txhash.as_str().is_some();
@@ -880,11 +878,11 @@ impl OnboardRuntime {
             "txhash": fg_hash,
             "runway_txhash": runway_txhash,
         });
-        if let Some(obj) = extra.as_object() {
-            if let Some(dst) = out.as_object_mut() {
-                for (k, v) in obj {
-                    dst.insert(k.clone(), v.clone());
-                }
+        if let Some(obj) = extra.as_object()
+            && let Some(dst) = out.as_object_mut()
+        {
+            for (k, v) in obj {
+                dst.insert(k.clone(), v.clone());
             }
         }
         if let Some(r) = out.get_mut("runway") {
@@ -990,7 +988,7 @@ mod tests {
             hashmerchant: "terp1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
             chain_id: "morocco-1".into(),
         };
-        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        unsafe { std::env::remove_var("ONBOARD_ALLOW_COLLAPSE") };
         assert!(!r.is_sound());
     }
 
@@ -1010,7 +1008,7 @@ mod tests {
 
     #[test]
     fn allocate_rejects_collapsed_keys() {
-        std::env::remove_var("ONBOARD_ALLOW_COLLAPSE");
+        unsafe { std::env::remove_var("ONBOARD_ALLOW_COLLAPSE") };
         let rt = OnboardRuntime {
             roles: OnboardRoles {
                 runtime: "terp1same000000000000000000000000000000000".into(),
@@ -1062,9 +1060,8 @@ mod tests {
     }
 
     #[test]
-    #[test]
     fn paid_commit_required_without_skip() {
-        std::env::set_var("ONBOARD_SKIP_PAID", "1");
+        unsafe { std::env::set_var("ONBOARD_SKIP_PAID", "1") };
         assert!(
             OnboardRuntime::require_paid_commit(
                 "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqg6p2x0",
@@ -1077,6 +1074,7 @@ mod tests {
         assert!(msg.contains("pedersen"));
     }
 
+    #[test]
     fn runtime_rejects_bad_addr() {
         let rt = OnboardRuntime {
             roles: roles(),

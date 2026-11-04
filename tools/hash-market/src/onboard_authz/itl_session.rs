@@ -41,6 +41,7 @@ struct Challenge {
     artist_id: String,
     ts: u64,
     message: String,
+    #[allow(dead_code)] // part of the signed wire payload; not read server-side
     challenge_hex: String,
 }
 
@@ -145,13 +146,13 @@ fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
 fn session_secret() -> [u8; 32] {
     static S: OnceLock<[u8; 32]> = OnceLock::new();
     *S.get_or_init(|| {
-        if let Ok(raw) = std::env::var("ITL_SESSION_HMAC") {
-            if raw.len() >= 16 {
-                let mut h = Sha256::new();
-                h.update(b"itl-session-hmac-v1");
-                h.update(raw.as_bytes());
-                return h.finalize().into();
-            }
+        if let Ok(raw) = std::env::var("ITL_SESSION_HMAC")
+            && raw.len() >= 16
+        {
+            let mut h = Sha256::new();
+            h.update(b"itl-session-hmac-v1");
+            h.update(raw.as_bytes());
+            return h.finalize().into();
         }
         let mut h = Sha256::new();
         h.update(b"itl-session-ephemeral-v1");
@@ -175,7 +176,7 @@ fn hex_encode(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 fn hex_decode(s: &str) -> Option<Vec<u8>> {
-    if s.len() % 2 != 0 || s.is_empty() {
+    if !s.len().is_multiple_of(2) || s.is_empty() {
         return None;
     }
     let mut out = Vec::with_capacity(s.len() / 2);
@@ -276,12 +277,12 @@ impl SessionResponse {
             reason,
             self.body.len()
         );
-        if let Some(o) = origin {
-            if origin_allowed(o) {
-                head.push_str("Access-Control-Allow-Origin: ");
-                head.push_str(o);
-                head.push_str("\r\nAccess-Control-Allow-Credentials: true\r\nVary: Origin\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: content-type, x-itl-frost\r\n");
-            }
+        if let Some(o) = origin
+            && origin_allowed(o)
+        {
+            head.push_str("Access-Control-Allow-Origin: ");
+            head.push_str(o);
+            head.push_str("\r\nAccess-Control-Allow-Credentials: true\r\nVary: Origin\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: content-type, x-itl-frost\r\n");
         }
         if let Some(c) = &self.set_cookie {
             head.push_str("Set-Cookie: ");
@@ -303,7 +304,7 @@ fn mint_token(login_id: &str, role: &str, method: &str, exp: u64) -> String {
     g.seq += 1;
     let mut h = Sha256::new();
     h.update(COOKIE_MAC_PREFIX);
-    h.update(&session_secret());
+    h.update(session_secret());
     h.update(g.seq.to_le_bytes());
     h.update(exp.to_le_bytes());
     h.update(login_id.as_bytes());
@@ -376,6 +377,7 @@ struct ChallengeBody {
     #[serde(default)]
     origin: String,
     #[serde(default)]
+    #[allow(dead_code)] // accepted on the wire; not yet consumed
     artist_id: String,
 }
 
@@ -384,6 +386,7 @@ struct VerifyBody {
     #[serde(default)]
     origin: String,
     #[serde(default)]
+    #[allow(dead_code)] // accepted on the wire; not yet consumed
     artist_id: String,
     nonce: String,
     ts: u64,
@@ -412,17 +415,17 @@ fn challenge(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     if !origin_allowed(&origin) {
         return SessionResponse::err(403, "origin");
     }
-    if let Some(h) = origin_hdr {
-        if h != origin {
-            return SessionResponse::err(403, "origin");
-        }
+    if let Some(h) = origin_hdr
+        && h != origin
+    {
+        return SessionResponse::err(403, "origin");
     }
     let ts = now();
     let mut g = store().lock().expect("session store");
     g.seq += 1;
     let mut h = Sha256::new();
     h.update(b"itl-session-nonce-v1");
-    h.update(&session_secret());
+    h.update(session_secret());
     h.update(g.seq.to_le_bytes());
     h.update(ts.to_le_bytes());
     let nonce = hex_encode(&h.finalize());
@@ -466,10 +469,10 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     if !origin_allowed(&origin) {
         return SessionResponse::err(403, "origin");
     }
-    if let Some(h) = origin_hdr {
-        if h != origin {
-            return SessionResponse::err(403, "origin");
-        }
+    if let Some(h) = origin_hdr
+        && h != origin
+    {
+        return SessionResponse::err(403, "origin");
     }
     let t = now();
     let ch = {
@@ -547,10 +550,10 @@ fn me(cookie: Option<&str>) -> SessionResponse {
 }
 
 fn logout(cookie: Option<&str>) -> SessionResponse {
-    if let Some(token) = cookie_from_header(cookie) {
-        if let Ok(mut g) = store().lock() {
-            g.sessions.remove(&token);
-        }
+    if let Some(token) = cookie_from_header(cookie)
+        && let Ok(mut g) = store().lock()
+    {
+        g.sessions.remove(&token);
     }
     let mut resp = SessionResponse::json(200, json!({"ok": true}).to_string());
     resp.set_cookie = Some(cookie_header("", 0));
@@ -608,10 +611,10 @@ pub fn header_line(req: &str, name: &str) -> Option<String> {
         if line.is_empty() {
             break;
         }
-        if let Some((k, v)) = line.split_once(':') {
-            if k.trim().eq_ignore_ascii_case(name) {
-                return Some(v.trim().to_string());
-            }
+        if let Some((k, v)) = line.split_once(':')
+            && k.trim().eq_ignore_ascii_case(name)
+        {
+            return Some(v.trim().to_string());
         }
     }
     None
@@ -658,8 +661,8 @@ mod tests {
     #[test]
     fn challenge_verify_me_logout() {
         reset_for_test();
-        std::env::remove_var("ITL_ADMIN_CREDS");
-        std::env::remove_var("ITL_USHER_CREDS");
+        unsafe { std::env::remove_var("ITL_ADMIN_CREDS") };
+        unsafe { std::env::remove_var("ITL_USHER_CREDS") };
         let origin = "http://127.0.0.1:3051";
         let ch = try_handle(
             "POST",
@@ -677,7 +680,7 @@ mod tests {
         let sk = key();
         let pk = sk.verifying_key().to_sec1_point(true);
         let login = terp_address_from_compressed(pk.as_bytes()).unwrap();
-        std::env::set_var("ITL_ADMIN_CREDS", &login);
+        unsafe { std::env::set_var("ITL_ADMIN_CREDS", &login) };
         let (pub_key, signature) = sign_adr(&sk, &login, &message);
         let body = json!({
             "origin": origin,
@@ -709,14 +712,14 @@ mod tests {
         assert_eq!(out.status, 200);
         let me2 = try_handle("GET", "/itl/session/me", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(me2.status, 401);
-        std::env::remove_var("ITL_ADMIN_CREDS");
+        unsafe { std::env::remove_var("ITL_ADMIN_CREDS") };
     }
 
     #[test]
     fn bad_sig_and_replay_and_public_env_not_read() {
         reset_for_test();
         let origin = "http://127.0.0.1:3051";
-        std::env::set_var("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count");
+        unsafe { std::env::set_var("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count") };
         let ch = try_handle(
             "POST",
             "/itl/session/challenge",
@@ -743,7 +746,7 @@ mod tests {
         assert_eq!(vr.status, 401);
         let me = try_handle("GET", "/itl/session/me", "", Some(origin), None).unwrap();
         assert_eq!(me.status, 401);
-        std::env::remove_var("NEXT_PUBLIC_ITL_ADMIN_CREDS");
+        unsafe { std::env::remove_var("NEXT_PUBLIC_ITL_ADMIN_CREDS") };
     }
 
     #[test]

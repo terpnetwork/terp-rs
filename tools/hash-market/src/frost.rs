@@ -81,18 +81,18 @@ async fn session_dispatch(req: Request) -> Response {
         .status(status)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::CACHE_CONTROL, "no-store");
-    if let Some(o) = origin.as_deref() {
-        if itl_session::origin_allowed(o) {
-            builder = builder
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, o)
-                .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
-                .header(header::VARY, "Origin")
-                .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, OPTIONS")
-                .header(
-                    header::ACCESS_CONTROL_ALLOW_HEADERS,
-                    "content-type, x-itl-frost",
-                );
-        }
+    if let Some(o) = origin.as_deref()
+        && itl_session::origin_allowed(o)
+    {
+        builder = builder
+            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, o)
+            .header(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, "true")
+            .header(header::VARY, "Origin")
+            .header(header::ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, OPTIONS")
+            .header(
+                header::ACCESS_CONTROL_ALLOW_HEADERS,
+                "content-type, x-itl-frost",
+            );
     }
     if let Some(c) = r.set_cookie {
         builder = builder.header(header::SET_COOKIE, c);

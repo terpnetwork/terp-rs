@@ -33,8 +33,6 @@ use tokio::sync::RwLock;
 use crate::client::ve::VoteExtensionHandler;
 use crate::oracle::{AggregationPolicy, OracleAttributeStore, OracleBoundsResponse};
 use crate::store::{CashuMeshStore, HeadstashStore, MemberData, TreeInput, TreeStore};
-#[cfg(feature = "transport")]
-use crate::transport::TransportMode;
 #[cfg(feature = "ve")]
 use crate::ve::server as ve_server;
 #[cfg(feature = "ve")]
@@ -664,7 +662,7 @@ async fn blob_upload(
         _ => StatusCode::INTERNAL_SERVER_ERROR,
     })?;
 
-    let sha_hex = hex::encode(&descriptor.sha256);
+    let sha_hex = hex::encode(descriptor.sha256);
     let mut content_meta = serde_json::json!({});
     if let Some(dist) = &state.distribution {
         let origin = crate::content::ContentOrigin {
@@ -1298,23 +1296,22 @@ async fn note_put(
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     // Optional distribution pin of ciphertext-only when client attached sha256.
-    if state.distribution.is_some() {
-        if let (Some(ct_hex), Some(sha_hex)) = (
+    if state.distribution.is_some()
+        && let (Some(ct_hex), Some(sha_hex)) = (
             data.get("ciphertext").and_then(|v| v.as_str()),
             data.get("sha256").and_then(|v| v.as_str()),
-        ) {
-            if let Ok(ct) = hex::decode(ct_hex) {
-                use sha2::{Digest, Sha256};
-                let digest = hex::encode(Sha256::digest(&ct));
-                if digest == sha_hex.to_lowercase() {
-                    // TreeStore implements BlobStore via blossom.store
-                    if let Err(e) = state.blossom.store.put(ct) {
-                        tracing::warn!(%hs_id, %addr, error = %e, "ciphertext bud pin skipped");
-                    }
-                } else {
-                    tracing::warn!(%hs_id, %addr, "envelope sha256 mismatch; skip bud pin");
-                }
+        )
+        && let Ok(ct) = hex::decode(ct_hex)
+    {
+        use sha2::{Digest, Sha256};
+        let digest = hex::encode(Sha256::digest(&ct));
+        if digest == sha_hex.to_lowercase() {
+            // TreeStore implements BlobStore via blossom.store
+            if let Err(e) = state.blossom.store.put(ct) {
+                tracing::warn!(%hs_id, %addr, error = %e, "ciphertext bud pin skipped");
             }
+        } else {
+            tracing::warn!(%hs_id, %addr, "envelope sha256 mismatch; skip bud pin");
         }
     }
 
@@ -1365,7 +1362,7 @@ async fn note_pir_index(
     #[cfg(not(feature = "pir"))]
     {
         let _ = (state, hs_id);
-        return Err(StatusCode::NOT_FOUND);
+        Err(StatusCode::NOT_FOUND)
     }
 
     #[cfg(feature = "pir")]
@@ -1403,7 +1400,7 @@ async fn note_pir(
     #[cfg(not(feature = "pir"))]
     {
         let _ = (state, hs_id, body);
-        return Err(StatusCode::NOT_FOUND);
+        Err(StatusCode::NOT_FOUND)
     }
 
     #[cfg(feature = "pir")]
@@ -1658,7 +1655,7 @@ pub async fn run_provider_feeder(
     state: Arc<AppState>,
     provider_idx: usize,
     name: String,
-    mode: TransportMode,
+    mode: crate::transport::TransportMode,
 ) {
     ve_server::run_provider_feeder(state, provider_idx, name, mode).await
 }

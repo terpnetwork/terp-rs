@@ -550,7 +550,7 @@ fn b58_encode(data: &[u8]) -> String {
 fn sha256d(data: &[u8]) -> [u8; 32] {
     use sha2::{Digest, Sha256};
     let h1 = Sha256::digest(data);
-    let h2 = Sha256::digest(&h1);
+    let h2 = Sha256::digest(h1);
     let mut o = [0u8; 32];
     o.copy_from_slice(&h2);
     o
