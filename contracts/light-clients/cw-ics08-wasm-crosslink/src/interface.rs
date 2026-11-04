@@ -20,7 +20,7 @@ impl<Chain: TxHandler> Uploadable for CrosslinkLightClient<Chain> {
             .find_wasm_path("cw_ics08_wasm_crosslink")
             .unwrap()
     }
-    /// Returns a CosmWasm contract wrapper
+    /// Returns a `CosmWasm` contract wrapper
     fn wrapper() -> Box<dyn MockContract<Empty>> {
         Box::new(
             ContractWrapper::new_with_empty(execute, instantiate, query)

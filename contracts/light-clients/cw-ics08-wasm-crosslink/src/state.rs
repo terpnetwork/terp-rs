@@ -27,6 +27,10 @@ pub fn consensus_db_key(height: u32) -> String {
 }
 
 /// Get the Wasm client state.
+///
+/// # Errors
+///
+/// Returns [`ContractError`] if the client state is missing or fails to decode.
 pub fn get_wasm_client_state(storage: &dyn Storage) -> Result<WasmClientState, ContractError> {
     let wasm_client_state_any_bz = storage
         .get(HOST_CLIENT_STATE_KEY.as_bytes())
@@ -38,6 +42,10 @@ pub fn get_wasm_client_state(storage: &dyn Storage) -> Result<WasmClientState, C
 }
 
 /// Get the Crosslink client state.
+///
+/// # Errors
+///
+/// Returns [`ContractError`] if the client state is missing or fails to decode.
 pub fn get_crosslink_client_state(
     storage: &dyn Storage,
 ) -> Result<CrosslinkClientState, ContractError> {
@@ -48,6 +56,10 @@ pub fn get_crosslink_client_state(
 }
 
 /// Get the Crosslink consensus state at a given BFT height.
+///
+/// # Errors
+///
+/// Returns [`ContractError`] if the consensus state at `height` is missing or fails to decode.
 pub fn get_crosslink_consensus_state(
     storage: &dyn Storage,
     height: u32,
@@ -64,6 +76,10 @@ pub fn get_crosslink_consensus_state(
 }
 
 /// Store the Wasm client state.
+///
+/// # Errors
+///
+/// Returns [`ContractError`] if storing fails.
 pub fn store_client_state(
     storage: &mut dyn Storage,
     wasm_client_state: &WasmClientState,
@@ -77,6 +93,10 @@ pub fn store_client_state(
 }
 
 /// Store a Crosslink consensus state at a given BFT height.
+///
+/// # Errors
+///
+/// Returns [`ContractError`] if the consensus state fails to serialize.
 pub fn store_consensus_state(
     storage: &mut dyn Storage,
     height: u32,
