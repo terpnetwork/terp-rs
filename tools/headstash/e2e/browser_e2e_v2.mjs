@@ -126,7 +126,7 @@ try {
     out.zafu_book = await page.evaluate(() => JSON.parse(localStorage.getItem("terp-hs-zafu-indices-v1") || "[]"));
     out.zafu_addrs_distinct = new Set(pen.list).size === pen.list.length && pen.list.every((x) => /^penumbra1[02-9ac-hj-np-z]{134}$/.test(x));
     out.zafu_addr_prefixes = pen.list.map((x) => x.slice(0, 18));
-    await page.click("#zafu-disconnect"); out.zafu_after_disconnect = await attr("#zafu-detect", "data-state");
+    await page.click("#zafu-disconnect"); await page.waitForFunction(() => document.querySelector("#zafu-detect")?.getAttribute("data-state") !== "connected", null, { timeout: 10000 }).catch(() => {}); out.zafu_after_disconnect = await attr("#zafu-detect", "data-state");
     await page.check("#recv-any"); await page.fill("#recv", inp.recv_b);
     await runClaim("09-forward-chain-b");
     await page.fill("#recv", z1); // the Zafu address already used by claim 08: must be refused by the reuse guard
