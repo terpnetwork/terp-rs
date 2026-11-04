@@ -31,6 +31,9 @@
 //! - Proper handling of jailed/unbonded validators
 //! - Final state verification
 //! - Batch broadcasting with 32 msgs per transaction
+// Legacy bitsong-mnemonic delegation tool: main() exits via kms_gate::legacy_signer,
+// so the delegation planner below is retained for reference but unreachable.
+#![allow(dead_code)]
 
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 
@@ -50,15 +53,13 @@ use cw_orch::{
         networks::TERP_MAINNET,
         queriers::{Bank, Staking},
     },
-    environment::{ChainKind, NetworkInfo},
     prelude::*,
 };
 
 use terp_rs::{Message, Name};
-use tokio::runtime::Runtime;
 
 pub const TOTAL_OBLIGATED_VALIDATORS: usize = 33;
-pub const TOTAL_OBLIGATED_DELEGATED_Terp: Uint128 = Uint128::new(9_999_980_000_000u128);
+pub const TOTAL_OBLIGATED_DELEGATED_TERP: Uint128 = Uint128::new(9_999_980_000_000u128);
 pub const NEW_DELS_FILE: &str = "./src/bin/data/new-delegations.csv";
 pub const RAW_MSG_JSON: &str = "delegation_messages.json";
 
@@ -172,7 +173,10 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
-    dao_scripts::kms_gate::legacy_signer("dels (bitsong mnemonic Daemon)", "foundation_delegate / fiab_subdao (cw-orch-kms)")?;
+    dao_scripts::kms_gate::legacy_signer(
+        "dels (bitsong mnemonic Daemon)",
+        "foundation_delegate / fiab_subdao (cw-orch-kms)",
+    )?;
     // Fix for rustls 0.23+ CryptoProvider
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -401,7 +405,7 @@ async fn realign_delegations(
                 || unbonding_vals
                     .iter()
                     .any(|v| v.address == delegation.validator_address)
-                || val_historical.hist.as_ref().map_or(false, |h| {
+                || val_historical.hist.as_ref().is_some_and(|h| {
                     h.valset
                         .iter()
                         .any(|v| v.operator_address == delegation.validator_address && v.jailed)
@@ -648,7 +652,7 @@ async fn fetch_delegations_to_bad_validators(
                 let is_unbonding = unbonding_vals
                     .iter()
                     .any(|v| v.address == delegation.validator_address);
-                let is_jailed = historical.hist.as_ref().map_or(false, |h| {
+                let is_jailed = historical.hist.as_ref().is_some_and(|h| {
                     h.valset
                         .iter()
                         .any(|v| v.operator_address == delegation.validator_address && v.jailed)
@@ -718,7 +722,7 @@ fn form_and_broadcast_obligated_msgs(
     eprintln!("[BROADCAST] DAO addresses to process: {:?}", dao_addrs);
 
     // load json msgs
-    let file_content = std::fs::read_to_string(json.to_string())
+    let file_content = std::fs::read_to_string(json)
         .map_err(|e| anyhow::anyhow!("[BROADCAST] Failed to read JSON file '{}': {}", json, e))?;
     let obligated_export: MessageExport = serde_json::from_str(&file_content)
         .map_err(|e| anyhow::anyhow!("[BROADCAST] Failed to parse JSON: {}", e))?;
@@ -776,7 +780,7 @@ fn form_and_broadcast_obligated_msgs(
         // in a single tx (v0.53.4-pfm-migrate share check at delegation.go:1379).
         // Each message runs against the full pre-transaction delegation shares.
         let bundle_size: usize = 1;
-        let num_bundles = (all_msgs.len() + bundle_size - 1) / bundle_size;
+        let num_bundles = all_msgs.len().div_ceil(bundle_size);
 
         eprintln!(
             "[BROADCAST] Splitting {} msgs into {} single-msg bundles (avoids same-source share conflict)",
@@ -1127,7 +1131,7 @@ fn distribute_redelegated_greedy(
     let mut undelegate_msgs = Vec::new();
 
     // Sort sources descending for greedy picking
-    to_redelegate.sort_by(|a, b| b.amount.cmp(&a.amount));
+    to_redelegate.sort_by_key(|r| std::cmp::Reverse(r.amount));
 
     // Multi-pass: each pass fills largest deficit from largest remaining source
     let mut made_progress = true;
@@ -1135,7 +1139,7 @@ fn distribute_redelegated_greedy(
         made_progress = false;
 
         // Sort deficits descending each pass
-        deficits.sort_by(|a, b| b.1.cmp(&a.1));
+        deficits.sort_by_key(|d| std::cmp::Reverse(d.1));
 
         for (idx, deficit) in &mut deficits {
             if deficit.is_zero() {
@@ -1229,7 +1233,7 @@ fn distribute_redelegated_evenly(
     let mut redelegation_msgs = Vec::new();
     let mut undelegate_msgs = Vec::new();
 
-    to_redelegate.sort_by(|a, b| b.amount.cmp(&a.amount));
+    to_redelegate.sort_by_key(|r| std::cmp::Reverse(r.amount));
 
     let mut source_idx = 0;
     let num_active = active_validators.len();
@@ -1434,7 +1438,7 @@ fn verify_final_state(
         );
 
         // Sort discrepancies by difference amount (largest first)
-        discrepancies.sort_by(|a, b| b.3.cmp(&a.3));
+        discrepancies.sort_by_key(|d| std::cmp::Reverse(d.3));
 
         println!("\nTop discrepancies:");
         for (validator, final_amount, obligated_amount, diff) in discrepancies.iter().take(10) {
@@ -1504,10 +1508,10 @@ mod tests {
 
         // Both should match the expected value
         assert_eq!(aad.delegations.len(), TOTAL_OBLIGATED_VALIDATORS);
-        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_Terp.u128());
+        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_TERP.u128());
         assert_eq!(
             obligated_delegation_sum.u128(),
-            TOTAL_OBLIGATED_DELEGATED_Terp.u128()
+            TOTAL_OBLIGATED_DELEGATED_TERP.u128()
         );
 
         Ok(())
@@ -1928,7 +1932,7 @@ mod tests {
 //             .entry(del.operator_addr.clone())
 //             .or_default() += amount;
 //     }
-//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_Terp);
+//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_TERP);
 //     // First pass: Process validators that need additional delegations
 //     for target_del in obligated_delegations {
 //         let target_validator = &target_del.operator_addr;

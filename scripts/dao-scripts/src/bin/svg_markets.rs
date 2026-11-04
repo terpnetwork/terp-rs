@@ -25,7 +25,7 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cosmwasm_std::{Addr, Binary, Timestamp};
 use cw_infuser_scripts::collection::{self, SeriesConfig};
@@ -33,8 +33,8 @@ use cw_infuser_scripts::drops::{self, Drop, KARA_GIPPY, MARAIN_ORBS, YIJING_HARM
 use cw_orch::prelude::networks::{TERP_MAINNET, TERP_TESTNET};
 use cw_orch::prelude::*;
 use cw_orch_kms::{
-    enable_session, instantiate2_bech32, planned_spend_limit, wasm_checksum, ApprovalSession,
-    ScopedCall, SigningRequest, SpawnedTerp, CW_ORCH_GRANTER_ENV,
+    ApprovalSession, CW_ORCH_GRANTER_ENV, ScopedCall, SigningRequest, SpawnedTerp, enable_session,
+    instantiate2_bech32, planned_spend_limit, wasm_checksum,
 };
 
 /// Five stores, four instantiate2, five factory executes, and the revoke.
@@ -181,15 +181,24 @@ fn canonical_account(addr: &str) -> Result<Vec<u8>> {
 }
 
 fn predict(bytes: &[u8], creator: &[u8], name: &str) -> Result<String> {
-    instantiate2_bech32("terp", &wasm_checksum(bytes).map_err(|err| anyhow!(err))?, creator, &salt(name))
-        .map_err(|err| anyhow!(err))
+    instantiate2_bech32(
+        "terp",
+        &wasm_checksum(bytes).map_err(|err| anyhow!(err))?,
+        creator,
+        &salt(name),
+    )
+    .map_err(|err| anyhow!(err))
 }
 
 fn store_once(chain: &Daemon, file: &str, path: &Path) -> Result<(u64, String)> {
     let wasm = WasmPath::new(path).map_err(|err| anyhow!("{file}: {err}"))?;
     let response = chain
         .rt_handle
-        .block_on(cw_orch::daemon::upload_wasm_plain(chain.sender(), wasm, None))
+        .block_on(cw_orch::daemon::upload_wasm_plain(
+            chain.sender(),
+            wasm,
+            None,
+        ))
         .map_err(|err| anyhow!("{file}: {err}"))?;
     let code_id = response
         .uploaded_code_id()
@@ -244,7 +253,9 @@ fn main() -> Result<()> {
         ));
     }
     if !cli.spawn && cli.chain.is_none() {
-        return Err(anyhow!("pass --spawn on groot-wan, or name a chain with --chain"));
+        return Err(anyhow!(
+            "pass --spawn on groot-wan, or name a chain with --chain"
+        ));
     }
     let dir = artifacts_dir();
     let mut wasm = Vec::new();
@@ -343,7 +354,9 @@ fn main() -> Result<()> {
     let mut run = enable_session(&builder, session, actions).map_err(|err| anyhow!(err))?;
     let admin = run.daemon.sender_addr();
     if admin.as_str() != creator.as_str() {
-        return Err(anyhow!("ephemeral creator changed from {creator} to {admin}"));
+        return Err(anyhow!(
+            "ephemeral creator changed from {creator} to {admin}"
+        ));
     }
 
     for market in MARKETS {
@@ -354,7 +367,10 @@ fn main() -> Result<()> {
             .ok_or_else(|| anyhow!("missing {}", market.name))?;
         let predicted = predict(bytes, &creator_bytes, market.name)?;
         let (code_id, store_tx) = store_once(&run.daemon, market.file, &dir.join(market.file))?;
-        run.note(&format!("ok stored {} code {code_id} tx {store_tx}", market.file));
+        run.note(&format!(
+            "ok stored {} code {code_id} tx {store_tx}",
+            market.file
+        ));
         let address = instantiate_at(
             &run.daemon,
             market.name,
@@ -369,7 +385,9 @@ fn main() -> Result<()> {
     let (svg_code, store_tx) = store_once(&run.daemon, SVG, &dir.join(SVG))?;
     run.note(&format!("ok stored {SVG} code {svg_code} tx {store_tx}"));
     let (factory_code, store_tx) = store_once(&run.daemon, FACTORY, &dir.join(FACTORY))?;
-    run.note(&format!("ok stored {FACTORY} code {factory_code} tx {store_tx}"));
+    run.note(&format!(
+        "ok stored {FACTORY} code {factory_code} tx {store_tx}"
+    ));
     let factory = instantiate_at(
         &run.daemon,
         FACTORY_NAME,
@@ -385,8 +403,18 @@ fn main() -> Result<()> {
     )?;
     run.note(&format!("ok instantiated {FACTORY_NAME} {factory}"));
     let operators = vec![admin.to_string()];
-    open_series(&run, &factory, MARAIN_SERIES, collection::marain_series(operators.clone()))?;
-    open_series(&run, &factory, BENDERS_SERIES, collection::benders_series(operators))?;
+    open_series(
+        &run,
+        &factory,
+        MARAIN_SERIES,
+        collection::marain_series(operators.clone()),
+    )?;
+    open_series(
+        &run,
+        &factory,
+        BENDERS_SERIES,
+        collection::benders_series(operators),
+    )?;
     for drop in &drops {
         create_drop(&run, &factory, drop)?;
     }
@@ -403,7 +431,7 @@ fn main() -> Result<()> {
     println!("session grant closed");
     if let Some(page) = &page {
         page.note("ok session grant closed");
-        let _ = daemon.rt_handle.block_on(async {
+        daemon.rt_handle.block_on(async {
             tokio::task::yield_now().await;
         });
     }
@@ -420,8 +448,14 @@ fn offer_factory(run: &cw_orch_kms::AuthzSession, factory: &str, owner: &str) ->
         .daemon
         .execute(&msg, &[], &Addr::unchecked(factory))
         .map_err(|err| anyhow!("offer factory ownership: {err}"))?;
-    println!("factory ownership offered to {owner} tx {}", response.txhash);
-    run.note(&format!("ok factory ownership offered to {owner} tx {}", response.txhash));
+    println!(
+        "factory ownership offered to {owner} tx {}",
+        response.txhash
+    );
+    run.note(&format!(
+        "ok factory ownership offered to {owner} tx {}",
+        response.txhash
+    ));
     std::fs::create_dir_all("out")?;
     let accept = serde_json::json!({
         "wasm": { "execute": {
@@ -430,7 +464,10 @@ fn offer_factory(run: &cw_orch_kms::AuthzSession, factory: &str, owner: &str) ->
             "funds": []
         }}
     });
-    std::fs::write("out/svg_markets_accept_ownership.json", serde_json::to_string_pretty(&accept)?)?;
+    std::fs::write(
+        "out/svg_markets_accept_ownership.json",
+        serde_json::to_string_pretty(&accept)?,
+    )?;
     Ok(())
 }
 

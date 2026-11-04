@@ -6,7 +6,6 @@ use cw_orch::{
         queriers::Ibc,
     },
     environment::{ChainState, QuerierGetter},
-    prelude::*,
 };
 use cw_orch_interchain::prelude::*;
 use log::info;
@@ -313,34 +312,32 @@ fn minimal_assets_from_public(
         ],
     );
     let al = public_dir.join("assetlist.json");
-    if al.exists() {
-        if let Ok(text) = std::fs::read_to_string(&al) {
-            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) {
-                if let Some(assets) = v["assets"].as_array() {
-                    let mut natives = Vec::new();
-                    for a in assets {
-                        let base = a["base"].as_str().unwrap_or("");
-                        if !base.starts_with("ibc/") {
-                            natives.push(a.clone());
-                        }
-                    }
-                    if !natives.is_empty() {
-                        chain_assets.insert("terp".into(), natives);
-                    }
-                }
+    if al.exists()
+        && let Ok(text) = std::fs::read_to_string(&al)
+        && let Ok(v) = serde_json::from_str::<serde_json::Value>(&text)
+        && let Some(assets) = v["assets"].as_array()
+    {
+        let mut natives = Vec::new();
+        for a in assets {
+            let base = a["base"].as_str().unwrap_or("");
+            if !base.starts_with("ibc/") {
+                natives.push(a.clone());
             }
+        }
+        if !natives.is_empty() {
+            chain_assets.insert("terp".into(), natives);
         }
     }
     // Counterparties from ibc-data stems
-    if let Ok(ibc) = load_public_ibc_data(public_dir) {
-        if let Some(obj) = ibc.as_object() {
-            for (_k, entry) in obj {
-                for side in ["chain_1", "chain_2"] {
-                    if let Some(name) = entry[side]["chain_name"].as_str() {
-                        chain_assets
-                            .entry(name.to_string())
-                            .or_insert_with(Vec::new);
-                    }
+    if let Ok(ibc) = load_public_ibc_data(public_dir)
+        && let Some(obj) = ibc.as_object()
+    {
+        for (_k, entry) in obj {
+            for side in ["chain_1", "chain_2"] {
+                if let Some(name) = entry[side]["chain_name"].as_str() {
+                    chain_assets
+                        .entry(name.to_string())
+                        .or_insert_with(Vec::new);
                 }
             }
         }
@@ -788,8 +785,8 @@ fn derive_full_ibc_state() -> anyhow::Result<()> {
             .unwrap_or("Active");
         let final_channels = finalize_channels_for_ibc_entry(
             channels,
-            &chain_1_name,
-            &counterpartyname,
+            chain_1_name,
+            counterpartyname,
             client_status,
         );
 
@@ -911,16 +908,14 @@ fn derive_full_ibc_state() -> anyhow::Result<()> {
         .and_then(|a| a.as_array().cloned())
         .unwrap_or_default()
         .into_iter()
-        .filter(|a| a["traces"].as_array().map_or(true, |t| t.is_empty()))
+        .filter(|a| a["traces"].as_array().is_none_or(|t| t.is_empty()))
         .collect();
 
     // Also include chain-registry base denoms from connected chains
     // (e.g. osmosis assets, akash assets) so the assetlist is complete
     for osmo_asset in &osmo_assets {
         let base = osmo_asset["base"].as_str().unwrap_or("");
-        let is_native = osmo_asset["traces"]
-            .as_array()
-            .map_or(true, |t| t.is_empty());
+        let is_native = osmo_asset["traces"].as_array().is_none_or(|t| t.is_empty());
         if is_native && !native_assets.iter().any(|a| a["base"] == base) {
             let mut entry = osmo_asset.clone();
             entry["_source_chain"] = serde_json::json!("osmosis");
@@ -1108,11 +1103,11 @@ fn derive_full_ibc_state() -> anyhow::Result<()> {
     ];
     for origin in &origin_assets {
         // Only add if we have a channel for it in the ibc_data_map (so derivation can succeed)
-        if let Some(sc) = origin["_source_chain"].as_str() {
-            if ibc_data_map.contains_key(sc) {
-                assetlist.push(origin);
-                println!("+ Injected origin asset for {}", sc);
-            }
+        if let Some(sc) = origin["_source_chain"].as_str()
+            && ibc_data_map.contains_key(sc)
+        {
+            assetlist.push(origin);
+            println!("+ Injected origin asset for {}", sc);
         }
     }
 
@@ -1350,6 +1345,7 @@ fn build_image_sync(counterparty_chain: &str, counterparty_base_denom: &str) -> 
 }
 
 /// Build a complete assetlist-compliant asset entry for any trace type
+#[allow(clippy::too_many_arguments)]
 fn build_ibc_asset_entry(
     asset: &serde_json::Value,
     ibc_denom: &str,
@@ -1376,10 +1372,10 @@ fn build_ibc_asset_entry(
         .filter_map(|t| {
             let mut entry = build_trace_entry(t)?;
             // If this is a multi-hop, add the via information
-            if let Some(via) = via_chain {
-                if entry["type"] == "ibc" {
-                    entry["via"] = serde_json::json!(via);
-                }
+            if let Some(via) = via_chain
+                && entry["type"] == "ibc"
+            {
+                entry["via"] = serde_json::json!(via);
             }
             Some(entry)
         })
@@ -1412,10 +1408,10 @@ fn build_ibc_asset_entry(
     }
 
     // Add address for cw20/erc20/snip20 (required by schema)
-    if let Some(address) = asset["address"].as_str() {
-        if !address.is_empty() {
-            asset_obj["address"] = serde_json::json!(address);
-        }
+    if let Some(address) = asset["address"].as_str()
+        && !address.is_empty()
+    {
+        asset_obj["address"] = serde_json::json!(address);
     }
 
     // Add image_sync for IBC/bridged assets
@@ -1442,10 +1438,10 @@ fn build_ibc_asset_entry(
     }
 
     // Add coingecko_id if present
-    if let Some(cg_id) = asset["coingecko_id"].as_str() {
-        if !cg_id.is_empty() {
-            asset_obj["coingecko_id"] = serde_json::json!(cg_id);
-        }
+    if let Some(cg_id) = asset["coingecko_id"].as_str()
+        && !cg_id.is_empty()
+    {
+        asset_obj["coingecko_id"] = serde_json::json!(cg_id);
     }
 
     // Add deprecated flag only if true
@@ -1569,13 +1565,6 @@ fn derive_ibc_asset_list(
     Ok(ibc_denoms)
 }
 
-struct IbcChannelInfo {
-    terp_channel: String,
-    counterparty_channel: String,
-    counterparty_chain_name: String,
-    counterparty_chain_id: String,
-}
-
 fn build_channel_to_chain_map(state: &DaemonState) -> HashMap<String, TerpChannelInfo> {
     let ibc_data = match state.get("ibc_data") {
         Ok(data) => data,
@@ -1592,23 +1581,6 @@ fn build_channel_to_chain_map(state: &DaemonState) -> HashMap<String, TerpChanne
         );
     }
     map
-}
-/// Find a multi-hop path from Terp to a target chain via an intermediary
-/// Returns (terp_channel_to_intermediary, intermediary_chain_name)
-fn find_path_via_intermediary(
-    _target_chain: &str,
-    ibc_data_map: &HashMap<String, IbcChannelInfo>,
-    available_intermediaries: &[&str], // e.g., ["osmosis", "cosmoshub", "juno"]
-) -> Option<(String, String)> {
-    for intermediary in available_intermediaries {
-        if let Some(info) = ibc_data_map.get(*intermediary) {
-            // We have a channel to this intermediary
-            if !info.terp_channel.is_empty() {
-                return Some((info.terp_channel.clone(), intermediary.to_string()));
-            }
-        }
-    }
-    None
 }
 
 fn load_assetlist_for_chain(chain_name: &str, state: &DaemonState) -> Vec<serde_json::Value> {
@@ -1629,15 +1601,15 @@ fn load_assetlist_for_chain(chain_name: &str, state: &DaemonState) -> Vec<serde_
         .collect()
 }
 
-/// Derive the IBC denom hash and trace path for a foreign asset on Terp
-///
-/// Logic:
-/// 1. If the asset has an IBC trace, extract the counterparty chain and base denom
-/// 2. If Terp has a direct channel to the counterparty chain:
-///    - Single hop: transfer/{terp_ch}/{counterparty_base_denom}
-///    - Multi-hop on source: transfer/{terp_ch}/{source_trace_path}
-/// 3. If Terp has NO direct channel to counterparty but has channel to source chain:
-///    - Route through source: transfer/{terp_ch_to_source}/{source_trace_path}
+// Derive the IBC denom hash and trace path for a foreign asset on Terp
+//
+// Logic:
+// 1. If the asset has an IBC trace, extract the counterparty chain and base denom
+// 2. If Terp has a direct channel to the counterparty chain:
+//    - Single hop: transfer/{terp_ch}/{counterparty_base_denom}
+//    - Multi-hop on source: transfer/{terp_ch}/{source_trace_path}
+// 3. If Terp has NO direct channel to counterparty but has channel to source chain:
+//    - Route through source: transfer/{terp_ch_to_source}/{source_trace_path}
 
 /// Current unix timestamp as a string.
 pub fn now_timestamp() -> String {

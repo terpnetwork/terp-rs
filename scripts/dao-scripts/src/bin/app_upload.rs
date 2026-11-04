@@ -24,13 +24,13 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cw_orch::prelude::networks::{TERP_MAINNET, TERP_TESTNET};
 use cw_orch::prelude::*;
 use cw_orch_kms::{
-    enable_session, planned_spend_limit, ApprovalSession, SpawnedTerp, SigningRequest,
-    CW_ORCH_GRANTER_ENV,
+    ApprovalSession, CW_ORCH_GRANTER_ENV, SigningRequest, SpawnedTerp, enable_session,
+    planned_spend_limit,
 };
 
 /// Nine stores plus the closing revoke.
@@ -95,7 +95,8 @@ fn read_apps(dir: &Path) -> Result<Vec<(&'static str, &'static str, Vec<u8>)>> {
     let mut out = Vec::with_capacity(APPS.len());
     for (name, file) in APPS {
         let path = dir.join(file);
-        let bytes = std::fs::read(&path).map_err(|err| anyhow!("read {}: {err}", path.display()))?;
+        let bytes =
+            std::fs::read(&path).map_err(|err| anyhow!("read {}: {err}", path.display()))?;
         if bytes.is_empty() {
             return Err(anyhow!("{} is empty", path.display()));
         }
@@ -118,11 +119,10 @@ fn store_with_retry(chain: &Daemon, file: &str, bytes_path: &Path) -> Result<u64
     let mut last = String::new();
     for attempt in 1..=3 {
         let wasm = WasmPath::new(bytes_path).map_err(|err| anyhow!("{file}: {err}"))?;
-        match chain.rt_handle.block_on(cw_orch::daemon::upload_wasm(
-            chain.sender(),
-            wasm,
-            None,
-        )) {
+        match chain
+            .rt_handle
+            .block_on(cw_orch::daemon::upload_wasm(chain.sender(), wasm, None))
+        {
             Ok(response) => {
                 let code_id = response
                     .uploaded_code_id()
@@ -176,12 +176,8 @@ fn main() -> Result<()> {
 
     let granter = if cli.granter.is_empty() {
         println!("sign once on the approval page below. that key is the granter");
-        cw_orch_kms::capture_granter_sync(
-            cw_orch_kms::page_addr(),
-            cli.account_index,
-            "app-upload",
-        )
-        .map_err(|err| anyhow!(err))?
+        cw_orch_kms::capture_granter_sync(cw_orch_kms::page_addr(), cli.account_index, "app-upload")
+            .map_err(|err| anyhow!(err))?
     } else {
         cli.granter.clone()
     };

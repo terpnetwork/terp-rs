@@ -8,6 +8,7 @@
 //! 3. `TERP_SCRIPT_BROADCAST=1` is set,
 //! 4. a cw-orch-kms session is opened against a cold-key granter captured with
 //!    the `cw-orch-granter:v2` challenge bound to that chain-id.
+//!
 //! Messages are signed by the ephemeral cw-orch-kms key and wrapped in
 //! `MsgExec` for the granter, through the cw-orch Daemon. No terpd CLI, no
 //! offline JSON for another tool to sign.
@@ -17,11 +18,11 @@
 //! module account, queried from chain). Changing one is a DAO proposal, or a
 //! separate session that names the contract with `allow_sdk` on purpose.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use cosmrs::Any;
 use cw_orch::daemon::{Daemon, DaemonBuilder, TxSender};
 use cw_orch::environment::{ChainInfoOwned, ChainKind, NetworkInfoOwned};
-use cw_orch_kms::{enable_session, planned_spend_limit, ApprovalSession, SigningRequest};
+use cw_orch_kms::{ApprovalSession, SigningRequest, enable_session, planned_spend_limit};
 use sha2::{Digest, Sha256};
 
 pub const BROADCAST_ENV: &str = "TERP_SCRIPT_BROADCAST";
@@ -63,31 +64,58 @@ pub fn chain_info(
 /// CometBFT RPC fallback for broadcast / tx lookup when gRPC fails (cw-orch http_broadcast).
 /// morocco-1 only: `MOROCCO_RPC` (comma-separated, tried in order). Empty = no fallback.
 pub fn env_rpc_urls(chain_id: &str) -> Vec<String> {
-    if chain_id != "morocco-1" { return vec![]; }
+    if chain_id != "morocco-1" {
+        return vec![];
+    }
     split_urls(&std::env::var("MOROCCO_RPC").unwrap_or_default())
 }
 
 /// LCD (REST) fallback, tried after the RPC urls. morocco-1 only: `MOROCCO_LCD`.
 pub fn env_lcd_url(chain_id: &str) -> Option<String> {
-    if chain_id != "morocco-1" { return None; }
-    std::env::var("MOROCCO_LCD").ok().map(|s| s.trim().trim_end_matches('/').to_string()).filter(|s| !s.is_empty())
+    if chain_id != "morocco-1" {
+        return None;
+    }
+    std::env::var("MOROCCO_LCD")
+        .ok()
+        .map(|s| s.trim().trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
 }
 
 pub fn split_urls(s: &str) -> Vec<String> {
-    s.split(',').map(|u| u.trim().trim_end_matches('/').to_string()).filter(|u| !u.is_empty()).collect()
+    s.split(',')
+        .map(|u| u.trim().trim_end_matches('/').to_string())
+        .filter(|u| !u.is_empty())
+        .collect()
 }
 
 /// Apply `--rpc` / `--lcd` flags (they replace the env values when given).
-pub fn with_http_fallback(mut info: ChainInfoOwned, rpc: Option<&str>, lcd: Option<&str>) -> ChainInfoOwned {
-    if let Some(r) = rpc { info.rpc_urls = split_urls(r); }
-    if let Some(l) = lcd { let l = l.trim().trim_end_matches('/'); info.lcd_url = (!l.is_empty()).then(|| l.to_string()); }
+pub fn with_http_fallback(
+    mut info: ChainInfoOwned,
+    rpc: Option<&str>,
+    lcd: Option<&str>,
+) -> ChainInfoOwned {
+    if let Some(r) = rpc {
+        info.rpc_urls = split_urls(r);
+    }
+    if let Some(l) = lcd {
+        let l = l.trim().trim_end_matches('/');
+        info.lcd_url = (!l.is_empty()).then(|| l.to_string());
+    }
     info
 }
 
 /// morocco-1 defaults. `MOROCCO_GRPC` overrides the endpoint.
 pub fn morocco_info() -> ChainInfoOwned {
-    let grpc = std::env::var("MOROCCO_GRPC").unwrap_or_else(|_| "http://192.168.10.101:9090".into());
-    chain_info("morocco-1", &grpc, "uthiol", 0.05, "terp", ChainKind::Mainnet)
+    let grpc =
+        std::env::var("MOROCCO_GRPC").unwrap_or_else(|_| "http://192.168.10.101:9090".into());
+    chain_info(
+        "morocco-1",
+        &grpc,
+        "uthiol",
+        0.05,
+        "terp",
+        ChainKind::Mainnet,
+    )
 }
 
 /// Read-only daemon. Fails when the node's chain-id is not `info.chain_id`.
@@ -95,7 +123,14 @@ pub fn morocco_info() -> ChainInfoOwned {
 /// come from env; there is no default public endpoint.
 pub fn osmosis_info() -> ChainInfoOwned {
     let grpc = std::env::var("OSMOSIS_GRPC").unwrap_or_else(|_| "http://127.0.0.1:9090".into());
-    chain_info("osmosis-1", &grpc, "uosmo", 0.025, "osmo", ChainKind::Mainnet)
+    chain_info(
+        "osmosis-1",
+        &grpc,
+        "uosmo",
+        0.025,
+        "osmo",
+        ChainKind::Mainnet,
+    )
 }
 
 pub fn juno_info() -> ChainInfoOwned {
@@ -105,7 +140,14 @@ pub fn juno_info() -> ChainInfoOwned {
 
 pub fn atomone_info() -> ChainInfoOwned {
     let grpc = std::env::var("ATOMONE_GRPC").unwrap_or_else(|_| "http://127.0.0.1:9090".into());
-    chain_info("atomone-1", &grpc, "uatone", 0.025, "atone", ChainKind::Mainnet)
+    chain_info(
+        "atomone-1",
+        &grpc,
+        "uatone",
+        0.025,
+        "atone",
+        ChainKind::Mainnet,
+    )
 }
 
 /// Pick a chain by id, e.g. `osmosis-1` for an `osmo1…` granter.
@@ -124,7 +166,14 @@ pub fn info_for_chain(chain_id: &str) -> Result<ChainInfoOwned> {
 pub fn kms_profile(info: &ChainInfoOwned) -> cw_orch_kms::ChainProfile {
     let prefix = info.network_info.pub_address_prefix.clone();
     let mut p = cw_orch_kms::ChainProfile::for_prefix(&prefix).unwrap_or_else(|| {
-        cw_orch_kms::ChainProfile::new(&info.chain_id, &prefix, &info.gas_denom, info.gas_price, &prefix, &prefix)
+        cw_orch_kms::ChainProfile::new(
+            &info.chain_id,
+            &prefix,
+            &info.gas_denom,
+            info.gas_price,
+            &prefix,
+            &prefix,
+        )
     });
     p.chain_id = info.chain_id.clone();
     p.fee_denom = info.gas_denom.clone();
@@ -139,21 +188,39 @@ pub fn query_only(info: &ChainInfoOwned) -> Result<cw_orch::daemon::senders::Que
     DaemonBuilder::new(info.clone())
         .load_network(false)
         .build_sender(())
-        .map_err(|e| anyhow!("read-only connect to {} ({:?}) refused: {e}", info.chain_id, info.grpc_urls))
+        .map_err(|e| {
+            anyhow!(
+                "read-only connect to {} ({:?}) refused: {e}",
+                info.chain_id,
+                info.grpc_urls
+            )
+        })
 }
 
 /// Module account address as the chain reports it (auth `ModuleAccountByName`),
 /// cross-checked against the local `NewModuleAddress` derivation.
-pub fn query_module_account(d: &cw_orch::daemon::senders::QueryOnlyDaemon, name: &str, prefix: &str) -> Result<String> {
+pub fn query_module_account(
+    d: &cw_orch::daemon::senders::QueryOnlyDaemon,
+    name: &str,
+    prefix: &str,
+) -> Result<String> {
     use cosmos_sdk_proto::prost::Message;
-    use cosmrs::proto::cosmos::auth::v1beta1::{query_client::QueryClient, QueryModuleAccountByNameRequest};
+    use cosmrs::proto::cosmos::auth::v1beta1::{
+        QueryModuleAccountByNameRequest, query_client::QueryClient,
+    };
     let resp = d
         .rt_handle
-        .block_on(QueryClient::new(d.channel()).module_account_by_name(QueryModuleAccountByNameRequest { name: name.into() }))
+        .block_on(
+            QueryClient::new(d.channel())
+                .module_account_by_name(QueryModuleAccountByNameRequest { name: name.into() }),
+        )
         .map_err(|e| anyhow!("module account {name}: {e}"))?
         .into_inner();
-    let any = resp.account.ok_or_else(|| anyhow!("module account {name}: empty response"))?;
-    let acct = cosmos_sdk_proto::cosmos::auth::v1beta1::ModuleAccount::decode(any.value.as_slice())?;
+    let any = resp
+        .account
+        .ok_or_else(|| anyhow!("module account {name}: empty response"))?;
+    let acct =
+        cosmos_sdk_proto::cosmos::auth::v1beta1::ModuleAccount::decode(any.value.as_slice())?;
     let addr = acct.base_account.map(|b| b.address).unwrap_or_default();
     let derived = module_address(name, prefix)?;
     if addr != derived {
@@ -165,11 +232,17 @@ pub fn query_module_account(d: &cw_orch::daemon::senders::QueryOnlyDaemon, name:
 /// Address of a cosmos-sdk module account (`authtypes.NewModuleAddress`).
 pub fn module_address(name: &str, prefix: &str) -> Result<String> {
     let hash = Sha256::digest(name.as_bytes());
-    Ok(bech32::encode::<bech32::Bech32>(bech32::Hrp::parse(prefix)?, &hash[..20])?)
+    Ok(bech32::encode::<bech32::Bech32>(
+        bech32::Hrp::parse(prefix)?,
+        &hash[..20],
+    )?)
 }
 
 pub fn any<M: cosmos_sdk_proto::prost::Message>(type_url: &str, msg: &M) -> Any {
-    Any { type_url: type_url.into(), value: msg.encode_to_vec() }
+    Any {
+        type_url: type_url.into(),
+        value: msg.encode_to_vec(),
+    }
 }
 
 /// What a script asks the session to allow.
@@ -193,7 +266,11 @@ pub struct BroadcastRequest {
 
 /// Pre-flight checks that do not touch a key. Used by tests and dry-runs.
 pub fn check_broadcast_preconditions(req: &BroadcastRequest, env_flag: Option<&str>) -> Result<()> {
-    check_broadcast_preconditions_for(req, env_flag, std::env::var(BROADCAST_CHAIN_ENV).ok().as_deref())
+    check_broadcast_preconditions_for(
+        req,
+        env_flag,
+        std::env::var(BROADCAST_CHAIN_ENV).ok().as_deref(),
+    )
 }
 
 pub fn check_broadcast_preconditions_for(
@@ -280,7 +357,8 @@ pub fn kms_broadcast(req: BroadcastRequest, msgs: Vec<Any>, memo: &str) -> Resul
     let resp = result?;
     closed?;
     // Nothing may outlive the flow: assert on-chain that the revoke landed.
-    let left = cw_orch_kms::query_grantee_state(&daemon, &granter, &grantee).map_err(|e| anyhow!(e))?;
+    let left =
+        cw_orch_kms::query_grantee_state(&daemon, &granter, &grantee).map_err(|e| anyhow!(e))?;
     if !left.authz.is_empty() || left.feegrant.is_some() {
         bail!(
             "session revoke incomplete: {} authz grant(s), feegrant {} remain for {grantee}",
@@ -347,7 +425,15 @@ mod tests {
             ("atomone-1", "atone", "uatone", "atomone"),
         ] {
             let p = kms_profile(&info_for_chain(id).unwrap());
-            assert_eq!((p.chain_id.as_str(), p.bech32_prefix.as_str(), p.fee_denom.as_str(), p.zigner_chain_name.as_str()), (id, prefix, denom, zigner));
+            assert_eq!(
+                (
+                    p.chain_id.as_str(),
+                    p.bech32_prefix.as_str(),
+                    p.fee_denom.as_str(),
+                    p.zigner_chain_name.as_str()
+                ),
+                (id, prefix, denom, zigner)
+            );
             assert_eq!(p.coin_type, 118);
         }
         assert!(info_for_chain("cosmoshub-4").is_err());
@@ -395,14 +481,25 @@ pub const LEGACY_SIGNER_ENV: &str = "TERP_SCRIPT_LEGACY_SIGNER";
 /// `.env` by default.
 pub fn is_secret_name(name: &str) -> bool {
     let u = name.to_ascii_uppercase();
-    ["MNEMONIC", "PRIV", "SECRET", "PASSWORD", "PRIVATE_KEY", "SEED"].iter().any(|s| u.contains(s))
+    [
+        "MNEMONIC",
+        "PRIV",
+        "SECRET",
+        "PASSWORD",
+        "PRIVATE_KEY",
+        "SEED",
+    ]
+    .iter()
+    .any(|s| u.contains(s))
 }
 
 /// Load `./.env` for endpoints and paths only. Secret-named entries
 /// (`MAIN_MNEMONIC`, `*_MNEMONIC`, ...) are skipped, and variables already set
 /// are not overridden. cw-orch-kms supplies the signer.
 pub fn load_dotenv_public() {
-    let Ok(iter) = dotenv::dotenv_iter() else { return };
+    let Ok(iter) = dotenv::dotenv_iter() else {
+        return;
+    };
     for (k, v) in iter.flatten() {
         if !is_secret_name(&k) && std::env::var_os(&k).is_none() {
             #[allow(unused_unsafe)]
@@ -417,7 +514,11 @@ pub fn load_dotenv_public() {
 /// when `TERP_SCRIPT_LEGACY_SIGNER=1` is set; then the full `.env` is loaded.
 /// Default is refusal, pointing at the cw-orch-kms replacement.
 pub fn legacy_signer(bin: &str, replacement: &str) -> Result<()> {
-    legacy_signer_with(bin, replacement, std::env::var(LEGACY_SIGNER_ENV).ok().as_deref())
+    legacy_signer_with(
+        bin,
+        replacement,
+        std::env::var(LEGACY_SIGNER_ENV).ok().as_deref(),
+    )
 }
 
 pub fn legacy_signer_with(bin: &str, replacement: &str, flag: Option<&str>) -> Result<()> {
@@ -438,7 +539,12 @@ mod legacy_tests {
 
     #[test]
     fn secret_names_are_filtered_and_legacy_needs_opt_in() {
-        for k in ["MAIN_MNEMONIC", "DAO_MEMBER1_MNEMONIC", "TEST_MNEMONIC", "priv_key"] {
+        for k in [
+            "MAIN_MNEMONIC",
+            "DAO_MEMBER1_MNEMONIC",
+            "TEST_MNEMONIC",
+            "priv_key",
+        ] {
             assert!(is_secret_name(k), "{k}");
         }
         for k in ["MOROCCO_GRPC", "ARTIFACTS_DIR", "TERP_LCD"] {

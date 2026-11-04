@@ -23,13 +23,13 @@
 //! cargo run -p dao-scripts --bin dao_upload -- --chain terp-mainnet
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cw_orch::prelude::networks::{TERP_MAINNET, TERP_TESTNET};
 use cw_orch::prelude::*;
 use cw_orch_kms::{
-    enable_session, planned_spend_limit, ApprovalSession, SpawnedTerp, SigningRequest,
-    CW_ORCH_GRANTER_ENV,
+    ApprovalSession, CW_ORCH_GRANTER_ENV, SigningRequest, SpawnedTerp, enable_session,
+    planned_spend_limit,
 };
 use dao_cw_orch::terp_wasm_file;
 use dao_testing::DaoDaoSuite;
@@ -76,9 +76,12 @@ struct Cli {
 
 fn artifact_bytes(logical: &str) -> Result<Vec<u8>> {
     let file = terp_wasm_file(logical);
-    let dir = std::env::var("DAO_ARTIFACTS").map(std::path::PathBuf::from).unwrap_or_else(|_| {
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../dao-contracts/artifacts")
-    });
+    let dir = std::env::var("DAO_ARTIFACTS")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../dao-contracts/artifacts")
+        });
     let path = dir.join(&file);
     std::fs::read(&path).map_err(|err| anyhow!("read {}: {err}", path.display()))
 }
@@ -134,12 +137,8 @@ fn main() -> Result<()> {
     );
     let granter = if cli.granter.is_empty() {
         println!("sign once on the approval page below. that key is the granter");
-        cw_orch_kms::capture_granter_sync(
-            cw_orch_kms::page_addr(),
-            cli.account_index,
-            "dao-upload",
-        )
-        .map_err(|err| anyhow!(err))?
+        cw_orch_kms::capture_granter_sync(cw_orch_kms::page_addr(), cli.account_index, "dao-upload")
+            .map_err(|err| anyhow!(err))?
     } else {
         cli.granter.clone()
     };
@@ -183,9 +182,7 @@ fn main() -> Result<()> {
         "cw_vesting",
     ] {
         let bytes = artifact_bytes(logical)?;
-        session = session
-            .allow_store(&bytes)
-            .map_err(|err| anyhow!(err))?;
+        session = session.allow_store(&bytes).map_err(|err| anyhow!(err))?;
     }
     session.ttl_secs = cli.ttl_secs;
     session.account_index = cli.account_index;

@@ -18,7 +18,10 @@ pub fn is_placeholder(s: &str) -> bool {
 /// Refuse to build anything broadcastable from placeholder roles.
 pub fn require_real(roles: &[(&str, &str)]) -> Result<()> {
     for (k, v) in roles {
-        ensure!(!is_placeholder(v), "{k} is a placeholder ({v}); refusing to broadcast");
+        ensure!(
+            !is_placeholder(v),
+            "{k} is a placeholder ({v}); refusing to broadcast"
+        );
     }
     Ok(())
 }

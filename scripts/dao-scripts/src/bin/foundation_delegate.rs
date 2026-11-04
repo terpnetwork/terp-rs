@@ -8,20 +8,23 @@
 //! kms_gate checks (`--chain-id morocco-1`, TERP_SCRIPT_BROADCAST=1, v2 capture).
 //! FIAB-SUBDAO itself is `fiab_subdao`.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use cw_orch::daemon::queriers::{Staking, StakingBondStatus};
 use cw_orch_kms::ScopedCall;
-use dao_foundation_suite::ibc_ops::{foundation_proposal_wrapper, PARENT_CORE, PRE_PROPOSE_A};
+use dao_foundation_suite::ibc_ops::{PARENT_CORE, PRE_PROPOSE_A, foundation_proposal_wrapper};
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 use dao_testing::suite::native_delegation::{
-    vote_yes_msg, NativeDelegationPlan, NEW_VALIDATOR_ACCOUNT, NEW_VALIDATOR_OPERATOR,
+    NEW_VALIDATOR_ACCOUNT, NEW_VALIDATOR_OPERATOR, NativeDelegationPlan, vote_yes_msg,
 };
 
 const TITLE: &str = "Delegate Foundation stake to the new validator and every bonded validator";
 
 #[derive(Parser, Debug)]
-#[command(name = "foundation_delegate", about = "Foundation native stake proposal")]
+#[command(
+    name = "foundation_delegate",
+    about = "Foundation native stake proposal"
+)]
 struct Cli {
     #[arg(long, env = "PARENT_CORE", default_value = PARENT_CORE)]
     parent_core: String,
@@ -55,35 +58,50 @@ fn bonded(info: &cw_orch::environment::ChainInfoOwned) -> Result<Vec<String>> {
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
     let morocco = kms_gate::morocco_info();
     let others: Vec<String> = match &cli.others {
-        Some(raw) => raw.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+        Some(raw) => raw
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
         None => bonded(&morocco)?,
     };
     let plan = NativeDelegationPlan::terp_foundation(others);
     let description = format!(
         "Delegate {} {} (+{} {} gas to {}) to {}, and {} {} to each of {} other bonded validators.",
-        plan.new_validator_stake, plan.stake_denom, plan.new_validator_gas, plan.gas_denom,
-        plan.new_validator_account, plan.new_validator_operator, plan.other_stake, plan.stake_denom,
+        plan.new_validator_stake,
+        plan.stake_denom,
+        plan.new_validator_gas,
+        plan.gas_denom,
+        plan.new_validator_account,
+        plan.new_validator_operator,
+        plan.other_stake,
+        plan.stake_denom,
         plan.other_validators.len()
     );
     let propose = foundation_proposal_wrapper(TITLE, &description, plan.cosmos_msgs());
-    kms_gate::write_plan(&cli.out, &serde_json::json!({
-        "dry_run": !cli.broadcast,
-        "chain_id": morocco.chain_id,
-        "parent_core": cli.parent_core,
-        "contract": cli.pre_propose,
-        "execute": propose,
-        "other_validators": plan.other_validators.len(),
-        "new_validator_account": NEW_VALIDATOR_ACCOUNT,
-        "new_validator_operator": NEW_VALIDATOR_OPERATOR,
-        "after_vote_yes": vote_yes_msg(1),
-        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
-    }))?;
+    kms_gate::write_plan(
+        &cli.out,
+        &serde_json::json!({
+            "dry_run": !cli.broadcast,
+            "chain_id": morocco.chain_id,
+            "parent_core": cli.parent_core,
+            "contract": cli.pre_propose,
+            "execute": propose,
+            "other_validators": plan.other_validators.len(),
+            "new_validator_account": NEW_VALIDATOR_ACCOUNT,
+            "new_validator_operator": NEW_VALIDATOR_OPERATOR,
+            "after_vote_yes": vote_yes_msg(1),
+            "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
+        }),
+    )?;
     if !cli.broadcast {
         return Ok(());
     }
@@ -99,7 +117,12 @@ fn main() -> Result<()> {
             purpose: "foundation-delegate".into(),
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
-            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: 1, funds: vec![] }),
+            scope: Scope::Execute(ScopedCall {
+                address: cli.pre_propose.clone(),
+                keys: vec!["propose".into()],
+                calls: 1,
+                funds: vec![],
+            }),
             summary: TITLE.into(),
         },
         vec![any],

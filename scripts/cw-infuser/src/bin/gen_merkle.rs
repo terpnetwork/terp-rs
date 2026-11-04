@@ -84,9 +84,12 @@ impl Hasher for SortingBlake3Hasher {
 #[derive(Debug, Deserialize)]
 struct CsvRow {
     address: String,
+    // CSV columns accepted for provenance; not part of the merkle leaf.
     #[serde(default)]
+    #[allow(dead_code)]
     operator_address: String,
     #[serde(default)]
+    #[allow(dead_code)]
     moniker: String,
     tier: u8,
     allocation: u32,

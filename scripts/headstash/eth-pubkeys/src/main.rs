@@ -109,7 +109,7 @@ impl RpcPool {
             .filter(|&i| skip != Some(i) && self.disabled_until[i].load(Ordering::Relaxed) <= now)
             .map(|i| (self.score(i), i))
             .collect();
-        v.sort_by(|a, b| b.0.cmp(&a.0));
+        v.sort_by_key(|e| std::cmp::Reverse(e.0));
         v.into_iter()
             .map(|(_, i)| (i, self.urls[i].clone()))
             .collect()
@@ -143,11 +143,11 @@ impl RpcPool {
         let mut any = false;
         for item in arr {
             let id = item.get("id").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-            if id < n {
-                if let Some(r) = item.get("result") {
-                    out[id] = Some(r.clone());
-                    any = true;
-                }
+            if id < n
+                && let Some(r) = item.get("result")
+            {
+                out[id] = Some(r.clone());
+                any = true;
             }
         }
         if any { Some(out) } else { None }
@@ -226,6 +226,7 @@ impl RpcPool {
         self.batch_rpc(&calls).await
     }
 
+    #[allow(dead_code)]
     async fn batch_get_code(&self, addrs: &[String]) -> Result<Vec<Option<Value>>> {
         let calls: Vec<(String, Value)> = addrs
             .iter()
@@ -234,6 +235,7 @@ impl RpcPool {
         self.batch_rpc(&calls).await
     }
 
+    #[allow(dead_code)]
     async fn batch_get_nonce(&self, addrs: &[String]) -> Result<Vec<Option<Value>>> {
         let calls: Vec<(String, Value)> = addrs
             .iter()
@@ -357,16 +359,14 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
                     .and_then(|x| x.as_str())
                     .unwrap_or("")
                     .to_ascii_lowercase();
-                if from == addr_lc {
-                    if let Some(h) = t
+                if from == addr_lc
+                    && let Some(h) = t
                         .get("hash")
                         .or_else(|| t.get("transaction_hash"))
                         .and_then(|x| x.as_str())
-                    {
-                        if let Ok(b) = h.parse::<B256>() {
-                            return Ok(Some(b));
-                        }
-                    }
+                    && let Ok(b) = h.parse::<B256>()
+                {
+                    return Ok(Some(b));
                 }
             }
             saw_empty = true;
@@ -379,12 +379,11 @@ async fn explorer_outgoing_tx(client: &Client, address: &str) -> Result<Option<B
                     .and_then(|x| x.as_str())
                     .unwrap_or("")
                     .to_ascii_lowercase();
-                if from == addr_lc {
-                    if let Some(h) = t.get("hash").and_then(|x| x.as_str()) {
-                        if let Ok(b) = h.parse::<B256>() {
-                            return Ok(Some(b));
-                        }
-                    }
+                if from == addr_lc
+                    && let Some(h) = t.get("hash").and_then(|x| x.as_str())
+                    && let Ok(b) = h.parse::<B256>()
+                {
+                    return Ok(Some(b));
                 }
             }
             saw_empty = true;
@@ -760,11 +759,11 @@ fn enrich_community_csvs(map_path: &Path, dead_path: &Path) -> Result<usize> {
     md.push_str(&format!(
         "\n**Total keyed {grand_keyed}/{grand_all}.** Unallocated **{grand_rows} rows**, amount **{grand_amt:.4}** (burn, not mint).\n"
     ));
-    if let Some((_, first)) = community_csvs()?.first() {
-        if let Some(dir) = first.parent().and_then(|p| p.parent()) {
-            fs::write(dir.join("UNALLOCATED.md"), md)?;
-            eprintln!("[enrich] wrote {}", dir.join("UNALLOCATED.md").display());
-        }
+    if let Some((_, first)) = community_csvs()?.first()
+        && let Some(dir) = first.parent().and_then(|p| p.parent())
+    {
+        fs::write(dir.join("UNALLOCATED.md"), md)?;
+        eprintln!("[enrich] wrote {}", dir.join("UNALLOCATED.md").display());
     }
     Ok(files)
 }
@@ -807,22 +806,22 @@ fn collect_addresses() -> Result<Vec<String>> {
             }
         }
     }
-    if let Ok(extra) = std::env::var("ETH_ADDR_CSV") {
-        if Path::new(&extra).exists() {
-            let mut rdr = csv::Reader::from_path(&extra)?;
-            for rec in rdr.records() {
-                let rec = rec?;
-                let addr = rec.get(0).unwrap_or("").trim();
-                if addr.len() == 42 && seen.insert(addr.to_ascii_lowercase()) {
-                    out.push(addr.to_string());
-                }
+    if let Ok(extra) = std::env::var("ETH_ADDR_CSV")
+        && Path::new(&extra).exists()
+    {
+        let mut rdr = csv::Reader::from_path(&extra)?;
+        for rec in rdr.records() {
+            let rec = rec?;
+            let addr = rec.get(0).unwrap_or("").trim();
+            if addr.len() == 42 && seen.insert(addr.to_ascii_lowercase()) {
+                out.push(addr.to_string());
             }
         }
     }
-    if let Ok(lim) = std::env::var("ETH_SCRAPE_LIMIT") {
-        if let Ok(n) = lim.parse::<usize>() {
-            out.truncate(n);
-        }
+    if let Ok(lim) = std::env::var("ETH_SCRAPE_LIMIT")
+        && let Ok(n) = lim.parse::<usize>()
+    {
+        out.truncate(n);
     }
     Ok(out)
 }

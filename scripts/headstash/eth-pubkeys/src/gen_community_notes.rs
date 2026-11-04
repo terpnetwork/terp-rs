@@ -37,6 +37,7 @@ struct Row {
     community: String,
     addr: String,
     pk_compressed: String,
+    #[allow(dead_code)] // present in the input JSON; only the compressed form is used
     pk_uncompressed: String,
     token: String,
     value: u64,
@@ -91,16 +92,17 @@ fn split_denoms(v: u64) -> Vec<u64> {
             rem %= d;
             continue;
         }
-        out.extend(std::iter::repeat(d).take(n as usize));
+        out.extend(std::iter::repeat_n(d, n as usize));
         rem %= d;
     }
     out
 }
 
+/// (epk x bytes, epk y bytes, epk x, epk y, epk hex)
+type EpkProof = ([u8; 32], [u8; 32], pallas::Base, pallas::Base, String);
+
 /// Circuit `epk = esk·G` natives: same `EligiblePk::xy()` the prover must witness.
-fn epk_for_proof(
-    compressed_hex: &str,
-) -> anyhow::Result<([u8; 32], [u8; 32], pallas::Base, pallas::Base, String)> {
+fn epk_for_proof(compressed_hex: &str) -> anyhow::Result<EpkProof> {
     let raw = hex::decode(compressed_hex.trim_start_matches("0x"))?;
     anyhow::ensure!(raw.len() == 33, "elig_pk compressed must be 33 bytes");
     let pk = EligiblePk::from(&raw);
@@ -123,10 +125,10 @@ fn epk_for_proof(
 
 fn recp_from_eth(addr: &str) -> [u8; 32] {
     let mut out = [0u8; 32];
-    if let Ok(b) = hex::decode(addr.trim_start_matches("0x")) {
-        if b.len() == 20 {
-            out[12..].copy_from_slice(&b);
-        }
+    if let Ok(b) = hex::decode(addr.trim_start_matches("0x"))
+        && b.len() == 20
+    {
+        out[12..].copy_from_slice(&b);
     }
     out
 }
@@ -137,7 +139,7 @@ fn poseidon_root(mut c: Vec<pallas::Base>) -> pallas::Base {
     }
     let mut layer = 0u32;
     while c.len() > 1 {
-        if c.len() % 2 != 0 {
+        if !c.len().is_multiple_of(2) {
             c.push(pallas::Base::ZERO);
         }
         c = c

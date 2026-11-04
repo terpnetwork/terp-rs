@@ -8,14 +8,14 @@
 //! exactly that contract, key `propose`, one call. The granter must be a
 //! Foundation member. Voting and execution stay with the Foundation DAO.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use cosmwasm_std::{CosmosMsg, WasmMsg};
 use cw_orch_kms::ScopedCall;
 use dao_foundation_suite::ibc_ops::{
-    fiab_seed, foundation_proposal_wrapper, morocco_fiab_instantiate, CODE_CORE, CODE_CW4_GROUP,
-    CODE_PROPOSAL_SINGLE, CODE_VOTING_CW4, FIAB_MEMBER, FIAB_PROPOSAL_TITLE, FOUNDATION_DESCRIPTION,
-    PARENT_CORE, PRE_PROPOSE_A,
+    CODE_CORE, CODE_CW4_GROUP, CODE_PROPOSAL_SINGLE, CODE_VOTING_CW4, FIAB_MEMBER,
+    FIAB_PROPOSAL_TITLE, FOUNDATION_DESCRIPTION, PARENT_CORE, PRE_PROPOSE_A, fiab_seed,
+    foundation_proposal_wrapper, morocco_fiab_instantiate,
 };
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 
@@ -42,7 +42,14 @@ struct Cli {
 
 /// Admin invariants for the FIAB instantiate. Public for the Mock tests.
 pub fn check_fiab(msg: &CosmosMsg, parent: &str) -> Result<serde_json::Value> {
-    let CosmosMsg::Wasm(WasmMsg::Instantiate { admin, code_id, msg: init, funds, .. }) = msg else {
+    let CosmosMsg::Wasm(WasmMsg::Instantiate {
+        admin,
+        code_id,
+        msg: init,
+        funds,
+        ..
+    }) = msg
+    else {
         bail!("FIAB message is not a wasm instantiate");
     };
     if admin.as_deref() != Some(parent) {
@@ -73,23 +80,29 @@ pub fn check_fiab(msg: &CosmosMsg, parent: &str) -> Result<serde_json::Value> {
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     dao_scripts::kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
     let msg = morocco_fiab_instantiate(&cli.parent);
     let checks = check_fiab(&msg, &cli.parent)?;
-    let propose = foundation_proposal_wrapper(FIAB_PROPOSAL_TITLE, FOUNDATION_DESCRIPTION, vec![msg]);
+    let propose =
+        foundation_proposal_wrapper(FIAB_PROPOSAL_TITLE, FOUNDATION_DESCRIPTION, vec![msg]);
     let morocco = kms_gate::morocco_info();
-    kms_gate::write_plan(&cli.out, &serde_json::json!({
-        "dry_run": !cli.broadcast,
-        "chain_id": morocco.chain_id,
-        "contract": cli.pre_propose,
-        "execute": propose,
-        "invariants": checks,
-        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
-        "after": "Foundation members vote on proposal module A; execution sends the instantiate with the funds from the Foundation treasury.",
-    }))?;
+    kms_gate::write_plan(
+        &cli.out,
+        &serde_json::json!({
+            "dry_run": !cli.broadcast,
+            "chain_id": morocco.chain_id,
+            "contract": cli.pre_propose,
+            "execute": propose,
+            "invariants": checks,
+            "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
+            "after": "Foundation members vote on proposal module A; execution sends the instantiate with the funds from the Foundation treasury.",
+        }),
+    )?;
     if !cli.broadcast {
         return Ok(());
     }
@@ -105,7 +118,12 @@ fn main() -> Result<()> {
             purpose: "fiab-subdao".into(),
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
-            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: 1, funds: vec![] }),
+            scope: Scope::Execute(ScopedCall {
+                address: cli.pre_propose.clone(),
+                keys: vec!["propose".into()],
+                calls: 1,
+                funds: vec![],
+            }),
             summary: FIAB_PROPOSAL_TITLE.into(),
         },
         vec![any],

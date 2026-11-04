@@ -5,11 +5,11 @@
 use std::fs;
 use std::path::Path;
 
-use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use ed25519_dalek::SigningKey;
 use rand08::rngs::OsRng;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 /// Public half of a new consensus key. `path` holds the CometBFT key file.
@@ -61,7 +61,8 @@ pub fn generate_consensus_key(path: &Path) -> Result<ConsensusPub, String> {
 /// Read the public key from a CometBFT key file. The private field is not returned.
 pub fn read_consensus_pubkey(path: &Path) -> Result<Vec<u8>, String> {
     let text = fs::read_to_string(path).map_err(|err| format!("zcinti key read refused: {err}"))?;
-    let value: Value = serde_json::from_str(&text).map_err(|err| format!("zcinti key json refused: {err}"))?;
+    let value: Value =
+        serde_json::from_str(&text).map_err(|err| format!("zcinti key json refused: {err}"))?;
     let encoded = value
         .get("pub_key")
         .and_then(|key| key.get("value"))
@@ -71,7 +72,10 @@ pub fn read_consensus_pubkey(path: &Path) -> Result<Vec<u8>, String> {
         .decode(encoded.trim())
         .map_err(|err| format!("zcinti key refused: {err}"))?;
     if raw.len() != 32 {
-        return Err(format!("zcinti key refused: public key is {} bytes", raw.len()));
+        return Err(format!(
+            "zcinti key refused: public key is {} bytes",
+            raw.len()
+        ));
     }
     Ok(raw)
 }

@@ -21,10 +21,14 @@ pub const PAYMINT_PROOF: &str = "59a73b7800d05280d8838a704cc496993b7ca578e7a3b4d
 /// Retired code-71 logo collections: no step here. If their mint is still open they keep
 /// minting until their own creator pauses / ends them (creator-signed, not part of this plan).
 pub const RETIRED_CODE71: [&str; 7] = [
-    "terp1jagdzq7ncqtv7zmechkuexem2ak50kjpk3uj5vajucw0l3cqg9rqz7al0a", "terp1tsk4rgs87c6da2pgnypgftg267c2k2x0d3ec0kdxf7pcwdedgdrqf6dc2w",
-    "terp1ptewup5u6jgg8x5zrw7fndt5845nynr5efvd7pe5e36y4c8k7rzsrc6l6f", "terp15wlh64paltl9c0kfmuxqfafkdnr89mvevmygxdxs6tg4wd4w5zesmvv7us",
-    "terp13pz6xddpj0n8ky6nsyqptvgkm9ulp96xqg3zygwzh9s3w3a2ju5qlh2yxn", "terp1wx5vuf7aduxp69x7xuge9dapxdysdvl33dlwd7chfwtdfvsrph0s2t632a",
-    "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt"];
+    "terp1jagdzq7ncqtv7zmechkuexem2ak50kjpk3uj5vajucw0l3cqg9rqz7al0a",
+    "terp1tsk4rgs87c6da2pgnypgftg267c2k2x0d3ec0kdxf7pcwdedgdrqf6dc2w",
+    "terp1ptewup5u6jgg8x5zrw7fndt5845nynr5efvd7pe5e36y4c8k7rzsrc6l6f",
+    "terp15wlh64paltl9c0kfmuxqfafkdnr89mvevmygxdxs6tg4wd4w5zesmvv7us",
+    "terp13pz6xddpj0n8ky6nsyqptvgkm9ulp96xqg3zygwzh9s3w3a2ju5qlh2yxn",
+    "terp1wx5vuf7aduxp69x7xuge9dapxdysdvl33dlwd7chfwtdfvsrph0s2t632a",
+    "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt",
+];
 pub const FRACTAL_CURATOR_TBD: &str = "FRACTAL_CURATOR_TBD";
 pub const LOGOS_CURATOR_TBD: &str = "LOGOS_CURATOR_TBD";
 /// Curators chosen by the owner (2026-10-28): the Zigner granter for both, for now.
@@ -49,24 +53,50 @@ pub struct Roles {
 }
 impl Default for Roles {
     fn default() -> Self {
-        Self { fractal_curator: FRACTAL_CURATOR.into(), logos_curator: LOGOS_CURATOR.into(),
-            payment_minter: PAYMENT_MINTER.into(), withdraw: FOUNDATION_DAO.into(),
-            operator: ZIGNER_GRANTER.into(), salt: PAYMINT_SALT.into() }
+        Self {
+            fractal_curator: FRACTAL_CURATOR.into(),
+            logos_curator: LOGOS_CURATOR.into(),
+            payment_minter: PAYMENT_MINTER.into(),
+            withdraw: FOUNDATION_DAO.into(),
+            operator: ZIGNER_GRANTER.into(),
+            salt: PAYMINT_SALT.into(),
+        }
     }
 }
 impl Roles {
     pub fn require_real(&self) -> Result<()> {
-        let bad: Vec<_> = [("fractal_curator", &self.fractal_curator), ("logos_curator", &self.logos_curator),
-            ("payment_minter", &self.payment_minter), ("withdraw", &self.withdraw), ("operator", &self.operator)]
-            .into_iter().filter(|(_, v)| paymint::is_placeholder(v)).map(|(k, v)| format!("{k}={v}")).collect();
-        anyhow::ensure!(bad.is_empty(), "BLOCKED: placeholders, refusing to broadcast: {}", bad.join(", "));
+        let bad: Vec<_> = [
+            ("fractal_curator", &self.fractal_curator),
+            ("logos_curator", &self.logos_curator),
+            ("payment_minter", &self.payment_minter),
+            ("withdraw", &self.withdraw),
+            ("operator", &self.operator),
+        ]
+        .into_iter()
+        .filter(|(_, v)| paymint::is_placeholder(v))
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect();
+        anyhow::ensure!(
+            bad.is_empty(),
+            "BLOCKED: placeholders, refusing to broadcast: {}",
+            bad.join(", ")
+        );
         Ok(())
     }
 }
 
 /// One approvable step. `contract` = None means MsgInstantiateContract of `code_id`.
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct Step { pub id: String, pub signer: String, pub contract: Option<String>, pub code_id: Option<u64>, pub label: Option<String>, pub admin: Option<String>, pub msg: Value, pub note: String }
+pub struct Step {
+    pub id: String,
+    pub signer: String,
+    pub contract: Option<String>,
+    pub code_id: Option<u64>,
+    pub label: Option<String>,
+    pub admin: Option<String>,
+    pub msg: Value,
+    pub note: String,
+}
 
 pub fn logo_init(dir: &std::path::Path, logo: &str, r: &Roles) -> Result<Value> {
     let mut v: Value = serde_json::from_slice(&std::fs::read(dir.join(logo).join("init.json"))?)?;
@@ -77,9 +107,19 @@ pub fn logo_init(dir: &std::path::Path, logo: &str, r: &Roles) -> Result<Value> 
 
 /// `wl_addr`: the whitelist instance created by step 1 (unknown until it lands).
 pub fn plan(r: &Roles, logos_dir: &std::path::Path, wl_addr: &str, seed: u64) -> Result<Vec<Step>> {
-    let tree = paymint::paymint_tree(&r.payment_minter, crate::fractal::FRACTAL_SUPPLY as u32, &r.salt);
-    let fr = crate::fractal::permissionless_fractal_init_v2(&seed, &crate::fractal::FractalRoles {
-        curator: r.fractal_curator.clone(), withdraw: r.withdraw.clone(), paymint_whitelist: Some(wl_addr.into()) })?;
+    let tree = paymint::paymint_tree(
+        &r.payment_minter,
+        crate::fractal::FRACTAL_SUPPLY as u32,
+        &r.salt,
+    );
+    let fr = crate::fractal::permissionless_fractal_init_v2(
+        &seed,
+        &crate::fractal::FractalRoles {
+            curator: r.fractal_curator.clone(),
+            withdraw: r.withdraw.clone(),
+            paymint_whitelist: Some(wl_addr.into()),
+        },
+    )?;
     let mut s = vec![
         Step { id: "1-paymint-whitelist".into(), signer: r.operator.clone(), contract: None, code_id: Some(CODE_WHITELIST_MTREE),
             label: Some("permissionless-fractal-paymint-wl".into()), admin: Some(FOUNDATION_DAO.into()),
@@ -98,7 +138,15 @@ pub fn plan(r: &Roles, logos_dir: &std::path::Path, wl_addr: &str, seed: u64) ->
                 note: format!("batch {}", ['A', 'B', 'C'][bi]) });
         }
     }
-    s.push(Step { id: "5-paymint-template".into(), signer: r.payment_minter.clone(), contract: Some("<fractal collection>".into()), code_id: None, label: None, admin: None,
-        msg: serde_json::to_value(paymint::paymint_msg(&tree, 1))?, note: "per sale, no funds; same tx: transfer_nft to buyer".into() });
+    s.push(Step {
+        id: "5-paymint-template".into(),
+        signer: r.payment_minter.clone(),
+        contract: Some("<fractal collection>".into()),
+        code_id: None,
+        label: None,
+        admin: None,
+        msg: serde_json::to_value(paymint::paymint_msg(&tree, 1))?,
+        note: "per sale, no funds; same tx: transfer_nft to buyer".into(),
+    });
     Ok(s)
 }

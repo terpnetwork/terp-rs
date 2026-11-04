@@ -14,6 +14,7 @@
 //!   - The 121 prototype `SuppliedOptions` variables map 1:1 to `Options` with the same lists, so
 //!     the template, slots and option tables are already final.
 //!   - The 12 `SuppliedText` variables map to `Options` over the 4 sample texts (preview only).
+//!
 //!   TODO(yijing-v2-values): replace both with per-token supplied values; see
 //!   `svgs/research/yijing-harmony/v2-variables.json` and spec §"v2 handoff".
 //! * Price: one tier at 0.36 USDT. USDT arrives over a Penumbra IBC channel that is not open yet,
@@ -83,10 +84,10 @@ impl YiJingConfig {
     pub fn placeholders(&self) -> Vec<String> {
         let mut v = vec![];
         let mut chk = |k: &str, s: &Option<String>| {
-            if let Some(s) = s {
-                if s.contains('<') {
-                    v.push(format!("{k}={s}"))
-                }
+            if let Some(s) = s
+                && s.contains('<')
+            {
+                v.push(format!("{k}={s}"))
             }
         };
         chk("denom", &Some(self.denom.clone()));

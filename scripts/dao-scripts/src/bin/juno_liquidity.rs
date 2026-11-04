@@ -9,7 +9,7 @@
 //! instantiated custody-juno. Passing the proxy address, or any contract that
 //! is not that instantiate, is refused.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use base64::Engine;
 use clap::Parser;
 use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
@@ -17,7 +17,7 @@ use cosmos_sdk_proto::cosmos::distribution::v1beta1::MsgCommunityPoolSpend;
 use cosmwasm_std::{Binary, CosmosMsg};
 use dao_scripts::kms_gate;
 use dao_scripts::polytone::gov_submit_any;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
@@ -52,18 +52,33 @@ struct Cli {
     lcd: String,
     #[arg(long, default_value = "params/morocco-1.dao-c/12-juno-liquidity.html")]
     html: PathBuf,
-    #[arg(long, default_value = "params/morocco-1.dao-c/12-juno-liquidity-spend.json")]
+    #[arg(
+        long,
+        default_value = "params/morocco-1.dao-c/12-juno-liquidity-spend.json"
+    )]
     out: PathBuf,
     /// dao_account input. Written only after the recipient check passes.
-    #[arg(long, default_value = "params/morocco-1.dao-c/12-juno-liquidity-spend.dao.json")]
+    #[arg(
+        long,
+        default_value = "params/morocco-1.dao-c/12-juno-liquidity-spend.dao.json"
+    )]
     dao_file: PathBuf,
 }
 
 fn coins() -> Vec<Coin> {
     vec![
-        Coin { denom: "ujuno".into(), amount: JUNO_AMOUNT.to_string() },
-        Coin { denom: TERP_DENOM.into(), amount: TERP_AMOUNT.to_string() },
-        Coin { denom: THIOL_DENOM.into(), amount: THIOL_AMOUNT.to_string() },
+        Coin {
+            denom: "ujuno".into(),
+            amount: JUNO_AMOUNT.to_string(),
+        },
+        Coin {
+            denom: TERP_DENOM.into(),
+            amount: TERP_AMOUNT.to_string(),
+        },
+        Coin {
+            denom: THIOL_DENOM.into(),
+            amount: THIOL_AMOUNT.to_string(),
+        },
     ]
 }
 
@@ -147,7 +162,11 @@ fn base32_lower(data: &[u8]) -> String {
 }
 
 fn lcd_get(lcd: &str, path: &str) -> Result<Value> {
-    let url = format!("{}/{}", lcd.trim_end_matches('/'), path.trim_start_matches('/'));
+    let url = format!(
+        "{}/{}",
+        lcd.trim_end_matches('/'),
+        path.trim_start_matches('/')
+    );
     let out = std::process::Command::new("curl")
         .args(["-fsS", "--max-time", "25", &url])
         .output()
@@ -182,15 +201,19 @@ fn require_custody(lcd: &str, recipient: &str) -> Result<()> {
 fn spend_any(recipient: &str) -> Result<cosmrs::Any> {
     Ok(kms_gate::any(
         "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend",
-        &MsgCommunityPoolSpend { authority: JUNO_GOV.into(), recipient: recipient.into(), amount: coins() },
+        &MsgCommunityPoolSpend {
+            authority: JUNO_GOV.into(),
+            recipient: recipient.into(),
+            amount: coins(),
+        },
     ))
 }
 
 fn note_msg(submit: &cosmrs::Any) -> Result<String> {
-    let stargate = CosmosMsg::<cosmwasm_std::Empty>::Stargate {
+    let stargate = CosmosMsg::<cosmwasm_std::Empty>::Any(cosmwasm_std::AnyMsg {
         type_url: submit.type_url.clone(),
         value: Binary::from(submit.value.clone()),
-    };
+    });
     let wrapped = json!({
         "execute": { "msgs": [stargate], "callback": null, "timeout_seconds": "3600" }
     });
@@ -269,7 +292,8 @@ fn main() -> Result<()> {
             summary.as_deref().unwrap(),
         )?;
         // gov_submit_any leaves metadata empty. The page URL is the metadata.
-        let mut decoded = cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal::decode(submit.value.as_slice())?;
+        let mut decoded =
+            cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal::decode(submit.value.as_slice())?;
         decoded.metadata = url.clone();
         let submit = kms_gate::any("/cosmos.gov.v1.MsgSubmitProposal", &decoded);
         let dao_file = json!({
@@ -299,7 +323,10 @@ fn main() -> Result<()> {
                 }
             }
         });
-        std::fs::write(&cli.dao_file, serde_json::to_string_pretty(&dao_file)? + "\n")?;
+        std::fs::write(
+            &cli.dao_file,
+            serde_json::to_string_pretty(&dao_file)? + "\n",
+        )?;
         plan["dao_file"] = json!(cli.dao_file.display().to_string());
     }
     if let Some(parent) = cli.out.parent() {
@@ -326,7 +353,10 @@ mod tests {
         let thiol = 2_846_700.0 * 0.02360;
         let total: f64 = juno + terp + thiol;
         assert!((total - 183_324.71).abs() < 0.02, "{total}");
-        let summary = on_chain_summary("juno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2zgs3g", "bafk");
+        let summary = on_chain_summary(
+            "juno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2zgs3g",
+            "bafk",
+        );
         assert!(summary.contains("1,590,000 JUNO"));
         assert!(summary.contains("1590000000000 ujuno"));
         assert!(summary.contains("2,100,000 TERP"));
@@ -351,7 +381,8 @@ mod tests {
 
     #[test]
     fn spend_message_carries_the_three_coins() {
-        let any = spend_any("juno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2zgs3g").unwrap();
+        let any =
+            spend_any("juno1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq2zgs3g").unwrap();
         let msg = MsgCommunityPoolSpend::decode(any.value.as_slice()).unwrap();
         assert_eq!(msg.authority, JUNO_GOV);
         assert_eq!(msg.amount.len(), 3);

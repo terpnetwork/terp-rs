@@ -15,7 +15,7 @@
 //! voice 7. Those are the legacy `--via-gov` path only. The default is the
 //! cw-v3 Polytone codes further down (Everybody, ids from cw-orch state).
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgInstantiateContract2;
 use cosmrs::Any;
 
@@ -31,7 +31,8 @@ pub const OSMO_NOTE_CODE: u64 = 126;
 pub const OSMO_PROXY_CODE: u64 = 127;
 pub const OSMO_VOICE_CODE: u64 = 128;
 /// Reference pair from DAO-DAO (juno-1 note -> osmosis-1 voice), shape only.
-pub const OSMO_REFERENCE_VOICE: &str = "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs";
+pub const OSMO_REFERENCE_VOICE: &str =
+    "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs";
 
 /// morocco-1 code ids (gov-stored, instantiate permission Nobody).
 pub const TERP_NOTE_CODE: u64 = 4;
@@ -40,7 +41,8 @@ pub const TERP_PROXY_CODE: u64 = 6;
 pub const TERP_VOICE_CODE: u64 = 7;
 
 pub const NOTE_CHECKSUM: &str = "6284cfad75227c84ae407a57072bd7c3a599b31dd6c67d0a5e0a72fa9447a33f";
-pub const LISTENER_CHECKSUM: &str = "7e4f66e87570d887a5ff8b2b1dcb5c5e254abeadef11a9f1ed517d90fa015481";
+pub const LISTENER_CHECKSUM: &str =
+    "7e4f66e87570d887a5ff8b2b1dcb5c5e254abeadef11a9f1ed517d90fa015481";
 pub const PROXY_CHECKSUM: &str = "5094551145bcd256538775a0611ce9e88f8d7a182a06f082f901ffed9184bb5a";
 pub const VOICE_CHECKSUM: &str = "7ae233f2f3a39d2d39828ca47e981a38a073435551646f8f6320c0fbb23e8c96";
 
@@ -111,22 +113,44 @@ pub fn terp_note_msgs(gov: &str, pair: Option<(&str, &str)>) -> Result<Vec<Any>>
     };
     Ok(vec![
         mk(TERP_NOTE_CODE, NOTE_LABEL, note_init(pair), NOTE_SALT)?,
-        mk(TERP_LISTENER_CODE, LISTENER_LABEL, serde_json::json!({"note": p.note}), LISTENER_SALT)?,
+        mk(
+            TERP_LISTENER_CODE,
+            LISTENER_LABEL,
+            serde_json::json!({"note": p.note}),
+            LISTENER_SALT,
+        )?,
     ])
 }
 
 /// `MsgSubmitProposal` (gov v1) carrying `messages`, deposit paid by `proposer`.
-pub fn gov_submit_any(messages: Vec<Any>, proposer: &str, deposit: (u128, &str), title: &str, summary: &str) -> Result<Any> {
+pub fn gov_submit_any(
+    messages: Vec<Any>,
+    proposer: &str,
+    deposit: (u128, &str),
+    title: &str,
+    summary: &str,
+) -> Result<Any> {
     use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
     use cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal;
     if title.is_empty() || title.len() > 255 || summary.is_empty() || messages.is_empty() {
-        return Err(anyhow!("proposal needs a 1..=255 byte title, a summary and messages"));
+        return Err(anyhow!(
+            "proposal needs a 1..=255 byte title, a summary and messages"
+        ));
     }
     Ok(crate::kms_gate::any(
         "/cosmos.gov.v1.MsgSubmitProposal",
         &MsgSubmitProposal {
-            messages: messages.into_iter().map(|a| cosmos_sdk_proto::Any { type_url: a.type_url, value: a.value }).collect(),
-            initial_deposit: vec![Coin { denom: deposit.1.into(), amount: deposit.0.to_string() }],
+            messages: messages
+                .into_iter()
+                .map(|a| cosmos_sdk_proto::Any {
+                    type_url: a.type_url,
+                    value: a.value,
+                })
+                .collect(),
+            initial_deposit: vec![Coin {
+                denom: deposit.1.into(),
+                amount: deposit.0.to_string(),
+            }],
             proposer: proposer.into(),
             metadata: String::new(),
             title: title.into(),
@@ -148,12 +172,18 @@ mod tests {
         assert!(a.note.starts_with("terp1") && a.note != a.listener);
         let msgs = terp_note_msgs(GOV, None).unwrap();
         assert_eq!(msgs.len(), 2);
-        assert!(msgs.iter().all(|m| m.type_url == "/cosmwasm.wasm.v1.MsgInstantiateContract2"));
+        assert!(
+            msgs.iter()
+                .all(|m| m.type_url == "/cosmwasm.wasm.v1.MsgInstantiateContract2")
+        );
     }
 
     #[test]
     fn voice_init_matches_dao_dao_osmosis_voices() {
-        assert_eq!(voice_init(), serde_json::json!({"proxy_code_id": "127", "block_max_gas": "120000000"}));
+        assert_eq!(
+            voice_init(),
+            serde_json::json!({"proxy_code_id": "127", "block_max_gas": "120000000"})
+        );
         assert_eq!(note_init(None)["pair"], serde_json::Value::Null);
     }
 }
@@ -164,11 +194,15 @@ mod tests {
 // Already on morocco-1 with instantiate permission Everybody, so no gov and no
 // upload: the code ids come from cw-orch state (`morocco-1.code_ids`).
 
-pub const V3_NOTE_CHECKSUM: &str = "4d83a8b17dada766fd0299b6dff08565127ba9e9f4347f8dafdf54e50d71ebfe";
-pub const V3_VOICE_CHECKSUM: &str = "58608621b91adbb5e911188435945e85e8e9495f0301eeea03cb1818a662c33e";
-pub const V3_PROXY_CHECKSUM: &str = "702805bd1c6300d2ea17ed74792df8bb2d233b0da68449a9f5d8e70d8e4e4724";
+pub const V3_NOTE_CHECKSUM: &str =
+    "4d83a8b17dada766fd0299b6dff08565127ba9e9f4347f8dafdf54e50d71ebfe";
+pub const V3_VOICE_CHECKSUM: &str =
+    "58608621b91adbb5e911188435945e85e8e9495f0301eeea03cb1818a662c33e";
+pub const V3_PROXY_CHECKSUM: &str =
+    "702805bd1c6300d2ea17ed74792df8bb2d233b0da68449a9f5d8e70d8e4e4724";
 /// Built in polytone-evm/artifacts, not stored on morocco-1.
-pub const V3_LISTENER_CHECKSUM: &str = "178338209f18a29a2432d141488433607d2e7ae2151b904bf00405b01c0be93c";
+pub const V3_LISTENER_CHECKSUM: &str =
+    "178338209f18a29a2432d141488433607d2e7ae2151b904bf00405b01c0be93c";
 pub const V3_NOTE_SALT: &str = "polytone-v3-note-to-osmosis-1";
 pub const V3_LISTENER_SALT: &str = "polytone-v3-listener-from-osmosis-1";
 
@@ -195,12 +229,17 @@ pub fn state_candidates() -> Vec<std::path::PathBuf> {
     v
 }
 
-pub fn codes_from_state_json(state: &serde_json::Value, chain_id: &str, source: &str) -> Result<StateCodes> {
+pub fn codes_from_state_json(
+    state: &serde_json::Value,
+    chain_id: &str,
+    source: &str,
+) -> Result<StateCodes> {
     let ids = &state[chain_id]["code_ids"];
     let id = |k: &str| ids[k].as_u64();
     Ok(StateCodes {
         source: source.into(),
-        note: id("polytone:note").ok_or_else(|| anyhow!("{source}: no {chain_id}.code_ids.polytone:note"))?,
+        note: id("polytone:note")
+            .ok_or_else(|| anyhow!("{source}: no {chain_id}.code_ids.polytone:note"))?,
         voice: id("polytone:voice"),
         proxy: id("polytone:proxy"),
         listener: id("polytone:listener"),
@@ -214,7 +253,10 @@ pub fn codes_from_state(chain_id: &str, explicit: Option<&std::path::Path>) -> R
     };
     let mut errs = vec![];
     for p in paths {
-        match std::fs::read(&p).map_err(anyhow::Error::from).and_then(|b| Ok(serde_json::from_slice::<serde_json::Value>(&b)?)) {
+        match std::fs::read(&p)
+            .map_err(anyhow::Error::from)
+            .and_then(|b| Ok(serde_json::from_slice::<serde_json::Value>(&b)?))
+        {
             Ok(v) => match codes_from_state_json(&v, chain_id, &p.display().to_string()) {
                 Ok(c) => return Ok(c),
                 Err(e) => errs.push(e.to_string()),
@@ -222,17 +264,28 @@ pub fn codes_from_state(chain_id: &str, explicit: Option<&std::path::Path>) -> R
             Err(e) => errs.push(format!("{}: {e}", p.display())),
         }
     }
-    Err(anyhow!("no polytone code ids for {chain_id}: {}", errs.join("; ")))
+    Err(anyhow!(
+        "no polytone code ids for {chain_id}: {}",
+        errs.join("; ")
+    ))
 }
 
 /// instantiate2 address for any creator.
 pub fn predict_for(creator: &str, checksum_hex: &str, salt: &str) -> Result<String> {
     let (hrp, bytes) = bech32::decode(creator).map_err(|e| anyhow!("{e}"))?;
-    cw_orch_kms::instantiate2_bech32(hrp.as_str(), &hex32(checksum_hex)?, &bytes, salt.as_bytes()).map_err(|e| anyhow!(e))
+    cw_orch_kms::instantiate2_bech32(hrp.as_str(), &hex32(checksum_hex)?, &bytes, salt.as_bytes())
+        .map_err(|e| anyhow!(e))
 }
 
 /// `MsgInstantiateContract2` sent by `sender` (the kms granter), admin = DAO.
-pub fn instantiate2_any(sender: &str, admin: &str, code_id: u64, label: &str, msg: &serde_json::Value, salt: &str) -> Result<Any> {
+pub fn instantiate2_any(
+    sender: &str,
+    admin: &str,
+    code_id: u64,
+    label: &str,
+    msg: &serde_json::Value,
+    salt: &str,
+) -> Result<Any> {
     Ok(crate::kms_gate::any(
         "/cosmwasm.wasm.v1.MsgInstantiateContract2",
         &MsgInstantiateContract2 {
@@ -256,7 +309,10 @@ mod v3_tests {
     fn reads_code_ids_from_cw_orch_state() {
         let s = serde_json::json!({"morocco-1": {"code_ids": {"polytone:note": 78, "polytone:voice": 79, "polytone:proxy": 80}}});
         let c = codes_from_state_json(&s, "morocco-1", "t").unwrap();
-        assert_eq!((c.note, c.voice, c.proxy, c.listener), (78, Some(79), Some(80), None));
+        assert_eq!(
+            (c.note, c.voice, c.proxy, c.listener),
+            (78, Some(79), Some(80), None)
+        );
         assert!(codes_from_state_json(&s, "osmosis-1", "t").is_err());
     }
 
@@ -289,14 +345,24 @@ pub struct Remote {
 }
 
 pub const JUNO: Remote = Remote {
-    chain_id: "juno-1", prefix: "juno",
-    listener_code: 3319, note_code: 3320, proxy_code: 3321, voice_code: 3322,
-    block_max_gas: "100000000", terp_client: "07-tendermint-46",
+    chain_id: "juno-1",
+    prefix: "juno",
+    listener_code: 3319,
+    note_code: 3320,
+    proxy_code: 3321,
+    voice_code: 3322,
+    block_max_gas: "100000000",
+    terp_client: "07-tendermint-46",
 };
 pub const OSMOSIS: Remote = Remote {
-    chain_id: "osmosis-1", prefix: "osmo",
-    listener_code: OSMO_LISTENER_CODE, note_code: OSMO_NOTE_CODE, proxy_code: OSMO_PROXY_CODE, voice_code: OSMO_VOICE_CODE,
-    block_max_gas: BLOCK_MAX_GAS, terp_client: "07-tendermint-44",
+    chain_id: "osmosis-1",
+    prefix: "osmo",
+    listener_code: OSMO_LISTENER_CODE,
+    note_code: OSMO_NOTE_CODE,
+    proxy_code: OSMO_PROXY_CODE,
+    voice_code: OSMO_VOICE_CODE,
+    block_max_gas: BLOCK_MAX_GAS,
+    terp_client: "07-tendermint-44",
 };
 
 pub fn remote(name: &str) -> Result<Remote> {
@@ -308,10 +374,18 @@ pub fn remote(name: &str) -> Result<Remote> {
 }
 
 impl Remote {
-    pub fn note_salt(&self) -> String { format!("polytone-v3-note-to-{}", self.chain_id) }
-    pub fn listener_salt(&self) -> String { format!("polytone-v3-listener-from-{}", self.chain_id) }
-    pub fn note_label(&self) -> String { format!("polytone_note_to_{}", self.chain_id) }
-    pub fn listener_label(&self) -> String { format!("polytone_listener_from_{}", self.chain_id) }
+    pub fn note_salt(&self) -> String {
+        format!("polytone-v3-note-to-{}", self.chain_id)
+    }
+    pub fn listener_salt(&self) -> String {
+        format!("polytone-v3-listener-from-{}", self.chain_id)
+    }
+    pub fn note_label(&self) -> String {
+        format!("polytone_note_to_{}", self.chain_id)
+    }
+    pub fn listener_label(&self) -> String {
+        format!("polytone_listener_from_{}", self.chain_id)
+    }
     pub fn voice_init(&self) -> serde_json::Value {
         serde_json::json!({"proxy_code_id": self.proxy_code.to_string(), "block_max_gas": self.block_max_gas})
     }
@@ -320,7 +394,12 @@ impl Remote {
 /// Proxy a polytone v1 voice instantiates for `sender`: instantiate2(proxy
 /// checksum, creator = voice, salt = sha512(voice-side connection ||
 /// counterparty port `wasm.<note>` || sender)). Mirrors polytone voice `salt()`.
-pub fn predict_proxy(voice: &str, voice_connection: &str, note: &str, sender: &str) -> Result<String> {
+pub fn predict_proxy(
+    voice: &str,
+    voice_connection: &str,
+    note: &str,
+    sender: &str,
+) -> Result<String> {
     use sha2::{Digest, Sha512};
     let (hrp, creator) = bech32::decode(voice).map_err(|e| anyhow!("{e}"))?;
     let salt = Sha512::new()
@@ -328,7 +407,8 @@ pub fn predict_proxy(voice: &str, voice_connection: &str, note: &str, sender: &s
         .chain_update(format!("wasm.{note}").as_bytes())
         .chain_update(sender.as_bytes())
         .finalize();
-    cw_orch_kms::instantiate2_bech32(hrp.as_str(), &hex32(PROXY_CHECKSUM)?, &creator, &salt).map_err(|e| anyhow!(e))
+    cw_orch_kms::instantiate2_bech32(hrp.as_str(), &hex32(PROXY_CHECKSUM)?, &creator, &salt)
+        .map_err(|e| anyhow!(e))
 }
 
 #[cfg(test)]
@@ -340,13 +420,19 @@ mod remote_tests {
         assert_eq!(remote("osmosis").unwrap().voice_code, 128);
         assert_ne!(JUNO.note_salt(), OSMOSIS.note_salt());
         assert_eq!(OSMOSIS.note_salt(), V3_NOTE_SALT);
-        assert_eq!(JUNO.voice_init(), serde_json::json!({"proxy_code_id": "3321", "block_max_gas": "100000000"}));
+        assert_eq!(
+            JUNO.voice_init(),
+            serde_json::json!({"proxy_code_id": "3321", "block_max_gas": "100000000"})
+        );
     }
     #[test]
     fn proxy_prediction_is_deterministic_and_prefixed() {
         let v = "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u";
         let a = predict_proxy(v, "connection-9", "terp1note", "terp1sender").unwrap();
         assert!(a.starts_with("juno1"));
-        assert_ne!(a, predict_proxy(v, "connection-10", "terp1note", "terp1sender").unwrap());
+        assert_ne!(
+            a,
+            predict_proxy(v, "connection-10", "terp1note", "terp1sender").unwrap()
+        );
     }
 }

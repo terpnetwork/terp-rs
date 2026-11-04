@@ -52,13 +52,16 @@ fn main() -> Result<()> {
         let vars: Vec<cw_svg::VariableDef> = serde_json::from_value(e["variables"].clone())?;
         cw_svg::validate_variables(&vars).map_err(|x| anyhow::anyhow!("{logo}: {x:?}"))?;
         // Same check the code-98 contract runs at instantiate (no animation-only paint).
-        cw_svg::validate_animated_paint(tmpl)
-            .map_err(|e| anyhow::anyhow!("{logo}: {e}"))?;
+        cw_svg::validate_animated_paint(tmpl).map_err(|e| anyhow::anyhow!("{logo}: {e}"))?;
         let packed = cw721_svg::pack_svg(tmpl, &vars);
-        let (t2, v2) = cw721_svg::decode_packed(packed.as_slice()).map_err(|x| anyhow::anyhow!("{x}"))?;
+        let (t2, v2) =
+            cw721_svg::decode_packed(packed.as_slice()).map_err(|x| anyhow::anyhow!("{x}"))?;
         let roundtrip = t2 == tmpl && serde_json::to_value(&v2)? == serde_json::to_value(&vars)?;
         ensure!(roundtrip, "{logo}: SVP1 round-trip mismatch");
-        ensure!(packed.len() <= cw721_svg::contract::MAX_SVG_SIZE, "{logo}: packed over MAX_SVG_SIZE");
+        ensure!(
+            packed.len() <= cw721_svg::contract::MAX_SVG_SIZE,
+            "{logo}: packed over MAX_SVG_SIZE"
+        );
         let msg = cw721_svg::InstantiateMsg {
             name: old["name"].as_str().unwrap_or(&logo).to_string(),
             symbol: old["symbol"].as_str().unwrap_or("SVG").to_string(),
@@ -95,7 +98,10 @@ fn main() -> Result<()> {
         manifest.push(row);
     }
     if !a.dry_run {
-        fs::write(a.out.join("manifest.json"), serde_json::to_vec_pretty(&manifest)?)?;
+        fs::write(
+            a.out.join("manifest.json"),
+            serde_json::to_vec_pretty(&manifest)?,
+        )?;
     }
     Ok(())
 }

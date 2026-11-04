@@ -98,7 +98,9 @@ fn main() -> Result<()> {
             let cfg = benders::day_config(&v, &params(&day, Addr::unchecked(creator)))?;
             // Offsets are relative to "now" (box clock); `local` recomputes from the chain.
             let now = cosmwasm_std::Timestamp::from_seconds(
-                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)?
+                    .as_secs(),
             );
             write(&out, "instantiate.json", &cfg.to_init_msg(now)?)?;
             let rep = serde_json::json!({
@@ -110,11 +112,31 @@ fn main() -> Result<()> {
             write(&out, "plan.json", &rep)?;
             println!("{}", serde_json::to_string_pretty(&rep)?);
         }
-        Cmd::Local { day, grpc, chain_id, gas_denom, gas_price, out, creator_mnemonic_env, withdrawer, fund_creator } => {
-            let host = grpc.trim_start_matches("http://").split(':').next().unwrap_or_default();
-            ensure!(host == "127.0.0.1" || host == "localhost", "refusing non-loopback gRPC {grpc}");
+        Cmd::Local {
+            day,
+            grpc,
+            chain_id,
+            gas_denom,
+            gas_price,
+            out,
+            creator_mnemonic_env,
+            withdrawer,
+            fund_creator,
+        } => {
+            let host = grpc
+                .trim_start_matches("http://")
+                .split(':')
+                .next()
+                .unwrap_or_default();
+            ensure!(
+                host == "127.0.0.1" || host == "localhost",
+                "refusing non-loopback gRPC {grpc}"
+            );
             for net in [networks::TERP_MAINNET, networks::TERP_TESTNET] {
-                ensure!(chain_id != net.chain_id, "refusing public chain id {chain_id}");
+                ensure!(
+                    chain_id != net.chain_id,
+                    "refusing public chain id {chain_id}"
+                );
             }
             let v = benders::load(&day.record, day.packed.as_deref())?;
             let mut ci: ChainInfoOwned = networks::TERP_LOCALNET.into();
@@ -127,7 +149,11 @@ fn main() -> Result<()> {
             // Fresh creator per collection: mnemonic from the named env var; never logged.
             let m = std::env::var(&creator_mnemonic_env)
                 .with_context(|| format!("{creator_mnemonic_env} is not set"))?;
-            let creator_chain = chain.rebuild().mnemonic(m).build().context("creator daemon")?;
+            let creator_chain = chain
+                .rebuild()
+                .mnemonic(m)
+                .build()
+                .context("creator daemon")?;
             let creator = creator_chain.sender_addr();
             let withdrawer = withdrawer.unwrap_or_else(|| creator.to_string());
             chain.bank_send(&creator, &[cosmwasm_std::coin(fund_creator, &gas_denom)])?;
@@ -142,8 +168,16 @@ fn main() -> Result<()> {
                 };
                 if f.minter.address().is_err() {
                     let f = suite.deploy_factory(Some(&operator), &operator)?;
-                    suite.set_series(&f, benders::SERIES, Some(cw_infuser_scripts::collection::benders_series(vec![])))?;
-                    let tx = cw_infuser_scripts::collection::feeshare::register(&chain, f.minter.address()?.as_str(), &withdrawer)?;
+                    suite.set_series(
+                        &f,
+                        benders::SERIES,
+                        Some(cw_infuser_scripts::collection::benders_series(vec![])),
+                    )?;
+                    let tx = cw_infuser_scripts::collection::feeshare::register(
+                        &chain,
+                        f.minter.address()?.as_str(),
+                        &withdrawer,
+                    )?;
                     println!("feeshare factory tx {tx}");
                     f
                 } else {
@@ -151,11 +185,18 @@ fn main() -> Result<()> {
                 }
             };
             let addr = suite.instantiate_in_series(&factory, benders::SERIES, &cfg)?;
-            let tx = cw_infuser_scripts::collection::feeshare::register(&creator_chain, addr.as_str(), &withdrawer)?;
+            let tx = cw_infuser_scripts::collection::feeshare::register(
+                &creator_chain,
+                addr.as_str(),
+                &withdrawer,
+            )?;
             println!("feeshare collection tx {tx}");
             let st = suite.query(&addr)?;
             ensure!(st.seed_hex == v.record_sha256, "on-chain seed mismatch");
-            ensure!(st.packed_sha256 == v.packed_sha256, "on-chain packed mismatch");
+            ensure!(
+                st.packed_sha256 == v.packed_sha256,
+                "on-chain packed mismatch"
+            );
             write(&out, "local-run.json", &st)?;
             println!("{}", serde_json::to_string_pretty(&st)?);
         }

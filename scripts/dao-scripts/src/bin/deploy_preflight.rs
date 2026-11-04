@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use clap::Parser;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Parser, Debug)]
 #[command(name = "deploy_preflight")]
@@ -24,9 +24,9 @@ struct Cli {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let artifacts = cli.artifacts.unwrap_or_else(|| {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts")
-    });
+    let artifacts = cli
+        .artifacts
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"));
     let plan = json!({
         "kms": "cw-orch-kms is the default signer. One cold signature per session on the chain-bound cw-orch-granter:v2 challenge; the ephemeral key broadcasts only the scoped messages, then close revokes. Every script is dry-run unless --broadcast --chain-id morocco-1 and TERP_SCRIPT_BROADCAST=1. Mnemonic signers need TERP_SCRIPT_LEGACY_SIGNER=1.",
         "steps": [

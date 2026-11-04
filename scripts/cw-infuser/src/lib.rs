@@ -7,14 +7,16 @@ pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5
 pub mod benders;
 pub mod collection;
 pub mod drops;
-pub mod paymint;
 pub mod fresh_plan;
+pub mod paymint;
 #[cfg(feature = "shitstrap")]
 pub mod suite;
 pub mod yijing;
 
 pub mod prelude {
-    pub use crate::collection::{SvgCollectionConfig, SvgCollectionSuite, SvgFactory, SeriesConfig};
+    pub use crate::collection::{
+        SeriesConfig, SvgCollectionConfig, SvgCollectionSuite, SvgFactory,
+    };
     #[cfg(feature = "shitstrap")]
     pub use crate::suite::{CwSvgSuite, CwSvgSuiteDeployData};
 }
@@ -41,11 +43,15 @@ pub mod fractal {
     }
 
     /// Codec-checked (check_template) init for the factory's CreateSvgCollection.
-    pub fn permissionless_fractal_init_v2(seed: &u64, roles: &FractalRoles) -> anyhow::Result<cw721_svg::InstantiateMsg> {
+    pub fn permissionless_fractal_init_v2(
+        seed: &u64,
+        roles: &FractalRoles,
+    ) -> anyhow::Result<cw721_svg::InstantiateMsg> {
         let mut m = default_permissionless_fractal_init(seed, &roles.curator);
         let mut rng = StdRng::seed_from_u64(*seed);
         let v = build_variable_defs(&(0..64).map(|_| gen_zoom_set(&mut rng)).collect::<Vec<_>>());
-        m.collection_info_extension.packed = crate::yijing::check_template(FRACTAL_SVG_TEMPLATE, &v)?;
+        m.collection_info_extension.packed =
+            crate::yijing::check_template(FRACTAL_SVG_TEMPLATE, &v)?;
         m.collection_info_extension.whitelist = roles.paymint_whitelist.clone();
         m.minter = None;
         m.withdraw_address = Some(roles.withdraw.clone());
@@ -78,7 +84,7 @@ pub mod fractal {
                     },
                     cw721_svg::PriceTier {
                         until_count: 10000,
-                        price: coin(1000_000_000, "uthiol"),
+                        price: coin(1_000_000_000, "uthiol"),
                     },
                 ],
                 total: 10000,
@@ -86,7 +92,7 @@ pub mod fractal {
                 mint_end_time: None,
                 whitelist: None,
                 require_auth: false,
-                packed: cw721_svg::pack_svg(&(FRACTAL_SVG_TEMPLATE.to_string()), &(v.clone())),
+                packed: cw721_svg::pack_svg(FRACTAL_SVG_TEMPLATE, &(v.clone())),
             },
             minter: Some(admin.to_string()),
             creator: Some(admin.to_string()),
