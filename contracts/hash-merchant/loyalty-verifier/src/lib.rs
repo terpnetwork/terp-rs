@@ -156,12 +156,14 @@ pub fn execute(
             deps,
             env,
             info,
-            leaf_hash,
-            proof,
-            root_index,
-            nullifier,
-            amount,
-            action_bind,
+            ExecuteClaimPrivateParams {
+                leaf_hash,
+                proof,
+                root_index,
+                nullifier,
+                amount,
+                action_bind,
+            },
         ),
         ExecuteMsg::UpdateMintConfig {
             reward_denom,
@@ -237,18 +239,30 @@ pub fn compute_action_bind(
     hex::encode(h.finalize())
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Arguments for [`execute_claim_private`].
+struct ExecuteClaimPrivateParams {
+    pub leaf_hash: String,
+    pub proof: Vec<ProofStep>,
+    pub root_index: u32,
+    pub nullifier: String,
+    pub amount: Uint128,
+    pub action_bind: Option<String>,
+}
+
 fn execute_claim_private(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    leaf_hash: String,
-    proof: Vec<ProofStep>,
-    root_index: u32,
-    nullifier: String,
-    amount: Uint128,
-    action_bind: Option<String>,
+    args: ExecuteClaimPrivateParams,
 ) -> StdResult<Response> {
+    let ExecuteClaimPrivateParams {
+        leaf_hash,
+        proof,
+        root_index,
+        nullifier,
+        amount,
+        action_bind,
+    } = args;
     let sender = info.sender.to_string();
     let nf = nullifier.trim().to_ascii_lowercase();
     if nf.is_empty() || nf.len() < 16 {
