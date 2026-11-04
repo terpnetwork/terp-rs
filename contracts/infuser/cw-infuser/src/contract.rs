@@ -718,12 +718,14 @@ fn execute_infuse_bundle(
         let burn = burn_bundle(
             deps.storage,
             env.clone(),
-            &cfg,
-            bundle.nfts,
-            &sender,
-            &infusion,
-            infusion_id,
-            &funds,
+            BurnBundleParams {
+                cfg: &cfg,
+                nfts: bundle.nfts,
+                sender: &sender,
+                infusion: &infusion,
+                infusion_id,
+                funds: &funds,
+            },
         )?;
         // println!("burn: {:#?}", burn);
         response_msgs.extend(burn.0);
@@ -734,19 +736,31 @@ fn execute_infuse_bundle(
     Ok(res.add_messages(response_msgs))
 }
 
+/// Arguments for [`burn_bundle`].
+struct BurnBundleParams<'a> {
+    pub cfg: &'a Config,
+    pub nfts: Vec<NFT>,
+    pub sender: &'a Addr,
+    pub infusion: &'a InfusionState,
+    pub infusion_id: u64,
+    pub funds: &'a [Coin],
+}
+
 /// checks all bundles nfts, determines how many nfts to mint,
 /// returns msgs to burn, mint nfts, & transfer any fee substitute funds to their destination.
-#[allow(clippy::too_many_arguments)]
 fn burn_bundle(
     storage: &mut dyn Storage,
     env: Env,
-    cfg: &Config,
-    nfts: Vec<NFT>,
-    sender: &Addr,
-    infusion: &InfusionState,
-    infusion_id: u64,
-    funds: &[Coin],
+    args: BurnBundleParams<'_>,
 ) -> Result<(Vec<CosmosMsg>, u64), ContractError> {
+    let BurnBundleParams {
+        cfg,
+        nfts,
+        sender,
+        infusion,
+        infusion_id,
+        funds,
+    } = args;
     let mut msgs: Vec<CosmosMsg> = Vec::new();
     // confirm bundle is in current infusion, and expected amount sent
     let paysub_msg_and_mc = check_bundles(storage, cfg, infusion, sender, nfts.clone(), funds)?;
@@ -1275,8 +1289,8 @@ fn check_fee_sub(
                     }
                 }
                 return Err(ContractError::PaymentSubstituteNotProvided {
-                    have: Coin::new(have.amount, ps.denom.to_string()),
-                    want: ps.clone(),
+                    have: Box::new(Coin::new(have.amount, ps.denom.to_string())),
+                    want: Box::new(ps.clone()),
                     col: elig_addr.to_string(),
                 });
             }

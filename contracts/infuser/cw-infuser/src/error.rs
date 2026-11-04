@@ -82,7 +82,11 @@ pub enum ContractError {
     #[error(
         "payment substitute is enabled for collection {col}, but did not recieve tokens or payment. Have: {have}. Want: {want}"
     )]
-    PaymentSubstituteNotProvided { col: String, have: Coin, want: Coin },
+    PaymentSubstituteNotProvided {
+        col: String,
+        have: Box<Coin>,
+        want: Box<Coin>,
+    },
 
     #[error("Too many NFT collections being set for infusion. Have: {have}.  Max: {max}")]
     TooManyCollectionsInInfusion { have: u64, max: u64 },
