@@ -89,9 +89,29 @@ pub fn origin_allowed(origin: &str) -> bool {
         .any(|s| s == origin)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Per-thread stand-in for the role env vars, so tests never mutate
+    /// process-global env (which races across the parallel test harness).
+    static TEST_ENV: std::cell::RefCell<HashMap<String, String>> =
+        std::cell::RefCell::new(HashMap::new());
+}
+
+#[cfg(test)]
+fn set_test_env(name: &str, value: &str) {
+    TEST_ENV.with(|m| m.borrow_mut().insert(name.to_string(), value.to_string()));
+}
+
+fn read_env(name: &str) -> Option<String> {
+    #[cfg(test)]
+    if let Some(v) = TEST_ENV.with(|m| m.borrow().get(name).cloned()) {
+        return Some(v);
+    }
+    std::env::var(name).ok()
+}
+
 fn split_env(name: &str) -> Vec<String> {
-    std::env::var(name)
-        .ok()
+    read_env(name)
         .map(|s| {
             s.split(',')
                 .map(|x| x.trim().to_string())
@@ -209,14 +229,16 @@ fn login_message(origin: &str, challenge: &str) -> String {
     format!("ITL login v1\norigin: {origin}\nchallenge: {challenge}")
 }
 
-fn adr036_sign_doc(signer: &str, data: &[u8]) -> String {
+/// ADR-036 amino sign doc a wallet signs for `signer` over `data`.
+pub fn adr036_sign_doc(signer: &str, data: &[u8]) -> String {
     let b64 = base64::engine::general_purpose::STANDARD.encode(data);
     format!(
         r#"{{"account_number":"0","chain_id":"","fee":{{"amount":[],"gas":"0"}},"memo":"","msgs":[{{"type":"sign/MsgSignData","value":{{"data":"{b64}","signer":"{signer}"}}}}],"sequence":"0"}}"#
     )
 }
 
-fn terp_address_from_compressed(pk33: &[u8]) -> Result<String, &'static str> {
+/// `terp1…` address of a 33-byte compressed secp256k1 public key.
+pub fn terp_address_from_compressed(pk33: &[u8]) -> Result<String, &'static str> {
     if pk33.len() != 33 {
         return Err("bad_pubkey");
     }
@@ -625,15 +647,6 @@ pub fn to_http_response(r: &SessionResponse) -> HttpResponse {
 }
 
 #[cfg(test)]
-pub fn reset_for_test() {
-    if let Ok(mut g) = store().lock() {
-        g.challenges.clear();
-        g.sessions.clear();
-        g.seq = 0;
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use k256::ecdsa::SigningKey;
@@ -660,9 +673,8 @@ mod tests {
 
     #[test]
     fn challenge_verify_me_logout() {
-        reset_for_test();
-        unsafe { std::env::remove_var("ITL_ADMIN_CREDS") };
-        unsafe { std::env::remove_var("ITL_USHER_CREDS") };
+        set_test_env("ITL_ADMIN_CREDS", "");
+        set_test_env("ITL_USHER_CREDS", "");
         let origin = "http://127.0.0.1:3051";
         let ch = try_handle(
             "POST",
@@ -680,7 +692,7 @@ mod tests {
         let sk = key();
         let pk = sk.verifying_key().to_sec1_point(true);
         let login = terp_address_from_compressed(pk.as_bytes()).unwrap();
-        unsafe { std::env::set_var("ITL_ADMIN_CREDS", &login) };
+        set_test_env("ITL_ADMIN_CREDS", &login);
         let (pub_key, signature) = sign_adr(&sk, &login, &message);
         let body = json!({
             "origin": origin,
@@ -712,14 +724,14 @@ mod tests {
         assert_eq!(out.status, 200);
         let me2 = try_handle("GET", "/itl/session/me", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(me2.status, 401);
-        unsafe { std::env::remove_var("ITL_ADMIN_CREDS") };
     }
 
     #[test]
     fn bad_sig_and_replay_and_public_env_not_read() {
-        reset_for_test();
         let origin = "http://127.0.0.1:3051";
-        unsafe { std::env::set_var("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count") };
+        set_test_env("ITL_ADMIN_CREDS", "");
+        set_test_env("ITL_USHER_CREDS", "");
+        set_test_env("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count");
         let ch = try_handle(
             "POST",
             "/itl/session/challenge",
@@ -746,7 +758,6 @@ mod tests {
         assert_eq!(vr.status, 401);
         let me = try_handle("GET", "/itl/session/me", "", Some(origin), None).unwrap();
         assert_eq!(me.status, 401);
-        unsafe { std::env::remove_var("NEXT_PUBLIC_ITL_ADMIN_CREDS") };
     }
 
     #[test]
