@@ -1,0 +1,13 @@
+[package]
+name = "cw-zk-bench"
+version = "0.0.1"
+edition = "2021"
+publish = false
+description = "Bench-only: measures on-chain gas of proof_instance_verify / proof_instance_batch_verify. Not deployed; not part of the production build."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_2_1", "zk"] }

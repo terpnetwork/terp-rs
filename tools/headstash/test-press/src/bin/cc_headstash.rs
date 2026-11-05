@@ -34,7 +34,7 @@ use cw_orch::{
     daemon::Daemon,
     prelude::*,
 };
-use zk_headstash::suite::suite::build_headstash_keys_to;
+use zk_headstash::suite::builders::build_headstash_keys_to;
 
 fn main() -> Result<(), anyhow::Error> {
     env_logger::init();

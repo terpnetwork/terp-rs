@@ -29,7 +29,7 @@ use rand010::rngs::OsRng;
 use serde::Serialize;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};
 use zk_headstash::suite::HeadstashCircuitSuite;
-use zk_headstash::suite::suite::HeadstashProofBuilder;
+use zk_headstash::suite::builders::HeadstashProofBuilder;
 
 const CID: u64 = 1;
 const DENOM: &str = "uterp";
@@ -146,6 +146,10 @@ fn claim_clearnet_proof_instance_verify() {
                 },
             },
             circuit_id: Some(CID),
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         },
         Some(&admin),
         &[],

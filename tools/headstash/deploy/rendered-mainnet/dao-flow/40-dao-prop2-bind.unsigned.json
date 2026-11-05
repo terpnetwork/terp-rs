@@ -1,0 +1,61 @@
+{
+ "body": {
+  "messages": [
+   {
+    "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+    "sender": "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r",
+    "contract": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp",
+    "msg": {
+     "propose": {
+      "msg": {
+       "propose": {
+        "title": "Headstash v0.0.1: bind the vk_id 3 circuit (zk_id 1)",
+        "description": "Binds the x/gov-stored halo2 circuit (vk 34d11437) to both dry-run instances. Check zk_id against the circuit proposal's store event before submitting.",
+        "msgs": [
+         {
+          "wasm": {
+           "execute": {
+            "contract_addr": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+            "msg": "eyJiaW5kX25vdGVfY2lyY3VpdCI6eyJ6a19pZCI6MX19",
+            "funds": []
+           }
+          }
+         },
+         {
+          "wasm": {
+           "execute": {
+            "contract_addr": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+            "msg": "eyJiaW5kX25vdGVfY2lyY3VpdCI6eyJ6a19pZCI6MX19",
+            "funds": []
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    },
+    "funds": []
+   }
+  ],
+  "memo": "headstash v0.0.1 dao prop 2",
+  "timeout_height": "0",
+  "extension_options": [],
+  "non_critical_extension_options": []
+ },
+ "auth_info": {
+  "signer_infos": [],
+  "fee": {
+   "amount": [
+    {
+     "denom": "uthiol",
+     "amount": "{{fee}}"
+    }
+   ],
+   "gas_limit": "{{gas}}",
+   "payer": "",
+   "granter": ""
+  }
+ },
+ "signatures": []
+}

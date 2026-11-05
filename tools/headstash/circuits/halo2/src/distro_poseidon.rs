@@ -233,6 +233,33 @@ pub fn poseidon_distro_crh(layer: u32, left: pallas::Base, right: pallas::Base) 
     ])
 }
 
+/// `key_com = Poseidon(terp-hs-keycom-v1, secret)`. Matches the K=11 membership hash.
+pub fn registration_key_commitment(secret: pallas::Base) -> pallas::Base {
+    poseidon::Hash::<_, P128Pow5T3, ConstantLength<2>, 3, 2>::init().hash([
+        personalization_to_fp("terp-hs-keycom-v1"),
+        secret,
+    ])
+}
+
+/// Leaf `Poseidon(terp-hs-claim-leaf-v1, key_com, amount)`. Amount is the u64 field element.
+pub fn registration_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
+    poseidon::Hash::<_, P128Pow5T3, ConstantLength<3>, 3, 2>::init().hash([
+        personalization_to_fp("terp-hs-claim-leaf-v1"),
+        key_com,
+        pallas::Base::from(amount),
+    ])
+}
+
+/// vk_id 3 note claim leaf `Poseidon(terp-hs-note-leaf-v2, key_com, amount)`.
+/// Must equal `note_membership::note_leaf` (checked in its tests).
+pub fn note_registration_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
+    poseidon::Hash::<_, P128Pow5T3, ConstantLength<3>, 3, 2>::init().hash([
+        personalization_to_fp("terp-hs-note-leaf-v2"),
+        key_com,
+        pallas::Base::from(amount),
+    ])
+}
+
 /// Canonical 32-byte LE encoding of a distro tree root / node digest.
 #[inline]
 pub fn distro_digest_to_bytes(digest: pallas::Base) -> [u8; 32] {

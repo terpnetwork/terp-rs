@@ -9,7 +9,7 @@ use headstash_claim::batch::{Egress, Payout, egress};
 struct PersistedEgress {
     nullifier_root: [u32; 8],
     rejected: u32,
-    payouts: Vec<([u32; 5], u32)>,
+    payouts: Vec<([u32; 5], u64)>,
 }
 
 impl PersistedEgress {
@@ -123,7 +123,7 @@ fn persisted_egress_one_accepted_one_rejected() {
     assert_eq!(rejected, 1);
     let destination = parse_u32_list(between(&loaded, "\"destination\":[", "]"));
     assert_eq!(destination, accepted[0].destination.to_vec());
-    let amount: u32 = between(&loaded, "\"amount\":", "}").parse().unwrap();
+    let amount: u64 = between(&loaded, "\"amount\":", "}").parse().unwrap();
     assert_eq!(amount, accepted[0].amount);
     assert_eq!(loaded.matches("\"destination\"").count(), 1);
 

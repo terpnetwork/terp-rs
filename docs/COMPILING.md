@@ -1,6 +1,6 @@
 # Compiling contracts
 
-Contracts in this workspace are built with the CosmWasm optimizer image or with `cargo cw-optimizoor`. Guest rustc is **1.91.0**. Both tools strip symbols, leave bulk-memory and sign-extension enabled, and compile with guest SIMD off (`-C target-feature=-simd128`).
+Contracts in this workspace are built with the CosmWasm optimizer image or with `cargo cw-optimizoor`. Guest rustc is **1.97.1**. Both tools strip symbols, leave bulk-memory and sign-extension enabled, and compile with guest SIMD off (`-C target-feature=-simd128`).
 
 Image names and how the image is built are in the repository guide [docs/COMPILING.md](../../../docs/COMPILING.md).
 
@@ -44,9 +44,9 @@ docker run --rm \
 `cw-optimizoor` is the same guest compile without Docker. It builds workspace members whose paths are under `contracts/`.
 
 ```sh
-rustup toolchain install 1.91.0
-rustup target add wasm32-unknown-unknown --toolchain 1.91.0
-cargo +1.91.0 install --path tools/cw-optimizoor
+rustup toolchain install 1.97.1
+rustup target add wasm32-unknown-unknown --toolchain 1.97.1
+cargo +1.97.1 install --path tools/cw-optimizoor
 
 cd crates/terp-rs
 cargo cw-optimizoor
@@ -57,7 +57,9 @@ cargo cw-optimizoor
 ```sh
 cd crates/terp-rs
 unset RUSTFLAGS
-cargo +1.91.0 check --target wasm32-unknown-unknown --lib -p <package>
+cargo +1.97.1 check --target wasm32-unknown-unknown --lib -p <package>
 ```
 
 `unset RUSTFLAGS` lets `crates/terp-rs/.cargo/config.toml` apply `--allow-undefined` and `-C target-feature=-simd128` for that host check. The optimizer and `cw-optimizoor` apply their own `RUSTFLAGS` when they produce artifacts.
+
+`just core optimize` bind-mounts the checkout at `/Users/returniflost/abstract/terp-core/crates/terp-rs-consolidate` and each sibling crate beside it. rustc records those paths in the wasm. A `/workspace` mount does not reproduce the published hash.

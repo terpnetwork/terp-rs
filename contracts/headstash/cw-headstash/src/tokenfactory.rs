@@ -1,6 +1,6 @@
 // src/tokenfactory.rs
 use cosmwasm_std::{
-    Addr, Api, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins, to_json_binary,
+    Addr, Api, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins,
 };
 
 // Hardcoded protobuf type URLs for tokenfactory messages
@@ -25,38 +25,12 @@ pub struct DenomUnit {
     pub aliases: Vec<String>,
 }
 
-// Helper functions for tokenfactory operations
+// Helper functions for tokenfactory operations. Values are protobuf (crate::tf_proto).
 fn create_msg_mint(sender: String, amount: Uint128, denom: String) -> StdResult<CosmosMsg> {
-    #[derive(serde::Serialize)]
-    struct Coin {
-        denom: String,
-        amount: String,
-    }
-
-    #[derive(serde::Serialize)]
-    struct MsgMint {
-        sender: String,
-        amount: Coin,
-        mint_to_address: String,
-    }
-
-    let coin = Coin {
-        denom,
-        amount: amount.to_string(),
-    };
-
-    let msg = MsgMint {
-        sender: sender.clone(),
-        amount: coin,
-        mint_to_address: sender,
-    };
-
-    let value = to_json_binary(&msg)?;
-
-    Ok(CosmosMsg::Any(cosmwasm_std::AnyMsg {
+    Ok(CosmosMsg::Stargate {
         type_url: MSG_MINT_TYPE_URL.to_string(),
-        value,
-    }))
+        value: Binary::from(crate::tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &sender)),
+    })
 }
 
 fn create_msg_burn(
@@ -65,36 +39,10 @@ fn create_msg_burn(
     denom: String,
     burn_from_address: String,
 ) -> StdResult<CosmosMsg> {
-    #[derive(serde::Serialize)]
-    struct Coin {
-        denom: String,
-        amount: String,
-    }
-
-    #[derive(serde::Serialize)]
-    struct MsgBurn {
-        sender: String,
-        amount: Coin,
-        burn_from_address: String,
-    }
-
-    let coin = Coin {
-        denom,
-        amount: amount.to_string(),
-    };
-
-    let msg = MsgBurn {
-        sender,
-        amount: coin,
-        burn_from_address,
-    };
-
-    let value = to_json_binary(&msg)?;
-
-    Ok(CosmosMsg::Any(cosmwasm_std::AnyMsg {
+    Ok(CosmosMsg::Stargate {
         type_url: MSG_BURN_TYPE_URL.to_string(),
-        value,
-    }))
+        value: Binary::from(crate::tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &burn_from_address)),
+    })
 }
 
 #[cosmwasm_schema::cw_serde]

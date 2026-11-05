@@ -162,7 +162,7 @@ pub fn build_suite_backed_claim_fixture(
     use cw_orch::prelude::Mock;
 
     use zk_headstash::suite::HeadstashCircuitSuite;
-    use zk_headstash::suite::suite::HeadstashProofBuilder;
+    use zk_headstash::suite::builders::HeadstashProofBuilder;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
     let (_circuit, instance, anchor, partial) = suite

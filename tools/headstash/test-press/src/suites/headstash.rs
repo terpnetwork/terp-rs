@@ -23,7 +23,7 @@ use zk_headstash::suite::HeadstashCircuitSuite;
 use cosmwasm_std::{Addr, Binary};
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
 use cw_headstash::wavs::{WavsAuthMetadata, WavsProofOfOwnership};
-pub use zk_headstash::suite::suite::HeadstashTestDataGenerator as _;
+pub use zk_headstash::suite::builders::HeadstashTestDataGenerator as _;
 
 /// ZK headstash deployment suite: cw-headstash contract + manifold factory.
 ///
@@ -134,6 +134,10 @@ impl HeadstashDeployData {
                     },
                 },
                 circuit_id: None,
+                registration_hook: None,
+                registration_hook_gas_limit: None,
+                frontend_contract: None,
+                pauser: None,
             },
         })
     }

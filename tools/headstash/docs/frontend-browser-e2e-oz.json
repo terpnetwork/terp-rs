@@ -1,0 +1,417 @@
+{
+ "steps": [
+  {
+   "name": "note_eligibility_tree",
+   "pass": true,
+   "detail": "root 9b51e05b7d4f1229aa292271c8a3a4e9c379e53a620ecf34428604c2b43be62d notes 45"
+  },
+  {
+   "name": "circuit_blob_hash",
+   "pass": true,
+   "detail": "blob 135023 B sha 34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398"
+  },
+  {
+   "name": "store_circuit",
+   "pass": true,
+   "detail": "zk_id 2 gas 10242587 "
+  },
+  {
+   "name": "store_wasm",
+   "pass": true,
+   "detail": "code_id 4 wasm 1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5 gas 7669740"
+  },
+  {
+   "name": "hook_recorder_instantiated",
+   "pass": true,
+   "detail": "code 5 addr terp1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgs48kpqr"
+  },
+  {
+   "name": "neg_instantiate_rejects_bad_hook",
+   "pass": true,
+   "detail": "code 4 failed to execute message; message index: 0: kind: Other, error: addr_validate errored: decoding bech32 failed: invalid character not part of charset: 111: instantiate wasm contract failed"
+  },
+  {
+   "name": "instantiate",
+   "pass": true,
+   "detail": "terp1xt4ahzz2x8hpkc0tk6ekte9x6crw4w6u0r67cyt3kz9syh24pd7sd98qgu"
+  },
+  {
+   "name": "direct_ctx_matches_contract",
+   "pass": true,
+   "detail": "{\"cfg\": null, \"expected_ctx\": \"ULlPESJ01VL2PL+F2TXoSgY9bxrfiCLnZnkVmIRHejE=\", \"claimed\": 0}"
+  },
+  {
+   "name": "set_campaign_vk3_direct_ctx",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "neg_burning_campaign_rejects_sweep_recipient",
+   "pass": true,
+   "detail": "code 5 failed to execute message; message index: 0: kind: Other, error: a burning campaign takes no sweep recipient: execute wasm contract failed"
+  },
+  {
+   "name": "neg_bind_by_non_owner",
+   "pass": true,
+   "detail": "code 5 failed to execute message; message index: 0: kind: Other, error: Caller is not the contract's current owner: execute wasm contract failed"
+  },
+  {
+   "name": "neg_wrong_zk_id_unknown_circuit",
+   "pass": true,
+   "detail": "code 5 failed to execute message; message index: 0: kind: Other, error: Querier contract error: codespace: undefined, code: 1: execute wasm contract failed"
+  },
+  {
+   "name": "bind_note_circuit_hash_matches",
+   "pass": true,
+   "detail": "sha256(Circuit.data) == vk_hash on chain: True; "
+  },
+  {
+   "name": "neg_rebind_zk_id_swap",
+   "pass": true,
+   "detail": "code 5 failed to execute message; message index: 0: kind: Other, error: circuit is fixed: execute wasm contract failed"
+  },
+  {
+   "name": "relay_up",
+   "pass": true,
+   "detail": "relay_up 127.0.0.1:18795 chain headstash-mvk-e2e root_prefix 9b51e05b sender terp18srl3974vkmmucnnnu8hh5agdlqstlfxmml8ss\n"
+  },
+  {
+   "name": "fund_campaign_to_owed_total",
+   "pass": true,
+   "detail": "contract 10030000000 -> 200011500000 (owed 200011500000)"
+  },
+  {
+   "name": "fe_store",
+   "pass": true,
+   "detail": "code_id 6"
+  },
+  {
+   "name": "fe_instantiate",
+   "pass": true,
+   "detail": "terp1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucssf5fhm"
+  },
+  {
+   "name": "fe_publish",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "fe_upload",
+   "pass": true,
+   "detail": "9 chunk txs {\"version\": 1, \"uploaded\": 9, \"total\": 9, \"complete\": true}"
+  },
+  {
+   "name": "headstash_set_frontend_contract",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "page_loaded_from_chain",
+   "pass": true,
+   "detail": "manifest v1"
+  },
+  {
+   "name": "notes_file_checksum_and_no_key",
+   "pass": true,
+   "detail": "sha256 ok True"
+  },
+  {
+   "name": "page_registered_all_notes",
+   "pass": true,
+   "detail": "{\"registered\": 43}"
+  },
+  {
+   "name": "accept_anchor",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "name": "page_claimed_all_notes",
+   "pass": true,
+   "detail": "{\"spent\": 43}"
+  },
+  {
+   "name": "claim_balances_match",
+   "pass": true,
+   "detail": "43/43 dest wallets hold exactly their note amount; total 200008000000 uterp"
+  },
+  {
+   "name": "neg_replay_rejected_spent_nullifier",
+   "pass": true,
+   "detail": "43/43 replays rejected (grant refused 43, tx failed 0, tx rejected-as-spent 0, tx ok 0)"
+  },
+  {
+   "name": "neg_replay_from_old_file_no_double_mint",
+   "pass": true,
+   "detail": "balances 200008000000 -> 200008000000 after re-claim attempt"
+  }
+ ],
+ "tx": {
+  "store_circuit": {
+   "txhash": "DC378316EF78FD81A20ED85137CB56419F218291078ACC9668CF1FF2B1907A43",
+   "height": 633,
+   "code": 0
+  },
+  "store": {
+   "txhash": "609FEE9865662C6EFBE5120C0480864F69F9BB1C106F32243AD659F82F61825A",
+   "height": 634,
+   "code": 0
+  },
+  "store_hook": {
+   "txhash": "2F1253E6C6DD53A69B45C7AF8BD8ED44304025AEB1C2FA41C4710EDDC563DFA7",
+   "height": 635,
+   "code": 0
+  },
+  "instantiate_hook": {
+   "txhash": "51E856AB737685B69F39B7C9AA6EF272BC9790EB9467B96323C7CF7C7D56DA2B",
+   "height": 637,
+   "code": 0
+  },
+  "instantiate": {
+   "txhash": "5A994D5FBEEDFF80267A7AE6472B0D8CF8D9FFFBB6E5D50A88A4C34E8D8251E4",
+   "height": 640,
+   "code": 0
+  },
+  "set_campaign": {
+   "txhash": "725B63AC8D5E172CF4D1EF43DE8E85CF6418DD642A81855C8B5FB8FCE53287A1",
+   "height": 643,
+   "code": 0
+  },
+  "bind_circuit": {
+   "txhash": "591D208E85995EFA8D3E55C4AB13F18897BC58B41C7CF7ABF265660C99D9CB02",
+   "height": 648,
+   "code": 0
+  }
+ },
+ "negatives": {
+  "instantiate_rejects_bad_hook": "code 4 failed to execute message; message index: 0: kind: Other, error: addr_validate errored: decoding bech32 failed: invalid character not part of charset: 111: instantiate wasm contract failed",
+  "burning_campaign_rejects_sweep_recipient": "code 5 failed to execute message; message index: 0: kind: Other, error: a burning campaign takes no sweep recipient: execute wasm contract failed",
+  "bind_by_non_owner": "code 5 failed to execute message; message index: 0: kind: Other, error: Caller is not the contract's current owner: execute wasm contract failed",
+  "wrong_zk_id_unknown_circuit": "code 5 failed to execute message; message index: 0: kind: Other, error: Querier contract error: codespace: undefined, code: 1: execute wasm contract failed",
+  "rebind_zk_id_swap": "code 5 failed to execute message; message index: 0: kind: Other, error: circuit is fixed: execute wasm contract failed"
+ },
+ "mode": "direct",
+ "chain": {
+  "chain_id": "headstash-mvk-e2e",
+  "rpc": "http://127.0.0.1:46667",
+  "rest": "http://127.0.0.1:41327",
+  "relay": "http://127.0.0.1:18795",
+  "start_height": 631
+ },
+ "addresses": {
+  "OWNER_ADDR": "terp1fhtags6kt6t93h45h5s6lqeymfxxha0auue9h9",
+  "RELAYER_ADDR": "terp18srl3974vkmmucnnnu8hh5agdlqstlfxmml8ss",
+  "RECIPIENT1_ADDR": "terp1hs9wxncp7qm8cvwhtkdyzw9tl057ak8yms9a0g",
+  "RECIPIENT2_ADDR": "terp1ms8g5nzx98jpxmms9wl5g37dvhsu76t2vj2dx7",
+  "STRANGER_ADDR": "terp1sy6nqkc05j9kjt3f3j6fh8jgrhmqxsf0rwvf6h",
+  "PROPOSER_ADDR": "terp1a6uww39qjllm97ap35sexprdahgxk0h6n8ssfy"
+ },
+ "circuit_store_events": [
+  {
+   "type": "store_circuit",
+   "attributes": [
+    {
+     "key": "circuit_checksum",
+     "value": "000b00001eab6f93a080ce41b908d935c04bd2e3ed1ac23f277c15d11c499d56d28fa0f7000b0000d4116813e3ee51b7361b0994eb1f82e7704d07cabe3053bbc415e379b00c0910",
+     "index": true
+    },
+    {
+     "key": "zk_id",
+     "value": "2",
+     "index": true
+    },
+    {
+     "key": "param_id",
+     "value": "2",
+     "index": true
+    },
+    {
+     "key": "param_checksum",
+     "value": "000b00001eab6f93a080ce41b908d935c04bd2e3ed1ac23f277c15d11c499d56d28fa0f7",
+     "index": true
+    },
+    {
+     "key": "msg_index",
+     "value": "0",
+     "index": true
+    }
+   ]
+  },
+  {
+   "type": "store_full_circuit",
+   "attributes": [
+    {
+     "key": "param_id",
+     "value": "2",
+     "index": true
+    },
+    {
+     "key": "zk_id",
+     "value": "2",
+     "index": true
+    },
+    {
+     "key": "param_checksum",
+     "value": "000b00001eab6f93a080ce41b908d935c04bd2e3ed1ac23f277c15d11c499d56d28fa0f7",
+     "index": true
+    },
+    {
+     "key": "circuit_checksum",
+     "value": "000b00001eab6f93a080ce41b908d935c04bd2e3ed1ac23f277c15d11c499d56d28fa0f7000b0000d4116813e3ee51b7361b0994eb1f82e7704d07cabe3053bbc415e379b00c0910",
+     "index": true
+    },
+    {
+     "key": "msg_index",
+     "value": "0",
+     "index": true
+    }
+   ]
+  }
+ ],
+ "zk_id": 2,
+ "gas": {
+  "store_circuit": 10242587,
+  "bind_circuit": 570429
+ },
+ "code_id": "4",
+ "wasm_sha256": "1305e4345352785282a59627c5f57abc0ce96126e32c2f5ad5a86e5abd6888f5",
+ "hook": {
+  "enabled": true,
+  "code_id": "5",
+  "contract": "terp1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgs48kpqr",
+  "wasm_sha256": "df35ca21fb1f08710c0499f8551dff44ac1f706b3805ce9335f2104fcacdcf6e",
+  "reward_addrs": {
+   "evm": "terp1j3zyncyel8nzv2z29pvelht94yztwpd6jfnsun",
+   "sol": "terp18457g2t6my9d3nzsp29vern4vf67ye0qwfmwhu"
+  }
+ },
+ "contract": "terp1xt4ahzz2x8hpkc0tk6ekte9x6crw4w6u0r67cyt3kz9syh24pd7sd98qgu",
+ "ctx_hex": "50b94f112274d552f63cbf85d935e84a063d6f1adf8822e76679159884477a31",
+ "cutoff_height": 7840,
+ "set_campaign_first_error": "failed to execute message; message index: 0: kind: Other, error: thresholds must sit inside the trusted set: execute wasm contract failed",
+ "campaign_funded_uterp": 200011500000,
+ "page": {
+  "frontend": "terp1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucssf5fhm",
+  "files": [
+   {
+    "path": "app.html",
+    "raw": 5023,
+    "gzip": 2238,
+    "sha256": "2e1fd9ebed33c9ff919a7e107c0df1eb8b8dd9c656dae26484d22b02c6a0a69c"
+   },
+   {
+    "path": "app.js",
+    "raw": 14638,
+    "gzip": 5347,
+    "sha256": "0d62ead3e030245490116c791bb9fe1f36491826df31f29eaa29186b8061741d"
+   },
+   {
+    "path": "crypto.js",
+    "raw": 10640,
+    "gzip": 4316,
+    "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c"
+   },
+   {
+    "path": "zk_headstash.js",
+    "raw": 12918,
+    "gzip": 3049,
+    "sha256": "b4a4d104bcbc505d9f4da6c4b1641a7810f1d74beeb994d87bc789bd56288921"
+   },
+   {
+    "path": "zk_headstash_bg.wasm",
+    "raw": 1807402,
+    "gzip": 647028,
+    "sha256": "3d371778287164cfabac876ec1183f7619edecc83b370cad5878a4cba35ac6a3"
+   }
+  ],
+  "total_gzip": 661978,
+  "app_only_gzip": 11901,
+  "chunks": 9,
+  "loader_bytes": 3108,
+  "loader_sha256": "2bd5f80c7f2eddff21c6360a02bd7de38d1963d4108f5a5ac3cc961f5353f9b5"
+ },
+ "browser_register": {
+  "phase": "register",
+  "ok": true,
+  "net": [],
+  "loaded": true,
+  "load_ms": 264,
+  "version": "1",
+  "key_field_cleared": true,
+  "saved": true,
+  "counts": {
+   "registered": 43
+  }
+ },
+ "browser_register_log": "15:59:26 app ready; prover loaded\n15:59:26 deriving 43 notes for 0x6bfb2871db8be6a445478697c4beb4e7dd36a8d3\n15:59:26 generated 43 notes; list_hash 7192cd705d77d7ac\u2026; key wiped\n15:59:26 notes file saved\n15:59:30 registered notes 0..31 tx 852068503883374574CE5282CD611F6734DA7016001E37378C22FD4D0E345A66\n15:59:33 registered notes 32..42 tx ABCA0CE8220ABD6766F589C5F74F37E0BC9B8513356D32242C61DA96C2D4E197\n15:59:33 notes file saved\n",
+ "browser_claim": {
+  "phase": "claim",
+  "ok": true,
+  "net": [],
+  "loaded": true,
+  "load_ms": 212,
+  "version": "1",
+  "claim_ms": 264972,
+  "saved": true,
+  "counts": {
+   "spent": 43
+  },
+  "penumbra_invalid_rejected": true,
+  "modal_visible": true
+ },
+ "browser_claim_log": "0:54 note 12: claimed 5000000000 \u2192 terp14ch4jaqy94rw79fzn3nf3me9d28vhnqsm4hyes (proof 3274 ms) tx EC0BCB1B4D919A59A4F329F4244ADFD41AE4AF2CC73F919BD04C1B8478853F6F\n16:00:54 note 13: proving\u2026\n16:01:00 note 13: claimed 5000000000 \u2192 terp1pea224lxmp3xpp30j4lahqhjzgkxm700ggw0vv (proof 3290 ms) tx 76F62446C87E2A100B396F6F8C70148885530AA7B1D878186C82325DFF9B4F3E\n16:01:00 note 14: proving\u2026\n16:01:06 note 14: claimed 5000000000 \u2192 terp1p6dnj36hyjvtmm6zxz2egglk87japgeuzvzufe (proof 3234 ms) tx EE40DE8C116B06EB8DE6424E9AD181D328C80AEF8C2E7F9ABEEF094C75D379E4\n16:01:06 note 15: proving\u2026\n16:01:12 note 15: claimed 5000000000 \u2192 terp12r7zkld2a7efuahz8ngd6tkj826vw38tl9727c (proof 3318 ms) tx DEE01231ACC4942D7053333B95F64BDCDCE8ECB2B01386BE990B7F4E782D522B\n16:01:12 note 16: proving\u2026\n16:01:18 note 16: claimed 5000000000 \u2192 terp1606njtdg9m0lqa72xkhk7x29tfm89yak88dx22 (proof 3267 ms) tx 0D06D269F4891170F5E043AEB42DFFE5BFBBE469B3D1A6DFA59485766D3980B8\n16:01:18 note 17: proving\u2026\n16:01:26 note 17: claimed 5000000000 \u2192 terp149gyjyhw0ajx5xfw82pjtp440l0kugagqjfd2c (proof 3268 ms) tx D1F4D8E550AFB3AD76F0D1789A31E286FBAC91831B15EB02FFAE2C37B6436654\n16:01:26 note 18: proving\u2026\n16:01:32 note 18: claimed 5000000000 \u2192 terp15y746thmz8t7x8xj464kfe2e9h6af84au6fcz7 (proof 3200 ms) tx 6CAD0F05B6E5E00BEA29BAA3BE08D8B5808777C08358F6C771B0CBE3CE8BECD6\n16:01:32 note 19: proving\u2026\n16:01:38 note 19: claimed 5000000000 \u2192 terp1c5uyt4tgculeptxfc9h4z0pq7q7sdhc3w2jhu9 (proof 3204 ms) tx 564D5874E57AC4DF234E90ACAD95F7FAA1ED0D04DC043D9DC8C0FDB7D3E29F30\n16:01:38 note 20: proving\u2026\n16:01:43 note 20: claimed 5000000000 \u2192 terp1qhpfg6ux020dkvrftstrwqayeptkjarjfsf6yq (proof 3211 ms) tx E74236E0BA138C106046B4019D096A9295D82569B535AD3595E9EBC25D53C2EB\n16:01:43 note 21: proving\u2026\n16:01:49 note 21: claimed 5000000000 \u2192 terp184ecxqzvvmjmwwmpme9rx23rgmsfdy5fex7ka3 (proof 3203 ms) tx 65038794F02A22BCB89193FFE633C0E7C6DD83116D65435C882630D5956623EB\n16:01:49 note 22: proving\u2026\n16:01:55 note 22: claimed 5000000000 \u2192 terp1avayjpytwyv83djdq05v2xexke7vqc837xper2 (proof 3211 ms) tx FFFA581EFDD188DC819A6889B2FC1B863E8A03664BD44B9EEC1EFB52BA3E74C4\n16:01:55 note 23: proving\u2026\n16:02:01 note 23: claimed 5000000000 \u2192 terp1cvap9htes0ur9jvvszvta6gxegkkqq9n2ymyts (proof 3215 ms) tx 1966F19838C629ECDD94BA3F62EDFC9E082499C88E8611F2B285C7C328C5C731\n16:02:01 note 24: proving\u2026\n16:02:07 note 24: claimed 5000000000 \u2192 terp1uqksrajnecfcx56jnydshrn8q8lxk29lq0ds2h (proof 3205 ms) tx 23F1A6016CB4BF9321917FBA4DF876DE4657C361293CE050BE67380C624002F4\n16:02:07 note 25: proving\u2026\n16:02:15 note 25: claimed 5000000000 \u2192 terp1w8snp8f60f0vdcw3vjp5r9997xjgux7s9w6qn6 (proof 3207 ms) tx 5C2655A76EAE64B4432026B751FC9C0109390BE9AD1BBDE793B4E3E5A2952DE9\n16:02:15 note 26: proving\u2026\n16:02:21 note 26: claimed 5000000000 \u2192 terp120eap4cdpj2ttrk48vyqpps5k2s72dgx299uhh (proof 3211 ms) tx CF69563DE177E865D8B91549608AD825924C9E41F9F51CAA8B017F6E8EF4A56A\n16:02:21 note 27: proving\u2026\n16:02:26 note 27: claimed 5000000000 \u2192 terp15lqaw730rh5w28r4ldsq2a7j3v794gde0c0ddk (proof 3216 ms) tx 44D84444E994D2BB6A5C3649EE36D0D251D2DEFC9B6070D1AB319E3D7C673935\n16:02:26 note 28: proving\u2026\n16:02:32 note 28: claimed 5000000000 \u2192 terp192zj6p8rdyptvm80g8h00mgptqqcercvgz4h9z (proof 3250 ms) tx 25CB00D15F5D8D850B3B8AEB6821642D51AB5E06693E446157B1547F17CDB122\n16:02:32 note 29: proving\u2026\n16:02:38 note 29: claimed 5000000000 \u2192 terp1ywscqxxdewaqj5gctdpkkhylzmar3gu9veaed0 (proof 3210 ms) tx 12797ECCFD7C4D99AD29089F296674280B07105C3EC9BA90FB57B55C03BEFA9D\n16:02:38 note 30: proving\u2026\n16:02:46 note 30: claimed 5000000000 \u2192 terp18fn40xvykzt5jjc7zp0v4d8mj8ekyg74xkpscn (proof 3216 ms) tx 05052C6C14EA2A6AE55979CFB53D62A65DED515151DF52AEC829498EE3FC9387\n16:02:46 note 31: proving\u2026\n16:02:52 note 31: claimed 5000000000 \u2192 terp19h0qlc8mpqf9dflga3u70y6jwf75rnhjcgf798 (proof 3204 ms) tx F6004EB94202EBF91AC6F0CB0A4B2375749B24EAD336F46BD987C5C0A224E0ED\n16:02:52 note 32: proving\u2026\n16:02:58 note 32: claimed 5000000000 \u2192 terp1unak9dku3d82j26jgtse8rm2mqrse7ejjdn6jy (proof 3207 ms) tx 2290FD22328E92CFAA57CE1206CA2855BD723DCCDE79F826D3808FDF9725943D\n16:02:58 note 33: proving\u2026\n16:03:04 note 33: claimed 5000000000 \u2192 terp12khd029n93x6l2073lkhvrcftaupq8c6a0wk3x (proof 3223 ms) tx 7CE0C6048E9F0A699342F2BB790F926C3254FB5DC04D39BFFA9E3EF3375FF1D9\n16:03:04 note 34: proving\u2026\n16:03:09 note 34: claimed 5000000000 \u2192 terp1tecxd9lpgdp4q2qv9ffsslvsk06daq4t3fgar4 (proof 3213 ms) tx B8DE303D1F98F85522DAFD59EA993BE932C6A0B492943FA9A18186980A292280\n16:03:09 note 35: proving\u2026\n16:03:16 note 35: claimed 5000000000 \u2192 terp1dt290sg8xrv6ejm4g88ljaf0vgmx75tcrj7u0v (proof 3205 ms) tx DCC4CA6A2F7CE93BB0F68001D6EB5E2C0105BF9E6732A842F4F22229121884DB\n16:03:16 note 36: proving\u2026\n16:03:22 note 36: claimed 5000000000 \u2192 terp1w6jp3m38zgkx48nt3pxggyvyjjhgvk8d337vgp (proof 3256 ms) tx 88453A6DB491EE59C35A1593A462993F4D6AE3C1EDC4B4B1C3C99208ABC2851B\n16:03:22 note 37: proving\u2026\n16:03:28 note 37: claimed 5000000000 \u2192 terp148xq2c2nf8mv3wycvkndvgjjwjl0k39864yqex (proof 3210 ms) tx CFC7B589A1D0E112CE941FA1636BEA0D439247F773775082BF5C9E936CF769F4\n16:03:28 note 38: proving\u2026\n16:03:36 note 38: claimed 5000000000 \u2192 terp1veq44kgs9js3q6kss082z988y2mgu40w326h2f (proof 3207 ms) tx 95DCE14825D87B70AC7B1E9B0C4F21FAD5D577316578FB34DFF5924D29262B25\n16:03:36 note 39: proving\u2026\n16:03:42 note 39: claimed 5000000000 \u2192 terp1ahsxanmc3dr33r0y3jfg6gw5w4xhvele0h5eln (proof 3209 ms) tx 3B57B223BD9D6CE4F0A6CAFE5F90FB4EE55C8B9D89467011C964DA22B9FFECDB\n16:03:42 note 40: proving\u2026\n16:03:48 note 40: claimed 5000000 \u2192 terp1nmc88c3svmkkj0zvkyp00qvlc5g00yxh3rf679 (proof 3250 ms) tx A2A32DF3464A412CACE38D168F8B949BF06CC0085838AEE12E3261CA36FB16E2\n16:03:48 note 41: proving\u2026\n16:03:54 note 41: claimed 2000000 \u2192 terp16ne4vdx3mzm9nskakyrusytg9dxpjaalx4qg5r (proof 3207 ms) tx 87608E596A15FE1CA518D3E2DC56F6109149F0B3A5888EAB2933181226363B73\n16:03:54 note 42: proving\u2026\n16:04:00 note 42: claimed 1000000 \u2192 terp1ngfrss3td2f86scu73mtmkxvgj04mhllyenycs (proof 3210 ms) tx B8579E0F8534775037CF7E489D1286477EAE48645BAFC0B366635BF96AE42E8A\n16:04:00 notes file saved\n",
+ "prove_ms": [
+  3269,
+  3235,
+  3255,
+  3209,
+  3225,
+  3210,
+  3203,
+  3284,
+  3340,
+  3272,
+  3280,
+  3259,
+  3274,
+  3290,
+  3234,
+  3318,
+  3267,
+  3268,
+  3200,
+  3204,
+  3211,
+  3203,
+  3211,
+  3215,
+  3205,
+  3207,
+  3211,
+  3216,
+  3250,
+  3210,
+  3216,
+  3204,
+  3207,
+  3223,
+  3213,
+  3205,
+  3256,
+  3210,
+  3207,
+  3209,
+  3250,
+  3207,
+  3210
+ ],
+ "browser_replay_log": "16:04:01 app ready; prover loaded\n16:04:01 loaded 43 notes (checksum ok)\n16:04:01 note 0: proving\u2026\n16:04:04 ERROR note 0: fee grant refused: {\"error\":\"already granted\"}\n16:04:04 note 1: proving\u2026\n16:04:07 ERROR note 1: fee grant refused: {\"error\":\"already granted\"}\n16:04:07 note 2: proving\u2026\n16:04:11 ERROR note 2: fee grant refused: {\"error\":\"already granted\"}\n16:04:11 note 3: proving\u2026\n16:04:14 ERROR note 3: fee grant refused: {\"error\":\"already granted\"}\n16:04:14 note 4: proving\u2026\n16:04:17 ERROR note 4: fee grant refused: {\"error\":\"already granted\"}\n16:04:17 note 5: proving\u2026\n16:04:20 ERROR note 5: fee grant refused: {\"error\":\"already granted\"}\n16:04:21 note 6: proving\u2026\n16:04:24 ERROR note 6: fee grant refused: {\"error\":\"already granted\"}\n16:04:24 note 7: proving\u2026\n16:04:27 ERROR note 7: fee grant refused: {\"error\":\"already granted\"}\n16:04:27 note 8: proving\u2026\n16:04:30 ERROR note 8: fee grant refused: {\"error\":\"already granted\"}\n16:04:30 note 9: proving\u2026\n16:04:34 ERROR note 9: fee grant refused: {\"error\":\"already granted\"}\n16:04:34 note 10: proving\u2026\n16:04:37 ERROR note 10: fee grant refused: {\"error\":\"already granted\"}\n16:04:37 note 11: proving\u2026\n16:04:40 ERROR note 11: fee grant refused: {\"error\":\"already granted\"}\n16:04:40 note 12: proving\u2026\n16:04:43 ERROR note 12: fee grant refused: {\"error\":\"already granted\"}\n16:04:43 note 13: proving\u2026\n16:04:47 ERROR note 13: fee grant refused: {\"error\":\"already granted\"}\n16:04:47 note 14: proving\u2026\n16:04:50 ERROR note 14: fee grant refused: {\"error\":\"already granted\"}\n16:04:50 note 15: proving\u2026\n16:04:53 ERROR note 15: fee grant refused: {\"error\":\"already granted\"}\n16:04:53 note 16: proving\u2026\n16:04:57 ERROR note 16: fee grant refused: {\"error\":\"already granted\"}\n16:04:57 note 17: proving\u2026\n16:05:00 ERROR note 17: fee grant refused: {\"error\":\"already granted\"}\n16:05:00 note 18: proving\u2026\n16:05:03 ERROR note 18: fee grant refused: {\"error\":\"already granted\"}\n16:05:03 note 19: proving\u2026\n16:05:06 ERROR note 19: fee grant refused: {\"error\":\"already granted\"}\n16:05:06 note 20: proving\u2026\n16:05:10 ERROR note 20: fee grant refused: {\"error\":\"already granted\"}\n16:05:10 note 21: proving\u2026\n16:05:13 ERROR note 21: fee grant refused: {\"error\":\"already granted\"}\n16:05:13 note 22: proving\u2026\n16:05:16 ERROR note 22: fee grant refused: {\"error\":\"already granted\"}\n16:05:16 note 23: proving\u2026\n16:05:20 ERROR note 23: fee grant refused: {\"error\":\"already granted\"}\n16:05:20 note 24: proving\u2026\n16:05:23 ERROR note 24: fee grant refused: {\"error\":\"already granted\"}\n16:05:23 note 25: proving\u2026\n16:05:26 ERROR note 25: fee grant refused: {\"error\":\"already granted\"}\n16:05:26 note 26: proving\u2026\n16:05:29 ERROR note 26: fee grant refused: {\"error\":\"already granted\"}\n16:05:29 note 27: proving\u2026\n16:05:33 ERROR note 27: fee grant refused: {\"error\":\"already granted\"}\n16:05:33 note 28: proving\u2026\n16:05:36 ERROR note 28: fee grant refused: {\"error\":\"already granted\"}\n16:05:36 note 29: proving\u2026\n16:05:39 ERROR note 29: fee grant refused: {\"error\":\"already granted\"}\n16:05:39 note 30: proving\u2026\n16:05:42 ERROR note 30: fee grant refused: {\"error\":\"already granted\"}\n16:05:42 note 31: proving\u2026\n16:05:46 ERROR note 31: fee grant refused: {\"error\":\"already granted\"}\n16:05:46 note 32: proving\u2026\n16:05:49 ERROR note 32: fee grant refused: {\"error\":\"already granted\"}\n16:05:49 note 33: proving\u2026\n16:05:52 ERROR note 33: fee grant refused: {\"error\":\"already granted\"}\n16:05:52 note 34: proving\u2026\n16:05:56 ERROR note 34: fee grant refused: {\"error\":\"already granted\"}\n16:05:56 note 35: proving\u2026\n16:05:59 ERROR note 35: fee grant refused: {\"error\":\"already granted\"}\n16:05:59 note 36: proving\u2026\n16:06:02 ERROR note 36: fee grant refused: {\"error\":\"already granted\"}\n16:06:02 note 37: proving\u2026\n16:06:05 ERROR note 37: fee grant refused: {\"error\":\"already granted\"}\n16:06:05 note 38: proving\u2026\n16:06:09 ERROR note 38: fee grant refused: {\"error\":\"already granted\"}\n16:06:09 note 39: proving\u2026\n16:06:12 ERROR note 39: fee grant refused: {\"error\":\"already granted\"}\n16:06:12 note 40: proving\u2026\n16:06:15 ERROR note 40: fee grant refused: {\"error\":\"already granted\"}\n16:06:15 note 41: proving\u2026\n16:06:18 ERROR note 41: fee grant refused: {\"error\":\"already granted\"}\n16:06:18 note 42: proving\u2026\n16:06:22 ERROR note 42: fee grant refused: {\"error\":\"already granted\"}\n16:06:22 notes file saved\n",
+ "browser_replay": {
+  "ok": true,
+  "error": null,
+  "counts": {
+   "registered": 43
+  }
+ },
+ "replay_tx_codes": []
+}

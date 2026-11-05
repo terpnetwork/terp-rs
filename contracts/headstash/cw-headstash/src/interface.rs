@@ -1,4 +1,4 @@
-use crate::{CONTRACT_NAME, execute, instantiate, msg::*, query, reply, sudo};
+use crate::{execute, ibc_source_callback, instantiate, migrate, msg::*, query, reply, sudo, CONTRACT_NAME};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 
@@ -18,7 +18,12 @@ use cw_orch::prelude::*;
 /// let headstash = HeadstashContract::new(app);
 /// headstash.upload()?;
 /// ```
-#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, Empty, id = CONTRACT_NAME)]
+/// multi-test calls migrate with MigrateInfo; the wasm export takes three args.
+fn migrate_mt(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env, msg: MigrateMsg, _info: cosmwasm_std::MigrateInfo) -> Result<cosmwasm_std::Response, cosmwasm_std::StdError> {
+    migrate(deps, env, msg)
+}
+
+#[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, id = CONTRACT_NAME)]
 pub struct HeadstashContract;
 
 impl<Chain: CwEnv> Uploadable for HeadstashContract<Chain> {
@@ -34,7 +39,9 @@ impl<Chain: CwEnv> Uploadable for HeadstashContract<Chain> {
         Box::new(
             ContractWrapper::new_with_empty(execute, instantiate, query)
                 .with_reply(reply)
-                .with_sudo(sudo),
+                .with_sudo(sudo)
+                .with_migrate(migrate_mt)
+                .with_ibc_source_callback(ibc_source_callback),
         )
     }
 }

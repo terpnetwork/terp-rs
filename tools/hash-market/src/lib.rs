@@ -17,6 +17,9 @@
 extern crate rand010 as rand;
 #[cfg(feature = "rand_core06")]
 extern crate rand_core06 as rand_core;
+#[cfg(feature = "pir")]
+extern crate zakura_halo2_gadgets as halo2_gadgets;
+
 #[cfg(test)]
 pub mod tests;
 

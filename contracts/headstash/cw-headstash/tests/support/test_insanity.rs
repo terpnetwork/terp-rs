@@ -106,8 +106,8 @@ impl TestEnv {
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
 
-        // Fund test accounts
-        for account in &test_accounts {
+        // Fund owner (factory-funding tests send from owner) and test accounts
+        for account in std::iter::once(&owner).chain(test_accounts.iter()) {
             app.init_modules(|router, _, storage| {
                 router
                     .bank
@@ -229,8 +229,12 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         token_strategy: mock_token_strategy_new(),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        wavs: mock_wavs_proof(),
+        wavs: Some(mock_wavs_proof()),
         circuit_id: None,
+        registration_hook: None,
+        registration_hook_gas_limit: None,
+        frontend_contract: None,
+        pauser: None,
     }
 }
 
@@ -242,7 +246,7 @@ fn test_insanity_invalid_wavs_threshold_zero() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 0; // Invalid threshold
+    msg.wavs.as_mut().unwrap().msg.threshold = 0; // Invalid threshold
 
     let err = env
         .app
@@ -264,7 +268,7 @@ fn test_insanity_invalid_wavs_threshold_too_high() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.msg.threshold = 10; // Higher than total_operators
+    msg.wavs.as_mut().unwrap().msg.threshold = 10; // Higher than total_operators
 
     let err = env
         .app
@@ -286,7 +290,7 @@ fn test_insanity_invalid_wavs_empty_operators() {
     let mut env = TestEnv::new();
 
     let mut msg = mock_headstash_instantiate_msg();
-    msg.wavs.poos = vec![]; // No operators but total_operators = 1
+    msg.wavs.as_mut().unwrap().poos = vec![]; // No operators but total_operators = 1
 
     let err = env
         .app
@@ -439,7 +443,8 @@ fn test_insanity_factory_insufficient_funding() {
         .unwrap_err();
 
     // Should fail with funding validation error
-    assert!(err.to_string().contains("insufficient"));
+    // manifold rejects under-funding with ContractError::InvalidFundingToken
+    assert!(err.to_string().contains("Invalid funding token"), "unexpected error: {err}");
 }
 
 #[test]

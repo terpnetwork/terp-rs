@@ -11,10 +11,7 @@
 //! `Secp256k1Config`, `CrtInteger`, etc.
 
 use ff::{Field, PrimeField};
-use halo2_base::halo2_proofs::halo2curves::ff::{
-    Field as AxiomField, PrimeField as AxiomPrimeField,
-};
-use halo2_base::halo2_proofs::halo2curves::secp256k1::{Fp, Fq};
+use super::secp_host_field::{SecpFp as Fp, SecpFq as Fq};
 use halo2_gadgets::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 use halo2_proofs::circuit::Region;
 use halo2_proofs::plonk::{Expression, Selector};
@@ -28,7 +25,6 @@ use secp256k1::constants::{GENERATOR_X, GENERATOR_Y};
 
 use crate::spec::{biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_simple};
 
-use halo2_base::utils::BigPrimeField;
 use num_bigint::{BigInt, BigUint};
 use num_traits::{One, Zero};
 use std::marker::PhantomData;
@@ -204,7 +200,7 @@ fn generator_xy() -> (Secp256k1Fp, Secp256k1Fp) {
 }
 
 fn host_invert(x: Secp256k1Fp) -> Secp256k1Fp {
-    Option::from(AxiomField::invert(&x)).expect("nonzero field element")
+    Option::from(Field::invert(&x)).expect("nonzero field element")
 }
 
 fn host_neg_point(p: (Secp256k1Fp, Secp256k1Fp)) -> (Secp256k1Fp, Secp256k1Fp) {
@@ -273,8 +269,8 @@ pub(crate) fn glv_mul_generator(k: &BigUint) -> Option<(Secp256k1Fp, Secp256k1Fp
     }
 }
 
-fn foreign_limbs<F: AxiomPrimeField>(v: &F) -> [pallas::Base; 4] {
-    let big = fe_to_biguint_axiom(v);
+fn foreign_limbs<F: PrimeField>(v: &F) -> [pallas::Base; 4] {
+    let big = fe_to_biguint_host(v);
     let decomposed = decompose_biguint_simple(&big, 4, 64);
     [decomposed[0], decomposed[1], decomposed[2], decomposed[3]]
 }
@@ -338,7 +334,7 @@ pub fn secp_fq_from_secret_be(be: &[u8; 32]) -> Secp256k1Fq {
 }
 
 pub(crate) fn secp_fq_from_le(le: [u8; 32]) -> Secp256k1Fq {
-    Option::from(<Secp256k1Fq as AxiomPrimeField>::from_repr(le))
+    Option::from(<Secp256k1Fq as PrimeField>::from_repr(le))
         .expect("canonical secp256k1 scalar (Fq)")
 }
 
@@ -351,10 +347,10 @@ pub fn secp_fp_from_coord_be(be: &[u8; 32]) -> Secp256k1Fp {
 }
 
 pub(crate) fn secp_fp_from_le(le: [u8; 32]) -> Secp256k1Fp {
-    Option::from(<Secp256k1Fp as AxiomPrimeField>::from_repr(le)).expect("canonical secp256k1 Fp")
+    Option::from(<Secp256k1Fp as PrimeField>::from_repr(le)).expect("canonical secp256k1 Fp")
 }
 
-fn fe_to_biguint_axiom<F: AxiomPrimeField>(fe: &F) -> BigUint {
+pub(crate) fn fe_to_biguint_host<F: PrimeField>(fe: &F) -> BigUint {
     BigUint::from_bytes_le(F::to_repr(fe).as_ref())
 }
 
@@ -460,8 +456,10 @@ pub fn modulus_simple_pallas() -> BigUint {
 }
 
 pub fn modulus_simple_secp_fp() -> BigUint {
-    let neg_one = { -Fp::one() };
-    BigUint::from_bytes_le(<Secp256k1Fp as AxiomPrimeField>::to_repr(&neg_one).as_ref()) + 1u64
+    let neg_one = {
+        -Fp::ONE
+    };
+    BigUint::from_bytes_le(<Secp256k1Fp as PrimeField>::to_repr(&neg_one).as_ref()) + 1u64
 }
 
 // ============================================================================
@@ -600,7 +598,7 @@ impl FpConfig {
 // ============================================================================
 
 /// Trait for foreign field instructions (preserved for API compatibility).
-pub trait FpInstructions<Fp: BigPrimeField> {
+pub trait FpInstructions<Fp: PrimeField> {
     fn load_constant(
         &self,
         layouter: impl Layouter<pallas::Base>,
@@ -660,7 +658,7 @@ pub trait FpInstructions<Fp: BigPrimeField> {
 
 /// Chip for foreign prime field arithmetic with custom gates.
 #[derive(Clone, Debug)]
-pub struct FpChip<Fp: BigPrimeField> {
+pub struct FpChip<Fp: PrimeField> {
     pub config: FpConfig,
     pub limb_bits: usize,
     pub num_limbs: usize,
@@ -676,7 +674,7 @@ pub struct FpChip<Fp: BigPrimeField> {
     _marker: PhantomData<Fp>,
 }
 
-impl<Fp: BigPrimeField> FpChip<Fp> {
+impl<Fp: PrimeField> FpChip<Fp> {
     pub fn construct(
         config: FpConfig,
         limb_bits: usize,
@@ -727,7 +725,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
         layouter.assign_region(
             || "load constant Fp",
             |mut region| {
-                let value = fe_to_biguint_axiom(&v);
+                let value = fe_to_biguint_host(&v);
                 let fixed =
                     FixedOverflowInteger::from_native(&value, self.num_limbs, self.limb_bits);
 
@@ -772,7 +770,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
         layouter.assign_region(
             || "load private Fp",
             |mut region| {
-                let value_big = value.map(|v| fe_to_biguint_axiom(&v));
+                let value_big = value.map(|v| fe_to_biguint_host(&v));
                 let limb_values: Vec<Value<pallas::Base>> = (0..self.num_limbs)
                     .map(|i| {
                         value_big.as_ref().map(|v| {
@@ -794,7 +792,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
                 }
 
                 let native_value = value.map(|v| {
-                    biguint_to_fe_simple(&(&fe_to_biguint_axiom(&v) % &self.native_modulus))
+                    biguint_to_fe_simple(&(&fe_to_biguint_host(&v) % &self.native_modulus))
                 });
 
                 let native_cell = region.assign_advice(
@@ -804,7 +802,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
                     || native_value,
                 )?;
 
-                let value_bigint = value.map(|v| BigInt::from(fe_to_biguint_axiom(&v)));
+                let value_bigint = value.map(|v| BigInt::from(fe_to_biguint_host(&v)));
 
                 Ok(CrtInteger::new(
                     OverflowInteger::new(limbs, self.limb_bits),
@@ -1263,7 +1261,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
 
 // ── FpInstructions implementation ──
 
-impl<Fp: BigPrimeField> FpInstructions<Fp> for FpChip<Fp> {
+impl<Fp: PrimeField> FpInstructions<Fp> for FpChip<Fp> {
     fn load_constant(
         &self,
         layouter: impl Layouter<pallas::Base>,
@@ -2969,9 +2967,9 @@ mod tests {
         let offset_x = secp_fp_from_le(MONTGOMERY_OFFSET_X);
         let offset_y = secp_fp_from_le(MONTGOMERY_OFFSET_Y);
         let offset_x_big =
-            BigUint::from_bytes_le(<Secp256k1Fp as AxiomPrimeField>::to_repr(&offset_x).as_ref());
+            BigUint::from_bytes_le(<Secp256k1Fp as PrimeField>::to_repr(&offset_x).as_ref());
         let offset_y_big =
-            BigUint::from_bytes_le(<Secp256k1Fp as AxiomPrimeField>::to_repr(&offset_y).as_ref());
+            BigUint::from_bytes_le(<Secp256k1Fp as PrimeField>::to_repr(&offset_y).as_ref());
 
         assert_eq!(
             offset_x_big, sg_x,

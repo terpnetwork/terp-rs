@@ -57,24 +57,38 @@ scripts-ibc-harness:
     cargo test -p terp-scripts --test ibc_multihop_harness -- --ignored --nocapture
 
 # Workspace optimizer. Writes artifacts/ and artifacts/checksums.txt.
-# Same mount as docs/COMPILING.md. arm64 uses the arm64 image tag.
+# arm64 uses the arm64 image tag.
 optimize:
     #!/usr/bin/env bash
     set -euo pipefail
     # Local image: tools/optimizer, `make build-arm64-local` (or build-amd64-local).
-    # Guest rustc 1.91.0; bob only builds members with a cdylib lib target.
-    image=terpnetwork/optimizer:0.17.0-rust1.91
+    # Guest rustc 1.97.1. bob only builds members with a cdylib lib target.
+    #
+    # Mount path (required, baked into the wasm).
+    # rustc embeds absolute source paths in the wasm. The published hash was
+    # built with the sources mounted at
+    #
+    #   /Users/returniflost/abstract/terp-core/crates/terp-rs-consolidate
+    #   /Users/returniflost/abstract/terp-core/crates/<sibling>
+    #
+    # The crates directory is mounted at that prefix, and this checkout is
+    # mounted again at terp-rs-consolidate so a tree named terp-rs still
+    # compiles under the published path. A /workspace mount changes the hash.
+    image=terpnetwork/optimizer:0.17.0-rust1.97
     case "$(uname -m)" in
-      arm64|aarch64) image=terpnetwork/optimizer-arm64:0.17.0-rust1.91 ;;
+      arm64|aarch64) image=terpnetwork/optimizer-arm64:0.17.0-rust1.97 ;;
     esac
-    # justfile_directory() is the root justfile (terp-rs), even inside this module.
-    # Mount crates/, the parent of terp-rs, so ../cosmwasm and other sibling path
-    # dependencies resolve.
-    cd "{{justfile_directory()}}/.."
-    test -f terp-rs/Cargo.toml || { echo "optimize: expected terp-rs/ under $(pwd)" >&2; exit 1; }
+    src="{{justfile_directory()}}"
+    crates_dir="$(dirname "$src")"
+    canon_crates=/Users/returniflost/abstract/terp-core/crates
+    canon_ws=$canon_crates/terp-rs-consolidate
+    test -f "$src/Cargo.toml" || { echo "optimize: no Cargo.toml at $src" >&2; exit 1; }
     docker run --rm \
-      -v "$(pwd)":/workspace \
-      -e PROJECT_DIR=/workspace/terp-rs \
+      -v "$crates_dir:$canon_crates" \
+      -v "$src:$canon_ws" \
+      -e PROJECT_DIR="$canon_ws" \
+      -e CANONICAL_PROJECT_DIR="$canon_ws" \
+      -w "$canon_ws" \
       --mount type=volume,source="${OPTIMIZE_TARGET_VOLUME:-terp-rs_cache}",target=/target \
       --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
       "$image"

@@ -588,7 +588,7 @@ impl Circuit<pallas::Base> for LeafHashTestCircuit {
 //         let suite = HeadstashSuite::new();
 
 //         for num_leaves in [2, 4, 8, 16] {
-//             use zk_headstash::suite::suite::HeadstashSinsemillaTree;
+//             use zk_headstash::suite::builders::HeadstashSinsemillaTree;
 
 //             let leaves: Vec<Fp> = (0..num_leaves).map(|i| Fp::from(i as u64)).collect();
 

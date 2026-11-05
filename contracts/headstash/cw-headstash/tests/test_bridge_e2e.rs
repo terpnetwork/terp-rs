@@ -1,3 +1,5 @@
+// Legacy bridge path: compiled out of the v0.0.1 build (run with --features legacy).
+#![cfg(feature = "legacy")]
 //! Round-3 multi-test e2e for the private-bridge mint surface on `cw-headstash`.
 //!
 //! Exercises the **real** execute/query path via `cw-multi-test` ContractWrapper
@@ -19,7 +21,7 @@ use cw_headstash::bridge::{
     ReflectionSnapshot, derive_claim_id_with_dest, derive_domain_binding, hash32_label,
     terp_asset_id_from_tacit,
 };
-use cw_headstash::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_headstash::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, WavsStatusResponse};
 use cw_headstash::tokenfactory::{HeadstashTokenObject, TokenStrategy};
 use cw_headstash::wavs::{WavsAuthMetadata, WavsOpAuth, WavsProofOfOwnership};
 use cw_multi_test::{App, ContractWrapper, Executor};
@@ -169,6 +171,10 @@ struct BridgeEnv {
 impl BridgeEnv {
     /// Deploy actual cw-headstash code via multi-test wrapper and instantiate.
     fn new() -> Self {
+        Self::try_new(Some(valid_wavs_proof_one())).expect("instantiate headstash")
+    }
+
+    fn try_new(wavs: Option<WavsProofOfOwnership>) -> Result<Self, String> {
         let mut app = App::default();
         let owner = app.api().addr_make("owner");
         let user = app.api().addr_make("bridge_user");
@@ -214,8 +220,12 @@ impl BridgeEnv {
                 &cosmwasm_std::testing::MockApi::default(),
                 "ubridge".into(),
             )),
-            wavs: valid_wavs_proof_one(),
+            wavs,
             circuit_id: None,
+            registration_hook: None,
+            registration_hook_gas_limit: None,
+            frontend_contract: None,
+            pauser: None,
         };
 
         let headstash = app
@@ -226,15 +236,14 @@ impl BridgeEnv {
                 &[Coin::new(Uint128::new(10_000), "ubridge")],
                 "cw-headstash-bridge-e2e",
                 Some(owner.to_string()),
-            )
-            .expect("instantiate headstash");
+            ).map_err(|e| e.to_string())?;
 
-        Self {
+        Ok(Self {
             app,
             owner,
             user,
             headstash,
-        }
+        })
     }
 
     fn exec_owner(&mut self, msg: &ExecuteMsg) {
@@ -485,4 +494,39 @@ fn e2e_bridge_not_configured_reject() {
         msg.contains("not configured") || msg.contains("BridgeNotConfigured"),
         "unexpected err: {msg}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// WAVS disabled (wavs = None) — real instantiate through multi-test
+// ---------------------------------------------------------------------------
+
+#[test]
+fn e2e_wavs_disabled_instantiate_query_and_bridge_mint() {
+    let mut env = BridgeEnv::try_new(None).expect("wavs=None instantiate");
+    let st: WavsStatusResponse = env.query(&QueryMsg::WavsStatus {});
+    assert!(!st.enabled);
+    assert!(st.operator_set.is_none());
+    let claim = env.setup_bridge_happy();
+    env.exec_user(&ExecuteMsg::BridgeMintNote { claim: claim.clone(), proof: mock_proof() })
+        .expect("mint works with WAVS disabled");
+    let minted: bool = env.query(&QueryMsg::IsBridgeMinted { nullifier: claim.nullifier });
+    assert!(minted);
+}
+
+#[test]
+fn e2e_wavs_enabled_status_reports_operator_set() {
+    let env = BridgeEnv::new();
+    let st: WavsStatusResponse = env.query(&QueryMsg::WavsStatus {});
+    assert!(st.enabled);
+    assert_eq!(st.operator_set.expect("set").keys.len(), 1);
+}
+
+#[test]
+fn e2e_wavs_some_invalid_instantiate_rejected() {
+    let mut w = valid_wavs_proof_one();
+    w.msg.threshold = 0;
+    assert!(BridgeEnv::try_new(Some(w)).is_err());
+    let mut w = valid_wavs_proof_one();
+    w.poos.clear();
+    assert!(BridgeEnv::try_new(Some(w)).is_err());
 }

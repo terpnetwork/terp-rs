@@ -1,3 +1,5 @@
+// Legacy bridge path: compiled out of the v0.0.1 build (run with --features legacy).
+#![cfg(feature = "legacy")]
 //! Multitest e2e for Option D `BridgeEgressBurn` on `cw-headstash`.
 //!
 //! Exercises the real execute/query path via `cw-multi-test` ContractWrapper:
@@ -122,9 +124,17 @@ impl EgressEnv {
                 &cosmwasm_std::testing::MockApi::default(),
                 "ubridge".into(),
             )),
-            wavs: valid_wavs_proof_one(),
-
+            wavs: Some(valid_wavs_proof_one()),
+        
             circuit_id: None,
+        
+            registration_hook: None,
+        
+            registration_hook_gas_limit: None,
+        
+            frontend_contract: None,
+        
+            pauser: None,
         };
 
         let headstash = app

@@ -393,6 +393,20 @@ impl Note {
             )
         }
     }
+
+    /// Nullifier of this note under one campaign context.
+    ///
+    /// The unscoped [`Self::nullifier`] is unchanged. An epoch claim publishes
+    /// this value, so a second context cannot replay the same note.
+    #[cfg(feature = "host-crypto")]
+    pub fn nullifier_for_ctx(&self, ctx: &[u8; 32]) -> Nullifier {
+        use crate::claim_auth::{claim_nk_scoped, rseed_halves};
+
+        let bound = self.hiding_binding();
+        let (lo, hi) = rseed_halves(self.rseed.as_bytes());
+        let nk = crate::keys::NullifierDerivingKey::from_prf(claim_nk_scoped(lo, hi, ctx));
+        Nullifier::derive(&nk, bound.rho.0, bound.psi, self.commitment())
+    }
 }
 
 /// An encrypted note.
