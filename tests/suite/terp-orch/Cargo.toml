@@ -53,6 +53,12 @@ required-features = ["gov"]
 name = "terp_beacon_deploy"
 path = "src/bin/terp_beacon_deploy.rs"
 required-features = ["gov"]
+# silo-cap-root self-deploy from our own wallet (no DAO / gov). Preview by default;
+# signs only via cw-orch-kms with --execute and SILO_CAP_ROOT_EXECUTE=1.
+[[bin]]
+name = "silo_cap_root"
+path = "src/bin/silo_cap_root.rs"
+required-features = ["self-deploy"]
 
 [[bin]]
 name = "cw-ave-deploy"
@@ -108,6 +114,13 @@ gov = [
     "dep:terp-beacon",
     "dep:nftfi-raffle",
     "dep:nftfi-randomness",
+]
+# silo_cap_root: cw-orch-kms self-deploy only (no gov/ibc deps).
+self-deploy = [
+    "cw-orch/daemon",
+    "dep:cw-orch-kms",
+    "dep:clap",
+    "dep:cosmos-sdk-proto",
 ]
 # Live deploy commands (Daemon). Off for library tests.
 deploy-bins = [

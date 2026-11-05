@@ -13547,6 +13547,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "silo-cap-root"
+version = "0.1.0"
+dependencies = [
+ "abstract-cw-multi-test",
+ "blake3",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "cw2",
+ "hex",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
