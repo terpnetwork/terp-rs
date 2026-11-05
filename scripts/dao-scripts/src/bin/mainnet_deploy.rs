@@ -467,6 +467,12 @@ enum Step {
         msg: Value,
         admin: Option<String>,
     },
+    Exec {
+        id: String,
+        contract: String,
+        key: String,
+        msg: Value,
+    },
     /// Execute with the granter (cold key / DAO member) as the inner sender, via MsgExec.
     ExecAs {
         id: String,
@@ -532,6 +538,34 @@ fn artifacts_dir() -> PathBuf {
 
 fn file_of(name: &str) -> Result<&'static str> {
     CODES.iter().chain(DAO_CODES).copied().chain(HS_CODES.iter().map(|(n, f, _)| (*n, *f))).find(|(n, _)| *n == name).map(|(_, f)| f).ok_or_else(|| anyhow!("unknown code {name}"))
+}
+
+// Store provenance needs terp-scripts (optional since headstash-v2 d3bf2e1; feature `ibc-info`).
+#[cfg(feature = "ibc-info")]
+fn crate_of(name: &str) -> Option<&'static str> {
+    terp_scripts::ibc::CODE_SOURCE_TABLE
+        .iter()
+        .find(|(n, _, _)| *n == name)
+        .map(|(_, _, p)| *p)
+}
+
+#[cfg(feature = "ibc-info")]
+fn git_stamp_at_store(repo: &Path) -> (Option<String>, Option<bool>) {
+    let v = terp_scripts::ibc::git_build_stamp(repo);
+    (
+        v.get("commit").and_then(|c| c.as_str()).map(str::to_string),
+        v.get("dirty").and_then(|d| d.as_bool()),
+    )
+}
+
+#[cfg(not(feature = "ibc-info"))]
+fn crate_of(_name: &str) -> Option<&'static str> {
+    None
+}
+
+#[cfg(not(feature = "ibc-info"))]
+fn git_stamp_at_store(_repo: &Path) -> (Option<String>, Option<bool>) {
+    (None, None)
 }
 
 fn read(dir: &Path, file: &str) -> Result<Vec<u8>> {

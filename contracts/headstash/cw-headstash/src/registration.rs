@@ -984,7 +984,7 @@ mod tests {
             genesis_root: Binary::from(vec![0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "cht".into()),
                 metadata: Metadata {
                     description: None,
@@ -1001,7 +1001,7 @@ mod tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,

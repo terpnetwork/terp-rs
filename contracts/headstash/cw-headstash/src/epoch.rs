@@ -1330,7 +1330,7 @@ mod tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,

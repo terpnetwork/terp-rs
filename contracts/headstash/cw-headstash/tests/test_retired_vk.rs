@@ -22,7 +22,7 @@ fn deploy() -> (App, Addr, Addr) {
         genesis_root: Binary::from(vec![0u8; 32]),
         distro_hash_domain: Default::default(),
         genesis_label: None,
-        token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+        token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
             subdenom: HeadstashTokenObject::new(app.api(), "cht".into()),
             metadata: Metadata {
                 description: None,
@@ -35,7 +35,7 @@ fn deploy() -> (App, Addr, Addr) {
             initial_mint: None,
             manager: None,
             minters: vec![],
-        }),
+        })),
         wavs: None,
         circuit_id: None,
         registration_hook: None,

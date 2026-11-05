@@ -59,8 +59,8 @@ pub struct CwHeadstashStructs {}
 pub struct CwHeadstash {}
 
 // Version info for migration
-#[cfg(feature = "interface")]
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Reply IDs
 const CREATE_DENOM_REPLY_ID: u64 = 1;
@@ -408,11 +408,11 @@ pub fn execute(
         ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
         #[cfg(feature = "legacy")]
         ExecuteMsg::BridgeMintNote { claim, proof } => {
-            opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, claim, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, *claim, proof)
         }
         #[cfg(feature = "legacy")]
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
-            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, statement, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, *statement, proof)
         }
         #[cfg(feature = "legacy")]
         ExecuteMsg::SetDenomTable { amounts } => opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts),
@@ -774,10 +774,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
                             .add_attribute("initial_mints", initial_mint_count.to_string())
                             .add_messages(messages));
                     }
-                    return Ok(Response::new()
-                        .add_attribute("denom", new_token_denom)
-                        .add_attribute("initial_mints", initial_mint_count.to_string())
-                        .add_messages(messages));
                 }
             }
 
@@ -856,7 +852,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
             registration_hook: None,
@@ -962,7 +958,7 @@ mod instantiate_tests {
                 ]),
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(3)),
             circuit_id: None,
             registration_hook: None,
@@ -979,11 +975,11 @@ mod instantiate_tests {
         // Check that it's a SubMsg with reply_on_success
         let SubMsg { msg, reply_on, .. } = &res.messages[0];
         match msg {
-            CosmosMsg::Any(cosmwasm_std::AnyMsg { type_url, .. }) => {
+            CosmosMsg::Stargate { type_url, value: _ } => {
                 // This should be the CreateDenom message
                 assert!(type_url.contains("tokenfactory"));
             }
-            _ => panic!("Expected Any message for CreateDenom"),
+            _ => panic!("Expected Stargate message for CreateDenom"),
         }
         assert_eq!(reply_on, &cosmwasm_std::ReplyOn::Success);
 
@@ -1087,7 +1083,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(invalid_wavs),
 
             circuit_id: None,
@@ -1132,7 +1128,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(wavs),
 
             circuit_id: None,
@@ -1174,7 +1170,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
@@ -1204,13 +1200,13 @@ mod instantiate_tests {
             genesis_root: Binary::from(vec![0xbb; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "test".to_string()),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs,
             circuit_id: None,
             registration_hook: None,
@@ -1314,7 +1310,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
@@ -1348,7 +1344,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
@@ -1403,7 +1399,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(1)),
             circuit_id: Some(0),
             registration_hook: None,
@@ -1448,7 +1444,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: Some(valid_wavs_proof(1)),
             circuit_id: None,
             registration_hook: None,
@@ -1491,7 +1487,7 @@ mod instantiate_tests {
             genesis_root: Binary::from(vec![0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: TokenStrategy::NewFungible(NewTokenConfig {
+            token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                 subdenom: HeadstashTokenObject {
                     proof: derive_nd(&cosmwasm_std::testing::MockApi::default(), "test"),
                     raw: "test".into(),
@@ -1500,7 +1496,7 @@ mod instantiate_tests {
                 initial_mint: None,
                 manager: None,
                 minters: vec![],
-            }),
+            })),
             wavs: None,
             circuit_id: None,
             registration_hook: None,

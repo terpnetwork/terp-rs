@@ -420,7 +420,7 @@ fn tf_proto_exact_bytes_round_trip() {
     assert_eq!(mint, want);
 
     // Independent fixture parser reads the same bytes back.
-    let f = tf_stargate::proto_fields(&mint).unwrap();
+    let f = crate::tokenfactory_stargate::proto_fields(&mint).unwrap();
     assert_eq!(f.len(), 3);
     assert_eq!(f[0], (1, b"s".to_vec()));
     assert_eq!(f[1], (2, coin.clone()));
@@ -441,6 +441,6 @@ fn tf_proto_exact_bytes_round_trip() {
 
     // JSON regression: neither the fixture nor the contract decoder accepts it.
     let json = br#"{"sender":"s","subdenom":"hs"}"#;
-    assert!(tf_stargate::proto_fields(json).is_err());
+    assert!(crate::tokenfactory_stargate::proto_fields(json).is_err());
     assert!(tf_proto::create_denom_response_denom(br#"{"new_token_denom":"x"}"#).is_err());
 }
