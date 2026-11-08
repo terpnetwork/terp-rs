@@ -19,7 +19,7 @@
 use crate::error::{NipError, NipResult};
 use crate::{NipKind, NipMetadata};
 use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 /// Canonical DAO core storage + billboard text-record key for mesh discovery.
 pub const DAO_MESH_RECORD_KEY: &str = "mesh.v1";
@@ -136,9 +136,7 @@ impl DaoRecordAction for MeshDescriptorV1 {
             )));
         }
         if m.query.is_empty() {
-            return Err(NipError::Validation(
-                "mesh.v1.query is required".into(),
-            ));
+            return Err(NipError::Validation("mesh.v1.query is required".into()));
         }
         Ok(m)
     }
@@ -163,10 +161,7 @@ pub struct NostrFilterHeuristic {
 
 impl NostrFilterHeuristic {
     pub fn marketplace_base(dao: Option<&str>, kinds: &[u16], mode_tag: Option<&str>) -> Self {
-        let mut t = vec![
-            "marketplace".to_string(),
-            "dao-marketplace".to_string(),
-        ];
+        let mut t = vec!["marketplace".to_string(), "dao-marketplace".to_string()];
         if let Some(d) = dao {
             t.push(d.to_string());
         }
@@ -236,10 +231,7 @@ where
 // ── NIP-15 plane helpers (kinds locked to nips::nip15) ─────────────────────
 
 /// Build filter heuristic for NIP-15 marketplace modes without holding full metadata.
-pub fn nip15_filter_heuristic(
-    mode: Nip15PlaneMode,
-    dao: Option<&str>,
-) -> NostrFilterHeuristic {
+pub fn nip15_filter_heuristic(mode: Nip15PlaneMode, dao: Option<&str>) -> NostrFilterHeuristic {
     use crate::nips::nip15::Nip15Kind;
     match mode {
         Nip15PlaneMode::Fixed => NostrFilterHeuristic::marketplace_base(
@@ -328,11 +320,7 @@ mod tests {
             content_base: Some("https://hash.terp.network".into()),
             accepted_denom: Some("uterp".into()),
             min_buffer_blocks: Some(7),
-            modes: Some(vec![
-                "fixed".into(),
-                "auction".into(),
-                "buy_now".into(),
-            ]),
+            modes: Some(vec!["fixed".into(), "auction".into(), "buy_now".into()]),
         });
 
         assert_eq!(MeshDescriptorV1::record_key(), "mesh.v1");
@@ -360,11 +348,7 @@ mod tests {
         let f = nip15_filter_heuristic(Nip15PlaneMode::Fixed, Some("terp1dao"));
         assert_eq!(f.kinds, Some(vec![30018]));
         assert!(f.t_tags.as_ref().unwrap().contains(&"fixed".to_string()));
-        assert!(f
-            .t_tags
-            .as_ref()
-            .unwrap()
-            .contains(&"terp1dao".to_string()));
+        assert!(f.t_tags.as_ref().unwrap().contains(&"terp1dao".to_string()));
 
         let a = nip15_filter_heuristic(Nip15PlaneMode::Auction, None);
         assert_eq!(a.kinds, Some(vec![30020]));

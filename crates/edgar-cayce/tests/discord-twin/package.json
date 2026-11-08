@@ -1,0 +1,12 @@
+{
+  "name": "edgar-discord-twin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "node run.mjs"
+  },
+  "dependencies": {
+    "discord-digital-twin": "0.1.2",
+    "discord-api-types": "0.38.16"
+  }
+}

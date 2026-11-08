@@ -1,5 +1,5 @@
 # DEPRECATED — replaced by tiered CI.
-# See: ci-core.yml (always), ci-extended.yml (paths/labels), ci-heavy.yml (admin/nightly).
+# See: ci.yml (core always, extended on paths/labels, heavy on admin/nightly).
 # This stub keeps history; job always succeeds with a pointer so old branch protection
 # rules referencing "Basic" do not silently mean nothing forever.
 name: Basic (deprecated)
@@ -19,4 +19,4 @@ jobs:
       - name: Notice
         run: |
           echo "::warning::Workflow 'Basic' is deprecated. Real gates are CI Core / CI Extended / CI Heavy."
-          echo "See docs/ci.md and .github/workflows/ci-*.yml"
+          echo "See docs/ci.md and .github/workflows/ci.yml"

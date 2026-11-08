@@ -1,0 +1,21 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_terp_msg_TimestampAtHeightResult",
+      "type": "struct",
+      "properties": {
+        "timestamp": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

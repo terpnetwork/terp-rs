@@ -1,0 +1,14 @@
+# Door / house Zakura (groot2). Do not publish 0.0.0.0:8233.
+# After the infra specialist selects the Akash porch, set initial_mainnet_peers
+# to that host:mapped-8233 ONLY.
+
+[network]
+listen_addr = "127.0.0.1:8233"
+peerset_initial_target_size = 1
+crawl_new_peer_interval = "24h"
+cache_dir = false
+initial_mainnet_peers = ["PORCH_HOST:PORCH_PORT"]
+
+[rpc]
+listen_addr = "127.0.0.1:8232"
+# cookie_dir left to volume; copy cookie to ~/.terp/zakura.rpc.cookie mode 600

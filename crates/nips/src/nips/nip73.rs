@@ -2,31 +2,15 @@
 //! ## NIP-73 External Content IDs
 //!
 //! ```rust
-//! use cw721_nips::{NipMetadata, Nip73Ext, ExternalId, Tag};
+//! use cw721_nips::Tag;
+//! use cw721_nips::nips::nip73::ExternalId;
 //!
-//! #[derive(Serialize, Deserialize)]
-//! struct BookReview {
-//!     isbn: String,
-//!     // ...
-//! }
-//!
-//! impl NipMetadata for BookReview {
-//!     // ...
-//!     fn to_tags(&self) -> Vec<Tag> {
-//!         vec![]
-//!     }
-//! }
-//!
-//! impl Nip73Ext for BookReview {
-//!     fn external_ids(&self) -> Vec<ExternalId> {
-//!         vec![ExternalId::new(format!("isbn:{}", self.isbn), "isbn")]
-//!     }
-//! }
-//!
-//! // Usage in event building is automatic!
-//! let metadata = BookReview { isbn: "9780765382030".to_string() };
-//! let event = NostrEventBuilder::build(&metadata, &pubkey, timestamp)?;
-//! // → automatically includes ["i", "isbn:9780765382030"] + ["k", "isbn"]
+//! // `NostrEventBuilder::build` appends these tags for every id returned by
+//! // `Nip73Ext::external_ids` (blanket-implemented for all `NipMetadata`).
+//! let ext = ExternalId::new("isbn:9780765382030", "isbn");
+//! let (i_tag, k_tag) = Tag::i(ext.id, ext.kind);
+//! assert_eq!(i_tag.0, vec!["i", "isbn:9780765382030"]);
+//! assert_eq!(k_tag.0, vec!["k", "isbn"]);
 //! ```
 //!
 //! See [`Nip73Ext`] and [`ExternalId`].
@@ -49,7 +33,7 @@ pub trait Nip73Ext: crate::NipMetadata {
             tags.push(k_tag);
 
             if let Some(hint) = ext.url_hint {
-                 tags.push(Tag(vec!["i".to_string(), hint]));
+                tags.push(Tag(vec!["i".to_string(), hint]));
             }
         }
         tags

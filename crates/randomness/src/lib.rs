@@ -1,6 +1,5 @@
 use blake3::Hasher;
-use rand::rngs::OsRng;
-use rand_core::RngCore;
+use rand::{RngCore, rngs::OsRng};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// High-quality 32-byte entropy generator with multiple independent sources.
@@ -69,7 +68,7 @@ fn get_timing_jitter() -> [u8; 32] {
 
 /// Extra process/system noise
 fn get_process_noise() -> [u8; 32] {
-    let  _buf = [0u8; 32];
+    let _buf = [0u8; 32];
     let mut hasher = Hasher::new();
 
     // Current time

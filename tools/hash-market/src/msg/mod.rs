@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn transport_merkle_root_single() {
         let leaf = PallasLeaf([0xab; 32]);
-        let root = transport_merkle_root(&[leaf.clone()]);
+        let root = transport_merkle_root(std::slice::from_ref(&leaf));
         assert_eq!(root, hex::encode(leaf.0));
     }
 

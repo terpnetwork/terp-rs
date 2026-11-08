@@ -1,0 +1,26 @@
+[Unit]
+Description=HashMerchant onboard-runtime (passkey feegrant only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/returniflost/abstract/terp-core/crates/terp-rs/tools/onboard-authz
+EnvironmentFile=-/home/returniflost/.terp/onboard.env
+Environment=PATH=/home/returniflost/go/bin:/home/returniflost/.cargo/bin:/usr/local/bin:/usr/bin
+Environment=ONBOARD_TERPD=/home/returniflost/go/bin/terpd-mainnet
+Environment=ONBOARD_NODE=tcp://192.168.10.101:26657
+Environment=ONBOARD_KEYRING_BACKEND=test
+Environment=ONBOARD_KEYRING_DIR=/home/returniflost/.terp/kr-onboard
+Environment=ONBOARD_FROM=hashmerchant
+Environment=ONBOARD_BIND=127.0.0.1
+Environment=ONBOARD_PORT=19090
+Environment=ONBOARD_SERVICE=hashmerchant-onboard
+Environment=ONBOARD_BROADCAST=1
+ExecStart=/home/returniflost/abstract/terp-core/crates/terp-rs/tools/onboard-authz/target/release/onboard-runtime
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

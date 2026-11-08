@@ -29,10 +29,10 @@ impl Generator for SchemaGenerator {
         }
 
         let mut total_files = 0;
+        let mut failures: Vec<String> = Vec::new();
 
         if ctx.contracts.is_empty() {
-            // No contracts detected — run `cargo schema` at workspace root
-            log::info!("[schema] No contracts detected; running `cargo schema` at workspace root");
+            log::info!("[schema] No contracts detected; running schema at workspace root");
             total_files += run_cargo_schema(&ctx.workspace_root)?;
         } else {
             for contract in &ctx.contracts {
@@ -40,19 +40,35 @@ impl Generator for SchemaGenerator {
                     log::debug!("[schema] Skipping non-cosmwasm crate: {}", contract.name);
                     continue;
                 }
-                log::info!(
-                    "[schema] Running `cargo schema` for contract: {}",
-                    contract.name
-                );
-                match run_cargo_schema(&contract.manifest_path.parent().unwrap()) {
+                let dir = contract.manifest_path.parent().unwrap();
+                if schema_target(dir).is_none() {
+                    if is_cdylib(&contract.manifest_path) {
+                        failures.push(format!(
+                            "{}: contract has no src/bin/schema.rs or examples/schema.rs. Add that file; `just gen api` picks up every workspace member that has one",
+                            contract.name
+                        ));
+                    } else {
+                        log::info!(
+                            "[schema] {} has no schema bin or example; skipping",
+                            contract.name
+                        );
+                    }
+                    continue;
+                }
+                log::info!("[schema] {}", contract.name);
+                match run_cargo_schema(dir) {
                     Ok(count) => total_files += count,
-                    Err(e) => log::warn!(
-                        "[schema] `cargo schema` failed for {}: {}",
-                        contract.name,
-                        e
-                    ),
+                    Err(e) => failures.push(format!("{}: {}", contract.name, e)),
                 }
             }
+        }
+
+        if !failures.is_empty() {
+            return Err(anyhow::anyhow!(
+                "schema failed for {} contract(s):\n{}",
+                failures.len(),
+                failures.join("\n")
+            ));
         }
 
         // Count schema files produced
@@ -68,18 +84,97 @@ impl Generator for SchemaGenerator {
                     .to_string_lossy()
                     .to_string(),
             ),
-            message: Some(format!("{} schema files found after generation", schema_files)),
+            message: Some(format!(
+                "{} schema files found after generation",
+                schema_files
+            )),
         })
     }
 }
 
-/// Run `cargo schema` in the given directory.
+/// Host rustc for schema bins. wasmer 7.4.2 (pulled by host-only cw-orch)
+/// needs 1.95. Guest wasm stays on the optimizer's 1.91.
+fn cargo_cmd() -> Command {
+    let mut rustup = Command::new("rustup");
+    let probe = rustup
+        .args(["run", "1.95.0", "rustc", "--version"])
+        .output();
+    if probe.map(|o| o.status.success()).unwrap_or(false) {
+        let mut cmd = Command::new("rustup");
+        cmd.args(["run", "1.95.0", "cargo"]);
+        cmd
+    } else {
+        Command::new("cargo")
+    }
+}
+
+/// CosmWasm contracts are `cdylib`. Library crates that merely depend on
+/// `cosmwasm-std` are not required to ship a schema entrypoint.
+fn is_cdylib(manifest: &Path) -> bool {
+    std::fs::read_to_string(manifest)
+        .map(|text| text.contains("cdylib"))
+        .unwrap_or(false)
+}
+
+/// `[[bin]] name` whose path is `src/bin/schema.rs`, else `schema`.
+fn schema_bin_name(dir: &Path) -> String {
+    let Ok(text) = std::fs::read_to_string(dir.join("Cargo.toml")) else {
+        return "schema".into();
+    };
+    let Ok(value) = toml::from_str::<toml::Value>(&text) else {
+        return "schema".into();
+    };
+    let Some(bins) = value.get("bin").and_then(|b| b.as_array()) else {
+        return "schema".into();
+    };
+    for bin in bins {
+        let path = bin.get("path").and_then(|p| p.as_str()).unwrap_or("");
+        let name = bin.get("name").and_then(|n| n.as_str());
+        if path.replace('\\', "/").ends_with("src/bin/schema.rs")
+            && let Some(name) = name
+        {
+            return name.to_string();
+        }
+    }
+    "schema".into()
+}
+
+/// `src/bin/schema.rs` or `examples/schema.rs`.
+fn schema_target(dir: &Path) -> Option<&'static str> {
+    if dir.join("src/bin/schema.rs").is_file() {
+        Some("bin")
+    } else if dir.join("examples/schema.rs").is_file() {
+        Some("example")
+    } else {
+        None
+    }
+}
+
+/// Run the contract's schema binary (or example) in `dir`.
 fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
-    let output = Command::new("cargo")
-        .args(["schema"])
-        .current_dir(dir)
+    let Some(kind) = schema_target(dir) else {
+        log::info!(
+            "[schema] No src/bin/schema.rs or examples/schema.rs in {}",
+            dir.display()
+        );
+        return Ok(0);
+    };
+    let mut cmd = cargo_cmd();
+    cmd.current_dir(dir).arg("run").arg("--quiet");
+    match kind {
+        "bin" => {
+            // Default cargo bin name for src/bin/schema.rs is `schema`.
+            // A crate may override it (`revenue-marketplace-schema`).
+            let bin_name = schema_bin_name(dir);
+            cmd.args(["--bin", &bin_name]);
+        }
+        _ => {
+            cmd.args(["--example", "schema"]);
+        }
+    }
+    let output = cmd
         .output()
-        .map_err(|e| anyhow::anyhow!("Failed to run `cargo schema`: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to run cargo schema: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -88,10 +183,16 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
             log::warn!("[schema] `cargo schema` not available (not a CosmWasm contract?)");
             return Ok(0);
         }
-        return Err(anyhow::anyhow!(
-            "`cargo schema` failed: {}",
-            stderr.lines().last().unwrap_or("(unknown)")
-        ));
+        let tail: String = stderr
+            .lines()
+            .rev()
+            .take(25)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(anyhow::anyhow!("cargo schema failed:\n{}", tail));
     }
 
     // Count generated schema JSON files
@@ -100,10 +201,7 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
 
     // Count schema dirs created
     let schema_dirs = find_schema_dirs(dir);
-    let file_count: usize = schema_dirs
-        .iter()
-        .map(|d| count_json_files(d))
-        .sum();
+    let file_count: usize = schema_dirs.iter().map(|d| count_json_files(d)).sum();
 
     Ok(file_count)
 }
@@ -118,7 +216,7 @@ fn find_schema_dirs(root: &Path) -> Vec<std::path::PathBuf> {
     if let Ok(entries) = std::fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() && path.file_name().map_or(false, |n| n != "target") {
+            if path.is_dir() && path.file_name().is_some_and(|n| n != "target") {
                 let schema_path = path.join("schema");
                 if schema_path.exists() {
                     dirs.push(schema_path);
@@ -134,9 +232,7 @@ fn count_json_files(dir: &std::path::Path) -> usize {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    e.path().extension().map_or(false, |ext| ext == "json")
-                })
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                 .count()
         })
         .unwrap_or(0)

@@ -12,14 +12,19 @@
 //! See `reviews/ZKJWT-LOYALTY-REWARDS-EXTENSION.md`.
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Uint128,
+    BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128, Uint256, to_json_binary,
 };
 use cw_storage_plus::{Item, Map};
 use sha2::{Digest, Sha256};
 
 pub mod msg;
 use msg::*;
+
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::LoyaltyVerifier;
 
 // ---------------------------------------------------------------------------
 // State
@@ -65,7 +70,7 @@ const MINT_CFG: Item<MintConfig> = Item::new("mint_cfg");
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -90,7 +95,7 @@ pub fn instantiate(
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
     match msg {
         SudoMsg::HashMerchant {
@@ -127,7 +132,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> StdResult<Response> {
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -151,12 +156,14 @@ pub fn execute(
             deps,
             env,
             info,
-            leaf_hash,
-            proof,
-            root_index,
-            nullifier,
-            amount,
-            action_bind,
+            ExecuteClaimPrivateParams {
+                leaf_hash,
+                proof,
+                root_index,
+                nullifier,
+                amount,
+                action_bind,
+            },
         ),
         ExecuteMsg::UpdateMintConfig {
             reward_denom,
@@ -164,7 +171,7 @@ pub fn execute(
         } => {
             let mut cfg = MINT_CFG.load(deps.storage)?;
             if info.sender.as_str() != cfg.admin {
-                return Err(StdError::generic_err("only admin"));
+                return Err(StdError::msg("only admin"));
             }
             cfg.reward_denom = reward_denom;
             cfg.mint_enabled = mint_enabled;
@@ -184,16 +191,16 @@ fn execute_claim_rewards(
     let sender = info.sender.to_string();
 
     if CLAIMS.has(deps.storage, (&sender, root_index)) {
-        return Err(StdError::generic_err("already claimed for this root"));
+        return Err(StdError::msg("already claimed for this root"));
     }
 
     let roots = ROOTS.load(deps.storage)?;
     let entry = roots
         .get(root_index as usize)
-        .ok_or_else(|| StdError::generic_err("root_index out of bounds"))?;
+        .ok_or_else(|| StdError::msg("root_index out of bounds"))?;
 
     if !verify_proof(&leaf_hash, &proof, &entry.root) {
-        return Err(StdError::generic_err("Merkle proof verification failed"));
+        return Err(StdError::msg("Merkle proof verification failed"));
     }
 
     CLAIMS.save(
@@ -232,39 +239,52 @@ pub fn compute_action_bind(
     hex::encode(h.finalize())
 }
 
+/// Arguments for [`execute_claim_private`].
+struct ExecuteClaimPrivateParams {
+    pub leaf_hash: String,
+    pub proof: Vec<ProofStep>,
+    pub root_index: u32,
+    pub nullifier: String,
+    pub amount: Uint128,
+    pub action_bind: Option<String>,
+}
+
 fn execute_claim_private(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    leaf_hash: String,
-    proof: Vec<ProofStep>,
-    root_index: u32,
-    nullifier: String,
-    amount: Uint128,
-    action_bind: Option<String>,
+    args: ExecuteClaimPrivateParams,
 ) -> StdResult<Response> {
+    let ExecuteClaimPrivateParams {
+        leaf_hash,
+        proof,
+        root_index,
+        nullifier,
+        amount,
+        action_bind,
+    } = args;
     let sender = info.sender.to_string();
     let nf = nullifier.trim().to_ascii_lowercase();
     if nf.is_empty() || nf.len() < 16 {
-        return Err(StdError::generic_err(
+        return Err(StdError::msg(
             "nullifier required (zk-jwt codec hex, min 16 chars)",
         ));
     }
     if amount.is_zero() {
-        return Err(StdError::generic_err("amount must be > 0"));
+        return Err(StdError::msg("amount must be > 0"));
     }
 
     if let Some(ref bind) = action_bind {
         let expected = compute_action_bind(root_index, amount, &leaf_hash, sender.as_str());
         if bind.trim().to_ascii_lowercase() != expected {
-            return Err(StdError::generic_err(
+            return Err(StdError::msg(
                 "action_bind mismatch (loyalty-claim/v1 bind failed)",
             ));
         }
     }
 
     if NULLIFIER_CLAIMS.has(deps.storage, (&nf, root_index)) {
-        return Err(StdError::generic_err(
+        return Err(StdError::msg(
             "nullifier already claimed for this root (private double-claim)",
         ));
     }
@@ -272,10 +292,10 @@ fn execute_claim_private(
     let roots = ROOTS.load(deps.storage)?;
     let entry = roots
         .get(root_index as usize)
-        .ok_or_else(|| StdError::generic_err("root_index out of bounds"))?;
+        .ok_or_else(|| StdError::msg("root_index out of bounds"))?;
 
     if !verify_proof(&leaf_hash, &proof, &entry.root) {
-        return Err(StdError::generic_err("Merkle proof verification failed"));
+        return Err(StdError::msg("Merkle proof verification failed"));
     }
 
     NULLIFIER_CLAIMS.save(
@@ -309,12 +329,12 @@ fn execute_claim_private(
         if let Some(denom) = cfg.reward_denom {
             let coin = Coin {
                 denom: denom.clone(),
-                amount,
+                amount: amount.into(),
             };
             let balance = deps
                 .querier
                 .query_balance(env.contract.address.clone(), denom.clone())?;
-            if balance.amount >= amount {
+            if balance.amount >= Uint256::from(amount) {
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: sender,
                     amount: vec![coin],
@@ -371,7 +391,7 @@ fn verify_proof(leaf_hex: &str, proof: &[ProofStep], expected_root_hex: &str) ->
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetRoot { chain_uid, algo } => {
@@ -389,7 +409,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                     height: r.height,
                     index: idx as u32,
                 }),
-                None => Err(StdError::not_found("root")),
+                None => Err(StdError::msg("root not found")),
             }
         }
         QueryMsg::GetRootCount {} => {
@@ -402,7 +422,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let roots = ROOTS.load(deps.storage)?;
             let entry = roots
                 .get(index as usize)
-                .ok_or_else(|| StdError::not_found("root"))?;
+                .ok_or_else(|| StdError::msg("root not found"))?;
             to_json_binary(&RootResponse {
                 chain_uid: entry.chain_uid.clone(),
                 algo: entry.algo.clone(),
@@ -480,11 +500,11 @@ fn base64_decode(input: &str) -> StdResult<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Addr;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
 
     type TestDeps = cosmwasm_std::OwnedDeps<
-        cosmwasm_std::MemoryStorage,
+        cosmwasm_std::testing::MockStorage,
         cosmwasm_std::testing::MockApi,
         cosmwasm_std::testing::MockQuerier,
     >;
@@ -560,11 +580,7 @@ mod tests {
             mock_env(),
             message_info(&Addr::unchecked("admin"), &[]),
             InstantiateMsg {
-                reward_denom: if mint {
-                    Some("uloyalty".into())
-                } else {
-                    None
-                },
+                reward_denom: if mint { Some("uloyalty".into()) } else { None },
                 mint_enabled: mint,
             },
         )
@@ -639,14 +655,16 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "mode" && a.value == "zkjwt"));
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "action_bind" && a.value == "ok"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "mode" && a.value == "zkjwt")
+        );
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "action_bind" && a.value == "ok")
+        );
 
         let err = execute(deps.as_mut(), mock_env(), message_info(&sa, &[]), msg).unwrap_err();
         assert!(err.to_string().contains("nullifier already claimed"));
@@ -685,10 +703,11 @@ mod tests {
         )
         .unwrap();
 
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "settlement" && a.value == "bank_send"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "settlement" && a.value == "bank_send")
+        );
         assert_eq!(res.messages.len(), 1);
 
         let q = query(
@@ -786,13 +805,7 @@ mod tests {
             msg.clone(),
         )
         .unwrap();
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            message_info(&user, &[]),
-            msg,
-        )
-        .unwrap_err();
+        let err = execute(deps.as_mut(), mock_env(), message_info(&user, &[]), msg).unwrap_err();
         assert!(err.to_string().contains("already claimed"));
     }
 
@@ -1104,10 +1117,11 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(res
-            .attributes
-            .iter()
-            .any(|a| a.key == "settlement" && a.value == "mint_intent"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "settlement" && a.value == "mint_intent")
+        );
         assert!(res.messages.is_empty());
     }
 
@@ -1146,19 +1160,17 @@ mod tests {
 
         let t1 = Instant::now();
         for i in 0..iters {
-            let _ = compute_action_bind(
-                0,
-                Uint128::new(620),
-                &alice_leaf,
-                &format!("terp1dest{i}"),
-            );
+            let _ =
+                compute_action_bind(0, Uint128::new(620), &alice_leaf, &format!("terp1dest{i}"));
         }
         let bind_ns = t1.elapsed().as_nanos() / iters as u128;
 
         println!("\n=== offline micro-bench (n={iters}) ===");
         println!("  merkle verify:     {merkle_ns:>8} ns/op");
         println!("  action_bind hash:  {bind_ns:>8} ns/op");
-        println!("  (on-chain gas → cargo run --example loyalty_rewards --features \"docker hashmerchant\")");
+        println!(
+            "  (on-chain gas → cargo run --example loyalty_rewards --features \"docker hashmerchant\")"
+        );
     }
 
     #[test]

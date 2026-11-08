@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order as IterOrder, Response, StdResult, Uint128,
+    BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order as IterOrder,
+    Response, StdResult, Uint128, to_json_binary,
 };
 
 use crate::error::ContractError;
@@ -11,15 +11,14 @@ use crate::state::*;
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    if msg.min_buffer_blocks < MIN_BUFFER_BLOCKS_LO
-        || msg.min_buffer_blocks > MIN_BUFFER_BLOCKS_HI
+    if msg.min_buffer_blocks < MIN_BUFFER_BLOCKS_LO || msg.min_buffer_blocks > MIN_BUFFER_BLOCKS_HI
     {
         return Err(ContractError::InvalidBuffer {
             got: msg.min_buffer_blocks,
@@ -30,10 +29,10 @@ pub fn instantiate(
     if msg.accepted_denom.trim().is_empty() {
         return Err(ContractError::EmptyDenom {});
     }
-    if let Some(bps) = msg.protocol_fee_bps {
-        if bps > 10_000 {
-            return Err(ContractError::InvalidFeeBps { bps });
-        }
+    if let Some(bps) = msg.protocol_fee_bps
+        && bps > 10_000
+    {
+        return Err(ContractError::InvalidFeeBps { bps });
     }
 
     let admin = deps.api.addr_validate(&msg.admin)?;
@@ -44,6 +43,7 @@ pub fn instantiate(
             min_buffer_blocks: msg.min_buffer_blocks,
             accepted_denom: msg.accepted_denom.clone(),
             protocol_fee_bps: msg.protocol_fee_bps,
+            auto_execute_ingress: msg.auto_execute_ingress,
         },
     )?;
     NEXT_ORDER_ID.save(deps.storage, &1u64)?;
@@ -52,14 +52,15 @@ pub fn instantiate(
         .add_attribute("action", "instantiate")
         .add_attribute("path", "marketplace-mirror")
         .add_attribute("min_buffer_blocks", msg.min_buffer_blocks.to_string())
-        .add_attribute("accepted_denom", msg.accepted_denom))
+        .add_attribute("accepted_denom", msg.accepted_denom)
+        .add_attribute("auto_execute_ingress", msg.auto_execute_ingress.to_string()))
 }
 
 // ---------------------------------------------------------------------------
 // Sudo — hashmerchant module callback
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::HashMerchant {
@@ -98,7 +99,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -117,6 +118,9 @@ pub fn execute(
         ExecuteMsg::Purchase { sku, qty } => execute_purchase(deps, env, info, sku, qty),
         ExecuteMsg::Settle { order_id } => execute_settle(deps, env, order_id),
         ExecuteMsg::Cancel { order_id } => execute_cancel(deps, info, order_id),
+        ExecuteMsg::SetAutoExecuteIngress { enabled } => {
+            execute_set_auto_execute_ingress(deps, info, enabled)
+        }
     }
 }
 
@@ -153,10 +157,7 @@ fn execute_list_product(
         .add_attribute("seller", info.sender)
         .add_attribute("stock", stock.to_string())
         .add_attribute("unit_price", unit_price)
-        .add_attribute(
-            "content_cid",
-            content_cid.unwrap_or_default(),
-        )
+        .add_attribute("content_cid", content_cid.unwrap_or_default())
         .add_attribute("d_tag", d_tag.unwrap_or_default()))
 }
 
@@ -221,9 +222,7 @@ fn execute_purchase(
         });
     }
 
-    let need = product
-        .unit_price
-        .checked_mul(Uint128::from(qty))?;
+    let need = product.unit_price.checked_mul(Uint128::from(qty))?;
     let paid = must_pay(&info, &cfg.accepted_denom)?;
     if paid < need {
         return Err(ContractError::InsufficientFunds {
@@ -265,11 +264,7 @@ fn execute_purchase(
         .add_attribute("status", OrderStatus::Reserved.as_str()))
 }
 
-fn execute_settle(
-    deps: DepsMut,
-    env: Env,
-    order_id: u64,
-) -> Result<Response, ContractError> {
+fn execute_settle(deps: DepsMut, env: Env, order_id: u64) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
     let mut order = ORDERS
         .may_load(deps.storage, order_id)?
@@ -325,7 +320,7 @@ fn execute_settle(
             to_address: order.seller.to_string(),
             amount: vec![Coin {
                 denom: cfg.accepted_denom.clone(),
-                amount: seller_amt,
+                amount: seller_amt.into(),
             }],
         }));
     }
@@ -334,7 +329,7 @@ fn execute_settle(
             to_address: cfg.admin.to_string(),
             amount: vec![Coin {
                 denom: cfg.accepted_denom.clone(),
-                amount: fee_amt,
+                amount: fee_amt.into(),
             }],
         }));
     }
@@ -388,7 +383,7 @@ fn execute_cancel(
         to_address: order.buyer.to_string(),
         amount: vec![Coin {
             denom: cfg.accepted_denom,
-            amount: order.amount,
+            amount: order.amount.into(),
         }],
     });
 
@@ -402,11 +397,27 @@ fn execute_cancel(
         .add_attribute("status", OrderStatus::Cancelled.as_str()))
 }
 
+fn execute_set_auto_execute_ingress(
+    deps: DepsMut,
+    info: MessageInfo,
+    enabled: bool,
+) -> Result<Response, ContractError> {
+    let mut cfg = CONFIG.load(deps.storage)?;
+    if info.sender != cfg.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+    cfg.auto_execute_ingress = enabled;
+    CONFIG.save(deps.storage, &cfg)?;
+    Ok(Response::new()
+        .add_attribute("action", "set_auto_execute_ingress")
+        .add_attribute("auto_execute_ingress", enabled.to_string()))
+}
+
 // ---------------------------------------------------------------------------
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {
@@ -418,6 +429,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 accepted_denom: cfg.accepted_denom,
                 protocol_fee_bps: cfg.protocol_fee_bps,
                 next_order_id: next,
+                auto_execute_ingress: cfg.auto_execute_ingress,
             })
         }
         QueryMsg::Product { sku } => {
@@ -478,7 +490,12 @@ fn must_pay(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
                 expected: denom.into(),
             });
         }
-        total = total.checked_add(c.amount)?;
+        let paid = Uint128::try_from(c.amount).map_err(|_| ContractError::InsufficientFunds {
+            need: "u128".into(),
+            got: c.amount.to_string(),
+            denom: denom.into(),
+        })?;
+        total = total.checked_add(paid)?;
     }
     Ok(total)
 }

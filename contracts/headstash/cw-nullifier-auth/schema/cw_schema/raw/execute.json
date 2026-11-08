@@ -1,0 +1,12 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_nullifier_auth_msg_ExecuteMsg",
+      "description": "No user execute path required for authenticator lifecycle (sudo-only spends).",
+      "type": "enum",
+      "cases": {}
+    }
+  ]
+}

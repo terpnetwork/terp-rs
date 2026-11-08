@@ -14,5 +14,10 @@ pub use crate::error::ContractError;
 pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 pub use crate::state::{Config, MintDescriptor, MintStatus};
 
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+mod interface;
+#[cfg(all(feature = "interface", not(target_arch = "wasm32")))]
+pub use interface::CwCashuRegistry;
+
 #[cfg(test)]
 mod tests;

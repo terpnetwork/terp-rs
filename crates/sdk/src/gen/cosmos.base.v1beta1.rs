@@ -3,8 +3,7 @@
 ///
 /// NOTE: The amount field is an Int which implements the custom method
 /// signatures required by gogoproto.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Coin {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,
@@ -25,8 +24,7 @@ impl ::prost::Name for Coin {
 ///
 /// NOTE: The amount field is an Dec which implements the custom method
 /// signatures required by gogoproto.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DecCoin {
     #[prost(string, tag = "1")]
     pub denom: ::prost::alloc::string::String,

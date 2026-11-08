@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, DataEnum, DeriveInput};
+use syn::{AttributeArgs, DataEnum, DeriveInput, parse_macro_input};
 
 /// Merges the variants of two enums.
 ///
@@ -19,10 +19,7 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
 
     // parse the left enum
     let mut left: DeriveInput = parse_macro_input!(left);
-    let Enum(DataEnum {
-        variants,
-        ..
-    }) = &mut left.data else {
+    let Enum(DataEnum { variants, .. }) = &mut left.data else {
         return syn::Error::new(left.ident.span(), "only enums can accept variants")
             .to_compile_error()
             .into();
@@ -31,9 +28,9 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
     // parse the right enum
     let right: DeriveInput = parse_macro_input!(right);
     let Enum(DataEnum {
-        variants: to_add,
-        ..
-    }) = right.data else {
+        variants: to_add, ..
+    }) = right.data
+    else {
         return syn::Error::new(left.ident.span(), "only enums can provide variants")
             .to_compile_error()
             .into();

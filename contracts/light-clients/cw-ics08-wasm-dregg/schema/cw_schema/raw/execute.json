@@ -1,0 +1,66 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_dregg_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "settle": {
+          "description": "App-level settle (same as UpdateState body) for demos without IBC router.",
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_dregg_types_SettlementUpdate",
+      "type": "struct",
+      "properties": {
+        "chain_digest": {
+          "value": 5
+        },
+        "commitment_pok": {
+          "value": 3
+        },
+        "commitments": {
+          "value": 3
+        },
+        "final_root": {
+          "value": 5
+        },
+        "genesis_root": {
+          "value": 5
+        },
+        "num_turns": {
+          "value": 4
+        },
+        "proof": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 2
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<u32>",
+      "type": "array",
+      "items": 4
+    }
+  ]
+}

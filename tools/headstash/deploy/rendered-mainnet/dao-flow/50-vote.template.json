@@ -1,0 +1,7 @@
+{
+ "vote": {
+  "proposal_id": "{{id}}",
+  "vote": "yes",
+  "rationale": null
+ }
+}

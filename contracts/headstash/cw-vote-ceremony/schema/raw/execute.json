@@ -1,0 +1,237 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Start a ceremony (admin or future DAO proposal path).",
+      "type": "object",
+      "required": [
+        "start_ceremony"
+      ],
+      "properties": {
+        "start_ceremony": {
+          "type": "object",
+          "required": [
+            "domain",
+            "session_id"
+          ],
+          "properties": {
+            "anchor_policy": {
+              "description": "Optional anchor policy / root hint (opaque product string).",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clerk": {
+              "description": "Clerk address allowed to AttestLeaf (defaults to admin).",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "domain": {
+              "type": "string"
+            },
+            "membership_module": {
+              "description": "Voting / membership contract for DaoMember gate.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registration_gate": {
+              "default": "open",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/RegistrationGate"
+                }
+              ]
+            },
+            "registration_open": {
+              "description": "When false, Register is rejected.",
+              "default": true,
+              "type": "boolean"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "vm_verifier": {
+              "description": "Verifier / dummy-SA stand-in for VmProof (VerifyMinHolders).",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Close ceremony (no further spends / registrations).",
+      "type": "object",
+      "required": [
+        "close_ceremony"
+      ],
+      "properties": {
+        "close_ceremony": {
+          "type": "object",
+          "required": [
+            "session_id"
+          ],
+          "properties": {
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Participant self-register. `leaf_commit` required when gate is ClerkAttested.",
+      "type": "object",
+      "required": [
+        "register"
+      ],
+      "properties": {
+        "register": {
+          "type": "object",
+          "required": [
+            "session_id"
+          ],
+          "properties": {
+            "leaf_commit": {
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "proof": {
+              "default": null,
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Clerk/admin attests a registration leaf (dual L-reg half).",
+      "type": "object",
+      "required": [
+        "attest_leaf"
+      ],
+      "properties": {
+        "attest_leaf": {
+          "type": "object",
+          "required": [
+            "leaf_commit",
+            "session_id"
+          ],
+          "properties": {
+            "leaf_commit": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin can toggle registration window.",
+      "type": "object",
+      "required": [
+        "set_registration_open"
+      ],
+      "properties": {
+        "set_registration_open": {
+          "type": "object",
+          "required": [
+            "open",
+            "session_id"
+          ],
+          "properties": {
+            "open": {
+              "type": "boolean"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "RegistrationGate": {
+      "description": "How Register is gated for this session (configurable product policy).",
+      "oneOf": [
+        {
+          "description": "Anyone with gas while registration_open (legacy).",
+          "type": "string",
+          "enum": [
+            "open"
+          ]
+        },
+        {
+          "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+          "type": "string",
+          "enum": [
+            "clerk_attested"
+          ]
+        },
+        {
+          "description": "Register requires non-zero voting power on membership_module.",
+          "type": "string",
+          "enum": [
+            "dao_member"
+          ]
+        },
+        {
+          "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+          "type": "string",
+          "enum": [
+            "pre_propose"
+          ]
+        },
+        {
+          "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+          "type": "string",
+          "enum": [
+            "vm_proof"
+          ]
+        }
+      ]
+    }
+  }
+}

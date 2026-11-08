@@ -1,0 +1,6 @@
+# Workspace-relative paths from crates/terp-rs. Each directory has its own Cargo.lock.
+# headstash is the airdrop workspace (crates/headstash). tacit/airdrop is not a crate.
+.
+tools/hash-market
+../cosmwasm
+../headstash

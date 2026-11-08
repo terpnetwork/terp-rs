@@ -12,7 +12,7 @@
 //! Odd-length layers are padded by duplicating the last node.
 //! Proofs are sibling hashes from leaf to root (not including root).
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::collections::HashMap;
 
 fn leaf(address: &str, allocation: u32) -> [u8; 32] {
@@ -21,17 +21,24 @@ fn leaf(address: &str, allocation: u32) -> [u8; 32] {
 }
 
 fn parent(left: [u8; 32], right: [u8; 32]) -> [u8; 32] {
-    let (a, b) = if left <= right { (left, right) } else { (right, left) };
+    let (a, b) = if left <= right {
+        (left, right)
+    } else {
+        (right, left)
+    };
     let mut combined = [0u8; 64];
     combined[..32].copy_from_slice(&a);
     combined[32..].copy_from_slice(&b);
     *blake3::hash(&combined).as_bytes()
 }
 
+/// address → (allocation, proof_hashes_hex)
+pub type ProofMap = HashMap<String, (u32, Vec<String>)>;
+
 /// Build a merkle tree from (address, allocation) pairs and return proofs for every entry.
 ///
 /// Returns `(root_hex, address → (allocation, proof_hashes_hex))`.
-pub fn build(entries: &[(String, u32)]) -> Result<(String, HashMap<String, (u32, Vec<String>)>)> {
+pub fn build(entries: &[(String, u32)]) -> Result<(String, ProofMap)> {
     if entries.is_empty() {
         bail!("entry list is empty");
     }
@@ -65,7 +72,12 @@ pub fn build(entries: &[(String, u32)]) -> Result<(String, HashMap<String, (u32,
 /// Verify a proof — mirrors the contract's `verify_merkle_proof`.
 ///
 /// The composite key `address || allocation` must exactly match what was used at build time.
-pub fn verify(address: &str, allocation: u32, proof_hashes: &[String], root_hex: &str) -> Result<bool> {
+pub fn verify(
+    address: &str,
+    allocation: u32,
+    proof_hashes: &[String],
+    root_hex: &str,
+) -> Result<bool> {
     let mut current = leaf(address, allocation);
     for ph in proof_hashes {
         let sibling_bytes = hex::decode(ph)?;
@@ -84,7 +96,7 @@ fn build_layers(leaves: Vec<[u8; 32]>) -> ([u8; 32], Vec<Vec<[u8; 32]>>) {
         if current.len() == 1 {
             break;
         }
-        let mut next = Vec::with_capacity((current.len() + 1) / 2);
+        let mut next = Vec::with_capacity(current.len().div_ceil(2));
         let mut padded = current.clone();
         if padded.len() % 2 == 1 {
             let last = *padded.last().unwrap();
@@ -140,7 +152,10 @@ mod tests {
             .collect();
         let (root, members) = build(&entries).unwrap();
         for (addr, (alloc, proof)) in &members {
-            assert!(verify(addr, *alloc, proof, &root).unwrap(), "proof failed for {addr}");
+            assert!(
+                verify(addr, *alloc, proof, &root).unwrap(),
+                "proof failed for {addr}"
+            );
         }
     }
 
@@ -152,7 +167,10 @@ mod tests {
             .collect();
         let (root, members) = build(&entries).unwrap();
         for (addr, (alloc, proof)) in &members {
-            assert!(verify(addr, *alloc, proof, &root).unwrap(), "proof failed for {addr}");
+            assert!(
+                verify(addr, *alloc, proof, &root).unwrap(),
+                "proof failed for {addr}"
+            );
         }
     }
 

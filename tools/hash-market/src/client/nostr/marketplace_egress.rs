@@ -19,8 +19,8 @@
 //! Signature is **not** cryptographic — test / unsigned egress. Production should
 //! re-sign with operator key before publish. Mirrors `calendar_egress.rs`.
 
-use crate::content::{content_path, parse_cid, CidKind};
 use crate::client::nostr::calendar_egress::Nip01Event;
+use crate::content::{CidKind, content_path, parse_cid};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -170,20 +170,18 @@ pub fn product_to_nip15(
         vec!["t".into(), "hashmerchant".into()],
         vec![
             "d".into(),
-            meta.d_tag
-                .clone()
-                .unwrap_or_else(|| meta.sku.clone()),
+            meta.d_tag.clone().unwrap_or_else(|| meta.sku.clone()),
         ],
         vec!["sku".into(), meta.sku.clone()],
     ];
-    if let Some(cid) = &meta.content_cid {
-        if !cid.is_empty() {
-            tags.push(vec!["cid".into(), cid.clone()]);
-            if let Ok(parsed) = parse_cid(cid) {
-                if parsed.kind == CidKind::BudSha256 {
-                    tags.push(vec!["bud".into(), parsed.value]);
-                }
-            }
+    if let Some(cid) = &meta.content_cid
+        && !cid.is_empty()
+    {
+        tags.push(vec!["cid".into(), cid.clone()]);
+        if let Ok(parsed) = parse_cid(cid)
+            && parsed.kind == CidKind::BudSha256
+        {
+            tags.push(vec!["bud".into(), parsed.value]);
         }
     }
     if let Some(seller) = &meta.seller {
@@ -213,10 +211,7 @@ pub fn product_to_nip15(
 ///
 /// Uses kind:1 with marketplace tags so relays can filter without requiring a
 /// dedicated NIP-15 kind for order confirmations.
-pub fn purchase_confirmation_to_nostr(
-    action: &MarketplaceChainAction,
-    pubkey: &str,
-) -> Nip01Event {
+pub fn purchase_confirmation_to_nostr(action: &MarketplaceChainAction, pubkey: &str) -> Nip01Event {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -254,10 +249,10 @@ pub fn purchase_confirmation_to_nostr(
     if let Some(c) = &action.contract {
         tags.push(vec!["contract".into(), c.clone()]);
     }
-    if let Some(cid) = &action.content_cid {
-        if !cid.is_empty() {
-            tags.push(vec!["cid".into(), cid.clone()]);
-        }
+    if let Some(cid) = &action.content_cid
+        && !cid.is_empty()
+    {
+        tags.push(vec!["cid".into(), cid.clone()]);
     }
 
     let mut event = Nip01Event {
@@ -300,18 +295,14 @@ pub fn chain_action_to_nostr(
             };
             product_to_nip15(&meta, body, pubkey)
         }
-        "purchase" | "settle" | "cancel" => {
-            Ok(purchase_confirmation_to_nostr(action, pubkey))
-        }
+        "purchase" | "settle" | "cancel" => Ok(purchase_confirmation_to_nostr(action, pubkey)),
         other => Err(format!("unsupported marketplace action: {other}")),
     }
 }
 
 /// Content-plane path hint for a product cid (BUD / dual-index).
 pub fn product_content_path(cid: &str) -> Option<String> {
-    parse_cid(cid)
-        .ok()
-        .map(|p| content_path(&p))
+    parse_cid(cid).ok().map(|p| content_path(&p))
 }
 
 fn deterministic_id(ev: &Nip01Event) -> String {
@@ -368,11 +359,12 @@ mod tests {
         };
         let ev = product_to_nip15(&meta, None, "pubkey1").unwrap();
         assert_eq!(ev.kind, KIND_SET_PRODUCT as u32);
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t.as_slice() == ["d", "product-tee"]));
-        assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
+        assert!(ev.tags.iter().any(|t| t.as_slice() == ["d", "product-tee"]));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("cid"))
+        );
         assert!(!ev.id.is_empty());
     }
 
@@ -393,9 +385,10 @@ mod tests {
         };
         let ev = purchase_confirmation_to_nostr(&action, "pubkey1");
         assert_eq!(ev.kind, KIND_PURCHASE_NOTE as u32);
-        assert!(ev
-            .tags
-            .iter()
-            .any(|t| t.as_slice() == ["status", "settled"]));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.as_slice() == ["status", "settled"])
+        );
     }
 }

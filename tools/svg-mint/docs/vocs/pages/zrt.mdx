@@ -1,0 +1,39 @@
+---
+title: Wallet runtime
+description: One ZEC seed on disk. Scan and prover are not linked.
+---
+
+# Wallet runtime
+
+`svg-mint-zrt` is the ZEC CLI the fed execs for `notes` and for withdraw. It does not import zcli, `zync-core`, or `zcash-devtool`. zec.rocks and rotko are not this desk.
+
+The house does not have this binary installed. The fed note watch no-ops when the file is missing. Withdraw returns `svg-mint-zrt missing`. That is fail-closed. Do not `init` `~/.terp/svg-mint-zrt` to fill the gap. Read [Wallet gaps](/engines/wallet-gaps).
+
+`scripts/e2e-zrt-wallet.sh` is the persistence gate. It passed on groot-wan against a temporary `SVG_MINT_ZRT_DIR`. It does not prove scan, trial decryption, or a spend.
+
+## Commands
+
+```bash
+svg-mint-zrt init
+svg-mint-zrt addresses
+svg-mint-zrt balance --json
+svg-mint-zrt notes
+svg-mint-zrt sync
+svg-mint-zrt send --zat <n> --address <u1…>
+```
+
+`init` is the only command that creates `spend.seed`. A second `init` fails. The printed address is an Orchard receiver, not an Ironwood payment address. Do not publish it as a pay target.
+
+`notes` is the fed's checkout match. `mined: false` is a receipt. `mined: true` may mint. `sync` exits without changing the ledger. `send` refuses any destination except the donation UA, then exits because the prover is not linked. Notes stay unspent.
+
+`lab-credit` and `lab-commit-spend` exist only with `--features lab`.
+
+## Env
+
+| Name | Purpose |
+|---|---|
+| `SVG_MINT_ZRT_BIN` | Path the fed execs. Unset on the house, so the fed looks at `target/release/svg-mint-zrt`, which is absent. |
+| `SVG_MINT_ZRT_DIR` | Wallet directory. Unset means `~/.terp/svg-mint-zrt`. Do not create it on the house with this build. |
+| `ZTREAMER_GRPC` | Intended compact host. This build does not dial it. |
+
+`ZCASH_DEVTOOL_WALLET` is not read.

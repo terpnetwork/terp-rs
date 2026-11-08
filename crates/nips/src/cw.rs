@@ -3,20 +3,20 @@
 //! Bridge between Nostr NIP metadata and cw721 NFT extensions.
 //! Provides binary-encoded, schema-agnostic metadata storage with blanket trait implementations.
 
-use cosmwasm_std::{to_json_binary, Binary, StdError, StdResult};
+use cosmwasm_std::{Binary, StdError, StdResult, to_json_binary};
+use cw721::Attribute;
 use cw721::error::Cw721ContractError;
 use cw721::traits::{
     Contains, Cw721CustomMsg, Cw721State, FromAttributesState, StateFactory, ToAttributesState,
 };
-use cw721::Attribute;
-use schemars::gen::SchemaGenerator;
-use schemars::schema::{InstanceType, ObjectValidation, Schema, SchemaObject};
 use schemars::JsonSchema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use schemars::r#gen::SchemaGenerator;
+use schemars::schema::{InstanceType, ObjectValidation, Schema, SchemaObject};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
-use crate::{nips, NipKind, NipMetadata, RawNostrEvent};
+use crate::{NipKind, NipMetadata, RawNostrEvent, nips};
 
 /// Core trait for Nostr-compatible cw721 extensions.
 ///
@@ -57,15 +57,13 @@ impl<T: NipMetadata> NostrCw721Ext for T {
     }
 
     fn to_attributes(&self) -> Result<Vec<Attribute>, Cw721ContractError> {
-        let json = self
-            .to_storage_binary()
-            .map_err(|e| Cw721ContractError::Std(e))?;
+        let json = self.to_storage_binary().map_err(Cw721ContractError::Std)?;
 
         Ok(vec![
             Attribute {
                 key: "nip_kind".to_string(),
                 value: to_json_binary(&self.kind().kind_value())
-                    .map_err(|e| Cw721ContractError::Std(e))?,
+                    .map_err(Cw721ContractError::Std)?,
             },
             Attribute {
                 key: "nip_data".to_string(),
@@ -356,7 +354,7 @@ impl ToAttributesState for MetadataExt {
         let mut attrs = vec![
             Attribute {
                 key: "nip_kind".to_string(),
-                value: to_json_binary(&self.kind).map_err(|e| Cw721ContractError::Std(e))?,
+                value: to_json_binary(&self.kind).map_err(Cw721ContractError::Std)?,
             },
             Attribute {
                 key: "nip_data".to_string(),
@@ -367,14 +365,14 @@ impl ToAttributesState for MetadataExt {
         if let Some(ref id) = self.event_id {
             attrs.push(Attribute {
                 key: "nip_event_id".to_string(),
-                value: to_json_binary(id).map_err(|e| Cw721ContractError::Std(e))?,
+                value: to_json_binary(id).map_err(Cw721ContractError::Std)?,
             });
         }
 
         if let Some(ref author) = self.author {
             attrs.push(Attribute {
                 key: "nip_author".to_string(),
-                value: to_json_binary(author).map_err(|e| Cw721ContractError::Std(e))?,
+                value: to_json_binary(author).map_err(Cw721ContractError::Std)?,
             });
         }
 
@@ -534,14 +532,14 @@ impl<T: NostrCw721Ext> ToAttributesState for TypedMetadataExt<T> {
         if let Some(ref id) = self.event_id {
             attrs.push(Attribute {
                 key: "nip_event_id".to_string(),
-                value: to_json_binary(id).map_err(|e| Cw721ContractError::Std(e))?,
+                value: to_json_binary(id).map_err(Cw721ContractError::Std)?,
             });
         }
 
         if let Some(ref author) = self.author {
             attrs.push(Attribute {
                 key: "nip_author".to_string(),
-                value: to_json_binary(author).map_err(|e| Cw721ContractError::Std(e))?,
+                value: to_json_binary(author).map_err(Cw721ContractError::Std)?,
             });
         }
 

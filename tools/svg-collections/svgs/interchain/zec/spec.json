@@ -1,0 +1,77 @@
+{
+  "version": "1",
+  "collection": "z-emblem",
+  "description": "Premium circular emblem with luxurious 4-stop diagonal gold gradient on the main orb. Full artistic control over every shade of gold via base colors while staying 100% faithful to the original geometry, proportions, and elegant diagonal sweep. Subtle breathing glow on the stylized Z adds timeless life.",
+
+  "palette_groups": [
+    {
+      "id": "gold-gradient",
+      "note": "Rich metallic gold family — from deep amber to brilliant highlight. Perfectly tuned to original #cf8724–#fdce58 heritage with luxurious depth",
+      "anchor": "color-gold-rich",
+      "members": ["color-gold-deep", "color-gold-rich", "color-gold-bright", "color-gold-highlight"],
+      "ranges": [
+        { "r_min": 180, "r_max": 215, "g_min": 105, "g_max": 145, "b_min": 25, "b_max": 55 }
+      ]
+    },
+    {
+      "id": "ring",
+      "note": "Deep metallic charcoal ring for premium contrast and depth",
+      "anchor": "color-ring",
+      "members": ["color-ring"],
+      "ranges": [
+        { "r_min": 18, "r_max": 38, "g_min": 18, "g_max": 38, "b_min": 22, "b_max": 42 }
+      ]
+    },
+    {
+      "id": "z-symbol",
+      "note": "Crisp luminous white/gold for the Z letter — perfect contrast and elegance",
+      "anchor": "color-z",
+      "members": ["color-z"],
+      "ranges": [
+        { "r_min": 248, "r_max": 255, "g_min": 248, "g_max": 255, "b_min": 248, "b_max": 255 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "z-breath",
+      "note": "Extremely subtle elegant breathing glow on the Z symbol only — adds quiet sophistication without distraction",
+      "members": ["breath-z"],
+      "min": "4.2",
+      "max": "9.8",
+      "precision": 1
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-gold-deep",
+      "kind": { "rgb_styled": [{ "r_min": 185, "r_max": 215, "g_min": 105, "g_max": 135, "b_min": 28, "b_max": 52 }] }
+    },
+    {
+      "name": "color-gold-rich",
+      "kind": { "rgb_styled": [{ "r_min": 200, "r_max": 230, "g_min": 125, "g_max": 160, "b_min": 45, "b_max": 75 }] }
+    },
+    {
+      "name": "color-gold-bright",
+      "kind": { "rgb_styled": [{ "r_min": 235, "r_max": 255, "g_min": 175, "g_max": 205, "b_min": 65, "b_max": 95 }] }
+    },
+    {
+      "name": "color-gold-highlight",
+      "kind": { "rgb_styled": [{ "r_min": 245, "r_max": 255, "g_min": 195, "g_max": 225, "b_min": 75, "b_max": 105 }] }
+    },
+    {
+      "name": "color-ring",
+      "kind": { "rgb_styled": [{ "r_min": 18, "r_max": 38, "g_min": 18, "g_max": 38, "b_min": 22, "b_max": 42 }] }
+    },
+    {
+      "name": "color-z",
+      "kind": { "rgb_styled": [{ "r_min": 248, "r_max": 255, "g_min": 248, "g_max": 255, "b_min": 248, "b_max": 255 }] }
+    },
+    {
+      "name": "breath-z",
+      "kind": { "range": { "min": "4.2", "max": "9.8", "precision": 1 } }
+    }
+  ]
+}

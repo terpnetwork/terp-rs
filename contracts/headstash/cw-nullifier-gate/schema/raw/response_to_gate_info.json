@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GateInfoResponse",
+  "type": "object",
+  "required": [
+    "note",
+    "owns_spent_map"
+  ],
+  "properties": {
+    "note": {
+      "type": "string"
+    },
+    "owns_spent_map": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

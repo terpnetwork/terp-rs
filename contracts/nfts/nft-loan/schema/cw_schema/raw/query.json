@@ -1,0 +1,45 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "nftfi_loan_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "collateral": {
+          "type": "named",
+          "properties": {
+            "borrower": {
+              "value": 1
+            },
+            "loan_id": {
+              "value": 2
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "offer": {
+          "type": "named",
+          "properties": {
+            "global_offer_id": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

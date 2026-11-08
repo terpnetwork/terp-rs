@@ -38,11 +38,11 @@ layout.
 | `clap` | workspace | CLI argument parsing |
 | `anyhow` | workspace | Error propagation |
 | `log` / `env_logger` | workspace | Diagnostic output |
-| `serde_yaml` | workspace | gen-tools.yaml config loading |
+| `yaml_serde` | 0.10 | gen-tools.yaml config loading |
 | `glob` | workspace | Schema file discovery |
 | `chrono` | workspace | Timestamps in generated headers |
 
-All dependencies come from the workspace Cargo.toml in the terp-core root.
+Dependencies come from the workspace Cargo.toml, except `yaml_serde`, which is pinned in this crate.
 gen-tools does NOT import CosmWasm or Cosmos SDK crates directly — it works
 purely from serialized JSON schema files.
 
@@ -77,8 +77,8 @@ cargo run --release -- --config gen-tools.yaml --all
 # 4. Run against a single project
 cargo run --release -- --config gen-tools.yaml --project cw-infuser
 
-# 5. Run against a standalone workspace (no config)
-cd ../../../cw-infuser
+# 5. Run against the unified terp-rs contract workspace (no config)
+cd ../../
 cargo run --release -- --steps schema,go,python,openapi
 ```
 
@@ -89,12 +89,14 @@ contract.
 
 ### Output location
 
-All generated types are written to `terp-api/<lang>/<project>/` within each
-project's workspace root.  For example, running against `cw-infuser` produces:
+All generated types for the unified workspace are written to
+`crates/terp-rs/api/<lang>/<contract>/`. Infuser contracts live in
+`crates/terp-rs/contracts/infuser/` (not the leftover isolated
+`crates/cw-infuser` worktree). For example, running `--project terp-rs` produces:
 
 ```
-crates/cw-infuser/
-  terp-api/
+crates/terp-rs/
+  api/
     go/cw-infuser/          ← Go struct types
     python/cw-infuser/      ← Python dataclasses
     ts/cw-infuser/          ← TS types, clients, bundles, Zod schemas
@@ -160,8 +162,9 @@ Terp Network monorepo:
 base_path: "../../../.."
 
 projects:
-  - name: cw-infuser
-    path: crates/cw-infuser
+  - name: terp-rs
+    path: crates/terp-rs
+    ts_out: api/ts
 
   - name: dao-contracts
     path: crates/dao-contracts
@@ -379,9 +382,10 @@ TensorZero config under `_devops/tz-profiles/`.
 
 ## Related crates in the Terp Network ecosystem
 
-- [cw-infuser](https://github.com/terpnetwork/terp-core/tree/main/crates/cw-infuser)
-  — CosmWasm contract deployment framework.  Its TS codegen pattern inspired
-  gen-tools' `ts-codegen` and `ts-bundles` steps.
+- [cw-infuser](https://github.com/terpnetwork/terp-core/tree/main/crates/terp-rs/contracts/infuser)
+  — Infuser contracts now live in the terp-rs monorepo (`contracts/infuser/`).
+  Generated clients: `crates/terp-rs/api/ts/cw-infuser`. The leftover
+  `crates/cw-infuser` worktree is not the workspace.
 
 - [dao-contracts](https://github.com/terpnetwork/terp-core/tree/main/crates/dao-contracts)
   — DAO framework contracts.  `generate_api_markdown()` informed the `readme`

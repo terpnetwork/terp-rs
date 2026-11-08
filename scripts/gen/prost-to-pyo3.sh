@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # prost-to-pyo3.sh — Parse prost-generated .rs files and emit:
 #   1. proto/src/py_gen.rs   — Rust encode/decode registry (match on type_url)
-#   2. proto/python/terp_proto/<module>.py — Python dataclasses per proto package
+#   2. api/python/terp-python/terp_proto/<module>.py — Python dataclasses per proto package
 #
-# Usage: ./scripts/gen/prost-to-pyo3.sh [--modules terp,osmosis,ibc,cosmos] [--out-dir proto/python/terp_proto]
+# Usage: ./scripts/gen/prost-to-pyo3.sh [--modules terp,osmosis,ibc,cosmos] [--out-dir api/python/terp-python/terp_proto]
 #
 # Prost field patterns handled:
 #   string                → str         (default: "")
@@ -22,7 +22,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 GEN_DIR="$ROOT/proto/src/gen"
-PY_OUT_DIR="${PY_OUT_DIR:-$ROOT/proto/python/terp_proto}"
+PY_OUT_DIR="${PY_OUT_DIR:-$ROOT/api/python/terp-python/terp_proto}"
 RS_OUT="$ROOT/proto/src/py_gen.rs"
 MODULES="${MODULES:-terp,osmosis,ibc,cosmos}"
 
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
     --modules)  MODULES="$2"; shift 2 ;;
     --out-dir)  PY_OUT_DIR="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--modules terp,osmosis,ibc,cosmos] [--out-dir proto/python/terp_proto]"
+      echo "Usage: $0 [--modules terp,osmosis,ibc,cosmos] [--out-dir api/python/terp-python/terp_proto]"
       exit 0 ;;
     *) echo "Unknown arg: $1"; exit 1 ;;
   esac

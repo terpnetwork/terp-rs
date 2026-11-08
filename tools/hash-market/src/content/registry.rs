@@ -102,12 +102,11 @@ impl ContentRegistry {
             if ent.path().extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            if let Ok(bytes) = fs::read(ent.path()) {
-                if let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes) {
-                    if let Some(cid) = &rec.ipfs_cid {
-                        idx.insert(cid.clone(), rec.sha256.clone());
-                    }
-                }
+            if let Ok(bytes) = fs::read(ent.path())
+                && let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes)
+                && let Some(cid) = &rec.ipfs_cid
+            {
+                idx.insert(cid.clone(), rec.sha256.clone());
             }
         }
         Ok(())
@@ -139,9 +138,11 @@ impl ContentRegistry {
         if let Some(mut existing) = self.get(&incoming.sha256)? {
             // merge origins
             for o in incoming.origins.drain(..) {
-                if !existing.origins.iter().any(|e| {
-                    e.kind == o.kind && e.bucket == o.bucket && e.key == o.key
-                }) {
+                if !existing
+                    .origins
+                    .iter()
+                    .any(|e| e.kind == o.kind && e.bucket == o.bucket && e.key == o.key)
+                {
                     existing.origins.push(o);
                 }
             }
@@ -192,10 +193,10 @@ impl ContentRegistry {
             if ent.path().extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            if let Ok(bytes) = fs::read(ent.path()) {
-                if let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes) {
-                    out.push(rec);
-                }
+            if let Ok(bytes) = fs::read(ent.path())
+                && let Ok(rec) = serde_json::from_slice::<ContentRecord>(&bytes)
+            {
+                out.push(rec);
             }
         }
         out.sort_by(|a, b| a.sha256.cmp(&b.sha256));

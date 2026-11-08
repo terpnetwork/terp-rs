@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use cosmwasm_std::{from_json, StdError};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use cosmwasm_std::{StdError, from_json};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 
 use crate::AccountAuthenticator;
@@ -20,12 +20,9 @@ pub enum CompositeAuthenticatorError {
 
 impl PartialEq for CompositeAuthenticatorError {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
+        core::mem::discriminant(self) == core::mem::discriminant(other)
     }
 }
-
 
 impl CompositeAuthenticatorError {
     pub fn invalid_composite_id(composite_id: &str) -> Self {
@@ -92,8 +89,8 @@ impl FromStr for CompositeId {
     }
 }
 
-impl ToString for CompositeId {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CompositeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let path = self
             .path
             .iter()
@@ -102,9 +99,9 @@ impl ToString for CompositeId {
             .join(".");
 
         if path.is_empty() {
-            self.root.to_string()
+            write!(f, "{}", self.root)
         } else {
-            format!("{}.{}", self.root, path)
+            write!(f, "{}.{}", self.root, path)
         }
     }
 }

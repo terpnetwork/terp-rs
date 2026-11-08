@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TimestampAtHeightResult",
+  "type": "object",
+  "required": [
+    "timestamp"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

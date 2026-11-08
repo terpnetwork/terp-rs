@@ -1,6 +1,6 @@
 # terp-zktls
 
-This library extends the BTSG Authenticator Trait to implement a **ZK-TLS Proof Account Authenticator** for the `x/smart-account` module. It enables zero-knowledge authentication of transactions based on TLS session proofs, allowing users to prove claims *(e.g., "I accessed a website with specific parameters")* without revealing sensitive data.
+This library extends the Terp Authenticator Trait to implement a **ZK-TLS Proof Account Authenticator** for the `x/smart-account` module. It enables zero-knowledge authentication of transactions based on TLS session proofs, allowing users to prove claims *(e.g., "I accessed a website with specific parameters")* without revealing sensitive data.
 
 Authorize actions via zktls-proof verification.
 

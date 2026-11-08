@@ -1,0 +1,98 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    terp-strobe v2 — Placeholder Dictionary: terp-strobe.dict.json
+    Variables:
+      color-{a..m}   RgbStyled  four neon hue bands (green/cyan/magenta/yellow)
+      glow-color     RgbStyled  same palette, drives the shared feDropShadow filter
+      pulse-{a..m}   Range      [1.2, 4.5] prec 2  — CSS: --pulse-dur:[value]s
+      flicker-{a..m} Range      [0.08, 0.50] prec 2 — CSS: --flicker-dur:[value]s
+  -->
+  <defs>
+    <filter id="neonglow" x="-90%" y="-90%" width="280%" height="280%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2.0" flood-color="${glow-color}" flood-opacity="0.96"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4.6" flood-color="${glow-color}" flood-opacity="0.68"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="9.2" flood-color="${glow-color}" flood-opacity="0.36"/>
+    </filter>
+
+    <style>
+      <![CDATA[
+        @keyframes neonBreath {
+          0%, 100% { r: 7.4; }
+          50%      { r: 12.8; }
+        }
+
+        @keyframes strobeFlicker {
+          0%, 18%, 22%, 100% { opacity: 1; }
+          4%  { opacity: 0.42; }
+          9%  { opacity: 0.95; }
+          13% { opacity: 0.51; }
+          17% { opacity: 0.87; }
+        }
+
+        .orb {
+          animation:
+            neonBreath    var(--pulse-dur)   var(--pulse-delay)   infinite ease-in-out,
+            strobeFlicker var(--flicker-dur) var(--flicker-delay) infinite linear;
+        }
+      ]]>
+    </style>
+  </defs>
+
+  <rect width="200" height="200" fill="black" fill-opacity="0.23"/>
+
+  <g filter="url(#neonglow)">
+
+    <!-- a. Center -->
+    <circle class="orb" cx="100" cy="100" r="8.7" fill="${color-a}"
+            style="--pulse-dur:${pulse-a}s;--pulse-delay:-0.11s;--flicker-dur:${flicker-a}s;--flicker-delay:0s;"/>
+
+    <!-- b. Far Left -->
+    <circle class="orb" cx="52" cy="100" r="8.7" fill="${color-b}"
+            style="--pulse-dur:${pulse-b}s;--pulse-delay:-1.23s;--flicker-dur:${flicker-b}s;--flicker-delay:-0.07s;"/>
+
+    <!-- c. Far Right -->
+    <circle class="orb" cx="148" cy="100" r="8.7" fill="${color-c}"
+            style="--pulse-dur:${pulse-c}s;--pulse-delay:-0.62s;--flicker-dur:${flicker-c}s;--flicker-delay:0.21s;"/>
+
+    <!-- d. Far Top -->
+    <circle class="orb" cx="100" cy="52" r="8.7" fill="${color-d}"
+            style="--pulse-dur:${pulse-d}s;--pulse-delay:-1.97s;--flicker-dur:${flicker-d}s;--flicker-delay:-0.29s;"/>
+
+    <!-- e. Far Bottom -->
+    <circle class="orb" cx="100" cy="148" r="8.7" fill="${color-e}"
+            style="--pulse-dur:${pulse-e}s;--pulse-delay:-0.38s;--flicker-dur:${flicker-e}s;--flicker-delay:-0.14s;"/>
+
+    <!-- f. Mid Left -->
+    <circle class="orb" cx="75" cy="100" r="8.7" fill="${color-f}"
+            style="--pulse-dur:${pulse-f}s;--pulse-delay:-1.48s;--flicker-dur:${flicker-f}s;--flicker-delay:0.09s;"/>
+
+    <!-- g. Mid Right -->
+    <circle class="orb" cx="125" cy="100" r="8.7" fill="${color-g}"
+            style="--pulse-dur:${pulse-g}s;--pulse-delay:-0.81s;--flicker-dur:${flicker-g}s;--flicker-delay:-0.22s;"/>
+
+    <!-- h. Mid Top -->
+    <circle class="orb" cx="100" cy="75" r="8.7" fill="${color-h}"
+            style="--pulse-dur:${pulse-h}s;--pulse-delay:-1.82s;--flicker-dur:${flicker-h}s;--flicker-delay:0.04s;"/>
+
+    <!-- i. Mid Bottom -->
+    <circle class="orb" cx="100" cy="125" r="8.7" fill="${color-i}"
+            style="--pulse-dur:${pulse-i}s;--pulse-delay:-0.19s;--flicker-dur:${flicker-i}s;--flicker-delay:-0.39s;"/>
+
+    <!-- j. Diagonal Top-Left -->
+    <circle class="orb" cx="75" cy="75" r="8.7" fill="${color-j}"
+            style="--pulse-dur:${pulse-j}s;--pulse-delay:-1.09s;--flicker-dur:${flicker-j}s;--flicker-delay:0.14s;"/>
+
+    <!-- k. Diagonal Bottom-Left -->
+    <circle class="orb" cx="75" cy="125" r="8.7" fill="${color-k}"
+            style="--pulse-dur:${pulse-k}s;--pulse-delay:-2.31s;--flicker-dur:${flicker-k}s;--flicker-delay:-0.11s;"/>
+
+    <!-- l. Diagonal Top-Right -->
+    <circle class="orb" cx="125" cy="75" r="8.7" fill="${color-l}"
+            style="--pulse-dur:${pulse-l}s;--pulse-delay:-0.74s;--flicker-dur:${flicker-l}s;--flicker-delay:-0.26s;"/>
+
+    <!-- m. Diagonal Bottom-Right -->
+    <circle class="orb" cx="125" cy="125" r="8.7" fill="${color-m}"
+            style="--pulse-dur:${pulse-m}s;--pulse-delay:-1.36s;--flicker-dur:${flicker-m}s;--flicker-delay:0.07s;"/>
+
+  </g>
+</svg>

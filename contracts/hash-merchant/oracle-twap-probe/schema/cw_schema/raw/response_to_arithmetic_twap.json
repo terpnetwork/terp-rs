@@ -1,0 +1,28 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_oracle_twap_probe_TwapResponse",
+      "type": "struct",
+      "properties": {
+        "arithmetic_twap": {
+          "value": 1
+        },
+        "pool_id": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

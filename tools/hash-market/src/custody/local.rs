@@ -15,7 +15,7 @@ impl LocalSecp256k1 {
     /// Create from a 32-byte hex-encoded private key.
     pub fn from_hex(sk_hex: &str) -> Result<Self> {
         let bytes = hex::decode(sk_hex.trim()).context("invalid hex for secp256k1 key")?;
-        let sk = k256::ecdsa::SigningKey::from_bytes(bytes.as_slice().into())
+        let sk = k256::ecdsa::SigningKey::from_slice(bytes.as_slice())
             .context("invalid secp256k1 private key")?;
         let pk_bytes = sk.verifying_key().to_sec1_bytes().to_vec();
         Ok(Self { sk, pk_bytes })
@@ -23,8 +23,14 @@ impl LocalSecp256k1 {
 
     /// Generate a random key (useful for testing).
     pub fn generate() -> Self {
-        use rand_core::OsRng;
-        let sk = k256::ecdsa::SigningKey::random(&mut OsRng);
+        use rand_core::RngCore;
+        let mut raw = [0u8; 32];
+        let sk = loop {
+            rand_core::OsRng.fill_bytes(&mut raw);
+            if let Ok(sk) = k256::ecdsa::SigningKey::from_slice(&raw) {
+                break sk;
+            }
+        };
         let pk_bytes = sk.verifying_key().to_sec1_bytes().to_vec();
         Self { sk, pk_bytes }
     }
@@ -47,12 +53,14 @@ impl Custody for LocalSecp256k1 {
     }
 }
 
-/// Ed25519 local custody using `ed25519-dalek`.
+/// Ed25519 local custody. The workspace dalek is 1.x, which has no `SigningKey`.
+#[cfg(feature = "ed25519-v2")]
 pub struct LocalEd25519 {
     sk: ed25519_dalek::SigningKey,
     pk_bytes: Vec<u8>,
 }
 
+#[cfg(feature = "ed25519-v2")]
 impl LocalEd25519 {
     /// Create from a 32-byte hex-encoded seed.
     pub fn from_hex(seed_hex: &str) -> Result<Self> {
@@ -74,6 +82,7 @@ impl LocalEd25519 {
     }
 }
 
+#[cfg(feature = "ed25519-v2")]
 #[async_trait]
 impl Custody for LocalEd25519 {
     async fn sign(&self, msg: &[u8]) -> Result<Vec<u8>> {

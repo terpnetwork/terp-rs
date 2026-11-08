@@ -1,0 +1,79 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "trusted_builder_sbt_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "commit_australge": {
+          "description": "Path 2: user commits to the Australge / Trustless Manifesto on Terp.\nStores a pending commitment and, if a client is registered, emits\n`Ibc2Msg::SendPacket` so ETH can pledge and attest back.",
+          "type": "named",
+          "properties": {
+            "commitment_hex": {
+              "value": 1
+            },
+            "eth_address": {
+              "value": 1
+            }
+          }
+        },
+        "deliver_eth_attestation": {
+          "description": "Relayer/admin delivery of an ETH pledge attestation (same mint as\n`ibc2_packet_receive`). Used when a real Eureka relayer is not in the loop.",
+          "type": "named",
+          "properties": {
+            "commitment_hex": {
+              "value": 1
+            },
+            "eth_address": {
+              "value": 1
+            },
+            "pledge_tx": {
+              "value": 1
+            }
+          }
+        },
+        "mint": {
+          "description": "Path 1: mint after hashmerchant VE / sidecar recorded the manifesto pledge.",
+          "type": "named",
+          "properties": {
+            "eth_address": {
+              "value": 1
+            },
+            "sign_tx": {
+              "value": 1
+            },
+            "ve_commitment_hex": {
+              "value": 1
+            }
+          }
+        },
+        "register_ibc_v2": {
+          "description": "Admin registers the IBC-v2 counterparty (no v1 handshake). This is the\napp-level \"connection\" to ETH (Eureka client id + dest port).",
+          "type": "named",
+          "properties": {
+            "dest_port": {
+              "value": 1
+            },
+            "source_client": {
+              "value": 1
+            }
+          }
+        },
+        "send_australge_packet": {
+          "description": "Emit `Ibc2Msg::SendPacket` for a pending Australge commitment (requires\n`RegisterIbcV2`). Separate from commit so the on-chain commitment works\neven when the host has no IBC-v2 client yet.",
+          "type": "named",
+          "properties": {
+            "eth_address": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

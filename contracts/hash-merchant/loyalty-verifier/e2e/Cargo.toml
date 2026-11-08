@@ -1,0 +1,10 @@
+[package]
+name = "loyalty-verifier-e2e"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+description = "TerpArtifactStack field check for this contract."
+
+[dependencies]
+cw-orch = { workspace = true }
+terp-orch = { workspace = true, features = ["stack"] }

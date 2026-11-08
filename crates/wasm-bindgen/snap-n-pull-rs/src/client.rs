@@ -10,25 +10,25 @@
 //! 3. **Canonical Routing**: Consistent query patterns across all endpoints
 //! 4. **Minimal Dependencies**: Reuses tonic without heavy SDK dependencies
 
+use cosmos_sdk_proto::Any;
 use cosmos_sdk_proto::cosmos::authz::v1beta1::MsgGrant;
 use cosmos_sdk_proto::cosmos::feegrant::v1beta1::MsgGrantAllowance;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::QuerySmartContractStateResponse;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::{
-    query_client::QueryClient as WasmQueryClient,
     QuerySmartContractStateRequest as CosmosQueryRequest,
+    query_client::QueryClient as WasmQueryClient,
 };
-use cosmos_sdk_proto::Any;
 use serde::{Deserialize, Serialize};
 use tonic::transport::Channel;
 use wasm_bindgen::prelude::*;
-use zk_headstash::r#gen::headstash::snp::v1::{
-    headstash_snap_service_client::HeadstashSnapServiceClient, DownloadNullifierStateRequest,
-    DownloadNullifierStateResponse, UploadNullifierStateRequest, UploadNullifierStateResponse,
-};
 use zk_headstash::r#gen::actions::v1::MsgPrepareNoteNullifier;
+use zk_headstash::r#gen::headstash::snp::v1::{
+    DownloadNullifierStateRequest, DownloadNullifierStateResponse, UploadNullifierStateRequest,
+    UploadNullifierStateResponse, headstash_snap_service_client::HeadstashSnapServiceClient,
+};
 
-use crate::wallet::wallet::{ClaimResponse, HeadstashInstance, HeadstashMetadata, ProofData};
 use crate::Error;
+use crate::wallet::wallet::{ClaimResponse, HeadstashInstance, HeadstashMetadata, ProofData};
 
 /// Headstash client for gRPC communication
 ///

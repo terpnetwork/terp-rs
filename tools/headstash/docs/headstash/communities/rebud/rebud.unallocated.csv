@@ -1,0 +1,16 @@
+addr,amount,class,reason,community
+0x43cbefc7b3e000dc7b01c958b26dabf9d3b67198,16,dead,contract,rebud
+0x144b70fbd0566d1930e15a35982b5845691ffda0,11,dead,contract,rebud
+0x0199a04db437868de8e4947a8c0d40ce88de184e,2,dead,contract,rebud
+0xdfd3786eccec1b05966af21b7d48cb2f536277b4,2,dead,contract,rebud
+0xec6038febf0497b3dc2383a86bfd3d19226f49ae,2,dead,contract,rebud
+0x0be8bc490093ebd4361f14ecf64977a6519a9b48,1,dead,contract,rebud
+0x0e9698440b70c496af28c5a221bbe3674dda8112,1,dead,contract,rebud
+0x0fc10c96a6bdc43969db74cd8e788033748da0b9,1,dead,contract,rebud
+0x19efdc36c78cb17c4b49c8496b9cea7bd72f52dc,1,dead,never-sent,rebud
+0x1fefd2d64af4d97e5f2de6f96237e6afe29e25f4,1,dead,contract,rebud
+0x2c88bc6c2a4eeed3b5ab6ea17fe3b422d209d3df,1,dead,never-sent,rebud
+0x7d0e902a824e1b437576442512d9a8db2e89b31c,1,dead,never-sent,rebud
+0x96f65b0379e2dbe2b84e550eb87ec9fac4e36341,1,dead,contract,rebud
+0xc52747774dfc6642ed581bd0b5acf511346266d7,1,dead,contract,rebud
+0xdc014b6687610ccc2559e1ce55fa73b0d7224444,1,dead,never-sent,rebud

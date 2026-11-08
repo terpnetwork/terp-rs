@@ -13,6 +13,8 @@ Locked-in workflow for local ↔ remote crate swapping across the monorepo.
 | Flake | `terp-core/crates/flake.nix` | Toolchain + bootstrap apps |
 | CLI | `_scripts/dep.py` | **Stable entrypoint** |
 | Engine | `_scripts/dep-switch.py` + `dep_common.py` | Implementation |
+| Probes | `_scripts/dep_probe.py` | Read-only. `branch-check`, `git-status`, write preflight |
+| Report | `_scripts/dep_html.py` | Self-contained HTML. `dep.py html [--serve]` |
 
 **Monorepo root** defaults to `terp-core/crates` (resolved from config).  
 Override with `TERP_DEP_ROOT` / `DEP_MONOREPO_ROOT` if needed.
@@ -50,6 +52,16 @@ just deps-config          # or: python3 _scripts/dep.py config
 # Matrix must be clean before switches
 just deps-validate
 
+# Every matrix branch must exist on its remote (read-only, exit 1 otherwise)
+just deps-branch-check
+
+# What is in flight, and what blocks a write path (read-only git plumbing)
+just deps-git-status
+
+# Same findings as one self-contained HTML file (no CDN, works from file://)
+just deps-html
+just deps-serve
+
 # If validate fails (absolute paths / wrong package dirs):
 just deps-heal            # rewrite locals; package-name checked
 just deps-heal-dry-run
@@ -60,6 +72,24 @@ just deps-local           # path deps for hot rebuilds
 just deps-git             # git remotes for push verification
 just deps-stable          # crates.io versions
 just deps-dev             # git identity + local path patches
+
+# Version lines stay. One crates.io patch, scoped to one workspace.
+just deps-patch-local-dry-run dao-contracts
+just deps-patch-git-dry-run dao-contracts
+just deps-patch-local dao-contracts
+just deps-patch-git dao-contracts
+
+# The known core set is zakura-common, cosmwasm, cw-placeholder, the four
+# abstract roots, cw-orchestrator, cw-plus, cw-minus, dao-contracts, polytone,
+# both cw-multi-test forks, the nested patch roots, and terp-rs.
+just deps-patch-local-core-dry-run
+just deps-patch-git-core-dry-run
+just deps-patch-local-core
+just deps-patch-git-core
+
+# Replace a floating matrix git branch with the full rev from the matrix.
+just deps-pin-revs-dry-run neutron-std
+just deps-pin-revs neutron-std
 
 # Preview
 just deps-switch-dry-run local
@@ -75,10 +105,16 @@ just deps-switch-verify local
 |---|---|---|
 | `local` / `zk_local` | `path = "..."` in ws-deps/members | Day-to-day editing |
 | `git` / `zk_git` | `git = "...", branch = "..."` | Remote verify / push prep |
-| `dev` / `zk_dev` | git in ws-deps + `[patch.'url']` → path | Hot swap with remote-shaped deps |
+| `dev` / `zk_dev` | git in ws-deps + `[patch.'url']` → path | Hot swap with remote-shaped deps. This is the shape the dao-contracts `v2.9.0-delta.9` pin uses |
 | `stable` | registry versions | Release / downstream fidelity |
+| `patch-local` | version lines stay; `[patch.crates-io]` → path | Edit forks while dependents keep a crates.io requirement |
+| `patch-git` | version lines stay; `[patch.crates-io]` → `git` + full `rev` | Reproduce a publish without floating a branch |
 
-ZK is a profile overlay on the same machinery (`zk_*` keys in the matrix).
+`patch-local` and `patch-git` are mutually exclusive. Cargo applies one replacement per dependency edge. A crates.io dependency patched to a git rev stays on that rev; a `[patch.'<git-url>']` path does not override that same edge. These modes do not add that second patch. `patch-git` keeps a git-url section that is already in the workspace, because a patched crate can still depend on the git URL directly, and only the root workspace patch can redirect it. `patch-local` rewrites those git lines to crate versions, then walks the path graph and adds any missing `[patch.crates-io]` local entry for a matrix crate reached through a version requirement. `dep.py align` copies a path dependency's `[patch.crates-io]` entry onto the resolving workspace when a walked manifest version-depends on that name, including a git replacement that is not in the matrix. Entries nothing requires are left behind. A `[patch.'<git-url>']` section is removed when that graph no longer names the URL. The nested workspace roots that used to need those sections (`cw-storage-plus`, `cw-plus-plus`, `cw-nfts`, `osmosis-rust`, `osmosis-test-tube`, `cosmos-rust`, `tendermint-rs`, `pbjson`, `neutron-std`, `ict-rs`) are part of the core workspace list. `cw-orch-core` is `2.1.4`, `cw-orch-daemon` is `0.29.0`, and `ics23` is `0.12.0`, matching the sibling checkouts, so a caret requirement selects the local patch. `patch-git` reads `git.rev` or `git.commit` and refuses a branch or a short SHA. A missing rev keeps the current dependency line and the current patch line. A full rev is written only when that commit is on a remote and every cross-repo edge in it is either a crate version or a git dependency with a full rev. A cross-repo path, or a git edge that is only a branch or a tag, stays on the local path, and the dependency line is not rewritten to a crate version: Cargo ignores the nested `[patch]`, so the parent cannot repair it. Workspaces switched together are rewritten dependencies first. The local version-line commit is named in the warning when it is not on a remote yet. Pre-release and `fork_version` requirements are exact (`version = "=4.1.0"`), because a caret requirement selects the published crate instead of the fork. A `local` path that is a symlink out of the monorepo is written as the matrix-relative path, so a cargo git cache does not land in the manifest. `pin-revs` rewrites a matrix git dependency that still names a branch to that package's full rev. Cargo also rejects a `[patch.'<git-url>']` entry whose replacement is another rev of the same URL; `pin-revs` reports that and leaves the line alone. `lint-patches` reads Cargo's unused-patch warnings and deletes those entries. A name that Cargo still selects from both crates.io and a git URL stays in both sections, in the order it was written. An empty patch section is removed.
+
+The Rust `gen-tools deps` switch does not implement `patch-local` or `patch-git`. Use `dep.py`.
+
+ZK is a profile overlay on the same machinery (`zk_*` keys in the matrix). The patch modes use the `git` / `local` tables, not the zk profile.
 
 ## Integrity rules (fail-closed)
 
@@ -91,7 +127,6 @@ ZK is a profile overlay on the same machinery (`zk_*` keys in the matrix).
    `cw-controllers`, …): `dep.py verify` reports `DUAL-IDENTITY` if the same
    package name resolves from two sources (path + git, or two git branches).
 
-Heal algorithm: index all packages under monorepo root → rewrite broken/absolute locals → prefer non-`vancw/` forks.
 
 ## Branch labels
 
@@ -123,8 +158,10 @@ another → dual `cosmwasm_std` / `cw_schema` compile failures.
 - One product branch line monorepo-wide: **`v*-zk.*`** (see BRANCHING.md)
 - Fork workspaces: no self-referential `git = own-repo` for internal packages
   (use `path = "packages/…"`)
-- Matrix `package` must match real `[package].name` (e.g. `clone-cw-multi-test`
-  publishes as `abstract-cw-multi-test`)
+- Matrix `package` must match real `[package].name`. `clone-cw-multi-test`
+  publishes as `cw-multi-test`. `cw-multi-test-fork` publishes as
+  `abstract-cw-multi-test`. The dependency key `clone-cw-multi-test` is the
+  alias that keeps those two crates apart.
 
 After any hybrid switch, regenerate locks so stale multi-branch entries die:
 
@@ -179,3 +216,34 @@ _devops/matrix-heal-report.json
 - Do not run experimental `cargo run -- deps baseline` against a dirty tree without validate
 - Do not reintroduce absolute matrix paths
 - Do not treat Rust deps CLI as the operator surface until it gains full parity + verify
+
+## Native-build path deps (Go c-shared, etc.)
+
+Some matrix crates compile **native** libraries in `build.rs` (e.g. `osmosis-test-tube` →
+`libosmosistesttube` via Go `-buildmode=c-shared`).
+
+When gen-tools switches consumers to **path** deps:
+
+1. Default `cargo check` / unit tests **must not** require those natives.
+2. Consumers feature-gate the dep:
+
+```toml
+[features]
+test-tube = ["dep:osmosis-test-tube"]
+
+[dependencies]
+osmosis-test-tube = { workspace = true, optional = true }
+```
+
+```rust
+#[cfg(all(not(target_arch = "wasm32"), feature = "test-tube"))]
+pub mod test_tube;
+```
+
+3. Matrix fields:
+   - `native_tools = ["go"]` — host tools required for a full native build
+   - `consumer_optional_feature = true` — hard non-optional consumers fail validate
+
+4. Full integration: `cargo test -p dao-testing --features test-tube` with Go on `PATH`.
+
+gen-tools **must not** enable `default = ["test-tube"]` when healing/switching.

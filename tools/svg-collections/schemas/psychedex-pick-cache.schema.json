@@ -1,0 +1,22 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "terp:svg-collections/psychedex-pick-cache/v2",
+ "title": "psychedex pick cache (substances + practices, no doses)",
+ "type": "object",
+ "required": ["schema","seed_hex","filters","days","substances","practices","cache_sha256"],
+ "properties": {
+  "schema": {"const": "psychedex-pick-cache/v2"},
+  "filters": {"type":"object","required":["enabled"],"properties":{"enabled":{"type":"boolean"},"decision":{"type":"string"}}},
+  "days": {"type":"array","items":{"type":"object","required":["day_index","picks","practice"],
+    "properties":{"day_index":{"type":"integer"},"picks":{"type":"array","minItems":1,"maxItems":2,"items":{"type":"string"}},"practice":{"type":["string","null"]}}}},
+  "substances": {"type":"object","additionalProperties":{"type":"object","additionalProperties":false,
+    "required":["slug","name","url","classes","acute_toxicity","effects","interactions"],
+    "properties":{"slug":{},"name":{},"url":{},"page_updated":{},"classes":{},"acute_toxicity":{},"effects":{},
+      "interactions":{"type":"array","items":{"type":"object","additionalProperties":false,"properties":{"label":{},"severity":{},"standing":{},"confidence":{}}}}}}},
+  "practices": {"type":"object","additionalProperties":{"type":"object","additionalProperties":false,
+    "required":["slug","name","category","url","effects","linked_substances","notes"],
+    "properties":{"slug":{},"name":{},"category":{},"url":{},"effects":{},"linked_substances":{},
+      "notes":{"type":"array","items":{"type":"object","additionalProperties":false,"properties":{"section":{},"text":{"type":"string","maxLength":320}}}}}}},
+  "cache_sha256": {"type":"string","pattern":"^[0-9a-f]{64}$"}
+ }
+}

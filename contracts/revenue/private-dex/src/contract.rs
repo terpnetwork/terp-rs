@@ -23,7 +23,7 @@ use crate::msg::{
 use crate::seams::{
     OracleBoundParamsView, OracleMidView, apply_reserves, check_oracle_bound, quote_exact_in,
 };
-use crate::state::{CONFIG, NULLIFIERS, POOLS, TREE_LEAVES, Config, pool_active};
+use crate::state::{CONFIG, Config, NULLIFIERS, POOLS, TREE_LEAVES, pool_active};
 use crate::verify::verify_swap_proof;
 
 pub fn instantiate(
@@ -57,31 +57,54 @@ pub fn execute(
             r_b,
             gamma,
             gamma_den,
-        } => execute_create_pool(deps, info, asset_a, asset_b, r_a, r_b, gamma, gamma_den),
+        } => execute_create_pool(
+            deps,
+            info,
+            ExecuteCreatePoolParams {
+                asset_a,
+                asset_b,
+                r_a,
+                r_b,
+                gamma,
+                gamma_den,
+            },
+        ),
         ExecuteMsg::SetPoolStatus { pool_id, status } => {
             execute_set_pool_status(deps, info, pool_id, status)
         }
-        ExecuteMsg::SetZkCfg {
-            mock_verify,
-            zkid,
-        } => execute_set_zk_cfg(deps, info, mock_verify, zkid),
+        ExecuteMsg::SetZkCfg { mock_verify, zkid } => {
+            execute_set_zk_cfg(deps, info, mock_verify, zkid)
+        }
         ExecuteMsg::SetAllowedRoot { root } => execute_set_allowed_root(deps, info, root),
         ExecuteMsg::SettleSwap { statement, proof } => {
-            execute_settle_swap(deps, env, info, statement, proof)
+            execute_settle_swap(deps, env, info, *statement, proof)
         }
     }
+}
+
+/// Arguments for [`execute_create_pool`].
+struct ExecuteCreatePoolParams {
+    pub asset_a: Binary,
+    pub asset_b: Binary,
+    pub r_a: Uint128,
+    pub r_b: Uint128,
+    pub gamma: u64,
+    pub gamma_den: u64,
 }
 
 fn execute_create_pool(
     deps: DepsMut,
     info: MessageInfo,
-    asset_a: Binary,
-    asset_b: Binary,
-    r_a: Uint128,
-    r_b: Uint128,
-    gamma: u64,
-    gamma_den: u64,
+    args: ExecuteCreatePoolParams,
 ) -> Result<Response, ContractError> {
+    let ExecuteCreatePoolParams {
+        asset_a,
+        asset_b,
+        r_a,
+        r_b,
+        gamma,
+        gamma_den,
+    } = args;
     assert_owner(deps.storage, &info.sender)?;
     if r_a.is_zero() || r_b.is_zero() || gamma_den == 0 || asset_a == asset_b {
         return Err(ContractError::BadAmount {});
@@ -99,9 +122,7 @@ fn execute_create_pool(
         status: PoolStatus::Active,
     };
     POOLS.save(deps.storage, pool_id, &pool)?;
-    cfg.next_pool_id = pool_id
-        .checked_add(1)
-        .ok_or(ContractError::BadAmount {})?;
+    cfg.next_pool_id = pool_id.checked_add(1).ok_or(ContractError::BadAmount {})?;
     CONFIG.save(deps.storage, &cfg)?;
     Ok(Response::new()
         .add_attribute("action", "create_pool")
@@ -169,14 +190,15 @@ fn execute_settle_swap(
     }
 
     // Root window (stub) — pure apply_swap_action allowed_root check.
-    if let Some(ref allowed) = cfg.allowed_root {
-        if &statement.root != allowed {
-            return Err(ContractError::BadRoot {});
-        }
+    if let Some(ref allowed) = cfg.allowed_root
+        && &statement.root != allowed
+    {
+        return Err(ContractError::BadRoot {});
     }
 
     // Orient reserves (astroport: offer_pool / ask_pool from pair assets).
-    let (r_in, r_out, asset_in_is_a) = orient_reserves(&pool, &statement.asset_in, &statement.asset_out)?;
+    let (r_in, r_out, asset_in_is_a) =
+        orient_reserves(&pool, &statement.asset_in, &statement.asset_out)?;
 
     if r_in != statement.r_in_before.u128() || r_out != statement.r_out_before.u128() {
         return Err(ContractError::CurveMismatch {});
@@ -353,4 +375,3 @@ fn query_quote(
         r_out_before: Uint128::new(r_out),
     })
 }
-

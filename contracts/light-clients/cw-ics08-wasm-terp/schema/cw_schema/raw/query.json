@@ -1,0 +1,93 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_terp_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "check_for_misbehaviour": {
+          "type": "tuple",
+          "items": [
+            3
+          ]
+        },
+        "status": {
+          "type": "tuple",
+          "items": [
+            7
+          ]
+        },
+        "timestamp_at_height": {
+          "type": "tuple",
+          "items": [
+            4
+          ]
+        },
+        "verify_client_message": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_VerifyClientMessageMsg",
+      "type": "struct",
+      "properties": {
+        "client_message": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_CheckForMisbehaviourMsg",
+      "type": "struct",
+      "properties": {
+        "client_message": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_TimestampAtHeightMsg",
+      "type": "struct",
+      "properties": {
+        "height": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_Height",
+      "type": "struct",
+      "properties": {
+        "revision_height": {
+          "defaulting": true,
+          "value": 6
+        },
+        "revision_number": {
+          "defaulting": true,
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_StatusMsg",
+      "type": "struct",
+      "properties": {}
+    }
+  ]
+}

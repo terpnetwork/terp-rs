@@ -7,14 +7,12 @@ mod error;
 
 pub use error::ContractError;
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
-use cw2::set_contract_version;
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw_storage_plus::Item;
+use cw2::set_contract_version;
 use sha3::{Digest, Keccak256};
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-eth";
@@ -66,7 +64,11 @@ fn eth_personal_hash(message: &[u8]) -> [u8; 32] {
     arr
 }
 
-fn recover_eth_address(deps: Deps, message: &[u8], signature: &[u8]) -> Result<String, ContractError> {
+fn recover_eth_address(
+    deps: Deps,
+    message: &[u8],
+    signature: &[u8],
+) -> Result<String, ContractError> {
     if signature.len() != 65 {
         return Err(ContractError::BadSignature {});
     }
@@ -75,7 +77,11 @@ fn recover_eth_address(deps: Deps, message: &[u8], signature: &[u8]) -> Result<S
     // secp256k1_recover_pubkey(hash, sig, recovery)
     let recovery = signature[64];
     // eth signatures often use v = 27/28
-    let rec = if recovery >= 27 { recovery - 27 } else { recovery };
+    let rec = if recovery >= 27 {
+        recovery - 27
+    } else {
+        recovery
+    };
     let pubkey = deps
         .api
         .secp256k1_recover_pubkey(&hash, &signature[..64], rec)
@@ -133,7 +139,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     EthAuthenticator::process_sudo_auth(deps, env, &msg)
 }
 
-impl BtsgAccountTrait for EthAuthenticator {
+impl TerpAccountTrait for EthAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -181,7 +187,7 @@ impl BtsgAccountTrait for EthAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let expected = SIGNER.load(deps.storage)?;
         let recovered = recover_eth_address(

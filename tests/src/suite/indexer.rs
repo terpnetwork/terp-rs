@@ -17,7 +17,6 @@
 //!
 //! This suite manages the full fleet or a minimal subset.
 
-
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
@@ -26,9 +25,7 @@ use tracing::info;
 
 use ict_rs::runtime::{ContainerId, ContainerOptions, DockerImage, PortBinding, RuntimeBackend};
 
-use crate::suite::sidecar::{
-    EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar,
-};
+use crate::suite::sidecar::{EndpointMap, HealthStatus, SidecarId, SidecarRegistry, TerpSidecar};
 
 /// Configuration for the Argus indexer.
 #[derive(Clone, Debug)]
@@ -106,10 +103,7 @@ impl IndexerSuite {
     }
 
     // Helper to create infrastructure containers
-    async fn start_infra(
-        &mut self,
-        runtime: &Arc<dyn RuntimeBackend>,
-    ) -> Result<IndexerFleet> {
+    async fn start_infra(&mut self, runtime: &Arc<dyn RuntimeBackend>) -> Result<IndexerFleet> {
         let mut fleet = IndexerFleet {
             data_db: None,
             accounts_db: None,
@@ -213,9 +207,10 @@ impl IndexerSuite {
                 },
                 name: self.container_name("meilisearch"),
                 network_id: None,
-                env: vec![
-                    ("MEILI_MASTER_KEY".into(), self.config.meili_master_key.clone()),
-                ],
+                env: vec![(
+                    "MEILI_MASTER_KEY".into(),
+                    self.config.meili_master_key.clone(),
+                )],
                 cmd: vec![],
                 entrypoint: None,
                 ports: vec![PortBinding {
@@ -248,7 +243,7 @@ impl TerpSidecar for IndexerSuite {
         &self.id
     }
 
-    async fn start(&mut self, deps: &SidecarRegistry) -> Result<EndpointMap> {
+    async fn start(&mut self, _deps: &SidecarRegistry) -> Result<EndpointMap> {
         if self.started {
             return Ok(self.endpoints.clone());
         }

@@ -1,0 +1,112 @@
+{
+  "contract_name": "cw-nullifier-auth",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "properties": {
+      "admin": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "additionalProperties": false
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "description": "No user execute path required for authenticator lifecycle (sudo-only spends).",
+    "type": "string",
+    "enum": []
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "is_spent"
+        ],
+        "properties": {
+          "is_spent": {
+            "type": "object",
+            "required": [
+              "domain",
+              "nullifier",
+              "session_id"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "nullifier": {
+                "$ref": "#/definitions/Binary"
+              },
+              "session_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "properties": {
+        "admin": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "is_spent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "IsSpentResponse",
+      "type": "object",
+      "required": [
+        "spent"
+      ],
+      "properties": {
+        "spent": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

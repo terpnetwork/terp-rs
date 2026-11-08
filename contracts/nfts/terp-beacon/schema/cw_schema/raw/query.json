@@ -1,0 +1,57 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_beacon_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "attestations": {
+          "type": "named",
+          "properties": {
+            "round": {
+              "value": 1
+            }
+          }
+        },
+        "attestors": {
+          "type": "named",
+          "properties": {}
+        },
+        "beacon": {
+          "type": "named",
+          "properties": {
+            "round": {
+              "value": 1
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "job": {
+          "type": "named",
+          "properties": {
+            "job_id": {
+              "value": 2
+            },
+            "requester": {
+              "value": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

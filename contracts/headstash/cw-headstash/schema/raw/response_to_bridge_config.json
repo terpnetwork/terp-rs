@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nullable_BridgeCfg",
+  "anyOf": [
+    {
+      "$ref": "#/definitions/BridgeCfg"
+    },
+    {
+      "type": "null"
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "BridgeCfg": {
+      "type": "object",
+      "required": [
+        "confirmations_k",
+        "dest_domain",
+        "lc_client_id",
+        "max_lc_lag",
+        "mock_verify"
+      ],
+      "properties": {
+        "confirmations_k": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "dest_domain": {
+          "description": "Terp destination domain / chain bind (32 bytes).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "egress_zkid": {
+          "description": "Circuit id for Option D egress `proof_instance_verify` (production path). Lab / mock_verify ignores this. Default `None` keeps existing BridgeCfg JSON valid.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "lc_client_id": {
+          "description": "LC client id string (reflection corridor).",
+          "type": "string"
+        },
+        "max_lc_lag": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "mock_verify": {
+          "description": "When true, proof verify is mocked (always-ok membership under claim flags). Production must set false and wire real verify.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "properties": {
+    "unrestricted": {
+      "description": "If true, skip instantiator check (ict-rs / lab). Production: false, then `SetInstantiator` to the ICA.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,1181 @@
+{
+  "contract_name": "hm-nft-minter",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "hm_nft_minter_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "cw721_address": {
+            "description": "Existing CW721 (e.g. cw721-svg) address where this minter is authorized.\nIf None, admin must call `LinkCollection` before mint.",
+            "value": 2
+          },
+          "max_tokens": {
+            "description": "Hard supply cap. Oracle/sudo can NEVER increase this.",
+            "value": 3
+          },
+          "owner": {
+            "description": "Optional owner (defaults to sender).",
+            "value": 2
+          },
+          "paused": {
+            "description": "Start paused (default false).",
+            "value": 12
+          },
+          "price": {
+            "description": "Oracle / fixed price policy.",
+            "value": 6
+          },
+          "proceeds": {
+            "description": "Address that receives mint proceeds (defaults to owner).",
+            "value": 2
+          },
+          "token_uri_prefix": {
+            "description": "Base token URI / template prefix (collection-specific; optional).",
+            "value": 2
+          },
+          "whitelist": {
+            "description": "Whitelist gate (hm-loyalty/v1).",
+            "value": 4
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "u32",
+        "type": "integer",
+        "precision": 32,
+        "signed": false
+      },
+      {
+        "name": "hm_loyalty_whitelist_WhitelistConfig",
+        "description": "Config snapshot for a minter that gates on loyalty eligibility.",
+        "type": "struct",
+        "properties": {
+          "codec": {
+            "description": "Codec version currently accepted (e.g. `hm-loyalty/v1`).",
+            "value": 1
+          },
+          "enabled": {
+            "value": 5
+          },
+          "root": {
+            "description": "32-byte merkle root as lowercase hex (empty if not set).",
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "hm_nft_oracle_PricePolicy",
+        "description": "Admin / instantiate price policy.",
+        "type": "struct",
+        "properties": {
+          "algo": {
+            "description": "Optional filter: only accept sudo for this algo.",
+            "value": 2
+          },
+          "asset_id": {
+            "description": "Optional asset filter when decoding JSON price payloads (`asset` field).",
+            "value": 2
+          },
+          "bps_band": {
+            "description": "Half-width band in basis points around mid. 0 = exact mid only.\nPayment must satisfy mid * (1 - bps/10000) ..= mid * (1 + bps/10000).",
+            "value": 8
+          },
+          "chain_uid": {
+            "description": "Optional filter: only accept sudo for this chain_uid.",
+            "value": 2
+          },
+          "denom": {
+            "description": "Payment denom (e.g. `uterp`).",
+            "value": 1
+          },
+          "enabled": {
+            "value": 5
+          },
+          "fallback_unit_price": {
+            "description": "When oracle disabled or mid absent: fixed unit price in `denom` microunits.",
+            "value": 11
+          },
+          "max_staleness_seconds": {
+            "description": "Fail closed when mid is older than this many seconds (vs `env.block.time`).",
+            "value": 9
+          },
+          "mode": {
+            "value": 7
+          },
+          "usd_to_unit_scale": {
+            "description": "If attestation has `price_usd` (decimal string) and no direct mid,\nmid = round(price_usd * usd_to_unit_scale). Demo FX only.",
+            "value": 11
+          }
+        }
+      },
+      {
+        "name": "hm_nft_oracle_PriceSyncMode",
+        "description": "How the minter obtains price mids.",
+        "type": "enum",
+        "cases": {
+          "admin_sync": {
+            "description": "Mode C: admin ExecuteMsg sync (demo fallback only).",
+            "type": "unit"
+          },
+          "query": {
+            "description": "Mode B: pull/query another store (stub for frameworks; not required in v0 minter).",
+            "type": "unit"
+          },
+          "sudo": {
+            "description": "Mode A: x/hashmerchant sudo push (preferred long-term).",
+            "type": "unit"
+          }
+        }
+      },
+      {
+        "name": "u16",
+        "type": "integer",
+        "precision": 16,
+        "signed": false
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_math_uint128_Uint128",
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+        "type": "integer",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::math::uint128::Uint128>",
+        "type": "optional",
+        "inner": 10
+      },
+      {
+        "name": "core::option::Option<bool>",
+        "type": "optional",
+        "inner": 5
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "hm_nft_minter_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "admin_sync_price": {
+            "description": "Mode C only: admin-pushed mid (demo fallback).",
+            "type": "named",
+            "properties": {
+              "asset_id": {
+                "value": 3
+              },
+              "foreign_height": {
+                "value": 14
+              },
+              "mid": {
+                "value": 12
+              }
+            }
+          },
+          "link_collection": {
+            "description": "Admin: attach CW721 collection (once).",
+            "type": "named",
+            "properties": {
+              "cw721_address": {
+                "value": 2
+              }
+            }
+          },
+          "mint": {
+            "description": "Mint next token to sender if whitelist + price checks pass.",
+            "type": "named",
+            "properties": {
+              "proof": {
+                "description": "Merkle proof when whitelist.enabled.",
+                "value": 5
+              },
+              "token_uri": {
+                "description": "Optional token_uri override; otherwise `{prefix}{token_id}`.",
+                "value": 3
+              }
+            }
+          },
+          "set_paused": {
+            "description": "Admin: pause/unpause minting.",
+            "type": "named",
+            "properties": {
+              "paused": {
+                "value": 6
+              }
+            }
+          },
+          "set_price_policy": {
+            "description": "Admin: update price policy (bps, staleness, fallback, filters).",
+            "type": "named",
+            "properties": {
+              "price": {
+                "value": 8
+              }
+            }
+          },
+          "set_proceeds": {
+            "description": "Admin: update proceeds recipient.",
+            "type": "named",
+            "properties": {
+              "proceeds": {
+                "value": 2
+              }
+            }
+          },
+          "set_whitelist_root": {
+            "description": "Admin: set loyalty root + codec.",
+            "type": "named",
+            "properties": {
+              "codec": {
+                "value": 3
+              },
+              "enabled": {
+                "value": 7
+              },
+              "root": {
+                "value": 2
+              }
+            }
+          },
+          "update_ownership": {
+            "description": "cw-ownable ownership update.",
+            "type": "tuple",
+            "items": [
+              15
+            ]
+          },
+          "withdraw": {
+            "description": "Owner: withdraw native proceeds to `proceeds` (or specified recipient).",
+            "type": "named",
+            "properties": {
+              "amount": {
+                "value": 13
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "hm_loyalty_whitelist_LoyaltyProof",
+        "description": "On-chain / client proof payload (hex-encoded siblings + root).",
+        "type": "struct",
+        "properties": {
+          "address": {
+            "description": "Bech32 (or chain) address that was hashed into the leaf.",
+            "value": 2
+          },
+          "codec": {
+            "description": "Must equal [`CODEC_V1`] for v1 verifiers.",
+            "value": 2
+          },
+          "leaf": {
+            "description": "Optional precomputed leaf hex; recomputed from address if omitted.",
+            "value": 3
+          },
+          "proof": {
+            "description": "Sibling hashes, bottom-up (hex).",
+            "value": 4
+          },
+          "root": {
+            "description": "Expected root hex (optional cross-check against stored root).",
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 2
+      },
+      {
+        "name": "alloc::vec::Vec<alloc::string::String>",
+        "type": "array",
+        "items": 2
+      },
+      {
+        "name": "core::option::Option<hm_loyalty_whitelist::LoyaltyProof>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "bool",
+        "type": "boolean"
+      },
+      {
+        "name": "core::option::Option<bool>",
+        "type": "optional",
+        "inner": 6
+      },
+      {
+        "name": "hm_nft_oracle_PricePolicy",
+        "description": "Admin / instantiate price policy.",
+        "type": "struct",
+        "properties": {
+          "algo": {
+            "description": "Optional filter: only accept sudo for this algo.",
+            "value": 3
+          },
+          "asset_id": {
+            "description": "Optional asset filter when decoding JSON price payloads (`asset` field).",
+            "value": 3
+          },
+          "bps_band": {
+            "description": "Half-width band in basis points around mid. 0 = exact mid only.\nPayment must satisfy mid * (1 - bps/10000) ..= mid * (1 + bps/10000).",
+            "value": 10
+          },
+          "chain_uid": {
+            "description": "Optional filter: only accept sudo for this chain_uid.",
+            "value": 3
+          },
+          "denom": {
+            "description": "Payment denom (e.g. `uterp`).",
+            "value": 2
+          },
+          "enabled": {
+            "value": 6
+          },
+          "fallback_unit_price": {
+            "description": "When oracle disabled or mid absent: fixed unit price in `denom` microunits.",
+            "value": 13
+          },
+          "max_staleness_seconds": {
+            "description": "Fail closed when mid is older than this many seconds (vs `env.block.time`).",
+            "value": 11
+          },
+          "mode": {
+            "value": 9
+          },
+          "usd_to_unit_scale": {
+            "description": "If attestation has `price_usd` (decimal string) and no direct mid,\nmid = round(price_usd * usd_to_unit_scale). Demo FX only.",
+            "value": 13
+          }
+        }
+      },
+      {
+        "name": "hm_nft_oracle_PriceSyncMode",
+        "description": "How the minter obtains price mids.",
+        "type": "enum",
+        "cases": {
+          "admin_sync": {
+            "description": "Mode C: admin ExecuteMsg sync (demo fallback only).",
+            "type": "unit"
+          },
+          "query": {
+            "description": "Mode B: pull/query another store (stub for frameworks; not required in v0 minter).",
+            "type": "unit"
+          },
+          "sudo": {
+            "description": "Mode A: x/hashmerchant sudo push (preferred long-term).",
+            "type": "unit"
+          }
+        }
+      },
+      {
+        "name": "u16",
+        "type": "integer",
+        "precision": 16,
+        "signed": false
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_math_uint128_Uint128",
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+        "type": "integer",
+        "precision": 128,
+        "signed": false
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::math::uint128::Uint128>",
+        "type": "optional",
+        "inner": 12
+      },
+      {
+        "name": "core::option::Option<u64>",
+        "type": "optional",
+        "inner": 11
+      },
+      {
+        "name": "cw_ownable_Action",
+        "description": "Actions that can be taken to alter the contract's ownership",
+        "type": "enum",
+        "cases": {
+          "accept_ownership": {
+            "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+            "type": "unit"
+          },
+          "renounce_ownership": {
+            "description": "Give up the contract's ownership and the possibility of appointing\na new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+            "type": "unit"
+          },
+          "transfer_ownership": {
+            "description": "Propose to transfer the contract's ownership to another account,\noptionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+            "type": "named",
+            "properties": {
+              "expiry": {
+                "value": 18
+              },
+              "new_owner": {
+                "value": 2
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "cw_utils_expiration_Expiration",
+        "description": "Expiration represents a point in time when some event happens.\nIt can compare with a BlockInfo and will return is_expired() == true\nonce the condition is hit (and for every block in the future)",
+        "type": "enum",
+        "cases": {
+          "at_height": {
+            "description": "AtHeight will expire when `env.block.height` >= height",
+            "type": "tuple",
+            "items": [
+              11
+            ]
+          },
+          "at_time": {
+            "description": "AtTime will expire when `env.block.time` >= time",
+            "type": "tuple",
+            "items": [
+              17
+            ]
+          },
+          "never": {
+            "description": "Never will never expire. Used to express the empty variant",
+            "type": "named",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_timestamp_Timestamp",
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+        "type": "timestamp"
+      },
+      {
+        "name": "core::option::Option<cw_utils::expiration::Expiration>",
+        "type": "optional",
+        "inner": 16
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "hm_nft_minter_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "is_eligible": {
+            "type": "named",
+            "properties": {
+              "address": {
+                "value": 1
+              },
+              "proof": {
+                "value": 2
+              }
+            }
+          },
+          "mint_price_bound": {
+            "type": "named",
+            "properties": {}
+          },
+          "next_token_id": {
+            "type": "named",
+            "properties": {}
+          },
+          "oracle_mid": {
+            "type": "named",
+            "properties": {}
+          },
+          "ownership": {
+            "type": "named",
+            "properties": {}
+          },
+          "whitelist_root": {
+            "type": "named",
+            "properties": {}
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "hm_loyalty_whitelist_LoyaltyProof",
+        "description": "On-chain / client proof payload (hex-encoded siblings + root).",
+        "type": "struct",
+        "properties": {
+          "address": {
+            "description": "Bech32 (or chain) address that was hashed into the leaf.",
+            "value": 1
+          },
+          "codec": {
+            "description": "Must equal [`CODEC_V1`] for v1 verifiers.",
+            "value": 1
+          },
+          "leaf": {
+            "description": "Optional precomputed leaf hex; recomputed from address if omitted.",
+            "value": 3
+          },
+          "proof": {
+            "description": "Sibling hashes, bottom-up (hex).",
+            "value": 4
+          },
+          "root": {
+            "description": "Expected root hex (optional cross-check against stored root).",
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      },
+      {
+        "name": "alloc::vec::Vec<alloc::string::String>",
+        "type": "array",
+        "items": 1
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "hm_nft_oracle_HashMerchantSudoMsg",
+        "description": "Module sudo envelope (struct form — matches Go JSON, not Rust enum).",
+        "type": "struct",
+        "properties": {
+          "hash_merchant": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "hm_nft_oracle_HashMerchantSudoPayload",
+        "type": "struct",
+        "properties": {
+          "algo": {
+            "value": 2
+          },
+          "attestation_count": {
+            "value": 5
+          },
+          "block_time": {
+            "value": 6
+          },
+          "chain_uid": {
+            "value": 2
+          },
+          "height": {
+            "value": 3
+          },
+          "oracle_sources": {
+            "defaulting": true,
+            "value": 8
+          },
+          "root": {
+            "description": "Confirmed root bytes (base64 in JSON).",
+            "value": 4
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "u64",
+        "type": "integer",
+        "precision": 64,
+        "signed": false
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "u32",
+        "type": "integer",
+        "precision": 32,
+        "signed": false
+      },
+      {
+        "name": "i64",
+        "type": "integer",
+        "precision": 64,
+        "signed": true
+      },
+      {
+        "name": "hm_nft_oracle_HashMerchantSudoOracleAttestation",
+        "type": "struct",
+        "properties": {
+          "height": {
+            "value": 3
+          },
+          "source_id": {
+            "value": 2
+          },
+          "value": {
+            "description": "Opaque value bytes; price demos use JSON UTF-8.",
+            "value": 4
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<hm_nft_oracle::HashMerchantSudoOracleAttestation>",
+        "type": "array",
+        "items": 7
+      }
+    ]
+  },
+  "responses": {
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_minter_msg_ConfigResponse",
+          "type": "struct",
+          "properties": {
+            "cw721_address": {
+              "value": 2
+            },
+            "max_tokens": {
+              "value": 3
+            },
+            "next_token_id": {
+              "value": 3
+            },
+            "owner": {
+              "value": 2
+            },
+            "paused": {
+              "value": 7
+            },
+            "price": {
+              "value": 8
+            },
+            "proceeds": {
+              "value": 1
+            },
+            "token_uri_prefix": {
+              "value": 5
+            },
+            "whitelist": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "u32",
+          "type": "integer",
+          "precision": 32,
+          "signed": false
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 4
+        },
+        {
+          "name": "hm_loyalty_whitelist_WhitelistConfig",
+          "description": "Config snapshot for a minter that gates on loyalty eligibility.",
+          "type": "struct",
+          "properties": {
+            "codec": {
+              "description": "Codec version currently accepted (e.g. `hm-loyalty/v1`).",
+              "value": 4
+            },
+            "enabled": {
+              "value": 7
+            },
+            "root": {
+              "description": "32-byte merkle root as lowercase hex (empty if not set).",
+              "value": 5
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        },
+        {
+          "name": "hm_nft_oracle_PricePolicy",
+          "description": "Admin / instantiate price policy.",
+          "type": "struct",
+          "properties": {
+            "algo": {
+              "description": "Optional filter: only accept sudo for this algo.",
+              "value": 5
+            },
+            "asset_id": {
+              "description": "Optional asset filter when decoding JSON price payloads (`asset` field).",
+              "value": 5
+            },
+            "bps_band": {
+              "description": "Half-width band in basis points around mid. 0 = exact mid only.\nPayment must satisfy mid * (1 - bps/10000) ..= mid * (1 + bps/10000).",
+              "value": 10
+            },
+            "chain_uid": {
+              "description": "Optional filter: only accept sudo for this chain_uid.",
+              "value": 5
+            },
+            "denom": {
+              "description": "Payment denom (e.g. `uterp`).",
+              "value": 4
+            },
+            "enabled": {
+              "value": 7
+            },
+            "fallback_unit_price": {
+              "description": "When oracle disabled or mid absent: fixed unit price in `denom` microunits.",
+              "value": 13
+            },
+            "max_staleness_seconds": {
+              "description": "Fail closed when mid is older than this many seconds (vs `env.block.time`).",
+              "value": 11
+            },
+            "mode": {
+              "value": 9
+            },
+            "usd_to_unit_scale": {
+              "description": "If attestation has `price_usd` (decimal string) and no direct mid,\nmid = round(price_usd * usd_to_unit_scale). Demo FX only.",
+              "value": 13
+            }
+          }
+        },
+        {
+          "name": "hm_nft_oracle_PriceSyncMode",
+          "description": "How the minter obtains price mids.",
+          "type": "enum",
+          "cases": {
+            "admin_sync": {
+              "description": "Mode C: admin ExecuteMsg sync (demo fallback only).",
+              "type": "unit"
+            },
+            "query": {
+              "description": "Mode B: pull/query another store (stub for frameworks; not required in v0 minter).",
+              "type": "unit"
+            },
+            "sudo": {
+              "description": "Mode A: x/hashmerchant sudo push (preferred long-term).",
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "u16",
+          "type": "integer",
+          "precision": 16,
+          "signed": false
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_math_uint128_Uint128",
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+          "type": "integer",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::math::uint128::Uint128>",
+          "type": "optional",
+          "inner": 12
+        }
+      ]
+    },
+    "is_eligible": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_minter_msg_IsEligibleResponse",
+          "type": "struct",
+          "properties": {
+            "eligible": {
+              "value": 1
+            },
+            "error": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 2
+        }
+      ]
+    },
+    "mint_price_bound": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_oracle_MintPriceBound",
+          "description": "Client-facing bound quote.",
+          "type": "struct",
+          "properties": {
+            "denom": {
+              "value": 1
+            },
+            "foreign_height": {
+              "value": 5
+            },
+            "max": {
+              "value": 2
+            },
+            "mid": {
+              "value": 3
+            },
+            "min": {
+              "value": 2
+            },
+            "observed_at": {
+              "value": 5
+            },
+            "oracle_enabled": {
+              "value": 6
+            },
+            "stale": {
+              "value": 6
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_math_uint128_Uint128",
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+          "type": "integer",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::math::uint128::Uint128>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "core::option::Option<u64>",
+          "type": "optional",
+          "inner": 4
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    },
+    "next_token_id": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_minter_msg_NextTokenIdResponse",
+          "type": "struct",
+          "properties": {
+            "max_tokens": {
+              "value": 1
+            },
+            "next_token_id": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "u32",
+          "type": "integer",
+          "precision": 32,
+          "signed": false
+        }
+      ]
+    },
+    "oracle_mid": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_minter_msg_OracleMidResponse",
+          "type": "struct",
+          "properties": {
+            "mid": {
+              "value": 6
+            },
+            "mode": {
+              "value": 7
+            }
+          }
+        },
+        {
+          "name": "hm_nft_oracle_OracleMid",
+          "description": "Stored mid after sudo / admin sync.",
+          "type": "struct",
+          "properties": {
+            "asset_id": {
+              "description": "Optional asset id decoded from payload.",
+              "value": 5
+            },
+            "foreign_height": {
+              "description": "Foreign height associated with this mid (if known).",
+              "value": 3
+            },
+            "mid": {
+              "description": "Payment amount mid in policy denom microunits.",
+              "value": 2
+            },
+            "observed_at": {
+              "description": "Wall-clock when mid was accepted on-chain (unix seconds).",
+              "value": 3
+            },
+            "source_id": {
+              "description": "Optional source id from oracle attestation.",
+              "value": 5
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_math_uint128_Uint128",
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+          "type": "integer",
+          "precision": 128,
+          "signed": false
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 4
+        },
+        {
+          "name": "core::option::Option<hm_nft_oracle::OracleMid>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "hm_nft_oracle_PriceSyncMode",
+          "description": "How the minter obtains price mids.",
+          "type": "enum",
+          "cases": {
+            "admin_sync": {
+              "description": "Mode C: admin ExecuteMsg sync (demo fallback only).",
+              "type": "unit"
+            },
+            "query": {
+              "description": "Mode B: pull/query another store (stub for frameworks; not required in v0 minter).",
+              "type": "unit"
+            },
+            "sudo": {
+              "description": "Mode A: x/hashmerchant sudo push (preferred long-term).",
+              "type": "unit"
+            }
+          }
+        }
+      ]
+    },
+    "ownership": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_ownable_Ownership_cosmwasm_std_addresses_Addr_",
+          "description": "The contract's ownership info",
+          "type": "struct",
+          "properties": {
+            "owner": {
+              "description": "The contract's current owner.\n`None` if the ownership has been renounced.",
+              "value": 2
+            },
+            "pending_expiry": {
+              "description": "The deadline for the pending owner to accept the ownership.\n`None` if there isn't a pending ownership transfer, or if a transfer\nexists and it doesn't have a deadline.",
+              "value": 6
+            },
+            "pending_owner": {
+              "description": "The account who has been proposed to take over the ownership.\n`None` if there isn't a pending ownership transfer.",
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "cw_utils_expiration_Expiration",
+          "description": "Expiration represents a point in time when some event happens.\nIt can compare with a BlockInfo and will return is_expired() == true\nonce the condition is hit (and for every block in the future)",
+          "type": "enum",
+          "cases": {
+            "at_height": {
+              "description": "AtHeight will expire when `env.block.height` >= height",
+              "type": "tuple",
+              "items": [
+                4
+              ]
+            },
+            "at_time": {
+              "description": "AtTime will expire when `env.block.time` >= time",
+              "type": "tuple",
+              "items": [
+                5
+              ]
+            },
+            "never": {
+              "description": "Never will never expire. Used to express the empty variant",
+              "type": "named",
+              "properties": {}
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "core::option::Option<cw_utils::expiration::Expiration>",
+          "type": "optional",
+          "inner": 3
+        }
+      ]
+    },
+    "whitelist_root": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "hm_nft_minter_msg_WhitelistRootResponse",
+          "type": "struct",
+          "properties": {
+            "codec": {
+              "value": 2
+            },
+            "enabled": {
+              "value": 1
+            },
+            "root": {
+              "value": 3
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 2
+        }
+      ]
+    }
+  }
+}

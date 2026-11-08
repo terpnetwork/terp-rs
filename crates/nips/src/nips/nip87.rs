@@ -3,8 +3,8 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/87.md>
 
 use crate::{
-    error::{NipError, NipResult},
     NipKind, NipMetadata, RawNostrEvent, Tag,
+    error::{NipError, NipResult},
 };
 
 use schemars::JsonSchema;
@@ -181,17 +181,15 @@ impl NipMetadata for MintRecommendation {
                         u_tags.push(v.clone());
                     }
                 }
-                "a" => {
+                "a"
                     // Simplified parsing - can be expanded
-                    if tag.len() >= 2 {
+                    if tag.len() >= 2 => {
                         let parts: Vec<&str> = tag[1].split(':').collect();
-                        if parts.len() >= 3 {
-                            if let Ok(kind) = parts[0].parse() {
+                        if parts.len() >= 3
+                            && let Ok(kind) = parts[0].parse() {
                                 a_tags.push(MintReference::new(kind, parts[1], parts[2]));
                             }
-                        }
                     }
-                }
                 _ => {}
             }
         }

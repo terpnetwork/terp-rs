@@ -1,6 +1,6 @@
-use cosmwasm_std::testing::{message_info, mock_env, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR, message_info, mock_env};
 use cosmwasm_std::{
-    to_json_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Timestamp, Uint128, WasmMsg,
+    Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Timestamp, Uint128, WasmMsg, to_json_binary,
 };
 use cw721::receiver::Cw721ReceiveMsg;
 
@@ -11,7 +11,7 @@ use terp_marketplace_utils::auction::{
     RoyaltyAdminResponse, RoyaltyFeeResponse, RoyaltyResponse, StateResponse,
 };
 
-use crate::contract::{execute, instantiate, AuctionCw721ExecuteMsg};
+use crate::contract::{AuctionCw721ExecuteMsg, execute, instantiate};
 use crate::error::ContractError;
 use crate::mock_querier::mock_dependencies;
 use crate::querier::{
@@ -753,7 +753,10 @@ fn settle_auction() {
     // place bid with correct fund
     let mut env = mock_env();
     env.block.time = Timestamp::from_seconds(100);
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     execute(deps.as_mut(), env.clone(), info, place_bid_msg.clone()).unwrap();
     let auction = query_auction(deps.as_ref(), Uint128::zero()).unwrap();
     assert_eq!(
@@ -955,14 +958,20 @@ fn settle_auction() {
         }
     );
     // trying to place bid again
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     let err = execute(deps.as_mut(), env.clone(), info, place_bid_msg.clone()).unwrap_err();
     match err {
         ContractError::InvalidAuction { .. } => {}
         e => panic!("unexcted error: {}", e),
     }
     // trying to settle again
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     let err = execute(deps.as_mut(), env.clone(), info, settle_msg.clone()).unwrap_err();
     match err {
         ContractError::InvalidAuction { .. } => {}
@@ -977,7 +986,7 @@ fn check_freeze_and_cancel_auction() {
 
     // create buy now
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("nft"),&[]);
+    let info = message_info(&Addr::unchecked("nft"), &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
         sender: "satoshi".into(),
         token_id: "bitcoin".to_string(),
@@ -1049,7 +1058,10 @@ fn check_freeze_and_cancel_auction() {
     }
     // place bid
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     let place_bid_msg = ExecuteMsg::PlaceBid {
         auction_id: Uint128::zero(),
     };
@@ -1071,7 +1083,7 @@ fn check_freeze_and_cancel_auction() {
     }
     // owner cancel auction
     let env = mock_env();
-    let info =message_info(&Addr::unchecked("satoshi"), &[]);
+    let info = message_info(&Addr::unchecked("satoshi"), &[]);
     let cancel_msg = ExecuteMsg::CancelAuction {
         auction_id: Uint128::zero(),
     };
@@ -1123,7 +1135,10 @@ fn check_freeze_and_cancel_auction() {
     );
     // place bid again
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     let place_bid_msg = ExecuteMsg::PlaceBid {
         auction_id: Uint128::from(1u128),
     };
@@ -1153,7 +1168,7 @@ fn admin_cancel() {
     execute(deps.as_mut(), env, info, create_buynow_msg).unwrap();
     // random admin cancel
     let env = mock_env();
-    let info =message_info(&Addr::unchecked("satoshi"), &[]);
+    let info = message_info(&Addr::unchecked("satoshi"), &[]);
     let admin_cancel_msg = ExecuteMsg::AdminCancelAuction {
         auction_id: Uint128::zero(),
     };
@@ -1201,14 +1216,17 @@ fn admin_cancel() {
     execute(deps.as_mut(), env, info, create_auction_msg).unwrap();
     // place bid
     let env = mock_env();
-    let info = message_info(&Addr::unchecked("buyer"), &[Coin::new(1_000000u128, "uluna")]);
+    let info = message_info(
+        &Addr::unchecked("buyer"),
+        &[Coin::new(1_000000u128, "uluna")],
+    );
     let place_bid_msg = ExecuteMsg::PlaceBid {
         auction_id: Uint128::from(1u128),
     };
     execute(deps.as_mut(), env, info, place_bid_msg).unwrap();
     // owner cancel
     let env = mock_env();
-    let info =message_info(&Addr::unchecked("satoshi"), &[]);
+    let info = message_info(&Addr::unchecked("satoshi"), &[]);
     let cancel_msg = ExecuteMsg::CancelAuction {
         auction_id: Uint128::from(1u128),
     };

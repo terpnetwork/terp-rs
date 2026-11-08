@@ -6,31 +6,30 @@ pub mod state;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::DAO;
 
-use terp_account::traits::default::BtsgAccountTrait;
+use terp_account::traits::default::TerpAccountTrait;
 
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw2::set_contract_version;
 use serde::{Deserialize, Serialize};
 
 // Constants
 
-const CONTRACT_NAME: &str = "crates.io:terp-irl";
+const CONTRACT_NAME: &str = "crates.io:terp-dao";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountDaoStructs {}
+pub struct TerpAccountDaoStructs {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountDao {}
+pub struct TerpAccountDao {}
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    InstantiateMsg { dao_addr }: InstantiateMsg,
+    InstantiateMsg { dao_addr: _ }: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let mut submsg = vec![];
+    let submsg = vec![];
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new()
@@ -39,39 +38,39 @@ pub fn instantiate(
         .add_attribute("smart_account", info.sender))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {}
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetDao {} => to_json_binary(&DAO.load(deps.storage)?),
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(
     deps: DepsMut,
     env: Env,
-    req: <BtsgAccountDao as BtsgAccountTrait>::SudoMsg,
+    req: <TerpAccountDao as TerpAccountTrait>::SudoMsg,
 ) -> Result<Response, ContractError> {
-    BtsgAccountDao::process_sudo_auth(deps, env, &req)
+    TerpAccountDao::process_sudo_auth(deps, env, &req)
 }
 
-impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountDao {
+impl terp_account::traits::default::TerpAccountTrait for TerpAccountDao {
     type InstantiateMsg = crate::msg::InstantiateMsg;
     type ExecuteMsg = crate::msg::ExecuteMsg;
     type QueryMsg = crate::msg::QueryMsg;
     type SudoMsg = terp_auth::AuthSudoMsg;
     type ContractError = crate::error::ContractError;
-    type AuthMethodStructs = BtsgAccountDaoStructs;
+    type AuthMethodStructs = TerpAccountDaoStructs;
     type AuthProcessResult = Result<Response, ContractError>;
 
     fn process_sudo_auth(
@@ -89,35 +88,35 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountDao {
     }
 
     fn extended_authenticate(
-        deps: cosmwasm_std::DepsMut,
-        auth: Self::AuthMethodStructs,
+        _deps: cosmwasm_std::DepsMut,
+        _auth: Self::AuthMethodStructs,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn on_auth_added(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::OnAuthenticatorAddedRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::OnAuthenticatorAddedRequest,
     ) -> Self::AuthProcessResult {
-        /// check if dao member
-        ///
-        /// - save auth by addr prefix to binary object for params (to be typed-defined later for things like filters/rate-limits)
+        // check if dao member
+        //
+        // - save auth by addr prefix to binary object for params (to be typed-defined later for things like filters/rate-limits)
         todo!()
     }
 
     fn on_auth_removed(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::OnAuthenticatorRemovedRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::OnAuthenticatorRemovedRequest,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn on_auth_request(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         // ensure still dao-member (raw-request)
 
@@ -127,24 +126,24 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountDao {
     }
 
     fn on_auth_track(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::TrackRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::TrackRequest,
     ) -> Self::AuthProcessResult {
         // ?
         todo!()
     }
 
     fn on_auth_confirm(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::ConfirmExecutionRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::ConfirmExecutionRequest,
     ) -> Self::AuthProcessResult {
         // ?
         todo!()
     }
 
-    fn on_hooks(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env) -> Self::AuthProcessResult {
+    fn on_hooks(_deps: cosmwasm_std::DepsMut, _env: cosmwasm_std::Env) -> Self::AuthProcessResult {
         todo!()
     }
 }

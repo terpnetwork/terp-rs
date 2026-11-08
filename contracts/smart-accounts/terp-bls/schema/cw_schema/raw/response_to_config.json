@@ -1,0 +1,52 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_bls_msg_BlsConfigResponse",
+      "type": "struct",
+      "properties": {
+        "operator_pubkeys": {
+          "value": 4
+        },
+        "threshold": {
+          "value": 2
+        },
+        "variant": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "terp_bls_msg_BlsVariant",
+      "description": "Which BLS12-381 subgroup holds the public key.\n\nBoth variants use the proof-of-possession ciphersuite (basic scheme).\nThe signed message is `sign_mode_direct`.",
+      "type": "enum",
+      "cases": {
+        "min_pk": {
+          "description": "Public key on G1 (48 bytes), signature on G2 (96 bytes).\nHash-to-G2 with `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`.",
+          "type": "unit"
+        },
+        "min_sig": {
+          "description": "Public key on G2 (96 bytes), signature on G1 (48 bytes).\nHash-to-G1 with `BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_`.",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
+      "type": "array",
+      "items": 3
+    }
+  ]
+}

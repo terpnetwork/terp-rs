@@ -10,8 +10,10 @@
 //! uses `verify_prehash` (client already hashed).
 
 use crate::config::NotesAuthConfig;
-use cw721_nips::buds::{AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier, NoopAuthVerifier};
-use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
+use cw721_nips::buds::{
+    AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier, NoopAuthVerifier,
+};
+use k256::ecdsa::{Signature, VerifyingKey, signature::hazmat::PrehashVerifier};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -195,7 +197,7 @@ impl AuthVerifier for AnyOfAuthVerifier {
 mod tests {
     use super::*;
     use axum::http::HeaderMap;
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, SigningKey};
+    use k256::ecdsa::{SigningKey, signature::hazmat::PrehashSigner};
 
     fn sign_snap(sk: &SigningKey) -> HeaderMap {
         let pubkey_hex = hex::encode(sk.verifying_key().to_sec1_bytes());
@@ -229,7 +231,14 @@ mod tests {
 
     #[test]
     fn snap_prehash_roundtrip() {
-        let sk = SigningKey::random(&mut rand_core::OsRng);
+        use rand_core::RngCore;
+        let mut raw = [0u8; 32];
+        let sk = loop {
+            rand_core::OsRng.fill_bytes(&mut raw);
+            if let Ok(sk) = SigningKey::from_slice(&raw) {
+                break sk;
+            }
+        };
         let pk = hex::encode(sk.verifying_key().to_sec1_bytes());
         let v = SnapSecpVerifier::new(vec![pk], false, 300);
         let h = sign_snap(&sk);
@@ -238,7 +247,14 @@ mod tests {
 
     #[test]
     fn bearer_or_secp_either_path() {
-        let sk = SigningKey::random(&mut rand_core::OsRng);
+        use rand_core::RngCore;
+        let mut raw = [0u8; 32];
+        let sk = loop {
+            rand_core::OsRng.fill_bytes(&mut raw);
+            if let Ok(sk) = SigningKey::from_slice(&raw) {
+                break sk;
+            }
+        };
         let pk = hex::encode(sk.verifying_key().to_sec1_bytes());
         let v = AnyOfAuthVerifier {
             verifiers: vec![

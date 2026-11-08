@@ -5,7 +5,7 @@
 //! - audience: `hash-market-distribution`
 //! - role: `content.ingest` (optional require)
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -55,20 +55,20 @@ pub struct ServiceJwtClaims {
 
 /// Resolve HMAC secret (same env convention as oline service JWT).
 pub fn resolve_service_jwt_secret(config_secret: Option<&str>) -> Option<Vec<u8>> {
-    if let Some(s) = config_secret {
-        if !s.is_empty() {
-            return Some(s.as_bytes().to_vec());
-        }
+    if let Some(s) = config_secret
+        && !s.is_empty()
+    {
+        return Some(s.as_bytes().to_vec());
     }
     for key in [
         "OLINE_SERVICE_JWT_SECRET",
         "OLINE_ACCOUNT_JWT_SECRET",
         "JWT_SECRET",
     ] {
-        if let Ok(s) = std::env::var(key) {
-            if !s.is_empty() {
-                return Some(s.into_bytes());
-            }
+        if let Ok(s) = std::env::var(key)
+            && !s.is_empty()
+        {
+            return Some(s.into_bytes());
         }
     }
     None
@@ -121,10 +121,10 @@ pub fn verify_service_jwt(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    if let Some(nbf) = claims.nbf {
-        if now < nbf {
-            return Err("jwt nbf".into());
-        }
+    if let Some(nbf) = claims.nbf
+        && now < nbf
+    {
+        return Err("jwt nbf".into());
     }
     if now >= claims.exp {
         return Err("jwt expired".into());
@@ -132,10 +132,10 @@ pub fn verify_service_jwt(
     if claims.sub.is_empty() {
         return Err("jwt sub empty".into());
     }
-    if let Some(role) = required_role {
-        if !claims.roles.iter().any(|r| r == role) {
-            return Err(format!("missing role {role}"));
-        }
+    if let Some(role) = required_role
+        && !claims.roles.iter().any(|r| r == role)
+    {
+        return Err(format!("missing role {role}"));
     }
     Ok(claims)
 }
@@ -183,7 +183,9 @@ pub fn check_ingest_auth(
             return false;
         };
         let candidates = [format!("Bearer {expected}"), expected.to_string()];
-        candidates.iter().any(|c| constant_time_eq(c.as_bytes(), token.as_bytes()))
+        candidates
+            .iter()
+            .any(|c| constant_time_eq(c.as_bytes(), token.as_bytes()))
             || x_minio.is_some_and(|x| constant_time_eq(x.as_bytes(), expected.as_bytes()))
     };
 

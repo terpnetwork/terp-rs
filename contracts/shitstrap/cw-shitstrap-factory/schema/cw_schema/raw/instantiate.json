@@ -1,0 +1,33 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_shitstrap_factory_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "owner": {
+          "value": 2
+        },
+        "shitstrap_id": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

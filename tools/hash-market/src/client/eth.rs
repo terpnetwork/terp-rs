@@ -25,27 +25,22 @@ impl EthClient {
         block: &str,
     ) -> Result<EthProofResponse> {
         let params = serde_json::json!([address, storage_keys, block]);
-        let resp: JsonRpcResponse<EthProofResponse> =
-            self.rpc_call("eth_getProof", params).await?;
+        let resp: JsonRpcResponse<EthProofResponse> = self.rpc_call("eth_getProof", params).await?;
         resp.result.context("eth_getProof returned null")
     }
 
     /// Call `eth_getBlockByNumber`.
-    pub async fn get_block_by_number(
-        &self,
-        block: &str,
-        full_txs: bool,
-    ) -> Result<EthBlock> {
+    pub async fn get_block_by_number(&self, block: &str, full_txs: bool) -> Result<EthBlock> {
         let params = serde_json::json!([block, full_txs]);
-        let resp: JsonRpcResponse<EthBlock> =
-            self.rpc_call("eth_getBlockByNumber", params).await?;
+        let resp: JsonRpcResponse<EthBlock> = self.rpc_call("eth_getBlockByNumber", params).await?;
         resp.result.context("eth_getBlockByNumber returned null")
     }
 
     /// Get the latest block number (hex string).
     pub async fn block_number(&self) -> Result<String> {
-        let resp: JsonRpcResponse<String> =
-            self.rpc_call("eth_blockNumber", serde_json::json!([])).await?;
+        let resp: JsonRpcResponse<String> = self
+            .rpc_call("eth_blockNumber", serde_json::json!([]))
+            .await?;
         resp.result.context("eth_blockNumber returned null")
     }
 
@@ -146,7 +141,10 @@ impl EthBlock {
 
     /// Decode the state root from hex to bytes.
     pub fn state_root_bytes(&self) -> Result<Vec<u8>> {
-        let s = self.state_root.strip_prefix("0x").unwrap_or(&self.state_root);
+        let s = self
+            .state_root
+            .strip_prefix("0x")
+            .unwrap_or(&self.state_root);
         hex::decode(s).context("invalid state_root hex")
     }
 }

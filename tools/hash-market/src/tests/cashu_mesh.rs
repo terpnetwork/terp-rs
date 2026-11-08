@@ -67,11 +67,12 @@ fn cashu_mesh_mint_descriptor_round_trip() {
     assert_eq!(got.url, "https://mint.example");
     assert_eq!(got.status, MintStatus::Active);
     assert_eq!(got.units, vec!["sat".to_string()]);
-    assert!(dir
-        .join("cashu")
-        .join("mints")
-        .join(format!("{id}.json"))
-        .is_file());
+    assert!(
+        dir.join("cashu")
+            .join("mints")
+            .join(format!("{id}.json"))
+            .is_file()
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -111,7 +112,7 @@ fn cashu_mesh_invalid_id_rejected() {
 #[cfg(feature = "server")]
 mod l1_http {
     use super::*;
-    use crate::server::{router, AppState};
+    use crate::server::{AppState, router};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use cw721_nips::buds::{AuthClaims, AuthError, AuthResult, AuthScope, AuthVerifier};
@@ -222,11 +223,13 @@ mod l1_http {
             .unwrap();
         assert_eq!(list.status(), StatusCode::OK);
         let list_json = body_json(list).await;
-        assert!(list_json["keys"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|k| k == mint_id));
+        assert!(
+            list_json["keys"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|k| k == mint_id)
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }

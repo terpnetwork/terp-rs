@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Open a private voting session (ceremony snapshot id, merkle root, etc.).",
+      "type": "object",
+      "required": [
+        "open_session"
+      ],
+      "properties": {
+        "open_session": {
+          "type": "object",
+          "required": [
+            "note_tree_root",
+            "session_id"
+          ],
+          "properties": {
+            "note_tree_root": {
+              "description": "Note commitment tree root / IMT root from vote-sdk.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                }
+              ]
+            },
+            "proposal_ref": {
+              "description": "Optional metadata (proposal id on parent DAO).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "close_session"
+      ],
+      "properties": {
+        "close_session": {
+          "type": "object",
+          "required": [
+            "session_id"
+          ],
+          "properties": {
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_circuit_vks"
+      ],
+      "properties": {
+        "update_circuit_vks": {
+          "$ref": "#/definitions/CircuitVerifyingKeys"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "required": [
+            "admin"
+          ],
+          "properties": {
+            "admin": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "CircuitVerifyingKeys": {
+      "description": "Maps to vote-sdk circuit crates: delegation, vote_proof, share_reveal.",
+      "type": "object",
+      "required": [
+        "delegation_vk",
+        "share_reveal_vk",
+        "vote_proof_vk"
+      ],
+      "properties": {
+        "delegation_vk": {
+          "$ref": "#/definitions/Binary"
+        },
+        "share_reveal_vk": {
+          "$ref": "#/definitions/Binary"
+        },
+        "vote_proof_vk": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

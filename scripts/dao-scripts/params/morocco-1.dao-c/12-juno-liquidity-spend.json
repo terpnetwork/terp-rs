@@ -1,0 +1,47 @@
+{
+  "amounts": [
+    {
+      "amount": "1590000000000",
+      "base": "ujuno",
+      "denom": "ujuno",
+      "display": "1,590,000 JUNO",
+      "exponent": 6
+    },
+    {
+      "amount": "2100000000000",
+      "base": "uterp",
+      "denom": "ibc/2578547913C40B0DEBAB7E458F191491DE6288A01E1000E9BAE34103DEB189D3",
+      "display": "2,100,000 TERP",
+      "exponent": 6,
+      "trace": "transfer/channel-393/uterp"
+    },
+    {
+      "amount": "2846700000000",
+      "base": "uthiol",
+      "denom": "ibc/055F223602B754BF34FE269B729837A02BDF79E069F2387AEEA9CD28DE961BE7",
+      "display": "2,846,700 THIOL",
+      "exponent": 6,
+      "trace": "transfer/channel-393/uthiol"
+    }
+  ],
+  "authority": "juno10d07y265gmmuvt4z0w9aw880jnsr700jvss730",
+  "blocker": null,
+  "broadcast": false,
+  "chain_id": "juno-1",
+  "cid_v1_raw": "bafkreiere3b7oqqj7dkh6tlrep7ixhqhbq7qlhpd7smtevs4ilbbmhy6vy",
+  "dao_file": "params/morocco-1.dao-c/12-juno-liquidity-spend.dao.json",
+  "deposit_period": "10 days",
+  "html": "params/morocco-1.dao-c/12-juno-liquidity.html",
+  "initial_deposit": "1000000000ujuno",
+  "kind": "community_pool_spend",
+  "min_deposit": "5000000000ujuno",
+  "page": "https://s3.terp.network/static/gov/juno-liquidity/bafkreiere3b7oqqj7dkh6tlrep7ixhqhbq7qlhpd7smtevs4ilbbmhy6vy.html",
+  "pricing": "1,590,000 JUNO, 2,100,000 TERP, and 2,846,700 THIOL. About $183,324.71 at JUNO $0.00684943 (2026-11-01) and baseline floors TERP $0.05012 and THIOL $0.02360. 2.85M THIOL is 3,300 over the pool, so the message spends the pool balance.",
+  "proposer": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+  "ready": true,
+  "recipient": "juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf",
+  "recipient_line": "The recipient is <code>juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf</code>, the custody-juno contract (code 4862) instantiated by juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5.",
+  "summary": "Spend 1,590,000 JUNO (1590000000000 ujuno), 2,100,000 TERP (2100000000000 uterp, denom ibc/2578547913C40B0DEBAB7E458F191491DE6288A01E1000E9BAE34103DEB189D3, trace transfer/channel-393/uterp), and 2,846,700 THIOL (2846700000000 uthiol, denom ibc/055F223602B754BF34FE269B729837A02BDF79E069F2387AEEA9CD28DE961BE7, trace transfer/channel-393/uthiol) from the Juno community pool to juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf for a liquidity deployment. The full proposal is https://s3.terp.network/static/gov/juno-liquidity/bafkreiere3b7oqqj7dkh6tlrep7ixhqhbq7qlhpd7smtevs4ilbbmhy6vy.html.",
+  "title": "Community pool spend for a JUNO, TERP, and THIOL liquidity deployment",
+  "voting_period": "5 days"
+}

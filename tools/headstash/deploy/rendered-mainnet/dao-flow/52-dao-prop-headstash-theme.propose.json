@@ -1,0 +1,30 @@
+{
+ "propose": {
+  "msg": {
+   "propose": {
+    "title": "Headstash claim page: set Azure Calcium theme on terpy + thioly",
+    "description": "Sets the Headstash claim page theme (R12) on the DAO-owned cw-headstash instances terpy terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q and thioly terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7 via the owner-only set_theme. Theme: Azure Calcium (Terp Network (user-supplied tokens, 2026-11-04)), light and dark token sets (bg, surface, surfaceAlt, text, textMuted, border, borderStrong, accent, onAccent, focus), canonical JSON sha256 e3f1c91756f0a72017658229985766f00ef323345ed29d3411915ade85b9908c. The contract validates every token (#RRGGBB, no unknown fields); the page validates again and falls back to the frontend manifest default, then the built-in theme. No funds move. Reverting is set_theme {theme: null}.",
+    "msgs": [
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+        "msg": "eyJzZXRfdGhlbWUiOnsidGhlbWUiOnsibGlnaHQiOnsiYWNjZW50IjoiIzQwNzhBQyIsImJnIjoiI0VGRjdGRiIsImJvcmRlciI6IiNDOERCRUYiLCJib3JkZXJTdHJvbmciOiIjQTBEMEZGIiwiZm9jdXMiOiIjNDA3OEFDIiwib25BY2NlbnQiOiIjRkZGRkZGIiwic3VyZmFjZSI6IiNGOUZDRkYiLCJzdXJmYWNlQWx0IjoiI0RFRUZGRiIsInRleHQiOiIjMjMzRTU4IiwidGV4dE11dGVkIjoiIzMyNUE4MCJ9LCJkYXJrIjp7ImFjY2VudCI6IiM3NkJCRkMiLCJiZyI6IiMwNTEwMUIiLCJib3JkZXIiOiIjMjUzNzQ4IiwiYm9yZGVyU3Ryb25nIjoiIzQwNzhBQyIsImZvY3VzIjoiIzc2QkJGQyIsIm9uQWNjZW50IjoiIzEzMjIzMCIsInN1cmZhY2UiOiIjMEIxQjJCIiwic3VyZmFjZUFsdCI6IiMxOTJBM0EiLCJ0ZXh0IjoiI0UyRURGOSIsInRleHRNdXRlZCI6IiNBNkI4Q0EifX19fQ==",
+        "funds": []
+       }
+      }
+     },
+     {
+      "wasm": {
+       "execute": {
+        "contract_addr": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7",
+        "msg": "eyJzZXRfdGhlbWUiOnsidGhlbWUiOnsibGlnaHQiOnsiYWNjZW50IjoiIzQwNzhBQyIsImJnIjoiI0VGRjdGRiIsImJvcmRlciI6IiNDOERCRUYiLCJib3JkZXJTdHJvbmciOiIjQTBEMEZGIiwiZm9jdXMiOiIjNDA3OEFDIiwib25BY2NlbnQiOiIjRkZGRkZGIiwic3VyZmFjZSI6IiNGOUZDRkYiLCJzdXJmYWNlQWx0IjoiI0RFRUZGRiIsInRleHQiOiIjMjMzRTU4IiwidGV4dE11dGVkIjoiIzMyNUE4MCJ9LCJkYXJrIjp7ImFjY2VudCI6IiM3NkJCRkMiLCJiZyI6IiMwNTEwMUIiLCJib3JkZXIiOiIjMjUzNzQ4IiwiYm9yZGVyU3Ryb25nIjoiIzQwNzhBQyIsImZvY3VzIjoiIzc2QkJGQyIsIm9uQWNjZW50IjoiIzEzMjIzMCIsInN1cmZhY2UiOiIjMEIxQjJCIiwic3VyZmFjZUFsdCI6IiMxOTJBM0EiLCJ0ZXh0IjoiI0UyRURGOSIsInRleHRNdXRlZCI6IiNBNkI4Q0EifX19fQ==",
+        "funds": []
+       }
+      }
+     }
+    ]
+   }
+  }
+ }
+}

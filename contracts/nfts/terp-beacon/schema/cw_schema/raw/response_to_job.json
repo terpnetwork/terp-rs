@@ -1,0 +1,54 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_beacon_msg_JobResponse",
+      "type": "struct",
+      "properties": {
+        "job": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "terp_beacon_msg_JobInfo",
+      "type": "struct",
+      "properties": {
+        "after": {
+          "value": 3
+        },
+        "job_id": {
+          "value": 2
+        },
+        "requester": {
+          "value": 2
+        },
+        "round": {
+          "description": "First drand round whose publish time is strictly after `after`.",
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<terp_beacon::msg::JobInfo>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

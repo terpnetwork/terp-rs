@@ -135,14 +135,14 @@ pub fn compute_drift(
         .collect();
 
     for (pkg, entry) in &snapshot.crates {
-        if let Some(current_mode) = current_modes.get(pkg.as_str()) {
-            if *current_mode != entry.mode.as_str() {
-                report.mode_changed.push(ModeChange {
-                    package: pkg.clone(),
-                    expected: entry.mode.clone(),
-                    actual: (*current_mode).to_string(),
-                });
-            }
+        if let Some(current_mode) = current_modes.get(pkg.as_str())
+            && *current_mode != entry.mode.as_str()
+        {
+            report.mode_changed.push(ModeChange {
+                package: pkg.clone(),
+                expected: entry.mode.clone(),
+                actual: (*current_mode).to_string(),
+            });
         }
     }
 
@@ -169,10 +169,7 @@ pub struct ModeChange {
 /// For each crate in the snapshot, updates the matrix entry's mode and source
 /// to match the current workspace state. This effectively "freezes" the current
 /// state as the new desired baseline.
-pub fn write_baseline(
-    matrix_path: &Path,
-    snapshot: &DependencySnapshot,
-) -> anyhow::Result<()> {
+pub fn write_baseline(matrix_path: &Path, snapshot: &DependencySnapshot) -> anyhow::Result<()> {
     // Read current matrix
     let content = std::fs::read_to_string(matrix_path)?;
     let mut toml_value: toml::Value = toml::from_str(&content)?;
@@ -185,15 +182,14 @@ pub fn write_baseline(
     for (pkg, entry) in &snapshot.crates {
         // Find the matrix key (either direct or by package mapping)
         let matrix_key = entry.matrix_key.as_deref().unwrap_or(pkg);
-        if let Some(crate_entry) = crates_table.get_mut(matrix_key) {
-            if let Some(crate_table) = crate_entry.as_table_mut() {
-                // Update based on mode
-                match entry.mode.as_str() {
+        if let Some(crate_entry) = crates_table.get_mut(matrix_key)
+            && let Some(crate_table) = crate_entry.as_table_mut()
+        {
+            // Update based on mode
+            match entry.mode.as_str() {
                     "stable" => {
-                        crate_table.insert(
-                            "stable".into(),
-                            toml::Value::String(entry.source.clone()),
-                        );
+                        crate_table
+                            .insert("stable".into(), toml::Value::String(entry.source.clone()));
                     }
                     "local" | "zk_local" => {
                         crate_table.insert(
@@ -206,37 +202,29 @@ pub fn write_baseline(
                             toml::Value::String(entry.source.clone()),
                         );
                     }
-                    "git" | "zk_git" => {
+                    "git" | "zk_git"
                         // Parse git URL from source (format: "path/to/Cargo.toml")
                         // The git URL and branch are stored in the git/zk_git fields
                         // We preserve existing git config for now — only update the mode
                         // by ensuring git section exists
-                        if entry.mode == "zk_git" {
+                        if entry.mode == "zk_git" => {
                             crate_table
                                 .entry("zk_git")
                                 .or_insert_with(|| toml::Value::Table(toml::Table::new()));
                         }
-                    }
                     _ => {}
                 }
-                // Always write features if present — use aggregate key "." to
-                // match matrix HashMap<String, Vec<String>> format
-                if !entry.features.is_empty() {
-                    let mut features_map = toml::Table::new();
-                    let features_val: Vec<toml::Value> = entry
-                        .features
-                        .iter()
-                        .map(|f| toml::Value::String(f.clone()))
-                        .collect();
-                    features_map.insert(
-                        ".".into(),
-                        toml::Value::Array(features_val),
-                    );
-                    crate_table.insert(
-                        "features".into(),
-                        toml::Value::Table(features_map),
-                    );
-                }
+            // Always write features if present — use aggregate key "." to
+            // match matrix HashMap<String, Vec<String>> format
+            if !entry.features.is_empty() {
+                let mut features_map = toml::Table::new();
+                let features_val: Vec<toml::Value> = entry
+                    .features
+                    .iter()
+                    .map(|f| toml::Value::String(f.clone()))
+                    .collect();
+                features_map.insert(".".into(), toml::Value::Array(features_val));
+                crate_table.insert("features".into(), toml::Value::Table(features_map));
             }
         }
     }

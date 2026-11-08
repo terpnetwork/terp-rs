@@ -1,0 +1,27 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_frost_GroupVkResponse",
+      "type": "struct",
+      "properties": {
+        "group_vk": {
+          "value": 1
+        },
+        "old_vk": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

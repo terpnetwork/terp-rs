@@ -31,9 +31,7 @@ impl TkmsCustody {
     /// Connect to a TKMS instance and fetch the public key.
     pub async fn connect(addr: &str) -> Result<Self> {
         let resp = Self::rpc(addr, "public_key", "").await?;
-        let pk_hex = resp
-            .public_key
-            .context("TKMS did not return public_key")?;
+        let pk_hex = resp.public_key.context("TKMS did not return public_key")?;
         let pk_bytes = hex::decode(&pk_hex).context("invalid hex from TKMS public_key")?;
         Ok(Self {
             addr: addr.to_string(),

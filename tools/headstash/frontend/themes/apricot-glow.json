@@ -1,0 +1,8 @@
+{
+ "name": "Apricot Glow",
+ "source": "https://permissionless.money/alpha/wd-colours/apricot-glow.html",
+ "theme": {
+  "light": {"bg": "#FEF4E7", "surface": "#FFFBF6", "surfaceAlt": "#F9EAD7", "text": "#473926", "textMuted": "#675336", "border": "#E6D6C1", "borderStrong": "#E8B773", "accent": "#896D46", "onAccent": "#FFFFFF", "focus": "#896D46"},
+  "dark": {"bg": "#170D02", "surface": "#241704", "surfaceAlt": "#332612", "text": "#F4EADD", "textMuted": "#C2B3A0", "border": "#41331F", "borderStrong": "#896D46", "accent": "#E8B773", "onAccent": "#271F14", "focus": "#E8B773"}
+ }
+}

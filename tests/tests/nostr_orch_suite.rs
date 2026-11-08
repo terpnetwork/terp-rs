@@ -18,8 +18,8 @@ use std::time::Duration;
 
 use hash_market::store::TreeStore;
 use hash_market::{
-    bind_offchain_event, metadata_to_nip52_event, parse_calendar_action, resolve_local,
-    CalendarChainAction, CalendarMetaView, KIND_DATE_BASED, KIND_TIME_BASED,
+    CalendarChainAction, CalendarMetaView, KIND_DATE_BASED, KIND_TIME_BASED, bind_offchain_event,
+    metadata_to_nip52_event, parse_calendar_action, resolve_local,
 };
 use terp_scripts::environments::nostr::{
     bind_and_bridge_offchain, calendar_meta_to_nostr, chain_event_to_nostr, nip01_to_ict,
@@ -64,8 +64,16 @@ fn l0_offchain_cid_bind_and_nip52_shape() {
     };
     let ev = metadata_to_nip52_event(&view, Some(&resolved), Some(&action), "pk_l0").unwrap();
     assert_eq!(ev.kind, KIND_TIME_BASED as u32);
-    assert!(ev.tags.iter().any(|t| t == &["cid".to_string(), bind.chain_cid.clone()]));
-    assert!(ev.tags.iter().any(|t| t == &["t".to_string(), "dao-calendar".to_string()]));
+    assert!(
+        ev.tags
+            .iter()
+            .any(|t| t == &["cid".to_string(), bind.chain_cid.clone()])
+    );
+    assert!(
+        ev.tags
+            .iter()
+            .any(|t| t == &["t".to_string(), "dao-calendar".to_string()])
+    );
     assert!(ev.content.contains("L0 Meetup"));
 
     // harness bridge matches
@@ -91,7 +99,11 @@ fn l0_onchain_e_json_egress() {
     };
     let ev = metadata_to_nip52_event(&view, None, None, "pk_on").unwrap();
     assert_eq!(ev.kind, KIND_DATE_BASED as u32);
-    assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("title")));
+    assert!(
+        ev.tags
+            .iter()
+            .any(|t| t.first().map(|s| s.as_str()) == Some("title"))
+    );
 }
 
 #[test]
@@ -106,13 +118,7 @@ fn l0_parse_calendar_action_and_legacy_bridge() {
     assert_eq!(a.action, "create_event");
     assert_eq!(a.height, 55);
 
-    let bridged = chain_event_to_nostr(
-        &attrs,
-        55,
-        Some("create_event"),
-        Some("terp1c"),
-        "pk",
-    );
+    let bridged = chain_event_to_nostr(&attrs, 55, Some("create_event"), Some("terp1c"), "pk");
     assert_eq!(bridged.kind, KIND_DATE_BASED as u32);
     assert!(bridged.content.contains("55"));
 }
@@ -272,7 +278,10 @@ async fn l2_full_lifecycle_content_plane_and_nip52() {
     );
     assert!(
         received.content.contains("Phase B E2E")
-            || received.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")),
+            || received
+                .tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("cid")),
         "content/tags should carry event or cid: {}",
         received.content
     );

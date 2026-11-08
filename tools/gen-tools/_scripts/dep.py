@@ -10,8 +10,20 @@ Usage:
     python3 _scripts/dep.py heal [--dry-run]
     python3 _scripts/dep.py status
     python3 _scripts/dep.py switch <mode> [options]
+    python3 _scripts/dep.py align --workspace PATH [--crate NAME] [--dry-run]
+    python3 _scripts/dep.py pin-revs --workspace PATH [--dry-run]
     python3 _scripts/dep.py verify [--mode MODE] [--workspace PATH]
-    python3 _scripts/dep.py ensure-branches <mode>
+    python3 _scripts/dep.py ensure-branches <mode> [--force]
+    python3 _scripts/dep.py branch-check [--mode MODE] [--refresh] [--all]
+    python3 _scripts/dep.py git-status [--repo PATH] [--all]
+
+Monorepo root:
+    Matrix local/zk_local paths are relative to terp-core/crates. The root is
+    TERP_DEP_ROOT, else dep-config.toml paths.monorepo_root (right for
+    terp-core/crates/terp-rs), else a sibling ../terp-core/crates next to a
+    detached terp-rs clone. Override with `dep.py --root PATH <command>`.
+    Workspaces outside the root (e.g. ~/abstract/cometbft-rs-bls) can be named
+    by filesystem path: `dep.py align --workspace ~/abstract/cometbft-rs-bls`.
 """
 
 from __future__ import annotations
@@ -19,8 +31,21 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
+import os
+
+# --root must take effect before dep_common resolves REPO_ROOT at import.
+for _i, _a in enumerate(sys.argv[1:], 1):
+    if _a == "--root" and _i + 1 < len(sys.argv):
+        os.environ["TERP_DEP_ROOT"] = sys.argv[_i + 1]
+        del sys.argv[_i:_i + 2]
+        break
+    if _a.startswith("--root="):
+        os.environ["TERP_DEP_ROOT"] = _a.split("=", 1)[1]
+        del sys.argv[_i]
+        break
 
 _SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPTS))
@@ -43,8 +68,14 @@ from dep_common import (
     MATRIX_PATH,
     REPO_ROOT,
     TOOLING_ROOT,
+    KNOWN_WORKSPACE_ROOTS,
     VALID_MODES,
+    pin_floating_git_deps,
+    same_source_git_patches,
+    lint_unused_patches,
+    unused_patch_warnings,
     heal_matrix_locals,
+    stamp_git_sections,
     load_active_mode,
     load_defaults,
     load_dep_config,
@@ -54,6 +85,8 @@ from dep_common import (
     verify_mode_resolution,
     write_healed_matrix,
 )
+
+import dep_probe
 
 
 def cmd_config(_args):
@@ -146,6 +179,162 @@ def cmd_heal(args):
             print(f"    {e}")
 
 
+def _workspace_manifests(root: Path):
+    """Root manifest plus concrete workspace members. Excludes are skipped."""
+    import tomllib
+
+    root_toml = root / "Cargo.toml"
+    if not root_toml.is_file():
+        return
+    yield root_toml
+    with root_toml.open("rb") as handle:
+        data = tomllib.load(handle)
+    workspace = data.get("workspace") or {}
+    excluded = set()
+    for pattern in workspace.get("exclude") or []:
+        for match in root.glob(pattern):
+            excluded.add(match.resolve())
+    for pattern in workspace.get("members") or []:
+        for match in root.glob(pattern):
+            if match.resolve() in excluded:
+                continue
+            cargo = match / "Cargo.toml"
+            if cargo.is_file():
+                yield cargo
+
+
+def cmd_pin_revs(args):
+    """Rewrite matrix git branches to the matrix full rev."""
+    if args.core and args.workspace:
+        print("REFUSING pin-revs: pass either --core or --workspace.")
+        sys.exit(1)
+    if not args.core and not args.workspace:
+        print("REFUSING pin-revs: pass --workspace or --core.")
+        sys.exit(1)
+
+    crates = load_matrix()
+    if args.core:
+        roots = [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    else:
+        roots = []
+        for name in args.workspace:
+            candidate = REPO_ROOT / name
+            if not (candidate / "Cargo.toml").is_file():
+                candidate = Path(name)
+            if not (candidate / "Cargo.toml").is_file():
+                print(f"SKIP {name}: no Cargo.toml")
+                continue
+            roots.append(candidate)
+
+    wrote = 0
+    same_source = []
+    if args.dry_run:
+        print("[DRY RUN]")
+    for root in roots:
+        for cargo in _workspace_manifests(root):
+            text = cargo.read_text()
+            new_text, changes, warnings = pin_floating_git_deps(text, crates)
+            rel = cargo
+            try:
+                rel = cargo.relative_to(REPO_ROOT)
+            except ValueError:
+                pass
+            for warning in warnings:
+                print(f"  [WARN] {rel}: {warning}")
+            for hit in same_source_git_patches(new_text):
+                message = f"{rel}: {hit}"
+                same_source.append(message)
+                print(f"  [ERROR] {message}")
+            if not changes:
+                continue
+            print(f"  {rel}")
+            for change in changes:
+                print(f"    {change}")
+            if not args.dry_run:
+                cargo.write_text(new_text)
+                wrote += 1
+    if same_source:
+        print(f"pin-revs: {len(same_source)} same-source patch(es); Cargo will reject them")
+        sys.exit(1)
+    if args.dry_run:
+        print("pin-revs: dry-run wrote nothing")
+    else:
+        print(f"pin-revs: updated {wrote} manifest(s)")
+
+
+def _lint_workspace_roots(args):
+    if args.core and args.workspace:
+        print("REFUSING lint-patches: pass either --core or --workspace.")
+        sys.exit(1)
+    if not args.core and not args.workspace:
+        print("REFUSING lint-patches: pass --workspace or --core.")
+        sys.exit(1)
+    if args.core:
+        return [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    roots = []
+    for name in args.workspace:
+        candidate = REPO_ROOT / name
+        if not (candidate / "Cargo.toml").is_file():
+            candidate = Path(name)
+        if not (candidate / "Cargo.toml").is_file():
+            print(f"SKIP {name}: no Cargo.toml")
+            continue
+        roots.append(candidate)
+    return roots
+
+
+def cmd_lint_patches(args):
+    """Drop patch entries Cargo reports as unused. Keep the rest in order."""
+    import subprocess
+
+    roots = _lint_workspace_roots(args)
+    if args.dry_run:
+        print("[DRY RUN]")
+    wrote = 0
+    for root in roots:
+        cargo = root / "Cargo.toml"
+        proc = subprocess.run(
+            ["cargo", "metadata", "--format-version", "1"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        rel = cargo
+        try:
+            rel = cargo.relative_to(REPO_ROOT)
+        except ValueError:
+            pass
+        if proc.returncode != 0:
+            err = (proc.stderr or "").strip().splitlines()
+            tail = err[-1] if err else "cargo metadata failed"
+            print(f"  [ERROR] {rel}: {tail}")
+            sys.exit(1)
+        warnings = unused_patch_warnings(proc.stderr or "")
+        if not warnings:
+            print(f"  {rel}: no unused patches")
+            continue
+        new_text, removed, dropped_sections, unmatched = lint_unused_patches(
+            cargo.read_text(), root, warnings
+        )
+        print(f"  {rel}")
+        for item in removed:
+            print(f"    remove {item}")
+        for section in dropped_sections:
+            print(f"    drop empty [{section}]")
+        for name, source in unmatched:
+            print(f"    [WARN] unused patch not matched: {name} ({source})")
+        if new_text == cargo.read_text():
+            continue
+        if not args.dry_run:
+            cargo.write_text(new_text)
+            wrote += 1
+    if args.dry_run:
+        print("lint-patches: dry-run wrote nothing")
+    else:
+        print(f"lint-patches: updated {wrote} manifest(s)")
+
+
 def cmd_verify(args):
     matrix = load_matrix()
     mode = args.mode or load_active_mode() or "local"
@@ -192,6 +381,11 @@ def cmd_verify(args):
 
 def cmd_switch(args):
     # Fail closed on dirty matrix unless --force
+    if args.core:
+        if args.workspace:
+            print("REFUSING switch: pass either --core or --workspace.")
+            sys.exit(1)
+        args.workspace = [str(Path(path).parent) for path in KNOWN_WORKSPACE_ROOTS]
     matrix = load_matrix()
     ok, errors, warns = matrix_is_clean(matrix, mode=args.mode)
     if not ok and not args.force:
@@ -229,6 +423,90 @@ def cmd_switch(args):
             print(f"VERIFY FAILED ({len(report['errors'])} errors)")
             for e in report["errors"]:
                 print(f"  {e}")
+            sys.exit(1)
+        print("VERIFY OK")
+
+
+def cmd_align(args):
+    """Point one workspace at the versions committed in the local checkouts.
+
+    Refuses when a matrix ``fork_version`` disagrees with the package version
+    on disk. Then runs ``patch-local`` and copies a nested
+    ``[patch.crates-io]`` entry only when a walked manifest has a crates.io
+    version requirement for that name. Cargo does not apply a patch from a
+    path dependency, so that copy is what lets ``cargo metadata`` resolve
+    cw1, Zakura 5, and the Wasmer singlepass pin.
+    """
+    if args.core:
+        if args.workspace:
+            print("REFUSING align: pass either --core or --workspace.")
+            sys.exit(1)
+        args.workspace = [str(Path(path).parent) for path in KNOWN_WORKSPACE_ROOTS]
+    if not args.workspace:
+        print("REFUSING align: pass --workspace or --core. This does not rewrite the whole monorepo.")
+        sys.exit(1)
+
+    matrix = load_matrix()
+    ok, errors, _warns = matrix_is_clean(matrix, mode="patch-local")
+    if not ok and not args.force:
+        print("REFUSING align: matrix has integrity errors. Run `dep.py heal` or pass --force.")
+        for err in errors[:30]:
+            print(f"  {err}")
+        sys.exit(1)
+    dep_switch = _load_script("dep-switch")
+    selected = dep_switch.resolve_crate_filter(args.crate, matrix)
+    mismatches = []
+    checked = 0
+    for key, info in matrix.items():
+        fork = info.get("fork_version")
+        if not isinstance(fork, str) or not fork or fork == "N/A":
+            continue
+        published = info.get("package", key)
+        if selected is not None and published not in selected and key not in selected:
+            continue
+        local = info.get("local")
+        if not isinstance(local, str) or not local or local == "N/A":
+            continue
+        committed = dep_switch.committed_package_version(local)
+        if committed is None:
+            print(f"  SKIP {published}: no package version at {local}")
+            continue
+        checked += 1
+        if committed != fork:
+            mismatches.append(f"{published}: checkout {committed}, matrix fork_version {fork} ({local})")
+    if mismatches:
+        print("REFUSING align: matrix fork_version does not match the committed checkout.")
+        for line in mismatches:
+            print(f"  {line}")
+        sys.exit(1)
+    if checked == 0:
+        print("REFUSING align: no fork_version crates to check.")
+        sys.exit(1)
+    print(f"Committed versions match the matrix ({checked} crate(s)).")
+
+    ns = argparse.Namespace(
+        mode="patch-local",
+        dry_run=args.dry_run,
+        workspace=args.workspace,
+        crate=args.crate,
+        target=args.target or "all",
+        lift_all=True,
+    )
+    dep_switch.cmd_switch(ns)
+
+    if args.verify:
+        print("\n-- verify after align --")
+        report = verify_mode_resolution(
+            load_matrix(),
+            "patch-local",
+            projects=dep_switch.resolve_projects(args.workspace, all_projects=True),
+            defaults=load_defaults(),
+            max_workspaces=args.verify_limit,
+        )
+        if report["errors"]:
+            print(f"VERIFY FAILED ({len(report['errors'])} errors)")
+            for err in report["errors"]:
+                print(f"  {err}")
             sys.exit(1)
         print("VERIFY OK")
 
@@ -299,9 +577,304 @@ def cmd_status(args):
 
 
 def cmd_ensure_branches(args):
+    # Gated: creating a remote branch to satisfy a matrix entry publishes a
+    # ref under a name that nothing consumes when the matrix itself is wrong.
+    # Refuse unless the matrix's branches are confirmed present, or the
+    # operator overrides explicitly.
+    if not args.force:
+        matrix = load_matrix()
+        defaults = load_defaults()
+        findings = dep_probe.check_branches_on_remote(matrix, defaults, mode="all")
+        missing = [f for f in findings if f.state == "missing"]
+        if missing:
+            print("REFUSING ensure-branches: the matrix names branches the remote does not publish.")
+            print()
+            for f in missing:
+                for line in f.format():
+                    print(line)
+            print()
+            print("ensure-branches would publish these names from whatever HEAD is pointed at,")
+            print("which is how a wrong matrix entry becomes permanent. Fix the matrix first.")
+            print("Run 'branch-check' for the full report, or pass --force to override.")
+            sys.exit(1)
     dep_switch = _load_script("dep-switch")
     ns = argparse.Namespace(mode=args.mode, dry_run=args.dry_run, base=args.base)
     dep_switch.cmd_ensure_branches(ns)
+
+
+def cmd_branch_check(args):
+    matrix = load_matrix()
+    defaults = load_defaults()
+    findings = dep_probe.check_branches_on_remote(
+        matrix, defaults, mode=args.mode, refresh=args.refresh
+    )
+    counts = dep_probe.summarize_branches(findings)
+    print(f"Branch check  matrix_crates={len(matrix)}  url_branch_pairs={len(findings)}")
+    print("  " + "  ".join(f"{k}={v}" for k, v in sorted(counts.items())))
+    print()
+    for f in findings:
+        if not args.all and f.ok:
+            continue
+        for line in f.format():
+            print(line)
+    missing = [f for f in findings if f.state == "missing"]
+    if missing:
+        print()
+        print(f"{len(missing)} matrix (url, branch) pair(s) name a branch the remote does not publish.")
+        print("The matrix is the source of truth. Correct the matrix; do not create the branch.")
+        sys.exit(1)
+
+
+def cmd_git_status(args):
+    states = dep_probe.probe_git_state(repos=args.repo)
+    summary = dep_probe.summarize_repos(states)
+    print(
+        f"Git state  repos={summary['repos']}  dirty={summary['dirty']}  "
+        f"outgoing={summary['outgoing']}  detached={summary['detached']}  "
+        f"prunable={summary['prunable']}  errored={summary['errored']}"
+    )
+    print()
+    for state in states:
+        if not args.all and not (state.dirty or state.outgoing or state.detached or state.prunable or state.error):
+            continue
+        for line in state.format():
+            print(line)
+    blockers = dep_probe.preflight_for_write(states, targets=None)
+    if blockers and not args.all:
+        print()
+        print("WRITE PREFLIGHT — these repositories block any Cargo-file write path:")
+        for b in blockers:
+            print(f"  - {b}")
+
+
+def _git_repo(start: Path):
+    cur = start if start.exists() else start.parent
+    while True:
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur or cur == REPO_ROOT:
+            return None
+        cur = cur.parent
+
+
+def _git_text(repo: Path, *args):
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
+
+
+def _package_at(path: Path):
+    cargo = path / "Cargo.toml" if path.is_dir() else path
+    if not cargo.is_file():
+        return None
+    try:
+        import tomllib
+
+        with cargo.open("rb") as handle:
+            data = tomllib.load(handle)
+    except Exception:
+        return None
+    return (data.get("package") or {}).get("name")
+
+
+def _stamp_updates(matrix: dict) -> dict:
+    updates = {}
+    for key, info in matrix.items():
+        if not isinstance(info, dict):
+            continue
+        git_info = info.get("git")
+        if not isinstance(git_info, dict):
+            continue
+        url = git_info.get("url")
+        if not isinstance(url, str) or not url or url == "N/A":
+            continue
+        local = info.get("local")
+        if not isinstance(local, str) or not local or local == "N/A":
+            continue
+        repo = _git_repo(REPO_ROOT / local)
+        if repo is None:
+            continue
+        head = _git_text(repo, "rev-parse", "HEAD")
+        branch = _git_text(repo, "branch", "--show-current")
+        if not head or not branch:
+            continue
+        rev = git_info.get("rev") or git_info.get("commit")
+        if rev == head and git_info.get("branch") == branch:
+            continue
+        updates[key] = {"branch": branch, "rev": head}
+    return updates
+
+
+def cmd_stamp_revs(args):
+    """Point matrix git.rev and git.branch at the local checkout HEAD.
+
+    Read-only unless ``--write``. Does not publish and does not touch a
+    dirty worktree's uncommitted files. ``cover`` still reports that dirt.
+    """
+    matrix = load_matrix()
+    updates = _stamp_updates(matrix)
+    print(f"Stamp git revs  crates={len(updates)}  root={REPO_ROOT}")
+    for key in sorted(updates):
+        info = updates[key]
+        print(f"  {key}: branch {info['branch']}  rev {info['rev']}")
+    if not updates:
+        print("OK: matrix git tables already match local HEADs")
+        return
+    if args.dry_run or not args.write:
+        print("[DRY RUN] matrix not written. Pass --write to record these revs.")
+        return
+    text = MATRIX_PATH.read_text()
+    MATRIX_PATH.write_text(stamp_git_sections(text, updates))
+    print(f"wrote {MATRIX_PATH}")
+
+
+def _root_edges(cargo: Path):
+    """Path and git edges in the workspace root manifest.
+
+    Only ``[patch.crates-io]`` and ``[workspace.dependencies]`` count.
+    Member manifests are a different resolve root.
+    """
+    section = ""
+    edges = []
+    for raw in cargo.read_text().splitlines():
+        stripped = raw.strip()
+        if stripped.startswith("["):
+            section = stripped
+            continue
+        if section not in ("[patch.crates-io]", "[workspace.dependencies]"):
+            continue
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, rhs = stripped.split("=", 1)
+        name = name.strip()
+        path_m = re.search(r'\bpath\s*=\s*"([^"]+)"', rhs)
+        git_m = re.search(r'\bgit\s*=\s*"([^"]+)"', rhs)
+        if path_m:
+            edges.append((name, "path", (cargo.parent / path_m.group(1)).resolve()))
+        elif git_m:
+            edges.append((name, "git", git_m.group(1)))
+    return edges
+
+
+def cmd_cover(args):
+    """Fail closed when the core workspaces are not pin-ready.
+
+    A cross-repo path must be a matrix package at that same checkout.
+    The matrix git rev must be that checkout's HEAD. A dirty tree or a
+    HEAD that no remote contains blocks the hierarchical push.
+    """
+    dep_switch = _load_script("dep-switch")
+
+    matrix = load_matrix()
+    ok, errors, _warns = matrix_is_clean(matrix, mode="patch-local")
+    problems = list(errors)
+    by_pkg = {}
+    for key, info in matrix.items():
+        if isinstance(info, dict):
+            by_pkg.setdefault(info.get("package", key), (key, info))
+
+    roots = [REPO_ROOT / Path(path).parent for path in KNOWN_WORKSPACE_ROOTS]
+    repos = {}
+    for root in roots:
+        cargo = root / "Cargo.toml"
+        if not cargo.is_file():
+            problems.append(f"missing core workspace {root.relative_to(REPO_ROOT)}")
+            continue
+        repo = _git_repo(root)
+        if repo is not None:
+            repos[repo] = None
+        for name, kind, target in _root_edges(cargo):
+            if kind == "git":
+                if name not in by_pkg:
+                    problems.append(
+                        f"UNCOVERED git {root.relative_to(REPO_ROOT)}: {name} ({target})"
+                    )
+                continue
+            owner = _git_repo(target)
+            if repo is not None and owner == repo:
+                continue
+            found = by_pkg.get(name)
+            if found is None:
+                rel = target
+                try:
+                    rel = target.relative_to(REPO_ROOT)
+                except ValueError:
+                    pass
+                problems.append(
+                    f"UNCOVERED path {root.relative_to(REPO_ROOT)}: {name} -> {rel}"
+                )
+                continue
+            key, info = found
+            local = info.get("local")
+            if not isinstance(local, str) or local in ("", "N/A"):
+                problems.append(f"UNCOVERED path {name}: matrix {key} has no local")
+                continue
+            expect = (REPO_ROOT / local).resolve()
+            if expect != target:
+                problems.append(
+                    f"PATH {name}: {root.relative_to(REPO_ROOT)} -> {target.relative_to(REPO_ROOT)}, matrix {key} is {local}"
+                )
+            committed = dep_switch.committed_package_version(local)
+            fork = info.get("fork_version")
+            if isinstance(fork, str) and fork and fork != "N/A" and committed and committed != fork:
+                problems.append(
+                    f"VERSION {name}: checkout {committed}, matrix fork_version {fork}"
+                )
+            if owner is not None:
+                repos[owner] = None
+
+    for repo in sorted(repos, key=lambda item: str(item)):
+        head = _git_text(repo, "rev-parse", "HEAD")
+        branch = _git_text(repo, "branch", "--show-current")
+        dirty = _git_text(repo, "status", "--porcelain")
+        remote = _git_text(repo, "branch", "-r", "--contains", head) if head else ""
+        rel = repo.relative_to(REPO_ROOT)
+        if dirty:
+            problems.append(f"DIRTY {rel}")
+        if head and not remote:
+            problems.append(f"UNPUBLISHED {rel} {head[:12]} ({branch or 'detached'})")
+        for _key, info in matrix.items():
+            local = info.get("local") if isinstance(info, dict) else None
+            git_info = info.get("git") if isinstance(info, dict) else None
+            if not isinstance(local, str) or not isinstance(git_info, dict):
+                continue
+            if _git_repo(REPO_ROOT / local) != repo:
+                continue
+            rev = git_info.get("rev") or git_info.get("commit")
+            if isinstance(rev, str) and head and rev != head:
+                problems.append(f"REV {rel}: matrix {rev[:12]} HEAD {head[:12]}")
+                break
+
+    print(f"Cover  core={len(KNOWN_WORKSPACE_ROOTS)}  root={REPO_ROOT}")
+    if problems:
+        print(f"  problems: {len(problems)}")
+        for line in problems:
+            print(f"  {line}")
+        print()
+        print("Push stays blocked. Commit the dirty trees locally, stamp revs, then push bottom-up.")
+        print("Order: zakura-common, cosmwasm, then the core consumers. cw-placeholder has no git repo.")
+        sys.exit(1)
+    print("OK: core workspaces match the matrix and every HEAD is on a remote")
+
+
+def cmd_html(args):
+    dep_html = _load_script("dep_html")
+    if args.serve:
+        dep_html.serve(output=args.output, port=args.port, host=args.host)
+        return
+    path = dep_html.write_report(
+        output=args.output,
+        include_git=not args.skip_git,
+        include_graph=not args.skip_graph,
+    )
+    print(f"wrote {path}  ({path.stat().st_size} bytes, self-contained)")
 
 
 def main():
@@ -314,6 +887,20 @@ def main():
 
     p = sub.add_parser("config", help="Show resolved roots and policy")
     p.set_defaults(func=cmd_config)
+
+    p = sub.add_parser(
+        "cover",
+        help="Read-only: core workspaces' local deps match the matrix and are publishable",
+    )
+    p.set_defaults(func=cmd_cover)
+
+    p = sub.add_parser(
+        "stamp-revs",
+        help="Point matrix git.rev and git.branch at each local checkout HEAD",
+    )
+    p.add_argument("--write", action="store_true", help="Write the matrix. Default is a dry run.")
+    p.add_argument("--dry-run", action="store_true", help="Accepted for symmetry; the default already writes nothing")
+    p.set_defaults(func=cmd_stamp_revs)
 
     p = sub.add_parser("validate", help="Strict matrix integrity check (exit 1 on errors)")
     p.add_argument("--mode", choices=list(VALID_MODES), default=None)
@@ -333,17 +920,71 @@ def main():
     p.add_argument("mode", choices=list(VALID_MODES))
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the switch to the known core workspaces (not the whole monorepo)",
+    )
     p.add_argument("--crate", action="append")
     p.add_argument(
         "--target",
         choices=["patches", "ws-deps", "members", "both", "all"],
-        default="all",
+        default=None,
     )
     p.add_argument("--force", action="store_true", help="Allow switch with matrix errors")
     p.add_argument("--verify", action="store_true", help="cargo metadata verify after switch")
     p.add_argument("--verify-limit", type=int, default=10)
     p.add_argument("-v", "--verbose", action="store_true")
     p.set_defaults(func=cmd_switch)
+
+    p = sub.add_parser(
+        "align",
+        help="Require the committed local version and lift nested crates.io patches",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the align to the known core workspaces (not the whole monorepo)",
+    )
+    p.add_argument("--crate", action="append", help="Only rewrite these matrix crates' version lines")
+    p.add_argument(
+        "--target",
+        choices=["patches", "ws-deps", "members", "both", "all"],
+        default=None,
+        help="Default is all: version lines and [patch.crates-io]",
+    )
+    p.add_argument("--force", action="store_true", help="Allow align when the matrix has integrity errors")
+    p.add_argument("--verify", action="store_true", help="cargo metadata after the rewrite")
+    p.add_argument("--verify-limit", type=int, default=4)
+    p.set_defaults(func=cmd_align)
+
+    p = sub.add_parser(
+        "pin-revs",
+        help="Replace matrix git branches with the matrix full rev",
+    )
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the rewrite to the known core workspaces",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_pin_revs)
+
+    p = sub.add_parser(
+        "lint-patches",
+        help="Remove unused [patch] entries Cargo ignored, keeping order",
+    )
+    p.add_argument("--workspace", action="append")
+    p.add_argument(
+        "--core",
+        action="store_true",
+        help="Limit the lint to the known core workspaces",
+    )
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=cmd_lint_patches)
 
     p = sub.add_parser("verify", help="Assert cargo metadata sources match mode")
     p.add_argument("--mode", choices=list(VALID_MODES), default=None)
@@ -355,7 +996,37 @@ def main():
     p.add_argument("mode", choices=["git", "zk_git", "all"])
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--base", default=None)
+    p.add_argument("--force", action="store_true", help="Create branches even if the matrix names unpublished ones")
     p.set_defaults(func=cmd_ensure_branches)
+
+    p = sub.add_parser(
+        "branch-check",
+        help="Verify every matrix git url/branch exists on the remote (read-only)",
+    )
+    p.add_argument("--mode", choices=["git", "zk_git", "all"], default="all")
+    p.add_argument("--refresh", action="store_true", help="Ignore the cache and re-query remotes")
+    p.add_argument("--all", action="store_true", help="Show present branches too, not only problems")
+    p.set_defaults(func=cmd_branch_check)
+
+    p = sub.add_parser(
+        "git-status",
+        help="Per-repository dirty/outgoing/worktree state and write preflight (read-only)",
+    )
+    p.add_argument("--repo", action="append", help="Monorepo-relative path; repeatable")
+    p.add_argument("--all", action="store_true", help="Include clean repositories")
+    p.set_defaults(func=cmd_git_status)
+
+    p = sub.add_parser(
+        "html",
+        help="Render the dependency status report as one self-contained HTML file",
+    )
+    p.add_argument("--output", help="Output path (default: <monorepo>/_devops/dep-status.html)")
+    p.add_argument("--serve", action="store_true", help="Serve on loopback instead of writing only")
+    p.add_argument("--port", type=int, default=8787)
+    p.add_argument("--host", default="127.0.0.1", help="Loopback only; anything else is refused")
+    p.add_argument("--skip-git", action="store_true", help="Omit the per-repository git state walk")
+    p.add_argument("--skip-graph", action="store_true", help="Omit the dependency edge scan (faster)")
+    p.set_defaults(func=cmd_html)
 
     args = parser.parse_args()
     args.func(args)

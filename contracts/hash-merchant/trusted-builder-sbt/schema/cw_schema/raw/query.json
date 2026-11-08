@@ -1,0 +1,36 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "trusted_builder_sbt_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "commitment": {
+          "type": "named",
+          "properties": {
+            "eth_address": {
+              "value": 1
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "token": {
+          "type": "named",
+          "properties": {
+            "eth_address": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

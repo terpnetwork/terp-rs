@@ -1,7 +1,13 @@
 # hash-market as NFT whitelist + BUD host (NO vote extensions)
 # Use this for mint pages: eligible addresses fetch proof_hashes and bypass fees.
 
-bind = "0.0.0.0:9090"
+# Loopback is the default. 0.0.0.0 and any other non-loopback host refuse to
+# start unless allow_public_bind = true or HASH_MARKET_ALLOW_PUBLIC_BIND=1.
+# That override is logged at startup.
+bind = "127.0.0.1:9090"
+# Sole terp1 allowed to POST/PUT/DELETE /trees. Reads stay public.
+# HASH_MARKET_TREE_OPERATOR overrides this. Default is the whitelist creator:
+# tree_operator = "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
 chain_id = "morocco-1"
 data_dir = "/var/lib/hash-market"
 

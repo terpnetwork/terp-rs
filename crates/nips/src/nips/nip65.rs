@@ -6,8 +6,8 @@
 //!
 //! Spec: https://nips.nostr.com/65
 
-use crate::error::{NipError, NipResult};
 use crate::NipMetadata;
+use crate::error::{NipError, NipResult};
 use serde::{Deserialize, Serialize};
 
 /// A single relay entry in a user's relay list.
@@ -83,7 +83,11 @@ impl RelayListMetadata {
     pub fn read_relays(&self) -> Vec<&RelayEntry> {
         self.relays
             .iter()
-            .filter(|r| r.marker.as_ref().map_or(true, |m| matches!(m, RelayMarker::Read)))
+            .filter(|r| {
+                r.marker
+                    .as_ref()
+                    .is_none_or(|m| matches!(m, RelayMarker::Read))
+            })
             .collect()
     }
 
@@ -91,7 +95,11 @@ impl RelayListMetadata {
     pub fn write_relays(&self) -> Vec<&RelayEntry> {
         self.relays
             .iter()
-            .filter(|r| r.marker.as_ref().map_or(true, |m| matches!(m, RelayMarker::Write)))
+            .filter(|r| {
+                r.marker
+                    .as_ref()
+                    .is_none_or(|m| matches!(m, RelayMarker::Write))
+            })
             .collect()
     }
 
@@ -280,17 +288,14 @@ mod tests {
 
     #[test]
     fn test_validate_valid_urls() {
-        let list = RelayListMetadata::new(vec![
-            RelayListMetadata::relay("wss://valid.com", None),
-        ]);
+        let list = RelayListMetadata::new(vec![RelayListMetadata::relay("wss://valid.com", None)]);
         assert!(list.validate().is_ok());
     }
 
     #[test]
     fn test_validate_invalid_urls() {
-        let list = RelayListMetadata::new(vec![
-            RelayListMetadata::relay("http://invalid.com", None),
-        ]);
+        let list =
+            RelayListMetadata::new(vec![RelayListMetadata::relay("http://invalid.com", None)]);
         assert!(list.validate().is_err());
     }
 

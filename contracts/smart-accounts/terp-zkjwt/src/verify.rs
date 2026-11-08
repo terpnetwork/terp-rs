@@ -18,13 +18,16 @@
 use cosmwasm_std::{Binary, Deps};
 
 use crate::error::ContractError;
-use crate::instances::{parse_public_instances, CLAIM_COMMITMENT_LEN};
+use crate::instances::{CLAIM_COMMITMENT_LEN, parse_public_instances};
 use crate::msg::{IssuerConfig, ZkJwtAuthPayload};
 
 pub mod circuit_ids {
     pub const JWT_MEMBERSHIP: &str = "zkjwt.membership.v1";
     pub const JWT_EMAIL_DOMAIN: &str = "zkjwt.email_domain.v1";
     pub const JWT_PROFILE_LINK: &str = "zkjwt.profile_link.v1";
+    pub const JWT_PASSKEY_P256: &str = "zkjwt.passkey.p256.v1";
+    /// Start-hash Flock (BLAKE3 of public instances). Demo authenticator until Axiom store works.
+    pub const JWT_PASSKEY_FLOCK: &str = "zkjwt.passkey.flock.v1";
 }
 
 pub trait ZkJwtVerifier {
@@ -43,7 +46,7 @@ fn check_envelope(issuer: &IssuerConfig, payload: &ZkJwtAuthPayload) -> Result<(
         });
     }
     if payload.claim_commitment.len() != CLAIM_COMMITMENT_LEN
-        && !(payload.claim_commitment.len() > 0 && payload.claim_commitment.len() <= 64)
+        && !(!payload.claim_commitment.is_empty() && payload.claim_commitment.len() <= 64)
     {
         // allow 1..=64 during migration; prefer 32
         if payload.claim_commitment.is_empty() || payload.claim_commitment.len() > 64 {
@@ -55,7 +58,8 @@ fn check_envelope(issuer: &IssuerConfig, payload: &ZkJwtAuthPayload) -> Result<(
 
     // Circom full Fr vector (host Path A): ≥27 limbs → policy from codec, not fixed offsets.
     if crate::circom_codec::is_circom_host_instances(payload.public_inputs.as_slice()) {
-        let claim = crate::circom_codec::decode_host_instances_bytes(payload.public_inputs.as_slice())?;
+        let claim =
+            crate::circom_codec::decode_host_instances_bytes(payload.public_inputs.as_slice())?;
         if payload.claim_commitment.len() == CLAIM_COMMITMENT_LEN
             && claim.claim_commitment.as_slice() != payload.claim_commitment.as_slice()
         {
@@ -95,7 +99,9 @@ fn check_envelope(issuer: &IssuerConfig, payload: &ZkJwtAuthPayload) -> Result<(
     match payload.circuit_id.as_str() {
         circuit_ids::JWT_MEMBERSHIP
         | circuit_ids::JWT_EMAIL_DOMAIN
-        | circuit_ids::JWT_PROFILE_LINK => {}
+        | circuit_ids::JWT_PROFILE_LINK
+        | circuit_ids::JWT_PASSKEY_P256
+        | circuit_ids::JWT_PASSKEY_FLOCK => {}
         other => {
             return Err(ContractError::InvalidProof {
                 reason: format!("unknown circuit_id: {other}"),
@@ -143,10 +149,11 @@ impl ZkJwtVerifier for HostZkJwtVerifier {
         let zkid = issuer.zkid.ok_or_else(|| ContractError::InvalidProof {
             reason: "issuer.zkid required for host proof_instance_verify".into(),
         })?;
-        match deps
-            .api
-            .proof_instance_verify(zkid, payload.proof.as_slice(), payload.public_inputs.as_slice())
-        {
+        match deps.api.proof_instance_verify(
+            zkid,
+            payload.proof.as_slice(),
+            payload.public_inputs.as_slice(),
+        ) {
             Ok(true) => Ok(()),
             Ok(false) => Err(ContractError::InvalidProof {
                 reason: "proof_instance_verify returned false".into(),
@@ -182,8 +189,8 @@ pub fn nullifier_from_public_inputs(public_inputs: &Binary) -> Result<Vec<u8>, C
 mod host_tests {
     use super::*;
     use crate::instances::build_public_inputs;
-    use cosmwasm_std::testing::mock_dependencies;
     use cosmwasm_std::Binary;
+    use cosmwasm_std::testing::mock_dependencies;
 
     #[test]
     fn host_verifier_calls_proof_instance_verify() {
@@ -237,9 +244,6 @@ mod host_tests {
         let err = HostZkJwtVerifier
             .verify(deps.as_ref(), &issuer, &payload)
             .expect_err("zkid required");
-        assert!(
-            err.to_string().contains("zkid"),
-            "got: {err}"
-        );
+        assert!(err.to_string().contains("zkid"), "got: {err}");
     }
 }

@@ -1,0 +1,76 @@
+[package]
+name = "terp-authenticator-suite"
+description = "cw-orch deploy suite and Mock tests for Terp x/smart-account authenticators"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+
+[[bin]]
+name = "deploy-noncircuit-auth"
+path = "src/bin/deploy_noncircuit_auth.rs"
+required-features = ["daemon"]
+
+[features]
+default = []
+daemon = ["cw-orch/daemon"]
+daemon-e2e = ["daemon"]
+vote-sdk = []
+# Production zk-jwt path: deps.api.proof_instance_verify via cosmwasm-std/zk.
+# Structural suite Authenticate positives must NOT run with this enabled unless a
+# mock circuit is registered — use:
+#   cargo test -p terp-zkjwt --features zk-host,library
+#   cargo test -p terp-authenticator-suite --features zk-host --test zk_host
+# Real snarkjs jwt-auth e2e also needs zk-cosmwasm bn254 (ark convert + verify):
+#   cargo test -p terp-authenticator-suite --features zk-host --test zk_host jwt_auth
+zk-host = [
+    "terp-zkjwt/zk-host",
+    "cosmwasm-std/zk",
+    "dep:zk-cosmwasm",
+    "zk-cosmwasm/bn254",
+]
+gas-bench = [
+    "dep:cosmwasm-vm",
+    "dep:cw721-svg",
+    "dep:cw-svg",
+    "dep:k256",
+    "dep:sha3",
+    "dep:ed25519-zebra",
+    "dep:sha2",
+]
+
+[dependencies]
+anyhow = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cosmwasm-vm = { workspace = true, optional = true, features = ["iterator", "staking", "zk", "hash-blake", "hash-poseidon", "bn254", "redpallas"] }
+cw-orch = { workspace = true }
+cw-svg = { workspace = true, optional = true }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
+dotenvy = "0.15"
+ed25519-zebra = { workspace = true, optional = true }
+env_logger = "0.11"
+k256 = { workspace = true, optional = true, features = ["ecdsa", "std"] }
+p256 = { workspace = true, features = ["ecdsa", "std"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+serde = { workspace = true }
+sha2 = { workspace = true, optional = true }
+sha3 = { workspace = true, optional = true }
+terp-account = { workspace = true }
+terp-auth = { workspace = true }
+terp-ed25519 = { workspace = true, features = ["library"] }
+terp-eth = { workspace = true, features = ["library"] }
+terp-passkey = { workspace = true, features = ["library"] }
+terp-recovery = { workspace = true, features = ["library"] }
+terp-vsck = { workspace = true, features = ["library"] }
+terp-zkjwt = { workspace = true, features = ["library"] }
+thiserror = { workspace = true }
+zk-cosmwasm = { workspace = true, optional = true }
+
+[dev-dependencies]
+hex = { workspace = true, features = ["std"] }
+serde_json = { workspace = true }

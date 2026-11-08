@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "burn_bps",
+    "create_auction_fee",
+    "extend_duration",
+    "fee_manager",
+    "halt_buffer_duration",
+    "halt_duration_threshold",
+    "halt_postpone_duration",
+    "max_auctions_to_settle_per_block",
+    "max_duration",
+    "min_bid_increment_percent",
+    "min_duration",
+    "min_reserve_prices",
+    "trading_fee_percent"
+  ],
+  "properties": {
+    "burn_bps": {
+      "description": "Share of the protocol fee that is burned. The rest is sent to `fee_manager`.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "create_auction_fee": {
+      "description": "Exact coin charged when creating an auction. Zero amount means no fee.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Coin"
+        }
+      ]
+    },
+    "extend_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "fee_manager": {
+      "type": "string"
+    },
+    "halt_buffer_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "halt_duration_threshold": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "halt_postpone_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_auctions_to_settle_per_block": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "max_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_bid_increment_percent": {
+      "description": "Each later bid must be at least this fraction above the previous bid.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
+    },
+    "min_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_reserve_prices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Coin"
+      }
+    },
+    "trading_fee_percent": {
+      "description": "Fraction of the winning bid paid as the protocol fee (for example 0.02 = 2%).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "string"
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PendingResponse",
+  "type": "object",
+  "required": [
+    "pending",
+    "share_count",
+    "shares",
+    "status"
+  ],
+  "properties": {
+    "new_vk_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pending": {
+      "type": "boolean"
+    },
+    "share_count": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "shares": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

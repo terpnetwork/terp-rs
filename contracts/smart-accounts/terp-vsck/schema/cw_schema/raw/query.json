@@ -1,0 +1,28 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_vsck_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "session": {
+          "type": "named",
+          "properties": {
+            "session_id": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

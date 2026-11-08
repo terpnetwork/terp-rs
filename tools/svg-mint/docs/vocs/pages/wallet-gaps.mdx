@@ -1,0 +1,56 @@
+---
+title: Wallet gaps
+description: Which keys survive a restart, and which funds are still invisible
+---
+
+# Wallet gaps
+
+A restart must not create a new key for a job that already has one. Two different secrets were being treated as if a fresh process could invent them.
+
+## Operator key
+
+`POST /v1/sign` is the QC identity for entitle and settle. Until 2026-10-28, `load_keys` generated a new ed25519 key whenever `SVG_MINT_FED_SK_HEX` was unset, logged the public key, and dropped the secret on exit.
+
+The fed now uses one file, `~/.terp/svg-mint-fed.sk` (override `SVG_MINT_FED_SK_FILE`):
+
+- Missing file: generate once, write 32 raw bytes at mode `0600`, log the public key.
+- Existing 32-byte file: load it. The public key after a restart matches the previous start.
+- Wrong length: exit. The file is not replaced.
+- `SVG_MINT_FED_SK_HEX` set and the file present with different bytes: exit. No silent rotation.
+
+The hex env is not required. Leaving it unset is how the secret stays out of `systemctl show`.
+
+The mint cell default is `~/.terp/svg-mint-fed-cell.json`, not `/tmp/svg-mint-fed-cell.json`.
+
+## ZEC spend key
+
+`svg-mint-zrt` does not generate a seed on `notes`, `balance`, `sync`, or `send`. Only `init` creates `spend.seed`. A second `init` fails. `sync` does not write the ledger. `send` accepts only the donation UA, then exits because the prover is not linked.
+
+Do not `init` `~/.terp/svg-mint-zrt` on the house to "get a wallet back." That directory was absent on 2026-10-28. So were `age-identity.txt`, `data.sqlite`, and any UFVK file. `~/.terp/dregg-hd.seed` is present and cannot spend ZEC. Notes paid to the old diversified addresses stay on chain and are invisible to a new seed.
+
+Search backups for `age-identity.txt` and `data.sqlite` before any `init`. Do not print what you find.
+
+## What the house had on 2026-10-28
+
+| Path | State |
+|---|---|
+| `~/.terp/svg-mint-fed-cell.json` | Present, 28164 bytes. The unit opens this path. |
+| `~/.terp/dregg-hd.seed` | Present. Not a ZEC spend key. |
+| `~/.terp/svg-mint-fed.sk` | Created by the first start of the persistent loader. |
+| `~/.terp/svg-mint-zrt/` | Absent. |
+| `~/.terp/kr-onboard` | Absent. HashMerchant is not started. |
+| `~/.terpd-mainnet/keyring-test/svg-minter-admin` | File-backend key. Address show needs the passphrase. |
+| `~/.terp/dregg-svg-runtime.sk` | Present, 32 bytes, mode `0600`. Created once on 2026-10-28. |
+| Runtime minter `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` | `/health` `runtime_minter`. On 2026-10-30 the LCD balance was `22200000` uthiol, still under the 50 THIOL reserve. |
+| `~/.terp/dregg-svg-collections` | Not set. `DREGG_COLLECTIONS` is unset. Broadcast stays idle. |
+| Code-72 factory `terp188…fhlru` bank | `uthiol` balance 0. Health does not query it once the runtime key exists. |
+| Minter admin `terp1fxcc…` bank | Holds `uthiol`. The desk does not query this address, and this key does not sign mints. |
+
+`checkout_ready` stays false until `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` holds the 50 THIOL gas reserve and the code-98 fractal is admitted by simulate. An empty watch set is `collections_unset`. A contract that rejects the paymint message is `collection_rejected` and is not broadcast. Leave `DREGG_MINTER_FUNDED` unset. The mint execute is signed by the runtime key. It does not spend the NFT price. Code-71 Fractals and the 13 logos are not in the watch set. The HD seed file is not rotated from this desk.
+
+## Still not this wallet
+
+- Compact scan is not linked, so ztreamer and lightwalletd do not fill `notes.sqlite`.
+- The Ironwood prover is not linked, so withdraw cannot broadcast.
+- The address `init` prints is an Orchard receiver (orchard 0.16, ZIP-32 coin type 133). It is not an Ironwood pay target. Do not publish it.
+- `scripts/e2e-zrt-wallet.sh` passed against a temporary directory. That run did not create `~/.terp/svg-mint-zrt` and did not prove a chain scan or a spend.

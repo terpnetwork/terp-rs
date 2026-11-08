@@ -4,11 +4,10 @@ use crate::state::Config;
 
 use cosmwasm_std::{DepsMut, Env, Event, Response};
 
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
         SudoMsg::UpdateConfig { config } => sudo_update_config(deps, env, config),

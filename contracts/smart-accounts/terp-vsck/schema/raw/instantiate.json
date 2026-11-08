@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "description": "DAO (or factory) registers this authenticator as a **voting module** for private ballots following the Shielded Vote / vote-sdk (VSCK) workflow.",
+  "type": "object",
+  "required": [
+    "circuit_vks",
+    "dao"
+  ],
+  "properties": {
+    "admin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "circuit_vks": {
+      "description": "Verifying keys for vote-sdk circuit families (opaque until circuits linked).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CircuitVerifyingKeys"
+        }
+      ]
+    },
+    "dao": {
+      "description": "DAO core / voting module address that may open sessions.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "CircuitVerifyingKeys": {
+      "description": "Maps to vote-sdk circuit crates: delegation, vote_proof, share_reveal.",
+      "type": "object",
+      "required": [
+        "delegation_vk",
+        "share_reveal_vk",
+        "vote_proof_vk"
+      ],
+      "properties": {
+        "delegation_vk": {
+          "$ref": "#/definitions/Binary"
+        },
+        "share_reveal_vk": {
+          "$ref": "#/definitions/Binary"
+        },
+        "vote_proof_vk": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

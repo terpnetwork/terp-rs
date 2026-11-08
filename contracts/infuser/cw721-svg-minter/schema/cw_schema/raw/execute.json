@@ -1,0 +1,632 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_svg_minter_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "bind_dregg_channel": {
+          "description": "Bind IBC channel/port after handshake (also used by migrate).",
+          "type": "named",
+          "properties": {
+            "channel": {
+              "value": 2
+            },
+            "port": {
+              "value": 2
+            }
+          }
+        },
+        "create_series_collection": {
+          "description": "Create a collection under a rate-limited series (see SeriesConfig). The series must\nexist; the cadence is enforced here for every sender, including the owner.",
+          "type": "named",
+          "properties": {
+            "instantiate_msg": {
+              "value": 1
+            },
+            "label": {
+              "value": 2
+            },
+            "series": {
+              "value": 2
+            }
+          }
+        },
+        "create_svg_collection": {
+          "description": "Create a new cw721-svg collection.\nUses instantiate2 for deterministic, anti-collision address prediction.",
+          "type": "named",
+          "properties": {
+            "instantiate_msg": {
+              "value": 1
+            },
+            "label": {
+              "value": 2
+            }
+          }
+        },
+        "recv_dregg_packet": {
+          "description": "DREGG runtime submits a commitment packet (same bytes as IBC recv).",
+          "type": "named",
+          "properties": {
+            "packet": {
+              "value": 20
+            }
+          }
+        },
+        "set_series": {
+          "description": "Owner-only: set (Some) or remove (None) a series config.",
+          "type": "named",
+          "properties": {
+            "config": {
+              "value": 19
+            },
+            "series": {
+              "value": 2
+            }
+          }
+        },
+        "update_code_id": {
+          "description": "Owner-only: update the cw721-svg code ID used for new collections.",
+          "type": "named",
+          "properties": {
+            "code_id": {
+              "value": 6
+            }
+          }
+        },
+        "update_oracle_pricing": {
+          "description": "Owner-only: set (Some) or clear (None) the default oracle pricing for new\ncollections. Existing collections are unchanged.",
+          "type": "named",
+          "properties": {
+            "pricing": {
+              "value": 34
+            }
+          }
+        },
+        "update_ownership": {
+          "description": "Update the contract's ownership. The `action` to be provided\ncan be either to propose transferring ownership to an account,\naccept a pending ownership transfer, or renounce the ownership\npermanently.",
+          "type": "tuple",
+          "items": [
+            35
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw721_msg_Cw721InstantiateMsg_cw721_svg_state_SvgCollectionMetadata_",
+      "type": "struct",
+      "properties": {
+        "collection_info_extension": {
+          "description": "Optional extension of the collection metadata",
+          "value": 3
+        },
+        "creator": {
+          "description": "Sets the creator of collection. The creator is the only one eligible to update `CollectionInfo`.",
+          "value": 12
+        },
+        "minter": {
+          "description": "The minter is the only one who can create new NFTs.\nThis is designed for a base NFT that is controlled by an external program\nor contract. You will likely replace this with custom logic in custom NFTs",
+          "value": 12
+        },
+        "name": {
+          "description": "Name of the NFT contract",
+          "value": 2
+        },
+        "symbol": {
+          "description": "Symbol of the NFT contract",
+          "value": 2
+        },
+        "withdraw_address": {
+          "value": 12
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cw721_svg_state_SvgCollectionMetadata",
+      "type": "struct",
+      "properties": {
+        "mint_end_time": {
+          "value": 11
+        },
+        "mint_start_time": {
+          "description": "Timestamp of mint start. If less than current block, mints available",
+          "value": 11
+        },
+        "packed": {
+          "description": "SVP1-packed template + variables (`cw-svg-pack`). Required on create.\nStored once under its own key; empty in stored config / collection info.",
+          "value": 4
+        },
+        "price_tiers": {
+          "description": "Price tiers for minting. Empty or None = free mint.",
+          "value": 9
+        },
+        "require_auth": {
+          "defaulting": true,
+          "description": "When true, every mint must include valid ADR-36 `ext` auth\n(`CosmosArbitrary` over DST+nonce[|digest]). Required for trustless\npledge collections; default false preserves open-mint SVG drops.",
+          "value": 13
+        },
+        "seed": {
+          "value": 4
+        },
+        "total": {
+          "value": 6
+        },
+        "whitelist": {
+          "description": "Optional merkle whitelist contract address. Whitelisted minters bypass fees.",
+          "value": 12
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw721_svg_contract_PriceTier",
+      "description": "A price tier that applies until the mint count reaches `until_count`.\nTiers must be sorted ascending by `until_count`.\nExample: [{ until_count: 100, price: 1_000_000utoken }, { until_count: 500, price: 5_000_000utoken }]\nmeans: first 100 mints cost 1 token, mints 101-500 cost 5 tokens.",
+      "type": "struct",
+      "properties": {
+        "price": {
+          "description": "Price per token in this tier",
+          "value": 7
+        },
+        "until_count": {
+          "description": "This tier applies while mint_count < until_count",
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 8
+        },
+        "denom": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw721_svg::contract::PriceTier>",
+      "type": "array",
+      "items": 5
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
+      "type": "optional",
+      "inner": 10
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "cw_svg_minter_state_SeriesConfig",
+      "description": "Contract-enforced creation cadence for a named series (e.g. \"latent-benders\", \"marain-orbs\").\nEvery field is optional; an unset field is not enforced.",
+      "type": "struct",
+      "properties": {
+        "max_mint_window_secs": {
+          "description": "If set, each collection must set mint_end_time (seconds after creation) and it must be\nat most this value.",
+          "value": 16
+        },
+        "max_per_window": {
+          "description": "At most this many collections per rolling `window_secs`.",
+          "value": 18
+        },
+        "min_interval_secs": {
+          "description": "Minimum seconds between two collections of this series.",
+          "value": 16
+        },
+        "operators": {
+          "defaulting": true,
+          "description": "Who may create in this series besides the factory owner. Empty = anyone.",
+          "value": 15
+        },
+        "window_secs": {
+          "description": "Rolling window for `max_per_window`; default 86400 (one day).",
+          "value": 16
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 2
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u32>",
+      "type": "optional",
+      "inner": 17
+    },
+    {
+      "name": "core::option::Option<cw_svg_minter::state::SeriesConfig>",
+      "type": "optional",
+      "inner": 14
+    },
+    {
+      "name": "cw_svg_minter_ibc_MintPacket",
+      "type": "struct",
+      "properties": {
+        "bind": {
+          "value": 4
+        },
+        "c_action": {
+          "value": 4
+        },
+        "c_deposit": {
+          "value": 4
+        },
+        "collection": {
+          "defaulting": true,
+          "value": 2
+        },
+        "n_deposit": {
+          "value": 4
+        },
+        "receipt": {
+          "value": 4
+        },
+        "token_recipient": {
+          "defaulting": true,
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_OraclePricing",
+      "description": "Optional oracle pricing for a minting contract.\n\nAbsent, or `enforce == false`: only the default asset is accepted and\npayment behaves as before. The oracle queries still answer, so a frontend\ncan show prices before enforcement is switched on.",
+      "type": "struct",
+      "properties": {
+        "alt_assets": {
+          "value": 30
+        },
+        "enforce": {
+          "value": 13
+        },
+        "policy": {
+          "defaulting": true,
+          "value": 31
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_AltAsset",
+      "description": "An alternate asset accepted in place of `base_denom`.",
+      "type": "struct",
+      "properties": {
+        "alt_decimals": {
+          "description": "Decimals of the alt asset.",
+          "value": 29
+        },
+        "asset": {
+          "value": 23
+        },
+        "base_decimals": {
+          "description": "Decimals of the base denom (e.g. 6 for uterp).",
+          "value": 29
+        },
+        "base_denom": {
+          "description": "The default mint asset this alt is priced against.",
+          "value": 2
+        },
+        "combine": {
+          "defaulting": true,
+          "description": "How feed values are combined. Default median.",
+          "value": 26
+        },
+        "feeds": {
+          "value": 27
+        },
+        "quote": {
+          "value": 28
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_PriceAsset",
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "type": "enum",
+      "cases": {
+        "cw20": {
+          "type": "tuple",
+          "items": [
+            2
+          ]
+        },
+        "native": {
+          "type": "tuple",
+          "items": [
+            2
+          ]
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_Feed",
+      "description": "One oracle source.",
+      "type": "struct",
+      "properties": {
+        "kind": {
+          "value": 25
+        },
+        "oracle": {
+          "description": "Oracle contract address (registry, aggregator or probe, matching `kind`).",
+          "value": 2
+        },
+        "weight": {
+          "defaulting": true,
+          "description": "Weight for `AggregateMethod::Mean` across feeds. Default 1.",
+          "value": 18
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_FeedKind",
+      "description": "What to read from one oracle contract.",
+      "type": "enum",
+      "cases": {
+        "aggregator_median": {
+          "description": "Aggregator `Median { market_id, window }`. The height comes from the\naggregator's registry `Latest`, so staleness checks still apply.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 2
+            },
+            "window": {
+              "value": 17
+            }
+          }
+        },
+        "history": {
+          "description": "Registry `History { limit }`, combined locally with `method`.",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 17
+            },
+            "market_id": {
+              "value": 2
+            },
+            "method": {
+              "value": 26
+            }
+          }
+        },
+        "probe_twap": {
+          "description": "TWAP probe `ArithmeticTwap { pool_id }`. Carries no height.",
+          "type": "named",
+          "properties": {
+            "pool_id": {
+              "value": 6
+            }
+          }
+        },
+        "spot": {
+          "description": "Registry `Latest { market_id }`.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 2
+            }
+          }
+        },
+        "twap": {
+          "description": "Registry `Twap` over the newest `window_blocks` heights ending at the latest observation.",
+          "type": "named",
+          "properties": {
+            "market_id": {
+              "value": 2
+            },
+            "window_blocks": {
+              "value": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "terp_oracle_types_AggregateMethod",
+      "description": "How several values are combined into one.",
+      "type": "enum",
+      "cases": {
+        "max": {
+          "type": "unit"
+        },
+        "mean": {
+          "description": "Weighted by `Feed::weight` (default 1) when combining feeds, and by\nnothing when combining a history window.",
+          "type": "unit"
+        },
+        "median": {
+          "type": "unit"
+        },
+        "min": {
+          "type": "unit"
+        },
+        "weighted": {
+          "description": "Weighted by observation count (`PricePoint::observations`) when combining feeds,\nand by block gap (piecewise constant, like the registry TWAP) on a history window.",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<terp_oracle::types::Feed>",
+      "type": "array",
+      "items": 24
+    },
+    {
+      "name": "terp_oracle_types_Quote",
+      "description": "Direction of the feed price.",
+      "type": "enum",
+      "cases": {
+        "alt_in_base": {
+          "description": "Feed value = base units per 1 alt (in display units). E.g. feed\n`ATOM/TERP = 12.5`, base TERP, alt ATOM: 1 ATOM costs 12.5 TERP.",
+          "type": "unit"
+        },
+        "base_in_alt": {
+          "description": "Feed value = alt units per 1 base (in display units).",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "u8",
+      "type": "integer",
+      "precision": 8,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<terp_oracle::types::AltAsset>",
+      "type": "array",
+      "items": 22
+    },
+    {
+      "name": "terp_oracle_types_PricingPolicy",
+      "description": "Guards applied to every price read.",
+      "type": "struct",
+      "properties": {
+        "max_deviation": {
+          "defaulting": true,
+          "description": "Max relative spread between any feed and the combined price, e.g. 0.05.",
+          "value": 33
+        },
+        "max_staleness_blocks": {
+          "defaulting": true,
+          "description": "Max `env.block.height - observation.height`. Requires feeds that record\nlocal (terp) heights. `None` disables the check.",
+          "value": 16
+        },
+        "min_observations": {
+          "defaulting": true,
+          "description": "Min total observations behind the combined price. Default none.",
+          "value": 18
+        },
+        "min_sources": {
+          "defaulting": true,
+          "description": "Min number of feeds that must answer. Default 1.",
+          "value": 18
+        },
+        "slippage": {
+          "defaulting": true,
+          "description": "Accepted underpayment against the quote, e.g. 0.01 = pay at least 99%.\nOverpayment is refunded.",
+          "value": 33
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_decimal_Decimal",
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "decimal",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::math::decimal::Decimal>",
+      "type": "optional",
+      "inner": 32
+    },
+    {
+      "name": "core::option::Option<terp_oracle::types::OraclePricing>",
+      "type": "optional",
+      "inner": 21
+    },
+    {
+      "name": "cw_ownable_Action",
+      "description": "Actions that can be taken to alter the contract's ownership",
+      "type": "enum",
+      "cases": {
+        "accept_ownership": {
+          "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+          "type": "unit"
+        },
+        "renounce_ownership": {
+          "description": "Give up the contract's ownership and the possibility of appointing\na new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+          "type": "unit"
+        },
+        "transfer_ownership": {
+          "description": "Propose to transfer the contract's ownership to another account,\noptionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+          "type": "named",
+          "properties": {
+            "expiry": {
+              "value": 37
+            },
+            "new_owner": {
+              "value": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "cw_utils_expiration_Expiration",
+      "description": "Expiration represents a point in time when some event happens.\nIt can compare with a BlockInfo and will return is_expired() == true\nonce the condition is hit (and for every block in the future)",
+      "type": "enum",
+      "cases": {
+        "at_height": {
+          "description": "AtHeight will expire when `env.block.height` >= height",
+          "type": "tuple",
+          "items": [
+            6
+          ]
+        },
+        "at_time": {
+          "description": "AtTime will expire when `env.block.time` >= time",
+          "type": "tuple",
+          "items": [
+            10
+          ]
+        },
+        "never": {
+          "description": "Never will never expire. Used to express the empty variant",
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cw_utils::expiration::Expiration>",
+      "type": "optional",
+      "inner": 36
+    }
+  ]
+}

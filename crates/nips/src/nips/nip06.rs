@@ -393,7 +393,7 @@
 // /// `entropy_bytes` must be 16, 20, 24, 28, or 32.
 // #[cfg(feature = "nip44")]
 // pub fn generate_mnemonic(entropy_bytes: usize) -> Result<Vec<String>, NipError> {
-//     use rand_core::RngCore;
+//     use rand_core::Rng;
 //     let mut entropy = vec![0u8; entropy_bytes];
 //     rand_core::OsRng.fill_bytes(&mut entropy);
 //     entropy_to_mnemonic(&entropy)
@@ -641,7 +641,7 @@
 //     /// Generate a random key pair.
 //     #[cfg(feature = "nip44")]
 //     pub fn generate() -> Self {
-//         use rand_core::RngCore;
+//         use rand_core::Rng;
 //         let mut seed = [0u8; 32];
 //         rand_core::OsRng.fill_bytes(&mut seed);
 //         let sk = SecretKey::from_slice(&seed).unwrap();

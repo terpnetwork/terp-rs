@@ -1,0 +1,39 @@
+{
+  "type": "v1",
+  "root": 4,
+  "definitions": [
+    {
+      "name": "cw_infusions_wavs_WavsRecordResponse",
+      "description": "An bech32 address and its burn count",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "value": 1
+        },
+        "count": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::wavs::WavsRecordResponse>",
+      "type": "array",
+      "items": 0
+    }
+  ]
+}

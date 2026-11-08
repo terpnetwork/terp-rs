@@ -1,5 +1,5 @@
 // condensed from: https://github.com/MegaRockLabs/smart-account-auth
-use cosmwasm_std::{ensure, Binary, StdError};
+use cosmwasm_std::{Api, Binary, StdError, ensure};
 
 use bech32::{Bech32, Hrp};
 use ripemd::Ripemd160;
@@ -53,13 +53,10 @@ impl CosmosArbitrary {
     }
 
     // verify an arbitrary secp256k1 signature is valid.
-    pub fn verify(&self) -> Result<(), StdError> {
-        let success = cosmwasm_crypto::secp256k1_verify(
-            &self.message_digest()?,
-            &self.signature,
-            &self.pubkey,
-        )
-        .map_err(|e| StdError::msg(e.to_string()))?;
+    pub fn verify(&self, api: &dyn Api) -> Result<(), StdError> {
+        let success = api
+            .secp256k1_verify(&self.message_digest()?, &self.signature, &self.pubkey)
+            .map_err(|e| StdError::msg(e.to_string()))?;
         ensure!(
             success,
             StdError::msg("Signature verification failed".to_string())
@@ -67,20 +64,16 @@ impl CosmosArbitrary {
         Ok(())
     }
 
-    pub fn verify_return_readable(&self) -> Result<String, StdError> {
-        self.verify()?;
+    pub fn verify_return_readable(&self, api: &dyn Api) -> Result<String, StdError> {
+        self.verify(api)?;
         pubkey_to_address(&self.pubkey, &self.hrp().expect("must have prefix"))
-    }
-
-    fn get_address(&self) -> Result<String, StdError> {
-        pubkey_to_address(&self.pubkey, &self.hrp.clone().unwrap_or("terp".into()))
     }
 }
 
 /// inject the data to be signed within the json struct
 pub fn preamble_msg_arb_036(signer: &str, data: &str) -> String {
     format!(
-        "{{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{{\"amount\":[],\"gas\":\"0\"}},\"memo\":\"\",\"msgs\":[{{\"type\":\"sign/MsgSignData\",\"value\":{{\"data\":\"{}\",\"signer\":\"{}\"}}}}],\"sequence\":\"0\"}}", 
+        "{{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{{\"amount\":[],\"gas\":\"0\"}},\"memo\":\"\",\"msgs\":[{{\"type\":\"sign/MsgSignData\",\"value\":{{\"data\":\"{}\",\"signer\":\"{}\"}}}}],\"sequence\":\"0\"}}",
         data, signer
     )
 }
@@ -110,17 +103,15 @@ pub fn ripemd160(bytes: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::StdError;
-    use cosmwasm_std::{testing::mock_dependencies, Binary};
+    use cosmwasm_std::{Binary, testing::mock_dependencies};
 
-    use ecdsa::signature::rand_core::OsRng;
-
-    use k256::ecdsa::{Signature, SigningKey, VerifyingKey};
+    use k256::ecdsa::{SigningKey, VerifyingKey};
     // use serde::Deserialize;
-    use sha2::digest::Update;
     use sha2::Digest;
     use sha2::Sha256;
+    use sha2::digest::Update;
 
-    use crate::verify_generic::{preamble_msg_arb_036, pubkey_to_address, CosmosArbitrary};
+    use crate::verify_generic::{CosmosArbitrary, preamble_msg_arb_036, pubkey_to_address};
 
     // "Cosmos" secp256k1 signature verification. Matches tendermint/PubKeySecp256k1 pubkey.
     // const COSMOS_SECP256K1_PUBKEY_HEX: &str =
@@ -130,7 +121,8 @@ mod tests {
     #[test]
     fn test_example() -> Result<(), StdError> {
         // Signing
-        let secret_key: ecdsa::SigningKey<k256::Secp256k1> = SigningKey::random(&mut OsRng); // Serialize with `::to_bytes()`
+        let secret_key: ecdsa::SigningKey<k256::Secp256k1> =
+            SigningKey::from_slice(&[0x11u8; 32]).expect("test key");
         let public_key: ecdsa::VerifyingKey<k256::Secp256k1> = VerifyingKey::from(&secret_key); // Serialize with `::to_encoded_point()`
 
         let deps = mock_dependencies();
@@ -138,7 +130,7 @@ mod tests {
         // base64 encode address (this is the expected value in the data object of the adr036)
         let base64terpaddr = &Binary::new(terpaddr.as_bytes().to_vec()).to_base64();
         // this is the human readable address derived from the public key of the secret key
-        let hraddr = pubkey_to_address(public_key.to_encoded_point(false).as_bytes(), "cosmos")?;
+        let hraddr = pubkey_to_address(public_key.to_sec1_point(false).as_bytes(), "cosmos")?;
 
         // create adr036 msgs data to sign
         let adr036msgtohash = preamble_msg_arb_036(&hraddr.to_string(), base64terpaddr);
@@ -150,34 +142,38 @@ mod tests {
         // Note: the signature type must be annotated or otherwise inferable as
         // `Signer` has many impls of the `Signer` trait (for both regular and
         // recoverable signature types).
-        let signature: Signature = secret_key.sign_prehash_recoverable(&msg_hash).unwrap().0;
+        let (signature, _) = secret_key.sign_prehash_recoverable(&msg_hash);
 
         // Verification (uncompressed public key)
-        assert!(cosmwasm_crypto::secp256k1_verify(
-            &msg_hash,
-            signature.to_bytes().as_slice(),
-            public_key.to_encoded_point(false).as_bytes()
-        )
-        .unwrap());
+        assert!(
+            cosmwasm_crypto::secp256k1_verify(
+                &msg_hash,
+                signature.to_bytes().as_slice(),
+                public_key.to_sec1_point(false).as_bytes()
+            )
+            .unwrap()
+        );
 
         // Verification (compressed public key)
-        assert!(cosmwasm_crypto::secp256k1_verify(
-            &msg_hash,
-            signature.to_bytes().as_slice(),
-            public_key.to_encoded_point(true).as_bytes()
-        )
-        .unwrap());
+        assert!(
+            cosmwasm_crypto::secp256k1_verify(
+                &msg_hash,
+                signature.to_bytes().as_slice(),
+                public_key.to_sec1_point(true).as_bytes()
+            )
+            .unwrap()
+        );
 
         let hrp = "cosmos";
 
         // CosmosArbitrary Verification (compressed public key)
         CosmosArbitrary {
-            pubkey: Binary::from(public_key.to_encoded_point(false).as_bytes()),
+            pubkey: Binary::from(public_key.to_sec1_point(false).as_bytes()),
             signature: Binary::from(signature.to_bytes().as_slice()),
             message: Binary::from(terpaddr.as_bytes().to_vec()), // set the base64 of the address
             hrp: Some(hrp.to_string()),
         }
-        .verify_return_readable()?;
+        .verify_return_readable(&cosmwasm_std::testing::mock_dependencies().api)?;
 
         // println!("hraddr: {:#?}", hraddr);
         // println!("terpaddr: {:#?}", terpaddr);

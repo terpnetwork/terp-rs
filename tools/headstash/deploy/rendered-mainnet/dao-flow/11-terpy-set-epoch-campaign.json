@@ -1,0 +1,81 @@
+{
+ "set_epoch_campaign": {
+  "campaign": {
+   "ctx": "IiZl8vvKo940RKj52zRmGcgrtSl4+nbLRYHiBTG0LRE=",
+   "backend": "halo2",
+   "cutoff_height": 44444444,
+   "bech32_hrp": "terp",
+   "denom": "nGTcsLMK64NUngBEq41R4Owk6IiX6/IdpWox98kP2A8=",
+   "amounts": [
+    {
+     "amount": 1000000,
+     "cap": 6491
+    },
+    {
+     "amount": 2000000,
+     "cap": 12569
+    },
+    {
+     "amount": 5000000,
+     "cap": 10150
+    },
+    {
+     "amount": 10000000,
+     "cap": 6940
+    },
+    {
+     "amount": 20000000,
+     "cap": 6387
+    },
+    {
+     "amount": 50000000,
+     "cap": 6219
+    },
+    {
+     "amount": 100000000,
+     "cap": 5081
+    },
+    {
+     "amount": 200000000,
+     "cap": 15363
+    },
+    {
+     "amount": 500000000,
+     "cap": 8031
+    },
+    {
+     "amount": 1000000000,
+     "cap": 7978
+    },
+    {
+     "amount": 2000000000,
+     "cap": 5956
+    },
+    {
+     "amount": 5000000000,
+     "cap": 7676
+    }
+   ],
+   "reserved": [],
+   "trusted": [
+    "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
+   ],
+   "trusted_verify_threshold": 1,
+   "trusted_sign_threshold": 1,
+   "max_rows": 25,
+   "allocation_root": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+   "root_id": 0,
+   "vk_id": 3,
+   "vk_hash": "NNEUN9lXVU9ACDd97OX6wPBH4OnMAS0Vs9CUSKbMU5g=",
+   "sweep_recipient": "",
+   "burn_unclaimed": true,
+   "registration": {
+    "eligibility_root": "xv+uEvw+Wqf0Ck9bReFBsYNivbBqeYzFwjSrW1EFo7A=",
+    "eligibility_depth": 17,
+    "min_anonymity_set": 1,
+    "anchor_start_height": 1,
+    "anchor_interval": 3430
+   }
+  }
+ }
+}

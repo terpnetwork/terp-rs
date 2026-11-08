@@ -20,8 +20,7 @@
 /// With LengthOp this is tricker but not impossible. Which is why the "leafPrefixEqual" field
 /// in the ProofSpec is valuable to prevent this mutability. And why all trees should
 /// length-prefix the data before hashing it.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct ExistenceProof {
     #[prost(bytes = "vec", tag = "1")]
     pub key: ::prost::alloc::vec::Vec<u8>,
@@ -45,8 +44,7 @@ impl ::prost::Name for ExistenceProof {
 /// NonExistenceProof takes a proof of two neighbors, one left of the desired key,
 /// one right of the desired key. If both proofs are valid AND they are neighbors,
 /// then there is no valid proof for the given key.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct NonExistenceProof {
     /// TODO: remove this as unnecessary??? we prove a range
     #[prost(bytes = "vec", tag = "1")]
@@ -67,16 +65,14 @@ impl ::prost::Name for NonExistenceProof {
     }
 }
 /// CommitmentProof is either an ExistenceProof or a NonExistenceProof, or a Batch of such messages
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct CommitmentProof {
     #[prost(oneof = "commitment_proof::Proof", tags = "1, 2, 3, 4")]
     pub proof: ::core::option::Option<commitment_proof::Proof>,
 }
 /// Nested message and enum types in `CommitmentProof`.
 pub mod commitment_proof {
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Oneof)]
     pub enum Proof {
         #[prost(message, tag = "1")]
         Exist(super::ExistenceProof),
@@ -114,8 +110,7 @@ impl ::prost::Name for CommitmentProof {
 ///
 /// Then combine the bytes, and hash it
 /// output = hash(prefix || length(hkey) || hkey || length(hvalue) || hvalue)
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct LeafOp {
     #[prost(enumeration = "HashOp", tag = "1")]
     pub hash: i32,
@@ -157,8 +152,7 @@ impl ::prost::Name for LeafOp {
 /// Any special data, like prepending child with the length, or prepending the entire operation with
 /// some value to differentiate from leaf nodes, should be included in prefix and suffix.
 /// If either of prefix or suffix is empty, we just treat it as an empty string
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct InnerOp {
     #[prost(enumeration = "HashOp", tag = "1")]
     pub hash: i32,
@@ -189,8 +183,7 @@ impl ::prost::Name for InnerOp {
 /// generate a given hash (by interpretting the preimage differently).
 /// We need this for proper security, requires client knows a priori what
 /// tree format server uses. But not in code, rather a configuration object.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ProofSpec {
     /// any field in the ExistenceProof must be the same as in this spec.
     /// except Prefix, which is just the first bytes of prefix (spec can be longer)
@@ -223,8 +216,7 @@ impl ::prost::Name for ProofSpec {
 /// isLeftMost(spec: InnerSpec, op: InnerOp)
 /// isRightMost(spec: InnerSpec, op: InnerOp)
 /// isLeftNeighbor(spec: InnerSpec, left: InnerOp, right: InnerOp)
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct InnerSpec {
     /// Child order is the ordering of the children node, must count from 0
     /// iavl tree is \[0, 1\] (left then right)
@@ -255,8 +247,7 @@ impl ::prost::Name for InnerSpec {
     }
 }
 /// BatchProof is a group of multiple proof types than can be compressed
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct BatchProof {
     #[prost(message, repeated, tag = "1")]
     pub entries: ::prost::alloc::vec::Vec<BatchEntry>,
@@ -272,16 +263,14 @@ impl ::prost::Name for BatchProof {
     }
 }
 /// Use BatchEntry not CommitmentProof, to avoid recursion
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct BatchEntry {
     #[prost(oneof = "batch_entry::Proof", tags = "1, 2")]
     pub proof: ::core::option::Option<batch_entry::Proof>,
 }
 /// Nested message and enum types in `BatchEntry`.
 pub mod batch_entry {
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Oneof)]
     pub enum Proof {
         #[prost(message, tag = "1")]
         Exist(super::ExistenceProof),
@@ -299,8 +288,7 @@ impl ::prost::Name for BatchEntry {
         "/cosmos.ics23.v1.BatchEntry".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, ::prost::Message)]
 pub struct CompressedBatchProof {
     #[prost(message, repeated, tag = "1")]
     pub entries: ::prost::alloc::vec::Vec<CompressedBatchEntry>,
@@ -318,16 +306,14 @@ impl ::prost::Name for CompressedBatchProof {
     }
 }
 /// Use BatchEntry not CommitmentProof, to avoid recursion
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CompressedBatchEntry {
     #[prost(oneof = "compressed_batch_entry::Proof", tags = "1, 2")]
     pub proof: ::core::option::Option<compressed_batch_entry::Proof>,
 }
 /// Nested message and enum types in `CompressedBatchEntry`.
 pub mod compressed_batch_entry {
-    #[derive(serde::Serialize, serde::Deserialize)]
-    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    #[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Proof {
         #[prost(message, tag = "1")]
         Exist(super::CompressedExistenceProof),
@@ -345,8 +331,7 @@ impl ::prost::Name for CompressedBatchEntry {
         "/cosmos.ics23.v1.CompressedBatchEntry".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CompressedExistenceProof {
     #[prost(bytes = "vec", tag = "1")]
     pub key: ::prost::alloc::vec::Vec<u8>,
@@ -368,8 +353,7 @@ impl ::prost::Name for CompressedExistenceProof {
         "/cosmos.ics23.v1.CompressedExistenceProof".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CompressedNonExistenceProof {
     /// TODO: remove this as unnecessary??? we prove a range
     #[prost(bytes = "vec", tag = "1")]
@@ -389,8 +373,19 @@ impl ::prost::Name for CompressedNonExistenceProof {
         "/cosmos.ics23.v1.CompressedNonExistenceProof".into()
     }
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum HashOp {
     /// NO_HASH is the default if no data passed. Note this is an illegal argument some places.
@@ -439,8 +434,19 @@ impl HashOp {
 /// to include length information. After encoding the length with the given
 /// algorithm, the length will be prepended to the key and value bytes.
 /// (Each one with it's own encoded length)
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum LengthOp {
     /// NO_PREFIX don't include any length info

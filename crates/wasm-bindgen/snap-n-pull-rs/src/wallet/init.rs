@@ -4,8 +4,8 @@
 use wasm_bindgen::prelude::*;
 
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
 fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -34,7 +34,7 @@ fn setup_tracing() {
     #[cfg(feature = "wasm")]
     let subscriber = {
         use tracing_subscriber::fmt::format::Pretty;
-        use tracing_web::{performance_layer, MakeWebConsoleWriter};
+        use tracing_web::{MakeWebConsoleWriter, performance_layer};
 
         // For WASM, we must set the directives here at compile time.
         let filter_layer = EnvFilter::default()

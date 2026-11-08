@@ -1,0 +1,5 @@
+# FE handoff — ZIP-321 memo as hex ASCII (Zodl display)
+
+Zodl (and other ZIP-321 wallets) **decode** `memo=` from base64url and show those bytes in the shielded memo UI. We were putting raw Pedersen (`d1` + 32-byte C) in that field, so the app showed binary garbage. Cosmic Web now sets ZIP-321 `memo=` to base64url of the **UTF-8 hex** of those same bytes (`6431` + 64 hex chars of C — the existing `memo_hex` JSON field). The QR is still the canonical URI (`zcash:<UA>?amount=<decimal>&memo=<base64url>`). Grammar unchanged; only the *decoded* memo is hex ASCII. Never `terp1`.
+
+Please treat a ZIP-321 memo as: base64url-decode → if UTF-8 is `6431` + hex, `hex::decode` to `d1||C`; if the bytes themselves start with `d1` (legacy), keep today’s path. `parse_commit` already accepts `memo_hex.as_bytes()`. Prefer **emitting** hex-ASCII memos in `payment_request` so Zodl shows `6431…` even without the FE rewrite. Do not put raw 34-byte binary in new `zec_uri`s. Observer / entitle must still bind C to the terp1 dest; refund/timeout unchanged.

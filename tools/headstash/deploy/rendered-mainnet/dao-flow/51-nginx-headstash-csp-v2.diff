@@ -1,0 +1,11 @@
+# NOT APPLIED. groot2 /etc/nginx/sites-available/terp.network.conf (sha256 3b75dad92e646b562938eec635d446139344cac718d2b9812f0bc81e5a105045 at render time).
+# The /headstash locations set $tn_cache headstash; the CSP comes from map $tn_cache $tn_csp (add_header at line 178).
+# Apply: patch -p1 --dry-run, then nginx -t && systemctl reload nginx. Must match the loader meta CSP (render_frontend_prop.py --extra-connect).
+--- a/etc/nginx/sites-available/terp.network.conf
++++ b/etc/nginx/sites-available/terp.network.conf
+@@ -139,4 +139,4 @@
+ map $tn_cache $tn_csp {
+-    headstash "default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
++    headstash "default-src 'none'; script-src 'unsafe-inline' blob: 'wasm-unsafe-eval'; worker-src blob:; style-src 'unsafe-inline'; connect-src https://api.terp.network https://terp.network https://s3.terp.network https://ipfs.io https://dweb.link https://w3s.link; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+     default   $tn_csp_site;
+ }

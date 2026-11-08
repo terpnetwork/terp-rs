@@ -1,0 +1,26 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_zkjwt_msg_ConfigResponse",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "value": 1
+        },
+        "require_registered_claim": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

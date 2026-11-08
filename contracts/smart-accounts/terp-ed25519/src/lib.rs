@@ -24,16 +24,16 @@ mod crypto;
 mod error;
 
 pub use crypto::{
-    parse_auth_signature, require_pubkey, verify_batch, verify_single, Ed25519AuthPayload,
-    ParsedAuth, ED25519_PUBKEY_LEN, ED25519_SIGNATURE_LEN,
+    ED25519_PUBKEY_LEN, ED25519_SIGNATURE_LEN, Ed25519AuthPayload, ParsedAuth,
+    parse_auth_signature, require_pubkey, verify_batch, verify_single,
 };
 pub use error::ContractError;
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
-use terp_account::traits::default::BtsgAccountTrait;
+use cw2::set_contract_version;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-ed25519";
@@ -118,7 +118,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     Ed25519Authenticator::process_sudo_auth(deps, env, &msg)
 }
 
-impl BtsgAccountTrait for Ed25519Authenticator {
+impl TerpAccountTrait for Ed25519Authenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -175,7 +175,7 @@ impl BtsgAccountTrait for Ed25519Authenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let registered = PUBLIC_KEY.load(deps.storage)?;
         let default_msg = req.sign_mode_tx_data.sign_mode_direct.as_slice();
@@ -196,7 +196,8 @@ impl BtsgAccountTrait for Ed25519Authenticator {
             ParsedAuth::Batch(payload) => {
                 // Build host batch slices — all & references live until verify_batch returns.
                 let n = payload.signatures.len();
-                let sig_refs: Vec<&[u8]> = payload.signatures.iter().map(|s| s.as_slice()).collect();
+                let sig_refs: Vec<&[u8]> =
+                    payload.signatures.iter().map(|s| s.as_slice()).collect();
 
                 let pk_owned: Vec<Binary> = match &payload.public_keys {
                     Some(pks) => {
@@ -240,13 +241,8 @@ impl BtsgAccountTrait for Ed25519Authenticator {
                 // When public_keys expanded to N and messages is 1: shape (1,n,n) ✓
                 // When both expanded: if messages was None we have len-1 msg → (1,n,n) ✓
                 // If user supplied N messages and 1 key: shape (n,n,1) ✓
-                let pk_for_batch: Vec<&[u8]> = if pk_refs.len() == 1 {
-                    pk_refs
-                } else if msg_refs.len() == 1 && pk_refs.len() == n {
-                    pk_refs
-                } else {
-                    pk_refs
-                };
+                // All shapes pass the key list through unchanged.
+                let pk_for_batch: Vec<&[u8]> = pk_refs;
 
                 verify_batch(deps.api, &msg_refs, &sig_refs, &pk_for_batch)?;
                 Ok(Response::new()
@@ -283,7 +279,7 @@ mod tests {
     //! Golden vectors from cosmwasm-std MockApi tests (RFC-aligned fixtures).
     use super::*;
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{Addr, Binary, Coin};
+    use cosmwasm_std::{Binary, Coin};
 
     // Same fixtures as packages/std/src/testing/mock.rs
     const ED25519_MSG_HEX: &str = "72";

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "admin",
+    "manifesto_contract"
+  ],
+  "properties": {
+    "admin": {
+      "type": "string"
+    },
+    "ibc2_dest_port": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ibc2_source_client": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manifesto_contract": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

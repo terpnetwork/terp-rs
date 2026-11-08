@@ -340,10 +340,9 @@ impl BftBlock {
             .expect("BftBlock headers should never be empty")
     }
 
-    /// Compute the BLAKE3 hash of this BFT block.
+    /// BLAKE3-256 of this BFT block via the host import.
     #[must_use]
-    pub fn blake3_hash(&self) -> Blake3Hash {
-        let mut hasher = blake3::Hasher::new();
+    pub fn blake3_hash(&self, api: &dyn Api) -> Blake3Hash {
         let mut buf = Vec::new();
         buf.extend_from_slice(&self.version.to_le_bytes());
         buf.extend_from_slice(&self.height.to_le_bytes());
@@ -366,8 +365,7 @@ impl BftBlock {
             buf.extend_from_slice(&h.height.to_le_bytes());
             buf.extend_from_slice(&h.commitment_bytes);
         }
-        hasher.update(&buf);
-        Blake3Hash(hasher.finalize().into())
+        Blake3Hash(api.blake3_256(&buf))
     }
 }
 
@@ -535,11 +533,11 @@ mod tests {
             },
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0xcc; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0xcc; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
         let mut buf = Vec::new();
         block.zcash_serialize(&mut buf).unwrap();
@@ -550,11 +548,11 @@ mod tests {
     #[test]
     fn test_pow_header_roundtrip() {
         let hdr = PowHeader {
-                    hash: [0xdd; 32],
-                    timestamp: 1_600_000_000,
-                    height: 50,
-                    commitment_bytes: [0u8; 32],
-                };
+            hash: [0xdd; 32],
+            timestamp: 1_600_000_000,
+            height: 50,
+            commitment_bytes: [0u8; 32],
+        };
         let mut buf = Vec::new();
         hdr.zcash_serialize(&mut buf).unwrap();
         let decoded = PowHeader::zcash_deserialize(&buf[..]).unwrap();
@@ -610,15 +608,15 @@ mod tests {
             },
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0u8; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0u8; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
 
         let zebra_hash = zebra_block.blake3_hash();
-        let our_hash = our_block.blake3_hash();
+        let our_hash = our_block.blake3_hash(&cosmwasm_std::testing::MockApi::default());
 
         assert_eq!(
             our_hash.0, zebra_hash.0,
@@ -647,11 +645,11 @@ mod tests {
             previous_block_fat_ptr: our_fp,
             finalization_candidate_height: 100,
             headers: vec![PowHeader {
-                    hash: [0xbb; 32],
-                    timestamp: 1_700_000_000,
-                    height: 100,
-                    commitment_bytes: [0u8; 32],
-                }],
+                hash: [0xbb; 32],
+                timestamp: 1_700_000_000,
+                height: 100,
+                commitment_bytes: [0u8; 32],
+            }],
         };
 
         let zebra_fp = ZebraFatPtr {
@@ -671,17 +669,38 @@ mod tests {
         let mut our_buf = Vec::new();
         our_block.zcash_serialize(&mut our_buf).unwrap();
 
-        // Zebra serialized bytes
-        let mut zebra_buf = Vec::new();
-        // TODO: Once we can construct equivalent zebra types with PowHeader headers,
-        // uncomment and assert equality:
-        // zebra_block.zcash_serialize(&mut zebra_buf).unwrap();
-        // assert_eq!(our_buf, zebra_buf);
-
-        // For now: assert that our serialized format is deterministic
+        // Zebra `BftBlock.headers` is `Vec<zebra_chain::block::Header>`, not
+        // slim [`PowHeader`]. Equivalent zebra construction is tracked by
+        // `zebra_pow_header_construct_unresolved` (ignored until a fixture exists).
         let mut our_buf2 = Vec::new();
         our_block.zcash_serialize(&mut our_buf2).unwrap();
         assert_eq!(our_buf, our_buf2, "our serialization is deterministic");
+    }
+
+    /// Slim [`PowHeader`] wire is 76 bytes (hash + timestamp + height + commitment).
+    /// This is intentionally not `zebra_chain::block::Header`.
+    #[test]
+    fn pow_header_slim_wire_is_not_zebra_header() {
+        let hdr = PowHeader {
+            hash: [0xdd; 32],
+            timestamp: 1_600_000_000,
+            height: 50,
+            commitment_bytes: [0u8; 32],
+        };
+        let mut buf = Vec::new();
+        hdr.zcash_serialize(&mut buf).unwrap();
+        assert_eq!(buf.len(), 32 + 8 + 4 + 32);
+    }
+
+    /// Failing tracker: zebra-crosslink is not a required dep, so we cannot
+    /// yet construct a zebra `Header` and assert byte-equality with [`PowHeader`].
+    #[test]
+    #[ignore = "zebra PowHeader construct: zebra-crosslink Header ≠ slim PowHeader; enable when a shared fixture exists"]
+    fn zebra_pow_header_construct_unresolved() {
+        panic!(
+            "construct zebra_chain::block::Header with known bytes and assert \
+             BftBlock ZcashSerialize matches zebra-crosslink"
+        );
     }
 
     /// Test that internal serde JSON roundtrip works for crosslink types.

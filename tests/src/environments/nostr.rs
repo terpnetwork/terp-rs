@@ -21,7 +21,9 @@
 //!
 //! #[tokio::test]
 //! async fn test_contract_with_nostr() {
-//!     let env = NostrTestEnv::start("my-test", "test mnemonic ...")
+//!     // Mnemonic from env (`ICT_TEST_MNEMONIC` / `TEST_MNEMONIC`) — never a source literal.
+//!     let mnemonic = std::env::var("ICT_TEST_MNEMONIC").expect("ICT_TEST_MNEMONIC");
+//!     let env = NostrTestEnv::start("my-test", &mnemonic)
 //!         .await
 //!         .expect("Failed to start test env");
 //!
@@ -44,18 +46,16 @@
 //! [`QueryHandler`]: cw_orch_core::environment::QueryHandler
 //! [`ChainState`]: cw_orch_core::environment::ChainState
 
-use std::sync::Arc;
 use anyhow::Context;
 use cw_orch::daemon::{DaemonAsync, DaemonAsyncBuilder};
-use cw_orch::environment::{
-    ChainInfoOwned, ChainKind, Environment, NetworkInfoOwned,
-};
+use cw_orch::environment::{ChainInfoOwned, ChainKind, Environment, NetworkInfoOwned};
 pub use ict_rs::chain::SidecarConfig;
+use ict_rs::cosmos::event_watcher::ChainEventWatcher;
 pub use ict_rs::nostr::NostrClient;
 pub use ict_rs::nostr::NostrEvent;
 pub use ict_rs::nostr::NostrRelayerManager;
 use ict_rs::runtime::{IctRuntime, RuntimeBackend};
-use ict_rs::cosmos::event_watcher::ChainEventWatcher;
+use std::sync::Arc;
 
 /// Combined test environment: cw-orch `DaemonAsync` chain environment + local Nostr relay container.
 ///
@@ -256,6 +256,7 @@ impl NostrTestEnv {
             gas_denom: gas_denom.to_string(),
             gas_price: 0.025,
             grpc_urls: vec![grpc_url.to_string()],
+            rpc_urls: vec![],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
@@ -331,9 +332,9 @@ pub fn chain_event_to_nostr(
 ) -> NostrEvent {
     #[cfg(feature = "hash-market")]
     {
-        return nip01_to_ict(hash_market::chain_attrs_to_nostr(
+        nip01_to_ict(hash_market::chain_attrs_to_nostr(
             attrs, height, action, contract, pubkey,
-        ));
+        ))
     }
     #[cfg(not(feature = "hash-market"))]
     {
@@ -397,8 +398,8 @@ pub fn bind_and_bridge_offchain(
     pubkey: &str,
     action: Option<&hash_market::CalendarChainAction>,
 ) -> anyhow::Result<(hash_market::OffchainBind, NostrEvent)> {
-    let (bind, mut meta) = hash_market::bind_offchain_event(store, body, kind)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let (bind, mut meta) =
+        hash_market::bind_offchain_event(store, body, kind).map_err(|e| anyhow::anyhow!(e))?;
     if let Some(d) = d_tag {
         meta.d_tag = Some(d.to_string());
     }
@@ -440,6 +441,7 @@ mod tests {
             gas_denom: "uterp".to_string(),
             gas_price: 0.025,
             grpc_urls: vec!["http://127.0.0.1:9090".to_string()],
+            rpc_urls: vec![],
             lcd_url: None,
             fcd_url: None,
             network_info: NetworkInfoOwned {
@@ -459,16 +461,22 @@ mod tests {
 
         // Create the env through start_with_runtime — this will fail on Daemon build
         // but the relayer container was already started successfully.
+        // Daemon path requires a caller-supplied mnemonic; this unit test expects
+        // gRPC/Daemon build to fail on MockRuntime. Empty seed is intentional (not a BIP-39).
+        let mnemonic = std::env::var("ICT_TEST_MNEMONIC").unwrap_or_default();
         let result = NostrTestEnv::start_with_runtime(
             "mock-test",
             chain_info.clone(),
-            "test mnemonic twelve words here for testing only",
+            &mnemonic,
             Arc::new(MockRuntime::new()),
         )
         .await;
 
         // The Daemon build fails because MockBackend doesn't provide a real gRPC endpoint.
-        assert!(result.is_err(), "Expected Daemon build to fail without real chain");
+        assert!(
+            result.is_err(),
+            "Expected Daemon build to fail without real chain"
+        );
 
         // Cleanup the relay
         relayer.stop().await.unwrap();
@@ -519,7 +527,11 @@ mod tests {
         .unwrap();
         assert_eq!(bind.chain_cid.len(), 64);
         assert_eq!(ev.kind, KIND_TIME_BASED as u32);
-        assert!(ev.tags.iter().any(|t| t.first().map(|s| s.as_str()) == Some("cid")));
+        assert!(
+            ev.tags
+                .iter()
+                .any(|t| t.first().map(|s| s.as_str()) == Some("cid"))
+        );
         assert!(ev.content.contains("Suite Event"));
         let _ = std::fs::remove_dir_all(&dir);
     }

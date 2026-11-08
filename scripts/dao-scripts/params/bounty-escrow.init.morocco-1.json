@@ -1,0 +1,30 @@
+{
+  "owner": "$DAO_CORE",
+  "approver": "$DAO_CORE",
+  "gate": {
+    "use_allowlist": true,
+    "min_stake": "1000000000",
+    "cw4_group": null
+  },
+  "denoms": [
+    {
+      "denom": "uterp",
+      "min_amount": "1000000",
+      "max_amount": "95242000000"
+    },
+    {
+      "denom": "uthiol",
+      "min_amount": "1000000",
+      "max_amount": "202545000000"
+    }
+  ],
+  "allow_partial_payouts": false,
+  "fee_bps": 0,
+  "fee_collector": null,
+  "min_duration_secs": 86400,
+  "max_duration_secs": 7776000,
+  "params_version": "escrow-params/2026-10-18.2-draft.r3+catalog-757b50439015",
+  "params_placeholder": true,
+  "min_submit_stake": "100000000",
+  "min_upload_stake": "10000000"
+}

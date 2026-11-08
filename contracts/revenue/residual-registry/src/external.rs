@@ -1,13 +1,13 @@
 use crate::{
+    ContractError,
     msg::{ExecuteMsg, QueryMsg, ResidualPaymentResponse},
     state::ResidualEntry,
-    ContractError,
 };
 
 use cosmwasm_std::{
-    ensure, to_json_binary, Addr, Deps, Empty, MessageInfo, QuerierWrapper, Response, WasmMsg,
+    Addr, Deps, Empty, MessageInfo, QuerierWrapper, Response, WasmMsg, ensure, to_json_binary,
 };
-use cw721::{msg::CollectionInfoAndExtensionResponse as CollectionInfoResponse, Ownership};
+use cw721::{Ownership, msg::CollectionInfoAndExtensionResponse as CollectionInfoResponse};
 use cw721_base::msg::QueryMsg as cw721QueryMsg;
 
 /// Ensures that the sender is the collection creator.
@@ -98,10 +98,9 @@ pub fn fetch_or_set_residuals(
         return Ok((Some(residual_entry), response));
     }
 
-    let collection_info: CollectionInfoResponse<Empty> = deps.querier.query_wasm_smart(
-        collection,
-        &cw721QueryMsg::GetCollectionInfoAndExtension {},
-    )?;
+    let collection_info: CollectionInfoResponse<Empty> = deps
+        .querier
+        .query_wasm_smart(collection, &cw721QueryMsg::GetCollectionInfoAndExtension {})?;
 
     // if let Some(residual_info_response) = collection_info.residual_info {
     //     let residual_entry = ResidualEntry {

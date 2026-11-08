@@ -1,0 +1,56 @@
+{
+  "type": "v1",
+  "root": 4,
+  "definitions": [
+    {
+      "name": "cw_headstash_bridge_ReflectionSnapshot",
+      "type": "struct",
+      "properties": {
+        "burn_root": {
+          "value": 1
+        },
+        "confirmations_k": {
+          "value": 2
+        },
+        "frozen": {
+          "value": 3
+        },
+        "max_lc_lag": {
+          "value": 2
+        },
+        "pool_root": {
+          "value": 1
+        },
+        "source_height": {
+          "value": 2
+        },
+        "spent_root": {
+          "value": 1
+        },
+        "tip_height": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<cw_headstash::bridge::ReflectionSnapshot>",
+      "type": "optional",
+      "inner": 0
+    }
+  ]
+}

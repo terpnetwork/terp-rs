@@ -10,7 +10,7 @@
 
 use crate::client::nostr::{ClientError, ClientResult, HashMerchantRelayInfo, NegentropyFilter};
 use crate::client::{HashMerchantClient, RootConfirmation};
-use crate::content::{encode_for_chain, CidKind};
+use crate::content::{CidKind, encode_for_chain};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 
@@ -94,10 +94,10 @@ impl HashMerchantClient for MinioIpfsClient {
         );
 
         // Pin the associated CID if provided (IPFS secondary)
-        if let Some(cid) = &confirmation.cid {
-            if let Err(e) = self.pin_cid(cid).await {
-                eprintln!("[hashmerchant] pin_cid warning: {e}");
-            }
+        if let Some(cid) = &confirmation.cid
+            && let Err(e) = self.pin_cid(cid).await
+        {
+            eprintln!("[hashmerchant] pin_cid warning: {e}");
         }
 
         let bytes = Self::root_payload_bytes(&confirmation);
@@ -131,10 +131,7 @@ impl HashMerchantClient for MinioIpfsClient {
 
         // Dual-index register on content plane (no blob body required)
         if let Some(base) = &self.durable.distribution_url {
-            let url = format!(
-                "{}/content/register",
-                base.trim_end_matches('/')
-            );
+            let url = format!("{}/content/register", base.trim_end_matches('/'));
             let body = serde_json::json!({
                 "sha256": sha_hex,
                 "size": bytes.len(),
@@ -157,10 +154,7 @@ impl HashMerchantClient for MinioIpfsClient {
                     eprintln!("[hashmerchant] dual-index register ok sha256={sha_hex}");
                 }
                 Ok(resp) => {
-                    eprintln!(
-                        "[hashmerchant] dual-index register HTTP {}",
-                        resp.status()
-                    );
+                    eprintln!("[hashmerchant] dual-index register HTTP {}", resp.status());
                 }
                 Err(e) => {
                     eprintln!("[hashmerchant] dual-index register failed: {e}");

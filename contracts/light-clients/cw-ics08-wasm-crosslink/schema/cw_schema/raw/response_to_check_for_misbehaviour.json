@@ -1,0 +1,21 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_crosslink_msg_CheckForMisbehaviourResult",
+      "description": "Result of a check-for-misbehaviour query.",
+      "type": "struct",
+      "properties": {
+        "found_misbehaviour": {
+          "description": "Whether misbehaviour was found.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

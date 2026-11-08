@@ -1,0 +1,89 @@
+[package]
+name = "dao-foundation-suite"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Nested subDAO exercise of dao-testing's cw-orch DaoDaoSuite"
+
+[[bin]]
+name = "foundation_delegate"
+path = "src/bin/foundation_delegate.rs"
+
+[[bin]]
+name = "steward_daos"
+path = "src/bin/steward_daos.rs"
+
+[[bin]]
+name = "quorum_redelegate"
+path = "src/bin/quorum_redelegate.rs"
+
+[[bin]]
+name = "quorum_broadcast"
+path = "src/bin/quorum_broadcast.rs"
+
+[[bin]]
+name = "gov_deposit"
+path = "src/bin/gov_deposit.rs"
+
+[[bin]]
+name = "gov_fund"
+path = "src/bin/gov_fund.rs"
+
+[[bin]]
+name = "dao_upgrade"
+path = "src/bin/dao_upgrade.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+bech32 = { workspace = true, features = ["std"] }
+clap = { workspace = true, features = ["derive", "env"] }
+cosmwasm-std = { workspace = true, features = ["staking", "stargate", "cosmwasm_2_2"] }
+cw-admin-factory = { workspace = true }
+cw-denom = { workspace = true }
+cw-fund-distributor = { workspace = true }
+cw-multi-test = { workspace = true }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-kms = { path = "../../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
+cw-payroll-factory = { workspace = true }
+cw-token-swap = { workspace = true }
+cw-utils = { workspace = true }
+cw-vesting = { workspace = true }
+cw20 = { workspace = true }
+cw20-base = { workspace = true }
+cw20-stake = { workspace = true }
+cw20-stake-external-rewards = { workspace = true }
+cw20-stake-reward-distributor = { workspace = true }
+cw4 = { workspace = true }
+cw721-base = { workspace = true }
+dao-cw721-extensions = { workspace = true }
+dao-interface = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-proposal-multiple = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-rewards-distributor = { workspace = true }
+dao-testing = { workspace = true }
+dao-vote-delegation = { workspace = true }
+dao-voting = { workspace = true }
+dao-voting-cw20-balance = { workspace = true }
+dao-voting-cw20-staked = { workspace = true }
+dao-voting-cw4 = { workspace = true }
+dao-voting-cw721-roles = { workspace = true }
+dao-voting-cw721-staked = { workspace = true }
+dotenvy = "0.15"
+gauge-adapter = { workspace = true }
+gauge-orchestrator = { workspace = true }
+prost-types = "0.14"
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+base64 = { workspace = true }
+cw4-group = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing"] }
+ict-rs-cw-orch = { workspace = true }
+k256 = { workspace = true, features = ["ecdsa"] }
+ripemd = { workspace = true }
+sha2 = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "io-util"] }

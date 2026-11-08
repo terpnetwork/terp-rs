@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Gate holds no spent SSOT — this always documents policy.",
+      "type": "object",
+      "required": [
+        "gate_info"
+      ],
+      "properties": {
+        "gate_info": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

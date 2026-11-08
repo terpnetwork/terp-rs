@@ -1,0 +1,1797 @@
+{
+ "_label": "Reward amounts only, extracted from the bounty catalog, for params_caps_cover_every_catalog_reward.",
+ "bounties": [
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "10582395591",
+      "amount": 10582.39
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "22504995888",
+      "amount": 22504.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "31747186774",
+      "amount": 31747.18
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "67514987664",
+      "amount": 67514.98
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "10582395591",
+      "amount": 10582.39
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "22504995888",
+      "amount": 22504.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "10582395591",
+      "amount": 10582.39
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "22504995888",
+      "amount": 22504.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "10582395591",
+      "amount": 10582.39
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "22504995888",
+      "amount": 22504.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "3174718677",
+      "amount": 3174.71
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "6751498766",
+      "amount": 6751.49
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "3174718677",
+      "amount": 3174.71
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "6751498766",
+      "amount": 6751.49
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "76193248259",
+      "amount": 76193.24
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "162035970394",
+      "amount": 162035.97
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "25397749419",
+      "amount": 25397.74
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "54011990131",
+      "amount": 54011.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "8465916473",
+      "amount": 8465.91
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "18003996710",
+      "amount": 18003.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2539774941",
+      "amount": 2539.77
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "5401199013",
+      "amount": 5401.19
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "846591647",
+      "amount": 846.59
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1800399671",
+      "amount": 1800.39
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "63494373549",
+      "amount": 63494.37
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "135029975328",
+      "amount": 135029.97
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "21164791183",
+      "amount": 21164.79
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "45009991776",
+      "amount": 45009.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "7054930394",
+      "amount": 7054.93
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "15003330592",
+      "amount": 15003.33
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "2116479118",
+      "amount": 2116.47
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "4500999177",
+      "amount": 4500.99
+     }
+    }
+   }
+  },
+  {
+   "reward": {
+    "amounts": {
+     "TERP": {
+      "denom": "uterp",
+      "amount_micro": "705493039",
+      "amount": 705.49
+     },
+     "THIOL": {
+      "denom": "uthiol",
+      "amount_micro": "1500333059",
+      "amount": 1500.33
+     }
+    }
+   }
+  }
+ ]
+}

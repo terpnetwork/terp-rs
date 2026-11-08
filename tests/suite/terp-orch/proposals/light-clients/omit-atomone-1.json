@@ -1,0 +1,14 @@
+{
+  "kind": "omit",
+  "counterparty_chain_id": "atomone-1",
+  "title": "Omit atomone-1 07-tendermint-34",
+  "summary": "07-tendermint-34 (atomone-1) is expired and still backs connection-12 and transfer channel-10. It is not in a recover proposal. A brand-new client does not take over that connection or channel. Keeping channel-10 would require MsgRecoverClient against 07-tendermint-34 after a new Active atomone client exists. This file is a reminder only and is not submitted.",
+  "metadata": "",
+  "deposit": "",
+  "expedited": false,
+  "substitute_client_id": "",
+  "note": "Left out on purpose. A new client will be created instead of recovering this one.",
+  "subjects": [
+    {"client_id": "07-tendermint-34", "connection_id": "connection-12", "connection_state": "STATE_OPEN", "channel_id": "channel-10"}
+  ]
+}

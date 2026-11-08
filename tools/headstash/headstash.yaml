@@ -1,0 +1,382 @@
+projects:
+  - name: buddah-bears
+    csv: ../headstash/communities/buddah-bears/buddah-bears.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.11351805970149254
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.01
+        cutoffAmount: 37
+        holders: 25
+      twoPointsUpTo:
+        percentile: 0.07
+        cutoffAmount: 9
+        holders: 147
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 2281
+      totalHolders: 2453
+      normalization:
+        sqrtScaling: 7605710
+        logScaling: 5471305
+  - name: cannabuddies
+    csv: ../headstash/communities/cannabuddies/cannabuddies.csv
+    snapshot_date: 24-11-18
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.03535937313432836
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.02
+        cutoffAmount: 5
+        holders: 5
+      twoPointsUpTo:
+        percentile: 0.13
+        cutoffAmount: 3
+        holders: 26
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 207
+      totalHolders: 238
+      normalization:
+        sqrtScaling: 2369078
+        logScaling: 3838767
+  - name: carta-beta-gang
+    csv: ../headstash/communities/carta-beta-gang/carta-beta-gang.csv
+    snapshot_date: 24-11-19
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.028718776119402985
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.01
+        cutoffAmount: 3
+        holders: 2
+      twoPointsUpTo:
+        percentile: 0.11
+        cutoffAmount: 2
+        holders: 16
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 139
+      totalHolders: 157
+      normalization:
+        sqrtScaling: 1924158
+        logScaling: 3548663
+  - name: chronic-token
+    csv: ../headstash/communities/chronic-token/chronic-token.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.08119662686567164
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.01
+        cutoffAmount: 4370768.47
+        holders: 13
+      twoPointsUpTo:
+        percentile: 0.15
+        cutoffAmount: 161391.1
+        holders: 176
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 1066
+      totalHolders: 1255
+      normalization:
+        sqrtScaling: 5440174
+        logScaling: 5001812
+  - name: crypto-canna-club
+    csv: ../headstash/communities/crypto-canna-club/crypto-canna-club.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.15212098507462687
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.02
+        cutoffAmount: 12
+        holders: 89
+      twoPointsUpTo:
+        percentile: 0.16
+        cutoffAmount: 3
+        holders: 616
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 3700
+      totalHolders: 4405
+      normalization:
+        sqrtScaling: 10192106
+        logScaling: 5881538
+  - name: cryptowizards
+    csv: ../headstash/communities/cryptowizards/cryptowizards.csv
+    snapshot_date: 24-11-18
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.016997985074626867
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.03
+        cutoffAmount: 10
+        holders: 2
+      twoPointsUpTo:
+        percentile: 0.16
+        cutoffAmount: 3
+        holders: 7
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 46
+      totalHolders: 55
+      normalization:
+        sqrtScaling: 1138865
+        logScaling: 2821600
+  - name: galacktic-gang
+    csv: ../headstash/communities/galacktic-gang/galacktic-gang.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.1161485223880597
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.02
+        cutoffAmount: 10
+        holders: 52
+      twoPointsUpTo:
+        percentile: 0.19
+        cutoffAmount: 3
+        holders: 436
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 2080
+      totalHolders: 2568
+      normalization:
+        sqrtScaling: 7781951
+        logScaling: 5503407
+  - name: heady-pipe-society
+    csv: ../headstash/communities/heady-pipe-society/heady-pipe-society.csv
+    snapshot_date: 24-11-18
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.010992089552238807
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.08
+        cutoffAmount: 5
+        holders: 2
+      twoPointsUpTo:
+        percentile: 0.43
+        cutoffAmount: 2
+        holders: 8
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 13
+      totalHolders: 23
+      normalization:
+        sqrtScaling: 736470
+        logScaling: 2227680
+  - name: hippie-life-krew
+    csv: ../headstash/communities/hippie-life-krew/hippie-life-krew.csv
+    snapshot_date: 23-06-16
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.04238665671641791
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.09
+        cutoffAmount: 10
+        holders: 31
+      twoPointsUpTo:
+        percentile: 0.29
+        cutoffAmount: 4
+        holders: 69
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 242
+      totalHolders: 342
+      normalization:
+        sqrtScaling: 2839906
+        logScaling: 4092000
+  - name: monster-buds
+    csv: ../headstash/communities/monster-buds/monster-buds.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.13335076119402986
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.06
+        cutoffAmount: 11
+        holders: 204
+      twoPointsUpTo:
+        percentile: 0.2
+        cutoffAmount: 4
+        holders: 474
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 2707
+      totalHolders: 3385
+      normalization:
+        sqrtScaling: 8934501
+        logScaling: 5696964
+  - name: rebud
+    csv: ../headstash/communities/rebud/rebud.csv
+    snapshot_date: 24-01-23
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.05543628358208955
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.12
+        cutoffAmount: 11
+        holders: 71
+      twoPointsUpTo:
+        percentile: 0.32
+        cutoffAmount: 9
+        holders: 117
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 397
+      totalHolders: 585
+      normalization:
+        sqrtScaling: 3714231
+        logScaling: 4467425
+  - name: secret-sesh
+    csv: ../headstash/communities/secret-sesh/secret-sesh.csv
+    snapshot_date: 22-10-11
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.05261644776119403
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.05
+        cutoffAmount: 6
+        holders: 27
+      twoPointsUpTo:
+        percentile: 0.48
+        cutoffAmount: 1
+        holders: 226
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 274
+      totalHolders: 527
+      normalization:
+        sqrtScaling: 3525302
+        logScaling: 4394369
+  - name: shurlok
+    csv: ../headstash/communities/shurlok/shurlok.csv
+    snapshot_date: 24-11-26
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.013166582089552238
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.03
+        cutoffAmount: 89
+        holders: 1
+      twoPointsUpTo:
+        percentile: 0.3
+        cutoffAmount: 2
+        holders: 9
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 23
+      totalHolders: 33
+      normalization:
+        sqrtScaling: 882161
+        logScaling: 2471828
+  - name: special-k
+    csv: ../headstash/communities/special-k/special-k.csv
+    snapshot_date: 24-11-18
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.015545149253731343
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.02
+        cutoffAmount: 15
+        holders: 1
+      twoPointsUpTo:
+        percentile: 0.23
+        cutoffAmount: 2
+        holders: 10
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 35
+      totalHolders: 46
+      normalization:
+        sqrtScaling: 1041525
+        logScaling: 2698789
+  - name: stoned-ape-club
+    csv: ../headstash/communities/stoned-ape-club/stoned-ape-club.csv
+    snapshot_date: 24-10-24
+    chain_type: solana
+    category: headstash
+    allocation_percentage: 0.10400262686567165
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.06
+        holders: 124
+      twoPointsUpTo:
+        percentile: 0.32
+        holders: 535
+      onePointUpTo:
+        percentile: 1
+        holders: 1400
+      totalHolders: 2059
+      normalization:
+        sqrtScaling: 6968176
+        logScaling: 5348628
+  - name: wake-and-bake
+    csv: ../headstash/communities/wake-and-bake/wake-and-bake.csv
+    snapshot_date: 24-11-18
+    chain_type: evm
+    category: headstash
+    allocation_percentage: 0.028443074626865673
+    tpp: 3664.20563303
+    points:
+      threePointsUpTo:
+        percentile: 0.06
+        cutoffAmount: 10
+        holders: 10
+      twoPointsUpTo:
+        percentile: 0.32
+        cutoffAmount: 3
+        holders: 40
+      onePointUpTo:
+        percentile: 1
+        cutoffAmount: 0
+        holders: 104
+      totalHolders: 154
+      normalization:
+        sqrtScaling: 1905686
+        logScaling: 3535226

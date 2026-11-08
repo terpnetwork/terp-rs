@@ -1,0 +1,165 @@
+[package]
+name = "dao-scripts"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+autobins = false
+
+[features]
+ibc-info = ["dep:terp-scripts"]
+
+[[bin]]
+name = "dao-scripts"
+path = "src/main.rs"
+
+[[bin]]
+name = "foundation_delegate"
+path = "src/bin/foundation_delegate.rs"
+
+[[bin]]
+name = "delegations"
+path = "src/bin/dels.rs"
+
+[[bin]]
+name = "terp-ibc"
+path = "src/bin/ibc_info.rs"
+required-features = ["ibc-info"]
+
+[[bin]]
+name = "create_val"
+path = "src/bin/create_val.rs"
+
+[[bin]]
+name = "zcinti-keygen"
+path = "src/bin/zcinti_keygen.rs"
+
+[[bin]]
+name = "polytone_migrate"
+path = "src/bin/polytone_migrate.rs"
+
+[[bin]]
+name = "dao_upload"
+path = "src/bin/dao_upload.rs"
+
+[[bin]]
+name = "app_upload"
+path = "src/bin/app_upload.rs"
+
+[[bin]]
+name = "app_setup"
+path = "src/bin/app_setup.rs"
+
+[[bin]]
+name = "svg_markets"
+path = "src/bin/svg_markets.rs"
+
+[[bin]]
+name = "deploy_preflight"
+path = "src/bin/deploy_preflight.rs"
+
+[[bin]]
+name = "relay_grants"
+path = "src/bin/relay_grants.rs"
+
+[[bin]]
+name = "dao_account"
+path = "src/bin/dao_account.rs"
+
+[[bin]]
+name = "juno_liquidity"
+path = "src/bin/juno_liquidity.rs"
+
+[[bin]]
+name = "bounty_dao"
+path = "src/bin/bounty_dao.rs"
+
+[[bin]]
+name = "ibc_create_clients"
+path = "src/bin/ibc_create_clients.rs"
+
+[[bin]]
+name = "ibc_recover_clients"
+path = "src/bin/ibc_recover_clients.rs"
+
+[[bin]]
+name = "fiab_subdao"
+path = "src/bin/fiab_subdao.rs"
+
+[[bin]]
+name = "steward_multi_dao"
+path = "src/bin/steward_multi_dao.rs"
+
+[[bin]]
+name = "polytone_note"
+path = "src/bin/polytone_note.rs"
+
+[[bin]]
+name = "polytone_osmosis"
+path = "src/bin/polytone_osmosis.rs"
+
+[[bin]]
+name = "bounty_dao_standalone"
+path = "src/bin/bounty_dao_standalone.rs"
+
+[[bin]]
+name = "mainnet_deploy"
+path = "src/bin/mainnet_deploy.rs"
+
+[[bin]]
+name = "svg_ops"
+path = "src/bin/svg_ops.rs"
+
+[[bin]]
+name = "svg_curator"
+path = "src/bin/svg_curator.rs"
+
+[[bin]]
+name = "penumbra_ibc_transfer"
+path = "src/bin/penumbra_ibc_transfer.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = { workspace = true }
+bech32 = { workspace = true }
+bip39 = { version = "2.0.0", features = ["rand"] }
+clap = { workspace = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true }
+cosmrs = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+csv = "1.4.0"
+cw-infuser-scripts = { workspace = true, default-features = false }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-orch-kms = { path = "../../../cw-orchestrator/packages/cw-orch-kms", features = ["ict"] }
+cw-orch-polytone = { workspace = true }
+dao-cw-orch = { workspace = true }
+dao-foundation-suite = { path = "../../tests/suite/dao-foundation-suite" }
+dao-interface = { workspace = true }
+dao-testing = { workspace = true }
+dotenv = { workspace = true }
+ed25519-dalek = "=2.2.0"
+env_logger = { workspace = true, features = ["default"] }
+ibc-proto = { workspace = true }
+log = "0.4.30"
+rand08 = { package = "rand", version = "0.8" }
+rustls = { workspace = true, features = ["ring", "std", "aws_lc_rs"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+terp-rs = { workspace = true, features = ["default"] }
+# Only terp-ibc (src/bin/ibc_info.rs) uses terp-scripts. Optional so mainnet_deploy and the other bins build without it
+# (the tests crate does not compile in-tree today: hash-market onboard/server and tests/src/suite/hashmerchant*).
+terp-scripts = { workspace = true, optional = true, features = ["hash-market"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+cw4-group = { workspace = true }
+dao-dao-core = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting-cw4 = { workspace = true }

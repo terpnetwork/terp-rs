@@ -1,0 +1,93 @@
+{
+  "status": "READY - simulated; submit only on explicit go",
+  "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+  "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+  "creation_policy": "anyone (no pre-propose, no deposit)",
+  "signer": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+  "flow": "threshold 1, no veto: propose, vote yes and execute in one session (sole member)",
+  "remote_chain": "penumbra-1",
+  "balances_at_draft": {
+    "uterp": "880000000000",
+    "uthiol": "760000000000",
+    "decimals": 6,
+    "at": "2026-10-29T22:05Z"
+  },
+  "ratio": {
+    "thiol_per_terp": "2.124",
+    "band": "2.10-2.13"
+  },
+  "timeout_note": "absolute timestamp 2026-11-06T00:00:00Z (ns), ~7 days after drafting; refresh if not executed by ~2026-11-04",
+  "propose": {
+    "propose": {
+      "title": "FIAB-SUBDAO: initial Penumbra liquidity resend to the corrected cold-wallet address",
+      "description": "Two ICS-20 transfers from FIAB-SUBDAO to its Penumbra liquidity cold wallet penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq over Terp transfer/channel-16 <-> Penumbra transfer/channel-25 (connection-16 <-> connection-25): 50,000 TERP and 100,000 THIOL, the initial Penumbra liquidity.\n\nResend to the corrected cold-wallet address. Proposal 3 sent 120,000 TERP and 240,000 THIOL to penumbra1gmapd..., a Zigner placeholder address that no key owns (fixed in Zigner 0.13.0); those funds are stuck there. A 1 TERP + 1 THIOL test transfer to this address (Terp tx CA9793B6...127D, acknowledged in E21E7BE2...D8B1, Penumbra recv 135E62E2...2D5F) landed and was confirmed in the Penumbra view.",
+      "msgs": [
+        {
+          "ibc": {
+            "transfer": {
+              "channel_id": "channel-16",
+              "to_address": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+              "amount": {
+                "denom": "uterp",
+                "amount": "50000000000"
+              },
+              "timeout": {
+                "timestamp": "1793923200000000000"
+              }
+            }
+          }
+        },
+        {
+          "ibc": {
+            "transfer": {
+              "channel_id": "channel-16",
+              "to_address": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+              "amount": {
+                "denom": "uthiol",
+                "amount": "100000000000"
+              },
+              "timeout": {
+                "timestamp": "1793923200000000000"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": 5,
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": 5
+    }
+  },
+  "amounts": {
+    "uterp": "50000000000",
+    "uthiol": "100000000000"
+  },
+  "ibc": {
+    "terp": {
+      "connection": "connection-16",
+      "channel": "channel-16",
+      "client": "07-tendermint-48"
+    },
+    "penumbra": {
+      "connection": "connection-25",
+      "channel": "channel-25",
+      "client": "07-tendermint-32"
+    }
+  },
+  "receiver": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+  "supersedes": "proposal 3 (8-fiab-penumbra-liquidity.json) sent to an unowned placeholder address",
+  "proposal_id": 5,
+  "test_transfer": {
+    "terp_tx": "CA9793B618FAA4D960F6DE0FF632B2E392E3A09C0513C21671A0DEF91EAD127D",
+    "ack_tx": "E21E7BE2031E2CE3B1339203E1A08C653553F2AC6CF646B36D975C6F68C3D8B1",
+    "penumbra_recv_tx": "135E62E2CF90A375CFF8CCA1DF70A2CD162E283A03AF5C358E943B75CB932D5F"
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Path 1: mint after hashmerchant VE / sidecar recorded the manifesto pledge.",
+      "type": "object",
+      "required": [
+        "mint"
+      ],
+      "properties": {
+        "mint": {
+          "type": "object",
+          "required": [
+            "eth_address",
+            "sign_tx",
+            "ve_commitment_hex"
+          ],
+          "properties": {
+            "eth_address": {
+              "type": "string"
+            },
+            "sign_tx": {
+              "type": "string"
+            },
+            "ve_commitment_hex": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin registers the IBC-v2 counterparty (no v1 handshake). This is the app-level \"connection\" to ETH (Eureka client id + dest port).",
+      "type": "object",
+      "required": [
+        "register_ibc_v2"
+      ],
+      "properties": {
+        "register_ibc_v2": {
+          "type": "object",
+          "required": [
+            "dest_port",
+            "source_client"
+          ],
+          "properties": {
+            "dest_port": {
+              "type": "string"
+            },
+            "source_client": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Path 2: user commits to the Australge / Trustless Manifesto on Terp. Stores a pending commitment and, if a client is registered, emits `Ibc2Msg::SendPacket` so ETH can pledge and attest back.",
+      "type": "object",
+      "required": [
+        "commit_australge"
+      ],
+      "properties": {
+        "commit_australge": {
+          "type": "object",
+          "required": [
+            "commitment_hex",
+            "eth_address"
+          ],
+          "properties": {
+            "commitment_hex": {
+              "type": "string"
+            },
+            "eth_address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Emit `Ibc2Msg::SendPacket` for a pending Australge commitment (requires `RegisterIbcV2`). Separate from commit so the on-chain commitment works even when the host has no IBC-v2 client yet.",
+      "type": "object",
+      "required": [
+        "send_australge_packet"
+      ],
+      "properties": {
+        "send_australge_packet": {
+          "type": "object",
+          "required": [
+            "eth_address"
+          ],
+          "properties": {
+            "eth_address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Relayer/admin delivery of an ETH pledge attestation (same mint as `ibc2_packet_receive`). Used when a real Eureka relayer is not in the loop.",
+      "type": "object",
+      "required": [
+        "deliver_eth_attestation"
+      ],
+      "properties": {
+        "deliver_eth_attestation": {
+          "type": "object",
+          "required": [
+            "commitment_hex",
+            "eth_address",
+            "pledge_tx"
+          ],
+          "properties": {
+            "commitment_hex": {
+              "type": "string"
+            },
+            "eth_address": {
+              "type": "string"
+            },
+            "pledge_tx": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

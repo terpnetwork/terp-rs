@@ -1,7 +1,6 @@
 //! Frontend server management: config patching + dev server spawning.
-//! programmable pipeline of frontend tuning. register frontend pipeline actions as needed from unified config file. 
+//! programmable pipeline of frontend tuning. register frontend pipeline actions as needed from unified config file.
 //! default front ends: terp.network static pages, terp-docs documentation page, dao-dao-ui dao page
-
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -76,7 +75,6 @@ pub fn patch_config(
 
     Ok(())
 }
-
 
 /// Start the website dev server (serve.py) on port 3000.
 ///
@@ -171,7 +169,6 @@ fn write_docs_env(addresses: &HashMap<String, String>) -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 /// Extract port number from a URL like "http://localhost:55004".
 fn extract_port(url: &str) -> Option<u16> {

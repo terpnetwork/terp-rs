@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "raffle"
+      ],
+      "properties": {
+        "raffle": {
+          "type": "object",
+          "required": [
+            "raffle_id"
+          ],
+          "properties": {
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ticket"
+      ],
+      "properties": {
+        "ticket": {
+          "type": "object",
+          "required": [
+            "index",
+            "raffle_id"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ticket_count"
+      ],
+      "properties": {
+        "ticket_count": {
+          "type": "object",
+          "required": [
+            "owner",
+            "raffle_id"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string"
+            },
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Alt-asset tickets and pot for a raffle.",
+      "type": "object",
+      "required": [
+        "alt_pot"
+      ],
+      "properties": {
+        "alt_pot": {
+          "type": "object",
+          "required": [
+            "raffle_id"
+          ],
+          "properties": {
+            "raffle_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Oracle pricing config, if any. `None` means default-asset only.",
+      "type": "object",
+      "required": [
+        "oracle_pricing"
+      ],
+      "properties": {
+        "oracle_pricing": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Combined oracle price of `asset` against `base_denom`, with every feed point.",
+      "type": "object",
+      "required": [
+        "oracle_price"
+      ],
+      "properties": {
+        "oracle_price": {
+          "type": "object",
+          "required": [
+            "asset",
+            "base_denom"
+          ],
+          "properties": {
+            "asset": {
+              "$ref": "#/definitions/PriceAsset"
+            },
+            "base_denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Prices for several pairs in one call. Failed pairs carry an error string.",
+      "type": "object",
+      "required": [
+        "oracle_aggregate"
+      ],
+      "properties": {
+        "oracle_aggregate": {
+          "type": "object",
+          "required": [
+            "pairs"
+          ],
+          "properties": {
+            "pairs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AssetPair"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Amount of `asset` that settles a payment of `base` right now.",
+      "type": "object",
+      "required": [
+        "oracle_quote"
+      ],
+      "properties": {
+        "oracle_quote": {
+          "type": "object",
+          "required": [
+            "asset",
+            "base"
+          ],
+          "properties": {
+            "asset": {
+              "$ref": "#/definitions/PriceAsset"
+            },
+            "base": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Raw smart query passthrough to one of the configured oracle contracts.",
+      "type": "object",
+      "required": [
+        "oracle_raw"
+      ],
+      "properties": {
+        "oracle_raw": {
+          "type": "object",
+          "required": [
+            "msg",
+            "oracle"
+          ],
+          "properties": {
+            "msg": {
+              "$ref": "#/definitions/Binary"
+            },
+            "oracle": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "AssetPair": {
+      "type": "object",
+      "required": [
+        "asset",
+        "base_denom"
+      ],
+      "properties": {
+        "asset": {
+          "$ref": "#/definitions/PriceAsset"
+        },
+        "base_denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PriceAsset": {
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}

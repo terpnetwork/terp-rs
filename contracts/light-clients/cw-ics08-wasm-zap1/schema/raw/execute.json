@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "create_client"
+      ],
+      "properties": {
+        "create_client": {
+          "type": "object",
+          "required": [
+            "dest_client",
+            "source_client"
+          ],
+          "properties": {
+            "dest_client": {
+              "type": "string"
+            },
+            "source_client": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "IBC v2 packet + ZAP1 Merkle. Tampered `app_data_hash` is rejected.",
+      "type": "object",
+      "required": [
+        "attest_packet"
+      ],
+      "properties": {
+        "attest_packet": {
+          "type": "object",
+          "required": [
+            "amount_zat",
+            "app_data_hash_hex",
+            "dest_client",
+            "event_kind",
+            "frost_group_hex",
+            "leaf_hex",
+            "merkle_root_hex",
+            "note_hex",
+            "proof",
+            "sequence",
+            "source_client",
+            "timeout_timestamp_ns",
+            "wallet_or_serial"
+          ],
+          "properties": {
+            "amount_zat": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "app_data_hash_hex": {
+              "type": "string"
+            },
+            "dest_client": {
+              "type": "string"
+            },
+            "event_kind": {
+              "type": "string"
+            },
+            "frost_group_hex": {
+              "type": "string"
+            },
+            "leaf_hex": {
+              "type": "string"
+            },
+            "merkle_root_hex": {
+              "type": "string"
+            },
+            "note_hex": {
+              "type": "string"
+            },
+            "proof": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Zap1ProofStepMsg"
+              }
+            },
+            "sequence": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "source_client": {
+              "type": "string"
+            },
+            "timeout_timestamp_ns": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "wallet_or_serial": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Zap1ProofStepMsg": {
+      "type": "object",
+      "required": [
+        "sibling_hex",
+        "sibling_is_left"
+      ],
+      "properties": {
+        "sibling_hex": {
+          "type": "string"
+        },
+        "sibling_is_left": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

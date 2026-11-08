@@ -1,0 +1,667 @@
+{
+  "contract_name": "cw-private-dex",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "mock_verify"
+    ],
+    "properties": {
+      "allowed_root": {
+        "description": "Optional single allowed commitment-tree root (stub window).",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Binary"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "mock_verify": {
+        "description": "When true, proof verify is mocked (lab / ict film). Production: false + zk-api.",
+        "type": "boolean"
+      },
+      "zkid": {
+        "description": "Circuit id registered in x/wasm for `proof_instance_verify`. Optional until circuit lands.",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Create a virtual pool (factory-lite; multi-pool map like pair registry).",
+        "type": "object",
+        "required": [
+          "create_pool"
+        ],
+        "properties": {
+          "create_pool": {
+            "type": "object",
+            "required": [
+              "asset_a",
+              "asset_b",
+              "gamma",
+              "gamma_den",
+              "r_a",
+              "r_b"
+            ],
+            "properties": {
+              "asset_a": {
+                "$ref": "#/definitions/Binary"
+              },
+              "asset_b": {
+                "$ref": "#/definitions/Binary"
+              },
+              "gamma": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "gamma_den": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "r_a": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "r_b": {
+                "$ref": "#/definitions/Uint128"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Pause / unpause — mirrors `crates/dex` pair `PoolPaused` window spirit.",
+        "type": "object",
+        "required": [
+          "set_pool_status"
+        ],
+        "properties": {
+          "set_pool_status": {
+            "type": "object",
+            "required": [
+              "pool_id",
+              "status"
+            ],
+            "properties": {
+              "pool_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "status": {
+                "$ref": "#/definitions/PoolStatus"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Dual-path verify config.",
+        "type": "object",
+        "required": [
+          "set_zk_cfg"
+        ],
+        "properties": {
+          "set_zk_cfg": {
+            "type": "object",
+            "required": [
+              "mock_verify"
+            ],
+            "properties": {
+              "mock_verify": {
+                "type": "boolean"
+              },
+              "zkid": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Stub root window for membership narrative.",
+        "type": "object",
+        "required": [
+          "set_allowed_root"
+        ],
+        "properties": {
+          "set_allowed_root": {
+            "type": "object",
+            "properties": {
+              "root": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Binary"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Settle a private swap: verify proof → host recompute → nullifiers + reserves.\n\nTransparent analog: `crates/dex` `ExecuteMsg::Swap { offer_asset, max_spread, ... }` but offer is a **proven note spend**, not a bank push.",
+        "type": "object",
+        "required": [
+          "settle_swap"
+        ],
+        "properties": {
+          "settle_swap": {
+            "type": "object",
+            "required": [
+              "proof",
+              "statement"
+            ],
+            "properties": {
+              "proof": {
+                "$ref": "#/definitions/Binary"
+              },
+              "statement": {
+                "$ref": "#/definitions/SwapStatementPublic"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "OracleBoundParams": {
+        "type": "object",
+        "required": [
+          "max_age_blocks",
+          "max_slippage_bps",
+          "require_oracle"
+        ],
+        "properties": {
+          "max_age_blocks": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "max_slippage_bps": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "require_oracle": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OracleMid": {
+        "type": "object",
+        "required": [
+          "mid",
+          "observed_height",
+          "pair_key"
+        ],
+        "properties": {
+          "mid": {
+            "description": "Fixed-point mid (scale = 1e18).",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ]
+          },
+          "observed_height": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "pair_key": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PoolStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "paused"
+        ]
+      },
+      "SwapStatementPublic": {
+        "description": "Public statement for a v1 single-leg private swap.\n\nMirrors pure `SwapActionPublic` / SPEC §1.2. Witness stays client-side; host recomputes curve and updates reserves after proof accept.",
+        "type": "object",
+        "required": [
+          "asset_in",
+          "asset_out",
+          "cm_out",
+          "delta_r_in",
+          "delta_r_out",
+          "gamma",
+          "gamma_den",
+          "min_out",
+          "nullifiers",
+          "pool_id",
+          "r_in_before",
+          "r_out_before",
+          "root"
+        ],
+        "properties": {
+          "asset_in": {
+            "$ref": "#/definitions/Binary"
+          },
+          "asset_out": {
+            "$ref": "#/definitions/Binary"
+          },
+          "cm_out": {
+            "description": "New leaf commitments (note_out, optional change).",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "delta_r_in": {
+            "description": "Public Δ applied to reserves.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ]
+          },
+          "delta_r_out": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "gamma": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "gamma_den": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "min_out": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "nullifiers": {
+            "description": "Pool-spend nullifiers (32 bytes each).",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "oracle_mid": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/OracleMid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oracle_params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/OracleBoundParams"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pool_id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "r_in_before": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "r_out_before": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "root": {
+            "description": "Commitment tree root used for membership.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "pool"
+        ],
+        "properties": {
+          "pool": {
+            "type": "object",
+            "required": [
+              "pool_id"
+            ],
+            "properties": {
+              "pool_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "is_nullifier_spent"
+        ],
+        "properties": {
+          "is_nullifier_spent": {
+            "type": "object",
+            "required": [
+              "nullifier"
+            ],
+            "properties": {
+              "nullifier": {
+                "$ref": "#/definitions/Binary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Host recompute quote — mirrors astroport `QueryMsg::Simulation`.",
+        "type": "object",
+        "required": [
+          "quote_exact_in"
+        ],
+        "properties": {
+          "quote_exact_in": {
+            "type": "object",
+            "required": [
+              "asset_in",
+              "delta_in",
+              "pool_id"
+            ],
+            "properties": {
+              "asset_in": {
+                "$ref": "#/definitions/Binary"
+              },
+              "delta_in": {
+                "$ref": "#/definitions/Uint128"
+              },
+              "pool_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "required": [
+        "mock_verify",
+        "next_pool_id",
+        "zk_api_compiled"
+      ],
+      "properties": {
+        "allowed_root": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mock_verify": {
+          "type": "boolean"
+        },
+        "next_pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "zk_api_compiled": {
+          "description": "Guest feature flag present at compile time.",
+          "type": "boolean"
+        },
+        "zkid": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        }
+      }
+    },
+    "is_nullifier_spent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
+    "pool": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Pool",
+      "description": "Virtual pool — public reserves only (private notes stay off transparent balances).\n\nParallel to astroport `PairInfo` + reserve balances, but assets are 32-byte domain ids and reserves are virtual (not queried from bank).",
+      "type": "object",
+      "required": [
+        "asset_a",
+        "asset_b",
+        "gamma",
+        "gamma_den",
+        "pool_id",
+        "r_a",
+        "r_b",
+        "status"
+      ],
+      "properties": {
+        "asset_a": {
+          "$ref": "#/definitions/Binary"
+        },
+        "asset_b": {
+          "$ref": "#/definitions/Binary"
+        },
+        "gamma": {
+          "description": "Fee numerator (e.g. 997 for 30 bps with den 1000).",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "gamma_den": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "r_a": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "r_b": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "status": {
+          "$ref": "#/definitions/PoolStatus"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "PoolStatus": {
+          "type": "string",
+          "enum": [
+            "active",
+            "paused"
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "quote_exact_in": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "QuoteResponse",
+      "type": "object",
+      "required": [
+        "asset_in",
+        "asset_out",
+        "delta_in",
+        "delta_out",
+        "pool_id",
+        "r_in_before",
+        "r_out_before"
+      ],
+      "properties": {
+        "asset_in": {
+          "$ref": "#/definitions/Binary"
+        },
+        "asset_out": {
+          "$ref": "#/definitions/Binary"
+        },
+        "delta_in": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "delta_out": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "pool_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "r_in_before": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "r_out_before": {
+          "$ref": "#/definitions/Uint128"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Binary": {
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

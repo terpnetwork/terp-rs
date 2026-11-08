@@ -1,0 +1,87 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "svg_auction_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "auction": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 1
+            }
+          }
+        },
+        "auction_by_contract": {
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 5
+            },
+            "nft_contract": {
+              "value": 2
+            },
+            "start_after": {
+              "value": 3
+            }
+          }
+        },
+        "bid_history_by_auction_id": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 1
+            },
+            "limit": {
+              "value": 5
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "nft_auction": {
+          "description": "Active auction for a token, if any.",
+          "type": "named",
+          "properties": {
+            "nft_contract": {
+              "value": 2
+            },
+            "token_id": {
+              "value": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u32>",
+      "type": "optional",
+      "inner": 4
+    }
+  ]
+}

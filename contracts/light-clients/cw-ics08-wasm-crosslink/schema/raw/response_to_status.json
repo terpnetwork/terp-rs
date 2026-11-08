@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StatusResult",
+  "description": "Result of a status query.",
+  "type": "object",
+  "required": [
+    "status"
+  ],
+  "properties": {
+    "status": {
+      "description": "The client status string.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

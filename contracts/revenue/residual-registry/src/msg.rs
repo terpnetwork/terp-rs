@@ -1,6 +1,6 @@
 use crate::state::{Config, ResidualDefault, ResidualProtocol};
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::Decimal;
 use terp_index_query::QueryOptions;
 

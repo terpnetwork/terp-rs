@@ -1,0 +1,86 @@
+{
+  "mode": "real",
+  "path": "direct",
+  "campaign_eligibility_root": "c6ffae12fc3e5aa7f40a4f5b45e141b18362bdb06a798cc5c234ab5b5105a3b0",
+  "campaign_eligibility_depth": 17,
+  "amount_classes": 12,
+  "identities": 17791,
+  "rows": 18248,
+  "identity_leaf_total_uterp": 66466301607378,
+  "unallocated_vs_67M_uterp": 533698392622,
+  "notes": 98841,
+  "notes_total_uterp": 66456669000000,
+  "notes_remainder_uterp": 9632607378,
+  "unique_amount_identities": null,
+  "ctx_hex": "8b289dc777a45e25be7514760e54b3ff7b19696f278af650ef6b79e2bfd6b704",
+  "ctx_derivation": "direct_ctx (terp-hs-direct-ctx-v1)",
+  "trusted": [
+    "E45MddkxZVsq4N9r/wnI8VGQY7ZItWtwPzMlEa+HgZk="
+  ],
+  "note_vk_hash": "34d11437d957554f4008377dece5fac0f047e0e9cc012d15b3d09448a6cc5398",
+  "note_params_bytes": 131140,
+  "note_vk_bytes": 3883,
+  "cutoff_height": 44444444,
+  "cutoff_auto": null,
+  "anchor_interval_blocks": 3430,
+  "min_anonymity_set": 1,
+  "unclaimed": "burned (BankMsg::Burn after cutoff; no sweep recipient)",
+  "contract_owner": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+  "funding_amount_uterp": "66456669000000",
+  "feegrant_source": "foundation-dao",
+  "feegrant_budget_uthiol": 4761700000,
+  "operators": 1,
+  "feegrant_below_recommended": false,
+  "proposal_messages": [
+    "/cosmwasm.wasm.v1.MsgStoreFullCircuit",
+    "/cosmos.distribution.v1beta1.MsgCommunityPoolSpend"
+  ],
+  "required_decisions": [
+    "ANCHOR_INTERVAL",
+    "ANCHOR_START_HEIGHT",
+    "BURN_UNCLAIMED",
+    "CAMPAIGN_LABEL",
+    "CHAIN_ID",
+    "CONTRACT_OWNER",
+    "CUTOFF_HEIGHT",
+    "DEPOSIT_UTERP",
+    "FEEGRANT_FUNDING_SOURCE",
+    "FUNDING_AMOUNT_UTERP",
+    "MAX_ROWS",
+    "MIN_ANONYMITY_SET",
+    "OPERATORS",
+    "PROPOSER",
+    "SOURCE_COMMIT",
+    "WASM_ADMIN"
+  ],
+  "required_later": [
+    "CODE_ID",
+    "CONTRACT_ADDR",
+    "FORUM_URL",
+    "NOTE_ZK_ID",
+    "PROPOSAL_METADATA_URI",
+    "WASM_SHA256"
+  ],
+  "written": [
+    "01-instantiate.json",
+    "02-set-epoch-campaign-open.json",
+    "03-update-ownership-transfer.json",
+    "03b-update-ownership-accept.json",
+    "04-accept-anchor.json",
+    "09-sweep-unclaimed.json",
+    "forum-post.md",
+    "submit-proposal.json"
+  ],
+  "skipped_waiting_on": {
+    "06-bind-note-circuit.json": [
+      "NOTE_ZK_ID"
+    ],
+    "proposal-body.md": [
+      "CODE_ID"
+    ]
+  },
+  "lane_only_files_omitted": [
+    "05-set-epoch-campaign-final-anchor.json",
+    "08-stage-epoch-batch.example.json"
+  ]
+}

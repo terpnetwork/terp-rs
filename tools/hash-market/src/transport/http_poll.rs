@@ -5,7 +5,7 @@
 
 use crate::msg::VoteExtensionHashData;
 use tokio::sync::mpsc;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 pub async fn run(url: String, interval_secs: u64, tx: mpsc::Sender<VoteExtensionHashData>) {
     let interval = Duration::from_secs(interval_secs);
@@ -56,10 +56,7 @@ async fn fetch_data(url: &str) -> anyhow::Result<Option<VoteExtensionHashData>> 
     stream.read_to_end(&mut buf).await?;
 
     // Find the body after \r\n\r\n
-    let body_start = buf
-        .windows(4)
-        .position(|w| w == b"\r\n\r\n")
-        .map(|p| p + 4);
+    let body_start = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|p| p + 4);
 
     match body_start {
         Some(start) if start < buf.len() => {

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "signer"
+  ],
+  "properties": {
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "signer": {
+      "description": "Ethereum address (0x…) that may authorize.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

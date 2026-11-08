@@ -4,7 +4,7 @@ version     = { workspace = true }
 authors = ["0xplanet"]
 license = { workspace = true }
 description = "auction marketplace library."
-edition = "2021"
+edition = "2024"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -36,6 +36,6 @@ cosmwasm-storage  = { workspace = true }
 schemars          = { workspace = true }
 serde             = { version = "1.0.156", default-features = false, features = ["derive"] }
 cw721             = { workspace = true }
-cosmwasm-schema = { git = "https://github.com/permissionlessweb/cosmwasm", branch = "zk-mvp" }
+cosmwasm-schema = { workspace = true }
 
 [dev-dependencies]

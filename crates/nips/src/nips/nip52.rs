@@ -1,7 +1,7 @@
 use crate::{
+    NipKind, NipMetadata, RawNostrEvent, Tag,
     error::{NipError, NipResult},
     types::*,
-    NipKind, NipMetadata, RawNostrEvent, Tag,
 };
 
 use schemars::JsonSchema;
@@ -434,7 +434,7 @@ impl NipMetadata for CalendarEventMetadata {
                 return Err(NipError::Nip52(format!(
                     "Expected kind 31922 or 31923, got {}",
                     event.kind
-                )))
+                )));
             }
         };
 
@@ -540,10 +540,10 @@ impl NipMetadata for CalendarEventMetadata {
                 }
                 "role" => {
                     // role tags reference a participant pubkey with a role
-                    if tag.len() >= 3 {
-                        if let Some(pos) = participants.iter().position(|p| p.pubkey == tag[1]) {
-                            participants[pos].role = Some(tag[2].clone());
-                        }
+                    if tag.len() >= 3
+                        && let Some(pos) = participants.iter().position(|p| p.pubkey == tag[1])
+                    {
+                        participants[pos].role = Some(tag[2].clone());
                     }
                 }
                 _ => {}
@@ -917,28 +917,26 @@ impl NipMetadata for RSVPMetadata {
                         event_author_pubkey = Some(v.clone());
                     }
                 }
-                "l" => {
-                    if tag.len() >= 3 {
-                        let value = tag[1].as_str();
-                        let namespace = tag[2].as_str();
-                        match namespace {
-                            "status" => {
-                                status = match value {
-                                    "accepted" => Some(RSVPStatus::Accepted),
-                                    "declined" => Some(RSVPStatus::Declined),
-                                    "tentative" => Some(RSVPStatus::Tentative),
-                                    _ => None,
-                                };
-                            }
-                            "freebusy" => {
-                                free_busy = match value {
-                                    "free" => Some(FreeBusyStatus::Free),
-                                    "busy" => Some(FreeBusyStatus::Busy),
-                                    _ => None,
-                                };
-                            }
-                            _ => {}
+                "l" if tag.len() >= 3 => {
+                    let value = tag[1].as_str();
+                    let namespace = tag[2].as_str();
+                    match namespace {
+                        "status" => {
+                            status = match value {
+                                "accepted" => Some(RSVPStatus::Accepted),
+                                "declined" => Some(RSVPStatus::Declined),
+                                "tentative" => Some(RSVPStatus::Tentative),
+                                _ => None,
+                            };
                         }
+                        "freebusy" => {
+                            free_busy = match value {
+                                "free" => Some(FreeBusyStatus::Free),
+                                "busy" => Some(FreeBusyStatus::Busy),
+                                _ => None,
+                            };
+                        }
+                        _ => {}
                     }
                 }
                 _ => {}
@@ -1231,14 +1229,16 @@ mod tests {
         assert!(tags.iter().any(|t| t.as_slice() == ["title", "Test Event"]));
 
         // Check summary tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["summary", "Short summary"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["summary", "Short summary"])
+        );
 
         // Check image tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["image", "https://img.url"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["image", "https://img.url"])
+        );
 
         // Check start/end
         assert!(tags.iter().any(|t| t.as_slice() == ["start", "1000"]));
@@ -1251,9 +1251,10 @@ mod tests {
         assert!(tags.iter().any(|t| t.as_slice() == ["g", "u33d"]));
 
         // Check reference
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["r", "https://ref.com"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["r", "https://ref.com"])
+        );
 
         // Check hashtag
         assert!(tags.iter().any(|t| t.as_slice() == ["t", "conference"]));
@@ -1269,9 +1270,10 @@ mod tests {
         assert!(tags.iter().any(|t| t.as_slice() == ["p", TEST_PUBKEY2]));
 
         // Check role tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["role", TEST_PUBKEY2, "speaker"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["role", TEST_PUBKEY2, "speaker"])
+        );
     }
 
     #[test]
@@ -1526,14 +1528,16 @@ mod tests {
         assert!(tags.iter().any(|t| t.as_slice() == ["d", "cal-id"]));
 
         // Check title tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["title", "My Calendar"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["title", "My Calendar"])
+        );
 
         // Check description tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["description", "A description"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["description", "A description"])
+        );
 
         // Check a-tag for event reference
         let expected_a = format!("31922:{}:event-abc", TEST_PUBKEY);
@@ -1736,14 +1740,16 @@ mod tests {
         assert!(tags.iter().any(|t| t.as_slice() == ["p", TEST_PUBKEY2]));
 
         // Check status l-tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["l", "declined", "status"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["l", "declined", "status"])
+        );
 
         // Check freebusy l-tag
-        assert!(tags
-            .iter()
-            .any(|t| t.as_slice() == ["l", "free", "freebusy"]));
+        assert!(
+            tags.iter()
+                .any(|t| t.as_slice() == ["l", "free", "freebusy"])
+        );
     }
 
     #[test]

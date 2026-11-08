@@ -1,0 +1,2626 @@
+{
+  "contract_name": "cw-infuser",
+  "contract_version": "0.7.3",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "cw721_code_id",
+      "owner_fee"
+    ],
+    "properties": {
+      "contract_owner": {
+        "description": "owner of this contract",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "cw721_code_id": {
+        "description": "Code-ID of the cw721-collection",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "max_bundles": {
+        "description": "Maximum bundles any infusion is able to require",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "max_infusions": {
+        "description": "Maximum infusions that may be created at once",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "max_per_bundle": {
+        "description": "Maximim tokens required for any infusions eligible collections",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "min_creation_fee": {
+        "description": "Minimum fee that is required for creating an infusion",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Coin"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "min_infusion_fee": {
+        "description": "Minimum fee that is required to be set when infusions occur",
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Coin"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "min_per_bundle": {
+        "description": "Minimum tokens required for any infusions eligible collections",
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "owner_fee": {
+        "description": "Fee from each infusion payment, if required. Goes to contract owner during any infusion. Set to 0.0 to disable.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Decimal"
+          }
+        ]
+      },
+      "wavs_public_key": {
+        "description": "Optional key wavs operators make use of, if support is enabled",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Decimal": {
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+        "type": "string"
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "create_infusion"
+        ],
+        "properties": {
+          "create_infusion": {
+            "type": "object",
+            "required": [
+              "infusions"
+            ],
+            "properties": {
+              "infusions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Infusion"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "wavs_entry_point"
+        ],
+        "properties": {
+          "wavs_entry_point": {
+            "type": "object",
+            "required": [
+              "infusions"
+            ],
+            "properties": {
+              "infusions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/WavsBundle"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "infuse"
+        ],
+        "properties": {
+          "infuse": {
+            "type": "object",
+            "required": [
+              "bundle",
+              "id"
+            ],
+            "properties": {
+              "bundle": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Bundle"
+                }
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "end_infusion"
+        ],
+        "properties": {
+          "end_infusion": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_infusion_base_uri"
+        ],
+        "properties": {
+          "update_infusion_base_uri": {
+            "type": "object",
+            "required": [
+              "base_uri",
+              "id"
+            ],
+            "properties": {
+              "base_uri": {
+                "type": "string"
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "required": [
+              "config"
+            ],
+            "properties": {
+              "config": {
+                "$ref": "#/definitions/UpdatingConfig"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_infusions_eligible_collections_or_bundle_type"
+        ],
+        "properties": {
+          "update_infusions_eligible_collections_or_bundle_type": {
+            "type": "object",
+            "required": [
+              "bundle_type",
+              "id",
+              "to_add",
+              "to_remove"
+            ],
+            "properties": {
+              "bundle_type": {
+                "$ref": "#/definitions/BundleType"
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "to_add": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/EligibleNFTCollection"
+                }
+              },
+              "to_remove": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Addr"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_infusion_mint_fee"
+        ],
+        "properties": {
+          "update_infusion_mint_fee": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "mint_fee": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Coin"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_infusion_params"
+        ],
+        "properties": {
+          "update_infusion_params": {
+            "type": "object",
+            "required": [
+              "id",
+              "params"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "params": {
+                "$ref": "#/definitions/UpdateInfusion"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "shuffle"
+        ],
+        "properties": {
+          "shuffle": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
+      "BlendNFTs": {
+        "type": "object",
+        "required": [
+          "addr",
+          "min_req",
+          "payment_substitute"
+        ],
+        "properties": {
+          "addr": {
+            "$ref": "#/definitions/Addr"
+          },
+          "min_req": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "payment_substitute": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Bundle": {
+        "type": "object",
+        "required": [
+          "nfts"
+        ],
+        "properties": {
+          "nfts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/NFT"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BundleBlend": {
+        "type": "object",
+        "required": [
+          "blend_nfts"
+        ],
+        "properties": {
+          "blend_nfts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/BlendNFTs"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "BundleType": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "all_of"
+            ],
+            "properties": {
+              "all_of": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "any_of"
+            ],
+            "properties": {
+              "any_of": {
+                "type": "object",
+                "required": [
+                  "addrs"
+                ],
+                "properties": {
+                  "addrs": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/Addr"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "any_of_blend"
+            ],
+            "properties": {
+              "any_of_blend": {
+                "type": "object",
+                "required": [
+                  "blends"
+                ],
+                "properties": {
+                  "blends": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/BundleBlend"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "BurnParams": {
+        "type": "object",
+        "required": [
+          "compatible_traits"
+        ],
+        "properties": {
+          "compatible_traits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CompatibleTraits"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CompatibleTraits": {
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Decimal": {
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+        "type": "string"
+      },
+      "EligibleNFTCollection": {
+        "type": "object",
+        "required": [
+          "addr",
+          "min_req"
+        ],
+        "properties": {
+          "addr": {
+            "description": "collection address",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              }
+            ]
+          },
+          "max_req": {
+            "description": "Optional, maximum tokens able to be infused. If not set, contract expects exact # of min_req per collection in bundle.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "min_req": {
+            "description": "Minimum tokens required to infuse",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "payment_substitute": {
+            "description": "If set, infuser can send exact amount of tokens to replace eligil",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "InfusedCollection": {
+        "type": "object",
+        "required": [
+          "base_uri",
+          "description",
+          "image",
+          "name",
+          "num_tokens",
+          "sg",
+          "symbol"
+        ],
+        "properties": {
+          "addr": {
+            "description": "exists to reuse InfusedCollection struct in contract. value is disregarded if present in new infusion creation msg.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "admin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "base_uri": {
+            "description": "ipfs base uri containing metadata and nft images. ensure ipfs:// prefix is included.",
+            "type": "string"
+          },
+          "description": {
+            "description": "infused collection description",
+            "type": "string"
+          },
+          "explicit_content": {
+            "description": "whether explicit content is present.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "external_link": {
+            "description": "optional external link.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image": {
+            "description": "cover image of infused collection.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "num_tokens": {
+            "description": "total supply.",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "royalty_info": {
+            "description": "royality params for secondary market sales.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/RoyaltyInfoResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sg": {
+            "type": "boolean"
+          },
+          "start_trading_time": {
+            "description": "time in which trading can begin of infused collection.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "symbol": {
+            "description": "symbol of infused collection",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Infusion": {
+        "type": "object",
+        "required": [
+          "collections",
+          "infused_collection",
+          "infusion_params"
+        ],
+        "properties": {
+          "collections": {
+            "description": "NFT collections eligible for a specific infusion",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/EligibleNFTCollection"
+            }
+          },
+          "description": {
+            "description": "Optional description of this infusion",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "infused_collection": {
+            "description": "Current data of the new infused collection",
+            "allOf": [
+              {
+                "$ref": "#/definitions/InfusedCollection"
+              }
+            ]
+          },
+          "infusion_params": {
+            "description": "Parameters of a specific infusion",
+            "allOf": [
+              {
+                "$ref": "#/definitions/InfusionParamState"
+              }
+            ]
+          },
+          "owner": {
+            "description": "Owner of the infusion.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment_recipient": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "InfusionParamState": {
+        "type": "object",
+        "required": [
+          "bundle_type",
+          "wavs_enabled"
+        ],
+        "properties": {
+          "bundle_type": {
+            "$ref": "#/definitions/BundleType"
+          },
+          "mint_fee": {
+            "description": "required alongside a bundle. Sent to infusion owner",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "params": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/BurnParams"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "wavs_enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NFT": {
+        "type": "object",
+        "required": [
+          "addr",
+          "token_id"
+        ],
+        "properties": {
+          "addr": {
+            "$ref": "#/definitions/Addr"
+          },
+          "token_id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoyaltyInfoResponse": {
+        "type": "object",
+        "required": [
+          "payment_address",
+          "share"
+        ],
+        "properties": {
+          "payment_address": {
+            "type": "string"
+          },
+          "share": {
+            "$ref": "#/definitions/Decimal"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      },
+      "UpdateInfusion": {
+        "type": "object",
+        "properties": {
+          "infused_collection_state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "infusion_description": {
+            "description": "Owner of the infusion. Optional description of this infusion",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment_recipient": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Addr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdatingConfig": {
+        "type": "object",
+        "properties": {
+          "code_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contract_owner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "max_bundles": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "max_infusions": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "min_creation_fee": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_infusion_fee": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_per_bundle": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "owner_fee": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "WavsBundle": {
+        "type": "object",
+        "required": [
+          "infused_ids",
+          "infuser",
+          "nft_addr"
+        ],
+        "properties": {
+          "infused_ids": {
+            "description": "nft-id's of nfts that were infused",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "infuser": {
+            "description": "Address of the account that infused the nfts",
+            "type": "string"
+          },
+          "nft_addr": {
+            "description": "Address of nft that was infused",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "returns an infusion for a given infusion owner & infusion id.",
+        "type": "object",
+        "required": [
+          "infusion"
+        ],
+        "properties": {
+          "infusion": {
+            "type": "object",
+            "required": [
+              "addr",
+              "id"
+            ],
+            "properties": {
+              "addr": {
+                "$ref": "#/definitions/Addr"
+              },
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "returns an infusion for a given infusion id.",
+        "type": "object",
+        "required": [
+          "infusion_by_id"
+        ],
+        "properties": {
+          "infusion_by_id": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "returns all infusions owned by a given address defaults to 30 entries from a given index point of the infusion map. TODO: optimize pagination",
+        "type": "object",
+        "required": [
+          "infusions"
+        ],
+        "properties": {
+          "infusions": {
+            "type": "object",
+            "required": [
+              "addr",
+              "index"
+            ],
+            "properties": {
+              "addr": {
+                "$ref": "#/definitions/Addr"
+              },
+              "index": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "infusion_genetics"
+        ],
+        "properties": {
+          "infusion_genetics": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "wavs_record"
+        ],
+        "properties": {
+          "wavs_record": {
+            "type": "object",
+            "required": [
+              "nfts"
+            ],
+            "properties": {
+              "burner": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Addr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "nfts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Config",
+      "description": "map of infusion",
+      "type": "object",
+      "required": [
+        "code_hash",
+        "code_id",
+        "contract_owner",
+        "latest_infusion_id",
+        "max_bundles",
+        "max_infusions",
+        "max_per_bundle",
+        "min_per_bundle",
+        "owner_fee"
+      ],
+      "properties": {
+        "code_hash": {
+          "description": "code hash of cw721. used for instantitate2 during infusion creation.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "code_id": {
+          "description": "cw721-base code_id",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "contract_owner": {
+          "$ref": "#/definitions/Addr"
+        },
+        "latest_infusion_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_bundles": {
+          "description": "maximum bundles allowed per infusion",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_infusions": {
+          "description": "Maximum unique infusion that can be created at once. Defaults to 2",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_per_bundle": {
+          "description": "Contract global param enforcing maximum nfts bundles can require.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_creation_fee": {
+          "description": "Minimum fee that is required for creating an infusion.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Coin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_infusion_fee": {
+          "description": "Minimum fee that is required to be set when new infusions are being created",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Coin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "min_per_bundle": {
+          "description": "Contract global param enforcing minimum nfts each collection in an infusion must require to burn. hard coded to 1.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "owner_fee": {
+          "description": "Fee required to contribute to randomness % Fee from any infusion fee set to go to contract owner. 10 == 10% , 71 == 71%",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "HexBinary": {
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "infusion": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Infusion",
+      "type": "object",
+      "required": [
+        "collections",
+        "infused_collection",
+        "infusion_params"
+      ],
+      "properties": {
+        "collections": {
+          "description": "NFT collections eligible for a specific infusion",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EligibleNFTCollection"
+          }
+        },
+        "description": {
+          "description": "Optional description of this infusion",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "infused_collection": {
+          "description": "Current data of the new infused collection",
+          "allOf": [
+            {
+              "$ref": "#/definitions/InfusedCollection"
+            }
+          ]
+        },
+        "infusion_params": {
+          "description": "Parameters of a specific infusion",
+          "allOf": [
+            {
+              "$ref": "#/definitions/InfusionParamState"
+            }
+          ]
+        },
+        "owner": {
+          "description": "Owner of the infusion.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payment_recipient": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "BlendNFTs": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req",
+            "payment_substitute"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            },
+            "min_req": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleBlend": {
+          "type": "object",
+          "required": [
+            "blend_nfts"
+          ],
+          "properties": {
+            "blend_nfts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BlendNFTs"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleType": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "all_of"
+              ],
+              "properties": {
+                "all_of": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of"
+              ],
+              "properties": {
+                "any_of": {
+                  "type": "object",
+                  "required": [
+                    "addrs"
+                  ],
+                  "properties": {
+                    "addrs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Addr"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of_blend"
+              ],
+              "properties": {
+                "any_of_blend": {
+                  "type": "object",
+                  "required": [
+                    "blends"
+                  ],
+                  "properties": {
+                    "blends": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/BundleBlend"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "BurnParams": {
+          "type": "object",
+          "required": [
+            "compatible_traits"
+          ],
+          "properties": {
+            "compatible_traits": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CompatibleTraits"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "CompatibleTraits": {
+          "type": "object",
+          "required": [
+            "a",
+            "b"
+          ],
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "EligibleNFTCollection": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req"
+          ],
+          "properties": {
+            "addr": {
+              "description": "collection address",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "max_req": {
+              "description": "Optional, maximum tokens able to be infused. If not set, contract expects exact # of min_req per collection in bundle.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_req": {
+              "description": "Minimum tokens required to infuse",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "description": "If set, infuser can send exact amount of tokens to replace eligil",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusedCollection": {
+          "type": "object",
+          "required": [
+            "base_uri",
+            "description",
+            "image",
+            "name",
+            "num_tokens",
+            "sg",
+            "symbol"
+          ],
+          "properties": {
+            "addr": {
+              "description": "exists to reuse InfusedCollection struct in contract. value is disregarded if present in new infusion creation msg.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "base_uri": {
+              "description": "ipfs base uri containing metadata and nft images. ensure ipfs:// prefix is included.",
+              "type": "string"
+            },
+            "description": {
+              "description": "infused collection description",
+              "type": "string"
+            },
+            "explicit_content": {
+              "description": "whether explicit content is present.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "external_link": {
+              "description": "optional external link.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "image": {
+              "description": "cover image of infused collection.",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "num_tokens": {
+              "description": "total supply.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "royalty_info": {
+              "description": "royality params for secondary market sales.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RoyaltyInfoResponse"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sg": {
+              "type": "boolean"
+            },
+            "start_trading_time": {
+              "description": "time in which trading can begin of infused collection.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "symbol": {
+              "description": "symbol of infused collection",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusionParamState": {
+          "type": "object",
+          "required": [
+            "bundle_type",
+            "wavs_enabled"
+          ],
+          "properties": {
+            "bundle_type": {
+              "$ref": "#/definitions/BundleType"
+            },
+            "mint_fee": {
+              "description": "required alongside a bundle. Sent to infusion owner",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "params": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/BurnParams"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wavs_enabled": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "RoyaltyInfoResponse": {
+          "type": "object",
+          "required": [
+            "payment_address",
+            "share"
+          ],
+          "properties": {
+            "payment_address": {
+              "type": "string"
+            },
+            "share": {
+              "$ref": "#/definitions/Decimal"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "infusion_by_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfusionState",
+      "type": "object",
+      "required": [
+        "collections",
+        "enabled",
+        "infused_collection",
+        "infusion_params",
+        "owner",
+        "payment_recipient"
+      ],
+      "properties": {
+        "collections": {
+          "description": "NFT collections eligible for a specific infusion",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EligibleNFTCollection"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "infused_collection": {
+          "description": "Current data of the new infused collection",
+          "allOf": [
+            {
+              "$ref": "#/definitions/InfusedCollection"
+            }
+          ]
+        },
+        "infusion_params": {
+          "description": "Parameters of a specific infusion",
+          "allOf": [
+            {
+              "$ref": "#/definitions/InfusionParamState"
+            }
+          ]
+        },
+        "owner": {
+          "$ref": "#/definitions/Addr"
+        },
+        "payment_recipient": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "BlendNFTs": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req",
+            "payment_substitute"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            },
+            "min_req": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleBlend": {
+          "type": "object",
+          "required": [
+            "blend_nfts"
+          ],
+          "properties": {
+            "blend_nfts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BlendNFTs"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleType": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "all_of"
+              ],
+              "properties": {
+                "all_of": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of"
+              ],
+              "properties": {
+                "any_of": {
+                  "type": "object",
+                  "required": [
+                    "addrs"
+                  ],
+                  "properties": {
+                    "addrs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Addr"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of_blend"
+              ],
+              "properties": {
+                "any_of_blend": {
+                  "type": "object",
+                  "required": [
+                    "blends"
+                  ],
+                  "properties": {
+                    "blends": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/BundleBlend"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "BurnParams": {
+          "type": "object",
+          "required": [
+            "compatible_traits"
+          ],
+          "properties": {
+            "compatible_traits": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CompatibleTraits"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "CompatibleTraits": {
+          "type": "object",
+          "required": [
+            "a",
+            "b"
+          ],
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "EligibleNFTCollection": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req"
+          ],
+          "properties": {
+            "addr": {
+              "description": "collection address",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "max_req": {
+              "description": "Optional, maximum tokens able to be infused. If not set, contract expects exact # of min_req per collection in bundle.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_req": {
+              "description": "Minimum tokens required to infuse",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "description": "If set, infuser can send exact amount of tokens to replace eligil",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusedCollection": {
+          "type": "object",
+          "required": [
+            "base_uri",
+            "description",
+            "image",
+            "name",
+            "num_tokens",
+            "sg",
+            "symbol"
+          ],
+          "properties": {
+            "addr": {
+              "description": "exists to reuse InfusedCollection struct in contract. value is disregarded if present in new infusion creation msg.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "base_uri": {
+              "description": "ipfs base uri containing metadata and nft images. ensure ipfs:// prefix is included.",
+              "type": "string"
+            },
+            "description": {
+              "description": "infused collection description",
+              "type": "string"
+            },
+            "explicit_content": {
+              "description": "whether explicit content is present.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "external_link": {
+              "description": "optional external link.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "image": {
+              "description": "cover image of infused collection.",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "num_tokens": {
+              "description": "total supply.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "royalty_info": {
+              "description": "royality params for secondary market sales.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RoyaltyInfoResponse"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sg": {
+              "type": "boolean"
+            },
+            "start_trading_time": {
+              "description": "time in which trading can begin of infused collection.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "symbol": {
+              "description": "symbol of infused collection",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusionParamState": {
+          "type": "object",
+          "required": [
+            "bundle_type",
+            "wavs_enabled"
+          ],
+          "properties": {
+            "bundle_type": {
+              "$ref": "#/definitions/BundleType"
+            },
+            "mint_fee": {
+              "description": "required alongside a bundle. Sent to infusion owner",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "params": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/BurnParams"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wavs_enabled": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "RoyaltyInfoResponse": {
+          "type": "object",
+          "required": [
+            "payment_address",
+            "share"
+          ],
+          "properties": {
+            "payment_address": {
+              "type": "string"
+            },
+            "share": {
+              "$ref": "#/definitions/Decimal"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "infusion_genetics": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_CompatibleTraits",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CompatibleTraits"
+      },
+      "definitions": {
+        "CompatibleTraits": {
+          "type": "object",
+          "required": [
+            "a",
+            "b"
+          ],
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "infusions": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InfusionsResponse",
+      "type": "object",
+      "required": [
+        "infusions"
+      ],
+      "properties": {
+        "infusions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/InfusionState"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "BlendNFTs": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req",
+            "payment_substitute"
+          ],
+          "properties": {
+            "addr": {
+              "$ref": "#/definitions/Addr"
+            },
+            "min_req": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleBlend": {
+          "type": "object",
+          "required": [
+            "blend_nfts"
+          ],
+          "properties": {
+            "blend_nfts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BlendNFTs"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "BundleType": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "all_of"
+              ],
+              "properties": {
+                "all_of": {
+                  "type": "object",
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of"
+              ],
+              "properties": {
+                "any_of": {
+                  "type": "object",
+                  "required": [
+                    "addrs"
+                  ],
+                  "properties": {
+                    "addrs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/Addr"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "any_of_blend"
+              ],
+              "properties": {
+                "any_of_blend": {
+                  "type": "object",
+                  "required": [
+                    "blends"
+                  ],
+                  "properties": {
+                    "blends": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/BundleBlend"
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "BurnParams": {
+          "type": "object",
+          "required": [
+            "compatible_traits"
+          ],
+          "properties": {
+            "compatible_traits": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CompatibleTraits"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "CompatibleTraits": {
+          "type": "object",
+          "required": [
+            "a",
+            "b"
+          ],
+          "properties": {
+            "a": {
+              "type": "string"
+            },
+            "b": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "EligibleNFTCollection": {
+          "type": "object",
+          "required": [
+            "addr",
+            "min_req"
+          ],
+          "properties": {
+            "addr": {
+              "description": "collection address",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "max_req": {
+              "description": "Optional, maximum tokens able to be infused. If not set, contract expects exact # of min_req per collection in bundle.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "min_req": {
+              "description": "Minimum tokens required to infuse",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_substitute": {
+              "description": "If set, infuser can send exact amount of tokens to replace eligil",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusedCollection": {
+          "type": "object",
+          "required": [
+            "base_uri",
+            "description",
+            "image",
+            "name",
+            "num_tokens",
+            "sg",
+            "symbol"
+          ],
+          "properties": {
+            "addr": {
+              "description": "exists to reuse InfusedCollection struct in contract. value is disregarded if present in new infusion creation msg.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "base_uri": {
+              "description": "ipfs base uri containing metadata and nft images. ensure ipfs:// prefix is included.",
+              "type": "string"
+            },
+            "description": {
+              "description": "infused collection description",
+              "type": "string"
+            },
+            "explicit_content": {
+              "description": "whether explicit content is present.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "external_link": {
+              "description": "optional external link.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "image": {
+              "description": "cover image of infused collection.",
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "num_tokens": {
+              "description": "total supply.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "royalty_info": {
+              "description": "royality params for secondary market sales.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/RoyaltyInfoResponse"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sg": {
+              "type": "boolean"
+            },
+            "start_trading_time": {
+              "description": "time in which trading can begin of infused collection.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "symbol": {
+              "description": "symbol of infused collection",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusionParamState": {
+          "type": "object",
+          "required": [
+            "bundle_type",
+            "wavs_enabled"
+          ],
+          "properties": {
+            "bundle_type": {
+              "$ref": "#/definitions/BundleType"
+            },
+            "mint_fee": {
+              "description": "required alongside a bundle. Sent to infusion owner",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Coin"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "params": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/BurnParams"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wavs_enabled": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        "InfusionState": {
+          "type": "object",
+          "required": [
+            "collections",
+            "enabled",
+            "infused_collection",
+            "infusion_params",
+            "owner",
+            "payment_recipient"
+          ],
+          "properties": {
+            "collections": {
+              "description": "NFT collections eligible for a specific infusion",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/EligibleNFTCollection"
+              }
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "infused_collection": {
+              "description": "Current data of the new infused collection",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/InfusedCollection"
+                }
+              ]
+            },
+            "infusion_params": {
+              "description": "Parameters of a specific infusion",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/InfusionParamState"
+                }
+              ]
+            },
+            "owner": {
+              "$ref": "#/definitions/Addr"
+            },
+            "payment_recipient": {
+              "$ref": "#/definitions/Addr"
+            }
+          },
+          "additionalProperties": false
+        },
+        "RoyaltyInfoResponse": {
+          "type": "object",
+          "required": [
+            "payment_address",
+            "share"
+          ],
+          "properties": {
+            "payment_address": {
+              "type": "string"
+            },
+            "share": {
+              "$ref": "#/definitions/Decimal"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "wavs_record": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_WavsRecordResponse",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/WavsRecordResponse"
+      },
+      "definitions": {
+        "WavsRecordResponse": {
+          "description": "An bech32 address and its burn count",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            },
+            "count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  }
+}

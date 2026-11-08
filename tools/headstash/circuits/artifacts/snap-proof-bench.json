@@ -1,0 +1,28 @@
+{
+  "dropped": "q_orchard selector and action cv/enable gates (never enabled)",
+  "floor_planner": "V1+floor-planner-v1-legacy-pdqsort",
+  "halo2": "zakura-halo2-proofs",
+  "invalid": {
+    "flipped_byte_err": "Opening",
+    "flipped_byte_secs": 0.0013755,
+    "flood_count": 8,
+    "flood_each_secs": 0.078192770875,
+    "flood_secs": 0.625542167,
+    "truncated_err": "Transcript(Error { kind: UnexpectedEof, message: \"failed to fill whole buffer\" })",
+    "truncated_secs": 0.000205416,
+    "wrong_instance_err": "ConstraintSystemFailure",
+    "wrong_instance_secs": 0.220154125
+  },
+  "k": 19,
+  "keygen_secs": 65.818037917,
+  "proof_bytes": 4800,
+  "prove_secs": 16.079525167,
+  "runtime": "native-release",
+  "scalar_mul": "glv-128",
+  "threads": 10,
+  "verify_secs": 0.297733375,
+  "wasm_snap": {
+    "measured": false,
+    "reason": "Snap SES worker is single-threaded; host-crypto is not a wasm32 guest. initThreadPool is a no-op unless the execution environment exposes SharedArrayBuffer, which snaps-execution-environments does not."
+  }
+}

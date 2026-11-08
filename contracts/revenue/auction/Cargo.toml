@@ -2,7 +2,7 @@
 name = "auction"
 version = "2.0.0"
 authors = ["apemon <apemon642002@hotmail.com>"]
-edition = "2021"
+edition = "2024"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.

@@ -1,0 +1,88 @@
+ {
+  "version": "1",
+  "collection": "monero-logo",
+  "description": "Monero XMR logo — three-layer composition: white background circle, orange upper M-wing, dark grey lower M-notch. Palette groups allow recoloring each layer independently while preserving logo legibility. Opacity controls per-layer transparency.",
+  "palette_groups": [
+    {
+      "id": "brand-primary",
+      "note": "Upper M-wing — canonical Monero orange. Entropy kept low to preserve brand recognizability; slight warm hue drift allowed.",
+      "entropy": "low",
+      "anchor": "color-primary",
+      "members": [],
+      "ranges": [
+        { "r_min": 220, "r_max": 255, "g_min": 80, "g_max": 130, "b_min": 0, "b_max": 40 }
+      ]
+    },
+    {
+      "id": "brand-secondary",
+      "note": "Lower M-notch — canonical dark grey/charcoal. Entropy tight; keeps contrast against orange and background.",
+      "entropy": "tight",
+      "anchor": "color-secondary",
+      "members": [],
+      "ranges": [
+        { "r_min": 40, "r_max": 90, "g_min": 40, "g_max": 90, "b_min": 40, "b_max": 90 }
+      ]
+    },
+    {
+      "id": "brand-bg",
+      "note": "Background circle — canonical white. High entropy allows dark or tinted background variants for badge/card contexts.",
+      "entropy": "high",
+      "anchor": "color-bg",
+      "members": [],
+      "ranges": [
+        { "r_min": 180, "r_max": 255, "g_min": 180, "g_max": 255, "b_min": 180, "b_max": 255 }
+      ]
+    }
+  ],
+  "motion_groups": [],
+  "vars": [
+    {
+      "name": "color-bg",
+      "note": "Background circle fill. Canonical #ffffff. High entropy allows dark/tinted variants.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 180, "r_max": 255, "g_min": 180, "g_max": 255, "b_min": 180, "b_max": 255 }
+        ]
+      }
+    },
+    {
+      "name": "opacity-bg",
+      "note": "Background circle opacity. Default 1.0; lower for ghost/overlay badge variants.",
+      "kind": {
+        "range": { "min": "0.80", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "color-primary",
+      "note": "Upper M-wing fill. Canonical Monero orange #f26822. Low entropy — warm orange band.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 220, "r_max": 255, "g_min": 80, "g_max": 130, "b_min": 0, "b_max": 40 }
+        ]
+      }
+    },
+    {
+      "name": "opacity-primary",
+      "note": "Upper M-wing opacity. Default 1.0.",
+      "kind": {
+        "range": { "min": "0.85", "max": "1.0", "precision": 2 }
+      }
+    },
+    {
+      "name": "color-secondary",
+      "note": "Lower M-notch fill. Canonical dark grey #4d4d4d. Tight entropy — near-neutral dark.",
+      "kind": {
+        "rgb_styled": [
+          { "r_min": 40, "r_max": 90, "g_min": 40, "g_max": 90, "b_min": 40, "b_max": 90 }
+        ]
+      }
+    },
+    {
+      "name": "opacity-secondary",
+      "note": "Lower M-notch opacity. Default 1.0.",
+      "kind": {
+        "range": { "min": "0.85", "max": "1.0", "precision": 2 }
+      }
+    }
+  ]
+}

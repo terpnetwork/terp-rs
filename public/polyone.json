@@ -1,0 +1,231 @@
+{
+  "meta": {
+    "chain_id": "juno-1",
+    "source": "DA0-DA0/dao-dao-ui packages/utils/constants/polytone.json (juno-1 slice)",
+    "queried_at": "2026-09-07",
+    "lcd": "https://juno-api.polkachu.com",
+    "rpc": "https://juno-rpc.polkachu.com",
+    "query": {
+      "contract_info": "/cosmwasm/wasm/v1/contract/{address}",
+      "code_info": "/cosmwasm/wasm/v1/code/{code_id}",
+      "contract_history": "/cosmwasm/wasm/v1/contract/{address}/history"
+    },
+    "note": "There is no morocco-1 / terp entry. Terp→Juno needs a new Juno voice instantiate of live_daodao.voice with proxy_code_id live_daodao.proxy; do not reuse another chain's voice.",
+    "wiki_2023_06_21": {
+      "repo": "DA0-DA0/dao-dao (wiki)",
+      "commit": "042151f5a95f31b2371ed8e4e8051d94f4528c12",
+      "date": "2023-06-21",
+      "uploader": "juno16mrjtqffn3awme2eczhlpwzj7mnatkeluvhj6c",
+      "codes": {
+        "listener": 3174,
+        "note": 3175,
+        "proxy": 3176,
+        "tester": 3177,
+        "voice": 3178
+      }
+    },
+    "code_ids": {
+      "wiki_2023_06_21": {
+        "listener": 3174,
+        "note": 3175,
+        "proxy": 3176,
+        "tester": 3177,
+        "voice": 3178
+      },
+      "live_daodao": {
+        "listener": 3319,
+        "note": 3320,
+        "proxy": 3321,
+        "voice": 3322,
+        "uploader": "juno1559zgk3mxm00qtr0zu2x5n4rh5vw704qtj3p6a"
+      },
+      "bytecode_sha256": {
+        "listener": "7E4F66E87570D887A5FF8B2B1DCB5C5E254ABEADEF11A9F1ED517D90FA015481",
+        "note": "6284CFAD75227C84AE407A57072BD7C3A599B31DD6C67D0A5E0A72FA9447A33F",
+        "proxy": "5094551145BCD256538775A0611CE9E88F8D7A182A06F082F901FFED9184BB5A",
+        "tester": "C6B56D38CFFA392C8B58900C28B7AA5A7EC2400BEA879E479892CD5DAAD74532",
+        "voice": "7AE233F2F3A39D2D39828CA47E981A38A073435551646F8F6320C0FBB23E8C96"
+      },
+      "same_bytecode": "live_daodao 3319/3320/3321/3322 are re-uploads of wiki 3174/3175/3176/3178. Same data_hash. Tester 3177 was not re-uploaded in that batch. All live dao-dao polytone instances on juno-1 use 3319-3322, not 3174-3178."
+    }
+  },
+  "juno-1": {
+    "Oraichain": {
+      "listener": "juno1r2hez8nr6yqcxcadpyp6ckjsapn0dxkhgf50mspvez74fhwq4ymqfl776u",
+      "listener_code_id": 3319,
+      "localChannel": "channel-529",
+      "localConnection": "connection-521",
+      "note": "juno1slr28gq9acpjj2dqt90svs6dwlmaev77uupg9fysy6200vkssjfsca266k",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-229",
+      "remoteConnection": "connection-150",
+      "voice": "orai1chmwuwq4akxcpm0dv2w5rc5qr0d9c7ufpwacrzn7uheyd5c2wxvsff4vsv"
+    },
+    "archway-1": {
+      "listener": "juno1j8hac83mnjtww379wkgffpvqvl3grtyrkmsznav6v0ktyrhfl77seu9mah",
+      "listener_code_id": 3319,
+      "localChannel": "channel-413",
+      "localConnection": "connection-379",
+      "note": "juno129y879p7fc7lwktj5c72cqrxyl6n9t4e3a9knr5mwjfc5algft0sw6ep29",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-45",
+      "remoteConnection": "connection-19",
+      "voice": "archway16v6tzjhgt5v5mlfmh5x269vz5gc0t09flgzextspnkym6cc79m0qy0z40s"
+    },
+    "bitsong-2b": {
+      "listener": "juno1qypq6yjn4nhrnmmskawnx2rayfchu2nfwlslg2ax68a9883sqmwq5zmq22",
+      "listener_code_id": 3319,
+      "localChannel": "channel-568",
+      "localConnection": "connection-26",
+      "note": "juno184r596nqsl3f0t46muruscv7zjc5edxt5a3xlxwvww6smfkjjatqasj6lx",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-34",
+      "remoteConnection": "connection-9",
+      "voice": "bitsong1xn9ukrng6pfnkf76rvgsf2c4zkpydjpt6ue2jh6kpea6cnqekkesj662n5"
+    },
+    "cosmoshub-4": {
+      "listener": "juno1gjt9fu3y59dch546vzrktywgmuekyznjc6y7k6v9qdrska08dkss2vdfes",
+      "listener_code_id": 3319,
+      "localChannel": "channel-603",
+      "localConnection": "connection-2",
+      "note": "juno1hwuzgtg682yelk75yvxv8vfqunqvvv5ztwytvvvtenram6rccffs4gkdsg",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-994",
+      "remoteConnection": "connection-372",
+      "voice": "cosmos1xz4cya4qm2ws6nzperhvc40wdjcq4872fl6d3j2s4cytyx8j80eq0zurq9"
+    },
+    "kaiyo-1": {
+      "listener": "juno15mf52u00eeepjtxwr7hgy52la7enymwx55285tsvcfwera8lq6ls7sfss5",
+      "listener_code_id": 3319,
+      "localChannel": "channel-474",
+      "localConnection": "connection-140",
+      "note": "juno1z0fepsfeeew78uwespyneswt5q9aqntj55xdwdasefxpu7zjed2qa6t582",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-129",
+      "remoteConnection": "connection-1",
+      "voice": "kujira13nqh8m3394cpm62h8wm0uagqux37zaxs30e6e2zgg3acdx5yr5aq08ezlr"
+    },
+    "migaloo-1": {
+      "listener": "juno1md8sgkt7pjlc92lztlvxwft3eh4lqr98lhf07zftaqfzuxne47rq3adtf3",
+      "listener_code_id": 3319,
+      "localChannel": "channel-457",
+      "localConnection": "connection-282",
+      "note": "juno15mtjtjuxfrr6ez4a2yqfpsa6n86xerxuyal70n5vzdppgjtutyzqaahmzk",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-63",
+      "remoteConnection": "connection-1",
+      "voice": "migaloo19dfxncujs33vtw2r5jscm7z7xt2lj7de8ar84z8c6h2l8hkysezq9n2shr"
+    },
+    "neutron-1": {
+      "listener": "juno1ave7447jy6kt5nsaxljdcujhx2mmn2kcfjjda3fp7yy5qewnf5zssgch2l",
+      "listener_code_id": 3319,
+      "localChannel": "channel-620",
+      "localConnection": "connection-530",
+      "note": "juno1yt5kcplze0sark8f55fklk70uay3863t5q3j3a8kgvs3rlmjya9qys0d2y",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-5241",
+      "remoteConnection": "connection-95",
+      "voice": "neutron15c0d3k8nf5t82zzkl8l7he3smx033hsr9dvzjeeuj7e8n46rqy5se0pn3e"
+    },
+    "omniflixhub-1": {
+      "listener": "juno1ts88k8s6he69uew3y89pg7l9e3zjqplctj4nwg6jw40d9le3r4esvp42s9",
+      "listener_code_id": 3319,
+      "localChannel": "channel-566",
+      "localConnection": "connection-104",
+      "note": "juno128ace0g69ghvgw0quxptxmeg8kjex6mrw5fguulssllge6qnca6sjykzsw",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-41",
+      "remoteConnection": "connection-27",
+      "voice": "omniflix18cszlvm6pze0x9sz32qnjq4vtd45xehqs8dq7cwy8yhq35wfnn3q3wy4uv"
+    },
+    "osmosis-1": {
+      "listener": "juno1f2676a53wxnnp05ezch69hwp5lpxug5qm07lyeywlf57y9ghw46qylrshd",
+      "listener_code_id": 3319,
+      "localChannel": "channel-288",
+      "localConnection": "connection-0",
+      "note": "juno1ads7gcpje0y5jxhtn3ntsqs8kg3ahch9u953jk6v0njq4l39m3us5sxw68",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-1664",
+      "remoteConnection": "connection-1142",
+      "voice": "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs"
+    },
+    "phoenix-1": {
+      "listener": "juno1jy0nct4jkmhsfua2fmyna5j9kr80xgytqpgdpzc95pul3l8gcw7q4phsv8",
+      "listener_code_id": 3319,
+      "localChannel": "channel-456",
+      "localConnection": "connection-128",
+      "note": "juno1hhfzyeytvfnunxast867qm36rnsnuugdl7w6vgdaj96r6cvqh6pq6ucxw7",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-319",
+      "remoteConnection": "connection-6",
+      "voice": "terra1wkdcnhc9h2rm4vjg677t742u6n6pc72cxx2d8pk4qqsyd5ywzc2qvyckyy"
+    },
+    "stargaze-1": {
+      "listener": "juno1w9q8dgfl0n59gpuagn2r8j89w6y5ad4z8yvct096zawksaevx2nqzw3x9q",
+      "listener_code_id": 3319,
+      "localChannel": "channel-305",
+      "localConnection": "connection-30",
+      "note": "juno1vupyxq9q2mmg5jjcd4cl0ujav8a3xn0a9ahyhtmj0zjaje2gfejsyvyf3z",
+      "note_code_id": 3320,
+      "remoteChannel": "channel-201",
+      "remoteConnection": "connection-11",
+      "voice": "stars1g9u4zmjj3xmu2me3vq07fqedqp7t0d9xjp3tqff9r2awwc2k8wvq7d39he"
+    }
+  },
+  "juno_inbound_voices": {
+    "Oraichain": {
+      "voice": "juno1r9uz5a35ru3tpsjktd3a7kgj3afmrq993trkpmmxxlxwmtethc0s6s7v2y",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_Oraichain"
+    },
+    "bitsong-2b": {
+      "voice": "juno1czu3wfaj2a06d392a4jkhvvely6pcrxw397ht63pxamu98gv06zqmq85xz",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_bitsong-2b"
+    },
+    "cosmoshub-4": {
+      "voice": "juno13w4mgqg5qxy2x6kt4ke0ednuga0ja7duvnd3tnku4390udv9tnyqdp5mus",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_cosmoshub-4"
+    },
+    "kaiyo-1": {
+      "voice": "juno1vv7s07lcv2de64nphg255y7vsreasg6k89vq48gqf754wpsc5w0qmwupeu",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone:voice"
+    },
+    "migaloo-1": {
+      "voice": "juno1j4uvv0r8t4mc2x0s6nrua9um2tkue0efwx8553wxja9ecxj73z4qjqjwm0",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_migaloo-1"
+    },
+    "neutron-1": {
+      "voice": "juno1c9hx3q7sd2d0xgknc52ft6qsqxemkuxh3nt8d4rmdtdua25x5h0sdd2zm5",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_neutron-1"
+    },
+    "osmosis-1": {
+      "voice": "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_osmosis-1"
+    },
+    "phoenix-1": {
+      "voice": "juno1ct0klhzska7h2k74m0pjlyr0u20mm8d3h4antq5fqeqfvavhc2gqcgw847",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_phoenix-1"
+    },
+    "stargaze-1": {
+      "voice": "juno13yxra87ltv7gva3z35ktxt0nx3n5tp8ngtkj2p2zxj0qg6n906fs00wgvf",
+      "voice_code_id": 3322,
+      "proxy_code_id": 3321,
+      "label": "polytone_voice_from_stargaze-1"
+    }
+  }
+}

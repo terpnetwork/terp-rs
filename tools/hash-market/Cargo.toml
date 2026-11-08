@@ -1,8 +1,9 @@
 [package]
 name = "hash-market"
 version = "0.1.0"
-edition = "2021"
-
+edition = "2024"
+# bins are declared below; src/bin/*_host.rs are include!d bodies, not bins
+autobins = false
 
 [[bin]]
 name = "hash-market-relay"
@@ -19,71 +20,170 @@ name = "hash-market-client"
 path = "src/bin/client.rs"
 required-features = ["client"]
 
+[[bin]]
+name = "prepare-authz"
+path = "src/bin/prepare-authz.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "onboard-local-workflow"
+path = "src/bin/local-workflow.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "onboard-runtime"
+path = "src/bin/onboard-runtime.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "frost-inbox"
+path = "src/bin/frost-inbox.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "itl-consume-verify"
+path = "src/bin/itl-consume-verify.rs"
+required-features = ["onboard"]
+
+[[bin]]
+name = "headstash-register-relay"
+path = "src/bin/headstash-register-relay.rs"
+required-features = ["server", "pallas"]
+
 [features]
 # Default: Nostr + Blossom/BUD + Merkle trees (NFT whitelist host).
 # Vote extensions are OFF by default — enable with --features ve for validator sidecar.
+# `pir` is NOT default: public-leaf XOR PIR is opt-in and does not replace NIP-BUD or Nostr.
 default = ["nostr", "blossom"]
-custody  = [ "k256", "ed25519-dalek", "rand_core", "async-trait", "tokio", ]
+custody  = ["k256", "ed25519-dalek", "rand_core06", "async-trait", "tokio"]
 # ABCI++ vote extension sidecar (optional; not required for mint/whitelist hosting)
 ve       = ["custody", "sha2", "client", "server"]
-eth      = [ "reqwest" ]
-pallas   = [ "tiny-keccak"]
-transport = [ "tokio/rt", "tokio/sync", "tokio/net", "tokio/io-util", "tokio/time", "tokio/signal", "tokio/macros"]
+eth      = ["reqwest"]
+pallas   = ["tiny-keccak"]
+transport = [
+    "tokio/rt",
+    "tokio/sync",
+    "tokio/net",
+    "tokio/io-util",
+    "tokio/time",
+    "tokio/signal",
+    "tokio/macros",
+]
 # HTTP server core: BUD blobs + merkle trees + headstash (no VE dependency)
-server   = ["transport", "custody", "axum", "tower", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "reqwest"]
-client   = ["eth", "pallas", "reqwest", "clap", "tracing", "tracing-subscriber", "toml", "tokio/full", "sha2", "async-trait"]
-nostr    = ["client", "custody", "tokio/full", "tokio-tungstenite", "futures-util", "sha2", "async-trait"]
+# Onboard feegrant plane is part of the merchant server (not a second process).
+onboard  = [
+    "k256",
+    "sha2",
+    "dep:sha3",
+    "dep:ff",
+    "dep:zakura-pasta-curves",
+    "dep:zakura-halo2-proofs",
+    "dep:rand010",
+]
+# re-zerve deposit transcript (local hash, not Zcash inclusion). Opt-in; not default.
+re-zerve = ["sha2"]
+server   = [
+    "transport",
+    "custody",
+    "axum",
+    "tower",
+    "clap",
+    "tracing",
+    "tracing-subscriber",
+    "toml",
+    "tokio/full",
+    "sha2",
+    "reqwest",
+    "onboard",
+]
+client   = [
+    "eth",
+    "pallas",
+    "reqwest",
+    "clap",
+    "tracing",
+    "tracing-subscriber",
+    "toml",
+    "tokio/full",
+    "sha2",
+    "async-trait",
+]
+nostr    = [
+    "client",
+    "custody",
+    "tokio/full",
+    "tokio-tungstenite",
+    "futures-util",
+    "sha2",
+    "async-trait",
+]
 blossom  = ["server", "clap"]
 commonware = ["server"]
 # msg module uses sha2 for transport_merkle_root — always compiled in lib.rs
 msg = ["sha2"]
 # Convenience: full validator sidecar = server + ve + blossom + nostr
-full-sidecar = ["server", "ve", "blossom", "nostr", "client"]
+full-sidecar = ["server", "ve", "blossom", "nostr", "client", "privval"]
+# FROST coordinator in this sidecar (kms-shard). Noise XX for privval.
+frost = ["custody", "dep:kms-shard", "dep:frost-ed25519"]
+noise = ["transport", "dep:snow"]
+privval = ["frost", "noise", "dep:prost", "dep:prost-types"]
+# Public-leaf XOR PIR over community notes.json (merkle path + blob).
+# Build: cargo build -p hash-market --features pir
+# Leaves NIP-BUD/blossom and Nostr in place. Does not broadcast.
+pir = ["server", "dep:ff", "dep:zakura-pasta-curves", "dep:zakura-halo2-gadgets"]
 
-[dependencies]
-anyhow = "1"
-anybuf = { version = "0.5" }
-hex = "0.4"
-thiserror = "1"
+# Host-only. `cargo check --target wasm32-unknown-unknown` compiles an empty
+# lib and bin stubs; these crates are not linked into the wasm graph.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anybuf = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true, optional = true }
+axum = { workspace = true, default-features = true, optional = true }
+base64 = { workspace = true }
+bech32 = { workspace = true }
+blake3 = { workspace = true }
+clap = { workspace = true, features = ["derive"], optional = true }
+cosmwasm-std = { workspace = true }
+cw721-nips = { workspace = true }
+ed25519-dalek = { workspace = true, features = ["rand_core"], optional = true }
+ff = { workspace = true, optional = true }
+frost-ed25519 = { workspace = true, features = ["std", "serialization"], optional = true }
+futures-util = { workspace = true, features = ["sink", "std"], optional = true }
+hex = { workspace = true }
+hmac = { workspace = true }
+k256 = { workspace = true, default-features = true, features = ["ecdsa", "sha256"], optional = true }
+kms-shard = { workspace = true, optional = true }
+prost = { workspace = true, optional = true }
+prost-types = { workspace = true, optional = true }
+rand010 = { workspace = true, features = ["sys_rng", "thread_rng"], optional = true }
+rand_core06 = { workspace = true, features = ["getrandom"], optional = true }
+reqwest = { workspace = true, features = ["json", "multipart", "rustls-tls"], optional = true }
+ripemd = { workspace = true }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+sha2 = { workspace = true, optional = true }
+sha3 = { workspace = true, optional = true }
+snow = { workspace = true, optional = true }
+thiserror = { workspace = true }
+tiny-keccak = { workspace = true, features = ["keccak"], optional = true }
+tokio = { workspace = true, features = ["net", "io-util"], optional = true }
+tokio-tungstenite = { workspace = true, default-features = true, features = ["connect", "native-tls"], optional = true }
+toml = { workspace = true, optional = true }
+tower = { workspace = true, features = ["util"], optional = true }
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"], optional = true }
+zakura-halo2-gadgets = { workspace = true, optional = true }
+zakura-halo2-proofs = { workspace = true, features = ["batch"], optional = true }
+zakura-pasta-curves = { workspace = true, features = ["default"], optional = true }
 
-# commonware integration (optional - enable commonware feature to use)
-# commonware-abci = { path = "../../commonware-abci", optional = true }
-# commonware-storage = { path = "../../monorepo/storage", default-features = false, optional = true }
+[[example]]
+name = "debug_router"
+required-features = ["server", "ve", "blossom", "client", "nostr"]
 
-# custody
-k256 = { version = "0.13", features = ["ecdsa", "sha256"], optional = true }
-ed25519-dalek = { version = "2", features = ["rand_core"], optional = true }
-rand_core = { version = "0.6", features = ["getrandom"], optional = true }
-async-trait = { version = "0.1", optional = true }
+[[example]]
+name = "debug_path"
+required-features = ["server", "ve", "blossom", "client", "nostr"]
 
-# sha2 — required by msg (transport merkle root), ve (domain_hash), store (blob hashing)
-# Always enabled via default feature chain: default → nostr → sha2
-sha2 = { version = "0.10", optional = true }
-
-# eth
-reqwest = { version = "0.12", features = ["json", "multipart", "rustls-tls"], default-features = false, optional = true }
-serde = { version = "1", features = ["derive"]  }
-serde_json = { version = "1" }
-# Service JWT (plane HS256) for distribution ingest — pure open tooling
-hmac = "0.12"
-base64 = "0.22"
-
-# pallas
-tiny-keccak = { version = "2", features = ["keccak"], optional = true }
-
-# transport + server
-tokio = { version = "1", features = ["net", "io-util"], optional = true }
-axum = { version = "0.7", optional = true }
-# tower util (ServiceExt::oneshot) for L1 note HTTP tests; pulled by axum, listed for direct use
-tower = { version = "0.5", optional = true, default-features = false, features = ["util"] }
-clap = { version = "4", features = ["derive"], optional = true }
-tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
-toml = { version = "0.8", optional = true }
-
-# nostr
-tokio-tungstenite = { version = "0.24", features = ["native-tls"], optional = true }
-futures-util = { version = "0.3", optional = true, default-features = false, features = ["sink", "std"] }
-cw721-nips = { path = "../../crates/nips" }
-
-blake3 = "1"
+# `ed25519-v2` gates LocalEd25519, which needs ed25519-dalek 2.x (workspace pins 1.x).
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("ed25519-v2"))'] }

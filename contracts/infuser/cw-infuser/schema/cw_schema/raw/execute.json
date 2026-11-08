@@ -1,0 +1,570 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_infuser_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "create_infusion": {
+          "description": "Register a new infusion recipe and its collection.",
+          "type": "named",
+          "properties": {
+            "infusions": {
+              "value": 33
+            }
+          }
+        },
+        "end_infusion": {
+          "description": "Close a recipe so no further infuses succeed.",
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 7
+            }
+          }
+        },
+        "infuse": {
+          "description": "Submit an eligible NFT bundle and receive the infused token.",
+          "type": "named",
+          "properties": {
+            "bundle": {
+              "value": 40
+            },
+            "id": {
+              "value": 7
+            }
+          }
+        },
+        "shuffle": {
+          "description": "Randomize remaining order when the recipe uses shuffle.",
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 7
+            }
+          }
+        },
+        "update_config": {
+          "description": "Global infuser config (contract owner).",
+          "type": "named",
+          "properties": {
+            "config": {
+              "value": 41
+            }
+          }
+        },
+        "update_infusion_base_uri": {
+          "description": "Set metadata base URI for an infusion.",
+          "type": "named",
+          "properties": {
+            "base_uri": {
+              "value": 2
+            },
+            "id": {
+              "value": 7
+            }
+          }
+        },
+        "update_infusion_mint_fee": {
+          "description": "Fee charged per infuse.",
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 7
+            },
+            "mint_fee": {
+              "value": 11
+            }
+          }
+        },
+        "update_infusion_params": {
+          "description": "Other recipe parameters.",
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 7
+            },
+            "params": {
+              "value": 43
+            }
+          }
+        },
+        "update_infusions_eligible_collections_or_bundle_type": {
+          "description": "Change which collections or bundle shape a recipe accepts.",
+          "type": "named",
+          "properties": {
+            "bundle_type": {
+              "value": 23
+            },
+            "id": {
+              "value": 7
+            },
+            "to_add": {
+              "value": 12
+            },
+            "to_remove": {
+              "value": 24
+            }
+          }
+        },
+        "wavs_entry_point": {
+          "description": "Oracle/WAVS callback when the infusion is driven off-chain.",
+          "type": "named",
+          "properties": {
+            "infusions": {
+              "value": 36
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "cw_infusions_state_Infusion",
+      "type": "struct",
+      "properties": {
+        "collections": {
+          "description": "NFT collections eligible for a specific infusion",
+          "value": 12
+        },
+        "description": {
+          "description": "Optional description of this infusion",
+          "value": 3
+        },
+        "infused_collection": {
+          "description": "Current data of the new infused collection",
+          "value": 13
+        },
+        "infusion_params": {
+          "description": "Parameters of a specific infusion",
+          "value": 22
+        },
+        "owner": {
+          "description": "Owner of the infusion.",
+          "value": 5
+        },
+        "payment_recipient": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "cw_infusions_state_EligibleNFTCollection",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "description": "collection address",
+          "value": 4
+        },
+        "max_req": {
+          "description": "Optional, maximum tokens able to be infused.\nIf not set, contract expects exact # of min_req per collection in bundle.",
+          "value": 8
+        },
+        "min_req": {
+          "description": "Minimum tokens required to infuse",
+          "value": 7
+        },
+        "payment_substitute": {
+          "description": "If set, infuser can send exact amount of tokens to replace eligil",
+          "value": 11
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 7
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 10
+        },
+        "denom": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::coin::Coin>",
+      "type": "optional",
+      "inner": 9
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::state::EligibleNFTCollection>",
+      "type": "array",
+      "items": 6
+    },
+    {
+      "name": "cw_infusions_nfts_InfusedCollection",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "description": "exists to reuse InfusedCollection struct in contract.\nvalue is disregarded if present in new infusion creation msg.",
+          "value": 3
+        },
+        "admin": {
+          "value": 3
+        },
+        "base_uri": {
+          "description": "ipfs base uri containing metadata and nft images. ensure ipfs:// prefix is included.",
+          "value": 2
+        },
+        "description": {
+          "description": "infused collection description",
+          "value": 2
+        },
+        "explicit_content": {
+          "description": "whether explicit content is present.",
+          "value": 21
+        },
+        "external_link": {
+          "description": "optional external link.",
+          "value": 3
+        },
+        "image": {
+          "description": "cover image of infused collection.",
+          "value": 2
+        },
+        "name": {
+          "value": 2
+        },
+        "num_tokens": {
+          "description": "total supply.",
+          "value": 15
+        },
+        "royalty_info": {
+          "description": "royality params for secondary market sales.",
+          "value": 18
+        },
+        "sg": {
+          "value": 14
+        },
+        "start_trading_time": {
+          "description": "time in which trading can begin of infused collection.",
+          "value": 20
+        },
+        "symbol": {
+          "description": "symbol of infused collection",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "cw_infusions_nfts_RoyaltyInfoResponse",
+      "type": "struct",
+      "properties": {
+        "payment_address": {
+          "value": 2
+        },
+        "share": {
+          "value": 17
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_decimal_Decimal",
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "decimal",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<cw_infusions::nfts::RoyaltyInfoResponse>",
+      "type": "optional",
+      "inner": 16
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::timestamp::Timestamp>",
+      "type": "optional",
+      "inner": 19
+    },
+    {
+      "name": "core::option::Option<bool>",
+      "type": "optional",
+      "inner": 14
+    },
+    {
+      "name": "cw_infusions_state_InfusionParamState",
+      "type": "struct",
+      "properties": {
+        "bundle_type": {
+          "value": 23
+        },
+        "mint_fee": {
+          "description": "required alongside a bundle. Sent to infusion owner",
+          "value": 11
+        },
+        "params": {
+          "value": 32
+        },
+        "wavs_enabled": {
+          "value": 14
+        }
+      }
+    },
+    {
+      "name": "cw_infusions_bundles_BundleType",
+      "type": "enum",
+      "cases": {
+        "all_of": {
+          "type": "named",
+          "properties": {}
+        },
+        "any_of": {
+          "type": "named",
+          "properties": {
+            "addrs": {
+              "value": 24
+            }
+          }
+        },
+        "any_of_blend": {
+          "type": "named",
+          "properties": {
+            "blends": {
+              "value": 28
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::addresses::Addr>",
+      "type": "array",
+      "items": 4
+    },
+    {
+      "name": "cw_infusions_bundles_BundleBlend",
+      "type": "struct",
+      "properties": {
+        "blend_nfts": {
+          "value": 27
+        }
+      }
+    },
+    {
+      "name": "cw_infusions_bundles_BlendNFTs",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "value": 4
+        },
+        "min_req": {
+          "value": 7
+        },
+        "payment_substitute": {
+          "value": 14
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::bundles::BlendNFTs>",
+      "type": "array",
+      "items": 26
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::bundles::BundleBlend>",
+      "type": "array",
+      "items": 25
+    },
+    {
+      "name": "cw_infusions_BurnParams",
+      "type": "struct",
+      "properties": {
+        "compatible_traits": {
+          "value": 31
+        }
+      }
+    },
+    {
+      "name": "cw_infusions_CompatibleTraits",
+      "type": "struct",
+      "properties": {
+        "a": {
+          "value": 2
+        },
+        "b": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::CompatibleTraits>",
+      "type": "array",
+      "items": 30
+    },
+    {
+      "name": "core::option::Option<cw_infusions::BurnParams>",
+      "type": "optional",
+      "inner": 29
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::state::Infusion>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "cw_infusions_wavs_WavsBundle",
+      "type": "struct",
+      "properties": {
+        "infused_ids": {
+          "description": "nft-id's of nfts that were infused",
+          "value": 35
+        },
+        "infuser": {
+          "description": "Address of the account that infused the nfts",
+          "value": 2
+        },
+        "nft_addr": {
+          "description": "Address of nft that was infused",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 2
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::wavs::WavsBundle>",
+      "type": "array",
+      "items": 34
+    },
+    {
+      "name": "cw_infusions_bundles_Bundle",
+      "type": "struct",
+      "properties": {
+        "nfts": {
+          "value": 39
+        }
+      }
+    },
+    {
+      "name": "cw_infusions_nfts_NFT",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "value": 4
+        },
+        "token_id": {
+          "value": 7
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::nfts::NFT>",
+      "type": "array",
+      "items": 38
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::bundles::Bundle>",
+      "type": "array",
+      "items": 37
+    },
+    {
+      "name": "cw_infuser_state_UpdatingConfig",
+      "type": "struct",
+      "properties": {
+        "code_id": {
+          "value": 8
+        },
+        "contract_owner": {
+          "value": 3
+        },
+        "max_bundles": {
+          "value": 8
+        },
+        "max_infusions": {
+          "value": 8
+        },
+        "min_creation_fee": {
+          "value": 11
+        },
+        "min_infusion_fee": {
+          "value": 11
+        },
+        "min_per_bundle": {
+          "value": 8
+        },
+        "owner_fee": {
+          "value": 42
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::math::decimal::Decimal>",
+      "type": "optional",
+      "inner": 17
+    },
+    {
+      "name": "cw_infusions_state_UpdateInfusion",
+      "type": "struct",
+      "properties": {
+        "infused_collection_state": {
+          "value": 3
+        },
+        "infusion_description": {
+          "description": "Owner of the infusion.\nOptional description of this infusion",
+          "value": 3
+        },
+        "owner": {
+          "value": 5
+        },
+        "payment_recipient": {
+          "value": 5
+        }
+      }
+    }
+  ]
+}

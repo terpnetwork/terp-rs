@@ -2,12 +2,14 @@ use ff::PrimeField;
 use group::ff::Field;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    plonk::{self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector},
+    plonk::{
+        self, Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector,
+        SingleVerifier,
+    },
     poly::Rotation,
-    transcript::Blake2bWrite,
+    transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
-use rand::rngs::OsRng;
 use std::marker::PhantomData;
 use wasm_bindgen::prelude::*;
 
@@ -34,13 +36,20 @@ struct Number<F: PrimeField>(AssignedCell<F, F>);
 impl<F: Field> Chip<F> for FieldChip<F> {
     type Config = FieldConfig;
     type Loaded = ();
-    fn config(&self) -> &Self::Config { &self.config }
-    fn loaded(&self) -> &Self::Loaded { &() }
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn loaded(&self) -> &Self::Loaded {
+        &()
+    }
 }
 
 impl<F: PrimeField> FieldChip<F> {
     fn construct(config: FieldConfig) -> Self {
-        Self { config, _marker: PhantomData }
+        Self {
+            config,
+            _marker: PhantomData,
+        }
     }
 
     fn configure(
@@ -62,23 +71,44 @@ impl<F: PrimeField> FieldChip<F> {
             let s_mul = meta.query_selector(s_mul);
             vec![s_mul * (lhs * rhs - out)]
         });
-        FieldConfig { advice, instance, s_mul }
+        FieldConfig {
+            advice,
+            instance,
+            s_mul,
+        }
     }
 
-    fn load_private(&self, mut layouter: impl Layouter<F>, value: Value<F>) -> Result<Number<F>, Error> {
+    fn load_private(
+        &self,
+        mut layouter: impl Layouter<F>,
+        value: Value<F>,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "load private",
             |mut region| {
-                region.assign_advice(|| "private input", self.config.advice[0], 0, || value).map(Number)
+                region
+                    .assign_advice(|| "private input", self.config.advice[0], 0, || value)
+                    .map(Number)
             },
         )
     }
 
-    fn load_constant(&self, mut layouter: impl Layouter<F>, constant: F) -> Result<Number<F>, Error> {
+    fn load_constant(
+        &self,
+        mut layouter: impl Layouter<F>,
+        constant: F,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "load constant",
             |mut region| {
-                region.assign_advice_from_constant(|| "constant value", self.config.advice[0], 0, constant).map(Number)
+                region
+                    .assign_advice_from_constant(
+                        || "constant value",
+                        self.config.advice[0],
+                        0,
+                        constant,
+                    )
+                    .map(Number)
             },
         )
     }
@@ -87,12 +117,25 @@ impl<F: PrimeField> FieldChip<F> {
         layouter.assign_region(
             || "load public",
             |mut region| {
-                region.assign_advice_from_instance(|| "public input", self.config.instance, row, self.config.advice[0], 0).map(Number)
+                region
+                    .assign_advice_from_instance(
+                        || "public input",
+                        self.config.instance,
+                        row,
+                        self.config.advice[0],
+                        0,
+                    )
+                    .map(Number)
             },
         )
     }
 
-    fn mul(&self, mut layouter: impl Layouter<F>, a: Number<F>, b: Number<F>) -> Result<Number<F>, Error> {
+    fn mul(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: Number<F>,
+        b: Number<F>,
+    ) -> Result<Number<F>, Error> {
         layouter.assign_region(
             || "mul",
             |mut region: Region<'_, F>| {
@@ -100,12 +143,19 @@ impl<F: PrimeField> FieldChip<F> {
                 a.0.copy_advice(|| "lhs", &mut region, self.config.advice[0], 0)?;
                 b.0.copy_advice(|| "rhs", &mut region, self.config.advice[1], 0)?;
                 let value = a.0.value().copied() * b.0.value();
-                region.assign_advice(|| "lhs * rhs", self.config.advice[0], 1, || value).map(Number)
+                region
+                    .assign_advice(|| "lhs * rhs", self.config.advice[0], 1, || value)
+                    .map(Number)
             },
         )
     }
 
-    fn constrain_equal(&self, mut layouter: impl Layouter<F>, a: &AssignedCell<F, F>, b: &AssignedCell<F, F>) -> Result<(), Error> {
+    fn constrain_equal(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: &AssignedCell<F, F>,
+        b: &AssignedCell<F, F>,
+    ) -> Result<(), Error> {
         layouter.assign_region(
             || "constrain equal",
             |mut region| region.constrain_equal(a.cell(), b.cell()),
@@ -124,7 +174,9 @@ struct NoRickCircuit<F: PrimeField> {
 
 impl<F: PrimeField> Default for NoRickCircuit<F> {
     fn default() -> Self {
-        Self { priv_input: vec![Value::unknown(); 20] }
+        Self {
+            priv_input: vec![Value::unknown(); 20],
+        }
     }
 }
 
@@ -132,7 +184,9 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;
 
-    fn without_witnesses(&self) -> Self { Self::default() }
+    fn without_witnesses(&self) -> Self {
+        Self::default()
+    }
 
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
         let advice = [meta.advice_column(), meta.advice_column()];
@@ -141,7 +195,11 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
         FieldChip::configure(meta, advice, instance, constant)
     }
 
-    fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<F>) -> Result<(), Error> {
+    fn synthesize(
+        &self,
+        config: Self::Config,
+        mut layouter: impl Layouter<F>,
+    ) -> Result<(), Error> {
         let chip = FieldChip::<F>::construct(config);
 
         let pow_256_1 = F::from(256u64);
@@ -172,7 +230,8 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
                 + c3.0.value().copied() * Value::known(pow_256_3);
 
             let diff_val = packed_val - rick_constant.0.value().copied();
-            let diff = chip.load_private(layouter.namespace(|| format!("diff {}", idx)), diff_val)?;
+            let diff =
+                chip.load_private(layouter.namespace(|| format!("diff {}", idx)), diff_val)?;
             conditions.push(diff);
         }
 
@@ -228,6 +287,76 @@ fn to_cosmwasm_instance(forbidden: &str) -> Vec<u8> {
 }
 
 // ---------------------------------------------------------------------------
+// Host prove / verify (also used by WASM exports)
+// ---------------------------------------------------------------------------
+
+const K: u32 = 10;
+
+fn setup_keys() -> Result<
+    (
+        halo2_proofs::poly::commitment::Params<vesta::Affine>,
+        plonk::ProvingKey<vesta::Affine>,
+    ),
+    String,
+> {
+    let params = halo2_proofs::poly::commitment::Params::new(K);
+    let empty_circuit: NoRickCircuit<pallas::Base> = Default::default();
+    let vk = plonk::keygen_vk(&params, &empty_circuit).map_err(|e| format!("keygen_vk: {e}"))?;
+    let pk =
+        plonk::keygen_pk(&params, vk, &empty_circuit).map_err(|e| format!("keygen_pk: {e}"))?;
+    Ok((params, pk))
+}
+
+fn circuit_from_secret(secret_word: &str) -> NoRickCircuit<pallas::Base> {
+    let mut bytes = secret_word.as_bytes().to_vec();
+    bytes.resize(20, 0);
+    let priv_input: Vec<Value<pallas::Base>> = bytes
+        .iter()
+        .map(|&b| Value::known(pallas::Base::from(b as u64)))
+        .collect();
+    NoRickCircuit { priv_input }
+}
+
+/// Host-equivalent of the WASM guest: prove `secret_word` does not contain `forbidden`.
+pub fn prove_no_rick(secret_word: &str, forbidden: &str) -> Result<Vec<u8>, String> {
+    let circuit = circuit_from_secret(secret_word);
+    let (params, pk) = setup_keys()?;
+    let instance = to_halo2_instance(forbidden);
+    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
+
+    let mut transcript = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(vec![]);
+    plonk::create_proof(
+        &params,
+        &pk,
+        &[circuit],
+        &[&instance_refs],
+        rand::rng(),
+        &mut transcript,
+    )
+    .map_err(|e| format!("create_proof: {e}"))?;
+    Ok(transcript.finalize())
+}
+
+/// Host-equivalent verify for a proof produced by [`prove_no_rick`] / WASM `generate_proof`.
+pub fn verify_no_rick(proof: &[u8], forbidden: &str) -> Result<bool, String> {
+    let (params, pk) = setup_keys()?;
+    let instance = to_halo2_instance(forbidden);
+    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
+    let strategy = SingleVerifier::new(&params);
+    let mut transcript = Blake2bRead::<_, vesta::Affine, Challenge255<_>>::init(proof);
+    match plonk::verify_proof(
+        &params,
+        pk.get_vk(),
+        strategy,
+        &[&instance_refs],
+        &mut transcript,
+    ) {
+        Ok(()) => Ok(true),
+        Err(_) => Ok(false),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // WASM exports
 // ---------------------------------------------------------------------------
 
@@ -242,44 +371,7 @@ pub fn encode_instances(forbidden: &str) -> Vec<u8> {
 /// Returns base64-encoded proof bytes.
 #[wasm_bindgen]
 pub fn generate_proof(secret_word: &str, forbidden: &str) -> Result<String, JsValue> {
-    // Pad/truncate secret to 20 bytes
-    let mut bytes = secret_word.as_bytes().to_vec();
-    bytes.resize(20, 0);
-
-    let priv_input: Vec<Value<pallas::Base>> = bytes
-        .iter()
-        .map(|&b| Value::known(pallas::Base::from(b as u64)))
-        .collect();
-
-    let circuit = NoRickCircuit { priv_input };
-
-    // Build proving key (keygen uses default/unknown witnesses)
-    let params = halo2_proofs::poly::commitment::Params::new(10);
-    let empty_circuit: NoRickCircuit<pallas::Base> = Default::default();
-    let vk = plonk::keygen_vk(&params, &empty_circuit)
-        .map_err(|e| JsValue::from_str(&format!("keygen_vk: {}", e)))?;
-    let pk = plonk::keygen_pk(&params, vk, &empty_circuit)
-        .map_err(|e| JsValue::from_str(&format!("keygen_pk: {}", e)))?;
-
-    // Instance: the forbidden word as a field element
-    let instance = to_halo2_instance(forbidden);
-    let instance_refs: Vec<&[vesta::Scalar]> = instance.iter().map(|row| &row[..]).collect();
-
-    // Create proof
-    let mut transcript = Blake2bWrite::<_, vesta::Affine, _>::init(vec![]);
-    plonk::create_proof(
-        &params,
-        &pk,
-        &[circuit],
-        &[&instance_refs],
-        OsRng,
-        &mut transcript,
-    )
-    .map_err(|e| JsValue::from_str(&format!("create_proof: {}", e)))?;
-
-    let proof_bytes = transcript.finalize();
-
-    // Base64 encode
+    let proof_bytes = prove_no_rick(secret_word, forbidden).map_err(|e| JsValue::from_str(&e))?;
     Ok(b64_encode(&proof_bytes))
 }
 
@@ -330,6 +422,39 @@ fn b64_encode(data: &[u8]) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod host_e2e {
+    use super::*;
+
+    #[test]
+    fn prove_verify_accepts_clean_secret() {
+        let proof = prove_no_rick("hello world........", "rick").expect("prove");
+        assert!(!proof.is_empty());
+        assert!(verify_no_rick(&proof, "rick").expect("verify"));
+    }
+
+    #[test]
+    fn encode_workflow_matches_guest_export() {
+        let instances = encode_instances("rick");
+        assert_eq!(instances.len(), 32);
+        let proof_b64 = generate_proof("safe phrase........", "rick").expect("guest wrapper");
+        assert!(!proof_b64.is_empty());
+        let msg = encode_proof_msg(1, "rick", &proof_b64);
+        let v: serde_json::Value = serde_json::from_str(&msg).unwrap();
+        assert_eq!(v["proove"]["forbidden"], "rick");
+        assert_eq!(v["proove"]["proof"], proof_b64);
+    }
+
+    #[test]
+    fn verify_rejects_tampered_proof() {
+        let mut proof = prove_no_rick("clean................", "rick").expect("prove");
+        if let Some(b) = proof.last_mut() {
+            *b ^= 0xff;
+        }
+        assert!(!verify_no_rick(&proof, "rick").expect("verify tampered"));
+    }
 }
 
 fn hex_encode(bytes: &[u8]) -> String {

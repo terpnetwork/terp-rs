@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "contracts_by_instantiator"
+      ],
+      "properties": {
+        "contracts_by_instantiator": {
+          "type": "object",
+          "required": [
+            "instantiator"
+          ],
+          "properties": {
+            "instantiator": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "contract"
+      ],
+      "properties": {
+        "contract": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "All eligibility roots registered under a Headstash in the manifold index.",
+      "type": "object",
+      "required": [
+        "eligibility_roots"
+      ],
+      "properties": {
+        "eligibility_roots": {
+          "type": "object",
+          "required": [
+            "headstash"
+          ],
+          "properties": {
+            "headstash": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "eligibility_root"
+      ],
+      "properties": {
+        "eligibility_root": {
+          "type": "object",
+          "required": [
+            "headstash",
+            "root_id"
+          ],
+          "properties": {
+            "headstash": {
+              "type": "string"
+            },
+            "root_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

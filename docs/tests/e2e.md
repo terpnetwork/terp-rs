@@ -49,8 +49,8 @@ Argus is uniquely complex: it's a Node.js app with 7+ subprocesses (tracer, list
 ## Concrete Suite Types
 
 ```rust
-/// The top-level TerpNetworkSuite — typed access to every sidecar.
-pub struct TerpNetworkSuite<Chain: CwEnv> {
+/// The top-level TerpArtifactStack — typed access to every sidecar.
+pub struct TerpArtifactStack<Chain: CwEnv> {
     // Chain environment (inherits Environment<Daemon>)
     daemon: Chain,
 
@@ -68,7 +68,7 @@ pub struct TerpNetworkSuite<Chain: CwEnv> {
     test_name: String,
 }
 
-impl<Chain: CwEnv> Environment<Chain> for TerpNetworkSuite<Chain> {
+impl<Chain: CwEnv> Environment<Chain> for TerpArtifactStack<Chain> {
     fn environment(&self) -> &Chain { &self.daemon }
 }
 ```
@@ -320,7 +320,7 @@ For `MerkleServerConfig`:
 The existing `ChainConfig.sidecar_configs: Vec<SidecarConfig>` only handles Docker containers. The suite extends this at a higher level:
 
 ```rust
-impl TerpNetworkSuite {
+impl TerpArtifactStack {
     /// Build suite from an existing ict-rs chain
     pub async fn attach_to_chain(
         chain: &CosmosChain,
@@ -334,7 +334,7 @@ impl TerpNetworkSuite {
 }
 ```
 
-This bridges the gap: `TerpNetworkSuite` owns the sidecar lifecycle but delegates block production and chain-state to the existing `CosmosChain` + `Daemon`.
+This bridges the gap: `TerpArtifactStack` owns the sidecar lifecycle but delegates block production and chain-state to the existing `CosmosChain` + `Daemon`.
 
 ## Defaults Principle
 
@@ -351,7 +351,7 @@ Each suite element has a `with_defaults()` constructor that produces a working c
 ```
 crates/terp-rs/tests/src/
 ├── suite/
-│   ├── mod.rs                    — TerpNetworkSuite struct definition
+│   ├── mod.rs                    — TerpArtifactStack struct definition
 │   ├── sidecar.rs               — TerpSidecar trait + SubprocessSidecar generic
 │   ├── hashmerchant.rs          — HashMerchantSuite + MerchantSuiteConfig
 │   ├── merkle.rs                — MerkleServerSuite + MerkleServerConfig
@@ -385,7 +385,7 @@ crates/terp-rs/tests/src/
 7. **IndexerSuite** — most complex, validates the suite handles multi-container sidecaps
    - Argus is a fleet, not a single container
 
-8. **Integration**: `TerpNetworkSuite::attach_to_chain()` + `Environment<Daemon>` impl
+8. **Integration**: `TerpArtifactStack::attach_to_chain()` + `Environment<Daemon>` impl
    - Test with a full e2e: spawn Terp chain → attach suite → deploy hashmerchant → verify VE
 
 ## Key Design Decisions

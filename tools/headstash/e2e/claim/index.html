@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Headstash lab claim</title>
+  <style>
+    body { font: 16px/1.45 ui-sans-serif, system-ui, sans-serif; margin: 2rem auto; max-width: 42rem; color: #1c1917; }
+    code, pre { font-family: ui-monospace, monospace; }
+    pre { background: #f5f5f4; padding: 0.75rem; overflow: auto; white-space: pre-wrap; }
+    button { font: inherit; padding: 0.4rem 0.8rem; margin-right: 0.4rem; }
+    .gap { color: #9a3412; }
+    .pass { color: #166534; }
+    .fail { color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1>Headstash lab claim</h1>
+  <p>This page talks only to <code>127.0.0.1</code>. <strong>Broadcast ProcessHeadstash</strong> posts the harness payload to the loopback signer at <code>127.0.0.1:19821</code>. The signer runs <code>terpd tx wasm execute --from deployer</code> inside the local container. It uses the key name. It does not ask for a mnemonic.</p>
+  <p id="endpoints">Loading endpoints…</p>
+  <p>
+    <button id="epoch" type="button">Query epoch root</button>
+    <button id="witness" type="button">Query witness mismatch</button>
+    <button id="broadcast" type="button">Broadcast ProcessHeadstash</button>
+  </p>
+  <pre id="out"></pre>
+  <h2>Harness cases</h2>
+  <ul id="cases"></ul>
+  <script>
+    const out = document.getElementById('out')
+    let endpoints = {}
+    function show(text) { out.textContent = text }
+
+    async function load() {
+      const response = await fetch('./endpoints.json')
+      endpoints = await response.json()
+      const contract = endpoints.contract || '(claim contract was not instantiated)'
+      document.getElementById('endpoints').textContent =
+        `chain ${endpoints.chain_id}  lcd ${endpoints.lcd}  contract ${contract}`
+      const report = await fetch('./report.json').then((r) => r.json())
+      const list = document.getElementById('cases')
+      for (const item of report.cases || []) {
+        const li = document.createElement('li')
+        li.className = item.status
+        li.textContent = `${item.status}  ${item.name}  ${item.detail}`
+        list.appendChild(li)
+      }
+    }
+
+    function loopback(url) {
+      return typeof url === 'string' && url.startsWith('http://127.0.0.1:')
+    }
+
+    async function smart(contract, query) {
+      if (!loopback(endpoints.lcd)) {
+        show('Refusing a query whose LCD is not http://127.0.0.1:')
+        return
+      }
+      const encoded = btoa(JSON.stringify(query))
+      const url = `${endpoints.lcd}/cosmwasm/wasm/v1/contract/${contract}/smart/${encodeURIComponent(encoded)}`
+      const response = await fetch(url)
+      const body = await response.text()
+      show(`${response.status} ${url}\n${body}`)
+    }
+
+    document.getElementById('epoch').onclick = () => {
+      if (!endpoints.contract) {
+        show('No claim contract in endpoints.json. Epoch root was not queried.')
+        return
+      }
+      smart(endpoints.contract, { epoch_root: { algo: 'headstash-accepted' } })
+    }
+    document.getElementById('witness').onclick = () => {
+      if (!endpoints.witness) {
+        show('No witness contract in endpoints.json.')
+        return
+      }
+      smart(endpoints.witness, {
+        verify_min_holders: { session_id: 'lab', registrant: 'lab', proof: btoa(String.fromCharCode(1)) }
+      })
+    }
+    document.getElementById('broadcast').onclick = async () => {
+      if (!loopback(endpoints.lcd) || !loopback(endpoints.rpc || '')) {
+        show('Refusing broadcast. endpoints lcd/rpc must be http://127.0.0.1:')
+        return
+      }
+      let payload
+      try {
+        payload = await fetch('./broadcast.json').then((r) => {
+          if (!r.ok) throw new Error('broadcast.json ' + r.status)
+          return r.json()
+        })
+      } catch (err) {
+        show(String(err))
+        return
+      }
+      show('signing on 127.0.0.1:19821…')
+      try {
+        const response = await fetch('http://127.0.0.1:19821/broadcast', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ contract: payload.contract, msg: payload.msg, kind: payload.kind })
+        })
+        const body = await response.text()
+        show(`${response.status}\n${body}`)
+      } catch (err) {
+        show(String(err))
+      }
+    }
+    load().catch((err) => { document.getElementById('endpoints').textContent = String(err) })
+  </script>
+</body>
+</html>

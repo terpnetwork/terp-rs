@@ -1,0 +1,155 @@
+{
+  "contract_name": "cw-reg-eligibility",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_reg_eligibility_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "accepted_proof": {
+            "description": "Accepted proof bytes for lab/localterp (production: wasmvm Authenticate).",
+            "value": 1
+          },
+          "dummy_account": {
+            "defaulting": true,
+            "description": "Label: dummy smart-account this verifier stands in for.",
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 2
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_reg_eligibility_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {
+          "set_accepted_proof": {
+            "description": "Rotate accepted fixture (admin/dummy). Lab only.",
+            "type": "named",
+            "properties": {
+              "proof": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_reg_eligibility_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "verify_min_holders": {
+            "type": "named",
+            "properties": {
+              "proof": {
+                "value": 2
+              },
+              "registrant": {
+                "value": 1
+              },
+              "session_id": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_reg_eligibility_msg_ConfigResponse",
+          "type": "struct",
+          "properties": {
+            "dummy_account": {
+              "value": 2
+            },
+            "note": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    },
+    "verify_min_holders": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_reg_eligibility_msg_VerifyResponse",
+          "type": "struct",
+          "properties": {
+            "ok": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    }
+  }
+}

@@ -13,7 +13,9 @@ use crate::error::NipResult;
 /// Parse a hex-encoded Nostr event ID into its raw 32-byte form.
 pub fn parse_hex_id(hex: &str) -> NipResult<[u8; 32]> {
     let mut bytes = [0u8; 32];
-    hex::decode_to_slice(hex, &mut bytes).map_err(Into::into).map(|_| bytes)
+    hex::decode_to_slice(hex, &mut bytes)
+        .map_err(Into::into)
+        .map(|_| bytes)
 }
 
 /// Parse a hex-encoded Nostr public key into its raw 32-byte form.
@@ -24,7 +26,9 @@ pub fn parse_hex_pubkey(hex: &str) -> NipResult<[u8; 32]> {
 /// Parse a hex-encoded Nostr signature into its raw 64-byte form.
 pub fn parse_hex_signature(hex: &str) -> NipResult<[u8; 64]> {
     let mut bytes = [0u8; 64];
-    hex::decode_to_slice(hex, &mut bytes).map_err(Into::into).map(|_| bytes)
+    hex::decode_to_slice(hex, &mut bytes)
+        .map_err(Into::into)
+        .map(|_| bytes)
 }
 
 /// Encode raw 32 bytes as a lowercase hex string (Nostr event ID / pubkey format).

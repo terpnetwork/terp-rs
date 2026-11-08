@@ -1,0 +1,55 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "trusted_builder_sbt_Token",
+      "type": "struct",
+      "properties": {
+        "eth_address": {
+          "value": 2
+        },
+        "mint_path": {
+          "value": 3
+        },
+        "minted_height": {
+          "value": 1
+        },
+        "owner": {
+          "value": 2
+        },
+        "sign_tx": {
+          "value": 2
+        },
+        "token_id": {
+          "value": 1
+        },
+        "ve_commitment_hex": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "trusted_builder_sbt_MintPath",
+      "type": "enum",
+      "cases": {
+        "ibc_v2_australge": {
+          "type": "unit"
+        },
+        "ve_sidecar": {
+          "type": "unit"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Public path (existing loyalty_rewards e2e): claim keyed by claimer address.",
+      "type": "object",
+      "required": [
+        "claim_rewards"
+      ],
+      "properties": {
+        "claim_rewards": {
+          "type": "object",
+          "required": [
+            "leaf_hash",
+            "proof",
+            "root_index"
+          ],
+          "properties": {
+            "leaf_hash": {
+              "type": "string"
+            },
+            "proof": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ProofStep"
+              }
+            },
+            "root_index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Private path (zk-jwt smart-account elevation): - Merkle proves inventory leaf under attested root - `nullifier` is the zk-jwt spend key (anti double-claim, unlinkable to OIDC sub) - `amount` is settlement size (points → factory denom) - `info.sender` should be the smart account (not a named customer)",
+      "type": "object",
+      "required": [
+        "claim_rewards_private"
+      ],
+      "properties": {
+        "claim_rewards_private": {
+          "type": "object",
+          "required": [
+            "amount",
+            "leaf_hash",
+            "nullifier",
+            "proof",
+            "root_index"
+          ],
+          "properties": {
+            "action_bind": {
+              "description": "Optional action bind: hex SHA-256 of `loyalty-claim/v1 || root_index_be || amount || leaf_hash || dest` so a zk-jwt session cannot be repurposed for a different claim action.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "amount": {
+              "description": "Amount to mint/send to `info.sender`.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "leaf_hash": {
+              "type": "string"
+            },
+            "nullifier": {
+              "description": "Hex nullifier from terp-zkjwt codec (64 hex chars preferred).",
+              "type": "string"
+            },
+            "proof": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ProofStep"
+              }
+            },
+            "root_index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin: update mint settings (owner = instantiate sender).",
+      "type": "object",
+      "required": [
+        "update_mint_config"
+      ],
+      "properties": {
+        "update_mint_config": {
+          "type": "object",
+          "required": [
+            "mint_enabled"
+          ],
+          "properties": {
+            "mint_enabled": {
+              "type": "boolean"
+            },
+            "reward_denom": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "ProofStep": {
+      "type": "object",
+      "required": [
+        "is_right",
+        "sibling"
+      ],
+      "properties": {
+        "is_right": {
+          "type": "boolean"
+        },
+        "sibling": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    }
+  }
+}

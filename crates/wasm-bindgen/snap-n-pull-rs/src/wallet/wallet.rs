@@ -16,7 +16,7 @@ use group::ff::PrimeField;
 // use pczt::roles::combiner::Combiner;
 // use pczt::roles::prover::Prover;
 
-use rand::RngCore;
+use rand::Rng;
 use rand::rngs::OsRng;
 use serde::Deserialize;
 // use pczt::roles::updater::Updater;
@@ -1234,7 +1234,7 @@ mod tests {
 
     //     let mut rng = rand::thread_rng();
     //     let mut rho_bytes = [0u8; 32];
-    //     rand::RngCore::fill_bytes(&mut rng, &mut rho_bytes);
+    //     rand::Rng::fill_bytes(&mut rng, &mut rho_bytes);
     //     let rho = Rho::from_bytes(&rho_bytes).unwrap();
 
     //     let hv = HeadstashValue::from_raw(1000, "uterp").unwrap();

@@ -1,0 +1,32 @@
+{
+  "schema": "terp-bounty-details/v1",
+  "bounty_ref": "cat-docs-001",
+  "title": "Write the TerpDAO governance quick-start",
+  "summary": "A one-page guide for submitting and voting on TerpDAO proposals, with screenshots of each Keplr step. Ships under docs/.",
+  "description": "Long-form details live here, off chain. Markdown allowed.",
+  "category": "docs",
+  "capabilities": [
+    "docs",
+    "governance"
+  ],
+  "tier": "T2",
+  "priority": "P2",
+  "acceptance_criteria": [
+    "Covers propose, deposit, vote and tally",
+    "Reviewed by a docs maintainer"
+  ],
+  "evidence_required": [
+    "PR link",
+    "Rendered preview link"
+  ],
+  "deadline": "2026-12-31",
+  "reward_quote": {
+    "asset": "TERP",
+    "denom": "uterp",
+    "amount": "250000000",
+    "work_units": "2.5",
+    "params_version": "escrow-params/2026-10-18.2-draft.r2",
+    "label": "proposed, pending vote"
+  },
+  "created_at": "2026-10-18T11:30:00Z"
+}

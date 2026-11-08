@@ -1,0 +1,56 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "polytone_any_proxy_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "dispatch": {
+          "description": "Dispatch protobuf Anys. Instantiator only unless `unrestricted`.",
+          "type": "named",
+          "properties": {
+            "msgs": {
+              "value": 4
+            }
+          }
+        },
+        "set_instantiator": {
+          "description": "Hand the gate to the polytone ICA address (after `RemoteAddress` query).",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "polytone_any_proxy_AnyPacket",
+      "type": "struct",
+      "properties": {
+        "type_url": {
+          "value": 2
+        },
+        "value": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "alloc::vec::Vec<polytone_any_proxy::AnyPacket>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

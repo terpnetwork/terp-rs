@@ -1,0 +1,19 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_ceremony_msg_IsSpentResponse",
+      "type": "struct",
+      "properties": {
+        "spent": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

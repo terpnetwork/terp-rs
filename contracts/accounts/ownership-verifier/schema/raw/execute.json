@@ -1,0 +1,178 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "update_ownership"
+      ],
+      "properties": {
+        "update_ownership": {
+          "type": "object",
+          "required": [
+            "ownership"
+          ],
+          "properties": {
+            "ownership": {
+              "$ref": "#/definitions/GovernanceDetails_for_String"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Addr": {
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "GovernanceDetails_for_String": {
+      "description": "Governance types",
+      "oneOf": [
+        {
+          "description": "A single address is admin",
+          "type": "object",
+          "required": [
+            "monarchy"
+          ],
+          "properties": {
+            "monarchy": {
+              "type": "object",
+              "required": [
+                "monarch"
+              ],
+              "properties": {
+                "monarch": {
+                  "description": "The monarch's address",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Used when the account is a sub-account of another account.",
+          "type": "object",
+          "required": [
+            "sub_account"
+          ],
+          "properties": {
+            "sub_account": {
+              "type": "object",
+              "required": [
+                "account"
+              ],
+              "properties": {
+                "account": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "An external governance source. This could be a cw3 contract for instance The `governance_address` will be the admin of the Account.",
+          "type": "object",
+          "required": [
+            "external"
+          ],
+          "properties": {
+            "external": {
+              "type": "object",
+              "required": [
+                "governance_address",
+                "governance_type"
+              ],
+              "properties": {
+                "governance_address": {
+                  "description": "The external contract address",
+                  "type": "string"
+                },
+                "governance_type": {
+                  "description": "Governance type used for doing extra off-chain queries depending on the type.",
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "This account is linked to an NFT collection. The owner of the specified token_id is the owner of the account",
+          "type": "object",
+          "required": [
+            "n_f_t"
+          ],
+          "properties": {
+            "n_f_t": {
+              "type": "object",
+              "required": [
+                "collection_addr",
+                "token_id"
+              ],
+              "properties": {
+                "collection_addr": {
+                  "type": "string"
+                },
+                "token_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Abstract account. Admin actions have to be sent through signature bit flag\n\nMore details: https://github.com/burnt-labs/abstract-account/blob/2c933a7b2a8dacc0ae5bf4344159a7d4ab080135/README.md",
+          "type": "object",
+          "required": [
+            "abstract_account"
+          ],
+          "properties": {
+            "abstract_account": {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "description": "Address of this abstract account",
+                  "allOf": [
+                    {
+                      "$ref": "#/definitions/Addr"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Renounced account This account no longer has an owner and cannot be used.",
+          "type": "object",
+          "required": [
+            "renounced"
+          ],
+          "properties": {
+            "renounced": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

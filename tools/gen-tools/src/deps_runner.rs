@@ -3,12 +3,12 @@
 //! Dispatches to matrix loading, project discovery, and the appropriate
 //! switch/scrape/graph/update/push modules.
 
+use gen_tools::deps::DepsCommand;
 use gen_tools::deps::discover::discover_projects;
 use gen_tools::deps::graph;
 use gen_tools::deps::matrix::MatrixFile;
 use gen_tools::deps::scrape;
 use gen_tools::deps::switch::{self, SwitchConfig};
-use gen_tools::deps::DepsCommand;
 
 /// Execute a deps subcommand.
 pub fn run_deps_command(cmd: &DepsCommand) -> anyhow::Result<()> {
@@ -17,26 +17,32 @@ pub fn run_deps_command(cmd: &DepsCommand) -> anyhow::Result<()> {
     // Load matrix from _devops/ in various possible locations
     let matrix_paths = [
         repo_root.join("_devops").join("dependency-matrix.toml"),
-        repo_root.join("crates").join("_devops").join("dependency-matrix.toml"),
+        repo_root
+            .join("crates")
+            .join("_devops")
+            .join("dependency-matrix.toml"),
         repo_root.join("dependency-matrix.toml"),
         // New location: inside gen-tools crate
-        repo_root.join("crates").join("terp-rs").join("tools").join("gen-tools").join("_devops").join("dependency-matrix.toml"),
+        repo_root
+            .join("crates")
+            .join("terp-rs")
+            .join("tools")
+            .join("gen-tools")
+            .join("_devops")
+            .join("dependency-matrix.toml"),
     ];
 
-    let matrix_path = matrix_paths
-        .iter()
-        .find(|p| p.exists())
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "dependency-matrix.toml not found in ./_devops/ or ./. Try running from the repo root."
-            )
-        })?;
+    let matrix_path = matrix_paths.iter().find(|p| p.exists()).ok_or_else(|| {
+        anyhow::anyhow!(
+            "dependency-matrix.toml not found in ./_devops/ or ./. Try running from the repo root."
+        )
+    })?;
 
     let matrix = MatrixFile::load(matrix_path)?;
 
     // Discover projects unless not needed
     let projects = match cmd {
-        DepsCommand::Status { .. }
+        DepsCommand::Status
         | DepsCommand::Scrape { .. }
         | DepsCommand::Switch { .. }
         | DepsCommand::Snapshot { .. }
@@ -146,13 +152,19 @@ pub fn run_deps_command(cmd: &DepsCommand) -> anyhow::Result<()> {
             ));
             md.push_str(&format!("- **Repository**: {}\n", repo_root.display()));
             md.push_str(&format!("- **Matrix crates**: {}\n", matrix.crates.len()));
-            md.push_str(&format!("- **Projects discovered**: {}\n\n", projects.len()));
+            md.push_str(&format!(
+                "- **Projects discovered**: {}\n\n",
+                projects.len()
+            ));
 
             md.push_str("## Forked Dependencies\n\n");
             md.push_str("| Package | Mode | Source |\n");
             md.push_str("|---------|------|--------|\n");
             for dep in &result.forked_deps {
-                md.push_str(&format!("| {} | {} | {} |\n", dep.package, dep.mode, dep.source));
+                md.push_str(&format!(
+                    "| {} | {} | {} |\n",
+                    dep.package, dep.mode, dep.source
+                ));
             }
 
             std::fs::write(&path, &md)?;
@@ -245,14 +257,17 @@ pub fn run_deps_command(cmd: &DepsCommand) -> anyhow::Result<()> {
                         println!("    {}: {} → {}", mc.package, mc.expected, mc.actual);
                     }
                 }
-                if drift.missing.is_empty() && drift.unexpected.is_empty() && drift.mode_changed.is_empty() {
+                if drift.missing.is_empty()
+                    && drift.unexpected.is_empty()
+                    && drift.mode_changed.is_empty()
+                {
                     println!("  no drift detected — snapshot matches current state");
                 }
             }
         }
 
         DepsCommand::Baseline { input, dry_run } => {
-use gen_tools::deps::snapshot::{read_snapshot, write_baseline};
+            use gen_tools::deps::snapshot::{read_snapshot, write_baseline};
 
             let snap_path = repo_root.join(input);
             let snap = read_snapshot(&snap_path)?;
@@ -263,7 +278,10 @@ use gen_tools::deps::snapshot::{read_snapshot, write_baseline};
             );
 
             if *dry_run {
-                println!("[dry-run] would write {} crates as new baseline", snap.crates.len());
+                println!(
+                    "[dry-run] would write {} crates as new baseline",
+                    snap.crates.len()
+                );
             } else {
                 write_baseline(matrix_path, &snap)?;
                 println!("baseline written to {}", matrix_path.display());
@@ -278,7 +296,11 @@ use gen_tools::deps::snapshot::{read_snapshot, write_baseline};
             let drift = compute_drift(&matrix, &snap, &projects)?;
 
             println!("=== Drift Report ===");
-            println!("Baseline: {} ({} crates)", snap_path.display(), snap.crates.len());
+            println!(
+                "Baseline: {} ({} crates)",
+                snap_path.display(),
+                snap.crates.len()
+            );
 
             if !drift.missing.is_empty() {
                 println!("\n  missing from workspace:");
@@ -301,12 +323,17 @@ use gen_tools::deps::snapshot::{read_snapshot, write_baseline};
                 }
             }
 
-            if drift.missing.is_empty() && drift.unexpected.is_empty() && drift.mode_changed.is_empty() {
+            if drift.missing.is_empty()
+                && drift.unexpected.is_empty()
+                && drift.mode_changed.is_empty()
+            {
                 println!("  no drift — workspace matches baseline");
             }
 
             if !drift.missing.is_empty() || !drift.mode_changed.is_empty() {
-                println!("\n  TIP: run `gen-tools deps snapshot` to capture current state, then `gen-tools deps baseline` to freeze it");
+                println!(
+                    "\n  TIP: run `gen-tools deps snapshot` to capture current state, then `gen-tools deps baseline` to freeze it"
+                );
             }
         }
     }
@@ -325,12 +352,11 @@ fn discover_repo_root() -> anyhow::Result<std::path::PathBuf> {
         }
         // Remember the deepest Cargo.toml with [workspace] as fallback
         let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    deepest_workspace = Some(current.clone());
-                }
-            }
+        if cargo_toml.exists()
+            && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+            && content.contains("[workspace]")
+        {
+            deepest_workspace = Some(current.clone());
         }
         if !current.pop() {
             // No .git found anywhere — use the deepest workspace root as fallback

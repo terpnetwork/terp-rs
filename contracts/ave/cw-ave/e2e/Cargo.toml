@@ -1,0 +1,17 @@
+[package]
+name = "cw-ave-e2e"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+description = "cw-ave cases on TerpArtifactStack."
+
+[dependencies]
+anyhow = { workspace = true }
+av-event-helpers = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-ave = { workspace = true }
+cw-ave-factory = { workspace = true }
+cw-orch = { workspace = true }
+cw4 = { workspace = true }
+cw420 = { workspace = true }
+terp-orch = { workspace = true, features = ["stack"] }

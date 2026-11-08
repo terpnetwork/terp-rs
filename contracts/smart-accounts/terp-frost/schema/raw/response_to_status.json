@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StatusResponse",
+  "type": "object",
+  "required": [
+    "group_vk",
+    "n",
+    "pending",
+    "seats",
+    "share_count",
+    "shares",
+    "t"
+  ],
+  "properties": {
+    "group_vk": {
+      "type": "string"
+    },
+    "last_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "n": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "new_vk_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "old_vk": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pending": {
+      "type": "boolean"
+    },
+    "seats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "share_count": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "shares": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "t": {
+      "type": "integer",
+      "format": "uint16",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

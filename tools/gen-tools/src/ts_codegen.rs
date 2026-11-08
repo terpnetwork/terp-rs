@@ -16,7 +16,7 @@
 //!     responses: { query_name: { title, type, properties, definitions } }
 //!   }
 
-use crate::config::GenerationContext;
+use crate::config::{GenerationContext, ts_variant_dir};
 use crate::resolver::SourceResolver;
 use crate::{GenerationResult, Generator};
 use serde_json::Value;
@@ -34,8 +34,7 @@ impl Generator for TsCodegenGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let ts_out = ctx.ts_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&ts_out)?;
+        std::fs::create_dir_all(&ctx.ts_out)?;
 
         let mut total_files = 0;
         let mut contracts_processed = 0;
@@ -47,7 +46,7 @@ impl Generator for TsCodegenGenerator {
                 name: "ts-codegen",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(ts_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
                 message: Some("No contracts found to process".to_string()),
             });
         }
@@ -59,38 +58,52 @@ impl Generator for TsCodegenGenerator {
             let mut message_types: Vec<(String, Value)> = Vec::new();
             let mut response_types: Vec<(String, Value)> = Vec::new();
 
-            for (_type_key, schema_value) in schemas {
+            for schema_value in schemas.values() {
                 // schema_value is the full merged schema JSON for this contract
-                collect_types_and_defs(schema_value, &mut message_types, &mut response_types, &mut all_defs);
+                collect_types_and_defs(
+                    schema_value,
+                    &mut message_types,
+                    &mut response_types,
+                    &mut all_defs,
+                );
             }
 
             // Merge definitions found across all message and response schemas
             // This ensures $ref resolution works globally
 
             let cname = pascal_case(contract_name);
+            let types_dir = ts_variant_dir(&ctx.ts_out, contract_name, "types");
+            let client_dir = ts_variant_dir(&ctx.ts_out, contract_name, "client");
+            let composer_dir = ts_variant_dir(&ctx.ts_out, contract_name, "message-composer");
+            std::fs::create_dir_all(&types_dir)?;
+            std::fs::create_dir_all(&client_dir)?;
+            std::fs::create_dir_all(&composer_dir)?;
 
-            // Generate .types.ts
             let types_ts = generate_types_file(&cname, &message_types, &response_types, &all_defs)?;
-            std::fs::write(ts_out.join(format!("{}.types.ts", cname)), &types_ts)?;
+            std::fs::write(types_dir.join(format!("{}.types.ts", cname)), &types_ts)?;
             total_files += 1;
 
-            // Generate .client.ts
             let client_ts = generate_client_file(&cname, &message_types, &response_types)?;
-            std::fs::write(ts_out.join(format!("{}.client.ts", cname)), &client_ts)?;
+            std::fs::write(client_dir.join(format!("{}.client.ts", cname)), &client_ts)?;
             total_files += 1;
 
-            // Generate .message-composer.ts
             let composer_ts = generate_message_composer_file(&cname, &message_types)?;
-            std::fs::write(ts_out.join(format!("{}.message-composer.ts", cname)), &composer_ts)?;
+            std::fs::write(
+                composer_dir.join(format!("{}.message-composer.ts", cname)),
+                &composer_ts,
+            )?;
             total_files += 1;
 
-            // Barrel export
-            let barrel_dir = ts_out.join("_entry");
-            std::fs::create_dir_all(&barrel_dir)?;
             let barrel_ts = format!(
-                "export * from '../{cname}.types';\nexport * from '../{cname}.client';\nexport * from '../{cname}.message-composer';\nexport * from '../{cname}.zod';\nexport * from '../{cname}.bundle.mjs';\nexport * from '../{cname}.filters';\nexport * from '../{cname}.argus';\n",
+                "export * from './types/{cname}.types';\n\
+                 export * from './client/{cname}.client';\n\
+                 export * from './message-composer/{cname}.message-composer';\n\
+                 export * from './zod/{cname}.zod';\n\
+                 export * from './esbundles/{cname}.bundle.mjs';\n\
+                 export * from './filters/{cname}.filters';\n\
+                 export * from './argus/{cname}.argus';\n",
             );
-            std::fs::write(barrel_dir.join(format!("{}.ts", contract_name)), &barrel_ts)?;
+            std::fs::write(ctx.ts_out.join(contract_name).join("index.ts"), &barrel_ts)?;
             total_files += 1;
 
             contracts_processed += 1;
@@ -100,7 +113,7 @@ impl Generator for TsCodegenGenerator {
             name: "ts-codegen",
             success: true,
             files_generated: total_files,
-            output_dir: Some(ts_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
             message: Some(format!(
                 "{} contracts processed, {} files generated",
                 contracts_processed, total_files
@@ -118,7 +131,12 @@ impl Generator for TsCodegenGenerator {
 const MSG_KEYS: &[&str] = &["instantiate", "execute", "query", "migrate", "sudo"];
 
 /// Metadata keys to skip.
-const _SKIP_KEYS: &[&str] = &["contract_name", "contract_version", "idl_version", "$schema"];
+const _SKIP_KEYS: &[&str] = &[
+    "contract_name",
+    "contract_version",
+    "idl_version",
+    "$schema",
+];
 
 pub fn collect_types_and_defs(
     merged: &Value,
@@ -135,7 +153,7 @@ pub fn collect_types_and_defs(
             let title = msg_val
                 .get("title")
                 .and_then(|v| v.as_str())
-                .unwrap_or_else(|| key)
+                .unwrap_or(key)
                 .to_string();
             message_types.push((title.clone(), msg_val.clone()));
 
@@ -232,7 +250,11 @@ fn generate_types_file(
     // 4. Emit top-level contract type as union of all message types
     if !message_types.is_empty() {
         let msg_type_names: Vec<&str> = message_types.iter().map(|(t, _)| t.as_str()).collect();
-        output.push_str(&format!("export type {} = {};\n", cname, msg_type_names.join(" | ")));
+        output.push_str(&format!(
+            "export type {} = {};\n",
+            cname,
+            msg_type_names.join(" | ")
+        ));
     }
 
     Ok(output)
@@ -255,10 +277,18 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
                 let required = val
                     .get("required")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|r| r.as_str())
+                            .collect::<HashSet<_>>()
+                    })
                     .unwrap_or_default();
                 for (field_name, field_schema) in props {
-                    let opt = if !required.contains(field_name.as_str()) { "?" } else { "" };
+                    let opt = if !required.contains(field_name.as_str()) {
+                        "?"
+                    } else {
+                        ""
+                    };
                     let field_doc = field_schema.get("description").and_then(|v| v.as_str());
                     if let Some(doc) = field_doc {
                         out.push_str(&format!("  /** {} */\n", doc));
@@ -296,7 +326,10 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
             Some(out)
         }
         Some("array") => {
-            let inner = val.get("items").map(|i| json_schema_to_ts(i, all_defs)).unwrap_or_else(|| "unknown".to_string());
+            let inner = val
+                .get("items")
+                .map(|i| json_schema_to_ts(i, all_defs))
+                .unwrap_or_else(|| "unknown".to_string());
             out.push_str(&format!("export type {} = {}[];\n", pname, inner));
             Some(out)
         }
@@ -308,7 +341,11 @@ fn def_to_ts_type(name: &str, val: &Value, all_defs: &HashMap<String, Value>) ->
             // oneOf/anyOf or allOf
             if val.get("oneOf").is_some() || val.get("anyOf").is_some() {
                 out.push_str(&format!("export type {} =\n", pname));
-                let arr = val.get("oneOf").or_else(|| val.get("anyOf")).and_then(|v| v.as_array()).unwrap();
+                let arr = val
+                    .get("oneOf")
+                    .or_else(|| val.get("anyOf"))
+                    .and_then(|v| v.as_array())
+                    .unwrap();
                 for (i, v) in arr.iter().enumerate() {
                     let t = json_schema_to_ts(v, all_defs);
                     let d = if i < arr.len() - 1 { "" } else { ";" };
@@ -350,10 +387,10 @@ fn schema_to_union_type(
     }
 
     // Simple object → interface
-    if schema.get("type").and_then(|v| v.as_str()) == Some("object") {
-        if let Some(iface) = schema_to_interface(title, schema, all_defs, _emitted) {
-            return Some(iface);
-        }
+    if schema.get("type").and_then(|v| v.as_str()) == Some("object")
+        && let Some(iface) = schema_to_interface(title, schema, all_defs, _emitted)
+    {
+        return Some(iface);
     }
 
     // AllOf → intersection type
@@ -379,22 +416,30 @@ fn schema_to_union_type(
 fn variant_oneof_to_type(variant: &Value, all_defs: &HashMap<String, Value>) -> String {
     // Single-key object: extract the key as the variant discriminator
     if let Some(props) = variant.get("properties").and_then(|v| v.as_object()) {
-        if props.len() == 1 {
-            if let Some((field_name, field_schema)) = props.iter().next() {
-                let field_type = json_schema_to_ts(field_schema, all_defs);
-                return format!("{{ {}: {} }}", field_name, field_type);
-            }
+        if props.len() == 1
+            && let Some((field_name, field_schema)) = props.iter().next()
+        {
+            let field_type = json_schema_to_ts(field_schema, all_defs);
+            return format!("{{ {}: {} }}", field_name, field_type);
         }
         // Multi-property variant
         let required = variant
             .get("required")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|r| r.as_str())
+                    .collect::<HashSet<_>>()
+            })
             .unwrap_or_default();
         let fields: Vec<String> = props
             .iter()
             .map(|(k, v)| {
-                let _opt = if !required.contains(k.as_str()) { "?" } else { "" };
+                let _opt = if !required.contains(k.as_str()) {
+                    "?"
+                } else {
+                    ""
+                };
                 format!("{}: {}", k, json_schema_to_ts(v, all_defs))
             })
             .collect();
@@ -429,40 +474,48 @@ fn schema_to_interface(
     }
 
     // type: 'object' with properties → interface
-    if schema.get("type").and_then(|v| v.as_str()) == Some("object") {
-        if let Some(props) = schema.get("properties").and_then(|v| v.as_object()) {
-            let required = schema
-                .get("required")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
-                .unwrap_or_default();
+    if schema.get("type").and_then(|v| v.as_str()) == Some("object")
+        && let Some(props) = schema.get("properties").and_then(|v| v.as_object())
+    {
+        let required = schema
+            .get("required")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|r| r.as_str())
+                    .collect::<HashSet<_>>()
+            })
+            .unwrap_or_default();
 
-            out.push_str(&format!("export interface {} {{\n", pname));
-            for (field_name, field_schema) in props {
-                let opt = if !required.contains(field_name.as_str()) { "?" } else { "" };
-                let field_doc = field_schema.get("description").and_then(|v| v.as_str());
-                if let Some(doc) = field_doc {
-                    out.push_str(&format!("  /** {} */\n", doc));
-                }
-                let ft = json_schema_to_ts(field_schema, all_defs);
-                out.push_str(&format!("  {}{}: {};\n", field_name, opt, ft));
+        out.push_str(&format!("export interface {} {{\n", pname));
+        for (field_name, field_schema) in props {
+            let opt = if !required.contains(field_name.as_str()) {
+                "?"
+            } else {
+                ""
+            };
+            let field_doc = field_schema.get("description").and_then(|v| v.as_str());
+            if let Some(doc) = field_doc {
+                out.push_str(&format!("  /** {} */\n", doc));
             }
-            out.push_str("}\n");
-            return Some(out);
+            let ft = json_schema_to_ts(field_schema, all_defs);
+            out.push_str(&format!("  {}{}: {};\n", field_name, opt, ft));
         }
+        out.push_str("}\n");
+        return Some(out);
     }
 
     // No properties but enum → emit as type alias
-    if schema.get("type").and_then(|v| v.as_str()) == Some("string") {
-        if let Some(variants) = schema.get("enum").and_then(|v| v.as_array()) {
-            let vals: Vec<String> = variants
-                .iter()
-                .filter_map(|v| v.as_str())
-                .map(|s| format!("'{}'", s))
-                .collect();
-            out.push_str(&format!("export type {} = {};\n", pname, vals.join(" | ")));
-            return Some(out);
-        }
+    if schema.get("type").and_then(|v| v.as_str()) == Some("string")
+        && let Some(variants) = schema.get("enum").and_then(|v| v.as_array())
+    {
+        let vals: Vec<String> = variants
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| format!("'{}'", s))
+            .collect();
+        out.push_str(&format!("export type {} = {};\n", pname, vals.join(" | ")));
+        return Some(out);
     }
 
     None
@@ -494,7 +547,11 @@ fn json_schema_to_ts(schema: &Value, all_defs: &HashMap<String, Value>) -> Strin
     }
 
     // oneOf / anyOf → union
-    if let Some(arr) = schema.get("oneOf").or_else(|| schema.get("anyOf")).and_then(|v| v.as_array()) {
+    if let Some(arr) = schema
+        .get("oneOf")
+        .or_else(|| schema.get("anyOf"))
+        .and_then(|v| v.as_array())
+    {
         let types: Vec<String> = arr.iter().map(|v| json_schema_to_ts(v, all_defs)).collect();
         return types.join(" | ");
     }
@@ -535,12 +592,20 @@ fn json_schema_to_ts(schema: &Value, all_defs: &HashMap<String, Value>) -> Strin
                 let required = schema
                     .get("required")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().filter_map(|r| r.as_str()).collect::<HashSet<_>>())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|r| r.as_str())
+                            .collect::<HashSet<_>>()
+                    })
                     .unwrap_or_default();
                 let fields: Vec<String> = props
                     .iter()
                     .map(|(k, v)| {
-                        let _opt = if !required.contains(k.as_str()) { "?" } else { "" };
+                        let _opt = if !required.contains(k.as_str()) {
+                            "?"
+                        } else {
+                            ""
+                        };
                         format!("{}: {}", k, json_schema_to_ts(v, all_defs))
                     })
                     .collect();
@@ -634,9 +699,12 @@ fn generate_client_file(
         let method = camel_case(variant);
         let response_type = query_response_map
             .get(&method)
-            .map(|s| s.clone())
+            .cloned()
             .unwrap_or_else(|| "unknown".to_string());
-        let param_type = format!("Extract<{}Type, {{ {}: unknown }}>['{}']", cname, variant, variant);
+        let param_type = format!(
+            "Extract<{}Type, {{ {}: unknown }}>['{}']",
+            cname, variant, variant
+        );
         out.push_str(&format!(
             "  {}(params: {}): Promise<{}>;\n",
             method, param_type, response_type
@@ -652,7 +720,10 @@ fn generate_client_file(
 
     for variant in &exec_variants {
         let method = camel_case(variant);
-        let param_type = format!("Extract<{}Type, {{ {}: unknown }}>['{}']", cname, variant, variant);
+        let param_type = format!(
+            "Extract<{}Type, {{ {}: unknown }}>['{}']",
+            cname, variant, variant
+        );
         out.push_str(&format!(
             "  {}(params: {}): Promise<string>;\n",
             method, param_type
@@ -673,7 +744,10 @@ fn generate_message_composer_file(
 ) -> anyhow::Result<String> {
     let mut out = String::new();
     out.push_str("// Auto-generated by gen-tools.\n");
-    out.push_str(&format!("import type {{ {} }} from './{}.types';\n", cname, cname));
+    out.push_str(&format!(
+        "import type {{ {} }} from './{}.types';\n",
+        cname, cname
+    ));
     out.push_str("import type { Coin } from '@cosmjs/amino';\n");
     out.push_str("import type { MsgExecuteContract } from 'cosmjs-types/cosmwasm/wasm/v1/tx';\n\n");
 
@@ -724,7 +798,10 @@ fn extract_oneof_variant_names(schema: &Value) -> Option<Vec<String>> {
         .filter_map(|v| {
             // Get the first required field — that's the discriminator
             let required = v.get("required").and_then(|v| v.as_array())?;
-            required.first().and_then(|r| r.as_str()).map(|s| s.to_string())
+            required
+                .first()
+                .and_then(|r| r.as_str())
+                .map(|s| s.to_string())
         })
         .collect();
     if names.is_empty() { None } else { Some(names) }
@@ -842,7 +919,12 @@ mod tests {
         let mut response_types = Vec::new();
         let mut all_defs = HashMap::new();
 
-        collect_types_and_defs(&merged, &mut message_types, &mut response_types, &mut all_defs);
+        collect_types_and_defs(
+            &merged,
+            &mut message_types,
+            &mut response_types,
+            &mut all_defs,
+        );
 
         assert_eq!(message_types.len(), 3); // instantiate, execute, query
         assert_eq!(response_types.len(), 1);

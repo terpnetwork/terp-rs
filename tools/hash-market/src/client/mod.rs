@@ -4,7 +4,7 @@
 //! - `MinioIpfsClient` — local Kubo RPC + MinIO for CID fetch/pin
 //! - `NostrRelayClient` — connects to Nostr relay via NEG-OPEN + fetches roots
 //! - `HttpWebhookClient` — POSTs root confirmations to HTTP endpoints
-
+//!
 //! Client polling loop: eth_getProof → Pallas transform → encode → POST to sidecar.
 
 pub mod eth;
@@ -18,8 +18,8 @@ pub use minio_ipfs::{MinioIpfsClient, MinioIpfsDurableConfig};
 
 use crate::fields::pasta;
 
-use crate::msg::VoteExtensionHashData;
 use crate::EthClient;
+use crate::msg::VoteExtensionHashData;
 use anyhow::{Context, Result};
 
 /// Run the ETH proof polling loop.
@@ -39,12 +39,14 @@ pub async fn run_poll_loop(
         match poll_once(
             eth,
             &http,
-            sidecar_url,
-            runtime_id,
-            chain_uid,
-            storage_keys,
-            account_address,
-            last_height,
+            PollOnceParams {
+                sidecar_url,
+                runtime_id,
+                chain_uid,
+                storage_keys,
+                account_address,
+                last_height,
+            },
         )
         .await
         {
@@ -64,16 +66,29 @@ pub async fn run_poll_loop(
     }
 }
 
+/// Arguments for [`poll_once`].
+struct PollOnceParams<'a> {
+    pub sidecar_url: &'a str,
+    pub runtime_id: &'a str,
+    pub chain_uid: &'a str,
+    pub storage_keys: &'a [String],
+    pub account_address: &'a str,
+    pub last_height: u64,
+}
+
 async fn poll_once(
     eth: &EthClient,
     http: &reqwest::Client,
-    sidecar_url: &str,
-    runtime_id: &str,
-    chain_uid: &str,
-    storage_keys: &[String],
-    account_address: &str,
-    last_height: u64,
+    args: PollOnceParams<'_>,
 ) -> Result<Option<u64>> {
+    let PollOnceParams {
+        sidecar_url,
+        runtime_id,
+        chain_uid,
+        storage_keys,
+        account_address,
+        last_height,
+    } = args;
     // Get latest block
     let block_hex = eth.block_number().await?;
     let block = eth.get_block_by_number(&block_hex, false).await?;
@@ -90,7 +105,7 @@ async fn poll_once(
 
     // Transform storage hash to Pallas
     let state_root = block.state_root_bytes()?;
-    let pallas_leaves = pasta::transform_proofs(&[state_root.clone()]);
+    let pallas_leaves = pasta::transform_proofs(std::slice::from_ref(&state_root));
     let root = if let Some(leaf) = pallas_leaves.first() {
         leaf.0.to_vec()
     } else {

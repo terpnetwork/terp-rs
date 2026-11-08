@@ -127,8 +127,8 @@ pub fn load_golden_ibc_data() -> Result<Value, String> {
             .and_then(|s| s.to_str())
             .ok_or_else(|| format!("bad name {}", path.display()))?
             .to_string();
-        let text = std::fs::read_to_string(&path)
-            .map_err(|e| format!("read {}: {e}", path.display()))?;
+        let text =
+            std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
         let val: Value =
             serde_json::from_str(&text).map_err(|e| format!("parse {}: {e}", path.display()))?;
         map.insert(stem, val);
