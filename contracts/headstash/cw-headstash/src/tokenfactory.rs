@@ -1,7 +1,5 @@
 // src/tokenfactory.rs
-use cosmwasm_std::{
-    Addr, Api, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins,
-};
+use cosmwasm_std::{Addr, Api, BankMsg, Binary, CosmosMsg, StdResult, Uint128, coins};
 
 // Hardcoded protobuf type URLs for tokenfactory messages
 const MSG_MINT_TYPE_URL: &str = "/osmosis.tokenfactory.v1beta1.MsgMint";
@@ -29,7 +27,12 @@ pub struct DenomUnit {
 fn create_msg_mint(sender: String, amount: Uint128, denom: String) -> StdResult<CosmosMsg> {
     Ok(CosmosMsg::Stargate {
         type_url: MSG_MINT_TYPE_URL.to_string(),
-        value: Binary::from(crate::tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &sender)),
+        value: Binary::from(crate::tf_proto::msg_coin_addr(
+            &sender,
+            &denom,
+            &amount.to_string(),
+            &sender,
+        )),
     })
 }
 
@@ -41,7 +44,12 @@ fn create_msg_burn(
 ) -> StdResult<CosmosMsg> {
     Ok(CosmosMsg::Stargate {
         type_url: MSG_BURN_TYPE_URL.to_string(),
-        value: Binary::from(crate::tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &burn_from_address)),
+        value: Binary::from(crate::tf_proto::msg_coin_addr(
+            &sender,
+            &denom,
+            &amount.to_string(),
+            &burn_from_address,
+        )),
     })
 }
 

@@ -6,16 +6,15 @@
 //! This runner does not start Docker and does not verify a Halo2 proof.
 
 use crate::epoch::{
-    ALGO_ACCEPTED, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
-    HashMerchantSudoPayload, root_b64,
+    ALGO_ACCEPTED, CHAIN_UID, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload, root_b64,
 };
-use crate::interface::HeadstashContract;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::tokenfactory::HeadstashTokenObject;
 #[cfg(feature = "legacy")]
 use crate::epoch::{ALGO_PENDING, PublicOpen, accepted_root, attested_root, pedersen_commit};
+use crate::interface::HeadstashContract;
 #[cfg(feature = "legacy")]
 use crate::msg::QueryMsg;
+use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::tokenfactory::HeadstashTokenObject;
 use cosmwasm_std::testing::MockApi;
 use cosmwasm_std::{Binary, Coin, Uint256};
 use cw_orch::prelude::*;
@@ -110,7 +109,9 @@ mod tests {
         let raw = serde_json::json!({"apply_accepted_batch": {
             "allocation_root": Binary::from(vec![0u8; 32]), "root_id": 0,
             "rows": [payout(1, dest.as_str(), 15)], "vk_hash": Binary::default()}});
-        let err = cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&raw).unwrap()).unwrap_err().to_string();
+        let err = cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&raw).unwrap())
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("unknown variant"), "{err}");
         assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
     }

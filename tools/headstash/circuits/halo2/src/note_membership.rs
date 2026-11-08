@@ -21,8 +21,8 @@ use std::vec::Vec;
 use ff::{Field, PrimeField};
 use halo2_gadgets::{
     poseidon::{
-        primitives::{ConstantLength, P128Pow5T3},
         Hash as PoseidonHash, Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig,
+        primitives::{ConstantLength, P128Pow5T3},
     },
     utilities::cond_swap::{CondSwapChip, CondSwapInstructions},
 };
@@ -35,7 +35,9 @@ use halo2_proofs::{
 use pasta_curves::{pallas, vesta};
 
 use crate::distro_poseidon::{distro_crh_tag, personalization_to_fp, poseidon_distro_crh};
-use crate::no_ecdsa::{claim_nullifier, key_commitment, pack_destination, verify_membership, MembershipProof};
+use crate::no_ecdsa::{
+    MembershipProof, claim_nullifier, key_commitment, pack_destination, verify_membership,
+};
 
 pub const NOTE_DEPTH: usize = 17;
 pub const NOTE_VK_ID: u64 = 3;
@@ -49,12 +51,25 @@ pub const TAG_NOTE_LEAF: &str = "terp-hs-note-leaf-v2";
 
 /// 1-2-5 series, 1 TERP .. 5,000 TERP, in uterp. Index = denom_class.
 pub const DENOMS_UTERP: [u64; 12] = [
-    1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000, 100_000_000,
-    200_000_000, 500_000_000, 1_000_000_000, 2_000_000_000, 5_000_000_000,
+    1_000_000,
+    2_000_000,
+    5_000_000,
+    10_000_000,
+    20_000_000,
+    50_000_000,
+    100_000_000,
+    200_000_000,
+    500_000_000,
+    1_000_000_000,
+    2_000_000_000,
+    5_000_000_000,
 ];
 
 pub fn denom_class_of(amount: u64) -> Option<u8> {
-    DENOMS_UTERP.iter().position(|d| *d == amount).map(|i| i as u8)
+    DENOMS_UTERP
+        .iter()
+        .position(|d| *d == amount)
+        .map(|i| i as u8)
 }
 
 #[derive(Clone, Debug)]
@@ -98,8 +113,10 @@ pub type NoteMembershipCircuit = NoteCircuitImpl<true>;
 /// constraints.
 struct PinGuard<const PIN: bool>;
 impl<const PIN: bool> PinGuard<PIN> {
-    const TEST_ONLY_UNPINNED: () =
-        assert!(PIN || cfg!(test), "NoteCircuitImpl<false> (unpinned tags) is test-only: finding F3");
+    const TEST_ONLY_UNPINNED: () = assert!(
+        PIN || cfg!(test),
+        "NoteCircuitImpl<false> (unpinned tags) is test-only: finding F3"
+    );
 }
 
 impl<const PIN: bool> Default for NoteCircuitImpl<PIN> {
@@ -141,8 +158,16 @@ impl<const PIN: bool> Circuit<pallas::Base> for NoteCircuitImpl<PIN> {
         for column in &advice {
             meta.enable_equality(*column);
         }
-        let rc_a = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
-        let rc_b = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
+        let rc_a = [
+            meta.fixed_column(),
+            meta.fixed_column(),
+            meta.fixed_column(),
+        ];
+        let rc_b = [
+            meta.fixed_column(),
+            meta.fixed_column(),
+            meta.fixed_column(),
+        ];
         meta.enable_constant(rc_b[0]);
         let poseidon = PoseidonChip::configure::<P128Pow5T3>(
             meta,
@@ -152,7 +177,12 @@ impl<const PIN: bool> Circuit<pallas::Base> for NoteCircuitImpl<PIN> {
             rc_b,
         );
         let swap_config = CondSwapChip::configure(meta, advice[0..5].try_into().unwrap());
-        NoteConfig { advice, poseidon, swap: CondSwapChip::construct(swap_config), instance }
+        NoteConfig {
+            advice,
+            poseidon,
+            swap: CondSwapChip::construct(swap_config),
+            instance,
+        }
     }
 
     fn synthesize(
@@ -163,27 +193,73 @@ impl<const PIN: bool> Circuit<pallas::Base> for NoteCircuitImpl<PIN> {
         let () = PinGuard::<PIN>::TEST_ONLY_UNPINNED;
         let secret = load(&mut layouter, config.advice[0], "secret", self.secret)?;
         let ctx = load(&mut layouter, config.advice[1], "ctx", self.ctx)?;
-        let amount = load(&mut layouter, config.advice[2], "amount", self.amount.map(pallas::Base::from))?;
-        let dest_lo = load(&mut layouter, config.advice[3], "dest_lo", self.destination_lo)?;
-        let dest_hi = load(&mut layouter, config.advice[4], "dest_hi", self.destination_hi)?;
+        let amount = load(
+            &mut layouter,
+            config.advice[2],
+            "amount",
+            self.amount.map(pallas::Base::from),
+        )?;
+        let dest_lo = load(
+            &mut layouter,
+            config.advice[3],
+            "dest_lo",
+            self.destination_lo,
+        )?;
+        let dest_hi = load(
+            &mut layouter,
+            config.advice[4],
+            "dest_hi",
+            self.destination_hi,
+        )?;
 
         let tag_kc = personalization_to_fp(TAG_KEYCOM);
         let tag_nf = personalization_to_fp(TAG_NULLIFIER);
         let tag_leaf = personalization_to_fp(TAG_NOTE_LEAF);
         let kc_tag = fixed::<PIN>(&mut layouter, config.advice[5], "kc-tag", tag_kc, None)?;
         let key_com = poseidon(&mut layouter, &config, "key_com", [kc_tag, secret.clone()])?;
-        let nf_tag = fixed::<PIN>(&mut layouter, config.advice[5], "nf-tag", tag_nf, self.nf_tag_witness)?;
-        let nullifier = poseidon(&mut layouter, &config, "nullifier", [nf_tag, secret, ctx.clone()])?;
+        let nf_tag = fixed::<PIN>(
+            &mut layouter,
+            config.advice[5],
+            "nf-tag",
+            tag_nf,
+            self.nf_tag_witness,
+        )?;
+        let nullifier = poseidon(
+            &mut layouter,
+            &config,
+            "nullifier",
+            [nf_tag, secret, ctx.clone()],
+        )?;
         let leaf_tag = fixed::<PIN>(&mut layouter, config.advice[5], "leaf-tag", tag_leaf, None)?;
-        let leaf = poseidon(&mut layouter, &config, "leaf", [leaf_tag, key_com, amount.clone()])?;
+        let leaf = poseidon(
+            &mut layouter,
+            &config,
+            "leaf",
+            [leaf_tag, key_com, amount.clone()],
+        )?;
 
         let mut node = leaf;
         for layer in 0..NOTE_DEPTH {
             let sibling = self.path.map(|words| words[layer]);
             let swap_bit = self.position.map(|pos| (pos >> layer) & 1 == 1);
-            let (left, right) = config.swap.swap(layouter.namespace(|| "order"), (node, sibling), swap_bit)?;
-            let tag = fixed::<PIN>(&mut layouter, config.advice[5], "crh-tag", distro_crh_tag(), None)?;
-            let lc = fixed::<PIN>(&mut layouter, config.advice[4], "layer", pallas::Base::from(layer as u64), None)?;
+            let (left, right) =
+                config
+                    .swap
+                    .swap(layouter.namespace(|| "order"), (node, sibling), swap_bit)?;
+            let tag = fixed::<PIN>(
+                &mut layouter,
+                config.advice[5],
+                "crh-tag",
+                distro_crh_tag(),
+                None,
+            )?;
+            let lc = fixed::<PIN>(
+                &mut layouter,
+                config.advice[4],
+                "layer",
+                pallas::Base::from(layer as u64),
+                None,
+            )?;
             node = poseidon(&mut layouter, &config, "crh", [tag, lc, left, right])?;
         }
 
@@ -201,7 +277,10 @@ fn load(
     label: &'static str,
     value: Value<pallas::Base>,
 ) -> Result<AssignedCell<pallas::Base, pallas::Base>, plonk::Error> {
-    layouter.assign_region(|| label, |mut region| region.assign_advice(|| label, column, 0, || value))
+    layouter.assign_region(
+        || label,
+        |mut region| region.assign_advice(|| label, column, 0, || value),
+    )
 }
 
 /// A domain constant. With PIN the cell is copy-constrained to the fixed
@@ -233,16 +312,27 @@ fn poseidon<const L: usize>(
     inputs: [AssignedCell<pallas::Base, pallas::Base>; L],
 ) -> Result<AssignedCell<pallas::Base, pallas::Base>, plonk::Error> {
     let chip = PoseidonChip::construct(config.poseidon.clone());
-    let hasher = PoseidonHash::<_, _, P128Pow5T3, ConstantLength<L>, 3, 2>::init(chip, layouter.namespace(|| label))?;
+    let hasher = PoseidonHash::<_, _, P128Pow5T3, ConstantLength<L>, 3, 2>::init(
+        chip,
+        layouter.namespace(|| label),
+    )?;
     hasher.hash(layouter.namespace(|| label), inputs)
 }
 
 pub fn note_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
     halo2_gadgets::poseidon::primitives::Hash::<_, P128Pow5T3, ConstantLength<3>, 3, 2>::init()
-        .hash([personalization_to_fp(TAG_NOTE_LEAF), key_com, pallas::Base::from(amount)])
+        .hash([
+            personalization_to_fp(TAG_NOTE_LEAF),
+            key_com,
+            pallas::Base::from(amount),
+        ])
 }
 
-pub fn note_root(leaf: pallas::Base, position: u32, path: &[pallas::Base; NOTE_DEPTH]) -> pallas::Base {
+pub fn note_root(
+    leaf: pallas::Base,
+    position: u32,
+    path: &[pallas::Base; NOTE_DEPTH],
+) -> pallas::Base {
     let mut node = leaf;
     for (layer, sibling) in path.iter().enumerate() {
         node = if position & (1 << layer) == 0 {
@@ -279,14 +369,23 @@ pub fn note_public(
     destination: &str,
 ) -> Result<Vec<pallas::Base>, String> {
     let (lo, hi) = pack_destination(destination)?;
-    Ok(vec![ctx, root, claim_nullifier(secret, ctx), lo, hi, pallas::Base::from(amount)])
+    Ok(vec![
+        ctx,
+        root,
+        claim_nullifier(secret, ctx),
+        lo,
+        hi,
+        pallas::Base::from(amount),
+    ])
 }
 
 pub fn note_params() -> Params<vesta::Affine> {
     Params::<vesta::Affine>::new(NOTE_K)
 }
 
-pub fn note_vk(params: &Params<vesta::Affine>) -> Result<plonk::VerifyingKey<vesta::Affine>, String> {
+pub fn note_vk(
+    params: &Params<vesta::Affine>,
+) -> Result<plonk::VerifyingKey<vesta::Affine>, String> {
     plonk::keygen_vk(params, &NoteMembershipCircuit::default()).map_err(|err| format!("vk {err:?}"))
 }
 
@@ -343,8 +442,15 @@ pub fn prove_note(
     let started = now();
     let mut rng = crate::os_rng();
     let mut transcript = Blake2bWrite::<_, vesta::Affine, Challenge255<_>>::init(Vec::new());
-    plonk::create_proof(&params, &pk, &[circuit], &[&[&public]], &mut rng, &mut transcript)
-        .map_err(|err| format!("prove {err:?}"))?;
+    plonk::create_proof(
+        &params,
+        &pk,
+        &[circuit],
+        &[&[&public]],
+        &mut rng,
+        &mut transcript,
+    )
+    .map_err(|err| format!("prove {err:?}"))?;
     let proof = transcript.finalize();
     let prove_secs = secs(started);
     let started = now();
@@ -402,7 +508,11 @@ pub fn note_vk_hash() -> Result<[u8; 32], String> {
 }
 
 fn parse_fp(hex_str: &str) -> Result<pallas::Base, String> {
-    if hex_str.len() != 64 || !hex_str.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
+    if hex_str.len() != 64
+        || !hex_str
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+    {
         return Err("field".into());
     }
     let bytes = hex::decode(hex_str).map_err(|_| "field".to_string())?;
@@ -422,8 +532,11 @@ struct Witness {
 }
 
 fn parse_witness(witness_json: &str) -> Result<Witness, String> {
-    let v: serde_json::Value = serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
-    let field = |k: &str| -> Result<pallas::Base, String> { parse_fp(v.get(k).and_then(|x| x.as_str()).ok_or(k.to_string())?) };
+    let v: serde_json::Value =
+        serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
+    let field = |k: &str| -> Result<pallas::Base, String> {
+        parse_fp(v.get(k).and_then(|x| x.as_str()).ok_or(k.to_string())?)
+    };
     let amount = match v.get("amount").ok_or("amount")? {
         serde_json::Value::String(s) => s.parse::<u64>().map_err(|_| "amount")?,
         serde_json::Value::Number(n) => n.as_u64().ok_or("amount")?,
@@ -436,7 +549,10 @@ fn parse_witness(witness_json: &str) -> Result<Witness, String> {
     if index >= 1u64 << NOTE_DEPTH {
         return Err("index".into());
     }
-    let sib = v.get("siblings_hex").and_then(|x| x.as_array()).ok_or("siblings")?;
+    let sib = v
+        .get("siblings_hex")
+        .and_then(|x| x.as_array())
+        .ok_or("siblings")?;
     if sib.len() != NOTE_DEPTH {
         return Err("siblings".into());
     }
@@ -451,14 +567,23 @@ fn parse_witness(witness_json: &str) -> Result<Witness, String> {
         amount,
         index: index as u32,
         path,
-        destination: v.get("destination").and_then(|x| x.as_str()).ok_or("destination")?.to_string(),
+        destination: v
+            .get("destination")
+            .and_then(|x| x.as_str())
+            .ok_or("destination")?
+            .to_string(),
     })
 }
 
 /// Prove a note witness (`secret_hex, ctx_hex, root_hex, amount, index, siblings_hex[17], destination`).
 pub fn prove_note_witness_json(witness_json: &str) -> Result<MembershipProof, String> {
     let w = parse_witness(witness_json)?;
-    if note_root(note_leaf(key_commitment(w.secret), w.amount), w.index, &w.path) != w.root {
+    if note_root(
+        note_leaf(key_commitment(w.secret), w.amount),
+        w.index,
+        &w.path,
+    ) != w.root
+    {
         return Err("root".into());
     }
     prove_note(w.secret, w.ctx, w.amount, w.index, w.path, &w.destination)
@@ -539,7 +664,14 @@ mod tests {
 
     const DEST: &str = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
 
-    fn fixture(amount: u64) -> (NoteMembershipCircuit, Vec<pallas::Base>, pallas::Base, pallas::Base) {
+    fn fixture(
+        amount: u64,
+    ) -> (
+        NoteMembershipCircuit,
+        Vec<pallas::Base>,
+        pallas::Base,
+        pallas::Base,
+    ) {
         let secret = pallas::Base::from(0x31u64);
         let ctx = pallas::Base::from(0x44u64);
         let index = 98_840u32;
@@ -558,7 +690,12 @@ mod tests {
             destination_hi: Value::known(hi),
             nf_tag_witness: None,
         };
-        (c, note_public(secret, ctx, amount, root, DEST).unwrap(), secret, ctx)
+        (
+            c,
+            note_public(secret, ctx, amount, root, DEST).unwrap(),
+            secret,
+            ctx,
+        )
     }
 
     pub(crate) fn sample_witness_json() -> String {
@@ -590,17 +727,38 @@ mod tests {
         let fake = pallas::Base::from(0xdeadu64);
         for pinned in [false, true] {
             let (c, mut public, secret, ctx) = fixture(1_000_000);
-            public[2] = halo2_gadgets::poseidon::primitives::Hash::<_, P128Pow5T3, ConstantLength<3>, 3, 2>::init()
-                .hash([fake, secret, ctx]);
+            public[2] = halo2_gadgets::poseidon::primitives::Hash::<
+                _,
+                P128Pow5T3,
+                ConstantLength<3>,
+                3,
+                2,
+            >::init()
+            .hash([fake, secret, ctx]);
             let ok = if pinned {
-                let c = NoteCircuitImpl::<true> { nf_tag_witness: Some(fake), ..c };
-                halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public]).unwrap().verify().is_ok()
+                let c = NoteCircuitImpl::<true> {
+                    nf_tag_witness: Some(fake),
+                    ..c
+                };
+                halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public])
+                    .unwrap()
+                    .verify()
+                    .is_ok()
             } else {
                 let c = NoteCircuitImpl::<false> {
-                    secret: c.secret, ctx: c.ctx, amount: c.amount, position: c.position, path: c.path,
-                    destination_lo: c.destination_lo, destination_hi: c.destination_hi, nf_tag_witness: Some(fake),
+                    secret: c.secret,
+                    ctx: c.ctx,
+                    amount: c.amount,
+                    position: c.position,
+                    path: c.path,
+                    destination_lo: c.destination_lo,
+                    destination_hi: c.destination_hi,
+                    nf_tag_witness: Some(fake),
                 };
-                halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public]).unwrap().verify().is_ok()
+                halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public])
+                    .unwrap()
+                    .verify()
+                    .is_ok()
             };
             // Unpinned (vk_id 2 shape): a second nullifier for the same note verifies.
             assert_eq!(ok, !pinned, "pinned={pinned}");
@@ -611,10 +769,20 @@ mod tests {
     fn wrong_amount_or_root_fails() {
         let (c, mut public, _, _) = fixture(2_000_000);
         public[5] = pallas::Base::from(5_000_000u64);
-        assert!(halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public.clone()]).unwrap().verify().is_err());
+        assert!(
+            halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public.clone()])
+                .unwrap()
+                .verify()
+                .is_err()
+        );
         public[5] = pallas::Base::from(2_000_000u64);
         public[1] += pallas::Base::ONE;
-        assert!(halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public]).unwrap().verify().is_err());
+        assert!(
+            halo2_proofs::dev::MockProver::run(NOTE_K, &c, vec![public])
+                .unwrap()
+                .verify()
+                .is_err()
+        );
     }
 
     #[test]
@@ -622,8 +790,21 @@ mod tests {
         assert_eq!(denom_class_of(1_000_000), Some(0));
         assert_eq!(denom_class_of(5_000_000_000), Some(11));
         assert_eq!(denom_class_of(15), None);
-        assert!(prove_note(pallas::Base::ONE, pallas::Base::ONE, 15, 0, [pallas::Base::ZERO; NOTE_DEPTH], DEST).is_err());
-        assert_ne!(note_leaf(pallas::Base::ONE, 1_000_000), crate::no_ecdsa::membership_leaf(pallas::Base::ONE, 1_000_000));
+        assert!(
+            prove_note(
+                pallas::Base::ONE,
+                pallas::Base::ONE,
+                15,
+                0,
+                [pallas::Base::ZERO; NOTE_DEPTH],
+                DEST
+            )
+            .is_err()
+        );
+        assert_ne!(
+            note_leaf(pallas::Base::ONE, 1_000_000),
+            crate::no_ecdsa::membership_leaf(pallas::Base::ONE, 1_000_000)
+        );
     }
 
     #[test]
@@ -635,7 +816,13 @@ mod tests {
         let hash = hex::encode(checksum32(&blob));
         std::eprintln!(
             "note k {} proof_bytes {} prove_secs {:.3} verify_secs {:.3} pk_bytes {} vk_blob_bytes {} vk_hash {}",
-            proof.k, proof.proof.len(), proof.prove_secs, proof.verify_secs, proof.pk_bytes, blob.len(), hash
+            proof.k,
+            proof.proof.len(),
+            proof.prove_secs,
+            proof.verify_secs,
+            proof.pk_bytes,
+            blob.len(),
+            hash
         );
         assert_eq!(NOTE_VK_ID, 3);
         assert_eq!(&blob[blob.len() - 80..][2], &(NOTE_K as u8));
@@ -650,7 +837,8 @@ mod tests {
     #[ignore = "HS_NOTE_WITNESS and HS_NOTE_BROWSER_PROOF from the wasm build"]
     fn browser_note_proof_matches_native_vk() {
         let witness = std::fs::read_to_string(std::env::var("HS_NOTE_WITNESS").unwrap()).unwrap();
-        let hexp = std::fs::read_to_string(std::env::var("HS_NOTE_BROWSER_PROOF").unwrap()).unwrap();
+        let hexp =
+            std::fs::read_to_string(std::env::var("HS_NOTE_BROWSER_PROOF").unwrap()).unwrap();
         let proof = hex::decode(hexp.trim()).unwrap();
         assert_eq!(proof.len(), NOTE_PROOF_BYTES);
         verify_note_witness_proof(witness.trim(), &proof).expect("verify");

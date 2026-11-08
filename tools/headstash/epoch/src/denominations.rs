@@ -20,8 +20,18 @@ pub const SOL_ID_TAG: u8 = 0x02;
 
 /// Must equal `zk_headstash::note_membership::DENOMS_UTERP`.
 pub const DENOMS_UTERP: [u64; 12] = [
-    1_000_000, 2_000_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000, 100_000_000,
-    200_000_000, 500_000_000, 1_000_000_000, 2_000_000_000, 5_000_000_000,
+    1_000_000,
+    2_000_000,
+    5_000_000,
+    10_000_000,
+    20_000_000,
+    50_000_000,
+    100_000_000,
+    200_000_000,
+    500_000_000,
+    1_000_000_000,
+    2_000_000_000,
+    5_000_000_000,
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,7 +54,10 @@ pub fn decompose(amount: u64) -> (Vec<Note>, u64) {
         let d = DENOMS_UTERP[class];
         while rest >= d {
             rest -= d;
-            notes.push(Note { class: class as u8, note_index: notes.len() as u16 });
+            notes.push(Note {
+                class: class as u8,
+                note_index: notes.len() as u16,
+            });
         }
     }
     (notes, rest)
@@ -77,7 +90,11 @@ pub fn note_node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 pub fn open_note(leaf: [u8; 32], index: usize, path: &[[u8; 32]]) -> [u8; 32] {
     let mut n = leaf;
     for (l, s) in path.iter().enumerate() {
-        n = if (index >> l) & 1 == 0 { note_node(&n, s) } else { note_node(s, &n) };
+        n = if (index >> l) & 1 == 0 {
+            note_node(&n, s)
+        } else {
+            note_node(s, &n)
+        };
     }
     n
 }
@@ -111,20 +128,38 @@ impl NoteTree {
         for (id, amount) in sorted {
             let (notes, remainder) = decompose(amount);
             if notes.len() > MAX_NOTES_PER_IDENTITY {
-                return Err(format!("{} has {} notes > {MAX_NOTES_PER_IDENTITY}", id.key(), notes.len()));
+                return Err(format!(
+                    "{} has {} notes > {MAX_NOTES_PER_IDENTITY}",
+                    id.key(),
+                    notes.len()
+                ));
             }
             let first_leaf = leaves.len();
             leaves.extend(notes.iter().map(|n| note_leaf(&id, n)));
-            ids.push(IdentityNotes { identity: id, allocation: amount, notes, first_leaf, remainder });
+            ids.push(IdentityNotes {
+                identity: id,
+                allocation: amount,
+                notes,
+                first_leaf,
+                remainder,
+            });
         }
         let cap = 1usize << NOTE_TREE_DEPTH;
         if leaves.len() > cap {
-            return Err(format!("{} notes exceed depth {NOTE_TREE_DEPTH} ({cap})", leaves.len()));
+            return Err(format!(
+                "{} notes exceed depth {NOTE_TREE_DEPTH} ({cap})",
+                leaves.len()
+            ));
         }
         leaves.resize(cap, [0u8; 32]);
         let mut levels = vec![leaves];
         for _ in 0..NOTE_TREE_DEPTH {
-            let next = levels.last().unwrap().chunks(2).map(|p| note_node(&p[0], &p[1])).collect();
+            let next = levels
+                .last()
+                .unwrap()
+                .chunks(2)
+                .map(|p| note_node(&p[0], &p[1]))
+                .collect();
             levels.push(next);
         }
         Ok(Self { ids, levels })
@@ -139,7 +174,9 @@ impl NoteTree {
     }
 
     pub fn path(&self, index: usize) -> Vec<[u8; 32]> {
-        (0..NOTE_TREE_DEPTH as usize).map(|l| self.levels[l][(index >> l) ^ 1]).collect()
+        (0..NOTE_TREE_DEPTH as usize)
+            .map(|l| self.levels[l][(index >> l) ^ 1])
+            .collect()
     }
 
     pub fn leaf(&self, index: usize) -> [u8; 32] {
@@ -165,7 +202,11 @@ impl NoteTree {
     }
 
     pub fn notes_uterp(&self) -> u128 {
-        self.ids.iter().flat_map(|i| i.notes.iter()).map(|n| n.amount() as u128).sum()
+        self.ids
+            .iter()
+            .flat_map(|i| i.notes.iter())
+            .map(|n| n.amount() as u128)
+            .sum()
     }
 
     pub fn remainder_uterp(&self) -> u128 {
@@ -184,25 +225,54 @@ mod tests {
         // 18,765.4321 TERP = 3x5000 + 1x2000 + 1x1000 + 1x500 + 1x200 + 1x50 + 1x10 + 1x5
         assert_eq!(classes, vec![11, 11, 11, 10, 9, 8, 7, 5, 3, 2]);
         assert_eq!(r, 432_100);
-        assert_eq!(n.iter().map(|x| x.amount()).sum::<u64>() + r, 18_765_432_100);
-        assert!(n.iter().enumerate().all(|(i, x)| x.note_index as usize == i));
+        assert_eq!(
+            n.iter().map(|x| x.amount()).sum::<u64>() + r,
+            18_765_432_100
+        );
+        assert!(
+            n.iter()
+                .enumerate()
+                .all(|(i, x)| x.note_index as usize == i)
+        );
         assert_eq!(decompose(999_999), (vec![], 999_999));
-        assert_eq!(decompose(4_000_000).0.iter().map(|x| x.class).collect::<Vec<_>>(), vec![1, 1]);
+        assert_eq!(
+            decompose(4_000_000)
+                .0
+                .iter()
+                .map(|x| x.class)
+                .collect::<Vec<_>>(),
+            vec![1, 1]
+        );
     }
 
     #[test]
     fn leaves_are_domain_separated() {
         let e = Identity::Evm([1; 20]);
         let s = Identity::Sol([1; 32]);
-        let a = Note { class: 0, note_index: 0 };
-        let b = Note { class: 1, note_index: 0 };
-        let c = Note { class: 0, note_index: 1 };
+        let a = Note {
+            class: 0,
+            note_index: 0,
+        };
+        let b = Note {
+            class: 1,
+            note_index: 0,
+        };
+        let c = Note {
+            class: 0,
+            note_index: 1,
+        };
         assert_ne!(note_leaf(&e, &a), note_leaf(&s, &a));
         assert_ne!(note_leaf(&e, &a), note_leaf(&e, &b));
         assert_ne!(note_leaf(&e, &a), note_leaf(&e, &c));
-        assert_ne!(note_leaf(&e, &a), crate::eligibility::evm_leaf(&[1; 20], 1_000_000));
+        assert_ne!(
+            note_leaf(&e, &a),
+            crate::eligibility::evm_leaf(&[1; 20], 1_000_000)
+        );
         // Fixed vector for the contract port.
-        assert_eq!(&hex::encode(note_leaf(&e, &a))[..8], NOTE_LEAF_VECTOR_PREFIX);
+        assert_eq!(
+            &hex::encode(note_leaf(&e, &a))[..8],
+            NOTE_LEAF_VECTOR_PREFIX
+        );
     }
 
     #[test]
@@ -225,7 +295,10 @@ mod tests {
             }
         }
         let tab = t.class_table();
-        assert_eq!(tab.iter().map(|x| x.0).sum::<u64>() as usize, t.note_count());
+        assert_eq!(
+            tab.iter().map(|x| x.0).sum::<u64>() as usize,
+            t.note_count()
+        );
         assert!(NoteTree::build(&[rows[0], rows[0]]).is_err());
     }
 }

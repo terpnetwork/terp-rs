@@ -93,7 +93,9 @@ pub fn decode_sol(entry: &str) -> Result<([u8; 32], SolForm), SolDrop> {
     {
         Some(raw) => (raw, SolForm::Base64OfBase58),
         None => (
-            bs58::decode(entry).into_vec().map_err(|_| SolDrop::Encoding)?,
+            bs58::decode(entry)
+                .into_vec()
+                .map_err(|_| SolDrop::Encoding)?,
             SolForm::Base58,
         ),
     };
@@ -105,7 +107,10 @@ pub fn decode_sol(entry: &str) -> Result<([u8; 32], SolForm), SolDrop> {
 }
 
 pub fn decode_evm(entry: &str) -> Option<[u8; 20]> {
-    let t = entry.trim().strip_prefix("0x").or_else(|| entry.trim().strip_prefix("0X"))?;
+    let t = entry
+        .trim()
+        .strip_prefix("0x")
+        .or_else(|| entry.trim().strip_prefix("0X"))?;
     let raw = hex::decode(t.to_ascii_lowercase()).ok()?;
     raw.try_into().ok()
 }
@@ -137,7 +142,10 @@ impl EligTree {
             depth += 1;
         }
         if depth > MAX_DEPTH {
-            return Err(format!("{} identities exceed depth {MAX_DEPTH}", entries.len()));
+            return Err(format!(
+                "{} identities exceed depth {MAX_DEPTH}",
+                entries.len()
+            ));
         }
         Ok(Self::with_depth(entries, depth))
     }
@@ -178,7 +186,11 @@ impl EligTree {
 pub fn open(leaf: [u8; 32], index: usize, path: &[[u8; 32]]) -> [u8; 32] {
     let mut n = leaf;
     for (l, s) in path.iter().enumerate() {
-        n = if (index >> l) & 1 == 0 { node(&n, s) } else { node(s, &n) };
+        n = if (index >> l) & 1 == 0 {
+            node(&n, s)
+        } else {
+            node(s, &n)
+        };
     }
     n
 }
@@ -190,8 +202,14 @@ mod tests {
     #[test]
     fn evm_leaf_encoding_is_unchanged() {
         // Live loopback root from the two-leaf EVM eligibility file (relay test vector).
-        let a: [u8; 20] = hex::decode("7e5f4552091a69125d5dfcb7b8c2659029395bdf").unwrap().try_into().unwrap();
-        let b: [u8; 20] = hex::decode("2b5ad5c4795c026514f8317c7a215e218dccd6cf").unwrap().try_into().unwrap();
+        let a: [u8; 20] = hex::decode("7e5f4552091a69125d5dfcb7b8c2659029395bdf")
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let b: [u8; 20] = hex::decode("2b5ad5c4795c026514f8317c7a215e218dccd6cf")
+            .unwrap()
+            .try_into()
+            .unwrap();
         let t = EligTree::with_depth(vec![(Identity::Evm(a), 15), (Identity::Evm(b), 15)], 1);
         assert!(hex::encode(t.root()).starts_with("ddfd4cb0"));
     }
@@ -203,7 +221,12 @@ mod tests {
         let mut a = [0u8; 20];
         a.copy_from_slice(&pk[..20]);
         assert_ne!(sol_leaf(&pk, 5), evm_leaf(&a, 5));
-        let t = EligTree::build(vec![(Identity::Sol(pk), 5), (Identity::Evm(a), 5), (Identity::Sol(pk), 1)]).unwrap();
+        let t = EligTree::build(vec![
+            (Identity::Sol(pk), 5),
+            (Identity::Evm(a), 5),
+            (Identity::Sol(pk), 1),
+        ])
+        .unwrap();
         assert_eq!(t.entries.len(), 2);
         let i = t.index_of(&Identity::Sol(pk)).unwrap();
         assert_eq!(t.entries[i].1, 6);
@@ -219,11 +242,23 @@ mod tests {
         assert_eq!(decode_sol(&b64).unwrap(), (pk, SolForm::Base64OfBase58));
         assert_eq!(decode_sol(&b58).unwrap(), (pk, SolForm::Base58));
         assert_eq!(decode_sol("0OIl").unwrap_err(), SolDrop::Encoding);
-        assert_eq!(decode_sol(&bs58::encode([1u8; 31]).into_string()).unwrap_err(), SolDrop::Length);
+        assert_eq!(
+            decode_sol(&bs58::encode([1u8; 31]).into_string()).unwrap_err(),
+            SolDrop::Length
+        );
         // Find a 32-byte string that is not a curve point.
-        let off = (0u8..=255).map(|b| { let mut x = [b; 32]; x[31] &= 0x7f; x })
-            .find(|x| ed25519_dalek::VerifyingKey::from_bytes(x).is_err()).unwrap();
-        assert_eq!(decode_sol(&bs58::encode(off).into_string()).unwrap_err(), SolDrop::OffCurve);
+        let off = (0u8..=255)
+            .map(|b| {
+                let mut x = [b; 32];
+                x[31] &= 0x7f;
+                x
+            })
+            .find(|x| ed25519_dalek::VerifyingKey::from_bytes(x).is_err())
+            .unwrap();
+        assert_eq!(
+            decode_sol(&bs58::encode(off).into_string()).unwrap_err(),
+            SolDrop::OffCurve
+        );
     }
 }
 
@@ -237,27 +272,49 @@ mod tests {
 /// `decimals`, and u128 overflow. Surrounding whitespace (incl. CR) is trimmed.
 pub fn parse_base_units(s: &str, decimals: u32) -> Result<u128, String> {
     let s = s.trim();
-    if s.is_empty() { return Err("empty".into()); }
-    let (int, frac) = match s.split_once('.') { Some((i, f)) => (i, f), None => (s, "") };
-    if int.is_empty() || (s.contains('.') && frac.is_empty()) { return Err(format!("malformed: {s}")); }
+    if s.is_empty() {
+        return Err("empty".into());
+    }
+    let (int, frac) = match s.split_once('.') {
+        Some((i, f)) => (i, f),
+        None => (s, ""),
+    };
+    if int.is_empty() || (s.contains('.') && frac.is_empty()) {
+        return Err(format!("malformed: {s}"));
+    }
     if !int.bytes().all(|b| b.is_ascii_digit()) || !frac.bytes().all(|b| b.is_ascii_digit()) {
         return Err(format!("malformed: {s}"));
     }
     let frac_t = frac.trim_end_matches('0');
-    if frac_t.len() as u32 > decimals { return Err(format!("more than {decimals} fractional digits: {s}")); }
+    if frac_t.len() as u32 > decimals {
+        return Err(format!("more than {decimals} fractional digits: {s}"));
+    }
     let scale = 10u128.checked_pow(decimals).ok_or("decimals too large")?;
     let mut iv: u128 = 0;
-    for b in int.bytes() { iv = iv.checked_mul(10).and_then(|v| v.checked_add((b - b'0') as u128)).ok_or(format!("overflow: {s}"))?; }
+    for b in int.bytes() {
+        iv = iv
+            .checked_mul(10)
+            .and_then(|v| v.checked_add((b - b'0') as u128))
+            .ok_or(format!("overflow: {s}"))?;
+    }
     let mut fv: u128 = 0;
-    for b in frac_t.bytes() { fv = fv * 10 + (b - b'0') as u128; }
+    for b in frac_t.bytes() {
+        fv = fv * 10 + (b - b'0') as u128;
+    }
     fv *= 10u128.pow(decimals - frac_t.len() as u32);
-    iv.checked_mul(scale).and_then(|v| v.checked_add(fv)).ok_or(format!("overflow: {s}"))
+    iv.checked_mul(scale)
+        .and_then(|v| v.checked_add(fv))
+        .ok_or(format!("overflow: {s}"))
 }
 
 /// floor(a * b / d) without overflow for any u128 inputs where the true result fits u128.
 pub fn mul_div_floor(a: u128, b: u128, d: u128) -> Option<u128> {
-    if d == 0 { return None; }
-    if let Some(p) = a.checked_mul(b) { return Some(p / d); }
+    if d == 0 {
+        return None;
+    }
+    if let Some(p) = a.checked_mul(b) {
+        return Some(p / d);
+    }
     // Exact 256-bit product (hi, lo), then bitwise long division by d.
     const M: u128 = u64::MAX as u128;
     let (a0, a1, b0, b1) = (a & M, a >> 64, b & M, b >> 64);
@@ -265,13 +322,18 @@ pub fn mul_div_floor(a: u128, b: u128, d: u128) -> Option<u128> {
     let mid = (ll >> 64) + (lh & M) + (hl & M);
     let lo = (ll & M) | (mid << 64);
     let hi = hh + (lh >> 64) + (hl >> 64) + (mid >> 64);
-    if hi >= d { return None; } // quotient would not fit u128
+    if hi >= d {
+        return None;
+    } // quotient would not fit u128
     let (mut r, mut q) = (hi, 0u128);
     for i in (0..128).rev() {
         let carry = r >> 127;
         r = (r << 1) | ((lo >> i) & 1);
         q <<= 1;
-        if carry == 1 || r >= d { r = r.wrapping_sub(d); q |= 1; }
+        if carry == 1 || r >= d {
+            r = r.wrapping_sub(d);
+            q |= 1;
+        }
     }
     Some(q)
 }
@@ -280,8 +342,13 @@ pub fn mul_div_floor(a: u128, b: u128, d: u128) -> Option<u128> {
 /// Returns per-holder u64 amounts (same order) and the undistributed dust.
 /// Deterministic: depends only on the inputs, not their order of evaluation.
 pub fn allocate_floor(balances: &[u128], budget: u64) -> Result<(Vec<u64>, u64), String> {
-    let total = balances.iter().try_fold(0u128, |a, b| a.checked_add(*b)).ok_or("total overflow")?;
-    if total == 0 { return Ok((vec![0; balances.len()], budget)); }
+    let total = balances
+        .iter()
+        .try_fold(0u128, |a, b| a.checked_add(*b))
+        .ok_or("total overflow")?;
+    if total == 0 {
+        return Ok((vec![0; balances.len()], budget));
+    }
     let mut out = Vec::with_capacity(balances.len());
     let mut given: u128 = 0;
     for &bal in balances {
@@ -302,7 +369,12 @@ pub fn apply_exclusions(
 ) -> (Vec<(Identity, u64)>, u128, u64) {
     let (mut kept, mut unallocated, mut n) = (Vec::with_capacity(rows.len()), 0u128, 0u64);
     for (id, a) in rows {
-        if excluded.contains(&id) { unallocated += a as u128; n += 1; } else { kept.push((id, a)); }
+        if excluded.contains(&id) {
+            unallocated += a as u128;
+            n += 1;
+        } else {
+            kept.push((id, a));
+        }
     }
     (kept, unallocated, n)
 }
@@ -314,7 +386,11 @@ mod exclusion_tests {
 
     #[test]
     fn excluded_share_stays_unallocated_and_others_unchanged() {
-        let ids = [Identity::Evm([1; 20]), Identity::Evm([2; 20]), Identity::Sol([3; 32])];
+        let ids = [
+            Identity::Evm([1; 20]),
+            Identity::Evm([2; 20]),
+            Identity::Sol([3; 32]),
+        ];
         let bals = [5u128, 3, 2];
         let budget = 1_000_003u64;
         let (alloc, dust) = allocate_floor(&bals, budget).unwrap();
@@ -342,10 +418,16 @@ mod amount_tests {
 
     #[test]
     fn fractional_parsing() {
-        assert_eq!(parse_base_units("12.5", 18).unwrap(), 12_500_000_000_000_000_000);
+        assert_eq!(
+            parse_base_units("12.5", 18).unwrap(),
+            12_500_000_000_000_000_000
+        );
         assert_eq!(parse_base_units("0.000000000000000001", 18).unwrap(), 1);
         assert_eq!(parse_base_units("1.2300", 2).unwrap(), 123);
-        assert_eq!(parse_base_units("52230931.14\r", 18).unwrap(), 52_230_931_140_000_000_000_000_000);
+        assert_eq!(
+            parse_base_units("52230931.14\r", 18).unwrap(),
+            52_230_931_140_000_000_000_000_000
+        );
         assert_eq!(parse_base_units("42", 0).unwrap(), 42);
         assert_eq!(parse_base_units("42", 6).unwrap(), 42_000_000);
         assert_eq!(parse_base_units("7.000", 0).unwrap(), 7);
@@ -353,7 +435,9 @@ mod amount_tests {
 
     #[test]
     fn invalid_values() {
-        for bad in ["", "-1", "+1", "1e5", "1.", ".5", "1.2.3", "abc", "1,5", " 1 2"] {
+        for bad in [
+            "", "-1", "+1", "1e5", "1.", ".5", "1.2.3", "abc", "1,5", " 1 2",
+        ] {
             assert!(parse_base_units(bad, 18).is_err(), "{bad:?}");
         }
         assert!(parse_base_units("0.001", 2).is_err());
@@ -367,7 +451,10 @@ mod amount_tests {
         assert!(u64::try_from(bal).is_err());
         // budget * balance overflows u128; mul_div must still be exact.
         let big = u128::MAX / 3;
-        assert_eq!(mul_div_floor(big, u64::MAX as u128, big).unwrap(), u64::MAX as u128);
+        assert_eq!(
+            mul_div_floor(big, u64::MAX as u128, big).unwrap(),
+            u64::MAX as u128
+        );
         let (a, dust) = allocate_floor(&[bal, bal], u64::MAX).unwrap();
         assert_eq!(a[0] as u128 * 2 + dust as u128, u64::MAX as u128);
         assert!(parse_base_units("400000000000000000000.0", 18).is_err());

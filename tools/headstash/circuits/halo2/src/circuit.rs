@@ -245,8 +245,8 @@ impl Circuit {
     /// The circuit checks the signature under the note's key. It does not
     /// hash the string again: the public `e` is that challenge.
     pub fn attach_personal_sign(&mut self, instance: &mut Instance, secret_be: &[u8; 32]) {
-        use crate::claim_auth::{canonical_claim_body, ctx_limbs, sign_canonical_body};
         use crate::circuit::gadget::secp256k1_chip::secp_fq_from_secret_be;
+        use crate::claim_auth::{canonical_claim_body, ctx_limbs, sign_canonical_body};
         use crate::claim_auth::{keccak256, sign_personal_claim};
 
         let body = canonical_claim_body(
@@ -982,7 +982,6 @@ pub fn verify_epoch_statement(
         .map_err(|_| EpochVerifyError::Proof)
 }
 
-
 fn checksum32(bytes: &[u8]) -> [u8; 32] {
     let mut out = [0u8; 32];
     out.copy_from_slice(Checksum::generate(bytes).as_slice());
@@ -1064,8 +1063,8 @@ fn depth16_member(
 ) -> Result<(Note, crate::tree::MerklePath, Anchor), String> {
     use crate::note::RandomSeed;
     use crate::suite::builders::{
-        poseidon_distro_leaf_from_note, HeadstashBitwiseInstance, HeadstashCircuitSuite,
-        MerkleTestDataBuilder, PartialClaimNote,
+        HeadstashBitwiseInstance, HeadstashCircuitSuite, MerkleTestDataBuilder, PartialClaimNote,
+        poseidon_distro_leaf_from_note,
     };
     use cw_orch::mock::Mock;
 

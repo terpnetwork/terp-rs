@@ -638,7 +638,11 @@ pub fn execute_register_asset(
         .add_attribute("local_denom", local_denom))
 }
 
-pub fn save_frontend_contract(storage: &mut dyn cosmwasm_std::Storage, api: &dyn cosmwasm_std::Api, addr: Option<String>) -> Result<Option<Addr>, StdError> {
+pub fn save_frontend_contract(
+    storage: &mut dyn cosmwasm_std::Storage,
+    api: &dyn cosmwasm_std::Api,
+    addr: Option<String>,
+) -> Result<Option<Addr>, StdError> {
     let v = match addr {
         Some(a) => Some(api.addr_validate(&a)?),
         None => None,
@@ -647,12 +651,19 @@ pub fn save_frontend_contract(storage: &mut dyn cosmwasm_std::Storage, api: &dyn
     Ok(v)
 }
 
-pub fn execute_set_frontend_contract(deps: DepsMut, info: MessageInfo, addr: Option<String>) -> Result<Response, StdError> {
+pub fn execute_set_frontend_contract(
+    deps: DepsMut,
+    info: MessageInfo,
+    addr: Option<String>,
+) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let v = save_frontend_contract(deps.storage, deps.api, addr)?;
     Ok(Response::new()
         .add_attribute("action", "set_frontend_contract")
-        .add_attribute("addr", v.map(|a| a.to_string()).unwrap_or_else(|| "none".into())))
+        .add_attribute(
+            "addr",
+            v.map(|a| a.to_string()).unwrap_or_else(|| "none".into()),
+        ))
 }
 
 pub fn query_frontend_contract(deps: Deps) -> StdResult<Binary> {
@@ -1109,16 +1120,38 @@ mod tests {
         let eve = deps.api.addr_make("eve");
         cw_ownable::initialize_owner(&mut deps.storage, &deps.api, Some(owner.as_str())).unwrap();
         // unset reads as None (pre-existing deployments: no migration needed)
-        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        let q: Option<Addr> =
+            cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
         assert_eq!(q, None);
         let fe = deps.api.addr_make("frontend");
-        assert!(execute_set_frontend_contract(deps.as_mut(), message_info(&eve, &[]), Some(fe.to_string())).is_err());
-        assert!(execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), Some("not-an-addr".into())).is_err());
-        execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), Some(fe.to_string())).unwrap();
-        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        assert!(
+            execute_set_frontend_contract(
+                deps.as_mut(),
+                message_info(&eve, &[]),
+                Some(fe.to_string())
+            )
+            .is_err()
+        );
+        assert!(
+            execute_set_frontend_contract(
+                deps.as_mut(),
+                message_info(&owner, &[]),
+                Some("not-an-addr".into())
+            )
+            .is_err()
+        );
+        execute_set_frontend_contract(
+            deps.as_mut(),
+            message_info(&owner, &[]),
+            Some(fe.to_string()),
+        )
+        .unwrap();
+        let q: Option<Addr> =
+            cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
         assert_eq!(q, Some(fe));
         execute_set_frontend_contract(deps.as_mut(), message_info(&owner, &[]), None).unwrap();
-        let q: Option<Addr> = cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
+        let q: Option<Addr> =
+            cosmwasm_std::from_json(query_frontend_contract(deps.as_ref()).unwrap()).unwrap();
         assert_eq!(q, None);
     }
 

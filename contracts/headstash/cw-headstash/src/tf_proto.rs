@@ -60,7 +60,9 @@ pub fn msg_coin_addr(sender: &str, denom: &str, amount: &str, addr: &str) -> Vec
 fn get_varint(b: &[u8], i: &mut usize) -> StdResult<u64> {
     let mut v: u64 = 0;
     for shift in (0..64).step_by(7) {
-        let byte = *b.get(*i).ok_or_else(|| StdError::msg("proto: truncated varint"))?;
+        let byte = *b
+            .get(*i)
+            .ok_or_else(|| StdError::msg("proto: truncated varint"))?;
         *i += 1;
         v |= ((byte & 0x7f) as u64) << shift;
         if byte < 0x80 {
@@ -84,7 +86,9 @@ pub fn fields(b: &[u8]) -> StdResult<Vec<(u32, &[u8])>> {
             }
             2 => {
                 let len = get_varint(b, &mut i)? as usize;
-                let end = i.checked_add(len).filter(|e| *e <= b.len())
+                let end = i
+                    .checked_add(len)
+                    .filter(|e| *e <= b.len())
                     .ok_or_else(|| StdError::msg("proto: truncated field"))?;
                 out.push((field, &b[i..end]));
                 i = end;
@@ -121,7 +125,9 @@ pub fn message_field(b: &[u8], field: u32) -> StdResult<Vec<u8>> {
 pub fn create_denom_response_denom(b: &[u8]) -> StdResult<String> {
     let d = string_field(b, 1)?;
     if d.is_empty() {
-        return Err(StdError::msg("MsgCreateDenomResponse: empty new_token_denom"));
+        return Err(StdError::msg(
+            "MsgCreateDenomResponse: empty new_token_denom",
+        ));
     }
     Ok(d)
 }

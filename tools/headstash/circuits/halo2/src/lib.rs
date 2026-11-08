@@ -9,7 +9,10 @@
 
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![cfg_attr(all(target_arch = "wasm32", feature = "browser"), feature(alloc_error_hook))]
+#![cfg_attr(
+    all(target_arch = "wasm32", feature = "browser"),
+    feature(alloc_error_hook)
+)]
 // Temporary until we have more of the crate implemented.
 #![allow(dead_code)]
 // Orchard-derived circuit code: chip/gadget signatures mirror halo2_gadgets.

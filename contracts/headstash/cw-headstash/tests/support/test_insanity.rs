@@ -444,7 +444,10 @@ fn test_insanity_factory_insufficient_funding() {
 
     // Should fail with funding validation error
     // manifold rejects under-funding with ContractError::InvalidFundingToken
-    assert!(err.to_string().contains("Invalid funding token"), "unexpected error: {err}");
+    assert!(
+        err.to_string().contains("Invalid funding token"),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]

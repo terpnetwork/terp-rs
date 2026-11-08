@@ -9,7 +9,10 @@ use zk_headstash::note_membership::*;
 
 fn main() {
     let out = std::env::args().nth(1).expect("out dir");
-    let n: usize = std::env::args().nth(2).map(|s| s.parse().unwrap()).unwrap_or(40);
+    let n: usize = std::env::args()
+        .nth(2)
+        .map(|s| s.parse().unwrap())
+        .unwrap_or(40);
     std::fs::create_dir_all(&out).unwrap();
     let blob = note_circuit_blob().expect("blob");
     let footer = &blob[blob.len() - 80..];
@@ -20,7 +23,13 @@ fn main() {
     std::fs::write(format!("{out}/blob.bin"), &blob).unwrap();
     std::fs::write(format!("{out}/params.bin"), &pbuf).unwrap();
     std::fs::write(format!("{out}/vk_body.bin"), &blob[pbuf.len()..]).unwrap();
-    eprintln!("blob {} params {} vk_body {} footer {}", blob.len(), pbuf.len(), blob.len() - pbuf.len(), footer.len());
+    eprintln!(
+        "blob {} params {} vk_body {} footer {}",
+        blob.len(),
+        pbuf.len(),
+        blob.len() - pbuf.len(),
+        footer.len()
+    );
     let ctx = pallas::Base::from(0x11_u64);
     let dest = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
     let path = [pallas::Base::from(0u64); NOTE_DEPTH];
@@ -42,5 +51,9 @@ fn main() {
         }));
         eprintln!("note {i} proof {} bytes", p.proof.len());
     }
-    std::fs::write(format!("{out}/proofs.json"), serde_json::to_string(&rows).unwrap()).unwrap();
+    std::fs::write(
+        format!("{out}/proofs.json"),
+        serde_json::to_string(&rows).unwrap(),
+    )
+    .unwrap();
 }

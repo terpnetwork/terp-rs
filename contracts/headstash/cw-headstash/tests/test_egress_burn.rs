@@ -125,15 +125,15 @@ impl EgressEnv {
                 "ubridge".into(),
             )),
             wavs: Some(valid_wavs_proof_one()),
-        
+
             circuit_id: None,
-        
+
             registration_hook: None,
-        
+
             registration_hook_gas_limit: None,
-        
+
             frontend_contract: None,
-        
+
             pauser: None,
         };
 

@@ -180,7 +180,11 @@ fn h1_valid_claim() {
     let (circuit, instance) = valid_claim_pair(os_rng());
     let public = public_columns(&instance);
     let prover = MockProver::run(K, &circuit, public).expect("H1: MockProver must construct");
-    assert_eq!(instance.to_bytes().len(), 168, "H1: public instance wire size");
+    assert_eq!(
+        instance.to_bytes().len(),
+        168,
+        "H1: public instance wire size"
+    );
     assert_eq!(
         prover.verify(),
         Ok(()),

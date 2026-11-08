@@ -9,9 +9,9 @@ use core::fmt;
 
 use ff::{Field, PrimeField};
 use halo2_proofs::{
-    circuit::{floor_planner::V1, Layouter, Value},
+    circuit::{Layouter, Value, floor_planner::V1},
     plonk::{self, Advice, Circuit, Column, ConstraintSystem, Expression, Instance, Selector},
-    poly::{commitment::Params, Rotation},
+    poly::{Rotation, commitment::Params},
     transcript::Blake2bWrite,
 };
 use pasta_curves::{pallas, vesta};

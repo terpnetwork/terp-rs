@@ -51,14 +51,10 @@ pub struct MigrateMsg {}
 pub enum ExecuteMsg {
     /// Verify claims and distribute. Each claim binds to a registered `root_id`.
     #[cfg(feature = "legacy")]
-    ProcessHeadstash {
-        claims: Vec<HeadstashNote>,
-    },
+    ProcessHeadstash { claims: Vec<HeadstashNote> },
     /// Owner: bind wasmvm store-circuit id used by `proof_instance_verify`.
     #[cfg(feature = "legacy")]
-    SetCircuitId {
-        circuit_id: u64,
-    },
+    SetCircuitId { circuit_id: u64 },
     /// Register an **additive** eligibility root (Poseidon-v1 only for new drops).
     /// Owner-only. Assigns the next `root_id` and stores root + domain.
     RegisterEligibilityRoot {
@@ -72,10 +68,7 @@ pub enum ExecuteMsg {
         label: Option<String>,
     },
     #[cfg(feature = "legacy")]
-    Mint {
-        to_address: String,
-        amount: Uint128,
-    },
+    Mint { to_address: String, amount: Uint128 },
     #[cfg(feature = "legacy")]
     Burn {
         from_address: String,
@@ -96,9 +89,7 @@ pub enum ExecuteMsg {
     },
     /// Replace full reflection snapshot (includes K, lag, frozen).
     #[cfg(feature = "legacy")]
-    SetReflectionSnapshot {
-        snapshot: ReflectionSnapshot,
-    },
+    SetReflectionSnapshot { snapshot: ReflectionSnapshot },
     /// Register asset in **internal** registry (never mints balances).
     #[cfg(feature = "legacy")]
     RegisterAsset {
@@ -114,22 +105,14 @@ pub enum ExecuteMsg {
     },
     /// Optional external asset registry contract address (hook; not required for demos).
     #[cfg(feature = "legacy")]
-    SetExternalAssetRegistry {
-        addr: Option<String>,
-    },
+    SetExternalAssetRegistry { addr: Option<String> },
     /// Owner (x/gov): set or clear the on-chain frontend contract address.
-    SetFrontendContract {
-        addr: Option<String>,
-    },
+    SetFrontendContract { addr: Option<String> },
     /// Owner (x/gov): set (validated, R12) or clear the claim-page UI theme tokens.
-    SetTheme {
-        theme: Option<crate::theme::Theme>,
-    },
+    SetTheme { theme: Option<crate::theme::Theme> },
     /// Owner-set bridge corridor config (dest domain, K, lag, mock_verify).
     #[cfg(feature = "legacy")]
-    SetBridgeCfg {
-        cfg: BridgeCfg,
-    },
+    SetBridgeCfg { cfg: BridgeCfg },
     /// One-shot bridge mint → SEAM-NOTE-OUT note result.
     /// Proof verify is **mock/stub** in Round 2 (`mock_verify` or cfg(test)).
     #[cfg(feature = "legacy")]
@@ -150,14 +133,10 @@ pub enum ExecuteMsg {
 
     /// Owner: fixed CHT amounts for the public Ethereum path. Index `i` pays `amounts[i]`.
     #[cfg(feature = "legacy")]
-    SetDenomTable {
-        amounts: Vec<u64>,
-    },
+    SetDenomTable { amounts: Vec<u64> },
     /// Owner: these nullifiers are paid only by the public batch, not the Halo2 batch.
     #[cfg(feature = "legacy")]
-    AssignPublicNotes {
-        nullifiers: Vec<Binary>,
-    },
+    AssignPublicNotes { nullifiers: Vec<Binary> },
     /// Owner: epoch creator parameters. Campaigns that never set them keep the store-only sudo.
     SetEpochCampaign {
         campaign: crate::epoch::EpochCampaignParams,
@@ -201,9 +180,7 @@ pub enum ExecuteMsg {
     },
     /// Pay opened Pedersen destinations for Ethereum logs of fixed denomination indexes.
     #[cfg(feature = "legacy")]
-    ApplyPublicBatch {
-        rows: Vec<crate::epoch::PublicOpen>,
-    },
+    ApplyPublicBatch { rows: Vec<crate::epoch::PublicOpen> },
     /// Anyone may relay a registration. The eligible address is the recovered signer.
     RegisterHeadstash {
         key_com: Binary,
@@ -266,12 +243,18 @@ pub enum ExecuteMsg {
         forward: crate::forward::ForwardTarget,
     },
     /// Owner: add / update / disable an ICS-20 channel for forwards.
-    SetForwardChannel { channel_id: String, timeout_seconds: u64, enabled: bool },
+    SetForwardChannel {
+        channel_id: String,
+        timeout_seconds: u64,
+        enabled: bool,
+    },
     /// Owner: refund a forward whose callback never arrived, to its bound fallback
     /// only, after timeout + 1 day.
     ResolveForward { channel_id: String, sequence: u64 },
     /// Owner: where the UI fetches the eligible set (HAL) and its integrity commitment.
-    SetHalSource { source: Option<crate::forward::HalSource> },
+    SetHalSource {
+        source: Option<crate::forward::HalSource>,
+    },
 }
 
 #[cfg_attr(feature = "interface", derive(cw_orch::QueryFns))]
@@ -398,7 +381,9 @@ pub enum QueryMsg {
     },
     /// The proof destination string (`hsfwd1…`) for a forward target.
     #[returns(String)]
-    ForwardDestination { forward: crate::forward::ForwardTarget },
+    ForwardDestination {
+        forward: crate::forward::ForwardTarget,
+    },
     /// Dry-run of `ClaimNoteForward`.
     #[returns(bool)]
     CheckNoteForward {

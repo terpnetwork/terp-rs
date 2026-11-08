@@ -1213,7 +1213,13 @@ mod tests {
 }
 
 /// Feegrant (mint-only AllowedMsgAllowance) used by headstash-register-relay. Ported from terp-rs-headstash-membership-vk.
-pub fn headstash_feegrant(granter: &str, grantee: &str, denom: &str, spend_limit: u64, expiration: &str) -> serde_json::Value {
+pub fn headstash_feegrant(
+    granter: &str,
+    grantee: &str,
+    denom: &str,
+    spend_limit: u64,
+    expiration: &str,
+) -> serde_json::Value {
     let scope = AllowanceScope::mint_only();
     debug_assert!(scope.is_sound());
     serde_json::json!({

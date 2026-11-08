@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, HexBinary};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 
@@ -60,7 +60,12 @@ pub enum ExecuteMsg {
     /// Owner: publish an immutable manifest; `version` must equal `next_version`.
     PublishManifest { manifest: Manifest },
     /// Permissionless: store one chunk whose sha256 matches the manifest.
-    UploadChunk { version: u32, file: u16, index: u32, data: Binary },
+    UploadChunk {
+        version: u32,
+        file: u16,
+        index: u32,
+        data: Binary,
+    },
     /// Owner: point `current` at a complete version.
     SetCurrent { version: u32 },
     /// Owner: delete one non-current version (chunks, then manifest + progress) in bounded
@@ -136,7 +141,10 @@ pub enum QueryMsg {
     #[returns(StatusResponse)]
     Status { version: u32 },
     #[returns(VersionsResponse)]
-    Versions { start_after: Option<u32>, limit: Option<u32> },
+    Versions {
+        start_after: Option<u32>,
+        limit: Option<u32>,
+    },
     #[returns(PruneStatusResponse)]
     PruneStatus { version: u32 },
     #[returns(KeepLastResponse)]

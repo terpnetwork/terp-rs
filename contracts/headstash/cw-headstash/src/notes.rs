@@ -5,14 +5,17 @@
 //! (epoch seal + hashmerchant aggregate) is the optional lane path. When the list
 //! completes, an optional registration hook contract is called (see `REG_HOOK`).
 
-use cosmwasm_std::{to_json_binary, Addr, Api, Binary, Deps, DepsMut, Response, StdError, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{
+    Addr, Api, Binary, Deps, DepsMut, Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
+    to_json_binary,
+};
 use cw_storage_plus::{Item, Map};
 use std::collections::HashSet;
 
 use crate::epoch::EpochCampaignParams;
 use crate::registration::{
-    append_claim_leaf, key_com_used, parse_fp, path_bytes, precheck, registration_cfg,
-    sha256, NOTE_DEPTH,
+    NOTE_DEPTH, append_claim_leaf, key_com_used, parse_fp, path_bytes, precheck, registration_cfg,
+    sha256,
 };
 use zk_headstash::distro_poseidon::note_registration_leaf;
 
@@ -31,9 +34,8 @@ pub fn reject_retired_vk(campaign: &EpochCampaignParams) -> StdResult<()> {
 }
 /// sha256 of the vk_id 3 circuit blob (`note_membership::NOTE_VK_HASH`).
 pub const NOTE_VK_HASH: [u8; 32] = [
-    0x34, 0xd1, 0x14, 0x37, 0xd9, 0x57, 0x55, 0x4f, 0x40, 0x08, 0x37, 0x7d, 0xec, 0xe5, 0xfa,
-    0xc0, 0xf0, 0x47, 0xe0, 0xe9, 0xcc, 0x01, 0x2d, 0x15, 0xb3, 0xd0, 0x94, 0x48, 0xa6, 0xcc,
-    0x53, 0x98,
+    0x34, 0xd1, 0x14, 0x37, 0xd9, 0x57, 0x55, 0x4f, 0x40, 0x08, 0x37, 0x7d, 0xec, 0xe5, 0xfa, 0xc0,
+    0xf0, 0x47, 0xe0, 0xe9, 0xcc, 0x01, 0x2d, 0x15, 0xb3, 0xd0, 0x94, 0x48, 0xa6, 0xcc, 0x53, 0x98,
 ];
 /// 1-2-5 series 1..5,000 TERP in uterp. Index = denom class (N7).
 pub const DENOMS_UTERP: [u64; 12] = [
@@ -113,7 +115,12 @@ pub const DEFAULT_HOOK_GAS: u64 = 500_000;
 pub const MAX_HOOK_GAS: u64 = 5_000_000;
 
 /// Instantiate-time only (no update path): validate and store the hook.
-pub fn set_registration_hook(storage: &mut dyn Storage, api: &dyn Api, hook: Option<String>, gas_limit: Option<u64>) -> StdResult<()> {
+pub fn set_registration_hook(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    hook: Option<String>,
+    gas_limit: Option<u64>,
+) -> StdResult<()> {
     let Some(hook) = hook.filter(|h| !h.is_empty()) else {
         if gas_limit.is_some() {
             return Err(StdError::msg("registration hook gas limit without a hook"));
@@ -125,7 +132,13 @@ pub fn set_registration_hook(storage: &mut dyn Storage, api: &dyn Api, hook: Opt
     if gas_limit == 0 || gas_limit > MAX_HOOK_GAS {
         return Err(StdError::msg("registration hook gas limit"));
     }
-    REG_HOOK.save(storage, &RegistrationHook { contract, gas_limit })
+    REG_HOOK.save(
+        storage,
+        &RegistrationHook {
+            contract,
+            gas_limit,
+        },
+    )
 }
 
 pub fn query_registration_hook(storage: &dyn Storage) -> StdResult<Option<RegistrationHook>> {
@@ -137,7 +150,9 @@ fn check_reward_addr(api: &dyn Api, campaign: &EpochCampaignParams, addr: &str) 
     if !addr.starts_with(&format!("{}1", campaign.bech32_hrp)) {
         return Err(StdError::msg("reward_addr prefix"));
     }
-    let a = api.addr_validate(addr).map_err(|_| StdError::msg("reward_addr"))?;
+    let a = api
+        .addr_validate(addr)
+        .map_err(|_| StdError::msg("reward_addr"))?;
     if a.as_str() != addr {
         return Err(StdError::msg("reward_addr"));
     }
@@ -180,7 +195,12 @@ pub fn denom_amount(class: u8) -> StdResult<u64> {
 
 /// `sha256("terp-hs-note-list-v2" || ctx || id_tag || identity || n u16_le ||
 /// (class u8 || index u16_le || key_com 32)*)`.
-pub fn note_list_hash(ctx: &[u8], id_tag: u8, identity: &[u8], list: &[NoteListEntry]) -> StdResult<[u8; 32]> {
+pub fn note_list_hash(
+    ctx: &[u8],
+    id_tag: u8,
+    identity: &[u8],
+    list: &[NoteListEntry],
+) -> StdResult<[u8; 32]> {
     let mut pre = b"terp-hs-note-list-v2".to_vec();
     pre.extend_from_slice(ctx);
     pre.push(id_tag);
@@ -236,7 +256,12 @@ pub fn register_notes_message(ctx: &[u8], list_hash: &[u8], n: u32, reward_addr:
     )
 }
 
-pub fn register_notes_sol_message(ctx: &[u8], list_hash: &[u8], n: u32, reward_addr: &str) -> String {
+pub fn register_notes_sol_message(
+    ctx: &[u8],
+    list_hash: &[u8],
+    n: u32,
+    reward_addr: &str,
+) -> String {
     format!(
         "headstash-register-notes-sol-v3:{}:{}:{n}:{reward_addr}",
         hex::encode(ctx),
@@ -293,14 +318,22 @@ pub(crate) fn check_register_notes(
                 .as_slice()
                 .try_into()
                 .map_err(|_| StdError::msg("address"))?;
-            (EVM_ID_TAG, a.to_vec(), crate::registration::evm_identity(&a))
+            (
+                EVM_ID_TAG,
+                a.to_vec(),
+                crate::registration::evm_identity(&a),
+            )
         }
         NoteSigner::Sol { pubkey } => {
             let p: [u8; 32] = pubkey
                 .as_slice()
                 .try_into()
                 .map_err(|_| StdError::msg("pubkey"))?;
-            (SOL_ID_TAG, p.to_vec(), crate::registration::sol_identity(&p))
+            (
+                SOL_ID_TAG,
+                p.to_vec(),
+                crate::registration::sol_identity(&p),
+            )
         }
     };
     let list_hash = note_list_hash(ctx, id_tag, &identity_bytes, list)?;
@@ -326,7 +359,15 @@ pub(crate) fn check_register_notes(
                 }
             }
             let sig = signature.ok_or_else(|| StdError::msg("signature"))?;
-            verify_signer(deps.api, signer, ctx, &list_hash, n as u32, reward_addr.unwrap_or(""), sig.as_slice())?;
+            verify_signer(
+                deps.api,
+                signer,
+                ctx,
+                &list_hash,
+                n as u32,
+                reward_addr.unwrap_or(""),
+                sig.as_slice(),
+            )?;
             NoteListState {
                 list_hash: Binary::from(list_hash.to_vec()),
                 n: n as u32,
@@ -360,7 +401,9 @@ pub(crate) fn check_register_notes(
             return Err(StdError::msg("eligibility"));
         }
         let leaf = note_eligibility_leaf(id_tag, &identity_bytes, entry.class, i as u16);
-        if open_note_eligibility(leaf, elig.index, &path).as_slice() != cfg.eligibility_root.as_slice() {
+        if open_note_eligibility(leaf, elig.index, &path).as_slice()
+            != cfg.eligibility_root.as_slice()
+        {
             return Err(StdError::msg("eligibility"));
         }
         if NOTE_REG
@@ -371,7 +414,13 @@ pub(crate) fn check_register_notes(
         }
         parse_fp(entry.key_com.as_slice())?;
     }
-    Ok(NoteRegCheck { id_tag, identity_bytes, identity, state, eligibility_root: cfg.eligibility_root.clone() })
+    Ok(NoteRegCheck {
+        id_tag,
+        identity_bytes,
+        identity,
+        state,
+        eligibility_root: cfg.eligibility_root.clone(),
+    })
 }
 
 pub fn register_notes(
@@ -384,8 +433,22 @@ pub fn register_notes(
     eligibility: Vec<NoteEligibility>,
     reward_addr: Option<String>,
 ) -> Result<Response, StdError> {
-    let NoteRegCheck { id_tag, identity_bytes, identity, mut state, eligibility_root } =
-        check_register_notes(deps.as_ref(), campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
+    let NoteRegCheck {
+        id_tag,
+        identity_bytes,
+        identity,
+        mut state,
+        eligibility_root,
+    } = check_register_notes(
+        deps.as_ref(),
+        campaign,
+        &signer,
+        signature.as_ref(),
+        &list,
+        start,
+        &eligibility,
+        reward_addr.as_deref(),
+    )?;
     let count = eligibility.len() as u32;
     let mut first_leaf = None;
     for (offset, elig) in eligibility.iter().enumerate() {
@@ -396,7 +459,10 @@ pub fn register_notes(
         precheck(deps.storage, amount)?;
         let path = path_bytes(&elig.path)?;
         let leaf = note_eligibility_leaf(id_tag, &identity_bytes, entry.class, i as u16);
-        debug_assert_eq!(open_note_eligibility(leaf, elig.index, &path).as_slice(), eligibility_root.as_slice());
+        debug_assert_eq!(
+            open_note_eligibility(leaf, elig.index, &path).as_slice(),
+            eligibility_root.as_slice()
+        );
         let key_fp = parse_fp(entry.key_com.as_slice())?;
         let (index, _) = append_claim_leaf(
             deps.storage,
@@ -426,10 +492,16 @@ pub fn register_notes(
                 note_count: state.n,
                 reward_addr: state.reward_addr.clone(),
             };
-            let exec = WasmMsg::Execute { contract_addr: hook.contract.to_string(), msg: to_json_binary(&msg)?, funds: vec![] };
+            let exec = WasmMsg::Execute {
+                contract_addr: hook.contract.to_string(),
+                msg: to_json_binary(&msg)?,
+                funds: vec![],
+            };
             res = res
                 .add_attribute("registration_hook", hook.contract.as_str())
-                .add_submessage(SubMsg::reply_on_error(exec, HOOK_REPLY_ID).with_gas_limit(hook.gas_limit));
+                .add_submessage(
+                    SubMsg::reply_on_error(exec, HOOK_REPLY_ID).with_gas_limit(hook.gas_limit),
+                );
         }
     }
     Ok(res)
@@ -477,11 +549,15 @@ mod tests {
     use super::*;
     use crate::epoch::AmountCap;
     use crate::msg::{ExecuteMsg, InstantiateMsg};
-    use crate::registration::{recover_address, RegistrationConfig};
-    use crate::tokenfactory::{derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig};
+    use crate::registration::{RegistrationConfig, recover_address};
+    use crate::tokenfactory::{
+        DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig, derive_nd,
+    };
     use crate::wavs::generate_test_wavs_proof;
     use crate::{execute, instantiate};
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage};
+    use cosmwasm_std::testing::{
+        MockApi, MockQuerier, MockStorage, message_info, mock_dependencies, mock_env,
+    };
     use cosmwasm_std::{Env, OwnedDeps};
     use ff::PrimeField;
     use k256::ecdsa::SigningKey;
@@ -498,20 +574,29 @@ mod tests {
             genesis_root: Binary::from(vec![0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(Box::new(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "cht".into()),
-                metadata: Metadata {
-                    description: None,
-                    denom_units: vec![DenomUnit { denom: "ucht".into(), exponent: 0, aliases: vec![] }],
-                    base: Some("ucht".into()),
-                    display: Some("CHT".into()),
-                    name: Some("CHT".into()),
-                    symbol: Some("CHT".into()),
+            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(Box::new(
+                NewTokenConfig {
+                    subdenom: HeadstashTokenObject::new(
+                        &cosmwasm_std::testing::MockApi::default(),
+                        "cht".into(),
+                    ),
+                    metadata: Metadata {
+                        description: None,
+                        denom_units: vec![DenomUnit {
+                            denom: "ucht".into(),
+                            exponent: 0,
+                            aliases: vec![],
+                        }],
+                        base: Some("ucht".into()),
+                        display: Some("CHT".into()),
+                        name: Some("CHT".into()),
+                        symbol: Some("CHT".into()),
+                    },
+                    initial_mint: None,
+                    manager: None,
+                    minters: vec![],
                 },
-                initial_mint: None,
-                manager: None,
-                minters: vec![],
-            })),
+            )),
             wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,
@@ -536,7 +621,13 @@ mod tests {
             cutoff_height: 1_000_000, // above mock_env height: registration stays open
             bech32_hrp: "cosmwasm".into(),
             denom: derive_nd(&cosmwasm_std::testing::MockApi::default(), "cht"),
-            amounts: DENOMS_UTERP.iter().map(|amount| AmountCap { amount: *amount, cap: 50 }).collect(),
+            amounts: DENOMS_UTERP
+                .iter()
+                .map(|amount| AmountCap {
+                    amount: *amount,
+                    cap: 50,
+                })
+                .collect(),
             reserved: vec![],
             trusted: vec![Binary::from(vec![8u8; 32])],
             trusted_verify_threshold: 1,
@@ -560,7 +651,12 @@ mod tests {
 
     fn set(deps: &mut TDeps, env: &Env, c: EpochCampaignParams) -> Result<Response, StdError> {
         let creator = deps.api.addr_make("creator");
-        execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), ExecuteMsg::SetEpochCampaign { campaign: c })
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            ExecuteMsg::SetEpochCampaign { campaign: c },
+        )
     }
 
     /// Sparse depth-17 SHA tree over `leaves` (zero padding).
@@ -630,7 +726,14 @@ mod tests {
         let deps = mock_dependencies();
         let address = recover_address(deps.as_ref().api, "probe", &sig).unwrap();
         let reward = deps.api.addr_make(&format!("reward{byte}")).to_string();
-        Holder { key, address, classes, first, word, reward }
+        Holder {
+            key,
+            address,
+            classes,
+            first,
+            word,
+            reward,
+        }
     }
 
     impl Holder {
@@ -648,7 +751,9 @@ mod tests {
                 .map(|(i, c)| NoteListEntry {
                     class: *c,
                     key_com: Binary::from(
-                        registration_key_commitment(pallas::Base::from(self.word + i as u64)).to_repr().to_vec(),
+                        registration_key_commitment(pallas::Base::from(self.word + i as u64))
+                            .to_repr()
+                            .to_vec(),
                     ),
                 })
                 .collect()
@@ -658,14 +763,26 @@ mod tests {
             let msg = register_notes_message(&ctx(), &h, list.len() as u32, &self.reward);
             Binary::from(sign_with(&self.key, &msg))
         }
-        fn chunk(&self, tree: &Elig, list: &[NoteListEntry], start: usize, len: usize, sig: bool) -> ExecuteMsg {
+        fn chunk(
+            &self,
+            tree: &Elig,
+            list: &[NoteListEntry],
+            start: usize,
+            len: usize,
+            sig: bool,
+        ) -> ExecuteMsg {
             ExecuteMsg::RegisterNotes {
-                signer: NoteSigner::Evm { address: Binary::from(self.address.to_vec()) },
+                signer: NoteSigner::Evm {
+                    address: Binary::from(self.address.to_vec()),
+                },
                 signature: sig.then(|| self.signature(list)),
                 list: list.to_vec(),
                 start: start as u32,
                 eligibility: (start..start + len)
-                    .map(|i| NoteEligibility { index: (self.first + i) as u32, path: tree.path(self.first + i) })
+                    .map(|i| NoteEligibility {
+                        index: (self.first + i) as u32,
+                        path: tree.path(self.first + i),
+                    })
                     .collect(),
                 reward_addr: Some(self.reward.clone()),
             }
@@ -697,35 +814,67 @@ mod tests {
         let (mut deps, env, a, b, tree) = fixture();
         let list = a.list();
         let r = run(&mut deps, &env, a.chunk(&tree, &list, 0, 32, true)).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "done" && x.value == "false"));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "done" && x.value == "false")
+        );
         assert!(err(run(&mut deps, &env, a.chunk(&tree, &list, 33, 7, false))).contains("chunk"));
         let mut forged = list.clone();
-        forged[39].key_com =
-            Binary::from(registration_key_commitment(pallas::Base::from(9999u64)).to_repr().to_vec());
-        assert!(err(run(&mut deps, &env, a.chunk(&tree, &forged, 32, 8, false))).contains("list hash"));
+        forged[39].key_com = Binary::from(
+            registration_key_commitment(pallas::Base::from(9999u64))
+                .to_repr()
+                .to_vec(),
+        );
+        assert!(
+            err(run(&mut deps, &env, a.chunk(&tree, &forged, 32, 8, false))).contains("list hash")
+        );
         let r = run(&mut deps, &env, a.chunk(&tree, &list, 32, 8, false)).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "done" && x.value == "true"));
-        assert_eq!(crate::registration::leaf_count(deps.as_ref().storage).unwrap(), 40);
-        assert!(err(run(&mut deps, &env, a.chunk(&tree, &list, 0, 1, true))).contains("already registered"));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "done" && x.value == "true")
+        );
+        assert_eq!(
+            crate::registration::leaf_count(deps.as_ref().storage).unwrap(),
+            40
+        );
+        assert!(
+            err(run(&mut deps, &env, a.chunk(&tree, &list, 0, 1, true)))
+                .contains("already registered")
+        );
         run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
-        assert_eq!(crate::registration::tree_depth(deps.as_ref().storage).unwrap(), NOTE_DEPTH);
+        assert_eq!(
+            crate::registration::tree_depth(deps.as_ref().storage).unwrap(),
+            NOTE_DEPTH
+        );
         // claim tree leaf 40 is note_leaf(key_com, DENOMS[11]) under the depth-17 frontier
         let mut env2 = env.clone();
         env2.block.height += 5;
         run(&mut deps, &env2, ExecuteMsg::AcceptAnchor {}).unwrap();
         let tree_state = crate::registration::query_tree(
             deps.as_ref().storage,
-            campaign([0u8; 32], NOTE_VK_ID).registration.as_ref().unwrap(),
+            campaign([0u8; 32], NOTE_VK_ID)
+                .registration
+                .as_ref()
+                .unwrap(),
         )
         .unwrap();
         let anchor = tree_state.latest_anchor.unwrap().root.clone();
-        let p = crate::registration::query_path(deps.as_ref().storage, b.list()[0].key_com.as_slice(), &anchor)
-            .unwrap();
+        let p = crate::registration::query_path(
+            deps.as_ref().storage,
+            b.list()[0].key_com.as_slice(),
+            &anchor,
+        )
+        .unwrap();
         assert_eq!(p.index, 40);
         assert_eq!(p.amount, DENOMS_UTERP[11]);
         assert_eq!(p.siblings.len(), NOTE_DEPTH);
         let key = parse_fp(b.list()[0].key_com.as_slice()).unwrap();
-        assert_eq!(p.leaf, hex::encode(note_registration_leaf(key, DENOMS_UTERP[11]).to_repr()));
+        assert_eq!(
+            p.leaf,
+            hex::encode(note_registration_leaf(key, DENOMS_UTERP[11]).to_repr())
+        );
         let mut node = note_registration_leaf(key, DENOMS_UTERP[11]);
         for (l, s) in p.siblings.iter().enumerate() {
             let sib = parse_fp(&hex::decode(s).unwrap()).unwrap();
@@ -745,7 +894,11 @@ mod tests {
                 cosmwasm_std::CosmosMsg::Wasm(WasmMsg::Execute { msg, funds, .. }) => {
                     assert!(funds.is_empty());
                     assert_eq!(m.reply_on, cosmwasm_std::ReplyOn::Error);
-                    (m.id, m.gas_limit.unwrap(), cosmwasm_std::from_json(msg).unwrap())
+                    (
+                        m.id,
+                        m.gas_limit.unwrap(),
+                        cosmwasm_std::from_json(msg).unwrap(),
+                    )
                 }
                 other => panic!("unexpected {other:?}"),
             })
@@ -785,7 +938,11 @@ mod tests {
     fn no_hook_means_no_submsg() {
         let (mut deps, env, _a, b, tree) = fixture();
         let r = run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "done" && x.value == "true"));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "done" && x.value == "true")
+        );
         assert!(r.messages.is_empty());
         assert_eq!(query_registration_hook(&deps.storage).unwrap(), None);
     }
@@ -793,7 +950,13 @@ mod tests {
     #[test]
     fn failing_hook_reply_is_swallowed() {
         let (mut deps, env, _a, b, tree) = fixture();
-        set_registration_hook(&mut deps.storage, &deps.api, Some(deps.api.addr_make("hook").to_string()), Some(123_456)).unwrap();
+        set_registration_hook(
+            &mut deps.storage,
+            &deps.api,
+            Some(deps.api.addr_make("hook").to_string()),
+            Some(123_456),
+        )
+        .unwrap();
         let r = run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, true)).unwrap();
         assert_eq!(hook_msgs(&r)[0].1, 123_456);
         #[allow(deprecated)]
@@ -804,19 +967,49 @@ mod tests {
             result: cosmwasm_std::SubMsgResult::Err("hook exploded".into()),
         };
         let r = crate::reply(deps.as_mut(), env.clone(), reply).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "registration_hook_failed"));
-        assert!(r.attributes.iter().any(|x| x.key == "hook_error" && x.value.contains("hook exploded")));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "action" && x.value == "registration_hook_failed")
+        );
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "hook_error" && x.value.contains("hook exploded"))
+        );
         // registration state persisted
-        assert_eq!(crate::registration::leaf_count(deps.as_ref().storage).unwrap(), 3);
+        assert_eq!(
+            crate::registration::leaf_count(deps.as_ref().storage).unwrap(),
+            3
+        );
     }
 
     #[test]
     fn hook_config_is_validated() {
         let mut deps = mock_dependencies();
         let api = deps.api;
-        assert!(set_registration_hook(&mut deps.storage, &api, Some("not an addr".into()), None).is_err());
-        assert!(set_registration_hook(&mut deps.storage, &api, Some(api.addr_make("h").to_string()), Some(0)).is_err());
-        assert!(set_registration_hook(&mut deps.storage, &api, Some(api.addr_make("h").to_string()), Some(MAX_HOOK_GAS + 1)).is_err());
+        assert!(
+            set_registration_hook(&mut deps.storage, &api, Some("not an addr".into()), None)
+                .is_err()
+        );
+        assert!(
+            set_registration_hook(
+                &mut deps.storage,
+                &api,
+                Some(api.addr_make("h").to_string()),
+                Some(0)
+            )
+            .is_err()
+        );
+        assert!(
+            set_registration_hook(
+                &mut deps.storage,
+                &api,
+                Some(api.addr_make("h").to_string()),
+                Some(MAX_HOOK_GAS + 1)
+            )
+            .is_err()
+        );
         assert!(set_registration_hook(&mut deps.storage, &api, None, Some(1)).is_err());
         set_registration_hook(&mut deps.storage, &api, None, None).unwrap();
         assert_eq!(query_registration_hook(&deps.storage).unwrap(), None);
@@ -839,12 +1032,19 @@ mod tests {
         }
         assert!(run(&mut deps, &env, m).is_err());
         // malformed / wrong prefix
-        for bad in ["cosmwasm1notbech32", "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw", ""] {
+        for bad in [
+            "cosmwasm1notbech32",
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            "",
+        ] {
             let mut m = b.chunk(&tree, &list, 0, 3, true);
             if let ExecuteMsg::RegisterNotes { reward_addr, .. } = &mut m {
                 *reward_addr = Some(bad.into());
             }
-            assert!(err(run(&mut deps, &env, m)).contains("reward_addr"), "{bad}");
+            assert!(
+                err(run(&mut deps, &env, m)).contains("reward_addr"),
+                "{bad}"
+            );
         }
         // later chunks must not change it
         let la = a.list();
@@ -867,11 +1067,17 @@ mod tests {
         let (mut deps, env, a, b, tree) = fixture();
         let mut list = b.list();
         list[2].key_com = list[0].key_com.clone();
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, 3, true))).contains("duplicate key commitment"));
+        assert!(
+            err(run(&mut deps, &env, b.chunk(&tree, &list, 0, 3, true)))
+                .contains("duplicate key commitment")
+        );
         run(&mut deps, &env, a.chunk(&tree, &a.list(), 0, 1, true)).unwrap();
         let mut stolen = b.list();
         stolen[1].key_com = a.list()[0].key_com.clone();
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &stolen, 0, 3, true))).contains("key commitment"));
+        assert!(
+            err(run(&mut deps, &env, b.chunk(&tree, &stolen, 0, 3, true)))
+                .contains("key commitment")
+        );
     }
 
     #[test]
@@ -879,7 +1085,9 @@ mod tests {
         let (mut deps, env, _a, b, tree) = fixture();
         let mut list = b.list();
         list[1].class = 10;
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, 3, true))).contains("eligibility"));
+        assert!(
+            err(run(&mut deps, &env, b.chunk(&tree, &list, 0, 3, true))).contains("eligibility")
+        );
         // mock storage does not roll back a failed tx: start clean for each case
         let (mut deps, env, _a, b, tree) = fixture();
         let mut list = b.list();
@@ -893,9 +1101,13 @@ mod tests {
             *signature = Some(other.signature(&b.list()));
         }
         assert!(err(run(&mut deps, &env, msg)).contains("signature"));
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, false))).contains("signature"));
+        assert!(
+            err(run(&mut deps, &env, b.chunk(&tree, &b.list(), 0, 3, false))).contains("signature")
+        );
         let (mut deps, env, a, _b, tree) = fixture();
-        assert!(err(run(&mut deps, &env, a.chunk(&tree, &a.list(), 0, 33, true))).contains("chunk"));
+        assert!(
+            err(run(&mut deps, &env, a.chunk(&tree, &a.list(), 0, 33, true))).contains("chunk")
+        );
     }
 
     #[test]
@@ -907,7 +1119,10 @@ mod tests {
         c.vk_hash = Binary::from(vec![7u8; 32]);
         assert!(err(set(&mut deps, &env, c.clone())).contains("vk hash"));
         c.vk_hash = Binary::from(NOTE_VK_HASH.to_vec());
-        c.amounts.push(AmountCap { amount: 3_000_000, cap: 1 });
+        c.amounts.push(AmountCap {
+            amount: 3_000_000,
+            cap: 1,
+        });
         assert!(err(set(&mut deps, &env, c.clone())).contains("denomination"));
         c.amounts.pop();
         set(&mut deps, &env, c).unwrap();
@@ -966,7 +1181,10 @@ mod tests {
     #[cfg(feature = "zk-api")]
     mod real_zk {
         use super::*;
-        use cosmwasm_std::{to_json_binary, Addr, CircuitInfoResponse, CircuitResponse, ContractResult, SystemError, SystemResult, WasmQuery};
+        use cosmwasm_std::{
+            Addr, CircuitInfoResponse, CircuitResponse, ContractResult, SystemError, SystemResult,
+            WasmQuery, to_json_binary,
+        };
         use std::cell::{Cell, RefCell};
         use std::collections::HashMap;
         use zk_headstash::note_membership as nm;
@@ -983,15 +1201,24 @@ mod tests {
                 data[last] ^= 1;
             }
             deps.querier.update_wasm(move |q| match q {
-                WasmQuery::Circuit { zk_id: 3 } => {
-                    SystemResult::Ok(ContractResult::Ok(to_json_binary(&CircuitResponse::new(Binary::from(data.clone()))).unwrap()))
-                }
-                WasmQuery::CircuitInfo { zk_id: 3 } => SystemResult::Ok(ContractResult::Ok(
-                    to_json_binary(&CircuitInfoResponse::new(3, Addr::unchecked("circuit-creator"), Binary::from(vec![0xABu8; 72]))).unwrap(),
+                WasmQuery::Circuit { zk_id: 3 } => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&CircuitResponse::new(Binary::from(data.clone()))).unwrap(),
                 )),
-                WasmQuery::Circuit { zk_id } | WasmQuery::CircuitInfo { zk_id } => SystemResult::Err(SystemError::NoSuchCircuit { zk_id: *zk_id }),
+                WasmQuery::CircuitInfo { zk_id: 3 } => SystemResult::Ok(ContractResult::Ok(
+                    to_json_binary(&CircuitInfoResponse::new(
+                        3,
+                        Addr::unchecked("circuit-creator"),
+                        Binary::from(vec![0xABu8; 72]),
+                    ))
+                    .unwrap(),
+                )),
+                WasmQuery::Circuit { zk_id } | WasmQuery::CircuitInfo { zk_id } => {
+                    SystemResult::Err(SystemError::NoSuchCircuit { zk_id: *zk_id })
+                }
                 WasmQuery::ContractInfo { .. } => super::contract_info(),
-                _ => SystemResult::Err(SystemError::UnsupportedRequest { kind: "wasm".into() }),
+                _ => SystemResult::Err(SystemError::UnsupportedRequest {
+                    kind: "wasm".into(),
+                }),
             });
         }
 
@@ -1015,7 +1242,10 @@ mod tests {
                     }
                     let params = nm::note_params();
                     let vk = nm::note_vk(&params).unwrap();
-                    Ok(zk_headstash::no_ecdsa::verify_membership(&params, &vk, proof, &public).is_ok())
+                    Ok(
+                        zk_headstash::no_ecdsa::verify_membership(&params, &vk, proof, &public)
+                            .is_ok(),
+                    )
                 }),
             );
             NOTES.with(|m| m.borrow_mut().clear());
@@ -1027,7 +1257,14 @@ mod tests {
         /// index of the amount's class). Returns the real nullifier and a real proof
         /// when the root is an accepted anchor holding that note; otherwise checks fail
         /// before verification and a placeholder proof is sent.
-        pub fn witness(deps: &TDeps, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> (Vec<u8>, Vec<u8>) {
+        pub fn witness(
+            deps: &TDeps,
+            h: &Holder,
+            who: &str,
+            root: &Binary,
+            nf: u8,
+            amount: u64,
+        ) -> (Vec<u8>, Vec<u8>) {
             let bad = BAD.with(|c| c.get());
             let key = (nf, root.to_vec(), who.to_string(), amount, bad);
             if let Some(v) = PROOFS.with(|m| m.borrow().get(&key).cloned()) {
@@ -1045,13 +1282,22 @@ mod tests {
             });
             let mut fallback = [0u8; 32];
             fallback[0] = nf;
-            let Some(idx) = idx else { return (fallback.to_vec(), vec![1u8; 64]) };
+            let Some(idx) = idx else {
+                return (fallback.to_vec(), vec![1u8; 64]);
+            };
             let secret = pallas::Base::from(h.word + idx as u64);
             let c = pallas::Base::from_repr(ctx()).unwrap();
-            let nullifier = zk_headstash::no_ecdsa::claim_nullifier(secret, c).to_repr().to_vec();
+            let nullifier = zk_headstash::no_ecdsa::claim_nullifier(secret, c)
+                .to_repr()
+                .to_vec();
             let key_com = registration_key_commitment(secret).to_repr();
-            let dest = if who.starts_with("hsfwd1") { who.to_string() } else { format!("terp1{who}") };
-            let path = crate::registration::query_path(deps.as_ref().storage, &key_com, root.as_slice());
+            let dest = if who.starts_with("hsfwd1") {
+                who.to_string()
+            } else {
+                format!("terp1{who}")
+            };
+            let path =
+                crate::registration::query_path(deps.as_ref().storage, &key_com, root.as_slice());
             let out = match path {
                 Ok(p) if class == Some(h.classes[idx] as usize) => {
                     // label bound to this note once it is first proved against an anchor
@@ -1085,7 +1331,14 @@ mod tests {
     }
 
     /// Nullifier and proof for note label `nf` claimed by `who`.
-    fn witness(deps: &TDeps, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> (Binary, Binary) {
+    fn witness(
+        deps: &TDeps,
+        h: &Holder,
+        who: &str,
+        root: &Binary,
+        nf: u8,
+        amount: u64,
+    ) -> (Binary, Binary) {
         #[cfg(feature = "zk-api")]
         {
             let (n, p) = real_zk::witness(deps, h, who, root, nf, amount);
@@ -1109,7 +1362,13 @@ mod tests {
         let (mut deps, env) = setup();
         let mut c = campaign(tree.root(), NOTE_VK_ID);
         c.cutoff_height = env.block.height + 1000;
-        c.amounts = DENOMS_UTERP.iter().map(|amount| AmountCap { amount: *amount, cap: if *amount == DENOMS_UTERP[11] { 1 } else { 50 } }).collect();
+        c.amounts = DENOMS_UTERP
+            .iter()
+            .map(|amount| AmountCap {
+                amount: *amount,
+                cap: if *amount == DENOMS_UTERP[11] { 1 } else { 50 },
+            })
+            .collect();
         set(&mut deps, &env, c).unwrap();
         #[cfg(feature = "zk-api")]
         real_zk::register_verifier();
@@ -1135,20 +1394,47 @@ mod tests {
 
     fn tree_root(deps: &TDeps) -> (Binary, Vec<crate::registration::AcceptedAnchor>) {
         let c = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
-        let t = crate::registration::query_tree(deps.as_ref().storage, c.registration.as_ref().unwrap()).unwrap();
-        let a = crate::registration::query_anchors(deps.as_ref().storage, None, Some(100)).unwrap().anchors;
-        (t.root, a.into_iter().map(|e| crate::registration::AcceptedAnchor { root: e.root, leaf_count: e.leaf_count }).collect())
+        let t = crate::registration::query_tree(
+            deps.as_ref().storage,
+            c.registration.as_ref().unwrap(),
+        )
+        .unwrap();
+        let a = crate::registration::query_anchors(deps.as_ref().storage, None, Some(100))
+            .unwrap()
+            .anchors;
+        (
+            t.root,
+            a.into_iter()
+                .map(|e| crate::registration::AcceptedAnchor {
+                    root: e.root,
+                    leaf_count: e.leaf_count,
+                })
+                .collect(),
+        )
     }
 
-    fn claim(deps: &mut TDeps, env: &Env, h: &Holder, who: &str, root: &Binary, nf: u8, amount: u64) -> Result<Response, StdError> {
+    fn claim(
+        deps: &mut TDeps,
+        env: &Env,
+        h: &Holder,
+        who: &str,
+        root: &Binary,
+        nf: u8,
+        amount: u64,
+    ) -> Result<Response, StdError> {
         let sender = cosmwasm_std::Addr::unchecked(format!("terp1{who}"));
         let (nullifier, proof) = witness(deps, h, who, root, nf, amount);
-        execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), ExecuteMsg::ClaimNote {
-            root: root.clone(),
-            nullifier,
-            amount,
-            proof,
-        })
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&sender, &[]),
+            ExecuteMsg::ClaimNote {
+                root: root.clone(),
+                nullifier,
+                amount,
+                proof,
+            },
+        )
     }
 
     #[test]
@@ -1157,12 +1443,28 @@ mod tests {
         let c = pallas::Base::from_repr(ctx()).unwrap();
         let root = pallas::Base::from(99u64);
         let dest = "terp1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu";
-        let public = zk_headstash::note_membership::note_public(secret, c, DENOMS_UTERP[4], root, dest).unwrap();
+        let public =
+            zk_headstash::note_membership::note_public(secret, c, DENOMS_UTERP[4], root, dest)
+                .unwrap();
         let want: Vec<u8> = public.iter().flat_map(|f| f.to_repr().to_vec()).collect();
-        let got = direct::instances(&ctx(), &root.to_repr(), &public[2].to_repr(), dest, DENOMS_UTERP[4]).unwrap();
+        let got = direct::instances(
+            &ctx(),
+            &root.to_repr(),
+            &public[2].to_repr(),
+            dest,
+            DENOMS_UTERP[4],
+        )
+        .unwrap();
         assert_eq!(got, want);
         // a different sender gives different dest limbs, so a copied proof cannot verify
-        let other = direct::instances(&ctx(), &root.to_repr(), &public[2].to_repr(), "terp1other", DENOMS_UTERP[4]).unwrap();
+        let other = direct::instances(
+            &ctx(),
+            &root.to_repr(),
+            &public[2].to_repr(),
+            "terp1other",
+            DENOMS_UTERP[4],
+        )
+        .unwrap();
         assert_ne!(other[96..160], want[96..160]);
     }
 
@@ -1170,17 +1472,53 @@ mod tests {
     fn direct_bind_pins_circuit_once_and_checks_ctx_and_hash() {
         let (mut deps, env, ..) = direct_fixture();
         let stranger = deps.api.addr_make("stranger");
-        assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), ExecuteMsg::BindNoteCircuit { zk_id: 3 }).is_err());
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 0 })).contains("zk id"));
+        assert!(
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&stranger, &[]),
+                ExecuteMsg::BindNoteCircuit { zk_id: 3 }
+            )
+            .is_err()
+        );
+        assert!(
+            err(owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::BindNoteCircuit { zk_id: 0 }
+            ))
+            .contains("zk id")
+        );
         serve_circuit(&mut deps, false);
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 })).contains("vk hash"));
+        assert!(
+            err(owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::BindNoteCircuit { zk_id: 3 }
+            ))
+            .contains("vk hash")
+        );
         serve_circuit(&mut deps, true);
         // another chain id => ctx not bound
         let mut env2 = env.clone();
         env2.block.chain_id = "other-chain".into();
-        assert!(err(owner_run(&mut deps, &env2, ExecuteMsg::BindNoteCircuit { zk_id: 3 })).contains("ctx"));
+        assert!(
+            err(owner_run(
+                &mut deps,
+                &env2,
+                ExecuteMsg::BindNoteCircuit { zk_id: 3 }
+            ))
+            .contains("ctx")
+        );
         owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 4 })).contains("fixed"));
+        assert!(
+            err(owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::BindNoteCircuit { zk_id: 4 }
+            ))
+            .contains("fixed")
+        );
         let info = direct::query_info(deps.as_ref().storage, &env).unwrap();
         assert_eq!(info.cfg.unwrap().zk_id, 3);
         assert_eq!(info.expected_ctx.as_slice(), ctx());
@@ -1191,7 +1529,12 @@ mod tests {
         let (mut deps, mut env, a, b, tree) = direct_fixture();
         register_all(&mut deps, &env, &a, &tree);
         // the whole register -> anchor -> claim flow below runs with WAVS disabled
-        assert!(crate::wavs_operator_set(&deps.storage).unwrap_err().to_string().contains("wavs disabled"));
+        assert!(
+            crate::wavs_operator_set(&deps.storage)
+                .unwrap_err()
+                .to_string()
+                .contains("wavs disabled")
+        );
         owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let first = tree_root(&deps).1[0].root.clone();
@@ -1200,22 +1543,51 @@ mod tests {
             let mut r = [0u8; 32];
             r[..4].copy_from_slice(&(i + 1).to_be_bytes());
             r[30] = 0xAB;
-            crate::registration::test_push_anchor(deps.as_mut().storage, &Binary::from(r.to_vec()), 40);
+            crate::registration::test_push_anchor(
+                deps.as_mut().storage,
+                &Binary::from(r.to_vec()),
+                40,
+            );
         }
         register_all(&mut deps, &env, &b, &tree);
         env.block.height += 1;
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let c = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
-        let t = crate::registration::query_tree(deps.as_ref().storage, c.registration.as_ref().unwrap()).unwrap();
+        let t = crate::registration::query_tree(
+            deps.as_ref().storage,
+            c.registration.as_ref().unwrap(),
+        )
+        .unwrap();
         assert_eq!(t.anchor_count, 2102);
         let latest = t.latest_anchor.unwrap();
         assert!(latest.leaf_count > 40);
-        let page = crate::registration::query_anchors(deps.as_ref().storage, Some(2000), Some(500)).unwrap().anchors;
-        assert_eq!((page.len(), page[0].seq, page.last().unwrap().seq), (100, 2001, 2100));
+        let page = crate::registration::query_anchors(deps.as_ref().storage, Some(2000), Some(500))
+            .unwrap()
+            .anchors;
+        assert_eq!(
+            (page.len(), page[0].seq, page.last().unwrap().seq),
+            (100, 2001, 2100)
+        );
         claim(&mut deps, &env, &a, "w1", &first, 1, DENOMS_UTERP[0]).unwrap();
         claim(&mut deps, &env, &a, "w2", &latest.root, 2, DENOMS_UTERP[0]).unwrap();
-        assert!(err(claim(&mut deps, &env, &a, "w3", &latest.root, 1, DENOMS_UTERP[0])).contains("nullifier"));
-        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 2);
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w3",
+                &latest.root,
+                1,
+                DENOMS_UTERP[0]
+            ))
+            .contains("nullifier")
+        );
+        assert_eq!(
+            direct::query_info(deps.as_ref().storage, &env)
+                .unwrap()
+                .claimed,
+            2
+        );
     }
 
     #[test]
@@ -1223,10 +1595,15 @@ mod tests {
         let (mut deps, mut env, a, b, tree) = direct_fixture();
         register_all(&mut deps, &env, &a, &tree);
         let (live, _) = tree_root(&deps);
-        assert!(err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0])).contains("not enabled"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0]))
+                .contains("not enabled")
+        );
         owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
         // live root, nothing sealed yet
-        assert!(err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &live, 1, DENOMS_UTERP[0])).contains("anchor")
+        );
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let (_, anchors) = tree_root(&deps);
         let epoch_n = anchors[0].root.clone();
@@ -1235,58 +1612,170 @@ mod tests {
         register_all(&mut deps, &env, &b, &tree);
         let (live2, _) = tree_root(&deps);
         assert_ne!(live2, epoch_n);
-        assert!(err(claim(&mut deps, &env, &a, "w2", &live2, 2, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w2", &live2, 2, DENOMS_UTERP[0])).contains("anchor")
+        );
         // fabricated root
         let mut fake = [7u8; 32];
         fake[31] = 0;
-        assert!(err(claim(&mut deps, &env, &a, "w2", &Binary::from(fake.to_vec()), 2, DENOMS_UTERP[0])).contains("anchor"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w2",
+                &Binary::from(fake.to_vec()),
+                2,
+                DENOMS_UTERP[0]
+            ))
+            .contains("anchor")
+        );
         // non-canonical limbs
         let mut nc = epoch_n.to_vec();
         nc[31] |= 0x80;
-        assert!(err(claim(&mut deps, &env, &a, "w2", &Binary::from(nc), 2, DENOMS_UTERP[0])).contains("root"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w2",
+                &Binary::from(nc),
+                2,
+                DENOMS_UTERP[0]
+            ))
+            .contains("root")
+        );
         // amounts
-        assert!(err(claim(&mut deps, &env, &a, "w2", &epoch_n, 2, 3_000_000)).contains("denomination"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w2", &epoch_n, 2, 3_000_000)).contains("denomination")
+        );
         // ok: payout to sender, exactly amount
         // CheckNoteClaim dry-run: same verdict as the execute, writes nothing.
         let dry = |deps: &TDeps, who: &str, nf: u8| {
             let (n, proof) = witness(deps, &a, who, &epoch_n, nf, DENOMS_UTERP[3]);
             let campaign = crate::epoch::query_campaign(deps.as_ref().storage).unwrap();
-            direct::check_claim(deps.as_ref(), &env, &campaign, &format!("terp1{who}"), &epoch_n, &n, DENOMS_UTERP[3], &proof).map(|_| ())
+            direct::check_claim(
+                deps.as_ref(),
+                &env,
+                &campaign,
+                &format!("terp1{who}"),
+                &epoch_n,
+                &n,
+                DENOMS_UTERP[3],
+                &proof,
+            )
+            .map(|_| ())
         };
         dry(&deps, "w1", 1).unwrap();
         dry(&deps, "w1", 1).unwrap();
         let r = claim(&mut deps, &env, &a, "w1", &epoch_n, 1, DENOMS_UTERP[3]).unwrap();
-        assert!(dry(&deps, "w1", 1).unwrap_err().to_string().contains("nullifier"));
+        assert!(
+            dry(&deps, "w1", 1)
+                .unwrap_err()
+                .to_string()
+                .contains("nullifier")
+        );
         let w1 = "terp1w1".to_string();
         let sent = r.messages.iter().any(|m| matches!(&m.msg, cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address, amount }) if *to_address == w1 && amount[0].amount.to_string() == DENOMS_UTERP[3].to_string()));
         assert!(sent);
         // replay of the nullifier from any sender, against any anchor
-        assert!(err(claim(&mut deps, &env, &a, "w1", &epoch_n, 1, DENOMS_UTERP[3])).contains("nullifier"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w1",
+                &epoch_n,
+                1,
+                DENOMS_UTERP[3]
+            ))
+            .contains("nullifier")
+        );
         // seal N+1; the older anchor still works
         env.block.height += 1;
         run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
         let (_, anchors) = tree_root(&deps);
         assert_eq!(anchors.len(), 2);
-        assert!(err(claim(&mut deps, &env, &a, "w9", &anchors[1].root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w9",
+                &anchors[1].root,
+                1,
+                DENOMS_UTERP[0]
+            ))
+            .contains("nullifier")
+        );
         claim(&mut deps, &env, &a, "w2", &epoch_n, 2, DENOMS_UTERP[0]).unwrap();
-        claim(&mut deps, &env, &a, "w3", &anchors[1].root, 3, DENOMS_UTERP[0]).unwrap();
+        claim(
+            &mut deps,
+            &env,
+            &a,
+            "w3",
+            &anchors[1].root,
+            3,
+            DENOMS_UTERP[0],
+        )
+        .unwrap();
         // per-denomination cap
         claim(&mut deps, &env, &a, "w4", &epoch_n, 4, DENOMS_UTERP[11]).unwrap();
-        assert!(err(claim(&mut deps, &env, &a, "w5", &epoch_n, 5, DENOMS_UTERP[11])).contains("cap"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w5",
+                &epoch_n,
+                5,
+                DENOMS_UTERP[11]
+            ))
+            .contains("cap")
+        );
         // failed verification consumes nothing
         bad_proofs(true);
-        assert!(err(claim(&mut deps, &env, &a, "w6", &epoch_n, 6, DENOMS_UTERP[0])).contains("invalid note proof"));
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w6",
+                &epoch_n,
+                6,
+                DENOMS_UTERP[0]
+            ))
+            .contains("invalid note proof")
+        );
         bad_proofs(false);
         claim(&mut deps, &env, &a, "w6", &epoch_n, 6, DENOMS_UTERP[0]).unwrap();
         // window
         env.block.height += 2000;
-        assert!(err(claim(&mut deps, &env, &a, "w7", &epoch_n, 7, DENOMS_UTERP[0])).contains("window"));
-        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 5);
+        assert!(
+            err(claim(
+                &mut deps,
+                &env,
+                &a,
+                "w7",
+                &epoch_n,
+                7,
+                DENOMS_UTERP[0]
+            ))
+            .contains("window")
+        );
+        assert_eq!(
+            direct::query_info(deps.as_ref().storage, &env)
+                .unwrap()
+                .claimed,
+            5
+        );
     }
 
-
     // ---- emergency reclaim (crate::reclaim, spec Appendix R) ----
-    use cosmwasm_std::{BankMsg, Coin, ContractResult, CosmosMsg, DistributionMsg, SystemError, SystemResult, WasmQuery};
+    use cosmwasm_std::{
+        BankMsg, Coin, ContractResult, CosmosMsg, DistributionMsg, SystemError, SystemResult,
+        WasmQuery,
+    };
     use std::cell::RefCell;
 
     thread_local!(static ADMIN: RefCell<Option<String>> = const { RefCell::new(None) });
@@ -1295,7 +1784,9 @@ mod tests {
     fn contract_info() -> SystemResult<ContractResult<Binary>> {
         let admin = ADMIN.with(|a| a.borrow().clone());
         let v = serde_json::json!({"code_id": 1, "creator": "creator", "admin": admin, "pinned": false, "ibc_port": null});
-        SystemResult::Ok(ContractResult::Ok(Binary::from(serde_json::to_vec(&v).unwrap())))
+        SystemResult::Ok(ContractResult::Ok(Binary::from(
+            serde_json::to_vec(&v).unwrap(),
+        )))
     }
 
     /// Wasm admin as reported by the chain (x/wasm ContractInfo).
@@ -1304,7 +1795,9 @@ mod tests {
         #[cfg(not(feature = "zk-api"))]
         deps.querier.update_wasm(|q| match q {
             WasmQuery::ContractInfo { .. } => contract_info(),
-            _ => SystemResult::Err(SystemError::UnsupportedRequest { kind: "wasm".into() }),
+            _ => SystemResult::Err(SystemError::UnsupportedRequest {
+                kind: "wasm".into(),
+            }),
         });
         #[cfg(feature = "zk-api")]
         serve_circuit(deps, true);
@@ -1317,7 +1810,11 @@ mod tests {
     }
 
     #[derive(Clone, Copy, PartialEq)]
-    enum Tok { Uterp, FactoryExisting, Mint }
+    enum Tok {
+        Uterp,
+        FactoryExisting,
+        Mint,
+    }
     const FDENOM: &str = "factory/terp1funder/hstest";
     const SUB: &str = "hstest";
 
@@ -1330,17 +1827,44 @@ mod tests {
         let api = cosmwasm_std::testing::MockApi::default();
         let (ts, nd_raw) = match tok {
             Tok::Uterp => {
-                deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, "uterp")]);
-                (crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&api, "uterp".into())), "uterp")
+                deps.querier.bank.update_balance(
+                    env.contract.address.as_str(),
+                    vec![Coin::new(ESCROW, "uterp")],
+                );
+                (
+                    crate::tokenfactory::TokenStrategy::ExistingFungible(
+                        HeadstashTokenObject::new(&api, "uterp".into()),
+                    ),
+                    "uterp",
+                )
             }
             Tok::FactoryExisting => {
-                deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW, FDENOM)]);
-                (crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&api, FDENOM.into())), FDENOM)
+                deps.querier.bank.update_balance(
+                    env.contract.address.as_str(),
+                    vec![Coin::new(ESCROW, FDENOM)],
+                );
+                (
+                    crate::tokenfactory::TokenStrategy::ExistingFungible(
+                        HeadstashTokenObject::new(&api, FDENOM.into()),
+                    ),
+                    FDENOM,
+                )
             }
             Tok::Mint => (
                 crate::tokenfactory::TokenStrategy::NewFungible(Box::new(NewTokenConfig {
                     subdenom: HeadstashTokenObject::new(&api, SUB.into()),
-                    metadata: Metadata { description: None, denom_units: vec![DenomUnit { denom: SUB.into(), exponent: 0, aliases: vec![] }], base: None, display: None, name: None, symbol: None },
+                    metadata: Metadata {
+                        description: None,
+                        denom_units: vec![DenomUnit {
+                            denom: SUB.into(),
+                            exponent: 0,
+                            aliases: vec![],
+                        }],
+                        base: None,
+                        display: None,
+                        name: None,
+                        symbol: None,
+                    },
                     initial_mint: None,
                     manager: None,
                     minters: vec![],
@@ -1367,7 +1891,11 @@ mod tests {
         c.burn_unclaimed = Some(true);
         if tok == Tok::Mint {
             // AmountCap is the only bound on total mint: keep one class tight.
-            for ac in c.amounts.iter_mut() { if ac.amount == DENOMS_UTERP[0] { ac.cap = 2; } }
+            for ac in c.amounts.iter_mut() {
+                if ac.amount == DENOMS_UTERP[0] {
+                    ac.cap = 2;
+                }
+            }
         }
         set(&mut deps, &env, c).unwrap();
         #[cfg(feature = "zk-api")]
@@ -1387,33 +1915,66 @@ mod tests {
         let mut out = 0u128;
         for m in &r.messages {
             match &m.msg {
-                CosmosMsg::Bank(BankMsg::Send { amount, .. }) | CosmosMsg::Bank(BankMsg::Burn { amount }) => out += amount[0].amount.to_string().parse::<u128>().unwrap(),
-                CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => out += amount[0].amount.to_string().parse::<u128>().unwrap(),
+                CosmosMsg::Bank(BankMsg::Send { amount, .. })
+                | CosmosMsg::Bank(BankMsg::Burn { amount }) => {
+                    out += amount[0].amount.to_string().parse::<u128>().unwrap()
+                }
+                CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => {
+                    out += amount[0].amount.to_string().parse::<u128>().unwrap()
+                }
                 _ => {}
             }
         }
-        let bal = deps.as_ref().querier.query_balance(env.contract.address.as_str(), "uterp").unwrap().amount.to_string().parse::<u128>().unwrap();
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(bal - out, "uterp")]);
+        let bal = deps
+            .as_ref()
+            .querier
+            .query_balance(env.contract.address.as_str(), "uterp")
+            .unwrap()
+            .amount
+            .to_string()
+            .parse::<u128>()
+            .unwrap();
+        deps.querier.bank.update_balance(
+            env.contract.address.as_str(),
+            vec![Coin::new(bal - out, "uterp")],
+        );
         out
     }
 
     fn reclaim_as(deps: &mut TDeps, env: &Env, who: &str) -> Result<Response, StdError> {
         let sender = deps.api.addr_make(who);
-        execute(deps.as_mut(), env.clone(), message_info(&sender, &[]), ExecuteMsg::EmergencyReclaim {})
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&sender, &[]),
+            ExecuteMsg::EmergencyReclaim {},
+        )
     }
 
     fn pool_amount(r: &Response) -> Option<Vec<Coin>> {
         r.messages.iter().find_map(|m| match &m.msg {
-            CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => Some(amount.clone()),
+            CosmosMsg::Distribution(DistributionMsg::FundCommunityPool { amount }) => {
+                Some(amount.clone())
+            }
             _ => None,
         })
     }
 
     fn status(deps: &TDeps) -> Option<crate::reclaim::ReclaimRecord> {
-        cosmwasm_std::from_json(crate::query(deps.as_ref(), mock_env(), crate::msg::QueryMsg::ReclaimStatus {}).unwrap()).unwrap()
+        cosmwasm_std::from_json(
+            crate::query(
+                deps.as_ref(),
+                mock_env(),
+                crate::msg::QueryMsg::ReclaimStatus {},
+            )
+            .unwrap(),
+        )
+        .unwrap()
     }
 
-    fn mdenom(env: &Env) -> String { format!("factory/{}/{}", env.contract.address, SUB) }
+    fn mdenom(env: &Env) -> String {
+        format!("factory/{}/{}", env.contract.address, SUB)
+    }
 
     /// (minted amount, sent amount, sent denom) of a claim response.
     fn mint_and_send(r: &Response) -> (u128, u128, String, bool) {
@@ -1421,7 +1982,12 @@ mod tests {
         let mut minted = false;
         for m in &r.messages {
             match &m.msg {
-                CosmosMsg::Bank(BankMsg::Send { amount, .. }) => sent = (amount[0].amount.to_string().parse::<u128>().unwrap(), amount[0].denom.clone()),
+                CosmosMsg::Bank(BankMsg::Send { amount, .. }) => {
+                    sent = (
+                        amount[0].amount.to_string().parse::<u128>().unwrap(),
+                        amount[0].denom.clone(),
+                    )
+                }
                 #[allow(deprecated)]
                 CosmosMsg::Stargate { .. } | CosmosMsg::Any(_) => minted = true,
                 _ => {}
@@ -1436,7 +2002,10 @@ mod tests {
         let r = claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
         let (minted, sent, denom, has_mint) = mint_and_send(&r);
         assert!(has_mint);
-        assert_eq!((minted, sent), (DENOMS_UTERP[3] as u128, DENOMS_UTERP[3] as u128));
+        assert_eq!(
+            (minted, sent),
+            (DENOMS_UTERP[3] as u128, DENOMS_UTERP[3] as u128)
+        );
         assert_eq!(denom, mdenom(&env));
         assert_eq!(r.messages.len(), 2);
     }
@@ -1445,7 +2014,10 @@ mod tests {
     fn tf_mint_2_replay_refused() {
         let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
         claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]).unwrap();
-        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier already exists"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]))
+                .contains("nullifier already exists")
+        );
         assert!(err(claim(&mut deps, &env, &a, "w9", &root, 1, DENOMS_UTERP[3])).len() > 0);
     }
 
@@ -1454,20 +2026,39 @@ mod tests {
         let (mut deps, env, a, root) = tf_fixture(Tok::Mint);
         claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
         claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0]).unwrap();
-        assert!(err(claim(&mut deps, &env, &a, "w3", &root, 3, DENOMS_UTERP[0])).contains("denomination cap reached"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w3", &root, 3, DENOMS_UTERP[0]))
+                .contains("denomination cap reached")
+        );
     }
 
     #[test]
     fn tf_mint_4_sweep_refused_before_and_after_cutoff_even_with_balance() {
         let (mut deps, mut env, _, _) = tf_fixture(Tok::Mint);
         let d = mdenom(&env);
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(777u128, d)]);
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains(crate::epoch::SWEEP_MINT_REFUSED));
+        deps.querier
+            .bank
+            .update_balance(env.contract.address.as_str(), vec![Coin::new(777u128, d)]);
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}))
+                .contains(crate::epoch::SWEEP_MINT_REFUSED)
+        );
         env.block.height += 1001;
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains(crate::epoch::SWEEP_MINT_REFUSED));
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}))
+                .contains(crate::epoch::SWEEP_MINT_REFUSED)
+        );
         // still non-owner gated first
         let relayer = deps.api.addr_make("relayer");
-        assert!(execute(deps.as_mut(), env.clone(), message_info(&relayer, &[]), ExecuteMsg::SweepUnclaimed {}).is_err());
+        assert!(
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&relayer, &[]),
+                ExecuteMsg::SweepUnclaimed {}
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1476,16 +2067,22 @@ mod tests {
         claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
         // stray minted coins in the contract are not moved either
         let d = mdenom(&env);
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(5u128, d)]);
+        deps.querier
+            .bank
+            .update_balance(env.contract.address.as_str(), vec![Coin::new(5u128, d)]);
         assert!(reclaim_as(&mut deps, &env, "relayer").is_err());
         assert!(status(&deps).is_none());
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
         assert!(r.messages.is_empty());
         let st = status(&deps).unwrap();
         assert_eq!((st.height, st.amounts.len()), (env.block.height, 0));
-        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("reclaimed"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("reclaimed")
+        );
         assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("reclaimed"));
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed")
+        );
         assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("reclaimed"));
     }
 
@@ -1495,7 +2092,9 @@ mod tests {
         env.block.height += 1000; // == cutoff: still open
         claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
         env.block.height += 1;
-        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window")
+        );
         assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("campaign has ended"));
     }
 
@@ -1506,13 +2105,19 @@ mod tests {
         let (_, sent, denom, has_mint) = mint_and_send(&r);
         assert!(!has_mint);
         assert_eq!((sent, denom.as_str()), (DENOMS_UTERP[3] as u128, FDENOM));
-        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier already exists"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]))
+                .contains("nullifier already exists")
+        );
         // reclaim before cutoff returns the factory denom escrow
         let (mut d2, e2, _, _) = tf_fixture(Tok::FactoryExisting);
         let rr = reclaim_as(&mut d2, &e2, "creator").unwrap();
         assert_eq!(pool_amount(&rr).unwrap(), vec![Coin::new(ESCROW, FDENOM)]);
         // sweep after cutoff burns what the mock reports
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(ESCROW - sent, FDENOM)]);
+        deps.querier.bank.update_balance(
+            env.contract.address.as_str(),
+            vec![Coin::new(ESCROW - sent, FDENOM)],
+        );
         env.block.height += 1001;
         let s = owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}).unwrap();
         assert!(s.messages.iter().any(|m| matches!(&m.msg, CosmosMsg::Bank(BankMsg::Burn { amount }) if amount == &vec![Coin::new(ESCROW - sent, FDENOM)])));
@@ -1525,24 +2130,50 @@ mod tests {
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
         assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(ESCROW, "uterp")]);
         assert_eq!(r.messages.len(), 1);
-        assert!(!r.messages.iter().any(|m| matches!(m.msg, CosmosMsg::Bank(BankMsg::Burn { .. }))));
+        assert!(
+            !r.messages
+                .iter()
+                .any(|m| matches!(m.msg, CosmosMsg::Bank(BankMsg::Burn { .. })))
+        );
         assert_eq!(settle(&mut deps, &env, &r), ESCROW);
         let st = status(&deps).unwrap();
-        assert_eq!((st.height, st.amounts), (env.block.height, vec![Coin::new(ESCROW, "uterp")]));
+        assert_eq!(
+            (st.height, st.amounts),
+            (env.block.height, vec![Coin::new(ESCROW, "uterp")])
+        );
         // halted: claims, registration, anchors, sweep, second reclaim, owner ops
-        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("reclaimed"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("reclaimed")
+        );
         assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("reclaimed"));
         let b = holder(2, vec![11, 3, 0], 40, 2000);
         let tree = Elig::new(b.leaves());
         let list = b.list();
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, list.len(), true))).contains("reclaimed"));
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed"));
+        assert!(
+            err(run(
+                &mut deps,
+                &env,
+                b.chunk(&tree, &list, 0, list.len(), true)
+            ))
+            .contains("reclaimed")
+        );
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("reclaimed")
+        );
         assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("reclaimed"));
         // dry-run query halts too
         let (n, proof) = witness(&deps, &a, "w1", &root, 1, DENOMS_UTERP[0]);
-        let q = crate::query(deps.as_ref(), env.clone(), crate::msg::QueryMsg::CheckNoteClaim {
-            dest: "terp1w1".into(), root: root.clone(), nullifier: Binary::from(n), amount: DENOMS_UTERP[0], proof: Binary::from(proof),
-        });
+        let q = crate::query(
+            deps.as_ref(),
+            env.clone(),
+            crate::msg::QueryMsg::CheckNoteClaim {
+                dest: "terp1w1".into(),
+                root: root.clone(),
+                nullifier: Binary::from(n),
+                amount: DENOMS_UTERP[0],
+                proof: Binary::from(proof),
+            },
+        );
         assert!(q.unwrap_err().to_string().contains("reclaimed"));
     }
 
@@ -1557,7 +2188,11 @@ mod tests {
         set_admin(&mut deps, Some(other.to_string()));
         assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("admin"));
         // wasm admin but not the owner
-        assert!(err(reclaim_as(&mut deps, &env, "other")).to_lowercase().contains("owner"));
+        assert!(
+            err(reclaim_as(&mut deps, &env, "other"))
+                .to_lowercase()
+                .contains("owner")
+        );
         // no admin at all
         set_admin(&mut deps, None);
         assert!(err(reclaim_as(&mut deps, &env, "creator")).contains("admin"));
@@ -1579,13 +2214,24 @@ mod tests {
     #[test]
     fn reclaim_4_burn_before_cutoff_refused() {
         let (mut deps, mut env, _, _) = reclaim_fixture();
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("has not ended"));
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}))
+                .contains("has not ended")
+        );
         env.block.height += 1000; // == cutoff
-        assert!(err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {})).contains("has not ended"));
+        assert!(
+            err(owner_run(&mut deps, &env, ExecuteMsg::SweepUnclaimed {}))
+                .contains("has not ended")
+        );
         // not owner, after cutoff
         env.block.height += 1;
         let relayer = deps.api.addr_make("relayer");
-        let r = execute(deps.as_mut(), env.clone(), message_info(&relayer, &[]), ExecuteMsg::SweepUnclaimed {});
+        let r = execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&relayer, &[]),
+            ExecuteMsg::SweepUnclaimed {},
+        );
         assert!(r.is_err());
     }
 
@@ -1600,7 +2246,9 @@ mod tests {
         assert!(pool_amount(&r).is_none());
         assert_eq!(settle(&mut deps, &env, &r), ESCROW - paid);
         // claims closed after the cutoff
-        assert!(err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window"));
+        assert!(
+            err(claim(&mut deps, &env, &a, "w2", &root, 2, DENOMS_UTERP[0])).contains("window")
+        );
     }
 
     #[test]
@@ -1610,25 +2258,69 @@ mod tests {
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
         settle(&mut deps, &env, &r);
         for (i, who) in ["w2", "w3"].iter().enumerate() {
-            assert!(err(claim(&mut deps, &env, &a, who, &root, 2 + i as u8, DENOMS_UTERP[0])).contains("reclaimed"));
+            assert!(
+                err(claim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    who,
+                    &root,
+                    2 + i as u8,
+                    DENOMS_UTERP[0]
+                ))
+                .contains("reclaimed")
+            );
         }
-        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+        assert_eq!(
+            direct::query_info(deps.as_ref().storage, &env)
+                .unwrap()
+                .claimed,
+            1
+        );
     }
 
     #[test]
     fn reclaim_7_partial_claims_then_reclaim_returns_exact_remainder() {
         let (mut deps, env, a, root) = reclaim_fixture();
         let mut paid = 0u128;
-        for (i, amt) in [DENOMS_UTERP[0], DENOMS_UTERP[3], DENOMS_UTERP[5], DENOMS_UTERP[0]].iter().enumerate() {
-            let r = claim(&mut deps, &env, &a, &format!("p{i}"), &root, 1 + i as u8, *amt).unwrap();
+        for (i, amt) in [
+            DENOMS_UTERP[0],
+            DENOMS_UTERP[3],
+            DENOMS_UTERP[5],
+            DENOMS_UTERP[0],
+        ]
+        .iter()
+        .enumerate()
+        {
+            let r = claim(
+                &mut deps,
+                &env,
+                &a,
+                &format!("p{i}"),
+                &root,
+                1 + i as u8,
+                *amt,
+            )
+            .unwrap();
             let s = settle(&mut deps, &env, &r);
             assert_eq!(s, *amt as u128);
             paid += s;
         }
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
-        assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(ESCROW - paid, "uterp")]);
+        assert_eq!(
+            pool_amount(&r).unwrap(),
+            vec![Coin::new(ESCROW - paid, "uterp")]
+        );
         settle(&mut deps, &env, &r);
-        let left = deps.as_ref().querier.query_balance(env.contract.address.as_str(), "uterp").unwrap().amount.to_string().parse::<u128>().unwrap();
+        let left = deps
+            .as_ref()
+            .querier
+            .query_balance(env.contract.address.as_str(), "uterp")
+            .unwrap()
+            .amount
+            .to_string()
+            .parse::<u128>()
+            .unwrap();
         assert_eq!(left, 0);
     }
 
@@ -1639,19 +2331,33 @@ mod tests {
         let mut deps = mock_dependencies();
         let env = mock_env();
         let creator = deps.api.addr_make("creator");
-        deps.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(1u128, "uterp")]);
-        instantiate(deps.as_mut(), env.clone(), message_info(&creator, &[]), InstantiateMsg {
-            genesis_root: Binary::from(vec![0u8; 32]),
-            distro_hash_domain: Default::default(),
-            genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "uterp".into())),
-            wavs: None,
-            circuit_id: None,
-            registration_hook: None,
-            registration_hook_gas_limit: None,
-            frontend_contract: None,
-            pauser: None,
-        }).unwrap();
+        deps.querier.bank.update_balance(
+            env.contract.address.as_str(),
+            vec![Coin::new(1u128, "uterp")],
+        );
+        instantiate(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            InstantiateMsg {
+                genesis_root: Binary::from(vec![0u8; 32]),
+                distro_hash_domain: Default::default(),
+                genesis_label: None,
+                token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
+                    HeadstashTokenObject::new(
+                        &cosmwasm_std::testing::MockApi::default(),
+                        "uterp".into(),
+                    ),
+                ),
+                wavs: None,
+                circuit_id: None,
+                registration_hook: None,
+                registration_hook_gas_limit: None,
+                frontend_contract: None,
+                pauser: None,
+            },
+        )
+        .unwrap();
         set_admin(&mut deps, Some(creator.to_string()));
         let r = reclaim_as(&mut deps, &env, "creator").unwrap();
         assert_eq!(pool_amount(&r).unwrap(), vec![Coin::new(1u128, "uterp")]);
@@ -1659,14 +2365,37 @@ mod tests {
         assert!(status(&deps).is_some());
         // empty escrow: no message, still terminal
         let mut d2 = mock_dependencies();
-        d2.querier.bank.update_balance(env.contract.address.as_str(), vec![Coin::new(1u128, "uterp")]);
+        d2.querier.bank.update_balance(
+            env.contract.address.as_str(),
+            vec![Coin::new(1u128, "uterp")],
+        );
         let c2 = d2.api.addr_make("creator");
-        instantiate(d2.as_mut(), env.clone(), message_info(&c2, &[]), InstantiateMsg {
-            genesis_root: Binary::from(vec![0u8; 32]), distro_hash_domain: Default::default(), genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "uterp".into())),
-            wavs: None, circuit_id: None, registration_hook: None, registration_hook_gas_limit: None, frontend_contract: None, pauser: None,
-        }).unwrap();
-        d2.querier.bank.update_balance(env.contract.address.as_str(), vec![]);
+        instantiate(
+            d2.as_mut(),
+            env.clone(),
+            message_info(&c2, &[]),
+            InstantiateMsg {
+                genesis_root: Binary::from(vec![0u8; 32]),
+                distro_hash_domain: Default::default(),
+                genesis_label: None,
+                token_strategy: crate::tokenfactory::TokenStrategy::ExistingFungible(
+                    HeadstashTokenObject::new(
+                        &cosmwasm_std::testing::MockApi::default(),
+                        "uterp".into(),
+                    ),
+                ),
+                wavs: None,
+                circuit_id: None,
+                registration_hook: None,
+                registration_hook_gas_limit: None,
+                frontend_contract: None,
+                pauser: None,
+            },
+        )
+        .unwrap();
+        d2.querier
+            .bank
+            .update_balance(env.contract.address.as_str(), vec![]);
         set_admin(&mut d2, Some(c2.to_string()));
         let r = reclaim_as(&mut d2, &env, "creator").unwrap();
         assert!(r.messages.is_empty());
@@ -1680,23 +2409,41 @@ mod tests {
     }
 
     fn pstatus(deps: &TDeps) -> crate::pause::PauseStatusResponse {
-        cosmwasm_std::from_json(crate::query(deps.as_ref(), mock_env(), crate::msg::QueryMsg::PauseStatus {}).unwrap()).unwrap()
+        cosmwasm_std::from_json(
+            crate::query(
+                deps.as_ref(),
+                mock_env(),
+                crate::msg::QueryMsg::PauseStatus {},
+            )
+            .unwrap(),
+        )
+        .unwrap()
     }
 
     fn pause_fixture() -> (TDeps, Env, Holder, Binary) {
         let (mut deps, env, a, root) = reclaim_fixture();
         let p = deps.api.addr_make("dao").to_string();
-        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some(p) }).unwrap();
+        as_(
+            &mut deps,
+            &env,
+            "creator",
+            ExecuteMsg::UpdatePauser { pauser: Some(p) },
+        )
+        .unwrap();
         (deps, env, a, root)
     }
 
     #[test]
     fn pause_1_unauthorized_pause_resume_refused() {
         let (mut deps, env, _, _) = pause_fixture();
-        assert!(err(as_(&mut deps, &env, "relayer", ExecuteMsg::Pause {})).contains("unauthorized"));
+        assert!(
+            err(as_(&mut deps, &env, "relayer", ExecuteMsg::Pause {})).contains("unauthorized")
+        );
         assert!(!pstatus(&deps).paused);
         as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
-        assert!(err(as_(&mut deps, &env, "relayer", ExecuteMsg::Resume {})).contains("unauthorized"));
+        assert!(
+            err(as_(&mut deps, &env, "relayer", ExecuteMsg::Resume {})).contains("unauthorized")
+        );
         assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Pause {})).contains("already paused"));
         assert!(pstatus(&deps).paused);
     }
@@ -1705,27 +2452,64 @@ mod tests {
     fn pause_2_blocks_claim_and_register_resume_restores() {
         let (mut deps, env, a, root) = pause_fixture();
         let r = as_(&mut deps, &env, "dao", ExecuteMsg::Pause {}).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "pause"));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "action" && x.value == "pause")
+        );
         let st = pstatus(&deps);
-        assert_eq!((st.paused, st.paused_at_height, st.paused_by), (true, Some(env.block.height), Some(deps.api.addr_make("dao"))));
-        assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("paused"));
+        assert_eq!(
+            (st.paused, st.paused_at_height, st.paused_by),
+            (
+                true,
+                Some(env.block.height),
+                Some(deps.api.addr_make("dao"))
+            )
+        );
+        assert!(
+            err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0])).contains("paused")
+        );
         let b = holder(2, vec![11, 3, 0], 40, 2000);
         let tree = Elig::new(b.leaves());
         let list = b.list();
-        assert!(err(run(&mut deps, &env, b.chunk(&tree, &list, 0, list.len(), true))).contains("paused"));
+        assert!(
+            err(run(
+                &mut deps,
+                &env,
+                b.chunk(&tree, &list, 0, list.len(), true)
+            ))
+            .contains("paused")
+        );
         let (n, proof) = witness(&deps, &a, "w1", &root, 1, DENOMS_UTERP[0]);
-        let q = crate::query(deps.as_ref(), env.clone(), crate::msg::QueryMsg::CheckNoteClaim {
-            dest: "terp1w1".into(), root: root.clone(), nullifier: Binary::from(n), amount: DENOMS_UTERP[0], proof: Binary::from(proof),
-        });
+        let q = crate::query(
+            deps.as_ref(),
+            env.clone(),
+            crate::msg::QueryMsg::CheckNoteClaim {
+                dest: "terp1w1".into(),
+                root: root.clone(),
+                nullifier: Binary::from(n),
+                amount: DENOMS_UTERP[0],
+                proof: Binary::from(proof),
+            },
+        );
         assert!(q.unwrap_err().to_string().contains("paused"));
         // v0.0.1: anchors are paused too (spec Appendix P / V)
         assert!(err(run(&mut deps, &env, ExecuteMsg::AcceptAnchor {})).contains("paused"));
         let r = as_(&mut deps, &env, "dao", ExecuteMsg::Resume {}).unwrap();
-        assert!(r.attributes.iter().any(|x| x.key == "action" && x.value == "resume"));
+        assert!(
+            r.attributes
+                .iter()
+                .any(|x| x.key == "action" && x.value == "resume")
+        );
         assert!(!pstatus(&deps).paused);
         assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Resume {})).contains("not paused"));
         claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[0]).unwrap();
-        assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+        assert_eq!(
+            direct::query_info(deps.as_ref().storage, &env)
+                .unwrap()
+                .claimed,
+            1
+        );
         // gov can pause/resume too
         as_(&mut deps, &env, "creator", ExecuteMsg::Pause {}).unwrap();
         as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
@@ -1735,10 +2519,36 @@ mod tests {
     fn pause_3_pauser_has_no_other_power() {
         let (mut deps, mut env, _, _) = pause_fixture();
         assert!(as_(&mut deps, &env, "dao", ExecuteMsg::EmergencyReclaim {}).is_err());
-        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::UpdatePauser { pauser: None }).is_err());
+        assert!(
+            as_(
+                &mut deps,
+                &env,
+                "dao",
+                ExecuteMsg::UpdatePauser { pauser: None }
+            )
+            .is_err()
+        );
         let other = deps.api.addr_make("x").to_string();
-        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::UpdatePauser { pauser: Some(other) }).is_err());
-        assert!(as_(&mut deps, &env, "dao", ExecuteMsg::BindNoteCircuit { zk_id: 3 }).is_err());
+        assert!(
+            as_(
+                &mut deps,
+                &env,
+                "dao",
+                ExecuteMsg::UpdatePauser {
+                    pauser: Some(other)
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            as_(
+                &mut deps,
+                &env,
+                "dao",
+                ExecuteMsg::BindNoteCircuit { zk_id: 3 }
+            )
+            .is_err()
+        );
         env.block.height += 1001;
         assert!(as_(&mut deps, &env, "dao", ExecuteMsg::SweepUnclaimed {}).is_err());
         assert!(status(&deps).is_none());
@@ -1749,16 +2559,38 @@ mod tests {
     fn pause_4_gov_rotates_and_clears_pauser() {
         let (mut deps, env, _, _) = pause_fixture();
         let n = deps.api.addr_make("dao2").to_string();
-        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some(n) }).unwrap();
+        as_(
+            &mut deps,
+            &env,
+            "creator",
+            ExecuteMsg::UpdatePauser { pauser: Some(n) },
+        )
+        .unwrap();
         assert!(err(as_(&mut deps, &env, "dao", ExecuteMsg::Pause {})).contains("unauthorized"));
         as_(&mut deps, &env, "dao2", ExecuteMsg::Pause {}).unwrap();
         // clearing does not resume
-        as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: None }).unwrap();
+        as_(
+            &mut deps,
+            &env,
+            "creator",
+            ExecuteMsg::UpdatePauser { pauser: None },
+        )
+        .unwrap();
         let st = pstatus(&deps);
         assert!(st.pauser.is_none() && st.paused);
         assert!(err(as_(&mut deps, &env, "dao2", ExecuteMsg::Resume {})).contains("unauthorized"));
         as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
-        assert!(as_(&mut deps, &env, "creator", ExecuteMsg::UpdatePauser { pauser: Some("".into()) }).is_err());
+        assert!(
+            as_(
+                &mut deps,
+                &env,
+                "creator",
+                ExecuteMsg::UpdatePauser {
+                    pauser: Some("".into())
+                }
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1794,30 +2626,83 @@ mod tests {
 
     fn snap(deps: &TDeps) -> Vec<(Vec<u8>, Vec<u8>)> {
         use cosmwasm_std::Storage;
-        deps.storage.range(None, None, cosmwasm_std::Order::Ascending).collect()
+        deps.storage
+            .range(None, None, cosmwasm_std::Order::Ascending)
+            .collect()
     }
 
     fn removed_variants() -> Vec<(&'static str, serde_json::Value)> {
         use serde_json::json;
         let b = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
         vec![
-            ("process_headstash", json!({"process_headstash": {"claims": []}})),
-            ("set_circuit_id", json!({"set_circuit_id": {"circuit_id": 3}})),
-            ("register_eligibility_root", json!({"register_eligibility_root": {"root": b}})),
-            ("mint", json!({"mint": {"to_address": "terp1x", "amount": "1"}})),
-            ("burn", json!({"burn": {"from_address": "terp1x", "amount": "1"}})),
-            ("update_reflection", json!({"update_reflection": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9}})),
-            ("set_reflection_snapshot", json!({"set_reflection_snapshot": {"snapshot": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9, "confirmations_k": 6, "max_lc_lag": 64, "frozen": false}}})),
-            ("register_asset", json!({"register_asset": {"asset_id": b, "local_denom": "uterp"}})),
-            ("set_external_asset_registry", json!({"set_external_asset_registry": {"addr": null}})),
-            ("set_bridge_cfg", json!({"set_bridge_cfg": {"cfg": {"dest_domain": b, "confirmations_k": 6, "max_lc_lag": 64, "lc_client_id": "x", "mock_verify": true}}})),
-            ("bridge_mint_note", json!({"bridge_mint_note": {"proof": "", "claim": {"source_chain_tag": "x", "tacit_asset_id": b, "value_u64": 1, "nullifier": b, "dest_commitment": b, "dest_domain": b, "claim_id": b, "source_pool_root": b, "source_burn_root": b, "source_height": 1, "domain_binding": b, "unit_scale": 1, "pool_domain": b, "cm_public": b, "in_burn_set": true, "in_pool_root": true, "src_chain_id": b, "dst_chain_id": b, "lc_client_id": b, "burn_dest_commitment": b}}})),
-            ("bridge_egress_burn", json!({"bridge_egress_burn": {"proof": "", "statement": {"asset_id": b, "value": 1, "cm_spent": b, "nullifier": b, "dest_commitment": b, "dest_kind": "transparent", "root": b, "rcm": b, "owner_binding": b}}})),
-            ("set_denom_table", json!({"set_denom_table": {"amounts": [1]}})),
-            ("assign_public_notes", json!({"assign_public_notes": {"nullifiers": [b]}})),
-            ("stage_epoch_batch", json!({"stage_epoch_batch": {"digests": [], "rows": []}})),
-            ("apply_accepted_batch", json!({"apply_accepted_batch": {"allocation_root": b, "root_id": 0, "rows": []}})),
-            ("apply_public_batch", json!({"apply_public_batch": {"rows": []}})),
+            (
+                "process_headstash",
+                json!({"process_headstash": {"claims": []}}),
+            ),
+            (
+                "set_circuit_id",
+                json!({"set_circuit_id": {"circuit_id": 3}}),
+            ),
+            (
+                "register_eligibility_root",
+                json!({"register_eligibility_root": {"root": b}}),
+            ),
+            (
+                "mint",
+                json!({"mint": {"to_address": "terp1x", "amount": "1"}}),
+            ),
+            (
+                "burn",
+                json!({"burn": {"from_address": "terp1x", "amount": "1"}}),
+            ),
+            (
+                "update_reflection",
+                json!({"update_reflection": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9}}),
+            ),
+            (
+                "set_reflection_snapshot",
+                json!({"set_reflection_snapshot": {"snapshot": {"pool_root": b, "spent_root": b, "burn_root": b, "source_height": 1, "tip_height": 9, "confirmations_k": 6, "max_lc_lag": 64, "frozen": false}}}),
+            ),
+            (
+                "register_asset",
+                json!({"register_asset": {"asset_id": b, "local_denom": "uterp"}}),
+            ),
+            (
+                "set_external_asset_registry",
+                json!({"set_external_asset_registry": {"addr": null}}),
+            ),
+            (
+                "set_bridge_cfg",
+                json!({"set_bridge_cfg": {"cfg": {"dest_domain": b, "confirmations_k": 6, "max_lc_lag": 64, "lc_client_id": "x", "mock_verify": true}}}),
+            ),
+            (
+                "bridge_mint_note",
+                json!({"bridge_mint_note": {"proof": "", "claim": {"source_chain_tag": "x", "tacit_asset_id": b, "value_u64": 1, "nullifier": b, "dest_commitment": b, "dest_domain": b, "claim_id": b, "source_pool_root": b, "source_burn_root": b, "source_height": 1, "domain_binding": b, "unit_scale": 1, "pool_domain": b, "cm_public": b, "in_burn_set": true, "in_pool_root": true, "src_chain_id": b, "dst_chain_id": b, "lc_client_id": b, "burn_dest_commitment": b}}}),
+            ),
+            (
+                "bridge_egress_burn",
+                json!({"bridge_egress_burn": {"proof": "", "statement": {"asset_id": b, "value": 1, "cm_spent": b, "nullifier": b, "dest_commitment": b, "dest_kind": "transparent", "root": b, "rcm": b, "owner_binding": b}}}),
+            ),
+            (
+                "set_denom_table",
+                json!({"set_denom_table": {"amounts": [1]}}),
+            ),
+            (
+                "assign_public_notes",
+                json!({"assign_public_notes": {"nullifiers": [b]}}),
+            ),
+            (
+                "stage_epoch_batch",
+                json!({"stage_epoch_batch": {"digests": [], "rows": []}}),
+            ),
+            (
+                "apply_accepted_batch",
+                json!({"apply_accepted_batch": {"allocation_root": b, "root_id": 0, "rows": []}}),
+            ),
+            (
+                "apply_public_batch",
+                json!({"apply_public_batch": {"rows": []}}),
+            ),
         ]
     }
 
@@ -1835,7 +2720,11 @@ mod tests {
             let m: ExecuteMsg = match serde_json::from_value(j.clone()) {
                 Err(e) => {
                     assert!(e.to_string().contains("unknown variant"), "{name}: {e}");
-                    assert!(cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&j).unwrap()).is_err(), "{name}");
+                    assert!(
+                        cosmwasm_std::from_json::<ExecuteMsg>(serde_json::to_vec(&j).unwrap())
+                            .is_err(),
+                        "{name}"
+                    );
                     continue;
                 }
                 Ok(m) => {
@@ -1846,20 +2735,39 @@ mod tests {
             // as the owner (gov) and as a stranger, with funds attached
             for who in ["creator", "relayer"] {
                 let s = deps.api.addr_make(who);
-                let r = execute(deps.as_mut(), env.clone(), message_info(&s, &[Coin::new(5u128, "uterp")]), m.clone());
+                let r = execute(
+                    deps.as_mut(),
+                    env.clone(),
+                    message_info(&s, &[Coin::new(5u128, "uterp")]),
+                    m.clone(),
+                );
                 assert!(err(r).contains(crate::DISABLED_IN_BUILD), "{name} as {who}");
             }
         }
         // sudo settlement is compiled out too
-        let s = crate::sudo(deps.as_mut(), env.clone(), crate::epoch::HashMerchantSudoMsg {
-            hash_merchant: crate::epoch::HashMerchantSudoPayload {
-                chain_uid: "x".into(), algo: "accepted".into(), height: 1, root: "AA==".into(),
-                attestation_count: 2, block_time: 1, oracle_sources: vec![],
+        let s = crate::sudo(
+            deps.as_mut(),
+            env.clone(),
+            crate::epoch::HashMerchantSudoMsg {
+                hash_merchant: crate::epoch::HashMerchantSudoPayload {
+                    chain_uid: "x".into(),
+                    algo: "accepted".into(),
+                    height: 1,
+                    root: "AA==".into(),
+                    attestation_count: 2,
+                    block_time: 1,
+                    oracle_sources: vec![],
+                },
             },
-        });
+        );
         assert!(err(s).contains(crate::DISABLED_IN_BUILD));
         assert_eq!(snap(&deps), before, "no state (and so no funds) changed");
-        assert_eq!(crate::direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
+        assert_eq!(
+            crate::direct::query_info(deps.as_ref().storage, &env)
+                .unwrap()
+                .claimed,
+            0
+        );
     }
 
     #[test]
@@ -1878,16 +2786,31 @@ mod tests {
         for j in gated {
             let m: ExecuteMsg = serde_json::from_value(j.clone()).unwrap();
             for who in ["creator", "relayer", "dao"] {
-                assert!(err(as_(&mut deps, &env, who, m.clone())).contains(crate::pause::PAUSED_ERR), "{j} as {who}");
+                assert!(
+                    err(as_(&mut deps, &env, who, m.clone())).contains(crate::pause::PAUSED_ERR),
+                    "{j} as {who}"
+                );
             }
         }
         // RegisterNotes is refused with a real signed chunk in pause_2.
         assert_eq!(snap(&deps), before);
         // not gated: gov config, reclaim/sweep (pause_5/6), pause controls
-        let c = as_(&mut deps, &env, "creator", ExecuteMsg::SetFrontendContract { addr: None });
+        let c = as_(
+            &mut deps,
+            &env,
+            "creator",
+            ExecuteMsg::SetFrontendContract { addr: None },
+        );
         assert!(c.is_ok(), "{c:?}");
-        let c = as_(&mut deps, &env, "creator", ExecuteMsg::BindNoteCircuit { zk_id: 3 });
-        if let Err(e) = c { assert!(!e.to_string().contains("paused"), "{e}"); }
+        let c = as_(
+            &mut deps,
+            &env,
+            "creator",
+            ExecuteMsg::BindNoteCircuit { zk_id: 3 },
+        );
+        if let Err(e) = c {
+            assert!(!e.to_string().contains("paused"), "{e}");
+        }
         as_(&mut deps, &env, "creator", ExecuteMsg::Resume {}).unwrap();
         // after resume, anchors roll again (no leaves yet: either ok or a non-pause error)
         if let Err(e) = as_(&mut deps, &env, "relayer", ExecuteMsg::AcceptAnchor {}) {
@@ -1899,16 +2822,31 @@ mod tests {
     mod forward_v2 {
         use super::*;
         use crate::forward::{self as fw, ForwardTarget, HalSource};
-        use crate::{query, msg::{MigrateMsg, QueryMsg}};
+        use crate::{
+            msg::{MigrateMsg, QueryMsg},
+            query,
+        };
         use cosmwasm_std::{
-            HexBinary, IbcAckCallbackMsg, IbcAcknowledgement, IbcEndpoint, IbcMsg, IbcPacket, IbcSourceCallbackMsg,
-            IbcTimeout, IbcTimeoutCallbackMsg, MsgResponse, Order, Reply, SubMsgResponse, SubMsgResult, Timestamp,
+            HexBinary, IbcAckCallbackMsg, IbcAcknowledgement, IbcEndpoint, IbcMsg, IbcPacket,
+            IbcSourceCallbackMsg, IbcTimeout, IbcTimeoutCallbackMsg, MsgResponse, Order, Reply,
+            SubMsgResponse, SubMsgResult, Timestamp,
         };
 
         const RCV: &str = "penumbra1testreceiveraddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
-        fn target(deps: &TDeps, ch: &str, rcv: &str, fb: &str, memo: Option<&str>) -> ForwardTarget {
-            ForwardTarget { channel_id: ch.into(), receiver: rcv.into(), memo: memo.map(Into::into), fallback: deps.api.addr_make(fb).to_string() }
+        fn target(
+            deps: &TDeps,
+            ch: &str,
+            rcv: &str,
+            fb: &str,
+            memo: Option<&str>,
+        ) -> ForwardTarget {
+            ForwardTarget {
+                channel_id: ch.into(),
+                receiver: rcv.into(),
+                memo: memo.map(Into::into),
+                fallback: deps.api.addr_make(fb).to_string(),
+            }
         }
 
         /// Bound circuit, one accepted anchor, channel-0 allowed. Returns the anchor root.
@@ -1918,15 +2856,45 @@ mod tests {
             owner_run(&mut deps, &env, ExecuteMsg::BindNoteCircuit { zk_id: 3 }).unwrap();
             run(&mut deps, &env, ExecuteMsg::AcceptAnchor {}).unwrap();
             let root = tree_root(&deps).1[0].root.clone();
-            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::SetForwardChannel {
+                    channel_id: "channel-0".into(),
+                    timeout_seconds: 600,
+                    enabled: true,
+                },
+            )
+            .unwrap();
             (deps, env, a, root)
         }
 
-        fn fclaim(deps: &mut TDeps, env: &Env, h: &Holder, root: &Binary, nf: u8, amount: u64, proved: &ForwardTarget, sent: ForwardTarget) -> Result<Response, StdError> {
-            let dest = fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), proved);
+        fn fclaim(
+            deps: &mut TDeps,
+            env: &Env,
+            h: &Holder,
+            root: &Binary,
+            nf: u8,
+            amount: u64,
+            proved: &ForwardTarget,
+            sent: ForwardTarget,
+        ) -> Result<Response, StdError> {
+            let dest =
+                fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), proved);
             let (nullifier, proof) = witness(deps, h, &dest, root, nf, amount);
             let anyone = deps.api.addr_make("relayer-anyone");
-            execute(deps.as_mut(), env.clone(), message_info(&anyone, &[]), ExecuteMsg::ClaimNoteForward { root: root.clone(), nullifier, amount, proof, forward: sent })
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&anyone, &[]),
+                ExecuteMsg::ClaimNoteForward {
+                    root: root.clone(),
+                    nullifier,
+                    amount,
+                    proof,
+                    forward: sent,
+                },
+            )
         }
 
         #[allow(deprecated)]
@@ -1936,26 +2904,52 @@ mod tests {
             loop {
                 let b = (s & 0x7f) as u8;
                 s >>= 7;
-                if s == 0 { v.push(b); break; }
+                if s == 0 {
+                    v.push(b);
+                    break;
+                }
                 v.push(b | 0x80);
             }
-            crate::reply(deps.as_mut(), env.clone(), Reply {
-                id: fw::FORWARD_REPLY_ID,
-                payload: Binary::default(),
-                gas_used: 0,
-                result: SubMsgResult::Ok(SubMsgResponse { events: vec![], data: None, msg_responses: vec![MsgResponse {
-                    type_url: "/ibc.applications.transfer.v1.MsgTransferResponse".into(), value: Binary::from(v) }] }),
-            })
+            crate::reply(
+                deps.as_mut(),
+                env.clone(),
+                Reply {
+                    id: fw::FORWARD_REPLY_ID,
+                    payload: Binary::default(),
+                    gas_used: 0,
+                    result: SubMsgResult::Ok(SubMsgResponse {
+                        events: vec![],
+                        data: None,
+                        msg_responses: vec![MsgResponse {
+                            type_url: "/ibc.applications.transfer.v1.MsgTransferResponse".into(),
+                            value: Binary::from(v),
+                        }],
+                    }),
+                },
+            )
         }
 
         fn packet(ch: &str, seq: u64, port: &str) -> IbcPacket {
-            IbcPacket::new(Binary::from(b"{}".to_vec()), IbcEndpoint { port_id: port.into(), channel_id: ch.into() },
-                IbcEndpoint { port_id: "transfer".into(), channel_id: "channel-9".into() }, seq, IbcTimeout::with_timestamp(Timestamp::from_seconds(1)))
+            IbcPacket::new(
+                Binary::from(b"{}".to_vec()),
+                IbcEndpoint {
+                    port_id: port.into(),
+                    channel_id: ch.into(),
+                },
+                IbcEndpoint {
+                    port_id: "transfer".into(),
+                    channel_id: "channel-9".into(),
+                },
+                seq,
+                IbcTimeout::with_timestamp(Timestamp::from_seconds(1)),
+            )
         }
 
         fn refund_of(r: &cosmwasm_std::IbcBasicResponse) -> Option<(String, Coin)> {
             r.messages.iter().find_map(|m| match &m.msg {
-                CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => Some((to_address.clone(), amount[0].clone())),
+                CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
+                    Some((to_address.clone(), amount[0].clone()))
+                }
                 _ => None,
             })
         }
@@ -1965,19 +2959,51 @@ mod tests {
             let (deps, env, ..) = fwd_fixture();
             let t = target(&deps, "channel-0", RCV, "fb1", None);
             let d = fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &t);
-            assert!(d.starts_with("hsfwd1") && d.len() == 49 && d.len() <= 62, "{d}");
-            assert!(d[6..].bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_'));
+            assert!(
+                d.starts_with("hsfwd1") && d.len() == 49 && d.len() <= 62,
+                "{d}"
+            );
+            assert!(
+                d[6..]
+                    .bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+            );
             direct::pack_destination(&d).unwrap();
             // every field changes the destination
             let base = d.clone();
-            for t2 in [target(&deps, "channel-1", RCV, "fb1", None), target(&deps, "channel-0", "penumbra1other", "fb1", None),
-                       target(&deps, "channel-0", RCV, "fb2", None), target(&deps, "channel-0", RCV, "fb1", Some("{\"a\":1}"))] {
-                assert_ne!(fw::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &t2), base);
+            for t2 in [
+                target(&deps, "channel-1", RCV, "fb1", None),
+                target(&deps, "channel-0", "penumbra1other", "fb1", None),
+                target(&deps, "channel-0", RCV, "fb2", None),
+                target(&deps, "channel-0", RCV, "fb1", Some("{\"a\":1}")),
+            ] {
+                assert_ne!(
+                    fw::forward_destination(
+                        &env.block.chain_id,
+                        env.contract.address.as_str(),
+                        &t2
+                    ),
+                    base
+                );
             }
-            assert_ne!(fw::forward_destination("other-chain", env.contract.address.as_str(), &t), base);
-            assert_ne!(fw::forward_destination(&env.block.chain_id, "terp1othercontract", &t), base);
+            assert_ne!(
+                fw::forward_destination("other-chain", env.contract.address.as_str(), &t),
+                base
+            );
+            assert_ne!(
+                fw::forward_destination(&env.block.chain_id, "terp1othercontract", &t),
+                base
+            );
             // query helper returns the same string
-            let q: String = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::ForwardDestination { forward: t }).unwrap()).unwrap();
+            let q: String = cosmwasm_std::from_json(
+                query(
+                    deps.as_ref(),
+                    env.clone(),
+                    QueryMsg::ForwardDestination { forward: t },
+                )
+                .unwrap(),
+            )
+            .unwrap();
             assert_eq!(q, base);
         }
 
@@ -1985,32 +3011,108 @@ mod tests {
         fn forward_claim_sends_ics20_with_callback_and_records_pending() {
             let (mut deps, env, a, root) = fwd_fixture();
             let t = target(&deps, "channel-0", RCV, "fb1", Some("{\"note\":\"hi\"}"));
-            let r = fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[3], &t, t.clone()).unwrap();
+            let r = fclaim(
+                &mut deps,
+                &env,
+                &a,
+                &root,
+                1,
+                DENOMS_UTERP[3],
+                &t,
+                t.clone(),
+            )
+            .unwrap();
             // mint-on-claim fixture: MsgMint to the contract precedes the transfer
-            assert!(matches!(&r.messages[0].msg, CosmosMsg::Stargate { type_url, .. } if type_url.ends_with("MsgMint")));
-            let sm = r.messages.iter().find(|m| matches!(m.msg, CosmosMsg::Ibc(_))).unwrap();
-            assert!(r.messages.iter().all(|m| !matches!(&m.msg, CosmosMsg::Bank(BankMsg::Send { .. }))), "no local payout");
-            assert_eq!((sm.id, sm.reply_on.clone()), (fw::FORWARD_REPLY_ID, cosmwasm_std::ReplyOn::Success));
-            let CosmosMsg::Ibc(IbcMsg::Transfer { channel_id, to_address, amount, timeout, memo }) = &sm.msg else { panic!("not a transfer") };
-            assert_eq!((channel_id.as_str(), to_address.as_str()), ("channel-0", RCV));
+            assert!(
+                matches!(&r.messages[0].msg, CosmosMsg::Stargate { type_url, .. } if type_url.ends_with("MsgMint"))
+            );
+            let sm = r
+                .messages
+                .iter()
+                .find(|m| matches!(m.msg, CosmosMsg::Ibc(_)))
+                .unwrap();
+            assert!(
+                r.messages
+                    .iter()
+                    .all(|m| !matches!(&m.msg, CosmosMsg::Bank(BankMsg::Send { .. }))),
+                "no local payout"
+            );
+            assert_eq!(
+                (sm.id, sm.reply_on.clone()),
+                (fw::FORWARD_REPLY_ID, cosmwasm_std::ReplyOn::Success)
+            );
+            let CosmosMsg::Ibc(IbcMsg::Transfer {
+                channel_id,
+                to_address,
+                amount,
+                timeout,
+                memo,
+            }) = &sm.msg
+            else {
+                panic!("not a transfer")
+            };
+            assert_eq!(
+                (channel_id.as_str(), to_address.as_str()),
+                ("channel-0", RCV)
+            );
             assert_eq!(amount.amount.to_string(), DENOMS_UTERP[3].to_string());
-            assert_eq!(timeout.timestamp().unwrap().seconds(), env.block.time.seconds() + 600);
+            assert_eq!(
+                timeout.timestamp().unwrap().seconds(),
+                env.block.time.seconds() + 600
+            );
             let m: serde_json::Value = serde_json::from_str(memo.as_deref().unwrap()).unwrap();
             assert_eq!(m["src_callback"]["address"], env.contract.address.as_str());
             assert_eq!(m["note"], "hi");
             assert!(m.get("dest_callback").is_none());
             // reply stores the pending record under (channel, sequence)
             ack_reply(&mut deps, &env, 300).unwrap();
-            let p: Option<fw::PendingForward> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(),
-                QueryMsg::PendingForward { channel_id: "channel-0".into(), sequence: 300 }).unwrap()).unwrap();
+            let p: Option<fw::PendingForward> = cosmwasm_std::from_json(
+                query(
+                    deps.as_ref(),
+                    env.clone(),
+                    QueryMsg::PendingForward {
+                        channel_id: "channel-0".into(),
+                        sequence: 300,
+                    },
+                )
+                .unwrap(),
+            )
+            .unwrap();
             let p = p.unwrap();
-            assert_eq!((p.fallback.as_str(), p.receiver.as_str(), p.coin.amount.to_string()), (t.fallback.as_str(), RCV, DENOMS_UTERP[3].to_string()));
+            assert_eq!(
+                (
+                    p.fallback.as_str(),
+                    p.receiver.as_str(),
+                    p.coin.amount.to_string()
+                ),
+                (t.fallback.as_str(), RCV, DENOMS_UTERP[3].to_string())
+            );
             assert!(!fw::INFLIGHT.exists(deps.as_ref().storage));
             // one spend per note: the same nullifier cannot be forwarded again, nor claimed directly
             let t2 = target(&deps, "channel-0", "penumbra1elsewhere", "fb9", None);
-            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[3], &t2, t2.clone())).contains("nullifier"));
-            assert!(err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3])).contains("nullifier"));
-            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 1);
+            assert!(
+                err(fclaim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    &root,
+                    1,
+                    DENOMS_UTERP[3],
+                    &t2,
+                    t2.clone()
+                ))
+                .contains("nullifier")
+            );
+            assert!(
+                err(claim(&mut deps, &env, &a, "w1", &root, 1, DENOMS_UTERP[3]))
+                    .contains("nullifier")
+            );
+            assert_eq!(
+                direct::query_info(deps.as_ref().storage, &env)
+                    .unwrap()
+                    .claimed,
+                1
+            );
         }
 
         #[test]
@@ -2019,53 +3121,251 @@ mod tests {
             // accepts a repeated receiver and fallback for a different note.
             let (mut deps, env, a, root) = fwd_fixture();
             let t = target(&deps, "channel-0", RCV, "fb1", None);
-            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            fclaim(
+                &mut deps,
+                &env,
+                &a,
+                &root,
+                1,
+                DENOMS_UTERP[0],
+                &t,
+                t.clone(),
+            )
+            .unwrap();
             ack_reply(&mut deps, &env, 1).unwrap();
-            fclaim(&mut deps, &env, &a, &root, 2, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            fclaim(
+                &mut deps,
+                &env,
+                &a,
+                &root,
+                2,
+                DENOMS_UTERP[0],
+                &t,
+                t.clone(),
+            )
+            .unwrap();
             ack_reply(&mut deps, &env, 2).unwrap();
-            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 2);
-            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("nullifier"));
+            assert_eq!(
+                direct::query_info(deps.as_ref().storage, &env)
+                    .unwrap()
+                    .claimed,
+                2
+            );
+            assert!(
+                err(fclaim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    &root,
+                    1,
+                    DENOMS_UTERP[0],
+                    &t,
+                    t.clone()
+                ))
+                .contains("nullifier")
+            );
         }
 
         #[test]
         fn forward_rejects_unallowed_channel_and_bad_fields() {
             let (mut deps, env, a, root) = fwd_fixture();
             let stranger = deps.api.addr_make("stranger");
-            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]),
-                ExecuteMsg::SetForwardChannel { channel_id: "channel-7".into(), timeout_seconds: 600, enabled: true }).is_err());
-            for (ch, to) in [("chan-1", 600), ("channel-", 600), ("channel-1", 59), ("channel-1", 7 * 86_400 + 1)] {
-                assert!(owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: ch.into(), timeout_seconds: to, enabled: true }).is_err(), "{ch} {to}");
+            assert!(
+                execute(
+                    deps.as_mut(),
+                    env.clone(),
+                    message_info(&stranger, &[]),
+                    ExecuteMsg::SetForwardChannel {
+                        channel_id: "channel-7".into(),
+                        timeout_seconds: 600,
+                        enabled: true
+                    }
+                )
+                .is_err()
+            );
+            for (ch, to) in [
+                ("chan-1", 600),
+                ("channel-", 600),
+                ("channel-1", 59),
+                ("channel-1", 7 * 86_400 + 1),
+            ] {
+                assert!(
+                    owner_run(
+                        &mut deps,
+                        &env,
+                        ExecuteMsg::SetForwardChannel {
+                            channel_id: ch.into(),
+                            timeout_seconds: to,
+                            enabled: true
+                        }
+                    )
+                    .is_err(),
+                    "{ch} {to}"
+                );
             }
             let t = target(&deps, "channel-7", RCV, "fb1", None);
-            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("channel not allowed"));
-            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: false }).unwrap();
+            assert!(
+                err(fclaim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    &root,
+                    1,
+                    DENOMS_UTERP[0],
+                    &t,
+                    t.clone()
+                ))
+                .contains("channel not allowed")
+            );
+            owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::SetForwardChannel {
+                    channel_id: "channel-0".into(),
+                    timeout_seconds: 600,
+                    enabled: false,
+                },
+            )
+            .unwrap();
             let t = target(&deps, "channel-0", RCV, "fb1", None);
-            assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("channel not allowed"));
-            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-0".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            assert!(
+                err(fclaim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    &root,
+                    1,
+                    DENOMS_UTERP[0],
+                    &t,
+                    t.clone()
+                ))
+                .contains("channel not allowed")
+            );
+            owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::SetForwardChannel {
+                    channel_id: "channel-0".into(),
+                    timeout_seconds: 600,
+                    enabled: true,
+                },
+            )
+            .unwrap();
             let long = "x".repeat(fw::MAX_MEMO + 1);
             let cases: Vec<(ForwardTarget, &str)> = vec![
                 (target(&deps, "channel-0", "", "fb1", None), "receiver"),
-                (target(&deps, "channel-0", &"p".repeat(fw::MAX_RECEIVER + 1), "fb1", None), "receiver"),
-                (target(&deps, "channel-0", "pen umbra", "fb1", None), "receiver"),
-                (target(&deps, "channel-0", RCV, "fb1", Some(&long)), "memo too long"),
-                (target(&deps, "channel-0", RCV, "fb1", Some("not json")), "JSON object"),
-                (target(&deps, "channel-0", RCV, "fb1", Some("[1]")), "JSON object"),
-                (target(&deps, "channel-0", RCV, "fb1", Some("{\"src_callback\":{\"address\":\"x\"}}")), "callbacks"),
-                (target(&deps, "channel-0", RCV, "fb1", Some("{\"dest_callback\":{\"address\":\"x\"}}")), "callbacks"),
-                (ForwardTarget { fallback: "notanaddress".into(), ..target(&deps, "channel-0", RCV, "fb1", None) }, "fallback"),
-                (ForwardTarget { fallback: env.contract.address.to_string(), ..target(&deps, "channel-0", RCV, "fb1", None) }, "fallback"),
+                (
+                    target(
+                        &deps,
+                        "channel-0",
+                        &"p".repeat(fw::MAX_RECEIVER + 1),
+                        "fb1",
+                        None,
+                    ),
+                    "receiver",
+                ),
+                (
+                    target(&deps, "channel-0", "pen umbra", "fb1", None),
+                    "receiver",
+                ),
+                (
+                    target(&deps, "channel-0", RCV, "fb1", Some(&long)),
+                    "memo too long",
+                ),
+                (
+                    target(&deps, "channel-0", RCV, "fb1", Some("not json")),
+                    "JSON object",
+                ),
+                (
+                    target(&deps, "channel-0", RCV, "fb1", Some("[1]")),
+                    "JSON object",
+                ),
+                (
+                    target(
+                        &deps,
+                        "channel-0",
+                        RCV,
+                        "fb1",
+                        Some("{\"src_callback\":{\"address\":\"x\"}}"),
+                    ),
+                    "callbacks",
+                ),
+                (
+                    target(
+                        &deps,
+                        "channel-0",
+                        RCV,
+                        "fb1",
+                        Some("{\"dest_callback\":{\"address\":\"x\"}}"),
+                    ),
+                    "callbacks",
+                ),
+                (
+                    ForwardTarget {
+                        fallback: "notanaddress".into(),
+                        ..target(&deps, "channel-0", RCV, "fb1", None)
+                    },
+                    "fallback",
+                ),
+                (
+                    ForwardTarget {
+                        fallback: env.contract.address.to_string(),
+                        ..target(&deps, "channel-0", RCV, "fb1", None)
+                    },
+                    "fallback",
+                ),
             ];
             for (t, want) in cases {
-                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains(want), "{want}");
+                assert!(
+                    err(fclaim(
+                        &mut deps,
+                        &env,
+                        &a,
+                        &root,
+                        1,
+                        DENOMS_UTERP[0],
+                        &t,
+                        t.clone()
+                    ))
+                    .contains(want),
+                    "{want}"
+                );
             }
             // nothing was spent by the rejected attempts
-            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
+            assert_eq!(
+                direct::query_info(deps.as_ref().storage, &env)
+                    .unwrap()
+                    .claimed,
+                0
+            );
             // paused: forward is gated like ClaimNote
             let c = deps.api.addr_make("creator");
-            execute(deps.as_mut(), env.clone(), message_info(&c, &[]), ExecuteMsg::Pause {}).ok();
-            if crate::pause::PAUSED.may_load(deps.as_ref().storage).unwrap().is_some() {
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&c, &[]),
+                ExecuteMsg::Pause {},
+            )
+            .ok();
+            if crate::pause::PAUSED
+                .may_load(deps.as_ref().storage)
+                .unwrap()
+                .is_some()
+            {
                 let t = target(&deps, "channel-0", RCV, "fb1", None);
-                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone())).contains("paused"));
+                assert!(
+                    err(fclaim(
+                        &mut deps,
+                        &env,
+                        &a,
+                        &root,
+                        1,
+                        DENOMS_UTERP[0],
+                        &t,
+                        t.clone()
+                    ))
+                    .contains("paused")
+                );
             }
         }
 
@@ -2075,14 +3375,54 @@ mod tests {
         #[test]
         fn tampered_forward_destination_fails_real_proof() {
             let (mut deps, env, a, root) = fwd_fixture();
-            owner_run(&mut deps, &env, ExecuteMsg::SetForwardChannel { channel_id: "channel-1".into(), timeout_seconds: 600, enabled: true }).unwrap();
+            owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::SetForwardChannel {
+                    channel_id: "channel-1".into(),
+                    timeout_seconds: 600,
+                    enabled: true,
+                },
+            )
+            .unwrap();
             let t = target(&deps, "channel-0", RCV, "fb1", None);
-            for bad in [target(&deps, "channel-1", RCV, "fb1", None), target(&deps, "channel-0", "penumbra1attacker", "fb1", None),
-                        target(&deps, "channel-0", RCV, "attacker", None), target(&deps, "channel-0", RCV, "fb1", Some("{\"forward\":{}}"))] {
-                assert!(err(fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, bad)).contains("invalid note proof"));
+            for bad in [
+                target(&deps, "channel-1", RCV, "fb1", None),
+                target(&deps, "channel-0", "penumbra1attacker", "fb1", None),
+                target(&deps, "channel-0", RCV, "attacker", None),
+                target(&deps, "channel-0", RCV, "fb1", Some("{\"forward\":{}}")),
+            ] {
+                assert!(
+                    err(fclaim(
+                        &mut deps,
+                        &env,
+                        &a,
+                        &root,
+                        1,
+                        DENOMS_UTERP[0],
+                        &t,
+                        bad
+                    ))
+                    .contains("invalid note proof")
+                );
             }
-            assert_eq!(direct::query_info(deps.as_ref().storage, &env).unwrap().claimed, 0);
-            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            assert_eq!(
+                direct::query_info(deps.as_ref().storage, &env)
+                    .unwrap()
+                    .claimed,
+                0
+            );
+            fclaim(
+                &mut deps,
+                &env,
+                &a,
+                &root,
+                1,
+                DENOMS_UTERP[0],
+                &t,
+                t.clone(),
+            )
+            .unwrap();
         }
 
         #[test]
@@ -2090,35 +3430,100 @@ mod tests {
             let (mut deps, env, a, root) = fwd_fixture();
             let mut fbs = vec![];
             for (i, nf) in [1u8, 2, 3].into_iter().enumerate() {
-                let t = target(&deps, "channel-0", &format!("penumbra1r{i}"), &format!("fb{i}"), None);
-                fclaim(&mut deps, &env, &a, &root, nf, DENOMS_UTERP[2], &t, t.clone()).unwrap();
+                let t = target(
+                    &deps,
+                    "channel-0",
+                    &format!("penumbra1r{i}"),
+                    &format!("fb{i}"),
+                    None,
+                );
+                fclaim(
+                    &mut deps,
+                    &env,
+                    &a,
+                    &root,
+                    nf,
+                    DENOMS_UTERP[2],
+                    &t,
+                    t.clone(),
+                )
+                .unwrap();
                 ack_reply(&mut deps, &env, 10 + i as u64).unwrap();
                 fbs.push(t.fallback);
             }
             let relayer = cosmwasm_std::Addr::unchecked("relayer");
             // timeout -> refund to the bound fallback, exactly the coin
-            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(),
-                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(packet("channel-0", 10, "transfer"), relayer.clone()))).unwrap();
+            let r = crate::ibc_source_callback(
+                deps.as_mut(),
+                env.clone(),
+                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(
+                    packet("channel-0", 10, "transfer"),
+                    relayer.clone(),
+                )),
+            )
+            .unwrap();
             let (to, coin) = refund_of(&r).unwrap();
-            assert_eq!((to.as_str(), coin.amount.to_string()), (fbs[0].as_str(), DENOMS_UTERP[2].to_string()));
+            assert_eq!(
+                (to.as_str(), coin.amount.to_string()),
+                (fbs[0].as_str(), DENOMS_UTERP[2].to_string())
+            );
             // a second callback for the same packet pays nothing
-            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(),
-                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(packet("channel-0", 10, "transfer"), relayer.clone()))).unwrap();
+            let r = crate::ibc_source_callback(
+                deps.as_mut(),
+                env.clone(),
+                IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(
+                    packet("channel-0", 10, "transfer"),
+                    relayer.clone(),
+                )),
+            )
+            .unwrap();
             assert!(refund_of(&r).is_none());
             // error ack -> refund
-            let err_ack = IbcAcknowledgement::new(br#"{"error":"ABCI code: 1: error handling packet: see events for details"}"#.to_vec());
-            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Acknowledgement(
-                IbcAckCallbackMsg::new(err_ack, packet("channel-0", 11, "transfer"), relayer.clone()))).unwrap();
+            let err_ack = IbcAcknowledgement::new(
+                br#"{"error":"ABCI code: 1: error handling packet: see events for details"}"#
+                    .to_vec(),
+            );
+            let r = crate::ibc_source_callback(
+                deps.as_mut(),
+                env.clone(),
+                IbcSourceCallbackMsg::Acknowledgement(IbcAckCallbackMsg::new(
+                    err_ack,
+                    packet("channel-0", 11, "transfer"),
+                    relayer.clone(),
+                )),
+            )
+            .unwrap();
             assert_eq!(refund_of(&r).unwrap().0, fbs[1]);
             // success ack -> no refund, pending cleared
             let ok_ack = IbcAcknowledgement::new(br#"{"result":"AQ=="}"#.to_vec());
-            let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Acknowledgement(
-                IbcAckCallbackMsg::new(ok_ack.clone(), packet("channel-0", 12, "transfer"), relayer.clone()))).unwrap();
+            let r = crate::ibc_source_callback(
+                deps.as_mut(),
+                env.clone(),
+                IbcSourceCallbackMsg::Acknowledgement(IbcAckCallbackMsg::new(
+                    ok_ack.clone(),
+                    packet("channel-0", 12, "transfer"),
+                    relayer.clone(),
+                )),
+            )
+            .unwrap();
             assert!(refund_of(&r).is_none());
-            assert_eq!(fw::PENDING.range(deps.as_ref().storage, None, None, Order::Ascending).count(), 0);
+            assert_eq!(
+                fw::PENDING
+                    .range(deps.as_ref().storage, None, None, Order::Ascending)
+                    .count(),
+                0
+            );
             // unknown packet / other port: no-op
-            for p in [packet("channel-0", 99, "transfer"), packet("channel-0", 12, "wasm.x")] {
-                let r = crate::ibc_source_callback(deps.as_mut(), env.clone(), IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(p, relayer.clone()))).unwrap();
+            for p in [
+                packet("channel-0", 99, "transfer"),
+                packet("channel-0", 12, "wasm.x"),
+            ] {
+                let r = crate::ibc_source_callback(
+                    deps.as_mut(),
+                    env.clone(),
+                    IbcSourceCallbackMsg::Timeout(IbcTimeoutCallbackMsg::new(p, relayer.clone())),
+                )
+                .unwrap();
                 assert!(refund_of(&r).is_none());
             }
         }
@@ -2127,13 +3532,34 @@ mod tests {
         fn resolve_forward_owner_only_after_grace_to_bound_fallback() {
             let (mut deps, mut env, a, root) = fwd_fixture();
             let t = target(&deps, "channel-0", RCV, "fb1", None);
-            fclaim(&mut deps, &env, &a, &root, 1, DENOMS_UTERP[0], &t, t.clone()).unwrap();
+            fclaim(
+                &mut deps,
+                &env,
+                &a,
+                &root,
+                1,
+                DENOMS_UTERP[0],
+                &t,
+                t.clone(),
+            )
+            .unwrap();
             ack_reply(&mut deps, &env, 4).unwrap();
-            let m = ExecuteMsg::ResolveForward { channel_id: "channel-0".into(), sequence: 4 };
+            let m = ExecuteMsg::ResolveForward {
+                channel_id: "channel-0".into(),
+                sequence: 4,
+            };
             assert!(err(owner_run(&mut deps, &env, m.clone())).contains("grace"));
             env.block.time = env.block.time.plus_seconds(600 + fw::RESOLVE_GRACE + 1);
             let stranger = deps.api.addr_make("stranger");
-            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), m.clone()).is_err());
+            assert!(
+                execute(
+                    deps.as_mut(),
+                    env.clone(),
+                    message_info(&stranger, &[]),
+                    m.clone()
+                )
+                .is_err()
+            );
             let r = owner_run(&mut deps, &env, m.clone()).unwrap();
             assert!(r.messages.iter().any(|x| matches!(&x.msg, CosmosMsg::Bank(BankMsg::Send { to_address, .. }) if *to_address == t.fallback)));
             assert!(err(owner_run(&mut deps, &env, m)).contains("no pending"));
@@ -2144,27 +3570,108 @@ mod tests {
             let (mut deps, env, ..) = fwd_fixture();
             let sha = Some(HexBinary::from(vec![7u8; 32]));
             let cid = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi".to_string();
-            let ok = |u: &str| HalSource { uri: u.into(), sha256: sha.clone(), cid: None };
-            for u in ["ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/elig.json", "ar://abc_DEF-123", "https://x.example/e.json",
-                      "ipns://k51q/e", "headstash.terp.network/v2/elig.json", "host.example:8443/e.json"] {
+            let ok = |u: &str| HalSource {
+                uri: u.into(),
+                sha256: sha.clone(),
+                cid: None,
+            };
+            for u in [
+                "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/elig.json",
+                "ar://abc_DEF-123",
+                "https://x.example/e.json",
+                "ipns://k51q/e",
+                "headstash.terp.network/v2/elig.json",
+                "host.example:8443/e.json",
+            ] {
                 fw::validate_hal(&ok(u)).unwrap_or_else(|e| panic!("{u}: {e}"));
             }
-            for u in ["", "javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,x", "file:///etc/passwd", "vbscript:x", "blob:x",
-                      "http://x.example/e", "ftp://x", "ipfs:bafy", "a b", "x\"y", "x<y", "x\\y", &"a".repeat(513), "host/?q=javascript:x"] {
+            for u in [
+                "",
+                "javascript:alert(1)",
+                "JaVaScRiPt:alert(1)",
+                "data:text/html,x",
+                "file:///etc/passwd",
+                "vbscript:x",
+                "blob:x",
+                "http://x.example/e",
+                "ftp://x",
+                "ipfs:bafy",
+                "a b",
+                "x\"y",
+                "x<y",
+                "x\\y",
+                &"a".repeat(513),
+                "host/?q=javascript:x",
+            ] {
                 assert!(fw::validate_hal(&ok(u)).is_err(), "{u:?}");
             }
-            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: None }).unwrap_err().to_string().contains("sha256 or cid"));
-            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: Some(HexBinary::from(vec![1u8; 31])), cid: None }).is_err());
-            assert!(fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: Some("short".into()) }).is_err());
-            fw::validate_hal(&HalSource { uri: "ipfs://x".into(), sha256: None, cid: Some(cid.clone()) }).unwrap();
+            assert!(
+                fw::validate_hal(&HalSource {
+                    uri: "ipfs://x".into(),
+                    sha256: None,
+                    cid: None
+                })
+                .unwrap_err()
+                .to_string()
+                .contains("sha256 or cid")
+            );
+            assert!(
+                fw::validate_hal(&HalSource {
+                    uri: "ipfs://x".into(),
+                    sha256: Some(HexBinary::from(vec![1u8; 31])),
+                    cid: None
+                })
+                .is_err()
+            );
+            assert!(
+                fw::validate_hal(&HalSource {
+                    uri: "ipfs://x".into(),
+                    sha256: None,
+                    cid: Some("short".into())
+                })
+                .is_err()
+            );
+            fw::validate_hal(&HalSource {
+                uri: "ipfs://x".into(),
+                sha256: None,
+                cid: Some(cid.clone()),
+            })
+            .unwrap();
             let stranger = deps.api.addr_make("stranger");
-            let src = HalSource { uri: format!("ipfs://{cid}"), sha256: sha.clone(), cid: Some(cid.clone()) };
-            assert!(execute(deps.as_mut(), env.clone(), message_info(&stranger, &[]), ExecuteMsg::SetHalSource { source: Some(src.clone()) }).is_err());
-            owner_run(&mut deps, &env, ExecuteMsg::SetHalSource { source: Some(src.clone()) }).unwrap();
-            let q: Option<HalSource> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap()).unwrap();
+            let src = HalSource {
+                uri: format!("ipfs://{cid}"),
+                sha256: sha.clone(),
+                cid: Some(cid.clone()),
+            };
+            assert!(
+                execute(
+                    deps.as_mut(),
+                    env.clone(),
+                    message_info(&stranger, &[]),
+                    ExecuteMsg::SetHalSource {
+                        source: Some(src.clone())
+                    }
+                )
+                .is_err()
+            );
+            owner_run(
+                &mut deps,
+                &env,
+                ExecuteMsg::SetHalSource {
+                    source: Some(src.clone()),
+                },
+            )
+            .unwrap();
+            let q: Option<HalSource> = cosmwasm_std::from_json(
+                query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap(),
+            )
+            .unwrap();
             assert_eq!(q, Some(src));
             owner_run(&mut deps, &env, ExecuteMsg::SetHalSource { source: None }).unwrap();
-            let q: Option<HalSource> = cosmwasm_std::from_json(query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap()).unwrap();
+            let q: Option<HalSource> = cosmwasm_std::from_json(
+                query(deps.as_ref(), env.clone(), QueryMsg::HalSource {}).unwrap(),
+            )
+            .unwrap();
             assert!(q.is_none());
         }
 
@@ -2172,13 +3679,19 @@ mod tests {
         fn transfer_sequence_decodes_protobuf() {
             assert_eq!(fw::transfer_sequence(&[0x08, 0x05]).unwrap(), 5);
             assert_eq!(fw::transfer_sequence(&[0x08, 0xac, 0x02]).unwrap(), 300);
-            assert_eq!(fw::transfer_sequence(&[0x12, 0x01, 0x41, 0x08, 0x07]).unwrap(), 7);
+            assert_eq!(
+                fw::transfer_sequence(&[0x12, 0x01, 0x41, 0x08, 0x07]).unwrap(),
+                7
+            );
             assert!(fw::transfer_sequence(&[]).is_err());
             assert!(fw::transfer_sequence(&[0x08]).is_err());
         }
 
         fn state(deps: &TDeps) -> Vec<(Vec<u8>, Vec<u8>)> {
-            deps.storage.range(None, None, Order::Ascending).filter(|(k, _)| k.as_slice() != b"contract_info").collect()
+            deps.storage
+                .range(None, None, Order::Ascending)
+                .filter(|(k, _)| k.as_slice() != b"contract_info")
+                .collect()
         }
 
         #[test]
@@ -2189,21 +3702,41 @@ mod tests {
             deps.storage.remove(b"contract_info");
             let before = state(&deps);
             let r = crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap();
-            assert!(r.attributes.iter().any(|x| x.key == "from_version" && x.value == "none"));
+            assert!(
+                r.attributes
+                    .iter()
+                    .any(|x| x.key == "from_version" && x.value == "none")
+            );
             assert_eq!(state(&deps), before, "migrate rewrote state");
             let v = cw2::get_contract_version(deps.as_ref().storage).unwrap();
-            assert_eq!((v.contract.as_str(), v.version.as_str()), ("cw-headstash", env!("CARGO_PKG_VERSION")));
+            assert_eq!(
+                (v.contract.as_str(), v.version.as_str()),
+                ("cw-headstash", env!("CARGO_PKG_VERSION"))
+            );
             // idempotent same-version migrate
             crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap();
-            assert!(err(claim(&mut deps, &env, &a, "w2", &root, 1, DENOMS_UTERP[0])).contains("nullifier"));
+            assert!(
+                err(claim(&mut deps, &env, &a, "w2", &root, 1, DENOMS_UTERP[0]))
+                    .contains("nullifier")
+            );
             // downgrade and foreign contract refused
             cw2::set_contract_version(deps.as_mut().storage, "cw-headstash", "99.0.0").unwrap();
-            assert!(crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).unwrap_err().to_string().contains("downgrade"));
+            assert!(
+                crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {})
+                    .unwrap_err()
+                    .to_string()
+                    .contains("downgrade")
+            );
             cw2::set_contract_version(deps.as_mut().storage, "cw20-base", "0.0.1").unwrap();
             assert!(crate::migrate(deps.as_mut(), env.clone(), MigrateMsg {}).is_err());
             // not a headstash at all
             let mut empty = cosmwasm_std::testing::mock_dependencies();
-            assert!(crate::migrate(empty.as_mut(), env, MigrateMsg {}).unwrap_err().to_string().contains("not a cw-headstash"));
+            assert!(
+                crate::migrate(empty.as_mut(), env, MigrateMsg {})
+                    .unwrap_err()
+                    .to_string()
+                    .contains("not a cw-headstash")
+            );
         }
     }
 }

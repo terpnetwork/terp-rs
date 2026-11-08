@@ -13,15 +13,17 @@
 //!   dest_lo/hi = `pack_destination(info.sender)` (payout bound to the sender)
 //!   amount   = a denomination in the campaign table
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage};
+use cosmwasm_std::{
+    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage,
+};
 use cw_storage_plus::{Item, Map};
 use sha2::{Digest, Sha256};
 
+use crate::HEADSTASH_CFG;
 use crate::distro::nullifier_storage_key;
 use crate::epoch::EpochCampaignParams;
 use crate::headstash::verify_nullifier_stateful;
 use crate::notes::{DENOMS_UTERP, NOTE_VK_ID};
-use crate::HEADSTASH_CFG;
 
 pub const CTX_TAG: &[u8] = b"terp-hs-direct-ctx-v1";
 
@@ -82,7 +84,13 @@ pub fn amount_limb(amount: u64) -> [u8; 32] {
     l
 }
 
-pub fn instances(ctx: &[u8], root: &[u8], nf: &[u8], dest: &str, amount: u64) -> StdResult<Vec<u8>> {
+pub fn instances(
+    ctx: &[u8],
+    root: &[u8],
+    nf: &[u8],
+    dest: &str,
+    amount: u64,
+) -> StdResult<Vec<u8>> {
     let (lo, hi) = pack_destination(dest)?;
     let mut v = Vec::with_capacity(192);
     v.extend_from_slice(ctx);
@@ -109,7 +117,13 @@ fn note_campaign(campaign: &EpochCampaignParams) -> StdResult<()> {
 }
 
 /// Owner, once. Pins the circuit id whose stored blob hashes to the campaign vk_hash.
-pub fn bind_circuit(deps: DepsMut, env: &Env, info: MessageInfo, campaign: &EpochCampaignParams, zk_id: u64) -> Result<Response, StdError> {
+pub fn bind_circuit(
+    deps: DepsMut,
+    env: &Env,
+    info: MessageInfo,
+    campaign: &EpochCampaignParams,
+    zk_id: u64,
+) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     note_campaign(campaign)?;
     if DIRECT_CFG.may_load(deps.storage)?.is_some() {
@@ -126,8 +140,17 @@ pub fn bind_circuit(deps: DepsMut, env: &Env, info: MessageInfo, campaign: &Epoc
     if hash.as_slice() != campaign.vk_hash.as_slice() {
         return Err(StdError::msg("circuit does not match vk hash"));
     }
-    DIRECT_CFG.save(deps.storage, &DirectClaimCfg { zk_id, vk_hash: campaign.vk_hash.clone(), circuit_key: key })?;
-    Ok(Response::new().add_attribute("action", "bind_direct_circuit").add_attribute("zk_id", zk_id.to_string()))
+    DIRECT_CFG.save(
+        deps.storage,
+        &DirectClaimCfg {
+            zk_id,
+            vk_hash: campaign.vk_hash.clone(),
+            circuit_key: key,
+        },
+    )?;
+    Ok(Response::new()
+        .add_attribute("action", "bind_direct_circuit")
+        .add_attribute("zk_id", zk_id.to_string()))
 }
 
 #[cfg(feature = "zk-api")]
@@ -151,10 +174,18 @@ pub mod test_hook {
     use std::cell::Cell;
     thread_local!(static H: Cell<Option<[u8; 32]>> = const { Cell::new(None) });
     thread_local!(static OK: Cell<bool> = const { Cell::new(true) });
-    pub fn set(h: Option<[u8; 32]>) { H.with(|c| c.set(h)) }
-    pub fn get() -> Option<[u8; 32]> { H.with(|c| c.get()) }
-    pub fn set_ok(v: bool) { OK.with(|c| c.set(v)) }
-    pub fn ok() -> bool { OK.with(|c| c.get()) }
+    pub fn set(h: Option<[u8; 32]>) {
+        H.with(|c| c.set(h))
+    }
+    pub fn get() -> Option<[u8; 32]> {
+        H.with(|c| c.get())
+    }
+    pub fn set_ok(v: bool) {
+        OK.with(|c| c.set(v))
+    }
+    pub fn ok() -> bool {
+        OK.with(|c| c.get())
+    }
 }
 
 fn verify(deps: Deps, zk_id: u64, proof: &[u8], inst: &[u8]) -> StdResult<()> {
@@ -163,7 +194,10 @@ fn verify(deps: Deps, zk_id: u64, proof: &[u8], inst: &[u8]) -> StdResult<()> {
     }
     #[cfg(feature = "zk-api")]
     {
-        let ok = deps.api.proof_instance_verify(zk_id, proof, inst).map_err(|_| StdError::msg("invalid note proof"))?;
+        let ok = deps
+            .api
+            .proof_instance_verify(zk_id, proof, inst)
+            .map_err(|_| StdError::msg("invalid note proof"))?;
         if !ok {
             return Err(StdError::msg("invalid note proof"));
         }
@@ -193,7 +227,9 @@ pub fn check_claim(
     proof: &Binary,
 ) -> StdResult<(u32, String)> {
     note_campaign(campaign)?;
-    let cfg = DIRECT_CFG.may_load(deps.storage)?.ok_or_else(|| StdError::msg("direct claims are not enabled"))?;
+    let cfg = DIRECT_CFG
+        .may_load(deps.storage)?
+        .ok_or_else(|| StdError::msg("direct claims are not enabled"))?;
     if cfg.vk_hash != campaign.vk_hash {
         return Err(StdError::msg("vk hash"));
     }
@@ -208,8 +244,14 @@ pub fn check_claim(
     if !DENOMS_UTERP.contains(&amount) {
         return Err(StdError::msg("amount is not a denomination"));
     }
-    let class = campaign.amounts.iter().find(|c| c.amount == amount).ok_or_else(|| StdError::msg("amount not in campaign"))?;
-    let paid = DIRECT_CLASS_PAID.may_load(deps.storage, amount)?.unwrap_or(0);
+    let class = campaign
+        .amounts
+        .iter()
+        .find(|c| c.amount == amount)
+        .ok_or_else(|| StdError::msg("amount not in campaign"))?;
+    let paid = DIRECT_CLASS_PAID
+        .may_load(deps.storage, amount)?
+        .unwrap_or(0);
     if paid >= class.cap {
         return Err(StdError::msg("denomination cap reached"));
     }
@@ -221,7 +263,13 @@ pub fn check_claim(
     if crate::NULLIFIERS.has(deps.storage, key.clone()) {
         return Err(StdError::msg("nullifier already exists"));
     }
-    let inst = instances(campaign.ctx.as_slice(), root.as_slice(), nullifier.as_slice(), dest, amount)?;
+    let inst = instances(
+        campaign.ctx.as_slice(),
+        root.as_slice(),
+        nullifier.as_slice(),
+        dest,
+        amount,
+    )?;
     verify(deps, cfg.zk_id, proof.as_slice(), &inst)?;
     Ok((paid, key))
 }
@@ -240,7 +288,16 @@ pub(crate) fn record_claim(
     amount: u64,
     proof: &Binary,
 ) -> Result<String, StdError> {
-    let (paid, key) = check_claim(deps.as_ref(), env, campaign, dest, root, nullifier, amount, proof)?;
+    let (paid, key) = check_claim(
+        deps.as_ref(),
+        env,
+        campaign,
+        dest,
+        root,
+        nullifier,
+        amount,
+        proof,
+    )?;
     // Shared nullifier set with the lane path, same root scope: one spend per note.
     verify_nullifier_stateful(deps.storage, key)?;
     DIRECT_CLASS_PAID.save(deps.storage, amount, &(paid + 1))?;
@@ -259,17 +316,30 @@ pub fn claim_note(
     amount: u64,
     proof: Binary,
 ) -> Result<Response, StdError> {
-    record_claim(deps.branch(), env, campaign, info.sender.as_str(), &root, &nullifier, amount, &proof)?;
+    record_claim(
+        deps.branch(),
+        env,
+        campaign,
+        info.sender.as_str(),
+        &root,
+        &nullifier,
+        amount,
+        &proof,
+    )?;
     let hcfg = HEADSTASH_CFG.load(deps.storage)?;
     let strategy = crate::epoch::strategy_for(&hcfg.ts, &campaign.denom)?;
-    let res = Response::new().add_attribute("action", "claim_note").add_attribute("amount", amount.to_string());
+    let res = Response::new()
+        .add_attribute("action", "claim_note")
+        .add_attribute("amount", amount.to_string());
     crate::epoch::push_credit(res, env, strategy, info.sender.as_str(), amount)
 }
 
 pub fn query_info(storage: &dyn Storage, env: &Env) -> StdResult<DirectClaimInfo> {
     Ok(DirectClaimInfo {
         cfg: DIRECT_CFG.may_load(storage)?,
-        expected_ctx: Binary::from(direct_ctx(&env.block.chain_id, env.contract.address.as_str()).to_vec()),
+        expected_ctx: Binary::from(
+            direct_ctx(&env.block.chain_id, env.contract.address.as_str()).to_vec(),
+        ),
         claimed: DIRECT_CLAIMED.may_load(storage)?.unwrap_or(0),
     })
 }

@@ -7,7 +7,18 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::StdError;
 use std::collections::BTreeMap;
 
-pub const THEME_TOKENS: [&str; 10] = ["bg", "surface", "surfaceAlt", "text", "textMuted", "border", "borderStrong", "accent", "onAccent", "focus"];
+pub const THEME_TOKENS: [&str; 10] = [
+    "bg",
+    "surface",
+    "surfaceAlt",
+    "text",
+    "textMuted",
+    "border",
+    "borderStrong",
+    "accent",
+    "onAccent",
+    "focus",
+];
 pub const RADIUS_MAX: u8 = 24;
 
 #[cw_serde]
@@ -38,10 +49,15 @@ pub fn validate_theme(t: &Theme) -> Result<(), StdError> {
         }
         for (k, v) in m {
             if !THEME_TOKENS.contains(&k.as_str()) {
-                return Err(StdError::msg(format!("theme.{mode}: unknown token (allowed: {})", THEME_TOKENS.join(","))));
+                return Err(StdError::msg(format!(
+                    "theme.{mode}: unknown token (allowed: {})",
+                    THEME_TOKENS.join(",")
+                )));
             }
             if !valid_colour(v) {
-                return Err(StdError::msg(format!("theme.{mode}.{k}: colour must be #RGB or #RRGGBB")));
+                return Err(StdError::msg(format!(
+                    "theme.{mode}.{k}: colour must be #RGB or #RRGGBB"
+                )));
             }
             n += 1;
         }
@@ -59,12 +75,36 @@ pub fn validate_theme(t: &Theme) -> Result<(), StdError> {
 
 /// Apricot Glow (https://permissionless.money/alpha/wd-colours/apricot-glow.html).
 pub fn apricot_glow() -> Theme {
-    let m = |v: [(&str, &str); 10]| v.iter().map(|(k, c)| (k.to_string(), c.to_string())).collect();
+    let m = |v: [(&str, &str); 10]| {
+        v.iter()
+            .map(|(k, c)| (k.to_string(), c.to_string()))
+            .collect()
+    };
     Theme {
-        light: m([("bg", "#FEF4E7"), ("surface", "#FFFBF6"), ("surfaceAlt", "#F9EAD7"), ("text", "#473926"), ("textMuted", "#675336"),
-                  ("border", "#E6D6C1"), ("borderStrong", "#E8B773"), ("accent", "#896D46"), ("onAccent", "#FFFFFF"), ("focus", "#896D46")]),
-        dark: m([("bg", "#170D02"), ("surface", "#241704"), ("surfaceAlt", "#332612"), ("text", "#F4EADD"), ("textMuted", "#C2B3A0"),
-                 ("border", "#41331F"), ("borderStrong", "#896D46"), ("accent", "#E8B773"), ("onAccent", "#271F14"), ("focus", "#E8B773")]),
+        light: m([
+            ("bg", "#FEF4E7"),
+            ("surface", "#FFFBF6"),
+            ("surfaceAlt", "#F9EAD7"),
+            ("text", "#473926"),
+            ("textMuted", "#675336"),
+            ("border", "#E6D6C1"),
+            ("borderStrong", "#E8B773"),
+            ("accent", "#896D46"),
+            ("onAccent", "#FFFFFF"),
+            ("focus", "#896D46"),
+        ]),
+        dark: m([
+            ("bg", "#170D02"),
+            ("surface", "#241704"),
+            ("surfaceAlt", "#332612"),
+            ("text", "#F4EADD"),
+            ("textMuted", "#C2B3A0"),
+            ("border", "#41331F"),
+            ("borderStrong", "#896D46"),
+            ("accent", "#E8B773"),
+            ("onAccent", "#271F14"),
+            ("focus", "#E8B773"),
+        ]),
         radius_px: None,
     }
 }
@@ -74,7 +114,11 @@ mod tests {
     use super::*;
     fn one(mode: &str, k: &str, v: &str) -> Theme {
         let mut t = Theme::default();
-        let m = if mode == "light" { &mut t.light } else { &mut t.dark };
+        let m = if mode == "light" {
+            &mut t.light
+        } else {
+            &mut t.dark
+        };
         m.insert(k.into(), v.into());
         t
     }
@@ -93,13 +137,31 @@ mod tests {
     fn rejects() {
         let long = format!("#{}", "a".repeat(300));
         for (k, v) in [
-            ("bg", "red"), ("bg", "red;}body{"), ("bg", "#fff;}body{background:url(x)}"), ("bg", "url(https://evil/x.png)"),
-            ("bg", "expression(alert(1))"), ("bg", long.as_str()), ("bg", "#ffff"), ("bg", "#12345g"), ("bg", " #ffffff"),
-            ("bg", "#fff\n"), ("bg", ""), ("bg", "#"), ("bg", "var(--x)"), ("bg", "#fff/**/"), ("bg", "#ＦＦＦ"),
-            ("bg;}x{", "#fff"), ("color", "#fff"), ("Bg", "#fff"), ("", "#fff"),
+            ("bg", "red"),
+            ("bg", "red;}body{"),
+            ("bg", "#fff;}body{background:url(x)}"),
+            ("bg", "url(https://evil/x.png)"),
+            ("bg", "expression(alert(1))"),
+            ("bg", long.as_str()),
+            ("bg", "#ffff"),
+            ("bg", "#12345g"),
+            ("bg", " #ffffff"),
+            ("bg", "#fff\n"),
+            ("bg", ""),
+            ("bg", "#"),
+            ("bg", "var(--x)"),
+            ("bg", "#fff/**/"),
+            ("bg", "#ＦＦＦ"),
+            ("bg;}x{", "#fff"),
+            ("color", "#fff"),
+            ("Bg", "#fff"),
+            ("", "#fff"),
         ] {
             for mode in ["light", "dark"] {
-                assert!(validate_theme(&one(mode, k, v)).is_err(), "{mode} {k:?}={v:?}");
+                assert!(
+                    validate_theme(&one(mode, k, v)).is_err(),
+                    "{mode} {k:?}={v:?}"
+                );
             }
         }
         assert!(validate_theme(&Theme::default()).is_err());
@@ -111,18 +173,34 @@ mod tests {
     fn json_shape_and_unknown_fields() {
         let t: Theme = cosmwasm_std::from_json(br##"{"light":{"bg":"#fff"}}"##).unwrap();
         validate_theme(&t).unwrap();
-        assert_eq!(cosmwasm_std::to_json_string(&t).unwrap(), r##"{"light":{"bg":"#fff"},"dark":{}}"##);
-        assert!(cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"font":"x"}"##).is_err());
-        assert!(cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"radius_px":"4px;}"}"##).is_err());
-        assert!(cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"radius_px":300}"##).is_err());
+        assert_eq!(
+            cosmwasm_std::to_json_string(&t).unwrap(),
+            r##"{"light":{"bg":"#fff"},"dark":{}}"##
+        );
+        assert!(
+            cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"font":"x"}"##).is_err()
+        );
+        assert!(
+            cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"radius_px":"4px;}"}"##)
+                .is_err()
+        );
+        assert!(
+            cosmwasm_std::from_json::<Theme>(br##"{"light":{"bg":"#fff"},"radius_px":300}"##)
+                .is_err()
+        );
     }
 }
 
 // ---- cw-headstash storage + handlers (not in the frontend copy) ----
 pub const THEME: cw_storage_plus::Item<Theme> = cw_storage_plus::Item::new("ui_theme");
 
-pub fn execute_set_theme(deps: cosmwasm_std::DepsMut, info: cosmwasm_std::MessageInfo, theme: Option<Theme>) -> Result<cosmwasm_std::Response, StdError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| StdError::msg(e.to_string()))?;
+pub fn execute_set_theme(
+    deps: cosmwasm_std::DepsMut,
+    info: cosmwasm_std::MessageInfo,
+    theme: Option<Theme>,
+) -> Result<cosmwasm_std::Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)
+        .map_err(|e| StdError::msg(e.to_string()))?;
     let r = cosmwasm_std::Response::new().add_attribute("action", "set_theme");
     match theme {
         Some(t) => {
@@ -152,14 +230,28 @@ mod contract_tests {
         let owner = deps.api.addr_make("owner");
         let other = deps.api.addr_make("other");
         cw_ownable::initialize_owner(&mut deps.storage, &deps.api, Some(owner.as_str())).unwrap();
-        let q = |d: cosmwasm_std::Deps| cosmwasm_std::from_json::<Option<Theme>>(query_theme(d).unwrap()).unwrap();
+        let q = |d: cosmwasm_std::Deps| {
+            cosmwasm_std::from_json::<Option<Theme>>(query_theme(d).unwrap()).unwrap()
+        };
         assert_eq!(q(deps.as_ref()), None);
-        assert!(execute_set_theme(deps.as_mut(), message_info(&other, &[]), Some(apricot_glow())).is_err());
+        assert!(
+            execute_set_theme(
+                deps.as_mut(),
+                message_info(&other, &[]),
+                Some(apricot_glow())
+            )
+            .is_err()
+        );
         let mut bad = apricot_glow();
         bad.light.insert("bg".into(), "red;}body{".into());
         assert!(execute_set_theme(deps.as_mut(), message_info(&owner, &[]), Some(bad)).is_err());
         assert_eq!(q(deps.as_ref()), None);
-        let r = execute_set_theme(deps.as_mut(), message_info(&owner, &[]), Some(apricot_glow())).unwrap();
+        let r = execute_set_theme(
+            deps.as_mut(),
+            message_info(&owner, &[]),
+            Some(apricot_glow()),
+        )
+        .unwrap();
         assert_eq!(r.attributes[1].value, "20");
         assert_eq!(q(deps.as_ref()), Some(apricot_glow()));
         execute_set_theme(deps.as_mut(), message_info(&owner, &[]), None).unwrap();

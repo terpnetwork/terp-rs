@@ -436,7 +436,10 @@ fn tf_proto_exact_bytes_round_trip() {
     // MsgCreateDenomResponse decode (what the chain returns in msg_responses[0]).
     let mut resp = vec![0x0a, 12];
     resp.extend_from_slice(b"factory/s/hs");
-    assert_eq!(tf_proto::create_denom_response_denom(&resp).unwrap(), "factory/s/hs");
+    assert_eq!(
+        tf_proto::create_denom_response_denom(&resp).unwrap(),
+        "factory/s/hs"
+    );
     assert!(tf_proto::create_denom_response_denom(&[]).is_err());
 
     // JSON regression: neither the fixture nor the contract decoder accepts it.

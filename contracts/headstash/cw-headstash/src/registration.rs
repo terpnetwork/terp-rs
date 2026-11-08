@@ -263,17 +263,28 @@ pub fn query_anchors(
     start_after: Option<u32>,
     limit: Option<u32>,
 ) -> StdResult<RegistrationAnchorsResponse> {
-    let limit = limit.unwrap_or(ANCHOR_PAGE_DEFAULT).clamp(1, ANCHOR_PAGE_MAX) as usize;
+    let limit = limit
+        .unwrap_or(ANCHOR_PAGE_DEFAULT)
+        .clamp(1, ANCHOR_PAGE_MAX) as usize;
     let start = start_after.map(|s| s as u64 + 1).unwrap_or(0);
     let mut anchors = Vec::new();
     if ANCHOR_META.may_load(storage)?.is_some() {
         if start <= u32::MAX as u64 {
             for item in ANCHOR_BY_SEQ
-                .range(storage, Some(cw_storage_plus::Bound::inclusive(start as u32)), None, cosmwasm_std::Order::Ascending)
+                .range(
+                    storage,
+                    Some(cw_storage_plus::Bound::inclusive(start as u32)),
+                    None,
+                    cosmwasm_std::Order::Ascending,
+                )
                 .take(limit)
             {
                 let (seq, a) = item?;
-                anchors.push(AnchorEntry { seq, root: a.root, leaf_count: a.leaf_count });
+                anchors.push(AnchorEntry {
+                    seq,
+                    root: a.root,
+                    leaf_count: a.leaf_count,
+                });
             }
         }
     } else {
@@ -285,7 +296,11 @@ pub fn query_anchors(
             .skip(start as usize)
             .take(limit)
         {
-            anchors.push(AnchorEntry { seq: i as u32, root: a.root, leaf_count: a.leaf_count });
+            anchors.push(AnchorEntry {
+                seq: i as u32,
+                root: a.root,
+                leaf_count: a.leaf_count,
+            });
         }
     }
     Ok(RegistrationAnchorsResponse { anchors })
@@ -495,7 +510,10 @@ fn legacy_only(campaign: &EpochCampaignParams) -> StdResult<()> {
 
 /// Registration closes with the claim window: nothing registered after the
 /// cutoff could ever be claimed.
-pub(crate) fn assert_registration_open(height: u64, campaign: &EpochCampaignParams) -> StdResult<()> {
+pub(crate) fn assert_registration_open(
+    height: u64,
+    campaign: &EpochCampaignParams,
+) -> StdResult<()> {
     if height > campaign.cutoff_height {
         return Err(StdError::msg("registration closed"));
     }
@@ -654,7 +672,14 @@ pub fn accept_anchor(
         return Err(StdError::msg("anchor unchanged"));
     }
     let seq = meta.count;
-    ANCHOR_BY_SEQ.save(deps.storage, seq, &AcceptedAnchor { root: root.clone(), leaf_count: count })?;
+    ANCHOR_BY_SEQ.save(
+        deps.storage,
+        seq,
+        &AcceptedAnchor {
+            root: root.clone(),
+            leaf_count: count,
+        },
+    )?;
     ANCHOR_SEQ.save(deps.storage, root.as_slice(), &seq)?;
     meta.count = seq + 1;
     meta.last_root = Some(root.clone());
@@ -682,7 +707,16 @@ pub(crate) fn test_push_anchor(storage: &mut dyn Storage, root: &Binary, leaf_co
     migrate_legacy_anchors(storage).unwrap();
     let mut meta = ANCHOR_META.may_load(storage).unwrap().unwrap_or_default();
     let seq = meta.count;
-    ANCHOR_BY_SEQ.save(storage, seq, &AcceptedAnchor { root: root.clone(), leaf_count }).unwrap();
+    ANCHOR_BY_SEQ
+        .save(
+            storage,
+            seq,
+            &AcceptedAnchor {
+                root: root.clone(),
+                leaf_count,
+            },
+        )
+        .unwrap();
     ANCHOR_SEQ.save(storage, root.as_slice(), &seq).unwrap();
     meta.count += 1;
     meta.last_root = Some(root.clone());
@@ -711,7 +745,13 @@ mod anchor_map_tests {
         assert!(anchor_known(&st, root(0).as_slice()).unwrap());
         assert!(anchor_known(&st, root(2499).as_slice()).unwrap());
         assert!(!anchor_known(&st, root(9999).as_slice()).unwrap());
-        assert_eq!(anchor_by_root(&st, root(0).as_slice()).unwrap().unwrap().leaf_count, 1);
+        assert_eq!(
+            anchor_by_root(&st, root(0).as_slice())
+                .unwrap()
+                .unwrap()
+                .leaf_count,
+            1
+        );
         assert_eq!(latest_anchor(&st).unwrap().unwrap().root, root(2499));
         let p = query_anchors(&st, None, None).unwrap().anchors;
         assert_eq!(p.len(), ANCHOR_PAGE_DEFAULT as usize);
@@ -720,14 +760,27 @@ mod anchor_map_tests {
         assert_eq!(p.len(), ANCHOR_PAGE_MAX as usize);
         assert_eq!(p[0].seq, 100);
         let p = query_anchors(&st, Some(2497), Some(10)).unwrap().anchors;
-        assert_eq!(p.iter().map(|a| a.seq).collect::<Vec<_>>(), vec![2498, 2499]);
-        assert!(query_anchors(&st, Some(u32::MAX), None).unwrap().anchors.is_empty());
+        assert_eq!(
+            p.iter().map(|a| a.seq).collect::<Vec<_>>(),
+            vec![2498, 2499]
+        );
+        assert!(
+            query_anchors(&st, Some(u32::MAX), None)
+                .unwrap()
+                .anchors
+                .is_empty()
+        );
     }
 
     #[test]
     fn legacy_vec_is_read_then_migrated() {
         let mut st = MockStorage::new();
-        let legacy: Vec<AcceptedAnchor> = (0..3).map(|i| AcceptedAnchor { root: root(i), leaf_count: i + 1 }).collect();
+        let legacy: Vec<AcceptedAnchor> = (0..3)
+            .map(|i| AcceptedAnchor {
+                root: root(i),
+                leaf_count: i + 1,
+            })
+            .collect();
         LEGACY_ANCHORS.save(&mut st, &legacy).unwrap();
         assert!(anchor_known(&st, root(1).as_slice()).unwrap());
         assert_eq!(anchor_meta(&st).unwrap().count, 3);
@@ -736,7 +789,10 @@ mod anchor_map_tests {
         assert!(LEGACY_ANCHORS.may_load(&st).unwrap().is_none());
         assert_eq!(anchor_meta(&st).unwrap().count, 4);
         assert!(anchor_known(&st, root(0).as_slice()).unwrap());
-        assert_eq!(query_anchors(&st, None, Some(100)).unwrap().anchors.len(), 4);
+        assert_eq!(
+            query_anchors(&st, None, Some(100)).unwrap().anchors.len(),
+            4
+        );
     }
 }
 
@@ -884,11 +940,7 @@ pub fn eligibility_node(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     sha256(&pre)
 }
 
-pub fn append_leaf(
-    frontier: &mut [[u8; 32]],
-    index: u32,
-    leaf: [u8; 32],
-) -> StdResult<[u8; 32]> {
+pub fn append_leaf(frontier: &mut [[u8; 32]], index: u32, leaf: [u8; 32]) -> StdResult<[u8; 32]> {
     append_leaf_with(frontier, index, leaf, |_, _, _| Ok(()))
 }
 
@@ -955,17 +1007,17 @@ mod tests {
     use super::*;
     use crate::distro::{self, NEXT_ROOT_ID};
     use crate::epoch::{
-        attested_root, root_b64, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload,
-        OracleHint, ALGO_ACCEPTED, BATCH_SOURCE_ID, CHAIN_UID,
+        ALGO_ACCEPTED, BATCH_SOURCE_ID, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
+        HashMerchantSudoPayload, OracleHint, attested_root, root_b64,
     };
     use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
     use crate::tokenfactory::{
-        derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig,
+        DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig, derive_nd,
     };
     use crate::wavs::generate_test_wavs_proof;
     use crate::{execute, instantiate, sudo};
-    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use cosmwasm_std::Binary;
+    use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
     use ff::{Field, PrimeField};
     use k256::ecdsa::SigningKey;
 
@@ -984,24 +1036,29 @@ mod tests {
             genesis_root: Binary::from(vec![0u8; 32]),
             distro_hash_domain: Default::default(),
             genesis_label: None,
-            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(Box::new(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "cht".into()),
-                metadata: Metadata {
-                    description: None,
-                    denom_units: vec![DenomUnit {
-                        denom: "ucht".into(),
-                        exponent: 0,
-                        aliases: vec![],
-                    }],
-                    base: Some("ucht".into()),
-                    display: Some("CHT".into()),
-                    name: Some("CHT".into()),
-                    symbol: Some("CHT".into()),
+            token_strategy: crate::tokenfactory::TokenStrategy::NewFungible(Box::new(
+                NewTokenConfig {
+                    subdenom: HeadstashTokenObject::new(
+                        &cosmwasm_std::testing::MockApi::default(),
+                        "cht".into(),
+                    ),
+                    metadata: Metadata {
+                        description: None,
+                        denom_units: vec![DenomUnit {
+                            denom: "ucht".into(),
+                            exponent: 0,
+                            aliases: vec![],
+                        }],
+                        base: Some("ucht".into()),
+                        display: Some("CHT".into()),
+                        name: Some("CHT".into()),
+                        symbol: Some("CHT".into()),
+                    },
+                    initial_mint: None,
+                    manager: None,
+                    minters: vec![],
                 },
-                initial_mint: None,
-                manager: None,
-                minters: vec![],
-            })),
+            )),
             wavs: None, // WAVS disabled (mainnet config)
             circuit_id: None,
             registration_hook: None,
@@ -1103,12 +1160,14 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("anchor"));
-        assert!(distro::require_root(deps.as_ref().storage, 0)
-            .unwrap()
-            .root
-            .as_slice()
-            .iter()
-            .all(|byte| *byte == 0));
+        assert!(
+            distro::require_root(deps.as_ref().storage, 0)
+                .unwrap()
+                .root
+                .as_slice()
+                .iter()
+                .all(|byte| *byte == 0)
+        );
 
         let mut params = campaign_with(&ctx, eligibility, 1);
         params.allocation_root = anchor.clone();
@@ -1418,10 +1477,12 @@ mod tests {
         assert_eq!(opened.index, 0);
         assert_eq!(opened.amount, 15);
         assert_eq!(opened.siblings.len(), DEPTH);
-        assert!(opened
-            .siblings
-            .iter()
-            .all(|sibling| sibling == &"0".repeat(64)));
+        assert!(
+            opened
+                .siblings
+                .iter()
+                .all(|sibling| sibling == &"0".repeat(64))
+        );
         assert_eq!(
             fold_path(opened.index, &opened.leaf, &opened.siblings),
             anchor_a.to_vec()
@@ -1432,7 +1493,9 @@ mod tests {
         assert_eq!(tree.anchor_count, 1);
         assert_eq!(tree.latest_anchor.as_ref().unwrap().leaf_count, 1);
         assert_eq!(tree.latest_anchor.as_ref().unwrap().root, anchor_a);
-        let page = query_anchors(deps.as_ref().storage, None, None).unwrap().anchors;
+        let page = query_anchors(deps.as_ref().storage, None, None)
+            .unwrap()
+            .anchors;
         assert_eq!((page.len(), page[0].seq, &page[0].root), (1, 0, &anchor_a));
 
         env.block.height += 1;
@@ -1584,7 +1647,11 @@ mod tests {
     fn sol_valid_signature_registers_alongside_evm() {
         let (mut deps, env, evm, sol, leaf0, leaf1) = mixed();
         let res = do_register_sol(deps.as_mut(), &env, &sol, 15, 1, leaf0).unwrap();
-        assert!(res.attributes.iter().any(|a| a.key == "kind" && a.value == "sol"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "kind" && a.value == "sol")
+        );
         do_register(deps.as_mut(), &env, &evm, 0, leaf1).unwrap();
         assert_eq!(leaf_count(deps.as_ref().storage).unwrap(), 2);
         assert!(is_registered(deps.as_ref().storage, &sol_identity(&sol.pubkey)).unwrap());
@@ -1700,10 +1767,16 @@ mod tests {
         let sol = sol_eligible(7, &ctx, 21, 15);
         let mut padded = [0u8; 32];
         padded[..20].copy_from_slice(&evm.address);
-        assert_ne!(sol_eligibility_leaf(&padded, 15), eligibility_leaf(&evm.address, 15));
+        assert_ne!(
+            sol_eligibility_leaf(&padded, 15),
+            eligibility_leaf(&evm.address, 15)
+        );
         let mut addr = [0u8; 20];
         addr.copy_from_slice(&sol.pubkey[..20]);
-        assert_ne!(eligibility_leaf(&addr, 15), sol_eligibility_leaf(&sol.pubkey, 15));
+        assert_ne!(
+            eligibility_leaf(&addr, 15),
+            sol_eligibility_leaf(&sol.pubkey, 15)
+        );
         assert_ne!(evm_identity(&addr), sol_identity(&sol.pubkey));
 
         // Root holding only a Solana leaf + filler: an EVM signer cannot open it.
@@ -1727,8 +1800,8 @@ mod tests {
 #[cfg(test)]
 mod node_index_tests {
     use super::*;
-    use cosmwasm_std::testing::MockStorage;
     use cosmwasm_std::Order;
+    use cosmwasm_std::testing::MockStorage;
     use std::cell::Cell;
 
     /// Storage wrapper that counts reads, standing in for per-read query gas.
@@ -1823,7 +1896,10 @@ mod node_index_tests {
                 let got = indexed(&st, index, n);
                 let want = siblings_under(&leaves[..n as usize], index).unwrap();
                 assert_eq!(got, want, "n={n} index={index}");
-                assert_eq!(fold(index, leaves[index as usize], &got), roots[n as usize - 1]);
+                assert_eq!(
+                    fold(index, leaves[index as usize], &got),
+                    roots[n as usize - 1]
+                );
             }
         }
     }
@@ -1833,13 +1909,21 @@ mod node_index_tests {
         let total = 1100u32;
         let (st, leaves, roots) = build(total);
         let mut seed = 0x1234_5678u64;
-        for n in [127, 128, 129, 255, 256, 511, 512, 513, 1023, 1024, 1025, 1100] {
+        for n in [
+            127, 128, 129, 255, 256, 511, 512, 513, 1023, 1024, 1025, 1100,
+        ] {
             for _ in 0..6 {
-                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                seed = seed
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 let index = ((seed >> 33) as u32) % n;
                 for idx in [index, 0, n - 1] {
                     let got = indexed(&st, idx, n);
-                    assert_eq!(got, siblings_under(&leaves[..n as usize], idx).unwrap(), "n={n} index={idx}");
+                    assert_eq!(
+                        got,
+                        siblings_under(&leaves[..n as usize], idx).unwrap(),
+                        "n={n} index={idx}"
+                    );
                     assert_eq!(fold(idx, leaves[idx as usize], &got), roots[n as usize - 1]);
                 }
             }
@@ -1872,12 +1956,24 @@ mod node_index_tests {
     fn read_count_at_large_n() {
         let n = 4096u32;
         let (st, leaves, _) = build(n);
-        let probe = Counting { inner: &st, reads: Cell::new(0) };
+        let probe = Counting {
+            inner: &st,
+            reads: Cell::new(0),
+        };
         let mut worst = 0;
-        for (anchor, index) in [(n, 0u32), (n, n - 1), (n - 1, 1234), (3001, 2999), (2049, 2048)] {
+        for (anchor, index) in [
+            (n, 0u32),
+            (n, n - 1),
+            (n - 1, 1234),
+            (3001, 2999),
+            (2049, 2048),
+        ] {
             probe.reads.set(0);
             let got = indexed(&probe, index, anchor);
-            assert_eq!(got, siblings_under(&leaves[..anchor as usize], index).unwrap());
+            assert_eq!(
+                got,
+                siblings_under(&leaves[..anchor as usize], index).unwrap()
+            );
             worst = worst.max(probe.reads.get());
         }
         // Old query_path read every leaf (anchor reads); new bound is DEPTH^2.

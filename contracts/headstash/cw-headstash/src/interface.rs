@@ -1,4 +1,6 @@
-use crate::{execute, ibc_source_callback, instantiate, migrate, msg::*, query, reply, sudo, CONTRACT_NAME};
+use crate::{
+    CONTRACT_NAME, execute, ibc_source_callback, instantiate, migrate, msg::*, query, reply, sudo,
+};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 
@@ -19,7 +21,12 @@ use cw_orch::prelude::*;
 /// headstash.upload()?;
 /// ```
 /// multi-test calls migrate with MigrateInfo; the wasm export takes three args.
-fn migrate_mt(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env, msg: MigrateMsg, _info: cosmwasm_std::MigrateInfo) -> Result<cosmwasm_std::Response, cosmwasm_std::StdError> {
+fn migrate_mt(
+    deps: cosmwasm_std::DepsMut,
+    env: cosmwasm_std::Env,
+    msg: MigrateMsg,
+    _info: cosmwasm_std::MigrateInfo,
+) -> Result<cosmwasm_std::Response, cosmwasm_std::StdError> {
     migrate(deps, env, msg)
 }
 

@@ -250,4 +250,3 @@ fn bench_epoch_depth16_and_real_set() {
     }
     std::println!("{{\"event\":\"done\"}}");
 }
-

@@ -212,11 +212,7 @@ pub fn burns_unclaimed(campaign: &EpochCampaignParams) -> bool {
 
 pub const SWEEP_MINT_REFUSED: &str = "sweep not supported for mint-on-claim tokens";
 
-pub fn sweep_unclaimed(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-) -> Result<Response, StdError> {
+pub fn sweep_unclaimed(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let campaign = EPOCH_CAMPAIGN
         .may_load(deps.storage)?
@@ -226,7 +222,10 @@ pub fn sweep_unclaimed(
     // some of the denom (Appendix N).
     {
         let cfg = HEADSTASH_CFG.load(deps.storage)?;
-        if matches!(strategy_for(&cfg.ts, &campaign.denom)?, crate::tokenfactory::TokenStrategy::NewFungible(_)) {
+        if matches!(
+            strategy_for(&cfg.ts, &campaign.denom)?,
+            crate::tokenfactory::TokenStrategy::NewFungible(_)
+        ) {
             return Err(StdError::msg(SWEEP_MINT_REFUSED));
         }
     }
@@ -257,9 +256,17 @@ pub fn sweep_unclaimed(
         return Err(StdError::msg("nothing to sweep"));
     }
     let (msg, mode) = match recipient {
-        None => (BankMsg::Burn { amount: vec![balance.clone()] }, "burn"),
+        None => (
+            BankMsg::Burn {
+                amount: vec![balance.clone()],
+            },
+            "burn",
+        ),
         Some(to) => (
-            BankMsg::Send { to_address: to.to_string(), amount: vec![balance.clone()] },
+            BankMsg::Send {
+                to_address: to.to_string(),
+                amount: vec![balance.clone()],
+            },
             "send",
         ),
     };
@@ -542,9 +549,7 @@ pub fn sudo(deps: DepsMut, env: &Env, msg: HashMerchantSudoMsg) -> Result<Respon
     // settle replaces a root the owner can stage against, and settle then
     // mints 0. Keep the stored root, its height, and the attested vk.
     let keep_existing = payload.algo == ALGO_ACCEPTED
-        && EPOCH_ROOTS
-            .may_load(deps.storage, ALGO_ACCEPTED)?
-            .is_some()
+        && EPOCH_ROOTS.may_load(deps.storage, ALGO_ACCEPTED)?.is_some()
         && accepted_seal_has_no_payable_rows(deps.storage, &payload.oracle_sources)?;
     if !keep_existing {
         EPOCH_ROOTS.save(deps.storage, payload.algo.as_str(), &Binary::from(root))?;
@@ -974,10 +979,7 @@ fn settle(deps: DepsMut, env: &Env, oracle: &[OracleHint]) -> StdResult<(Respons
             return Err(StdError::msg("note is on the public path"));
         }
         if NULLIFIERS
-            .may_load(
-                deps.storage,
-                nullifier_storage_key(campaign.root_id, &hex),
-            )?
+            .may_load(deps.storage, nullifier_storage_key(campaign.root_id, &hex))?
             .is_some()
         {
             return Err(StdError::msg("nullifier already exists"));
@@ -1072,10 +1074,7 @@ fn accepted_seal_has_no_payable_rows(
     let Some(campaign) = EPOCH_CAMPAIGN.may_load(storage)? else {
         return Ok(false);
     };
-    let Some(hint) = oracle
-        .iter()
-        .find(|hint| hint.source_id == BATCH_SOURCE_ID)
-    else {
+    let Some(hint) = oracle.iter().find(|hint| hint.source_id == BATCH_SOURCE_ID) else {
         return Ok(false);
     };
     let Ok(bytes) = Binary::from_base64(&hint.value) else {
@@ -1184,7 +1183,7 @@ mod tests {
     use crate::wavs::generate_test_wavs_proof;
     use crate::{execute, instantiate, migrate, query};
     use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, Addr, CosmosMsg, Empty, OwnedDeps, Uint256};
+    use cosmwasm_std::{Addr, CosmosMsg, Empty, OwnedDeps, Uint256, coins};
     use cw_multi_test::{App, BankSudo, ContractWrapper, Executor, SudoMsg};
 
     type TestDeps = OwnedDeps<
@@ -1879,7 +1878,9 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            ExecuteMsg::SetEpochCampaign { campaign: params.clone() },
+            ExecuteMsg::SetEpochCampaign {
+                campaign: params.clone(),
+            },
         )
         .unwrap();
         // Simulate a campaign written before vk_id 2 was retired.
@@ -1896,13 +1897,17 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            ExecuteMsg::SetEpochCampaign { campaign: legacy.clone() },
+            ExecuteMsg::SetEpochCampaign {
+                campaign: legacy.clone(),
+            },
         ));
         retired(execute(
             deps.as_mut(),
             env.clone(),
             info.clone(),
-            ExecuteMsg::SetEpochCampaign { campaign: params.clone() },
+            ExecuteMsg::SetEpochCampaign {
+                campaign: params.clone(),
+            },
         ));
 
         // The accepted sudo records the root and pays nothing, without erroring.
@@ -1915,7 +1920,11 @@ mod tests {
         let res = sudo(deps.as_mut(), &env, accepted_sudo(&attested, &value, 10)).unwrap();
         assert_eq!(minted_of(&res), "0");
         assert!(res.messages.is_empty());
-        assert!(res.attributes.iter().any(|a| a.key == "retired_vk" && a.value == "2"));
+        assert!(
+            res.attributes
+                .iter()
+                .any(|a| a.key == "retired_vk" && a.value == "2")
+        );
         let stored = query_root(deps.as_ref().storage, ALGO_ACCEPTED.into()).unwrap();
         assert_eq!(stored.root.as_slice(), attested.as_slice());
 
@@ -2331,10 +2340,11 @@ mod tests {
                 rows: vec![row(1, &dest, 15, denom()), row(2, &dest, 15, denom())],
             },
         );
-        assert!(over
-            .unwrap_err()
-            .to_string()
-            .contains("amount class is full"));
+        assert!(
+            over.unwrap_err()
+                .to_string()
+                .contains("amount class is full")
+        );
 
         let reserved = execute(
             deps.as_mut(),
@@ -2470,11 +2480,7 @@ mod tests {
             amount: coins(1_000_000, "uterp"),
         }))
         .unwrap();
-        let code_id = app.store_code(Box::new(ContractWrapper::new(
-            execute,
-            instantiate,
-            query,
-        )));
+        let code_id = app.store_code(Box::new(ContractWrapper::new(execute, instantiate, query)));
         let root = Binary::from(vec![0u8; 32]);
         let contract = app
             .instantiate_contract(
@@ -2485,7 +2491,8 @@ mod tests {
                     distro_hash_domain: Default::default(),
                     genesis_label: None,
                     token_strategy: TokenStrategy::ExistingFungible(HeadstashTokenObject::new(
-                        &cosmwasm_std::testing::MockApi::default(), "uterp".into(),
+                        &cosmwasm_std::testing::MockApi::default(),
+                        "uterp".into(),
                     )),
                     wavs: None, // WAVS disabled (mainnet config)
                     circuit_id: None,
@@ -2556,7 +2563,10 @@ mod tests {
             ExecuteMsg::SetEpochCampaign { campaign: params },
         )
         .unwrap_err();
-        assert!(err.to_string().contains("takes no sweep recipient"), "{err}");
+        assert!(
+            err.to_string().contains("takes no sweep recipient"),
+            "{err}"
+        );
     }
 
     #[test]
@@ -2571,9 +2581,18 @@ mod tests {
         let held = uterp_of(&app, &contract);
         assert_eq!(held, Uint256::from(1_000_000u128));
         let res = app
-            .execute_contract(owner.clone(), contract.clone(), &ExecuteMsg::SweepUnclaimed {}, &[])
+            .execute_contract(
+                owner.clone(),
+                contract.clone(),
+                &ExecuteMsg::SweepUnclaimed {},
+                &[],
+            )
             .unwrap();
-        assert!(res.events.iter().any(|e| e.attributes.iter().any(|a| a.key == "mode" && a.value == "burn")));
+        assert!(res.events.iter().any(|e| {
+            e.attributes
+                .iter()
+                .any(|a| a.key == "mode" && a.value == "burn")
+        }));
         assert_eq!(uterp_of(&app, &contract), Uint256::zero());
         assert_eq!(uterp_of(&app, &treasury2), Uint256::zero());
         assert_eq!(uterp_supply(&app), before - held);
@@ -2601,17 +2620,32 @@ mod tests {
             eligibility_index: 0,
             eligibility_path: vec![],
         };
-        let err = execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), reg()).unwrap_err();
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            reg(),
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("registration closed"), "{err}");
         let notes = ExecuteMsg::RegisterNotes {
-            signer: serde_json::from_value(serde_json::json!({"evm": {"address": "00".repeat(20)}})).unwrap_or_else(|_| panic!("signer shape")),
+            signer: serde_json::from_value(
+                serde_json::json!({"evm": {"address": "00".repeat(20)}}),
+            )
+            .unwrap_or_else(|_| panic!("signer shape")),
             signature: None,
             list: vec![],
             start: 0,
             eligibility: vec![],
             reward_addr: None,
         };
-        let err = execute(deps.as_mut(), env.clone(), message_info(&creator, &[]), notes).unwrap_err();
+        let err = execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&creator, &[]),
+            notes,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("registration closed"), "{err}");
         // At the cutoff block itself registration is still open (fails later, not on the window).
         env.block.height -= 1;
@@ -2662,7 +2696,12 @@ mod tests {
             contract.clone(),
             &ExecuteMsg::StageEpochBatch {
                 digests: vec![Binary::from(vec![4u8; 32])],
-                rows: vec![row(1, dest.as_str(), 15, derive_nd(&cosmwasm_std::testing::MockApi::default(), "uterp"))],
+                rows: vec![row(
+                    1,
+                    dest.as_str(),
+                    15,
+                    derive_nd(&cosmwasm_std::testing::MockApi::default(), "uterp"),
+                )],
             },
             &[],
         )

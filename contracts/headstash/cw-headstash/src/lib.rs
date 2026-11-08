@@ -8,14 +8,14 @@ pub mod distro;
 pub mod egress;
 pub mod epoch;
 pub mod forward;
-pub mod notes;
-pub mod reclaim;
-pub mod pause;
-pub mod registration;
 pub mod headstash;
+pub mod msg;
+pub mod notes;
+pub mod pause;
+pub mod reclaim;
+pub mod registration;
 pub mod tf_proto;
 pub mod theme;
-pub mod msg;
 pub mod tokenfactory;
 pub mod wavs;
 
@@ -42,10 +42,10 @@ use crate::{
     wavs::{WavsOperatorSet, WavsProofOfOwnership},
 };
 
-use cosmwasm_schema::{cw_serde, serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde, serde};
 use cosmwasm_std::{
-    coins, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Reply, Response, StdError, StdResult, Storage, SubMsg, Uint128,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
+    Response, StdError, StdResult, Storage, SubMsg, Uint128, coins, to_json_binary,
 };
 use cw_storage_plus::{Bound, Bounder, Item, KeyDeserialize, Map};
 pub use msg::*;
@@ -92,7 +92,12 @@ pub(crate) fn msg_mint(sender: String, amount: Uint128, denom: String) -> StdRes
     // Mint to sender, then we'll send via BankMsg
     Ok(CosmosMsg::Stargate {
         type_url: MSG_MINT_TYPE_URL.to_string(),
-        value: Binary::from(tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &sender)),
+        value: Binary::from(tf_proto::msg_coin_addr(
+            &sender,
+            &denom,
+            &amount.to_string(),
+            &sender,
+        )),
     })
 }
 
@@ -104,7 +109,12 @@ fn msg_burn(
 ) -> StdResult<CosmosMsg> {
     Ok(CosmosMsg::Stargate {
         type_url: MSG_BURN_TYPE_URL.to_string(),
-        value: Binary::from(tf_proto::msg_coin_addr(&sender, &denom, &amount.to_string(), &burn_from_address)),
+        value: Binary::from(tf_proto::msg_coin_addr(
+            &sender,
+            &denom,
+            &amount.to_string(),
+            &burn_from_address,
+        )),
     })
 }
 
@@ -165,13 +175,21 @@ pub fn instantiate(
     let domain = msg.distro_hash_domain;
     let genesis_label = msg.genesis_label;
     let circuit_id = msg.circuit_id.unwrap_or(0);
-    notes::set_registration_hook(deps.storage, deps.api, msg.registration_hook.clone(), msg.registration_hook_gas_limit)?;
+    notes::set_registration_hook(
+        deps.storage,
+        deps.api,
+        msg.registration_hook.clone(),
+        msg.registration_hook_gas_limit,
+    )?;
     bridge::save_frontend_contract(deps.storage, deps.api, msg.frontend_contract.clone())?;
     pause::save_pauser(deps.storage, deps.api, msg.pauser.clone())?;
     match ts.clone() {
         tokenfactory::TokenStrategy::NewFungible(ref cfg) => {
             // Save config for reply handler to access initial mints
-            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
+            let w = match &msg.wavs {
+                Some(w) => Some(w.proof_of_ownership(deps.api, &c)?),
+                None => None,
+            };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -214,7 +232,10 @@ pub fn instantiate(
             DENOM.save(deps.storage, &denom.raw)?;
 
             // Save config for existing tokens too
-            let w = match &msg.wavs { Some(w) => Some(w.proof_of_ownership(deps.api, &c)?), None => None };
+            let w = match &msg.wavs {
+                Some(w) => Some(w.proof_of_ownership(deps.api, &c)?),
+                None => None,
+            };
             save_headstash_cfg(
                 deps.storage,
                 msg.genesis_root.clone(),
@@ -247,7 +268,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, S
                 return Err(StdError::msg(format!("cannot migrate from {}", v.contract)));
             }
             if semver3(&v.version) > semver3(CONTRACT_VERSION) {
-                return Err(StdError::msg(format!("cannot downgrade from {}", v.version)));
+                return Err(StdError::msg(format!(
+                    "cannot downgrade from {}",
+                    v.version
+                )));
             }
             v.version
         }
@@ -267,8 +291,14 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, S
 }
 
 fn semver3(v: &str) -> (u64, u64, u64) {
-    let mut it = v.split(['.', '-', '+']).map(|p| p.parse::<u64>().unwrap_or(0));
-    (it.next().unwrap_or(0), it.next().unwrap_or(0), it.next().unwrap_or(0))
+    let mut it = v
+        .split(['.', '-', '+'])
+        .map(|p| p.parse::<u64>().unwrap_or(0));
+    (
+        it.next().unwrap_or(0),
+        it.next().unwrap_or(0),
+        it.next().unwrap_or(0),
+    )
 }
 
 /// ICS-20 source callbacks for `ClaimNoteForward` (refund on timeout / error ack).
@@ -289,7 +319,6 @@ pub fn ibc_source_callback(
 fn opaque<F: Copy>(f: F) -> F {
     core::hint::black_box(f)
 }
-
 
 #[inline(never)]
 fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(), StdError> {
@@ -320,7 +349,12 @@ fn pause_gate(storage: &dyn cosmwasm_std::Storage, msg: &ExecuteMsg) -> Result<(
     Ok(())
 }
 #[inline(never)]
-fn pause_dispatch(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> Result<Response, StdError> {
+fn pause_dispatch(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, StdError> {
     match msg {
         ExecuteMsg::Pause {} => pause::pause(deps, env, info),
         ExecuteMsg::Resume {} => pause::resume(deps, env, info),
@@ -358,7 +392,9 @@ pub fn execute(
             root,
             domain,
             label,
-        } => opaque::<fn(_, _, _, _, _) -> _>(crate::headstash::register_eligibility_root)(deps, info, root, domain, label),
+        } => opaque::<fn(_, _, _, _, _) -> _>(crate::headstash::register_eligibility_root)(
+            deps, info, root, domain, label,
+        ),
         #[cfg(feature = "legacy")]
         ExecuteMsg::Mint { to_address, amount } => {
             opaque::<fn(_, _, _, _, _) -> _>(execute_mint)(deps, env, info, to_address, amount)
@@ -386,43 +422,64 @@ pub fn execute(
             tip_height,
         ),
         #[cfg(feature = "legacy")]
-        ExecuteMsg::SetReflectionSnapshot { snapshot } => {
-            opaque::<fn(_, _, _) -> _>(bridge::execute_set_reflection_snapshot)(deps, info, snapshot)
-        }
+        ExecuteMsg::SetReflectionSnapshot { snapshot } => opaque::<fn(_, _, _) -> _>(
+            bridge::execute_set_reflection_snapshot,
+        )(deps, info, snapshot),
         #[cfg(feature = "legacy")]
         ExecuteMsg::RegisterAsset {
             asset_id,
             local_denom,
             origin,
             status,
-        } => opaque::<fn(_, _, _, _, _, _) -> _>(bridge::execute_register_asset)(deps, info, asset_id, local_denom, origin, status),
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(bridge::execute_register_asset)(
+            deps,
+            info,
+            asset_id,
+            local_denom,
+            origin,
+            status,
+        ),
         #[cfg(feature = "legacy")]
-        ExecuteMsg::SetExternalAssetRegistry { addr } => {
-            opaque::<fn(_, _, _) -> _>(bridge::execute_set_external_asset_registry)(deps, info, addr)
-        }
+        ExecuteMsg::SetExternalAssetRegistry { addr } => opaque::<fn(_, _, _) -> _>(
+            bridge::execute_set_external_asset_registry,
+        )(deps, info, addr),
         ExecuteMsg::SetFrontendContract { addr } => {
             opaque::<fn(_, _, _) -> _>(bridge::execute_set_frontend_contract)(deps, info, addr)
         }
-        ExecuteMsg::SetTheme { theme } => opaque::<fn(_, _, _) -> _>(theme::execute_set_theme)(deps, info, theme),
-        #[cfg(feature = "legacy")]
-        ExecuteMsg::SetBridgeCfg { cfg } => opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg),
-        #[cfg(feature = "legacy")]
-        ExecuteMsg::BridgeMintNote { claim, proof } => {
-            opaque::<fn(_, _, _, _, _) -> _>(bridge::execute_bridge_mint_note)(deps, env, info, *claim, proof)
+        ExecuteMsg::SetTheme { theme } => {
+            opaque::<fn(_, _, _) -> _>(theme::execute_set_theme)(deps, info, theme)
         }
+        #[cfg(feature = "legacy")]
+        ExecuteMsg::SetBridgeCfg { cfg } => {
+            opaque::<fn(_, _, _) -> _>(bridge::execute_set_bridge_cfg)(deps, info, cfg)
+        }
+        #[cfg(feature = "legacy")]
+        ExecuteMsg::BridgeMintNote { claim, proof } => opaque::<fn(_, _, _, _, _) -> _>(
+            bridge::execute_bridge_mint_note,
+        )(deps, env, info, *claim, proof),
         #[cfg(feature = "legacy")]
         ExecuteMsg::BridgeEgressBurn { statement, proof } => {
-            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(deps, env, info, *statement, proof)
+            opaque::<fn(_, _, _, _, _) -> _>(egress::execute_bridge_egress_burn)(
+                deps, env, info, *statement, proof,
+            )
         }
         #[cfg(feature = "legacy")]
-        ExecuteMsg::SetDenomTable { amounts } => opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts),
+        ExecuteMsg::SetDenomTable { amounts } => {
+            opaque::<fn(_, _, _) -> _>(epoch::set_denom_table)(deps, info, amounts)
+        }
         #[cfg(feature = "legacy")]
         ExecuteMsg::AssignPublicNotes { nullifiers } => {
             opaque::<fn(_, _, _) -> _>(epoch::assign_public_notes)(deps, info, nullifiers)
         }
-        ExecuteMsg::SetEpochCampaign { campaign } => opaque::<fn(_, _, _) -> _>(epoch::set_campaign)(deps, info, campaign),
-        ExecuteMsg::SweepUnclaimed {} => opaque::<fn(_, _, _) -> _>(epoch::sweep_unclaimed)(deps, env, info),
-        ExecuteMsg::EmergencyReclaim {} => opaque::<fn(_, _, _) -> _>(reclaim::emergency_reclaim)(deps, env, info),
+        ExecuteMsg::SetEpochCampaign { campaign } => {
+            opaque::<fn(_, _, _) -> _>(epoch::set_campaign)(deps, info, campaign)
+        }
+        ExecuteMsg::SweepUnclaimed {} => {
+            opaque::<fn(_, _, _) -> _>(epoch::sweep_unclaimed)(deps, env, info)
+        }
+        ExecuteMsg::EmergencyReclaim {} => {
+            opaque::<fn(_, _, _) -> _>(reclaim::emergency_reclaim)(deps, env, info)
+        }
         ExecuteMsg::UpdateOwnership(action) => {
             if matches!(action, cw_ownable::Action::RenounceOwnership) {
                 return Err(StdError::msg("renounce_ownership is disabled"));
@@ -441,9 +498,18 @@ pub fn execute(
             root_id,
             rows,
             vk_hash,
-        } => opaque::<fn(_, _, _, _, _, _) -> _>(epoch::apply_accepted_batch)(deps, env, allocation_root, root_id, rows, vk_hash),
+        } => opaque::<fn(_, _, _, _, _, _) -> _>(epoch::apply_accepted_batch)(
+            deps,
+            env,
+            allocation_root,
+            root_id,
+            rows,
+            vk_hash,
+        ),
         #[cfg(feature = "legacy")]
-        ExecuteMsg::ApplyPublicBatch { rows } => opaque::<fn(_, _, _) -> _>(epoch::apply_public_batch)(deps, env, rows),
+        ExecuteMsg::ApplyPublicBatch { rows } => {
+            opaque::<fn(_, _, _) -> _>(epoch::apply_public_batch)(deps, env, rows)
+        }
         ExecuteMsg::RegisterHeadstash {
             key_com,
             amount,
@@ -507,27 +573,57 @@ pub fn execute(
         }
         ExecuteMsg::BindNoteCircuit { zk_id } => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            opaque::<fn(_, _, _, _, _) -> _>(direct::bind_circuit)(deps, &env, info, &campaign, zk_id)
+            opaque::<fn(_, _, _, _, _) -> _>(direct::bind_circuit)(
+                deps, &env, info, &campaign, zk_id,
+            )
         }
-        ExecuteMsg::ClaimNote { root, nullifier, amount, proof } => {
+        ExecuteMsg::ClaimNote {
+            root,
+            nullifier,
+            amount,
+            proof,
+        } => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(direct::claim_note)(deps, &env, info, &campaign, root, nullifier, amount, proof)
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(direct::claim_note)(
+                deps, &env, info, &campaign, root, nullifier, amount, proof,
+            )
         }
         ExecuteMsg::AcceptAnchor {} => {
             let campaign = epoch::query_campaign(deps.storage)?;
             opaque::<fn(_, _, _) -> _>(registration::accept_anchor)(deps, &env, &campaign)
         }
-        ExecuteMsg::ClaimNoteForward { root, nullifier, amount, proof, forward } => {
+        ExecuteMsg::ClaimNoteForward {
+            root,
+            nullifier,
+            amount,
+            proof,
+            forward,
+        } => {
             let campaign = epoch::query_campaign(deps.storage)?;
-            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(forward::claim_note_forward)(deps, &env, &campaign, root, nullifier, amount, proof, forward)
+            opaque::<fn(_, _, _, _, _, _, _, _) -> _>(forward::claim_note_forward)(
+                deps, &env, &campaign, root, nullifier, amount, proof, forward,
+            )
         }
-        ExecuteMsg::SetForwardChannel { channel_id, timeout_seconds, enabled } => {
-            opaque::<fn(_, _, _, _, _) -> _>(forward::set_forward_channel)(deps, &info, channel_id, timeout_seconds, enabled)
+        ExecuteMsg::SetForwardChannel {
+            channel_id,
+            timeout_seconds,
+            enabled,
+        } => opaque::<fn(_, _, _, _, _) -> _>(forward::set_forward_channel)(
+            deps,
+            &info,
+            channel_id,
+            timeout_seconds,
+            enabled,
+        ),
+        ExecuteMsg::ResolveForward {
+            channel_id,
+            sequence,
+        } => opaque::<fn(_, _, _, _, _) -> _>(forward::resolve_forward)(
+            deps, &env, &info, channel_id, sequence,
+        ),
+        ExecuteMsg::SetHalSource { source } => {
+            opaque::<fn(_, _, _) -> _>(forward::set_hal_source)(deps, &info, source)
         }
-        ExecuteMsg::ResolveForward { channel_id, sequence } => {
-            opaque::<fn(_, _, _, _, _) -> _>(forward::resolve_forward)(deps, &env, &info, channel_id, sequence)
-        }
-        ExecuteMsg::SetHalSource { source } => opaque::<fn(_, _, _) -> _>(forward::set_hal_source)(deps, &info, source),
         // Kept in the enum (manifold builds it); disabled in the v0.0.1 surface.
         #[cfg(not(feature = "legacy"))]
         ExecuteMsg::RegisterEligibilityRoot { .. } => Err(StdError::msg(DISABLED_IN_BUILD)),
@@ -571,7 +667,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::DistroConfig {} => headstash::query_distro_config(deps),
         QueryMsg::WavsStatus {} => {
             let w = HEADSTASH_CFG.load(deps.storage)?.w;
-            to_json_binary(&WavsStatusResponse { enabled: w.is_some(), operator_set: w })
+            to_json_binary(&WavsStatusResponse {
+                enabled: w.is_some(),
+                operator_set: w,
+            })
         }
         QueryMsg::EligibilityRoot { root_id } => headstash::query_eligibility_root(deps, root_id),
         QueryMsg::EligibilityRoots { start_after, limit } => {
@@ -588,17 +687,32 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::EpochRoot { algo } => to_json_binary(&epoch::query_root(deps.storage, algo)?),
         QueryMsg::ForwardChannels {} => to_json_binary(&forward::query_channels(deps.storage)?),
         QueryMsg::HalSource {} => to_json_binary(&forward::HAL_SOURCE.may_load(deps.storage)?),
-        QueryMsg::PendingForward { channel_id, sequence } => {
-            to_json_binary(&forward::PENDING.may_load(deps.storage, (channel_id.as_str(), sequence))?)
+        QueryMsg::PendingForward {
+            channel_id,
+            sequence,
+        } => to_json_binary(
+            &forward::PENDING.may_load(deps.storage, (channel_id.as_str(), sequence))?,
+        ),
+        QueryMsg::PendingForwards { start_after, limit } => {
+            to_json_binary(&forward::query_pending(deps.storage, start_after, limit)?)
         }
-        QueryMsg::PendingForwards { start_after, limit } => to_json_binary(&forward::query_pending(deps.storage, start_after, limit)?),
-        QueryMsg::ForwardDestination { forward } => {
-            to_json_binary(&forward::forward_destination(&env.block.chain_id, env.contract.address.as_str(), &forward))
-        }
-        QueryMsg::CheckNoteForward { root, nullifier, amount, proof, forward } => {
+        QueryMsg::ForwardDestination { forward } => to_json_binary(&forward::forward_destination(
+            &env.block.chain_id,
+            env.contract.address.as_str(),
+            &forward,
+        )),
+        QueryMsg::CheckNoteForward {
+            root,
+            nullifier,
+            amount,
+            proof,
+            forward,
+        } => {
             let campaign = epoch::query_campaign(deps.storage)?;
             let (dest, ..) = forward::check_target(deps, &env, &forward)?;
-            direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
+            direct::check_claim(
+                deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof,
+            )?;
             to_json_binary(&true)
         }
         QueryMsg::EpochCampaign {} => to_json_binary(&epoch::query_campaign(deps.storage)?),
@@ -609,30 +723,50 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .ok_or_else(|| StdError::msg("registration"))?;
             to_json_binary(&registration::query_tree(deps.storage, &cfg)?)
         }
-        QueryMsg::RegistrationAnchors { start_after, limit } => {
-            to_json_binary(&registration::query_anchors(deps.storage, start_after, limit)?)
-        }
-        QueryMsg::RegistrationPath { key_com, anchor } => {
-            to_json_binary(&registration::query_path(
-                deps.storage,
-                key_com.as_slice(),
-                anchor.as_slice(),
-            )?)
-        }
-        QueryMsg::CheckRegisterNotes { signer, signature, list, start, eligibility, reward_addr } => {
+        QueryMsg::RegistrationAnchors { start_after, limit } => to_json_binary(
+            &registration::query_anchors(deps.storage, start_after, limit)?,
+        ),
+        QueryMsg::RegistrationPath { key_com, anchor } => to_json_binary(
+            &registration::query_path(deps.storage, key_com.as_slice(), anchor.as_slice())?,
+        ),
+        QueryMsg::CheckRegisterNotes {
+            signer,
+            signature,
+            list,
+            start,
+            eligibility,
+            reward_addr,
+        } => {
             reclaim::ensure_live(deps.storage)?;
             pause::ensure_not_paused(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             registration::assert_registration_open(env.block.height, &campaign)?;
-            notes::check_register_notes(deps, &campaign, &signer, signature.as_ref(), &list, start, &eligibility, reward_addr.as_deref())?;
+            notes::check_register_notes(
+                deps,
+                &campaign,
+                &signer,
+                signature.as_ref(),
+                &list,
+                start,
+                &eligibility,
+                reward_addr.as_deref(),
+            )?;
             to_json_binary(&true)
         }
-        QueryMsg::CheckNoteClaim { dest, root, nullifier, amount, proof } => {
+        QueryMsg::CheckNoteClaim {
+            dest,
+            root,
+            nullifier,
+            amount,
+            proof,
+        } => {
             reclaim::ensure_live(deps.storage)?;
             pause::ensure_not_paused(deps.storage)?;
             let campaign = epoch::query_campaign(deps.storage)?;
             deps.api.addr_validate(&dest)?;
-            direct::check_claim(deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof)?;
+            direct::check_claim(
+                deps, &env, &campaign, &dest, &root, &nullifier, amount, &proof,
+            )?;
             to_json_binary(&true)
         }
         QueryMsg::ReclaimStatus {} => to_json_binary(&reclaim::query_status(deps.storage)?),
@@ -732,7 +866,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
         CREATE_DENOM_REPLY_ID => {
             // Extract the new_token_denom from the reply data
             // In CosmWasm v3, the reply data contains the response from the submessage
-            let sub = msg.result.into_result().map_err(|e| StdError::msg(e.to_string()))?;
+            let sub = msg
+                .result
+                .into_result()
+                .map_err(|e| StdError::msg(e.to_string()))?;
             // msg_responses[0].value is the protobuf MsgCreateDenomResponse. A missing
             // response is an error, not an index panic.
             let response_data = &sub
@@ -746,7 +883,11 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, StdError> 
             // so the chain-reported denom must be exactly that; otherwise fail instantiate
             // instead of saving a DENOM that payouts never use.
             let cfg = HEADSTASH_CFG.may_load(deps.storage)?;
-            if let Some(expected) = cfg.as_ref().and_then(|c| c.ts.first()).map(|t| t.denom(&env.contract.address)) {
+            if let Some(expected) = cfg
+                .as_ref()
+                .and_then(|c| c.ts.first())
+                .map(|t| t.denom(&env.contract.address))
+            {
                 if expected != new_token_denom {
                     return Err(StdError::msg("MsgCreateDenomResponse: unexpected denom"));
                 }
@@ -886,10 +1027,32 @@ mod instantiate_tests {
             new_owner: dao.to_string(),
             expiry: None,
         });
-        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), propose.clone()).is_err());
-        execute(deps.as_mut(), env.clone(), message_info(&owner, &[]), propose).unwrap();
+        assert!(
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&eve, &[]),
+                propose.clone()
+            )
+            .is_err()
+        );
+        execute(
+            deps.as_mut(),
+            env.clone(),
+            message_info(&owner, &[]),
+            propose,
+        )
+        .unwrap();
         let accept = ExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership);
-        assert!(execute(deps.as_mut(), env.clone(), message_info(&eve, &[]), accept.clone()).is_err());
+        assert!(
+            execute(
+                deps.as_mut(),
+                env.clone(),
+                message_info(&eve, &[]),
+                accept.clone()
+            )
+            .is_err()
+        );
         execute(deps.as_mut(), env.clone(), message_info(&dao, &[]), accept).unwrap();
         let o = cw_ownable::get_ownership(deps.as_ref().storage).unwrap();
         assert_eq!(o.owner, Some(dao.clone()));
@@ -897,7 +1060,12 @@ mod instantiate_tests {
         let renounce = ExecuteMsg::UpdateOwnership(cw_ownable::Action::RenounceOwnership);
         let err = execute(deps.as_mut(), env, message_info(&dao, &[]), renounce).unwrap_err();
         assert!(err.to_string().contains("renounce_ownership is disabled"));
-        assert_eq!(cw_ownable::get_ownership(deps.as_ref().storage).unwrap().owner, Some(dao));
+        assert_eq!(
+            cw_ownable::get_ownership(deps.as_ref().storage)
+                .unwrap()
+                .owner,
+            Some(dao)
+        );
     }
 
     // Helper: real BLS PoP for instantiate (see wavs::generate_test_wavs_proof).
@@ -1099,9 +1267,10 @@ mod instantiate_tests {
 
         let err = instantiate(deps.as_mut(), env, info, msg).unwrap_err();
 
-        assert!(err
-            .to_string()
-            .contains("invalid amount of operators defined"));
+        assert!(
+            err.to_string()
+                .contains("invalid amount of operators defined")
+        );
     }
 
     #[test]
@@ -1201,7 +1370,10 @@ mod instantiate_tests {
             distro_hash_domain: Default::default(),
             genesis_label: None,
             token_strategy: TokenStrategy::NewFungible(Box::new(NewTokenConfig {
-                subdenom: HeadstashTokenObject::new(&cosmwasm_std::testing::MockApi::default(), "test".to_string()),
+                subdenom: HeadstashTokenObject::new(
+                    &cosmwasm_std::testing::MockApi::default(),
+                    "test".to_string(),
+                ),
                 metadata: mock_metadata(),
                 initial_mint: None,
                 manager: None,
@@ -1220,12 +1392,32 @@ mod instantiate_tests {
     fn instantiate_wavs_none_disables_wavs() {
         let mut deps = mock_dependencies();
         let sender = deps.api.addr_make("sender");
-        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(None)).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            message_info(&sender, &[]),
+            wavs_msg(None),
+        )
+        .unwrap();
         assert!(HEADSTASH_CFG.load(&deps.storage).unwrap().w.is_none());
-        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
-        assert_eq!(st, WavsStatusResponse { enabled: false, operator_set: None });
+        let st: WavsStatusResponse = cosmwasm_std::from_json(
+            query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            st,
+            WavsStatusResponse {
+                enabled: false,
+                operator_set: None
+            }
+        );
         // fail closed
-        assert!(wavs_operator_set(&deps.storage).unwrap_err().to_string().contains("wavs disabled"));
+        assert!(
+            wavs_operator_set(&deps.storage)
+                .unwrap_err()
+                .to_string()
+                .contains("wavs disabled")
+        );
         // stored config JSON carries no operator set
         let raw = deps.storage.get(b"headstash_params").unwrap();
         assert!(String::from_utf8(raw).unwrap().contains("\"w\":null"));
@@ -1235,11 +1427,26 @@ mod instantiate_tests {
     fn instantiate_wavs_some_valid_is_enabled() {
         let mut deps = mock_dependencies();
         let sender = deps.api.addr_make("sender");
-        instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(valid_wavs_proof(2)))).unwrap();
-        let st: WavsStatusResponse = cosmwasm_std::from_json(query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap()).unwrap();
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            message_info(&sender, &[]),
+            wavs_msg(Some(valid_wavs_proof(2))),
+        )
+        .unwrap();
+        let st: WavsStatusResponse = cosmwasm_std::from_json(
+            query(deps.as_ref(), mock_env(), QueryMsg::WavsStatus {}).unwrap(),
+        )
+        .unwrap();
         assert!(st.enabled);
         assert_eq!(st.operator_set.unwrap().keys.len(), 2);
-        assert_eq!(wavs_operator_set(&deps.storage).unwrap().msg.total_operators, 2);
+        assert_eq!(
+            wavs_operator_set(&deps.storage)
+                .unwrap()
+                .msg
+                .total_operators,
+            2
+        );
     }
 
     #[test]
@@ -1253,7 +1460,16 @@ mod instantiate_tests {
                 1 => w.msg.threshold = 0,
                 _ => w.poos.clear(),
             }
-            assert!(instantiate(deps.as_mut(), mock_env(), message_info(&sender, &[]), wavs_msg(Some(w))).is_err(), "case {bad}");
+            assert!(
+                instantiate(
+                    deps.as_mut(),
+                    mock_env(),
+                    message_info(&sender, &[]),
+                    wavs_msg(Some(w))
+                )
+                .is_err(),
+                "case {bad}"
+            );
             assert!(HEADSTASH_CFG.may_load(&deps.storage).unwrap().is_none());
         }
     }
@@ -1261,7 +1477,9 @@ mod instantiate_tests {
     #[test]
     fn wavs_field_absent_from_json_means_disabled() {
         let mut v = cosmwasm_std::to_json_vec(&wavs_msg(None)).unwrap();
-        let s = String::from_utf8(v.clone()).unwrap().replace(",\"wavs\":null", "");
+        let s = String::from_utf8(v.clone())
+            .unwrap()
+            .replace(",\"wavs\":null", "");
         assert!(!s.contains("wavs"));
         v = s.into_bytes();
         let m: InstantiateMsg = cosmwasm_std::from_json(&v).unwrap();
@@ -1271,9 +1489,21 @@ mod instantiate_tests {
     #[test]
     fn legacy_cfg_with_operator_set_still_decodes() {
         // configs stored by the previous code (non-optional w) decode as Some
-        let w = valid_wavs_proof(1).proof_of_ownership(&cosmwasm_std::testing::MockApi::default(), &Addr::unchecked("c")).unwrap();
-        let cfg = HeadstashCfg { cid: 0, gr: Binary::from(vec![1; 32]), distro_hash_domain: Default::default(), ts: vec![], w: Some(w.clone()) };
-        let back: HeadstashCfg = cosmwasm_std::from_json(cosmwasm_std::to_json_vec(&cfg).unwrap()).unwrap();
+        let w = valid_wavs_proof(1)
+            .proof_of_ownership(
+                &cosmwasm_std::testing::MockApi::default(),
+                &Addr::unchecked("c"),
+            )
+            .unwrap();
+        let cfg = HeadstashCfg {
+            cid: 0,
+            gr: Binary::from(vec![1; 32]),
+            distro_hash_domain: Default::default(),
+            ts: vec![],
+            w: Some(w.clone()),
+        };
+        let back: HeadstashCfg =
+            cosmwasm_std::from_json(cosmwasm_std::to_json_vec(&cfg).unwrap()).unwrap();
         assert_eq!(back.w, Some(w));
     }
 
@@ -1284,9 +1514,14 @@ mod instantiate_tests {
         for m in [
             r#"{"on_authenticator_added":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
             r#"{"on_authenticator_removed":{"account":"a","authenticator_id":"1","authenticator_params":null}}"#,
-            r#"{"authenticate":{}}"#, r#"{"track":{}}"#, r#"{"confirm_execution":{}}"#,
+            r#"{"authenticate":{}}"#,
+            r#"{"track":{}}"#,
+            r#"{"confirm_execution":{}}"#,
         ] {
-            assert!(cosmwasm_std::from_json::<epoch::HashMerchantSudoMsg>(m.as_bytes()).is_err(), "{m}");
+            assert!(
+                cosmwasm_std::from_json::<epoch::HashMerchantSudoMsg>(m.as_bytes()).is_err(),
+                "{m}"
+            );
         }
     }
 
@@ -1509,12 +1744,19 @@ mod instantiate_tests {
             id: CREATE_DENOM_REPLY_ID,
             payload: Binary::default(),
             gas_used: 0,
-            result: SubMsgResult::Ok(SubMsgResponse { events: vec![], data: None, msg_responses: responses }),
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: vec![],
+                data: None,
+                msg_responses: responses,
+            }),
         };
         let resp = |denom: &str| {
             let mut v = vec![0x0a, denom.len() as u8];
             v.extend_from_slice(denom.as_bytes());
-            MsgResponse { type_url: "/osmosis.tokenfactory.v1beta1.MsgCreateDenomResponse".into(), value: Binary::from(v) }
+            MsgResponse {
+                type_url: "/osmosis.tokenfactory.v1beta1.MsgCreateDenomResponse".into(),
+                value: Binary::from(v),
+            }
         };
         let err = reply(deps.as_mut(), env.clone(), mk(vec![])).unwrap_err();
         assert!(err.to_string().contains("no msg response"), "{err}");

@@ -207,7 +207,9 @@ macro_rules! secp_field {
                 if self.big().is_zero() {
                     CtOption::new(Self::ZERO, Choice::from(0))
                 } else {
-                    let inv = self.big().modpow(&(Self::modulus() - 2u32), &Self::modulus());
+                    let inv = self
+                        .big()
+                        .modpow(&(Self::modulus() - 2u32), &Self::modulus());
                     CtOption::new(Self::from_big(inv), Choice::from(1))
                 }
             }

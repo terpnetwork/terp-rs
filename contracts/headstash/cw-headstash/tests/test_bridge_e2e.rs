@@ -236,7 +236,8 @@ impl BridgeEnv {
                 &[Coin::new(Uint128::new(10_000), "ubridge")],
                 "cw-headstash-bridge-e2e",
                 Some(owner.to_string()),
-            ).map_err(|e| e.to_string())?;
+            )
+            .map_err(|e| e.to_string())?;
 
         Ok(Self {
             app,
@@ -507,9 +508,14 @@ fn e2e_wavs_disabled_instantiate_query_and_bridge_mint() {
     assert!(!st.enabled);
     assert!(st.operator_set.is_none());
     let claim = env.setup_bridge_happy();
-    env.exec_user(&ExecuteMsg::BridgeMintNote { claim: claim.clone(), proof: mock_proof() })
-        .expect("mint works with WAVS disabled");
-    let minted: bool = env.query(&QueryMsg::IsBridgeMinted { nullifier: claim.nullifier });
+    env.exec_user(&ExecuteMsg::BridgeMintNote {
+        claim: claim.clone(),
+        proof: mock_proof(),
+    })
+    .expect("mint works with WAVS disabled");
+    let minted: bool = env.query(&QueryMsg::IsBridgeMinted {
+        nullifier: claim.nullifier,
+    });
     assert!(minted);
 }
 

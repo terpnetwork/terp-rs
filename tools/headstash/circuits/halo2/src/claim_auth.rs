@@ -285,10 +285,7 @@ pub fn canonical_challenge(body: &[u8]) -> [u8; 32] {
 
 /// Sign the canonical body. `e` is [`canonical_challenge`]. The secret is not a witness.
 #[cfg(feature = "host-crypto")]
-pub fn sign_canonical_body(
-    secret_be: &[u8; 32],
-    body: &[u8],
-) -> ([u8; 32], [u8; 32], [u8; 32]) {
+pub fn sign_canonical_body(secret_be: &[u8; 32], body: &[u8]) -> ([u8; 32], [u8; 32], [u8; 32]) {
     use secp256k1::{Message, Secp256k1, SecretKey};
     let digest = eip191_keccak(body);
     let e_be = reduce_mod_n(&digest);
@@ -530,7 +527,13 @@ mod tests {
         let secp = Secp256k1::new();
         let sk = SecretKey::from_byte_array([0x21; 32]).unwrap();
         let pk = PublicKey::from_secret_key(&secp, &sk);
-        let body = canonical_claim_body(&[3u8; 32], &[4u8; 32], &[5u8; 32], "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k", 15);
+        let body = canonical_claim_body(
+            &[3u8; 32],
+            &[4u8; 32],
+            &[5u8; 32],
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
         let (e_be, r_be, s_be) = sign_canonical_body(&[0x21; 32], &body);
         assert_eq!(e_be, canonical_challenge(&body));
         let digest = eip191_keccak(&body);
@@ -540,7 +543,13 @@ mod tests {
         let sig = secp256k1::ecdsa::Signature::from_compact(&compact).unwrap();
         secp.verify_ecdsa(Message::from_digest(digest), &sig, &pk)
             .expect("canonical personal_sign verifies");
-        let other = canonical_claim_body(&[3u8; 32], &[4u8; 32], &[6u8; 32], "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k", 15);
+        let other = canonical_claim_body(
+            &[3u8; 32],
+            &[4u8; 32],
+            &[6u8; 32],
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0g3g2k",
+            15,
+        );
         assert!(
             secp.verify_ecdsa(Message::from_digest(eip191_keccak(&other)), &sig, &pk)
                 .is_err()

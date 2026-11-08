@@ -6,8 +6,8 @@
 use std::println;
 
 use super::secp256k1_chip::*;
-use ff::{Field, PrimeField};
 use super::secp256k1_chip::{Secp256k1Fp, Secp256k1Fq};
+use ff::{Field, PrimeField};
 use halo2_gadgets::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 use halo2_proofs::{
     circuit::{Layouter, SimpleFloorPlanner, Value},

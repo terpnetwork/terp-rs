@@ -10,8 +10,8 @@
 //! Public API preserved: `Secp256k1Chip::prove_key_pairing`, `fq_to_native`,
 //! `Secp256k1Config`, `CrtInteger`, etc.
 
-use ff::{Field, PrimeField};
 use super::secp_host_field::{SecpFp as Fp, SecpFq as Fq};
+use ff::{Field, PrimeField};
 use halo2_gadgets::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 use halo2_proofs::circuit::Region;
 use halo2_proofs::plonk::{Expression, Selector};
@@ -456,9 +456,7 @@ pub fn modulus_simple_pallas() -> BigUint {
 }
 
 pub fn modulus_simple_secp_fp() -> BigUint {
-    let neg_one = {
-        -Fp::ONE
-    };
+    let neg_one = { -Fp::ONE };
     BigUint::from_bytes_le(<Secp256k1Fp as PrimeField>::to_repr(&neg_one).as_ref()) + 1u64
 }
 

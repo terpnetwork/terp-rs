@@ -5,18 +5,22 @@ use cw_headstash::epoch::{AmountCap, EpochCampaignParams};
 use cw_headstash::msg::{ExecuteMsg, InstantiateMsg};
 use cw_headstash::notes::{NOTE_VK_HASH, RETIRED_VK_ERR, RETIRED_VK_ID};
 use cw_headstash::tokenfactory::{
-    derive_nd, DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig, TokenStrategy,
+    DenomUnit, HeadstashTokenObject, Metadata, NewTokenConfig, TokenStrategy, derive_nd,
 };
 use cw_multi_test::{ContractWrapper, Executor};
 include!("common/tf_stargate.rs");
-use tf_stargate::{new_app, TfApp as App};
+use tf_stargate::{TfApp as App, new_app};
 
 fn deploy() -> (App, Addr, Addr) {
     let mut app = new_app();
     let owner = app.api().addr_make("owner");
     let code = app.store_code(Box::new(
-        ContractWrapper::new(cw_headstash::execute, cw_headstash::instantiate, cw_headstash::query)
-            .with_reply(cw_headstash::reply),
+        ContractWrapper::new(
+            cw_headstash::execute,
+            cw_headstash::instantiate,
+            cw_headstash::query,
+        )
+        .with_reply(cw_headstash::reply),
     ));
     let msg = InstantiateMsg {
         genesis_root: Binary::from(vec![0u8; 32]),
@@ -26,7 +30,11 @@ fn deploy() -> (App, Addr, Addr) {
             subdenom: HeadstashTokenObject::new(app.api(), "cht".into()),
             metadata: Metadata {
                 description: None,
-                denom_units: vec![DenomUnit { denom: "ucht".into(), exponent: 0, aliases: vec![] }],
+                denom_units: vec![DenomUnit {
+                    denom: "ucht".into(),
+                    exponent: 0,
+                    aliases: vec![],
+                }],
                 base: Some("ucht".into()),
                 display: Some("CHT".into()),
                 name: Some("CHT".into()),
@@ -73,7 +81,9 @@ fn campaign(vk_id: u64) -> EpochCampaignParams {
 }
 
 fn err_of(app: &mut App, owner: &Addr, addr: &Addr, msg: &ExecuteMsg) -> String {
-    let e = app.execute_contract(owner.clone(), addr.clone(), msg, &[]).unwrap_err();
+    let e = app
+        .execute_contract(owner.clone(), addr.clone(), msg, &[])
+        .unwrap_err();
     format!("{e:?}")
 }
 
@@ -81,21 +91,52 @@ fn err_of(app: &mut App, owner: &Addr, addr: &Addr, msg: &ExecuteMsg) -> String 
 fn f1_vk2_campaign_cannot_be_set_or_rebound() {
     let (mut app, owner, addr) = deploy();
     // A new vk_id 2 campaign is refused, with the registration lane or without it.
-    let e = err_of(&mut app, &owner, &addr, &ExecuteMsg::SetEpochCampaign { campaign: campaign(RETIRED_VK_ID) });
+    let e = err_of(
+        &mut app,
+        &owner,
+        &addr,
+        &ExecuteMsg::SetEpochCampaign {
+            campaign: campaign(RETIRED_VK_ID),
+        },
+    );
     assert!(e.contains(RETIRED_VK_ERR), "{e}");
     let mut vk2_note = campaign(RETIRED_VK_ID);
     vk2_note.vk_hash = Binary::from(NOTE_VK_HASH.to_vec());
-    let e = err_of(&mut app, &owner, &addr, &ExecuteMsg::SetEpochCampaign { campaign: vk2_note });
+    let e = err_of(
+        &mut app,
+        &owner,
+        &addr,
+        &ExecuteMsg::SetEpochCampaign { campaign: vk2_note },
+    );
     assert!(e.contains(RETIRED_VK_ERR), "{e}");
 
     // A live campaign cannot be switched to vk_id 2.
-    app.execute_contract(owner.clone(), addr.clone(), &ExecuteMsg::SetEpochCampaign { campaign: campaign(1) }, &[])
-        .unwrap();
-    let e = err_of(&mut app, &owner, &addr, &ExecuteMsg::SetEpochCampaign { campaign: campaign(RETIRED_VK_ID) });
+    app.execute_contract(
+        owner.clone(),
+        addr.clone(),
+        &ExecuteMsg::SetEpochCampaign {
+            campaign: campaign(1),
+        },
+        &[],
+    )
+    .unwrap();
+    let e = err_of(
+        &mut app,
+        &owner,
+        &addr,
+        &ExecuteMsg::SetEpochCampaign {
+            campaign: campaign(RETIRED_VK_ID),
+        },
+    );
     assert!(e.contains(RETIRED_VK_ERR), "{e}");
 
     // The direct note path never binds or claims outside vk_id 3.
-    let e = err_of(&mut app, &owner, &addr, &ExecuteMsg::BindNoteCircuit { zk_id: 1 });
+    let e = err_of(
+        &mut app,
+        &owner,
+        &addr,
+        &ExecuteMsg::BindNoteCircuit { zk_id: 1 },
+    );
     assert!(e.contains("not a note campaign"), "{e}");
     let e = err_of(
         &mut app,
@@ -108,5 +149,8 @@ fn f1_vk2_campaign_cannot_be_set_or_rebound() {
             proof: Binary::from(vec![0u8; 64]),
         },
     );
-    assert!(e.contains("not a note campaign") || e.contains("circuit"), "{e}");
+    assert!(
+        e.contains("not a note campaign") || e.contains("circuit"),
+        "{e}"
+    );
 }

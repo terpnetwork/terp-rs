@@ -1,13 +1,13 @@
 //! cw-headstash-frontend: content-addressed on-chain host for the Headstash claim UI.
 //! Gov publishes a manifest (file + chunk sha256s); anyone uploads matching chunks.
-pub mod msg;
-pub mod theme;
 #[cfg(feature = "interface")]
 pub mod interface;
+pub mod msg;
+pub mod theme;
 
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Order, Response, StdError, StdResult,
-    Storage,
+    Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Order, Response, StdError, StdResult,
+    Storage, entry_point, to_json_binary,
 };
 use cw_storage_plus::{Bound, Item, Map};
 use msg::*;
@@ -46,7 +46,12 @@ fn total_chunks(m: &Manifest) -> u32 {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InstantiateMsg) -> StdResult<Response> {
+pub fn instantiate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> StdResult<Response> {
     let owner = msg.owner.unwrap_or_else(|| info.sender.to_string());
     cw_ownable::initialize_owner(deps.storage, deps.api, Some(&owner))?;
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -57,7 +62,9 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: Instantiate
     MAX_CHUNK.save(deps.storage, &max)?;
     CURRENT.save(deps.storage, &None)?;
     NEXT_VERSION.save(deps.storage, &1)?;
-    Ok(Response::new().add_attribute("action", "instantiate").add_attribute("owner", owner))
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute("owner", owner))
 }
 
 pub fn validate_manifest(m: &Manifest, next: u32, max_chunk: u32) -> StdResult<()> {
@@ -77,7 +84,9 @@ pub fn validate_manifest(m: &Manifest, next: u32, max_chunk: u32) -> StdResult<(
             || p.len() > MAX_PATH
             || p[0] == b'/'
             || f.path.contains("..")
-            || !p.iter().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b"._/-".contains(c))
+            || !p
+                .iter()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b"._/-".contains(c))
         {
             return Err(err(format!("bad path {:?}", f.path)));
         }
@@ -94,13 +103,19 @@ pub fn validate_manifest(m: &Manifest, next: u32, max_chunk: u32) -> StdResult<(
             return Err(err("sha256 must be 32 bytes"));
         }
         if f.chunks.is_empty() || f.chunks.len() > MAX_CHUNKS_PER_FILE {
-            return Err(err(format!("chunks per file must be 1..={MAX_CHUNKS_PER_FILE}")));
+            return Err(err(format!(
+                "chunks per file must be 1..={MAX_CHUNKS_PER_FILE}"
+            )));
         }
         if f.chunks.iter().any(|c| c.len() != 32) {
             return Err(err("chunk hash must be 32 bytes"));
         }
-        if f.stored_size > f.chunks.len() as u64 * max_chunk as u64 || f.stored_size < f.chunks.len() as u64 {
-            return Err(err("stored_size inconsistent with chunk count / max_chunk_bytes"));
+        if f.stored_size > f.chunks.len() as u64 * max_chunk as u64
+            || f.stored_size < f.chunks.len() as u64
+        {
+            return Err(err(
+                "stored_size inconsistent with chunk count / max_chunk_bytes",
+            ));
         }
         if f.encoding == "identity" && f.size != f.stored_size {
             return Err(err("identity: size must equal stored_size"));
@@ -130,13 +145,26 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
                 .add_attribute("version", next.to_string())
                 .add_attribute("chunks", total_chunks(&manifest).to_string()))
         }
-        ExecuteMsg::UploadChunk { version, file, index, data } => {
+        ExecuteMsg::UploadChunk {
+            version,
+            file,
+            index,
+            data,
+        } => {
             if PRUNING.has(deps.storage, version) {
                 return Err(err("version is being pruned"));
             }
-            let m = MANIFESTS.may_load(deps.storage, version)?.ok_or_else(|| err("unknown version"))?;
-            let f = m.files.get(file as usize).ok_or_else(|| err("unknown file"))?;
-            let want = f.chunks.get(index as usize).ok_or_else(|| err("unknown chunk"))?;
+            let m = MANIFESTS
+                .may_load(deps.storage, version)?
+                .ok_or_else(|| err("unknown version"))?;
+            let f = m
+                .files
+                .get(file as usize)
+                .ok_or_else(|| err("unknown file"))?;
+            let want = f
+                .chunks
+                .get(index as usize)
+                .ok_or_else(|| err("unknown chunk"))?;
             if data.len() > MAX_CHUNK.load(deps.storage)? as usize || data.is_empty() {
                 return Err(err("chunk size out of range"));
             }
@@ -176,7 +204,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
                 return Err(err("version incomplete"));
             }
             CURRENT.save(deps.storage, &Some(version))?;
-            Ok(Response::new().add_attribute("action", "set_current").add_attribute("version", version.to_string()))
+            Ok(Response::new()
+                .add_attribute("action", "set_current")
+                .add_attribute("version", version.to_string()))
         }
         ExecuteMsg::PruneVersion { version, limit } => {
             cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| err(e.to_string()))?;
@@ -185,20 +215,27 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::SetKeepLast { keep_last } => {
             cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| err(e.to_string()))?;
             match keep_last {
-                Some(n) if n == 0 || n > MAX_KEEP_LAST => return Err(err(format!("keep_last must be 1..={MAX_KEEP_LAST}"))),
+                Some(n) if n == 0 || n > MAX_KEEP_LAST => {
+                    return Err(err(format!("keep_last must be 1..={MAX_KEEP_LAST}")));
+                }
                 Some(n) => KEEP_LAST.save(deps.storage, &n)?,
                 None => KEEP_LAST.remove(deps.storage),
             }
             Ok(Response::new()
                 .add_attribute("action", "set_keep_last")
-                .add_attribute("keep_last", keep_last.map_or("none".into(), |n| n.to_string())))
+                .add_attribute(
+                    "keep_last",
+                    keep_last.map_or("none".into(), |n| n.to_string()),
+                ))
         }
         ExecuteMsg::PruneOld { limit } => {
-            let target = keep_last_target(deps.storage)?.ok_or_else(|| err("nothing to prune under keep_last"))?;
+            let target = keep_last_target(deps.storage)?
+                .ok_or_else(|| err("nothing to prune under keep_last"))?;
             Ok(prune(deps.storage, target, limit)?.add_attribute("policy", "keep_last"))
         }
         ExecuteMsg::UpdateOwnership(a) => {
-            let o = cw_ownable::update_ownership(deps, &env.block, &info.sender, a).map_err(|e| err(e.to_string()))?;
+            let o = cw_ownable::update_ownership(deps, &env.block, &info.sender, a)
+                .map_err(|e| err(e.to_string()))?;
             Ok(Response::new().add_attributes(o.into_attributes()))
         }
     }
@@ -212,17 +249,23 @@ fn prune(storage: &mut dyn Storage, version: u32, limit: Option<u32>) -> StdResu
     if PRUNED.has(storage, version) {
         return Err(err("version already pruned"));
     }
-    let m = MANIFESTS.may_load(storage, version)?.ok_or_else(|| err("unknown version"))?;
+    let m = MANIFESTS
+        .may_load(storage, version)?
+        .ok_or_else(|| err("unknown version"))?;
     let cursor = PRUNING.may_load(storage, version)?;
     if cursor.is_none() && m.activate && version > current.unwrap_or(0) {
         // Still a candidate to become current by auto-activation: refuse until a newer
         // version is current (then it can never activate, see UploadChunk).
         let st = status(storage, version)?;
         if !st.complete {
-            return Err(err("refusing to prune a pending activation target; make a newer version current first"));
+            return Err(err(
+                "refusing to prune a pending activation target; make a newer version current first",
+            ));
         }
     }
-    let limit = limit.unwrap_or(DEFAULT_PRUNE_LIMIT).clamp(1, MAX_PRUNE_LIMIT);
+    let limit = limit
+        .unwrap_or(DEFAULT_PRUNE_LIMIT)
+        .clamp(1, MAX_PRUNE_LIMIT);
     let (mut file, mut index, mut removed) = cursor.unwrap_or((0, 0, 0));
     let mut visited = 0u32;
     while (file as usize) < m.files.len() && visited < limit {
@@ -267,8 +310,12 @@ fn prune(storage: &mut dyn Storage, version: u32, limit: Option<u32>) -> StdResu
 /// newest first; the first n-1 are kept, and if any remain the OLDEST live version is returned.
 /// Versions above c (staged, possibly pending activation) are never candidates. O(n) reads.
 fn keep_last_target(storage: &dyn Storage) -> StdResult<Option<u32>> {
-    let Some(n) = KEEP_LAST.may_load(storage)? else { return Ok(None) };
-    let Some(cur) = CURRENT.load(storage)? else { return Ok(None) };
+    let Some(n) = KEEP_LAST.may_load(storage)? else {
+        return Ok(None);
+    };
+    let Some(cur) = CURRENT.load(storage)? else {
+        return Ok(None);
+    };
     if let Some(v) = PRUNING.keys(storage, None, None, Order::Ascending).next() {
         let v = v?;
         if v != cur {
@@ -276,28 +323,61 @@ fn keep_last_target(storage: &dyn Storage) -> StdResult<Option<u32>> {
         }
     }
     let below: Vec<u32> = MANIFESTS
-        .keys(storage, None, Some(Bound::exclusive(cur)), Order::Descending)
+        .keys(
+            storage,
+            None,
+            Some(Bound::exclusive(cur)),
+            Order::Descending,
+        )
         .take(n as usize)
         .collect::<StdResult<_>>()?;
     if (below.len() as u32) < n {
         return Ok(None); // at most n-1 older versions retained: nothing obsolete
     }
-    let oldest = MANIFESTS.keys(storage, None, Some(Bound::exclusive(cur)), Order::Ascending).next().transpose()?;
+    let oldest = MANIFESTS
+        .keys(storage, None, Some(Bound::exclusive(cur)), Order::Ascending)
+        .next()
+        .transpose()?;
     Ok(oldest)
 }
 
 fn prune_status(storage: &dyn Storage, version: u32) -> StdResult<PruneStatusResponse> {
-    let blank = |state: &str, removed| PruneStatusResponse { version, state: state.into(), next_file: 0, next_index: 0, removed, remaining: 0 };
+    let blank = |state: &str, removed| PruneStatusResponse {
+        version,
+        state: state.into(),
+        next_file: 0,
+        next_index: 0,
+        removed,
+        remaining: 0,
+    };
     if let Some(removed) = PRUNED.may_load(storage, version)? {
         return Ok(blank("pruned", removed));
     }
-    let Some(m) = MANIFESTS.may_load(storage, version)? else { return Ok(blank("unknown", 0)) };
+    let Some(m) = MANIFESTS.may_load(storage, version)? else {
+        return Ok(blank("unknown", 0));
+    };
     let total = total_chunks(&m);
     match PRUNING.may_load(storage, version)? {
-        None => Ok(PruneStatusResponse { remaining: total, ..blank("live", 0) }),
+        None => Ok(PruneStatusResponse {
+            remaining: total,
+            ..blank("live", 0)
+        }),
         Some((file, index, removed)) => {
-            let before: u32 = m.files.iter().take(file as usize).map(|f| f.chunks.len() as u32).sum::<u32>() + index;
-            Ok(PruneStatusResponse { version, state: "pruning".into(), next_file: file, next_index: index, removed, remaining: total - before })
+            let before: u32 = m
+                .files
+                .iter()
+                .take(file as usize)
+                .map(|f| f.chunks.len() as u32)
+                .sum::<u32>()
+                + index;
+            Ok(PruneStatusResponse {
+                version,
+                state: "pruning".into(),
+                next_file: file,
+                next_index: index,
+                removed,
+                remaining: total - before,
+            })
         }
     }
 }
@@ -309,36 +389,64 @@ fn parse_ver(v: &str) -> Option<(u64, u64, u64)> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg, _info: MigrateInfo) -> StdResult<Response> {
+pub fn migrate(
+    deps: DepsMut,
+    _env: Env,
+    _msg: MigrateMsg,
+    _info: MigrateInfo,
+) -> StdResult<Response> {
     let from = match cw2::CONTRACT.may_load(deps.storage)? {
         Some(v) => {
             if v.contract != CONTRACT_NAME {
-                return Err(err(format!("cannot migrate from contract {:?}", v.contract)));
+                return Err(err(format!(
+                    "cannot migrate from contract {:?}",
+                    v.contract
+                )));
             }
             let (old, new) = (parse_ver(&v.version), parse_ver(CONTRACT_VERSION));
             match (old, new) {
                 (Some(o), Some(n)) if o <= n => {}
-                _ => return Err(err(format!("cannot migrate from version {} to {}", v.version, CONTRACT_VERSION))),
+                _ => {
+                    return Err(err(format!(
+                        "cannot migrate from version {} to {}",
+                        v.version, CONTRACT_VERSION
+                    )));
+                }
             }
             v.version
         }
         None => {
             // v1 (code 106) never wrote cw2: accept only a state that looks like this contract.
-            if !MAX_CHUNK.exists(deps.storage) || !NEXT_VERSION.exists(deps.storage) || !CURRENT.exists(deps.storage) {
-                return Err(err("no cw2 version and not a cw-headstash-frontend v1 state"));
+            if !MAX_CHUNK.exists(deps.storage)
+                || !NEXT_VERSION.exists(deps.storage)
+                || !CURRENT.exists(deps.storage)
+            {
+                return Err(err(
+                    "no cw2 version and not a cw-headstash-frontend v1 state",
+                ));
             }
             "v1-no-cw2".to_string()
         }
     };
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::new().add_attribute("action", "migrate").add_attribute("from", from).add_attribute("to", CONTRACT_VERSION))
+    Ok(Response::new()
+        .add_attribute("action", "migrate")
+        .add_attribute("from", from)
+        .add_attribute("to", CONTRACT_VERSION))
 }
 
 fn status(storage: &dyn Storage, version: u32) -> StdResult<StatusResponse> {
-    let m = MANIFESTS.may_load(storage, version)?.ok_or_else(|| err("unknown version"))?;
+    let m = MANIFESTS
+        .may_load(storage, version)?
+        .ok_or_else(|| err("unknown version"))?;
     let total = total_chunks(&m);
     let uploaded = PROGRESS.load(storage, version)?;
-    Ok(StatusResponse { version, uploaded, total, complete: uploaded == total })
+    Ok(StatusResponse {
+        version,
+        uploaded,
+        total,
+        complete: uploaded == total,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -357,19 +465,37 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Manifest { version } => {
             let v = match version {
                 Some(v) => v,
-                None => CURRENT.load(deps.storage)?.ok_or_else(|| err("no current version"))?,
+                None => CURRENT
+                    .load(deps.storage)?
+                    .ok_or_else(|| err("no current version"))?,
             };
-            to_json_binary(&MANIFESTS.may_load(deps.storage, v)?.ok_or_else(|| err("unknown version"))?)
+            to_json_binary(
+                &MANIFESTS
+                    .may_load(deps.storage, v)?
+                    .ok_or_else(|| err("unknown version"))?,
+            )
         }
-        QueryMsg::Chunk { version, file, index } => {
-            let b = deps.storage.get(&chunk_key(version, file, index)).ok_or_else(|| err("chunk not stored"))?;
+        QueryMsg::Chunk {
+            version,
+            file,
+            index,
+        } => {
+            let b = deps
+                .storage
+                .get(&chunk_key(version, file, index))
+                .ok_or_else(|| err("chunk not stored"))?;
             to_json_binary(&Binary::from(b))
         }
         QueryMsg::Status { version } => to_json_binary(&status(deps.storage, version)?),
         QueryMsg::Versions { start_after, limit } => {
             let limit = limit.unwrap_or(30).min(100) as usize;
             let versions = MANIFESTS
-                .keys(deps.storage, start_after.map(Bound::exclusive), None, Order::Ascending)
+                .keys(
+                    deps.storage,
+                    start_after.map(Bound::exclusive),
+                    None,
+                    Order::Ascending,
+                )
                 .take(limit)
                 .map(|v| status(deps.storage, v?))
                 .collect::<StdResult<_>>()?;

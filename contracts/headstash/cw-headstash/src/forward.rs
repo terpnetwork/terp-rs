@@ -87,14 +87,26 @@ fn lp(h: &mut Sha256, b: &[u8]) {
 }
 
 fn b64url(b: &[u8]) -> String {
-    Binary::from(b.to_vec()).to_base64().replace('+', "-").replace('/', "_").trim_end_matches('=').to_string()
+    Binary::from(b.to_vec())
+        .to_base64()
+        .replace('+', "-")
+        .replace('/', "_")
+        .trim_end_matches('=')
+        .to_string()
 }
 
 /// Proof destination for a forward. 49 bytes, fits the 62-byte destination limbs.
 pub fn forward_destination(chain_id: &str, contract: &str, t: &ForwardTarget) -> String {
     let mut h = Sha256::new();
-    for f in [FWD_DOMAIN, chain_id.as_bytes(), contract.as_bytes(), t.channel_id.as_bytes(), t.receiver.as_bytes(),
-              t.memo.as_deref().unwrap_or("").as_bytes(), t.fallback.as_bytes()] {
+    for f in [
+        FWD_DOMAIN,
+        chain_id.as_bytes(),
+        contract.as_bytes(),
+        t.channel_id.as_bytes(),
+        t.receiver.as_bytes(),
+        t.memo.as_deref().unwrap_or("").as_bytes(),
+        t.fallback.as_bytes(),
+    ] {
         lp(&mut h, f);
     }
     format!("{FWD_PREFIX}{}", b64url(&h.finalize()))
@@ -105,7 +117,8 @@ fn printable(s: &str) -> bool {
 }
 
 fn valid_channel_id(c: &str) -> bool {
-    c.strip_prefix("channel-").is_some_and(|n| !n.is_empty() && n.len() <= 10 && n.bytes().all(|b| b.is_ascii_digit()))
+    c.strip_prefix("channel-")
+        .is_some_and(|n| !n.is_empty() && n.len() <= 10 && n.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// Merged transfer memo: the user's JSON object (or nothing) plus our `src_callback`.
@@ -120,13 +133,20 @@ pub fn transfer_memo(user: Option<&str>, contract: &str) -> StdResult<String> {
     if obj.contains_key("src_callback") || obj.contains_key("dest_callback") {
         return Err(StdError::msg("memo may not set callbacks"));
     }
-    obj.insert("src_callback".into(), serde_json::json!({ "address": contract }));
+    obj.insert(
+        "src_callback".into(),
+        serde_json::json!({ "address": contract }),
+    );
     serde_json::to_string(&serde_json::Value::Object(obj)).map_err(|e| StdError::msg(e.to_string()))
 }
 
 /// Stateless checks plus the used-once and allowlist checks. Returns the proof destination,
 /// the channel record, the validated fallback and the merged memo.
-pub fn check_target(deps: Deps, env: &Env, t: &ForwardTarget) -> StdResult<(String, ForwardChannel, Addr, String)> {
+pub fn check_target(
+    deps: Deps,
+    env: &Env,
+    t: &ForwardTarget,
+) -> StdResult<(String, ForwardChannel, Addr, String)> {
     let ch = FORWARD_CHANNELS
         .may_load(deps.storage, t.channel_id.as_str())?
         .filter(|c| c.enabled)
@@ -138,7 +158,10 @@ pub fn check_target(deps: Deps, env: &Env, t: &ForwardTarget) -> StdResult<(Stri
         return Err(StdError::msg("memo too long"));
     }
     let memo = transfer_memo(t.memo.as_deref(), env.contract.address.as_str())?;
-    let fb = deps.api.addr_validate(&t.fallback).map_err(|_| StdError::msg("fallback"))?;
+    let fb = deps
+        .api
+        .addr_validate(&t.fallback)
+        .map_err(|_| StdError::msg("fallback"))?;
     if fb.as_str() != t.fallback || fb == env.contract.address {
         return Err(StdError::msg("fallback"));
     }
@@ -160,27 +183,43 @@ pub fn claim_note_forward(
     let (dest, ch, fb, memo) = check_target(deps.as_ref(), env, &t)?;
     // Address freshness (fresh fallback, never-reused receiver) is a frontend rule
     // (V2-SPEC F.5); the contract only enforces one spend per note (nullifier).
-    crate::direct::record_claim(deps.branch(), env, campaign, &dest, &root, &nullifier, amount, &proof)?;
+    crate::direct::record_claim(
+        deps.branch(),
+        env,
+        campaign,
+        &dest,
+        &root,
+        &nullifier,
+        amount,
+        &proof,
+    )?;
     let hcfg = crate::HEADSTASH_CFG.load(deps.storage)?;
     let strategy = crate::epoch::strategy_for(&hcfg.ts, &campaign.denom)?;
     let denom = strategy.denom(&env.contract.address);
     let coin = Coin::new(amount as u128, denom.clone());
     let timeout = env.block.time.plus_seconds(ch.timeout_seconds);
-    INFLIGHT.save(deps.storage, &PendingForward {
-        channel_id: t.channel_id.clone(),
-        sequence: 0,
-        receiver: t.receiver.clone(),
-        fallback: fb.clone(),
-        coin: coin.clone(),
-        timeout: timeout.seconds(),
-    })?;
+    INFLIGHT.save(
+        deps.storage,
+        &PendingForward {
+            channel_id: t.channel_id.clone(),
+            sequence: 0,
+            receiver: t.receiver.clone(),
+            fallback: fb.clone(),
+            coin: coin.clone(),
+            timeout: timeout.seconds(),
+        },
+    )?;
     let mut res = Response::new()
         .add_attribute("action", "claim_note_forward")
         .add_attribute("amount", amount.to_string())
         .add_attribute("channel_id", t.channel_id.clone())
         .add_attribute("destination", dest);
     if let crate::tokenfactory::TokenStrategy::NewFungible(_) = strategy {
-        res = res.add_message(crate::msg_mint(env.contract.address.to_string(), amount.into(), denom)?);
+        res = res.add_message(crate::msg_mint(
+            env.contract.address.to_string(),
+            amount.into(),
+            denom,
+        )?);
     }
     let transfer = IbcMsg::Transfer {
         channel_id: t.channel_id,
@@ -224,7 +263,11 @@ fn varint(b: &[u8]) -> StdResult<(u64, usize)> {
 
 pub fn reply(deps: DepsMut, msg: Reply) -> Result<Response, StdError> {
     let sub = msg.result.into_result().map_err(StdError::msg)?;
-    let data = &sub.msg_responses.first().ok_or_else(|| StdError::msg("MsgTransfer: no msg response"))?.value;
+    let data = &sub
+        .msg_responses
+        .first()
+        .ok_or_else(|| StdError::msg("MsgTransfer: no msg response"))?
+        .value;
     let seq = transfer_sequence(data.as_slice())?;
     let mut p = INFLIGHT.load(deps.storage)?;
     INFLIGHT.remove(deps.storage);
@@ -253,18 +296,27 @@ fn refund(storage: &mut dyn Storage, key: (&str, u64), why: &str) -> StdResult<I
         .add_attribute("forward_callback", why)
         .add_attribute("refund_to", p.fallback.to_string())
         .add_attribute("forward_sequence", p.sequence.to_string())
-        .add_message(BankMsg::Send { to_address: p.fallback.to_string(), amount: vec![p.coin] }))
+        .add_message(BankMsg::Send {
+            to_address: p.fallback.to_string(),
+            amount: vec![p.coin],
+        }))
 }
 
 /// Never errors: a failing callback cannot strand funds any worse than a missing one.
-pub fn source_callback(deps: DepsMut, env: Env, msg: IbcSourceCallbackMsg) -> StdResult<IbcBasicResponse> {
+pub fn source_callback(
+    deps: DepsMut,
+    env: Env,
+    msg: IbcSourceCallbackMsg,
+) -> StdResult<IbcBasicResponse> {
     let _ = env;
     match msg {
         IbcSourceCallbackMsg::Acknowledgement(m) => {
             let p = &m.original_packet;
             let key = (p.src.channel_id.as_str(), p.sequence);
             if p.src.port_id != "transfer" {
-                return Ok(IbcBasicResponse::new().add_attribute("forward_callback", "ignored_port"));
+                return Ok(
+                    IbcBasicResponse::new().add_attribute("forward_callback", "ignored_port")
+                );
             }
             if ack_is_error(m.acknowledgement.data.as_slice()) {
                 refund(deps.storage, key, "ack_error_refund")
@@ -272,16 +324,29 @@ pub fn source_callback(deps: DepsMut, env: Env, msg: IbcSourceCallbackMsg) -> St
                 let known = PENDING.has(deps.storage, key);
                 PENDING.remove(deps.storage, key);
                 Ok(IbcBasicResponse::new()
-                    .add_attribute("forward_callback", if known { "ack_success" } else { "unknown_packet" })
+                    .add_attribute(
+                        "forward_callback",
+                        if known {
+                            "ack_success"
+                        } else {
+                            "unknown_packet"
+                        },
+                    )
                     .add_attribute("forward_sequence", p.sequence.to_string()))
             }
         }
         IbcSourceCallbackMsg::Timeout(m) => {
             let p = &m.packet;
             if p.src.port_id != "transfer" {
-                return Ok(IbcBasicResponse::new().add_attribute("forward_callback", "ignored_port"));
+                return Ok(
+                    IbcBasicResponse::new().add_attribute("forward_callback", "ignored_port")
+                );
             }
-            refund(deps.storage, (p.src.channel_id.as_str(), p.sequence), "timeout_refund")
+            refund(
+                deps.storage,
+                (p.src.channel_id.as_str(), p.sequence),
+                "timeout_refund",
+            )
         }
     }
 }
@@ -289,9 +354,18 @@ pub fn source_callback(deps: DepsMut, env: Env, msg: IbcSourceCallbackMsg) -> St
 /// Owner: refund a forward whose callback never arrived, only to its bound fallback,
 /// only after `timeout + RESOLVE_GRACE`. The DAO must first check on the counterparty
 /// that the packet was not received (see V2-SPEC §F.7), or the receiver could be paid twice.
-pub fn resolve_forward(deps: DepsMut, env: &Env, info: &MessageInfo, channel_id: String, sequence: u64) -> Result<Response, StdError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| StdError::msg(e.to_string()))?;
-    let p = PENDING.may_load(deps.storage, (channel_id.as_str(), sequence))?.ok_or_else(|| StdError::msg("no pending forward"))?;
+pub fn resolve_forward(
+    deps: DepsMut,
+    env: &Env,
+    info: &MessageInfo,
+    channel_id: String,
+    sequence: u64,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)
+        .map_err(|e| StdError::msg(e.to_string()))?;
+    let p = PENDING
+        .may_load(deps.storage, (channel_id.as_str(), sequence))?
+        .ok_or_else(|| StdError::msg("no pending forward"))?;
     if env.block.time.seconds() <= p.timeout + RESOLVE_GRACE {
         return Err(StdError::msg("resolve before timeout + grace"));
     }
@@ -299,11 +373,21 @@ pub fn resolve_forward(deps: DepsMut, env: &Env, info: &MessageInfo, channel_id:
     Ok(Response::new()
         .add_attribute("action", "resolve_forward")
         .add_attribute("refund_to", p.fallback.to_string())
-        .add_message(BankMsg::Send { to_address: p.fallback.to_string(), amount: vec![p.coin] }))
+        .add_message(BankMsg::Send {
+            to_address: p.fallback.to_string(),
+            amount: vec![p.coin],
+        }))
 }
 
-pub fn set_forward_channel(deps: DepsMut, info: &MessageInfo, channel_id: String, timeout_seconds: u64, enabled: bool) -> Result<Response, StdError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| StdError::msg(e.to_string()))?;
+pub fn set_forward_channel(
+    deps: DepsMut,
+    info: &MessageInfo,
+    channel_id: String,
+    timeout_seconds: u64,
+    enabled: bool,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)
+        .map_err(|e| StdError::msg(e.to_string()))?;
     if !valid_channel_id(&channel_id) {
         return Err(StdError::msg("channel id"));
     }
@@ -311,11 +395,22 @@ pub fn set_forward_channel(deps: DepsMut, info: &MessageInfo, channel_id: String
         return Err(StdError::msg("timeout_seconds"));
     }
     if !FORWARD_CHANNELS.has(deps.storage, channel_id.as_str())
-        && FORWARD_CHANNELS.keys(deps.storage, None, None, Order::Ascending).count() >= MAX_CHANNELS
+        && FORWARD_CHANNELS
+            .keys(deps.storage, None, None, Order::Ascending)
+            .count()
+            >= MAX_CHANNELS
     {
         return Err(StdError::msg("too many channels"));
     }
-    FORWARD_CHANNELS.save(deps.storage, channel_id.as_str(), &ForwardChannel { channel_id: channel_id.clone(), timeout_seconds, enabled })?;
+    FORWARD_CHANNELS.save(
+        deps.storage,
+        channel_id.as_str(),
+        &ForwardChannel {
+            channel_id: channel_id.clone(),
+            timeout_seconds,
+            enabled,
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "set_forward_channel")
         .add_attribute("channel_id", channel_id)
@@ -327,17 +422,31 @@ pub fn validate_hal(s: &HalSource) -> StdResult<()> {
     if u.is_empty() || u.len() > MAX_HAL_URI {
         return Err(StdError::msg("hal uri length"));
     }
-    if !u.bytes().all(|c| (0x21..=0x7e).contains(&c) && !matches!(c, b'"' | b'\'' | b'<' | b'>' | b'\\' | b'`' | b'{' | b'}' | b'|' | b'^')) {
+    if !u.bytes().all(|c| {
+        (0x21..=0x7e).contains(&c)
+            && !matches!(
+                c,
+                b'"' | b'\'' | b'<' | b'>' | b'\\' | b'`' | b'{' | b'}' | b'|' | b'^'
+            )
+    }) {
         return Err(StdError::msg("hal uri charset"));
     }
     let lower = u.to_ascii_lowercase();
     if let Some(i) = lower.find(':') {
         let scheme = &lower[..i];
-        let is_scheme = !scheme.is_empty() && scheme.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'-' | b'.'));
+        let is_scheme = !scheme.is_empty()
+            && scheme
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'+' | b'-' | b'.'));
         // host:port (bare form) has digits after ':' and no "//"
-        let hostport = lower[i + 1..].split('/').next().is_some_and(|p| !p.is_empty() && p.bytes().all(|c| c.is_ascii_digit()));
+        let hostport = lower[i + 1..]
+            .split('/')
+            .next()
+            .is_some_and(|p| !p.is_empty() && p.bytes().all(|c| c.is_ascii_digit()));
         if is_scheme && !hostport {
-            if !matches!(scheme, "ipfs" | "ipns" | "ar" | "https") || !lower[i + 1..].starts_with("//") {
+            if !matches!(scheme, "ipfs" | "ipns" | "ar" | "https")
+                || !lower[i + 1..].starts_with("//")
+            {
                 return Err(StdError::msg("hal uri scheme"));
             }
         }
@@ -363,13 +472,20 @@ pub fn validate_hal(s: &HalSource) -> StdResult<()> {
     Ok(())
 }
 
-pub fn set_hal_source(deps: DepsMut, info: &MessageInfo, source: Option<HalSource>) -> Result<Response, StdError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender).map_err(|e| StdError::msg(e.to_string()))?;
+pub fn set_hal_source(
+    deps: DepsMut,
+    info: &MessageInfo,
+    source: Option<HalSource>,
+) -> Result<Response, StdError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)
+        .map_err(|e| StdError::msg(e.to_string()))?;
     match source {
         Some(s) => {
             validate_hal(&s)?;
             HAL_SOURCE.save(deps.storage, &s)?;
-            Ok(Response::new().add_attribute("action", "set_hal_source").add_attribute("uri", s.uri))
+            Ok(Response::new()
+                .add_attribute("action", "set_hal_source")
+                .add_attribute("uri", s.uri))
         }
         None => {
             HAL_SOURCE.remove(deps.storage);
@@ -379,15 +495,28 @@ pub fn set_hal_source(deps: DepsMut, info: &MessageInfo, source: Option<HalSourc
 }
 
 pub fn query_channels(storage: &dyn Storage) -> StdResult<Vec<ForwardChannel>> {
-    FORWARD_CHANNELS.range(storage, None, None, Order::Ascending).take(MAX_CHANNELS).map(|r| r.map(|(_, v)| v)).collect()
+    FORWARD_CHANNELS
+        .range(storage, None, None, Order::Ascending)
+        .take(MAX_CHANNELS)
+        .map(|r| r.map(|(_, v)| v))
+        .collect()
 }
 
-pub fn query_pending(storage: &dyn Storage, start_after: Option<(String, u64)>, limit: Option<u32>) -> StdResult<Vec<PendingForward>> {
+pub fn query_pending(
+    storage: &dyn Storage,
+    start_after: Option<(String, u64)>,
+    limit: Option<u32>,
+) -> StdResult<Vec<PendingForward>> {
     let lim = limit.unwrap_or(30).min(100) as usize;
-    let start = start_after.as_ref().map(|(c, s)| Bound::exclusive((c.as_str(), *s)));
-    PENDING.range(storage, start, None, Order::Ascending).take(lim).map(|r| r.map(|(_, v)| v)).collect()
+    let start = start_after
+        .as_ref()
+        .map(|(c, s)| Bound::exclusive((c.as_str(), *s)));
+    PENDING
+        .range(storage, start, None, Order::Ascending)
+        .take(lim)
+        .map(|r| r.map(|(_, v)| v))
+        .collect()
 }
-
 
 #[cfg(test)]
 mod frontend_vectors {
@@ -395,11 +524,31 @@ mod frontend_vectors {
     /// Same vectors as tools/headstash/frontend/test/v2lib.test.mjs (claim page computes the destination locally).
     #[test]
     fn forward_destination_matches_claim_page() {
-        let t = |c: &str, r: &str, m: Option<&str>, f: &str| ForwardTarget { channel_id: c.into(), receiver: r.into(), memo: m.map(Into::into), fallback: f.into() };
-        assert_eq!(forward_destination("terp-local-1", "terp1contract", &t("channel-7", "penumbra1xyz", None, "terp1fallback")),
-                   "hsfwd1l3oJE1L5SZTc5Dc42Mim0GCH3GE4JmKom3DyMt0OmjM");
-        assert_eq!(forward_destination("90u-4", "terp1abc", &t("channel-0", "osmo1r", Some("hello"), "terp1fb")),
-                   "hsfwd1F_KbPO0Hl2dNEgw3H3QyJAoYhxxqFjsMnHsvN6XmaRY");
-        assert_eq!(forward_destination("a", "b", &t("channel-1", "r", Some(""), "f")), forward_destination("a", "b", &t("channel-1", "r", None, "f")));
+        let t = |c: &str, r: &str, m: Option<&str>, f: &str| ForwardTarget {
+            channel_id: c.into(),
+            receiver: r.into(),
+            memo: m.map(Into::into),
+            fallback: f.into(),
+        };
+        assert_eq!(
+            forward_destination(
+                "terp-local-1",
+                "terp1contract",
+                &t("channel-7", "penumbra1xyz", None, "terp1fallback")
+            ),
+            "hsfwd1l3oJE1L5SZTc5Dc42Mim0GCH3GE4JmKom3DyMt0OmjM"
+        );
+        assert_eq!(
+            forward_destination(
+                "90u-4",
+                "terp1abc",
+                &t("channel-0", "osmo1r", Some("hello"), "terp1fb")
+            ),
+            "hsfwd1F_KbPO0Hl2dNEgw3H3QyJAoYhxxqFjsMnHsvN6XmaRY"
+        );
+        assert_eq!(
+            forward_destination("a", "b", &t("channel-1", "r", Some(""), "f")),
+            forward_destination("a", "b", &t("channel-1", "r", None, "f"))
+        );
     }
 }

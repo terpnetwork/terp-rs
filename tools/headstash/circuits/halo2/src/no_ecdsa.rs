@@ -12,8 +12,8 @@ use std::vec::Vec;
 use ff::{Field, PrimeField};
 use halo2_gadgets::{
     poseidon::{
-        primitives::{ConstantLength, P128Pow5T3},
         Hash as PoseidonHash, Pow5Chip as PoseidonChip, Pow5Config as PoseidonConfig,
+        primitives::{ConstantLength, P128Pow5T3},
     },
     utilities::cond_swap::{CondSwapChip, CondSwapInstructions},
 };
@@ -89,8 +89,16 @@ impl Circuit<pallas::Base> for MembershipCircuit {
         for column in &advice {
             meta.enable_equality(*column);
         }
-        let rc_a = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
-        let rc_b = [meta.fixed_column(), meta.fixed_column(), meta.fixed_column()];
+        let rc_a = [
+            meta.fixed_column(),
+            meta.fixed_column(),
+            meta.fixed_column(),
+        ];
+        let rc_b = [
+            meta.fixed_column(),
+            meta.fixed_column(),
+            meta.fixed_column(),
+        ];
         meta.enable_constant(rc_b[0]);
         let poseidon = PoseidonChip::configure::<P128Pow5T3>(
             meta,
@@ -117,8 +125,18 @@ impl Circuit<pallas::Base> for MembershipCircuit {
         let ctx = load(&mut layouter, config.advice[1], "ctx", self.ctx)?;
         let amount_fp = self.amount.map(pallas::Base::from);
         let amount = load(&mut layouter, config.advice[2], "amount", amount_fp)?;
-        let dest_lo = load(&mut layouter, config.advice[3], "dest_lo", self.destination_lo)?;
-        let dest_hi = load(&mut layouter, config.advice[4], "dest_hi", self.destination_hi)?;
+        let dest_lo = load(
+            &mut layouter,
+            config.advice[3],
+            "dest_lo",
+            self.destination_lo,
+        )?;
+        let dest_hi = load(
+            &mut layouter,
+            config.advice[4],
+            "dest_hi",
+            self.destination_hi,
+        )?;
 
         let key_com = hash2(
             &mut layouter,
@@ -209,11 +227,10 @@ fn merkle_root(
     for layer in 0..MEMBERSHIP_DEPTH {
         let sibling = path.map(|words| words[layer]);
         let swap_bit = position.map(|pos| (pos >> layer) & 1 == 1);
-        let (left, right) = config.swap.swap(
-            layouter.namespace(|| "order"),
-            (node, sibling),
-            swap_bit,
-        )?;
+        let (left, right) =
+            config
+                .swap
+                .swap(layouter.namespace(|| "order"), (node, sibling), swap_bit)?;
         let tag = load(
             layouter,
             config.advice[5],
@@ -245,7 +262,11 @@ pub fn claim_nullifier(secret: pallas::Base, ctx: pallas::Base) -> pallas::Base 
 }
 
 pub fn membership_leaf(key_com: pallas::Base, amount: u64) -> pallas::Base {
-    poseidon_hash3(personalization_to_fp(TAG_LEAF), key_com, pallas::Base::from(amount))
+    poseidon_hash3(
+        personalization_to_fp(TAG_LEAF),
+        key_com,
+        pallas::Base::from(amount),
+    )
 }
 
 fn poseidon_hash2(tag: pallas::Base, left: pallas::Base) -> pallas::Base {
@@ -332,7 +353,14 @@ pub fn prove_membership(
     let leaf = membership_leaf(key_com, amount);
     let root = auth_root(leaf, position, &path);
     let nullifier = claim_nullifier(secret, ctx);
-    let public = vec![ctx, root, nullifier, dest_lo, dest_hi, pallas::Base::from(amount)];
+    let public = vec![
+        ctx,
+        root,
+        nullifier,
+        dest_lo,
+        dest_hi,
+        pallas::Base::from(amount),
+    ];
     let circuit = MembershipCircuit {
         secret: Value::known(secret),
         ctx: Value::known(ctx),
@@ -386,7 +414,6 @@ pub fn prove_membership(
         pk_bytes: pk_buf.len(),
     })
 }
-
 
 /// Footer public-input count: ctx, root, nullifier, dest_lo, dest_hi, amount.
 pub const MEMBERSHIP_INSTANCES: u8 = 6;
@@ -462,7 +489,6 @@ fn canon_field(bytes: &[u8; 32]) -> Result<pallas::Base, String> {
     let value = Option::from(pallas::Base::from_repr(*bytes)).ok_or("field")?;
     Ok(value)
 }
-
 
 /// Blob, proof, and the 6x32-byte public limbs the host verifier reads.
 #[derive(Clone, Debug)]
@@ -540,7 +566,6 @@ pub fn minimal_k(circuit: &MembershipCircuit, public: &[pallas::Base]) -> Result
     Err("no K in 8..20 satisfied the membership circuit".to_string())
 }
 
-
 // Browser witness entry points (used by browser_prove.rs and the claim page).
 pub fn registration_message(ctx: pallas::Base, key_com: pallas::Base, amount: u64) -> String {
     format!(
@@ -552,7 +577,11 @@ pub fn registration_message(ctx: pallas::Base, key_com: pallas::Base, amount: u6
 }
 
 fn parse_fp(hex_str: &str) -> Result<pallas::Base, String> {
-    if hex_str.len() != 64 || !hex_str.bytes().all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()) {
+    if hex_str.len() != 64
+        || !hex_str
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
         return Err("field".into());
     }
     let bytes = hex::decode(hex_str).map_err(|_| "field".to_string())?;
@@ -575,17 +604,42 @@ fn parse_amount(value: &serde_json::Value) -> Result<u64, String> {
 
 /// Prove a caller-supplied witness. The supplied root must be the Poseidon root of this leaf.
 pub fn prove_witness_json(witness_json: &str) -> Result<MembershipProof, String> {
-    let value: serde_json::Value = serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
-    let secret = parse_fp(value.get("secret_hex").and_then(|item| item.as_str()).ok_or("secret")?)?;
-    let ctx = parse_fp(value.get("ctx_hex").and_then(|item| item.as_str()).ok_or("ctx")?)?;
-    let root = parse_fp(value.get("root_hex").and_then(|item| item.as_str()).ok_or("root")?)?;
-    let destination = value.get("destination").and_then(|item| item.as_str()).ok_or("destination")?;
+    let value: serde_json::Value =
+        serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
+    let secret = parse_fp(
+        value
+            .get("secret_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("secret")?,
+    )?;
+    let ctx = parse_fp(
+        value
+            .get("ctx_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("ctx")?,
+    )?;
+    let root = parse_fp(
+        value
+            .get("root_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("root")?,
+    )?;
+    let destination = value
+        .get("destination")
+        .and_then(|item| item.as_str())
+        .ok_or("destination")?;
     let amount = parse_amount(value.get("amount").ok_or("amount")?)?;
-    let index = value.get("index").and_then(|item| item.as_u64()).ok_or("index")?;
+    let index = value
+        .get("index")
+        .and_then(|item| item.as_u64())
+        .ok_or("index")?;
     if index >= 1u64 << MEMBERSHIP_DEPTH {
         return Err("index".into());
     }
-    let siblings = value.get("siblings_hex").and_then(|item| item.as_array()).ok_or("siblings")?;
+    let siblings = value
+        .get("siblings_hex")
+        .and_then(|item| item.as_array())
+        .ok_or("siblings")?;
     if siblings.len() != MEMBERSHIP_DEPTH {
         return Err("siblings".into());
     }
@@ -593,7 +647,11 @@ pub fn prove_witness_json(witness_json: &str) -> Result<MembershipProof, String>
     for (layer, sibling) in siblings.iter().enumerate() {
         path[layer] = parse_fp(sibling.as_str().ok_or("sibling")?)?;
     }
-    let computed = auth_root(membership_leaf(key_commitment(secret), amount), index as u32, &path);
+    let computed = auth_root(
+        membership_leaf(key_commitment(secret), amount),
+        index as u32,
+        &path,
+    );
     if computed != root {
         return Err("root".into());
     }
@@ -606,27 +664,59 @@ pub fn prove_witness_json(witness_json: &str) -> Result<MembershipProof, String>
 
 /// Verify proof bytes for a witness under the K=11 membership key (vk id 2).
 pub fn verify_witness_proof(witness_json: &str, proof: &[u8]) -> Result<(), String> {
-    let value: serde_json::Value = serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
-    let secret = parse_fp(value.get("secret_hex").and_then(|item| item.as_str()).ok_or("secret")?)?;
-    let ctx = parse_fp(value.get("ctx_hex").and_then(|item| item.as_str()).ok_or("ctx")?)?;
-    let root = parse_fp(value.get("root_hex").and_then(|item| item.as_str()).ok_or("root")?)?;
-    let destination = value.get("destination").and_then(|item| item.as_str()).ok_or("destination")?;
+    let value: serde_json::Value =
+        serde_json::from_str(witness_json).map_err(|_| "witness".to_string())?;
+    let secret = parse_fp(
+        value
+            .get("secret_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("secret")?,
+    )?;
+    let ctx = parse_fp(
+        value
+            .get("ctx_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("ctx")?,
+    )?;
+    let root = parse_fp(
+        value
+            .get("root_hex")
+            .and_then(|item| item.as_str())
+            .ok_or("root")?,
+    )?;
+    let destination = value
+        .get("destination")
+        .and_then(|item| item.as_str())
+        .ok_or("destination")?;
     let amount = parse_amount(value.get("amount").ok_or("amount")?)?;
     let (dest_lo, dest_hi) = pack_destination(destination)?;
     let nullifier = claim_nullifier(secret, ctx);
-    let public = vec![ctx, root, nullifier, dest_lo, dest_hi, pallas::Base::from(amount)];
+    let public = vec![
+        ctx,
+        root,
+        nullifier,
+        dest_lo,
+        dest_hi,
+        pallas::Base::from(amount),
+    ];
     let circuit = MembershipCircuit::default();
     let params = Params::<vesta::Affine>::new(11);
     let vk = plonk::keygen_vk(&params, &circuit).map_err(|err| format!("vk {err:?}"))?;
     verify_membership(&params, &vk, proof, &public)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn fixture() -> (pallas::Base, pallas::Base, u64, u32, [pallas::Base; MEMBERSHIP_DEPTH], &'static str) {
+    fn fixture() -> (
+        pallas::Base,
+        pallas::Base,
+        u64,
+        u32,
+        [pallas::Base; MEMBERSHIP_DEPTH],
+        &'static str,
+    ) {
         let secret = pallas::Base::from(0x11u64);
         let ctx = pallas::Base::from(0x22u64);
         let amount = 15u64;
@@ -640,7 +730,8 @@ mod tests {
     fn membership_proof_verifies_at_min_k() {
         let (secret, ctx, amount, position, path, destination) = fixture();
         let started = tick();
-        let proof = prove_membership(secret, ctx, amount, position, path, destination).expect("prove");
+        let proof =
+            prove_membership(secret, ctx, amount, position, path, destination).expect("prove");
         let secs = since(started);
         let key_com = key_commitment(secret);
         assert_eq!(proof.public[2], claim_nullifier(secret, ctx));
@@ -669,15 +760,18 @@ mod tests {
         ctx_b.copy_from_slice(ctx.to_repr().as_ref());
         root_b.copy_from_slice(root.to_repr().as_ref());
         nullifier_b.copy_from_slice(nullifier.to_repr().as_ref());
-        let inputs = membership_public_inputs(&ctx_b, &root_b, &nullifier_b, destination, amount)
-            .unwrap();
+        let inputs =
+            membership_public_inputs(&ctx_b, &root_b, &nullifier_b, destination, amount).unwrap();
         assert_eq!(inputs.len(), 192);
         assert_eq!(&inputs[0..32], ctx_b.as_slice());
         assert_eq!(&inputs[32..64], root_b.as_slice());
         assert_eq!(&inputs[64..96], nullifier_b.as_slice());
         assert_eq!(&inputs[96..128], dest_lo.to_repr().as_slice());
         assert_eq!(&inputs[128..160], dest_hi.to_repr().as_slice());
-        assert_eq!(&inputs[160..192], pallas::Base::from(amount).to_repr().as_slice());
+        assert_eq!(
+            &inputs[160..192],
+            pallas::Base::from(amount).to_repr().as_slice()
+        );
         let body = canonical_body(ctx, root, nullifier, destination, amount);
         assert!(body.contains(&hex::encode(ctx_b)));
     }
@@ -707,9 +801,16 @@ mod tests {
         let mut path = [pallas::Base::ZERO; MEMBERSHIP_DEPTH];
         path[0] = pallas::Base::from(7u64);
         path[3] = pallas::Base::from(9u64);
-        let root = auth_root(membership_leaf(key_commitment(secret), amount), index, &path);
+        let root = auth_root(
+            membership_leaf(key_commitment(secret), amount),
+            index,
+            &path,
+        );
         let destination = "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw";
-        let siblings: Vec<String> = path.iter().map(|limb| hex::encode(limb.to_repr())).collect();
+        let siblings: Vec<String> = path
+            .iter()
+            .map(|limb| hex::encode(limb.to_repr()))
+            .collect();
         serde_json::json!({
             "secret_hex": hex::encode(secret.to_repr()),
             "ctx_hex": hex::encode(ctx.to_repr()),
@@ -718,7 +819,8 @@ mod tests {
             "index": index,
             "siblings_hex": siblings,
             "destination": destination,
-        }).to_string()
+        })
+        .to_string()
     }
 
     #[test]
@@ -737,8 +839,10 @@ mod tests {
     #[test]
     #[ignore = "HS_WITNESS and HS_BROWSER_PROOF from the loopback worker"]
     fn browser_witness_proof_matches_k11_vk() {
-        let witness = std::fs::read_to_string(std::env::var("HS_WITNESS").expect("witness")).expect("read");
-        let proof_hex = std::fs::read_to_string(std::env::var("HS_BROWSER_PROOF").expect("proof")).expect("read");
+        let witness =
+            std::fs::read_to_string(std::env::var("HS_WITNESS").expect("witness")).expect("read");
+        let proof_hex = std::fs::read_to_string(std::env::var("HS_BROWSER_PROOF").expect("proof"))
+            .expect("read");
         let proof = hex::decode(proof_hex.trim()).expect("hex");
         assert_eq!(proof.len(), 2752);
         verify_witness_proof(witness.trim(), &proof).expect("verify");
@@ -762,9 +866,22 @@ mod tests {
             key_hex,
             "30a1926427275f67355ac7c48031acbc2266cac18cd86447c563b54e70113a08"
         );
-        let body = canonical_body(ctx, key_com, key_com, "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw", 15);
+        let body = canonical_body(
+            ctx,
+            key_com,
+            key_com,
+            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq5ffndw",
+            15,
+        );
         assert!(body.starts_with("headstash-claim-v1:"));
-        let public = vec![ctx, key_com, key_com, key_com, key_com, pallas::Base::from(15u64)];
+        let public = vec![
+            ctx,
+            key_com,
+            key_com,
+            key_com,
+            key_com,
+            pallas::Base::from(15u64),
+        ];
         assert_eq!(public.len(), 6);
     }
 }

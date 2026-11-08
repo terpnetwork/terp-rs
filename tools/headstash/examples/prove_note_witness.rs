@@ -4,9 +4,13 @@
 use std::io::Read;
 
 fn main() {
-    let path = std::env::args().nth(1).unwrap_or_else(|| "/dev/stdin".into());
+    let path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "/dev/stdin".into());
     let mut text = String::new();
-    std::fs::File::open(&path).and_then(|mut f| f.read_to_string(&mut text)).expect("witness");
+    std::fs::File::open(&path)
+        .and_then(|mut f| f.read_to_string(&mut text))
+        .expect("witness");
     match zk_headstash::note_membership::prove_note_witness_json(&text) {
         Ok(p) => println!(
             "{}",

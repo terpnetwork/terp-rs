@@ -544,15 +544,15 @@ impl<const D: usize> Campaign<D> {
         }
         // Production open refuses a zero hash. The in-process fixture is the
         // only campaign that skips this compare, so its proof can count a host call.
-        if !self.unbound_fixture && crate::host::halo2_vk_hash(self.vk_id) != Some(self.vk_hash)
-        {
+        if !self.unbound_fixture && crate::host::halo2_vk_hash(self.vk_id) != Some(self.vk_hash) {
             return Err(IngressError::Vk);
         }
         self.verifies.fetch_add(1, Ordering::Relaxed);
         // vk id 2 is the K=11 membership circuit: six field limbs.
         // vk id 1 stays the K=19 epoch statement, including its trailing limb.
         // vk id 3 (note circuit) uses the same six limbs in the same order.
-        let instances = if item.vk_id == crate::MEMBERSHIP_VK_ID || item.vk_id == crate::NOTE_VK_ID {
+        let instances = if item.vk_id == crate::MEMBERSHIP_VK_ID || item.vk_id == crate::NOTE_VK_ID
+        {
             zk_headstash::no_ecdsa::membership_public_inputs(
                 &parsed.ctx,
                 &parsed.root,
@@ -572,11 +572,9 @@ impl<const D: usize> Campaign<D> {
                 amount: parsed.amount,
                 recipient,
             };
-            zk_headstash::circuit::host_public_inputs(&statement).map_err(|err| {
-                match err {
-                    zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
-                    zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
-                }
+            zk_headstash::circuit::host_public_inputs(&statement).map_err(|err| match err {
+                zk_headstash::circuit::EpochVerifyError::Public => IngressError::Public,
+                zk_headstash::circuit::EpochVerifyError::Proof => IngressError::Proof,
             })?
         };
         crate::host::verify_with_host(item.vk_id, &item.proof, &instances)
@@ -628,7 +626,8 @@ impl<const D: usize> Campaign<D> {
 mod tests {
     use super::*;
     use crate::{
-        ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, aggregate_root, attested_root, receipt_message, sha256,
+        ALGO_ACCEPTED, ALGO_PENDING, BATCH_ATTEST_TIMESTAMP, aggregate_root, attested_root,
+        receipt_message, sha256,
     };
     use ed25519_dalek::{Signer, SigningKey};
     use headstash_claim::statement::{canonical_claim_message, canonical_sign_message, pack_words};
@@ -1228,7 +1227,10 @@ mod tests {
         let pending = campaign.seal(49, &custody);
         assert_eq!(pending.algo, ALGO_PENDING);
         assert_eq!(pending.batch_hash, campaign.pending_root());
-        assert_eq!(pending.attested, aggregate_root(&pending.attestation_value()));
+        assert_eq!(
+            pending.attested,
+            aggregate_root(&pending.attestation_value())
+        );
         assert_eq!(pending.attestation_height, 1);
         assert_eq!(pending.foreign_height, 49);
         assert!(pending.custody_ok());
@@ -1373,7 +1375,10 @@ fn parse_canonical_message(message: &[u8]) -> Option<ParsedBody> {
 }
 
 fn hex32(text: &str) -> Option<[u8; 32]> {
-    if text.len() != 64 || !text.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    if text.len() != 64
+        || !text
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
     {
         return None;
     }

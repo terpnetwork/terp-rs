@@ -1167,10 +1167,9 @@ mod tests {
         let proved = prove_claim(&opening);
         let verified = verify_claim::<FIXTURE_DEPTH>(&proved).expect("verify");
         assert_eq!(verified.amount, opening.v);
-        let text = String::from_utf8(
-            statement::canonical_claim_message(&claim, "terp").expect("body"),
-        )
-        .unwrap();
+        let text =
+            String::from_utf8(statement::canonical_claim_message(&claim, "terp").expect("body"))
+                .unwrap();
         assert!(text.ends_with(&format!(":{}", opening.v)));
         let private = PrivateOpening {
             open: opening,

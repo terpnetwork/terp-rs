@@ -34,8 +34,6 @@ pub fn install_panic_hook() {
     });
 }
 
-
-
 fn wasm_mem() -> usize {
     #[cfg(target_arch = "wasm32")]
     {
@@ -85,8 +83,11 @@ pub fn membership_key_com_hex(secret_hex: &str) -> Result<String, JsError> {
     }
     let mut repr = [0u8; 32];
     repr.copy_from_slice(&bytes);
-    let secret = Option::from(pallas::Base::from_repr(repr)).ok_or_else(|| JsError::new("secret"))?;
-    Ok(hex::encode(crate::no_ecdsa::key_commitment(secret).to_repr()))
+    let secret =
+        Option::from(pallas::Base::from_repr(repr)).ok_or_else(|| JsError::new("secret"))?;
+    Ok(hex::encode(
+        crate::no_ecdsa::key_commitment(secret).to_repr(),
+    ))
 }
 
 /// Prove a real membership witness. JSON fields are secret_hex, ctx_hex,
@@ -94,7 +95,8 @@ pub fn membership_key_com_hex(secret_hex: &str) -> Result<String, JsError> {
 #[wasm_bindgen]
 pub fn prove_membership_witness_browser(witness_json: &str) -> Result<String, JsError> {
     phase(&format!("witness-enter mem={}", wasm_mem()));
-    let proof = crate::no_ecdsa::prove_witness_json(witness_json).map_err(|err| JsError::new(&err))?;
+    let proof =
+        crate::no_ecdsa::prove_witness_json(witness_json).map_err(|err| JsError::new(&err))?;
     phase(&format!(
         "witness-exit mem={} k={} proof_bytes={}",
         wasm_mem(),
@@ -120,7 +122,12 @@ pub fn prove_note_witness_browser(witness_json: &str) -> Result<String, JsError>
     phase(&format!("note-enter mem={}", wasm_mem()));
     let proof = crate::note_membership::prove_note_witness_json(witness_json)
         .map_err(|err| JsError::new(&err))?;
-    phase(&format!("note-exit mem={} k={} proof_bytes={}", wasm_mem(), proof.k, proof.proof.len()));
+    phase(&format!(
+        "note-exit mem={} k={} proof_bytes={}",
+        wasm_mem(),
+        proof.k,
+        proof.proof.len()
+    ));
     let body = serde_json::json!({
         "vk_id": crate::note_membership::NOTE_VK_ID,
         "k": proof.k,
@@ -142,7 +149,9 @@ pub fn note_secret_from_wide_hex(wide_hex: &str) -> Result<String, JsError> {
     }
     let mut wide = [0u8; 64];
     wide.copy_from_slice(&bytes);
-    Ok(hex::encode(pallas::Base::from_uniform_bytes(&wide).to_repr()))
+    Ok(hex::encode(
+        pallas::Base::from_uniform_bytes(&wide).to_repr(),
+    ))
 }
 
 /// Little-endian hex of the note nullifier Poseidon(nf_tag, secret, ctx), the
@@ -158,5 +167,7 @@ pub fn note_nullifier_hex(secret_hex: &str, ctx_hex: &str) -> Result<String, JsE
         r.copy_from_slice(&b);
         Option::from(pallas::Base::from_repr(r)).ok_or_else(|| JsError::new("field"))
     };
-    Ok(hex::encode(crate::no_ecdsa::claim_nullifier(parse(secret_hex)?, parse(ctx_hex)?).to_repr()))
+    Ok(hex::encode(
+        crate::no_ecdsa::claim_nullifier(parse(secret_hex)?, parse(ctx_hex)?).to_repr(),
+    ))
 }

@@ -235,10 +235,8 @@ pub fn poseidon_distro_crh(layer: u32, left: pallas::Base, right: pallas::Base) 
 
 /// `key_com = Poseidon(terp-hs-keycom-v1, secret)`. Matches the K=11 membership hash.
 pub fn registration_key_commitment(secret: pallas::Base) -> pallas::Base {
-    poseidon::Hash::<_, P128Pow5T3, ConstantLength<2>, 3, 2>::init().hash([
-        personalization_to_fp("terp-hs-keycom-v1"),
-        secret,
-    ])
+    poseidon::Hash::<_, P128Pow5T3, ConstantLength<2>, 3, 2>::init()
+        .hash([personalization_to_fp("terp-hs-keycom-v1"), secret])
 }
 
 /// Leaf `Poseidon(terp-hs-claim-leaf-v1, key_com, amount)`. Amount is the u64 field element.

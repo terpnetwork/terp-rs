@@ -31,7 +31,11 @@ fn validate(api: &dyn Api, p: Option<String>) -> StdResult<Option<Addr>> {
     }
 }
 
-pub fn save_pauser(storage: &mut dyn Storage, api: &dyn Api, p: Option<String>) -> StdResult<Option<Addr>> {
+pub fn save_pauser(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    p: Option<String>,
+) -> StdResult<Option<Addr>> {
     let a = validate(api, p)?;
     match &a {
         Some(a) => PAUSER.save(storage, a)?,
@@ -48,10 +52,14 @@ pub fn ensure_not_paused(storage: &dyn Storage) -> StdResult<()> {
 }
 
 fn assert_pauser_or_owner(storage: &dyn Storage, sender: &Addr) -> StdResult<()> {
-    if PAUSER.may_load(storage)?.as_ref() == Some(sender) || cw_ownable::assert_owner(storage, sender).is_ok() {
+    if PAUSER.may_load(storage)?.as_ref() == Some(sender)
+        || cw_ownable::assert_owner(storage, sender).is_ok()
+    {
         return Ok(());
     }
-    Err(StdError::msg("unauthorized: only the pauser or the owner can pause/resume"))
+    Err(StdError::msg(
+        "unauthorized: only the pauser or the owner can pause/resume",
+    ))
 }
 
 pub fn pause(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, StdError> {
@@ -59,7 +67,13 @@ pub fn pause(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, Std
     if PAUSED.may_load(deps.storage)?.is_some() {
         return Err(StdError::msg("already paused"));
     }
-    PAUSED.save(deps.storage, &PauseRecord { height: env.block.height, by: info.sender.clone() })?;
+    PAUSED.save(
+        deps.storage,
+        &PauseRecord {
+            height: env.block.height,
+            by: info.sender.clone(),
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "pause")
         .add_attribute("by", info.sender)
@@ -78,12 +92,19 @@ pub fn resume(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, St
         .add_attribute("height", env.block.height.to_string()))
 }
 
-pub fn update_pauser(deps: DepsMut, info: MessageInfo, pauser: Option<String>) -> Result<Response, StdError> {
+pub fn update_pauser(
+    deps: DepsMut,
+    info: MessageInfo,
+    pauser: Option<String>,
+) -> Result<Response, StdError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let a = save_pauser(deps.storage, deps.api, pauser)?;
     Ok(Response::new()
         .add_attribute("action", "update_pauser")
-        .add_attribute("pauser", a.map(|a| a.to_string()).unwrap_or_else(|| "none".into())))
+        .add_attribute(
+            "pauser",
+            a.map(|a| a.to_string()).unwrap_or_else(|| "none".into()),
+        ))
 }
 
 pub fn query_status(storage: &dyn Storage) -> StdResult<PauseStatusResponse> {
