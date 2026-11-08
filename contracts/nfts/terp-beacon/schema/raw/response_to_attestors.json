@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttestorsResponse",
+  "type": "object",
+  "required": [
+    "attestors"
+  ],
+  "properties": {
+    "attestors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AttestorInfo"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AttestorInfo": {
+      "type": "object",
+      "required": [
+        "key_type",
+        "pubkey"
+      ],
+      "properties": {
+        "key_type": {
+          "$ref": "#/definitions/AttestorKeyType"
+        },
+        "pubkey": {
+          "$ref": "#/definitions/HexBinary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "AttestorKeyType": {
+      "description": "Only secp256k1 compressed keys are accepted. The enum is the storage tag a later ed25519 variant would extend.",
+      "type": "string",
+      "enum": [
+        "secp256k1"
+      ]
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

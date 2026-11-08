@@ -142,7 +142,11 @@ pub fn prize_coins(info: &RaffleInfo) -> Vec<Coin> {
 
 /// Ticket-denom pot: tickets paid in the default denom only.
 /// Alt-paid tickets live in [`ALT_POT`].
-pub fn ticket_pot(storage: &dyn Storage, raffle_id: u64, info: &RaffleInfo) -> Result<Uint256, ContractError> {
+pub fn ticket_pot(
+    storage: &dyn Storage,
+    raffle_id: u64,
+    info: &RaffleInfo,
+) -> Result<Uint256, ContractError> {
     let alt = ALT_TICKETS.may_load(storage, raffle_id)?.unwrap_or(0);
     let default_paid = info.ticket_count.saturating_sub(alt);
     info.ticket_price

@@ -2,7 +2,8 @@
 
 Atlas `app-contracts` drew winners from a Nois proxy and later from a Drand
 verifier (`contracts/randomness_verifier`). Those crates are not in this
-workspace, and the draw does not call them.
+workspace. Their replacement is `contracts/nfts/terp-beacon`, a drand verifier
+derived from Nois (see its README for attribution) that implements `Provide`.
 
 `nftfi-raffle` stores a `RandomnessSource` set at instantiate:
 
@@ -27,3 +28,14 @@ ticket funds are refunded.
 
 `Seed { provider: None }` is for tests and local chains. A production instantiate
 should set a provider, or use `Callback` with a verifier you operate.
+
+## terp-beacon
+
+`NftfiSuite::deploy_on` instantiates `terp-beacon` (quicknet preset) and the
+raffle with `Callback { verifier: <beacon> }`. For a raffle ending at `end`,
+`Provide` answers with drand round `round_after(end)`: the first quicknet round
+published strictly after `end`, with randomness `sha256(signature)`. Until a
+relayer submits that round with `AddRound` (verified on chain with
+the CosmWasm bls12_381 host functions), `RequestDraw` fails and can be retried. The quicknet e2e is
+`tests/tests/nftfi_flows.rs::raffle_draw_with_quicknet_beacon`.
+

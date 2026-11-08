@@ -1,0 +1,979 @@
+{
+  "contract_name": "terp-beacon",
+  "contract_version": "0.0.2",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "admin",
+      "chain_hash",
+      "genesis_time",
+      "period_seconds",
+      "pubkey",
+      "scheme"
+    ],
+    "properties": {
+      "admin": {
+        "type": "string"
+      },
+      "callback_gas_limit": {
+        "description": "Gas limit on each nois callback submessage. Default 500_000.",
+        "default": null,
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "chain_hash": {
+        "description": "32-byte drand chain hash (network id).",
+        "allOf": [
+          {
+            "$ref": "#/definitions/HexBinary"
+          }
+        ]
+      },
+      "genesis_time": {
+        "$ref": "#/definitions/Timestamp"
+      },
+      "period_seconds": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "prices": {
+        "description": "Accepted fees. Empty or omitted means requests are free (funds are still accepted).",
+        "default": null,
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/definitions/Coin"
+        }
+      },
+      "pubkey": {
+        "description": "Compressed drand group public key. 48 bytes for chained, 96 bytes for quicknet.",
+        "allOf": [
+          {
+            "$ref": "#/definitions/HexBinary"
+          }
+        ]
+      },
+      "required_attestations": {
+        "description": "Attestations required before a round can be delivered. Default 0 (drand only).",
+        "default": null,
+        "type": [
+          "integer",
+          "null"
+        ],
+        "format": "uint32",
+        "minimum": 0.0
+      },
+      "scheme": {
+        "$ref": "#/definitions/DrandScheme"
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DrandScheme": {
+        "description": "Drand signature scheme configured for this beacon instance.\n\nJSON uses the scheme id published by drand (`/info` field `schemeID`). The ids contain `-`, which the `cw_serde` schema derive cannot name, so this enum derives serde and schemars directly and reports a string schema.",
+        "oneOf": [
+          {
+            "description": "League of Entropy mainnet \"default\". Public key is 48-byte G1. Signature is 96-byte G2 and is chained to the previous round's signature.",
+            "type": "string",
+            "enum": [
+              "pedersen-bls-chained"
+            ]
+          },
+          {
+            "description": "Quicknet. Public key is 96-byte G2. Signature is 48-byte G1. `previous_signature` must be omitted.",
+            "type": "string",
+            "enum": [
+              "bls-unchained-g1-rfc9380"
+            ]
+          }
+        ]
+      },
+      "HexBinary": {
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint256": {
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "Verify a drand beacon and store `sha256(signature)` as the round randomness.\n\n`previous_signature` is required for [`DrandScheme::PedersenBlsChained`] unless round-1 is already stored. It must be omitted for quicknet.",
+        "type": "object",
+        "required": [
+          "add_round"
+        ],
+        "properties": {
+          "add_round": {
+            "type": "object",
+            "required": [
+              "round",
+              "signature"
+            ],
+            "properties": {
+              "previous_signature": {
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/HexBinary"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "round": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "signature": {
+                "$ref": "#/definitions/HexBinary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Attest a stored drand round. The signer must be a registered attestor.\n\nMessage is documented in the crate README and [`crate::attestor`].",
+        "type": "object",
+        "required": [
+          "attest"
+        ],
+        "properties": {
+          "attest": {
+            "type": "object",
+            "required": [
+              "pubkey",
+              "round",
+              "signature"
+            ],
+            "properties": {
+              "pubkey": {
+                "$ref": "#/definitions/HexBinary"
+              },
+              "round": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "signature": {
+                "$ref": "#/definitions/HexBinary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "add_attestor"
+        ],
+        "properties": {
+          "add_attestor": {
+            "type": "object",
+            "required": [
+              "pubkey"
+            ],
+            "properties": {
+              "pubkey": {
+                "$ref": "#/definitions/HexBinary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "remove_attestor"
+        ],
+        "properties": {
+          "remove_attestor": {
+            "type": "object",
+            "required": [
+              "pubkey"
+            ],
+            "properties": {
+              "pubkey": {
+                "$ref": "#/definitions/HexBinary"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "transfer_admin"
+        ],
+        "properties": {
+          "transfer_admin": {
+            "type": "object",
+            "required": [
+              "new_admin"
+            ],
+            "properties": {
+              "new_admin": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "update_config"
+        ],
+        "properties": {
+          "update_config": {
+            "type": "object",
+            "properties": {
+              "callback_gas_limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "prices": {
+                "description": "`Some` replaces the price list. An empty list makes requests free.",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/definitions/Coin"
+                }
+              },
+              "required_attestations": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "withdraw"
+        ],
+        "properties": {
+          "withdraw": {
+            "type": "object",
+            "required": [
+              "denom"
+            ],
+            "properties": {
+              "amount": {
+                "description": "Omit to withdraw the full balance of `denom`.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "denom": {
+                "type": "string"
+              },
+              "recipient": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Deliver up to the per-tx callback batch. Permissionless.",
+        "type": "object",
+        "required": [
+          "process_queue"
+        ],
+        "properties": {
+          "process_queue": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Pull entrypoint for `nftfi-raffle` (`RandomnessSourceMsg::Callback`).\n\nThe sender is the raffle contract. The beacon reads raffle `raffle_id` from the sender, takes the first drand round published strictly after the raffle end (`start + duration`), and answers with the attributes the raffle reply reads: `raffle_id`, `round`, `randomness` (base64, 32 bytes) and `owner`. Fails when that round is not stored or not yet deliverable under `required_attestations`.",
+        "type": "object",
+        "required": [
+          "provide"
+        ],
+        "properties": {
+          "provide": {
+            "type": "object",
+            "required": [
+              "owner",
+              "raffle_id"
+            ],
+            "properties": {
+              "owner": {
+                "type": "string"
+              },
+              "raffle_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Same JSON as `nois::ProxyExecuteMsg::GetNextRandomness`.",
+        "type": "object",
+        "required": [
+          "get_next_randomness"
+        ],
+        "properties": {
+          "get_next_randomness": {
+            "type": "object",
+            "required": [
+              "job_id"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Same JSON as `nois::ProxyExecuteMsg::GetRandomnessAfter`.",
+        "type": "object",
+        "required": [
+          "get_randomness_after"
+        ],
+        "properties": {
+          "get_randomness_after": {
+            "type": "object",
+            "required": [
+              "after",
+              "job_id"
+            ],
+            "properties": {
+              "after": {
+                "$ref": "#/definitions/Timestamp"
+              },
+              "job_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint256"
+          },
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HexBinary": {
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint256": {
+        "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": [
+          "config"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "beacon"
+        ],
+        "properties": {
+          "beacon": {
+            "type": "object",
+            "required": [
+              "round"
+            ],
+            "properties": {
+              "round": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "attestors"
+        ],
+        "properties": {
+          "attestors": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "attestations"
+        ],
+        "properties": {
+          "attestations": {
+            "type": "object",
+            "required": [
+              "round"
+            ],
+            "properties": {
+              "round": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "job"
+        ],
+        "properties": {
+          "job": {
+            "type": "object",
+            "required": [
+              "job_id",
+              "requester"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string"
+              },
+              "requester": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
+  },
+  "migrate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "MigrateMsg",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "sudo": null,
+  "responses": {
+    "attestations": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttestationsResponse",
+      "type": "object",
+      "required": [
+        "attestations",
+        "round"
+      ],
+      "properties": {
+        "attestations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AttestationInfo"
+          }
+        },
+        "round": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "AttestationInfo": {
+          "type": "object",
+          "required": [
+            "pubkey",
+            "signature",
+            "source"
+          ],
+          "properties": {
+            "pubkey": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "signature": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "source": {
+              "$ref": "#/definitions/BeaconSource"
+            }
+          },
+          "additionalProperties": false
+        },
+        "BeaconSource": {
+          "description": "Where a beacon value came from.\n\nVerified drand outputs are stored under [`BeaconSource::Drand`]. Attestor signatures over a drand output are stored under [`BeaconSource::Attestor`]. Both are keyed by source id plus round (attestations also include the attestor key).\n\n[`RESERVED_IBC_SOURCE_ID`] is the id a future IBC v2 client should use when a hash-market runtime starts aggregating beacons. That client should verify the packet, then write the same [`crate::state::StoredBeacon`] record the drand path writes. There is no IBC entry point in this contract.",
+          "type": "string",
+          "enum": [
+            "drand",
+            "attestor"
+          ]
+        },
+        "HexBinary": {
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        }
+      }
+    },
+    "attestors": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttestorsResponse",
+      "type": "object",
+      "required": [
+        "attestors"
+      ],
+      "properties": {
+        "attestors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AttestorInfo"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "AttestorInfo": {
+          "type": "object",
+          "required": [
+            "key_type",
+            "pubkey"
+          ],
+          "properties": {
+            "key_type": {
+              "$ref": "#/definitions/AttestorKeyType"
+            },
+            "pubkey": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        },
+        "AttestorKeyType": {
+          "description": "Only secp256k1 compressed keys are accepted. The enum is the storage tag a later ed25519 variant would extend.",
+          "type": "string",
+          "enum": [
+            "secp256k1"
+          ]
+        },
+        "HexBinary": {
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        }
+      }
+    },
+    "beacon": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BeaconResponse",
+      "type": "object",
+      "required": [
+        "attestation_count",
+        "deliverable",
+        "published",
+        "randomness",
+        "round",
+        "signature",
+        "source",
+        "verified_at"
+      ],
+      "properties": {
+        "attestation_count": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "deliverable": {
+          "type": "boolean"
+        },
+        "published": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "randomness": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "round": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "signature": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "source": {
+          "$ref": "#/definitions/BeaconSource"
+        },
+        "verified_at": {
+          "$ref": "#/definitions/Timestamp"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "BeaconSource": {
+          "description": "Where a beacon value came from.\n\nVerified drand outputs are stored under [`BeaconSource::Drand`]. Attestor signatures over a drand output are stored under [`BeaconSource::Attestor`]. Both are keyed by source id plus round (attestations also include the attestor key).\n\n[`RESERVED_IBC_SOURCE_ID`] is the id a future IBC v2 client should use when a hash-market runtime starts aggregating beacons. That client should verify the packet, then write the same [`crate::state::StoredBeacon`] record the drand path writes. There is no IBC entry point in this contract.",
+          "type": "string",
+          "enum": [
+            "drand",
+            "attestor"
+          ]
+        },
+        "HexBinary": {
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "config": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ConfigResponse",
+      "type": "object",
+      "required": [
+        "admin",
+        "callback_gas_limit",
+        "chain_hash",
+        "genesis_time",
+        "period_seconds",
+        "prices",
+        "pubkey",
+        "required_attestations",
+        "scheme",
+        "source_ids"
+      ],
+      "properties": {
+        "admin": {
+          "type": "string"
+        },
+        "callback_gas_limit": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "chain_hash": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "genesis_time": {
+          "$ref": "#/definitions/Timestamp"
+        },
+        "period_seconds": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "prices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "pubkey": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "required_attestations": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "scheme": {
+          "$ref": "#/definitions/DrandScheme"
+        },
+        "source_ids": {
+          "description": "Source ids currently written, plus the reserved IBC id.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/SourceIds"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint256"
+            },
+            "denom": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "DrandScheme": {
+          "description": "Drand signature scheme configured for this beacon instance.\n\nJSON uses the scheme id published by drand (`/info` field `schemeID`). The ids contain `-`, which the `cw_serde` schema derive cannot name, so this enum derives serde and schemars directly and reports a string schema.",
+          "oneOf": [
+            {
+              "description": "League of Entropy mainnet \"default\". Public key is 48-byte G1. Signature is 96-byte G2 and is chained to the previous round's signature.",
+              "type": "string",
+              "enum": [
+                "pedersen-bls-chained"
+              ]
+            },
+            {
+              "description": "Quicknet. Public key is 96-byte G2. Signature is 48-byte G1. `previous_signature` must be omitted.",
+              "type": "string",
+              "enum": [
+                "bls-unchained-g1-rfc9380"
+              ]
+            }
+          ]
+        },
+        "HexBinary": {
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "string"
+        },
+        "SourceIds": {
+          "type": "object",
+          "required": [
+            "attestor",
+            "drand",
+            "reserved_ibc"
+          ],
+          "properties": {
+            "attestor": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "drand": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            },
+            "reserved_ibc": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint256": {
+          "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "job": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JobResponse",
+      "type": "object",
+      "properties": {
+        "job": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/JobInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "JobInfo": {
+          "type": "object",
+          "required": [
+            "after",
+            "job_id",
+            "requester",
+            "round"
+          ],
+          "properties": {
+            "after": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "job_id": {
+              "type": "string"
+            },
+            "requester": {
+              "type": "string"
+            },
+            "round": {
+              "description": "First drand round whose publish time is strictly after `after`.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -66,11 +66,13 @@ pub fn execute(
             deps,
             env,
             info,
-            borrower,
-            loan_id,
-            terms,
-            comment,
-            on_behalf_of,
+            MakeOfferParams {
+                borrower,
+                loan_id,
+                terms,
+                comment,
+                on_behalf_of,
+            },
         ),
         ExecuteMsg::CancelOffer { global_offer_id } => cancel_offer(deps, info, global_offer_id),
         ExecuteMsg::RefuseOffer { global_offer_id } => refuse_offer(deps, info, global_offer_id),
@@ -157,10 +159,10 @@ fn list(
     if cfg.locks.is_locked() {
         return Err(ContractError::Locked);
     }
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     if let Some(terms) = &terms {
         terms.check()?;
@@ -254,25 +256,37 @@ fn withdraw_listing(
         .add_attribute("loan_id", loan_id.to_string()))
 }
 
+/// Arguments for [`make_offer`].
+struct MakeOfferParams {
+    pub borrower: String,
+    pub loan_id: u64,
+    pub terms: LoanTerms,
+    pub comment: Option<String>,
+    pub on_behalf_of: Option<String>,
+}
+
 fn make_offer(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    borrower: String,
-    loan_id: u64,
-    terms: LoanTerms,
-    comment: Option<String>,
-    on_behalf_of: Option<String>,
+    args: MakeOfferParams,
 ) -> Result<Response, ContractError> {
+    let MakeOfferParams {
+        borrower,
+        loan_id,
+        terms,
+        comment,
+        on_behalf_of,
+    } = args;
     let cfg = CONFIG.load(deps.storage)?;
     if cfg.locks.is_locked() {
         return Err(ContractError::Locked);
     }
     terms.check()?;
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     let borrower = deps.api.addr_validate(&borrower)?;
     let lender = match on_behalf_of {
@@ -350,10 +364,10 @@ fn accept_loan(
     if cfg.locks.is_locked() {
         return Err(ContractError::Locked);
     }
-    if let Some(comment) = &comment {
-        if !is_valid_comment(comment) {
-            return Err(ContractError::CommentTooLong);
-        }
+    if let Some(comment) = &comment
+        && !is_valid_comment(comment)
+    {
+        return Err(ContractError::CommentTooLong);
     }
     let borrower = deps.api.addr_validate(&borrower)?;
     let collateral = load_collateral(deps.storage, &borrower, loan_id)?;
