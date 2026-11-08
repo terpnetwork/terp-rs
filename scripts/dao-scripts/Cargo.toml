@@ -64,6 +64,10 @@ name = "dao_account"
 path = "src/bin/dao_account.rs"
 
 [[bin]]
+name = "juno_liquidity"
+path = "src/bin/juno_liquidity.rs"
+
+[[bin]]
 name = "bounty_dao"
 path = "src/bin/bounty_dao.rs"
 
@@ -106,6 +110,10 @@ path = "src/bin/svg_ops.rs"
 [[bin]]
 name = "svg_curator"
 path = "src/bin/svg_curator.rs"
+
+[[bin]]
+name = "penumbra_ibc_transfer"
+path = "src/bin/penumbra_ibc_transfer.rs"
 
 [dependencies]
 anyhow = { workspace = true }

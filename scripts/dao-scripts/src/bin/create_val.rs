@@ -7,7 +7,7 @@
 //!
 //! The funded spawn account broadcasts the transaction. Set `CW_ORCH_GRANTER`
 //! when a cold account must grant that ephemeral account authz and a feegrant
-//! first. The approval page is http://127.0.0.1:8741.
+//! first. The approval page URL (random loopback port) prints at start.
 
 use clap::Parser;
 use cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
@@ -15,12 +15,12 @@ use cosmos_sdk_proto::cosmos::crypto::ed25519::PubKey as Ed25519PubKey;
 use cosmos_sdk_proto::cosmos::staking::v1beta1::{
     CommissionRates, Description, MsgCreateValidator,
 };
-use cosmrs::proto::traits::Message;
 use cosmrs::Any;
+use cosmrs::proto::traits::Message;
 use cw_orch::daemon::TxSender;
 use cw_orch::prelude::*;
 use cw_orch_kms::CW_ORCH_GRANTER_ENV;
-use cw_orch_kms::{enable_approval, ApprovalSession, SpawnedTerp};
+use cw_orch_kms::{ApprovalSession, SpawnedTerp, enable_approval};
 
 #[derive(Parser)]
 struct Args {
@@ -52,7 +52,9 @@ fn main() -> anyhow::Result<()> {
     };
     let info = spawned.chain_info();
     println!("operator {}", spawned.signer());
-    let granter = std::env::var(CW_ORCH_GRANTER_ENV).ok().filter(|value| !value.is_empty());
+    let granter = std::env::var(CW_ORCH_GRANTER_ENV)
+        .ok()
+        .filter(|value| !value.is_empty());
     if let Some(granter) = granter.as_deref() {
         spawned.fund(granter).map_err(|err| anyhow::anyhow!(err))?;
         let mut session = ApprovalSession::open(granter)
@@ -97,7 +99,9 @@ fn broadcast(chain: &Daemon, args: &Args, public: &[u8]) -> anyhow::Result<()> {
         &data,
     )?;
     let (denom, amount) = split_coin(&args.amount)?;
-    let key = Ed25519PubKey { key: public.to_vec() };
+    let key = Ed25519PubKey {
+        key: public.to_vec(),
+    };
     let msg = MsgCreateValidator {
         description: Some(Description {
             moniker: args.moniker.clone(),
@@ -112,13 +116,14 @@ fn broadcast(chain: &Daemon, args: &Args, public: &[u8]) -> anyhow::Result<()> {
             max_change_rate: "10000000000000000".into(),
         }),
         min_self_delegation: "1".into(),
-        delegator_address: delegator,
         validator_address: validator,
         pubkey: Some(Any {
             type_url: "/cosmos.crypto.ed25519.PubKey".into(),
             value: key.encode_to_vec(),
         }),
         value: Some(Coin { denom, amount }),
+        // delegator_address is deprecated: the SDK derives the self-delegator from validator_address.
+        ..Default::default()
     };
     let any = Any {
         type_url: "/cosmos.staking.v1beta1.MsgCreateValidator".into(),

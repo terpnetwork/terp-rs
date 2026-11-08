@@ -31,6 +31,7 @@
 //! - Proper handling of jailed/unbonded validators
 //! - Final state verification
 //! - Batch broadcasting with 32 msgs per transaction
+// Legacy bitsong-mnemonic delegation tool: main() requires the kms_gate::legacy_signer opt-in.
 
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 
@@ -40,7 +41,7 @@ use cosmos_sdk_proto::cosmos::{
     base::{query::v1beta1::PageRequest, v1beta1::Coin as ProtoCoin},
     staking::v1beta1::{DelegationResponse, MsgBeginRedelegate, MsgDelegate, MsgUndelegate},
 };
-use cosmrs::{AccountId, Any, tx::Msg};
+use cosmrs::{AccountId, tx::Msg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Decimal, Uint128};
 use csv::ReaderBuilder;
@@ -50,26 +51,13 @@ use cw_orch::{
         networks::TERP_MAINNET,
         queriers::{Bank, Staking},
     },
-    environment::{ChainKind, NetworkInfo},
     prelude::*,
 };
 
-use terp_rs::{Message, Name};
-use tokio::runtime::Runtime;
-
 pub const TOTAL_OBLIGATED_VALIDATORS: usize = 33;
-pub const TOTAL_OBLIGATED_DELEGATED_Terp: Uint128 = Uint128::new(9_999_980_000_000u128);
+pub const TOTAL_OBLIGATED_DELEGATED_TERP: Uint128 = Uint128::new(9_999_980_000_000u128);
 pub const NEW_DELS_FILE: &str = "./src/bin/data/new-delegations.csv";
 pub const RAW_MSG_JSON: &str = "delegation_messages.json";
-
-#[cw_serde]
-struct DelegationDaoEntity {
-    dao_add: String,
-    current_balance: Coin,
-    current_delegation: Uint128,
-    obligated_delegation: Uint128,
-    total_delegation_count: usize,
-}
 
 #[cw_serde]
 struct AlignedValidator {
@@ -172,7 +160,10 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
-    dao_scripts::kms_gate::legacy_signer("dels (bitsong mnemonic Daemon)", "foundation_delegate / fiab_subdao (cw-orch-kms)")?;
+    dao_scripts::kms_gate::legacy_signer(
+        "dels (bitsong mnemonic Daemon)",
+        "foundation_delegate / fiab_subdao (cw-orch-kms)",
+    )?;
     // Fix for rustls 0.23+ CryptoProvider
     rustls::crypto::ring::default_provider()
         .install_default()
@@ -181,7 +172,7 @@ fn main() -> anyhow::Result<()> {
     // parse cargo command arguments for network type
     let args = Args::parse();
 
-    let _delegation_dao_addrs: Vec<String> =
+    let delegation_dao_addrs: Vec<String> =
         ["terp1qfpnat6kc99gsc3233cw6fq0s0fdv7cq06alqu".into()].to_vec();
 
     let bitsong_chain: ChainInfoOwned = match args.network.as_str() {
@@ -194,101 +185,31 @@ fn main() -> anyhow::Result<()> {
     // connect to chain with mnemonic
     let mut chain = DaemonBuilder::new(bitsong_chain.clone()).build()?;
 
-    // create client
-    let _staking_query_client: Staking = chain.querier();
-    let _bank_query_client: Bank = chain.querier();
-    let _node_query: queriers::Node = chain.node_querier();
+    let staking_query_client: Staking = chain.querier();
+    let bank_query_client: Bank = chain.querier();
+    let block = chain.node_querier().latest_block()?;
     let sender = chain.sender_mut().clone();
-    let _block = chain.node_querier().latest_block()?;
-    let derived_address = chain.sender().address();
-
-    let rt = chain.rt_handle;
+    let rt = chain.rt_handle.clone();
 
     let account = rt.block_on(sender.base_account())?;
     println!("Script is using BaseAccount: {:#?}", account);
-    println!("Script is using address: {}", derived_address);
+    println!("Script is using address: {}", chain.sender().address());
 
-    // let witdraw = MsgSetWithdrawAddress {
-    //     delegator_address: AccountId::from_str(&sender.pub_addr_str()).unwrap(),
-    //     withdraw_address: AccountId::from_str(
-    //         &"terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
-    //     )
-    //     .unwrap(),
-    // };
+    eprintln!("[MAIN] Starting realign_delegations (dry run + file generation)...");
+    rt.block_on(realign_delegations(
+        staking_query_client,
+        bank_query_client,
+        &delegation_dao_addrs,
+        block.height,
+        args.csv.as_deref(),
+        &args.method,
+    ))?;
+    eprintln!("[MAIN] realign_delegations completed successfully");
 
-    // let any = Any {
-    //     type_url: MsgCancelUnbondingDelegation::type_url(),
-    //     value: MsgCancelUnbondingDelegation {
-    //         delegator_address: sender.pub_addr_str(),
-    //         validator_address: "terpvaloper1g80p4suzrz4vqsvs3za0yqhqcphlvnjy7snfnw".into(),
-    //         amount: Some(terp_rs::Coin {
-    //             denom: "uterp".into(),
-    //             amount: Uint128::new(750000000000).to_string(),
-    //         }),
-    //         creation_height: 21482756 as i64,
-    //         // creation_height: i.0 as i64,
-    //     }
-    //     .encode_to_vec(),
-    // };
-
-    let any = Any {
-        type_url: MsgUndelegate::type_url(),
-        value: MsgUndelegate {
-            delegator_address: sender.pub_addr_str(),
-            validator_address: "terpvaloper126jdyc74p70ahzrf3wvaka7hmeke8g2ntym70p".into(),
-            amount: Some(cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
-                denom: "uterp".into(),
-                amount: Uint128::new(750000000000).to_string(),
-            }),
-            // creation_height: i.0 as i64,
-        }
-        .encode_to_vec(),
-    };
-
-    let any2 = Any {
-        type_url: MsgUndelegate::type_url(),
-        value: MsgUndelegate {
-            delegator_address: sender.pub_addr_str(),
-            validator_address: "terpvaloper1g80p4suzrz4vqsvs3za0yqhqcphlvnjy7snfnw".into(),
-            amount: Some(cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
-                denom: "uterp".into(),
-                amount: Uint128::new(750000000000).to_string(),
-            }),
-            // creation_height: i.0 as i64,
-        }
-        .encode_to_vec(),
-    };
-
-    // let msg = form_redel_msg(RedelegateMsg {
-    //     delegator_address: sender.pub_addr_str(),
-    //     validator_src_address: "terpvaloper1g80p4suzrz4vqsvs3za0yqhqcphlvnjy7snfnw".into(),
-    //     validator_dst_address: "terpvaloper1mzns2fp4urelqxyjxyjelef34j9eynu8ffd9vt".into(),
-    //     amount: Uint128::new(750000000000).to_string(),
-    //     denom: "uterp".into(),
-    // });
-    // let msg2 = form_redel_msg(RedelegateMsg {
-    //     delegator_address: sender.pub_addr_str(),
-    //     validator_src_address: "terpvaloper1fak8qed3zu86d8hlmkdsee9h2xtutawlqm660j".into(),
-    //     validator_dst_address: "terpvaloper1dmyu7jdu7pgzgsxucnav6sanfk8s7jfsw0y60a".into(),
-    //     amount: Uint128::new(500000000000).to_string(),
-    //     denom: "uterp".into(),
-    // });
-    rt.block_on(sender.commit_tx_any(vec![any, any2], None))?;
-
-    // eprintln!("[MAIN] Starting realign_delegations (dry run + file generation)...");
-    // // Execute the async function using the runtime
-    // rt.block_on(realign_delegations(
-    //     staking_query_client,
-    //     bank_query_client,
-    //     &delegation_dao_addrs,
-    //     block.height,
-    //     args.csv.as_deref(),
-    //     &args.method,
-    // ))?;
-    // eprintln!("[MAIN] realign_delegations completed successfully");
-
-    // eprintln!("[MAIN] Starting form_and_broadcast_obligated_msgs...");
-    // form_and_broadcast_obligated_msgs(&rt, sender, RAW_MSG_JSON, delegation_dao_addrs)?;
+    if args.broadcast {
+        eprintln!("[MAIN] Starting form_and_broadcast_obligated_msgs...");
+        form_and_broadcast_obligated_msgs(&rt, sender, RAW_MSG_JSON, delegation_dao_addrs)?;
+    }
     eprintln!("[MAIN] Script completed successfully");
     Ok(())
 }
@@ -401,7 +322,7 @@ async fn realign_delegations(
                 || unbonding_vals
                     .iter()
                     .any(|v| v.address == delegation.validator_address)
-                || val_historical.hist.as_ref().map_or(false, |h| {
+                || val_historical.hist.as_ref().is_some_and(|h| {
                     h.valset
                         .iter()
                         .any(|v| v.operator_address == delegation.validator_address && v.jailed)
@@ -648,7 +569,7 @@ async fn fetch_delegations_to_bad_validators(
                 let is_unbonding = unbonding_vals
                     .iter()
                     .any(|v| v.address == delegation.validator_address);
-                let is_jailed = historical.hist.as_ref().map_or(false, |h| {
+                let is_jailed = historical.hist.as_ref().is_some_and(|h| {
                     h.valset
                         .iter()
                         .any(|v| v.operator_address == delegation.validator_address && v.jailed)
@@ -718,7 +639,7 @@ fn form_and_broadcast_obligated_msgs(
     eprintln!("[BROADCAST] DAO addresses to process: {:?}", dao_addrs);
 
     // load json msgs
-    let file_content = std::fs::read_to_string(json.to_string())
+    let file_content = std::fs::read_to_string(json)
         .map_err(|e| anyhow::anyhow!("[BROADCAST] Failed to read JSON file '{}': {}", json, e))?;
     let obligated_export: MessageExport = serde_json::from_str(&file_content)
         .map_err(|e| anyhow::anyhow!("[BROADCAST] Failed to parse JSON: {}", e))?;
@@ -776,7 +697,7 @@ fn form_and_broadcast_obligated_msgs(
         // in a single tx (v0.53.4-pfm-migrate share check at delegation.go:1379).
         // Each message runs against the full pre-transaction delegation shares.
         let bundle_size: usize = 1;
-        let num_bundles = (all_msgs.len() + bundle_size - 1) / bundle_size;
+        let num_bundles = all_msgs.len().div_ceil(bundle_size);
 
         eprintln!(
             "[BROADCAST] Splitting {} msgs into {} single-msg bundles (avoids same-source share conflict)",
@@ -930,69 +851,6 @@ fn form_undel_msg(del: UndelegateMsg) -> cosmrs::staking::MsgUndelegate {
     }
 }
 
-// Loads array of validators getting new delegations from file, returning the total new delegations
-fn load_new_delegations(fp: &str, has_header: bool) -> AllAlignedDelegations {
-    let file = File::open(fp).expect("Could not open file");
-
-    // Create a reader with configurable header setting
-    let mut rdr = ReaderBuilder::new()
-        .has_headers(has_header)
-        .from_reader(file);
-
-    let mut delegations = vec![];
-    let mut total = Uint128::zero();
-
-    for result in rdr.records() {
-        match result {
-            Ok(record) => {
-                // Ensure there are at least two fields
-                if record.len() < 2 {
-                    eprintln!(
-                        "Invalid record format: expected at least 2 fields, got {}",
-                        record.len()
-                    );
-                    continue;
-                }
-
-                let addr = match record[0].parse::<String>() {
-                    Ok(addr) => addr,
-                    Err(e) => {
-                        eprintln!("Error parsing address: {}", e);
-                        continue;
-                    }
-                };
-
-                let amount = match record[1].parse::<Uint128>() {
-                    Ok(num) => num,
-                    Err(e) => {
-                        eprintln!("Error parsing amount: {}", e);
-                        continue;
-                    }
-                };
-
-                delegations.push(Delegation {
-                    del_addr: String::default(),
-                    operator_addr: addr,
-                    amount,
-                    shares: String::default(),
-                });
-
-                total += amount;
-            }
-            Err(e) => {
-                eprintln!("Error reading record: {}", e);
-            }
-        }
-    }
-
-    println!(
-        "Loaded {} delegations with total amount {}",
-        delegations.len(),
-        total
-    );
-    AllAlignedDelegations { delegations, total }
-}
-
 /// Load delegations to unbond/redelegate from a CSV file.
 ///
 /// CSV format:
@@ -1127,7 +985,7 @@ fn distribute_redelegated_greedy(
     let mut undelegate_msgs = Vec::new();
 
     // Sort sources descending for greedy picking
-    to_redelegate.sort_by(|a, b| b.amount.cmp(&a.amount));
+    to_redelegate.sort_by_key(|r| std::cmp::Reverse(r.amount));
 
     // Multi-pass: each pass fills largest deficit from largest remaining source
     let mut made_progress = true;
@@ -1135,7 +993,7 @@ fn distribute_redelegated_greedy(
         made_progress = false;
 
         // Sort deficits descending each pass
-        deficits.sort_by(|a, b| b.1.cmp(&a.1));
+        deficits.sort_by_key(|d| std::cmp::Reverse(d.1));
 
         for (idx, deficit) in &mut deficits {
             if deficit.is_zero() {
@@ -1229,7 +1087,7 @@ fn distribute_redelegated_evenly(
     let mut redelegation_msgs = Vec::new();
     let mut undelegate_msgs = Vec::new();
 
-    to_redelegate.sort_by(|a, b| b.amount.cmp(&a.amount));
+    to_redelegate.sort_by_key(|r| std::cmp::Reverse(r.amount));
 
     let mut source_idx = 0;
     let num_active = active_validators.len();
@@ -1434,7 +1292,7 @@ fn verify_final_state(
         );
 
         // Sort discrepancies by difference amount (largest first)
-        discrepancies.sort_by(|a, b| b.3.cmp(&a.3));
+        discrepancies.sort_by_key(|d| std::cmp::Reverse(d.3));
 
         println!("\nTop discrepancies:");
         for (validator, final_amount, obligated_amount, diff) in discrepancies.iter().take(10) {
@@ -1492,9 +1350,79 @@ fn serialize_and_print(json: String, filepath: String) {
 mod tests {
     use super::*;
 
+    // Loads array of validators getting new delegations from file, returning the total new delegations
+    /// In-crate fixture: 33 synthetic terpvaloper addresses
+    /// (bech32(sha256("delegation-fixture/val-NN")[:20])) summing to the obligated total.
+    const FIXTURE_DELS_FILE: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/new-delegations.csv"
+    );
+
+    fn load_new_delegations(fp: &str, has_header: bool) -> AllAlignedDelegations {
+        let file = File::open(fp).expect("Could not open file");
+
+        // Create a reader with configurable header setting
+        let mut rdr = ReaderBuilder::new()
+            .has_headers(has_header)
+            .from_reader(file);
+
+        let mut delegations = vec![];
+        let mut total = Uint128::zero();
+
+        for result in rdr.records() {
+            match result {
+                Ok(record) => {
+                    // Ensure there are at least two fields
+                    if record.len() < 2 {
+                        eprintln!(
+                            "Invalid record format: expected at least 2 fields, got {}",
+                            record.len()
+                        );
+                        continue;
+                    }
+
+                    let addr = match record[0].parse::<String>() {
+                        Ok(addr) => addr,
+                        Err(e) => {
+                            eprintln!("Error parsing address: {}", e);
+                            continue;
+                        }
+                    };
+
+                    let amount = match record[1].parse::<Uint128>() {
+                        Ok(num) => num,
+                        Err(e) => {
+                            eprintln!("Error parsing amount: {}", e);
+                            continue;
+                        }
+                    };
+
+                    delegations.push(Delegation {
+                        del_addr: String::default(),
+                        operator_addr: addr,
+                        amount,
+                        shares: String::default(),
+                    });
+
+                    total += amount;
+                }
+                Err(e) => {
+                    eprintln!("Error reading record: {}", e);
+                }
+            }
+        }
+
+        println!(
+            "Loaded {} delegations with total amount {}",
+            delegations.len(),
+            total
+        );
+        AllAlignedDelegations { delegations, total }
+    }
+
     #[test]
     fn test_load_obligated_delegations_file() -> anyhow::Result<()> {
-        let aad = load_new_delegations(NEW_DELS_FILE, false);
+        let aad = load_new_delegations(FIXTURE_DELS_FILE, false);
         // Check the calculated total from the struct
 
         // Calculate and check the sum of individual
@@ -1504,10 +1432,10 @@ mod tests {
 
         // Both should match the expected value
         assert_eq!(aad.delegations.len(), TOTAL_OBLIGATED_VALIDATORS);
-        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_Terp.u128());
+        assert_eq!(aad.total.u128(), TOTAL_OBLIGATED_DELEGATED_TERP.u128());
         assert_eq!(
             obligated_delegation_sum.u128(),
-            TOTAL_OBLIGATED_DELEGATED_Terp.u128()
+            TOTAL_OBLIGATED_DELEGATED_TERP.u128()
         );
 
         Ok(())
@@ -1525,8 +1453,8 @@ mod tests {
     #[test]
     fn test_yes_no_load_obligated_delegations_file() -> anyhow::Result<()> {
         // Try with both header settings to see which matches expected value
-        let aad_with_header = load_new_delegations(NEW_DELS_FILE, true);
-        let aad_without_header = load_new_delegations(NEW_DELS_FILE, false);
+        let aad_with_header = load_new_delegations(FIXTURE_DELS_FILE, true);
+        let aad_without_header = load_new_delegations(FIXTURE_DELS_FILE, false);
 
         println!(
             "With header: {} delegations, total {}",
@@ -1928,7 +1856,7 @@ mod tests {
 //             .entry(del.operator_addr.clone())
 //             .or_default() += amount;
 //     }
-//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_Terp);
+//     assert_eq!(total_obligated_delegation, TOTAL_OBLIGATED_DELEGATED_TERP);
 //     // First pass: Process validators that need additional delegations
 //     for target_del in obligated_delegations {
 //         let target_validator = &target_del.operator_addr;

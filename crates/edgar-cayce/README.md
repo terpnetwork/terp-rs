@@ -305,3 +305,59 @@ cd tests/discord-twin
 npm install
 npm run e2e
 ```
+
+
+## IBC client expiry
+
+`ibc-monitor` already computes the trusting-period buffer (`warning_threshold` 48h, `critical_threshold` 24h on the live ). Point its webhook at this bot instead of a Discord incoming webhook. The bot posts in `IBC_ALERT_CHANNEL_ID`, or `ACTIVITY_CHANNEL_ID` when that is unset.
+
+```
+IBC_HOOK_BIND=127.0.0.1:9119
+IBC_ALERT_CHANNEL_ID=<activity channel>
+IBC_HOOK_TOKEN=<shared secret>
+```
+
+`ibc-monitor` env `WEBHOOK_URL=http://127.0.0.1:9119/` and, when the token is set, `Authorization: Bearer <IBC_HOOK_TOKEN>`. The running monitor posts JSON only; it does not send that header unless the URL itself is enough on loopback. Leave `IBC_HOOK_TOKEN` unset for a loopback bind, or put the monitor behind something that adds the header.
+
+A warning, a critical step, and an expiry each post once. The same status posts again only when the hours left jump up, which means the client was updated and has fallen back into the buffer. RPC errors and healthy checks stay quiet. New clients on the house LCD are a separate line from this expiry hook.
+
+
+## Daily desk
+
+The morning stake post is the news desk. Discord gets one caption line, `Terp desk for YYYY-MM-DD`, plus `terp-desk-YYYY-MM-DD.md` and the clip. The bullets and the voting-power table stay in that file.
+
+The spoken clip is a separate script. Numbers are words (`one thousand`, not `1000`). Dates are spoken (`October twenty-eighth`). Stake is a summary by validator name (`Alpha was jailed and unbonded`), and a bech32 address is not read aloud. The picture is 1280x720 at 24 fps.
+
+Team notes go in `./data/desk-inbox` as `*.txt`. A bad header stays in the inbox and the desk says it was left unread. A good file moves to `./data/desk-inbox/done/` after it is used once.
+
+```
+mode: quote
+from: Nova
+topic: light client
+---
+The recovery patch is ready for review.
+```
+
+`mode` is `quote` (read it as sent), `summarize` (speak only the first sentence), or `omit` (show it on the written desk and leave it out of the clip). `from` is required. `topic` defaults to "the desk". The body is at most 2000 characters. Nothing in the file is executed.
+
+Foundation lines are appended to `./data/desk-dao.log` when a DAO post is delivered, then folded into the next desk.
+
+## Clip host
+
+The live bot runs on groot2. Kokoro and the orb render run on groot-wan. groot2 does not get a login shell, and the Discord token stays on groot2.
+
+Set on groot2 only:
+
+```
+EDGAR_MEDIA_SSH=groot-wan
+EDGAR_MEDIA_KEY=/opt/terp-bot/media_ed25519
+EDGAR_MEDIA_KNOWN_HOSTS=/opt/terp-bot/media_known_hosts
+```
+
+The key is a dedicated ed25519 key, mode 0600, used for this one host. On groot-wan the matching `authorized_keys` line is a forced command, with forwarding and a tty disabled:
+
+```
+restrict,command="/bin/sh $HOME/abstract/terp-core/crates/terp-rs/crates/edgar-cayce/scripts/edgar-media-render",no-agent-forwarding,no-port-forwarding,no-x11-forwarding,no-pty ssh-ed25519 AAAA... edgar-media
+```
+
+The client also passes `ProxyCommand=none`, because the groot2 system ssh config sets `ProxyCommand /bin/false`. The script ignores `SSH_ORIGINAL_COMMAND`, reads at most 2000 bytes of speech on stdin, and writes one MP4 to stdout. Kokoro stays on the groot-wan queue. No new port is opened. If the hop fails, the desk text still posts and the clip is skipped. Leave `EDGAR_MEDIA_SSH` unset on groot-wan itself so a local render uses the queue directly.

@@ -22,14 +22,14 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cosmwasm_std::{Addr, Binary};
 use cw_orch::prelude::networks::{TERP_MAINNET, TERP_TESTNET};
 use cw_orch::prelude::*;
 use cw_orch_kms::{
-    enable_session, instantiate2_bech32, planned_spend_limit, wasm_checksum, ApprovalSession,
-    SigningRequest, SpawnedTerp, CW_ORCH_GRANTER_ENV,
+    ApprovalSession, CW_ORCH_GRANTER_ENV, SigningRequest, SpawnedTerp, enable_session,
+    instantiate2_bech32, planned_spend_limit, wasm_checksum,
 };
 
 /// Three stores, three instantiate2, and the closing revoke (update_config is a DAO proposal).
@@ -107,13 +107,17 @@ fn ownership_plan(dao: &str) -> Result<Ownership> {
 /// Refuses any init message that names an owner role other than the DAO.
 fn assert_dao_owned(own: &Ownership, init: &serde_json::Value) -> Result<()> {
     if own.wasm_admin != own.owner {
-        return Err(anyhow!("wasm admin {} != owner {}", own.wasm_admin, own.owner));
+        return Err(anyhow!(
+            "wasm admin {} != owner {}",
+            own.wasm_admin,
+            own.owner
+        ));
     }
     for key in ["owner", "approver", "protocol_addr", "fee_manager"] {
-        if let Some(v) = init.get(key) {
-            if v.as_str() != Some(own.owner.as_str()) {
-                return Err(anyhow!("init {key} is {v}, expected DAO {}", own.owner));
-            }
+        if let Some(v) = init.get(key)
+            && v.as_str() != Some(own.owner.as_str())
+        {
+            return Err(anyhow!("init {key} is {v}, expected DAO {}", own.owner));
         }
     }
     Ok(())
@@ -199,11 +203,12 @@ fn resolve_chain(name: &str) -> Result<ChainInfo> {
     }
 }
 
-fn read_labs(dir: &Path) -> Result<Vec<(&Lab, Vec<u8>)>> {
+fn read_labs(dir: &Path) -> Result<Vec<(&Lab<'_>, Vec<u8>)>> {
     let mut out = Vec::with_capacity(LABS.len());
     for lab in LABS {
         let path = dir.join(lab.file);
-        let bytes = std::fs::read(&path).map_err(|err| anyhow!("read {}: {err}", path.display()))?;
+        let bytes =
+            std::fs::read(&path).map_err(|err| anyhow!("read {}: {err}", path.display()))?;
         if bytes.is_empty() {
             return Err(anyhow!("{} is empty", path.display()));
         }
@@ -288,7 +293,9 @@ fn main() -> Result<()> {
         ));
     }
     if !cli.spawn && cli.chain.is_none() {
-        return Err(anyhow!("pass --spawn on groot-wan, or name a chain with --chain"));
+        return Err(anyhow!(
+            "pass --spawn on groot-wan, or name a chain with --chain"
+        ));
     }
     let Some(dao) = cli.bounty_dao.clone() else {
         return Err(anyhow!(
@@ -323,11 +330,20 @@ fn main() -> Result<()> {
         let chain_id = if cli.spawn {
             cw_orch_kms::SPAWN_CHAIN_ID.to_string()
         } else {
-            resolve_chain(cli.chain.as_deref().unwrap_or(""))?.chain_id.to_string()
+            resolve_chain(cli.chain.as_deref().unwrap_or(""))?
+                .chain_id
+                .to_string()
         };
-        println!("sign once at http://127.0.0.1:8741 (cw-orch-granter:v2, chain {chain_id}). that key is the granter");
-        cw_orch_kms::capture_granter_for_chain_sync("127.0.0.1:8741".parse()?, cli.account_index, "app-setup", &chain_id)
-            .map_err(|err| anyhow!(err))?
+        println!(
+            "sign once on the approval page below (cw-orch-granter:v2, chain {chain_id}). that key is the granter"
+        );
+        cw_orch_kms::capture_granter_for_chain_sync(
+            cw_orch_kms::page_addr(),
+            cli.account_index,
+            "app-setup",
+            &chain_id,
+        )
+        .map_err(|err| anyhow!(err))?
     } else {
         cli.granter.clone()
     };
@@ -350,10 +366,7 @@ fn main() -> Result<()> {
     if spawned.is_some() {
         builder.is_test(true).load_network(false);
     }
-    let creator = builder
-        .build()
-        .map_err(|err| anyhow!(err))?
-        .sender_addr();
+    let creator = builder.build().map_err(|err| anyhow!(err))?.sender_addr();
     let creator_bytes = canonical_account(creator.as_str())?;
     let mut bounty = String::new();
     let mut actions = Vec::new();
@@ -382,7 +395,10 @@ fn main() -> Result<()> {
     session.account_index = cli.account_index;
     session.allowance_limit = planned_spend_limit(TXS);
     session.retain = cli.retain;
-    actions.push(SigningRequest::new("session-key").body(format!("admin and owner of all three: bounty DAO {dao}")));
+    actions.push(
+        SigningRequest::new("session-key")
+            .body(format!("admin and owner of all three: bounty DAO {dao}")),
+    );
     let mut run = enable_session(&builder, session, actions).map_err(|err| anyhow!(err))?;
     let sender = run.daemon.sender_addr();
     if sender.as_str() != creator.as_str() {
@@ -431,7 +447,12 @@ fn main() -> Result<()> {
             .contract_info(&Addr::unchecked(&address))
             .map_err(|err| anyhow!("contract info {address}: {err}"))?;
         if info.admin.as_ref().map(|a| a.to_string()) != Some(own.wasm_admin.clone()) {
-            let err = anyhow!("{} admin is {:?}, expected bounty DAO {}", lab.name, info.admin, own.wasm_admin);
+            let err = anyhow!(
+                "{} admin is {:?}, expected bounty DAO {}",
+                lab.name,
+                info.admin,
+                own.wasm_admin
+            );
             run.note(&format!("err {err}"));
             return Err(err);
         }
@@ -441,15 +462,19 @@ fn main() -> Result<()> {
         ));
     }
     let proposal = update_config_proposal(&own.owner, &bounty);
-    println!("bounty DAO proposal (submit through the DAO, not executed here):\n{}",
-        serde_json::to_string_pretty(&proposal)?);
-    run.note(&format!("ok bounty {bounty} owned by DAO; update_config left to a DAO proposal"));
+    println!(
+        "bounty DAO proposal (submit through the DAO, not executed here):\n{}",
+        serde_json::to_string_pretty(&proposal)?
+    );
+    run.note(&format!(
+        "ok bounty {bounty} owned by DAO; update_config left to a DAO proposal"
+    ));
     let page = run.detach_page();
     let daemon = run.daemon.clone();
     if let Err(err) = run.close() {
         if let Some(page) = &page {
             page.note(&format!("err {err}"));
-            let _ = daemon.rt_handle.block_on(async {
+            daemon.rt_handle.block_on(async {
                 tokio::task::yield_now().await;
             });
         }
@@ -458,7 +483,7 @@ fn main() -> Result<()> {
     println!("session grant closed");
     if let Some(page) = &page {
         page.note("ok session grant closed");
-        let _ = daemon.rt_handle.block_on(async {
+        daemon.rt_handle.block_on(async {
             tokio::task::yield_now().await;
         });
     }
@@ -499,6 +524,12 @@ mod tests {
     fn update_config_goes_through_the_dao() {
         let p = update_config_proposal(&dao(), "terp1bounty");
         assert_eq!(p["dao"], dao());
-        assert!(p["propose"]["msgs"][0]["wasm"]["execute"]["msg"].as_str().unwrap().len() > 10);
+        assert!(
+            p["propose"]["msgs"][0]["wasm"]["execute"]["msg"]
+                .as_str()
+                .unwrap()
+                .len()
+                > 10
+        );
     }
 }

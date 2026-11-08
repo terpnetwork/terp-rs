@@ -11,10 +11,10 @@
 //!   --pair 07-tendermint-12:07-tendermint-40 --granter terp1...
 //! ```
 
-use anyhow::{anyhow, bail, Result};
-use cosmos_sdk_proto::prost::Message;
+use anyhow::{Result, anyhow, bail};
 use base64::Engine;
 use clap::Parser;
+use cosmos_sdk_proto::prost::Message;
 use dao_scripts::ibc_clients::{self, MSG_SUBMIT_PROPOSAL};
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 
@@ -26,7 +26,10 @@ struct Cli {
     pairs: Vec<String>,
     #[arg(long, default_value = "Recover expired IBC clients")]
     title: String,
-    #[arg(long, default_value = "Recover expired 07-tendermint clients on morocco-1 to fresh substitute clients created by ibc_create_clients.")]
+    #[arg(
+        long,
+        default_value = "Recover expired 07-tendermint clients on morocco-1 to fresh substitute clients created by ibc_create_clients."
+    )]
     summary: String,
     /// Initial deposit in uterp.
     #[arg(long, default_value_t = 10_000_000_000)]
@@ -51,22 +54,37 @@ struct Cli {
 fn parse_pairs(raw: &[String]) -> Result<Vec<(String, String)>> {
     raw.iter()
         .map(|p| {
-            let (a, b) = p.split_once(':').ok_or_else(|| anyhow!("pair {p} is not subject:substitute"))?;
+            let (a, b) = p
+                .split_once(':')
+                .ok_or_else(|| anyhow!("pair {p} is not subject:substitute"))?;
             Ok((a.to_string(), b.to_string()))
         })
         .collect()
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     dao_scripts::kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
     let pairs = parse_pairs(&cli.pairs)?;
     let morocco = kms_gate::morocco_info();
     let authority = kms_gate::module_address("gov", "terp")?;
-    let proposer = if cli.granter.is_empty() { "<cw-orch-kms granter>".to_string() } else { cli.granter.clone() };
-    let any = ibc_clients::recover_proposal_any(&pairs, &authority, &proposer, (cli.deposit, "uterp"), &cli.title, &cli.summary)?;
+    let proposer = if cli.granter.is_empty() {
+        "<cw-orch-kms granter>".to_string()
+    } else {
+        cli.granter.clone()
+    };
+    let any = ibc_clients::recover_proposal_any(
+        &pairs,
+        &authority,
+        &proposer,
+        (cli.deposit, "uterp"),
+        &cli.title,
+        &cli.summary,
+    )?;
     // Live checks, read-only: subject/substitute must satisfy ibc-go v11
     // IsMatchingClientState and each substitute must be Active with enough
     // trusting time left to outlast the vote. Broadcast refuses on any failure.
@@ -74,23 +92,39 @@ fn main() -> Result<()> {
     let status = match kms_gate::query_only(&morocco) {
         Ok(d) => {
             let ibc = cw_orch::daemon::queriers::Ibc::new_async(d.channel());
-            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs() as i64;
             let cs_of = |id: &str| -> Result<ibc_clients::TmClientState> {
-                let r = d.rt_handle.block_on(ibc._client_state(id)).map_err(|e| anyhow!("{id}: {e}"))?;
-                let a = r.client_state.ok_or_else(|| anyhow!("{id}: no client state"))?;
+                let r = d
+                    .rt_handle
+                    .block_on(ibc._client_state(id))
+                    .map_err(|e| anyhow!("{id}: {e}"))?;
+                let a = r
+                    .client_state
+                    .ok_or_else(|| anyhow!("{id}: no client state"))?;
                 Ok(ibc_clients::TmClientState::decode(a.value.as_slice())?)
             };
-            let status_of = |id: &str| d.rt_handle.block_on(ibc._client_status(id)).map(|r| r.status).unwrap_or_else(|e| format!("error: {e}"));
+            let status_of = |id: &str| {
+                d.rt_handle
+                    .block_on(ibc._client_status(id))
+                    .map(|r| r.status)
+                    .unwrap_or_else(|e| format!("error: {e}"))
+            };
             let mut out = Vec::new();
             for (s, t) in &pairs {
                 let subj = cs_of(s);
                 let sub = cs_of(t);
                 let sub_status = status_of(t);
                 let remaining = sub.as_ref().ok().and_then(|c| {
-                    let lh = c.latest_height.clone()?;
+                    let lh = c.latest_height?;
                     let cons = d.rt_handle.block_on(ibc._consensus_states(t)).ok()?;
-                    let e = cons.consensus_states.into_iter().find(|e| e.height.as_ref().map(|h| h.revision_height) == Some(lh.revision_height))?;
-                    let cs = ibc_clients::TmConsensusState::decode(e.consensus_state?.value.as_slice()).ok()?;
+                    let e = cons.consensus_states.into_iter().find(|e| {
+                        e.height.as_ref().map(|h| h.revision_height) == Some(lh.revision_height)
+                    })?;
+                    let cs =
+                        ibc_clients::TmConsensusState::decode(e.consensus_state?.value.as_slice())
+                            .ok()?;
                     let ts = cs.timestamp?.seconds;
                     Some(ts + c.trusting_period.as_ref()?.seconds - now)
                 });
@@ -98,7 +132,9 @@ fn main() -> Result<()> {
                     (Ok(a), Ok(b)) => Some(ibc_clients::is_matching_client_state(a, b)),
                     _ => None,
                 };
-                let ok = sub_status == "Active" && remaining.map_or(false, |r| r >= cli.min_remaining_secs) && matching == Some(true);
+                let ok = sub_status == "Active"
+                    && remaining.is_some_and(|r| r >= cli.min_remaining_secs)
+                    && matching == Some(true);
                 all_ok &= ok;
                 out.push(serde_json::json!({
                     "subject": s, "subject_status": status_of(s),
@@ -138,7 +174,10 @@ fn main() -> Result<()> {
         return Ok(());
     }
     if !all_ok {
-        bail!("broadcast refused: a substitute is not Active with >= {}s left, or does not match its subject", cli.min_remaining_secs);
+        bail!(
+            "broadcast refused: a substitute is not Active with >= {}s left, or does not match its subject",
+            cli.min_remaining_secs
+        );
     }
     if cli.granter.is_empty() {
         bail!("broadcast refused: pass --granter so the proposer is the granter");

@@ -19,7 +19,7 @@
 //! Dry-run by default. `--broadcast --chain-id morocco-1` with
 //! TERP_SCRIPT_BROADCAST=1 goes through kms_gate.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use dao_foundation_suite::ibc_ops::PARENT_CORE;
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
@@ -70,11 +70,21 @@ struct Cli {
     out: String,
 }
 
-fn checksums(d: &cw_orch::daemon::senders::QueryOnlyDaemon, ids: &[(u64, &str)]) -> Result<serde_json::Value> {
+fn checksums(
+    d: &cw_orch::daemon::senders::QueryOnlyDaemon,
+    ids: &[(u64, &str)],
+) -> Result<serde_json::Value> {
     let q = cw_orch::daemon::queriers::CosmWasm::new_async(d.channel());
     let mut out = serde_json::Map::new();
     for (id, want) in ids {
-        let got = d.rt_handle.block_on(q._code(*id))?.checksum.as_slice().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+        let got = d
+            .rt_handle
+            .block_on(q._code(*id))?
+            .checksum
+            .as_slice()
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
         if got != *want {
             bail!("code {id} checksum {got} != {want}");
         }
@@ -96,26 +106,55 @@ fn build_v3(cli: &Cli, pair: Option<(&str, &str)>) -> Result<Built> {
     let state = pt::codes_from_state("morocco-1", cli.state.as_deref())?;
     let note_code = cli.note_code_id.unwrap_or(state.note);
     let listener_code = cli.listener_code_id.or(state.listener);
-    let sender = if cli.granter.is_empty() { None } else { Some(cli.granter.as_str()) };
-    let note = sender.map(|s| pt::predict_for(s, pt::V3_NOTE_CHECKSUM, pt::V3_NOTE_SALT)).transpose()?;
+    let sender = if cli.granter.is_empty() {
+        None
+    } else {
+        Some(cli.granter.as_str())
+    };
+    let note = sender
+        .map(|s| pt::predict_for(s, pt::V3_NOTE_CHECKSUM, pt::V3_NOTE_SALT))
+        .transpose()?;
     let listener = match (sender, listener_code) {
-        (Some(s), Some(_)) => Some(pt::predict_for(s, pt::V3_LISTENER_CHECKSUM, pt::V3_LISTENER_SALT)?),
+        (Some(s), Some(_)) => Some(pt::predict_for(
+            s,
+            pt::V3_LISTENER_CHECKSUM,
+            pt::V3_LISTENER_SALT,
+        )?),
         _ => None,
     };
     let note_msg = pt::note_init(pair);
     let mut msgs = vec![];
     let mut verify_ids = vec![(note_code, pt::V3_NOTE_CHECKSUM)];
-    if let Some(v) = state.voice { verify_ids.push((v, pt::V3_VOICE_CHECKSUM)); }
-    if let Some(p) = state.proxy { verify_ids.push((p, pt::V3_PROXY_CHECKSUM)); }
+    if let Some(v) = state.voice {
+        verify_ids.push((v, pt::V3_VOICE_CHECKSUM));
+    }
+    if let Some(p) = state.proxy {
+        verify_ids.push((p, pt::V3_PROXY_CHECKSUM));
+    }
     if let Some(s) = sender {
-        msgs.push(pt::instantiate2_any(s, &cli.admin, note_code, pt::NOTE_LABEL, &note_msg, pt::V3_NOTE_SALT)?);
+        msgs.push(pt::instantiate2_any(
+            s,
+            &cli.admin,
+            note_code,
+            pt::NOTE_LABEL,
+            &note_msg,
+            pt::V3_NOTE_SALT,
+        )?);
     }
     let mut listener_plan = serde_json::json!({"skipped": "no polytone:listener code on morocco-1 (state or --listener-code-id)"});
     if let Some(lc) = listener_code {
         verify_ids.push((lc, pt::V3_LISTENER_CHECKSUM));
-        let lmsg = serde_json::json!({"note": note.clone().unwrap_or_else(|| "<predicted note>".into())});
+        let lmsg =
+            serde_json::json!({"note": note.clone().unwrap_or_else(|| "<predicted note>".into())});
         if let Some(s) = sender {
-            msgs.push(pt::instantiate2_any(s, &cli.admin, lc, pt::LISTENER_LABEL, &lmsg, pt::V3_LISTENER_SALT)?);
+            msgs.push(pt::instantiate2_any(
+                s,
+                &cli.admin,
+                lc,
+                pt::LISTENER_LABEL,
+                &lmsg,
+                pt::V3_LISTENER_SALT,
+            )?);
         }
         listener_plan = serde_json::json!({"code_id": lc, "label": pt::LISTENER_LABEL, "salt": pt::V3_LISTENER_SALT, "msg": lmsg, "predicted": listener});
     }
@@ -141,11 +180,22 @@ fn build_gov(cli: &Cli, pair: Option<(&str, &str)>) -> Result<Built> {
     let gov = kms_gate::module_address("gov", "terp")?;
     let addrs = pt::predicted_terp_note(&gov)?;
     let title = "Instantiate the Polytone note to osmosis-1";
-    let summary = format!("Gov instantiate2 of polytone note (code {}) and listener (code {}). Predicted note {}, listener {}. Admin is the gov module.",
-        pt::TERP_NOTE_CODE, pt::TERP_LISTENER_CODE, addrs.note, addrs.listener);
+    let summary = format!(
+        "Gov instantiate2 of polytone note (code {}) and listener (code {}). Predicted note {}, listener {}. Admin is the gov module.",
+        pt::TERP_NOTE_CODE,
+        pt::TERP_LISTENER_CODE,
+        addrs.note,
+        addrs.listener
+    );
     let mut msgs = vec![];
     if !cli.granter.is_empty() {
-        msgs.push(pt::gov_submit_any(pt::terp_note_msgs(&gov, pair)?, &cli.granter, (cli.deposit_uterp, "uterp"), title, &summary)?);
+        msgs.push(pt::gov_submit_any(
+            pt::terp_note_msgs(&gov, pair)?,
+            &cli.granter,
+            (cli.deposit_uterp, "uterp"),
+            title,
+            &summary,
+        )?);
     }
     Ok(Built {
         plan: serde_json::json!({
@@ -157,12 +207,17 @@ fn build_gov(cli: &Cli, pair: Option<(&str, &str)>) -> Result<Built> {
         msgs,
         scope: Scope::Sdk(vec!["/cosmos.gov.v1.MsgSubmitProposal".into()]),
         title,
-        verify_ids: vec![(pt::TERP_NOTE_CODE, pt::NOTE_CHECKSUM), (pt::TERP_LISTENER_CODE, pt::LISTENER_CHECKSUM)],
+        verify_ids: vec![
+            (pt::TERP_NOTE_CODE, pt::NOTE_CHECKSUM),
+            (pt::TERP_LISTENER_CODE, pt::LISTENER_CHECKSUM),
+        ],
     })
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
@@ -173,11 +228,16 @@ fn main() -> Result<()> {
         (None, None) => None,
         _ => bail!("pass both --connection and --voice, or neither"),
     };
-    let built = if cli.via_gov { build_gov(&cli, pair)? } else { build_v3(&cli, pair)? };
+    let built = if cli.via_gov {
+        build_gov(&cli, pair)?
+    } else {
+        build_v3(&cli, pair)?
+    };
     let verify = if cli.skip_verify {
         serde_json::json!("skipped")
     } else {
-        let mut osmo: cw_orch::environment::ChainInfoOwned = cw_orch::daemon::networks::OSMOSIS_1.into();
+        let mut osmo: cw_orch::environment::ChainInfoOwned =
+            cw_orch::daemon::networks::OSMOSIS_1.into();
         if let Ok(g) = std::env::var("OSMOSIS_GRPC") {
             osmo.grpc_urls = vec![g];
         }
@@ -187,9 +247,21 @@ fn main() -> Result<()> {
                 ._contract_info(&cosmwasm_std::Addr::unchecked(pt::OSMO_REFERENCE_VOICE)),
         )?;
         if ref_voice.code_id != pt::OSMO_VOICE_CODE {
-            bail!("DAO-DAO reference voice is code {}, expected {}", ref_voice.code_id, pt::OSMO_VOICE_CODE);
+            bail!(
+                "DAO-DAO reference voice is code {}, expected {}",
+                ref_voice.code_id,
+                pt::OSMO_VOICE_CODE
+            );
         }
-        let osmo_sums = checksums(&od, &[(pt::OSMO_LISTENER_CODE, pt::LISTENER_CHECKSUM), (pt::OSMO_NOTE_CODE, pt::NOTE_CHECKSUM), (pt::OSMO_PROXY_CODE, pt::PROXY_CHECKSUM), (pt::OSMO_VOICE_CODE, pt::VOICE_CHECKSUM)])?;
+        let osmo_sums = checksums(
+            &od,
+            &[
+                (pt::OSMO_LISTENER_CODE, pt::LISTENER_CHECKSUM),
+                (pt::OSMO_NOTE_CODE, pt::NOTE_CHECKSUM),
+                (pt::OSMO_PROXY_CODE, pt::PROXY_CHECKSUM),
+                (pt::OSMO_VOICE_CODE, pt::VOICE_CHECKSUM),
+            ],
+        )?;
         drop(od);
         let md = kms_gate::query_only(&morocco)?;
         serde_json::json!({
@@ -198,19 +270,26 @@ fn main() -> Result<()> {
             "osmosis_reference_voice": {"address": pt::OSMO_REFERENCE_VOICE, "code_id": ref_voice.code_id},
         })
     };
-    let note_port = built.note.as_ref().map(|n| format!("wasm.{n}")).unwrap_or_else(|| "wasm.<note>".into());
-    kms_gate::write_plan(&cli.out, &serde_json::json!({
-        "dry_run": !cli.broadcast,
-        "source": {"osmosis_codes": pt::DAO_DAO_POLYTONE_JSON, "chains_ts": pt::DAO_DAO_CHAINS_TS},
-        "verify": verify,
-        "morocco-1": built.plan,
-        "msgs": built.msgs.iter().map(|m| m.type_url.clone()).collect::<Vec<_>>(),
-        "osmosis-1": {"codes": {"listener": pt::OSMO_LISTENER_CODE, "note": pt::OSMO_NOTE_CODE, "proxy": pt::OSMO_PROXY_CODE, "voice": pt::OSMO_VOICE_CODE},
-            "voice_instantiate": {"code_id": pt::OSMO_VOICE_CODE, "label": pt::VOICE_LABEL, "admin": null, "msg": pt::voice_init()},
-            "signer": "an osmo1 account (not this script)"},
-        "channel": {"a": note_port, "b": remote_port.unwrap_or_else(|| "wasm.<osmosis voice>".into()), "version": pt::CHANNEL_VERSION, "ordering": "unordered",
-            "needs": "a morocco-1 <-> osmosis-1 connection and a relayer"},
-    }))?;
+    let note_port = built
+        .note
+        .as_ref()
+        .map(|n| format!("wasm.{n}"))
+        .unwrap_or_else(|| "wasm.<note>".into());
+    kms_gate::write_plan(
+        &cli.out,
+        &serde_json::json!({
+            "dry_run": !cli.broadcast,
+            "source": {"osmosis_codes": pt::DAO_DAO_POLYTONE_JSON, "chains_ts": pt::DAO_DAO_CHAINS_TS},
+            "verify": verify,
+            "morocco-1": built.plan,
+            "msgs": built.msgs.iter().map(|m| m.type_url.clone()).collect::<Vec<_>>(),
+            "osmosis-1": {"codes": {"listener": pt::OSMO_LISTENER_CODE, "note": pt::OSMO_NOTE_CODE, "proxy": pt::OSMO_PROXY_CODE, "voice": pt::OSMO_VOICE_CODE},
+                "voice_instantiate": {"code_id": pt::OSMO_VOICE_CODE, "label": pt::VOICE_LABEL, "admin": null, "msg": pt::voice_init()},
+                "signer": "an osmo1 account (not this script)"},
+            "channel": {"a": note_port, "b": remote_port.unwrap_or_else(|| "wasm.<osmosis voice>".into()), "version": pt::CHANNEL_VERSION, "ordering": "unordered",
+                "needs": "a morocco-1 <-> osmosis-1 connection and a relayer"},
+        }),
+    )?;
     if !cli.broadcast {
         return Ok(());
     }

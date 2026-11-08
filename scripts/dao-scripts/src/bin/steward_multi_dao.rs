@@ -12,14 +12,14 @@
 //! session scoped to that contract, key `propose`, one call. Custody-side
 //! proposals are later votes of those DAOs, not run here.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use clap::Parser;
 use cosmwasm_std::CosmosMsg;
 use cw_orch_kms::ScopedCall;
 use dao_foundation_suite::ibc_ops::native_delegation::{CODE_CORE, PARENT_CORE, PRE_PROPOSE_A};
 use dao_foundation_suite::ibc_ops::steward::{
-    assert_steward_admin, build_steward_plan_tuned, build_steward_plan_with_parent, decode_bech32,
-    decode_hex, load_steward_accounts, JunoRemote, JUNO_DAO_CODES, JUNO_GOV,
+    JUNO_DAO_CODES, JUNO_GOV, JunoRemote, assert_steward_admin, build_steward_plan_tuned,
+    build_steward_plan_with_parent, decode_bech32, decode_hex, load_steward_accounts,
 };
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
 use std::path::PathBuf;
@@ -86,13 +86,17 @@ fn checksum(cli: &Cli, info: &cw_orch::environment::ChainInfoOwned) -> Result<Ve
     let d = kms_gate::query_only(info)?;
     let code = d
         .rt_handle
-        .block_on(cw_orch::daemon::queriers::CosmWasm::new_async(d.channel())._code(cli.core_code_id))
+        .block_on(
+            cw_orch::daemon::queriers::CosmWasm::new_async(d.channel())._code(cli.core_code_id),
+        )
         .map_err(|e| anyhow!("code {} info: {e}", cli.core_code_id))?;
     Ok(code.checksum.as_slice().to_vec())
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     dao_scripts::kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
@@ -103,8 +107,13 @@ fn main() -> Result<()> {
         (_, true) => None,
         (Some(n), _) => Some(n.clone()),
         (None, false) => {
-            let n = dao_scripts::polytone::predicted_terp_note(&kms_gate::module_address("gov", "terp")?)?.note;
-            eprintln!("polytone note {n} (legacy gov prediction; the cw-v3 note address depends on the polytone_osmosis granter, pass --polytone-note)");
+            let n = dao_scripts::polytone::predicted_terp_note(&kms_gate::module_address(
+                "gov", "terp",
+            )?)?
+            .note;
+            eprintln!(
+                "polytone note {n} (legacy gov prediction; the cw-v3 note address depends on the polytone_osmosis granter, pass --polytone-note)"
+            );
             Some(n)
         }
     };
@@ -118,7 +127,11 @@ fn main() -> Result<()> {
     } else if let Some(p) = &cli.gov_parent {
         Some(p.clone())
     } else {
-        Some(kms_gate::query_module_account(&kms_gate::query_only(&morocco)?, "gov", "terp")?)
+        Some(kms_gate::query_module_account(
+            &kms_gate::query_only(&morocco)?,
+            "gov",
+            "terp",
+        )?)
     };
     if parent.as_deref() == Some(cli.foundation.as_str()) {
         bail!("gov parent equals the Foundation DAO");
@@ -126,17 +139,35 @@ fn main() -> Result<()> {
     eprintln!("steward parent: {parent:?} (x/gov module account)");
     let mut juno_info = serde_json::Value::Null;
     let (plan, expect) = if cli.legacy_four {
-        (build_steward_plan_with_parent(&accounts, &cli.foundation, &sum, note.as_deref(), None, parent.as_deref())
-            .map_err(|e| anyhow!(e))?, 4)
+        (
+            build_steward_plan_with_parent(
+                &accounts,
+                &cli.foundation,
+                &sum,
+                note.as_deref(),
+                None,
+                parent.as_deref(),
+            )
+            .map_err(|e| anyhow!(e))?,
+            4,
+        )
     } else {
         let juno_gov = match &cli.juno_gov {
             Some(g) => g.clone(),
             None => {
-                let mut ji: cw_orch::environment::ChainInfoOwned = cw_orch::daemon::networks::JUNO_1.into();
-                if let Ok(g) = std::env::var("JUNO_GRPC") { ji.grpc_urls = vec![g]; }
-                match kms_gate::query_only(&ji).and_then(|d| kms_gate::query_module_account(&d, "gov", "juno")) {
+                let mut ji: cw_orch::environment::ChainInfoOwned =
+                    cw_orch::daemon::networks::JUNO_1.into();
+                if let Ok(g) = std::env::var("JUNO_GRPC") {
+                    ji.grpc_urls = vec![g];
+                }
+                match kms_gate::query_only(&ji)
+                    .and_then(|d| kms_gate::query_module_account(&d, "gov", "juno"))
+                {
                     Ok(g) => g,
-                    Err(e) => { eprintln!("juno gov query failed ({e}); using {JUNO_GOV}"); JUNO_GOV.to_string() }
+                    Err(e) => {
+                        eprintln!("juno gov query failed ({e}); using {JUNO_GOV}");
+                        JUNO_GOV.to_string()
+                    }
                 }
             }
         };
@@ -144,44 +175,75 @@ fn main() -> Result<()> {
             bail!("juno gov module {juno_gov} != expected {JUNO_GOV}");
         }
         let creator_bytes = decode_bech32(&cli.foundation).map_err(|e| anyhow!(e))?.1;
-        let steward_juno = cw_orch_kms::instantiate2_bech32("terp", &sum, &creator_bytes, b"steward-juno").map_err(|e| anyhow!(e))?;
+        let steward_juno =
+            cw_orch_kms::instantiate2_bech32("terp", &sum, &creator_bytes, b"steward-juno")
+                .map_err(|e| anyhow!(e))?;
         let proxy = match (&cli.juno_voice, &cli.juno_connection, &cli.juno_note) {
-            (Some(v), Some(c), Some(n)) => Some(dao_scripts::polytone::predict_proxy(v, c, n, &steward_juno)?),
+            (Some(v), Some(c), Some(n)) => Some(dao_scripts::polytone::predict_proxy(
+                v,
+                c,
+                n,
+                &steward_juno,
+            )?),
             _ => None,
         };
         juno_info = serde_json::json!({"gov": juno_gov, "note": cli.juno_note, "voice": cli.juno_voice, "connection": cli.juno_connection, "steward_juno_proxy": proxy, "codes": "DAO-DAO v2.7.0 juno-1: core 4862, voting_cw4 4872, cw4_group 1992, proposal_single 4869"});
-        let jr = JunoRemote { note: cli.juno_note.as_deref(), proxy: proxy.as_deref(), juno_gov: &juno_gov, codes: JUNO_DAO_CODES };
-        (build_steward_plan_tuned(&accounts, &cli.foundation, &sum, cli.polytone_note.as_deref(), parent.as_deref(), &jr)
-            .map_err(|e| anyhow!(e))?, 3)
+        let jr = JunoRemote {
+            note: cli.juno_note.as_deref(),
+            proxy: proxy.as_deref(),
+            juno_gov: &juno_gov,
+            codes: JUNO_DAO_CODES,
+        };
+        (
+            build_steward_plan_tuned(
+                &accounts,
+                &cli.foundation,
+                &sum,
+                cli.polytone_note.as_deref(),
+                parent.as_deref(),
+                &jr,
+            )
+            .map_err(|e| anyhow!(e))?,
+            3,
+        )
     };
     let msgs: Vec<CosmosMsg> = serde_json::from_value(
         plan.foundation_proposal["propose"]["msg"]["propose"]["msgs"].clone(),
     )?;
     if msgs.len() != expect {
-        bail!("expected {expect} foundation instantiate2 msgs, got {}", msgs.len());
+        bail!(
+            "expected {expect} foundation instantiate2 msgs, got {}",
+            msgs.len()
+        );
     }
     for m in &msgs {
         assert_steward_admin(m, &cli.foundation, parent.as_deref()).map_err(|e| anyhow!(e))?;
     }
     std::fs::create_dir_all(&cli.out_dir)?;
     for s in &plan.subdaos {
-        std::fs::write(format!("{}/{}.json", cli.out_dir, s.file_stem), serde_json::to_string_pretty(&s.body)?)?;
+        std::fs::write(
+            format!("{}/{}.json", cli.out_dir, s.file_stem),
+            serde_json::to_string_pretty(&s.body)?,
+        )?;
     }
-    kms_gate::write_plan(&format!("{}/plan.json", cli.out_dir), &serde_json::json!({
-        "dry_run": !cli.broadcast,
-        "chain_id": morocco.chain_id,
-        "checksum": plan.checksum_hex,
-        "creator": plan.creator,
-        "addresses": plan.addresses,
-        "foundation_contract": cli.pre_propose,
-        "foundation_proposal": plan.foundation_proposal,
-        "subdao_files": plan.subdaos.iter().map(|s| &s.file_stem).collect::<Vec<_>>(),
-        "parent": parent,
-        "structure": if cli.legacy_four { "legacy-four" } else { "tuned: steward-akash + custody-akash + steward-juno on Terp; custody-juno on Juno via Polytone" },
-        "juno": juno_info,
-        "invariants": "foundation is neither wasm nor DAO admin of any Terp DAO; both admins equal the x/gov module parent (checked)",
-        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
-    }))?;
+    kms_gate::write_plan(
+        &format!("{}/plan.json", cli.out_dir),
+        &serde_json::json!({
+            "dry_run": !cli.broadcast,
+            "chain_id": morocco.chain_id,
+            "checksum": plan.checksum_hex,
+            "creator": plan.creator,
+            "addresses": plan.addresses,
+            "foundation_contract": cli.pre_propose,
+            "foundation_proposal": plan.foundation_proposal,
+            "subdao_files": plan.subdaos.iter().map(|s| &s.file_stem).collect::<Vec<_>>(),
+            "parent": parent,
+            "structure": if cli.legacy_four { "legacy-four" } else { "tuned: steward-akash + custody-akash + steward-juno on Terp; custody-juno on Juno via Polytone" },
+            "juno": juno_info,
+            "invariants": "foundation is neither wasm nor DAO admin of any Terp DAO; both admins equal the x/gov module parent (checked)",
+            "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": 1}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
+        }),
+    )?;
     if !cli.broadcast {
         return Ok(());
     }
@@ -197,7 +259,12 @@ fn main() -> Result<()> {
             purpose: "steward-multi-dao".into(),
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
-            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: 1, funds: vec![] }),
+            scope: Scope::Execute(ScopedCall {
+                address: cli.pre_propose.clone(),
+                keys: vec!["propose".into()],
+                calls: 1,
+                funds: vec![],
+            }),
             summary: "Foundation proposal: liquidity steward + custody DAOs".into(),
         },
         vec![any],

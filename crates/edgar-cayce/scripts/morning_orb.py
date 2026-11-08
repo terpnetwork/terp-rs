@@ -8,9 +8,11 @@ Writes an H.264 MP4. Exits non-zero if ffmpeg or a speech tool is missing.
 
 import argparse
 import math
+import os
 import shutil
 import subprocess
 import sys
+import time
 import wave
 from array import array
 from pathlib import Path
@@ -29,14 +31,43 @@ def tool(name: str) -> Optional[str]:
             return str(candidate)
     return None
 
-W, H, FPS = 320, 180, 8
+# 720p, four times the old 320x180 board. Glow levels are drawn once and reused.
+W, H, FPS = 1280, 720, 24
 BG = (12, 18, 16)
 DISC = (152, 232, 193)
-MAX_SECONDS = 45
+HALO = (152, 232, 193)
+MAX_SECONDS = 90
+GLOW_LEVELS = 40
+
+
+def kokoro_wav(text: str, wav: Path) -> bool:
+    """Warm Kokoro queue used by the herdr sayit plugin (~/.sayit-queue)."""
+    queue = Path.home() / ".sayit-queue"
+    inbox = queue / "in"
+    outdir = queue / "out"
+    if not inbox.is_dir():
+        return False
+    jid = f"job-edgar{os.getpid()}"
+    src = inbox / f"{jid}.txt"
+    dest = outdir / f"{jid}.wav"
+    try:
+        src.write_text(text, encoding="utf-8")
+    except OSError:
+        return False
+    deadline = time.time() + 90
+    while time.time() < deadline:
+        if dest.is_file() and dest.stat().st_size > 44:
+            shutil.move(str(dest), wav)
+            return wav.is_file() and wav.stat().st_size > 44
+        time.sleep(0.5)
+    src.unlink(missing_ok=True)
+    return False
 
 
 def speech_wav(text: str, wav: Path) -> None:
-    text = " ".join(text.split())[:900] or "Terp morning board. No chain changes since yesterday."
+    text = " ".join(text.split())[:1900] or "Terp morning board. No chain changes since yesterday."
+    if kokoro_wav(text, wav):
+        return
     attempts = []
     speak = tool("espeak-ng")
     if speak:
@@ -103,30 +134,37 @@ def envelope(samples, rate: int):
     return smooth or [0.2]
 
 
-def frames(amps):
-    cx, cy = W / 2, H / 2
-    dist = []
-    for y in range(H):
-        for x in range(W):
-            dist.append(math.hypot(x - cx, y - cy))
-    disc_r = 28.0
-    for amp in amps:
-        glow = 18.0 + amp * 62.0
-        buf = bytearray(W * H * 3)
-        offset = 0
-        for d in dist:
-            if d <= disc_r:
-                shade = 0.82 + 0.18 * (1.0 - d / disc_r)
-                rgb = tuple(min(255, int(channel * shade)) for channel in DISC)
-            else:
-                fade = max(0.0, 1.0 - (d - disc_r) / glow)
-                fade = fade * fade * (0.25 + 0.75 * amp)
-                rgb = tuple(
-                    int(bg + (fg - bg) * fade) for bg, fg in zip(BG, DISC)
-                )
-            buf[offset : offset + 3] = bytes(rgb)
-            offset += 3
-        yield buf
+def paint(amp: float, dist) -> bytes:
+    """One antialiased frame. The disc edge blends over about two pixels."""
+    disc_r = 112.0
+    glow = 72.0 + amp * 248.0
+    buf = bytearray(W * H * 3)
+    offset = 0
+    edge = 2.0
+    for d in dist:
+        if d <= disc_r - edge:
+            shade = 0.86 + 0.14 * (1.0 - d / disc_r)
+            rgb = tuple(min(255, int(channel * shade)) for channel in DISC)
+        elif d <= disc_r + edge:
+            t = (d - (disc_r - edge)) / (2.0 * edge)
+            t = t * t * (3.0 - 2.0 * t)
+            rgb = tuple(int(bg + (fg - bg) * (1.0 - t)) for bg, fg in zip(BG, DISC))
+        else:
+            fade = max(0.0, 1.0 - (d - disc_r) / glow)
+            fade = fade * fade * (0.35 + 0.65 * amp)
+            rgb = tuple(int(bg + (fg - bg) * fade) for bg, fg in zip(BG, HALO))
+        buf[offset : offset + 3] = bytes(rgb)
+        offset += 3
+    return bytes(buf)
+
+
+def glow_bank(dist):
+    return [paint(i / (GLOW_LEVELS - 1), dist) for i in range(GLOW_LEVELS)]
+
+
+def distances():
+    cx, cy = (W - 1) / 2, (H - 1) / 2
+    return [math.hypot(x - cx, y - cy) for y in range(H) for x in range(W)]
 
 
 def main() -> None:
@@ -140,9 +178,7 @@ def main() -> None:
     speech_wav(text, wav)
     rate, samples = load_pcm(wav)
     amps = envelope(samples, rate)
-    with raw.open("wb") as handle:
-        for frame in frames(amps):
-            handle.write(frame)
+    bank = glow_bank(distances())
     ffmpeg = tool("ffmpeg")
     if ffmpeg is None:
         raise SystemExit("ffmpeg not found")
@@ -158,30 +194,43 @@ def main() -> None:
         "-r",
         str(FPS),
         "-i",
-        str(raw),
+        "pipe:0",
         "-i",
         str(wav),
         "-c:v",
         "libx264",
+        "-preset",
+        "veryfast",
         "-pix_fmt",
         "yuv420p",
         "-crf",
-        "30",
+        "18",
+        "-profile:v",
+        "high",
         "-c:a",
         "aac",
         "-b:a",
-        "64k",
+        "128k",
         "-shortest",
         "-movflags",
         "+faststart",
         str(out),
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    assert proc.stdin is not None
+    try:
+        for amp in amps:
+            slot = min(GLOW_LEVELS - 1, int(amp * (GLOW_LEVELS - 1) + 0.5))
+            proc.stdin.write(bank[slot])
+    finally:
+        proc.stdin.close()
+    stderr = proc.stderr.read().decode("utf-8", "replace") if proc.stderr else ""
+    code = proc.wait()
     wav.unlink(missing_ok=True)
     raw.unlink(missing_ok=True)
-    if proc.returncode != 0 or not out.is_file():
-        sys.stderr.write(proc.stderr[-800:])
-        raise SystemExit(proc.returncode or 1)
+    if code != 0 or not out.is_file():
+        sys.stderr.write(stderr[-800:])
+        raise SystemExit(code or 1)
     if out.stat().st_size > 8 * 1024 * 1024:
         out.unlink()
         raise SystemExit("mp4 over 8MB")

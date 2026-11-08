@@ -15,11 +15,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Addresses from `DAO_CONTRACT` (one) and `DAO_ALLOWLIST` (comma-separated).
+/// Terp Foundation DAO core. Used when `DAO_CONTRACT` and `DAO_ALLOWLIST` are unset.
+pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w";
+
 pub fn configured_daos() -> BTreeSet<String> {
-    daos_from_config(
+    daos_or_foundation(daos_from_config(
         &std::env::var("DAO_CONTRACT").unwrap_or_default(),
         &std::env::var("DAO_ALLOWLIST").unwrap_or_default(),
-    )
+    ))
+}
+
+pub fn daos_or_foundation(set: BTreeSet<String>) -> BTreeSet<String> {
+    if !set.is_empty() {
+        return set;
+    }
+    BTreeSet::from([FOUNDATION_DAO.to_string()])
 }
 
 pub fn daos_from_config(contract: &str, allowlist: &str) -> BTreeSet<String> {
@@ -71,6 +81,8 @@ pub struct DaoEvent {
     pub kind: String,
     pub title: String,
     pub url: String,
+    /// DAO proposal status key (`open`, `executed`, …). Empty for other kinds.
+    pub status_key: String,
 }
 
 pub fn format_event(e: &DaoEvent) -> Option<String> {
@@ -84,10 +96,16 @@ pub fn format_event_in(allowed: &HashSet<String>, e: &DaoEvent) -> Option<String
     if !allowed.contains(&e.dao) {
         return None;
     }
+    let status = if e.status_key.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", e.status_key)
+    };
     Some(format!(
-        "🏛️ **DAO {kind}** — {dao}\n**{title}**\n{url}",
+        "🏛️ **DAO {kind}**{status} — {dao}\n**{title}**\n{url}",
         kind = e.kind,
         dao = e.dao,
+        status = status,
         title = e.title,
         url = e.url
     ))
@@ -390,6 +408,7 @@ pub fn diff_proposals(
                 kind: "proposal".into(),
                 title,
                 url: url.clone(),
+                status_key: view.status_key.clone(),
             });
         }
         let voters = if let Some(fresh) = &view.votes {
@@ -409,6 +428,7 @@ pub fn diff_proposals(
                             one_line(choice, 40)
                         ),
                         url: url.clone(),
+                        status_key: String::new(),
                     });
                 }
             }
@@ -429,6 +449,7 @@ pub fn diff_proposals(
                     kind: kind.into(),
                     title: format!("{label} — {}", view.status_key),
                     url: url.clone(),
+                    status_key: view.status_key.clone(),
                 });
             }
         }
@@ -444,12 +465,16 @@ pub fn diff_proposals(
     (next, events)
 }
 
+/// New proposals only. Votes and later status changes stay in memory and
+/// are not posted. The first poll still posts proposals that are open, so a
+/// proposal created before this watch started is not swallowed. Closed
+/// history stays quiet.
 pub fn publish_events(seeded: bool, events: Vec<DaoEvent>) -> Vec<DaoEvent> {
-    if seeded {
-        events
-    } else {
-        Vec::new()
-    }
+    events
+        .into_iter()
+        .filter(|e| e.kind == "proposal")
+        .filter(|e| seeded || e.status_key == "open")
+        .collect()
 }
 
 pub fn cap_notes(mut notes: Vec<String>, cap: usize) -> Vec<String> {
@@ -549,9 +574,9 @@ pub async fn tick(
     if !already {
         tracing::info!(
             daos = state.daos.len(),
-            "dao watch seeded (no historical alerts)"
+            open = events.len(),
+            "dao watch seeded; posting proposals that are still open"
         );
-        return Ok(Vec::new());
     }
     let notes: Vec<String> = events
         .iter()
@@ -756,6 +781,10 @@ mod tests {
             BTreeSet::from(["terp1coreaaaa".into(), "terp1subaaaaa".into()])
         );
         assert!(daos_from_config("", "").is_empty());
+        assert_eq!(
+            daos_or_foundation(BTreeSet::new()),
+            BTreeSet::from([FOUNDATION_DAO.to_string()])
+        );
         assert!(daos_from_config("bad/addr", "short").is_empty());
     }
 
@@ -767,6 +796,7 @@ mod tests {
             kind: "proposal".into(),
             title: "A1 Grants".into(),
             url: "https://daodao.zone/x".into(),
+            status_key: "open".into(),
         };
         let text = format_event_in(&allowed, &kept).unwrap();
         assert!(text.contains("**DAO proposal**"));
@@ -880,8 +910,17 @@ mod tests {
         assert!(events[0].title.contains("terp1proposer"));
         assert_eq!(events[1].kind, "vote");
         assert!(events[1].title.contains("voted yes"));
-        assert!(publish_events(false, events.clone()).is_empty());
-        assert_eq!(publish_events(true, events).len(), 2);
+        let first = publish_events(false, events.clone());
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].kind, "proposal");
+        assert_eq!(first[0].status_key, "open");
+        assert_eq!(publish_events(true, events).len(), 1);
+        let born_closed = view(9, "executed", None);
+        let (_, closed_events) =
+            diff_proposals("terp1coreaaaa", "A", &BTreeMap::new(), &[born_closed], |_| {
+                "u".into()
+            });
+        assert!(publish_events(false, closed_events).is_empty());
 
         let (snap, again) = diff_proposals(
             "terp1coreaaaa",

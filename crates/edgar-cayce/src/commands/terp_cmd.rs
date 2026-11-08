@@ -320,6 +320,7 @@ pub async fn dao_test(
         kind: "proposal".into(),
         title,
         url: "https://daodao.zone".into(),
+        status_key: "open".into(),
     };
     match dao_mod::format_event(&ev) {
         Some(m) => {

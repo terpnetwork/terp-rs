@@ -187,85 +187,145 @@
       "address": "terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44"
+      "tx": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "permissionless-fractal"
     },
     "drop:interchain-logos-penumbra": {
       "address": "terp1yldtf5nsychkasyz3gddemqy45fvl2fxpmc8jrsqvt5fv7ggghysektnqk",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97"
+      "tx": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-penumbra"
     },
     "drop:interchain-logos-osmosis": {
       "address": "terp12ye4vqzm6fmtatc3q87l2mde3ymajh4mlq0ut2ll8lkf8c9r6qzqmsvx8t",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334"
+      "tx": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-osmosis"
     },
     "drop:interchain-logos-cardano": {
       "address": "terp1jdjrrf00grgvcgusf36juf7y9gsr962he7wp9c3pfpk27g0ulfmqs4jpvm",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3"
+      "tx": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-cardano"
     },
     "drop:interchain-logos-bcna": {
       "address": "terp1fmkfazecjn2pmdxxywksaqsxp69jprsframqeg5da4l3emrx004surkf44",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80"
+      "tx": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bcna"
     },
     "drop:interchain-logos-cosmos": {
       "address": "terp1q3algj0h80vpyx3xelwql9umwmyvl7gzm4nuly3lseqlqg89tresc364de",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0"
+      "tx": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-cosmos"
     },
     "drop:interchain-logos-terp": {
       "address": "terp12v7q75xl7zm8vjzvxenyyyx4ktfye9a92u93kjrk4rppdyvj0wjspzpa6z",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813"
+      "tx": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-terp"
     },
     "drop:interchain-logos-bitcoin": {
       "address": "terp1sdu5qxlpydhpn0a8g4v3jehzn9lhf96rqalc5mj6d6u4ss3jq47susr279",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA"
+      "tx": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bitcoin"
     },
     "drop:interchain-logos-akash": {
       "address": "terp18xca496njd5v7vw0vcl0ddqvsw2s554npxhztrtz7t0x6djd7eyq6qdlez",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B"
+      "tx": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-akash"
     },
     "drop:interchain-logos-bitsong": {
       "address": "terp1l6wlwe5kysukwcln9c9rf9en5x6xzx8lzj5hfa5py8svzt78s8tswkutuz",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0"
+      "tx": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bitsong"
     },
     "drop:interchain-logos-dao": {
       "address": "terp1tf2jp6qll2x936s2g9f0h7m63dyua7827wcezsc6gsfwgq550n6ss9dtcu",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95"
+      "tx": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-dao"
     },
     "drop:interchain-logos-eth": {
       "address": "terp1a9rkeulfskj7arn8qagvu2ykkp4l664n5zj2jxwm6vfqwudnk7kqht5lnx",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B"
+      "tx": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-eth"
     },
     "drop:interchain-logos-monero": {
       "address": "terp1nphx5lmx4az8ptra2c6n04csa5u3ugcp3stcvq0n5ayw8xupyg7svlgc4t",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A"
+      "tx": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-monero"
     },
     "drop:interchain-logos-zec": {
       "address": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er",
       "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
       "code": "cw721-svg",
-      "tx": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5"
+      "tx": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-zec"
+    },
+    "drop:latent-benders-2026-10-28": {
+      "address": "terp13acw7eezjqnv2zru428lgg3dfx5l88lw6st5aemljvnu85c3xqqswlqpud",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-28",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-29": {
+      "address": "terp16prlc0v4vtu58djdypvmjsfnx4y2e3g2gjnw2m65qrun4sayufxqrn9j93",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-29",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-30": {
+      "address": "terp1y2nfyahzl55tf8jkzz5refqlkhmnflvr8adhk6pch77jrkr6accshgr0wp",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-30",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-31": {
+      "address": "terp1cy8jtf0uyz899q5hlh3g2tne4uwctqzhahk7qpyrehw8gtlna0ms4aewjg",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-31",
+      "tx": null
     }
   },
   "proposals": {

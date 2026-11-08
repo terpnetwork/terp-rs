@@ -8,7 +8,7 @@
 //! cargo run -p dao-scripts --bin relay_grants -- --chains 240u-1,osmosis-1
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use cw_orch_kms::relay_grants;
 

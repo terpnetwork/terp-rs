@@ -13,7 +13,7 @@
 //!   --core-checksum <hex> --creator terp1... --member terp1...:1 --out bounty_dao.plan.json
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use base64::Engine;
 use clap::Parser;
 
@@ -60,7 +60,9 @@ fn parse_members(raw: &[String]) -> Result<Vec<serde_json::Value>> {
     }
     raw.iter()
         .map(|m| {
-            let (addr, w) = m.split_once(':').ok_or_else(|| anyhow!("member {m}: want addr:weight"))?;
+            let (addr, w) = m
+                .split_once(':')
+                .ok_or_else(|| anyhow!("member {m}: want addr:weight"))?;
             cw_orch_kms::validate_terp_address(addr).map_err(|e| anyhow!(e))?;
             let weight: u64 = w.parse().map_err(|_| anyhow!("member {m}: bad weight"))?;
             if weight == 0 {
@@ -75,7 +77,10 @@ fn dao_init(cli: &Cli, members: Vec<serde_json::Value>) -> Result<serde_json::Va
     let [_, voting, group, proposal] = cli.codes[..] else {
         return Err(anyhow!("--codes core,voting_cw4,cw4_group,proposal_single"));
     };
-    let total: u64 = members.iter().map(|m| m["weight"].as_u64().unwrap_or(0)).sum();
+    let total: u64 = members
+        .iter()
+        .map(|m| m["weight"].as_u64().unwrap_or(0))
+        .sum();
     if cli.threshold == 0 || cli.threshold > total {
         return Err(anyhow!("threshold {} must be 1..={total}", cli.threshold));
     }
@@ -145,7 +150,9 @@ fn main() -> Result<()> {
     let members = parse_members(&cli.members)?;
     let init = dao_init(&cli, members)?;
     let dao = predicted(&cli)?;
-    let admin = dao.clone().unwrap_or_else(|| "<predicted DAO core address: pass --core-checksum and --creator>".into());
+    let admin = dao.clone().unwrap_or_else(|| {
+        "<predicted DAO core address: pass --core-checksum and --creator>".into()
+    });
     let plan = serde_json::json!({
         "dry_run": true,
         "broadcast": false,
@@ -176,10 +183,20 @@ mod tests {
 
     fn cli(members: Vec<String>, threshold: u64) -> Cli {
         Cli::parse_from(
-            ["bounty_dao", "--codes", "1,2,3,4", "--threshold", &threshold.to_string()]
-                .into_iter()
-                .map(String::from)
-                .chain(members.into_iter().flat_map(|m| ["--member".to_string(), m])),
+            [
+                "bounty_dao",
+                "--codes",
+                "1,2,3,4",
+                "--threshold",
+                &threshold.to_string(),
+            ]
+            .into_iter()
+            .map(String::from)
+            .chain(
+                members
+                    .into_iter()
+                    .flat_map(|m| ["--member".to_string(), m]),
+            ),
         )
     }
 
@@ -187,8 +204,14 @@ mod tests {
     fn modules_are_admin_by_core_and_threshold_is_bounded() {
         let c = cli(vec![format!("{}:1", addr(1)), format!("{}:1", addr(2))], 2);
         let init = dao_init(&c, parse_members(&c.members).unwrap()).unwrap();
-        assert_eq!(init["voting_module_instantiate_info"]["admin"], serde_json::json!({"core_module": {}}));
-        assert_eq!(init["proposal_modules_instantiate_info"][0]["admin"], serde_json::json!({"core_module": {}}));
+        assert_eq!(
+            init["voting_module_instantiate_info"]["admin"],
+            serde_json::json!({"core_module": {}})
+        );
+        assert_eq!(
+            init["proposal_modules_instantiate_info"][0]["admin"],
+            serde_json::json!({"core_module": {}})
+        );
         let c = cli(vec![format!("{}:1", addr(1))], 2);
         assert!(dao_init(&c, parse_members(&c.members).unwrap()).is_err());
     }

@@ -4,13 +4,13 @@
 //! the cw-orch Daemon. Penumbra gets its JMT ics23 proof specs; cosmos-sdk
 //! chains get IAVL + tendermint specs.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use cosmos_sdk_proto::prost::Message;
 use cosmrs::Any;
-use ibc_proto::ics23::{HashOp, InnerSpec, LeafOp, LengthOp, ProofSpec};
 use ibc_proto::ibc::core::client::v1::{Height, MsgCreateClient, MsgRecoverClient};
 use ibc_proto::ibc::core::commitment::v1::MerkleRoot;
 use ibc_proto::ibc::lightclients::tendermint::v1::{ClientState, ConsensusState, Fraction};
+use ibc_proto::ics23::{HashOp, InnerSpec, LeafOp, LengthOp, ProofSpec};
 
 pub use ibc_proto::ibc::lightclients::tendermint::v1::ClientState as TmClientState;
 pub use ibc_proto::ibc::lightclients::tendermint::v1::ConsensusState as TmConsensusState;
@@ -129,7 +129,10 @@ pub fn proof_specs(store: Store) -> Vec<ProofSpec> {
 }
 
 fn duration(secs: u64) -> ibc_proto::google::protobuf::Duration {
-    ibc_proto::google::protobuf::Duration { seconds: secs as i64, nanos: 0 }
+    ibc_proto::google::protobuf::Duration {
+        seconds: secs as i64,
+        nanos: 0,
+    }
 }
 
 /// Trusting period is 2/3 of unbonding (hermes default), rounded down.
@@ -139,19 +142,32 @@ pub fn trusting_secs(unbonding_secs: u64) -> u64 {
 
 pub fn client_state(a: &Anchor, max_clock_drift_secs: u64) -> Result<ClientState> {
     if a.unbonding_secs < 3600 {
-        bail!("{}: unbonding {}s looks wrong", a.chain_id, a.unbonding_secs);
+        bail!(
+            "{}: unbonding {}s looks wrong",
+            a.chain_id,
+            a.unbonding_secs
+        );
     }
     if a.app_hash.is_empty() || a.next_validators_hash.len() != 32 {
-        bail!("{}: header is missing app_hash or next_validators_hash", a.chain_id);
+        bail!(
+            "{}: header is missing app_hash or next_validators_hash",
+            a.chain_id
+        );
     }
     #[allow(deprecated)]
     Ok(ClientState {
         chain_id: a.chain_id.clone(),
-        trust_level: Some(Fraction { numerator: 1, denominator: 3 }),
+        trust_level: Some(Fraction {
+            numerator: 1,
+            denominator: 3,
+        }),
         trusting_period: Some(duration(trusting_secs(a.unbonding_secs))),
         unbonding_period: Some(duration(a.unbonding_secs)),
         max_clock_drift: Some(duration(max_clock_drift_secs)),
-        frozen_height: Some(Height { revision_number: 0, revision_height: 0 }),
+        frozen_height: Some(Height {
+            revision_number: 0,
+            revision_height: 0,
+        }),
         latest_height: Some(Height {
             revision_number: revision_number(&a.chain_id),
             revision_height: a.height,
@@ -177,9 +193,19 @@ pub fn default_trusting_secs(unbonding_secs: u64) -> (u64, Option<String>) {
         return (t, None);
     }
     if TRUSTING_FLOOR_SECS < unbonding_secs {
-        return (TRUSTING_FLOOR_SECS, Some(format!("7d floor applied; above 2/3 of unbonding {unbonding_secs}s")));
+        return (
+            TRUSTING_FLOOR_SECS,
+            Some(format!(
+                "7d floor applied; above 2/3 of unbonding {unbonding_secs}s"
+            )),
+        );
     }
-    (t, Some(format!("unbonding {unbonding_secs}s too short for 7d; using 2/3 = {t}s")))
+    (
+        t,
+        Some(format!(
+            "unbonding {unbonding_secs}s too short for 7d; using 2/3 = {t}s"
+        )),
+    )
 }
 
 pub fn check_trusting(trusting: u64, unbonding: u64) -> Result<()> {
@@ -209,19 +235,38 @@ pub fn client_state_with(a: &Anchor, trusting: u64, drift: u64) -> Result<Client
 /// `IsMatchingClientState` compares; only latest height, frozen height,
 /// trusting period and chain id come from the new anchor.
 pub fn substitute_state(subject: &ClientState, a: &Anchor, trusting: u64) -> Result<ClientState> {
-    let sub_unb = subject.unbonding_period.as_ref().map(|d| d.seconds as u64).unwrap_or(0);
+    let sub_unb = subject
+        .unbonding_period
+        .as_ref()
+        .map(|d| d.seconds as u64)
+        .unwrap_or(0);
     if sub_unb != a.unbonding_secs {
-        bail!("{}: live unbonding {}s != subject unbonding {}s; substitute cannot match", a.chain_id, a.unbonding_secs, sub_unb);
+        bail!(
+            "{}: live unbonding {}s != subject unbonding {}s; substitute cannot match",
+            a.chain_id,
+            a.unbonding_secs,
+            sub_unb
+        );
     }
     if subject.chain_id != a.chain_id {
-        bail!("subject chain {} != anchor chain {}", subject.chain_id, a.chain_id);
+        bail!(
+            "subject chain {} != anchor chain {}",
+            subject.chain_id,
+            a.chain_id
+        );
     }
     check_trusting(trusting, sub_unb)?;
     let mut cs = subject.clone();
     cs.chain_id = a.chain_id.clone();
     cs.trusting_period = Some(duration(trusting));
-    cs.frozen_height = Some(Height { revision_number: 0, revision_height: 0 });
-    cs.latest_height = Some(Height { revision_number: revision_number(&a.chain_id), revision_height: a.height });
+    cs.frozen_height = Some(Height {
+        revision_number: 0,
+        revision_height: 0,
+    });
+    cs.latest_height = Some(Height {
+        revision_number: revision_number(&a.chain_id),
+        revision_height: a.height,
+    });
     if !is_matching_client_state(subject, &cs) {
         bail!("internal: substitute does not match subject");
     }
@@ -233,8 +278,14 @@ pub fn substitute_state(subject: &ClientState, a: &Anchor, trusting: u64) -> Res
 pub fn is_matching_client_state(subject: &ClientState, substitute: &ClientState) -> bool {
     let norm = |c: &ClientState| {
         let mut c = c.clone();
-        c.latest_height = Some(Height { revision_number: 0, revision_height: 0 });
-        c.frozen_height = Some(Height { revision_number: 0, revision_height: 0 });
+        c.latest_height = Some(Height {
+            revision_number: 0,
+            revision_height: 0,
+        });
+        c.frozen_height = Some(Height {
+            revision_number: 0,
+            revision_height: 0,
+        });
         c.trusting_period = Some(duration(0));
         c.chain_id = String::new();
         c.allow_update_after_expiry = true;
@@ -246,11 +297,20 @@ pub fn is_matching_client_state(subject: &ClientState, substitute: &ClientState)
 
 pub fn create_client_any_from(cs: &ClientState, a: &Anchor, signer: &str) -> Any {
     let msg = MsgCreateClient {
-        client_state: Some(ibc_proto::google::protobuf::Any { type_url: TM_CLIENT_STATE.into(), value: cs.encode_to_vec() }),
-        consensus_state: Some(ibc_proto::google::protobuf::Any { type_url: TM_CONSENSUS_STATE.into(), value: consensus_state(a).encode_to_vec() }),
+        client_state: Some(ibc_proto::google::protobuf::Any {
+            type_url: TM_CLIENT_STATE.into(),
+            value: cs.encode_to_vec(),
+        }),
+        consensus_state: Some(ibc_proto::google::protobuf::Any {
+            type_url: TM_CONSENSUS_STATE.into(),
+            value: consensus_state(a).encode_to_vec(),
+        }),
         signer: signer.into(),
     };
-    Any { type_url: MSG_CREATE_CLIENT.into(), value: msg.encode_to_vec() }
+    Any {
+        type_url: MSG_CREATE_CLIENT.into(),
+        value: msg.encode_to_vec(),
+    }
 }
 
 pub fn consensus_state(a: &Anchor) -> ConsensusState {
@@ -259,7 +319,9 @@ pub fn consensus_state(a: &Anchor) -> ConsensusState {
             seconds: a.time_unix,
             nanos: a.time_nanos,
         }),
-        root: Some(MerkleRoot { hash: a.app_hash.clone() }),
+        root: Some(MerkleRoot {
+            hash: a.app_hash.clone(),
+        }),
         next_validators_hash: a.next_validators_hash.clone(),
     }
 }
@@ -277,7 +339,10 @@ pub fn create_client_any(a: &Anchor, signer: &str, max_clock_drift_secs: u64) ->
         }),
         signer: signer.into(),
     };
-    Ok(Any { type_url: MSG_CREATE_CLIENT.into(), value: msg.encode_to_vec() })
+    Ok(Any {
+        type_url: MSG_CREATE_CLIENT.into(),
+        value: msg.encode_to_vec(),
+    })
 }
 
 pub fn is_tm_client_id(id: &str) -> bool {
@@ -314,18 +379,27 @@ pub fn recover_proposal_any(
             substitute_client_id: substitute.clone(),
             signer: authority.into(),
         };
-        messages.push(cosmos_sdk_proto::Any { type_url: MSG_RECOVER_CLIENT.into(), value: m.encode_to_vec() });
+        messages.push(cosmos_sdk_proto::Any {
+            type_url: MSG_RECOVER_CLIENT.into(),
+            value: m.encode_to_vec(),
+        });
     }
     let submit = MsgSubmitProposal {
         messages,
-        initial_deposit: vec![Coin { denom: deposit.1.into(), amount: deposit.0.to_string() }],
+        initial_deposit: vec![Coin {
+            denom: deposit.1.into(),
+            amount: deposit.0.to_string(),
+        }],
         proposer: proposer.into(),
         metadata: String::new(),
         title: title.into(),
         summary: summary.into(),
         expedited: false,
     };
-    Ok(Any { type_url: MSG_SUBMIT_PROPOSAL.into(), value: submit.encode_to_vec() })
+    Ok(Any {
+        type_url: MSG_SUBMIT_PROPOSAL.into(),
+        value: submit.encode_to_vec(),
+    })
 }
 
 /// Latest header of a cosmos-sdk chain through cw-orch's read-only gRPC daemon.
@@ -369,7 +443,10 @@ pub fn penumbra_anchor(rpc: &str, expected_chain_id: &str, unbonding_secs: u64) 
         .output()
         .context("curl penumbra /commit")?;
     if !out.status.success() {
-        bail!("penumbra /commit failed: {}", String::from_utf8_lossy(&out.stderr));
+        bail!(
+            "penumbra /commit failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
     }
     let v: serde_json::Value = serde_json::from_slice(&out.stdout)?;
     let h = &v["result"]["signed_header"]["header"];
@@ -393,7 +470,7 @@ pub fn penumbra_anchor(rpc: &str, expected_chain_id: &str, unbonding_secs: u64) 
 }
 
 fn hex(s: &str) -> Result<Vec<u8>> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         bail!("odd hex");
     }
     (0..s.len())
@@ -406,9 +483,15 @@ fn hex(s: &str) -> Result<Vec<u8>> {
 pub fn parse_rfc3339(s: &str) -> Result<(i64, i32)> {
     let s = s.strip_suffix('Z').context("time is not UTC")?;
     let (date, time) = s.split_once('T').context("bad time")?;
-    let d: Vec<i64> = date.split('-').map(|x| x.parse()).collect::<Result<_, _>>()?;
+    let d: Vec<i64> = date
+        .split('-')
+        .map(|x| x.parse())
+        .collect::<Result<_, _>>()?;
     let (hms, frac) = time.split_once('.').unwrap_or((time, "0"));
-    let t: Vec<i64> = hms.split(':').map(|x| x.parse()).collect::<Result<_, _>>()?;
+    let t: Vec<i64> = hms
+        .split(':')
+        .map(|x| x.parse())
+        .collect::<Result<_, _>>()?;
     if d.len() != 3 || t.len() != 3 {
         bail!("bad time {s}");
     }
@@ -454,7 +537,10 @@ mod tests {
         assert_eq!(cs.proof_specs.len(), 2);
         let leaf = cs.proof_specs[0].leaf_spec.clone().unwrap();
         assert_eq!(leaf.prefix, b"JMT::LeafNode");
-        assert_eq!(cs.proof_specs[0].inner_spec.clone().unwrap().empty_child, b"SPARSE_MERKLE_PLACEHOLDER_HASH__");
+        assert_eq!(
+            cs.proof_specs[0].inner_spec.clone().unwrap().empty_child,
+            b"SPARSE_MERKLE_PLACEHOLDER_HASH__"
+        );
         assert!(cs.proof_specs[0].prehash_key_before_comparison);
     }
 
@@ -462,9 +548,28 @@ mod tests {
     fn recover_rejects_bad_pairs_and_uses_gov_authority() {
         let auth = "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq";
         assert!(recover_proposal_any(&[], auth, "p", (1, "uterp"), "t", "s").is_err());
-        assert!(recover_proposal_any(&[("x".into(), "07-tendermint-1".into())], auth, "p", (1, "uterp"), "t", "s").is_err());
-        let a = recover_proposal_any(&[("07-tendermint-1".into(), "07-tendermint-2".into())], auth, "p", (1, "uterp"), "t", "s").unwrap();
-        let m = cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal::decode(a.value.as_slice()).unwrap();
+        assert!(
+            recover_proposal_any(
+                &[("x".into(), "07-tendermint-1".into())],
+                auth,
+                "p",
+                (1, "uterp"),
+                "t",
+                "s"
+            )
+            .is_err()
+        );
+        let a = recover_proposal_any(
+            &[("07-tendermint-1".into(), "07-tendermint-2".into())],
+            auth,
+            "p",
+            (1, "uterp"),
+            "t",
+            "s",
+        )
+        .unwrap();
+        let m = cosmos_sdk_proto::cosmos::gov::v1::MsgSubmitProposal::decode(a.value.as_slice())
+            .unwrap();
         let r = MsgRecoverClient::decode(m.messages[0].value.as_slice()).unwrap();
         assert_eq!(r.signer, auth);
     }
@@ -499,7 +604,10 @@ mod tests {
 
     #[test]
     fn rfc3339() {
-        assert_eq!(parse_rfc3339("1970-01-02T00:00:01.5Z").unwrap(), (86401, 500_000_000));
+        assert_eq!(
+            parse_rfc3339("1970-01-02T00:00:01.5Z").unwrap(),
+            (86401, 500_000_000)
+        );
         assert_eq!(revision_number("osmosis-1"), 1);
         assert_eq!(revision_number("morocco-1"), 1);
     }

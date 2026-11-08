@@ -1,0 +1,61 @@
+{
+  "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+  "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+  "signer": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+  "creation_policy": "anyone (no pre-propose, no deposit)",
+  "flow": "threshold 1, no veto: propose, vote yes, execute (sole member)",
+  "status": "DRAFT - not broadcast",
+  "authz": {
+    "granter": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+    "grantee": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+    "type": "/cosmwasm.wasm.v1.ContractExecutionAuthorization",
+    "contract": "<FIAB_ESCROW_ADDRESS>",
+    "limit": "CombinedLimit: 200 calls; funds cap 50000000000uterp + 100000000000uthiol total (decision: user to confirm)",
+    "filter": {
+      "accepted_message_keys": [
+        "create_bounty",
+        "approve",
+        "reject",
+        "assign",
+        "unassign",
+        "request_changes"
+      ]
+    },
+    "expiration": "2027-10-29T00:00:00Z"
+  },
+  "simulation": {
+    "S3_grant_shape_member_to_fiab": {
+      "ok": true,
+      "gas_used": 59219
+    },
+    "S4_propose_authz": {
+      "ok": true,
+      "gas_used": 505957
+    }
+  },
+  "propose": {
+    "propose": {
+      "title": "Grant the FIAB member authz to post and curate bounties",
+      "description": "MsgGrant from FIAB-SUBDAO to its member terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j: ContractExecutionAuthorization on the FIAB bounty escrow <FIAB_ESCROW_ADDRESS from prop 9 execute tx>, limited to the top-level keys create_bounty, approve, reject, assign, unassign, request_changes, capped by CombinedLimit at 200 calls and 50,000 TERP + 100,000 THIOL total funds (the bounty rewards FIAB escrows via create_bounty; refunds return to FIAB as proposer). Expires 2027-10-29. create_bounty is sent as FIAB, so the reward is escrowed from the FIAB treasury and FIAB is the bounty proposer. Accept, payout, settle_remainder and cancel stay with FIAB proposals.",
+      "msgs": [
+        {
+          "stargate": {
+            "type_url": "/cosmos.authz.v1beta1.MsgGrant",
+            "value": "<regenerate with the real escrow address: python3 sim.py>"
+          }
+        }
+      ]
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": "<next id>",
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": "<next id>"
+    }
+  }
+}

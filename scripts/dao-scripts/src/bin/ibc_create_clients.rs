@@ -16,7 +16,7 @@
 //! (Penumbra: IbcRelay actions signed by a Penumbra wallet) and are printed
 //! as blockers.
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use base64::Engine;
 use clap::Parser;
 use cw_orch::environment::ChainInfoOwned;
@@ -77,7 +77,9 @@ fn cosmos_info(name: &str) -> Result<ChainInfoOwned> {
             i.grpc_urls = vec!["https://akash.lavenderfive.com:443".into()];
             i
         }
-        d if DROPPED_ROUTES.contains(&d) => bail!("{d} is a dropped route; no clients are created for it"),
+        d if DROPPED_ROUTES.contains(&d) => {
+            bail!("{d} is a dropped route; no clients are created for it")
+        }
         other => bail!("unknown counterparty {other}"),
     };
     if let Ok(grpc) = std::env::var(format!("{}_GRPC", name.to_uppercase())) {
@@ -88,7 +90,11 @@ fn cosmos_info(name: &str) -> Result<ChainInfoOwned> {
 
 fn anchor_for(cli: &Cli, name: &str) -> Result<Anchor> {
     match name {
-        "penumbra" => ibc_clients::penumbra_anchor(&cli.penumbra_rpc, "penumbra-1", cli.penumbra_unbonding_secs),
+        "penumbra" => ibc_clients::penumbra_anchor(
+            &cli.penumbra_rpc,
+            "penumbra-1",
+            cli.penumbra_unbonding_secs,
+        ),
         other => ibc_clients::cosmos_anchor(&cosmos_info(other)?),
     }
 }
@@ -113,9 +119,14 @@ struct Spec {
 
 fn parse_spec(raw: &str) -> Result<Spec> {
     let (name, rest) = raw.split_once(':').unwrap_or((raw, ""));
-    let mut s = Spec { name: name.trim().to_string(), ..Default::default() };
+    let mut s = Spec {
+        name: name.trim().to_string(),
+        ..Default::default()
+    };
     for kv in rest.split(';').filter(|x| !x.trim().is_empty()) {
-        let (k, v) = kv.split_once('=').ok_or_else(|| anyhow!("bad client option {kv}"))?;
+        let (k, v) = kv
+            .split_once('=')
+            .ok_or_else(|| anyhow!("bad client option {kv}"))?;
         match k.trim() {
             "drift" => s.drift = Some(v.trim().parse()?),
             "trusting" => s.trusting = Some(v.trim().parse()?),
@@ -135,15 +146,25 @@ fn live_client_state(info: &ChainInfoOwned, id: &str) -> Result<ibc_clients::TmC
     use cosmos_sdk_proto::prost::Message;
     let d = kms_gate::query_only(info)?;
     let ibc = cw_orch::daemon::queriers::Ibc::new_async(d.channel());
-    let r = d.rt_handle.block_on(ibc._client_state(id)).map_err(|e| anyhow!("{id}: {e}"))?;
-    let any = r.client_state.ok_or_else(|| anyhow!("{id}: no client state"))?;
+    let r = d
+        .rt_handle
+        .block_on(ibc._client_state(id))
+        .map_err(|e| anyhow!("{id}: {e}"))?;
+    let any = r
+        .client_state
+        .ok_or_else(|| anyhow!("{id}: no client state"))?;
     if any.type_url != ibc_clients::TM_CLIENT_STATE {
         bail!("{id}: not a tendermint client ({})", any.type_url);
     }
     Ok(ibc_clients::TmClientState::decode(any.value.as_slice())?)
 }
 
-fn build(cli: &Cli, morocco: &ChainInfoOwned, spec: &Spec, signer: &str) -> Result<(cosmrs::Any, serde_json::Value)> {
+fn build(
+    cli: &Cli,
+    morocco: &ChainInfoOwned,
+    spec: &Spec,
+    signer: &str,
+) -> Result<(cosmrs::Any, serde_json::Value)> {
     let a = anchor_for(cli, &spec.name)?;
     let (default_t, mut note) = ibc_clients::default_trusting_secs(a.unbonding_secs);
     let trusting = spec.trusting.unwrap_or(default_t);
@@ -153,7 +174,10 @@ fn build(cli: &Cli, morocco: &ChainInfoOwned, spec: &Spec, signer: &str) -> Resu
     let (cs, purpose, matched) = match &spec.substitute_for {
         Some(subj_id) => {
             if spec.drift.is_some() {
-                bail!("{}: drift is copied from {subj_id}; do not pass drift with substitute_for", spec.name);
+                bail!(
+                    "{}: drift is copied from {subj_id}; do not pass drift with substitute_for",
+                    spec.name
+                );
             }
             let subj = live_client_state(morocco, subj_id)?;
             let cs = ibc_clients::substitute_state(&subj, &a, trusting)?;
@@ -162,7 +186,11 @@ fn build(cli: &Cli, morocco: &ChainInfoOwned, spec: &Spec, signer: &str) -> Resu
         }
         None => {
             let drift = spec.drift.unwrap_or(cli.max_clock_drift_secs);
-            (ibc_clients::client_state_with(&a, trusting, drift)?, "new route client".to_string(), None)
+            (
+                ibc_clients::client_state_with(&a, trusting, drift)?,
+                "new route client".to_string(),
+                None,
+            )
         }
     };
     let any = ibc_clients::create_client_any_from(&cs, &a, signer);
@@ -184,22 +212,38 @@ fn build(cli: &Cli, morocco: &ChainInfoOwned, spec: &Spec, signer: &str) -> Resu
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     dao_scripts::kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
     ibc_clients::check_drift(cli.max_clock_drift_secs)?;
-    let mut specs: Vec<Spec> = cli.clients.iter().map(|c| parse_spec(c)).collect::<Result<_>>()?;
-    specs.extend(cli.counterparty.iter().map(|n| Spec { name: n.clone(), ..Default::default() }));
+    let mut specs: Vec<Spec> = cli
+        .clients
+        .iter()
+        .map(|c| parse_spec(c))
+        .collect::<Result<_>>()?;
+    specs.extend(cli.counterparty.iter().map(|n| Spec {
+        name: n.clone(),
+        ..Default::default()
+    }));
     if specs.is_empty() {
         specs = ["osmosis", "juno", "akash", "atomone", "penumbra"]
-            .map(|n| Spec { name: n.into(), ..Default::default() })
+            .map(|n| Spec {
+                name: n.into(),
+                ..Default::default()
+            })
             .into_iter()
             .collect();
     }
     let names: Vec<String> = specs.iter().map(|s| s.name.clone()).collect();
     let morocco = kms_gate::morocco_info();
-    let signer = if cli.granter.is_empty() { "<cw-orch-kms granter>".to_string() } else { cli.granter.clone() };
+    let signer = if cli.granter.is_empty() {
+        "<cw-orch-kms granter>".to_string()
+    } else {
+        cli.granter.clone()
+    };
     let mut rows = Vec::new();
     let mut msgs = Vec::new();
     for spec in &specs {
@@ -208,7 +252,9 @@ fn main() -> Result<()> {
                 rows.push(row);
                 msgs.push(any);
             }
-            Err(e) => rows.push(serde_json::json!({"counterparty": spec.name, "error": e.to_string()})),
+            Err(e) => {
+                rows.push(serde_json::json!({"counterparty": spec.name, "error": e.to_string()}))
+            }
         }
     }
     let counterparty_side = if cli.counterparty_side {
@@ -242,7 +288,9 @@ fn main() -> Result<()> {
         bail!("broadcast refused: not every client was built");
     }
     if cli.granter.is_empty() {
-        bail!("broadcast refused: pass --granter (the v2 challenge page confirms it) so MsgCreateClient.signer is the granter");
+        bail!(
+            "broadcast refused: pass --granter (the v2 challenge page confirms it) so MsgCreateClient.signer is the granter"
+        );
     }
     let tx = kms_gate::kms_broadcast(
         BroadcastRequest {
@@ -253,7 +301,11 @@ fn main() -> Result<()> {
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
             scope: Scope::Sdk(vec![MSG_CREATE_CLIENT.into()]),
-            summary: format!("create {} 07-tendermint clients: {}", msgs.len(), names.join(",")),
+            summary: format!(
+                "create {} 07-tendermint clients: {}",
+                msgs.len(),
+                names.join(",")
+            ),
         },
         msgs,
         "ibc_create_clients",

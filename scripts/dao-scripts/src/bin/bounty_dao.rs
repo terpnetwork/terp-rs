@@ -12,13 +12,13 @@
 //! sends one `MsgExecuteContract{propose}` to PRE_PROPOSE_A through cw-orch-kms
 //! (scope: that contract, key `propose`, one call). Granter = Foundation member.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use cosmwasm_std::{CosmosMsg, WasmMsg};
 use cw_orch_kms::ScopedCall;
 use dao_foundation_suite::ibc_ops::{
-    bounty_proposal_description, bounty_seed, foundation_proposal_wrapper, morocco_bounty_instantiate,
-    BOUNTY_PROPOSAL_TITLE, PARENT_CORE, PRE_PROPOSE_A,
+    BOUNTY_PROPOSAL_TITLE, PARENT_CORE, PRE_PROPOSE_A, bounty_proposal_description, bounty_seed,
+    foundation_proposal_wrapper, morocco_bounty_instantiate,
 };
 use dao_interface::state::{Admin, ModuleInstantiateInfo};
 use dao_scripts::kms_gate::{self, BroadcastRequest, Scope};
@@ -73,31 +73,69 @@ const CORE_PLACEHOLDER: &str = "$DAO_CORE";
 
 fn predict_core(parent: &str, checksum_hex: &str, salt: &str) -> Result<String> {
     let h = checksum_hex.trim();
-    if h.len() != 64 { bail!("--core-checksum must be 32-byte hex"); }
-    let sum = (0..32).map(|i| u8::from_str_radix(&h[2 * i..2 * i + 2], 16)).collect::<Result<Vec<u8>, _>>().context("--core-checksum hex")?;
-    let (_, creator) = dao_foundation_suite::ibc_ops::steward::decode_bech32(parent).map_err(anyhow::Error::msg)?;
-    cw_orch_kms::instantiate2_bech32("terp", &sum, &creator, salt.as_bytes()).map_err(|e| anyhow::anyhow!("{e}"))
+    if h.len() != 64 {
+        bail!("--core-checksum must be 32-byte hex");
+    }
+    let sum = (0..32)
+        .map(|i| u8::from_str_radix(&h[2 * i..2 * i + 2], 16))
+        .collect::<Result<Vec<u8>, _>>()
+        .context("--core-checksum hex")?;
+    let (_, creator) = dao_foundation_suite::ibc_ops::steward::decode_bech32(parent)
+        .map_err(anyhow::Error::msg)?;
+    cw_orch_kms::instantiate2_bech32("terp", &sum, &creator, salt.as_bytes())
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 fn resolve_init(init: &serde_json::Value, core: &str) -> Result<serde_json::Value> {
     let s = serde_json::to_string(init)?.replace(CORE_PLACEHOLDER, core);
     let v: serde_json::Value = serde_json::from_str(&s)?;
     for k in ["owner", "approver"] {
-        if v[k].as_str() != Some(core) { bail!("bounty init {k} {} is not the predicted DAO core {core}", v[k]); }
+        if v[k].as_str() != Some(core) {
+            bail!(
+                "bounty init {k} {} is not the predicted DAO core {core}",
+                v[k]
+            );
+        }
     }
     Ok(v)
 }
 
 /// Turn the suite's plain Instantiate into Instantiate2 (same code/admin/label/msg/funds).
 fn to_instantiate2(msg: CosmosMsg, salt: &str) -> Result<CosmosMsg> {
-    let CosmosMsg::Wasm(WasmMsg::Instantiate { admin, code_id, msg, funds, label }) = msg else { bail!("not an instantiate") };
-    Ok(CosmosMsg::Wasm(WasmMsg::Instantiate2 { admin, code_id, label, msg, funds, salt: cosmwasm_std::Binary::from(salt.as_bytes()) }))
+    let CosmosMsg::Wasm(WasmMsg::Instantiate {
+        admin,
+        code_id,
+        msg,
+        funds,
+        label,
+    }) = msg
+    else {
+        bail!("not an instantiate")
+    };
+    Ok(CosmosMsg::Wasm(WasmMsg::Instantiate2 {
+        admin,
+        code_id,
+        label,
+        msg,
+        funds,
+        salt: cosmwasm_std::Binary::from(salt.as_bytes()),
+    }))
 }
 
 /// (remote, terp connection, remote connection, DAO-DAO voice on the remote chain)
 const NOTE_PAIRS: &[(&str, &str, &str, &str)] = &[
-    ("juno", "connection-14", "connection-557", "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u"),
-    ("osmosis", "connection-15", "connection-11101", "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs"),
+    (
+        "juno",
+        "connection-14",
+        "connection-557",
+        "juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u",
+    ),
+    (
+        "osmosis",
+        "connection-15",
+        "connection-11101",
+        "osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs",
+    ),
 ];
 const NOTES_TITLE: &str = "Instantiate Polytone notes to Juno and Osmosis";
 
@@ -111,8 +149,11 @@ fn notes_msgs(parent: &str, code_id: u64) -> Result<(Vec<CosmosMsg>, serde_json:
         let init = pt::note_init(Some((conn, &port)));
         let predicted = pt::predict_for(parent, pt::V3_NOTE_CHECKSUM, &r.note_salt())?;
         msgs.push(CosmosMsg::Wasm(WasmMsg::Instantiate2 {
-            admin: Some(parent.to_string()), code_id, label: r.note_label(),
-            msg: cosmwasm_std::to_json_binary(&init).map_err(anyhow::Error::msg)?, funds: vec![],
+            admin: Some(parent.to_string()),
+            code_id,
+            label: r.note_label(),
+            msg: cosmwasm_std::to_json_binary(&init).map_err(anyhow::Error::msg)?,
+            funds: vec![],
             salt: cosmwasm_std::Binary::from(r.note_salt().as_bytes()),
         }));
         plan.insert(r.chain_id.into(), serde_json::json!({"note_predicted": predicted, "terp_connection": conn, "remote_connection": rconn,
@@ -121,7 +162,12 @@ fn notes_msgs(parent: &str, code_id: u64) -> Result<(Vec<CosmosMsg>, serde_json:
     Ok((msgs, serde_json::Value::Object(plan)))
 }
 
-fn bounty_msg(parent: &str, member: &str, code_id: u64, init: &serde_json::Value) -> Result<CosmosMsg> {
+fn bounty_msg(
+    parent: &str,
+    member: &str,
+    code_id: u64,
+    init: &serde_json::Value,
+) -> Result<CosmosMsg> {
     if !member.starts_with("terp1") || member.contains(char::is_whitespace) {
         bail!("--member must be a terp1 account");
     }
@@ -143,8 +189,19 @@ fn bounty_msg(parent: &str, member: &str, code_id: u64, init: &serde_json::Value
 }
 
 fn check_bounty(msg: &CosmosMsg, parent: &str) -> Result<serde_json::Value> {
-    let (CosmosMsg::Wasm(WasmMsg::Instantiate { admin, funds, msg: init, .. })
-    | CosmosMsg::Wasm(WasmMsg::Instantiate2 { admin, funds, msg: init, .. })) = msg else {
+    let (CosmosMsg::Wasm(WasmMsg::Instantiate {
+        admin,
+        funds,
+        msg: init,
+        ..
+    })
+    | CosmosMsg::Wasm(WasmMsg::Instantiate2 {
+        admin,
+        funds,
+        msg: init,
+        ..
+    })) = msg
+    else {
         bail!("bounty message is not a wasm instantiate");
     };
     if admin.as_deref() != Some(parent) {
@@ -161,48 +218,82 @@ fn check_bounty(msg: &CosmosMsg, parent: &str) -> Result<serde_json::Value> {
 }
 
 fn main() -> Result<()> {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .ok();
     kms_gate::load_dotenv_public();
     env_logger::init();
     let cli = Cli::parse();
     let init: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(&cli.bounty_init).with_context(|| format!("read {}", cli.bounty_init.display()))?,
+        &std::fs::read(&cli.bounty_init)
+            .with_context(|| format!("read {}", cli.bounty_init.display()))?,
     )?;
     let core = predict_core(&cli.parent, &cli.core_checksum, &cli.salt)?;
     let init = resolve_init(&init, &core)?;
-    let msg = to_instantiate2(bounty_msg(&cli.parent, cli.member.trim(), cli.bounty_code_id, &init)?, &cli.salt)?;
+    let msg = to_instantiate2(
+        bounty_msg(&cli.parent, cli.member.trim(), cli.bounty_code_id, &init)?,
+        &cli.salt,
+    )?;
     let mut checks = check_bounty(&msg, &cli.parent)?;
     checks["predicted_dao_core"] = core.clone().into();
     checks["salt"] = cli.salt.clone().into();
     checks["bounty_init_resolved"] = init.clone();
-    println!("predicted bounty DAO core {core} (instantiate2, creator {}, salt {})", cli.parent, cli.salt);
-    let propose = foundation_proposal_wrapper(BOUNTY_PROPOSAL_TITLE, &bounty_proposal_description(cli.bounty_code_id), vec![msg]);
+    println!(
+        "predicted bounty DAO core {core} (instantiate2, creator {}, salt {})",
+        cli.parent, cli.salt
+    );
+    let propose = foundation_proposal_wrapper(
+        BOUNTY_PROPOSAL_TITLE,
+        &bounty_proposal_description(cli.bounty_code_id),
+        vec![msg],
+    );
     let notes = if cli.with_notes {
         let (msgs, plan) = notes_msgs(&cli.parent, cli.note_code_id)?;
-        for (k, v) in plan.as_object().unwrap() { println!("note to {k}: {} pinned {} -> wasm.{}", v["note_predicted"], v["terp_connection"], v["voice"].as_str().unwrap_or("")); }
-        let desc = format!("Two Polytone notes (code {}) owned by the Foundation (wasm admin), instantiate2 from the Foundation core, each pinned to one Terp connection and an existing DAO-DAO voice:\n- juno-1: connection-14 (Juno connection-557), voice {}\n- osmosis-1: connection-15 (Osmosis connection-11101), voice {}\nChannels (polytone-1, unordered) are opened by the relayer after execution.", cli.note_code_id, NOTE_PAIRS[0].3, NOTE_PAIRS[1].3);
+        for (k, v) in plan.as_object().unwrap() {
+            println!(
+                "note to {k}: {} pinned {} -> wasm.{}",
+                v["note_predicted"],
+                v["terp_connection"],
+                v["voice"].as_str().unwrap_or("")
+            );
+        }
+        let desc = format!(
+            "Two Polytone notes (code {}) owned by the Foundation (wasm admin), instantiate2 from the Foundation core, each pinned to one Terp connection and an existing DAO-DAO voice:\n- juno-1: connection-14 (Juno connection-557), voice {}\n- osmosis-1: connection-15 (Osmosis connection-11101), voice {}\nChannels (polytone-1, unordered) are opened by the relayer after execution.",
+            cli.note_code_id, NOTE_PAIRS[0].3, NOTE_PAIRS[1].3
+        );
         Some((foundation_proposal_wrapper(NOTES_TITLE, &desc, msgs), plan))
-    } else { None };
+    } else {
+        None
+    };
     // +1 headroom: a fully spent wasm grant is auto-deleted and the generic revoke then fails.
     let n_calls = 2 + notes.is_some() as u64;
     let morocco = kms_gate::morocco_info();
-    kms_gate::write_plan(&cli.out, &serde_json::json!({
-        "dry_run": !cli.broadcast,
-        "chain_id": morocco.chain_id,
-        "contract": cli.pre_propose,
-        "execute": propose,
-        "invariants": checks,
-        "notes_proposal": notes.as_ref().map(|(p, plan)| serde_json::json!({"execute": p, "plan": plan})),
-        "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": n_calls}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
-    }))?;
+    kms_gate::write_plan(
+        &cli.out,
+        &serde_json::json!({
+            "dry_run": !cli.broadcast,
+            "chain_id": morocco.chain_id,
+            "contract": cli.pre_propose,
+            "execute": propose,
+            "invariants": checks,
+            "notes_proposal": notes.as_ref().map(|(p, plan)| serde_json::json!({"execute": p, "plan": plan})),
+            "session_scope": {"allow_execute": {"address": cli.pre_propose, "keys": ["propose"], "calls": n_calls}, "ttl_secs": cli.ttl_secs, "challenge": "cw-orch-granter:v2"},
+        }),
+    )?;
     if !cli.broadcast {
         return Ok(());
     }
     if cli.granter.is_empty() {
         bail!("broadcast refused: pass --granter (a Foundation member)");
     }
-    let mut anys = vec![kms_gate::execute_any(&cli.granter, &cli.pre_propose, &propose)?];
-    if let Some((p, _)) = &notes { anys.push(kms_gate::execute_any(&cli.granter, &cli.pre_propose, p)?); }
+    let mut anys = vec![kms_gate::execute_any(
+        &cli.granter,
+        &cli.pre_propose,
+        &propose,
+    )?];
+    if let Some((p, _)) = &notes {
+        anys.push(kms_gate::execute_any(&cli.granter, &cli.pre_propose, p)?);
+    }
     let tx = kms_gate::kms_broadcast(
         BroadcastRequest {
             info: morocco,
@@ -211,7 +302,12 @@ fn main() -> Result<()> {
             purpose: "bounty-subdao".into(),
             account_index: cli.account_index,
             ttl_secs: cli.ttl_secs,
-            scope: Scope::Execute(ScopedCall { address: cli.pre_propose.clone(), keys: vec!["propose".into()], calls: n_calls, funds: vec![] }),
+            scope: Scope::Execute(ScopedCall {
+                address: cli.pre_propose.clone(),
+                keys: vec!["propose".into()],
+                calls: n_calls,
+                funds: vec![],
+            }),
             summary: BOUNTY_PROPOSAL_TITLE.into(),
         },
         anys,

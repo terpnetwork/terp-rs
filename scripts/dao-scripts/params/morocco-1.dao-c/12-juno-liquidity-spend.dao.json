@@ -1,0 +1,27 @@
+{
+  "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+  "flow": "propose+vote+execute on steward-juno, then Hermes relays the note. The proxy must hold 1,000 JUNO before execute. Not broadcast by this binary.",
+  "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+  "page": "https://s3.terp.network/static/gov/juno-liquidity/bafkreiere3b7oqqj7dkh6tlrep7ixhqhbq7qlhpd7smtevs4ilbbmhy6vy.html",
+  "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+  "propose": {
+    "propose": {
+      "description": "steward-juno's Juno account juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5 submits a juno-1 governance proposal. It spends 1,590,000 JUNO (1590000000000 ujuno), 2,100,000 TERP (2100000000000 uterp), and 2,846,700 THIOL (2846700000000 uthiol) from the community pool to juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf. The account must already hold 1,000 JUNO for the initial deposit. The full proposal is https://s3.terp.network/static/gov/juno-liquidity/bafkreiere3b7oqqj7dkh6tlrep7ixhqhbq7qlhpd7smtevs4ilbbmhy6vy.html.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+              "funds": [],
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbeyJzdGFyZ2F0ZSI6eyJ0eXBlX3VybCI6Ii9jb3Ntb3MuZ292LnYxLk1zZ1N1Ym1pdFByb3Bvc2FsIiwidmFsdWUiOiJDdXNDQ2pJdlkyOXpiVzl6TG1ScGMzUnlhV0oxZEdsdmJpNTJNV0psZEdFeExrMXpaME52YlcxMWJtbDBlVkJ2YjJ4VGNHVnVaQkswQWdvcmFuVnViekV3WkRBM2VUSTJOV2R0YlhWMmREUjZNSGM1WVhjNE9EQnFibk55TnpBd2FuWnpjemN6TUJJL2FuVnViekZuWjJaMGMyWTNOMmcyY1hObk5XdDZORzVtTTNJd09HbzVjWGh1TlRabGMyRjVibUZ4WVc0MGFqUndaVFZvTm1WbGRuaHhaalpvZEdobUdoWUtCWFZxZFc1dkVnMHhOVGt3TURBd01EQXdNREF3R2xVS1JHbGlZeTh5TlRjNE5UUTNPVEV6UXpRd1FqQkVSVUpCUWpkRk5EVTRSakU1TVRRNU1VUkZOakk0T0VFd01VVXhNREF3UlRsQ1FVVXpOREV3TTBSRlFqRTRPVVF6RWcweU1UQXdNREF3TURBd01EQXdHbFVLUkdsaVl5OHdOVFZHTWpJek5qQXlRamMxTkVKR016UkdSVEkyT1VJM01qazRNemRCTURKQ1JFWTNPVVV3TmpsR01qTTROMEZGUlVFNVEwUXlPRVJGT1RZeFFrVTNFZzB5T0RRMk56QXdNREF3TURBd0VoTUtCWFZxZFc1dkVnb3hNREF3TURBd01EQXdHajlxZFc1dk1XZDFZV2hqTW5Sa1ozWmtjR2huZVdWcWNHNXdjelZ1Y3psdU5EWmtaM0Z6ZG1abVpqWnlialZ1YTJSdFlXVmhlall6Y25GNE5YcGtjelVpY21oMGRIQnpPaTh2Y3pNdWRHVnljQzV1WlhSM2IzSnJMM04wWVhScFl5OW5iM1l2YW5WdWJ5MXNhWEYxYVdScGRIa3ZZbUZtYTNKbGFXVnlaVE5pTjI5eGNXbzNaR3RvTm5Sc2NtVndOMmw0YUhGb1luRTNjV3hvY0dRM2MyMTBaWFp6Tkdsc1ltSnRhSGsyZG5rdWFIUnRiQ3BGUTI5dGJYVnVhWFI1SUhCdmIyd2djM0JsYm1RZ1ptOXlJR0VnU2xWT1R5d2dWRVZTVUN3Z1lXNWtJRlJJU1U5TUlHeHBjWFZwWkdsMGVTQmtaWEJzYjNsdFpXNTBNdDRFVTNCbGJtUWdNU3cxT1RBc01EQXdJRXBWVGs4Z0tERTFPVEF3TURBd01EQXdNREFnZFdwMWJtOHBMQ0F5TERFd01Dd3dNREFnVkVWU1VDQW9NakV3TURBd01EQXdNREF3TUNCMWRHVnljQ3dnWkdWdWIyMGdhV0pqTHpJMU56ZzFORGM1TVRORE5EQkNNRVJGUWtGQ04wVTBOVGhHTVRreE5Ea3hSRVUyTWpnNFFUQXhSVEV3TURCRk9VSkJSVE0wTVRBelJFVkNNVGc1UkRNc0lIUnlZV05sSUhSeVlXNXpabVZ5TDJOb1lXNXVaV3d0TXprekwzVjBaWEp3S1N3Z1lXNWtJRElzT0RRMkxEY3dNQ0JVU0VsUFRDQW9NamcwTmpjd01EQXdNREF3TUNCMWRHaHBiMndzSUdSbGJtOXRJR2xpWXk4d05UVkdNakl6TmpBeVFqYzFORUpHTXpSR1JUSTJPVUkzTWprNE16ZEJNREpDUkVZM09VVXdOamxHTWpNNE4wRkZSVUU1UTBReU9FUkZPVFl4UWtVM0xDQjBjbUZqWlNCMGNtRnVjMlpsY2k5amFHRnVibVZzTFRNNU15OTFkR2hwYjJ3cElHWnliMjBnZEdobElFcDFibThnWTI5dGJYVnVhWFI1SUhCdmIyd2dkRzhnYW5WdWJ6Rm5aMlowYzJZM04yZzJjWE5uTld0Nk5HNW1NM0l3T0dvNWNYaHVOVFpsYzJGNWJtRnhZVzQwYWpSd1pUVm9ObVZsZG5oeFpqWm9kR2htSUdadmNpQmhJR3hwY1hWcFpHbDBlU0JrWlhCc2IzbHRaVzUwTGlCVWFHVWdablZzYkNCd2NtOXdiM05oYkNCcGN5Qm9kSFJ3Y3pvdkwzTXpMblJsY25BdWJtVjBkMjl5YXk5emRHRjBhV012WjI5MkwycDFibTh0YkdseGRXbGthWFI1TDJKaFptdHlaV2xsY21VellqZHZjWEZxTjJScmFEWjBiSEpsY0RkcGVHaHhhR0p4TjNGc2FIQmtOM050ZEdWMmN6UnBiR0ppYldoNU5uWjVMbWgwYld3dSJ9fV0sInRpbWVvdXRfc2Vjb25kcyI6IjM2MDAifX0="
+            }
+          }
+        }
+      ],
+      "title": "Submit the Juno liquidity community-pool spend"
+    }
+  },
+  "proposer": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+  "recipient": "juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf",
+  "signer": "terp1drrqa2mmk4syy85hrflta73408p0t5n4fkpc8x"
+}
