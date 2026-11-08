@@ -6,16 +6,16 @@ Contract wasm that this chain stores must pass `cosmwasm_vm::internals::compile_
 
 ## Compiler
 
-Guest rustc is **1.91.0** with the `wasm32-unknown-unknown` target. That matches `crates/cosmwasm` `rust-version`.
+Guest rustc is **1.97.1** with the `wasm32-unknown-unknown` target. That is the zakura-common toolchain pin. `crates/cosmwasm` `rust-version` is 1.91.0 and still builds on it.
 
-Rust 1.86 cannot compile current `cosmwasm-std`: `u32::is_multiple_of` stabilized in 1.87. The optimizer image's contract compiler is rustup 1.91.0 in `tools/optimizer/Dockerfile`. Bob, the image's build helper, still compiles on the `rust:1.86.0-alpine` stage. That does not affect guest output. The image's `RUST_VERSION` env says 1.91.0. The base image's stale 1.86.0 value is overridden.
+Rust 1.86 cannot compile current `cosmwasm-std`: `u32::is_multiple_of` stabilized in 1.87. The optimizer image's contract compiler is rustup 1.97.1 in `tools/optimizer/Dockerfile`. Bob, the image's build helper, still compiles on the `rust:1.86.0-alpine` stage. That does not affect guest output. The image's `RUST_VERSION` env says 1.97.1. The base image's stale 1.86.0 value is overridden.
 
 `cd tools/optimizer && make build-arm64` builds `terpnetwork/optimizer-arm64:0.17.0` on this Mac. `make build-amd64` builds `terpnetwork/optimizer:0.17.0`. The image keeps bulk-memory and disables guest SIMD. A host check, without that image, is:
 
 ```sh
 cd crates/terp-rs
 unset RUSTFLAGS
-cargo +1.91.0 check --target wasm32-unknown-unknown --lib -p <package>
+cargo +1.97.1 check --target wasm32-unknown-unknown --lib -p <package>
 ```
 
 `unset RUSTFLAGS` lets `crates/terp-rs/.cargo/config.toml` apply. The image sets the same two flags: `--allow-undefined` (wasmvm supplies `db_*`, `ed25519_*`, and the other host imports) and `-C target-feature=-simd128`.
@@ -33,11 +33,11 @@ Build scripts: `scripts/build/build-crosslink-wasm.sh`, `build-ics08-wasm-terp.s
 ## `just core optimize`
 
 ```sh
-cd tools/optimizer && make build-arm64-local   # terpnetwork/optimizer-arm64:0.17.0-rust1.91, local only, no push target
+cd tools/optimizer && make build-arm64-local   # terpnetwork/optimizer-arm64:0.17.0-rust1.97, local only, no push target
 cd crates/terp-rs && just core optimize
 ```
 
-The recipe mounts `crates/` (the parent of `terp-rs`) at `/workspace` and sets `PROJECT_DIR=/workspace/terp-rs`. It uses the `terp-rs_cache` target volume. Set `OPTIMIZE_TARGET_VOLUME=<name>` to build from a fresh volume. The amd64 tag is `terpnetwork/optimizer:0.17.0-rust1.91` (`make build-amd64-local`).
+The recipe mounts `crates/` at `/Users/returniflost/abstract/terp-core/crates` and this checkout at `terp-rs-consolidate` under that prefix. It uses the `terp-rs_cache` target volume. Set `OPTIMIZE_TARGET_VOLUME=<name>` to build from a fresh volume. The amd64 tag is `terpnetwork/optimizer:0.17.0-rust1.97` (`make build-amd64-local`).
 
 Bob builds only workspace members whose `[lib] crate-type` contains `cdylib`. It logs `Skipping ...: no cdylib lib target` for the others (`contracts/**/e2e`, packages, test helpers). The full workspace builds 52 contracts and skips 77 crates.
 
@@ -48,9 +48,9 @@ Bob builds only workspace members whose `[lib] crate-type` contains `cdylib`. It
 - Gatekeeper allows floats, bulk-memory and sign-ext. It rejects SIMD, threads, exceptions and reference-types instructions (the type subset that rustc ≥1.82 emits is accepted).
 - Guest check: `wasm-tools validate --features=mvp,bulk-memory,sign-extension,mutable-global,saturating-float-to-int <file>`.
 
-The host toolchain and the guest toolchain are deliberately different. `terp-rs` has no `rust-toolchain` file because host builds need ≥1.95 (wasmer-types 7.4.2) and libwasmvm needs 1.96. Only the guest is pinned to 1.91.0, by the optimizer image and by `cargo +1.91.0`.
+The host toolchain and the guest toolchain are deliberately different. `terp-rs` has no `rust-toolchain` file because host builds need ≥1.95 (wasmer-types 7.4.2) and libwasmvm needs 1.96. The guest compiler is 1.97.1, pinned by the optimizer image and by `cargo +1.97.1`.
 
-`tools/cw-optimizoor` is the no-Docker build of the same guest. It pins rustc 1.91.0, turns guest SIMD off, and runs binaryen without lowering bulk-memory. It only picks workspace members under a `contracts/` directory. The Docker image is the reproducible path.
+`tools/cw-optimizoor` is the no-Docker build of the same guest. It pins rustc 1.97.1, turns guest SIMD off, and runs binaryen without lowering bulk-memory. It only picks workspace members under a `contracts/` directory. The Docker image is the reproducible path.
 
 ## What the VM does to the module
 
