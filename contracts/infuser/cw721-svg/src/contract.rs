@@ -208,7 +208,7 @@ pub fn execute_mint(
         proof_hashes,
         ext,
     } = m;
-    if let Some(_) = PAUSED.may_load(deps.storage)? {
+    if PAUSED.may_load(deps.storage)?.is_some() {
         return Err(ContractError::MintingPaused {});
     }
     let c = Cw721SvgContract::default();
@@ -219,10 +219,10 @@ pub fn execute_mint(
         return Err(ContractError::MintingNotStarted {});
     }
 
-    if let Some(end_time) = config.mint_end_time {
-        if env.block.time > end_time {
-            return Err(ContractError::MintingEnded {});
-        }
+    if let Some(end_time) = config.mint_end_time
+        && env.block.time > end_time
+    {
+        return Err(ContractError::MintingEnded {});
     }
     if mint_count + m.amnt > config.total {
         return Err(ContractError::CannotMintMoreThanTotal {});
@@ -286,7 +286,7 @@ pub fn execute_mint(
     let recp = &recp;
 
     let is_whitelisted = match !proof_hashes.is_empty() {
-        true => verify_whitelist(deps.as_ref(), &recp, proof_hashes, alloc, amnt)?,
+        true => verify_whitelist(deps.as_ref(), recp, proof_hashes, alloc, amnt)?,
         false => false,
     };
     let is_dregg_runtime = DREGG_RUNTIME_MINTERS.has(deps.storage, &info.sender);
@@ -628,19 +628,18 @@ fn validate_and_build_payment(
     }
 
     // Alt asset path: no base-denom coin sent and oracle pricing configured.
-    if !info.funds.iter().any(|c| c.denom == denom) {
-        if let Some(pricing) = ORACLE_PRICING.may_load(deps.storage)? {
-            if !info.funds.is_empty() {
-                return settle_alt_payment(
-                    deps,
-                    env.block.height,
-                    &pricing,
-                    Coin::new(total_cost, denom.clone()),
-                    payment_address,
-                    info,
-                );
-            }
-        }
+    if !info.funds.iter().any(|c| c.denom == denom)
+        && let Some(pricing) = ORACLE_PRICING.may_load(deps.storage)?
+        && !info.funds.is_empty()
+    {
+        return settle_alt_payment(
+            deps,
+            env.block.height,
+            &pricing,
+            Coin::new(total_cost, denom.clone()),
+            payment_address,
+            info,
+        );
     }
 
     // Check the sender sent exactly the right amount
@@ -739,7 +738,7 @@ fn verify_whitelist(
 
     // Determine max mints allowed for this address
     // Enforce per-address whitelist mint limit
-    let current_wl_count = whitelist_mint_count(deps, &recp);
+    let current_wl_count = whitelist_mint_count(deps, recp);
     if current_wl_count + mint_amount as u32 > allocation {
         return Err(ContractError::MaxPerAddressLimitExceeded {});
     }

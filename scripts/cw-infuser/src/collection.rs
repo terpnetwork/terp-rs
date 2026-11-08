@@ -47,7 +47,10 @@ impl SvgCollectionConfig {
     pub fn to_init_msg(&self, now: Timestamp) -> Result<cw721_svg::InstantiateMsg> {
         let off = |t: Option<Timestamp>, what: &str| -> Result<Option<Timestamp>> {
             t.map(|t| {
-                ensure!(t > now, "{what} {t} is not after the instantiate block time {now}");
+                ensure!(
+                    t > now,
+                    "{what} {t} is not after the instantiate block time {now}"
+                );
                 Ok(Timestamp::from_seconds(t.seconds() - now.seconds()))
             })
             .transpose()
@@ -152,7 +155,10 @@ impl<Chain: CwEnv> SvgCollectionSuite<Chain> {
             )?;
         }
         let now = self.chain.block_info()?.time;
-        Ok(st.mint_start_time.is_none_or(|s| now >= s) && st.mint_end_time.is_none_or(|e| now <= e))
+        Ok(
+            st.mint_start_time.is_none_or(|s| now >= s)
+                && st.mint_end_time.is_none_or(|e| now <= e),
+        )
     }
 
     pub fn mint(&self, addr: &Addr, amnt: u64, funds: &[Coin]) -> Result<()> {
@@ -196,8 +202,8 @@ impl<Chain: CwEnv> SvgCollectionSuite<Chain> {
 // ---------------------------------------------------------------------------------------
 // Factory + series (contract-enforced cadence) and feeshare.
 // ---------------------------------------------------------------------------------------
-pub use cw_svg_minter::state::SeriesConfig;
 use cw_svg_minter::interface::Cw721SvgMinter;
+pub use cw_svg_minter::state::SeriesConfig;
 
 /// Latent Benders: one collection per day. A 23h min interval tolerates scheduler jitter
 /// while making two drops inside one day impossible; mint window capped at 24h.
@@ -246,21 +252,40 @@ impl<Chain: CwEnv> SvgCollectionSuite<Chain> {
         Ok(SvgFactory { minter })
     }
 
-    pub fn set_series(&self, f: &SvgFactory<Chain>, series: &str, cfg: Option<SeriesConfig>) -> Result<()> {
+    pub fn set_series(
+        &self,
+        f: &SvgFactory<Chain>,
+        series: &str,
+        cfg: Option<SeriesConfig>,
+    ) -> Result<()> {
         f.minter.execute(
-            &cw_svg_minter::msg::ExecuteMsg::SetSeries { series: series.into(), config: cfg },
+            &cw_svg_minter::msg::ExecuteMsg::SetSeries {
+                series: series.into(),
+                config: cfg,
+            },
             &[],
         )?;
         Ok(())
     }
 
-    pub fn series_info(&self, f: &SvgFactory<Chain>, series: &str) -> Result<cw_svg_minter::msg::SeriesInfo> {
-        Ok(f.minter.query(&cw_svg_minter::msg::QueryMsg::Series { series: series.into() })?)
+    pub fn series_info(
+        &self,
+        f: &SvgFactory<Chain>,
+        series: &str,
+    ) -> Result<cw_svg_minter::msg::SeriesInfo> {
+        Ok(f.minter.query(&cw_svg_minter::msg::QueryMsg::Series {
+            series: series.into(),
+        })?)
     }
 
     /// Canonical path: create through the factory under a rate-limited series. The factory
     /// enforces the cadence; the collection wasm admin = cfg.creator.
-    pub fn instantiate_in_series(&mut self, f: &SvgFactory<Chain>, series: &str, cfg: &SvgCollectionConfig) -> Result<Addr> {
+    pub fn instantiate_in_series(
+        &mut self,
+        f: &SvgFactory<Chain>,
+        series: &str,
+        cfg: &SvgCollectionConfig,
+    ) -> Result<Addr> {
         ensure!(!cfg.packed.is_empty(), "packed svg is required");
         ensure!(cfg.seed.len() == 32, "seed must be 32 bytes");
         let now = self.chain.block_info()?.time;
@@ -310,7 +335,10 @@ pub mod feeshare {
     }
 
     pub fn msg(contract: &str, deployer: &str, withdrawer: &str) -> cosmrs::Any {
-        cosmrs::Any { type_url: TYPE_URL.into(), value: encode(contract, deployer, withdrawer) }
+        cosmrs::Any {
+            type_url: TYPE_URL.into(),
+            value: encode(contract, deployer, withdrawer),
+        }
     }
 
     /// Broadcast on a Daemon signed by `admin_chain` (must be the contract admin).

@@ -111,23 +111,23 @@ fn symbient_link_template_is_safe_and_packs() {
     common::check_and_pack(&t, &vars).unwrap();
     let p = common::token_params(&vars, 0, b"s", 1);
     let svg = common::render(&t, &vars, &p);
+    // frame links point at the static CAS bucket page for the frame CID
     assert!(svg.contains(&format!(
-        "href=\"https://{}/ipfs/{}\"",
-        p[1].value, p[0].value
+        "href=\"{}{}.html\"",
+        ascii::FRAME_PAGE,
+        p[0].value
     )));
-    assert!(svg.contains(&format!("ipfs://{}", p[0].value)));
-    // a non-allowlisted gateway or a javascript: link fails the same checks the chain runs
-    let mut bad = vars.clone();
-    bad[1] = cw_svg::VariableDef {
-        name: "gateway".into(),
-        kind: cw_svg::VariableKind::Options(vec!["evil.example".into()]),
-    };
+    // a non-allowlisted host or a javascript: link fails the same checks the chain runs
+    let evil = t.replace(ascii::FRAME_PAGE, "https://evil.example/");
     assert!(
-        common::check_and_pack(&t, &bad)
+        common::check_and_pack(&evil, &vars)
             .unwrap_err()
             .contains("links")
     );
-    let js = t.replace("https://${gateway}/ipfs/${frame}", "javascript:alert(1)");
+    let js = t.replace(
+        &format!("{}${{frame}}.html", ascii::FRAME_PAGE),
+        "javascript:alert(1)",
+    );
     assert!(
         common::check_and_pack(&js, &vars)
             .unwrap_err()

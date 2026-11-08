@@ -62,7 +62,10 @@ pub fn verify(rec: &Value, packed: &[u8]) -> Result<VerifiedDay> {
     };
     let claimed = s("record_sha256")?;
     let computed = record_sha256(rec)?;
-    ensure!(claimed == computed, "record_sha256 mismatch: record says {claimed}, computed {computed}");
+    ensure!(
+        claimed == computed,
+        "record_sha256 mismatch: record says {claimed}, computed {computed}"
+    );
     let packed_claimed = s("packed_sha256")?;
     let packed_computed = hex::encode(Sha256::digest(packed));
     ensure!(
@@ -70,12 +73,19 @@ pub fn verify(rec: &Value, packed: &[u8]) -> Result<VerifiedDay> {
         "packed_sha256 mismatch: record says {packed_claimed}, packed.svp is {packed_computed}"
     );
     if let Some(n) = rec.get("packed_bytes").and_then(Value::as_u64) {
-        ensure!(n as usize == packed.len(), "packed_bytes {n} != {}", packed.len());
+        ensure!(
+            n as usize == packed.len(),
+            "packed_bytes {n} != {}",
+            packed.len()
+        );
     }
     Ok(VerifiedDay {
         persona: s("persona")?,
         day: s("day")?,
-        day_index: rec.get("day_index").and_then(Value::as_u64).context("day_index")?,
+        day_index: rec
+            .get("day_index")
+            .and_then(Value::as_u64)
+            .context("day_index")?,
         record_sha256: computed,
         packed_sha256: packed_computed,
         packed: Binary::from(packed.to_vec()),
@@ -100,7 +110,10 @@ pub fn day_start_utc(day: &str) -> Result<u64> {
         bail!("bad day {day}");
     }
     let (y, m, d): (i64, i64, i64) = (p[0].parse()?, p[1].parse()?, p[2].parse()?);
-    ensure!((1..=12).contains(&m) && (1..=31).contains(&d), "bad day {day}");
+    ensure!(
+        (1..=12).contains(&m) && (1..=31).contains(&d),
+        "bad day {day}"
+    );
     // days_from_civil (H. Hinnant)
     let y = if m <= 2 { y - 1 } else { y };
     let era = y.div_euclid(400);
@@ -129,7 +142,12 @@ pub const SERIES: &str = "latent-benders";
 impl DayMintParams {
     /// Free, open at instantiate, 24h window, max supply cw721-svg allows (10_000).
     pub fn defaults(creator: Addr) -> Self {
-        Self { creator, total: 10_000, price_tiers: vec![], mint_window_secs: 86_400 }
+        Self {
+            creator,
+            total: 10_000,
+            price_tiers: vec![],
+            mint_window_secs: 86_400,
+        }
     }
 }
 

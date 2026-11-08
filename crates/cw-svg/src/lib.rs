@@ -541,10 +541,10 @@ fn animated_paint_attr(attrs: &[(String, String)]) -> Option<&'static str> {
 }
 
 fn paint_from_tag(attrs: &[(String, String)], name: &str) -> Option<String> {
-    if let Some((_, style)) = attrs.iter().find(|(k, _)| k == "style") {
-        if let Some(value) = style_value(style, name) {
-            return Some(value);
-        }
+    if let Some((_, style)) = attrs.iter().find(|(k, _)| k == "style")
+        && let Some(value) = style_value(style, name)
+    {
+        return Some(value);
     }
     attrs
         .iter()
@@ -649,6 +649,15 @@ pub enum SvgError {
     UnsafeLink { reason: String },
 }
 
+/// Map a byte into a [min, max] range (inclusive).
+pub fn channel_in_range(byte: u8, min: u8, max: u8) -> u8 {
+    if min == max {
+        return min;
+    }
+    let span = (max - min) as u16 + 1;
+    min + (byte as u16 % span) as u8
+}
+
 #[cfg(test)]
 mod animated_paint_tests {
     use super::validate_animated_paint;
@@ -721,13 +730,4 @@ mod animated_paint_tests {
             }
         }
     }
-}
-
-/// Map a byte into a [min, max] range (inclusive).
-pub fn channel_in_range(byte: u8, min: u8, max: u8) -> u8 {
-    if min == max {
-        return min;
-    }
-    let span = (max - min) as u16 + 1;
-    min + (byte as u16 % span) as u8
 }

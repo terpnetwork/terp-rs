@@ -222,8 +222,8 @@ fn paid(info: &MessageInfo, denom: &str) -> Result<Uint128, ContractError> {
     if info.funds.len() != 1 || info.funds[0].denom != denom {
         return err(format!("send exactly one coin of {denom}"));
     }
-    Ok(Uint128::try_from(info.funds[0].amount)
-        .map_err(|_| ContractError::Msg("amount too large".into()))?)
+    Uint128::try_from(info.funds[0].amount)
+        .map_err(|_| ContractError::Msg("amount too large".into()))
 }
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
@@ -484,7 +484,10 @@ mod migrate_tests {
             deps.as_mut(),
             mock_env(),
             MigrateMsg {},
-            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+            cosmwasm_std::MigrateInfo {
+                sender: admin,
+                old_migrate_version: None,
+            },
         )
         .unwrap();
         assert_eq!(res.attributes[0].value, "migrate");

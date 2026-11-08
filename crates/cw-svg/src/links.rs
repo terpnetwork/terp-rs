@@ -5,6 +5,8 @@ use crate::{SvgError, VariableDef, VariableKind};
 
 /// HTTPS IPFS gateways a template may link to (exact host match).
 pub const GATEWAY_ALLOWLIST: [&str; 3] = ["ipfs.io", "dweb.link", "w3s.link"];
+/// Own bucket. The object name is the raw CIDv1, with `.html` for a frame page.
+pub const S3_CAS_PREFIX: &str = "s3.terp.network/static/svg-collections/cas/";
 /// Upper bound on expanded link combinations checked per attribute.
 pub const MAX_LINK_COMBOS: usize = 256;
 const SCHEMES_BANNED: [&str; 4] = ["javascript:", "vbscript:", "data:text", "data:application"];
@@ -46,6 +48,10 @@ pub fn link_ok(v: &str) -> bool {
         return cid_path_ok(rest);
     }
     if let Some(rest) = v.strip_prefix("https://") {
+        if let Some(cid) = rest.strip_prefix(S3_CAS_PREFIX) {
+            let cid = cid.strip_suffix(".html").unwrap_or(cid);
+            return cid_path_ok(cid);
+        }
         if let Some(i) = rest.find("/ipfs/") {
             return GATEWAY_ALLOWLIST.contains(&&rest[..i]) && cid_path_ok(&rest[i + 6..]);
         }
@@ -182,10 +188,14 @@ mod tests {
     #[test]
     fn allows_ipfs_gateway_and_same_doc() {
         let vars = vec![opt("cid", &[CID]), opt("gw", &["ipfs.io", "dweb.link"])];
-        let t = format!(
-            "<svg><a href=\"ipfs://${{cid}}\"><text>x</text></a><a href=\"https://${{gw}}/ipfs/${{cid}}/index.html\"/><use xlink:href=\"#p\"/></svg>"
-        );
+        let t = "<svg><a href=\"ipfs://${cid}\"><text>x</text></a><a href=\"https://${gw}/ipfs/${cid}/index.html\"/><use xlink:href=\"#p\"/></svg>".to_string();
         validate_links(&t, &vars).unwrap();
+    }
+    #[test]
+    fn allows_the_static_bucket_cas_object() {
+        let url = format!("https://{S3_CAS_PREFIX}{CID}.html");
+        assert!(link_ok(&url));
+        assert!(!link_ok(&format!("https://{S3_CAS_PREFIX}not-a-cid.html")));
     }
     #[test]
     fn rejects_bad_links() {
@@ -205,7 +215,7 @@ mod tests {
             "<a href=ipfs://x/>".to_string(),
             "<a xlink:href=\"data:text/html,hi\"/>".to_string(),
             "<a href=\"https://ipfs.io.evil/ipfs/x\"/>".to_string(),
-            format!("<a href=\"ipfs://${{nope}}\"/>"),
+            "<a href=\"ipfs://${nope}\"/>".to_string(),
         ] {
             assert!(validate_links(&t, &vars).is_err(), "{t}");
         }

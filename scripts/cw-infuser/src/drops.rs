@@ -4,7 +4,7 @@
 //! Benders frame. Yi Jing Harmony uses the packed dao-harmony template, priced
 //! in uterp at the same 0.36 figure as the USDT spec.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use cosmwasm_std::{Binary, coin};
 use cw721_svg::InstantiateMsg;
 
@@ -29,7 +29,15 @@ pub struct Creators<'a> {
 }
 
 pub fn initial_collections(creator: &str, denom: &str) -> Result<Vec<Drop>> {
-    initial_collections_with(&Creators { withdraw: creator, marain: creator, benders: creator, yijing: creator }, denom)
+    initial_collections_with(
+        &Creators {
+            withdraw: creator,
+            marain: creator,
+            benders: creator,
+            yijing: creator,
+        },
+        denom,
+    )
 }
 
 pub fn initial_collections_with(c: &Creators, denom: &str) -> Result<Vec<Drop>> {
@@ -113,13 +121,15 @@ fn kara_gippy(creator: &str, withdraw: &str) -> Result<InstantiateMsg> {
 }
 
 fn yijing_harmony(creator: &str, withdraw: &str, denom: &str) -> Result<InstantiateMsg> {
-    let mut cfg = YiJingConfig::default();
-    cfg.denom = denom.to_string();
-    cfg.usdt_decimals = 6;
-    cfg.minter = None;
-    cfg.creator = Some(creator.to_string());
-    cfg.withdraw_address = Some(withdraw.to_string());
-    cfg.royalty_recipient = Some(withdraw.to_string());
+    let cfg = YiJingConfig {
+        denom: denom.to_string(),
+        usdt_decimals: 6,
+        minter: None,
+        creator: Some(creator.to_string()),
+        withdraw_address: Some(withdraw.to_string()),
+        royalty_recipient: Some(withdraw.to_string()),
+        ..Default::default()
+    };
     let mut msg = yijing::yijing_harmony_init(&cfg)?;
     msg.collection_info_extension.price_tiers = vec![cw721_svg::PriceTier {
         until_count: yijing::SUPPLY,
@@ -134,7 +144,8 @@ mod tests {
 
     #[test]
     fn initial_collections_pack() {
-        let drops = initial_collections("terp19rl4cm2hmr8afy4kldpxz3fka4jguq0am2y34x", "uthiol").unwrap();
+        let drops =
+            initial_collections("terp19rl4cm2hmr8afy4kldpxz3fka4jguq0am2y34x", "uthiol").unwrap();
         assert_eq!(
             drops.iter().map(|drop| drop.name).collect::<Vec<_>>(),
             vec![MARAIN_ORBS, KARA_GIPPY, YIJING_HARMONY]

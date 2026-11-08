@@ -1,3 +1,4 @@
+// ContractError carries cw-utils/std errors by value; boxing would change every handler.
 pub mod contract;
 mod error;
 pub mod msg;

@@ -152,11 +152,11 @@ fn main() -> Result<()> {
         {
             let mut count = 0u64;
             for account in accounts {
-                if let Some((address, sequence)) = extract_account_info(account) {
-                    if sequence >= args.min_sequence {
-                        tiers.entry(address).or_insert(1);
-                        count += 1;
-                    }
+                if let Some((address, sequence)) = extract_account_info(account)
+                    && sequence >= args.min_sequence
+                {
+                    tiers.entry(address).or_insert(1);
+                    count += 1;
                 }
             }
             eprintln!(

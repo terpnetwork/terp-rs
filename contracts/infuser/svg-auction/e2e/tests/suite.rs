@@ -4,7 +4,7 @@
 //! `cargo test -p svg-auction-e2e`
 
 use cw_orch::prelude::*;
-use cw_orch_kms::{instantiate2_bech32, wasm_checksum, ApprovalSession};
+use cw_orch_kms::{ApprovalSession, instantiate2_bech32, wasm_checksum};
 use terp_orch::TerpArtifactStack;
 
 #[test]
@@ -34,7 +34,15 @@ fn kms_grant_stores_and_instantiates_without_an_execute_address() {
         .allow_instantiate2();
     assert_eq!(open.stores.len(), 1);
     assert!(open.executes.is_empty());
-    assert!(open.type_urls.iter().any(|url| url.ends_with("MsgStoreCode")));
-    assert!(open.type_urls.iter().any(|url| url.ends_with("MsgInstantiateContract2")));
+    assert!(
+        open.type_urls
+            .iter()
+            .any(|url| url.ends_with("MsgStoreCode"))
+    );
+    assert!(
+        open.type_urls
+            .iter()
+            .any(|url| url.ends_with("MsgInstantiateContract2"))
+    );
     assert!(!open.retain);
 }

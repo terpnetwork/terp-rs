@@ -83,11 +83,9 @@ impl Hasher for SortingBlake3Hasher {
 
 #[derive(Debug, Deserialize)]
 struct CsvRow {
+    // Extra provenance columns (e.g. `operator_address`, `moniker`) are ignored
+    // by serde; they are not part of the merkle leaf.
     address: String,
-    #[serde(default)]
-    operator_address: String,
-    #[serde(default)]
-    moniker: String,
     tier: u8,
     allocation: u32,
 }

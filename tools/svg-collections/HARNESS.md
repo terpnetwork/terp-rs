@@ -1,9 +1,8 @@
 # Daily harness spec (shared)
 
-- **Runtime:** a local open-weights model only.
-  - ollama (`ollama serve` on 127.0.0.1, `/api/generate`, `stream:false`, `think:false`); or
-  - llama.cpp `llama-server` on 127.0.0.1 (`/completion` with `seed`, `temperature`, `n_predict`). This needs an adapter (open item).
-  - Record the model digest from `/api/tags`, or the GGUF sha256 for llama.cpp.
+- **Runtime:** `opencode2 run --model opencode/deepseek-v4.1-flash-free` (override with `SVGC_MODEL` or `SVGC_RUNTIME=ollama`).
+  - The reply is the JSON `text` parts. Seeds are stored with the output; opencode2 does not take a sampler seed.
+  - Set `SVGC_RUNTIME=ollama` to use the old local model instead.
 - **Determinism:**
   - Seeds come from the day seed.
   - Sampling is seeded, but output is only reproducible on the same model digest, runtime version and hardware. Provenance therefore stores *hashes of what was actually produced*, and does not rely on re-generating it.
@@ -14,7 +13,7 @@
 - **Scheduling:** none here (out of scope). A future cron runs: commit (before the day) → symbient-day (reveal + fresh draw + Kara & Gippy) → svgc symbient → finalize → human approval → instantiate.
 - **Network:**
   - psychedex public pages only: substance `.md` pages and practice HTML pages. They are cached, fetched at most one every 2 s (robots.txt is honoured), with a UA that identifies the project. Never `/api/`.
-  - The model runs on 127.0.0.1.
+  - The model is opencode2. `SVGC_RUNTIME=ollama` keeps the old loopback model.
 - **Selection filters:** off by default (user decision, iteration 3). `--filters` re-enables the blocklist and the acute-toxicity filter. Doses are never stored. Severity, standing and source are always shown.
 - **Publishing:** `harness/publish.py` plans PUTs to the auto-pinned MinIO bucket (default `static`, prefix `svg-collections/`) on s3.terp.network, plus the expected https://ipfs.terp.network/ipfs/<cid> links. It is a dry run by default. Uploading needs `--execute --mc-alias <alias> --i-have-approval`.
 - **Site data:** `harness/site_data.py` turns the cache and day records into `websites/svg-collections/data/symbient-days.json`.

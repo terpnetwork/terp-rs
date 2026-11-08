@@ -1,4 +1,7 @@
-use crate::{CONTRACT_NAME, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, execute, instantiate, migrate, query};
+use crate::{
+    CONTRACT_NAME, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, execute, instantiate, migrate,
+    query,
+};
 use cw_orch::prelude::*;
 
 #[cw_orch::interface(InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, id = CONTRACT_NAME)]

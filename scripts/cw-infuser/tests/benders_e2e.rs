@@ -1,6 +1,5 @@
 //! Latent Benders day record -> SvgCollectionSuite on cw-orch Mock.
 //! `cargo test -p cw-infuser-scripts --test benders_e2e`
-use cosmwasm_std::Timestamp;
 use cw_infuser_scripts::benders::{self, DayMintParams};
 use cw_infuser_scripts::collection::SvgCollectionSuite;
 use cw_orch::prelude::*;
@@ -12,8 +11,18 @@ const TEMPLATE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 6
 /// Write a finalized-looking day record + packed.svp, hashed exactly like daily.py finalize.
 fn fixture(dir: &std::path::Path) -> (String, String) {
     let vars = vec![
-        cw_svg::VariableDef { name: "glyph".into(), kind: cw_svg::VariableKind::Options(vec!["Kara".into(), "Gippy".into()]) },
-        cw_svg::VariableDef { name: "r".into(), kind: cw_svg::VariableKind::Range { min: "4".into(), max: "28".into(), precision: 0 } },
+        cw_svg::VariableDef {
+            name: "glyph".into(),
+            kind: cw_svg::VariableKind::Options(vec!["Kara".into(), "Gippy".into()]),
+        },
+        cw_svg::VariableDef {
+            name: "r".into(),
+            kind: cw_svg::VariableKind::Range {
+                min: "4".into(),
+                max: "28".into(),
+                precision: 0,
+            },
+        },
     ];
     let packed = cw721_svg::pack_svg(TEMPLATE, &vars);
     std::fs::write(dir.join("packed.svp"), packed.as_slice()).unwrap();
@@ -28,12 +37,20 @@ fn fixture(dir: &std::path::Path) -> (String, String) {
     });
     let rs = benders::record_sha256(&rec).unwrap();
     rec["record_sha256"] = json!(rs);
-    std::fs::write(dir.join("day-record.json"), serde_json::to_string_pretty(&rec).unwrap()).unwrap();
+    std::fs::write(
+        dir.join("day-record.json"),
+        serde_json::to_string_pretty(&rec).unwrap(),
+    )
+    .unwrap();
     (rs, packed_sha)
 }
 
 fn tmp() -> std::path::PathBuf {
-    let d = std::env::temp_dir().join(format!("benders-e2e-{}-{}", std::process::id(), rand::random::<u32>()));
+    let d = std::env::temp_dir().join(format!(
+        "benders-e2e-{}-{}",
+        std::process::id(),
+        rand::random::<u32>()
+    ));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
@@ -49,8 +66,19 @@ fn day_record_to_collection_on_mock() {
     let creator = chain.addr_make("kara-and-gippy");
     let chain = chain.call_as(&creator);
     let cfg = benders::day_config(&v, &DayMintParams::defaults(creator.clone())).unwrap();
-    assert_eq!((cfg.total, cfg.price_tiers.len(), cfg.mint_end_after_secs), (10_000, 0, Some(86_400)));
-    let end = chain.block_info().unwrap().time.plus_seconds(86_400);
+    assert_eq!(
+        (cfg.total, cfg.price_tiers.len(), cfg.mint_end_after_secs),
+        (10_000, 0, Some(86_400))
+    );
+    // The contract stores mint_end_time at whole-second precision.
+    let end = cosmwasm_std::Timestamp::from_seconds(
+        chain
+            .block_info()
+            .unwrap()
+            .time
+            .plus_seconds(86_400)
+            .seconds(),
+    );
 
     let mut suite = SvgCollectionSuite::new(chain.clone());
     let addr = suite.instantiate(&cfg).unwrap();
@@ -63,14 +91,18 @@ fn day_record_to_collection_on_mock() {
     // open mint: anyone mints for free inside the window
     assert!(suite.open_mint(&addr, false).unwrap());
     let minter = chain.addr_make("collector");
-    SvgCollectionSuite::new(chain.call_as(&minter)).mint(&addr, 1, &[]).unwrap();
+    SvgCollectionSuite::new(chain.call_as(&minter))
+        .mint(&addr, 1, &[])
+        .unwrap();
     assert_eq!(suite.query(&addr).unwrap().minted, 1);
 
     // past mint_end_time the contract refuses
     let now = chain.block_info().unwrap().time.seconds();
     chain.wait_seconds(end.seconds() - now + 1).unwrap();
     assert!(!suite.open_mint(&addr, false).unwrap());
-    let err = SvgCollectionSuite::new(chain.call_as(&minter)).mint(&addr, 1, &[]).unwrap_err();
+    let err = SvgCollectionSuite::new(chain.call_as(&minter))
+        .mint(&addr, 1, &[])
+        .unwrap_err();
     assert!(format!("{err:#}").to_lowercase().contains("end"), "{err:#}");
 }
 
@@ -87,5 +119,11 @@ fn tampered_record_or_packed_is_rejected() {
     let dir = tmp();
     fixture(&dir);
     std::fs::write(dir.join("packed.svp"), b"SVP1junk").unwrap();
-    assert!(format!("{:#}", benders::load(&dir.join("day-record.json"), None).unwrap_err()).contains("packed_sha256"));
+    assert!(
+        format!(
+            "{:#}",
+            benders::load(&dir.join("day-record.json"), None).unwrap_err()
+        )
+        .contains("packed_sha256")
+    );
 }

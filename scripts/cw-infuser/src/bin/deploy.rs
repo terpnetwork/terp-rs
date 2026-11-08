@@ -53,11 +53,7 @@ fn workflow(admin: Addr, network: ChainInfoOwned) -> anyhow::Result<()> {
     let tmp = CwSvgSuite::new(chain.clone());
     let mut suite = CwSvgSuite::deploy_on(
         chain.clone(),
-        svg_deploy_data(
-            admin,
-            &network.chain_id,
-            &tmp.mtree.addr_str()?,
-        )?,
+        svg_deploy_data(admin, &network.chain_id, &tmp.mtree.addr_str()?)?,
     )?;
     suite.shit = terp_orch::CwShitstrapSuite::new(chain.clone());
     Ok(())

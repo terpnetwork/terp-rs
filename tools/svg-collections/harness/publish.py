@@ -64,7 +64,7 @@ def main():
     total = sum(i["bytes"] for i in items)
     print(f"{'DRY RUN' if not a.execute else 'EXECUTE'}: {len(items)} objects, {total:,} bytes -> s3://{a.bucket}/{a.prefix}/ via {a.endpoint}")
     for i in items:
-        print(f"  PUT {i['key']}  ({i['bytes']:,} B)  ipfs: {i['cid_v1_raw'] or 'chunked'}")
+        print(f"  PUT {i['key']}  ({i['bytes']:,} B)  s3: {i['s3_url']}")
     if collisions:
         print(f"note: {len(collisions)} basenames repeat (e.g. {next(iter(collisions))}); the autopin metadata.json index is keyed "
               "by basename, so only the last one keeps an index entry. Pins themselves are unaffected.")

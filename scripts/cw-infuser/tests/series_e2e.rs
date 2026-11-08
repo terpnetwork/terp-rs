@@ -6,14 +6,21 @@ use cw_infuser_scripts::collection::{
 };
 use cw_orch::prelude::*;
 
-const PACKED: &[u8] = b"SVP1\x00<svg xmlns=\"http://www.w3.org/2000/svg\"/>";
+const TEMPLATE: &str = r#"<svg xmlns="http://www.w3.org/2000/svg"/>"#;
+
+/// Real SVP container from the codec encoder (not hand-made bytes).
+fn packed() -> Binary {
+    let (packed, _) =
+        svg_collections::common::check_and_pack(TEMPLATE, &[]).expect("pack template");
+    Binary::from(packed)
+}
 
 fn cfg(creator: &Addr, i: u8, window: u64) -> SvgCollectionConfig {
     SvgCollectionConfig {
         name: format!("t{i}"),
         symbol: "TST".into(),
         seed: Binary::from([i; 32].to_vec()),
-        packed: Binary::from(PACKED.to_vec()),
+        packed: packed(),
         total: 10_000,
         price_tiers: vec![],
         mint_start_time: None,
@@ -38,40 +45,83 @@ fn benders_one_per_day_enforced_by_factory() {
     let op = chain.sender_addr();
     let mut suite = SvgCollectionSuite::new(chain.clone());
     let f = suite.deploy_factory(Some(&op), &op).unwrap();
-    suite.set_series(&f, "latent-benders", Some(benders_series(vec![]))).unwrap();
+    suite
+        .set_series(&f, "latent-benders", Some(benders_series(vec![])))
+        .unwrap();
 
     // fresh creator key per collection
     let c1 = chain.addr_make("bender-day-1");
-    let a1 = suite.instantiate_in_series(&f, "latent-benders", &cfg(&c1, 1, 86_400)).unwrap();
+    let a1 = suite
+        .instantiate_in_series(&f, "latent-benders", &cfg(&c1, 1, 86_400))
+        .unwrap();
     let st = suite.query(&a1).unwrap();
-    assert_eq!((st.total, st.mint_start_time), (10_000, None));
-    assert_eq!(st.mint_end_time, Some(chain.block_info().unwrap().time.plus_seconds(86_400)));
+    // cw721-svg defaults an unset start to the instantiate block time
+    assert_eq!(
+        (st.total, st.mint_start_time),
+        (10_000, Some(chain.block_info().unwrap().time))
+    );
+    // the end is whole seconds from the block (cw721-svg truncates sub-seconds)
+    assert_eq!(
+        st.mint_end_time,
+        Some(cosmwasm_std::Timestamp::from_seconds(
+            chain.block_info().unwrap().time.seconds() + 86_400
+        ))
+    );
 
     // free mint by anyone inside the window
     let collector = chain.addr_make("collector");
-    SvgCollectionSuite::new(chain.call_as(&collector)).mint(&a1, 1, &[]).unwrap();
+    SvgCollectionSuite::new(chain.call_as(&collector))
+        .mint(&a1, 1, &[])
+        .unwrap();
 
     // second entry inside the interval is rejected, even for the owner
     chain.wait_seconds(3600).unwrap();
     let c2 = chain.addr_make("bender-day-2");
-    err_has(suite.instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_400)).unwrap_err(), "next collection allowed at");
+    err_has(
+        suite
+            .instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_400))
+            .unwrap_err(),
+        "next collection allowed at",
+    );
     // mint window longer than 24h is rejected by the series rule
     chain.wait_seconds(23 * 3600).unwrap();
-    err_has(suite.instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_401)).unwrap_err(), "mint_end_time required");
+    err_has(
+        suite
+            .instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_401))
+            .unwrap_err(),
+        "mint_end_time required",
+    );
     // after the interval it succeeds
-    let a2 = suite.instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_400)).unwrap();
+    let a2 = suite
+        .instantiate_in_series(&f, "latent-benders", &cfg(&c2, 2, 86_400))
+        .unwrap();
     assert_ne!(a1, a2);
     let info = suite.series_info(&f, "latent-benders").unwrap();
-    assert_eq!(info.recent.len(), 1, "older entry pruned: {:?}", info.recent);
+    assert_eq!(
+        info.recent.len(),
+        1,
+        "older entry pruned: {:?}",
+        info.recent
+    );
     assert!(info.next_allowed_at.is_some());
 
     // unknown series and non-owner on an open series are rejected
-    err_has(suite.instantiate_in_series(&f, "nope", &cfg(&c2, 3, 10)).unwrap_err(), "unknown series");
+    err_has(
+        suite
+            .instantiate_in_series(&f, "nope", &cfg(&c2, 3, 10))
+            .unwrap_err(),
+        "unknown series",
+    );
     let stranger = chain.addr_make("stranger");
     let mut s2 = SvgCollectionSuite::new(chain.call_as(&stranger));
-    let f2 = cw_infuser_scripts::collection::SvgFactory { minter: f.minter.clone().call_as(&stranger) };
+    let f2 = cw_infuser_scripts::collection::SvgFactory {
+        minter: f.minter.clone().call_as(&stranger),
+    };
     chain.wait_seconds(86_400).unwrap();
-    assert!(s2.instantiate_in_series(&f2, "latent-benders", &cfg(&c2, 4, 10)).is_err());
+    assert!(
+        s2.instantiate_in_series(&f2, "latent-benders", &cfg(&c2, 4, 10))
+            .is_err()
+    );
 
     // backward compat: legacy CreateSvgCollection (no series) still works for the owner
     let now = chain.block_info().unwrap().time;
@@ -90,34 +140,64 @@ fn benders_one_per_day_enforced_by_factory() {
 fn marain_three_per_day_then_reject() {
     let chain = MockBech32::new("terp");
     let op = chain.sender_addr();
-    let mut suite = SvgCollectionSuite::new(chain.clone());
+    let suite = SvgCollectionSuite::new(chain.clone());
     let f = suite.deploy_factory(Some(&op), &op).unwrap();
     // a listed operator (not the owner) runs the series
     let bot = chain.addr_make("marain-bot");
-    suite.set_series(&f, "marain-orbs", Some(marain_series(vec![bot.to_string()]))).unwrap();
+    suite
+        .set_series(
+            &f,
+            "marain-orbs",
+            Some(marain_series(vec![bot.to_string()])),
+        )
+        .unwrap();
     let mut bs = SvgCollectionSuite::new(chain.call_as(&bot));
-    let bf = cw_infuser_scripts::collection::SvgFactory { minter: f.minter.clone().call_as(&bot) };
+    let bf = cw_infuser_scripts::collection::SvgFactory {
+        minter: f.minter.clone().call_as(&bot),
+    };
 
     let t0 = chain.block_info().unwrap().time.seconds();
     for i in 0..3u8 {
-        bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make(&format!("orb{i}")), i, 3600)).unwrap();
+        bs.instantiate_in_series(
+            &bf,
+            "marain-orbs",
+            &cfg(&chain.addr_make(format!("orb{i}")), i, 3600),
+        )
+        .unwrap();
         chain.wait_seconds(600).unwrap();
     }
-    let e = bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb3"), 3, 3600)).unwrap_err();
+    let e = bs
+        .instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb3"), 3, 3600))
+        .unwrap_err();
     err_has(e, &format!("next at {}", t0 + 86_400));
-    assert_eq!(suite.series_info(&f, "marain-orbs").unwrap().next_allowed_at, Some(t0 + 86_400));
+    assert_eq!(
+        suite
+            .series_info(&f, "marain-orbs")
+            .unwrap()
+            .next_allowed_at,
+        Some(t0 + 86_400)
+    );
     // the first slot frees up exactly one rolling day after the first creation
     let now = chain.block_info().unwrap().time.seconds();
     chain.wait_seconds(t0 + 86_400 - now).unwrap();
-    bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb3"), 3, 3600)).unwrap();
-    err_has(bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb4"), 4, 3600)).unwrap_err(), "max 3");
+    bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb3"), 3, 3600))
+        .unwrap();
+    err_has(
+        bs.instantiate_in_series(&bf, "marain-orbs", &cfg(&chain.addr_make("orb4"), 4, 3600))
+            .unwrap_err(),
+        "max 3",
+    );
 }
 
 #[test]
 fn feeshare_msg_is_built_correctly() {
     use prost::Message;
     let chain = MockBech32::new("terp");
-    let (c, d, w) = (chain.addr_make("c"), chain.addr_make("d"), chain.addr_make("w"));
+    let (c, d, w) = (
+        chain.addr_make("c"),
+        chain.addr_make("d"),
+        chain.addr_make("w"),
+    );
     let any = feeshare::msg(c.as_str(), d.as_str(), w.as_str());
     assert_eq!(any.type_url, "/terp.feeshare.v1.MsgRegisterFeeShare");
     let expect = terp_rs::terp::feeshare::v1::MsgRegisterFeeShare {
@@ -130,5 +210,8 @@ fn feeshare_msg_is_built_correctly() {
         terp_rs::terp::feeshare::v1::MsgRegisterFeeShare::decode(any.value.as_slice()).unwrap(),
         expect
     );
-    assert_eq!(<terp_rs::terp::feeshare::v1::MsgRegisterFeeShare as prost::Name>::type_url(), any.type_url);
+    assert_eq!(
+        <terp_rs::terp::feeshare::v1::MsgRegisterFeeShare as prost::Name>::type_url(),
+        any.type_url
+    );
 }

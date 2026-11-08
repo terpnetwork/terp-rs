@@ -361,7 +361,7 @@ pub fn execute_create_infusion(
             // deps.querier,
             &cfg,
             &infusion.infusion_params.bundle_type,
-            &vec![],
+            &[],
             &infusion.collections,
             false,
             infusion_id,
@@ -475,8 +475,8 @@ fn validate_eligible_collection_list(
     // query: QuerierWrapper,
     cfg: &Config,
     bundle_type: &BundleType,
-    existing: &Vec<EligibleNFTCollection>,
-    to_add: &Vec<EligibleNFTCollection>,
+    existing: &[EligibleNFTCollection],
+    to_add: &[EligibleNFTCollection],
     updating_config: bool,
     infusion_id: u64,
 ) -> Result<Vec<EligibleNFTCollection>, ContractError> {
@@ -488,12 +488,12 @@ fn validate_eligible_collection_list(
         });
     }
 
-    let mut validate_nfts = to_add.clone();
+    let mut validate_nfts = to_add.to_vec();
     if updating_config {
         // prevent duplicates,
         if !to_add.is_empty() {
             let elig = existing;
-            let mut elig_to_save = elig.clone();
+            let mut elig_to_save = elig.to_vec();
 
             for elig in elig_to_save.iter_mut() {
                 if let Some(new_elig) = to_add.iter().find(|n| n.addr == elig.addr) {
@@ -718,12 +718,14 @@ fn execute_infuse_bundle(
         let burn = burn_bundle(
             deps.storage,
             env.clone(),
-            &cfg,
-            bundle.nfts,
-            &sender,
-            &infusion,
-            infusion_id,
-            &funds,
+            BurnBundleParams {
+                cfg: &cfg,
+                nfts: bundle.nfts,
+                sender: &sender,
+                infusion: &infusion,
+                infusion_id,
+                funds: &funds,
+            },
         )?;
         // println!("burn: {:#?}", burn);
         response_msgs.extend(burn.0);
@@ -734,18 +736,31 @@ fn execute_infuse_bundle(
     Ok(res.add_messages(response_msgs))
 }
 
+/// Arguments for [`burn_bundle`].
+struct BurnBundleParams<'a> {
+    pub cfg: &'a Config,
+    pub nfts: Vec<NFT>,
+    pub sender: &'a Addr,
+    pub infusion: &'a InfusionState,
+    pub infusion_id: u64,
+    pub funds: &'a [Coin],
+}
+
 /// checks all bundles nfts, determines how many nfts to mint,
 /// returns msgs to burn, mint nfts, & transfer any fee substitute funds to their destination.
 fn burn_bundle(
     storage: &mut dyn Storage,
     env: Env,
-    cfg: &Config,
-    nfts: Vec<NFT>,
-    sender: &Addr,
-    infusion: &InfusionState,
-    infusion_id: u64,
-    funds: &Vec<Coin>,
+    args: BurnBundleParams<'_>,
 ) -> Result<(Vec<CosmosMsg>, u64), ContractError> {
+    let BurnBundleParams {
+        cfg,
+        nfts,
+        sender,
+        infusion,
+        infusion_id,
+        funds,
+    } = args;
     let mut msgs: Vec<CosmosMsg> = Vec::new();
     // confirm bundle is in current infusion, and expected amount sent
     let paysub_msg_and_mc = check_bundles(storage, cfg, infusion, sender, nfts.clone(), funds)?;
@@ -833,7 +848,7 @@ fn check_bundles(
     infusion: &InfusionState,
     sender: &Addr,
     bundle: Vec<NFT>,
-    sent: &Vec<Coin>,
+    sent: &[Coin],
 ) -> Result<(Vec<CosmosMsg>, u64), ContractError> {
     let mut funds_sent = sent.to_vec();
     let iclen: usize = infusion.collections.len();
@@ -1172,7 +1187,7 @@ fn check_anyof_bundle_helper(
     anyof_list: Vec<Addr>,
     anyofblend_list: Vec<BundleBlend>,
     elig_count: Vec<AnyOfCount>,
-    fee_substituted: &Vec<String>,
+    fee_substituted: &[String],
     sent: Vec<Coin>,
     wavs_mint_count: u64,
 ) -> Result<u64, ContractError> {
@@ -1274,8 +1289,8 @@ fn check_fee_sub(
                     }
                 }
                 return Err(ContractError::PaymentSubstituteNotProvided {
-                    have: Coin::new(have.amount, ps.denom.to_string()),
-                    want: ps.clone(),
+                    have: Box::new(Coin::new(have.amount, ps.denom.to_string())),
+                    want: Box::new(ps.clone()),
                     col: elig_addr.to_string(),
                 });
             }

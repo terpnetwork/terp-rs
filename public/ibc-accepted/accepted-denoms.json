@@ -1,0 +1,271 @@
+{
+  "chain_id": "morocco-1",
+  "spec": "ICS-20 sha256(path/base)",
+  "self_tests_passed": 5,
+  "assets": {
+    "usdc_inj": {
+      "canonical": "USDC (Ethereum, Peggy-bridged on Injective)",
+      "origin": "injective-1",
+      "base_denom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "variants": [
+        {
+          "via": "penumbra(inj ch-494>pen ch-18)",
+          "trace_path": "transfer/channel-16/transfer/channel-18",
+          "base_denom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ibc_denom": "ibc/CB185A0D7E7E63D0DBDEE9644BF0A2D028A2DA69F9054EC555A80EACD9F4C330",
+          "status": "terp-live",
+          "note": ""
+        },
+        {
+          "via": "osmosis(inj ch-8>osmo ch-122)",
+          "trace_path": "transfer/channel-13/transfer/channel-122",
+          "base_denom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ibc_denom": "ibc/810E8C4EC7DAB0E8AB804B8EA178CC0F556C329F0B416ECFB8D57813B736AF03",
+          "status": "live",
+          "note": ""
+        },
+        {
+          "via": "juno(inj>osmo>juno ch-0)",
+          "trace_path": "transfer/channel-12/transfer/channel-0/transfer/channel-122",
+          "base_denom": "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ibc_denom": "ibc/2B41486E468BA1032E8AC2092B0AFD4F78662DDA6A6140B055338C7E19723C97",
+          "status": "live",
+          "note": ""
+        }
+      ]
+    },
+    "usdc_noble": {
+      "canonical": "USDC (Circle native, Noble)",
+      "origin": "noble-1",
+      "base_denom": "uusdc",
+      "variants": [
+        {
+          "via": "penumbra direct(noble ch-89>pen ch-2)",
+          "trace_path": "transfer/channel-16/transfer/channel-2",
+          "base_denom": "uusdc",
+          "ibc_denom": "ibc/0C5912C1AA75AB4A4934BB3B127E89C021A620C4BEB7EA7850F802017FB36267",
+          "status": "terp-live",
+          "note": ""
+        },
+        {
+          "via": "penumbra via osmosis",
+          "trace_path": "transfer/channel-16/transfer/channel-4/transfer/channel-750",
+          "base_denom": "uusdc",
+          "ibc_denom": "ibc/DBFC391559D4C1C1D6BCAAC67FDC4EF332B5722CF4FB4469CB4AEBEC4E0D7AA4",
+          "status": "dead",
+          "note": "osmosis ch-79703 client to penumbra Expired"
+        },
+        {
+          "via": "penumbra via injective(noble ch-31>inj ch-148)",
+          "trace_path": "transfer/channel-16/transfer/channel-18/transfer/channel-148",
+          "base_denom": "uusdc",
+          "ibc_denom": "ibc/B7F73298ACB9AB5E03AF6A9382E92DDE0C3AE15064CB99CBF9D1D91E5A6FA23E",
+          "status": "terp-live",
+          "note": ""
+        },
+        {
+          "via": "osmosis(noble ch-1>osmo ch-750)",
+          "trace_path": "transfer/channel-13/transfer/channel-750",
+          "base_denom": "uusdc",
+          "ibc_denom": "ibc/03DFC012E34802977C042C53B6D29AFE78D47B5E669BCA707D81CC076F6AC14F",
+          "status": "live",
+          "note": ""
+        },
+        {
+          "via": "juno via osmosis",
+          "trace_path": "transfer/channel-12/transfer/channel-0/transfer/channel-750",
+          "base_denom": "uusdc",
+          "ibc_denom": "ibc/68F1B9C1AB07C6E7270F64A938E09097D75A312F9B79F6EEC226F76908FC17AC",
+          "status": "live",
+          "note": ""
+        }
+      ]
+    },
+    "usdt_kava": {
+      "canonical": "USDT (Tether native on Kava)",
+      "origin": "kava_2222-10",
+      "base_denom": "erc20/tether/usdt",
+      "variants": [
+        {
+          "via": "penumbra via osmosis(kava ch-1>osmo ch-143)",
+          "trace_path": "transfer/channel-16/transfer/channel-4/transfer/channel-143",
+          "base_denom": "erc20/tether/usdt",
+          "ibc_denom": "ibc/A27CA90F457CA3D5B10FDFC040EEE38E7239CD0BB89BACC3986D6988C2B9798A",
+          "status": "dead",
+          "note": "no direct kava<->penumbra channel known; osmo->penumbra client Expired"
+        },
+        {
+          "via": "osmosis",
+          "trace_path": "transfer/channel-13/transfer/channel-143",
+          "base_denom": "erc20/tether/usdt",
+          "ibc_denom": "ibc/CA28984009A348B6D598D25DEE59E6394BECABAB5F23CACE9C8611E6F91F6524",
+          "status": "live",
+          "note": ""
+        }
+      ]
+    },
+    "um": {
+      "canonical": "UM (Penumbra native)",
+      "origin": "penumbra-1",
+      "base_denom": "upenumbra",
+      "variants": [
+        {
+          "via": "penumbra direct",
+          "trace_path": "transfer/channel-16",
+          "base_denom": "upenumbra",
+          "ibc_denom": "ibc/5E0650783774BE9C4CF5DFAB22A788D10853D9BEDB1109527409C33B95819D6E",
+          "status": "terp-live",
+          "note": ""
+        },
+        {
+          "via": "osmosis(pen ch-4>osmo ch-79703)",
+          "trace_path": "transfer/channel-13/transfer/channel-79703",
+          "base_denom": "upenumbra",
+          "ibc_denom": "ibc/B9FC357FAC52D872E3DF495766B9385A53022578037F5F52CD9F44F0063BCC6A",
+          "status": "dead",
+          "note": "osmo ch-79703 client Expired"
+        }
+      ]
+    },
+    "allbtc": {
+      "canonical": "allBTC (Osmosis alloyed BTC)",
+      "origin": "osmosis-1",
+      "base_denom": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+      "variants": [
+        {
+          "via": "osmosis(ch-13<>111101)",
+          "trace_path": "transfer/channel-13",
+          "base_denom": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "ibc_denom": "ibc/2E277330636AA9793FF16F073DC66BBB75329AB0415F9440FA15CD621AB2A271",
+          "status": "live",
+          "note": ""
+        },
+        {
+          "via": "osmosis legacy(ch-11<>110258)",
+          "trace_path": "transfer/channel-11",
+          "base_denom": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "ibc_denom": "ibc/9FC418778218616ADEC741B8E402C856EBF2AADAD93A8D7EA322F798480F641C",
+          "status": "legacy",
+          "note": "exists on Terp today; osmo-side client Expired"
+        },
+        {
+          "via": "penumbra(osmo ch-79703>pen ch-4)",
+          "trace_path": "transfer/channel-16/transfer/channel-4",
+          "base_denom": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "ibc_denom": "ibc/94BE41FEAB2A2794F746148105A709AAA26C6E28E4B74403CBEE16BC9588BF2A",
+          "status": "dead",
+          "note": ""
+        }
+      ]
+    },
+    "tia": {
+      "canonical": "TIA (Celestia native)",
+      "origin": "celestia",
+      "base_denom": "utia",
+      "variants": [
+        {
+          "via": "penumbra native(cel ch-35>pen ch-3)",
+          "trace_path": "transfer/channel-16/transfer/channel-3",
+          "base_denom": "utia",
+          "ibc_denom": "ibc/8A61803DDD7E541005EA269A3D63B79194844F5C872429A432F3E3CFE96347B7",
+          "status": "dead",
+          "note": "celestia ch-35 client to penumbra Expired"
+        },
+        {
+          "via": "penumbra via osmosis",
+          "trace_path": "transfer/channel-16/transfer/channel-4/transfer/channel-6994",
+          "base_denom": "utia",
+          "ibc_denom": "ibc/0712FBE935C1D0C228DA5DBA4187947A0223F900BF69104BB9EFAC3BC71AFD43",
+          "status": "dead",
+          "note": ""
+        },
+        {
+          "via": "osmosis(cel ch-2>osmo ch-6994)",
+          "trace_path": "transfer/channel-13/transfer/channel-6994",
+          "base_denom": "utia",
+          "ibc_denom": "ibc/FFB65FA34D716EBF346981F0220061CE5CC0A24A9E1557AF20D1EE046B501095",
+          "status": "live",
+          "note": ""
+        }
+      ]
+    },
+    "juno": {
+      "canonical": "JUNO",
+      "origin": "juno-1",
+      "base_denom": "ujuno",
+      "variants": [
+        {
+          "via": "juno(ch-12<>674)",
+          "trace_path": "transfer/channel-12",
+          "base_denom": "ujuno",
+          "ibc_denom": "ibc/EBAD197C6356727798A2706D143655D853F018BCAB950D970101078374D8CE41",
+          "status": "live",
+          "note": ""
+        },
+        {
+          "via": "juno legacy(ch-0<>393)",
+          "trace_path": "transfer/channel-0",
+          "base_denom": "ujuno",
+          "ibc_denom": "ibc/04F5F501207C3626A2C14BFEF654D51C2E0B8F7CA578AB8ED272A66FE4E48097",
+          "status": "legacy",
+          "note": "juno-side client Expired"
+        }
+      ]
+    },
+    "osmo": {
+      "canonical": "OSMO",
+      "origin": "osmosis-1",
+      "base_denom": "uosmo",
+      "variants": [
+        {
+          "via": "juno(osmo ch-42>juno ch-0)",
+          "trace_path": "transfer/channel-12/transfer/channel-0",
+          "base_denom": "uosmo",
+          "ibc_denom": "ibc/964627618D218CFDE2A535368F308A5D7368A4FFE47156137050059578548C80",
+          "status": "live",
+          "note": ""
+        },
+        {
+          "via": "osmosis direct",
+          "trace_path": "transfer/channel-13",
+          "base_denom": "uosmo",
+          "ibc_denom": "ibc/9C4DCD21B48231D0BC2AC3D1B74A864746B37E4292694C93C617324250D002FC",
+          "status": "live",
+          "note": ""
+        }
+      ]
+    }
+  },
+  "shitstrap_accepted": {
+    "usdc_inj": [
+      "ibc/CB185A0D7E7E63D0DBDEE9644BF0A2D028A2DA69F9054EC555A80EACD9F4C330",
+      "ibc/810E8C4EC7DAB0E8AB804B8EA178CC0F556C329F0B416ECFB8D57813B736AF03",
+      "ibc/2B41486E468BA1032E8AC2092B0AFD4F78662DDA6A6140B055338C7E19723C97"
+    ],
+    "usdc_noble": [
+      "ibc/0C5912C1AA75AB4A4934BB3B127E89C021A620C4BEB7EA7850F802017FB36267",
+      "ibc/B7F73298ACB9AB5E03AF6A9382E92DDE0C3AE15064CB99CBF9D1D91E5A6FA23E",
+      "ibc/03DFC012E34802977C042C53B6D29AFE78D47B5E669BCA707D81CC076F6AC14F",
+      "ibc/68F1B9C1AB07C6E7270F64A938E09097D75A312F9B79F6EEC226F76908FC17AC"
+    ],
+    "usdt_kava": [
+      "ibc/CA28984009A348B6D598D25DEE59E6394BECABAB5F23CACE9C8611E6F91F6524"
+    ],
+    "um": [
+      "ibc/5E0650783774BE9C4CF5DFAB22A788D10853D9BEDB1109527409C33B95819D6E"
+    ],
+    "allbtc": [
+      "ibc/2E277330636AA9793FF16F073DC66BBB75329AB0415F9440FA15CD621AB2A271"
+    ],
+    "tia": [
+      "ibc/FFB65FA34D716EBF346981F0220061CE5CC0A24A9E1557AF20D1EE046B501095"
+    ],
+    "juno": [
+      "ibc/EBAD197C6356727798A2706D143655D853F018BCAB950D970101078374D8CE41"
+    ],
+    "osmo": [
+      "ibc/964627618D218CFDE2A535368F308A5D7368A4FFE47156137050059578548C80",
+      "ibc/9C4DCD21B48231D0BC2AC3D1B74A864746B37E4292694C93C617324250D002FC"
+    ]
+  }
+}

@@ -360,15 +360,15 @@ fn num_at(s: &[u8], i: usize) -> usize {
     if s.get(j) == Some(&b'-') {
         j += 1;
     }
-    if !s.get(j).map_or(false, u8::is_ascii_digit) {
+    if !s.get(j).is_some_and(u8::is_ascii_digit) {
         return 0;
     }
-    while s.get(j).map_or(false, u8::is_ascii_digit) {
+    while s.get(j).is_some_and(u8::is_ascii_digit) {
         j += 1;
     }
-    if s.get(j) == Some(&b'.') && s.get(j + 1).map_or(false, u8::is_ascii_digit) {
+    if s.get(j) == Some(&b'.') && s.get(j + 1).is_some_and(u8::is_ascii_digit) {
         j += 1;
-        while s.get(j).map_or(false, u8::is_ascii_digit) {
+        while s.get(j).is_some_and(u8::is_ascii_digit) {
             j += 1;
         }
     }
@@ -426,16 +426,15 @@ pub fn pack(template: &str, vars: &[VariableDef]) -> Result<Vec<u8>, PackError> 
             }
         }
         let nl = num_at(src, i);
-        if nl > 0 {
-            if let Some((h, m)) = core::str::from_utf8(&src[i..i + nl])
+        if nl > 0
+            && let Some((h, m)) = core::str::from_utf8(&src[i..i + nl])
                 .ok()
                 .and_then(num_pack)
-            {
-                let sv = nl as isize - (1 + vlen(h) + vlen(m)) as isize;
-                if sv > best_save {
-                    best_save = sv;
-                    best = Some((NUM, nl, h, m));
-                }
+        {
+            let sv = nl as isize - (1 + vlen(h) + vlen(m)) as isize;
+            if sv > best_save {
+                best_save = sv;
+                best = Some((NUM, nl, h, m));
             }
         }
         for (d, w) in DICT.iter().enumerate() {
