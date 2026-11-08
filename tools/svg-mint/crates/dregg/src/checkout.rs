@@ -127,7 +127,9 @@ pub fn minter_balance_native() -> Option<u128> {
 }
 
 fn query_minter_lcd() -> Option<u128> {
-    let lcd = std::env::var("DREGG_MINTER_LCD").ok().filter(|s| !s.is_empty())?;
+    let lcd = std::env::var("DREGG_MINTER_LCD")
+        .ok()
+        .filter(|s| !s.is_empty())?;
     // The signer that pays gas. Fall back to DREGG_MINTER_ADDR when the key
     // file has not been created yet.
     let addr = crate::mint_tx::address_if_present().or_else(|| {
@@ -145,7 +147,10 @@ fn query_minter_lcd() -> Option<u128> {
     let bals = v.get("balances")?.as_array()?;
     for c in bals {
         if c.get("denom").and_then(|d| d.as_str()) == Some(denom.as_str()) {
-            return c.get("amount").and_then(|a| a.as_str()).and_then(|s| s.parse().ok());
+            return c
+                .get("amount")
+                .and_then(|a| a.as_str())
+                .and_then(|s| s.parse().ok());
         }
     }
     Some(0)
@@ -237,10 +242,8 @@ impl CheckoutStatus {
     /// but does not close native TERP checkout. Pay-targets must omit
     /// `zec_uri` while `zec_tip.ok` is false so the house node is not paid.
     pub fn apply_zec_tip(&mut self, tip: ZecTip) {
-        if tip.configured && !tip.ok {
-            if !self.reasons.iter().any(|r| r == zec_tip::REASON_DRIFT) {
-                self.reasons.push(zec_tip::REASON_DRIFT.into());
-            }
+        if tip.configured && !tip.ok && !self.reasons.iter().any(|r| r == zec_tip::REASON_DRIFT) {
+            self.reasons.push(zec_tip::REASON_DRIFT.into());
         }
         self.zec_tip = tip;
     }
@@ -454,10 +457,12 @@ mod tests {
     fn lcd_https_miss_is_unknown_not_balance() {
         let _g = minter_env_lock();
         unsafe { std::env::set_var("DREGG_MINTER_LCD", "https://127.0.0.1:1317") };
-        unsafe { std::env::set_var(
-            "DREGG_MINTER_ADDR",
-            "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqp3wq3h",
-        ) };
+        unsafe {
+            std::env::set_var(
+                "DREGG_MINTER_ADDR",
+                "terp1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqp3wq3h",
+            )
+        };
         unsafe { std::env::set_var("DREGG_MINTER_BALANCE", "999999999") };
         unsafe { std::env::set_var("DREGG_MINTER_FUNDED", "1") };
         assert_eq!(minter_balance_native(), None);
@@ -499,10 +504,7 @@ mod tests {
     }
 
     fn admit_test_collection() {
-        unsafe { std::env::set_var(
-            "DREGG_COLLECTIONS",
-            "terp1testcollectionxxxxxxxxxxxxxxxxxx",
-        ) };
+        unsafe { std::env::set_var("DREGG_COLLECTIONS", "terp1testcollectionxxxxxxxxxxxxxxxxxx") };
         crate::collections::set_admission_override(Some(vec![
             "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
         ]));

@@ -1,8 +1,8 @@
 use dregg::cell::{Cell, CellError, Phase, Turn};
 use dregg::checkout;
 use dregg::commit::{
-    bind, commit_action, commit_deposit, nullifier, ActionOpening, DepositOpening, ForeignWitness,
-    Rail,
+    ActionOpening, DepositOpening, ForeignWitness, Rail, bind, commit_action, commit_deposit,
+    nullifier,
 };
 use dregg::mentor::{Mentor, MentorOpening};
 
@@ -55,17 +55,16 @@ fn ready_cell(max_supply: u64) -> (ReadyEnv, Cell) {
     unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
     unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
     unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
-    unsafe { std::env::set_var(
-        "DREGG_COLLECTIONS",
-        "terp1testcollectionxxxxxxxxxxxxxxxxxx",
-    ) };
+    unsafe { std::env::set_var("DREGG_COLLECTIONS", "terp1testcollectionxxxxxxxxxxxxxxxxxx") };
     dregg::collections::set_admission_override(Some(vec![
         "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
     ]));
-    unsafe { std::env::set_var(
-        "DREGG_MINTER_BALANCE",
-        checkout::native_needed_for_nfts(1_000).to_string(),
-    ) };
+    unsafe {
+        std::env::set_var(
+            "DREGG_MINTER_BALANCE",
+            checkout::native_needed_for_nfts(1_000).to_string(),
+        )
+    };
     let mut cell = Cell::new();
     cell.apply(Turn::SetCollection {
         id: "terp1testcollectionxxxxxxxxxxxxxxxxxx".into(),
@@ -100,7 +99,10 @@ fn triple_pay_qty_and_stale_refund() {
         action: action([2u8; 32]),
     })
     .unwrap();
-    cell.apply(Turn::Tick { now: 1_000 + 20 * 60 }).unwrap();
+    cell.apply(Turn::Tick {
+        now: 1_000 + 20 * 60,
+    })
+    .unwrap();
     cell.apply(Turn::SweepStaleEntitlements {
         timeout_secs: 20 * 60,
     })
@@ -128,6 +130,7 @@ fn sweep_before_timeout_keeps_entitled() {
     assert_eq!(cell.phase(&n), Some(Phase::Entitled));
 }
 
+#[test]
 fn happy_path_fixture() {
     let (_g, mut cell) = ready_cell(100);
     let d = deposit(Rail::ZecIronwood, 150_000, b"note-cm-lab");
@@ -156,17 +159,19 @@ fn happy_path_fixture() {
     assert!(!json.contains("txid"));
     assert_eq!(packet.c_deposit, commit_deposit(&d));
     assert_eq!(packet.c_action, commit_action(&a));
-    assert_eq!(packet.bind, bind(&packet.c_deposit, &packet.c_action, &sess));
+    assert_eq!(
+        packet.bind,
+        bind(&packet.c_deposit, &packet.c_action, &sess)
+    );
 }
 
 #[test]
 fn double_spend_refused() {
     let (_g, mut cell) = ready_cell(100);
     let d = deposit(Rail::Eth, 1_000_000_000_000_000, b"log");
-    cell.apply(Turn::DepositSeen { opening: d.clone() }).unwrap();
-    let err = cell
-        .apply(Turn::DepositSeen { opening: d })
-        .unwrap_err();
+    cell.apply(Turn::DepositSeen { opening: d.clone() })
+        .unwrap();
+    let err = cell.apply(Turn::DepositSeen { opening: d }).unwrap_err();
     assert_eq!(err, CellError::DoubleSpend);
 }
 
@@ -222,10 +227,12 @@ fn entitle_refused_when_checkout_unbound() {
     unsafe { std::env::remove_var("DREGG_MINTER_LCD") };
     unsafe { std::env::remove_var("DREGG_MINTER_ADDR") };
     unsafe { std::env::remove_var("DREGG_MINTER_FUNDED") };
-    unsafe { std::env::set_var(
-        "DREGG_MINTER_BALANCE",
-        checkout::native_needed_for_nfts(1_000).to_string(),
-    ) };
+    unsafe {
+        std::env::set_var(
+            "DREGG_MINTER_BALANCE",
+            checkout::native_needed_for_nfts(1_000).to_string(),
+        )
+    };
     let mut cell = Cell::new();
     assert_eq!(
         cell.apply(Turn::MintEntitled {
@@ -305,8 +312,7 @@ fn sold_out_query_refunds_remaining_depositors() {
     assert_eq!(q.max_supply, 1);
     assert_eq!(q.refund_nullifiers.len(), 1);
     assert!(q.refund_nullifiers.contains(&n2));
-    cell.apply(Turn::DepositRefunded { n_deposit: n2 })
-        .unwrap();
+    cell.apply(Turn::DepositRefunded { n_deposit: n2 }).unwrap();
     assert_eq!(cell.phase(&n2), Some(Phase::Refunded));
 }
 
@@ -314,10 +320,25 @@ fn sold_out_query_refunds_remaining_depositors() {
 fn native_mint_observe_refunds_all_rails() {
     let (_g, mut cell) = ready_cell(1);
     let rails = [
-        (Rail::ZecIronwood, 150_000u128, b"ironwood-note-z".as_slice(), 1u8),
-        (Rail::Eth, 1_000_000_000_000_000, b"eth-vault-log-e".as_slice(), 2),
+        (
+            Rail::ZecIronwood,
+            150_000u128,
+            b"ironwood-note-z".as_slice(),
+            1u8,
+        ),
+        (
+            Rail::Eth,
+            1_000_000_000_000_000,
+            b"eth-vault-log-e".as_slice(),
+            2,
+        ),
         (Rail::Btc, 10_000, b"btc-outpoint-b".as_slice(), 3),
-        (Rail::Base, 1_000_000_000_000_000, b"base-vault-log-b".as_slice(), 4),
+        (
+            Rail::Base,
+            1_000_000_000_000_000,
+            b"base-vault-log-b".as_slice(),
+            4,
+        ),
     ];
     let mut ns = Vec::new();
     for (i, (rail, amt, raw, salt)) in rails.into_iter().enumerate() {
@@ -391,13 +412,16 @@ fn dummy_receipt_refused() {
 
 #[test]
 fn qc_unsigned_and_threshold() {
-    use dregg::qc::{count_valid, sign, Checkpoint, QcError};
+    use dregg::qc::{Checkpoint, QcError, count_valid, sign};
     let kp = dregg::qc::generate_operator();
     let pk = kp.verifying_key().to_bytes();
     let ck = Checkpoint::new(1, [9u8; 32], [8u8; 32], "deposit");
-    assert_eq!(count_valid(&ck.digest, &[], &[pk], 1), Err(QcError::Unsigned));
+    assert_eq!(
+        count_valid(&ck.digest, &[], &[pk], 1),
+        Err(QcError::Unsigned)
+    );
     let s = sign(&kp, &ck.digest);
-    assert!(count_valid(&ck.digest, &[s.clone()], &[pk], 1).is_ok());
+    assert!(count_valid(&ck.digest, std::slice::from_ref(&s), &[pk], 1).is_ok());
     assert!(matches!(
         count_valid(&ck.digest, &[s], &[pk], 2),
         Err(QcError::Threshold { got: 1, need: 2 })

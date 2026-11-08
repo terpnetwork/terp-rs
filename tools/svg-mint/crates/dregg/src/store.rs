@@ -150,10 +150,19 @@ pub struct Durable {
     path: PathBuf,
 }
 
+/// What [`Durable::open`] restores: the handle, cell, rail books, pending pays,
+/// next HD index and the BOGO counter.
+pub type Opened = (
+    Durable,
+    Cell,
+    RailBooks,
+    HashMap<Commit, PendingPay>,
+    u32,
+    u64,
+);
+
 impl Durable {
-    pub fn open(
-        path: impl AsRef<Path>,
-    ) -> std::io::Result<(Self, Cell, RailBooks, HashMap<Commit, PendingPay>, u32, u64)> {
+    pub fn open(path: impl AsRef<Path>) -> std::io::Result<Opened> {
         let path = path.as_ref().to_path_buf();
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;
@@ -207,8 +216,7 @@ impl Durable {
             hd_index,
             bogo_seen,
         };
-        let bytes = serde_json::to_vec(&snap)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let bytes = serde_json::to_vec(&snap).map_err(std::io::Error::other)?;
         let mut f = fs::File::create(&tmp)?;
         f.write_all(&bytes)?;
         f.sync_all()?;

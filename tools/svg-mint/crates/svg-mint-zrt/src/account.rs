@@ -404,13 +404,15 @@ mod tests {
     #[test]
     fn default_dir_is_under_terp_not_tmp() {
         let prev = std::env::var("SVG_MINT_ZRT_DIR").ok();
-        std::env::remove_var("SVG_MINT_ZRT_DIR");
+        // SAFETY: single-threaded test-only env mutation.
+        unsafe { std::env::remove_var("SVG_MINT_ZRT_DIR") };
         let d = dir_from_env();
         assert!(d.ends_with("svg-mint-zrt"));
         assert!(d.components().any(|c| c.as_os_str() == ".terp"));
         assert!(!d.starts_with("/tmp"));
         if let Some(p) = prev {
-            std::env::set_var("SVG_MINT_ZRT_DIR", p);
+            // SAFETY: single-threaded test-only env mutation.
+            unsafe { std::env::set_var("SVG_MINT_ZRT_DIR", p) };
         }
     }
 

@@ -96,9 +96,24 @@ pub fn fractal_zec_zat() -> [u64; 3] {
 pub fn fractal_tiers() -> [FractalTier; 3] {
     let z = fractal_zec_zat();
     [
-        FractalTier { from: 1, until: 1_000, thiol: 100, zat: z[0] },
-        FractalTier { from: 1_001, until: 5_000, thiol: 500, zat: z[1] },
-        FractalTier { from: 5_001, until: 10_000, thiol: 1_000, zat: z[2] },
+        FractalTier {
+            from: 1,
+            until: 1_000,
+            thiol: 100,
+            zat: z[0],
+        },
+        FractalTier {
+            from: 1_001,
+            until: 5_000,
+            thiol: 500,
+            zat: z[1],
+        },
+        FractalTier {
+            from: 5_001,
+            until: 10_000,
+            thiol: 1_000,
+            zat: z[2],
+        },
     ]
 }
 
@@ -198,9 +213,7 @@ pub fn query_num_tokens(contract: &str) -> Result<u64, String> {
 }
 
 fn fractal_minted_from_chain() -> Option<u64> {
-    if lcd_base().is_none() {
-        return None;
-    }
+    lcd_base()?;
     query_num_tokens(FRACTAL_COLLECTION).ok()
 }
 
@@ -232,9 +245,7 @@ fn paymint_configured(address: &str) -> bool {
 /// the HTTP handler adds live `checkout_ready` from `checkout_now`.
 pub fn catalog() -> serde_json::Value {
     let minted = fractal_minted_from_chain();
-    let shown = minted
-        .and_then(tier_for_next)
-        .unwrap_or(fractal_tiers()[0]);
+    let shown = minted.and_then(tier_for_next).unwrap_or(fractal_tiers()[0]);
     serde_json::json!({
         "ok": true,
         "source": "dregg",
@@ -294,7 +305,10 @@ mod tests {
         );
         assert!(tier_for_next(10_000).is_none());
         assert!(unit_zat(FRACTAL_COLLECTION, Some(10_000)).is_none());
-        assert_eq!(unit_uthiol(FRACTAL_COLLECTION, Some(0)).unwrap(), 100_000_000);
+        assert_eq!(
+            unit_uthiol(FRACTAL_COLLECTION, Some(0)).unwrap(),
+            100_000_000
+        );
         unsafe { std::env::set_var("DREGG_FRACTAL_ZEC_ZAT", "3,4,5") };
         assert_eq!(fractal_zec_zat(), [3, 4, 5]);
         unsafe { std::env::set_var("DREGG_FRACTAL_ZEC_ZAT", "nope") };
