@@ -21,8 +21,6 @@ pub mod interface;
 pub use crate::error::ContractError;
 pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]

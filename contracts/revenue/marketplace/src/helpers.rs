@@ -225,14 +225,13 @@ pub fn only_tradable(
     let Ok(info) = info else {
         return Ok(());
     };
-    if let Some(ext) = info.extension {
-        if let Some(start) = ext.start_trading_time {
-            if start > block_time {
-                return Err(ContractError::InvalidInput(
-                    "collection is not tradable yet".into(),
-                ));
-            }
-        }
+    if let Some(ext) = info.extension
+        && let Some(start) = ext.start_trading_time
+        && start > block_time
+    {
+        return Err(ContractError::InvalidInput(
+            "collection is not tradable yet".into(),
+        ));
     }
     Ok(())
 }
@@ -264,24 +263,24 @@ fn load_royalty(
     collection: &Addr,
     protocol: &Addr,
 ) -> StdResult<Option<Royalty>> {
-    if let Some(registry) = &config.royalty_registry {
-        if let Ok(payment) = deps.querier.query_wasm_smart::<RoyaltyPaymentResponse>(
+    if let Some(registry) = &config.royalty_registry
+        && let Ok(payment) = deps.querier.query_wasm_smart::<RoyaltyPaymentResponse>(
             registry,
             &RoyaltyQuery::RoyaltyPayment {
                 collection: collection.to_string(),
                 protocol: Some(protocol.to_string()),
             },
-        ) {
-            let entry = payment
-                .royalty_protocol
-                .map(|p| p.royalty_entry)
-                .or_else(|| payment.royalty_default.map(|d| d.royalty_entry));
-            if let Some(entry) = entry {
-                return Ok(Some(Royalty {
-                    recipient: deps.api.addr_validate(&entry.recipient)?,
-                    share: entry.share,
-                }));
-            }
+        )
+    {
+        let entry = payment
+            .royalty_protocol
+            .map(|p| p.royalty_entry)
+            .or_else(|| payment.royalty_default.map(|d| d.royalty_entry));
+        if let Some(entry) = entry {
+            return Ok(Some(Royalty {
+                recipient: deps.api.addr_validate(&entry.recipient)?,
+                share: entry.share,
+            }));
         }
     }
     let info: StdResult<CollectionQuery> = deps

@@ -57,7 +57,18 @@ pub fn execute(
             r_b,
             gamma,
             gamma_den,
-        } => execute_create_pool(deps, info, asset_a, asset_b, r_a, r_b, gamma, gamma_den),
+        } => execute_create_pool(
+            deps,
+            info,
+            ExecuteCreatePoolParams {
+                asset_a,
+                asset_b,
+                r_a,
+                r_b,
+                gamma,
+                gamma_den,
+            },
+        ),
         ExecuteMsg::SetPoolStatus { pool_id, status } => {
             execute_set_pool_status(deps, info, pool_id, status)
         }
@@ -66,21 +77,34 @@ pub fn execute(
         }
         ExecuteMsg::SetAllowedRoot { root } => execute_set_allowed_root(deps, info, root),
         ExecuteMsg::SettleSwap { statement, proof } => {
-            execute_settle_swap(deps, env, info, statement, proof)
+            execute_settle_swap(deps, env, info, *statement, proof)
         }
     }
+}
+
+/// Arguments for [`execute_create_pool`].
+struct ExecuteCreatePoolParams {
+    pub asset_a: Binary,
+    pub asset_b: Binary,
+    pub r_a: Uint128,
+    pub r_b: Uint128,
+    pub gamma: u64,
+    pub gamma_den: u64,
 }
 
 fn execute_create_pool(
     deps: DepsMut,
     info: MessageInfo,
-    asset_a: Binary,
-    asset_b: Binary,
-    r_a: Uint128,
-    r_b: Uint128,
-    gamma: u64,
-    gamma_den: u64,
+    args: ExecuteCreatePoolParams,
 ) -> Result<Response, ContractError> {
+    let ExecuteCreatePoolParams {
+        asset_a,
+        asset_b,
+        r_a,
+        r_b,
+        gamma,
+        gamma_den,
+    } = args;
     assert_owner(deps.storage, &info.sender)?;
     if r_a.is_zero() || r_b.is_zero() || gamma_den == 0 || asset_a == asset_b {
         return Err(ContractError::BadAmount {});
@@ -166,10 +190,10 @@ fn execute_settle_swap(
     }
 
     // Root window (stub) — pure apply_swap_action allowed_root check.
-    if let Some(ref allowed) = cfg.allowed_root {
-        if &statement.root != allowed {
-            return Err(ContractError::BadRoot {});
-        }
+    if let Some(ref allowed) = cfg.allowed_root
+        && &statement.root != allowed
+    {
+        return Err(ContractError::BadRoot {});
     }
 
     // Orient reserves (astroport: offer_pool / ask_pool from pair assets).

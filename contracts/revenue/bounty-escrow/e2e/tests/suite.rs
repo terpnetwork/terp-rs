@@ -4,7 +4,7 @@
 //! `cargo test -p terp-bounty-escrow-e2e`
 
 use cw_orch::prelude::*;
-use cw_orch_kms::{instantiate2_bech32, wasm_checksum, ApprovalSession, ScopedCall};
+use cw_orch_kms::{ApprovalSession, ScopedCall, instantiate2_bech32, wasm_checksum};
 use terp_orch::TerpArtifactStack;
 
 #[test]
@@ -42,15 +42,25 @@ fn kms_grant_stores_then_instantiates_and_configures_only_this_contract() {
     assert_eq!(open.executes.len(), 1);
     assert_eq!(open.executes[0].address, predicted);
     assert_eq!(open.executes[0].keys, vec!["update_config".to_string()]);
-    assert!(open.type_urls.iter().any(|url| url.ends_with("MsgStoreCode")));
-    assert!(open.type_urls.iter().any(|url| url.ends_with("MsgInstantiateContract2")));
+    assert!(
+        open.type_urls
+            .iter()
+            .any(|url| url.ends_with("MsgStoreCode"))
+    );
+    assert!(
+        open.type_urls
+            .iter()
+            .any(|url| url.ends_with("MsgInstantiateContract2"))
+    );
     assert!(!open.retain);
-    assert!(ApprovalSession::open("terp1cold")
-        .allow_execute(ScopedCall {
-            address: String::new(),
-            keys: vec!["update_config".into()],
-            calls: 1,
-            funds: vec![],
-        })
-        .is_err());
+    assert!(
+        ApprovalSession::open("terp1cold")
+            .allow_execute(ScopedCall {
+                address: String::new(),
+                keys: vec!["update_config".into()],
+                calls: 1,
+                funds: vec![],
+            })
+            .is_err()
+    );
 }

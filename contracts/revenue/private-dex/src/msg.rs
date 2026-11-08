@@ -113,7 +113,7 @@ pub enum ExecuteMsg {
     /// Transparent analog: `crates/dex` `ExecuteMsg::Swap { offer_asset, max_spread, ... }`
     /// but offer is a **proven note spend**, not a bank push.
     SettleSwap {
-        statement: SwapStatementPublic,
+        statement: Box<SwapStatementPublic>,
         proof: Binary,
     },
 }

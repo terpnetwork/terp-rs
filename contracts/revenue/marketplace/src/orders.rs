@@ -158,7 +158,7 @@ impl Bid {
         let Some(ask) = asks().may_load(deps.storage, id)? else {
             return Ok(None);
         };
-        if cosmwasm_std::has_coins(&[self.terms.price.clone()], &ask.terms.price) {
+        if cosmwasm_std::has_coins(std::slice::from_ref(&self.terms.price), &ask.terms.price) {
             Ok(Some(ask))
         } else {
             Ok(None)
