@@ -11,7 +11,7 @@
 //! [`crate::build_private`] enforces the public words and the leaf binding,
 //! and does not yet constrain the signature.
 
-use headstash_wire::{recover_pubkey_x, sign_personal};
+use headstash_wire::recover_pubkey_x;
 
 /// ASCII prefix of the `personal_sign` message. The body is the hex of the
 /// three public words, so a signature on any other string does not open this
@@ -47,6 +47,7 @@ fn push_hex(out: &mut Vec<u8>, words: &[u32; 8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use headstash_wire::sign_personal;
 
     #[test]
     fn signature_is_bound_to_the_three_public_words() {

@@ -1285,7 +1285,7 @@ impl RhoCanonicity {
         lo.assign_region(
             || "NoteCommit rho canonicity",
             |mut region| {
-                self.q_notecommit_rho.enable(&mut region, 0);
+                self.q_notecommit_rho.enable(&mut region, 0)?;
                 // Row 0
                 rho.copy_advice(|| "rho full", &mut region, self.col_l, 0)?;
                 h1.copy_advice(|| "h1 (bits 0..7)", &mut region, self.col_m, 0)?;
@@ -1491,15 +1491,8 @@ impl NoteCommitChip {
         let j = DecomposeJ::configure(meta, col_l, col_m, col_r, two_pow_8);
         let l = DecomposeL::configure(meta, col_l, col_m, col_r, two_pow_3);
 
-        let nd = NdCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_250.clone(),
-            t_p.clone(),
-        );
+        let nd =
+            NdCanonicity::configure(meta, col_l, col_m, col_r, col_z, two_pow_250, t_p.clone());
 
         let v = ValueCanonicity::configure(
             meta,
@@ -1816,57 +1809,48 @@ pub(in crate::circuit) mod gadgets {
 
         // Check decomposition of v (b1, c0)
         let (b1_c0_prime, z6_b1_c0_prime) =
-            v_canonicity(&lc, lo.namespace(|| "v canonicity"), b1.clone(), c0.clone())?;
+            v_canonicity(&lc, lo.namespace(|| "v canonicity"), b1, c0)?;
 
         // Check decomposition of fdi (c1,d0)
-        let (c1_d0_prime, z6_c1_d0_prime) = fdi_canonicity(
-            &lc,
-            lo.namespace(|| "fdi canonicity"),
-            c1.clone(),
-            d0.clone(),
-        )?;
+        let (c1_d0_prime, z6_c1_d0_prime) =
+            fdi_canonicity(&lc, lo.namespace(|| "fdi canonicity"), c1, d0)?;
 
         // Check decomposition of recp (d1,e,f0)
-        let (d1_e_f0_prime, z26_d1_e_f0_prime) = recp_canonicity(
-            &lc,
-            lo.namespace(|| "v canonicity"),
-            d1.clone(),
-            e_value,
-            f0.clone(),
-        )?;
+        let (d1_e_f0_prime, z26_d1_e_f0_prime) =
+            recp_canonicity(&lc, lo.namespace(|| "v canonicity"), d1, e_value, f0)?;
 
         // Check decomposition of esk (f1,g,h0)
         let (f1_g_h0_prime, z26_f1_g_h0_prime) = esk_canonicity(
             &lc,
             lo.namespace(|| "esk canonicity"),
-            f1.clone(),
+            f1,
             g.inner().cell_value(),
-            h0.clone(),
+            h0,
         )?;
 
         // Check decomposition of rho (h1,i,j0)
         let (h1_i_j0_prime, z26_h1_i_j0_prime) = rho_canonicity(
             &lc,
             lo.namespace(|| "rho canonicity"),
-            h1.clone(),
+            h1,
             i.inner().cell_value(),
-            j0.clone(),
+            j0,
         )?;
 
         // Check decomposition of psi (j1, k, l0)
         let (j1_k_l0_prime, z26_j1_k_l0_prime) = psi_canonicity(
             &lc,
             lo.namespace(|| "psi canonicity"),
-            j1.clone(),
+            j1,
             k.inner().cell_value(),
-            l0.clone(),
+            l0,
         )?;
 
         // Finally, assign vs to all of the NoteCommit regions.
         let cfg = note_commit_chip.config;
 
         let b_1 = cfg.b.assign(&mut lo, b, b0.clone(), b1)?;
-        let [c0, c1] = cfg.c.assign(&mut lo, c, c0.clone(), c1)?;
+        let [c0, c1] = cfg.c.assign(&mut lo, c, c0, c1)?;
         let [d0, d1] = cfg.d.assign(&mut lo, d, d0, d1, z1_d)?;
         let [f0, f1] = cfg.f.assign(&mut lo, f, [f0, f1])?;
         let [h0, h1] = cfg.h.assign(&mut lo, h, [h0, h1])?;
@@ -2149,8 +2133,6 @@ pub(in crate::circuit) mod gadgets {
 
 #[cfg(test)]
 mod tests {
-    use core::u64;
-
     use super::NoteCommitConfig;
     use crate::{
         circuit::{
@@ -2180,8 +2162,6 @@ mod tests {
         plonk::{ConstraintSystem, Error},
     };
     use pasta_curves::pallas;
-
-    use crate::os_rng;
 
     #[test]
     fn decomposition_values() {

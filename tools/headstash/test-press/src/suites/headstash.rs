@@ -16,9 +16,7 @@ use std::string::String;
 
 use cw_headstash::interface::HeadstashContract;
 use cw_headstash_manifold::interface::CwHeadstashManifold;
-use cw_headstash_manifold::msg::{
-    ExecuteMsgFns, InstantiateMsg as ManifoldInstantiateMsg, QueryMsgFns as _,
-};
+use cw_headstash_manifold::msg::{ExecuteMsgFns, InstantiateMsg as ManifoldInstantiateMsg};
 use cw_orch::{anyhow, prelude::*};
 use zk_headstash::suite::HeadstashCircuitSuite;
 

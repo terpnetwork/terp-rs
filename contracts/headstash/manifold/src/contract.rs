@@ -42,7 +42,7 @@ pub fn instantiate(
         .as_deref()
         .map_or(Ok(info.sender.clone()), |o| deps.api.addr_validate(o))?;
 
-    initialize_owner(deps.storage, deps.api, Some(&owner.to_string()))?;
+    initialize_owner(deps.storage, deps.api, Some(owner.as_ref()))?;
     HEADSTASH_CODE_ID.save(deps.storage, &msg.headstash_code_id)?;
 
     Ok(Response::new()
@@ -148,6 +148,7 @@ fn execute_create_headstash(
         .add_attribute("action", "create_headstash"))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_register_eligibility_root(
     deps: DepsMut,
     info: MessageInfo,
@@ -236,10 +237,14 @@ fn validate_funding(
             let coin = info
                 .funds
                 .iter()
-                .find(|c| c.denom == *denom && c.amount >= funding.amount.into())
+                .find(|c| c.denom == *denom)
                 .ok_or(ContractError::InvalidFundingToken {})?;
-            if coin.amount < funding.amount.into() {
-                return Err(ContractError::InvalidFundingToken {});
+            if coin.amount < funding.amount {
+                return Err(ContractError::InsufficientFunding {
+                    denom: denom.clone(),
+                    sent: coin.amount,
+                    required: funding.amount,
+                });
             }
         }
         FundingToken::Cw20 { contract_addr } => {
@@ -258,6 +263,140 @@ pub fn migrate(
     _info: cosmwasm_std::MigrateInfo,
 ) -> ContractResult<Response> {
     Ok(Response::new().add_attribute("action", "migrate"))
+}
+
+fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> ContractResult<Response> {
+    // In CosmWasm v3, we extract the contract address from the reply result
+    let response = msg
+        .result
+        .into_result()
+        .map_err(|_| ContractError::InstantiationFailed {})?;
+    let contract_addr_str = response
+        .events
+        .iter()
+        .find(|e| e.ty == "instantiate")
+        .and_then(|e| e.attributes.iter().find(|a| a.key == "_contract_address"))
+        .map(|a| a.value.clone())
+        .ok_or(ContractError::InstantiationFailed {})?;
+    let contract_addr = deps.api.addr_validate(&contract_addr_str)?;
+
+    // Load the pending instantiation data
+    let pending = PENDING_INSTANTIATION.load(deps.storage)?;
+    let domain = pending.distro_hash_domain;
+    let genesis_root = pending.genesis_root.clone();
+
+    let contract = HeadstashContract {
+        address: contract_addr.clone(),
+        instantiator: pending.instantiator,
+        genesis_root: genesis_root.clone(),
+        distro_hash_domain: domain,
+        funding: pending.funding,
+    };
+
+    contracts().save(deps.storage, &contract_addr, &contract)?;
+
+    // Index genesis root (root_id = 0) in the manifold registry.
+    let genesis_rec = EligibilityRootRecord {
+        headstash: contract_addr.clone(),
+        root_id: 0,
+        root: genesis_root,
+        domain,
+        label: None,
+    };
+    MANIFOLD_ROOTS.save(deps.storage, (&contract_addr, 0), &genesis_rec)?;
+
+    // Clean up pending data
+    PENDING_INSTANTIATION.remove(deps.storage);
+
+    Ok(Response::new()
+        .add_attribute("action", "register_headstash")
+        .add_attribute("contract_address", contract_addr)
+        .add_attribute("distro_hash_domain", domain.as_str())
+        .add_attribute("root_id", "0"))
+}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::ContractsByInstantiator {
+            instantiator,
+            start_after,
+            limit,
+        } => query_contracts_by_instantiator(deps, instantiator, start_after, limit),
+
+        QueryMsg::Contract { address } => query_contract(deps, address),
+        QueryMsg::EligibilityRoots {
+            headstash,
+            start_after,
+            limit,
+        } => query_eligibility_roots(deps, headstash, start_after, limit),
+        QueryMsg::EligibilityRoot { headstash, root_id } => {
+            query_eligibility_root(deps, headstash, root_id)
+        }
+    }
+}
+
+fn query_contracts_by_instantiator(
+    deps: Deps,
+    instantiator: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let instantiator_addr = deps.api.addr_validate(&instantiator)?;
+    let start = start_after
+        .map(|s| deps.api.addr_validate(&s))
+        .transpose()?
+        .map(Bound::exclusive);
+
+    let contracts_list = contracts()
+        .idx
+        .instantiator
+        .prefix(instantiator_addr)
+        .range(deps.storage, start, None, cosmwasm_std::Order::Ascending)
+        .take(limit.unwrap_or(30) as usize)
+        .map(|item| item.map(|(_, contract)| contract))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    to_json_binary(&contracts_list)
+}
+
+fn query_contract(deps: Deps, address: String) -> StdResult<Binary> {
+    let addr = deps.api.addr_validate(&address)?;
+    let contract = contracts().load(deps.storage, &addr)?;
+    to_json_binary(&contract)
+}
+
+fn query_eligibility_roots(
+    deps: Deps,
+    headstash: String,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let addr = deps.api.addr_validate(&headstash)?;
+    let start = start_after.map(Bound::exclusive);
+    let limit = limit.unwrap_or(30).min(100) as usize;
+    let roots: Vec<_> = MANIFOLD_ROOTS
+        .prefix(&addr)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, rec)| rec))
+        .collect::<StdResult<_>>()?;
+    to_json_binary(&roots)
+}
+
+fn query_eligibility_root(deps: Deps, headstash: String, root_id: u64) -> StdResult<Binary> {
+    let addr = deps.api.addr_validate(&headstash)?;
+    let rec = MANIFOLD_ROOTS.load(deps.storage, (&addr, root_id))?;
+    to_json_binary(&rec)
+}
+
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> ContractResult<Response> {
+    match msg.id {
+        INSTANTIATE_HEADSTASH_REPLY_ID => handle_instantiate_reply(deps, msg),
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
+    }
 }
 
 #[cfg(test)]
@@ -403,139 +542,5 @@ mod tests {
             .unwrap();
         assert_eq!(r1.root, Binary::from(vec![2u8; 32]));
         assert_eq!(r1.domain, DistroHashDomain::PoseidonV1);
-    }
-}
-
-fn handle_instantiate_reply(deps: DepsMut, msg: Reply) -> ContractResult<Response> {
-    // In CosmWasm v3, we extract the contract address from the reply result
-    let response = msg
-        .result
-        .into_result()
-        .map_err(|_| ContractError::InstantiationFailed {})?;
-    let contract_addr_str = response
-        .events
-        .iter()
-        .find(|e| e.ty == "instantiate")
-        .and_then(|e| e.attributes.iter().find(|a| a.key == "_contract_address"))
-        .map(|a| a.value.clone())
-        .ok_or(ContractError::InstantiationFailed {})?;
-    let contract_addr = deps.api.addr_validate(&contract_addr_str)?;
-
-    // Load the pending instantiation data
-    let pending = PENDING_INSTANTIATION.load(deps.storage)?;
-    let domain = pending.distro_hash_domain;
-    let genesis_root = pending.genesis_root.clone();
-
-    let contract = HeadstashContract {
-        address: contract_addr.clone(),
-        instantiator: pending.instantiator,
-        genesis_root: genesis_root.clone(),
-        distro_hash_domain: domain,
-        funding: pending.funding,
-    };
-
-    contracts().save(deps.storage, &contract_addr, &contract)?;
-
-    // Index genesis root (root_id = 0) in the manifold registry.
-    let genesis_rec = EligibilityRootRecord {
-        headstash: contract_addr.clone(),
-        root_id: 0,
-        root: genesis_root,
-        domain,
-        label: None,
-    };
-    MANIFOLD_ROOTS.save(deps.storage, (&contract_addr, 0), &genesis_rec)?;
-
-    // Clean up pending data
-    PENDING_INSTANTIATION.remove(deps.storage);
-
-    Ok(Response::new()
-        .add_attribute("action", "register_headstash")
-        .add_attribute("contract_address", contract_addr)
-        .add_attribute("distro_hash_domain", domain.as_str())
-        .add_attribute("root_id", "0"))
-}
-
-#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::Ownership {} => to_json_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::ContractsByInstantiator {
-            instantiator,
-            start_after,
-            limit,
-        } => query_contracts_by_instantiator(deps, instantiator, start_after, limit),
-
-        QueryMsg::Contract { address } => query_contract(deps, address),
-        QueryMsg::EligibilityRoots {
-            headstash,
-            start_after,
-            limit,
-        } => query_eligibility_roots(deps, headstash, start_after, limit),
-        QueryMsg::EligibilityRoot { headstash, root_id } => {
-            query_eligibility_root(deps, headstash, root_id)
-        }
-    }
-}
-
-fn query_contracts_by_instantiator(
-    deps: Deps,
-    instantiator: String,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<Binary> {
-    let instantiator_addr = deps.api.addr_validate(&instantiator)?;
-    let start = start_after
-        .map(|s| deps.api.addr_validate(&s))
-        .transpose()?
-        .map(Bound::exclusive);
-
-    let contracts_list = contracts()
-        .idx
-        .instantiator
-        .prefix(instantiator_addr)
-        .range(deps.storage, start, None, cosmwasm_std::Order::Ascending)
-        .take(limit.unwrap_or(30) as usize)
-        .map(|item| item.map(|(_, contract)| contract))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    to_json_binary(&contracts_list)
-}
-
-fn query_contract(deps: Deps, address: String) -> StdResult<Binary> {
-    let addr = deps.api.addr_validate(&address)?;
-    let contract = contracts().load(deps.storage, &addr)?;
-    to_json_binary(&contract)
-}
-
-fn query_eligibility_roots(
-    deps: Deps,
-    headstash: String,
-    start_after: Option<u64>,
-    limit: Option<u32>,
-) -> StdResult<Binary> {
-    let addr = deps.api.addr_validate(&headstash)?;
-    let start = start_after.map(Bound::exclusive);
-    let limit = limit.unwrap_or(30).min(100) as usize;
-    let roots: Vec<_> = MANIFOLD_ROOTS
-        .prefix(&addr)
-        .range(deps.storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|item| item.map(|(_, rec)| rec))
-        .collect::<StdResult<_>>()?;
-    to_json_binary(&roots)
-}
-
-fn query_eligibility_root(deps: Deps, headstash: String, root_id: u64) -> StdResult<Binary> {
-    let addr = deps.api.addr_validate(&headstash)?;
-    let rec = MANIFOLD_ROOTS.load(deps.storage, (&addr, root_id))?;
-    to_json_binary(&rec)
-}
-
-#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> ContractResult<Response> {
-    match msg.id {
-        INSTANTIATE_HEADSTASH_REPLY_ID => handle_instantiate_reply(deps, msg),
-        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

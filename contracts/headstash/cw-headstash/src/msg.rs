@@ -94,7 +94,7 @@ pub enum ExecuteMsg {
     /// One-shot bridge mint → SEAM-NOTE-OUT note result.
     /// Proof verify is **mock/stub** in Round 2 (`mock_verify` or cfg(test)).
     BridgeMintNote {
-        claim: BridgeMintClaimPublic,
+        claim: Box<BridgeMintClaimPublic>,
         /// Opaque membership / reflection receipt (mock or SP1 later).
         proof: Binary,
     },
@@ -102,7 +102,7 @@ pub enum ExecuteMsg {
     /// Dual-path: `BridgeCfg.mock_verify` / cfg(test) lab, or `zk-api` + `egress_zkid`.
     /// Spent under egress-nf-v0 domain (≠ pool-nf, ≠ bridge mint ν).
     BridgeEgressBurn {
-        statement: EgressBurnStatement,
+        statement: Box<EgressBurnStatement>,
         /// Opaque membership / spend proof (mock or Halo2 later).
         proof: Binary,
     },

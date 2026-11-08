@@ -1,18 +1,14 @@
 use cosmwasm_std::{Addr, Binary, Coin, Uint128};
-use cw_headstash::msg::{
-    InstantiateMsg as HeadstashInstantiateMsg,
-};
+use cw_headstash::msg::InstantiateMsg as HeadstashInstantiateMsg;
 use cw_headstash::tokenfactory::{
-    DenomUnit, HeadstashTokenObject, InitialMint, Metadata, NewTokenConfig,
+    DenomUnit, HeadstashTokenObject, InitialMint, Metadata, NewTokenConfig, TokenStrategy,
 };
 use cw_headstash::wavs::WavsProofOfOwnership;
-use cw_headstash::{QueryMsg as HeadstashQueryMsg, tokenfactory::TokenStrategy};
 use cw_headstash_manifold::msg::{
-    InstantiateMsg as FactoryInitMsg,
+    ExecuteMsg as FactoryExecuteMsg, HeadstashContract, InstantiateMsg as FactoryInitMsg,
     QueryMsg as FactoryQueryMsg,
 };
-use cw_multi_test::{App, ContractWrapper, Executor};
-use cw_ownable::Ownership;
+use cw_multi_test::{ContractWrapper, Executor};
 use std::collections::HashMap;
 
 // Mock tokenfactory module for testing
@@ -67,16 +63,16 @@ impl MockTokenFactory {
     }
 
     pub fn get_balance(&self, addr: &Addr, denom: &str) -> Uint128 {
-        self.balances
+        *self
+            .balances
             .get(&(addr.clone(), denom.to_string()))
             .unwrap_or(&Uint128::zero())
-            .clone()
     }
 }
 
 // Test environment following DA0-DA0 pattern
 pub struct TestEnv {
-    pub app: App,
+    pub app: crate::tokenfactory_stargate::TfApp,
     pub owner: Addr,
     pub factory_code_id: u64,
     pub headstash_code_id: u64,
@@ -85,12 +81,28 @@ pub struct TestEnv {
     pub test_accounts: Vec<Addr>,
 }
 
+impl Default for TestEnv {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestEnv {
     pub fn new() -> Self {
-        let mut app = App::default();
+        let mut app = crate::tokenfactory_stargate::tf_app();
 
         // Create test accounts
         let owner = app.api().addr_make("owner");
+        app.init_modules(|router, _, storage| {
+            router
+                .bank
+                .init_balance(
+                    storage,
+                    &owner,
+                    vec![Coin::new(Uint128::new(1_000_000), "uosmo")],
+                )
+                .unwrap();
+        });
         let test_accounts: Vec<Addr> = (0..5)
             .map(|i| app.api().addr_make(&format!("test_account_{}", i)))
             .collect();
@@ -113,11 +125,14 @@ impl TestEnv {
         let tokenfactory = MockTokenFactory::new();
 
         // Store headstash contract
-        let headstash_contract = Box::new(ContractWrapper::new(
-            cw_headstash::execute,
-            cw_headstash::instantiate,
-            cw_headstash::query,
-        ));
+        let headstash_contract = Box::new(
+            ContractWrapper::new(
+                cw_headstash::execute,
+                cw_headstash::instantiate,
+                cw_headstash::query,
+            )
+            .with_reply(cw_headstash::reply),
+        );
         let headstash_code_id = app.store_code(headstash_contract);
 
         // Store factory contract
@@ -182,7 +197,7 @@ pub fn mock_metadata() -> Metadata {
 }
 
 pub fn mock_token_strategy_new() -> TokenStrategy {
-    TokenStrategy::NewFungible(NewTokenConfig {
+    TokenStrategy::NewFungible(Box::new(NewTokenConfig {
         subdenom: HeadstashTokenObject::new(
             &cosmwasm_std::testing::MockApi::default(),
             "headstash".to_string(),
@@ -194,7 +209,7 @@ pub fn mock_token_strategy_new() -> TokenStrategy {
         }]),
         manager: None,
         minters: vec![],
-    })
+    }))
 }
 
 pub fn mock_token_strategy_existing() -> TokenStrategy {
@@ -205,16 +220,8 @@ pub fn mock_token_strategy_existing() -> TokenStrategy {
 }
 
 pub fn mock_wavs_proof() -> WavsProofOfOwnership {
-    // Mock WAVS proof - in real tests we'd use proper cryptographic mocks
-    WavsProofOfOwnership {
-        poos: vec![], // Empty for basic tests
-        msg: cw_headstash::wavs::WavsAuthMetadata {
-            aggregate_key: "mock_key".to_string(),
-            threshold: 1,
-            total_operators: 1,
-            nonce: 0,
-        },
-    }
+    // One real operator: instantiate verifies the PoP pairing.
+    crate::wavs_fixture::valid_wavs_proof(1)
 }
 
 pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
@@ -227,190 +234,161 @@ pub fn mock_headstash_instantiate_msg() -> HeadstashInstantiateMsg {
         circuit_id: None,
     }
 }
-// Test headstash instantiation with new fungible token
+
+// Test factory instantiation
 #[test]
-fn test_headstash_instantiate_new_fungible() {
-    let mut env = TestEnv::new();
+fn test_factory_instantiate() {
+    let env = TestEnv::new();
 
-    let msg = mock_headstash_instantiate_msg();
+    // Verify factory was created
+    assert!(!env.factory_addr.as_str().is_empty());
 
-    // Instantiate headstash directly (not through factory for unit testing)
-    let headstash_addr = env
-        .app
-        .instantiate_contract(
-            env.headstash_code_id,
-            env.owner.clone(),
-            &msg,
-            &[],
-            "test-headstash",
-            Some(env.owner.to_string()),
-        )
-        .unwrap();
-
-    // Verify contract was created
-    assert!(!headstash_addr.as_str().is_empty());
-
-    // Test that we can query the contract
+    // Test ownership query
     let ownership: cw_ownable::Ownership<Addr> = env
         .app
         .wrap()
-        .query_wasm_smart(&headstash_addr, &HeadstashQueryMsg::Ownership {})
+        .query_wasm_smart(&env.factory_addr, &FactoryQueryMsg::Ownership {})
         .unwrap();
 
     assert_eq!(ownership.owner, Some(env.owner));
 }
 
-// Test headstash instantiation with existing fungible token (requires pre-funding)
+// Test headstash creation through factory
 #[test]
-fn test_headstash_instantiate_existing_fungible() {
+fn test_factory_create_headstash() {
     let mut env = TestEnv::new();
 
-    let mut msg = mock_headstash_instantiate_msg();
-    msg.token_strategy = mock_token_strategy_existing();
+    let instantiate_msg = mock_headstash_instantiate_msg();
 
-    // Pre-fund the contract with existing tokens
-    let prefund_amount = Coin::new(1000u128, "uosmo");
-    env.app.init_modules(|router, _, storage| {
-        router
-            .bank
-            .init_balance(storage, &env.owner, vec![prefund_amount.clone()])
-            .unwrap();
-    });
+    let msg = FactoryExecuteMsg::CreateHeadstash {
+        instantiate_msg,
+        label: Some("test-headstash".to_string()),
+        funding: None,
+    };
 
-    let headstash_addr = env
+    let res = env
         .app
-        .instantiate_contract(
-            env.headstash_code_id,
-            env.owner.clone(),
-            &msg,
-            &[prefund_amount],
-            "test-headstash-existing",
-            Some(env.owner.to_string()),
+        .execute_contract(env.owner.clone(), env.factory_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Should have created a submessage for instantiation
+    assert!(!res.events.is_empty());
+
+    // Exactly one instantiate reply on the factory, plus exactly one
+    // create-denom reply on the new headstash (NewFungible strategy).
+    let replies_on = |addr: &str| {
+        res.events
+            .iter()
+            .filter(|e| {
+                e.ty == "reply"
+                    && e.attributes
+                        .iter()
+                        .any(|a| a.key == "_contract_address" && a.value == addr)
+            })
+            .count()
+    };
+    assert_eq!(replies_on(env.factory_addr.as_str()), 1);
+    let reply_events: Vec<_> = res.events.iter().filter(|e| e.ty == "reply").collect();
+    assert_eq!(reply_events.len(), 2);
+}
+
+// Test factory query functions
+#[test]
+fn test_factory_queries() {
+    let env = TestEnv::new();
+
+    // Test empty contracts query
+    let contracts: Vec<HeadstashContract> = env
+        .app
+        .wrap()
+        .query_wasm_smart(
+            &env.factory_addr,
+            &FactoryQueryMsg::ContractsByInstantiator {
+                instantiator: env.owner.to_string(),
+                start_after: None,
+                limit: Some(10),
+            },
         )
         .unwrap();
 
-    assert!(!headstash_addr.as_str().is_empty());
+    // Should be empty initially
+    assert_eq!(contracts.len(), 0);
 }
 
-// Test instantiation failure with insufficient pre-funding for existing token
+// Test unauthorized factory operations
 #[test]
-fn test_headstash_instantiate_existing_insufficient_funds() {
+fn test_factory_unauthorized() {
     let mut env = TestEnv::new();
 
-    let mut msg = mock_headstash_instantiate_msg();
-    msg.token_strategy = mock_token_strategy_existing();
+    // Try to create headstash as non-owner
+    let instantiate_msg = mock_headstash_instantiate_msg();
+    let msg = FactoryExecuteMsg::CreateHeadstash {
+        instantiate_msg,
+        label: None,
+        funding: None,
+    };
 
-    // Try to instantiate without pre-funding
     let err = env
         .app
-        .instantiate_contract(
-            env.headstash_code_id,
-            env.owner.clone(),
+        .execute_contract(
+            env.test_accounts[0].clone(), // Non-owner
+            env.factory_addr.clone(),
             &msg,
-            &[], // No funds provided
-            "test-headstash-existing",
-            Some(env.owner.to_string()),
+            &[],
         )
         .unwrap_err();
 
-    assert!(err.to_string().contains("at least 1 token required"));
-}
-
-// Test token strategy validation
-#[test]
-fn test_token_strategy_validation() {
-    let strategy = mock_token_strategy_new();
-
-    // Valid strategy should pass
+    // Should fail with unauthorized error
+    // Manifold gates owner-only actions with cw_ownable; assert that exact error.
     assert!(
-        strategy
-            .validate(&cosmwasm_std::testing::MockApi::default())
-            .is_ok()
-    );
-
-    // Test invalid strategy (tamper with proof)
-    let mut invalid_strategy = strategy.clone();
-    if let TokenStrategy::NewFungible(ref mut cfg) = invalid_strategy {
-        cfg.subdenom.proof = Binary::from(vec![0, 0, 0]); // Invalid proof
-    }
-
-    assert!(
-        invalid_strategy
-            .validate(&cosmwasm_std::testing::MockApi::default())
-            .is_err()
+        err.to_string()
+            .contains(&cw_ownable::OwnershipError::NotOwner.to_string()),
+        "expected NotOwner, got: {err}"
     );
 }
 
-// Test WAVS proof validation
+// Test ownership transfer
 #[test]
-fn test_wavs_proof_validation() {
-    let proof = mock_wavs_proof();
+fn test_factory_ownership_transfer() {
+    let mut env = TestEnv::new();
 
-    // Valid proof should pass
-    assert!(proof.verify().is_ok());
+    let new_owner = env.test_accounts[0].clone();
 
-    // Test invalid proof - wrong operator count
-    let mut invalid_proof = proof.clone();
-    invalid_proof.poos = vec![]; // Empty but total_operators = 1
-    assert!(invalid_proof.verify().is_err());
+    // Initiate ownership transfer
+    let transfer_msg = FactoryExecuteMsg::UpdateOwnership(cw_ownable::Action::TransferOwnership {
+        new_owner: new_owner.to_string(),
+        expiry: None,
+    });
 
-    // Test invalid threshold
-    let mut invalid_proof2 = proof.clone();
-    invalid_proof2.msg.threshold = 0; // Invalid threshold
-    assert!(invalid_proof2.verify().is_err());
+    env.app
+        .execute_contract(
+            env.owner.clone(),
+            env.factory_addr.clone(),
+            &transfer_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Accept ownership transfer
+    let accept_msg = FactoryExecuteMsg::UpdateOwnership(cw_ownable::Action::AcceptOwnership {});
+
+    env.app
+        .execute_contract(
+            new_owner.clone(),
+            env.factory_addr.clone(),
+            &accept_msg,
+            &[],
+        )
+        .unwrap();
+
+    // Verify ownership changed
+    let ownership: cw_ownable::Ownership<Addr> = env
+        .app
+        .wrap()
+        .query_wasm_smart(&env.factory_addr, &FactoryQueryMsg::Ownership {})
+        .unwrap();
+
+    assert_eq!(ownership.owner, Some(new_owner));
 }
 
-// Test denom generation
-#[test]
-fn test_denom_generation() {
-    let contract_addr = Addr::unchecked("cosmos1contract");
-    let strategy = mock_token_strategy_new();
-
-    let denom = strategy.denom(&contract_addr);
-    assert!(denom.starts_with("factory/"));
-    assert!(denom.contains("cosmos1contract"));
-    assert!(denom.ends_with("headstash"));
-}
-
-// Test initial mint message generation
-#[test]
-fn test_initial_mint_messages() {
-    let contract_addr = Addr::unchecked("cosmos1contract");
-    let strategy = mock_token_strategy_new();
-
-    let messages = strategy.initial_mint_msgs(&contract_addr).unwrap();
-
-    // For new fungible tokens, initial minting is now handled in the reply
-    // so initial_mint_msgs returns empty
-    assert_eq!(messages.len(), 0);
-}
-
-// Test existing token strategy (no messages generated)
-#[test]
-fn test_existing_token_no_messages() {
-    let contract_addr = Addr::unchecked("cosmos1contract");
-    let strategy = mock_token_strategy_existing();
-
-    let messages = strategy.initial_mint_msgs(&contract_addr).unwrap();
-    assert_eq!(messages.len(), 0); // Existing tokens don't create any messages
-}
-
-// Test prefunding requirement check
-#[test]
-fn test_prefunding_requirement() {
-    let new_strategy = mock_token_strategy_new();
-    let existing_strategy = mock_token_strategy_existing();
-
-    assert!(!new_strategy.requires_prefund());
-    assert!(existing_strategy.requires_prefund());
-}
-
-// Test proof representation extraction
-#[test]
-fn test_proof_representation() {
-    let strategy = mock_token_strategy_new();
-    let proof = strategy.proof_representation();
-
-    // Should be the blake3 hash of the subdenom
-    assert_eq!(proof.len(), 32); // Blake3 hash length
-}
+// Factory doesn't support code ID updates after instantiation

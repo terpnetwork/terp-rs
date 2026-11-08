@@ -61,7 +61,7 @@ pub struct GateInfoResponse {
 pub enum AuthenticatorSudoMsg {
     OnAuthenticatorAdded(OnAuthenticatorAddedRequest),
     OnAuthenticatorRemoved(OnAuthenticatorRemovedRequest),
-    Authenticate(AuthenticationRequest),
+    Authenticate(Box<AuthenticationRequest>),
     Track(TrackRequest),
     ConfirmExecution(ConfirmExecutionRequest),
 }

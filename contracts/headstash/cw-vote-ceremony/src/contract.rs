@@ -1,5 +1,3 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_json_binary,
 };
@@ -61,14 +59,16 @@ pub fn execute(
         } => start_ceremony(
             deps,
             info,
-            session_id,
-            domain,
-            registration_open,
-            anchor_policy,
-            registration_gate,
-            clerk,
-            membership_module,
-            vm_verifier,
+            StartCeremonyParams {
+                session_id,
+                domain,
+                registration_open,
+                anchor_policy,
+                registration_gate,
+                clerk,
+                membership_module,
+                vm_verifier,
+            },
         ),
         ExecuteMsg::CloseCeremony { session_id } => close_ceremony(deps, info, session_id),
         ExecuteMsg::Register {
@@ -166,18 +166,33 @@ fn ensure_admin(deps: Deps, info: &MessageInfo) -> Result<(), ContractError> {
     }
 }
 
+/// Arguments for [`start_ceremony`].
+pub struct StartCeremonyParams {
+    pub session_id: String,
+    pub domain: String,
+    pub registration_open: bool,
+    pub anchor_policy: Option<String>,
+    pub registration_gate: RegistrationGate,
+    pub clerk: Option<String>,
+    pub membership_module: Option<String>,
+    pub vm_verifier: Option<String>,
+}
+
 pub fn start_ceremony(
     deps: DepsMut,
     info: MessageInfo,
-    session_id: String,
-    domain: String,
-    registration_open: bool,
-    anchor_policy: Option<String>,
-    registration_gate: RegistrationGate,
-    clerk: Option<String>,
-    membership_module: Option<String>,
-    vm_verifier: Option<String>,
+    args: StartCeremonyParams,
 ) -> Result<Response, ContractError> {
+    let StartCeremonyParams {
+        session_id,
+        domain,
+        registration_open,
+        anchor_policy,
+        registration_gate,
+        clerk,
+        membership_module,
+        vm_verifier,
+    } = args;
     ensure_admin(deps.as_ref(), &info)?;
     if session_id.is_empty() {
         return Err(ContractError::EmptySession);
@@ -307,10 +322,10 @@ fn register(
                 .ok_or_else(|| ContractError::GateDenied {
                     reason: "leaf_commit not attested by clerk".into(),
                 })?;
-            if let Some(owner) = rec.consumed_by {
-                if owner != info.sender.as_str() {
-                    return Err(ContractError::LeafConsumed { addr: owner });
-                }
+            if let Some(owner) = rec.consumed_by
+                && owner != info.sender.as_str()
+            {
+                return Err(ContractError::LeafConsumed { addr: owner });
             }
         }
         RegistrationGate::DaoMember => {

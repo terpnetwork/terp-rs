@@ -5,14 +5,12 @@
 //! denomination table, and the same nullifier is refused on the Halo2 batch.
 //! This runner does not start Docker and does not verify a Halo2 proof.
 
-use cosmwasm_std::testing::MockApi;
-use cosmwasm_std::{Binary, Coin, Uint256};
+use cosmwasm_std::{Binary, Coin};
 use cw_headstash::epoch::{
-    ALGO_ACCEPTED, ALGO_PENDING, CHAIN_UID, EpochPayout, HashMerchantSudoMsg,
-    HashMerchantSudoPayload, PublicOpen, accepted_root, attested_root, pedersen_commit, root_b64,
+    CHAIN_UID, EpochPayout, HashMerchantSudoMsg, HashMerchantSudoPayload, root_b64,
 };
 use cw_headstash::interface::HeadstashContract;
-use cw_headstash::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_headstash::msg::InstantiateMsg;
 use cw_headstash::tokenfactory::HeadstashTokenObject;
 use cw_headstash::wavs::generate_test_wavs_proof;
 use cw_orch::prelude::*;

@@ -28,7 +28,7 @@ rayon = "1.10"
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
+serde_yaml = "0.9.34"
 sha3 = { workspace = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 zk-headstash = { workspace = true, features = ["circuit", "std", "host-crypto", "multicore"] }

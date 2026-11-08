@@ -39,7 +39,7 @@ fn bench_one_claim_proof_native() {
 
     let t_ver = Instant::now();
     proof
-        .verify(&pk.vk(), &[instance_for_verify.clone()])
+        .verify(&pk.vk(), core::slice::from_ref(&instance_for_verify))
         .expect("verify");
     let verify_secs = t_ver.elapsed().as_secs_f64();
 
@@ -52,7 +52,7 @@ fn bench_one_claim_proof_native() {
     };
     let t_flip = Instant::now();
     let flipped_err = flipped
-        .verify(&vk, &[instance_for_verify.clone()])
+        .verify(&vk, core::slice::from_ref(&instance_for_verify))
         .expect_err("flipped proof must not verify");
     let flipped_secs = t_flip.elapsed().as_secs_f64();
 
@@ -67,7 +67,7 @@ fn bench_one_claim_proof_native() {
     let short = Proof::new(b"not-a-halo2-proof".to_vec());
     let t_short = Instant::now();
     let short_err = short
-        .verify(&vk, &[instance_for_verify.clone()])
+        .verify(&vk, core::slice::from_ref(&instance_for_verify))
         .expect_err("truncated proof must not verify");
     let short_secs = t_short.elapsed().as_secs_f64();
 
@@ -79,7 +79,7 @@ fn bench_one_claim_proof_native() {
         let at = i % bytes.len();
         bytes[at] ^= 0xa5;
         Proof::new(bytes)
-            .verify(&vk, &[instance_for_verify.clone()])
+            .verify(&vk, core::slice::from_ref(&instance_for_verify))
             .expect_err("flooded proof must not verify");
     }
     let flood_secs = t_flood.elapsed().as_secs_f64();
@@ -155,11 +155,18 @@ fn bench_three_opens_on_51807() {
     for run in 1..=3 {
         let mut rng = crate::os_rng();
         let t_prove = Instant::now();
-        let proof =
-            Proof::create(&pk, &[circuit.clone()], &[instance.clone()], &mut rng).expect("prove");
+        let proof = Proof::create(
+            &pk,
+            core::slice::from_ref(&circuit),
+            core::slice::from_ref(&instance),
+            &mut rng,
+        )
+        .expect("prove");
         let prove_secs = t_prove.elapsed().as_secs_f64();
         let t_ver = Instant::now();
-        proof.verify(&vk, &[instance.clone()]).expect("verify");
+        proof
+            .verify(&vk, core::slice::from_ref(&instance))
+            .expect("verify");
         let verify_secs = t_ver.elapsed().as_secs_f64();
         std::println!(
             "{{\"event\":\"run\",\"run\":{run},\"prove_secs\":{:.6},\"verify_secs\":{:.6},\"proof_bytes\":{}}}",

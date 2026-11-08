@@ -11,6 +11,7 @@ pub struct InstantiateMsg {
 
 #[cfg_attr(feature = "interface", derive(cw_orch::ExecuteFns))]
 #[cw_serde]
+#[allow(clippy::large_enum_variant)]
 pub enum ExecuteMsg {
     UpdateOwnership(cw_ownable::Action),
     CreateHeadstash {

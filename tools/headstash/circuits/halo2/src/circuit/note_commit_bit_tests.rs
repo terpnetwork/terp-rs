@@ -1,10 +1,10 @@
-/// First Principles Bit Decomposition Tests
-///
-/// This file contains foundational tests to understand:
-/// 1. How bit ranges work in Rust
-/// 2. How pallas::Base field elements map to bits
-/// 3. How to correctly decompose field elements
-/// 4. The relationship between L_ORCHARD_BASE (255) and actual bit usage
+//! First Principles Bit Decomposition Tests
+//!
+//! This file contains foundational tests to understand:
+//! 1. How bit ranges work in Rust
+//! 2. How pallas::Base field elements map to bits
+//! 3. How to correctly decompose field elements
+//! 4. The relationship between L_ORCHARD_BASE (255) and actual bit usage
 
 #[cfg(test)]
 mod bit_fundamentals {
@@ -47,8 +47,8 @@ mod bit_fundamentals {
         println!("  Bit 2: {}", one_bits[2]); // Should be false
         println!("  Total bits in representation: {}", one_bits.len());
 
-        assert_eq!(one_bits[0], true); // Bit 0 is set
-        assert_eq!(one_bits[1], false); // Bit 1 is clear
+        assert!(one_bits[0]); // Bit 0 is set
+        assert!(!one_bits[1]); // Bit 1 is clear
         assert_eq!(one_bits.len(), 256); // to_le_bits() returns 256 bits (padded)
     }
 
@@ -125,9 +125,9 @@ mod bit_fundamentals {
         println!("  Bit 250: {}", bits[250]); // Should be true
         println!("  Bit 251: {}", bits[251]); // Should be false
 
-        assert_eq!(bits[249], false);
-        assert_eq!(bits[250], true);
-        assert_eq!(bits[251], false);
+        assert!(!bits[249]);
+        assert!(bits[250]);
+        assert!(!bits[251]);
 
         // Extract bits 0..250 (should all be 0)
         let low_250_bits: Vec<bool> = bits.iter().take(250).copied().collect();
@@ -136,8 +136,8 @@ mod bit_fundamentals {
 
         // Extract bits 250..255 (bit 250 should be set)
         let high_5_bits: Vec<bool> = bits.iter().skip(250).take(5).copied().collect();
-        assert_eq!(high_5_bits[0], true); // Bit 250
-        assert_eq!(high_5_bits[1], false); // Bit 251
+        assert!(high_5_bits[0]); // Bit 250
+        assert!(!high_5_bits[1]); // Bit 251
         println!("  ✓ Bits 250..255: first bit is set");
     }
 

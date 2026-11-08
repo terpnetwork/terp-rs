@@ -26,9 +26,7 @@ use halo2_proofs::{
 use pasta_curves::pallas;
 use secp256k1::constants::{GENERATOR_X, GENERATOR_Y};
 
-use crate::spec::{
-    biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_simple,
-};
+use crate::spec::{biguint_to_fe_simple, decompose_biguint_simple, fe_to_biguint_simple};
 
 use halo2_base::utils::BigPrimeField;
 use num_bigint::{BigInt, BigUint};
@@ -175,7 +173,7 @@ pub(crate) fn glv_split(k: &BigUint) -> GlvSplit {
         (mul_shift_384(&k, &parse_hex_uint(GLV_G2_HEX)) * parse_hex_uint(GLV_MINUS_B2_HEX)) % &n;
     let r2 = (&c1 + &c2) % &n;
     let r2_lambda = (&r2 * &lambda) % &n;
-    let r1 = if &k >= &r2_lambda {
+    let r1 = if k >= r2_lambda {
         &k - &r2_lambda
     } else {
         &k + &n - &r2_lambda
@@ -301,8 +299,8 @@ fn secp_fp_c_coeffs() -> [pallas::Base; 7] {
     let b = BigUint::from(B);
     let mut c = [pallas::Base::ZERO; 7];
     let mut pow = BigUint::one();
-    for i in 0..7 {
-        c[i] = biguint_to_fe_simple(&pow);
+    for ci in c.iter_mut() {
+        *ci = biguint_to_fe_simple(&pow);
         pow *= &b;
     }
     c
@@ -462,10 +460,7 @@ pub fn modulus_simple_pallas() -> BigUint {
 }
 
 pub fn modulus_simple_secp_fp() -> BigUint {
-    let neg_one = {
-        
-        -Fp::one()
-    };
+    let neg_one = { -Fp::one() };
     BigUint::from_bytes_le(<Secp256k1Fp as AxiomPrimeField>::to_repr(&neg_one).as_ref()) + 1u64
 }
 
@@ -830,7 +825,7 @@ impl<Fp: BigPrimeField> FpChip<Fp> {
         a: &ProperCrtUint<pallas::Base>,
     ) -> Result<(), PlonkError> {
         const K: usize = 10;
-        let num_words = (self.limb_bits + K - 1) / K; // 7 for 64-bit limbs
+        let num_words = self.limb_bits.div_ceil(K); // 7 for 64-bit limbs
 
         for (i, limb) in a.truncation.limbs.iter().enumerate() {
             self.config.range_check.copy_check(
@@ -1484,7 +1479,7 @@ impl Secp256k1Config {
         let fp_q_native = biguint_to_fe_simple(&(&p_mod % &native_mod));
         let fq_q_native = biguint_to_fe_simple(&(&n_mod % &native_mod));
 
-        let fp_config = FpConfig::configure(meta, advices, range_check.clone(), fp_c, fp_q_native);
+        let fp_config = FpConfig::configure(meta, advices, range_check, fp_c, fp_q_native);
         let fq_config = FpConfig::configure(meta, advices, range_check, fq_c, fq_q_native);
 
         let q = meta.selector();
@@ -1643,18 +1638,12 @@ impl Secp256k1Chip {
             || "decompose limb to bits",
             |mut region: Region<'_, pallas::Base>| {
                 let mut bits = Vec::with_capacity(LIMB_BITS);
-                let mut current_offset = 0;
-                limb.copy_advice(
-                    || "copy limb",
-                    &mut region,
-                    self.fq.config.advices[0],
-                    current_offset,
-                )?;
+                limb.copy_advice(|| "copy limb", &mut region, self.fq.config.advices[0], 0)?;
 
                 let mut current_value = limb.value().cloned();
                 let mut last_assigned: Option<AssignedCell<pallas::Base, pallas::Base>> = None;
 
-                for _ in 0..LIMB_BITS {
+                for current_offset in 0..LIMB_BITS {
                     self.q.enable(&mut region, current_offset)?;
 
                     let bit_val = current_value.map(|v| {
@@ -1681,7 +1670,6 @@ impl Secp256k1Chip {
                     last_assigned = Some(next_cell);
 
                     current_value = next_val;
-                    current_offset += 1;
                 }
 
                 if let Some(final_assigned) = last_assigned {
@@ -2951,8 +2939,6 @@ mod tests {
         //
         // The Montgomery ladder computes (2^256 + k)*G. To correct, we add -(2^256 * G).
         // Since EC scalars are mod group order n: 2^256 * G = (2^256 mod n) * G.
-        use secp256k1::constants::GENERATOR_X as GX;
-        use secp256k1::constants::GENERATOR_Y as GY;
 
         let secp_p = BigUint::parse_bytes(SECP_P_HEX.as_bytes(), 16).unwrap();
         let secp_n = BigUint::parse_bytes(SECP_N_HEX.as_bytes(), 16).unwrap();

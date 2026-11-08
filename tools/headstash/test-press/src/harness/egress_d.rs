@@ -31,7 +31,7 @@ pub use super::lab_pay_zec::{
     MODE_LAB_INVENTORY_PAY, MODE_LAB_INVENTORY_PAY_SIMULATED, confirm_open_at_sealed_dest,
     dest_kind_from_display, wallet_rpc_available,
 };
-use super::mint_evidence::{MintEvidenceError, SettleReceiptV0, decode_hex32, hex32};
+use super::mint_evidence::{MintEvidenceError, SettleReceiptV0, hex32};
 use super::swap_statement_cw::{SwapSpendHandoffV0, lab_asset_out_zec};
 use super::zakura_local::{
     SealedDestSource, SealedDestV0, ZakuraLocalConfig, assert_dest_binding_equal,
@@ -995,7 +995,7 @@ mod tests {
         let handoff =
             build_swap_spend_handoff_from_mint(&mint, ProofModeLabel::MockVerifyLab).unwrap();
         let sealed = sealed_golden();
-        let settle = sample_settle(&handoff);
+        let _settle = sample_settle(&handoff);
         let opening = settle_opening_from_handoff(&handoff, &sealed).unwrap();
         let (evidence, _) = apply_pure_egress_burn_labeled(&opening, &sealed, None).unwrap();
         let mut wrong = sealed.clone();

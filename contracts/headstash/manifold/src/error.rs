@@ -15,6 +15,13 @@ pub enum ContractError {
     #[error("Invalid funding token")]
     InvalidFundingToken {},
 
+    #[error("insufficient funding: sent {sent}{denom}, required {required}{denom}")]
+    InsufficientFunding {
+        denom: String,
+        sent: cosmwasm_std::Uint256,
+        required: cosmwasm_std::Uint256,
+    },
+
     #[error("Contract not found")]
     ContractNotFound {},
 

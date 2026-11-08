@@ -16,7 +16,7 @@ use halo2_proofs::{
     poly::Rotation,
     transcript::{Blake2bRead, Blake2bWrite},
 };
-use pasta_curves::{pallas, vesta};
+use pasta_curves::vesta;
 use rand010::Rng;
 
 use std::{

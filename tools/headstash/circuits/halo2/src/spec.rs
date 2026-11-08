@@ -447,11 +447,9 @@ pub fn to_native_out_of_circuit<F: PrimeField>(f: &F) -> pallas::Base {
 mod tests {
     use super::{i2lebsp, lebs2ip};
 
-    use crate::os_rng;
     use group::Group;
     use halo2_proofs::arithmetic::CurveExt;
     use pasta_curves::pallas;
-    use rand_core::Rng;
 
     #[test]
     fn diversify_hash_substitution() {
@@ -462,7 +460,6 @@ mod tests {
 
     #[test]
     fn lebs2ip_round_trip() {
-        let mut rng = os_rng();
         {
             let int = 0x0123_4567_89AB_CDEFu64;
             assert_eq!(lebs2ip::<64>(&i2lebsp(int)), int);

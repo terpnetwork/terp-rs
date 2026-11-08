@@ -48,9 +48,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&ConfigResponse { admin: cfg.admin })
         }
         QueryMsg::GetAnchorAtHeight { session_id, height } => {
-            let root = ANCHORS
-                .may_load(deps.storage, (&session_id, height))?
-                .map(|b| b);
+            let root = ANCHORS.may_load(deps.storage, (&session_id, height))?;
             to_json_binary(&AnchorResponse {
                 session_id,
                 height,
@@ -97,10 +95,10 @@ pub fn set_anchor(
     ANCHORS.save(deps.storage, (&session_id, height), &root)?;
 
     // Update latest if this height is greater or first.
-    let update = match SESSION_META.may_load(deps.storage, &session_id)? {
-        Some(m) if height < m.latest_height => false,
-        _ => true,
-    };
+    let update = !matches!(
+        SESSION_META.may_load(deps.storage, &session_id)?,
+        Some(m) if height < m.latest_height
+    );
     if update {
         SESSION_META.save(
             deps.storage,
@@ -134,10 +132,7 @@ fn update_admin(
 
 /// Pure helper: cast binding rule (fail-closed if missing or mismatch).
 pub fn anchors_match(stored: Option<&[u8]>, pi_root: &[u8]) -> bool {
-    match stored {
-        Some(r) if r.len() == ROOT_LEN && r == pi_root => true,
-        _ => false,
-    }
+    matches!(stored, Some(r) if r.len() == ROOT_LEN && r == pi_root)
 }
 
 #[cfg(test)]
@@ -278,6 +273,6 @@ mod tests {
         let r = vec![7u8; 32];
         assert!(anchors_match(Some(&r), &r));
         assert!(!anchors_match(None, &r));
-        assert!(!anchors_match(Some(&r), &vec![8u8; 32]));
+        assert!(!anchors_match(Some(&r), &[8u8; 32]));
     }
 }

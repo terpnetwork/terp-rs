@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,   to_json_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VerifyResponse};
 use crate::state::{CONFIG, Config};

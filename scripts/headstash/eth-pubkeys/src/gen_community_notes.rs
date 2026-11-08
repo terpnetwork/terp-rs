@@ -37,7 +37,6 @@ struct Row {
     community: String,
     addr: String,
     pk_compressed: String,
-    pk_uncompressed: String,
     token: String,
     value: u64,
 }
@@ -60,7 +59,6 @@ fn load_ok_rows(dir: &Path) -> anyhow::Result<Vec<Row>> {
             let addr = rec.get(0).unwrap_or("").trim();
             let amount = rec.get(1).unwrap_or("0");
             let pk_c = rec.get(2).unwrap_or("").trim();
-            let pk_u = rec.get(3).unwrap_or("").trim();
             let status = rec.get(5).unwrap_or("").trim();
             if status != "ok" || !pk_c.starts_with("0x") {
                 continue;
@@ -73,7 +71,6 @@ fn load_ok_rows(dir: &Path) -> anyhow::Result<Vec<Row>> {
                 community: name.clone(),
                 addr: addr.to_string(),
                 pk_compressed: pk_c.to_string(),
-                pk_uncompressed: pk_u.to_string(),
                 token: name.clone(),
                 value,
             });
@@ -91,16 +88,17 @@ fn split_denoms(v: u64) -> Vec<u64> {
             rem %= d;
             continue;
         }
-        out.extend(std::iter::repeat(d).take(n as usize));
+        out.extend(std::iter::repeat_n(d, n as usize));
         rem %= d;
     }
     out
 }
 
+/// (epk x bytes, epk y bytes, epk x, epk y, epk hex)
+type EpkProof = ([u8; 32], [u8; 32], pallas::Base, pallas::Base, String);
+
 /// Circuit `epk = esk·G` natives: same `EligiblePk::xy()` the prover must witness.
-fn epk_for_proof(
-    compressed_hex: &str,
-) -> anyhow::Result<([u8; 32], [u8; 32], pallas::Base, pallas::Base, String)> {
+fn epk_for_proof(compressed_hex: &str) -> anyhow::Result<EpkProof> {
     let raw = hex::decode(compressed_hex.trim_start_matches("0x"))?;
     anyhow::ensure!(raw.len() == 33, "elig_pk compressed must be 33 bytes");
     let pk = EligiblePk::from(&raw);
@@ -123,10 +121,10 @@ fn epk_for_proof(
 
 fn recp_from_eth(addr: &str) -> [u8; 32] {
     let mut out = [0u8; 32];
-    if let Ok(b) = hex::decode(addr.trim_start_matches("0x")) {
-        if b.len() == 20 {
-            out[12..].copy_from_slice(&b);
-        }
+    if let Ok(b) = hex::decode(addr.trim_start_matches("0x"))
+        && b.len() == 20
+    {
+        out[12..].copy_from_slice(&b);
     }
     out
 }
@@ -137,7 +135,7 @@ fn poseidon_root(mut c: Vec<pallas::Base>) -> pallas::Base {
     }
     let mut layer = 0u32;
     while c.len() > 1 {
-        if c.len() % 2 != 0 {
+        if !c.len().is_multiple_of(2) {
             c.push(pallas::Base::ZERO);
         }
         c = c

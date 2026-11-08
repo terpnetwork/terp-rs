@@ -3,7 +3,13 @@
 use alloc::vec::Vec;
 
 #[cfg(feature = "interface")]
-use cw_orch::anyhow::{self, anyhow};
+use cosmwasm_std::Checksum;
+#[cfg(feature = "interface")]
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::PathBuf,
+};
 // Re-export types needed for test circuits
 pub use gadget::assign_free_advice;
 pub use gadget::secp256k1_chip::{
@@ -322,7 +328,7 @@ impl plonk::Circuit<pallas::Base> for Circuit {
             advices[0], advices[1], advices[2], advices[3], advices[4], advices[5], advices[6],
             advices[7], advices[8],
         ];
-        let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check.clone());
+        let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check);
 
         // CondSwap for Poseidon-v1 distro Merkle path (node/sibling ordering).
         let cond_swap_config = CondSwapChip::configure(meta, advices[0..5].try_into().unwrap());
@@ -900,7 +906,6 @@ mod tests {
     use core::iter;
 
     use crate::os_rng;
-    use ff::PrimeField;
     use halo2_proofs::{circuit::Value, dev::MockProver};
     use pasta_curves::pallas;
     use rand_core::Rng;

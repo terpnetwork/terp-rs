@@ -29,7 +29,7 @@ pub struct TestPressDeployData {
 }
 
 impl TestPressDeployData {
-    pub fn local_default(admin: Addr, genesis_root: &[u8], keys_dir: std::path::PathBuf) -> Self {
+    pub fn local_default(admin: Addr, genesis_root: &[u8], _keys_dir: std::path::PathBuf) -> Self {
         Self {
             no_rick: NoRickDeployData {},
             headstash: HeadstashDeployData::local_default(admin, genesis_root).expect("oooooohhh"),
@@ -95,7 +95,7 @@ impl<Chain: ZkCwEnv> cw_orch::prelude::Deploy<Chain> for TestPressSuite<Chain> {
     type DeployData = Option<TestPressDeployData>;
     type Error = ZkDeployError;
 
-    fn deploy_on(chain: Chain, data: Self::DeployData) -> Result<Self, Self::Error> {
+    fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
         let no_rick = crate::suites::no_rick::interface::NoRickSuite::new(chain.clone());
         let headstash = crate::suites::headstash::HeadstashSuite::new(chain.clone());
 
