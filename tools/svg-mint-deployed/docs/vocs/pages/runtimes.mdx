@@ -1,0 +1,47 @@
+---
+title: Runtimes
+description: Lean house processes for SVG mint
+---
+
+# Runtimes
+
+The desk runs on groot2. Zakura is a Docker archive, not a second copy of the submodule checkout. The fed binary is native x86_64, built with the host stable compiler because `rust-toolchain.toml` pins 1.86 and `zcash_address` 0.13 needs 1.88.
+
+| Process | Bind | State on the house |
+|---|---|---|
+| `zakura-lab` `zakuracore/zakura:1.7.0` | `127.0.0.1:8232` cookie JSON-RPC | Archive, format 30, not pruned. Do not reopen this directory with 1.6.0. |
+| `lwd-lab` `lightwalletd:v0.5.3` | `127.0.0.1:9067` | Live compact server. The mint curator does not dial it. |
+| ztreamer | intended `127.0.0.1:9067` | Not running. Do not start a second compact server until scan is linked. |
+| `svg-mint-fed` | `127.0.0.1:8421` | User unit `dregg-svg-mint-fed.service`. Store `~/.terp/svg-mint-fed-cell.json`. |
+| `svg-mint-zrt` | no port | Binary not installed. Do not `init` `~/.terp/svg-mint-zrt`. |
+| HashMerchant `onboard-runtime` | `127.0.0.1:19090` | Unit present, inactive. Keyring dir `~/.terp/kr-onboard` is absent. The fed's embedded listener must not take this port. |
+
+ETH, Base, and BTC watcher threads stay in the fed. Their RPC variables stay unset.
+
+## House env
+
+`~/.terp/dregg-fed.systemd.env` (mode `0600`):
+
+| Name | Value |
+|---|---|
+| `SVG_MINT_FED_STORE` | `/home/returniflost/.terp/svg-mint-fed-cell.json` |
+| `ZCASH_PRIVATE_RPC` | `http://127.0.0.1:8232` |
+| `ZCASH_PRIVATE_RPC_COOKIE` | `/home/returniflost/.terp/zakura.rpc.cookie` |
+| `DREGG_MINTER_LCD` | `http://127.0.0.1:1317` |
+| `DREGG_MINTER_ADDR` | Ignored for the balance once `~/.terp/dregg-svg-runtime.sk` exists. The live signer is `terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8`. |
+| `DREGG_COLLECTIONS` | Optional override. Comma-separated collection contracts. Unset on the house, so `~/.terp/dregg-svg-collections` is the list. Empty closes Pay with `collections_unset`. A listed contract is admitted only after simulate accepts the empty-funds mint. |
+| `ONBOARD_BIND` / `ONBOARD_PORT` | `127.0.0.1` / `19091`, so HashMerchant keeps `19090` |
+
+Not set, on purpose: `SVG_MINT_FED_SK_HEX`, `DREGG_MINTER_FUNDED`, `DREGG_MINTER_BALANCE`, `ETH_RPC`, `BASE_RPC`, `BTC_RPC`, `ZCLI_BIN`, `ZCASHD_RPC`.
+
+The operator secret is `~/.terp/svg-mint-fed.sk`. The mint signer is `~/.terp/dregg-svg-runtime.sk`. Neither secret is a line in the env file. Funding that address and naming a code-83 collection are on the DREGG page. The house list is empty.
+
+## Git pins
+
+Submodule pins in the product tree are still Zakura `v1.6.0` and ztreamer. The running node is the 1.7.0 image. Do not move the pin until a release commit says so. Do not point 1.6.0 at the format-30 archive.
+
+```bash
+bash scripts/init-runtimes.sh
+```
+
+That clones the submodules. It does not start the house containers.
