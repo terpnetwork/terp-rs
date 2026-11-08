@@ -36,6 +36,26 @@ api:
 api-clients:
     cargo run -p gen-tools --offline -- --config tools/gen-tools/gen-tools.yaml --project terp-rs --skip-schema
 
+# Schema + TypeScript client for one nftfi gen-tools project (from nftfi/pipeline c028f38).
+# Projects: marketplace, reserve-auction, raffle, nft-loan.
+# Clients land in api/ts/<cargo-package>/{types,client,message-composer}/.
+# One cargo at a time. The contract directory must already be a workspace member.
+nftfi-schema project:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{justfile_directory()}}"
+    export CARGO_BUILD_JOBS=4
+    export CARGO_TARGET_DIR="${PWD}/target"
+    cd tools/gen-tools
+    cargo run --release -- --config gen-tools.yaml --project "{{project}}" --steps schema,ts-codegen
+
+# Sequential. Do not fan these out; the machine runs one cargo at a time.
+nftfi-schema-all:
+    just gen nftfi-schema marketplace
+    just gen nftfi-schema reserve-auction
+    just gen nftfi-schema raffle
+    just gen nftfi-schema nft-loan
+
 # Quick zk-wasm development cycle
 zk-cycle module="terp-core":
     @echo "⚡ Running zk-wasm dev cycle for {{module}}..."

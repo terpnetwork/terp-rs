@@ -2,8 +2,8 @@
 # The IBC info pipeline. Binary `terp-ibc` is package `dao-scripts`
 # (`scripts/dao-scripts/src/bin/ibc_info.rs`). The library stays `terp-scripts`.
 #
-# These four recipes are called by name from .github/workflows/ci-core.yml and
-# ci-heavy.yml. Their contract — exit codes, RunReport JSON, capability modes —
+# These four recipes are called by name from .github/workflows/ci.yml
+# (core and heavy jobs). Their contract — exit codes, RunReport JSON, capability modes —
 # is documented in skills/tests.md; keep the two in sync.
 
 ibc := "cargo run -p dao-scripts --bin terp-ibc --"
@@ -30,3 +30,10 @@ scripts-ibc-offline: scripts-ibc-unit
 # Validate public/ against the hard invariants. Exits non-zero on error findings.
 scripts-ibc-validate:
     {{ibc}} validate --format json
+
+# Predetermined ICS-20 denoms for shitstrap accepted lists (explicit multi-hop
+# paths in public/ibc-accepted/routes.toml). Regenerates the JSON, then the
+# golden test asserts Rust and Python agree.
+scripts-ibc-accepted:
+    python3 scripts/gen/ibc/derive_accepted_denoms.py public/ibc-accepted/routes.toml public/ibc-accepted/accepted-denoms.json
+    cargo test -p terp-scripts --lib ibc::accepted --test ibc_unit accepted_denoms

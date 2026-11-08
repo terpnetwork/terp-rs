@@ -1,0 +1,37 @@
+# Advisory check. Does not need the sibling path checkouts.
+# --hide-inclusion-graph keeps the advisory id, the crate, and the patched
+# requirement, and drops the crate tree from the log.
+name: cargo-deny
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+
+concurrency:
+  group: cargo-deny-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-deny:
+    name: Advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: cargo-deny advisories
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
+        with:
+          command: check advisories
+          command-arguments: --hide-inclusion-graph
+          manifest-path: Cargo.toml

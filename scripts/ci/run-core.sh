@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full act run for ci-core.yml jobs (expensive; Docker Desktop fragile on macOS).
+# Full act run for the core jobs in ci.yml (expensive; Docker Desktop fragile on macOS).
 # Prefer: just act-host-core  (authoritative) + just act-wire (YAML list).
 #
 # Usage:
@@ -14,7 +14,7 @@ act_require
 trap 'act_teardown; act_prune_runs' EXIT INT TERM
 act_teardown quiet
 
-WORKFLOW="$(act_workflow_for_act ci-core.yml)"
+WORKFLOW="$(act_workflow_for_act ci.yml)"
 if [[ ! -f "${WORKFLOW}" ]]; then
   echo "error: missing ${WORKFLOW}" >&2
   exit 1

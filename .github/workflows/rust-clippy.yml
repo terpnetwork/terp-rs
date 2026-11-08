@@ -1,0 +1,49 @@
+# Clippy for terp-scripts. Warnings stay visible and do not fail the job.
+# A GitHub-only checkout skips: the path patches need the monorepo.
+name: clippy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+
+concurrency:
+  group: clippy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  clippy:
+    name: cargo clippy
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+          components: clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+
+      - name: clippy terp-scripts
+        run: |
+          set -euo pipefail
+          if [[ ! -f ../cosmwasm/Cargo.toml ]]; then
+            echo "::notice::Path patches need the monorepo checkout. clippy runs under act from crates/terp-rs."
+            exit 0
+          fi
+          cargo clippy -p terp-scripts --tests --offline

@@ -17,11 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fail with guidance
+        env:
+          ACK: ${{ inputs.acknowledge }}
         run: |
           echo "This workflow is deprecated (CosmWasm launchpad gas-report e2e)."
-          echo "Use: Actions → CI Heavy → Run workflow (Docker multihop harness)."
+          echo "Use: Actions → CI → Run workflow, tier heavy (Docker multihop harness)."
           echo "Or: just core scripts-ibc-harness"
-          if [[ "${{ inputs.acknowledge }}" != "use-ci-heavy" ]]; then
+          if [[ "$ACK" != "use-ci-heavy" ]]; then
             exit 1
           fi
           exit 1

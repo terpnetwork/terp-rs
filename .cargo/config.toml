@@ -7,6 +7,9 @@
 # `cargo run --bin schema` / `--example schema` directly.
 [alias]
 schema = "run --bin schema"
+# Workspace gates; zk-test-press is gated out (see default-members in Cargo.toml).
+gate-clippy = "clippy --workspace --exclude zk-test-press --all-targets -- -D warnings"
+gate-test = "test --workspace --exclude zk-test-press"
 
 [target.wasm32-unknown-unknown]
 rustflags = [

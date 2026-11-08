@@ -10,7 +10,6 @@ use halo2_proofs::{
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
-use rand::rngs::OsRng;
 use std::marker::PhantomData;
 use wasm_bindgen::prelude::*;
 
@@ -331,7 +330,7 @@ pub fn prove_no_rick(secret_word: &str, forbidden: &str) -> Result<Vec<u8>, Stri
         &pk,
         &[circuit],
         &[&instance_refs],
-        OsRng,
+        rand::rng(),
         &mut transcript,
     )
     .map_err(|e| format!("create_proof: {e}"))?;

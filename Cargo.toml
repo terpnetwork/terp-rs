@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-exclude = ["crates/randomness", "crates/zafu"]
+# nftfi-bench is its own workspace.
+exclude = ["crates/randomness", "crates/zafu", "tests/suite/nftfi-bench"]
 members = [
     "contracts/accounts/ownership-verifier",
     "contracts/accounts/ownership-verifier/e2e",
@@ -73,6 +74,8 @@ members = [
     "contracts/nfts/packages/utils",
     "contracts/nfts/raffle",
     "contracts/nfts/raffle/e2e",
+    "contracts/nfts/terp-beacon",
+    "contracts/nfts/terp-beacon/e2e",
     "contracts/revenue/bounty-escrow",
     "contracts/revenue/bounty-escrow/e2e",
     "contracts/revenue/marketplace",
@@ -142,6 +145,159 @@ members = [
     "tools/headstash/circuits/claim-flock",
     "tools/headstash/circuits/halo2",
     "tools/headstash/test-press",
+    "tools/headstash/wire",
+    "tools/svg-collections",
+    "tools/svg-mint/crates/cw-dregg-svg-gate",
+    "tools/svg-mint/crates/dregg",
+    "tools/svg-mint/crates/svg-mint-fed",
+    "tools/svg-mint/crates/svg-mint-zrt",
+]
+# zk-test-press is left out of default runs: its dev targets pull ict-rs without
+# the docker backend (bollard/DockerConfig unresolved) and several harnesses
+# target terp_seams::dex APIs that do not exist yet. `--workspace` ignores
+# default-members, so the gate aliases in .cargo/config.toml pass --exclude.
+default-members = [
+    "contracts/accounts/ownership-verifier",
+    "contracts/accounts/ownership-verifier/e2e",
+    "contracts/accounts/terp721-account",
+    "contracts/accounts/terp721-account-manifold",
+    "contracts/accounts/terp721-account-manifold/e2e",
+    "contracts/accounts/terp721-account/e2e",
+    "contracts/ave/cw-ave",
+    "contracts/ave/cw-ave-factory",
+    "contracts/ave/cw-ave-factory/e2e",
+    "contracts/ave/cw-ave/e2e",
+    "contracts/ave/cw420",
+    "contracts/ave/cw420/e2e",
+    "contracts/cashu/cw-cashu-registry",
+    "contracts/cashu/cw-cashu-registry/e2e",
+    "contracts/hash-merchant/dex-quote-fixture",
+    "contracts/hash-merchant/loyalty-verifier",
+    "contracts/hash-merchant/loyalty-verifier/e2e",
+    "contracts/hash-merchant/marketplace-mirror",
+    "contracts/hash-merchant/marketplace-mirror/e2e",
+    "contracts/hash-merchant/oracle-aggregator",
+    "contracts/hash-merchant/oracle-aggregator/e2e",
+    "contracts/hash-merchant/oracle-registry",
+    "contracts/hash-merchant/oracle-registry/e2e",
+    "contracts/hash-merchant/oracle-twap-probe",
+    "contracts/hash-merchant/oracle-twap-probe/e2e",
+    "contracts/hash-merchant/trusted-builder-sbt",
+    "contracts/hash-merchant/trusted-builder-sbt/e2e",
+    "contracts/headstash/cw-headstash",
+    "contracts/headstash/cw-nullifier-auth",
+    "contracts/headstash/cw-nullifier-auth/e2e",
+    "contracts/headstash/cw-nullifier-gate",
+    "contracts/headstash/cw-nullifier-gate/e2e",
+    "contracts/headstash/cw-reg-eligibility",
+    "contracts/headstash/cw-reg-eligibility/e2e",
+    "contracts/headstash/cw-vote-anchor",
+    "contracts/headstash/cw-vote-anchor/e2e",
+    "contracts/headstash/cw-vote-ceremony",
+    "contracts/headstash/cw-vote-ceremony/e2e",
+    "contracts/headstash/manifold",
+    "contracts/headstash/manifold/e2e",
+    "contracts/headstash/no-rick",
+    "contracts/headstash/no-rick/e2e",
+    "contracts/ibc/polytone-any-proxy",
+    "contracts/ibc/polytone-any-proxy/e2e",
+    "contracts/infuser/cw-infuser",
+    "contracts/infuser/cw-infuser/e2e",
+    "contracts/infuser/cw721-svg",
+    "contracts/infuser/cw721-svg-minter",
+    "contracts/infuser/cw721-svg-minter/e2e",
+    "contracts/infuser/cw721-svg/e2e",
+    "contracts/infuser/hm-nft-minter",
+    "contracts/infuser/hm-nft-minter/e2e",
+    "contracts/infuser/svg-auction",
+    "contracts/infuser/svg-auction/e2e",
+    "contracts/infuser/whitelist-merkletree",
+    "contracts/infuser/whitelist-merkletree/e2e",
+    "contracts/light-clients/cw-ics08-wasm-crosslink",
+    "contracts/light-clients/cw-ics08-wasm-crosslink/e2e",
+    "contracts/light-clients/cw-ics08-wasm-dregg",
+    "contracts/light-clients/cw-ics08-wasm-dregg/e2e",
+    "contracts/light-clients/cw-ics08-wasm-terp",
+    "contracts/light-clients/cw-ics08-wasm-terp/e2e",
+    "contracts/light-clients/cw-ics08-wasm-zap1",
+    "contracts/light-clients/cw-ics08-wasm-zap1/e2e",
+    "contracts/light-clients/terp-iavl-lc",
+    "contracts/nfts/nft-loan",
+    "contracts/nfts/nft-loan/e2e",
+    "contracts/nfts/packages/randomness",
+    "contracts/nfts/packages/utils",
+    "contracts/nfts/raffle",
+    "contracts/nfts/raffle/e2e",
+    "contracts/nfts/terp-beacon",
+    "contracts/nfts/terp-beacon/e2e",
+    "contracts/revenue/bounty-escrow",
+    "contracts/revenue/bounty-escrow/e2e",
+    "contracts/revenue/marketplace",
+    "contracts/revenue/marketplace/e2e",
+    "contracts/revenue/private-dex",
+    "contracts/revenue/private-dex/e2e",
+    "contracts/revenue/reserve-auction",
+    "contracts/revenue/reserve-auction/e2e",
+    "contracts/shitstrap/cw-shitstrap",
+    "contracts/shitstrap/cw-shitstrap-factory",
+    "contracts/shitstrap/cw-shitstrap-factory/e2e",
+    "contracts/shitstrap/cw-shitstrap/e2e",
+    "contracts/smart-accounts/terp-bls",
+    "contracts/smart-accounts/terp-bls/e2e",
+    "contracts/smart-accounts/terp-dao",
+    "contracts/smart-accounts/terp-dao/e2e",
+    "contracts/smart-accounts/terp-dregg",
+    "contracts/smart-accounts/terp-dregg/e2e",
+    "contracts/smart-accounts/terp-ed25519",
+    "contracts/smart-accounts/terp-ed25519/e2e",
+    "contracts/smart-accounts/terp-eth",
+    "contracts/smart-accounts/terp-eth/e2e",
+    "contracts/smart-accounts/terp-frost",
+    "contracts/smart-accounts/terp-frost/e2e",
+    "contracts/smart-accounts/terp-passkey",
+    "contracts/smart-accounts/terp-passkey/e2e",
+    "contracts/smart-accounts/terp-recovery",
+    "contracts/smart-accounts/terp-recovery/e2e",
+    "contracts/smart-accounts/terp-vsck",
+    "contracts/smart-accounts/terp-vsck/e2e",
+    "contracts/smart-accounts/terp-zkjwt",
+    "contracts/smart-accounts/terp-zkjwt/e2e",
+    "contracts/smart-accounts/terp-zktls",
+    "contracts/smart-accounts/terp-zktls/e2e",
+    "contracts/zk/cw-zk-verify-demo",
+    "contracts/zk/cw-zk-verify-demo/e2e",
+    "crates/av-event-helpers",
+    "crates/crosslink/light-client",
+    "crates/cw-infusions",
+    "crates/cw-shit-denom",
+    "crates/cw-svg",
+    "crates/easy-addr",
+    "crates/hm-loyalty-whitelist",
+    "crates/hm-nft-oracle",
+    "crates/kms-shard",
+    "crates/mtree-tooling",
+    "crates/nips",
+    "crates/sdk",
+    "crates/svg-codec",
+    "crates/terp-account",
+    "crates/terp-auth",
+    "crates/terp-oracle",
+    "crates/terp-oracle-derive",
+    "crates/terp-seams",
+    "proto",
+    "scripts/cw-infuser",
+    "scripts/dao-scripts",
+    "scripts/headstash/eth-pubkeys",
+    "tests",
+    "tests/suite/dao-foundation-suite",
+    "tests/suite/ipa-params",
+    "tests/suite/terp-authenticator-suite",
+    "tests/suite/terp-orch",
+    "tools/gen-tools",
+    "tools/gen-tools/gen-api",
+    "tools/hash-market",
+    "tools/headstash/circuits/claim-flock",
+    "tools/headstash/circuits/halo2",
     "tools/headstash/wire",
     "tools/svg-collections",
     "tools/svg-mint/crates/cw-dregg-svg-gate",
@@ -289,7 +445,7 @@ dao-voting-cw4 = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-roles = { version = "=2.9.0-delta.9" }
 dao-voting-cw721-staked = { version = "=2.9.0-delta.9" }
 digest = { version = "0.10", default-features = false }
-dotenv = "0.15"
+dotenv = { package = "dotenvy", version = "0.15" }
 dregg = { path = "tools/svg-mint/crates/dregg" }
 easy-addr = { path = "crates/easy-addr" }
 ecdsa = "0.17"
@@ -381,7 +537,6 @@ secp256k1 = "0.31"
 semver = "1"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false }
-serde_yaml = "0.9"
 sha2 = { version = "0.10.8", default-features = false }
 sha3 = "0.10"
 shardtree = "0.6"
@@ -396,6 +551,7 @@ tera = "1"
 terp-account = { path = "crates/terp-account" }
 terp-auth = { path = "crates/terp-auth" }
 terp-authenticator-suite = { path = "tests/suite/terp-authenticator-suite" }
+terp-beacon = { path = "contracts/nfts/terp-beacon" }
 terp-bls = { path = "contracts/smart-accounts/terp-bls", default-features = false }
 terp-bounty-escrow = { path = "contracts/revenue/bounty-escrow" }
 terp-dao = { path = "contracts/smart-accounts/terp-dao", default-features = false }
@@ -580,5 +736,13 @@ zakura-halo2-poseidon = { path = "../zakura-common/crates/halo2_poseidon" }
 
 # ict-rs pins dregg by git rev. Resolve that rev to this workspace copy so
 # the lock does not keep a second dregg still on k256 0.13.
+# cosmos-rust pins tendermint-rs by git (same rev as ../tendermint-rs). Route it to the path
+# fork so one tendermint/k256 is in the graph (cosmrs::crypto::PublicKey From<tendermint::PublicKey>).
+[patch."https://github.com/permissionlessweb/tendermint-rs"]
+tendermint = { path = "../tendermint-rs/tendermint" }
+tendermint-config = { path = "../tendermint-rs/config" }
+tendermint-proto = { path = "../tendermint-rs/proto" }
+tendermint-rpc = { path = "../tendermint-rs/rpc" }
+
 [patch."https://github.com/permissionlessweb/terp-rs"]
 dregg = { path = "tools/svg-mint/crates/dregg" }
