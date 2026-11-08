@@ -239,9 +239,11 @@ pub fn template(
         "<text class=\"m\" x=\"8\" y=\"312\">{}</text>\n",
         crate::common::xml_escape(caption)
     ));
-    t.push_str(&format!(
-        "<a href=\"{FRAME_PAGE}${{frame}}.html\"><text class=\"m\" x=\"8\" y=\"324\">full render</text></a>\n"
-    ));
+    // Code 98 on morocco-1 rejects the s3 frame URL at instantiate. The frame
+    // group is already in this SVG, so the link stays inside the document.
+    t.push_str(
+        "<a href=\"#f${frame}\"><text class=\"m\" x=\"8\" y=\"324\">full render</text></a>\n",
+    );
     t.push_str("<text class=\"m\" x=\"8\" y=\"336\">Latent Benders: A Study - data: psychedex.org</text>\n</svg>");
     t
 }

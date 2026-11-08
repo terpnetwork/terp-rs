@@ -111,23 +111,16 @@ fn symbient_link_template_is_safe_and_packs() {
     common::check_and_pack(&t, &vars).unwrap();
     let p = common::token_params(&vars, 0, b"s", 1);
     let svg = common::render(&t, &vars, &p);
-    // frame links point at the static CAS bucket page for the frame CID
-    assert!(svg.contains(&format!(
-        "href=\"{}{}.html\"",
-        ascii::FRAME_PAGE,
-        p[0].value
-    )));
+    // The on-chain link stays inside the token. Code 98 rejects an s3 href.
+    assert!(svg.contains(&format!("href=\"#f{}\"", p[0].value)));
     // a non-allowlisted host or a javascript: link fails the same checks the chain runs
-    let evil = t.replace(ascii::FRAME_PAGE, "https://evil.example/");
+    let evil = t.replace("#f${frame}", "https://evil.example/x");
     assert!(
         common::check_and_pack(&evil, &vars)
             .unwrap_err()
             .contains("links")
     );
-    let js = t.replace(
-        &format!("{}${{frame}}.html", ascii::FRAME_PAGE),
-        "javascript:alert(1)",
-    );
+    let js = t.replace("#f${frame}", "javascript:alert(1)");
     assert!(
         common::check_and_pack(&js, &vars)
             .unwrap_err()

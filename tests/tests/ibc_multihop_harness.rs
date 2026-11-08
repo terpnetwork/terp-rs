@@ -93,7 +93,6 @@ fn predict_after_hops(
 }
 
 /// Same geometry via lib `IBCChannelGraph::compute_ibc_denom_for_route` (must match helpers).
-#[allow(dead_code)] // cross-check helper for live multihop runs
 fn predict_via_graph(
     hops_origin_to_dest: &[(
         /*from*/ &str,
@@ -523,6 +522,19 @@ fn predict_single_hop_matches_ibc_core_hash() {
     assert!(denom.starts_with("ibc/"));
     assert_eq!(denom, compute_ibc_denom_hash(&path));
     assert_eq!(denom, denom.to_uppercase().replacen("IBC/", "ibc/", 1));
+}
+
+#[test]
+fn predict_helpers_match_channel_graph() {
+    // A→B→C with distinct send/receive channels: only receive channels enter the path.
+    let hops = [
+        ("chain-a", "channel-5", "chain-b", "channel-0"),
+        ("chain-b", "channel-7", "chain-c", "channel-1"),
+    ];
+    let (path, denom) = predict_after_hops(&["channel-0", "channel-1"], "factory/x/ta1");
+    let (graph_denom, graph_path) = predict_via_graph(&hops, "factory/x/ta1");
+    assert_eq!(graph_path, path);
+    assert_eq!(graph_denom, denom);
 }
 
 #[test]
