@@ -2,8 +2,6 @@
 #[cfg(feature = "interface")]
 use crate::suites::headstash::HeadstashDeployData;
 use cw_norick::interface::NoRickDeployData;
-#[cfg(feature = "multicore")]
-use rayon::prelude::*;
 
 use cosmwasm_std::Addr;
 

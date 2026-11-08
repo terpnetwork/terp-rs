@@ -1220,7 +1220,7 @@ mod tests {
         /// Product A integration: suite multi-leaf Poseidon tree + matching claim note.
         /// Uses [`HeadstashProofBuilder::suite_backed_claim_pair`] so eligibility leaf,
         /// depth-32 path/anchor, and private cmx/nf are consistent with synthesize.
-        use crate::suite::suite::{HeadstashProofBuilder, MerkleTestDataBuilder};
+        use crate::suite::builders::{HeadstashProofBuilder, MerkleTestDataBuilder};
         use cw_orch::mock::Mock;
 
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
@@ -1286,7 +1286,7 @@ mod tests {
     fn test_genesis_merkle_tree_various_sizes() {
         /// Test genesis merkle tree generation with various tree sizes
         use crate::suite::HeadstashCircuitSuite;
-        use crate::suite::suite::MerkleTestDataBuilder;
+        use crate::suite::builders::MerkleTestDataBuilder;
         use cw_orch::mock::Mock;
 
         let suite = HeadstashCircuitSuite::new(Mock::new("sender"));

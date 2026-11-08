@@ -117,8 +117,13 @@ impl<Chain: CwEnv> PrivateDexSuite<Chain> {
         statement: SwapStatementPublic,
         proof: Binary,
     ) -> Result<<Chain as TxHandler>::Response, CwOrchError> {
-        self.dex
-            .execute(&ExecuteMsg::SettleSwap { statement, proof }, &[])
+        self.dex.execute(
+            &ExecuteMsg::SettleSwap {
+                statement: Box::new(statement),
+                proof,
+            },
+            &[],
+        )
     }
 
     pub fn settle_handoff(
@@ -223,7 +228,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for PrivateDexSuite<Chain> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::harness::mint_evidence::mint_evidence_from_claim_fields;
+    use crate::harness::mint_evidence::{ClaimMintFields, mint_evidence_from_claim_fields};
     use crate::harness::swap_statement_cw::{ProofModeLabel, build_swap_spend_handoff_from_mint};
 
     fn fixture_mint() -> crate::harness::MintEvidenceV0 {
@@ -231,20 +236,20 @@ mod tests {
         asset_in[0] = b'H';
         asset_in[1] = b'U';
         asset_in[2] = b'B';
-        mint_evidence_from_claim_fields(
-            "ict_local_funded",
-            "mock",
-            "terp1hs",
-            &[0x11; 32],
-            &[0x22; 32],
-            5_000,
-            &asset_in,
-            Some(&[0x33; 32]),
-            Some(&[0x44; 32]),
-            true,
-            None,
-            None,
-        )
+        mint_evidence_from_claim_fields(ClaimMintFields {
+            profile: "ict_local_funded".into(),
+            chain_id: "mock".into(),
+            headstash_contract: "terp1hs".into(),
+            bridge_nullifier: &[0x11; 32],
+            cm_public: &[0x22; 32],
+            value_u64: 5_000,
+            asset_id: &asset_in,
+            rcm: Some(&[0x33; 32]),
+            owner_binding: Some(&[0x44; 32]),
+            mock_verify_bridge: true,
+            mint_tx_hash: None,
+            intent_id: None,
+        })
     }
 
     #[test]
@@ -308,6 +313,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "seams-escrow")]
     #[test]
     fn settle_after_omni_lp_seed_reserves() {
         use crate::harness::omni_lp_seed::bootstrap_omni_liquidity;

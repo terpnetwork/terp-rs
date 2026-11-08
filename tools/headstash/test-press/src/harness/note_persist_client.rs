@@ -94,10 +94,10 @@ impl NotesPersistConfig {
         let hs_id = std::env::var("NOTES_HS_ID").unwrap_or_else(|_| "corridor-post-mint".into());
         let owner_key = parse_owner_key_env().unwrap_or([0xC0; 32]);
         let mut auth_headers = Vec::new();
-        if let Ok(tok) = std::env::var("NOTES_BEARER_TOKEN") {
-            if !tok.is_empty() {
-                auth_headers.push(("Authorization".into(), format!("Bearer {tok}")));
-            }
+        if let Ok(tok) = std::env::var("NOTES_BEARER_TOKEN")
+            && !tok.is_empty()
+        {
+            auth_headers.push(("Authorization".into(), format!("Bearer {tok}")));
         }
         if let Ok(base) = std::env::var("NOTES_BASE") {
             let base = base.trim().to_string();

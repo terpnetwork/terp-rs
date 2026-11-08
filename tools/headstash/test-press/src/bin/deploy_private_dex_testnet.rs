@@ -17,7 +17,8 @@ use std::env;
 
 use cosmwasm_std::Binary;
 use cw_orch::anyhow::{self, Context};
-use cw_orch::daemon::networks::{TERP_TESTNET, TERP_TESTNET_LOCAL};
+use cw_orch::daemon::networks::TERP_TESTNET;
+use cw_orch::environment::ChainInfo;
 use cw_orch::prelude::*;
 use osmosis_std::types::{
     cosmos::base::v1beta1::Coin,
@@ -30,6 +31,12 @@ use zk_test_press::harness::swap_statement_cw::{
     LAB_GAMMA, LAB_GAMMA_DEN, LAB_R_IN, LAB_R_OUT, lab_allowed_root,
 };
 use zk_test_press::suites::private_dex::PrivateDexSuite;
+
+/// Terp testnet chain id reached through a local gRPC endpoint (`CHAIN=local`).
+const TERP_TESTNET_LOCAL: ChainInfo = ChainInfo {
+    grpc_urls: &["http://127.0.0.1:9090"],
+    ..TERP_TESTNET
+};
 
 /// Demo subdenoms (factory/{creator}/{sub}).
 const DEMO_SUBDENOMS: &[&str] = &["pdexalpha", "pdexbeta", "pdexgamma"];

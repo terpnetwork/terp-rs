@@ -29,7 +29,7 @@ use rand010::rngs::OsRng;
 use serde::Serialize;
 use zk_headstash::circuit::{Instance, Proof, ProvingKey};
 use zk_headstash::suite::HeadstashCircuitSuite;
-use zk_headstash::suite::suite::HeadstashProofBuilder;
+use zk_headstash::suite::builders::HeadstashProofBuilder;
 
 const CID: u64 = 1;
 const DENOM: &str = "uterp";

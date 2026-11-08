@@ -1,11 +1,5 @@
-use cw_orch::{
-    anyhow,
-    prelude::{ZkCwEnv as _, *},
-};
-use cw_orch::{
-    daemon::networks::{ATOMEONE_TESTNET, TERP_TESTNET},
-    prelude::*,
-};
+use cw_orch::daemon::networks::TERP_TESTNET;
+use cw_orch::{anyhow, prelude::*};
 use zk_test_press::suites::no_rick::interface::NoRickSuite;
 
 fn main() -> anyhow::Result<()> {

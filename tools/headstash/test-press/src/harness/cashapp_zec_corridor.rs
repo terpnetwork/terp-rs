@@ -155,10 +155,10 @@ impl DepositIntentV0 {
         if is_zero_hash(&fields.dest_owner_binding) {
             return Err(CorridorError::EmptyDestBinding);
         }
-        if let Some(r) = fields.recovery_owner_binding {
-            if is_zero_hash(&r) {
-                return Err(CorridorError::EmptyRecoveryBinding);
-            }
+        if let Some(r) = fields.recovery_owner_binding
+            && is_zero_hash(&r)
+        {
+            return Err(CorridorError::EmptyRecoveryBinding);
         }
         if fields.corridor_id.is_empty()
             || fields.source_chain_tag.is_empty()
@@ -246,10 +246,10 @@ impl DepositIntentV0 {
         if is_zero_hash(&self.dest_owner_binding) {
             return Err(CorridorError::EmptyDestBinding);
         }
-        if let Some(r) = self.recovery_owner_binding {
-            if is_zero_hash(&r) {
-                return Err(CorridorError::EmptyRecoveryBinding);
-            }
+        if let Some(r) = self.recovery_owner_binding
+            && is_zero_hash(&r)
+        {
+            return Err(CorridorError::EmptyRecoveryBinding);
         }
         if self.domain_bind != self.compute_domain_bind() {
             return Err(CorridorError::DomainBindMismatch);
@@ -1163,13 +1163,12 @@ pub fn put_and_recover_after_mint(
     cfg.hs_id = hs_id.to_string();
     cfg.owner_key = owner_key;
     // Re-apply bearer if env present (from_env already did when NOTES_BASE set).
-    if cfg.auth_headers.is_empty() {
-        if let Ok(tok) = std::env::var("NOTES_BEARER_TOKEN") {
-            if !tok.is_empty() {
-                cfg.auth_headers
-                    .push(("Authorization".into(), format!("Bearer {tok}")));
-            }
-        }
+    if cfg.auth_headers.is_empty()
+        && let Ok(tok) = std::env::var("NOTES_BEARER_TOKEN")
+        && !tok.is_empty()
+    {
+        cfg.auth_headers
+            .push(("Authorization".into(), format!("Bearer {tok}")));
     }
 
     let via = if cfg.notes_base.is_some() {

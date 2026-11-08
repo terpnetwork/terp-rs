@@ -1879,13 +1879,7 @@ impl Secp256k1Chip {
         mut layouter: impl Layouter<pallas::Base>,
         a: &[AssignedCell<pallas::Base, pallas::Base>],
         b: &[AssignedCell<pallas::Base, pallas::Base>],
-    ) -> Result<
-        (
-            [AssignedCell<pallas::Base, pallas::Base>; 4],
-            AssignedCell<pallas::Base, pallas::Base>,
-        ),
-        PlonkError,
-    > {
+    ) -> Result<LimbsAndCarry, PlonkError> {
         assert_eq!(a.len(), 4);
         assert_eq!(b.len(), 4);
         let mut cin = Value::known(pallas::Base::ZERO);
@@ -2062,19 +2056,7 @@ impl Secp256k1Chip {
         mut layouter: impl Layouter<pallas::Base>,
         k: &ProperCrtUint<pallas::Base>,
         split: &Value<GlvSplit>,
-    ) -> Result<
-        (
-            ProperCrtUint<pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-            bool,
-            ProperCrtUint<pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-            bool,
-        ),
-        PlonkError,
-    > {
+    ) -> Result<GlvDecomposition, PlonkError> {
         let mag1_v = split
             .as_ref()
             .map(|s| be32_to_fq(&biguint_to_be32(&s.k1.mag)));
@@ -2384,9 +2366,9 @@ impl Secp256k1Chip {
         mag: &ProperCrtUint<pallas::Base>,
         correction: &SecpPoint<pallas::Base>,
         magnitude_is_zero: bool,
-        dummy_a: &SecpPoint<pallas::Base>,
-        dummy_b: &SecpPoint<pallas::Base>,
+        dummy: (&SecpPoint<pallas::Base>, &SecpPoint<pallas::Base>),
     ) -> Result<SecpPoint<pallas::Base>, PlonkError> {
+        let (dummy_a, dummy_b) = dummy;
         let mut bits = Vec::new();
         for limb in mag.truncation.limbs.iter().take(2) {
             let limb_bits =
@@ -2472,8 +2454,7 @@ impl Secp256k1Chip {
             &mag1,
             &corr1,
             z1,
-            &g_pt,
-            &dbl_g,
+            (&g_pt, &dbl_g),
         )?;
         let p2 = self.scalar_mul_128(
             layouter.namespace(|| "k2 · psi(G)"),
@@ -2481,8 +2462,7 @@ impl Secp256k1Chip {
             &mag2,
             &corr2,
             z2,
-            &g_pt,
-            &dbl_g,
+            (&g_pt, &dbl_g),
         )?;
 
         // Fixed shape: always add once. A zero half makes that add a dummy `G+2G`.
@@ -2583,13 +2563,7 @@ impl Secp256k1Chip {
         esk: Value<Secp256k1Fq>,
         epkx: Value<Secp256k1Fp>,
         epky: Value<Secp256k1Fp>,
-    ) -> Result<
-        (
-            ProperCrtUint<pallas::Base>,
-            (ProperCrtUint<pallas::Base>, ProperCrtUint<pallas::Base>),
-        ),
-        PlonkError,
-    > {
+    ) -> Result<EskAndEpk, PlonkError> {
         // Load secret key
         let sk_assigned = self
             .fq
@@ -2650,14 +2624,7 @@ impl Secp256k1Chip {
         s: Value<Secp256k1Fq>,
         qx: Value<Secp256k1Fp>,
         qy: Value<Secp256k1Fp>,
-    ) -> Result<
-        (
-            AssignedCell<pallas::Base, pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-            ProperCrtUint<pallas::Base>,
-        ),
-        PlonkError,
-    > {
+    ) -> Result<SigCellsAndR, PlonkError> {
         let e = self.fq.load_private(layouter.namespace(|| "e"), e)?;
         let r = self.fq.load_private(layouter.namespace(|| "r"), r)?;
         let s = self.fq.load_private(layouter.namespace(|| "s"), s)?;
@@ -2763,8 +2730,7 @@ impl Secp256k1Chip {
             &mag1,
             &c1,
             z1,
-            base,
-            &dbl,
+            (base, &dbl),
         )?;
         let p2 = self.scalar_mul_128(
             layouter.namespace(|| "k2·ψP"),
@@ -2772,8 +2738,7 @@ impl Secp256k1Chip {
             &mag2,
             &c2,
             z2,
-            base,
-            &dbl,
+            (base, &dbl),
         )?;
         let sum = if z1 || z2 {
             self.add_point(layouter.namespace(|| "var combine dummy"), base, &dbl)?
@@ -2832,6 +2797,30 @@ impl Secp256k1Chip {
 // ============================================================================
 // Tests
 // ============================================================================
+
+type SigCellsAndR = (
+    AssignedCell<pallas::Base, pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+    ProperCrtUint<pallas::Base>,
+);
+type EskAndEpk = (
+    ProperCrtUint<pallas::Base>,
+    (ProperCrtUint<pallas::Base>, ProperCrtUint<pallas::Base>),
+);
+type GlvDecomposition = (
+    ProperCrtUint<pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+    bool,
+    ProperCrtUint<pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+    bool,
+);
+type LimbsAndCarry = (
+    [AssignedCell<pallas::Base, pallas::Base>; 4],
+    AssignedCell<pallas::Base, pallas::Base>,
+);
 
 #[cfg(test)]
 mod tests {

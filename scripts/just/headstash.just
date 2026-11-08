@@ -13,17 +13,31 @@ repo_root := justfile_directory() / "../../../.."
 schema-codegen:
         @sh scripts/sh/schema-codegen.sh
 
-# Full workspace optimize via terp image:
-#   monorepo → /workspace, PROJECT_DIR=/workspace/crates/headstash
-#   path libs under /workspace/crates/{cosmwasm,zcash,...}
+# Full workspace optimize via terp image.
+# Same published paths as `just core optimize`: crates/ at the host prefix,
+# this terp-rs checkout overlaid at terp-rs-consolidate.
 workspace-optimize:
+        #!/usr/bin/env bash
+        set -euo pipefail
+        canon_crates=/Users/returniflost/abstract/terp-core/crates
+        canon_ws=$canon_crates/terp-rs-consolidate
+        terp_rs="$(cd "{{justfile_directory()}}/../.." && pwd)"
+        crates_dir="$(dirname "$terp_rs")"
+        case "$(uname -m)" in
+          arm64|aarch64) platform=linux/arm64 ;;
+          *) platform=linux/amd64 ;;
+        esac
+        image="${DOCKER_IMAGE:-terpnetwork/optimizer-arm64:0.17.0-rust1.97}"
         docker run --rm \
-                --platform {{arch}} \
-                -v "{{repo_root}}":/workspace \
-                -e PROJECT_DIR=/workspace/crates/terp-rs/tools/headstash \
+                --platform "$platform" \
+                -v "$crates_dir:$canon_crates" \
+                -v "$terp_rs:$canon_ws" \
+                -e PROJECT_DIR="$canon_ws/tools/headstash" \
+                -e CANONICAL_PROJECT_DIR="$canon_ws" \
+                -w "$canon_ws/tools/headstash" \
                 --mount type=volume,source=headstash_corridor_opt_cache,target=/target \
                 --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-                {{docker_image}}
+                "$image"
 
 # Alias used by corridor prepare script path docs
 workspace-optimize-quick: workspace-optimize

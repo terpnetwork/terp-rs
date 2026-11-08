@@ -713,6 +713,21 @@ impl DecomposeL {
     }
 }
 
+/// The four advice columns shared by every canonicity gate.
+#[derive(Clone, Copy, Debug)]
+struct CanonicityCols {
+    col_l: Column<Advice>,
+    col_m: Column<Advice>,
+    col_r: Column<Advice>,
+    col_z: Column<Advice>,
+}
+
+/// A canonicity gate's `prime` cell and the 26-bit running sum of its range check.
+struct PrimeCheck {
+    prime: AssignedCell<pallas::Base, pallas::Base>,
+    z26_prime: AssignedCell<pallas::Base, pallas::Base>,
+}
+
 /// |  A_6   | A_7 |   A_8   |     A_9     | q_notecommit_nd |
 /// -----------------------------------------------------------
 /// | nd     | b0  | a       | z13_a       |        1         |
@@ -731,13 +746,16 @@ impl NdCanonicity {
     #[allow(clippy::too_many_arguments)]
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_250: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_nd = meta.selector();
 
         meta.create_gate("NoteCommit input nd", |meta| {
@@ -831,14 +849,17 @@ struct ValueCanonicity {
 impl ValueCanonicity {
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_55: pallas::Base, // 2^55 for c0 (v[0..55), 55 bits)
         two_pow_64: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_v = meta.selector();
 
         meta.create_gate("NoteCommit input v", |meta| {
@@ -922,14 +943,17 @@ struct FdiCanonicity {
 impl FdiCanonicity {
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_51: pallas::Base,
         two_pow_64: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_fdi = meta.selector();
 
         meta.create_gate("NoteCommit input value", |meta| {
@@ -1014,15 +1038,18 @@ struct RecpCanonicity {
 impl RecpCanonicity {
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_7: pallas::Base,
         two_pow_247: pallas::Base,
         two_pow_254: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_recp = meta.selector();
         // recp = bits 0..7 of (d1) || 67..127 of recp (60)  || 127..187 of recp (60)  || 187..247 of recp  (20) || 247..255 recp 8
         meta.create_gate("NoteCommit input value", |meta| {
@@ -1071,9 +1098,12 @@ impl RecpCanonicity {
         d1: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeD::assign
         e: RangeConstrained<pallas::Base, Value<pallas::Base>>, // bitrange_of(recp, 7..247)
         f0: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeF::assign
-        d1_e_f0_prime: AssignedCell<pallas::Base, pallas::Base>,
-        z26_d1_e_f0_prime: AssignedCell<pallas::Base, pallas::Base>,
+        primes: PrimeCheck,
     ) -> Result<(), Error> {
+        let PrimeCheck {
+            prime: d1_e_f0_prime,
+            z26_prime: z26_d1_e_f0_prime,
+        } = primes;
         lo.assign_region(
             || "NoteCommit recp canonicity",
             |mut region| {
@@ -1115,15 +1145,18 @@ struct EskCanonicity {
 impl EskCanonicity {
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_2: pallas::Base,
         two_pow_252: pallas::Base,
         two_pow_254: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_esk = meta.selector();
 
         meta.create_gate("NoteCommit input value", |meta| {
@@ -1173,9 +1206,12 @@ impl EskCanonicity {
         f1: AssignedCell<pallas::Base, pallas::Base>,
         g: RangeConstrained<pallas::Base, Value<pallas::Base>>,
         h0: AssignedCell<pallas::Base, pallas::Base>,
-        f1_g_h0_prime: AssignedCell<pallas::Base, pallas::Base>,
-        z26_f1_g_h0_prime: AssignedCell<pallas::Base, pallas::Base>,
+        primes: PrimeCheck,
     ) -> Result<(), Error> {
+        let PrimeCheck {
+            prime: f1_g_h0_prime,
+            z26_prime: z26_f1_g_h0_prime,
+        } = primes;
         lo.assign_region(
             || "NoteCommit esk canonicity",
             |mut region| {
@@ -1217,18 +1253,20 @@ struct RhoCanonicity {
 }
 
 impl RhoCanonicity {
-    #[allow(clippy::too_many_arguments)]
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_7: pallas::Base,
         two_pow_247: pallas::Base,
         two_pow_254: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_rho = meta.selector();
 
         meta.create_gate("NoteCommit input rho", |meta| {
@@ -1271,7 +1309,6 @@ impl RhoCanonicity {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn assign(
         &self,
         lo: &mut impl Layouter<pallas::Base>,
@@ -1279,9 +1316,12 @@ impl RhoCanonicity {
         h1: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeH::assign (h[1])
         i: RangeConstrained<pallas::Base, Value<pallas::Base>>, // bitrange_of(rho, 7..247)
         j0: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeJ::assign (j[0])
-        h1_i_j0_prime: AssignedCell<pallas::Base, pallas::Base>,
-        z26_h1_i_j0_prime: AssignedCell<pallas::Base, pallas::Base>,
+        primes: PrimeCheck,
     ) -> Result<(), Error> {
+        let PrimeCheck {
+            prime: h1_i_j0_prime,
+            z26_prime: z26_h1_i_j0_prime,
+        } = primes;
         lo.assign_region(
             || "NoteCommit rho canonicity",
             |mut region| {
@@ -1321,18 +1361,20 @@ struct PsiCanonicity {
 }
 
 impl PsiCanonicity {
-    #[allow(clippy::too_many_arguments)]
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        col_l: Column<Advice>,
-        col_m: Column<Advice>,
-        col_r: Column<Advice>,
-        col_z: Column<Advice>,
+        cols: CanonicityCols,
         two_pow_2: pallas::Base,
         two_pow_252: pallas::Base,
         two_pow_254: pallas::Base,
         t_p: Expression<pallas::Base>,
     ) -> Self {
+        let CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        } = cols;
         let q_notecommit_psi = meta.selector();
 
         meta.create_gate("NoteCommit input psi", |meta| {
@@ -1380,9 +1422,12 @@ impl PsiCanonicity {
         j1: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeJ::assign (j[1])
         k: RangeConstrained<pallas::Base, Value<pallas::Base>>, // bitrange_of(psi, 2..252)
         l0: AssignedCell<pallas::Base, pallas::Base>, // From DecomposeL::assign (l[0])
-        j1_k_l0_prime: AssignedCell<pallas::Base, pallas::Base>,
-        z26_j1_k_l0_prime: AssignedCell<pallas::Base, pallas::Base>,
+        primes: PrimeCheck,
     ) -> Result<(), Error> {
+        let PrimeCheck {
+            prime: j1_k_l0_prime,
+            z26_prime: z26_j1_k_l0_prime,
+        } = primes;
         lo.assign_region(
             || "NoteCommit psi canonicity",
             |mut region| {
@@ -1491,76 +1536,26 @@ impl NoteCommitChip {
         let j = DecomposeJ::configure(meta, col_l, col_m, col_r, two_pow_8);
         let l = DecomposeL::configure(meta, col_l, col_m, col_r, two_pow_3);
 
-        let nd =
-            NdCanonicity::configure(meta, col_l, col_m, col_r, col_z, two_pow_250, t_p.clone());
+        let cols = CanonicityCols {
+            col_l,
+            col_m,
+            col_r,
+            col_z,
+        };
+        let nd = NdCanonicity::configure(meta, cols, two_pow_250, t_p.clone());
 
-        let v = ValueCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_55,
-            two_pow_64,
-            t_p.clone(),
-        );
-        let fdi = FdiCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_51,
-            two_pow_64,
-            t_p.clone(),
-        );
-        let recp = RecpCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_7,
-            two_pow_247,
-            two_pow_254,
-            t_p.clone(),
-        );
+        let v = ValueCanonicity::configure(meta, cols, two_pow_55, two_pow_64, t_p.clone());
+        let fdi = FdiCanonicity::configure(meta, cols, two_pow_51, two_pow_64, t_p.clone());
+        let recp =
+            RecpCanonicity::configure(meta, cols, two_pow_7, two_pow_247, two_pow_254, t_p.clone());
 
-        let esk = EskCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_2,
-            two_pow_252,
-            two_pow_254,
-            t_p.clone(),
-        );
+        let esk =
+            EskCanonicity::configure(meta, cols, two_pow_2, two_pow_252, two_pow_254, t_p.clone());
 
-        let rho = RhoCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_7,
-            two_pow_247,
-            two_pow_254,
-            t_p.clone(),
-        );
+        let rho =
+            RhoCanonicity::configure(meta, cols, two_pow_7, two_pow_247, two_pow_254, t_p.clone());
 
-        let psi = PsiCanonicity::configure(
-            meta,
-            col_l,
-            col_m,
-            col_r,
-            col_z,
-            two_pow_2,
-            two_pow_252,
-            two_pow_254,
-            t_p,
-        );
+        let psi = PsiCanonicity::configure(meta, cols, two_pow_2, two_pow_252, two_pow_254, t_p);
 
         NoteCommitConfig {
             b,
@@ -1869,8 +1864,10 @@ pub(in crate::circuit) mod gadgets {
             d1,
             e_value,
             f0,
-            d1_e_f0_prime,
-            z26_d1_e_f0_prime,
+            PrimeCheck {
+                prime: d1_e_f0_prime,
+                z26_prime: z26_d1_e_f0_prime,
+            },
         )?;
         cfg.esk.assign(
             &mut lo,
@@ -1878,8 +1875,10 @@ pub(in crate::circuit) mod gadgets {
             f1,
             g_value,
             h0,
-            f1_g_h0_prime,
-            z26_f1_g_h0_prime,
+            PrimeCheck {
+                prime: f1_g_h0_prime,
+                z26_prime: z26_f1_g_h0_prime,
+            },
         )?;
         cfg.rho.assign(
             &mut lo,
@@ -1887,8 +1886,10 @@ pub(in crate::circuit) mod gadgets {
             h1,
             i_value,
             j0,
-            h1_i_j0_prime,
-            z26_h1_i_j0_prime,
+            PrimeCheck {
+                prime: h1_i_j0_prime,
+                z26_prime: z26_h1_i_j0_prime,
+            },
         )?;
         cfg.psi.assign(
             &mut lo,
@@ -1896,8 +1897,10 @@ pub(in crate::circuit) mod gadgets {
             j1,
             k_value,
             l0,
-            j1_k_l0_prime,
-            z26_j1_k_l0_prime,
+            PrimeCheck {
+                prime: j1_k_l0_prime,
+                z26_prime: z26_j1_k_l0_prime,
+            },
         )?;
         Ok(cm)
     }

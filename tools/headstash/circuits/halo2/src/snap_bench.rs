@@ -18,7 +18,7 @@ use cw_orch::prelude::Mock;
 
 use crate::circuit::{Proof, ProvingKey};
 use crate::suite::HeadstashCircuitSuite;
-use crate::suite::suite::HeadstashProofBuilder;
+use crate::suite::builders::HeadstashProofBuilder;
 
 #[test]
 #[ignore = "K=18 keygen+prove; cargo test -p zk-headstash --release --lib snap_bench -- --ignored --nocapture"]

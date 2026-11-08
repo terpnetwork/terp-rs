@@ -78,12 +78,14 @@ pub fn execute(
         } => execute_register_eligibility_root(
             deps,
             info,
-            headstash,
-            root,
-            domain,
-            label,
-            forward_to_headstash,
-            root_id,
+            RegisterRootArgs {
+                headstash,
+                root,
+                domain,
+                label,
+                forward_to_headstash,
+                root_id,
+            },
         ),
     }
 }
@@ -148,17 +150,29 @@ fn execute_create_headstash(
         .add_attribute("action", "create_headstash"))
 }
 
-#[allow(clippy::too_many_arguments)]
-fn execute_register_eligibility_root(
-    deps: DepsMut,
-    info: MessageInfo,
+/// Fields of `ExecuteMsg::RegisterEligibilityRoot`, unpacked for the handler.
+struct RegisterRootArgs {
     headstash: String,
     root: Binary,
     domain: Option<DistroHashDomain>,
     label: Option<String>,
     forward_to_headstash: bool,
     root_id: Option<u64>,
+}
+
+fn execute_register_eligibility_root(
+    deps: DepsMut,
+    info: MessageInfo,
+    args: RegisterRootArgs,
 ) -> ContractResult<Response> {
+    let RegisterRootArgs {
+        headstash,
+        root,
+        domain,
+        label,
+        forward_to_headstash,
+        root_id,
+    } = args;
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     if root.is_empty() {

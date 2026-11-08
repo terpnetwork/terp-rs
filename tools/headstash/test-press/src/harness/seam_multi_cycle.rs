@@ -13,8 +13,8 @@
 use sha2::{Digest, Sha256};
 use terp_seams::dex::{
     ABSTRACT_LEAF_LABEL, AssetId, DestKind, EgressSeamState, NoteIn, OracleMid, Pool, PoolStatus,
-    SeamState, SwapPublic, apply_egress_burn, apply_swap, build_egress_burn_from_settle,
-    quote_exact_in, settle_opening_from_note_fields,
+    SeamState, SettleNoteFields, SwapPublic, apply_egress_burn, apply_swap,
+    build_egress_burn_from_settle, quote_exact_in, settle_opening_from_note_fields,
 };
 
 use super::account_curation::{
@@ -96,41 +96,41 @@ impl MultiCycleWorld {
     /// Seed accounts, tokenfactory plans, and virtual pools (BTC/ZEC + TF pairs).
     pub fn seed_lab() -> Self {
         let accounts = curate_lab_accounts();
-        let mut pools = Vec::new();
-
-        // BTC ↔ ZEC corridor pool (large LP inventory)
-        pools.push(Pool {
-            pool_id: 1,
-            asset_a: AssetId::Hub,
-            asset_b: AssetId::AssetB,
-            r_a: 10_000_000,
-            r_b: 50_000_000,
-            gamma: CYCLE_GAMMA,
-            gamma_den: CYCLE_GAMMA_DEN,
-            status: PoolStatus::Active,
-        });
-        // TF alpha ↔ BTC (tokenfactory asset into corridor)
-        pools.push(Pool {
-            pool_id: 2,
-            asset_a: AssetId::AssetC,
-            asset_b: AssetId::Hub,
-            r_a: 20_000_000,
-            r_b: 20_000_000,
-            gamma: CYCLE_GAMMA,
-            gamma_den: CYCLE_GAMMA_DEN,
-            status: PoolStatus::Active,
-        });
-        // TF alpha ↔ TF beta multi-pair
-        pools.push(Pool {
-            pool_id: 3,
-            asset_a: AssetId::AssetC,
-            asset_b: AssetId::AssetX,
-            r_a: 15_000_000,
-            r_b: 15_000_000,
-            gamma: CYCLE_GAMMA,
-            gamma_den: CYCLE_GAMMA_DEN,
-            status: PoolStatus::Active,
-        });
+        let pools = vec![
+            // BTC ↔ ZEC corridor pool (large LP inventory)
+            Pool {
+                pool_id: 1,
+                asset_a: AssetId::Hub,
+                asset_b: AssetId::AssetB,
+                r_a: 10_000_000,
+                r_b: 50_000_000,
+                gamma: CYCLE_GAMMA,
+                gamma_den: CYCLE_GAMMA_DEN,
+                status: PoolStatus::Active,
+            },
+            // TF alpha ↔ BTC (tokenfactory asset into corridor)
+            Pool {
+                pool_id: 2,
+                asset_a: AssetId::AssetC,
+                asset_b: AssetId::Hub,
+                r_a: 20_000_000,
+                r_b: 20_000_000,
+                gamma: CYCLE_GAMMA,
+                gamma_den: CYCLE_GAMMA_DEN,
+                status: PoolStatus::Active,
+            },
+            // TF alpha ↔ TF beta multi-pair
+            Pool {
+                pool_id: 3,
+                asset_a: AssetId::AssetC,
+                asset_b: AssetId::AssetX,
+                r_a: 15_000_000,
+                r_b: 15_000_000,
+                gamma: CYCLE_GAMMA,
+                gamma_den: CYCLE_GAMMA_DEN,
+                status: PoolStatus::Active,
+            },
+        ];
 
         Self {
             accounts,
@@ -310,22 +310,22 @@ impl MultiCycleWorld {
             .require(ChainKind::Zcash, AccountRole::User)?
             .owner_binding
             .ok_or("user zec binding")?;
-        let opening = settle_opening_from_note_fields(
-            {
+        let opening = settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: {
                 let mut a = [0u8; 32];
                 a[0] = b'Z';
                 a[1] = b'E';
                 a[2] = b'C';
                 a
             },
-            note.value as u64,
-            dest,
-            note.rcm,
-            DestKind::Transparent,
-            [0x11; 32],
-            Some(1),
-            0,
-        );
+            value: note.value as u64,
+            dest_seal: dest,
+            rcm: note.rcm,
+            dest_kind: DestKind::Transparent,
+            root: [0x11; 32],
+            source_pool_id: Some(1),
+            path_position: 0,
+        });
         let burn = build_egress_burn_from_settle(&opening).map_err(|e| format!("egress: {e:?}"))?;
         apply_egress_burn(&mut self.egress, &burn.public, &burn.witness, Some(&dest))
             .map_err(|e| format!("apply egress: {e:?}"))?;
@@ -488,7 +488,7 @@ mod tests {
         let r = route_multi_cycle_rebalance(&mut w, 1, SeamAsset::Btc, SeamAsset::Zec, 100_000)
             .unwrap();
         assert_eq!(r.len(), 2);
-        assert_eq!(r[0].route.contains("BTC→ZEC"), true);
+        assert!(r[0].route.contains("BTC→ZEC"));
         assert_eq!(r[1].asset_in, SeamAsset::Zec);
         assert_eq!(r[1].asset_out, SeamAsset::Btc);
         // Two cycles advanced

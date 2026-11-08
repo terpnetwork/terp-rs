@@ -220,13 +220,7 @@ pub fn note_commit_poseidon(
     rho: AssignedCell<pallas::Base, pallas::Base>,
     psi: AssignedCell<pallas::Base, pallas::Base>,
     rcm_base: AssignedCell<pallas::Base, pallas::Base>,
-) -> Result<
-    (
-        Point<pallas::Affine, EccChip<OrchardFixedBases>>,
-        AssignedCell<pallas::Base, pallas::Base>,
-    ),
-    Error,
-> {
+) -> Result<NoteCommitAndCmx, Error> {
     let cmx = derive_note_cmx_poseidon(
         layouter.namespace(|| "Poseidon note cmx"),
         poseidon_config,
@@ -247,6 +241,11 @@ pub fn note_commit_poseidon(
     )?;
     Ok((cm_point, cmx))
 }
+
+type NoteCommitAndCmx = (
+    Point<pallas::Affine, EccChip<OrchardFixedBases>>,
+    AssignedCell<pallas::Base, pallas::Base>,
+);
 
 /// Pure/circuit consistency tests for Poseidon note `cmx` (no ECC lift tables).
 #[cfg(test)]

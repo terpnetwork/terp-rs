@@ -162,7 +162,7 @@ pub fn build_suite_backed_claim_fixture(
     use cw_orch::prelude::Mock;
 
     use zk_headstash::suite::HeadstashCircuitSuite;
-    use zk_headstash::suite::suite::HeadstashProofBuilder;
+    use zk_headstash::suite::builders::HeadstashProofBuilder;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
     let (_circuit, instance, anchor, partial) = suite
@@ -267,7 +267,7 @@ fn normalize_hex(s: &str) -> String {
 
 fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     let t = normalize_hex(s);
-    if t.len() % 2 != 0 {
+    if !t.len().is_multiple_of(2) {
         return Err(format!("odd hex length: {}", t.len()));
     }
     (0..t.len())

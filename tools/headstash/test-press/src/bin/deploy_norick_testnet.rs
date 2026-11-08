@@ -14,9 +14,16 @@
 use std::env;
 
 use cw_orch::anyhow::{self, Context};
-use cw_orch::daemon::networks::{TERP_TESTNET, TERP_TESTNET_LOCAL};
+use cw_orch::daemon::networks::TERP_TESTNET;
+use cw_orch::environment::ChainInfo;
 use cw_orch::prelude::*;
 use zk_test_press::suites::no_rick::interface::NoRickSuite;
+
+/// Terp testnet chain id reached through a local gRPC endpoint (`CHAIN=local`).
+const TERP_TESTNET_LOCAL: ChainInfo = ChainInfo {
+    grpc_urls: &["http://127.0.0.1:9090"],
+    ..TERP_TESTNET
+};
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();

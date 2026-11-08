@@ -364,7 +364,6 @@ impl Note {
             self.v,
             self.fdi.into(),
             self.recipient,
-            self.esk,
             rho,
             psi,
             rcm,

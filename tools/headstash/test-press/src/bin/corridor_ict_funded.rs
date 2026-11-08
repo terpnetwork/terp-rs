@@ -62,7 +62,7 @@ use tokio::runtime::Runtime;
 use zk_test_press::harness::swap_statement_cw::{LAB_R_IN, LAB_R_OUT};
 use zk_test_press::harness::{
     self, BURN_SURFACE_CW_BRIDGE_EGRESS, BURN_SURFACE_PURE_RECORD_LAB, BridgeL1World,
-    COMMITTEE_CRYPTO_LAB_T_OF_N, CorridorLabMintPolicy, ESCROW_SIGN_PATH_P_LAB,
+    COMMITTEE_CRYPTO_LAB_T_OF_N, ClaimMintFields, CorridorLabMintPolicy, ESCROW_SIGN_PATH_P_LAB,
     EgressBurnEvidenceJson, EgressBurnPublicJson, MODE_THRESHOLD_ESCROW_RELEASE,
     MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED, MintEvidenceV0, OmniLiquidityBootstrap,
     PROOF_MODE_MOCK_VERIFY_LAB, ProofModeLabel, SettleReceiptV0, ZakuraLocalConfig,
@@ -526,20 +526,20 @@ fn run_sync() -> Result<(), Box<dyn std::error::Error>> {
 
         // Mint evidence for G2/G3 (client openings from claim; rcm never on chain product path)
         let intent_id = std::env::var("CORRIDOR_INTENT_ID").ok();
-        let evidence = mint_evidence_from_claim_fields(
-            "ict_local_funded",
-            chain.chain_id(),
-            contract.to_string(),
-            world.claim.nullifier.as_slice(),
-            world.claim.cm_public.as_slice(),
-            world.claim.value_u64,
-            world.terp_asset.as_slice(),
-            world.claim.rcm.as_ref().map(|b| b.as_slice()),
-            Some(world.claim.dest_commitment.as_slice()),
-            mock_verify_flag(),
-            None,
-            intent_id.clone(),
-        );
+        let evidence = mint_evidence_from_claim_fields(ClaimMintFields {
+            profile: "ict_local_funded".into(),
+            chain_id: chain.chain_id().into(),
+            headstash_contract: contract.to_string(),
+            bridge_nullifier: world.claim.nullifier.as_slice(),
+            cm_public: world.claim.cm_public.as_slice(),
+            value_u64: world.claim.value_u64,
+            asset_id: world.terp_asset.as_slice(),
+            rcm: world.claim.rcm.as_ref().map(|b| b.as_slice()),
+            owner_binding: Some(world.claim.dest_commitment.as_slice()),
+            mock_verify_bridge: mock_verify_flag(),
+            mint_tx_hash: None,
+            intent_id: intent_id.clone(),
+        });
         let mint_path = mint_evidence_path();
         evidence
             .write_json(&mint_path)

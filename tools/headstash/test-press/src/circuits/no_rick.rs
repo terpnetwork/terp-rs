@@ -382,11 +382,11 @@ impl<F: PrimeField> Circuit<F> for NoRickCircuit<F> {
 
         // Compute product of all conditions
         let mut product = conditions[0].clone();
-        for i in 1..conditions.len() {
+        for (i, cond) in conditions.iter().enumerate().skip(1) {
             product = chip.mul(
                 layouter.namespace(|| format!("mul conditions {}", i)),
                 product,
-                conditions[i].clone(),
+                cond.clone(),
             )?;
         }
 

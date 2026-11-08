@@ -3,7 +3,6 @@ use pasta_curves::Fq;
 use pasta_curves::arithmetic::CurveExt;
 use pasta_curves::group::Curve;
 use pasta_curves::pallas::{Point, Scalar};
-use std::u64;
 
 fn string_to_fq(str_bytes: &str) -> Fq {
     let mut secret_bytes = [0u8; 8];
@@ -44,8 +43,8 @@ fn main() {
     let r2 = Scalar::from_u128(4364326278543786489786542564u128);
 
     // Compute the commitment: C = value * G + blinding * H
-    let commitment1 = (g * secret1 + &(h * r1)).to_affine();
-    let commitment2 = (g * secret2 + &(h * r2)).to_affine();
+    let commitment1 = (g * secret1 + (h * r1)).to_affine();
+    let commitment2 = (g * secret2 + (h * r2)).to_affine();
 
     println!("Secret value 1: {:?}", secret1);
     println!("Secret value 2: {:?}", secret2);
@@ -58,8 +57,8 @@ fn main() {
     let combined_commitment = commitment2 + commitment1;
 
     // add secrets together
-    let expected_value = &secret1 + &secret2;
-    let expected_blinding = &r1 + &r2;
+    let expected_value = secret1 + secret2;
+    let expected_blinding = r1 + r2;
     let expected_commitment = g * expected_value + h * expected_blinding;
     let expected_incorrect_commitment = g * expected_value + h * r1;
     assert_ne!(combined_commitment, expected_incorrect_commitment);

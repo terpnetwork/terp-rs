@@ -368,20 +368,20 @@ mod tests {
     fn nc_egress_dest_mismatch() {
         let dest = [0xD1u8; 32];
         let wrong = [0xEEu8; 32];
-        let opening = settle_opening_from_note_fields(
-            {
+        let opening = settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: {
                 let mut a = [0u8; 32];
                 a[0] = b'Z';
                 a
             },
-            1000,
-            dest,
-            [0xB2; 32],
-            DestKind::Transparent,
-            [0x11; 32],
-            Some(1),
-            0,
-        );
+            value: 1000,
+            dest_seal: dest,
+            rcm: [0xB2; 32],
+            dest_kind: DestKind::Transparent,
+            root: [0x11; 32],
+            source_pool_id: Some(1),
+            path_position: 0,
+        });
         let burn = build_egress_burn_from_settle(&opening).unwrap();
         let mut st = terp_seams::dex::EgressSeamState::default();
         let err =
@@ -392,20 +392,20 @@ mod tests {
     #[test]
     fn nc_egress_double_nullifier() {
         let dest = [0xD2u8; 32];
-        let opening = settle_opening_from_note_fields(
-            {
+        let opening = settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: {
                 let mut a = [0u8; 32];
                 a[0] = b'Z';
                 a
             },
-            2000,
-            dest,
-            [0xB3; 32],
-            DestKind::Transparent,
-            [0x11; 32],
-            Some(1),
-            0,
-        );
+            value: 2000,
+            dest_seal: dest,
+            rcm: [0xB3; 32],
+            dest_kind: DestKind::Transparent,
+            root: [0x11; 32],
+            source_pool_id: Some(1),
+            path_position: 0,
+        });
         let burn = build_egress_burn_from_settle(&opening).unwrap();
         let mut st = terp_seams::dex::EgressSeamState::default();
         apply_egress_burn(&mut st, &burn.public, &burn.witness, Some(&dest)).unwrap();
@@ -419,20 +419,20 @@ mod tests {
     #[test]
     fn nc_release_no_burn_wrong_dest_bad_auth() {
         let dest = [0xAAu8; 32];
-        let opening = settle_opening_from_note_fields(
-            {
+        let opening = settle_opening_from_note_fields(SettleNoteFields {
+            asset_id: {
                 let mut a = [0u8; 32];
                 a[0] = b'Z';
                 a
             },
-            500,
-            dest,
-            [0xB4; 32],
-            DestKind::Transparent,
-            [0x11; 32],
-            Some(1),
-            0,
-        );
+            value: 500,
+            dest_seal: dest,
+            rcm: [0xB4; 32],
+            dest_kind: DestKind::Transparent,
+            root: [0x11; 32],
+            source_pool_id: Some(1),
+            path_position: 0,
+        });
         let burn = build_egress_burn_from_settle(&opening).unwrap();
         let evidence = EgressBurnEvidenceV0 {
             terp_tx_hash: None,

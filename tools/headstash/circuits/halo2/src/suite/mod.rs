@@ -6,8 +6,7 @@
 //! and Poseidon note `cmx`. Sinsemilla APIs are explicitly `*_sinsemilla_legacy`
 //! (recovery only).
 
-#[allow(clippy::module_inception)]
-pub mod suite;
+pub mod builders;
 pub mod unit;
 
-pub use suite::{HeadstashCircuitSuite, build_headstash_keys_to};
+pub use builders::{HeadstashCircuitSuite, build_headstash_keys_to};

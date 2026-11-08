@@ -30,26 +30,33 @@ use halo2_gadgets::{
     },
 };
 
+/// Witnessed note fields hashed into a merkle leaf.
+#[derive(Clone, Debug)]
+pub struct LeafInputs {
+    /// Ephemeral public key `(x, y)`.
+    pub epk: (CrtInteger<pallas::Base>, CrtInteger<pallas::Base>),
+    /// Fee-denom identifier.
+    pub fdi: AssignedCell<pallas::Base, pallas::Base>,
+    /// Note value.
+    pub v: AssignedCell<NoteValue, pallas::Base>,
+    /// Note discriminator.
+    pub nd: AssignedCell<pallas::Base, pallas::Base>,
+}
+
 /// Derive the leaf hash for a note in the merkle tree with sinsemilla and canonicity constraints.
 pub fn derive_leaf(
     lo: impl Layouter<pallas::Base>,
     sc: &SinsemillaChip<OrchardHashDomains, OrchardCommitDomains, OrchardFixedBases>,
     ecc_chip: &EccChip<OrchardFixedBases>,
     leaf_hash_chip: &LeafHashChip,
-    epk: (CrtInteger<pallas::Base>, CrtInteger<pallas::Base>),
-    fdi: AssignedCell<pallas::Base, pallas::Base>,
-    v: AssignedCell<NoteValue, pallas::Base>,
-    nd: AssignedCell<pallas::Base, pallas::Base>,
+    inputs: LeafInputs,
 ) -> Result<NonIdentityPoint<pallas::Affine, EccChip<OrchardFixedBases>>, Error> {
     gadgets::hash_leaf(
         sc.clone(),
         ecc_chip.clone(),
         leaf_hash_chip.clone(),
         lo,
-        epk,
-        fdi,
-        v,
-        nd,
+        inputs,
     )
 }
 
@@ -180,11 +187,9 @@ pub mod gadgets {
         ecc_chip: EccChip<OrchardFixedBases>,
         leaf_hash_chip: LeafHashChip,
         mut lo: impl Layouter<pallas::Base>,
-        epk: (CrtInteger<pallas::Base>, CrtInteger<pallas::Base>),
-        fdi: AssignedCell<pallas::Base, pallas::Base>,
-        v: AssignedCell<NoteValue, pallas::Base>,
-        nd: AssignedCell<pallas::Base, pallas::Base>,
+        inputs: LeafInputs,
     ) -> Result<NonIdentityPoint<pallas::Affine, EccChip<OrchardFixedBases>>, Error> {
+        let LeafInputs { epk, fdi, v, nd } = inputs;
         let lc = sc.config().lookup_config();
         let domain = OrchardHashDomains::Leaf;
 
@@ -340,13 +345,7 @@ pub mod gadgets {
         lc: &LookupRangeCheckConfig<pallas::Base, 10>,
         mut lo: impl Layouter<pallas::Base>,
         a: AssignedCell<pallas::Base, pallas::Base>,
-    ) -> Result<
-        (
-            AssignedCell<pallas::Base, pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-        ),
-        Error,
-    > {
+    ) -> Result<CellPair, Error> {
         let a_prime = {
             let two_pow_250 = Value::known(pallas::Base::from_u128(1u128 << 125).square());
             let t_p = Value::known(pallas::Base::from_u128(T_P));
@@ -368,13 +367,7 @@ pub mod gadgets {
         lc: &LookupRangeCheckConfig<pallas::Base, 10>,
         mut lo: impl Layouter<pallas::Base>,
         c: AssignedCell<pallas::Base, pallas::Base>,
-    ) -> Result<
-        (
-            AssignedCell<pallas::Base, pallas::Base>,
-            AssignedCell<pallas::Base, pallas::Base>,
-        ),
-        Error,
-    > {
+    ) -> Result<CellPair, Error> {
         // c is the 250-bit piece nd[4..254), so we use 2^250 for canonicity
         let nd_prime = {
             let two_pow_250 = Value::known(pallas::Base::from_u128(1u128 << 125).square());
@@ -533,3 +526,8 @@ struct GateCells {
     nd_prime: AssignedCell<pallas::Base, pallas::Base>,
     z13_nd_prime: AssignedCell<pallas::Base, pallas::Base>,
 }
+
+type CellPair = (
+    AssignedCell<pallas::Base, pallas::Base>,
+    AssignedCell<pallas::Base, pallas::Base>,
+);

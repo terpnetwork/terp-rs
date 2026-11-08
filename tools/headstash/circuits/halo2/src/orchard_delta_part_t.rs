@@ -188,7 +188,7 @@ fn h1_valid_claim() {
 #[cfg(feature = "interface")]
 fn h1_suite_backed_multi_leaf_claim() {
     use crate::suite::HeadstashCircuitSuite;
-    use crate::suite::suite::HeadstashProofBuilder;
+    use crate::suite::builders::HeadstashProofBuilder;
     use cw_orch::mock::Mock;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
@@ -217,7 +217,7 @@ fn h1_suite_backed_multi_leaf_claim() {
 #[cfg(feature = "interface")]
 fn h1_batch_two_claims_verify() {
     use crate::suite::HeadstashCircuitSuite;
-    use crate::suite::suite::HeadstashProofBuilder;
+    use crate::suite::builders::HeadstashProofBuilder;
     use cw_orch::mock::Mock;
 
     let suite = HeadstashCircuitSuite::new(Mock::new("sender"));
@@ -244,7 +244,7 @@ fn h1_batch_two_claims_verify() {
 #[cfg(feature = "interface")]
 fn claim_surface_poseidon_root_and_instance_bytes() {
     use crate::suite::HeadstashCircuitSuite;
-    use crate::suite::suite::HeadstashProofBuilder;
+    use crate::suite::builders::HeadstashProofBuilder;
     use cosmwasm_std::Binary;
     use cw_orch::mock::Mock;
 

@@ -17,7 +17,7 @@ fn main() -> Result<(), anyhow::Error> {
     let mnemonic = env::var("MNEMONIC").unwrap_or_default();
     let mut builder = Daemon::builder(cw_orch::daemon::networks::TERP_TESTNET.clone());
     if !mnemonic.is_empty() {
-        builder = builder.mnemonic(&mnemonic);
+        builder.mnemonic(&mnemonic);
     }
     let terp = builder.build()?;
     let r = zk_test_press::suites::no_rick::interface::NoRickSuite::new(terp);

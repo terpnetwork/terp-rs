@@ -186,25 +186,43 @@ pub fn hex32(b: &[u8]) -> String {
     hex::encode(b)
 }
 
+/// Claim openings consumed by [`mint_evidence_from_claim_fields`].
+#[derive(Clone, Debug)]
+pub struct ClaimMintFields<'a> {
+    pub profile: String,
+    pub chain_id: String,
+    pub headstash_contract: String,
+    pub bridge_nullifier: &'a [u8],
+    pub cm_public: &'a [u8],
+    pub value_u64: u64,
+    pub asset_id: &'a [u8],
+    pub rcm: Option<&'a [u8]>,
+    pub owner_binding: Option<&'a [u8]>,
+    pub mock_verify_bridge: bool,
+    pub mint_tx_hash: Option<String>,
+    pub intent_id: Option<String>,
+}
+
 /// Build mint evidence from claim openings after a successful BridgeMintNote.
-pub fn mint_evidence_from_claim_fields(
-    profile: impl Into<String>,
-    chain_id: impl Into<String>,
-    headstash_contract: impl Into<String>,
-    bridge_nullifier: &[u8],
-    cm_public: &[u8],
-    value_u64: u64,
-    asset_id: &[u8],
-    rcm: Option<&[u8]>,
-    owner_binding: Option<&[u8]>,
-    mock_verify_bridge: bool,
-    mint_tx_hash: Option<String>,
-    intent_id: Option<String>,
-) -> MintEvidenceV0 {
+pub fn mint_evidence_from_claim_fields(fields: ClaimMintFields<'_>) -> MintEvidenceV0 {
+    let ClaimMintFields {
+        profile,
+        chain_id,
+        headstash_contract,
+        bridge_nullifier,
+        cm_public,
+        value_u64,
+        asset_id,
+        rcm,
+        owner_binding,
+        mock_verify_bridge,
+        mint_tx_hash,
+        intent_id,
+    } = fields;
     MintEvidenceV0 {
-        profile: profile.into(),
-        chain_id: chain_id.into(),
-        headstash_contract: headstash_contract.into(),
+        profile,
+        chain_id,
+        headstash_contract,
         bridge_nullifier_hex: hex32(bridge_nullifier),
         cm_public_hex: hex32(cm_public),
         value_u64,

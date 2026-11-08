@@ -37,8 +37,8 @@ pub mod interface {
         /// This is the canonical method for generating headstash test data.
         /// Returns all artifacts needed for E2E testing.
         pub fn build_keys(&self) -> Result<ProvingKey, cw_orch::anyhow::Error> {
-            Ok(ProvingKey::build_and_write(Self::vk_path())
-                .map_err(|e| cw_orch::anyhow::format_err!(e.to_string()))?)
+            ProvingKey::build_and_write(Self::vk_path())
+                .map_err(|e| cw_orch::anyhow::format_err!(e.to_string()))
         }
     }
 
@@ -46,7 +46,7 @@ pub mod interface {
         type Error = CwOrchError;
         type DeployData = NoRickDeployData;
         fn deploy_on(chain: Chain, _data: Self::DeployData) -> Result<Self, Self::Error> {
-            Ok(Self::store_on(chain.clone())?)
+            Self::store_on(chain.clone())
         }
 
         fn store_on(chain: Chain) -> Result<Self, Self::Error> {
