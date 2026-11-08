@@ -1,13 +1,11 @@
 use anyhow::anyhow;
 
-use cosmwasm_std::{Addr, AnyMsg, CosmosMsg, Timestamp, Uint128, Uint256, WasmMsg, to_json_binary};
-use cw_orch::daemon::{Daemon, DaemonBuilder};
+use cosmwasm_std::{CosmosMsg, Timestamp, Uint128, Uint256, WasmMsg, to_json_binary};
 use cw_orch::prelude::*;
 use cw_shit_denom::{AssetUnchecked, PossibleShit, UncheckedDenom};
 use cw_shitstrap::contract::interface::CwShitstrap;
 use cw_shitstrap::contract::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ShitstrapMemoAdr08};
 
-use terp_rs::Message;
 use terp_rs::ibc::Any;
 use terp_rs::ibc::applications::transfer::v1::MsgTransfer;
 
@@ -96,13 +94,7 @@ fn build_callback_memo<T: Into<Uint256> + Clone>(
 // ── Interchain Integration Tests ──
 
 mod interchain {
-    use super::*;
-    use cw_orch::daemon::{
-        TxSender,
-        networks::{LOCAL_JUNO, OSMOSIS_1, TERP_LOCALNET, TERP_MAINNET},
-        queriers::Bank,
-    };
-    use cw_orch_interchain::prelude::*;
+
     use cw_shitstrap::contract::msg::QueryMsgFns as _;
 
     // /// Test: IBC callback triggers shitstrap cutoff

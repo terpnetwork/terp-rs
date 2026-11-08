@@ -202,8 +202,7 @@ fn state_json_one_hop_denoms_match_hash() {
             "transfer/channel-11/uosmo",
             "transfer/channel-10/uatone",
             "transfer/channel-0/ujuno",
-            "transfer/channel-7/uscrt",
-            "transfer/channel-8/uscrt",
+            // secret channel-7/-8 are marked dropped (hermes_allow=false) in main state.json
         ]
     );
     let temp = morocco["temp_mint_denoms"]["assets"]
@@ -249,7 +248,11 @@ fn state_json_one_hop_denoms_match_hash() {
         match v {
             serde_json::Value::Object(map) => {
                 if let Some(status) = map.get("client_status").and_then(|s| s.as_str()) {
-                    assert_ne!(status, "Active", "state.json still marks a client Active");
+                    // d5f5e4e reopened juno/osmosis routes, so Active clients are valid again.
+                    assert!(
+                        matches!(status, "Active" | "Expired" | "Frozen"),
+                        "unknown client_status {status}"
+                    );
                 }
                 for child in map.values() {
                     walk(child);
@@ -264,4 +267,17 @@ fn state_json_one_hop_denoms_match_hash() {
         }
     }
     walk(morocco);
+}
+
+#[test]
+fn accepted_denoms_golden_matches_routes_toml() {
+    use terp_scripts::ibc::accepted::{build_accepted_denoms, self_test};
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../public/ibc-accepted");
+    let n = self_test().expect("ICS-20 self-test vectors");
+    let toml_s = std::fs::read_to_string(root.join("routes.toml")).unwrap();
+    let built = build_accepted_denoms(&toml_s, n).unwrap();
+    let golden: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("accepted-denoms.json")).unwrap())
+            .unwrap();
+    assert_eq!(built, golden, "regenerate with `just scripts-ibc-accepted`");
 }

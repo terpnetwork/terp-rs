@@ -754,10 +754,8 @@ fn amount_to_clear(base: u128, total: u128, divisor: u128) -> Result<u128, Quoru
     (gap / divisor).checked_add(1).ok_or(QuorumError::Overflow)
 }
 
-fn sum_amounts(amounts: impl Iterator<Item = u128>) -> Result<u128, QuorumError> {
-    amounts.fold(Ok(0u128), |acc, n| {
-        acc.and_then(|a| a.checked_add(n).ok_or(QuorumError::Overflow))
-    })
+fn sum_amounts(mut amounts: impl Iterator<Item = u128>) -> Result<u128, QuorumError> {
+    amounts.try_fold(0u128, |a, n| a.checked_add(n).ok_or(QuorumError::Overflow))
 }
 
 fn coalesce_sources(dest: &str, sources: &[StakeSource]) -> Vec<StakeSource> {
@@ -906,10 +904,10 @@ pub fn plan_share_rebalance(
     let mut deferred_until = String::new();
     for mv in intended {
         if source_blocked(book, &mv.src) {
-            if let Some(time) = latest_completion(book, &mv.src) {
-                if time.as_str() > deferred_until.as_str() {
-                    deferred_until = time;
-                }
+            if let Some(time) = latest_completion(book, &mv.src)
+                && time.as_str() > deferred_until.as_str()
+            {
+                deferred_until = time;
             }
             deferred.push(mv);
         } else {
@@ -1245,7 +1243,7 @@ mod tests {
         assert_eq!(plan.delegate, 3);
         assert_eq!(plan.dest_after, 5);
         assert_eq!(plan.total_after, 13);
-        assert!(5 * 3 > 13);
+        assert!(5 * plan.delegate > plan.total_after);
     }
 
     #[test]

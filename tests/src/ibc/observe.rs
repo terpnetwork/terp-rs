@@ -181,10 +181,10 @@ impl ObserveBackend for FixtureBackend {
         chain: &str,
         ibc_denom: &str,
     ) -> Result<Option<ObservedDenomTrace>, String> {
-        if let Some(by_chain) = self.denom_traces.get(chain) {
-            if let Some(t) = by_chain.get(ibc_denom) {
-                return Ok(Some(t.clone()));
-            }
+        if let Some(by_chain) = self.denom_traces.get(chain)
+            && let Some(t) = by_chain.get(ibc_denom)
+        {
+            return Ok(Some(t.clone()));
         }
         if self.invert_known_hashes {
             for (path, hash) in &self.known_hashes {

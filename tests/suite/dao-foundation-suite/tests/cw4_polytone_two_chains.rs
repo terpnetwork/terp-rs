@@ -21,9 +21,8 @@ use std::time::Duration;
 
 use cosmwasm_std::Binary;
 use cw_orch::prelude::{Addr, IndexResponse, TxHandler, WasmPath};
-use sha2::Digest;
 use cw_orch_kms::{
-    enable_session, planned_spend_limit, ApprovalSession, AuthzSession, ScopedCall, SigningRequest,
+    ApprovalSession, AuthzSession, ScopedCall, SigningRequest, enable_session, planned_spend_limit,
 };
 use ict_rs::chain::cosmos::CosmosChain;
 use ict_rs::chain::{Chain, GenesisStyle, TestContext};
@@ -36,9 +35,11 @@ use ict_rs::testing::TestEnv;
 use ict_rs::tx::WalletAmount;
 use k256::ecdsa::signature::hazmat::PrehashSigner;
 use serde_json::{Value, json};
+use sha2::Digest;
 
 /// Published test mnemonic. The ephemeral cw-orch key. Never printed.
-const EPHEMERAL: &str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+const EPHEMERAL: &str =
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 /// Local cold key. It signs the loopback grant page and is not the broadcaster.
 const COLD: [u8; 32] = [9u8; 32];
 const PAGE: &str = "127.0.0.1:8741";
@@ -125,9 +126,11 @@ async fn exercise(
 
     let wasms = read_wasms(dao_dir, poly_dir)?;
     let mut signer = tokio::spawn(sign_pages(COLD, 2));
-    let mut session_a = await_session(open_wasm_session(chain_a, &granter, &wasms), &mut signer).await?;
+    let mut session_a =
+        await_session(open_wasm_session(chain_a, &granter, &wasms), &mut signer).await?;
     let _ = session_a.detach_page();
-    let mut session_b = await_session(open_wasm_session(chain_b, &granter, &wasms), &mut signer).await?;
+    let mut session_b =
+        await_session(open_wasm_session(chain_b, &granter, &wasms), &mut signer).await?;
     let _ = session_b.detach_page();
     finish_signer(&mut signer).await?;
     println!("cw-orch-kms sessions open on cw4-a and cw4-b");
@@ -281,9 +284,7 @@ async fn await_session(
             opened = &mut opening => return opened,
             signed = &mut *signer, if !signer_done => {
                 signer_done = true;
-                if let Err(err) = signed.map_err(|err| err.to_string()).and_then(|result| result) {
-                    return Err(err);
-                }
+                signed.map_err(|err| err.to_string()).and_then(|result| result)?;
             }
             _ = &mut sleep => return Err("session grant timed out".into()),
         }
@@ -346,9 +347,8 @@ async fn open_execute_session(
     })?;
     session.ttl_secs = 60 * 60;
     session.allowance_limit = planned_spend_limit(3);
-    let actions = vec![SigningRequest::new("session-key").body(format!(
-        "propose and execute on {proposal}"
-    ))];
+    let actions =
+        vec![SigningRequest::new("session-key").body(format!("propose and execute on {proposal}"))];
     tokio::task::spawn_blocking(move || enable_session(&builder, session, actions))
         .await
         .map_err(|err| err.to_string())?
@@ -470,12 +470,9 @@ async fn instantiate_dao(
         ])
         .await
         .map_err(|err| format!("list cores: {err}"))?;
-    let parsed: Value = serde_json::from_slice(&listed.stdout)
-        .map_err(|err| format!("list cores json: {err}"))?;
-    let addrs = parsed["contracts"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
+    let parsed: Value =
+        serde_json::from_slice(&listed.stdout).map_err(|err| format!("list cores json: {err}"))?;
+    let addrs = parsed["contracts"].as_array().cloned().unwrap_or_default();
     for addr in addrs {
         let Some(addr) = addr.as_str() else { continue };
         if chain
@@ -554,7 +551,12 @@ async fn configure_relayer(
         let chain_id = chain.chain_id();
         let key = format!("relayer-rly-{chain_id}");
         relayer
-            .add_chain_configuration(chain.config(), &key, chain.rpc_address(), chain.grpc_address())
+            .add_chain_configuration(
+                chain.config(),
+                &key,
+                chain.rpc_address(),
+                chain.grpc_address(),
+            )
             .await
             .map_err(|err| format!("relayer config {chain_id}: {err}"))?;
         let wallet = relayer
@@ -622,9 +624,9 @@ fn sign_amino(secret: &[u8; 32], message: &[u8]) -> Result<(String, String), Str
         .sign_prehash(hash.as_slice())
         .map_err(|err| err.to_string())?;
     let sig = sig.normalize_s();
-    let pk_b64 =
-        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, pk.as_bytes());
-    let sig_b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, sig.to_bytes());
+    let pk_b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, pk.as_bytes());
+    let sig_b64 =
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, sig.to_bytes());
     Ok((pk_b64, sig_b64))
 }
 
@@ -699,7 +701,7 @@ fn cold_docs(body: &str) -> Result<Vec<Vec<u8>>, String> {
 }
 
 fn decode_hex(text: &str) -> Result<Vec<u8>, String> {
-    if text.len() % 2 != 0 {
+    if !text.len().is_multiple_of(2) {
         return Err("amino doc hex is truncated".into());
     }
     let mut out = Vec::with_capacity(text.len() / 2);
@@ -764,8 +766,7 @@ impl PageSocket {
             let (opcode, payload) = self.read_frame().await?;
             match opcode {
                 0x1 => {
-                    return String::from_utf8(payload)
-                        .map_err(|err| format!("page frame: {err}"))
+                    return String::from_utf8(payload).map_err(|err| format!("page frame: {err}"));
                 }
                 0x8 => return Err("approval page closed the socket".into()),
                 0x9 => self.send_frame(0xA, &payload).await?,
@@ -793,7 +794,12 @@ impl PageSocket {
             frame.extend_from_slice(&(payload.len() as u16).to_be_bytes());
         }
         frame.extend_from_slice(&mask);
-        frame.extend(payload.iter().enumerate().map(|(i, byte)| byte ^ mask[i % 4]));
+        frame.extend(
+            payload
+                .iter()
+                .enumerate()
+                .map(|(i, byte)| byte ^ mask[i % 4]),
+        );
         self.stream
             .write_all(&frame)
             .await
@@ -869,10 +875,7 @@ async fn ws_connect() -> Result<PageSocket, String> {
             break;
         }
         let mut tmp = [0u8; 1024];
-        let read = stream
-            .read(&mut tmp)
-            .await
-            .map_err(|err| err.to_string())?;
+        let read = stream.read(&mut tmp).await.map_err(|err| err.to_string())?;
         if read == 0 {
             return Err("approval page did not accept the socket".into());
         }

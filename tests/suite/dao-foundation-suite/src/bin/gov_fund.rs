@@ -153,10 +153,10 @@ fn main() -> Result<()> {
         if member1 == member2 {
             bail!("DAO_MEMBER1_MNEMONIC and DAO_MEMBER2_MNEMONIC are the same phrase");
         }
-        if let Ok(main) = std::env::var("MAIN_MNEMONIC") {
-            if main.trim() == member1.trim() || main.trim() == member2.trim() {
-                bail!("MAIN_MNEMONIC is also a DAO member phrase; keep the depositor separate");
-            }
+        if let Ok(main) = std::env::var("MAIN_MNEMONIC")
+            && (main.trim() == member1.trim() || main.trim() == member2.trim())
+        {
+            bail!("MAIN_MNEMONIC is also a DAO member phrase; keep the depositor separate");
         }
         let voter1 = connect(&chain, &member1, shared).context("DAO_MEMBER1 daemon")?;
         let voter2 =

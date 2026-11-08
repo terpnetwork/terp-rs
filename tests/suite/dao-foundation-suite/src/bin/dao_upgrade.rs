@@ -163,7 +163,7 @@ fn main() -> Result<()> {
         bail!("a DAO mnemonic derived an address outside the foundation cw4 group");
     }
 
-    let submit_msgs = vec![gov_submit_upgrade_any_msg(PARENT_CORE, &draft)];
+    let submit_msgs = vec![gov_submit_upgrade_any_msg(PARENT_CORE, draft)];
     let vote_msgs = args
         .votes
         .iter()
@@ -176,10 +176,10 @@ fn main() -> Result<()> {
         &voter2,
         &secrets,
         &draft.title,
-        &submit_description(&draft),
+        &submit_description(draft),
         submit_msgs,
     )?;
-    ensure_upgrade_submitted(&args, &draft)?;
+    ensure_upgrade_submitted(&args, draft)?;
     let vote_id = resume_or_open(
         &args,
         &voter1,

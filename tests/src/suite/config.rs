@@ -44,7 +44,7 @@ impl SuiteProfile {
             Self::NostrCalendar => {
                 #[cfg(feature = "nostr")]
                 {
-                    return fleet.with_nostr_relay("nostr-relay");
+                    fleet.with_nostr_relay("nostr-relay")
                 }
                 #[cfg(not(feature = "nostr"))]
                 {
@@ -60,7 +60,7 @@ impl SuiteProfile {
                     .with_merkle_server_defaults();
                 #[cfg(feature = "nostr")]
                 {
-                    return fleet.with_nostr_relay("nostr-relay");
+                    fleet.with_nostr_relay("nostr-relay")
                 }
                 #[cfg(not(feature = "nostr"))]
                 {

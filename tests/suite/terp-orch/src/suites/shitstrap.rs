@@ -85,11 +85,10 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CwShitstrapSuite<Chain> 
                     &[],
                 )?;
 
-                for (_, init) in d.shit.iter().enumerate() {
-                    let _res = suite.factory.create_native_shit_strap_contract(
-                        init.clone(),
-                        format!("{}", init.title),
-                    )?;
+                for init in d.shit.iter() {
+                    let _res = suite
+                        .factory
+                        .create_native_shit_strap_contract(init.clone(), init.title.to_string())?;
                 }
 
                 Ok(suite)
@@ -105,20 +104,21 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for CwShitstrapSuite<Chain> 
 
 /// Single shitstrap: 20 THIOL in -> 1 TERP out.
 pub fn shit_deploy_data_single(admin: Addr) -> Option<CwShitstrapSuiteDeployData> {
-    let mut dd = CwShitstrapSuiteDeployData::default();
-    dd.admin = Some(admin.clone());
-    dd.shit = vec![ShitInitMsg {
-        daos: Vec::new(),
-        owner: Some(admin.to_string()),
-        accepted: vec![cw_shit_denom::PossibleShit::native_denom(
-            "uthiol",
-            50_000_000_000_000_000u128,
-        )],
-        cutoff: 500_000_000_000u128.into(),
-        shitmos: UncheckedDenom::Native("uterp".into()),
-        title: "terp".into(),
-        description: "terp".into(),
-    }];
+    let dd = CwShitstrapSuiteDeployData {
+        admin: Some(admin.clone()),
+        shit: vec![ShitInitMsg {
+            daos: Vec::new(),
+            owner: Some(admin.to_string()),
+            accepted: vec![cw_shit_denom::PossibleShit::native_denom(
+                "uthiol",
+                50_000_000_000_000_000u128,
+            )],
+            cutoff: 500_000_000_000u128.into(),
+            shitmos: UncheckedDenom::Native("uterp".into()),
+            title: "terp".into(),
+            description: "terp".into(),
+        }],
+    };
     Some(dd)
 }
 
@@ -127,52 +127,20 @@ pub fn shit_deploy_data_full(admin: Addr) -> Option<CwShitstrapSuiteDeployData> 
     let mut dd = CwShitstrapSuiteDeployData::default();
     let cut = 710_000_000_000u128;
 
-    let mut shit = Vec::new();
-
-    // // atom @ $1.81
-    // shit.push(build_shit_init(
-    //     &admin,
-    //     &tf_denom(&admin, "atom"),
-    //     calc_rates(Decimal::from_ratio(181u128, 100u128)),
-    //     cut,
-    //     "atom",
-    // ));
-
-    // btc @ $66,350
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "btc"),
-        calc_rates(Decimal::from_ratio(66350u128, 1u128)),
-        cut,
-        "btc",
-    ));
-
-    // akt @ $0.29
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "akt"),
-        calc_rates(Decimal::from_ratio(29u128, 100u128)),
-        cut,
-        "akt",
-    ));
-
-    // // um @ $0.007
-    // shit.push(build_shit_init(
-    //     &admin,
-    //     &tf_denom(&admin, "um"),
-    //     calc_rates(Decimal::from_ratio(7u128, 1000u128)),
-    //     cut,
-    //     "um",
-    // ));
-
-    // eth @ $1,956.12
-    shit.push(build_shit_init(
-        &admin,
-        &tf_denom(&admin, "eth"),
-        calc_rates(Decimal::from_ratio(195612u128, 100u128)),
-        cut,
-        "eth",
-    ));
+    // Toggle an entry by commenting its line: (subdenom, spot price).
+    let rates = [
+        // ("atom", Decimal::from_ratio(181u128, 100u128)), // atom @ $1.81
+        ("btc", Decimal::from_ratio(66350u128, 1u128)), // btc @ $66,350
+        ("akt", Decimal::from_ratio(29u128, 100u128)),  // akt @ $0.29
+        // ("um", Decimal::from_ratio(7u128, 1000u128)), // um @ $0.007
+        ("eth", Decimal::from_ratio(195612u128, 100u128)), // eth @ $1,956.12
+    ];
+    let shit = rates
+        .into_iter()
+        .map(|(sub, rate)| {
+            build_shit_init(&admin, &tf_denom(&admin, sub), calc_rates(rate), cut, sub)
+        })
+        .collect();
 
     dd.admin = Some(admin);
     dd.shit = shit;

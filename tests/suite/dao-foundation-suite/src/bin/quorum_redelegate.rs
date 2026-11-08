@@ -713,9 +713,7 @@ fn load_snapshot(args: &Args) -> Result<(QuorumSnapshot, bool)> {
 
     let validators = lcd_pages(
         lcd,
-        &format!(
-            "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=200"
-        ),
+        "/cosmos/staking/v1beta1/validators?status=BOND_STATUS_BONDED&pagination.limit=200",
         "validators",
     )?;
     let mut total_bonded: u128 = 0;

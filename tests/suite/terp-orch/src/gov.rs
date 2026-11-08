@@ -928,7 +928,10 @@ pub fn run() -> Result<()> {
     });
     let kms = !args.legacy_signer;
     if !kms {
-        println!("signer: legacy (--legacy-signer); loading {}", env_path.display());
+        println!(
+            "signer: legacy (--legacy-signer); loading {}",
+            env_path.display()
+        );
         load_env(&env_path)?;
     }
     // The node's simulation is the deposit check. cw-orch's extra balance
@@ -1002,9 +1005,8 @@ pub fn run() -> Result<()> {
         session.ttl_secs = args.ttl_secs;
         session.account_index = args.account_index;
         session.allowance_limit = cw_orch_kms::planned_spend_limit(8);
-        let actions = vec![
-            cw_orch_kms::SigningRequest::new("session-key").body("MsgSubmitProposal deposit"),
-        ];
+        let actions =
+            vec![cw_orch_kms::SigningRequest::new("session-key").body("MsgSubmitProposal deposit")];
         let run = cw_orch_kms::enable_session(&builder, session, actions)
             .map_err(|err| anyhow::anyhow!(err))?;
         println!(

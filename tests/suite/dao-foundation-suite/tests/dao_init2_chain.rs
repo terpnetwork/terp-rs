@@ -800,10 +800,10 @@ fn parse_json(raw: &str) -> Result<Value, String> {
     if let Ok(value) = serde_json::from_str::<Value>(trimmed) {
         return Ok(value);
     }
-    if let Some(start) = trimmed.find(['{', '[']) {
-        if let Ok(value) = serde_json::from_str::<Value>(&trimmed[start..]) {
-            return Ok(value);
-        }
+    if let Some(start) = trimmed.find(['{', '['])
+        && let Ok(value) = serde_json::from_str::<Value>(&trimmed[start..])
+    {
+        return Ok(value);
     }
     Err(format!("not json: {trimmed}"))
 }
@@ -816,10 +816,10 @@ fn unwrap_data(value: Value) -> Value {
         if let Ok(inner) = serde_json::from_str::<Value>(text) {
             return inner;
         }
-        if let Ok(bytes) = Binary::from_base64(text) {
-            if let Ok(inner) = serde_json::from_slice::<Value>(bytes.as_slice()) {
-                return inner;
-            }
+        if let Ok(bytes) = Binary::from_base64(text)
+            && let Ok(inner) = serde_json::from_slice::<Value>(bytes.as_slice())
+        {
+            return inner;
         }
         return data;
     }

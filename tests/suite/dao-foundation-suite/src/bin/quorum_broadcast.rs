@@ -464,11 +464,11 @@ fn wait_past_height(args: &Args, height: u64, timeout: Duration) -> Result<()> {
         if start.elapsed() > timeout {
             bail!("chain did not pass block {height}");
         }
-        if let Some(latest) = latest_height(&http) {
-            if latest > height {
-                println!("chain is at block {latest}");
-                return Ok(());
-            }
+        if let Some(latest) = latest_height(&http)
+            && latest > height
+        {
+            println!("chain is at block {latest}");
+            return Ok(());
         }
         sleep(Duration::from_secs(2));
     }

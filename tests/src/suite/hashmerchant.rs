@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use k256::elliptic_curve::rand_core::OsRng;
+// k256 0.14 moved to a newer rand_core; draw key bytes from rand 0.8 instead.
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -56,10 +56,10 @@ impl MerchantSuiteConfig {
 
 impl SubprocessConfig for MerchantSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
 
         // Check well-known locations relative to CARGO_MANIFEST_DIR
@@ -134,10 +134,10 @@ pub struct MerchantClientSuiteConfig {
 
 impl SubprocessConfig for MerchantClientSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -270,7 +270,7 @@ impl HashMerchantSuite {
     /// - chain_id supplied by caller
     pub fn with_defaults(chain_id: &str) -> Self {
         // Generate ephemeral secp256k1 signing key
-        let secret = k256::SecretKey::random(&mut OsRng);
+        let secret = random_secret();
         let signing_key = hex::encode(secret.to_bytes());
 
         let config = Config {
@@ -348,8 +348,6 @@ impl HashMerchantSuite {
             .context("failed to deserialize provider statuses")?;
         Ok(statuses)
     }
-
-    /// Feed a provider's data directly by calling the internal gRPC endpoint.
 
     /// Enable embedded `/onboard/*` on the sidecar (no second onboard-runtime).
     /// Rebuild `MerchantSuiteConfig` so TOML includes `[onboard]`.
@@ -511,7 +509,7 @@ impl Default for MerkleServerConfig {
 impl MerkleServerConfig {
     /// Generate a fresh keypair and return the config + hex private key.
     pub fn with_new_keypair() -> Result<(Self, String)> {
-        let secret = k256::SecretKey::random(&mut OsRng);
+        let secret = random_secret();
         let sk_hex = hex::encode(secret.to_bytes());
         let pk = secret.public_key();
         let pk_hex = hex::encode(pk.to_sec1_bytes());
@@ -532,10 +530,10 @@ impl MerkleServerConfig {
 
 impl SubprocessConfig for MerkleServerConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -743,6 +741,15 @@ impl TerpSidecar for MerkleServerSuite {
 
     fn endpoint(&self, name: &str) -> Option<String> {
         self.endpoints.get(name).cloned()
+    }
+}
+
+/// Random secp256k1 key from 32 OS-random bytes (retry on the ~2^-128 invalid scalar).
+fn random_secret() -> k256::SecretKey {
+    loop {
+        if let Ok(k) = k256::SecretKey::from_slice(&rand::random::<[u8; 32]>()) {
+            return k;
+        }
     }
 }
 

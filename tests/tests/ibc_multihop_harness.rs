@@ -93,6 +93,7 @@ fn predict_after_hops(
 }
 
 /// Same geometry via lib `IBCChannelGraph::compute_ibc_denom_for_route` (must match helpers).
+#[allow(dead_code)] // cross-check helper for live multihop runs
 fn predict_via_graph(
     hops_origin_to_dest: &[(
         /*from*/ &str,

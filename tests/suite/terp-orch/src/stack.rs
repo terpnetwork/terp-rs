@@ -181,6 +181,8 @@ pub struct TerpProductSuite<Chain: CwEnv> {
     pub shitstrap: CwShitstrap<Chain>,
     pub shitstrap_factory: CwShitstrapFactory<Chain>,
     pub raffle: NftfiRaffle<Chain>,
+    /// Drand beacon (contracts/nfts/terp-beacon). Lab instance is quicknet with no attestors.
+    pub terp_beacon: terp_beacon::TerpBeacon<Chain>,
     pub loan: NftfiLoan<Chain>,
     pub marketplace: RevenueMarketplace<Chain>,
     pub reserve_auction: RevenueReserveAuction<Chain>,
@@ -216,6 +218,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
             shitstrap: CwShitstrap::new(chain.clone()),
             shitstrap_factory: CwShitstrapFactory::new(chain.clone()),
             raffle: NftfiRaffle::new(chain.clone()),
+            terp_beacon: terp_beacon::TerpBeacon::new(chain.clone()),
             loan: NftfiLoan::new(chain.clone()),
             marketplace: RevenueMarketplace::new(chain.clone()),
             reserve_auction: RevenueReserveAuction::new(chain.clone()),
@@ -247,6 +250,7 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
         self.shitstrap.upload()?;
         self.shitstrap_factory.upload()?;
         self.raffle.upload()?;
+        self.terp_beacon.upload()?;
         self.loan.upload()?;
         self.marketplace.upload()?;
         self.reserve_auction.upload()?;
@@ -297,6 +301,11 @@ impl<Chain: CwEnv> TerpProductSuite<Chain> {
                 creation_coins: None,
                 randomness: nftfi_randomness::RandomnessSourceMsg::Seed { provider: None },
             },
+            Some(admin),
+            &[],
+        )?;
+        self.terp_beacon.instantiate(
+            &terp_beacon::networks::QUICKNET.instantiate_msg(&admin_s, vec![], 0),
             Some(admin),
             &[],
         )?;
@@ -651,6 +660,11 @@ impl<Chain: CwEnv> TerpArtifactStack<Chain> {
             products.raffle.addr_str(),
         )?;
         push(
+            "terp-beacon",
+            products.terp_beacon.code_id(),
+            products.terp_beacon.addr_str(),
+        )?;
+        push(
             "nftfi-loan",
             products.loan.code_id(),
             products.loan.addr_str(),
@@ -806,6 +820,7 @@ impl<Chain: CwEnv> cw_orch::contract::Deploy<Chain> for TerpArtifactStack<Chain>
             Box::new(&mut products.shitstrap),
             Box::new(&mut products.shitstrap_factory),
             Box::new(&mut products.raffle),
+            Box::new(&mut products.terp_beacon),
             Box::new(&mut products.loan),
             Box::new(&mut products.marketplace),
             Box::new(&mut products.reserve_auction),

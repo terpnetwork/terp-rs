@@ -332,9 +332,9 @@ pub fn chain_event_to_nostr(
 ) -> NostrEvent {
     #[cfg(feature = "hash-market")]
     {
-        return nip01_to_ict(hash_market::chain_attrs_to_nostr(
+        nip01_to_ict(hash_market::chain_attrs_to_nostr(
             attrs, height, action, contract, pubkey,
-        ));
+        ))
     }
     #[cfg(not(feature = "hash-market"))]
     {

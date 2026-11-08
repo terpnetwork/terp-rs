@@ -200,7 +200,12 @@ fn main() -> Result<()> {
         "depositor": args.depositor,
         "amount": [{"denom": STAKE_DENOM, "amount": args.direct_uterp.to_string()}],
     });
-    let unsigned = unsigned_tx(&[direct_msg.clone()], gas, fee_amount, &fee_denom);
+    let unsigned = unsigned_tx(
+        std::slice::from_ref(&direct_msg),
+        gas,
+        fee_amount,
+        &fee_denom,
+    );
     let unsigned_path = args.out_dir.join("01-prop60-unsigned.json");
     std::fs::write(&unsigned_path, serde_json::to_vec_pretty(&unsigned)?)?;
     let command = vec![
@@ -297,8 +302,7 @@ fn spendable_uterp(lcd: &str, address: &str) -> Result<u128> {
     let body = lcd_get(&format!(
         "{lcd}/cosmos/bank/v1beta1/spendable_balances/{address}"
     ))?;
-    Ok(body
-        .pointer("/balances")
+    body.pointer("/balances")
         .and_then(|v| v.as_array())
         .and_then(|rows| {
             rows.iter().find_map(|row| {
@@ -311,7 +315,7 @@ fn spendable_uterp(lcd: &str, address: &str) -> Result<u128> {
         })
         .unwrap_or("0")
         .parse()
-        .context("spendable uterp")?)
+        .context("spendable uterp")
 }
 
 fn coin_amount(body: &serde_json::Value, pointer: &str, denom: &str) -> Result<u128> {
