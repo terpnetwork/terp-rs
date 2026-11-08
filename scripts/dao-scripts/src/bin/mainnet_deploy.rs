@@ -144,6 +144,15 @@ struct Cli {
     /// With `all`: run only this phase.
     #[arg(long)]
     only: Option<String>,
+    /// Keep only these step names (comma-separated), e.g. `--steps nft-loan`.
+    #[arg(long = "steps", value_delimiter = ',')]
+    steps_filter: Vec<String>,
+    /// oracles: instantiate the registry with open_submit=false (admin + SetRelayer allow-list).
+    #[arg(long)]
+    registry_closed: bool,
+    /// oracles: polytone note allowed to deliver cross-chain Callback prices to the registry.
+    #[arg(long)]
+    registry_note: Option<String>,
     /// Wasm admin / fee address / final owner. Foundation DAO by default.
     #[arg(long, default_value = PARENT_CORE)]
     admin: String,
@@ -307,13 +316,28 @@ struct State {
     txs: Vec<TxRec>,
     #[serde(skip)]
     path: PathBuf,
+    /// `proposals` entries that are not a bare u64 (e.g. custody-akash records), kept verbatim.
+    #[serde(skip)]
+    extra_proposals: serde_json::Map<String, Value>,
 }
 
 impl State {
     fn load(path: &Path, chain_id: &str, admin: &str) -> Result<Self> {
         let mut s: State = if path.exists() {
-            serde_json::from_slice(&std::fs::read(path)?)
-                .with_context(|| format!("parse {}", path.display()))?
+            let mut v: Value = serde_json::from_slice(&std::fs::read(path)?)
+                .with_context(|| format!("parse {}", path.display()))?;
+            let mut extra = serde_json::Map::new();
+            if let Some(m) = v.get_mut("proposals").and_then(Value::as_object_mut) {
+                let odd: Vec<String> =
+                    m.iter().filter(|(_, x)| !x.is_u64()).map(|(k, _)| k.clone()).collect();
+                for k in odd {
+                    extra.insert(k.clone(), m.remove(&k).unwrap());
+                }
+            }
+            let mut s: State = serde_json::from_value(v)
+                .with_context(|| format!("parse {}", path.display()))?;
+            s.extra_proposals = extra;
+            s
         } else {
             State::default()
         };
@@ -341,8 +365,17 @@ impl State {
         if let Some(p) = self.path.parent() {
             std::fs::create_dir_all(p)?;
         }
+        let mut v = serde_json::to_value(self)?;
+        if let Some(m) = v.get_mut("proposals").and_then(Value::as_object_mut) {
+            for (k, x) in &self.extra_proposals {
+                m.entry(k.clone()).or_insert_with(|| x.clone());
+            }
+        }
+        if self.path.exists() {
+            std::fs::copy(&self.path, self.path.with_extension("json.bak"))?;
+        }
         let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, serde_json::to_vec_pretty(self)?)?;
+        std::fs::write(&tmp, serde_json::to_vec_pretty(&v)?)?;
         std::fs::rename(&tmp, &self.path)?;
         Ok(())
     }
@@ -488,14 +521,26 @@ impl Ctx {
     }
 
     fn predict(&self, code: &str, name: &str) -> Result<String> {
-        let creator = self
-            .creator
-            .clone()
-            .ok_or_else(|| anyhow!("signer address unknown"))?;
-        let bytes = read(&self.dir, file_of(code)?)?;
+        // Dry-run without a session key: predict from --granter (preview only, the real
+        // creator is the ephemeral session key), else a labelled placeholder.
+        let creator = match (&self.creator, self.cli.broadcast) {
+            (Some(c), _) => c.clone(),
+            (None, false) if !self.cli.granter.is_empty() => self.cli.granter.clone(),
+            (None, false) => return Ok(format!("<instantiate2:{name}>")),
+            (None, true) => bail!("signer address unknown"),
+        };
+        let checksum = match self.state.codes.get(code) {
+            Some(rec) => (0..rec.checksum.len())
+                .step_by(2)
+                .map(|i| u8::from_str_radix(&rec.checksum[i..i + 2], 16))
+                .collect::<Result<Vec<u8>, _>>()?,
+            None => wasm_checksum(&read(&self.dir, file_of(code)?)?)
+                .map_err(|e| anyhow!(e))?
+                .to_vec(),
+        };
         instantiate2_bech32(
             &self.info.network_info.pub_address_prefix,
-            &wasm_checksum(&bytes).map_err(|e| anyhow!(e))?,
+            &checksum,
             &canonical(&creator)?,
             &salt(name),
         )
@@ -753,9 +798,27 @@ fn open_signer(ctx: &mut Ctx, phase: &str, steps: &[Step]) -> Result<Signer> {
 // ---------------------------------------------------------------- run a step list
 
 fn execute_steps(ctx: &mut Ctx, phase: &str, steps: Vec<Step>) -> Result<()> {
-    let steps = ctx.pending(steps)?;
+    let mut steps = ctx.pending(steps)?;
+    if !ctx.cli.steps_filter.is_empty() {
+        steps.retain(|s| match s {
+            Step::Store { name, .. } => ctx.cli.steps_filter.iter().any(|f| f == name),
+            Step::Inst { name, .. } => ctx.cli.steps_filter.contains(name),
+            Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::Custom { id, .. } => {
+                ctx.cli.steps_filter.contains(id)
+            }
+        });
+    }
+    let creator_basis = match (&ctx.creator, ctx.cli.granter.is_empty()) {
+        (Some(_), _) => "session signer".to_string(),
+        (None, false) => format!(
+            "DRY-RUN PREVIEW: instantiate2 addresses predicted with creator = --granter {}; the broadcast creator is the ephemeral session key, so real addresses will differ",
+            ctx.cli.granter
+        ),
+        (None, true) => "DRY-RUN PLACEHOLDER: no signer or --granter, addresses are <instantiate2:name>".into(),
+    };
     let plan = json!({"phase": phase, "chain_id": ctx.info.chain_id, "admin": ctx.cli.admin,
-        "signer": format!("{:?}", ctx.cli.signer), "creator": ctx.creator,
+        "signer": format!("{:?}", ctx.cli.signer), "creator": ctx.creator, "creator_basis": creator_basis,
+        "steps_filter": ctx.cli.steps_filter,
         "pending": steps.iter().map(Step::describe).collect::<Vec<_>>()});
     kms_gate::write_plan(
         ctx.cli
@@ -1499,7 +1562,7 @@ fn oracles(ctx: &mut Ctx) -> Result<()> {
             name: "oracle-registry".into(),
             code: "oracle-registry".into(),
             admin: Some(admin.clone()),
-            msg: json!({"admin": admin, "open_submit": true, "bounty": null, "note": null}),
+            msg: json!({"admin": admin, "open_submit": !ctx.cli.registry_closed, "bounty": null, "note": ctx.cli.registry_note}),
         },
         Step::Inst {
             name: "oracle-aggregator".into(),
@@ -1534,7 +1597,7 @@ fn nftfi(ctx: &mut Ctx) -> Result<()> {
         inst(
             "marketplace",
             json!({"fee_manager": a, "royalty_registry": null, "protocol_fee_bps": ctx.cli.fee_bps, "max_royalty_fee_bps": 1000,
-            "maker_reward_bps": 5000, "taker_reward_bps": 0, "burn_bps": 5000, "default_denom": d}),
+            "maker_reward_bps": 0, "taker_reward_bps": 0, "burn_bps": 0, "default_denom": d}),
         ),
         inst(
             "reserve-auction",

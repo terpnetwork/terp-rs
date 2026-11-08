@@ -249,6 +249,8 @@ pub fn any<M: cosmos_sdk_proto::prost::Message>(type_url: &str, msg: &M) -> Any 
 pub enum Scope {
     Sdk(Vec<String>),
     Execute(cw_orch_kms::ScopedCall),
+    /// Several contracts in one session (e.g. pre-propose + proposal module).
+    Executes(Vec<cw_orch_kms::ScopedCall>),
     Instantiate2,
 }
 
@@ -334,6 +336,13 @@ pub fn kms_broadcast(req: BroadcastRequest, msgs: Vec<Any>, memo: &str) -> Resul
             s
         }
         Scope::Execute(call) => session.allow_execute(call).map_err(|e| anyhow!(e))?,
+        Scope::Executes(calls) => {
+            let mut s = session;
+            for call in calls {
+                s = s.allow_execute(call).map_err(|e| anyhow!(e))?;
+            }
+            s
+        }
         Scope::Instantiate2 => session.allow_instantiate2(),
     };
     session.ttl_secs = req.ttl_secs;

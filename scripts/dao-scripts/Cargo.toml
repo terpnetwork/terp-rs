@@ -88,6 +88,10 @@ name = "steward_multi_dao"
 path = "src/bin/steward_multi_dao.rs"
 
 [[bin]]
+name = "oracle_twap_query"
+path = "src/bin/oracle_twap_query.rs"
+
+[[bin]]
 name = "polytone_note"
 path = "src/bin/polytone_note.rs"
 
