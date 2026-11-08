@@ -34,7 +34,8 @@ fn div_ceil(num: Uint512, den: Uint512) -> Result<Uint512, OracleError> {
     if (q * den) == num {
         Ok(q)
     } else {
-        q.checked_add(Uint512::one()).map_err(|_| OracleError::Overflow)
+        q.checked_add(Uint512::one())
+            .map_err(|_| OracleError::Overflow)
     }
 }
 
@@ -117,12 +118,17 @@ pub fn alt_to_base(
 }
 
 /// `ceil(required * (1 - slippage))`.
-pub fn apply_slippage(required: Uint256, slippage: Option<Decimal>) -> Result<Uint256, OracleError> {
+pub fn apply_slippage(
+    required: Uint256,
+    slippage: Option<Decimal>,
+) -> Result<Uint256, OracleError> {
     let Some(s) = slippage else {
         return Ok(required);
     };
     if s >= Decimal::one() {
-        return Err(OracleError::InvalidConfig("slippage must be below 1".into()));
+        return Err(OracleError::InvalidConfig(
+            "slippage must be below 1".into(),
+        ));
     }
     let keep = Uint512::from(ATOMICS) - Uint512::from(Uint256::from(s.atomics()));
     let num = Uint512::from(required)
@@ -149,7 +155,10 @@ pub fn deviation(a: Decimal256, b: Decimal256) -> Result<Decimal256, OracleError
 }
 
 /// Combine `(value, weight)` pairs. Weights only matter for `Mean` and `Weighted`.
-pub fn combine(values: &[(Decimal256, u64)], method: AggregateMethod) -> Result<Decimal256, OracleError> {
+pub fn combine(
+    values: &[(Decimal256, u64)],
+    method: AggregateMethod,
+) -> Result<Decimal256, OracleError> {
     if values.is_empty() {
         return Err(OracleError::NoObservations {
             feed: "combine".into(),
@@ -176,7 +185,11 @@ pub fn combine(values: &[(Decimal256, u64)], method: AggregateMethod) -> Result<
             let mut acc = Decimal256::zero();
             let mut total: u128 = 0;
             for (x, w) in values {
-                let w = (*w).max(if method == AggregateMethod::Mean { 1 } else { 0 });
+                let w = (*w).max(if method == AggregateMethod::Mean {
+                    1
+                } else {
+                    0
+                });
                 if w == 0 {
                     continue;
                 }
@@ -202,7 +215,10 @@ pub fn combine(values: &[(Decimal256, u64)], method: AggregateMethod) -> Result<
 /// Combine a height-sorted (any order) history window.
 /// `Weighted` = piecewise-constant TWAP (each value holds until the next height,
 /// the newest holds for 1 block), matching the registry `Twap` query.
-pub fn combine_history(rows: &[(Decimal256, u64)], method: AggregateMethod) -> Result<Decimal256, OracleError> {
+pub fn combine_history(
+    rows: &[(Decimal256, u64)],
+    method: AggregateMethod,
+) -> Result<Decimal256, OracleError> {
     if method != AggregateMethod::Weighted {
         let v: Vec<(Decimal256, u64)> = rows.iter().map(|(x, _)| (*x, 1)).collect();
         return combine(&v, method);

@@ -16,8 +16,13 @@ use crate::types::{Feed, FeedKind, PricePoint};
 /// Registry `QueryMsg` subset.
 #[cw_serde]
 pub enum RegistryQuery {
-    Latest { market_id: String },
-    History { market_id: String, limit: Option<u32> },
+    Latest {
+        market_id: String,
+    },
+    History {
+        market_id: String,
+        limit: Option<u32>,
+    },
     Twap {
         market_id: String,
         from_height: u64,
@@ -103,12 +108,12 @@ impl<'a> OracleQuerier<'a> {
             });
         let bin = cosmwasm_std::to_json_vec(&req)?;
         match self.querier.raw_query(&bin) {
-            cosmwasm_std::SystemResult::Err(e) => {
-                Err(cosmwasm_std::StdError::msg(format!("querier system error: {e}")))
-            }
-            cosmwasm_std::SystemResult::Ok(cosmwasm_std::ContractResult::Err(e)) => {
-                Err(cosmwasm_std::StdError::msg(format!("querier contract error: {e}")))
-            }
+            cosmwasm_std::SystemResult::Err(e) => Err(cosmwasm_std::StdError::msg(format!(
+                "querier system error: {e}"
+            ))),
+            cosmwasm_std::SystemResult::Ok(cosmwasm_std::ContractResult::Err(e)) => Err(
+                cosmwasm_std::StdError::msg(format!("querier contract error: {e}")),
+            ),
             cosmwasm_std::SystemResult::Ok(cosmwasm_std::ContractResult::Ok(v)) => Ok(v),
         }
     }
@@ -179,7 +184,10 @@ impl<'a> OracleQuerier<'a> {
                 window_blocks,
             } => {
                 let l = self.latest(o, market_id).map_err(wrap)?;
-                let from = l.height.saturating_sub(window_blocks.saturating_sub(1)).max(1);
+                let from = l
+                    .height
+                    .saturating_sub(window_blocks.saturating_sub(1))
+                    .max(1);
                 let t = self.twap(o, market_id, from, l.height).map_err(wrap)?;
                 (to_256(t.twap), Some(l.height), t.n)
             }
@@ -198,11 +206,7 @@ impl<'a> OracleQuerier<'a> {
                     .map(|r| (to_256(r.mid), r.height))
                     .collect();
                 let newest = rows.iter().map(|(_, h)| *h).max();
-                (
-                    combine_history(&rows, *method)?,
-                    newest,
-                    rows.len() as u32,
-                )
+                (combine_history(&rows, *method)?, newest, rows.len() as u32)
             }
             FeedKind::AggregatorMedian { market_id, window } => {
                 let v = self.median(o, market_id, *window).map_err(wrap)?;

@@ -68,7 +68,10 @@ pub enum FeedKind {
     /// Registry `Latest { market_id }`.
     Spot { market_id: String },
     /// Registry `Twap` over the newest `window_blocks` heights ending at the latest observation.
-    Twap { market_id: String, window_blocks: u64 },
+    Twap {
+        market_id: String,
+        window_blocks: u64,
+    },
     /// Registry `History { limit }`, combined locally with `method`.
     History {
         market_id: String,
@@ -230,7 +233,9 @@ impl OraclePricing {
                     {
                         return bad("empty market_id".into());
                     }
-                    FeedKind::Twap { window_blocks: 0, .. } => {
+                    FeedKind::Twap {
+                        window_blocks: 0, ..
+                    } => {
                         return bad("twap window_blocks 0".into());
                     }
                     FeedKind::History { limit: 0, .. }
@@ -252,15 +257,15 @@ impl OraclePricing {
         if self.policy.min_sources == Some(0) {
             return bad("min_sources 0".into());
         }
-        if let Some(d) = self.policy.max_deviation {
-            if d > Decimal::one() {
-                return bad("max_deviation above 1".into());
-            }
+        if let Some(d) = self.policy.max_deviation
+            && d > Decimal::one()
+        {
+            return bad("max_deviation above 1".into());
         }
-        if let Some(s) = self.policy.slippage {
-            if s >= Decimal::one() {
-                return bad("slippage must be below 1".into());
-            }
+        if let Some(s) = self.policy.slippage
+            && s >= Decimal::one()
+        {
+            return bad("slippage must be below 1".into());
         }
         Ok(())
     }
