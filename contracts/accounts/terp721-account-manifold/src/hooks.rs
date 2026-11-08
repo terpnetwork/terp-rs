@@ -29,9 +29,9 @@ impl From<u64> for HookReply {
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match HookReply::from(msg.id) {
-        HookReply::Ask => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
-        HookReply::Sale => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
-        HookReply::Bid => return Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
+        HookReply::Ask => Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
+        HookReply::Sale => Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
+        HookReply::Bid => Err(ContractError::Std(StdError::msg(msg.result.unwrap_err()))),
     }
 }
 

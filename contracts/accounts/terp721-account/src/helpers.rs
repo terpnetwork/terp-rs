@@ -1,8 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cw721::Approval;
 use cw721::msg::{
-    AllNftInfoResponse, ApprovalResponse, NftInfoResponse, OperatorResponse,
-    OwnerOfResponse,
+    AllNftInfoResponse, ApprovalResponse, NftInfoResponse, OperatorResponse, OwnerOfResponse,
 };
 use serde::de::DeserializeOwned;
 use terp_account::Metadata;

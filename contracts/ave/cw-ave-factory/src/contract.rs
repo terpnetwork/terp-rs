@@ -1,6 +1,4 @@
 use av_event_helpers::get_license_addr;
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
 use cosmwasm_std::{Addr, Coin};
 use cosmwasm_std::{
     BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply, Response, StdResult,
@@ -269,17 +267,17 @@ fn contract_addr_from_instantiate_reply(deps: Deps, msg: Reply) -> Result<Addr, 
         .into_result()
         .map_err(|e| ContractError::Std(cosmwasm_std::StdError::msg(e)))?;
     for r in &resp.msg_responses {
-        if r.type_url.contains("MsgInstantiateContractResponse") {
-            if let Ok(parsed) = parse_instantiate_response_data(&r.value) {
-                return Ok(deps.api.addr_validate(&parsed.contract_address)?);
-            }
+        if r.type_url.contains("MsgInstantiateContractResponse")
+            && let Ok(parsed) = parse_instantiate_response_data(&r.value)
+        {
+            return Ok(deps.api.addr_validate(&parsed.contract_address)?);
         }
     }
     #[allow(deprecated)]
-    if let Some(data) = resp.data.as_ref() {
-        if let Ok(parsed) = parse_instantiate_response_data(data) {
-            return Ok(deps.api.addr_validate(&parsed.contract_address)?);
-        }
+    if let Some(data) = resp.data.as_ref()
+        && let Ok(parsed) = parse_instantiate_response_data(data)
+    {
+        return Ok(deps.api.addr_validate(&parsed.contract_address)?);
     }
     for ev in &resp.events {
         for attr in &ev.attributes {

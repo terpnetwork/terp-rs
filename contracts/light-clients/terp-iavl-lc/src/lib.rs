@@ -83,10 +83,10 @@ struct IbcMerkleProof {
 }
 
 fn decode_proofs(bz: &[u8]) -> Result<Vec<ics23::CommitmentProof>, ProofError> {
-    if let Ok(mp) = IbcMerkleProof::decode(bz) {
-        if !mp.proofs.is_empty() {
-            return Ok(mp.proofs);
-        }
+    if let Ok(mp) = IbcMerkleProof::decode(bz)
+        && !mp.proofs.is_empty()
+    {
+        return Ok(mp.proofs);
     }
     let one = ics23::CommitmentProof::decode(bz).map_err(|_| ProofError::Ics23Decode)?;
     Ok(vec![one])
@@ -154,7 +154,7 @@ fn store_name_from_path(path: &[Vec<u8>]) -> String {
         .unwrap_or_else(|| "ibc".into())
 }
 
-fn layer_key<'a>(merkle_path: &'a [Vec<u8>], i: usize) -> Result<&'a [u8], ProofError> {
+fn layer_key(merkle_path: &[Vec<u8>], i: usize) -> Result<&[u8], ProofError> {
     let key_idx = merkle_path
         .len()
         .checked_sub(1)

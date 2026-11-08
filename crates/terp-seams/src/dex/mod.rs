@@ -23,9 +23,9 @@ pub mod note;
 pub use egress::{
     DEPOSIT_NU_LABEL, DestKind, EGRESS_NF_LABEL, EgressBurnEvidenceV0, EgressBurnPublic,
     EgressBurnV0, EgressBurnWitness, EgressError, EgressResult, EgressSeamState, SettleLikeOpening,
-    ZecEgressReceiptV0, apply_egress_burn, build_egress_burn_from_settle, egress_nullifier, hex32,
-    lab_receipt_after_burn, settle_opening_from_note_fields, synthetic_deposit_nu,
-    validate_egress_burn,
+    SettleNoteFields, ZecEgressReceiptV0, apply_egress_burn, build_egress_burn_from_settle,
+    egress_nullifier, hex32, lab_receipt_after_burn, settle_opening_from_note_fields,
+    synthetic_deposit_nu, validate_egress_burn,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -688,19 +688,33 @@ pub fn spend_opening_from_seam_sketch(n: &SeamNoteSketch) -> SwapActionResult<Sp
     })
 }
 
+/// Inputs for [`seam_sketch_abstract_leaf`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AbstractLeafNote {
+    pub asset_id: AssetId32,
+    pub value: u64,
+    pub owner_binding: [u8; 32],
+    pub rcm: [u8; 32],
+    pub ingress_nullifier_lineage: [u8; 32],
+    pub path_position: u64,
+    pub origin: u8,
+    pub nullifier_domain: u8,
+}
+
 /// Build a SEAM sketch with abstract harness leaf (cm_encoding = 0x03).
 ///
 /// Registry-resolved `asset_id` must already be the 32-byte Terp id.
-pub fn seam_sketch_abstract_leaf(
-    asset_id: AssetId32,
-    value: u64,
-    owner_binding: [u8; 32],
-    rcm: [u8; 32],
-    ingress_nullifier_lineage: [u8; 32],
-    path_position: u64,
-    origin: u8,
-    nullifier_domain: u8,
-) -> SeamNoteSketch {
+pub fn seam_sketch_abstract_leaf(leaf: AbstractLeafNote) -> SeamNoteSketch {
+    let AbstractLeafNote {
+        asset_id,
+        value,
+        owner_binding,
+        rcm,
+        ingress_nullifier_lineage,
+        path_position,
+        origin,
+        nullifier_domain,
+    } = leaf;
     let cm_public = abstract_leaf_cm(&asset_id, value, &owner_binding, &rcm);
     SeamNoteSketch {
         origin,
@@ -983,10 +997,10 @@ pub fn validate_swap_action(action: &SwapActionV0) -> SwapActionResult<u128> {
     if w.note_out.asset_id != p.asset_out {
         return Err(SwapActionError::ErrWrongAsset);
     }
-    if let Some(ref ch) = w.note_change {
-        if ch.asset_id != p.asset_in {
-            return Err(SwapActionError::ErrWrongAsset);
-        }
+    if let Some(ref ch) = w.note_change
+        && ch.asset_id != p.asset_in
+    {
+        return Err(SwapActionError::ErrWrongAsset);
     }
 
     check_note_conservation(w)?;
@@ -1088,10 +1102,10 @@ pub fn apply_swap_action(
     if pool.status != PoolStatus::Active {
         return Err(SwapActionError::ErrSchema);
     }
-    if let Some(root) = state.allowed_root {
-        if action.public.root != root {
-            return Err(SwapActionError::ErrBadRoot);
-        }
+    if let Some(root) = state.allowed_root
+        && action.public.root != root
+    {
+        return Err(SwapActionError::ErrBadRoot);
     }
 
     let delta_out = validate_swap_action(action)?;
@@ -1707,16 +1721,16 @@ mod tests {
         let asset_id = registry
             .resolve_label(asset_label)
             .expect("label registered");
-        seam_sketch_abstract_leaf(
+        seam_sketch_abstract_leaf(AbstractLeafNote {
             asset_id,
             value,
-            arr32(0xA1),
-            arr32(rcm_seed),
-            arr32(lineage_seed),
-            pos,
-            ORIGIN_HEADSTASH,
-            NF_HEADSTASH_CLAIM,
-        )
+            owner_binding: arr32(0xA1),
+            rcm: arr32(rcm_seed),
+            ingress_nullifier_lineage: arr32(lineage_seed),
+            path_position: pos,
+            origin: ORIGIN_HEADSTASH,
+            nullifier_domain: NF_HEADSTASH_CLAIM,
+        })
     }
 
     fn fixture_swap_from_seam_params(
@@ -1838,16 +1852,16 @@ mod tests {
         registry.register_labeled("hub", asset_id_hub());
         let pool = demo_pool();
         let asset_b = asset_id_b();
-        let note = seam_sketch_abstract_leaf(
-            asset_b,
-            10_000,
-            arr32(0xA1),
-            arr32(0xB2),
-            arr32(0xC3),
-            0,
-            ORIGIN_HEADSTASH,
-            NF_HEADSTASH_CLAIM,
-        );
+        let note = seam_sketch_abstract_leaf(AbstractLeafNote {
+            asset_id: asset_b,
+            value: 10_000,
+            owner_binding: arr32(0xA1),
+            rcm: arr32(0xB2),
+            ingress_nullifier_lineage: arr32(0xC3),
+            path_position: 0,
+            origin: ORIGIN_HEADSTASH,
+            nullifier_domain: NF_HEADSTASH_CLAIM,
+        });
         let params = SwapFromSeamParams {
             pool_id: 1,
             asset_in: asset_b,
@@ -1883,16 +1897,16 @@ mod tests {
         registry.register(custom_in);
         registry.register(custom_out);
 
-        let note = seam_sketch_abstract_leaf(
-            custom_in,
-            5_000,
-            arr32(0x11),
-            arr32(0x22),
-            arr32(0x33),
-            2,
-            ORIGIN_HEADSTASH,
-            NF_HEADSTASH_CLAIM,
-        );
+        let note = seam_sketch_abstract_leaf(AbstractLeafNote {
+            asset_id: custom_in,
+            value: 5_000,
+            owner_binding: arr32(0x11),
+            rcm: arr32(0x22),
+            ingress_nullifier_lineage: arr32(0x33),
+            path_position: 2,
+            origin: ORIGIN_HEADSTASH,
+            nullifier_domain: NF_HEADSTASH_CLAIM,
+        });
         let r_in = 1_000_000u128;
         let r_out = 2_000_000u128;
         let delta_in = 5_000u128;

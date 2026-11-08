@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
-    to_json_binary,
+    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, to_json_binary,
 };
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -67,13 +66,13 @@ fn validate_url(url: &str) -> Result<String, ContractError> {
 }
 
 fn validate_content_sha256(v: &Option<String>) -> Result<(), ContractError> {
-    if let Some(h) = v {
-        if h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(ContractError::InvalidContentSha256 {});
-        }
-        // Prefer lowercase storage consistency: reject mixed if not all hex is fine,
-        // but we accept any case hex digits.
+    if let Some(h) = v
+        && (h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()))
+    {
+        return Err(ContractError::InvalidContentSha256 {});
     }
+    // Prefer lowercase storage consistency: reject mixed if not all hex is fine,
+    // but we accept any case hex digits.
     Ok(())
 }
 
@@ -307,10 +306,10 @@ fn execute_update(
     if let Some(new_url) = url {
         let normalized = validate_url(&new_url)?;
         if normalized != desc.url {
-            if let Some(existing) = URL_INDEX.may_load(deps.storage, &normalized)? {
-                if existing != mint_id {
-                    return Err(ContractError::UrlExists { mint_id: existing });
-                }
+            if let Some(existing) = URL_INDEX.may_load(deps.storage, &normalized)?
+                && existing != mint_id
+            {
+                return Err(ContractError::UrlExists { mint_id: existing });
             }
             URL_INDEX.remove(deps.storage, &desc.url);
             URL_INDEX.save(deps.storage, &normalized, &mint_id)?;

@@ -2,7 +2,7 @@
 
 // ── Blob Store ────────────────────────────────────────────────────────────────
 
-/// Content-addressed blob storage — zero HTTP deps.
+// Content-addressed blob storage — zero HTTP deps.
 
 // ── Auth (BUD-01 + secp256k1 + JWT) ──────────────────────────────────────────
 

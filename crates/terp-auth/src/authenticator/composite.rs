@@ -20,9 +20,7 @@ pub enum CompositeAuthenticatorError {
 
 impl PartialEq for CompositeAuthenticatorError {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
+        core::mem::discriminant(self) == core::mem::discriminant(other)
     }
 }
 
@@ -91,8 +89,8 @@ impl FromStr for CompositeId {
     }
 }
 
-impl ToString for CompositeId {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for CompositeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let path = self
             .path
             .iter()
@@ -101,9 +99,9 @@ impl ToString for CompositeId {
             .join(".");
 
         if path.is_empty() {
-            self.root.to_string()
+            write!(f, "{}", self.root)
         } else {
-            format!("{}.{}", self.root, path)
+            write!(f, "{}.{}", self.root, path)
         }
     }
 }

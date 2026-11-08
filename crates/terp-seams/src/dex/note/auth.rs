@@ -68,10 +68,10 @@ pub fn merge_auth_headers(
     extra: &[(String, String)],
 ) -> Vec<(String, String)> {
     let mut out = Vec::new();
-    if let Some(t) = bearer {
-        if !t.is_empty() {
-            out.extend(bearer_auth_headers(t));
-        }
+    if let Some(t) = bearer
+        && !t.is_empty()
+    {
+        out.extend(bearer_auth_headers(t));
     }
     out.extend(extra.iter().cloned());
     out

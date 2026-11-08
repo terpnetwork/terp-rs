@@ -219,7 +219,7 @@ impl TerpAccountTrait for FrostAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<AuthenticationRequest>,
+        req: &AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         authenticate(deps, req)
     }
@@ -321,7 +321,7 @@ mod tests {
 
     fn share_at(secret: &Scalar, coefficient: Option<&Scalar>, index: u32) -> SecretShare<Scalar> {
         let y = match coefficient {
-            None => secret.clone(),
+            None => *secret,
             Some(c) => secret.add(&c.mul(&Scalar::from_u32(index))),
         };
         SecretShare::new(index, y)

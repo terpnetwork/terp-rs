@@ -60,16 +60,20 @@ pub struct SettlementUpdate {
     pub chain_digest: Vec<u32>,
 }
 
-pub fn as_lanes8(v: &[u32]) -> Result<[u32; 8], ()> {
+/// Lane count or hex value was malformed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LaneError;
+
+pub fn as_lanes8(v: &[u32]) -> Result<[u32; 8], LaneError> {
     if v.len() != 8 {
-        return Err(());
+        return Err(LaneError);
     }
     let mut a = [0u32; 8];
     a.copy_from_slice(v);
     Ok(a)
 }
 
-pub fn pack_lanes_hex(lanes: &[u32]) -> Result<String, ()> {
+pub fn pack_lanes_hex(lanes: &[u32]) -> Result<String, LaneError> {
     use sha2::{Digest, Sha256};
     let a = as_lanes8(lanes)?;
     let mut bytes = [0u8; 32];
@@ -85,11 +89,11 @@ pub fn lanes_canonical(lanes: &[u32]) -> bool {
         .unwrap_or(false)
 }
 
-pub fn parse_vk_hash(s: &str) -> Result<[u8; 32], ()> {
+pub fn parse_vk_hash(s: &str) -> Result<[u8; 32], LaneError> {
     let s = s.trim_start_matches("0x");
-    let raw = hex::decode(s).map_err(|_| ())?;
+    let raw = hex::decode(s).map_err(|_| LaneError)?;
     if raw.len() != 32 || raw.iter().all(|b| *b == 0) {
-        return Err(());
+        return Err(LaneError);
     }
     let mut out = [0u8; 32];
     out.copy_from_slice(&raw);

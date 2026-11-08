@@ -936,7 +936,7 @@ pub enum ExecuteMsgSketch {
     SetExternalAssetRegistry { addr: Option<String> },
     /// One-shot bridge mint → SEAM-NOTE-OUT note append (proof bytes opaque / mock).
     BridgeMintNote {
-        public: BridgeMintPublic,
+        public: Box<BridgeMintPublic>,
         /// Opaque membership / reflection receipt (mock or SP1 later).
         proof: Vec<u8>,
     },

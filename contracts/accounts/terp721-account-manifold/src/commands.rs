@@ -61,13 +61,7 @@ pub fn execute_mint_and_list(
     }
 
     // SET ASK
-    execute_set_ask(
-        deps,
-        env,
-        &account.to_string(),
-        info.sender,
-        collection.clone(),
-    )?;
+    execute_set_ask(deps, env, account, info.sender, collection.clone())?;
 
     // mint token
     let mint_msg_exec = WasmMsg::Execute {
@@ -236,22 +230,38 @@ pub fn query_config(deps: Deps) -> StdResult<Config> {
     CONFIG.load(deps.storage)
 }
 
+/// Arguments for [`sudo_update_params`].
+pub struct SudoUpdateParamsParams {
+    pub min_account_length: Option<u32>,
+    pub max_account_length: Option<u32>,
+    pub base_price: Option<Uint128>,
+    pub base_delegation: Option<Uint128>,
+    pub trading_fee_bps: Option<u64>,
+    pub min_price: Option<Uint128>,
+    pub ask_interval: Option<u64>,
+    pub cooldown_duration: Option<u64>,
+    pub cooldown_cancel_fee: Option<Coin>,
+}
+
 pub fn sudo_update_params(
     deps: DepsMut,
-    min_account_length: Option<u32>,
-    max_account_length: Option<u32>,
-    base_price: Option<Uint128>,
-    base_delegation: Option<Uint128>,
-    trading_fee_bps: Option<u64>,
-    min_price: Option<Uint128>,
-    ask_interval: Option<u64>,
-    cooldown_duration: Option<u64>,
-    cooldown_cancel_fee: Option<Coin>,
+    args: SudoUpdateParamsParams,
 ) -> Result<Response, ContractError> {
-    if let Some(trading_fee_bps) = trading_fee_bps {
-        if trading_fee_bps > MAX_FEE_BPS {
-            return Err(ContractError::InvalidTradingFeeBps(trading_fee_bps));
-        }
+    let SudoUpdateParamsParams {
+        min_account_length,
+        max_account_length,
+        base_price,
+        base_delegation,
+        trading_fee_bps,
+        min_price,
+        ask_interval,
+        cooldown_duration,
+        cooldown_cancel_fee,
+    } = args;
+    if let Some(trading_fee_bps) = trading_fee_bps
+        && trading_fee_bps > MAX_FEE_BPS
+    {
+        return Err(ContractError::InvalidTradingFeeBps(trading_fee_bps));
     }
     let mut params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_interval = ask_interval.unwrap_or(params.ask_interval);
@@ -495,7 +505,7 @@ pub fn execute_cancel_cooldown(
             COOLDOWN_BID.remove(deps.storage, cd_key);
             Ok(res)
         }
-        None => return Err(ContractError::AskNotFound {}),
+        None => Err(ContractError::AskNotFound {}),
     }
 }
 
@@ -601,7 +611,7 @@ pub fn execute_finalize_bid(
             let ops = Terp721Account(collection.clone()).approval(
                 &deps.querier,
                 token_id,
-                &env.contract.address.to_string(),
+                env.contract.address.as_ref(),
                 None,
             );
             if ops.is_err() || ops?.approval.expires.is_expired(&env.block) {
@@ -782,7 +792,7 @@ pub fn checked_bid_removal(
     OVERFLOW_BIDS_REMOVE.update(storage, token_id.to_string(), |a| {
         let mut overflow = a.unwrap_or_default();
         overflow.extend(remaining.to_vec());
-        return Ok::<Vec<BidKey>, StdError>(overflow);
+        Ok::<Vec<BidKey>, StdError>(overflow)
     })?;
 
     // refund bidders, call bid hooks

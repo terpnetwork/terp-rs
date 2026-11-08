@@ -3,20 +3,18 @@ use crate::msg::{
     EventSegmentRes, ExecuteMsg, GuestRootResponse, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use crate::state::{
-    ATTENDANCE_RECORD, CONFIG, CheckInDetails, CheckInSignatureData, Config, EVENT_STAGES,
-    GUEST_DETAILS, GuestDetails, HOMIE_TICKETS, LICENSE_ADDR, NULLIFIERS, RESERVED_TICKETS,
-    RegisteringEventAddressAndPayment, RegisteringGuest, ReplaceHomieTicket,
-    TOTAL_RESERVED_BY_GUEST_TYPE, TicketPaymentOption, generate_instantiate_salt2,
-    preamble_msg_arb_036, sha256,
+    generate_instantiate_salt2, preamble_msg_arb_036, sha256, CheckInDetails, CheckInSignatureData,
+    Config, GuestDetails, RegisteringEventAddressAndPayment, RegisteringGuest, ReplaceHomieTicket,
+    TicketPaymentOption, ATTENDANCE_RECORD, CONFIG, EVENT_STAGES, GUEST_DETAILS, HOMIE_TICKETS,
+    LICENSE_ADDR, NULLIFIERS, RESERVED_TICKETS, TOTAL_RESERVED_BY_GUEST_TYPE,
 };
 use av_event_helpers::get_license_addr;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, HexBinary,
-    MessageInfo, Order, Response, StdError, StdResult, Storage, WasmMsg, from_json,
-    instantiate2_address, to_json_binary,
+    from_json, instantiate2_address, to_json_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps,
+    DepsMut, Env, HexBinary, MessageInfo, Order, Response, StdError, StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{Cw4QueryMsg, Member, MemberResponse};
@@ -517,13 +515,13 @@ fn form_update_guestlist_msg(
                 .iter()
                 .map(|a| -> Result<Member, StdError> {
                     let ticket = a.ticket_addr.clone();
-                    if sender.as_str() != &ticket {
+                    if sender.as_str() != ticket {
                         HOMIE_TICKETS.update(storage, &sender.to_string(), |b| match b {
                             Some(mut c) => {
                                 if c.contains(&ticket) {
-                                    return Err(StdError::msg(
+                                    Err(StdError::msg(
                                         "This ticket is already registered for homies",
-                                    ));
+                                    ))
                                 } else {
                                     c.push(ticket.clone());
                                     Ok(c)
@@ -543,10 +541,10 @@ fn form_update_guestlist_msg(
     })
 }
 
-fn form_return_payment_overflow_msgs(overflow: &Vec<Coin>, sender: &Addr) -> CosmosMsg {
+fn form_return_payment_overflow_msgs(overflow: &[Coin], sender: &Addr) -> CosmosMsg {
     CosmosMsg::Bank(BankMsg::Send {
         to_address: sender.to_string(),
-        amount: overflow.clone(),
+        amount: overflow.to_vec(),
     })
 }
 
@@ -666,7 +664,7 @@ pub fn perform_update_ticket_wallet(
         let mut to_remove = Vec::new();
 
         // remap any homie tickets to new address
-        if list.len() > 0 {
+        if !list.is_empty() {
             let mut ticket_addr = sender.clone();
             if let Some(new) = new_ticket_addr {
                 HOMIE_TICKETS.remove(deps.storage, &ticket_addr);
@@ -706,7 +704,7 @@ pub fn perform_update_ticket_wallet(
             )?),
         )
     } else {
-        return Err(ContractError::NoReservedTicketsForGuest {});
+        Err(ContractError::NoReservedTicketsForGuest {})
     }
 }
 

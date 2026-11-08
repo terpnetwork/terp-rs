@@ -4,7 +4,7 @@
 
 /// Terp 08-wasm advertises `hash_blake`. Block and pool-root hashes use `Api::blake3_256`.
 #[unsafe(no_mangle)]
-extern "C" fn requires_hash_blake() {}
+const extern "C" fn requires_hash_blake() {}
 
 pub mod contract;
 pub mod custom_query;

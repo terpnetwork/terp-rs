@@ -561,7 +561,12 @@ pub fn seam_note_out_to_swap_action(
     path_position: u64,
 ) -> Result<SwapActionV0, ComposeError> {
     let seam_params = params.to_swap_from_seam()?;
-    sketch_swap_action_from_seam_notes(&[note.clone()], registry, &seam_params, path_position)
+    sketch_swap_action_from_seam_notes(
+        std::slice::from_ref(note),
+        registry,
+        &seam_params,
+        path_position,
+    )
 }
 
 /// Openings-only view (witness half) — useful for tests asserting no synthetic NoteIn.

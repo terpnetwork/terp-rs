@@ -1,4 +1,4 @@
-//! This module contains the CosmWasm entrypoints for the 08-wasm smart contract.
+//! This module contains the `CosmWasm` entrypoints for the 08-wasm smart contract.
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, MigrateInfo, Response};
 
@@ -10,7 +10,7 @@ use crate::{ContractError, instantiate, query, sudo};
 const STATE_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub(crate) const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 
-/// The instantiate entry point for the CosmWasm contract.
+/// The instantiate entry point for the `CosmWasm` contract.
 ///
 /// # Errors
 ///
@@ -28,7 +28,7 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
-/// The sudo entry point for the CosmWasm contract.
+/// The sudo entry point for the `CosmWasm` contract.
 ///
 /// Routes the message to the appropriate handler.
 ///
@@ -49,14 +49,11 @@ pub fn sudo(
         SudoMsg::VerifyNonMembership(verify_non_membership_msg) => {
             sudo::verify_non_membership(deps.as_ref(), verify_non_membership_msg)?
         }
-        SudoMsg::UpdateState(update_state_msg) => sudo::update_state(deps, update_state_msg)?,
+        SudoMsg::UpdateState(update_state_msg) => sudo::update_state(deps, &update_state_msg)?,
         SudoMsg::UpdateStateOnMisbehaviour(misbehaviour_msg) => {
-            sudo::misbehaviour(deps, misbehaviour_msg)?
+            sudo::misbehaviour(deps, &misbehaviour_msg)?
         }
-        SudoMsg::VerifyUpgradeAndUpdateState(_) => {
-            return Err(ContractError::InvalidClientMessage);
-        }
-        SudoMsg::MigrateClientStore(_) => {
+        SudoMsg::VerifyUpgradeAndUpdateState(_) | SudoMsg::MigrateClientStore(_) => {
             return Err(ContractError::InvalidClientMessage);
         }
     };
@@ -76,7 +73,7 @@ pub fn execute(
     Err(ContractError::InvalidClientMessage)
 }
 
-/// The query entry point for the CosmWasm contract.
+/// The query entry point for the `CosmWasm` contract.
 ///
 /// Routes the message to the appropriate handler.
 ///
@@ -97,13 +94,13 @@ pub fn query(
             query::check_for_misbehaviour(deps, env, check_for_misbehaviour_msg)
         }
         QueryMsg::TimestampAtHeight(timestamp_at_height_msg) => {
-            query::timestamp_at_height(deps, timestamp_at_height_msg)
+            query::timestamp_at_height(deps, &timestamp_at_height_msg)
         }
         QueryMsg::Status(_) => query::status(deps),
     }
 }
 
-/// The migrate entry point for the CosmWasm contract.
+/// The migrate entry point for the `CosmWasm` contract.
 ///
 /// # Errors
 ///

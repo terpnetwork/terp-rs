@@ -4,8 +4,6 @@ use cw_controllers::HooksResponse;
 
 use cw_ownable::cw_ownable_execute;
 
-use cosmwasm_std::{Binary, StdResult, to_json_binary};
-
 use crate::{Ask, Bid, Bidder, Id, PendingBid, Seller, TokenId};
 
 #[cosmwasm_schema::cw_serde]
@@ -295,6 +293,7 @@ impl AskOffset {
 #[cfg(feature = "market-hooks")]
 pub mod hooks {
     use super::*;
+    use cosmwasm_std::{Binary, StdResult, to_json_binary};
 
     #[cosmwasm_schema::cw_serde]
     pub struct SaleHookMsg {

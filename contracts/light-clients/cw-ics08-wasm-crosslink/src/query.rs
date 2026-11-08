@@ -6,7 +6,10 @@ use crosslink_light_client::{ZcashDeserialize, verify};
 
 use crate::ContractError;
 use crate::custom_query::CrosslinkCustomQuery;
-use crate::msg::*;
+use crate::msg::{
+    CheckForMisbehaviourMsg, CheckForMisbehaviourResult, StatusResult, TimestampAtHeightMsg,
+    TimestampAtHeightResult, VerifyClientMessageMsg,
+};
 use crate::state;
 
 /// Verify a client message.
@@ -65,7 +68,7 @@ pub fn check_for_misbehaviour(
 /// Returns [`ContractError`] if the consensus state is not found.
 pub fn timestamp_at_height(
     deps: Deps<CrosslinkCustomQuery>,
-    msg: TimestampAtHeightMsg,
+    msg: &TimestampAtHeightMsg,
 ) -> Result<Binary, ContractError> {
     let consensus_state =
         state::get_crosslink_consensus_state(deps.storage, msg.height.revision_height)?;

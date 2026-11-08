@@ -242,15 +242,17 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             // fair_burn_bps,
         } => sudo_update_params(
             deps,
-            min_account_length,
-            max_account_length,
-            base_price,
-            base_delegation,
-            trading_fee_bps,
-            min_price,
-            ask_interval,
-            cooldown_duration,
-            cooldown_cancel_fee,
+            SudoUpdateParamsParams {
+                min_account_length,
+                max_account_length,
+                base_price,
+                base_delegation,
+                trading_fee_bps,
+                min_price,
+                ask_interval,
+                cooldown_duration,
+                cooldown_cancel_fee,
+            },
         ),
         SudoMsg::UpdateAccountCollection { collection } => {
             sudo_update_account_collection(deps, api.addr_validate(&collection)?)
@@ -261,9 +263,7 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
 #[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     let then = cw2::get_contract_version(deps.storage)?;
-    if then.version >= CONTRACT_VERSION.to_owned()
-        || then.contract != ACCOUNT_MANIFOLD_CONTRACT.to_owned()
-    {
+    if then.version.as_str() >= CONTRACT_VERSION || then.contract != ACCOUNT_MANIFOLD_CONTRACT {
         return Err(ContractError::Std(StdError::msg(
             "unable to migrate terp721-account minter.",
         )));

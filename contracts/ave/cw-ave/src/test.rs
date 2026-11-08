@@ -1,12 +1,12 @@
 // Consume plane unit tests. Door SoT is guest_root + NULLIFIERS.
 // Mock API has no verify_halo2_proof — that fail-closed path is product, not MockBech32 success.
 
-use crate::ContractError;
 use crate::contract::{execute, query};
 use crate::msg::{ExecuteMsg, GuestRootResponse, QueryMsg};
-use crate::state::{CONFIG, Config};
+use crate::state::{Config, CONFIG};
+use crate::ContractError;
 use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env};
-use cosmwasm_std::{Addr, Coin, HexBinary, MessageInfo, from_json};
+use cosmwasm_std::{from_json, Addr, Coin, HexBinary, MessageInfo};
 
 fn mock_info(sender: &str, funds: &[Coin]) -> MessageInfo {
     message_info(&Addr::unchecked(sender), funds)

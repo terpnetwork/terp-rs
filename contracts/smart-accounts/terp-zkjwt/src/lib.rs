@@ -376,7 +376,7 @@ impl TerpAccountTrait for ZkJwtAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let payload: ZkJwtAuthPayload =
             cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::InvalidProof {

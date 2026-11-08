@@ -232,7 +232,7 @@ fn b64url_decode(s: &str) -> Result<Vec<u8>, ()> {
         }
     }
     let bytes = s.as_bytes();
-    if bytes.iter().any(|c| *c == b'=') {
+    if bytes.contains(&b'=') {
         return Err(());
     }
     let mut out = Vec::new();

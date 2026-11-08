@@ -33,7 +33,7 @@ fn cashapp_paid_guests_no_listmembers_mockbech32_not_consume_success() -> anyhow
     chain.set_balance(&usher, vec![coin(1_000_000_000, "ujuno")])?;
     let guests: Vec<Addr> = (0..8)
         .map(|i| {
-            let g = chain.addr_make(&format!("cashapp-guest-{i}"));
+            let g = chain.addr_make(format!("cashapp-guest-{i}"));
             chain
                 .set_balance(&g, vec![coin(50_000_000, "ujuno")])
                 .unwrap();

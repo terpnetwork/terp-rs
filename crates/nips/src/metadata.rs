@@ -181,7 +181,7 @@ mod tests {
             content: "hello".into(),
             sig: String::new(),
         };
-        assert_eq!(event.location(), true);
+        assert!(event.location());
         assert_eq!(event.kind(), 1);
         assert!(event.d_tag().is_none());
     }
@@ -198,7 +198,7 @@ mod tests {
             sig: "c".repeat(128),
         };
         let ext = NostrExtension::OnChain(event.clone());
-        assert_eq!(ext.location(), true);
+        assert!(ext.location());
         assert_eq!(ext.kind(), 31922);
         assert_eq!(ext.d_tag(), Some("my-event"));
     }
@@ -210,7 +210,7 @@ mod tests {
             kind: 31923,
             gateway: Some("https://ipfs.io/ipfs/".into()),
         };
-        assert_eq!(ext.location(), false);
+        assert!(!ext.location());
         assert_eq!(ext.kind(), 31923);
         assert!(ext.d_tag().is_none());
     }
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn test_empty_extension_full_coverage() {
         let empty = EmptyNostrExtension;
-        assert_eq!(empty.location(), true);
+        assert!(empty.location());
         assert_eq!(empty.kind(), 0);
         assert!(empty.d_tag().is_none());
     }

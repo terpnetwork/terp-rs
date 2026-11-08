@@ -1,6 +1,6 @@
 use av_event_helpers::LICENSE_CANONICAL_ADDR;
 use cosmwasm_std::testing::mock_dependencies;
-use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, Empty, Timestamp, Uint128, coins};
+use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, Empty, Timestamp, Uint128, coin, coins};
 use cw_ave::ContractError as CwAveContractError;
 use cw_ave::msg::InstantiateMsg as AvEventInstantiateMsg;
 use cw_ave::state::{EventSegment, EventSegmentAccessType, GuestDetails};
@@ -17,6 +17,7 @@ use crate::{
 use easy_addr::addr;
 
 const ALICE: &str = addr!("alice");
+const CREATOR: &str = addr!("creator");
 const BOB: &str = addr!("bob");
 const CHARLIE: &str = addr!("charlie");
 const INITIAL_BALANCE: u128 = 1000000000;
@@ -52,6 +53,14 @@ fn cw_ave_contract() -> Box<dyn Contract<Empty>> {
 
 fn setup_app() -> App {
     let mut app = App::default();
+    // get_license_fee only knows real chain ids plus local labs; the multi-test
+    // default chain id is not one of them.
+    app.update_block(|b| b.chain_id = "testing".to_string());
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: CREATOR.to_string(),
+        amount: vec![coin(100_000_000, "uthiol")],
+    }))
+    .unwrap();
     // Mint initial balances
     app.sudo(SudoMsg::Bank(BankSudo::Mint {
         to_address: ALICE.to_string(),
@@ -161,9 +170,9 @@ fn test_instantiate_factory() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -199,9 +208,9 @@ fn test_instantiate_factory_no_owner() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -231,9 +240,9 @@ fn test_create_native_av_event_contract() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -304,9 +313,9 @@ fn test_unauthorized_create_contract() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -350,9 +359,9 @@ fn test_update_code_id() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -395,9 +404,9 @@ fn test_unauthorized_update_code_id() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -434,9 +443,9 @@ fn test_list_contracts_pagination() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -529,9 +538,9 @@ fn test_query_by_instantiator() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -626,9 +635,9 @@ fn test_query_by_instantiator_reverse() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -709,9 +718,9 @@ fn test_ownership_transfer() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -761,9 +770,9 @@ fn test_reply_handler() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )
@@ -821,9 +830,9 @@ fn test_invalid_guest_details() {
     let factory_addr = app
         .instantiate_contract(
             factory_code_id,
-            Addr::unchecked("creator"),
+            Addr::unchecked(CREATOR),
             &instantiate_msg,
-            &[],
+            &[coin(1_000_000, "uthiol")],
             "cw-ave-factory",
             None,
         )

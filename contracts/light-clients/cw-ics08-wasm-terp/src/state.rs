@@ -224,10 +224,11 @@ fn frozen_from_height(h: Option<&ProtoHeight>) -> bool {
 }
 
 fn inner_bytes(data: &[u8]) -> Vec<u8> {
-    if let Ok(any) = Any::decode(data) {
-        if any.type_url.contains("tendermint") && !any.value.is_empty() {
-            return any.value;
-        }
+    if let Ok(any) = Any::decode(data)
+        && any.type_url.contains("tendermint")
+        && !any.value.is_empty()
+    {
+        return any.value;
     }
     data.to_vec()
 }
@@ -322,10 +323,10 @@ pub fn encode_inner_client(c: &InnerClient) -> Result<Vec<u8>, ContractError> {
             });
         }
         let encoded = tm.encode_to_vec();
-        if let Ok(any) = Any::decode(raw.as_slice()) {
-            if any.type_url.contains("tendermint") {
-                return Ok(wrap_tm_any(&any.type_url, encoded));
-            }
+        if let Ok(any) = Any::decode(raw.as_slice())
+            && any.type_url.contains("tendermint")
+        {
+            return Ok(wrap_tm_any(&any.type_url, encoded));
         }
         return Ok(wrap_tm_any(TM_CLIENT_TYPE_URL, encoded));
     }

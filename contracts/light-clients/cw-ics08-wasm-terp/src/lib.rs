@@ -10,9 +10,7 @@ mod header;
 pub mod msg;
 mod state;
 
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, to_json_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, to_json_binary};
 use terp_iavl_lc::{
     HashAlg, verify_chained_membership, verify_chained_nonmembership, verify_ics23_existence,
     verify_ics23_nonexistence,

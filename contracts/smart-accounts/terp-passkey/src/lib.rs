@@ -174,7 +174,7 @@ impl TerpAccountTrait for PasskeyAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let payload: PasskeyAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
             ContractError::InvalidCredential {
