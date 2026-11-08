@@ -47,9 +47,10 @@ impl Generator for OpenApiGenerator {
             total_files += 1;
             log::info!("[openapi] Wrote {:?}", spec_path);
 
-            let yaml_path = contract_dir.join(format!("{}.openapi.yaml", contract_name));
-            let yaml_content = serde_yaml::to_string(&spec)?;
-            std::fs::write(&yaml_path, &yaml_content)?;
+            let _yaml_path = contract_dir.join(format!("{}.openapi.yaml", contract_name));
+            // TODO: replace
+            // let yaml_content = yaml_serde::to_string(&spec)?;
+            // std::fs::write(&yaml_path, &yaml_content)?;
             total_files += 1;
         }
 
@@ -149,7 +150,7 @@ fn generate_openapi_spec(
     let mut paths = BTreeMap::new();
 
     // Instantiate path: POST /instantiate
-    if let Some(instantiate) = find_schema_by_name(&schemas, "InstantiateMsg") {
+    if let Some(instantiate) = find_schema_by_name(schemas, "InstantiateMsg") {
         let mut ops = BTreeMap::new();
         ops.insert(
             "post".to_string(),
@@ -210,7 +211,7 @@ fn generate_openapi_spec(
     }
 
     // Execute path: POST /execute
-    if let Some(execute) = find_schema_by_name(&schemas, "ExecuteMsg") {
+    if let Some(execute) = find_schema_by_name(schemas, "ExecuteMsg") {
         let mut ops = BTreeMap::new();
         ops.insert(
             "post".to_string(),
@@ -256,62 +257,62 @@ fn generate_openapi_spec(
     }
 
     // Query paths: GET /query/{query_name}
-    if let Some(query) = find_schema_by_name(&schemas, "QueryMsg") {
-        if let Some(oneof) = query.get("oneOf").and_then(|v| v.as_array()) {
-            for variant in oneof {
-                if let Some(props) = variant.get("properties").and_then(|v| v.as_object()) {
-                    for (field_name, field_schema) in props {
-                        let path = format!("/query/{}", field_name);
-                        let mut ops = BTreeMap::new();
-                        ops.insert(
-                            "get".to_string(),
-                            Operation {
-                                summary: Some(format!("Query {}", field_name)),
-                                description: field_schema
-                                    .get("description")
-                                    .and_then(|v| v.as_str())
-                                    .map(|s| s.to_string()),
-                                request_body: None,
-                                parameters: vec![Parameter {
-                                    name: field_name.clone(),
-                                    location: "query".into(),
-                                    required: true,
-                                    schema: schema_value_to_ref(field_schema),
-                                }],
-                                responses: {
-                                    let mut r = BTreeMap::new();
-                                    r.insert(
-                                        "200".into(),
-                                        Response {
-                                            description: format!(
-                                                "{} response",
-                                                pascal_case(field_name)
-                                            ),
-                                            content: Some({
-                                                let mut c = BTreeMap::new();
-                                                c.insert(
-                                                    "application/json".into(),
-                                                    MediaType {
-                                                        schema: SchemaRef {
-                                                            ref_path: Some(format!(
-                                                                "#/components/schemas/{}Response",
-                                                                pascal_case(field_name)
-                                                            )),
-                                                            type_field: None,
-                                                            items: None,
-                                                        },
+    if let Some(query) = find_schema_by_name(schemas, "QueryMsg")
+        && let Some(oneof) = query.get("oneOf").and_then(|v| v.as_array())
+    {
+        for variant in oneof {
+            if let Some(props) = variant.get("properties").and_then(|v| v.as_object()) {
+                for (field_name, field_schema) in props {
+                    let path = format!("/query/{}", field_name);
+                    let mut ops = BTreeMap::new();
+                    ops.insert(
+                        "get".to_string(),
+                        Operation {
+                            summary: Some(format!("Query {}", field_name)),
+                            description: field_schema
+                                .get("description")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
+                            request_body: None,
+                            parameters: vec![Parameter {
+                                name: field_name.clone(),
+                                location: "query".into(),
+                                required: true,
+                                schema: schema_value_to_ref(field_schema),
+                            }],
+                            responses: {
+                                let mut r = BTreeMap::new();
+                                r.insert(
+                                    "200".into(),
+                                    Response {
+                                        description: format!(
+                                            "{} response",
+                                            pascal_case(field_name)
+                                        ),
+                                        content: Some({
+                                            let mut c = BTreeMap::new();
+                                            c.insert(
+                                                "application/json".into(),
+                                                MediaType {
+                                                    schema: SchemaRef {
+                                                        ref_path: Some(format!(
+                                                            "#/components/schemas/{}Response",
+                                                            pascal_case(field_name)
+                                                        )),
+                                                        type_field: None,
+                                                        items: None,
                                                     },
-                                                );
-                                                c
-                                            }),
-                                        },
-                                    );
-                                    r
-                                },
+                                                },
+                                            );
+                                            c
+                                        }),
+                                    },
+                                );
+                                r
                             },
-                        );
-                        paths.insert(path, ops);
-                    }
+                        },
+                    );
+                    paths.insert(path, ops);
                 }
             }
         }

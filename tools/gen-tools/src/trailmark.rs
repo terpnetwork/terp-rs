@@ -50,10 +50,10 @@ impl Generator for TrailmarkGenerator {
         if ctx.openapi_out.exists() {
             api_dirs.push(ctx.openapi_out.clone());
         }
-        if let Some(ref tz_out) = ctx.tz_out {
-            if tz_out.exists() {
-                api_dirs.push(tz_out.clone());
-            }
+        if let Some(ref tz_out) = ctx.tz_out
+            && tz_out.exists()
+        {
+            api_dirs.push(tz_out.clone());
         }
 
         // ── Phase 1: QMD probe (0-to-port) ─────────────────────────
@@ -326,16 +326,16 @@ fn find_qmd_index() -> PathBuf {
             let home = std::env::var("HOME").unwrap_or_default();
             PathBuf::from(home).join(".cache").join("qmd")
         });
-    let index_path = cache.join("index.sqlite");
-    index_path
+
+    cache.join("index.sqlite")
 }
 
 /// Get version info from a QMD binary.
 fn get_version(bin: &str) -> Option<String> {
-    if let Ok(out) = Command::new(bin).arg("--version").output() {
-        if out.status.success() {
-            return Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
-        }
+    if let Ok(out) = Command::new(bin).arg("--version").output()
+        && out.status.success()
+    {
+        return Some(String::from_utf8_lossy(&out.stdout).trim().to_string());
     }
     None
 }
@@ -348,15 +348,15 @@ fn probe_qmd_collections(bin_path: &Option<String>) -> Vec<String> {
     };
 
     // Try `qmd list` first
-    if let Ok(out) = Command::new(&bin).arg("list").output() {
-        if out.status.success() {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            return stdout
-                .lines()
-                .map(|l| l.trim().to_string())
-                .filter(|l| !l.is_empty() && !l.starts_with('#'))
-                .collect();
-        }
+    if let Ok(out) = Command::new(&bin).arg("list").output()
+        && out.status.success()
+    {
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        return stdout
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            .collect();
     }
 
     // Fallback: stat the index SQLite for table names
@@ -366,15 +366,14 @@ fn probe_qmd_collections(bin_path: &Option<String>) -> Vec<String> {
         if let Ok(out) = Command::new("sqlite3")
             .args([&index_path.to_string_lossy(), ".tables"])
             .output()
+            && out.status.success()
         {
-            if out.status.success() {
-                let stdout = String::from_utf8_lossy(&out.stdout);
-                return stdout
-                    .split_whitespace()
-                    .map(|s| s.to_string())
-                    .filter(|t| t != "sqlite_sequence")
-                    .collect();
-            }
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            return stdout
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .filter(|t| t != "sqlite_sequence")
+                .collect();
         }
 
         // If SQLite CLI not available, just note the index exists
@@ -409,30 +408,28 @@ fn probe_qmd_index() -> Option<QmdIndexState> {
             "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence';",
         ])
         .output()
+        && out.status.success()
     {
-        if out.status.success() {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            collections = stdout
-                .lines()
-                .map(|l| l.trim().to_string())
-                .filter(|l| !l.is_empty())
-                .collect();
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        collections = stdout
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
 
-            // Count rows in each table
-            for table in &collections {
-                if let Ok(count_out) = Command::new("sqlite3")
-                    .arg(&*index_path.to_string_lossy())
-                    .arg(format!("SELECT COUNT(*) FROM \"{}\";", table))
-                    .output()
-                {
-                    if count_out.status.success() {
-                        let count_str = String::from_utf8_lossy(&count_out.stdout)
-                            .trim()
-                            .to_string();
-                        if let Ok(n) = count_str.parse::<u64>() {
-                            total_files += n;
-                        }
-                    }
+        // Count rows in each table
+        for table in &collections {
+            if let Ok(count_out) = Command::new("sqlite3")
+                .arg(&*index_path.to_string_lossy())
+                .arg(format!("SELECT COUNT(*) FROM \"{}\";", table))
+                .output()
+                && count_out.status.success()
+            {
+                let count_str = String::from_utf8_lossy(&count_out.stdout)
+                    .trim()
+                    .to_string();
+                if let Ok(n) = count_str.parse::<u64>() {
+                    total_files += n;
                 }
             }
         }

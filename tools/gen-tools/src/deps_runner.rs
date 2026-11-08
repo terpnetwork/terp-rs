@@ -42,7 +42,7 @@ pub fn run_deps_command(cmd: &DepsCommand) -> anyhow::Result<()> {
 
     // Discover projects unless not needed
     let projects = match cmd {
-        DepsCommand::Status { .. }
+        DepsCommand::Status
         | DepsCommand::Scrape { .. }
         | DepsCommand::Switch { .. }
         | DepsCommand::Snapshot { .. }
@@ -352,12 +352,11 @@ fn discover_repo_root() -> anyhow::Result<std::path::PathBuf> {
         }
         // Remember the deepest Cargo.toml with [workspace] as fallback
         let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    deepest_workspace = Some(current.clone());
-                }
-            }
+        if cargo_toml.exists()
+            && let Ok(content) = std::fs::read_to_string(&cargo_toml)
+            && content.contains("[workspace]")
+        {
+            deepest_workspace = Some(current.clone());
         }
         if !current.pop() {
             // No .git found anywhere — use the deepest workspace root as fallback

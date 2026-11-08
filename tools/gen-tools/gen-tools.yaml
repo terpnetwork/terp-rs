@@ -53,6 +53,56 @@ projects:
     rust_out: "api/rust"
     openapi_out: "api/openapi"
 
+  # nftfi contracts. Same layout as cw721-svg once they are workspace members
+  # with src/bin/schema.rs. `name` is the --project id (just nftfi-schema).
+  # ts-codegen writes api/ts/<cargo-package>/. Sibling packages:
+  # revenue-marketplace, revenue-reserve-auction, nftfi-raffle, nftfi-loan.
+  # Schema bins whose [[bin]] name is not `schema` are picked up from that
+  # name (revenue-marketplace-schema, revenue-reserve-auction-schema).
+  - name: marketplace
+    path: "crates/terp-rs/contracts/revenue/marketplace"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "api/ts"
+    py_out: "api/python"
+    zod_out: "api/ts"
+    proto_out: "api/proto"
+    go_out: "api/go"
+    rust_out: "api/rust"
+    openapi_out: "api/openapi"
+
+  - name: reserve-auction
+    path: "crates/terp-rs/contracts/revenue/reserve-auction"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "api/ts"
+    py_out: "api/python"
+    zod_out: "api/ts"
+    proto_out: "api/proto"
+    go_out: "api/go"
+    rust_out: "api/rust"
+    openapi_out: "api/openapi"
+
+  - name: raffle
+    path: "crates/terp-rs/contracts/nfts/raffle"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "api/ts"
+    py_out: "api/python"
+    zod_out: "api/ts"
+    proto_out: "api/proto"
+    go_out: "api/go"
+    rust_out: "api/rust"
+    openapi_out: "api/openapi"
+
+  - name: nft-loan
+    path: "crates/terp-rs/contracts/nfts/nft-loan"
+    steps: "schema,ts-codegen,ts-bundles,python,zod,go,openapi,proto,rust"
+    ts_out: "api/ts"
+    py_out: "api/python"
+    zod_out: "api/ts"
+    proto_out: "api/proto"
+    go_out: "api/go"
+    rust_out: "api/rust"
+    openapi_out: "api/openapi"
+
   - name: polytone
     path: "crates/polytone"
     tz_heuristics: "../terp-rs/tools/gen-tools/tz-heuristics.toml"

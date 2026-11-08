@@ -255,7 +255,7 @@ fn generate_contract_readme(
 
     // Types index
     output.push_str("## Types\n\n");
-    for (type_name, _) in schemas {
+    for type_name in schemas.keys() {
         if !type_name.contains("Msg") && !type_name.contains("Response") {
             output.push_str(&format!("- `{}`\n", type_name));
         }

@@ -82,7 +82,7 @@ fn generate_zod_file(
     let mut message_types: Vec<(String, serde_json::Value)> = Vec::new();
     let mut response_types: Vec<(String, serde_json::Value)> = Vec::new();
 
-    for (_key, merged) in schemas {
+    for merged in schemas.values() {
         // Iterate inner keys of the merged schema JSON object
         let inner_obj = match merged.as_object() {
             Some(obj) => obj,
@@ -106,21 +106,19 @@ fn generate_zod_file(
                         }
                     }
                 }
-            } else if inner_key == "responses" {
-                if let Some(responses) = inner_val.as_object() {
-                    for (qname, resp_schema) in responses {
-                        let title = resp_schema
-                            .get("title")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(qname)
-                            .to_string();
-                        response_types.push((title, resp_schema.clone()));
-                        if let Some(defs) =
-                            resp_schema.get("definitions").and_then(|v| v.as_object())
-                        {
-                            for (dk, dv) in defs {
-                                all_defs.entry(dk.clone()).or_insert_with(|| dv.clone());
-                            }
+            } else if inner_key == "responses"
+                && let Some(responses) = inner_val.as_object()
+            {
+                for (qname, resp_schema) in responses {
+                    let title = resp_schema
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(qname)
+                        .to_string();
+                    response_types.push((title, resp_schema.clone()));
+                    if let Some(defs) = resp_schema.get("definitions").and_then(|v| v.as_object()) {
+                        for (dk, dv) in defs {
+                            all_defs.entry(dk.clone()).or_insert_with(|| dv.clone());
                         }
                     }
                 }
@@ -192,7 +190,7 @@ fn generate_zod_file(
 
     // Generate response types
     for (title, schema) in &response_types {
-        let clean = pascal_case(&title);
+        let clean = pascal_case(title);
         let zod_schema = json_type_to_zod(schema, &all_defs);
         output.push_str(&format!(
             "export const {}ResponseSchema = {};\n",
@@ -245,14 +243,13 @@ fn json_type_to_zod(
     all_defs: &HashMap<String, serde_json::Value>,
 ) -> String {
     // 1) Unwrap allOf wrapping — single-$ref allOf: [{$ref: "..."}]
-    if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array()) {
-        if allof.len() == 1 {
-            if let Some(ref_path) = allof[0].get("$ref").and_then(|v| v.as_str()) {
-                let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
-                let clean = pascal_case(ref_name);
-                return format!("z.lazy(() => {}Schema)", clean);
-            }
-        }
+    if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array())
+        && allof.len() == 1
+        && let Some(ref_path) = allof[0].get("$ref").and_then(|v| v.as_str())
+    {
+        let ref_name = ref_path.rsplit('/').next().unwrap_or(ref_path);
+        let clean = pascal_case(ref_name);
+        return format!("z.lazy(() => {}Schema)", clean);
     }
 
     // 2) Unwrap anyOf with null (nullable pattern)
@@ -269,11 +266,11 @@ fn json_type_to_zod(
     // 3) Handle type as array (["integer", "null"] for optional ints)
     if let Some(types) = schema.get("type").and_then(|v| v.as_array()) {
         for t in types {
-            if let Some(type_str) = t.as_str() {
-                if type_str != "null" {
-                    let single = serde_json::json!({"type": type_str});
-                    return json_type_to_zod(&single, all_defs);
-                }
+            if let Some(type_str) = t.as_str()
+                && type_str != "null"
+            {
+                let single = serde_json::json!({"type": type_str});
+                return json_type_to_zod(&single, all_defs);
             }
         }
     }

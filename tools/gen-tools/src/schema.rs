@@ -116,6 +116,29 @@ fn is_cdylib(manifest: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// `[[bin]] name` whose path is `src/bin/schema.rs`, else `schema`.
+fn schema_bin_name(dir: &Path) -> String {
+    let Ok(text) = std::fs::read_to_string(dir.join("Cargo.toml")) else {
+        return "schema".into();
+    };
+    let Ok(value) = toml::from_str::<toml::Value>(&text) else {
+        return "schema".into();
+    };
+    let Some(bins) = value.get("bin").and_then(|b| b.as_array()) else {
+        return "schema".into();
+    };
+    for bin in bins {
+        let path = bin.get("path").and_then(|p| p.as_str()).unwrap_or("");
+        let name = bin.get("name").and_then(|n| n.as_str());
+        if path.replace('\\', "/").ends_with("src/bin/schema.rs")
+            && let Some(name) = name
+        {
+            return name.to_string();
+        }
+    }
+    "schema".into()
+}
+
 /// `src/bin/schema.rs` or `examples/schema.rs`.
 fn schema_target(dir: &Path) -> Option<&'static str> {
     if dir.join("src/bin/schema.rs").is_file() {
@@ -140,7 +163,10 @@ fn run_cargo_schema(dir: &Path) -> anyhow::Result<usize> {
     cmd.current_dir(dir).arg("run").arg("--quiet");
     match kind {
         "bin" => {
-            cmd.args(["--bin", "schema"]);
+            // Default cargo bin name for src/bin/schema.rs is `schema`.
+            // A crate may override it (`revenue-marketplace-schema`).
+            let bin_name = schema_bin_name(dir);
+            cmd.args(["--bin", &bin_name]);
         }
         _ => {
             cmd.args(["--example", "schema"]);
@@ -190,7 +216,7 @@ fn find_schema_dirs(root: &Path) -> Vec<std::path::PathBuf> {
     if let Ok(entries) = std::fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() && path.file_name().map_or(false, |n| n != "target") {
+            if path.is_dir() && path.file_name().is_some_and(|n| n != "target") {
                 let schema_path = path.join("schema");
                 if schema_path.exists() {
                     dirs.push(schema_path);
@@ -206,7 +232,7 @@ fn count_json_files(dir: &std::path::Path) -> usize {
         .map(|entries| {
             entries
                 .filter_map(|e| e.ok())
-                .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+                .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                 .count()
         })
         .unwrap_or(0)

@@ -80,10 +80,10 @@ fn collect_schemas(merged: &Value) -> Vec<(String, Value)> {
     // Top-level message types: instantiate, execute, query, migrate, sudo
     let msg_keys = ["instantiate", "execute", "query", "migrate", "sudo"];
     for key in &msg_keys {
-        if let Some(msg_val) = merged.get(*key) {
-            if !msg_val.is_null() {
-                schemas.push((key.to_string(), msg_val.clone()));
-            }
+        if let Some(msg_val) = merged.get(*key)
+            && !msg_val.is_null()
+        {
+            schemas.push((key.to_string(), msg_val.clone()));
         }
     }
 
@@ -123,7 +123,7 @@ fn generate_python_module(
 
     // Collect all type schemas from the merged contract schema
     let mut all_schemas: Vec<(String, Value)> = Vec::new();
-    for (_stem, merged) in schemas {
+    for merged in schemas.values() {
         all_schemas.extend(collect_schemas(merged));
     }
 
@@ -275,13 +275,12 @@ fn generate_python_module(
                     }
                 }
                 // Also merge $ref targets
-                if let Some(ref_path) = sub.get("$ref").and_then(|v| v.as_str()) {
-                    if let Some(target) = resolve_ref(ref_path, &all_schemas) {
-                        if let Some(props) = target.get("properties").and_then(|v| v.as_object()) {
-                            for (k, v) in props {
-                                merged_props.entry(k.clone()).or_insert_with(|| v.clone());
-                            }
-                        }
+                if let Some(ref_path) = sub.get("$ref").and_then(|v| v.as_str())
+                    && let Some(target) = resolve_ref(ref_path, &all_schemas)
+                    && let Some(props) = target.get("properties").and_then(|v| v.as_object())
+                {
+                    for (k, v) in props {
+                        merged_props.entry(k.clone()).or_insert_with(|| v.clone());
                     }
                 }
             }
@@ -349,7 +348,7 @@ fn generate_python_module(
         }
 
         // Default: type alias
-        let (py_type, _) = json_type_to_python(&schema, &all_schemas);
+        let (py_type, _) = json_type_to_python(schema, &all_schemas);
         output.push_str(&format!("{} = {}\n\n", clean_name, py_type));
     }
 
@@ -373,22 +372,20 @@ fn clean_py_name(name: &str) -> String {
 }
 
 fn schema_is_nullable(schema: &Value) -> bool {
-    if let Some(types) = schema.get("type").and_then(|v| v.as_array()) {
-        if types.iter().any(|t| t.as_str() == Some("null")) {
-            return true;
-        }
+    if let Some(types) = schema.get("type").and_then(|v| v.as_array())
+        && types.iter().any(|t| t.as_str() == Some("null"))
+    {
+        return true;
     }
     if let Some(variants) = schema
         .get("anyOf")
         .or_else(|| schema.get("oneOf"))
         .and_then(|v| v.as_array())
-    {
-        if variants
+        && variants
             .iter()
             .any(|v| v.get("type").and_then(|t| t.as_str()) == Some("null"))
-        {
-            return true;
-        }
+    {
+        return true;
     }
     false
 }
@@ -458,10 +455,10 @@ fn json_type_to_python(
     all_schemas: &[(String, Value)],
 ) -> (String, String) {
     // allOf of a single $ref is how schemars writes Binary and Timestamp.
-    if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array()) {
-        if allof.len() == 1 {
-            return json_type_to_python(&allof[0], all_schemas);
-        }
+    if let Some(allof) = schema.get("allOf").and_then(|v| v.as_array())
+        && allof.len() == 1
+    {
+        return json_type_to_python(&allof[0], all_schemas);
     }
 
     // $ref names a generated class. Callers wrap non-required fields.
@@ -531,10 +528,10 @@ fn json_type_to_python(
     match schema.get("type").and_then(|v| v.as_str()) {
         Some("string") => ("str".to_string(), "\"\"".to_string()),
         Some("integer") => {
-            if let Some(fmt) = schema.get("format").and_then(|v| v.as_str()) {
-                if fmt == "uint64" || fmt == "int64" {
-                    return ("str".to_string(), "\"0\"".to_string()); // Cosmos bigints
-                }
+            if let Some(fmt) = schema.get("format").and_then(|v| v.as_str())
+                && (fmt == "uint64" || fmt == "int64")
+            {
+                return ("str".to_string(), "\"0\"".to_string()); // Cosmos bigints
             }
             ("int".to_string(), "0".to_string())
         }
@@ -574,7 +571,7 @@ fn simple_type_to_py(t: &str, schema: &Value, all_schemas: &[(String, Value)]) -
                 schema
                     .get("title")
                     .and_then(|v| v.as_str())
-                    .map(|s| clean_py_name(s))
+                    .map(clean_py_name)
                     .unwrap_or_else(|| "str".to_string())
             } else {
                 "str".to_string()

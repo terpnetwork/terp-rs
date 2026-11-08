@@ -56,6 +56,7 @@ except ImportError:
         sys.exit(1)
 
 from dep_common import (
+    _build_project,
     DEV_MODE_MAP,
     KNOWN_WORKSPACE_ROOTS,
     PATCH_MODE_MAP,
@@ -161,6 +162,13 @@ def resolve_projects(ws_filter=None, all_projects=False):
                 matched = True
                 break
         if not matched:
+            # A workspace outside REPO_ROOT (detached clone), named by path.
+            cand = Path(f).expanduser()
+            if (cand / "Cargo.toml").is_file():
+                proj = _build_project((cand / "Cargo.toml").resolve())
+                if proj:
+                    result.append(proj)
+                    continue
             print(f"WARNING: workspace '{f}' not found, skipping")
     return result
 

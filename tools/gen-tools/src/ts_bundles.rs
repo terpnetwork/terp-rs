@@ -45,7 +45,7 @@ impl Generator for TsBundlesGenerator {
             let mut message_types: Vec<(String, Value)> = Vec::new();
             let mut response_types: Vec<(String, Value)> = Vec::new();
 
-            for (_type_key, schema_value) in schemas {
+            for schema_value in schemas.values() {
                 ts_codegen::collect_types_and_defs(
                     schema_value,
                     &mut message_types,
@@ -124,7 +124,7 @@ fn generate_co_located_zod(cname: &str, all_defs: &HashMap<String, Value>) -> St
         let val = &all_defs[*name];
         let schema_name = format!("{}Schema", pascal_case(name));
         out.push_str(&format!("export const {} = ", schema_name));
-        out.push_str(&schema_to_zod(val, all_defs, 0));
+        out.push_str(&schema_to_zod(val, 0));
         out.push_str(";\n");
     }
 
@@ -137,7 +137,7 @@ fn generate_co_located_zod(cname: &str, all_defs: &HashMap<String, Value>) -> St
     out
 }
 
-fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> String {
+fn schema_to_zod(val: &Value, depth: usize) -> String {
     if let Some(r) = val.get("$ref").and_then(|v| v.as_str()) {
         let n = r.rsplit('/').next().unwrap_or(r);
         return format!("{}Schema", pascal_case(n));
@@ -150,14 +150,14 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
         if arr.is_empty() {
             return "z.never()".to_string();
         }
-        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, defs, depth)).collect();
+        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, depth)).collect();
         return items.join(".or(");
     }
     if let Some(arr) = val.get("allOf").and_then(|v| v.as_array()) {
         if arr.is_empty() {
             return "z.unknown()".to_string();
         }
-        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, defs, depth)).collect();
+        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, depth)).collect();
         return items.join(".and(");
     }
     match val.get("type").and_then(|v| v.as_str()) {
@@ -169,7 +169,7 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
         Some("array") => {
             let inner = val
                 .get("items")
-                .map(|i| schema_to_zod(i, defs, depth))
+                .map(|i| schema_to_zod(i, depth))
                 .unwrap_or_else(|| "z.unknown()".into());
             format!("z.array({})", inner)
         }
@@ -179,9 +179,7 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
                 let indent_inner = "  ".repeat(depth);
                 let fields: Vec<String> = props
                     .iter()
-                    .map(|(k, v)| {
-                        format!("{}  {}: {},", indent, k, schema_to_zod(v, defs, depth + 1))
-                    })
+                    .map(|(k, v)| format!("{}  {}: {},", indent, k, schema_to_zod(v, depth + 1)))
                     .collect();
                 format!("z.object({{\n{}\n{}}})", fields.join("\n"), indent_inner)
             } else {

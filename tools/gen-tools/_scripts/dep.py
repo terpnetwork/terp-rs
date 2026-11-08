@@ -16,6 +16,14 @@ Usage:
     python3 _scripts/dep.py ensure-branches <mode> [--force]
     python3 _scripts/dep.py branch-check [--mode MODE] [--refresh] [--all]
     python3 _scripts/dep.py git-status [--repo PATH] [--all]
+
+Monorepo root:
+    Matrix local/zk_local paths are relative to terp-core/crates. The root is
+    TERP_DEP_ROOT, else dep-config.toml paths.monorepo_root (right for
+    terp-core/crates/terp-rs), else a sibling ../terp-core/crates next to a
+    detached terp-rs clone. Override with `dep.py --root PATH <command>`.
+    Workspaces outside the root (e.g. ~/abstract/cometbft-rs-bls) can be named
+    by filesystem path: `dep.py align --workspace ~/abstract/cometbft-rs-bls`.
 """
 
 from __future__ import annotations
@@ -26,6 +34,18 @@ import json
 import re
 import sys
 from pathlib import Path
+import os
+
+# --root must take effect before dep_common resolves REPO_ROOT at import.
+for _i, _a in enumerate(sys.argv[1:], 1):
+    if _a == "--root" and _i + 1 < len(sys.argv):
+        os.environ["TERP_DEP_ROOT"] = sys.argv[_i + 1]
+        del sys.argv[_i:_i + 2]
+        break
+    if _a.startswith("--root="):
+        os.environ["TERP_DEP_ROOT"] = _a.split("=", 1)[1]
+        del sys.argv[_i]
+        break
 
 _SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SCRIPTS))

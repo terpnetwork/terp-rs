@@ -86,13 +86,13 @@ fn _discover(
 
         let cargo_toml = path.join("Cargo.toml");
         if cargo_toml.exists() {
-            if let Some(proj) = build_project(repo_root, &cargo_toml) {
-                if seen.insert(cargo_toml.clone()) {
-                    projects.push(proj.clone());
-                    // For workspaces, recurse into excluded members
-                    if proj.is_workspace {
-                        _discover_excluded(repo_root, &cargo_toml, skip, seen, projects)?;
-                    }
+            if let Some(proj) = build_project(repo_root, &cargo_toml)
+                && seen.insert(cargo_toml.clone())
+            {
+                projects.push(proj.clone());
+                // For workspaces, recurse into excluded members
+                if proj.is_workspace {
+                    _discover_excluded(repo_root, &cargo_toml, skip, seen, projects)?;
                 }
             }
             // Recurse deeper to find sub-projects
@@ -136,10 +136,10 @@ fn _discover_excluded(
         let abs = ws_dir.join(&excl);
         let exc_cargo = abs.join("Cargo.toml");
         if exc_cargo.exists() {
-            if let Some(proj) = build_project(repo_root, &exc_cargo) {
-                if seen.insert(exc_cargo) {
-                    projects.push(proj);
-                }
+            if let Some(proj) = build_project(repo_root, &exc_cargo)
+                && seen.insert(exc_cargo)
+            {
+                projects.push(proj);
             }
         } else if abs.is_dir() {
             _discover(repo_root, &abs, skip, seen, projects, 2)?;
