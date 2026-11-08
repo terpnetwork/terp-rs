@@ -29,10 +29,10 @@ pub fn instantiate(
     if msg.accepted_denom.trim().is_empty() {
         return Err(ContractError::EmptyDenom {});
     }
-    if let Some(bps) = msg.protocol_fee_bps {
-        if bps > 10_000 {
-            return Err(ContractError::InvalidFeeBps { bps });
-        }
+    if let Some(bps) = msg.protocol_fee_bps
+        && bps > 10_000
+    {
+        return Err(ContractError::InvalidFeeBps { bps });
     }
 
     let admin = deps.api.addr_validate(&msg.admin)?;

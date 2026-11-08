@@ -34,6 +34,5 @@ fn itl_frost_rotate_live_execute_not_authenticate() {
     let lcd = std::env::var("ICT_LCD").ok();
     if spawn.as_deref() != Some("1") && lcd.is_none() {
         // Ignored by default; with ICT_SPAWN=1 the example is the chain proof.
-        return;
     }
 }

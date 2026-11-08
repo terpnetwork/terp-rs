@@ -24,7 +24,7 @@ use halo2_proofs::{
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
 use pasta_curves::{pallas, vesta};
-use rand::rng;
+use rand010::rng;
 use serde_json::{Value as Json, json};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
@@ -90,13 +90,16 @@ fn round_constants() -> &'static [Base] {
     })
 }
 
+/// (current, sibling) cells returned by the Merkle mux step.
+type CellPair = (AssignedCell<Base, Base>, AssignedCell<Base, Base>);
+
 fn mds() -> &'static [[Base; T]; T] {
     static MDS: OnceLock<[[Base; T]; T]> = OnceLock::new();
     MDS.get_or_init(|| {
         let mut m = [[Base::ZERO; T]; T];
-        for i in 0..T {
-            for j in 0..T {
-                m[i][j] = Base::from((i + j + 3) as u64).invert().expect("mds denom");
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = Base::from((i + j + 3) as u64).invert().expect("mds denom");
             }
         }
         m
@@ -334,7 +337,7 @@ impl Chip {
         cur: &AssignedCell<Base, Base>,
         sib: Value<Base>,
         bit: Value<Base>,
-    ) -> Result<(AssignedCell<Base, Base>, AssignedCell<Base, Base>), Error> {
+    ) -> Result<CellPair, Error> {
         layouter.assign_region(
             || "mux",
             |mut region| {
@@ -700,22 +703,14 @@ fn setup_keys() -> Result<
     Ok((params, pk))
 }
 
-fn keys() -> Result<
-    &'static (
-        halo2_proofs::poly::commitment::Params<vesta::Affine>,
-        plonk::ProvingKey<vesta::Affine>,
-    ),
-    String,
-> {
-    static KYS: OnceLock<
-        Result<
-            (
-                halo2_proofs::poly::commitment::Params<vesta::Affine>,
-                plonk::ProvingKey<vesta::Affine>,
-            ),
-            String,
-        >,
-    > = OnceLock::new();
+/// IPA params and proving key for the consume circuit.
+type ProverKeys = (
+    halo2_proofs::poly::commitment::Params<vesta::Affine>,
+    plonk::ProvingKey<vesta::Affine>,
+);
+
+fn keys() -> Result<&'static ProverKeys, String> {
+    static KYS: OnceLock<Result<ProverKeys, String>> = OnceLock::new();
     match KYS.get_or_init(setup_keys) {
         Ok(k) => Ok(k),
         Err(e) => Err(e.clone()),
@@ -789,7 +784,7 @@ pub fn parse_vk_footer(blob: &[u8]) -> Result<(u8, u8, u32, u32), &'static str> 
 
 fn b64(data: &[u8]) -> String {
     const CH: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
@@ -847,20 +842,11 @@ pub fn verify_consume_msg(proof: &[u8], nullifier: &[u8; 32], event_id_fp: &[u8;
 }
 
 /// In-process door. Ushers public; guests are not a ListMembers roster.
+#[derive(Default)]
 pub struct ConsumeEngine {
     ushers: HashSet<String>,
     nullifiers: HashSet<[u8; 32]>,
     guest_root: Option<[u8; 32]>,
-}
-
-impl Default for ConsumeEngine {
-    fn default() -> Self {
-        Self {
-            ushers: HashSet::new(),
-            nullifiers: HashSet::new(),
-            guest_root: None,
-        }
-    }
 }
 
 impl ConsumeEngine {
@@ -1020,7 +1006,10 @@ mod tests {
         assert_eq!(msg["@type"], MSG_STORE_CODE_WITH_CIRCUIT);
         assert_eq!(msg["prover_id"], 0);
         assert!(msg.get("verifying_key").is_some());
-        assert_eq!(msg["instantiate_permission"]["permission"], "ACCESS_TYPE_EVERYBODY");
+        assert_eq!(
+            msg["instantiate_permission"]["permission"],
+            "ACCESS_TYPE_EVERYBODY"
+        );
         assert!(
             !msg["@type"].as_str().unwrap().ends_with("MsgStoreCode")
                 || msg["@type"].as_str().unwrap().contains("Circuit")

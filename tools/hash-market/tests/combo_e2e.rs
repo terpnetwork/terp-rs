@@ -80,7 +80,7 @@ fn combo_curate_all_presets_three_modes() {
 
 #[test]
 fn combo_runtime_register_and_mint_grants() {
-    std::env::set_var("ONBOARD_SKIP_PAID", "1");
+    unsafe { std::env::set_var("ONBOARD_SKIP_PAID", "1") };
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
     let addr = listener.local_addr().unwrap();
     drop(listener);

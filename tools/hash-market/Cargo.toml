@@ -2,6 +2,8 @@
 name = "hash-market"
 version = "0.1.0"
 edition = "2024"
+# bins are declared below; src/bin/*_host.rs are include!d bodies, not bins
+autobins = false
 
 [[bin]]
 name = "hash-market-relay"
@@ -168,3 +170,15 @@ tracing-subscriber = { workspace = true, features = ["env-filter"], optional = t
 zakura-halo2-gadgets = { workspace = true, optional = true }
 zakura-halo2-proofs = { workspace = true, features = ["batch"], optional = true }
 zakura-pasta-curves = { workspace = true, features = ["default"], optional = true }
+
+[[example]]
+name = "debug_router"
+required-features = ["server", "ve", "blossom", "client", "nostr"]
+
+[[example]]
+name = "debug_path"
+required-features = ["server", "ve", "blossom", "client", "nostr"]
+
+# `ed25519-v2` gates LocalEd25519, which needs ed25519-dalek 2.x (workspace pins 1.x).
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("ed25519-v2"))'] }

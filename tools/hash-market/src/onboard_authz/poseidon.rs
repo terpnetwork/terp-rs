@@ -69,9 +69,9 @@ impl Fp {
     fn add(self, rhs: Self) -> Self {
         let mut out = [0u64; 4];
         let mut carry = 0u128;
-        for i in 0..4 {
+        for (i, o) in out.iter_mut().enumerate() {
             carry += self.0[i] as u128 + rhs.0[i] as u128;
-            out[i] = carry as u64;
+            *o = carry as u64;
             carry >>= 64;
         }
         if carry > 0 || gte4(&out, &P) {
@@ -84,13 +84,13 @@ impl Fp {
     fn sub(self, rhs: Self) -> Self {
         let mut out = [0u64; 4];
         let mut borrow = 0i128;
-        for i in 0..4 {
+        for (i, o) in out.iter_mut().enumerate() {
             let v = self.0[i] as i128 - rhs.0[i] as i128 - borrow;
             if v < 0 {
-                out[i] = (v + (1i128 << 64)) as u64;
+                *o = (v + (1i128 << 64)) as u64;
                 borrow = 1;
             } else {
-                out[i] = v as u64;
+                *o = v as u64;
                 borrow = 0;
             }
         }
@@ -247,7 +247,7 @@ pub fn hex_encode(bytes: &[u8]) -> String {
 
 pub fn hex_decode(s: &str) -> Result<Vec<u8>, &'static str> {
     let s = s.trim();
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return Err("odd_hex");
     }
     let mut out = Vec::with_capacity(s.len() / 2);
@@ -288,9 +288,9 @@ fn mds() -> &'static [[Fp; T]; T] {
     static MDS: OnceLock<[[Fp; T]; T]> = OnceLock::new();
     MDS.get_or_init(|| {
         let mut m = [[Fp::ZERO; T]; T];
-        for i in 0..T {
-            for j in 0..T {
-                m[i][j] = Fp::from_u64((i + j + 3) as u64).inv();
+        for (i, row) in m.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                *cell = Fp::from_u64((i + j + 3) as u64).inv();
             }
         }
         m
@@ -459,7 +459,11 @@ impl PoseidonTree {
         for level in 0..self.depth {
             let sibling = i ^ 1;
             let sib = self.node(level as u32, sibling);
-            let (l, r) = if i % 2 == 0 { (cur, sib) } else { (sib, cur) };
+            let (l, r) = if i.is_multiple_of(2) {
+                (cur, sib)
+            } else {
+                (sib, cur)
+            };
             cur = poseidon2(l, r);
             i /= 2;
             self.nodes.insert(((level + 1) as u32, i), cur);
@@ -499,7 +503,11 @@ impl MerklePath {
         let mut cur = leaf;
         let mut i = self.index;
         for sib in &self.siblings {
-            let (l, r) = if i % 2 == 0 { (cur, *sib) } else { (*sib, cur) };
+            let (l, r) = if i.is_multiple_of(2) {
+                (cur, *sib)
+            } else {
+                (*sib, cur)
+            };
             cur = poseidon2(l, r);
             i /= 2;
         }

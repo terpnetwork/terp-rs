@@ -235,7 +235,7 @@ pub fn vote_sign_bytes(chain_id: &str, vote: &Vote) -> Result<Vec<u8>> {
         height: vote.height,
         round: vote.round as i64,
         block_id: block_id_canonical(&vote.block_id),
-        timestamp: vote.timestamp.clone(),
+        timestamp: vote.timestamp,
         chain_id: chain_id.to_string(),
     };
     marshal_delimited(&cv)
@@ -248,7 +248,7 @@ pub fn proposal_sign_bytes(chain_id: &str, p: &Proposal) -> Result<Vec<u8>> {
         round: p.round as i64,
         pol_round: p.pol_round as i64,
         block_id: block_id_canonical(&p.block_id),
-        timestamp: p.timestamp.clone(),
+        timestamp: p.timestamp,
         chain_id: chain_id.to_string(),
     };
     marshal_delimited(&cp)

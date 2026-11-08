@@ -1,7 +1,7 @@
-//! Existing in-process test bin: keeper-sim + grant curation for every preset/mode.
-//!
-//!   cargo run -p hash-market --features onboard --bin onboard-local-workflow
-//!   ONBOARD_PRESET=norick ONBOARD_MODE=wallet-as-runtime cargo run -p hash-market --features onboard --bin onboard-local-workflow
+// Existing in-process test bin: keeper-sim + grant curation for every preset/mode.
+//
+//   cargo run -p hash-market --features onboard --bin onboard-local-workflow
+//   ONBOARD_PRESET=norick ONBOARD_MODE=wallet-as-runtime cargo run -p hash-market --features onboard --bin onboard-local-workflow
 
 use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
 use hash_market::onboard_authz::workflow::{SimKeeper, run_happy_path};

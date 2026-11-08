@@ -1,6 +1,6 @@
 {
   "contract_name": "cw-oracle-registry",
-  "contract_version": "0.0.2",
+  "contract_version": "0.0.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "type": "v1",
@@ -16,6 +16,11 @@
           "bounty": {
             "description": "Optional first-writer bounty paid from contract balance.",
             "value": 5
+          },
+          "ibc2_source_client": {
+            "defaulting": true,
+            "description": "Optional IBC v2 client. `RegisterIbcV2` sets this after instantiate.",
+            "value": 6
           },
           "note": {
             "defaulting": true,
@@ -80,8 +85,43 @@
             "description": "Polytone note ACK. Wire tag `{ \"callback\": { ... } }` matches\n`polytone::callbacks::CallbackMessage`.",
             "type": "tuple",
             "items": [
-              9
+              12
             ]
+          },
+          "register_ibc_v2": {
+            "description": "Admin: bind this chain's IBC v2 client. Destination port is `dex-quote`.",
+            "type": "named",
+            "properties": {
+              "source_client": {
+                "value": 1
+              }
+            }
+          },
+          "request_quote": {
+            "description": "Ask the dex-quote counterparty for posted liquidity. The ack files the mid.",
+            "type": "named",
+            "properties": {
+              "market_id": {
+                "value": 1
+              },
+              "pair": {
+                "value": 9
+              },
+              "position_id": {
+                "defaulting": true,
+                "description": "Empty selects the counterparty's best opened position on `pair`.",
+                "value": 1
+              }
+            }
+          },
+          "request_quotes": {
+            "description": "Several quotes in one IBC v2 packet. Each success files its own observation.",
+            "type": "named",
+            "properties": {
+              "quotes": {
+                "value": 11
+              }
+            }
           },
           "set_bounty": {
             "description": "Admin: fund later bounties (also acceptable as a bank send).",
@@ -148,6 +188,10 @@
         "name": "cw_oracle_registry_state_SourceKind",
         "type": "enum",
         "cases": {
+          "dex_quote": {
+            "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+            "type": "unit"
+          },
           "polytone": {
             "description": "Polytone callback wrote the same schema.",
             "type": "unit"
@@ -202,18 +246,53 @@
         "inner": 6
       },
       {
+        "name": "cw_oracle_registry_msg_DexPair",
+        "description": "Trading pair inside a dex-quote request and ack. Asset ids are counterparty strings.",
+        "type": "struct",
+        "properties": {
+          "asset_1": {
+            "value": 1
+          },
+          "asset_2": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "cw_oracle_registry_msg_DexQuoteRequestItem",
+        "description": "One row of `RequestQuotes`. Height is the block that sends the packet.",
+        "type": "struct",
+        "properties": {
+          "market_id": {
+            "value": 1
+          },
+          "pair": {
+            "value": 9
+          },
+          "position_id": {
+            "defaulting": true,
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<cw_oracle_registry::msg::DexQuoteRequestItem>",
+        "type": "array",
+        "items": 10
+      },
+      {
         "name": "cw_oracle_registry_msg_PolytoneCallbackMessage",
         "description": "Same JSON as polytone note → receiver execute.",
         "type": "struct",
         "properties": {
           "initiator": {
-            "value": 10
+            "value": 13
           },
           "initiator_msg": {
-            "value": 11
+            "value": 14
           },
           "result": {
-            "value": 12
+            "value": 15
           }
         }
       },
@@ -234,7 +313,7 @@
           "execute": {
             "type": "tuple",
             "items": [
-              17
+              20
             ]
           },
           "fatal_error": {
@@ -246,25 +325,26 @@
           "query": {
             "type": "tuple",
             "items": [
-              13
+              16
             ]
           }
         }
       },
       {
         "name": "cw_oracle_registry_msg_PolytoneQueryResult",
+        "description": "polytone `Result<Vec<Binary>, ErrorResponse>`: serde writes `{\"Ok\":..}` / `{\"Err\":..}`.",
         "type": "enum",
         "cases": {
-          "error": {
+          "Err": {
             "type": "tuple",
             "items": [
-              15
+              18
             ]
           },
-          "success": {
+          "Ok": {
             "type": "tuple",
             "items": [
-              14
+              17
             ]
           }
         }
@@ -272,17 +352,18 @@
       {
         "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
         "type": "array",
-        "items": 11
+        "items": 14
       },
       {
         "name": "cw_oracle_registry_msg_PolytoneError",
+        "description": "polytone `ErrorResponse`.",
         "type": "struct",
         "properties": {
           "error": {
             "value": 1
           },
           "message_index": {
-            "value": 16
+            "value": 19
           }
         }
       },
@@ -295,30 +376,119 @@
       },
       {
         "name": "cw_oracle_registry_msg_PolytoneExecResult",
+        "description": "polytone `Result<ExecutionResponse, String>`.",
         "type": "enum",
         "cases": {
-          "error": {
+          "Err": {
             "type": "tuple",
             "items": [
               1
             ]
           },
-          "success": {
+          "Ok": {
             "type": "tuple",
             "items": [
-              18
+              21
             ]
           }
         }
       },
       {
         "name": "cw_oracle_registry_msg_PolytoneExecOk",
+        "description": "polytone `ExecutionResponse`.",
         "type": "struct",
         "properties": {
           "executed_by": {
             "value": 1
+          },
+          "result": {
+            "value": 30
           }
         }
+      },
+      {
+        "name": "cosmwasm_std_results_submessages_SubMsgResponse",
+        "description": "The information we get back from a successful sub message execution",
+        "type": "struct",
+        "properties": {
+          "data": {
+            "value": 27
+          },
+          "events": {
+            "description": "The Cosmos SDK events emitted by the submessage.\n\nThis is only filled if the submessage was itself a [`crate::WasmMsg`].\nThe reason for this is that events are [not part of consensus] and therefore not guaranteed to be deterministic,\nso the VM only returns events of wasm messages, which we know are deterministic.\n\n[not part of consensus]: https://github.com/tendermint/tendermint/blob/eed27addecb339cfaeba8fda774e6ab37cdb3774/spec/abci/abci.md#events",
+            "value": 26
+          },
+          "msg_responses": {
+            "defaulting": true,
+            "description": "The responses from the messages emitted by the submessage.\nIn most cases, this is equivalent to the Cosmos SDK's [MsgResponses], which usually contains a [single message].\nHowever, wasmd allows chains to translate a single contract message into multiple SDK messages.\nIn that case all the MsgResponses from each are concatenated into this flattened `Vec`.\n\n[MsgResponses]: https://github.com/cosmos/cosmos-sdk/blob/316750cc8cd8b3296fa233f4da2e39cbcdc34517/proto/cosmos/base/abci/v1beta1/abci.proto#L106-L109\n[single message]: https://github.com/cosmos/cosmos-sdk/blob/v0.50.4/baseapp/baseapp.go#L1020-L1023",
+            "value": 29
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_results_events_Event",
+        "description": "A full [*Cosmos SDK* event].\n\nThis version uses string attributes (similar to [*Cosmos SDK* StringEvent]),\nwhich then get magically converted to bytes for Tendermint somewhere between\nthe Rust-Go interface, JSON deserialization and the `NewEvent` call in Cosmos SDK.\n\n[*Cosmos SDK* event]: https://docs.cosmos.network/main/learn/advanced/events\n[*Cosmos SDK* StringEvent]: https://github.com/cosmos/cosmos-sdk/blob/v0.42.5/proto/cosmos/base/abci/v1beta1/abci.proto#L56-L70",
+        "type": "struct",
+        "properties": {
+          "attributes": {
+            "description": "The attributes to be included in the event.\n\nYou can learn more about these from [*Cosmos SDK* docs].\n\n[*Cosmos SDK* docs]: https://docs.cosmos.network/main/learn/advanced/events",
+            "value": 25
+          },
+          "type": {
+            "description": "The event type. This is renamed to \"ty\" because \"type\" is reserved in Rust. This sucks, we know.",
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_results_events_Attribute",
+        "description": "A key value pair that is used in the context of event attributes in logs",
+        "type": "struct",
+        "properties": {
+          "key": {
+            "value": 1
+          },
+          "value": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::results::events::Attribute>",
+        "type": "array",
+        "items": 24
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::results::events::Event>",
+        "type": "array",
+        "items": 23
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+        "type": "optional",
+        "inner": 14
+      },
+      {
+        "name": "cosmwasm_std_results_submessages_MsgResponse",
+        "type": "struct",
+        "properties": {
+          "type_url": {
+            "value": 1
+          },
+          "value": {
+            "value": 14
+          }
+        }
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::results::submessages::MsgResponse>",
+        "type": "array",
+        "items": 28
+      },
+      {
+        "name": "alloc::vec::Vec<cosmwasm_std::results::submessages::SubMsgResponse>",
+        "type": "array",
+        "items": 22
       }
     ]
   },
@@ -481,6 +651,12 @@
             "bounty": {
               "value": 6
             },
+            "ibc2_dest_port": {
+              "value": 8
+            },
+            "ibc2_source_client": {
+              "value": 8
+            },
             "note": {
               "value": 7
             },
@@ -530,6 +706,11 @@
           "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
           "type": "optional",
           "inner": 1
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 4
         }
       ]
     },
@@ -542,7 +723,7 @@
           "type": "struct",
           "properties": {
             "observations": {
-              "value": 8
+              "value": 9
             }
           }
         },
@@ -561,6 +742,10 @@
             },
             "pool_id": {
               "value": 5
+            },
+            "position_id": {
+              "defaulting": true,
+              "value": 8
             },
             "recorder": {
               "value": 7
@@ -581,6 +766,10 @@
           "name": "cw_oracle_registry_state_SourceKind",
           "type": "enum",
           "cases": {
+            "dex_quote": {
+              "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+              "type": "unit"
+            },
             "polytone": {
               "description": "Polytone callback wrote the same schema.",
               "type": "unit"
@@ -619,6 +808,11 @@
           "type": "address"
         },
         {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 2
+        },
+        {
           "name": "alloc::vec::Vec<cw_oracle_registry::msg::ObservationResponse>",
           "type": "array",
           "items": 1
@@ -645,6 +839,10 @@
             "pool_id": {
               "value": 4
             },
+            "position_id": {
+              "defaulting": true,
+              "value": 7
+            },
             "recorder": {
               "value": 6
             },
@@ -664,6 +862,10 @@
           "name": "cw_oracle_registry_state_SourceKind",
           "type": "enum",
           "cases": {
+            "dex_quote": {
+              "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+              "type": "unit"
+            },
             "polytone": {
               "description": "Polytone callback wrote the same schema.",
               "type": "unit"
@@ -700,6 +902,11 @@
           "name": "cosmwasm_std_addresses_Addr",
           "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
           "type": "address"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
         }
       ]
     },

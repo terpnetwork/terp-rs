@@ -1,5 +1,5 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Coin, Decimal, Uint128, Uint64};
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Addr, Binary, Coin, Decimal, Uint64, Uint128};
 
 use crate::state::SourceKind;
 
@@ -160,27 +160,36 @@ pub enum PolytoneCallback {
     FatalError(String),
 }
 
+/// polytone `Result<Vec<Binary>, ErrorResponse>`: serde writes `{"Ok":..}` / `{"Err":..}`.
 #[cw_serde]
 pub enum PolytoneQueryResult {
-    Success(Vec<Binary>),
-    Error(PolytoneError),
+    #[serde(rename = "Ok")]
+    Ok(Vec<Binary>),
+    #[serde(rename = "Err")]
+    Err(PolytoneError),
 }
 
+/// polytone `Result<ExecutionResponse, String>`.
 #[cw_serde]
 pub enum PolytoneExecResult {
-    Success(PolytoneExecOk),
-    Error(String),
+    #[serde(rename = "Ok")]
+    Ok(PolytoneExecOk),
+    #[serde(rename = "Err")]
+    Err(String),
 }
 
+/// polytone `ErrorResponse`.
 #[cw_serde]
 pub struct PolytoneError {
     pub message_index: Uint64,
     pub error: String,
 }
 
+/// polytone `ExecutionResponse`.
 #[cw_serde]
 pub struct PolytoneExecOk {
     pub executed_by: String,
+    pub result: Vec<cosmwasm_std::SubMsgResponse>,
 }
 
 /// Packed in `initiator_msg` (JSON, then Binary).

@@ -197,7 +197,7 @@ fn itl_frost_live_frostd_loopback() {
 #[test]
 fn itl_frost_rotate_pending_until_threshold_then_vk_changes() {
     use hash_market::onboard_authz::itl_frost_rotate::{
-        EXECUTE_CONTRACT_TYPE_URL, FrostCommittee, ROTATE_MSG, RotateKind, RotateStatus,
+        EXECUTE_CONTRACT_TYPE_URL, FrostCommittee, ROTATE_MSG, RotateStatus,
         msg_rotate_frost_pubkey, vk_commit,
     };
     let mut c = FrostCommittee::new("vk-old", &["desk", "steward", "spare"]);
@@ -388,8 +388,8 @@ fn itl_frost_pay_job_rejects_bls_scheme() {
 
 #[test]
 fn itl_frost_snapshot_dirty_packages_refused() {
-    use hash_market::onboard_authz::itl_frost_rotate::{CommitteeSnapshot, FrostCommittee};
-    let mut c = FrostCommittee::new("vk", &["desk", "steward", "spare"]);
+    use hash_market::onboard_authz::itl_frost_rotate::FrostCommittee;
+    let c = FrostCommittee::new("vk", &["desk", "steward", "spare"]);
     let mut snap = c.snapshot();
     snap.group_vk = "vk-packages-leak".into();
     // typed snapshot cannot carry KeyPackages; dirty string path:
@@ -402,9 +402,9 @@ fn itl_frost_snapshot_dirty_packages_refused() {
 
 #[test]
 fn itl_frost_persistence_off_without_key() {
-    std::env::remove_var("ITL_FROST_PERSIST_KEY");
+    unsafe { std::env::remove_var("ITL_FROST_PERSIST_KEY") };
     assert_eq!(persist_required(), Err("persistence_off"));
-    std::env::set_var("ITL_FROST_PERSIST_KEY", "sixteen-chars-ok");
+    unsafe { std::env::set_var("ITL_FROST_PERSIST_KEY", "sixteen-chars-ok") };
     assert!(persist_required().is_ok());
 }
 

@@ -50,7 +50,7 @@ impl RootIdStore {
         let local = self.chains.get(chain_uid);
         remote_ids
             .iter()
-            .filter(|id| !local.map_or(false, |s| s.contains(*id)))
+            .filter(|id| !local.is_some_and(|s| s.contains(*id)))
             .cloned()
             .collect()
     }
@@ -129,16 +129,17 @@ pub async fn negentropy_sync(
                 let parsed: serde_json::Value = serde_json::from_str(&text)
                     .map_err(|e| ClientError::Nostr(format!("invalid relay response: {e}")))?;
 
-                if let Some(arr) = parsed.as_array() {
-                    if arr.len() >= 3 && arr[0] == "NEG-MSG" {
-                        // arr[1] = sub_id, arr[2] = missing_ids
-                        if let Some(ids) = arr[2].as_array() {
-                            let ids: Vec<String> = ids
-                                .iter()
-                                .filter_map(|v| v.as_str().map(String::from))
-                                .collect();
-                            break ids;
-                        }
+                if let Some(arr) = parsed.as_array()
+                    && arr.len() >= 3
+                    && arr[0] == "NEG-MSG"
+                {
+                    // arr[1] = sub_id, arr[2] = missing_ids
+                    if let Some(ids) = arr[2].as_array() {
+                        let ids: Vec<String> = ids
+                            .iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect();
+                        break ids;
                     }
                 }
             }

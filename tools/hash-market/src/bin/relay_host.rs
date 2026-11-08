@@ -1,18 +1,17 @@
-//! hash-market-relay binary.
-//!
-//! Nostr relay for HashMerchant root events. Connects to a configured
-//! Terp Network chain via WebSocket, watches for `hashmerchant_root_confirmed`
-//! events, and publishes them as kind:30070 Nostr events.
-//!
-//! Also accepts webhooks for external root injection and serves as a
-//! NIP-77 negentropy sync endpoint.
+// hash-market-relay binary.
+//
+// Nostr relay for HashMerchant root events. Connects to a configured
+// Terp Network chain via WebSocket, watches for `hashmerchant_root_confirmed`
+// events, and publishes them as kind:30070 Nostr events.
+//
+// Also accepts webhooks for external root injection and serves as a
+// NIP-77 negentropy sync endpoint.
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use hash_market::client::nostr::{HashMerchantRelayInfo, discovery};
-use hash_market::client::{MinioIpfsClient, RootConfirmation};
+use hash_market::client::MinioIpfsClient;
 use serde::Deserialize;
-use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(
@@ -36,6 +35,7 @@ struct Config {
     webhook_urls: Vec<String>,
     #[serde(default)]
     kubo_api_url: Option<String>,
+    // Name/description logged with the NIP-87 discovery announcement.
     #[serde(default)]
     announce_name: String,
     #[serde(default)]
@@ -80,14 +80,12 @@ async fn main() -> Result<()> {
         Some(MinioIpfsClient::new())
     };
 
-    let webhook_client = if !config.webhook_urls.is_empty() {
-        Some(Arc::new(HttpWebhookRelay::new(config.webhook_urls.clone())))
-    } else {
-        None
-    };
-
     // Announce NIP-87 discovery event
-    tracing::info!("announcing NIP-87 discovery event for hashmerchant relay");
+    tracing::info!(
+        name = %config.announce_name,
+        description = %config.announce_description,
+        "announcing NIP-87 discovery event for hashmerchant relay"
+    );
     let relay_info = config.relay_info();
     let _discovery_tags = discovery::build_discovery_tags(&relay_info);
 
@@ -98,7 +96,6 @@ async fn main() -> Result<()> {
             ws_url.clone(),
             &config.nostr_relays,
             pinner.as_ref(),
-            webhook_client.as_ref(),
         )
         .await?;
     } else {
@@ -116,35 +113,10 @@ async fn watch_chain_ws(
     ws_url: String,
     _nostr_relays: &[String],
     _pinner: Option<&MinioIpfsClient>,
-    _webhook: Option<&Arc<HttpWebhookRelay>>,
 ) -> Result<()> {
     tracing::info!("chain WebSocket watcher (stub): {ws_url}");
     // Placeholder — actual WebSocket event parsing will go here once
     // the chain watcher transport is wired in. For now, block on signal.
     tokio::signal::ctrl_c().await?;
     Ok(())
-}
-
-/// Relay client that POSTs to configured webhooks and logs roots.
-struct HttpWebhookRelay {
-    urls: Vec<String>,
-    client: reqwest::Client,
-}
-
-impl HttpWebhookRelay {
-    fn new(urls: Vec<String>) -> Self {
-        Self {
-            urls,
-            client: reqwest::Client::new(),
-        }
-    }
-
-    async fn send(&self, confirmation: &RootConfirmation) {
-        let body = serde_json::to_value(confirmation).unwrap_or_default();
-        for url in &self.urls {
-            if let Ok(resp) = self.client.post(url).json(&body).send().await {
-                tracing::info!(%url, status = %resp.status(), "webhook sent");
-            }
-        }
-    }
 }

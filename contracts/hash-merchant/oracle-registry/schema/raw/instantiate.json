@@ -20,6 +20,14 @@
         }
       ]
     },
+    "ibc2_source_client": {
+      "description": "Optional IBC v2 client. `RegisterIbcV2` sets this after instantiate.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "note": {
       "description": "Polytone note on this chain. When set, only that address may `Callback`.",
       "default": null,

@@ -1,13 +1,13 @@
-use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
+use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
 use cosmwasm_std::{
-    from_json, to_json_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Ibc2Msg, Ibc2PacketAckMsg,
-    Ibc2PacketSendMsg, Ibc2PacketTimeoutMsg, Ibc2Payload, StdAck,
+    Addr, Binary, Coin, CosmosMsg, Decimal, Ibc2Msg, Ibc2PacketAckMsg, Ibc2PacketSendMsg,
+    Ibc2PacketTimeoutMsg, Ibc2Payload, StdAck, from_json, to_json_binary,
 };
 
 use crate::contract::{
-    execute, height_weighted_twap, ibc2_packet_ack, ibc2_packet_send, ibc2_packet_timeout,
-    ibc2_source_port, instantiate, mid_from_posted_price, parse_dex_quote_ack, query, sudo,
-    ALGO_PRICE_MEDIAN_V1, UNIVERSAL_ERROR_ACK,
+    ALGO_PRICE_MEDIAN_V1, UNIVERSAL_ERROR_ACK, execute, height_weighted_twap, ibc2_packet_ack,
+    ibc2_packet_send, ibc2_packet_timeout, ibc2_source_port, instantiate, mid_from_posted_price,
+    parse_dex_quote_ack, query, sudo,
 };
 use crate::error::ContractError;
 use crate::msg::*;
@@ -226,6 +226,16 @@ fn polytone_callback_records_query_mid() {
         },
     )
     .unwrap();
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin(), &[]),
+        ExecuteMsg::SetRelayer {
+            addr: relayer().to_string(),
+            allowed: true,
+        },
+    )
+    .unwrap();
     let hint = CallbackHint {
         market_id: "OSMO/USD".into(),
         source_chain: "osmosis-test-1".into(),
@@ -240,7 +250,7 @@ fn polytone_callback_records_query_mid() {
         ExecuteMsg::Callback(PolytoneCallbackMessage {
             initiator: relayer(),
             initiator_msg: to_json_binary(&hint).unwrap(),
-            result: PolytoneCallback::Query(PolytoneQueryResult::Success(vec![Binary::from(
+            result: PolytoneCallback::Query(PolytoneQueryResult::Ok(vec![Binary::from(
                 twap.to_vec(),
             )])),
         }),
@@ -291,7 +301,7 @@ fn polytone_callback_rejects_wrong_note() {
                 height: 1,
             })
             .unwrap(),
-            result: PolytoneCallback::Query(PolytoneQueryResult::Success(vec![Binary::from(
+            result: PolytoneCallback::Query(PolytoneQueryResult::Ok(vec![Binary::from(
                 br#""1""#.to_vec(),
             )])),
         }),
@@ -840,4 +850,189 @@ fn terp_um_and_terp_thiol_follow_the_penumbra_positions() {
     )
     .unwrap();
     assert_eq!(thiol_twap.twap, Decimal::from_ratio(4u128, 1u128));
+}
+
+// Morocco-1 note callback for ack tx 4DA9ED26 (height 24316113). Built from
+// CallbackMessage { initiator, initiator_msg, result } with the Osmosis ack.
+const MOROCCO_CALLBACK: &str = r#"{"initiator":"terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052","initiator_msg":"eyJoZWlnaHQiOjI0MzE2MDE1LCJtYXJrZXRfaWQiOiJPU01PL1VTREMiLCJwb29sX2lkIjoxNDY0LCJzb3VyY2VfY2hhaW4iOiJvc21vc2lzLTEifQ==","result":{"query":{"Ok":["eyJhcml0aG1ldGljX3R3YXAiOiIwLjA0NjY4NzA2MTgyNDA1NzcxNiJ9"]}}}"#;
+const KEEPER: &str = "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052";
+
+fn init_closed_with_note(deps: &mut Deps) -> Addr {
+    let note = MockApi::default().addr_make("note");
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin(), &[]),
+        InstantiateMsg {
+            admin: admin().to_string(),
+            open_submit: false,
+            bounty: None,
+            note: Some(note.to_string()),
+            ibc2_source_client: None,
+        },
+    )
+    .unwrap();
+    note
+}
+
+fn allow_keeper(deps: &mut Deps) {
+    // KEEPER is a real terp1 address; validate it with the terp prefix.
+    deps.api = MockApi::default().with_prefix("terp");
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin(), &[]),
+        ExecuteMsg::SetRelayer {
+            addr: KEEPER.into(),
+            allowed: true,
+        },
+    )
+    .unwrap();
+}
+
+fn env_at(height: u64) -> cosmwasm_std::Env {
+    let mut env = mock_env();
+    env.block.height = height;
+    env
+}
+
+fn callback_msg(json: &str) -> ExecuteMsg {
+    let cb: PolytoneCallbackMessage = from_json(json.as_bytes()).unwrap();
+    ExecuteMsg::Callback(cb)
+}
+
+#[test]
+fn polytone_morocco_callback_records_price() {
+    let mut deps = mock_dependencies();
+    let note = init_closed_with_note(&mut deps);
+    allow_keeper(&mut deps);
+    // The note executes the receiver with {"callback": CallbackMessage}.
+    let wrapped = format!(r#"{{"callback":{MOROCCO_CALLBACK}}}"#);
+    let msg: ExecuteMsg = from_json(wrapped.as_bytes()).unwrap();
+    execute(
+        deps.as_mut(),
+        env_at(24_316_113),
+        message_info(&note, &[]),
+        msg,
+    )
+    .unwrap();
+    let latest: ObservationResponse = from_json(
+        query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Latest {
+                market_id: "OSMO/USDC".into(),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(latest.height, 24_316_015);
+    assert_eq!(latest.source, SourceKind::Polytone);
+    assert_eq!(latest.pool_id, Some(1464));
+    assert_eq!(
+        latest.mid,
+        "0.046687061824057716".parse::<Decimal>().unwrap()
+    );
+    assert_eq!(latest.recorder.as_str(), KEEPER);
+}
+
+#[test]
+fn polytone_callback_rejects_unlisted_initiator_when_closed() {
+    let mut deps = mock_dependencies();
+    let note = init_closed_with_note(&mut deps);
+    let err = execute(
+        deps.as_mut(),
+        env_at(24_316_113),
+        message_info(&note, &[]),
+        callback_msg(MOROCCO_CALLBACK),
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+    assert!(
+        query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Latest {
+                market_id: "OSMO/USDC".into(),
+            },
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn polytone_callback_rejects_future_height() {
+    let mut deps = mock_dependencies();
+    let note = init_closed_with_note(&mut deps);
+    allow_keeper(&mut deps);
+    let err = execute(
+        deps.as_mut(),
+        env_at(24_316_014),
+        message_info(&note, &[]),
+        callback_msg(MOROCCO_CALLBACK),
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::FutureHeight {}));
+}
+
+#[test]
+fn polytone_callback_err_and_fatal_record_nothing() {
+    let mut deps = mock_dependencies();
+    let note = init_closed_with_note(&mut deps);
+    allow_keeper(&mut deps);
+    let hint = "eyJoZWlnaHQiOjI0MzE2MDE1LCJtYXJrZXRfaWQiOiJPU01PL1VTREMiLCJwb29sX2lkIjoxNDY0LCJzb3VyY2VfY2hhaW4iOiJvc21vc2lzLTEifQ==";
+    for result in [
+        r#"{"query":{"Err":{"message_index":"0","error":"codespace: wasm, code: 9"}}}"#,
+        r#"{"fatal_error":"timeout"}"#,
+        r#"{"execute":{"Err":"boom"}}"#,
+        r#"{"execute":{"Ok":{"executed_by":"osmo1proxy","result":[{"events":[],"data":null}]}}}"#,
+    ] {
+        let json =
+            format!(r#"{{"initiator":"{KEEPER}","initiator_msg":"{hint}","result":{result}}}"#);
+        let res = execute(
+            deps.as_mut(),
+            env_at(24_316_113),
+            message_info(&note, &[]),
+            callback_msg(&json),
+        )
+        .unwrap();
+        assert_eq!(res.attributes[0].value, "polytone_callback_skipped");
+    }
+    assert!(
+        query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Latest {
+                market_id: "OSMO/USDC".into(),
+            },
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn polytone_callback_open_submit_any_initiator() {
+    let mut deps = mock_dependencies();
+    let note = MockApi::default().addr_make("note");
+    instantiate(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin(), &[]),
+        InstantiateMsg {
+            admin: admin().to_string(),
+            open_submit: true,
+            bounty: None,
+            note: Some(note.to_string()),
+            ibc2_source_client: None,
+        },
+    )
+    .unwrap();
+    execute(
+        deps.as_mut(),
+        env_at(24_316_113),
+        message_info(&note, &[]),
+        callback_msg(MOROCCO_CALLBACK),
+    )
+    .unwrap();
 }

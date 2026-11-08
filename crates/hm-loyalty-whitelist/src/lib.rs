@@ -252,27 +252,27 @@ mod tests {
     #[test]
     fn leaf_matches_python_fixture() {
         assert_eq!(
-            hash_to_hex(&leaf_hash(ALICE).unwrap()),
+            hash_to_hex(&leaf_hash(ALICE).expect("loyalty test vector")),
             "1ce202d3f07152b1b05ce927ff02369f9336909e359488964ad17501d0fc8c60"
         );
         assert_eq!(
-            hash_to_hex(&leaf_hash(BOB).unwrap()),
+            hash_to_hex(&leaf_hash(BOB).expect("loyalty test vector")),
             "7987eae86d084c4f196ca2e6e0ad9d1d578c98f12bb34a77cbbc79bd56b71c01"
         );
         assert_eq!(
-            hash_to_hex(&leaf_hash(CAROL).unwrap()),
+            hash_to_hex(&leaf_hash(CAROL).expect("loyalty test vector")),
             "25bedb835af688d4f03c52a582c6e7588f45286a786e63eb3d18724c284162da"
         );
         assert_eq!(
-            hash_to_hex(&leaf_hash(DAVE).unwrap()),
+            hash_to_hex(&leaf_hash(DAVE).expect("loyalty test vector")),
             "b48a799ac867b7450b62e1e67bd22c89a8344a529d7cb3d1e467e1916b9d56c3"
         );
     }
 
     #[test]
     fn golden_alice_and_bob_verify() {
-        verify_proof(&alice_proof(), ROOT, CODEC_V1).unwrap();
-        verify_proof(&bob_proof(), ROOT, CODEC_V1).unwrap();
+        verify_proof(&alice_proof(), ROOT, CODEC_V1).expect("loyalty test vector");
+        verify_proof(&bob_proof(), ROOT, CODEC_V1).expect("loyalty test vector");
     }
 
     #[test]
@@ -320,14 +320,14 @@ mod tests {
             codec: CODEC_V1.into(),
             root: None,
         };
-        assert_eligible(&cfg, ALICE, None).unwrap();
+        assert_eligible(&cfg, ALICE, None).expect("loyalty test vector");
 
         let cfg_on = WhitelistConfig {
             enabled: true,
             codec: CODEC_V1.into(),
             root: Some(ROOT.into()),
         };
-        assert_eligible(&cfg_on, ALICE, Some(&alice_proof())).unwrap();
+        assert_eligible(&cfg_on, ALICE, Some(&alice_proof())).expect("loyalty test vector");
         assert!(assert_eligible(&cfg_on, ALICE, None).is_err());
         // sender must match proof address
         assert!(assert_eligible(&cfg_on, BOB, Some(&alice_proof())).is_err());
@@ -335,15 +335,18 @@ mod tests {
 
     #[test]
     fn node_hash_order_independent() {
-        let a = leaf_hash(ALICE).unwrap();
-        let b = leaf_hash(BOB).unwrap();
+        let a = leaf_hash(ALICE).expect("loyalty test vector");
+        let b = leaf_hash(BOB).expect("loyalty test vector");
         assert_eq!(node_hash(&a, &b), node_hash(&b, &a));
     }
 
     #[test]
     fn self_test_style_two_leaf_tree() {
         // Manual mini-tree matching build.py pairing of sorted unique leaves.
-        let leaves = [leaf_hash("a").unwrap(), leaf_hash("b").unwrap()];
+        let leaves = [
+            leaf_hash("a").expect("loyalty test vector"),
+            leaf_hash("b").expect("loyalty test vector"),
+        ];
         let mut sorted = leaves;
         sorted.sort();
         let root = node_hash(&sorted[0], &sorted[1]);

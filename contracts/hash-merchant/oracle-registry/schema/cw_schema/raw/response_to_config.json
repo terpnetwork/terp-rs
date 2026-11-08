@@ -12,6 +12,12 @@
         "bounty": {
           "value": 6
         },
+        "ibc2_dest_port": {
+          "value": 8
+        },
+        "ibc2_source_client": {
+          "value": 8
+        },
         "note": {
           "value": 7
         },
@@ -61,6 +67,11 @@
       "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
       "type": "optional",
       "inner": 1
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 4
     }
   ]
 }

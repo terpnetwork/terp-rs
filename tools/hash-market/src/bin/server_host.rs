@@ -1,8 +1,8 @@
-//! Hash-market server binary.
-//!
-//! Default mode: **Merkle/BUD host** for NFT whitelist proofs (no vote extensions).
-//! Validator sidecar: set `ve_enabled = true` and build with `--features ve`.
-//! Connect-style price bounds: `[oracle] bounds_enabled = true` + `kind = "price_bound"`.
+// Hash-market server binary.
+//
+// Default mode: **Merkle/BUD host** for NFT whitelist proofs (no vote extensions).
+// Validator sidecar: set `ve_enabled = true` and build with `--features ve`.
+// Connect-style price bounds: `[oracle] bounds_enabled = true` + `kind = "price_bound"`.
 
 use anyhow::Context;
 use clap::Parser;
@@ -10,7 +10,6 @@ use clap::Parser;
 use hash_market::config::Config;
 #[cfg(feature = "ve")]
 use hash_market::custody::Custody;
-use hash_market::oracle::ProviderKind;
 use hash_market::server::AppState;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -109,8 +108,8 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("vote extensions not compiled — merkle/BUD host mode");
 
     #[cfg(feature = "privval")]
-    if let Some(pv) = config.privval.clone() {
-        if pv.enabled {
+    if let Some(pv) = config.privval.clone()
+        && pv.enabled {
             use hash_market::custody::frost::FrostCoordinator;
             use hash_market::transport::session::{Cleartext, SessionCrypto};
             use std::path::Path;
@@ -190,7 +189,6 @@ async fn main() -> anyhow::Result<()> {
                 }
             });
         }
-    }
 
     let oracle_policy = config
         .oracle
@@ -262,22 +260,20 @@ async fn main() -> anyhow::Result<()> {
         let mut rt = hash_market::onboard_authz::OnboardRuntime::from_env();
         rt.service_name = "hash-market-onboard".into();
         // Env (Akash) wins. Toml only fills empty so /onboard/status agrees with process env.
-        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.runtime) {
-            if let Some(dao) = oc
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.runtime)
+            && let Some(dao) = oc
                 .dao
                 .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
             {
                 rt.roles.runtime = dao;
             }
-        }
-        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.hashmerchant) {
-            if let Some(rk) = oc
+        if !hash_market::onboard_authz::is_live_terp1(&rt.roles.hashmerchant)
+            && let Some(rk) = oc
                 .runtime_key
                 .filter(|s| hash_market::onboard_authz::is_live_terp1(s))
             {
                 rt.roles.hashmerchant = rk;
             }
-        }
         if let Some(c) = oc.chain_id.filter(|s| !s.is_empty()) {
             rt.roles.chain_id = c;
         } else if rt.roles.chain_id == "120u-1" || rt.roles.chain_id.is_empty() {
@@ -313,7 +309,8 @@ async fn main() -> anyhow::Result<()> {
     {
         if std::env::var("ITL_FROST_PERSIST_DIR").is_err() {
             let dir = format!("{}/itl-frost", config.data_dir.as_deref().unwrap_or("data"));
-            std::env::set_var("ITL_FROST_PERSIST_DIR", &dir);
+            // SAFETY: one-shot default during startup; nothing reads env concurrently here.
+            unsafe { std::env::set_var("ITL_FROST_PERSIST_DIR", &dir) };
         }
         let frost_bind =
             hash_market::onboard_authz::frost_http::loopback_bind().map_err(anyhow::Error::msg)?;
@@ -412,7 +409,7 @@ async fn main() -> anyhow::Result<()> {
         for (idx, provider) in config
             .providers
             .iter()
-            .filter(|p| p.provider_kind() == ProviderKind::StateRoot)
+            .filter(|p| p.provider_kind() == hash_market::oracle::ProviderKind::StateRoot)
             .enumerate()
         {
             let transport_mode = match provider.mode.as_str() {

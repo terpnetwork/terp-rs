@@ -266,15 +266,15 @@ pub fn assert_payment(bound: &MintPriceBound, funds: &[Coin]) -> Result<Uint128,
 
 /// Whether this sudo payload matches policy filters.
 pub fn sudo_matches_filter(policy: &PricePolicy, p: &HashMerchantSudoPayload) -> bool {
-    if let Some(ref uid) = policy.chain_uid {
-        if uid != &p.chain_uid {
-            return false;
-        }
+    if let Some(ref uid) = policy.chain_uid
+        && uid != &p.chain_uid
+    {
+        return false;
     }
-    if let Some(ref algo) = policy.algo {
-        if algo != &p.algo {
-            return false;
-        }
+    if let Some(ref algo) = policy.algo
+        && algo != &p.algo
+    {
+        return false;
     }
     true
 }
@@ -291,15 +291,14 @@ pub fn decode_price_value(
     let v: serde_json::Value =
         serde_json::from_slice(value).map_err(|e| OracleError::InvalidPayload(e.to_string()))?;
 
-    if let Some(expected) = &policy.asset_id {
-        if let Some(asset) = v.get("asset").and_then(|x| x.as_str()) {
-            if asset != expected {
-                return Err(OracleError::AssetMismatch {
-                    expected: expected.clone(),
-                    got: asset.to_string(),
-                });
-            }
-        }
+    if let Some(expected) = &policy.asset_id
+        && let Some(asset) = v.get("asset").and_then(|x| x.as_str())
+        && asset != expected
+    {
+        return Err(OracleError::AssetMismatch {
+            expected: expected.clone(),
+            got: asset.to_string(),
+        });
     }
 
     let asset_id = v
@@ -369,7 +368,7 @@ fn usd_times_scale(price_usd: &str, scale: Uint128) -> Result<Uint128, OracleErr
         .and_then(|w| w.checked_add(frac_u))
         .ok_or(OracleError::MathOverflow)?;
     // mid = price_e8 * scale / 1e8
-    let mid = (price_e8 as u128)
+    let mid = price_e8
         .checked_mul(scale.u128())
         .ok_or(OracleError::MathOverflow)?
         .checked_div(100_000_000)
@@ -448,9 +447,9 @@ mod tests {
 
     #[test]
     fn band_exact_and_bps() {
-        let (a, b) = band_bounds(Uint128::new(1000), 0).unwrap();
+        let (a, b) = band_bounds(Uint128::new(1000), 0).expect("oracle test fixture");
         assert_eq!(a, b);
-        let (min, max) = band_bounds(Uint128::new(10_000), 500).unwrap();
+        let (min, max) = band_bounds(Uint128::new(10_000), 500).expect("oracle test fixture");
         assert_eq!(min, Uint128::new(9_500));
         assert_eq!(max, Uint128::new(10_500));
     }
@@ -466,7 +465,8 @@ mod tests {
             asset_id: Some("ZEC".into()),
         };
         let now = Timestamp::from_seconds(1_000 + 101);
-        let err = resolve_bound(&policy, Some(&mid), now).unwrap_err();
+        let err =
+            resolve_bound(&policy, Some(&mid), now).expect_err("oracle test fixture must fail");
         assert!(matches!(err, OracleError::Stale { .. }));
     }
 
@@ -481,10 +481,10 @@ mod tests {
             asset_id: None,
         };
         let now = Timestamp::from_seconds(1_050);
-        let bound = resolve_bound(&policy, Some(&mid), now).unwrap();
+        let bound = resolve_bound(&policy, Some(&mid), now).expect("oracle test fixture");
         assert_eq!(bound.min, Uint128::new(9_500));
-        assert_payment(&bound, &[coin(9_500, "uterp")]).unwrap();
-        assert_payment(&bound, &[coin(10_500, "uterp")]).unwrap();
+        assert_payment(&bound, &[coin(9_500, "uterp")]).expect("oracle test fixture");
+        assert_payment(&bound, &[coin(10_500, "uterp")]).expect("oracle test fixture");
         assert!(assert_payment(&bound, &[coin(9_499, "uterp")]).is_err());
         assert!(assert_payment(&bound, &[coin(10_000, "uatom")]).is_err());
     }
@@ -497,7 +497,8 @@ mod tests {
             denom: "uterp".into(),
             ..Default::default()
         };
-        let bound = resolve_bound(&policy, None, Timestamp::from_seconds(1)).unwrap();
+        let bound =
+            resolve_bound(&policy, None, Timestamp::from_seconds(1)).expect("oracle test fixture");
         assert_eq!(bound.min, Uint128::new(42));
         assert!(!bound.oracle_enabled);
     }
@@ -505,12 +506,13 @@ mod tests {
     #[test]
     fn decode_mid_and_price_usd() {
         let policy = policy_on();
-        let (m, a) = decode_price_value(&policy, br#"{"asset":"ZEC","mid":"12345"}"#).unwrap();
+        let (m, a) = decode_price_value(&policy, br#"{"asset":"ZEC","mid":"12345"}"#)
+            .expect("oracle test fixture");
         assert_eq!(m, Uint128::new(12345));
         assert_eq!(a.as_deref(), Some("ZEC"));
 
-        let (m2, _) =
-            decode_price_value(&policy, br#"{"asset":"ZEC","price_usd":"45.00"}"#).unwrap();
+        let (m2, _) = decode_price_value(&policy, br#"{"asset":"ZEC","price_usd":"45.00"}"#)
+            .expect("oracle test fixture");
         // 45 * 1_000_000 = 45_000_000
         assert_eq!(m2, Uint128::new(45_000_000));
     }
@@ -518,7 +520,8 @@ mod tests {
     #[test]
     fn asset_filter_rejects() {
         let policy = policy_on();
-        let err = decode_price_value(&policy, br#"{"asset":"BTC","mid":"1"}"#).unwrap_err();
+        let err = decode_price_value(&policy, br#"{"asset":"BTC","mid":"1"}"#)
+            .expect_err("oracle test fixture must fail");
         assert!(matches!(err, OracleError::AssetMismatch { .. }));
     }
 
@@ -539,8 +542,8 @@ mod tests {
             }],
         };
         let mid = apply_sudo_price(&policy, &payload, 1_700_000_100)
-            .unwrap()
-            .unwrap();
+            .expect("oracle test fixture")
+            .expect("oracle test fixture");
         assert_eq!(mid.mid, Uint128::new(777));
         assert_eq!(mid.foreign_height, 98);
     }
@@ -557,7 +560,11 @@ mod tests {
             block_time: 1,
             oracle_sources: vec![],
         };
-        assert!(apply_sudo_price(&policy, &payload, 10).unwrap().is_none());
+        assert!(
+            apply_sudo_price(&policy, &payload, 10)
+                .expect("oracle test fixture")
+                .is_none()
+        );
     }
 
     #[test]
@@ -581,6 +588,6 @@ mod tests {
     #[test]
     fn sudo_must_not_touch_supply_choke_point() {
         // Documented invariant: calling this never returns supply-related mutations.
-        assert_oracle_cannot_modify_supply().unwrap();
+        assert_oracle_cannot_modify_supply().expect("oracle test fixture");
     }
 }

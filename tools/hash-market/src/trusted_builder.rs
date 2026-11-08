@@ -11,7 +11,6 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use sha2::{Digest, Sha256};
 
-use crate::msg::VoteExtensionHashData;
 use crate::server::AppState;
 #[cfg(feature = "ve")]
 use crate::ve::server::{ProviderData, ProviderKey};
@@ -83,7 +82,7 @@ async fn put_claim(
             }
             acc.finalize().to_vec()
         };
-        let data = VoteExtensionHashData {
+        let data = crate::msg::VoteExtensionHashData {
             runtime_id: VE_RUNTIME_ID.into(),
             chain_uid: VE_CHAIN_UID.into(),
             algo: VE_ALGO.into(),
@@ -129,6 +128,7 @@ async fn list_claims(State(state): State<Arc<AppState>>) -> Json<Vec<TrustedBuil
     Json(map.values().cloned().collect())
 }
 
+#[cfg(feature = "ve")]
 fn chrono_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

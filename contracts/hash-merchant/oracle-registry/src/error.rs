@@ -9,6 +9,8 @@ pub enum ContractError {
     Unauthorized {},
     #[error("market_id empty")]
     EmptyMarket {},
+    #[error("height is past the current block")]
+    FutureHeight {},
     #[error("height 0")]
     ZeroHeight {},
     #[error("observation already recorded for this market and height")]

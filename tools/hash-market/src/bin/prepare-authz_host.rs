@@ -1,12 +1,12 @@
-//! Curate DAO / wallet grant JSON (existing operator bin).
-//!
-//!   cargo run -p hash-market --features onboard --bin prepare-authz -- \
-//!     --mode dao-proposal --preset norick --chain-id 120u-1 \
-//!     --dao terp1... --runtime terp1... --out ~/.oline/passkey-onboard
-//!
-//!   --mode wallet-proxy --from-addr terp1... --runtime terp1...
-//!   --mode wallet-as-runtime --preset svg --runtime terp1WALLET
-//!   --state path/to/terp-state.json
+// Curate DAO / wallet grant JSON (existing operator bin).
+//
+//   cargo run -p hash-market --features onboard --bin prepare-authz -- \
+//     --mode dao-proposal --preset norick --chain-id 120u-1 \
+//     --dao terp1... --runtime terp1... --out ~/.oline/passkey-onboard
+//
+//   --mode wallet-proxy --from-addr terp1... --runtime terp1...
+//   --mode wallet-as-runtime --preset svg --runtime terp1WALLET
+//   --state path/to/terp-state.json
 
 use hash_market::onboard_authz::curate::{CurateMode, PRESETS, curate, load_infra, preset};
 use hash_market::onboard_authz::{
@@ -48,7 +48,8 @@ fn main() {
 
     let from_addr = arg("--from-addr").unwrap_or_default();
     if !from_addr.is_empty() {
-        env::set_var("ONBOARD_FROM_ADDR", &from_addr);
+        // SAFETY: set before any threads are spawned (sync main, arg parsing).
+        unsafe { env::set_var("ONBOARD_FROM_ADDR", &from_addr) };
     }
 
     let roles = OnboardRoles {

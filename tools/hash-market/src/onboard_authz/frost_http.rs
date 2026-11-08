@@ -518,11 +518,11 @@ fn handle_conn(mut s: TcpStream, inbox: &SharedInbox) {
         let _ = r.write_to(&mut s);
         return;
     }
-    if path.starts_with("/itl/door") {
-        if let Some(r) = super::itl_door::try_handle(method, path, body, cookie.as_deref()) {
-            let _ = r.write_to(&mut s);
-            return;
-        }
+    if path.starts_with("/itl/door")
+        && let Some(r) = super::itl_door::try_handle(method, path, body, cookie.as_deref())
+    {
+        let _ = r.write_to(&mut s);
+        return;
     }
     let resp = match inbox.lock() {
         Ok(mut g) => {
@@ -567,15 +567,15 @@ mod tests {
 
     #[test]
     fn loopback_bind_is_127() {
-        std::env::remove_var("HASHMERCHANT_BIND");
-        std::env::remove_var("ITL_FROST_BIND");
+        unsafe { std::env::remove_var("HASHMERCHANT_BIND") };
+        unsafe { std::env::remove_var("ITL_FROST_BIND") };
         let b = loopback_bind().unwrap();
         assert!(b.starts_with("127.0.0.1:"), "{b}");
-        std::env::set_var("HASHMERCHANT_BIND", "0.0.0.0:19091");
+        unsafe { std::env::set_var("HASHMERCHANT_BIND", "0.0.0.0:19091") };
         assert_eq!(loopback_bind(), Err("frost_bind_not_loopback"));
-        std::env::remove_var("HASHMERCHANT_BIND");
-        std::env::set_var("ITL_FROST_BIND", "127.0.0.1:19111");
+        unsafe { std::env::remove_var("HASHMERCHANT_BIND") };
+        unsafe { std::env::set_var("ITL_FROST_BIND", "127.0.0.1:19111") };
         assert_eq!(loopback_bind().unwrap(), "127.0.0.1:19111");
-        std::env::remove_var("ITL_FROST_BIND");
+        unsafe { std::env::remove_var("ITL_FROST_BIND") };
     }
 }

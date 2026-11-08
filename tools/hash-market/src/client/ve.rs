@@ -14,7 +14,6 @@
 
 use crate::custody::Custody;
 use crate::msg::VoteExtensionHashData;
-use k256::ecdsa::signature::hazmat::PrehashVerifier as _;
 use sha2::{Digest, Sha256};
 const DOMAIN_SEP: &[u8] = b"terp/hashmerchant/ve/v1";
 

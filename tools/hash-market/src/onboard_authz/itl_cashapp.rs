@@ -32,25 +32,13 @@ pub struct Order {
     pub nullifier: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Engine {
     orders: HashMap<String, Order>,
     by_pay_ref: HashMap<String, String>,
     nullifiers: HashMap<String, String>,
     slots: HashMap<String, String>,
     seq: u32,
-}
-
-impl Default for Engine {
-    fn default() -> Self {
-        Self {
-            orders: HashMap::new(),
-            by_pay_ref: HashMap::new(),
-            nullifiers: HashMap::new(),
-            slots: HashMap::new(),
-            seq: 0,
-        }
-    }
 }
 
 pub fn nullifier_hex(tx_id: &str) -> String {
@@ -210,12 +198,12 @@ fn decode_qp(s: &str) -> String {
         }
         if b[i] == b'=' && i + 2 < b.len() {
             let h = std::str::from_utf8(&b[i + 1..i + 3]).ok();
-            if let Some(h) = h {
-                if let Ok(v) = u8::from_str_radix(h, 16) {
-                    out.push(v as char);
-                    i += 3;
-                    continue;
-                }
+            if let Some(h) = h
+                && let Ok(v) = u8::from_str_radix(h, 16)
+            {
+                out.push(v as char);
+                i += 3;
+                continue;
             }
         }
         out.push(b[i] as char);

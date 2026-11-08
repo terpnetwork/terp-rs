@@ -41,7 +41,6 @@ struct Challenge {
     artist_id: String,
     ts: u64,
     message: String,
-    challenge_hex: String,
 }
 
 #[derive(Clone)]
@@ -88,9 +87,29 @@ pub fn origin_allowed(origin: &str) -> bool {
         .any(|s| s == origin)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Per-thread stand-in for the role env vars, so tests never mutate
+    /// process-global env (which races across the parallel test harness).
+    static TEST_ENV: std::cell::RefCell<HashMap<String, String>> =
+        std::cell::RefCell::new(HashMap::new());
+}
+
+#[cfg(test)]
+fn set_test_env(name: &str, value: &str) {
+    TEST_ENV.with(|m| m.borrow_mut().insert(name.to_string(), value.to_string()));
+}
+
+fn read_env(name: &str) -> Option<String> {
+    #[cfg(test)]
+    if let Some(v) = TEST_ENV.with(|m| m.borrow().get(name).cloned()) {
+        return Some(v);
+    }
+    std::env::var(name).ok()
+}
+
 fn split_env(name: &str) -> Vec<String> {
-    std::env::var(name)
-        .ok()
+    read_env(name)
         .map(|s| {
             s.split(',')
                 .map(|x| x.trim().to_string())
@@ -145,13 +164,13 @@ fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
 fn session_secret() -> [u8; 32] {
     static S: OnceLock<[u8; 32]> = OnceLock::new();
     *S.get_or_init(|| {
-        if let Ok(raw) = std::env::var("ITL_SESSION_HMAC") {
-            if raw.len() >= 16 {
-                let mut h = Sha256::new();
-                h.update(b"itl-session-hmac-v1");
-                h.update(raw.as_bytes());
-                return h.finalize().into();
-            }
+        if let Ok(raw) = std::env::var("ITL_SESSION_HMAC")
+            && raw.len() >= 16
+        {
+            let mut h = Sha256::new();
+            h.update(b"itl-session-hmac-v1");
+            h.update(raw.as_bytes());
+            return h.finalize().into();
         }
         let mut h = Sha256::new();
         h.update(b"itl-session-ephemeral-v1");
@@ -175,7 +194,7 @@ fn hex_encode(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 fn hex_decode(s: &str) -> Option<Vec<u8>> {
-    if s.len() % 2 != 0 || s.is_empty() {
+    if !s.len().is_multiple_of(2) || s.is_empty() {
         return None;
     }
     let mut out = Vec::with_capacity(s.len() / 2);
@@ -208,14 +227,16 @@ fn login_message(origin: &str, challenge: &str) -> String {
     format!("ITL login v1\norigin: {origin}\nchallenge: {challenge}")
 }
 
-fn adr036_sign_doc(signer: &str, data: &[u8]) -> String {
+/// ADR-036 amino sign doc a wallet signs for `signer` over `data`.
+pub fn adr036_sign_doc(signer: &str, data: &[u8]) -> String {
     let b64 = base64::engine::general_purpose::STANDARD.encode(data);
     format!(
         r#"{{"account_number":"0","chain_id":"","fee":{{"amount":[],"gas":"0"}},"memo":"","msgs":[{{"type":"sign/MsgSignData","value":{{"data":"{b64}","signer":"{signer}"}}}}],"sequence":"0"}}"#
     )
 }
 
-fn terp_address_from_compressed(pk33: &[u8]) -> Result<String, &'static str> {
+/// `terp1…` address of a 33-byte compressed secp256k1 public key.
+pub fn terp_address_from_compressed(pk33: &[u8]) -> Result<String, &'static str> {
     if pk33.len() != 33 {
         return Err("bad_pubkey");
     }
@@ -276,12 +297,12 @@ impl SessionResponse {
             reason,
             self.body.len()
         );
-        if let Some(o) = origin {
-            if origin_allowed(o) {
-                head.push_str("Access-Control-Allow-Origin: ");
-                head.push_str(o);
-                head.push_str("\r\nAccess-Control-Allow-Credentials: true\r\nVary: Origin\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: content-type, x-itl-frost\r\n");
-            }
+        if let Some(o) = origin
+            && origin_allowed(o)
+        {
+            head.push_str("Access-Control-Allow-Origin: ");
+            head.push_str(o);
+            head.push_str("\r\nAccess-Control-Allow-Credentials: true\r\nVary: Origin\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: content-type, x-itl-frost\r\n");
         }
         if let Some(c) = &self.set_cookie {
             head.push_str("Set-Cookie: ");
@@ -303,7 +324,7 @@ fn mint_token(login_id: &str, role: &str, method: &str, exp: u64) -> String {
     g.seq += 1;
     let mut h = Sha256::new();
     h.update(COOKIE_MAC_PREFIX);
-    h.update(&session_secret());
+    h.update(session_secret());
     h.update(g.seq.to_le_bytes());
     h.update(exp.to_le_bytes());
     h.update(login_id.as_bytes());
@@ -412,17 +433,17 @@ fn challenge(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     if !origin_allowed(&origin) {
         return SessionResponse::err(403, "origin");
     }
-    if let Some(h) = origin_hdr {
-        if h != origin {
-            return SessionResponse::err(403, "origin");
-        }
+    if let Some(h) = origin_hdr
+        && h != origin
+    {
+        return SessionResponse::err(403, "origin");
     }
     let ts = now();
     let mut g = store().lock().expect("session store");
     g.seq += 1;
     let mut h = Sha256::new();
     h.update(b"itl-session-nonce-v1");
-    h.update(&session_secret());
+    h.update(session_secret());
     h.update(g.seq.to_le_bytes());
     h.update(ts.to_le_bytes());
     let nonce = hex_encode(&h.finalize());
@@ -436,7 +457,6 @@ fn challenge(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
             artist_id,
             ts,
             message: message.clone(),
-            challenge_hex: challenge_hex.clone(),
         },
     );
     SessionResponse::json(
@@ -466,10 +486,10 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     if !origin_allowed(&origin) {
         return SessionResponse::err(403, "origin");
     }
-    if let Some(h) = origin_hdr {
-        if h != origin {
-            return SessionResponse::err(403, "origin");
-        }
+    if let Some(h) = origin_hdr
+        && h != origin
+    {
+        return SessionResponse::err(403, "origin");
     }
     let t = now();
     let ch = {
@@ -484,6 +504,11 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
     }
     if ch.origin != origin {
         return SessionResponse::err(403, "origin");
+    }
+    // The challenge hash commits to artist_id; a verify that names a
+    // different artist than the challenge was issued for is rejected.
+    if !parsed.artist_id.is_empty() && parsed.artist_id != ch.artist_id {
+        return SessionResponse::err(403, "artist_id");
     }
     if parsed.login_id.is_empty() || parsed.login_id.len() > 128 {
         return SessionResponse::err(400, "login_id");
@@ -522,7 +547,6 @@ fn verify(origin_hdr: Option<&str>, body: &str) -> SessionResponse {
         .to_string(),
     );
     resp.set_cookie = Some(cookie_header(&token, TTL_SECS));
-    let _ = ch.artist_id;
     resp
 }
 
@@ -547,10 +571,10 @@ fn me(cookie: Option<&str>) -> SessionResponse {
 }
 
 fn logout(cookie: Option<&str>) -> SessionResponse {
-    if let Some(token) = cookie_from_header(cookie) {
-        if let Ok(mut g) = store().lock() {
-            g.sessions.remove(&token);
-        }
+    if let Some(token) = cookie_from_header(cookie)
+        && let Ok(mut g) = store().lock()
+    {
+        g.sessions.remove(&token);
     }
     let mut resp = SessionResponse::json(200, json!({"ok": true}).to_string());
     resp.set_cookie = Some(cookie_header("", 0));
@@ -608,10 +632,10 @@ pub fn header_line(req: &str, name: &str) -> Option<String> {
         if line.is_empty() {
             break;
         }
-        if let Some((k, v)) = line.split_once(':') {
-            if k.trim().eq_ignore_ascii_case(name) {
-                return Some(v.trim().to_string());
-            }
+        if let Some((k, v)) = line.split_once(':')
+            && k.trim().eq_ignore_ascii_case(name)
+        {
+            return Some(v.trim().to_string());
         }
     }
     None
@@ -619,15 +643,6 @@ pub fn header_line(req: &str, name: &str) -> Option<String> {
 
 pub fn to_http_response(r: &SessionResponse) -> HttpResponse {
     json_status(r.status, r.body.clone())
-}
-
-#[cfg(test)]
-pub fn reset_for_test() {
-    if let Ok(mut g) = store().lock() {
-        g.challenges.clear();
-        g.sessions.clear();
-        g.seq = 0;
-    }
 }
 
 #[cfg(test)]
@@ -657,9 +672,8 @@ mod tests {
 
     #[test]
     fn challenge_verify_me_logout() {
-        reset_for_test();
-        std::env::remove_var("ITL_ADMIN_CREDS");
-        std::env::remove_var("ITL_USHER_CREDS");
+        set_test_env("ITL_ADMIN_CREDS", "");
+        set_test_env("ITL_USHER_CREDS", "");
         let origin = "http://127.0.0.1:3051";
         let ch = try_handle(
             "POST",
@@ -677,7 +691,7 @@ mod tests {
         let sk = key();
         let pk = sk.verifying_key().to_sec1_point(true);
         let login = terp_address_from_compressed(pk.as_bytes()).unwrap();
-        std::env::set_var("ITL_ADMIN_CREDS", &login);
+        set_test_env("ITL_ADMIN_CREDS", &login);
         let (pub_key, signature) = sign_adr(&sk, &login, &message);
         let body = json!({
             "origin": origin,
@@ -709,14 +723,14 @@ mod tests {
         assert_eq!(out.status, 200);
         let me2 = try_handle("GET", "/itl/session/me", "", Some(origin), Some(&hdr)).unwrap();
         assert_eq!(me2.status, 401);
-        std::env::remove_var("ITL_ADMIN_CREDS");
     }
 
     #[test]
     fn bad_sig_and_replay_and_public_env_not_read() {
-        reset_for_test();
         let origin = "http://127.0.0.1:3051";
-        std::env::set_var("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count");
+        set_test_env("ITL_ADMIN_CREDS", "");
+        set_test_env("ITL_USHER_CREDS", "");
+        set_test_env("NEXT_PUBLIC_ITL_ADMIN_CREDS", "should-not-count");
         let ch = try_handle(
             "POST",
             "/itl/session/challenge",
@@ -743,7 +757,6 @@ mod tests {
         assert_eq!(vr.status, 401);
         let me = try_handle("GET", "/itl/session/me", "", Some(origin), None).unwrap();
         assert_eq!(me.status, 401);
-        std::env::remove_var("NEXT_PUBLIC_ITL_ADMIN_CREDS");
     }
 
     #[test]

@@ -13,6 +13,11 @@
           "description": "Optional first-writer bounty paid from contract balance.",
           "value": 5
         },
+        "ibc2_source_client": {
+          "defaulting": true,
+          "description": "Optional IBC v2 client. `RegisterIbcV2` sets this after instantiate.",
+          "value": 6
+        },
         "note": {
           "defaulting": true,
           "description": "Polytone note on this chain. When set, only that address may `Callback`.",

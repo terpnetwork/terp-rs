@@ -20,6 +20,18 @@
         }
       ]
     },
+    "ibc2_dest_port": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ibc2_source_client": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "note": {
       "anyOf": [
         {

@@ -1,9 +1,9 @@
-//! Standalone HTTP runtime (faucet-adjacent).
-//!
-//!   ONBOARD_DAO=terp1... ONBOARD_RUNTIME=terp1... ONBOARD_CHAIN=120u-1 \
-//!     cargo run -p terp-onboard-authz --bin onboard-runtime
-//!
-//! FROST inbox is the same process on HASHMERCHANT_BIND / ITL_FROST_BIND (127.0.0.1:19091).
+// Standalone HTTP runtime (faucet-adjacent).
+//
+//   ONBOARD_DAO=terp1... ONBOARD_RUNTIME=terp1... ONBOARD_CHAIN=120u-1 \
+//     cargo run -p terp-onboard-authz --bin onboard-runtime
+//
+// FROST inbox is the same process on HASHMERCHANT_BIND / ITL_FROST_BIND (127.0.0.1:19091).
 
 use hash_market::onboard_authz::OnboardRuntime;
 use hash_market::onboard_authz::frost_http;

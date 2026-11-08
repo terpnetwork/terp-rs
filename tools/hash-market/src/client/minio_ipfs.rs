@@ -94,10 +94,10 @@ impl HashMerchantClient for MinioIpfsClient {
         );
 
         // Pin the associated CID if provided (IPFS secondary)
-        if let Some(cid) = &confirmation.cid {
-            if let Err(e) = self.pin_cid(cid).await {
-                eprintln!("[hashmerchant] pin_cid warning: {e}");
-            }
+        if let Some(cid) = &confirmation.cid
+            && let Err(e) = self.pin_cid(cid).await
+        {
+            eprintln!("[hashmerchant] pin_cid warning: {e}");
         }
 
         let bytes = Self::root_payload_bytes(&confirmation);

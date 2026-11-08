@@ -162,7 +162,7 @@ impl FrostCommittee {
 
     pub fn restore_snapshot(&mut self, snap: CommitteeSnapshot) -> Result<(), &'static str> {
         let raw = serde_json::to_string(&snap).unwrap_or_default();
-        if super::itl_frost::session_json_ok(&raw) == false
+        if !super::itl_frost::session_json_ok(&raw)
             || raw.to_ascii_lowercase().contains("keypackage")
             || raw.contains("packages")
         {
@@ -263,11 +263,11 @@ impl FrostCommittee {
             self.write(admin, RotateKind::Fail, Some(e));
             return Err(e);
         }
-        if let Some(p) = &self.rotate {
-            if p.status == RotateStatus::Pending {
-                self.write(admin, RotateKind::Fail, Some("already_pending"));
-                return Err("already_pending");
-            }
+        if let Some(p) = &self.rotate
+            && p.status == RotateStatus::Pending
+        {
+            self.write(admin, RotateKind::Fail, Some("already_pending"));
+            return Err("already_pending");
         }
         let commit = vk_commit(new_vk);
         self.rotate = Some(RotateProposal {
@@ -333,7 +333,6 @@ impl FrostCommittee {
         let next_t = p.next_t;
         let next_n = p.next_n;
         let blobs: Vec<String> = p.shares.values().cloned().collect();
-        drop(p);
         self.write(admin, RotateKind::Share, None);
         if share_n >= self.t {
             let old = self.group_vk.clone();

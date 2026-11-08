@@ -2,9 +2,7 @@
 //! Shape matches Osmosis `arithmetic_twap` JSON so the registry parser is shared.
 
 use cosmwasm_schema::{QueryResponses, cw_serde};
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_json_binary};
 use cw_storage_plus::Item;
 
 const CONTRACT_NAME: &str = "crates.io:cw-oracle-twap-probe";
@@ -135,7 +133,10 @@ mod migrate_tests {
             deps.as_mut(),
             mock_env(),
             MigrateMsg {},
-            cosmwasm_std::MigrateInfo { sender: admin, old_migrate_version: None },
+            cosmwasm_std::MigrateInfo {
+                sender: admin,
+                old_migrate_version: None,
+            },
         )
         .unwrap();
         assert_eq!(res.attributes[0].value, "migrate");

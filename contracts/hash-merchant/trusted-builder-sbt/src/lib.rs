@@ -260,10 +260,10 @@ fn exec_commit(
     if BY_ETH.may_load(deps.storage, &eth)?.is_some() {
         return Err(ContractError::AlreadyMinted);
     }
-    if let Some(existing) = COMMIT.may_load(deps.storage, &eth)? {
-        if matches!(existing.status, CommitmentStatus::Pending) {
-            return Err(ContractError::CommitmentPending);
-        }
+    if let Some(existing) = COMMIT.may_load(deps.storage, &eth)?
+        && matches!(existing.status, CommitmentStatus::Pending)
+    {
+        return Err(ContractError::CommitmentPending);
     }
     let rec = Commitment {
         eth_address: eth.clone(),
@@ -511,15 +511,13 @@ pub fn ibc2_packet_timeout(
     _env: Env,
     msg: Ibc2PacketTimeoutMsg,
 ) -> Result<IbcBasicResponse, ContractError> {
-    if let Ok(Ibc2Packet::CommitAustralge { eth_address, .. }) = from_json(&msg.payload.value) {
-        if let Ok(eth) = normalize_eth(&eth_address) {
-            if let Some(mut c) = COMMIT.may_load(deps.storage, &eth)? {
-                if matches!(c.status, CommitmentStatus::Pending) {
-                    c.status = CommitmentStatus::TimedOut;
-                    COMMIT.save(deps.storage, &eth, &c)?;
-                }
-            }
-        }
+    if let Ok(Ibc2Packet::CommitAustralge { eth_address, .. }) = from_json(&msg.payload.value)
+        && let Ok(eth) = normalize_eth(&eth_address)
+        && let Some(mut c) = COMMIT.may_load(deps.storage, &eth)?
+        && matches!(c.status, CommitmentStatus::Pending)
+    {
+        c.status = CommitmentStatus::TimedOut;
+        COMMIT.save(deps.storage, &eth, &c)?;
     }
     Ok(IbcBasicResponse::new().add_attribute("action", "ibc2_timeout"))
 }
@@ -540,7 +538,7 @@ fn normalize_eth(eth: &str) -> Result<String, ContractError> {
 }
 
 fn empty_to_none(s: Option<String>) -> Option<String> {
-    s.and_then(|v| if v.is_empty() { None } else { Some(v) })
+    s.filter(|v| !v.is_empty())
 }
 
 #[cfg(test)]

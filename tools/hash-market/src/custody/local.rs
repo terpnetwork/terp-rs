@@ -53,12 +53,14 @@ impl Custody for LocalSecp256k1 {
     }
 }
 
-/// Ed25519 local custody using `ed25519-dalek`.
+/// Ed25519 local custody. The workspace dalek is 1.x, which has no `SigningKey`.
+#[cfg(feature = "ed25519-v2")]
 pub struct LocalEd25519 {
     sk: ed25519_dalek::SigningKey,
     pk_bytes: Vec<u8>,
 }
 
+#[cfg(feature = "ed25519-v2")]
 impl LocalEd25519 {
     /// Create from a 32-byte hex-encoded seed.
     pub fn from_hex(seed_hex: &str) -> Result<Self> {
@@ -80,6 +82,7 @@ impl LocalEd25519 {
     }
 }
 
+#[cfg(feature = "ed25519-v2")]
 #[async_trait]
 impl Custody for LocalEd25519 {
     async fn sign(&self, msg: &[u8]) -> Result<Vec<u8>> {

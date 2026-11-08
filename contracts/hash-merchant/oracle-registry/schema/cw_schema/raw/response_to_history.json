@@ -7,7 +7,7 @@
       "type": "struct",
       "properties": {
         "observations": {
-          "value": 8
+          "value": 9
         }
       }
     },
@@ -26,6 +26,10 @@
         },
         "pool_id": {
           "value": 5
+        },
+        "position_id": {
+          "defaulting": true,
+          "value": 8
         },
         "recorder": {
           "value": 7
@@ -46,6 +50,10 @@
       "name": "cw_oracle_registry_state_SourceKind",
       "type": "enum",
       "cases": {
+        "dex_quote": {
+          "description": "IBC v2 ack from port `dex-quote`. Posted liquidity, not a fill.",
+          "type": "unit"
+        },
         "polytone": {
           "description": "Polytone callback wrote the same schema.",
           "type": "unit"
@@ -82,6 +90,11 @@
       "name": "cosmwasm_std_addresses_Addr",
       "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
       "type": "address"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
     },
     {
       "name": "alloc::vec::Vec<cw_oracle_registry::msg::ObservationResponse>",

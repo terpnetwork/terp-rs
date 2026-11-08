@@ -1,7 +1,7 @@
-//! Loopback FROST inbox. HashMerchant adapter, not FilePV.
-//!
-//!   ITL_FROST_PERSIST_KEY=sixteen-chars-ok ITL_FROST_PERSIST_DIR=/tmp/itl-frost \
-//!     HASHMERCHANT_BIND=127.0.0.1:19091 cargo run --bin frost-inbox
+// Loopback FROST inbox. HashMerchant adapter, not FilePV.
+//
+//   ITL_FROST_PERSIST_KEY=sixteen-chars-ok ITL_FROST_PERSIST_DIR=/tmp/itl-frost \
+//     HASHMERCHANT_BIND=127.0.0.1:19091 cargo run --bin frost-inbox
 
 fn main() {
     let bind = match hash_market::onboard_authz::frost_http::loopback_bind() {

@@ -112,7 +112,7 @@ impl IssuedTicket {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct IngressEngine {
     cash: CashEngine,
     tree: PoseidonTree,
@@ -120,18 +120,6 @@ pub struct IngressEngine {
     /// Internal only. Never copied into `public_sale_json`.
     tx_ids: HashMap<String, String>,
     issued: usize,
-}
-
-impl Default for IngressEngine {
-    fn default() -> Self {
-        Self {
-            cash: CashEngine::default(),
-            tree: PoseidonTree::default(),
-            payment_nullifiers: HashSet::new(),
-            tx_ids: HashMap::new(),
-            issued: 0,
-        }
-    }
 }
 
 impl IngressEngine {
