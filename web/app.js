@@ -1,12 +1,12 @@
 import { CONTRACTS } from "./catalog.js";
 
 const COSMES = "https://esm.sh/@goblinhunt/cosmes@0.0.71-ghunt.21";
-const STATE_URL = "../public/state.json";
 const STORE = "terp-web/v1";
 
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  stateSource: $("state-source"),
   chain: $("chain"),
   rpc: $("rpc"),
   lcd: $("lcd"),
@@ -28,6 +28,14 @@ const els = {
   readInfo: $("read-info"),
   runQuery: $("run-query"),
   runExec: $("run-exec"),
+  instances: $("instances"),
+  instancesStatus: $("instances-status"),
+  loadInstances: $("load-instances"),
+  moreInstances: $("more-instances"),
+  token: $("token"),
+  routes: $("routes"),
+  channels: $("channels"),
+  pathsStatus: $("paths-status"),
 };
 
 const PRESETS = {
@@ -44,10 +52,17 @@ const PRESETS = {
 };
 
 let stateDoc = null;
+let stateIndex = [];
+let schemaDoc = null;
+const schemaCache = new Map();
 let selected = null;
 let bundle = null;
 let wallet = null;
 const bundleCache = new Map();
+let instanceAbort = null;
+let instanceNext = null;
+let ibcDoc = null;
+let liveChannels = null;
 
 function saved() {
   try {
@@ -143,11 +158,22 @@ function fillVariants(select, table) {
   }
 }
 
+function withCodeId() {
+  return CONTRACTS.filter((contract) => deployment(contract.id).codeId != null);
+}
+
 function renderList() {
   const q = els.filter.value.trim().toLowerCase();
+  const rows = withCodeId().filter((contract) => !q || contract.id.includes(q));
   els.list.replaceChildren();
-  for (const contract of CONTRACTS) {
-    if (q && !contract.id.includes(q)) continue;
+  if (rows.length === 0) {
+    const item = document.createElement("li");
+    item.className = "empty";
+    item.textContent = q ? "No match." : "This file has no code id for these contracts.";
+    els.list.append(item);
+    return;
+  }
+  for (const contract of rows) {
     const dep = deployment(contract.id);
     const item = document.createElement("li");
     const button = document.createElement("button");
@@ -156,11 +182,10 @@ function renderList() {
     button.setAttribute("aria-current", selected?.id === contract.id ? "true" : "false");
     const name = document.createElement("span");
     name.textContent = contract.id;
-    const detail = document.createElement("small");
-    const bits = [];
-    if (dep.codeId != null) bits.push(`code ${dep.codeId}`);
+    const bits = [`code ${dep.codeId}`];
     if (dep.address) bits.push(dep.address.slice(0, 18) + "…");
-    detail.textContent = bits.join(" · ") || "no state.json entry";
+    const detail = document.createElement("small");
+    detail.textContent = bits.join(" · ");
     button.append(name, detail);
     button.addEventListener("click", () => selectContract(contract.id));
     item.append(button);
@@ -175,23 +200,173 @@ async function loadBundle(contract) {
   return mod;
 }
 
+function variantInner(schema, snake) {
+  if (!schema) return null;
+  const branches = schema.oneOf || schema.anyOf || [schema];
+  for (const branch of branches) {
+    if (branch?.properties && Object.prototype.hasOwnProperty.call(branch.properties, snake)) {
+      return branch.properties[snake];
+    }
+  }
+  return null;
+}
+
+function stringExample(schema) {
+  const blob = `${schema.format || ""} ${schema.title || ""} ${schema.description || ""}`.toLowerCase();
+  if (blob.includes("uint") || blob.includes("decimal") || blob.includes("coin")) return "0";
+  return "";
+}
+
+function exampleValue(schema, root, seen = new Set()) {
+  if (!schema || typeof schema !== "object") return {};
+  if (schema.$ref) {
+    const name = String(schema.$ref).replace(/^#\/definitions\//, "");
+    const def = root?.definitions?.[name];
+    if (!def || seen.has(name)) return stringExample(schema);
+    const next = new Set(seen);
+    next.add(name);
+    return exampleValue(def, root, next);
+  }
+  if (Object.prototype.hasOwnProperty.call(schema, "const")) return schema.const;
+  if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
+  const alts = schema.oneOf || schema.anyOf;
+  if (alts?.length) return exampleValue(alts[0], root, seen);
+  const type = Array.isArray(schema.type) ? schema.type.find((item) => item !== "null") : schema.type;
+  if (type === "string") return stringExample(schema);
+  if (type === "integer" || type === "number") return 0;
+  if (type === "boolean") return false;
+  if (type === "array") return [];
+  if (type === "object" || schema.properties) {
+    const out = {};
+    const props = schema.properties || {};
+    for (const key of schema.required || []) {
+      out[key] = props[key] ? exampleValue(props[key], root, seen) : null;
+    }
+    return out;
+  }
+  return {};
+}
+
+function payloadFor(schema, snake) {
+  if (!schema || !snake) return {};
+  const inner = variantInner(schema, snake);
+  if (!inner) return {};
+  const value = exampleValue(inner, schema);
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function writePayload(kind) {
+  if (!bundle) return;
+  const select = kind === "query" ? els.queryVariant : els.execVariant;
+  const textarea = kind === "query" ? els.queryBody : els.execBody;
+  const table = kind === "query" ? bundle.Query : bundle.Execute;
+  const schema = kind === "query" ? schemaDoc?.query : schemaDoc?.execute;
+  textarea.value = JSON.stringify(payloadFor(schema, table?.[select.value]), null, 2);
+}
+
+async function loadSchema(id) {
+  if (schemaCache.has(id)) return schemaCache.get(id);
+  try {
+    const doc = await readJson("/schemas/" + encodeURIComponent(id));
+    schemaCache.set(id, doc);
+    return doc;
+  } catch {
+    schemaCache.set(id, null);
+    return null;
+  }
+}
+
+function clearInstances() {
+  instanceAbort?.abort();
+  instanceAbort = null;
+  instanceNext = null;
+  els.instances.replaceChildren();
+  els.instancesStatus.textContent = "";
+  els.loadInstances.disabled = true;
+  els.moreInstances.disabled = true;
+}
+
+function appendInstance(address) {
+  const item = document.createElement("li");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = address;
+  button.setAttribute("aria-current", els.address.value.trim() === address ? "true" : "false");
+  button.addEventListener("click", () => {
+    els.address.value = address;
+    els.address.dispatchEvent(new Event("change"));
+    for (const other of els.instances.querySelectorAll("button")) {
+      other.setAttribute("aria-current", other === button ? "true" : "false");
+    }
+  });
+  item.append(button);
+  els.instances.append(item);
+}
+
+async function loadInstances(reset) {
+  if (!selected) return;
+  const codeId = deployment(selected.id).codeId;
+  if (codeId == null) return;
+  if (reset) {
+    instanceAbort?.abort();
+    instanceNext = null;
+    els.instances.replaceChildren();
+  }
+  const ctrl = new AbortController();
+  instanceAbort = ctrl;
+  const params = new URLSearchParams({ "pagination.limit": "50" });
+  if (!reset && instanceNext) params.set("pagination.key", instanceNext);
+  els.instancesStatus.textContent = reset ? `Reading code ${codeId}…` : "Reading the next page…";
+  els.loadInstances.disabled = true;
+  try {
+    const body = await readJson(
+      `${lcdBase()}/cosmwasm/wasm/v1/code/${codeId}/contracts?${params}`,
+      { signal: ctrl.signal },
+    );
+    if (ctrl.signal.aborted) return;
+    const rows = Array.isArray(body.contracts) ? body.contracts : [];
+    instanceNext = body.pagination?.next_key || null;
+    for (const address of rows) appendInstance(address);
+    const shown = els.instances.querySelectorAll("button").length;
+    els.instancesStatus.textContent = shown
+      ? `Code ${codeId}. ${shown} contract${shown === 1 ? "" : "s"}${instanceNext ? ". More pages remain." : "."}`
+      : `Code ${codeId} has no contracts on this REST node.`;
+    els.moreInstances.disabled = !instanceNext;
+  } catch (err) {
+    if (err?.name === "AbortError") return;
+    els.instancesStatus.textContent = err instanceof Error ? err.message : String(err);
+    els.moreInstances.disabled = true;
+  } finally {
+    if (instanceAbort === ctrl) els.loadInstances.disabled = !selected;
+  }
+}
+
 async function selectContract(id) {
   selected = CONTRACTS.find((contract) => contract.id === id) || null;
   bundle = null;
+  schemaDoc = null;
+  clearInstances();
   renderList();
   if (!selected) return;
+  if (deployment(selected.id).codeId == null) {
+    selected = null;
+    return;
+  }
   els.title.textContent = selected.id;
   const dep = deployment(selected.id);
   els.address.disabled = false;
   els.address.value = dep.address || "";
-  els.meta.textContent = dep.codeId != null ? `state.json code id ${dep.codeId}` : "No code id in this chain record.";
+  els.meta.textContent = `code id ${dep.codeId}`;
   for (const el of [els.queryVariant, els.queryBody, els.execVariant, els.execBody, els.funds, els.readInfo, els.runQuery, els.runExec]) {
     el.disabled = true;
   }
   try {
     bundle = await loadBundle(selected);
+    schemaDoc = await loadSchema(selected.id);
     fillVariants(els.queryVariant, bundle.Query);
     fillVariants(els.execVariant, bundle.Execute);
+    writePayload("query");
+    writePayload("execute");
     const canQuery = Object.keys(bundle.Query || {}).length > 0;
     const canExec = Object.keys(bundle.Execute || {}).length > 0;
     els.queryVariant.disabled = !canQuery;
@@ -202,7 +377,9 @@ async function selectContract(id) {
     els.funds.disabled = !canExec;
     els.runExec.disabled = !canExec;
     els.readInfo.disabled = false;
+    els.loadInstances.disabled = false;
     show(`Loaded ${bundle.CONTRACT?.name || selected.id}.`);
+    loadInstances(true);
   } catch (err) {
     show(err instanceof Error ? err.stack || err.message : String(err));
   }
@@ -388,6 +565,189 @@ async function readInfo() {
   }
 }
 
+function hopsOf(trace) {
+  return String(trace || "")
+    .split("/")
+    .filter((part) => part.startsWith("channel-"));
+}
+
+function terpSide(entry) {
+  if (entry.chain_2?.chain_name === "terp" || entry.chain_2?.chain_id === "morocco-1") return "chain_2";
+  if (entry.chain_1?.chain_name === "terp" || entry.chain_1?.chain_id === "morocco-1") return "chain_1";
+  return null;
+}
+
+function otherSide(side) {
+  return side === "chain_1" ? "chain_2" : "chain_1";
+}
+
+function liveById() {
+  const map = new Map();
+  for (const channel of liveChannels || []) {
+    if (channel.channel_id) map.set(channel.channel_id, channel);
+  }
+  return map;
+}
+
+function hopClass(channelId) {
+  if (!liveChannels) return "";
+  const found = liveById().get(channelId);
+  if (!found) return "shut";
+  return found.state === "STATE_OPEN" ? "open" : "shut";
+}
+
+function renderRoutes() {
+  const assets = ibcDoc?.tokens?.assets || {};
+  const asset = assets[els.token.value];
+  els.routes.replaceChildren();
+  if (!asset) return;
+  const live = liveById();
+  for (const variant of asset.variants || []) {
+    const hops = hopsOf(variant.trace_path);
+    const block = document.createElement("div");
+    block.className = "route";
+    const title = document.createElement("h3");
+    title.textContent = variant.via || variant.trace_path;
+    const meta = document.createElement("p");
+    meta.className = "status";
+    const first = hops[0];
+    const seen = liveChannels ? live.get(first) : null;
+    const liveNote = !liveChannels
+      ? ""
+      : seen
+        ? `Terp ${first} is ${seen.state}.`
+        : `Terp ${first} is not on this REST node.`;
+    meta.textContent = [variant.status, liveNote].filter(Boolean).join(" · ");
+    const hopRow = document.createElement("div");
+    hops.forEach((hop, index) => {
+      const pill = document.createElement("span");
+      pill.className = `hop mono${index === 0 ? ` ${hopClass(hop)}` : ""}`.trim();
+      pill.textContent = index === 0 ? hop : `then ${hop}`;
+      hopRow.append(pill);
+    });
+    const denom = document.createElement("p");
+    denom.className = "mono";
+    denom.style.fontSize = "12px";
+    denom.textContent = variant.ibc_denom || "";
+    block.append(title, meta, hopRow);
+    if (variant.note) {
+      const note = document.createElement("p");
+      note.className = "status";
+      note.textContent = variant.note;
+      block.append(note);
+    }
+    block.append(denom);
+    els.routes.append(block);
+  }
+}
+
+function renderChannelList() {
+  els.channels.replaceChildren();
+  if (liveChannels) {
+    const rows = [...liveChannels].sort((a, b) => {
+      const na = Number(String(a.channel_id).replace("channel-", ""));
+      const nb = Number(String(b.channel_id).replace("channel-", ""));
+      return na - nb;
+    });
+    for (const channel of rows) {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      const name = document.createElement("span");
+      name.textContent = `${channel.channel_id} · ${channel.port_id}`;
+      const detail = document.createElement("small");
+      const other = channel.counterparty?.channel_id || "";
+      detail.textContent = [channel.state, other && `counterparty ${other}`].filter(Boolean).join(" · ");
+      button.append(name, detail);
+      item.append(button);
+      els.channels.append(item);
+    }
+    return;
+  }
+  for (const entry of ibcDoc?.paths || []) {
+    const side = terpSide(entry);
+    const counterparty = side ? entry[otherSide(side)] : entry.chain_1;
+    for (const channel of entry.channels || []) {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      const ours = side ? channel[side]?.channel_id : "";
+      const theirs = side ? channel[otherSide(side)]?.channel_id : "";
+      const name = document.createElement("span");
+      name.textContent = `${counterparty?.chain_name || entry.id} · ${ours || "(no terp channel)"}`;
+      const detail = document.createElement("small");
+      detail.textContent = [
+        entry.client_status,
+        channel.tags?.status,
+        theirs && `their ${theirs}`,
+      ].filter(Boolean).join(" · ");
+      button.append(name, detail);
+      item.append(button);
+      els.channels.append(item);
+    }
+  }
+}
+
+async function ensurePaths() {
+  if (ibcDoc) return;
+  els.pathsStatus.textContent = "Loading routes…";
+  try {
+    ibcDoc = await readJson("/ibc");
+    const assets = ibcDoc.tokens?.assets || {};
+    els.token.replaceChildren();
+    for (const [id, asset] of Object.entries(assets)) {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = asset.canonical || id;
+      els.token.append(option);
+    }
+    const openCurated = (ibcDoc.paths || []).filter((entry) => entry.client_status === "Active").length;
+    els.pathsStatus.textContent = `${Object.keys(assets).length} tokens. ${openCurated} counterparties marked Active in the curated files.`;
+    renderRoutes();
+    renderChannelList();
+  } catch (err) {
+    els.pathsStatus.textContent = err instanceof Error ? err.message : String(err);
+  }
+}
+
+async function readChannels() {
+  const button = $("read-channels");
+  button.disabled = true;
+  els.pathsStatus.textContent = "Reading transfer channels…";
+  try {
+    const all = [];
+    let key = null;
+    for (let page = 0; page < 20; page += 1) {
+      const params = new URLSearchParams({ "pagination.limit": "100" });
+      if (key) params.set("pagination.key", key);
+      const body = await readJson(`${lcdBase()}/ibc/core/channel/v1/channels?${params}`);
+      all.push(...(Array.isArray(body.channels) ? body.channels : []));
+      key = body.pagination?.next_key || null;
+      if (!key) break;
+    }
+    liveChannels = all.filter((channel) => channel.port_id === "transfer");
+    const open = liveChannels.filter((channel) => channel.state === "STATE_OPEN").length;
+    els.pathsStatus.textContent = `${liveChannels.length} transfer channels on this REST node. ${open} are STATE_OPEN. Token hops use the first channel.`;
+    renderRoutes();
+    renderChannelList();
+  } catch (err) {
+    els.pathsStatus.textContent = err instanceof Error ? err.message : String(err);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function showTab(name) {
+  for (const button of document.querySelectorAll("#tabs button")) {
+    const on = button.dataset.tab === name;
+    button.setAttribute("aria-selected", on ? "true" : "false");
+    button.classList.toggle("ghost", !on);
+  }
+  $("panel-contracts").hidden = name !== "contracts";
+  $("panel-paths").hidden = name !== "paths";
+  if (name === "paths") ensurePaths();
+}
+
 function applyPreset(name) {
   const preset = PRESETS[name];
   els.rpc.value = preset.rpc;
@@ -397,6 +757,16 @@ function applyPreset(name) {
 }
 
 function bind() {
+  els.queryVariant.addEventListener("change", () => writePayload("query"));
+  els.execVariant.addEventListener("change", () => writePayload("execute"));
+  els.stateSource.addEventListener("change", async () => {
+    remember({ state: els.stateSource.value });
+    try {
+      await applyState(els.stateSource.value);
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : String(err), true);
+    }
+  });
   els.chain.addEventListener("change", () => {
     remember({ chain: els.chain.value });
     renderList();
@@ -427,6 +797,13 @@ function bind() {
   els.runQuery.addEventListener("click", runQuery);
   els.runExec.addEventListener("click", runExec);
   els.readInfo.addEventListener("click", readInfo);
+  els.loadInstances.addEventListener("click", () => loadInstances(true));
+  els.moreInstances.addEventListener("click", () => loadInstances(false));
+  els.token.addEventListener("change", renderRoutes);
+  $("read-channels").addEventListener("click", readChannels);
+  for (const button of document.querySelectorAll("#tabs button")) {
+    button.addEventListener("click", () => showTab(button.dataset.tab));
+  }
   $("state-file").addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -450,6 +827,46 @@ function fillChains() {
   renderList();
 }
 
+function stateOptionLabel(row) {
+  const hot = (row.chains || []).filter((chain) => chain.codes || chain.addresses);
+  const bits = hot.slice(0, 3).map((chain) => `${chain.id} ${chain.addresses} addr`);
+  const more = hot.length > 3 ? ` +${hot.length - 3}` : "";
+  const missing = row.present ? "" : " missing";
+  return `${row.label}${missing}${bits.length ? " · " + bits.join(", ") + more : ""}`;
+}
+
+function fillStateSources() {
+  const prefer = saved().state;
+  els.stateSource.replaceChildren();
+  for (const row of stateIndex) {
+    const option = document.createElement("option");
+    option.value = row.id;
+    option.textContent = stateOptionLabel(row);
+    option.disabled = !row.present;
+    option.selected = row.id === prefer;
+    els.stateSource.append(option);
+  }
+}
+
+async function applyState(id) {
+  stateDoc = await readJson("/states/" + encodeURIComponent(id));
+  fillChains();
+  const row = stateIndex.find((item) => item.id === id);
+  setStatus(`${row?.label || id}. ${chainIds().length} chains. ${withCodeId().length} contracts have a code id on ${els.chain.value || "(none)"}.`);
+  if (selected && deployment(selected.id).codeId == null) {
+    selected = null;
+    bundle = null;
+    schemaDoc = null;
+    els.title.textContent = "Pick a contract";
+    els.meta.textContent = "";
+    els.address.value = "";
+    clearInstances();
+    renderList();
+    return;
+  }
+  if (selected) await selectContract(selected.id);
+}
+
 async function main() {
   bind();
   const memory = saved();
@@ -457,12 +874,17 @@ async function main() {
   if (memory.lcd) els.lcd.value = memory.lcd;
   if (memory.gas) els.gas.value = memory.gas;
   try {
-    stateDoc = await readJson(STATE_URL);
-    fillChains();
-    const withAddr = CONTRACTS.filter((contract) => deployment(contract.id).address).length;
-    setStatus(`${chainIds().length} chains in state.json. ${withAddr} contracts have a default address on ${els.chain.value}.`);
+    stateIndex = await readJson("/states");
+    fillStateSources();
+    const preferred =
+      stateIndex.find((row) => row.id === saved().state && row.present) ||
+      stateIndex.find((row) => row.id === "cw-orch" && row.present) ||
+      stateIndex.find((row) => row.present);
+    if (!preferred) throw new Error("None of the mapped state.json files are on this machine.");
+    els.stateSource.value = preferred.id;
+    await applyState(preferred.id);
   } catch (err) {
-    setStatus(`Could not read ${STATE_URL}. Serve terp-rs as the site root, or pick a state.json file.`, true);
+    setStatus("Could not read a state file. Run just web serve from the terp-rs root. A server started inside web/ cannot see the bundles or ~/.cw-orchestrator.", true);
     show(err instanceof Error ? err.message : String(err));
     renderList();
   }
