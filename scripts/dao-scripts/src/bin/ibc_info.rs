@@ -118,7 +118,8 @@ enum Commands {
 }
 
 fn resolved_out(cli: &Cli) -> PathBuf {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    // dao-scripts lives at scripts/dao-scripts, so step up once more to reach repo-root public/.
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let chosen = cli.out.as_deref().or(cli.public_dir.as_deref());
     resolve_out_dir(chosen, &manifest)
 }
