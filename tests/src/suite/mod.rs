@@ -98,7 +98,6 @@ pub mod config;
 /// ```
 pub struct SidecarFleet {
     /// Test name identifier
-    #[allow(dead_code)] // kept for Debug/log context
     name: String,
     /// cw-orch Daemon for chain interactions
     daemon: Option<Daemon>,
@@ -123,6 +122,11 @@ pub struct SidecarFleet {
 }
 
 impl SidecarFleet {
+    /// Test name this fleet was created with.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Create a new suite builder. Call `.with_*()` methods to add sidecars,
     /// then call `.start_all()` to launch everything.
     pub fn new(name: &str) -> Self {
@@ -291,8 +295,8 @@ impl SidecarFleet {
         }
 
         // Inject runtime into sidecars that need it
+        #[cfg(any(feature = "docker", feature = "nostr"))]
         if let Some(ref rt) = self.runtime {
-            #[cfg(feature = "docker")]
             #[cfg(feature = "docker")]
             if let Some(ref mut idx) = self.indexer {
                 idx.runtime = Some(rt.clone());

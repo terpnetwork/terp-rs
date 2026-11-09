@@ -16,7 +16,6 @@
 // Temporary until we have more of the crate implemented.
 #![allow(dead_code)]
 // Orchard-derived circuit code: chip/gadget signatures mirror halo2_gadgets.
-#![allow(clippy::too_many_arguments, clippy::type_complexity)]
 // Catch documentation errors caused by code changes.
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]

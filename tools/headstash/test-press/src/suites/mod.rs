@@ -1,5 +1,5 @@
 /// Halo2 epoch + public Pedersen batch on cw-orch Mock.
-#[cfg(feature = "interface")]
+#[cfg(all(test, feature = "interface"))]
 pub mod epoch_claim;
 #[cfg(feature = "interface")]
 pub mod headstash;

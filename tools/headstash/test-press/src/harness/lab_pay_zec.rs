@@ -843,16 +843,16 @@ fn frost_object_b_spend_auth(
     let escrow_addr = std::env::var("CORRIDOR_FROST_ESCROW_ADDR")
         .or_else(|_| std::env::var("CORRIDOR_ZEC_ESCROW_ADDR"))
         .unwrap_or_else(|_| "frost-escrow".into());
-    let pkg = frost_escrow::spend_package_from_release(
-        escrow_addr,
-        sealed.dest_display.clone(),
-        sealed.owner_binding,
-        evidence.burn.value,
-        0,
-        evidence.burn.nullifier,
-        evidence.burn.asset_id,
-        hex::encode(object_a_sig),
-    );
+    let pkg = frost_escrow::spend_package_from_release(frost_escrow::ReleaseSpend {
+        escrow_addr: escrow_addr.to_string(),
+        dest_display: sealed.dest_display.clone(),
+        owner_binding: &sealed.owner_binding[..],
+        amount_zat: u128::from(evidence.burn.value),
+        fee_zat: 0,
+        burn_nullifier: &evidence.burn.nullifier[..],
+        asset_id: &evidence.burn.asset_id[..],
+        object_a_sig_hex: hex::encode(object_a_sig),
+    });
     // SILENT ERROR
     pkg.validate_matches_burn(
         &evidence.burn.nullifier,

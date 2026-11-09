@@ -4,7 +4,6 @@ use subtle::{ConstantTimeEq, CtOption};
 
 use crate::{
     address::RecpAddr,
-    keys::EligibleSk,
     note_poseidon::{lift_note_cmx, poseidon_note_cmx, rcm_to_base},
     value::NoteValue,
 };
@@ -54,13 +53,12 @@ impl NoteCommitment {
         v: NoteValue,
         fdi: pallas::Base,
         recp: RecpAddr,
-        esk: EligibleSk,
         rho: pallas::Base,
         psi: pallas::Base,
         rcm: NoteCommitTrapdoor,
     ) -> CtOption<Self> {
-        // The eligible key is not a note-commit input. Ownership is the signature.
-        let _ = esk;
+        // The eligible key is not a note-commit input (ownership is the signature),
+        // so its slot in the Poseidon preimage is fixed to zero.
         let esk = pallas::Base::ZERO;
         let recp = recp.to_fp();
         let rcm_base = rcm_to_base(rcm.0);

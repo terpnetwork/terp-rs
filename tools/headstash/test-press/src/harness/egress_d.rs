@@ -732,7 +732,7 @@ fn _type_check_action(_a: &SwapActionV0) {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::harness::mint_evidence::mint_evidence_from_claim_fields;
+    use crate::harness::mint_evidence::{ClaimMintFields, mint_evidence_from_claim_fields};
     use crate::harness::swap_statement_cw::{ProofModeLabel, build_swap_spend_handoff_from_mint};
     use crate::harness::zakura_local::{
         REGTEST_MINER_DEST, REGTEST_MINER_OWNER_BINDING_HEX, SealedDestSource,
@@ -745,20 +745,20 @@ mod tests {
         asset_in[1] = b'U';
         asset_in[2] = b'B';
         let dest = owner_binding_from_dest_display(REGTEST_MINER_DEST);
-        mint_evidence_from_claim_fields(
-            "ict_local_funded",
-            "test-1",
-            "terp1hs",
-            &[0x11; 32],
-            &[0x22; 32],
-            5_000,
-            &asset_in,
-            Some(&[0x33; 32]),
-            Some(&dest),
-            true,
-            None,
-            Some("intent-d".into()),
-        )
+        mint_evidence_from_claim_fields(ClaimMintFields {
+            profile: "ict_local_funded".into(),
+            chain_id: "test-1".into(),
+            headstash_contract: "terp1hs".into(),
+            bridge_nullifier: &[0x11; 32],
+            cm_public: &[0x22; 32],
+            value_u64: 5_000,
+            asset_id: &asset_in,
+            rcm: Some(&[0x33; 32]),
+            owner_binding: Some(&dest),
+            mock_verify_bridge: true,
+            mint_tx_hash: None,
+            intent_id: Some("intent-d".into()),
+        })
     }
 
     fn sealed_golden() -> SealedDestV0 {
@@ -954,20 +954,20 @@ mod tests {
         let mut asset_in = [0u8; 32];
         asset_in[0] = b'H';
         let foreign = [0xABu8; 32];
-        let mint = mint_evidence_from_claim_fields(
-            "ict_local_funded",
-            "test-1",
-            "terp1hs",
-            &[0x11; 32],
-            &[0x22; 32],
-            5_000,
-            &asset_in,
-            Some(&[0x33; 32]),
-            Some(&foreign),
-            true,
-            None,
-            Some("intent-x".into()),
-        );
+        let mint = mint_evidence_from_claim_fields(ClaimMintFields {
+            profile: "ict_local_funded".into(),
+            chain_id: "test-1".into(),
+            headstash_contract: "terp1hs".into(),
+            bridge_nullifier: &[0x11; 32],
+            cm_public: &[0x22; 32],
+            value_u64: 5_000,
+            asset_id: &asset_in,
+            rcm: Some(&[0x33; 32]),
+            owner_binding: Some(&foreign),
+            mock_verify_bridge: true,
+            mint_tx_hash: None,
+            intent_id: Some("intent-x".into()),
+        });
         let handoff =
             build_swap_spend_handoff_from_mint(&mint, ProofModeLabel::MockVerifyLab).unwrap();
         let cfg = ZakuraLocalConfig::default();

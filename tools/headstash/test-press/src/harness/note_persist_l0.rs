@@ -43,7 +43,7 @@ impl NoteEnvelope {
     pub fn opaque_dummy(cleartext_len: usize) -> Self {
         Self {
             // Distinct dummy body so overwrite/round-trip asserts are meaningful.
-            ciphertext: format!("dummy-ct-{}", hex::encode(&[cleartext_len as u8; 8])),
+            ciphertext: format!("dummy-ct-{}", hex::encode([cleartext_len as u8; 8])),
             nonce: "00112233445566778899aabbccddeeff".into(),
             scheme: "xchacha20poly1305".into(),
             cleartext_layout: Some("SEAM-NOTE-OUT-V0".into()),

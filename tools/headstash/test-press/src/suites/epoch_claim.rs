@@ -88,6 +88,12 @@ fn wasm_sudo(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmwasm_std::Uint256;
+    use cosmwasm_std::testing::MockApi;
+    use cw_headstash::epoch::{
+        ALGO_ACCEPTED, ALGO_PENDING, PublicOpen, accepted_root, attested_root, pedersen_commit,
+    };
+    use cw_headstash::msg::{ExecuteMsg, QueryMsg};
 
     #[test]
     fn mock_chain_pays_once_and_keeps_the_paths_apart() {
@@ -128,7 +134,7 @@ mod tests {
         assert_eq!(mock.query_balance(&dest, DENOM).unwrap(), Uint256::zero());
 
         let row = payout(1, dest.as_str(), 15);
-        let hash = accepted_root(root.as_slice(), &[row.clone()]).unwrap();
+        let hash = accepted_root(root.as_slice(), std::slice::from_ref(&row)).unwrap();
         let attested = attested_root(&hash);
         wasm_sudo(&mock, &addr, &sudo_msg(ALGO_ACCEPTED, &attested, 4)).unwrap();
         let stored: cw_headstash::epoch::EpochRootResponse = hs
@@ -205,7 +211,8 @@ mod tests {
         )
         .unwrap();
         let public_row = payout(4, dest.as_str(), 10);
-        let public_hash = accepted_root(root.as_slice(), &[public_row.clone()]).unwrap();
+        let public_hash =
+            accepted_root(root.as_slice(), std::slice::from_ref(&public_row)).unwrap();
         wasm_sudo(
             &mock,
             &addr,

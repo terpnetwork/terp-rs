@@ -417,8 +417,6 @@ pub struct DockerSidecar {
     runtime: Arc<dyn RuntimeBackend>,
     endpoints: EndpointMap,
     started: bool,
-    #[allow(dead_code)] // owned so the ICT network outlives the sidecar
-    network_id: Option<ict_rs::runtime::NetworkId>,
 }
 
 impl DockerSidecar {
@@ -436,7 +434,6 @@ impl DockerSidecar {
             runtime,
             endpoints: EndpointMap::new(),
             started: false,
-            network_id: None,
         }
     }
 
@@ -461,7 +458,6 @@ impl DockerSidecar {
             runtime,
             endpoints,
             started: true,
-            network_id: None,
         }
     }
 }
