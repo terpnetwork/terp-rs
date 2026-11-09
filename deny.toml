@@ -6,6 +6,42 @@
 [advisories]
 version = 2
 yanked = "deny"
+# Targeted ignores. Each has no patched release reachable from our graph today; revisit when the
+# named upstream moves. New advisories still fail the job.
+ignore = [
+    # ethers-rs 2.0.14 (archived, no further releases) + svm-rs/foundry-config, pulled only by the
+    # polytone-evm / abstract e2e tooling. Fix = drop ethers for alloy in polytone-evm.
+    { id = "RUSTSEC-2026-0367", reason = "zip 0.6 via ethers-solc/svm-rs (archived ethers); e2e solc tooling only" },
+    { id = "RUSTSEC-2026-0368", reason = "zip 0.6 via ethers-solc/svm-rs (archived ethers); e2e solc tooling only" },
+    { id = "RUSTSEC-2026-0369", reason = "zip 0.6 via ethers-solc/svm-rs (archived ethers); e2e solc tooling only" },
+    { id = "RUSTSEC-2026-0429", reason = "zip 0.6 via ethers-solc/svm-rs (archived ethers); e2e solc tooling only" },
+    { id = "RUSTSEC-2026-0403", reason = "zstd-safe 5 via zip 0.6 / ethers-solc (archived ethers); e2e solc tooling only" },
+    { id = "RUSTSEC-2026-0346", reason = "rustls 0.21 via reqwest 0.11 in ethers/polytone-evm/svm-rs; no 0.21.x fix; e2e tooling only" },
+    { id = "RUSTSEC-2026-0349", reason = "rustls 0.21 via reqwest 0.11 in ethers/polytone-evm/svm-rs; no 0.21.x fix; e2e tooling only" },
+    { id = "RUSTSEC-2026-0098", reason = "rustls-webpki 0.101 via rustls 0.21 (reqwest 0.11, ethers); no 0.101.x fix" },
+    { id = "RUSTSEC-2026-0099", reason = "rustls-webpki 0.101 via rustls 0.21 (reqwest 0.11, ethers); no 0.101.x fix" },
+    { id = "RUSTSEC-2026-0104", reason = "rustls-webpki 0.101 via rustls 0.21 (reqwest 0.11, ethers); no 0.101.x fix" },
+    { id = "RUSTSEC-2026-0382", reason = "rustls-webpki 0.101 via rustls 0.21 (reqwest 0.11, ethers); no 0.101.x fix" },
+    { id = "RUSTSEC-2026-0381", reason = "webpki-roots 0.25 via reqwest 0.11 (ethers/polytone-evm); no 0.25.x fix" },
+    { id = "RUSTSEC-2026-0258", reason = "h2 0.3 via hyper 0.14/reqwest 0.11 (ethers/polytone-evm); no 0.3.x fix; client-side only" },
+    # Ecosystem-wide pins with no patched release on the major we are locked to.
+    { id = "RUSTSEC-2026-0387", reason = "crypto-bigint 0.5 via elliptic-curve 0.13/k256 0.13 (cosmwasm-crypto, ethers-core); fix only in 0.7" },
+    { id = "RUSTSEC-2025-0055", reason = "tracing-subscriber 0.2 via ark-relations 0.4 / poseidon377 (penumbra); no 0.2.x fix; we do not log untrusted input through it" },
+    { id = "RUSTSEC-2024-0437", reason = "protobuf 2 via prometheus 0.13 in the hermes fork (ibc-relayer/telemetry); encode-only metrics, no untrusted parse" },
+    # Unmaintained notices (no known vulnerability), all transitive.
+    { id = "RUSTSEC-2023-0089", reason = "unmaintained: atomic-polyfill, transitive" },
+    { id = "RUSTSEC-2025-0012", reason = "unmaintained: backoff, transitive" },
+    { id = "RUSTSEC-2025-0141", reason = "unmaintained: bincode, transitive" },
+    { id = "RUSTSEC-2024-0388", reason = "unmaintained: derivative, transitive" },
+    { id = "RUSTSEC-2024-0384", reason = "unmaintained: instant, transitive" },
+    { id = "RUSTSEC-2025-0119", reason = "unmaintained: number_prefix, transitive" },
+    { id = "RUSTSEC-2024-0387", reason = "unmaintained: opentelemetry_api, transitive (hermes)" },
+    { id = "RUSTSEC-2024-0436", reason = "unmaintained: paste, transitive" },
+    { id = "RUSTSEC-2026-0441", reason = "unmaintained: pin-utils, transitive" },
+    { id = "RUSTSEC-2026-0173", reason = "unmaintained: proc-macro-error2, transitive" },
+    { id = "RUSTSEC-2025-0134", reason = "unmaintained: rustls-pemfile, transitive" },
+    { id = "RUSTSEC-2024-0449", reason = "unmaintained: unsafe-libyaml, transitive" },
+]
 
 [licenses]
 version = 2
