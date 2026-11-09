@@ -76,11 +76,17 @@ jobs:
   ict-mock:
     name: ict-rs mock examples (prebuilt pin)
     runs-on: ubuntu-latest
+    # Needs an operator-published ict-ci tarball (scripts/ci/ict-rs-bins.env keeps hosts out of git).
+    # Set repo variables ICT_RS_BINS_URL + ICT_RS_TARBALL_SHA256 to enable.
+    if: ${{ vars.ICT_RS_BINS_URL != '' && vars.ICT_RS_TARBALL_SHA256 != '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Fetch pinned sibling deps (ci/siblings.tsv)
         run: bash ci/fetch-siblings.sh
       - name: Fetch pinned ict-ci
+        env:
+          ICT_RS_BINS_URL: ${{ vars.ICT_RS_BINS_URL }}
+          ICT_RS_TARBALL_SHA256: ${{ vars.ICT_RS_TARBALL_SHA256 }}
         run: bash scripts/ci/fetch-ict-rs-bins.sh /tmp/ict-rs-bins
       - name: Run mock group
         env:
