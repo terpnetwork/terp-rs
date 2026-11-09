@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "accepted"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "object",
+          "required": [
+            "app_data_hash_hex",
+            "dest_client",
+            "sequence",
+            "source_client"
+          ],
+          "properties": {
+            "app_data_hash_hex": {
+              "type": "string"
+            },
+            "dest_client": {
+              "type": "string"
+            },
+            "sequence": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "source_client": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

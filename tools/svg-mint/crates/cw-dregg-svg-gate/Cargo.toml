@@ -1,0 +1,18 @@
+[package]
+name = "cw-dregg-svg-gate"
+version = "0.1.0"
+edition.workspace = true
+license = "AGPL-3.0-or-later"
+rust-version.workspace = true
+description = "IBC/runtime mint gate: only DREGG runtime or svgmint-dregg-v1 packets may mint."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }

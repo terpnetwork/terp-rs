@@ -20,6 +20,14 @@ Modes:
   - zk_git:    git = "...", branch = "..." (ZK URLs, falls back to git)
   - dev:       git URLs in ws-deps/members + local paths via [patch.'<url>']
   - zk_dev:    zk_git URLs in ws-deps/members + zk_local paths via [patch.'<url>']
+  - patch-local: version lines stay; [patch.crates-io] → path
+  - patch-git:   a crates.io release stays a version line and its
+                 [patch.crates-io] entry becomes git + full rev.
+                 A crate with no crates.io release becomes git + full rev
+                 on the dependency line itself. There is no crates.io patch
+                 for it: Cargo only patches a registry source.
+                 (does not also write [patch.'<git-url>']; Cargo keeps the
+                 first replacement and will not chain a path over that git rev)
 
 Usage:
     python3 _scripts/dep-switch.py switch <mode> [--dry-run]
@@ -48,15 +56,23 @@ except ImportError:
         sys.exit(1)
 
 from dep_common import (
+    _build_project,
     DEV_MODE_MAP,
     KNOWN_WORKSPACE_ROOTS,
+    PATCH_MODE_MAP,
     REPO_ROOT,
     build_entry,
     build_ws_dep_entry,
     discover_projects,
+    drop_unreferenced_git_patches,
     extract_workspace_deps,
     find_section,
+    git_dependency_urls,
+    SHA_RE,
+    _path_leaves_repo,
+    git_rev,
     is_repo_only,
+    registry_version_literal,
     load_defaults,
     load_matrix,
     matrix_pkg_names,
@@ -69,14 +85,21 @@ from dep_common import (
 
 
 def _is_repo_only_by_name(name: str, crates: dict) -> bool:
-    """Check if a crate name found in a Cargo.toml corresponds to a repo_only matrix entry.
-    Looks up the name against matrix keys and package names."""
+    """True when ``name`` is only a repo-level matrix entry.
+
+    A repo_only key can share a string with a real package. ``cw-multi-test``
+    is repo metadata for permissionlessweb/cw-multi-test and also the clone's
+    published package name. The real package wins, so its patch line stays.
+    """
+    repo = False
     for key, info in crates.items():
-        if not is_repo_only(info):
+        if is_repo_only(info):
+            if key == name or info.get("package", key) == name:
+                repo = True
             continue
-        if key == name or info.get("package", key) == name:
-            return True
-    return False
+        if info.get("package", key) == name:
+            return False
+    return repo
 
 
 def validate_toml(path):
@@ -92,8 +115,15 @@ def validate_toml(path):
 
 
 def cargo_sort(path):
-    """Run cargo-sort on a Cargo.toml to keep dependency tables sorted."""
+    """Run cargo-sort on a Cargo.toml to keep dependency tables sorted.
+
+    Opt-in (DEP_CARGO_SORT=1): cargo-sort also reorders [workspace] members
+    and other non-patch tables, which a patch switch must never touch.
+    """
+    import os
     import subprocess
+    if os.environ.get("DEP_CARGO_SORT") != "1":
+        return
     try:
         subprocess.run(
             ["cargo", "sort", "--grouped", str(Path(path).parent)],
@@ -132,8 +162,340 @@ def resolve_projects(ws_filter=None, all_projects=False):
                 matched = True
                 break
         if not matched:
+            # A workspace outside REPO_ROOT (detached clone), named by path.
+            cand = Path(f).expanduser()
+            if (cand / "Cargo.toml").is_file():
+                proj = _build_project((cand / "Cargo.toml").resolve())
+                if proj:
+                    result.append(proj)
+                    continue
             print(f"WARNING: workspace '{f}' not found, skipping")
     return result
+
+
+def order_projects_by_nest(projects):
+    """Dependencies first.
+
+    A path dependency or a ``[patch.crates-io]`` path selects another
+    workspace in this set. Cargo ignores that workspace's own ``[patch]``
+    when the parent resolves it, so the parent is rewritten after the
+    workspaces it names.
+    """
+    dirs = [(p.rel_path, (REPO_ROOT / p.rel_path).resolve()) for p in projects]
+
+    def owner(target):
+        try:
+            target = target.resolve()
+        except OSError:
+            return None
+        best = None
+        best_n = -1
+        for rel, directory in dirs:
+            try:
+                target.relative_to(directory)
+            except ValueError:
+                continue
+            if len(directory.parts) > best_n:
+                best = rel
+                best_n = len(directory.parts)
+        return best
+
+    edges = {p.rel_path: set() for p in projects}
+    for proj in projects:
+        cargo = REPO_ROOT / proj.rel_path / "Cargo.toml"
+        if not cargo.is_file():
+            continue
+        for rel in _path_targets(cargo.read_text()):
+            own = owner(cargo.parent / rel)
+            if own and own != proj.rel_path:
+                edges[proj.rel_path].add(own)
+
+    incoming = {rel: 0 for rel in edges}
+    for rel, deps in edges.items():
+        incoming[rel] = len(deps)
+    ready = sorted(rel for rel, count in incoming.items() if count == 0)
+    order = []
+    while ready:
+        rel = ready.pop(0)
+        order.append(rel)
+        for other, deps in edges.items():
+            if rel in deps:
+                incoming[other] -= 1
+                if incoming[other] == 0:
+                    ready.append(other)
+        ready.sort()
+    if len(order) != len(edges):
+        remaining = [rel for rel in edges if rel not in set(order)]
+        cyclic = _cyclic_rels(remaining, edges)
+        print("  [WARN] patch nest cycle among: " + ", ".join(cyclic or sorted(remaining)))
+        order.extend(sorted(remaining))
+    by_rel = {p.rel_path: p for p in projects}
+    return [by_rel[rel] for rel in order]
+
+
+def _cyclic_rels(remaining, edges):
+    """Rels in ``remaining`` that can reach themselves through dependency edges."""
+    rem = set(remaining)
+    graph = {rel: {dep for dep in edges.get(rel, ()) if dep in rem} for rel in rem}
+    cyclic = []
+    for start in sorted(rem):
+        stack = list(graph[start])
+        seen = set()
+        while stack:
+            node = stack.pop()
+            if node == start:
+                cyclic.append(start)
+                break
+            if node in seen:
+                continue
+            seen.add(node)
+            stack.extend(graph.get(node, ()))
+    return cyclic
+
+
+def _patch_names(lines):
+    names = set()
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        names.add(stripped.split("=", 1)[0].strip())
+    return names
+
+
+def _path_targets(text):
+    """Relative path values from dependency and patch tables."""
+    found = []
+    for raw in text.splitlines():
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("["):
+            continue
+        match = re.search(r'\bpath\s*=\s*"([^"]+)"', stripped)
+        if match:
+            found.append(match.group(1))
+    return found
+
+
+_EDGE_CACHE = {}
+
+
+def git_patch_refusal(info):
+    """Why a ``[patch.crates-io]`` git rev must not replace the local path.
+
+    None means the rev is safe to write: it is in the local checkout, its
+    resolved dependency lines are crate versions, and a remote already has it.
+    A checkout we cannot see is not refused here; callers without a git repo
+    keep today's rev behavior.
+    """
+    rev = git_rev(info, "git")
+    if not rev:
+        return None
+    local = info.get("local")
+    if not local or local == "N/A":
+        return None
+    repo = _git_toplevel(REPO_ROOT / local)
+    if repo is None:
+        return None
+    try:
+        package_rel = str((REPO_ROOT / local).resolve().relative_to(repo.resolve()))
+    except ValueError:
+        package_rel = ""
+    kind, detail = _checkout_edge_class(repo, rev, package_rel)
+    hint = _unpublished_head_hint(repo, rev, package_rel)
+    if kind == "missing":
+        return f"{rev[:12]} is not in {repo.name}"
+    if kind == "escaping":
+        return (
+            f"{rev[:12]} has a cross-repo edge ({detail}); "
+            "a parent [patch.crates-io] cannot replace it" + hint
+        )
+    if kind not in ("registry", "self-pinned"):
+        return f"{rev[:12]} could not be classified ({kind})"
+    # A full git rev is fetchable on its own. A branch, a tag, or a path that
+    # leaves the checkout is not, and stays on the local patch above.
+    shape = "registry-shaped" if kind == "registry" else "pinned by full git revs"
+    if not _rev_on_remote(repo, rev):
+        return f"{rev[:12]} is {shape} but not on a remote" + hint
+    if hint:
+        return (
+            f"{rev[:12]} is an older published tree" + hint
+        )
+    return None
+
+
+def _unpublished_head_hint(repo, rev, package_rel):
+    head = _head_commit(repo)
+    if not head or head == rev:
+        return ""
+    head_kind, _detail = _checkout_edge_class(repo, head, package_rel)
+    if head_kind != "registry" or _rev_on_remote(repo, head):
+        return ""
+    return f"; HEAD {head[:12]} is registry-shaped and is not on a remote"
+
+
+def _git_toplevel(start):
+    cur = start
+    if not cur.exists():
+        cur = cur.parent
+    while True:
+        if (cur / ".git").exists():
+            return cur
+        if cur.parent == cur or cur == REPO_ROOT:
+            return None
+        cur = cur.parent
+
+
+def _git_out(repo, args):
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True, text=True,
+    )
+
+
+def _head_commit(repo):
+    result = _git_out(repo, ["rev-parse", "HEAD"])
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _rev_on_remote(repo, rev):
+    result = _git_out(repo, ["branch", "-r", "--contains", rev])
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
+def _checkout_edge_class(repo, rev, package_rel):
+    """Classify the package at ``rev``, following only the deps Cargo would resolve.
+
+    Other packages in the same checkout, including examples that path out of
+    the repo, do not count. A dependency's dev-dependencies do not count.
+    """
+    key = (str(repo), rev, package_rel or ".")
+    if key in _EDGE_CACHE:
+        return _EDGE_CACHE[key]
+    present = _git_out(repo, ["cat-file", "-e", f"{rev}^{{commit}}"])
+    if present.returncode != 0:
+        result = ("missing", rev[:12])
+        _EDGE_CACHE[key] = result
+        return result
+    root_text = _file_at(repo, rev, "Cargo.toml")
+    ws_deps = {}
+    if root_text is not None:
+        try:
+            ws_deps = tomllib.loads(root_text).get("workspace", {}).get("dependencies") or {}
+        except Exception:
+            ws_deps = {}
+    start = "Cargo.toml" if package_rel in ("", ".") else package_rel.strip("/") + "/Cargo.toml"
+    if _file_at(repo, rev, start) is None:
+        result = ("missing", start)
+        _EDGE_CACHE[key] = result
+        return result
+    kind = "registry"
+    detail = ""
+    seen = set()
+    queue = [start]
+    while queue:
+        cargo_rel = queue.pop()
+        if cargo_rel in seen:
+            continue
+        seen.add(cargo_rel)
+        text = _file_at(repo, rev, cargo_rel)
+        if text is None:
+            continue
+        try:
+            data = tomllib.loads(text)
+        except Exception:
+            continue
+        for table in _resolved_tables(data):
+            for name, raw in table.items():
+                spec = _effective_spec(raw, name, ws_deps)
+                if not isinstance(spec, dict):
+                    continue
+                path = spec.get("path")
+                if isinstance(path, str):
+                    # workspace.dependencies paths are relative to the workspace
+                    # manifest. A member that says workspace = true does not
+                    # re-root them.
+                    path_base = "Cargo.toml" if _inherited_workspace_dep(raw) else cargo_rel
+                    if _path_leaves_repo(path_base, path):
+                        result = ("escaping", f"{cargo_rel}: path = \"{path}\"")
+                        _EDGE_CACHE[key] = result
+                        return result
+                    dest = _joined_dir(path_base, path)
+                    queue.append("Cargo.toml" if not dest else dest + "/Cargo.toml")
+                git_url = spec.get("git")
+                if isinstance(git_url, str):
+                    pinned = spec.get("rev") or spec.get("commit") or ""
+                    if isinstance(pinned, str) and SHA_RE.match(pinned):
+                        if kind == "registry":
+                            kind = "self-pinned"
+                            detail = cargo_rel
+                    else:
+                        result = ("escaping", f"{cargo_rel}: git edge is not a full rev")
+                        _EDGE_CACHE[key] = result
+                        return result
+    result = (kind, detail)
+    _EDGE_CACHE[key] = result
+    return result
+
+
+def _file_at(repo, rev, cargo_rel):
+    shown = _git_out(repo, ["show", f"{rev}:{cargo_rel}"])
+    if shown.returncode != 0:
+        return None
+    return shown.stdout
+
+
+def _resolved_tables(data):
+    tables = []
+    for key in ("dependencies", "build-dependencies"):
+        table = data.get(key)
+        if isinstance(table, dict):
+            tables.append(table)
+    target = data.get("target")
+    if isinstance(target, dict):
+        for cfg in target.values():
+            if not isinstance(cfg, dict):
+                continue
+            for key in ("dependencies", "build-dependencies"):
+                table = cfg.get(key)
+                if isinstance(table, dict):
+                    tables.append(table)
+    return tables
+
+
+def _inherited_workspace_dep(raw) -> bool:
+    return isinstance(raw, dict) and raw.get("workspace") is True and "path" not in raw
+
+
+def _effective_spec(raw, name, ws_deps):
+    if isinstance(raw, str):
+        return {"version": raw}
+    if not isinstance(raw, dict):
+        return None
+    if raw.get("workspace") is True:
+        base = ws_deps.get(name, {})
+        if isinstance(base, str):
+            base = {"version": base}
+        elif not isinstance(base, dict):
+            base = {}
+        merged = dict(base)
+        for key, value in raw.items():
+            if key != "workspace":
+                merged[key] = value
+        return merged
+    return raw
+
+
+def _joined_dir(cargo_rel, rel):
+    parts = []
+    for part in (Path(cargo_rel).parent / rel).parts:
+        if part == "..":
+            if parts:
+                parts.pop()
+        elif part != ".":
+            parts.append(part)
+    return "/".join(parts)
 
 
 def resolve_crate_filter(crate_filter, crates):
@@ -157,15 +519,131 @@ def resolve_crate_filter(crate_filter, crates):
 
 # ── Patch Rewriting ──────────────────────────────────────────────────────────
 
-def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None):
-    """Update [patch.crates-io] for one workspace Cargo.toml."""
+def _absorb_dep_names(table, known, names):
+    """Record matrix package names declared in one dependency table."""
+    if not isinstance(table, dict):
+        return
+    for name, spec in table.items():
+        if name in known:
+            names.add(name)
+        if isinstance(spec, dict):
+            pkg = spec.get("package")
+            if isinstance(pkg, str) and pkg in known:
+                names.add(pkg)
+
+
+def _declared_matrix_names(ws_toml, crates):
+    """Matrix package names this workspace (and its members) actually depend on.
+
+    Scans workspace.dependencies plus dependency tables. Member scans pick up
+    crates that are not re-exported from the workspace table, such as
+    dao-testing's cw1-whitelist.
+    """
+    import glob as glob_mod
+
+    known = matrix_pkg_names(crates)
+    names = set()
+    cargo_path = REPO_ROOT / ws_toml
+
+    def absorb(data):
+        if not isinstance(data, dict):
+            return
+        for section in ("dependencies", "dev-dependencies", "build-dependencies"):
+            _absorb_dep_names(data.get(section), known, names)
+        ws = data.get("workspace", {}).get("dependencies", {})
+        _absorb_dep_names(ws, known, names)
+        target = data.get("target")
+        if isinstance(target, dict):
+            for cfg in target.values():
+                if not isinstance(cfg, dict):
+                    continue
+                for section in ("dependencies", "dev-dependencies", "build-dependencies"):
+                    _absorb_dep_names(cfg.get(section), known, names)
+
+    try:
+        data, _ = read_cargo_toml(cargo_path)
+    except Exception:
+        return names
+    absorb(data)
+
+    ws_dir = cargo_path.parent
+    exclude = set()
+    for exc in data.get("workspace", {}).get("exclude", []):
+        for match in glob_mod.glob(str(ws_dir / exc)):
+            exclude.add(Path(match).resolve())
+    seen = set()
+    for pattern in data.get("workspace", {}).get("members", []):
+        for match in glob_mod.glob(str(ws_dir / pattern)):
+            match_path = Path(match).resolve()
+            if match_path in exclude or not match_path.is_dir():
+                continue
+            member_cargo = match_path / "Cargo.toml"
+            if member_cargo in seen or not member_cargo.exists():
+                continue
+            seen.add(member_cargo)
+            try:
+                member_data, _ = read_cargo_toml(member_cargo)
+            except Exception:
+                continue
+            absorb(member_data)
+    return names
+
+
+def _patch_pkg_name(declared_name, lookup):
+    """crates.io package name a [patch.crates-io] key must use.
+
+    Dependency keys can be aliases (`cw-multi-test` → `abstract-cw-multi-test`).
+    The patch key is the published package name.
+    """
+    hit = lookup.get(declared_name)
+    if not hit:
+        return None
+    key, info = hit
+    if is_repo_only(info):
+        return None
+    return info.get("package", key), key, info
+
+
+def _patch_line_target(name, crates, lookup):
+    """Matrix entry for an existing ``[patch]`` key.
+
+    The key is a crates.io package name. A dependency alias must not override
+    a package that publishes under the same string. ``cw-multi-test`` is the
+    clone's package name and also an alias of ``abstract-cw-multi-test``.
+    """
+    for key, info in crates.items():
+        if is_repo_only(info):
+            continue
+        if info.get("package", key) == name:
+            return key, info
+    hit = lookup.get(name)
+    if not hit or is_repo_only(hit[1]):
+        return None
+    return hit
+
+
+def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None, ensure=False):
+    """Update [patch.crates-io] for one workspace Cargo.toml.
+
+    ensure=True inserts entries for matrix crates this manifest declares, and
+    creates the section when it is missing. Used by patch-local / patch-git.
+    Other modes leave a missing section alone.
+    """
     cargo_path = REPO_ROOT / ws_toml
     content = cargo_path.read_text()
     lines = content.split("\n")
 
     start, end = find_section(lines, "[patch.crates-io]")
+    created = False
     if start is None:
-        return False
+        if not ensure:
+            return False
+        if lines and lines[-1] != "":
+            lines.append("")
+        start = len(lines)
+        lines.append("[patch.crates-io]")
+        end = len(lines)
+        created = True
 
     known = matrix_pkg_names(crates)
     lookup = pkg_to_matrix(crates)
@@ -185,24 +663,44 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         name = stripped.split("=", 1)[0].strip()
         if _is_repo_only_by_name(name, crates):
             continue  # drop repo-level entries (not real crates)
-        if name in known:
+        if name in known or _patch_line_target(name, crates, lookup):
             if crate_filter and name not in crate_filter:
                 static_lines.append(line)
                 continue
-            key, info = lookup[name]
+            hit = _patch_line_target(name, crates, lookup)
+            if not hit:
+                static_lines.append(line)
+                continue
+            key, info = hit
             # Self-referential: preserve as-is
             if _is_self_referential(ws_toml, info, mode):
                 static_lines.append(line)
+            elif mode == "git-rev" and not registry_version_literal(info):
+                # A git dependency is not a crates.io source. Leaving a path
+                # patch here makes a lone clone fail on a directory it does
+                # not have, and Cargo would not apply the patch anyway.
+                print(f"  [WARN] {ws_toml}: omit crates.io patch {name}: "
+                      f"no crates.io release; the dependency line carries the git rev")
             else:
                 val = build_entry(key, info, mode, ws_toml, defaults=defaults)
-                if val:
-                    new_section.append(f"{name} = {val}")
+                patch_name = info.get("package", key)
+                refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+                if refusal:
+                    print(f"  [WARN] {ws_toml}: keep patch {patch_name}: {refusal}")
+                    static_lines.append(line)
+                elif val:
+                    # Rewrite in place: keep the manifest's patch order stable.
+                    static_lines.append(f"{patch_name} = {val}")
+                elif mode == "git-rev":
+                    print(f"  [WARN] {ws_toml}: keep patch {patch_name}: "
+                          f"git.rev/git.commit is not a full 40-hex sha")
+                    static_lines.append(line)
         else:
             static_lines.append(line)
 
     # Also add NEW patch entries for matrix crates that are marked as
     # patch_only=true (transitive deps that need patching but aren't direct).
-    seen_names = {l.split("=", 1)[0].strip() for l in new_section[1:]}
+    seen_names = _patch_names(new_section[1:]) | _patch_names(static_lines)
     proj_name = str(Path(ws_toml).parent)
     for key, info in crates.items():
         if is_repo_only(info):
@@ -220,14 +718,50 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         # Self-referential: never touch
         if _is_self_referential(ws_toml, info, mode):
             continue
+        if mode == "git-rev" and not registry_version_literal(info):
+            continue
         val = build_entry(key, info, mode, ws_toml, defaults=defaults)
-        if val:
+        refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+        if refusal:
+            print(f"  [WARN] {ws_toml}: skip patch {pkg}: {refusal}")
+        elif val:
             new_section.append(f"{pkg} = {val}")
+        elif mode == "git-rev":
+            print(f"  [WARN] {ws_toml}: skip patch {pkg}: "
+                  f"git.rev/git.commit is not a full 40-hex sha")
+
+    if ensure:
+        seen_names = _patch_names(new_section[1:]) | _patch_names(static_lines)
+        for declared in sorted(_declared_matrix_names(ws_toml, crates)):
+            mapped = _patch_pkg_name(declared, lookup)
+            if not mapped:
+                continue
+            pkg, key, info = mapped
+            if pkg in seen_names:
+                continue
+            if crate_filter and pkg not in crate_filter and declared not in crate_filter:
+                continue
+            if _is_self_referential(ws_toml, info, mode):
+                continue
+            if mode == "git-rev" and not registry_version_literal(info):
+                continue
+            val = build_entry(key, info, mode, ws_toml, defaults=defaults)
+            refusal = git_patch_refusal(info) if mode == "git-rev" and val else None
+            if refusal:
+                print(f"  [WARN] {ws_toml}: skip patch {pkg}: {refusal}")
+            elif val:
+                new_section.append(f"{pkg} = {val}")
+                seen_names.add(pkg)
+            elif mode == "git-rev":
+                print(f"  [WARN] {ws_toml}: skip patch {pkg}: "
+                      f"git.rev/git.commit is not a full 40-hex sha")
 
     final_section = ["[patch.crates-io]"]
     for line in static_lines:
         final_section.append(line)
     matrix_lines = [l for l in new_section[1:]]
+    if created and not matrix_lines:
+        return False
     if matrix_lines:
         if final_section[-1].strip():
             final_section.append("")
@@ -239,6 +773,8 @@ def rewrite_patches(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
     if new_content != content:
         if dry_run:
             print(f"  [DRY RUN] Would modify patches in {ws_toml}")
+            for line in matrix_lines:
+                print(f"    {line}")
         else:
             cargo_path.write_text(new_content)
             if not validate_toml(cargo_path):
@@ -257,11 +793,13 @@ def _find_all_patch_sections(lines):
     """Find all [patch.'<url>'] sections in lines.
     Returns list of (start, end, url) tuples."""
     sections = []
-    PATCH_RE = re.compile(r"^\[patch\.'([^']+)'\]\s*$")
+    # cargo-sort rewrites the header with double quotes. Both forms are the
+    # same section, and a missed header leaves a second patch in place.
+    PATCH_RE = re.compile(r"""^\[patch\.(?:'([^']+)'|"([^"]+)")\]\s*$""")
     for i, line in enumerate(lines):
         m = PATCH_RE.match(line.strip())
         if m:
-            sections.append((i, m.group(1)))
+            sections.append((i, m.group(1) or m.group(2)))
 
     result = []
     for idx, (start, url) in enumerate(sections):
@@ -643,7 +1181,38 @@ def _collect_member_pkg_names(ws_toml, data):
     return pkg_names
 
 
-def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None):
+def _warn_unpinned_ws_dep(ws_toml, name, info, source_mode):
+    """Say why a workspace path was left in place during a git cut."""
+    if source_mode != "git-rev":
+        return
+    refusal = git_patch_refusal(info)
+    if not refusal:
+        if build_entry(name, info, "git-rev", ws_toml) is None and not git_rev(info, "git"):
+            refusal = "git.rev is not a full sha"
+        else:
+            return
+    print(f"  [WARN] {ws_toml}: keep workspace dep {name}: {refusal}")
+
+
+def _patch_source_ready(key, info, ws_toml, source_mode, defaults):
+    """True when this crate can supply the patch that matches a version line.
+
+    patch-git without a full rev must not rewrite the dependency onto crates.io.
+    The existing git or path line stays, and the patch pass reports the skip.
+    """
+    if not source_mode:
+        return True
+    if build_entry(key, info, source_mode, ws_toml, defaults=defaults) is None:
+        return False
+    # A refused git rev is not a patch we will write. Leaving the path or git
+    # dependency in place is what still resolves. A version line is unchanged
+    # because this returns before the rewrite.
+    if source_mode == "git-rev" and git_patch_refusal(info):
+        return False
+    return True
+
+
+def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, defaults=None, require_source=None):
     """Update [workspace.dependencies] entries for matrix crates."""
     cargo_path = REPO_ROOT / ws_toml
     content = cargo_path.read_text()
@@ -682,6 +1251,7 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
     member_pkgs = _collect_member_pkg_names(ws_toml, data)
 
     changed = False
+    preview = []
     new_lines = list(lines)
 
     # Regex for expanded table format: [workspace.dependencies.name]
@@ -727,6 +1297,9 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         # Self-referential: never touch — these are internal workspace deps
         if _is_self_referential(ws_toml, info, mode):
             continue
+        if not _patch_source_ready(key, info, ws_toml, require_source, defaults):
+            _warn_unpinned_ws_dep(ws_toml, name, info, require_source)
+            continue
 
         pkg_name = info.get("package", key)
         if pkg_name in member_pkgs:
@@ -746,6 +1319,8 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         new_line = f"{name} = {new_val}"
         collapsed_entries.append(new_line)
         blocks_to_remove.append((block_start, block_end))
+        if dry_run:
+            preview.append(new_line)
 
     if collapsed_entries:
         # Remove expanded blocks in reverse order to preserve indices
@@ -808,6 +1383,9 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         # Self-referential: never touch — these are internal workspace deps
         if _is_self_referential(ws_toml, info, mode):
             continue
+        if not _patch_source_ready(key, info, ws_toml, require_source, defaults):
+            _warn_unpinned_ws_dep(ws_toml, name, info, require_source)
+            continue
 
         # Detect package name collision: external path dep vs workspace member
         pkg_name = info.get("package", key)
@@ -829,11 +1407,15 @@ def rewrite_ws_deps(ws_toml, crates, mode, crate_filter=None, dry_run=False, def
         if new_line != stripped:
             new_lines[i] = new_line
             changed = True
+            if dry_run:
+                preview.append(new_line)
 
     if changed:
         new_content = "\n".join(new_lines)
         if dry_run:
             print(f"  [DRY RUN] Would modify ws-deps in {ws_toml}")
+            for line in preview:
+                print(f"    {line}")
         else:
             cargo_path.write_text(new_content)
             if not validate_toml(cargo_path):
@@ -871,11 +1453,16 @@ def _is_in_dep_section(lines, line_idx):
         stripped = lines[i].strip()
         if stripped.startswith("[") and stripped.endswith("]"):
             section = stripped.strip("[]").strip()
-            # Match dependencies sections
+            # Match dependency sections. workspace.dependencies contains the
+            # substring ".dependencies" and must not be rewritten here; the
+            # ws-deps pass owns that table.
             if section in ("dependencies", "dev-dependencies", "build-dependencies"):
                 return section
-            # Match target.*.dependencies
-            if ".dependencies" in section or ".dev-dependencies" in section or ".build-dependencies" in section:
+            if section.startswith("target.") and (
+                section.endswith(".dependencies")
+                or section.endswith(".dev-dependencies")
+                or section.endswith(".build-dependencies")
+            ):
                 return section
             return False
     return False
@@ -939,7 +1526,7 @@ def _find_existing_spec(name, data, section_hint=None):
     return None
 
 
-def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_toml=None, dry_run=False, defaults=None):
+def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_toml=None, dry_run=False, defaults=None, require_source=None):
     """Rewrite direct matrix crate deps in a single member Cargo.toml.
 
     Skips deps that use workspace = true (those are handled by ws-deps target).
@@ -1009,6 +1596,9 @@ def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_tom
         if ws_toml and _is_self_referential(ws_toml, info, mode):
             i += 1
             continue
+        if not _patch_source_ready(key, info, rel_toml, require_source, defaults):
+            i += 1
+            continue
 
         existing_spec = _find_existing_spec(name, data, section_hint=dep_section)
 
@@ -1040,9 +1630,13 @@ def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_tom
             lines[i:end] = [new_line]
             skip_until = i + 1
             changed = True
+            if dry_run:
+                print(f"    {new_line}")
         elif new_line != line:
             lines[i] = new_line
             changed = True
+            if dry_run:
+                print(f"    {new_line}")
 
     # ── Pass 2: Expanded table sections ([dependencies.name]) ───────────
     # Pattern: [dependencies.foo] or [dev-dependencies.foo] etc.
@@ -1079,6 +1673,9 @@ def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_tom
 
         key, info = lookup[target_pkg]
 
+        if not _patch_source_ready(key, info, rel_toml, require_source, defaults):
+            i += 1
+            continue
         # Self-referential: never touch — these are internal workspace deps
         if ws_toml and _is_self_referential(ws_toml, info, mode):
             # Skip past entire expanded table section
@@ -1124,6 +1721,8 @@ def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_tom
         if old_section.strip() != new_section_line.strip():
             lines[section_start:section_end] = [new_section_line]
             changed = True
+            if dry_run:
+                print(f"    {new_section_line}")
             # Don't advance i since we collapsed lines
         else:
             i = section_end
@@ -1146,7 +1745,7 @@ def rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_tom
     return False
 
 
-def rewrite_members(project, crates, mode, crate_filter=None, dry_run=False, defaults=None):
+def rewrite_members(project, crates, mode, crate_filter=None, dry_run=False, defaults=None, require_source=None):
     """Rewrite direct matrix deps in all member Cargo.tomls of a project."""
     ws_toml = project.rel_path + "/Cargo.toml"
 
@@ -1163,7 +1762,7 @@ def rewrite_members(project, crates, mode, crate_filter=None, dry_run=False, def
 
     count = 0
     for member_toml in tomls_to_check:
-        if rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_toml=ws_toml, dry_run=dry_run, defaults=defaults):
+        if rewrite_member_file(member_toml, crates, mode, crate_filter, ws_deps, ws_toml=ws_toml, dry_run=dry_run, defaults=defaults, require_source=require_source):
             count += 1
 
     if count > 0:
@@ -1172,6 +1771,410 @@ def rewrite_members(project, crates, mode, crate_filter=None, dry_run=False, def
         print(f"  Members: no changes in {project.name}")
 
     return count > 0
+
+
+# ── patch-local closure ──────────────────────────────────────────────────────
+
+def _effective_dep(name, raw, ws_deps):
+    """Dependency spec Cargo will resolve, and whether its path is workspace-relative."""
+    if isinstance(raw, str):
+        return {"version": raw}, False
+    if not isinstance(raw, dict):
+        return None, False
+    if raw.get("workspace") and isinstance(ws_deps, dict) and name in ws_deps:
+        base = ws_deps[name]
+        if isinstance(base, str):
+            spec = {"version": base}
+        elif isinstance(base, dict):
+            spec = dict(base)
+        else:
+            return None, False
+        if raw.get("package"):
+            spec["package"] = raw["package"]
+        return spec, True
+    return dict(raw), False
+
+
+def _workspace_context(pkg_dir: Path):
+    """Workspace root and its [workspace.dependencies] for a package directory."""
+    root = REPO_ROOT.resolve()
+    current = pkg_dir.resolve()
+    while True:
+        cargo = current / "Cargo.toml"
+        if cargo.is_file():
+            try:
+                data, _ = read_cargo_toml(cargo)
+            except Exception:
+                data = {}
+            workspace = data.get("workspace") or {}
+            members = workspace.get("members") or []
+            if members and _dir_is_member(current, members, workspace.get("exclude") or [], pkg_dir.resolve()):
+                return current, workspace.get("dependencies") or {}
+        if current == root or current.parent == current:
+            break
+        current = current.parent
+    return None, {}
+
+
+def _dir_is_member(ws_dir: Path, members, exclude, pkg_dir: Path) -> bool:
+    import glob as glob_mod
+
+    pkg_dir = pkg_dir.resolve()
+    ws_dir = ws_dir.resolve()
+    excluded = set()
+    for pattern in exclude:
+        for match in glob_mod.glob(str(ws_dir / pattern)):
+            excluded.add(Path(match).resolve())
+    if pkg_dir in excluded:
+        return False
+    if pkg_dir == ws_dir and "." in members:
+        return True
+    for pattern in members:
+        for match in glob_mod.glob(str(ws_dir / pattern)):
+            if Path(match).resolve() == pkg_dir:
+                return True
+    return False
+
+
+def _member_dirs(ws_dir: Path, data: dict) -> list:
+    import glob as glob_mod
+
+    found = []
+    excluded = set()
+    for pattern in data.get("workspace", {}).get("exclude") or []:
+        for match in glob_mod.glob(str(ws_dir / pattern)):
+            excluded.add(Path(match).resolve())
+    for pattern in data.get("workspace", {}).get("members") or []:
+        for match in glob_mod.glob(str(ws_dir / pattern)):
+            path = Path(match).resolve()
+            if path in excluded or not (path / "Cargo.toml").is_file():
+                continue
+            found.append(path)
+    return found
+
+
+def _inside_repo(path: Path):
+    try:
+        path.resolve().relative_to(REPO_ROOT.resolve())
+    except ValueError:
+        return None
+    if (path / "Cargo.toml").is_file():
+        return path.resolve()
+    return None
+
+
+def _in_this_workspace(pkg_dir: Path, ws_toml: str) -> bool:
+    ws_dir = (REPO_ROOT / ws_toml).parent.resolve()
+    try:
+        pkg_dir.resolve().relative_to(ws_dir)
+    except ValueError:
+        return False
+    return True
+
+
+def _queue_registry_patch(spec, name, lookup, crates, ws_toml, defaults, seen_patch, to_add, queue, pkg_dir):
+    """A crates.io edge for a matrix crate needs a local [patch.crates-io] entry.
+
+    A member of this workspace is not patched from its own manifests. An
+    outside crate that version-depends on that member still needs the patch,
+    because the member does not satisfy a crates.io edge by itself.
+    """
+    if spec.get("path") or spec.get("git") or not spec.get("version"):
+        return
+    pkg = spec.get("package") or name
+    hit = lookup.get(pkg) or lookup.get(name)
+    if not hit:
+        return
+    key, info = hit
+    if is_repo_only(info):
+        return
+    if _is_self_referential(ws_toml, info, "registry") and _in_this_workspace(pkg_dir, ws_toml):
+        return
+    mapped = _patch_pkg_name(pkg, lookup) or _patch_pkg_name(name, lookup)
+    if not mapped:
+        return
+    published, _key, _info = mapped
+    if published not in seen_patch:
+        val = build_entry(key, info, "local", ws_toml, defaults=defaults)
+        if val:
+            to_add.append(f"{published} = {val}")
+            seen_patch.add(published)
+    local = info.get("local")
+    if local and local != "N/A":
+        dest = _inside_repo(REPO_ROOT / local)
+        if dest is not None:
+            queue.append((dest, False, False))
+
+
+def committed_package_version(local_rel: str):
+    """Version committed at a matrix ``local`` path.
+
+    A member that sets ``version.workspace = true`` reports the workspace
+    package version. That is the number consumers must require.
+    """
+    if not local_rel or local_rel == "N/A":
+        return None
+    cargo = REPO_ROOT / local_rel / "Cargo.toml"
+    if not cargo.is_file():
+        return None
+    try:
+        data, _ = read_cargo_toml(cargo)
+    except Exception:
+        return None
+    version = (data.get("package") or {}).get("version")
+    if isinstance(version, str) and version:
+        return version
+    if not (isinstance(version, dict) and version.get("workspace")):
+        return None
+    root, _ = _workspace_context(cargo.parent)
+    if root is None:
+        return None
+    try:
+        ws, _ = read_cargo_toml(root / "Cargo.toml")
+    except Exception:
+        return None
+    ws_version = ((ws.get("workspace") or {}).get("package") or {}).get("version")
+    if isinstance(ws_version, str) and ws_version:
+        return ws_version
+    return None
+
+
+def _patch_assignment(line: str):
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#") or "=" not in stripped:
+        return None
+    name, rhs = stripped.split("=", 1)
+    name = name.strip()
+    if not name or name.startswith("["):
+        return None
+    return name, rhs.strip()
+
+
+_PATCH_PATH = re.compile(r'(?:"path"|path)\s*=\s*"([^"]+)"')
+
+
+def _rebase_patch_rhs(rhs: str, from_dir: Path, parent_dir: Path):
+    """Rewrite a path in a patch entry so it is relative to the parent workspace.
+
+    A git entry is copied unchanged. A path that leaves the monorepo is dropped.
+    """
+    match = _PATCH_PATH.search(rhs)
+    if not match:
+        if "path" in rhs:
+            return None
+        return rhs
+    dest = _inside_repo(from_dir / match.group(1))
+    if dest is None:
+        return None
+    rel = Path(os.path.relpath(dest, parent_dir.resolve())).as_posix()
+    return rhs[: match.start(1)] + rel + rhs[match.end(1) :]
+
+
+def _index_nested_crates_io(owner: Path, parent_dir: Path, indexed, seen_owners):
+    """Remember one workspace's crates.io patches, rebased onto the parent.
+
+    Nothing is written yet. A patch is copied only when this resolve actually
+    requires that crate. Cargo ignores the nested table, so the parent has to
+    carry the entry that satisfies the requirement.
+    """
+    owner = owner.resolve()
+    if owner in seen_owners or owner == parent_dir.resolve():
+        seen_owners.add(owner)
+        return
+    seen_owners.add(owner)
+    cargo = owner / "Cargo.toml"
+    if not cargo.is_file():
+        return
+    try:
+        lines = cargo.read_text().split("\n")
+    except Exception:
+        return
+    start, end = find_section(lines, "[patch.crates-io]")
+    if start is None:
+        return
+    for line in lines[start + 1 : end]:
+        parsed = _patch_assignment(line)
+        if parsed is None:
+            continue
+        name, rhs = parsed
+        if name in indexed:
+            continue
+        rebased = _rebase_patch_rhs(rhs, owner, parent_dir)
+        if rebased is None:
+            continue
+        indexed[name] = rebased
+
+
+def _apply_indexed_patch(name, spec, indexed, seen_patch, to_add, queue, parent_dir):
+    """Use a nested patch when this dependency is a crates.io requirement."""
+    if spec.get("path") or spec.get("git") or not spec.get("version"):
+        return
+    pkg = spec.get("package") or name
+    for candidate in (pkg, name):
+        rhs = indexed.get(candidate)
+        if not rhs or candidate in seen_patch:
+            continue
+        to_add.append(f"{candidate} = {rhs}")
+        seen_patch.add(candidate)
+        path_match = _PATCH_PATH.search(rhs)
+        if not path_match:
+            return
+        dest = _inside_repo(parent_dir / path_match.group(1))
+        if dest is not None:
+            queue.append((dest, False, False))
+        return
+
+
+def _closure_patches(ws_toml, crates, defaults):
+    """Local patches for registry edges reached through this workspace's path graph.
+
+    Also returns git URLs still named by those manifests. A URL that survives
+    here still needs its `[patch.'<url>']` section.
+    """
+    cargo_path = REPO_ROOT / ws_toml
+    try:
+        data, _ = read_cargo_toml(cargo_path)
+    except Exception:
+        return [], set()
+    text = cargo_path.read_text()
+    lines = text.split("\n")
+    lookup = pkg_to_matrix(crates)
+    ws_dir = cargo_path.parent.resolve()
+    seen = set()
+    seen_patch = set()
+    indexed = {}
+    indexed_owners = set()
+    urls = set()
+    to_add = []
+    queue = [(ws_dir, True, True)]
+    for member in _member_dirs(ws_dir, data):
+        queue.append((member, True, False))
+
+    start, end = find_section(lines, "[patch.crates-io]")
+    if start is not None:
+        for line in lines[start + 1 : end]:
+            name = line.split("=", 1)[0].strip() if "=" in line else ""
+            if name and not line.strip().startswith("#"):
+                seen_patch.add(name)
+            match = re.search(r'path\s*=\s*"([^"]+)"', line)
+            if not match:
+                continue
+            dest = _inside_repo(ws_dir / match.group(1))
+            if dest is not None:
+                queue.append((dest, False, False))
+
+    while queue:
+        pkg_dir, include_dev, scan_workspace_table = queue.pop()
+        pkg_dir = pkg_dir.resolve()
+        if pkg_dir in seen:
+            continue
+        cargo = pkg_dir / "Cargo.toml"
+        if not cargo.is_file() or _inside_repo(pkg_dir) is None:
+            continue
+        seen.add(pkg_dir)
+        try:
+            manifest_text = cargo.read_text()
+            manifest, _ = read_cargo_toml(cargo)
+        except Exception:
+            continue
+        urls.update(git_dependency_urls(manifest_text))
+        _ws_root, ws_deps = _workspace_context(pkg_dir)
+        owner = _ws_root if _ws_root is not None else pkg_dir
+        _index_nested_crates_io(owner, ws_dir, indexed, indexed_owners)
+
+        def consider(table, force_workspace):
+            if not isinstance(table, dict):
+                return
+            for dep_name, raw in table.items():
+                spec, from_workspace = _effective_dep(dep_name, raw, ws_deps)
+                if spec is None:
+                    continue
+                if force_workspace:
+                    from_workspace = True
+                source_path = spec.get("path")
+                if source_path:
+                    base = _ws_root if from_workspace and _ws_root is not None else pkg_dir
+                    dest = _inside_repo(base / source_path)
+                    if dest is not None:
+                        queue.append((dest, False, False))
+                    continue
+                _queue_registry_patch(
+                    spec, dep_name, lookup, crates, ws_toml, defaults,
+                    seen_patch, to_add, queue, pkg_dir,
+                )
+                _apply_indexed_patch(
+                    dep_name, spec, indexed, seen_patch, to_add, queue, ws_dir,
+                )
+
+        for section in ("dependencies", "build-dependencies"):
+            consider(manifest.get(section), False)
+        if include_dev:
+            consider(manifest.get("dev-dependencies"), False)
+        if scan_workspace_table:
+            consider(manifest.get("workspace", {}).get("dependencies"), True)
+        target = manifest.get("target")
+        if isinstance(target, dict):
+            for cfg in target.values():
+                if not isinstance(cfg, dict):
+                    continue
+                for section in ("dependencies", "build-dependencies"):
+                    consider(cfg.get(section), False)
+                if include_dev:
+                    consider(cfg.get("dev-dependencies"), False)
+    return to_add, urls
+
+
+def unify_local_patches(ws_toml, crates, defaults, dry_run, crate_filter=None):
+    """Fill `[patch.crates-io]` for the path closure and drop unused git-url sections.
+
+    With --crate, only closure entries for the filtered packages are added.
+    """
+    cargo_path = REPO_ROOT / ws_toml
+    added, urls = _closure_patches(ws_toml, crates, defaults)
+    if crate_filter:
+        added = [l for l in added
+                 if "=" not in l or l.split("=", 1)[0].strip() in crate_filter]
+    if added:
+        content = cargo_path.read_text()
+        lines = content.split("\n")
+        start, end = find_section(lines, "[patch.crates-io]")
+        if start is None:
+            if lines and lines[-1] != "":
+                lines.append("")
+            lines.extend(["[patch.crates-io]", ""])
+            lines.extend(added)
+        else:
+            lines[end:end] = added
+        new_content = "\n".join(lines)
+        if dry_run:
+            print(f"  [DRY RUN] Would extend [patch.crates-io] in {ws_toml}")
+            for line in added:
+                print(f"    {line}")
+        else:
+            cargo_path.write_text(new_content)
+            if not validate_toml(cargo_path):
+                cargo_path.write_text(content)
+                print(f"  REVERTED closure patches in {ws_toml} (invalid TOML)")
+            else:
+                cargo_sort(cargo_path)
+                print(f"  Extended [patch.crates-io] in {ws_toml} ({len(added)} entries)")
+
+    content = cargo_path.read_text()
+    new_content, dropped = drop_unreferenced_git_patches(content, urls)
+    if not dropped:
+        return
+    if dry_run:
+        print(f"  [DRY RUN] Would drop git-url patches from {ws_toml}")
+        for url in dropped:
+            print(f"    {url}")
+        return
+    cargo_path.write_text(new_content)
+    if not validate_toml(cargo_path):
+        cargo_path.write_text(content)
+        print(f"  REVERTED git-url patch removal in {ws_toml} (invalid TOML)")
+        return
+    cargo_sort(cargo_path)
+    print(f"  Dropped {len(dropped)} git-url patch section(s) from {ws_toml}")
 
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -1185,19 +2188,52 @@ TARGET_DESC = {
 }
 
 
+_PATCH_HDR = re.compile(r"^\s*\[patch[.\]]")
+_ANY_HDR = re.compile(r"^\s*\[")
+
+
+def _non_patch_text(text):
+    """Manifest text with every [patch.*] table removed and blank lines dropped."""
+    out, in_patch = [], False
+    for line in text.split("\n"):
+        if _ANY_HDR.match(line):
+            in_patch = bool(_PATCH_HDR.match(line))
+        if not in_patch and line.strip():
+            out.append(line)
+    return "\n".join(out)
+
+
+def _guard_non_patch_sections(snapshots):
+    """--target patches must only change [patch.*]. Revert any file that drifted."""
+    for ws_toml, before in snapshots.items():
+        path = REPO_ROOT / ws_toml
+        after = path.read_text()
+        if _non_patch_text(after) != _non_patch_text(before):
+            path.write_text(before)
+            print(f"  REVERTED {ws_toml}: switch changed tables outside [patch.*]")
+
+
 def cmd_switch(args):
     """Switch fork deps to the specified mode."""
     crates = load_matrix()
     defaults = load_defaults()
-    projects = resolve_projects(args.workspace, all_projects=(args.target in ("members", "all")))
     crate_filter = resolve_crate_filter(args.crate, crates)
-    target = args.target
     mode = args.mode
+    target = args.target
+    if target is None:
+        # patch-* modes only own [patch.crates-io]; touching ws-deps or member
+        # manifests is opt-in (--target all) to adopt the scheme once.
+        target = "patches" if mode in PATCH_MODE_MAP else "all"
+        args.target = target
+    projects = resolve_projects(args.workspace, all_projects=(target in ("members", "all")))
 
-    # Decompose composite dev modes into sub-modes
+    # Decompose composite modes into the dependency-line mode and the patch mode.
     is_dev = mode in DEV_MODE_MAP
+    is_patch = mode in PATCH_MODE_MAP
     if is_dev:
         ws_dep_mode, patch_mode, _ = DEV_MODE_MAP[mode]
+    elif is_patch:
+        ws_dep_mode, patch_mode = PATCH_MODE_MAP[mode]
     else:
         ws_dep_mode = patch_mode = mode
 
@@ -1207,37 +2243,72 @@ def cmd_switch(args):
     if args.crate:
         filter_desc += f" crate={','.join(args.crate)}"
 
+    if is_patch and len(projects) > 1:
+        projects = order_projects_by_nest(projects)
+        print("Patch order (dependencies first): " + ", ".join(p.rel_path for p in projects))
+        print()
+
     if is_dev:
         print(f"Switching to mode: {mode} (ws-deps/members={ws_dep_mode}, patches={patch_mode}, git-url-patches=local) | target: {TARGET_DESC[target]}{filter_desc}")
+    elif is_patch:
+        print(f"Switching to mode: {mode} (ws-deps/members={ws_dep_mode}, patches={patch_mode}, one [patch.crates-io]) | target: {TARGET_DESC[target]}{filter_desc}")
     else:
         print(f"Switching to mode: {mode} | target: {TARGET_DESC[target]}{filter_desc}")
     if args.dry_run:
         print("  [DRY RUN]")
     print()
 
+    snapshots = {}
     for proj in projects:
         ws_toml = proj.rel_path + "/Cargo.toml"
 
         if not (REPO_ROOT / ws_toml).exists():
             print(f"  SKIP {ws_toml}: file not found")
             continue
+        if target == "patches":
+            snapshots[ws_toml] = (REPO_ROOT / ws_toml).read_text()
 
         if target in ("patches", "both", "all"):
-            rewrite_patches(ws_toml, crates, patch_mode, crate_filter, args.dry_run, defaults=defaults)
+            rewrite_patches(
+                ws_toml, crates, patch_mode, crate_filter, args.dry_run,
+                defaults=defaults, ensure=is_patch,
+            )
 
         if target in ("ws-deps", "both", "all"):
-            rewrite_ws_deps(ws_toml, crates, ws_dep_mode, crate_filter, args.dry_run, defaults=defaults)
+            rewrite_ws_deps(
+                ws_toml, crates, ws_dep_mode, crate_filter, args.dry_run,
+                defaults=defaults, require_source=patch_mode if is_patch else None,
+            )
 
         if target in ("members", "all"):
-            rewrite_members(proj, crates, ws_dep_mode, crate_filter, args.dry_run, defaults=defaults)
+            rewrite_members(
+                proj, crates, ws_dep_mode, crate_filter, args.dry_run,
+                defaults=defaults, require_source=patch_mode if is_patch else None,
+            )
 
         # Git URL patches: only on workspace roots (not standalone member crates)
         if target in ("patches", "both", "all") and proj.is_workspace:
             if is_dev:
                 rewrite_git_url_patches(ws_toml, crates, mode, crate_filter, args.dry_run, defaults=defaults)
             elif mode in ("local", "zk_local", "stable"):
-                # Only strip [patch.'<url>'] when ws-deps are path-based (no git URLs to patch)
                 remove_git_url_patches(ws_toml, crates, args.dry_run, defaults=defaults)
+            # patch-git keeps an existing [patch.'<git-url>']. A crates.io→git
+            # replacement cannot be chained, and a git edge inside a patched
+            # crate still needs that section. patch-local retires it below,
+            # once the path closure no longer names the URL.
+
+    if is_patch and patch_mode == "local":
+        # align checks the committed checkout, then lifts every nested patch
+        # this resolve requires. A --crate filter must not drop cw1 or the Wasmer pin.
+        closure_filter = None if getattr(args, "lift_all", False) else crate_filter
+        for proj in projects:
+            ws_toml = proj.rel_path + "/Cargo.toml"
+            if not (REPO_ROOT / ws_toml).exists():
+                continue
+            unify_local_patches(ws_toml, crates, defaults, args.dry_run, closure_filter)
+
+    if target == "patches" and not args.dry_run:
+        _guard_non_patch_sections(snapshots)
 
     # Persist active mode (skip on dry-run or partial crate/workspace filters)
     if not args.dry_run and not args.crate and not args.workspace:
@@ -1528,8 +2599,8 @@ def main():
     )
     sw.add_argument(
         "--target", choices=["patches", "ws-deps", "members", "both", "all"],
-        default="all",
-        help="Which sections to modify (default: all)",
+        default=None,
+        help="Which sections to modify (default: patches for patch-* modes, else all)",
     )
     sw.set_defaults(func=cmd_switch)
 

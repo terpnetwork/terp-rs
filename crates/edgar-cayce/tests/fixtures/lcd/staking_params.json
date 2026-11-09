@@ -1,0 +1,1 @@
+{"params":{"unbonding_time":"1814400s","max_validators":69,"max_entries":7,"historical_entries":10000,"bond_denom":"uterp","min_commission_rate":"0.000000000000000000","key_rotation_fee":{"denom":"uterp","amount":"1000000"}}}

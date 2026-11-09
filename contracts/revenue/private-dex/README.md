@@ -2,8 +2,9 @@
 
 CosmWasm **private swap settle** contract for Terp.
 
-- **Seam math SSOT:** pure fixture `docs/plans/spectrum/fixtures/private_dex_seams`
-  (`apply_swap_action`, constant-product quote, oracle bounds, pool nullifiers).
+- **Seam math SSOT:** `crates/terp-seams` (`dex` module: `apply_swap_action`,
+  constant-product quote, oracle bounds, pool nullifiers).
+- **Research docs:** https://docs.terp.network/research/private-dex
 - **Contract wiring reference:** in-tree **`crates/dex`** (astroport-core fork) —
   especially `contracts/pair` (`swap`, `compute_swap`, `Simulation`, pause window).
 - **Proof API:** CosmWasm fork `deps.api.proof_instance_verify(zkid, proof, instances)`.
@@ -47,7 +48,7 @@ Guest default builds **omit** cosmwasm-std `zk` so wasm deploys on stock wasmd
 ## Build / test
 
 ```bash
-cd crates/headstash
+cd crates/terp-rs && cargo test -p cw-headstash --lib
 
 # unit tests (mock_verify dual-path; no host import)
 cargo test -p cw-private-dex
@@ -61,7 +62,7 @@ cargo build -p cw-private-dex --target wasm32-unknown-unknown --release --lib --
 
 ## Spec alignment
 
-- `docs/plans/spectrum/SPEC-private-dex-seams.md`
-- `docs/plans/spectrum/fixtures/private_dex_seams`
+- https://docs.terp.network/research/private-dex/spec
+- `crates/terp-seams` (`dex`)
 - `crates/dex/contracts/pair` + `packages/astroport/src/pair.rs`
 - `crates/cosmwasm/ZK_PROOF_VERIFICATION_ARCHITECTURE.md`

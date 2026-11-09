@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Token",
+  "type": "object",
+  "required": [
+    "eth_address",
+    "mint_path",
+    "minted_height",
+    "owner",
+    "sign_tx",
+    "token_id",
+    "ve_commitment_hex"
+  ],
+  "properties": {
+    "eth_address": {
+      "type": "string"
+    },
+    "mint_path": {
+      "$ref": "#/definitions/MintPath"
+    },
+    "minted_height": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "owner": {
+      "type": "string"
+    },
+    "sign_tx": {
+      "type": "string"
+    },
+    "token_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "ve_commitment_hex": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "MintPath": {
+      "type": "string",
+      "enum": [
+        "ve_sidecar",
+        "ibc_v2_australge"
+      ]
+    }
+  }
+}

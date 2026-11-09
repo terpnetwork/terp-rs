@@ -1,0 +1,62 @@
+---
+title: Private Bridge glossary
+description: "Short definitions for Private Bridge product nouns."
+---
+
+# Private Bridge glossary
+
+**Terp** — Cosmos-SDK chain that hosts private notes and related research contracts for this product.
+
+**Private Bridge** — Research product that seals a Bitcoin deposit intent, observes the deposit, and mints a Terp private note through a light-client hinge.
+
+**Deposit intent** — Fixed packet locking Zcash destination, minimum out, slippage policy, expiry, bridge route ids, and intent domain bind before funding.
+
+**Deposit wallet** — Fresh browser HD wallet and P2WPKH address used only for the QR fund, separate from everyday Cash App identity.
+
+**P2WPKH** — Standard Bitcoin SegWit pay-to-witness-public-key-hash address type used for the one-time deposit QR.
+
+**Owner binding** — Opaque destination handle derived from the Zcash address (or demo dest). Mint, swap, and open must match it.
+
+**Observation** — Coordination signal that a deposit appeared on Bitcoin. Not mint authority by itself.
+
+**Re-verify** — Client check of the deposit against a Bitcoin index before production-shaped mint continues.
+
+**Light-client hinge** — Tip plus membership rules that admit foreign finality into the mint gate.
+
+**Burn membership** — Proof that a bridge burn sits under the attested burn root at the accepted tip. Required for mint; ordinary spent-set membership is not enough.
+
+**CosmWasm** — WebAssembly smart-contract runtime used on Cosmos chains, including Terp.
+
+**Headstash** — CosmWasm surface that mints and burns private notes for airdrop-style claims and bridge ingress.
+
+**Claim** — Separate private-note mint path (often airdrop-style) that shares the same note shape as bridge mint.
+
+**Bridge mint** — Authenticated mint into a Terp private note (`BridgeMintNote` on headstash).
+
+**SeamNoteOut** — Shared intermediate note schema (`SeamNoteOutV0`) for asset id, value, owner binding, commitment, nullifier lineage, and provenance pin.
+
+**Private note** — Shielded note commitment on Terp; shared shape with claims and private DEX (`SeamNoteOut`).
+
+**Nullifier** — One-shot spent or burn marker that blocks replay.
+
+**Oracle mid** — Public price hint used only as a swap bound. Never mints.
+
+**Private swap** — Optional spend of a private note against public virtual reserves; see [Private DEX](/research/private-dex).
+
+**Zcash egress** — Terp note burn followed by Zcash-side pay or mint to the sealed destination only.
+
+**Halo2** — Zero-knowledge proving system referenced for browser mint proofs when mock verify is off.
+
+**Fail closed** — On re-verify or policy failure, stop as failure rather than continue as success.
+
+**Lab simulated** — Explicit lab profile where synthetic observe and mock verify are allowed and labeled.
+
+**Intent domain** — Versioned label on the sealed intent (for example the Bitcoin-QR funding family). Distinguishes funding policy from asset-map digests; not a user-facing brand.
+
+**SSE** — Server-Sent Events; one way the UI watches deposit status without polling only.
+
+**Esplora / Electrum / Fulcrum** — Bitcoin index APIs or servers the app can query to re-check a deposit. They are indexes, not mint authorities. Fulcrum is an Electrum-compatible server. A full local `bitcoind` node is optional for some topologies, not required for labeled lab synthetic observe.
+
+**Verifying key** — Public parameters a proof verifier checks against; registered under a circuit id when real proof verify is on.
+
+**IBC** — Inter-Blockchain Communication; a Cosmos message path. Not used as this product’s sealed Zcash egress.

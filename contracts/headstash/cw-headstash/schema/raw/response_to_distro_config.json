@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DistroConfigResponse",
+  "type": "object",
+  "required": [
+    "default_domain",
+    "default_domain_tag",
+    "genesis_root",
+    "next_root_id"
+  ],
+  "properties": {
+    "default_domain": {
+      "$ref": "#/definitions/DistroHashDomain"
+    },
+    "default_domain_tag": {
+      "type": "string"
+    },
+    "genesis_root": {
+      "$ref": "#/definitions/Binary"
+    },
+    "next_root_id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "DistroHashDomain": {
+      "description": "Wire / JSON unit names are `poseidon_v1` / `sinsemilla_legacy` (cw_serde identifiers). Human/ADR tags from [`DistroHashDomain::as_str`] are `poseidon-v1` / `sinsemilla-legacy`.\n\nNew Headstashes default to [`DistroHashDomain::PoseidonV1`]. [`DistroHashDomain::SinsemillaLegacy`] is recovery-only for pre-Poseidon trees.",
+      "oneOf": [
+        {
+          "description": "Poseidon over `pallas::Base` — ADR default for public inclusion.",
+          "type": "string",
+          "enum": [
+            "poseidon_v1"
+          ]
+        },
+        {
+          "description": "Orchard-family Sinsemilla — legacy recovery only; not for new drops.",
+          "type": "string",
+          "enum": [
+            "sinsemilla_legacy"
+          ]
+        }
+      ]
+    }
+  }
+}

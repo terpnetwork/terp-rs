@@ -1,0 +1,40 @@
+{
+  "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+  "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+  "signer": "terp1drrqa2mmk4syy85hrflta73408p0t5n4fkpc8x",
+  "predicted_proxy": {
+    "juno-1": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+    "osmosis-1": "osmo15aqqcae2wtklrxt3hew0elsm5uhrh0j7uqtnvzvqjklcflwdnggqkv655x"
+  },
+  "notes": {
+    "juno-1": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+    "osmosis-1": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj"
+  },
+  "flow": "one session: propose+vote+execute (no veto)",
+  "propose": {
+    "propose": {
+      "title": "Open steward-juno's Polytone accounts on Juno and Osmosis",
+      "description": "Two empty Polytone executes: the Terp<->Juno note (channel-14 <-> channel-675) creates steward-juno's Juno proxy juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5, and the Terp<->Osmosis note (channel-15 <-> channel-111102) creates its Osmosis proxy osmo15aqqcae2wtklrxt3hew0elsm5uhrh0j7uqtnvzvqjklcflwdnggqkv655x.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbXSwidGltZW91dF9zZWNvbmRzIjoiMzYwMCJ9fQ==",
+              "funds": []
+            }
+          }
+        },
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbXSwidGltZW91dF9zZWNvbmRzIjoiMzYwMCJ9fQ==",
+              "funds": []
+            }
+          }
+        }
+      ]
+    }
+  }
+}

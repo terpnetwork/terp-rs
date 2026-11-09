@@ -1,6 +1,6 @@
 use crate::{
-    error::{NipError, NipResult},
     NipKind, NipMetadata, RawNostrEvent, Tag,
+    error::{NipError, NipResult},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -673,8 +673,8 @@ impl OrderStatusUpdate {
 
 #[cfg(test)]
 mod tests {
-    use crate::{RawNostrEvent, NipMetadata, NipKind};
     use super::*;
+    use crate::{NipKind, NipMetadata, RawNostrEvent};
 
     // ==================== Nip15Kind Tests ====================
 
@@ -695,7 +695,10 @@ mod tests {
         assert_eq!(make_valid_marketplace_ui().kind(), Nip15Kind::MarketplaceUI);
         assert_eq!(make_valid_auction().kind(), Nip15Kind::AuctionProduct);
         assert_eq!(make_valid_bid().kind(), Nip15Kind::Bid);
-        assert_eq!(make_valid_bid_confirmation(BidStatus::Accepted).kind(), Nip15Kind::BidConfirmation);
+        assert_eq!(
+            make_valid_bid_confirmation(BidStatus::Accepted).kind(),
+            Nip15Kind::BidConfirmation
+        );
     }
 
     // ==================== StallMetadata Tests ====================
@@ -750,7 +753,10 @@ mod tests {
         let mut stall = make_valid_stall();
         stall.shipping = vec![];
         let err = stall.validate().unwrap_err();
-        assert!(err.to_string().contains("At least one shipping zone is required"));
+        assert!(
+            err.to_string()
+                .contains("At least one shipping zone is required")
+        );
     }
 
     #[test]
@@ -766,7 +772,10 @@ mod tests {
         let mut stall = make_valid_stall();
         stall.shipping[0].regions = vec![];
         let err = stall.validate().unwrap_err();
-        assert!(err.to_string().contains("Shipping zone must have at least one region"));
+        assert!(
+            err.to_string()
+                .contains("Shipping zone must have at least one region")
+        );
     }
 
     #[test]
@@ -892,12 +901,14 @@ mod tests {
         // Check d-tag
         assert!(tags.iter().any(|t| {
             let inner = t.as_slice();
-            inner.first() == Some(&"d".to_string()) && inner.get(1) == Some(&"product-1".to_string())
+            inner.first() == Some(&"d".to_string())
+                && inner.get(1) == Some(&"product-1".to_string())
         }));
         // Check t-tags for categories
         assert!(tags.iter().any(|t| {
             let inner = t.as_slice();
-            inner.first() == Some(&"t".to_string()) && inner.get(1) == Some(&"electronics".to_string())
+            inner.first() == Some(&"t".to_string())
+                && inner.get(1) == Some(&"electronics".to_string())
         }));
         assert!(tags.iter().any(|t| {
             let inner = t.as_slice();
@@ -1148,7 +1159,10 @@ mod tests {
             sig: "sig".into(),
         };
         let err = BidMetadata::from_raw_event(&event).unwrap_err();
-        assert!(err.to_string().contains("Bid must reference an auction event"));
+        assert!(
+            err.to_string()
+                .contains("Bid must reference an auction event")
+        );
     }
 
     #[test]
@@ -1163,7 +1177,10 @@ mod tests {
             sig: "sig".into(),
         };
         let err = BidMetadata::from_raw_event(&event).unwrap_err();
-        assert!(err.to_string().contains("Bid content must be a numeric amount"));
+        assert!(
+            err.to_string()
+                .contains("Bid content must be a numeric amount")
+        );
     }
 
     // ==================== BidConfirmationMetadata Tests ====================
@@ -1276,7 +1293,10 @@ mod tests {
             sig: "sig".into(),
         };
         let err = BidConfirmationMetadata::from_raw_event(&event).unwrap_err();
-        assert!(err.to_string().contains("Bid confirmation must reference both bid and auction events"));
+        assert!(
+            err.to_string()
+                .contains("Bid confirmation must reference both bid and auction events")
+        );
     }
 
     // ==================== Checkout Message Constructor Tests ====================
@@ -1376,9 +1396,13 @@ mod tests {
     fn test_product_from_raw_event_wrong_kind_fails() {
         let content = serde_json::to_string(&make_valid_product()).unwrap();
         let event = RawNostrEvent {
-            id: "eid".into(), pubkey: "pk".into(), created_at: 0, kind: 30017,
+            id: "eid".into(),
+            pubkey: "pk".into(),
+            created_at: 0,
+            kind: 30017,
             tags: vec![vec!["d".into(), "product-1".into()]],
-            content, sig: "sig".into(),
+            content,
+            sig: "sig".into(),
         };
         let err = ProductMetadata::from_raw_event(&event).unwrap_err();
         assert!(err.to_string().contains("Expected kind 30018"));
@@ -1388,9 +1412,13 @@ mod tests {
     fn test_product_from_raw_event_d_tag_mismatch_fails() {
         let content = serde_json::to_string(&make_valid_product()).unwrap();
         let event = RawNostrEvent {
-            id: "eid".into(), pubkey: "pk".into(), created_at: 0, kind: 30018,
+            id: "eid".into(),
+            pubkey: "pk".into(),
+            created_at: 0,
+            kind: 30018,
             tags: vec![vec!["d".into(), "wrong-id".into()]],
-            content, sig: "sig".into(),
+            content,
+            sig: "sig".into(),
         };
         let err = ProductMetadata::from_raw_event(&event).unwrap_err();
         assert!(err.to_string().contains("does not match d-tag"));
@@ -1400,9 +1428,13 @@ mod tests {
     fn test_product_from_raw_event_missing_d_tag_fails() {
         let content = serde_json::to_string(&make_valid_product()).unwrap();
         let event = RawNostrEvent {
-            id: "eid".into(), pubkey: "pk".into(), created_at: 0, kind: 30018,
+            id: "eid".into(),
+            pubkey: "pk".into(),
+            created_at: 0,
+            kind: 30018,
             tags: vec![],
-            content, sig: "sig".into(),
+            content,
+            sig: "sig".into(),
         };
         let err = ProductMetadata::from_raw_event(&event).unwrap_err();
         assert!(err.to_string().contains("Product event must have a d-tag"));
@@ -1434,9 +1466,13 @@ mod tests {
     #[test]
     fn test_marketplace_ui_from_raw_event_wrong_kind_fails() {
         let event = RawNostrEvent {
-            id: "eid".into(), pubkey: "pk".into(), created_at: 0, kind: 30017,
+            id: "eid".into(),
+            pubkey: "pk".into(),
+            created_at: 0,
+            kind: 30017,
             tags: vec![vec!["d".into(), "m1".into()]],
-            content: r#"{"id":"m1"}"#.into(), sig: "sig".into(),
+            content: r#"{"id":"m1"}"#.into(),
+            sig: "sig".into(),
         };
         let err = MarketplaceUIMetadata::from_raw_event(&event).unwrap_err();
         assert!(err.to_string().contains("Expected kind 30019"));
@@ -1464,9 +1500,13 @@ mod tests {
     fn test_auction_from_raw_event_d_tag_mismatch_fails() {
         let content = serde_json::to_string(&make_valid_auction()).unwrap();
         let event = RawNostrEvent {
-            id: "eid".into(), pubkey: "pk".into(), created_at: 0, kind: 30020,
+            id: "eid".into(),
+            pubkey: "pk".into(),
+            created_at: 0,
+            kind: 30020,
             tags: vec![vec!["d".into(), "wrong-id".into()]],
-            content, sig: "sig".into(),
+            content,
+            sig: "sig".into(),
         };
         let err = AuctionProductMetadata::from_raw_event(&event).unwrap_err();
         assert!(err.to_string().contains("does not match d-tag"));

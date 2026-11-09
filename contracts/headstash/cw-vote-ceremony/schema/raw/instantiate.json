@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "properties": {
+    "admin": {
+      "description": "Optional admin (test / bootstrap). DAO path should call via proposal execute.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "max_nullifiers_per_mark": {
+      "description": "Default max nullifiers per MarkSpent call.",
+      "default": 8,
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false
+}

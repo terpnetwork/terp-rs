@@ -15,6 +15,11 @@
       "description": "Contract admin (also protocol-fee recipient when fee is set).",
       "type": "string"
     },
+    "auto_execute_ingress": {
+      "description": "Governance flag: allow a relayer to auto-execute `Purchase` from Nostr ingress. **Default false** — parse-intent only. The contract never submits txs itself.",
+      "default": false,
+      "type": "boolean"
+    },
     "min_buffer_blocks": {
       "description": "Settlement buffer in blocks. Default **7**. Allowed range **5–10**.",
       "default": 7,

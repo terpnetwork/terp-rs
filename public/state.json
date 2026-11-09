@@ -1,5 +1,122 @@
 {
   "120u-1": {
+    "code_ids": {
+      "abstract:abstract_account": 55,
+      "abstract:abstract_ans_host": 56,
+      "abstract:abstract_ibc_client": 57,
+      "abstract:abstract_ibc_host": 58,
+      "abstract:abstract_ica_client": 59,
+      "abstract:abstract_module_factory": 60,
+      "abstract:abstract_registry": 61,
+      "abstract:account-monarchy": 55,
+      "abstract:ans_host": 84,
+      "abstract:ibc_client": 57,
+      "abstract:ibc_host": 58,
+      "abstract:module_factory": 84,
+      "abstract:registry": 84,
+      "cw-plus:cw1_subkeys": 62,
+      "cw-plus:cw1_whitelist": 63,
+      "cw-plus:cw20_base": 64,
+      "cw-plus:cw20_ics20": 65,
+      "cw-plus:cw3_fixed_multisig": 66,
+      "cw-plus:cw3_flex_multisig": 67,
+      "cw-plus:cw4_group": 69,
+      "cw-plus:cw4_group-cosmwasm": 68,
+      "cw-plus:cw4_stake": 70,
+      "cw:blob": 84,
+      "cw_private_dex": 12,
+      "cw_reg_eligibility": 13,
+      "cw_vote_ceremony": 14,
+      "dao:btsg_ft_factory": 15,
+      "dao:cw1_whitelist": 16,
+      "dao:cw20_stake": 17,
+      "dao:cw20_stake_external_rewards": 18,
+      "dao:cw20_stake_reward_distributor": 19,
+      "dao:cw4_group": 20,
+      "dao:cw721_roles": 21,
+      "dao:cw_admin_factory": 22,
+      "dao:cw_filter": 23,
+      "dao:cw_fund_distributor": 24,
+      "dao:cw_payroll_factory": 25,
+      "dao:cw_token_swap": 26,
+      "dao:cw_tokenfactory_issuer-cosmwasm": 27,
+      "dao:cw_vesting-no_staking": 28,
+      "dao:cw_vesting-staking": 29,
+      "dao:dao_calendar": 30,
+      "dao:dao_dao_core": 31,
+      "dao:dao_pre_propose_approval_multiple": 32,
+      "dao:dao_pre_propose_approval_single": 33,
+      "dao:dao_pre_propose_approver": 34,
+      "dao:dao_pre_propose_multiple": 35,
+      "dao:dao_pre_propose_single": 36,
+      "dao:dao_proposal_condorcet": 37,
+      "dao:dao_proposal_hook_counter": 38,
+      "dao:dao_proposal_multiple": 39,
+      "dao:dao_proposal_single": 40,
+      "dao:dao_proposal_sudo": 41,
+      "dao:dao_rbam": 42,
+      "dao:dao_rewards_distributor": 43,
+      "dao:dao_test_custom_factory": 44,
+      "dao:dao_vote_delegation": 45,
+      "dao:dao_voting_cw20_balance": 46,
+      "dao:dao_voting_cw20_staked": 47,
+      "dao:dao_voting_cw4": 48,
+      "dao:dao_voting_cw721_roles": 49,
+      "dao:dao_voting_cw721_staked": 50,
+      "dao:dao_voting_token_staked-default": 51,
+      "dao:dao_voting_zk": 52,
+      "dao:gauge_adapter": 53,
+      "dao:gauge_orchestrator": 54,
+      "dao:lab-core": 31,
+      "hash-merchant:marketplace_mirror": 74,
+      "headstash:cw_headstash": 71,
+      "headstash:cw_norick": 72,
+      "headstash:cw_private_dex": 73,
+      "loyalty:loyalty_verifier": 75,
+      "nft:cw2981_royalties": 77,
+      "nft:cw721_base": 78,
+      "nft:cw721_expiration": 79,
+      "nft:cw721_fixed_price": 80,
+      "nft:cw721_metadata_onchain": 81,
+      "nft:cw721_non_transferable": 82,
+      "nft:cw721_receiver_tester": 83,
+      "norick": 72,
+      "norick_circuit": 1,
+      "polytone:note": 1,
+      "polytone:proxy": 3,
+      "polytone:voice": 2,
+      "terp-ed25519": 6,
+      "terp-eth": 7,
+      "terp-lc:cw_ics08_wasm_crosslink": 76,
+      "terp-passkey": 4,
+      "terp-recovery": 5,
+      "terp-vsck": 11,
+      "terp-zkjwt": 9
+    },
+    "default": {
+      "abstract:account-monarchy": "terp1w70c0x7pwa3f49khksewz6k7n4wfwedfrh62rmfkv96d8vrruh6q5jr4cg",
+      "abstract:ans_host": "terp1r34jlaa0gzp8rf3dfj7t6zekfkvwzek3an4um0r0al0apcd6t0ws9jpvxd",
+      "abstract:ibc_client": "terp1jd4uhq06frw0ufr5a27zqd3ccd8vk4r28t8zl9yckg9w5ka2jt0sx97v83",
+      "abstract:ibc_host": "terp174z9dq8ac7wmnqp2utnkg2pzslcg852nzmsc0fz35rhlwv04r84sy5esk5",
+      "abstract:module_factory": "terp1jgsz83jaa3nawatm4qeer7gl4gz9nnwky85c409uhnqeskvhn0xqj3c2wy",
+      "abstract:registry": "terp1egqg2mc36yjfdtr8ckg4pw76mvftcax9p2dxwg9gwvvmv7frutuq8wdlhn",
+      "cw_private_dex": "terp18yn206ypuxay79gjqv6msvd9t2y49w4fz8q7fyenx5aggj0ua37qgk7ucm",
+      "cw_reg_eligibility": "terp1l6z44fupg8l5mapmuxnrnmvxyclw5wnh5f5hfrtkaq5r0d9s24mseq72eu",
+      "cw_vote_ceremony": "terp10jc4vr9vfq0ykkmfvfgz430w8z6hwdlqhmjdy9jypts8wfrrwnnqk6xjgm",
+      "dao:lab-core": "terp1rkdtlrftnqrtka62yfq9re44mak4qy5jw8h0wrarglm9njjumhwq9kj79k",
+      "norick": "terp1kheckry8ha4899htkkvy7tlh3djcchf0zuvq0f7dhdqa0p2je2zqnjw2jz",
+      "polytone:note": "terp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9skqhzr5",
+      "polytone:voice": "terp1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrq64jqpj",
+      "terp-ed25519": "terp1mf6ptkssddfmxvhdx0ech0k03ktp6kf9yk59renau2gvht3nq2gq0ss832",
+      "terp-eth": "terp1wn625s4jcmvk0szpl85rj5azkfc6suyvf75q6vrddscjdphtve8sd7sk4l",
+      "terp-passkey": "terp1zwv6feuzhy6a9wekh96cd57lsarmqlwxdypdsplw6zhfncqw6ftqzsxmgf",
+      "terp-recovery": "terp1436kxs0w2es6xlqpp9rd35e3d0cjnw4sv8j3a7483sgks29jqwgs48kpqr",
+      "terp-vsck": "terp1fventeva948ue0fzhp6xselr522rnqwger9wg7r0g9f4jemsqh6s5mkmal",
+      "terp-zkjwt": "terp1gurgpv8savnfw66lckwzn4zk7fp394lpe667dhu7aw48u40lj6jses3yvm"
+    }
+  },
+  "akash-1": {
+    "assets": {},
     "code_ids": {},
     "default": {}
   },
@@ -7,7 +124,13 @@
     "code_ids": {},
     "default": {}
   },
+  "atomone-1": {
+    "assets": {},
+    "code_ids": {},
+    "default": {}
+  },
   "bitsong-2b": {
+    "assets": {},
     "code_ids": {
       "cw:blob": 73
     },
@@ -22,6 +145,7 @@
     }
   },
   "juno-1": {
+    "assets": {},
     "code_ids": {
       "cw420": 4933,
       "cw_ave": 4931,
@@ -32,6 +156,143 @@
     }
   },
   "morocco-1": {
+    "ibc_new_clients": {
+      "routes": [
+        {
+          "counterparty_chain_id": "juno-1",
+          "opened": "2026-10-28T09:37:40Z",
+          "terp": {
+            "client_id": "07-tendermint-46",
+            "connection_id": "connection-14",
+            "transfer_channel": "channel-12"
+          },
+          "counterparty": {
+            "client_id": "07-tendermint-593",
+            "connection_id": "connection-557",
+            "transfer_channel": "channel-674",
+            "client_trusting_period_secs": 864000,
+            "client_max_clock_drift_secs": 600
+          },
+          "denoms_on_counterparty": {
+            "uterp": "ibc/9A24840D4F9B52572BDA2DEA337DD5E6756442A41795E37B1AC92F661D11A6CB",
+            "uthiol": "ibc/F91310DAF75623B005DB07EF05C61B13947BD8315004C2A28DDF1A69D3C25D00"
+          },
+          "denoms_on_terp": {
+            "ujuno": "ibc/EBAD197C6356727798A2706D143655D853F018BCAB950D970101078374D8CE41"
+          },
+          "hermes_allow": true,
+          "polytone": "not deployed; note/voice channels pending separate approval",
+          "note": "juno connection-558 is a stray TRYOPEN from a crossing handshake; ignore"
+        },
+        {
+          "counterparty_chain_id": "osmosis-1",
+          "opened": "2026-10-28T09:42:52Z",
+          "terp": {
+            "client_id": "07-tendermint-44",
+            "connection_id": "connection-15",
+            "transfer_channel": "channel-13"
+          },
+          "counterparty": {
+            "client_id": "07-tendermint-3764",
+            "connection_id": "connection-11101",
+            "transfer_channel": "channel-111101",
+            "client_trusting_period_secs": 864000,
+            "client_max_clock_drift_secs": 600
+          },
+          "denoms_on_counterparty": {
+            "uterp": "ibc/A22843672FE341E6BFB0D6D8DF1E2C150CD866DB744F574AA4BD8855ABBE5798",
+            "uthiol": "ibc/7DE92FE1226D8D7F8CA498B2AA4AE06A297B45E58959A9F7A81E77321B992714"
+          },
+          "denoms_on_terp": {
+            "uosmo": "ibc/9C4DCD21B48231D0BC2AC3D1B74A864746B37E4292694C93C617324250D002FC"
+          },
+          "hermes_allow": true,
+          "polytone": "not deployed; note/voice channels pending separate approval",
+          "note": "Terp client -44 is also the recovery substitute for -33 (prop 63)"
+        }
+      ],
+      "recovery_proposal": {
+        "proposal_id": 63,
+        "tx": "51D697AC357067E08FED05A4B563F8D95389D4B0D57E3FFF65DF12AEED186067",
+        "height": 24125330,
+        "deposit_uterp": "10000000000",
+        "voting_end": "2026-10-31T15:49:20Z",
+        "pairs": [
+          [
+            "07-tendermint-3",
+            "07-tendermint-43"
+          ],
+          [
+            "07-tendermint-33",
+            "07-tendermint-44"
+          ],
+          [
+            "07-tendermint-34",
+            "07-tendermint-45"
+          ]
+        ]
+      },
+      "tx": {
+        "create": "F3013633327D67C06DAA7798B32FB03BEC3ADDB120E7B56D4D2377A04335DD60",
+        "create_height": 24124789,
+        "grant": "29E6C216217B1D613A44A939D4074215C7A6E170527032CEF5799A28AE07F860",
+        "feegrant": "62A7BB5924B6A6DEB53B5892E9141812D4C8688B5C94C5A264B20F3F9C8E9D16",
+        "time": "2026-10-27T15:18:02Z"
+      },
+      "clients": [
+        {
+          "client_id": "07-tendermint-43",
+          "chain_id": "osmosis-1",
+          "latest_height": 73290599,
+          "trusting_period_secs": 806400,
+          "max_clock_drift_secs": 40,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-3"
+        },
+        {
+          "client_id": "07-tendermint-44",
+          "chain_id": "osmosis-1",
+          "latest_height": 73290601,
+          "trusting_period_secs": 806400,
+          "max_clock_drift_secs": 600,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-33"
+        },
+        {
+          "client_id": "07-tendermint-45",
+          "chain_id": "atomone-1",
+          "latest_height": 10998225,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "recovery substitute",
+          "substitute_for": "07-tendermint-34"
+        },
+        {
+          "client_id": "07-tendermint-46",
+          "chain_id": "juno-1",
+          "latest_height": 43134590,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        },
+        {
+          "client_id": "07-tendermint-47",
+          "chain_id": "akashnet-2",
+          "latest_height": 29253738,
+          "trusting_period_secs": 864000,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        },
+        {
+          "client_id": "07-tendermint-48",
+          "chain_id": "penumbra-1",
+          "latest_height": 13393260,
+          "trusting_period_secs": 403200,
+          "max_clock_drift_secs": 600,
+          "purpose": "new route client"
+        }
+      ]
+    },
     "assets": {
       "": [
         {
@@ -69,14 +330,14 @@
           "type_asset": "sdk.coin"
         },
         {
-          "base": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389",
+          "base": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF",
           "coingecko_id": "akash-network",
           "denom_units": [
             {
               "aliases": [
                 "uakt"
               ],
-              "denom": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389",
+              "denom": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF",
               "exponent": 0
             },
             {
@@ -202,14 +463,14 @@
           "type_asset": "ics20"
         },
         {
-          "base": "ibc/ADD33E9703A911023E73181FCA39B022094A1832F0C2311152A927E580E28B5F",
+          "base": "ibc/45CC178B3DBDDFC9ED70A0F89C93584537DD9CEDF878915D1A571A9D44A24294",
           "coingecko_id": "spice-2",
           "denom_units": [
             {
               "aliases": [
                 "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
               ],
-              "denom": "ibc/ADD33E9703A911023E73181FCA39B022094A1832F0C2311152A927E580E28B5F",
+              "denom": "ibc/45CC178B3DBDDFC9ED70A0F89C93584537DD9CEDF878915D1A571A9D44A24294",
               "exponent": 0
             },
             {
@@ -239,7 +500,7 @@
             {
               "chain": {
                 "channel_id": "",
-                "path": "transfer/channel-1/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+                "path": "transfer/channel-11/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
               },
               "counterparty": {
                 "base_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
@@ -252,13 +513,13 @@
           "type_asset": "sdk.coin"
         },
         {
-          "base": "ibc/406AE2A657026B1ABB7994D28E3CBE699C526D0418FD4A3ACAAC0BC26D2B54EC",
+          "base": "ibc/6B32258CACFCBB5486A47CB1EAF4B6F5AD76C9E372E5F3CB08B3D1C606F9F39E",
           "denom_units": [
             {
               "aliases": [
                 "upenumbra"
               ],
-              "denom": "ibc/406AE2A657026B1ABB7994D28E3CBE699C526D0418FD4A3ACAAC0BC26D2B54EC",
+              "denom": "ibc/6B32258CACFCBB5486A47CB1EAF4B6F5AD76C9E372E5F3CB08B3D1C606F9F39E",
               "exponent": 0
             },
             {
@@ -301,13 +562,13 @@
           "type_asset": "ics20"
         },
         {
-          "base": "ibc/E6A14427945A957F30D05A686EC4C70420F778EB94999F0A1C2B9F420ACB9AE1",
+          "base": "ibc/1F5076EB0FAAC31F2D8B935BB21D18A122EE354F80CAEEA90E7E2D8C8C7E5879",
           "denom_units": [
             {
               "aliases": [
                 "ibc/C0B53D3D23827AE38058BED0BDCD554229278AF530A8D265FCF6DFF7C4B2ADFF"
               ],
-              "denom": "ibc/E6A14427945A957F30D05A686EC4C70420F778EB94999F0A1C2B9F420ACB9AE1",
+              "denom": "ibc/1F5076EB0FAAC31F2D8B935BB21D18A122EE354F80CAEEA90E7E2D8C8C7E5879",
               "exponent": 0
             },
             {
@@ -351,27 +612,653 @@
         }
       ]
     },
+    "bundles": {
+      "lib/account-minter.js": "8b9147543b2970dfa4e2bc0d679188119f7a2c4b586f0c55691ebfd8a9835df9",
+      "lib/cw-infuser-factory.js": "6be6eb065c48129aeb75c5e86138e67993e2f6b301efd7a2aba23d98c7240f7a",
+      "lib/cw-infuser.js": "9893655977c1b8155e7e6cef9d77e731dd08fe63f1d4572982efaa9b5f5393e9",
+      "lib/cw-shitstrap-factory.js": "415aabd65826e047ac5d89ecf8fa9b8c20249e85e57e6a068dbad5c77cb256de",
+      "lib/cw-shitstrap.js": "b375c9f8970fea6180b2e2d97ae0647cda83da26ff89c024b83c1628914ca616",
+      "lib/cw-svg-minter.js": "d5fd8bb9c685cf927efdbc2f3bab548472a18577738b1412423c670524a8b1dc",
+      "lib/cw721-svg.js": "2d83752b4763beacee3408aa8fd500bb8430cab4fe64acae9bdf61ef08d041ca",
+      "lib/oline.js": "13e3a495b202eab3c04db323be21281060906a486622b6cf780776d2f2342c32",
+      "lib/terp721-account.js": "3493d45a99c1ff1ce99bc4b9bcab52e4a54ea734b55f5f504e5dcbe69b6e8790",
+      "lib/whitelist-merkletree.js": "d78a1780b424b847840373be308477e94184c2caa1a11388c0a26b49d21fc036"
+    },
+    "chains": {
+      "": {
+        "akash": {
+          "assets": [
+            {
+              "_source_chain": "terp",
+              "base": "ibc/25026C21BD8A1BE658581553FAC5844F344270EFFCC59B673584D6C445006C0B",
+              "denom_units": [
+                {
+                  "denom": "ibc/25026C21BD8A1BE658581553FAC5844F344270EFFCC59B673584D6C445006C0B",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uterp",
+                  "exponent": 6
+                }
+              ],
+              "description": "The native token of Terp Network.",
+              "display": "uterp",
+              "name": "Terp",
+              "symbol": "TERP",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-139",
+                    "path": "transfer/channel-139/uterp"
+                  },
+                  "counterparty": {
+                    "base_denom": "uterp",
+                    "chain_name": "terp",
+                    "channel_id": "channel-9"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "terp",
+              "base": "ibc/EA1305661ED048B1FD81E326E4C65D12A4333D3D4709F6CCB8A09E82AD968584",
+              "denom_units": [
+                {
+                  "denom": "ibc/EA1305661ED048B1FD81E326E4C65D12A4333D3D4709F6CCB8A09E82AD968584",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uthiol",
+                  "exponent": 6
+                }
+              ],
+              "description": "The Thiol token of Terp Network.",
+              "display": "uthiol",
+              "name": "Thiol",
+              "symbol": "THIOL",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-139",
+                    "path": "transfer/channel-139/uthiol"
+                  },
+                  "counterparty": {
+                    "base_denom": "uthiol",
+                    "chain_name": "terp",
+                    "channel_id": "channel-9"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            }
+          ],
+          "counterparty_channel_id": "channel-139",
+          "ibc_data": {
+            "$schema": "../ibc_data.schema.json",
+            "chain_1": {
+              "chain_id": "akashnet-2",
+              "chain_name": "akash",
+              "client_id": "07-tendermint-210",
+              "connection_id": "connection-207"
+            },
+            "chain_2": {
+              "chain_id": "morocco-1",
+              "chain_name": "terp",
+              "client_id": "07-tendermint-32",
+              "connection_id": "connection-11"
+            },
+            "channels": [
+              {
+                "chain_1": {
+                  "channel_id": "channel-139",
+                  "port_id": "transfer"
+                },
+                "chain_2": {
+                  "channel_id": "channel-9",
+                  "port_id": "transfer"
+                },
+                "ordering": "unordered",
+                "tags": {
+                  "preferred": true,
+                  "status": "ACTIVE"
+                },
+                "version": "ics20-1"
+              }
+            ],
+            "client_status": "Expired"
+          },
+          "terp_channel_id": "channel-9"
+        },
+        "atomone": {
+          "assets": [
+            {
+              "_source_chain": "terp",
+              "base": "ibc/65F0CFBA8C3A907DFED26BF41AEDA7935166347BDA64E7D2F8F56F4518BBB523",
+              "denom_units": [
+                {
+                  "denom": "ibc/65F0CFBA8C3A907DFED26BF41AEDA7935166347BDA64E7D2F8F56F4518BBB523",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uterp",
+                  "exponent": 6
+                }
+              ],
+              "description": "The native token of Terp Network.",
+              "display": "uterp",
+              "name": "Terp",
+              "symbol": "TERP",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-13",
+                    "path": "transfer/channel-13/uterp"
+                  },
+                  "counterparty": {
+                    "base_denom": "uterp",
+                    "chain_name": "terp",
+                    "channel_id": "channel-10"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "terp",
+              "base": "ibc/4E87F0043C9E3CBF85BEC7104B35E3E6FD9974C9086092921D08E7BC8695B601",
+              "denom_units": [
+                {
+                  "denom": "ibc/4E87F0043C9E3CBF85BEC7104B35E3E6FD9974C9086092921D08E7BC8695B601",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uthiol",
+                  "exponent": 6
+                }
+              ],
+              "description": "The Thiol token of Terp Network.",
+              "display": "uthiol",
+              "name": "Thiol",
+              "symbol": "THIOL",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-13",
+                    "path": "transfer/channel-13/uthiol"
+                  },
+                  "counterparty": {
+                    "base_denom": "uthiol",
+                    "chain_name": "terp",
+                    "channel_id": "channel-10"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            }
+          ],
+          "counterparty_channel_id": "channel-13",
+          "ibc_data": {
+            "$schema": "../ibc_data.schema.json",
+            "chain_1": {
+              "chain_id": "atomone-1",
+              "chain_name": "atomone",
+              "client_id": "07-tendermint-46",
+              "connection_id": "connection-42"
+            },
+            "chain_2": {
+              "chain_id": "morocco-1",
+              "chain_name": "terp",
+              "client_id": "07-tendermint-34",
+              "connection_id": "connection-12"
+            },
+            "channels": [
+              {
+                "chain_1": {
+                  "channel_id": "channel-13",
+                  "port_id": "transfer"
+                },
+                "chain_2": {
+                  "channel_id": "channel-10",
+                  "port_id": "transfer"
+                },
+                "ordering": "unordered",
+                "tags": {
+                  "preferred": true,
+                  "status": "ACTIVE"
+                },
+                "version": "ics20-1"
+              }
+            ],
+            "client_status": "Expired"
+          },
+          "terp_channel_id": "channel-10"
+        },
+        "osmosis": {
+          "assets": [
+            {
+              "_source_chain": "osmosis",
+              "base": "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4",
+              "coingecko_id": "akash-network",
+              "denom_units": [
+                {
+                  "aliases": [
+                    "uakt"
+                  ],
+                  "denom": "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4",
+                  "exponent": 0
+                },
+                {
+                  "denom": "akt",
+                  "exponent": 6
+                }
+              ],
+              "description": "Akash Token (AKT) is the Akash Network's native utility token, used as the primary means to govern, secure the blockchain, incentivize participants, and provide a default mechanism to store and exchange value.",
+              "display": "akt",
+              "images": [
+                {
+                  "image_sync": {
+                    "base_denom": "uakt",
+                    "chain_name": "akash"
+                  },
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/akash/images/akt.png",
+                  "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/akash/images/akt.svg"
+                }
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/akash/images/akt.png",
+                "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/akash/images/akt.svg"
+              },
+              "name": "Akash",
+              "symbol": "AKT",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-1",
+                    "path": "transfer/channel-1/uakt"
+                  },
+                  "counterparty": {
+                    "base_denom": "uakt",
+                    "chain_name": "akash",
+                    "channel_id": "channel-9"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "osmosis",
+              "address": "osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743",
+              "base": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+              "coingecko_id": "wrapped-bitcoin",
+              "denom_units": [
+                {
+                  "aliases": [
+                    "wbtc-satoshi"
+                  ],
+                  "denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+                  "exponent": 0
+                },
+                {
+                  "denom": "wbtc",
+                  "exponent": 8
+                }
+              ],
+              "description": "Wrapped Bitcoin (WBTC) is an ERC20 token backed 1:1 with Bitcoin. Completely transparent. 100% verifiable. Community led.",
+              "display": "wbtc",
+              "images": [
+                {
+                  "image_sync": {
+                    "base_denom": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                    "chain_name": "ethereum"
+                  },
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/wbtc.png",
+                  "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/wbtc.svg"
+                }
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/wbtc.png",
+                "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/wbtc.svg"
+              },
+              "name": "Wrapped Bitcoin",
+              "symbol": "WBTC",
+              "traces": [
+                {
+                  "counterparty": {
+                    "base_denom": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                    "chain_name": "ethereum"
+                  },
+                  "provider": "BitGo, Kyber, and Ren",
+                  "type": "additional-mintage"
+                }
+              ],
+              "type_asset": "sdk.coin"
+            },
+            {
+              "_source_chain": "osmosis",
+              "base": "ibc/BC26A7A805ECD6822719472BCB7842A48EF09DF206182F8F259B2593EB5D23FB",
+              "coingecko_id": "atomone",
+              "denom_units": [
+                {
+                  "aliases": [
+                    "uatone"
+                  ],
+                  "denom": "ibc/BC26A7A805ECD6822719472BCB7842A48EF09DF206182F8F259B2593EB5D23FB",
+                  "exponent": 0
+                },
+                {
+                  "denom": "atone",
+                  "exponent": 6
+                }
+              ],
+              "description": "The native staking and governance token of AtomOne",
+              "display": "atone",
+              "extended_description": "AtomOne is a community-driven fork of the Cosmos Hub, originating from concerns raised around Cosmos Hub Proposal 82 and Proposal 848. AtomOne aims to provide a security-conscious, constitutionally governed, streamlined IBC/ICS hub, preserving the foundational ethos of the Cosmos Hub.",
+              "images": [
+                {
+                  "image_sync": {
+                    "base_denom": "uatone",
+                    "chain_name": "atomone"
+                  },
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/atomone/images/atomone.png",
+                  "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/atomone/images/atomone.svg"
+                }
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/atomone/images/atomone.png",
+                "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/atomone/images/atomone.svg"
+              },
+              "name": "AtomOne",
+              "socials": {
+                "website": "https://atom.one",
+                "x": "https://x.com/_atomone"
+              },
+              "symbol": "ATONE",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-94814",
+                    "path": "transfer/channel-94814/uatone"
+                  },
+                  "counterparty": {
+                    "base_denom": "uatone",
+                    "chain_name": "atomone",
+                    "channel_id": "channel-2"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "osmosis",
+              "base": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+              "coingecko_id": "spice-2",
+              "denom_units": [
+                {
+                  "denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+                  "exponent": 0
+                },
+                {
+                  "denom": "Spice",
+                  "exponent": 6
+                }
+              ],
+              "description": "The Spice memecoin",
+              "display": "Spice",
+              "images": [
+                {
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/spice.png"
+                }
+              ],
+              "keywords": [
+                "meme"
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/osmosis/images/spice.png"
+              },
+              "name": "Spice",
+              "socials": {
+                "x": "https://x.com/spiceoncosmos"
+              },
+              "symbol": "SPICE",
+              "type_asset": "sdk.coin"
+            },
+            {
+              "_source_chain": "osmosis",
+              "base": "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372",
+              "denom_units": [
+                {
+                  "aliases": [
+                    "upenumbra"
+                  ],
+                  "denom": "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372",
+                  "exponent": 0
+                },
+                {
+                  "denom": "penumbra",
+                  "exponent": 6
+                }
+              ],
+              "description": "The native token of Penumbra.",
+              "display": "penumbra",
+              "images": [
+                {
+                  "image_sync": {
+                    "base_denom": "upenumbra",
+                    "chain_name": "penumbra"
+                  },
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/penumbra/images/um.png",
+                  "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/penumbra/images/um.svg",
+                  "theme": {
+                    "circle": true
+                  }
+                }
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/penumbra/images/um.png",
+                "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/penumbra/images/um.svg"
+              },
+              "name": "Penumbra",
+              "symbol": "UM",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-79703",
+                    "path": "transfer/channel-79703/upenumbra"
+                  },
+                  "counterparty": {
+                    "base_denom": "upenumbra",
+                    "chain_name": "penumbra",
+                    "channel_id": "channel-4"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "osmosis",
+              "base": "ibc/20850C646CDDDC2270E9BBDB08558B5FEE57B647EC6827F41096AABFD8A0471B",
+              "denom_units": [
+                {
+                  "denom": "ibc/20850C646CDDDC2270E9BBDB08558B5FEE57B647EC6827F41096AABFD8A0471B",
+                  "exponent": 0
+                },
+                {
+                  "denom": "eth",
+                  "exponent": 18
+                }
+              ],
+              "description": "Ether via Eureka",
+              "display": "eth",
+              "images": [
+                {
+                  "image_sync": {
+                    "base_denom": "ibc/C0B53D3D23827AE38058BED0BDCD554229278AF530A8D265FCF6DFF7C4B2ADFF",
+                    "chain_name": "cosmoshub"
+                  },
+                  "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/eth-white.png",
+                  "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/eth-white.svg"
+                }
+              ],
+              "logo_URIs": {
+                "png": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/eth-white.png",
+                "svg": "https://raw.githubusercontent.com/cosmos/chain-registry/master/_non-cosmos/ethereum/images/eth-white.svg"
+              },
+              "name": "Ethereum",
+              "symbol": "ETH",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-0",
+                    "path": "transfer/channel-0/transfer/08-wasm-1369/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+                  },
+                  "counterparty": {
+                    "base_denom": "ibc/C0B53D3D23827AE38058BED0BDCD554229278AF530A8D265FCF6DFF7C4B2ADFF",
+                    "chain_name": "cosmoshub",
+                    "channel_id": "channel-141"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "terp",
+              "base": "ibc/448408EAC3AEDE3F1EC2261D72B8BAF323098D8489AC033DB614C4BAF221F598",
+              "denom_units": [
+                {
+                  "denom": "ibc/448408EAC3AEDE3F1EC2261D72B8BAF323098D8489AC033DB614C4BAF221F598",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uterp",
+                  "exponent": 6
+                }
+              ],
+              "description": "The native token of Terp Network.",
+              "display": "uterp",
+              "name": "Terp",
+              "symbol": "TERP",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-110258",
+                    "path": "transfer/channel-110258/uterp"
+                  },
+                  "counterparty": {
+                    "base_denom": "uterp",
+                    "chain_name": "terp",
+                    "channel_id": "channel-11"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            },
+            {
+              "_source_chain": "terp",
+              "base": "ibc/F31D4D773FB7A38971C0C7E99B813F8AD34156D366A40570B558C44BB910BE93",
+              "denom_units": [
+                {
+                  "denom": "ibc/F31D4D773FB7A38971C0C7E99B813F8AD34156D366A40570B558C44BB910BE93",
+                  "exponent": 0
+                },
+                {
+                  "denom": "uthiol",
+                  "exponent": 6
+                }
+              ],
+              "description": "The Thiol token of Terp Network.",
+              "display": "uthiol",
+              "name": "Thiol",
+              "symbol": "THIOL",
+              "traces": [
+                {
+                  "chain": {
+                    "channel_id": "channel-110258",
+                    "path": "transfer/channel-110258/uthiol"
+                  },
+                  "counterparty": {
+                    "base_denom": "uthiol",
+                    "chain_name": "terp",
+                    "channel_id": "channel-11"
+                  },
+                  "type": "ibc"
+                }
+              ],
+              "type_asset": "ics20"
+            }
+          ],
+          "counterparty_channel_id": "channel-110258",
+          "ibc_data": {
+            "$schema": "../ibc_data.schema.json",
+            "chain_1": {
+              "chain_id": "osmosis-1",
+              "chain_name": "osmosis",
+              "client_id": "07-tendermint-3708",
+              "connection_id": "connection-11060"
+            },
+            "chain_2": {
+              "chain_id": "morocco-1",
+              "chain_name": "terp",
+              "client_id": "07-tendermint-33",
+              "connection_id": "connection-13"
+            },
+            "channels": [
+              {
+                "chain_1": {
+                  "channel_id": "channel-110258",
+                  "port_id": "transfer"
+                },
+                "chain_2": {
+                  "channel_id": "channel-11",
+                  "port_id": "transfer"
+                },
+                "ordering": "unordered",
+                "tags": {
+                  "preferred": true,
+                  "status": "ACTIVE"
+                },
+                "version": "ics20-1"
+              }
+            ],
+            "client_status": "Expired"
+          },
+          "terp_channel_id": "channel-11"
+        }
+      }
+    },
     "code_ids": {
+      "abstract:abstract_ibc_host": 82,
       "abstract:account": 68,
       "abstract:ans-host": 65,
       "abstract:ibc-client": 69,
-      "abstract:ibc-host": 70,
+      "abstract:ibc-host": 82,
+      "abstract:ibc_host": 82,
       "abstract:module-factory": 67,
       "abstract:registry": 66,
       "btsg_ft_factory": 40,
+      "crates.io:cw721-base": 77,
       "crates.io:terp721-account": 48,
       "crates.io:terp721-account-manifold": 49,
-      "cw-infuser": 52,
-      "cw-shitstrap": 54,
-      "cw-shitstrap-factory": 55,
-      "cw-svg-minter": 51,
+      "cw-infuser": 74,
+      "cw-shitstrap": 75,
+      "cw-shitstrap-factory": 76,
+      "cw-svg-minter": 72,
       "cw1_whitelist": 63,
       "cw20_external_rewards": 35,
       "cw20_reward_distributor": 36,
       "cw20_stake": 34,
       "cw4_group": 61,
       "cw721_roles": 45,
-      "cw721_svg": 50,
+      "cw721_svg": 83,
       "cw:blob": 64,
       "cw_admin_factory": 39,
       "cw_funds_distributor": 37,
@@ -379,7 +1266,7 @@
       "cw_tokenfactory": 43,
       "cw_tokenswap": 42,
       "cw_vesting": 44,
-      "dao-calendar": 32,
+      "dao-calendar": 102,
       "dao_dao_core": 23,
       "dao_pre_propose_approval_single": 28,
       "dao_pre_propose_approver": 29,
@@ -389,16 +1276,35 @@
       "dao_proposal_multiple": 25,
       "dao_proposal_single": 24,
       "dao_proposal_sudo": 27,
-      "dao_rewards_distributor": 38,
-      "dao_vote_delegation": 62,
-      "gauge-adapter": 47,
+      "dao_rewards_distributor": 100,
+      "dao_vote_delegation": 101,
+      "gauge-adapter": 103,
       "gauge-orchestrator": 46,
+      "polytone:note": 78,
+      "polytone:proxy": 80,
+      "polytone:voice": 79,
       "voting_cw20_staked": 57,
       "voting_cw4": 56,
       "voting_cw721_roles": 58,
       "voting_cw721_staked": 59,
       "voting_token_staked": 60,
-      "whitelist-mtree": 53
+      "whitelist-mtree": 73,
+      "terp-passkey": 84,
+      "terp-recovery": 85,
+      "terp-ed25519": 86,
+      "terp-eth": 87,
+      "oracle-registry": 88,
+      "oracle-aggregator": 89,
+      "oracle-twap-probe": 90,
+      "marketplace": 91,
+      "reserve-auction": 92,
+      "svg-auction": 93,
+      "raffle": 94,
+      "nft-loan": 95,
+      "passkey": 96,
+      "recovery": 97,
+      "cw721-svg": 98,
+      "svg-minter": 99
     },
     "default": {
       "abstract:account-local-0": "terp1dn68205qvzcrxcnquzch0dnnde38eu34lkxan9343a364vjl32dq6gzacv",
@@ -406,348 +1312,44 @@
       "abstract:ans-host": "terp133wf9rysrrwkgga3jxzadnpaky6e8tq0x70gwemzvlvz2k36mq5qy4kur5",
       "abstract:ibc-client": "terp13ct8hfvuxwfulygcjx9xtvhsxd5kjt7qgqhlkqvt5d0khfxnwefsrphmeu",
       "abstract:ibc-host": "terp13rzt9anw8qmf5kqu3ucccuz6ryrg0ca73r3wp0yespr90wmhe4ms86j4qn",
+      "abstract:ibc_host": "terp13rzt9anw8qmf5kqu3ucccuz6ryrg0ca73r3wp0yespr90wmhe4ms86j4qn",
       "abstract:module-factory": "terp1lujfwru7t0vuzugqr4s6kt7syyvf4q8d7njym7a2le64p0z4h00s7rxtez",
       "abstract:registry": "terp1qyl8de7th7n0cjk5zv5tfqq7hcat2pnqxvlqar9h3ek0qsx2h4rseqd03d",
       "crates.io:terp721-account": "terp143r4y9wn3g06j5z425cunfc6g3fz9gsedptgrxc8w6ktvflpe45s94903c",
       "crates.io:terp721-account-manifold": "terp1qavmkqwn0qzu5m06a4ryyj5drtc0ujfm4j276axzcfxkglueqgms79cypw",
-      "cw_admin_factory": "terp1405rgu0e4rrzkwpvscl5xc8ypf6edseyjxljft4jp7qxrchqlnws28au53"
+      "cw-infuser": "terp1xjgagje7l8qjpv0zgf7zml5qre5mhh29dcwl5f8gf68rz56t9mgqusz8ls",
+      "cw-shitstrap-factory": "terp1cdd3w85507gaw6ljrkqy2urx4u0fwjfgyj6jgahnq0c4wlwmr57selwx65",
+      "cw-svg-minter": "terp188jpppxtfpf0vvt5gypdj52hk2xuswwcn38auczzxv20fcxz3kss9fhlru",
+      "cw721_svg": "terp1vp7smemrv846hpsyqrzlnqapmu3sv7hyygf4rrnw3ls26ezk864qupr5zt",
+      "cw_admin_factory": "terp1405rgu0e4rrzkwpvscl5xc8ypf6edseyjxljft4jp7qxrchqlnws28au53",
+      "polytone:note": "terp1ywux48hkyznee0454ptw7g78npv4eexc0txa9aap7r44a3l55p6q9df53h",
+      "polytone:voice": "terp1cargggxyxpfhr4z3qxma0fznj6epg2vtx0e49clq4alx22xsypwssnxx3v",
+      "whitelist-mtree:code53": "terp1uv54d987cq5c83wcs9phal9drgrgf3jdxzp33phgjrfm27djvqdq7xy0cr",
+      "svg-minter": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "drop:marain-orbs": "terp163t2m8aa64d430stzddftqhpk464vzm88j8le9c8dn4gc6jk2m7sppfga0",
+      "drop:kara-gippy": "terp14h3nj95tatr4f6fc4hqtc7xdhhmkl938smx7cm4d08tsxj82wt2qelc8kv",
+      "drop:yijing-harmony": "terp12zz8jsjkx0l26334k0kmuk8tywgqy9ndswgkr6kl2f294mqxa65qpntqzu",
+      "whitelist-mtree:permissionless-fractal": "terp1k5vz89g9z2w0yhg4yfgwwza5d2gg0l9396sjqh27wfck4957pkvq2at0z7",
+      "drop:permissionless-fractal": "terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x",
+      "drop:interchain-logos-penumbra": "terp1yldtf5nsychkasyz3gddemqy45fvl2fxpmc8jrsqvt5fv7ggghysektnqk",
+      "drop:interchain-logos-osmosis": "terp12ye4vqzm6fmtatc3q87l2mde3ymajh4mlq0ut2ll8lkf8c9r6qzqmsvx8t",
+      "drop:interchain-logos-cardano": "terp1jdjrrf00grgvcgusf36juf7y9gsr962he7wp9c3pfpk27g0ulfmqs4jpvm",
+      "drop:interchain-logos-bcna": "terp1fmkfazecjn2pmdxxywksaqsxp69jprsframqeg5da4l3emrx004surkf44",
+      "drop:interchain-logos-cosmos": "terp1q3algj0h80vpyx3xelwql9umwmyvl7gzm4nuly3lseqlqg89tresc364de",
+      "drop:interchain-logos-terp": "terp12v7q75xl7zm8vjzvxenyyyx4ktfye9a92u93kjrk4rppdyvj0wjspzpa6z",
+      "drop:interchain-logos-bitcoin": "terp1sdu5qxlpydhpn0a8g4v3jehzn9lhf96rqalc5mj6d6u4ss3jq47susr279",
+      "drop:interchain-logos-akash": "terp18xca496njd5v7vw0vcl0ddqvsw2s554npxhztrtz7t0x6djd7eyq6qdlez",
+      "drop:interchain-logos-bitsong": "terp1l6wlwe5kysukwcln9c9rf9en5x6xzx8lzj5hfa5py8svzt78s8tswkutuz",
+      "drop:interchain-logos-dao": "terp1tf2jp6qll2x936s2g9f0h7m63dyua7827wcezsc6gsfwgq550n6ss9dtcu",
+      "drop:interchain-logos-eth": "terp1a9rkeulfskj7arn8qagvu2ykkp4l664n5zj2jxwm6vfqwudnk7kqht5lnx",
+      "drop:interchain-logos-monero": "terp1nphx5lmx4az8ptra2c6n04csa5u3ugcp3stcvq0n5ayw8xupyg7svlgc4t",
+      "drop:interchain-logos-zec": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er",
+      "drop:latent-benders-2026-10-28": "terp13acw7eezjqnv2zru428lgg3dfx5l88lw6st5aemljvnu85c3xqqswlqpud",
+      "drop:latent-benders-2026-10-29": "terp16prlc0v4vtu58djdypvmjsfnx4y2e3g2gjnw2m65qrun4sayufxqrn9j93",
+      "drop:latent-benders-2026-10-30": "terp1y2nfyahzl55tf8jkzz5refqlkhmnflvr8adhk6pch77jrkr6accshgr0wp",
+      "drop:latent-benders-2026-10-31": "terp1cy8jtf0uyz899q5hlh3g2tne4uwctqzhahk7qpyrehw8gtlna0ms4aewjg"
     },
     "ibc_data": {
-      "": {
-        "akash": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "akash",
-            "client_id": "07-tendermint-32",
-            "connection_id": "connection-11"
-          },
-          "chain_2": {
-            "chain_id": "akashnet-2",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-210",
-            "connection_id": "connection-207"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-6",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-115",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            },
-            {
-              "chain_1": {
-                "channel_id": "channel-9",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-139",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "atomone": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "atomone",
-            "client_id": "07-tendermint-34",
-            "connection_id": "connection-12"
-          },
-          "chain_2": {
-            "chain_id": "atomone-1",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-46",
-            "connection_id": "connection-42"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-10",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-13",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "evmos": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "evmos",
-            "client_id": "07-tendermint-23",
-            "connection_id": "connection-7"
-          },
-          "chain_2": {
-            "chain_id": "evmos_9001-2",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-124",
-            "connection_id": "connection-79"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-5",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-101",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "gitopia": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "gitopia",
-            "client_id": "07-tendermint-16",
-            "connection_id": "connection-5"
-          },
-          "chain_2": {
-            "chain_id": "gitopia",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-33",
-            "connection_id": "connection-38"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-4",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-1",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "juno": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "juno",
-            "client_id": "07-tendermint-2",
-            "connection_id": "connection-1"
-          },
-          "chain_2": {
-            "chain_id": "juno-1",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-486",
-            "connection_id": "connection-487"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-0",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-393",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "omniflix": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "omniflix",
-            "client_id": "07-tendermint-15",
-            "connection_id": "connection-4"
-          },
-          "chain_2": {
-            "chain_id": "omniflixhub-1",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-50",
-            "connection_id": "connection-44"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-3",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-33",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "osmosis": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "osmosis",
-            "client_id": "07-tendermint-33",
-            "connection_id": "connection-13"
-          },
-          "chain_2": {
-            "chain_id": "osmosis-1",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-3708",
-            "connection_id": "connection-11060"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-1",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-6738",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            },
-            {
-              "chain_1": {
-                "channel_id": "channel-11",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-110258",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "secret": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "secret",
-            "client_id": "07-tendermint-31",
-            "connection_id": "connection-10"
-          },
-          "chain_2": {
-            "chain_id": "secret-4",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-211",
-            "connection_id": "connection-202"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-7",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-100",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            },
-            {
-              "chain_1": {
-                "channel_id": "channel-8",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-165",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        },
-        "stargaze": {
-          "$schema": "../ibc_data.schema.json",
-          "chain_1": {
-            "chain_id": "morocco-1",
-            "chain_name": "stargaze",
-            "client_id": "07-tendermint-13",
-            "connection_id": "connection-3"
-          },
-          "chain_2": {
-            "chain_id": "stargaze-1",
-            "chain_name": "terp",
-            "client_id": "07-tendermint-317",
-            "connection_id": "connection-255"
-          },
-          "channels": [
-            {
-              "chain_1": {
-                "channel_id": "channel-2",
-                "port_id": "transfer"
-              },
-              "chain_2": {
-                "channel_id": "channel-235",
-                "port_id": "transfer"
-              },
-              "ordering": 1,
-              "tags": {
-                "status": "ACTIVE"
-              },
-              "version": "ics20-1"
-            }
-          ]
-        }
-      },
       "akash": {
         "$schema": "../ibc_data.schema.json",
         "chain_1": {
@@ -765,22 +1367,6 @@
         "channels": [
           {
             "chain_1": {
-              "channel_id": "channel-115",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-6",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          },
-          {
-            "chain_1": {
               "channel_id": "channel-139",
               "port_id": "transfer"
             },
@@ -790,12 +1376,13 @@
             },
             "ordering": "unordered",
             "tags": {
-              "preferred": false,
+              "preferred": true,
               "status": "ACTIVE"
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "atomone": {
         "$schema": "../ibc_data.schema.json",
@@ -828,7 +1415,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "evmos": {
         "$schema": "../ibc_data.schema.json",
@@ -861,7 +1449,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "gitopia": {
         "$schema": "../ibc_data.schema.json",
@@ -894,7 +1483,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "juno": {
         "$schema": "../ibc_data.schema.json",
@@ -927,7 +1517,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "omniflix": {
         "$schema": "../ibc_data.schema.json",
@@ -960,7 +1551,8 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "osmosis": {
         "$schema": "../ibc_data.schema.json",
@@ -979,22 +1571,6 @@
         "channels": [
           {
             "chain_1": {
-              "channel_id": "channel-6738",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-1",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          },
-          {
-            "chain_1": {
               "channel_id": "channel-110258",
               "port_id": "transfer"
             },
@@ -1004,12 +1580,13 @@
             },
             "ordering": "unordered",
             "tags": {
-              "preferred": false,
+              "preferred": true,
               "status": "ACTIVE"
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "secret": {
         "$schema": "../ibc_data.schema.json",
@@ -1028,22 +1605,6 @@
         "channels": [
           {
             "chain_1": {
-              "channel_id": "channel-100",
-              "port_id": "transfer"
-            },
-            "chain_2": {
-              "channel_id": "channel-7",
-              "port_id": "transfer"
-            },
-            "ordering": "unordered",
-            "tags": {
-              "preferred": true,
-              "status": "ACTIVE"
-            },
-            "version": "ics20-1"
-          },
-          {
-            "chain_1": {
               "channel_id": "channel-165",
               "port_id": "transfer"
             },
@@ -1053,12 +1614,13 @@
             },
             "ordering": "unordered",
             "tags": {
-              "preferred": false,
+              "preferred": true,
               "status": "ACTIVE"
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
       },
       "stargaze": {
         "$schema": "../ibc_data.schema.json",
@@ -1091,7 +1653,841 @@
             },
             "version": "ics20-1"
           }
-        ]
+        ],
+        "client_status": "Active"
+      }
+    },
+    "ibc_denoms": {
+      "as_of": "2026-10-08",
+      "hash": "ibc/ + uppercase SHA-256 of the one-hop trace path",
+      "note": "One-hop ICS-20 denoms for the open morocco-1 transfer channels. Hermes polls morocco-1 at http://127.0.0.1:26657/block_results and relays transfer/channel-0 (Juno), plus channel-9, channel-10, and channel-11. Secret (channel-7, channel-8; clients 07-tendermint-28/-31) is a dropped route: not relayed, recovered or refreshed. The clients on these channels are Expired. Stargaze, Evmos, and OmniFlix are halted, so those denoms are recorded and not relayed. No new AtomOne or Penumbra client has been created. Temporary mint denoms, including Osmosis-routed UM, ETH, ZEC, and BTC, are in temp_mint_denoms and do not replace this table. The daemon copy of this file is ~/.cw-orch/state.json.",
+      "on_terp": [
+        {
+          "chain": "akash",
+          "symbol": "AKT",
+          "base": "uakt",
+          "trace": "transfer/channel-9/uakt",
+          "denom": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF",
+          "client_id": "07-tendermint-32",
+          "hermes_allow": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "akash",
+          "symbol": "AKT",
+          "base": "uakt",
+          "trace": "transfer/channel-6/uakt",
+          "denom": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389",
+          "client_id": "07-tendermint-25",
+          "hermes_allow": false,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "OSMO",
+          "base": "uosmo",
+          "trace": "transfer/channel-11/uosmo",
+          "denom": "ibc/4646A60D9F2EC44B281852B38FE269E2D0870DA7A3BBD805DB5F9CD7AF0D6280",
+          "client_id": "07-tendermint-33",
+          "hermes_allow": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "OSMO",
+          "base": "uosmo",
+          "trace": "transfer/channel-1/uosmo",
+          "denom": "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B",
+          "client_id": "07-tendermint-3",
+          "hermes_allow": false,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "atomone",
+          "symbol": "ATONE",
+          "base": "uatone",
+          "trace": "transfer/channel-10/uatone",
+          "denom": "ibc/AF34593540E81B06145CD80BDBB2149BE068A9B495086284DFD0FB3017AB5254",
+          "client_id": "07-tendermint-34",
+          "hermes_allow": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "juno",
+          "symbol": "JUNO",
+          "base": "ujuno",
+          "trace": "transfer/channel-0/ujuno",
+          "denom": "ibc/04F5F501207C3626A2C14BFEF654D51C2E0B8F7CA578AB8ED272A66FE4E48097",
+          "client_id": "07-tendermint-2",
+          "hermes_allow": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "secret",
+          "symbol": "SCRT",
+          "base": "uscrt",
+          "trace": "transfer/channel-7/uscrt",
+          "denom": "ibc/7AFA98F39ADA06C3E6C1A552EDAB5E81D2E9B99C637D0C6A806D3BE32904F369",
+          "client_id": "07-tendermint-28",
+          "hermes_allow": false,
+          "dropped": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "secret",
+          "symbol": "SCRT",
+          "base": "uscrt",
+          "trace": "transfer/channel-8/uscrt",
+          "denom": "ibc/2D47E29F57D254F8A21B8F6B1BC2198AE54EE44DF680CB3A74EC6B1A2B4B0809",
+          "client_id": "07-tendermint-31",
+          "hermes_allow": false,
+          "dropped": true,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "gitopia",
+          "symbol": "LORE",
+          "base": "ulore",
+          "trace": "transfer/channel-4/ulore",
+          "denom": "ibc/FDAB2B35641FE7010DEAFCEE7992C2D8AADDA86A13F30C4D38813BDD18E75DA3",
+          "client_id": "07-tendermint-16",
+          "hermes_allow": false,
+          "client_status": "Expired"
+        },
+        {
+          "chain": "stargaze",
+          "symbol": "STARS",
+          "base": "ustars",
+          "trace": "transfer/channel-2/ustars",
+          "denom": "ibc/C6469BA9DC791E65B3C1596CD2005941324C00659E2DF90D5E08D86B82E7E08B",
+          "client_id": "07-tendermint-13",
+          "hermes_allow": false,
+          "client_status": "Expired",
+          "halted": true
+        },
+        {
+          "chain": "omniflix",
+          "symbol": "FLIX",
+          "base": "uflix",
+          "trace": "transfer/channel-3/uflix",
+          "denom": "ibc/CD5AED12FB7802B1DEE669C5080F795A74FFE3B3AD02A53804187C7F11676816",
+          "client_id": "07-tendermint-15",
+          "hermes_allow": false,
+          "client_status": "Expired",
+          "halted": true
+        },
+        {
+          "chain": "evmos",
+          "symbol": "EVMOS",
+          "base": "aevmos",
+          "trace": "transfer/channel-5/aevmos",
+          "denom": "ibc/B249D1E86F588286FEA286AA8364FFCE69EC65604BD7869D824ADE40F00FA25B",
+          "client_id": "07-tendermint-23",
+          "hermes_allow": false,
+          "client_status": "Expired",
+          "halted": true
+        }
+      ],
+      "terp_on_counterparty": [
+        {
+          "chain": "akash",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-139/uterp",
+          "denom": "ibc/25026C21BD8A1BE658581553FAC5844F344270EFFCC59B673584D6C445006C0B",
+          "hermes_allow": true
+        },
+        {
+          "chain": "akash",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-139/uthiol",
+          "denom": "ibc/EA1305661ED048B1FD81E326E4C65D12A4333D3D4709F6CCB8A09E82AD968584",
+          "hermes_allow": true
+        },
+        {
+          "chain": "akash",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-115/uterp",
+          "denom": "ibc/C716B1F3652237C4B4AA7D600FD841B8C160AE10982D4BD8126125F54303DEA9",
+          "hermes_allow": false
+        },
+        {
+          "chain": "akash",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-115/uthiol",
+          "denom": "ibc/518135424C702F65319C4A5DC1102D868BFDB62CEE78648E51B4712A3D4A7296",
+          "hermes_allow": false
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-110258/uterp",
+          "denom": "ibc/448408EAC3AEDE3F1EC2261D72B8BAF323098D8489AC033DB614C4BAF221F598",
+          "hermes_allow": true
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-110258/uthiol",
+          "denom": "ibc/F31D4D773FB7A38971C0C7E99B813F8AD34156D366A40570B558C44BB910BE93",
+          "hermes_allow": true
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-6738/uterp",
+          "denom": "ibc/E55272EEA953113178D0EB241B65C2837BA251F01E8DC13C4B8613BD2854C69F",
+          "hermes_allow": false
+        },
+        {
+          "chain": "osmosis",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-6738/uthiol",
+          "denom": "ibc/9624E0ABDCA8AF05D05C5CB37326897E4379B030D172E53D5378325925A84D27",
+          "hermes_allow": false
+        },
+        {
+          "chain": "atomone",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-13/uterp",
+          "denom": "ibc/65F0CFBA8C3A907DFED26BF41AEDA7935166347BDA64E7D2F8F56F4518BBB523",
+          "hermes_allow": true
+        },
+        {
+          "chain": "atomone",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-13/uthiol",
+          "denom": "ibc/4E87F0043C9E3CBF85BEC7104B35E3E6FD9974C9086092921D08E7BC8695B601",
+          "hermes_allow": true
+        },
+        {
+          "chain": "juno",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-393/uterp",
+          "denom": "ibc/2578547913C40B0DEBAB7E458F191491DE6288A01E1000E9BAE34103DEB189D3",
+          "hermes_allow": true
+        },
+        {
+          "chain": "juno",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-393/uthiol",
+          "denom": "ibc/055F223602B754BF34FE269B729837A02BDF79E069F2387AEEA9CD28DE961BE7",
+          "hermes_allow": true
+        },
+        {
+          "chain": "secret",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-100/uterp",
+          "denom": "ibc/7EC6ECD828BABB512D46F6DB8B95E1082F3546EA83D7F10B66B56E6CC4A9BAFC",
+          "hermes_allow": false,
+          "dropped": true
+        },
+        {
+          "chain": "secret",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-100/uthiol",
+          "denom": "ibc/C7064921E583E2DE58BC62E95D7FF11997E9FC8460CF4DA00F925CED40621931",
+          "hermes_allow": false,
+          "dropped": true
+        },
+        {
+          "chain": "secret",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-165/uterp",
+          "denom": "ibc/AF840D44CC92103AD006850542368B888D29C4D4FFE24086E767F161FBDDCE76",
+          "hermes_allow": false,
+          "dropped": true
+        },
+        {
+          "chain": "secret",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-165/uthiol",
+          "denom": "ibc/7477828AC3E19352BA2D63352EA6D0680E3F29C126B87ACBDC27858CF7AF3A64",
+          "hermes_allow": false,
+          "dropped": true
+        },
+        {
+          "chain": "gitopia",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-1/uterp",
+          "denom": "ibc/4AEA7A5C89B744156996AEE30DAB3CCDCD7039A5625D89C8B7178E6D4C068D57",
+          "hermes_allow": false
+        },
+        {
+          "chain": "gitopia",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-1/uthiol",
+          "denom": "ibc/869FC01C559DDC2DC2CD241FBF99115CA60FE7AFC7C56EF0B382CA7B0E1CB5B1",
+          "hermes_allow": false
+        },
+        {
+          "chain": "stargaze",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-235/uterp",
+          "denom": "ibc/E552E64943BD9869EDC59C456AC8E6DBD56150EFE887E7EF0BC27DFBB78A4004",
+          "hermes_allow": false,
+          "halted": true
+        },
+        {
+          "chain": "stargaze",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-235/uthiol",
+          "denom": "ibc/A33D9BB00512256156879103BA1426EF39236C9CCB1415C5AD35B5B740D53E72",
+          "hermes_allow": false,
+          "halted": true
+        },
+        {
+          "chain": "omniflix",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-33/uterp",
+          "denom": "ibc/159F6BA84F3EA775A015C81E8B0A7C66E38AAFF75F7407DC654F0C365CDF722E",
+          "hermes_allow": false,
+          "halted": true
+        },
+        {
+          "chain": "omniflix",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-33/uthiol",
+          "denom": "ibc/0EC361789CFCD850904998126FF47D6AB5D16C3B1ADDFCB4C3C89B2BDBF0B4EE",
+          "hermes_allow": false,
+          "halted": true
+        },
+        {
+          "chain": "evmos",
+          "symbol": "TERP",
+          "base": "uterp",
+          "trace": "transfer/channel-101/uterp",
+          "denom": "ibc/3A61569885ED9FA1B7076AB1773CD91FB8EBF88DDC20CF553543CACABBB3EF54",
+          "hermes_allow": false,
+          "halted": true
+        },
+        {
+          "chain": "evmos",
+          "symbol": "THIOL",
+          "base": "uthiol",
+          "trace": "transfer/channel-101/uthiol",
+          "denom": "ibc/9EF5C9E824DB3E21009D52B70EDA142B0679AA8D03584224C6E41CEE3D1DEA2F",
+          "hermes_allow": false,
+          "halted": true
+        }
+      ]
+    },
+    "temp_mint_denoms": {
+      "as_of": "2026-10-08",
+      "role": "Temporary accepted options for shitstrap and svg mints while the older canonical channels are reopened. These rows extend on_terp. They do not replace it.",
+      "hash": "ibc/ + uppercase SHA-256 of the full trace",
+      "assets": [
+        {
+          "symbol": "AKT",
+          "temporary": true,
+          "base": "uakt",
+          "trace": "transfer/channel-9/uakt",
+          "denom": "ibc/ED3433FEFECE0B9EC584F0EBAB31E8AB6A7A187537F3E5B1D8A80998986E7ACF",
+          "client_id": "07-tendermint-32",
+          "connection_id": "connection-11",
+          "terp_channel_id": "channel-9",
+          "counterparty_channel_id": "channel-139",
+          "canonical_trace": "transfer/channel-6/uakt",
+          "canonical_denom": "ibc/2E4CF68617591638A6CBD7DA3E8CAF8C9C0B34AAB4878775A0B16ADDC56E4389",
+          "canonical_client_id": "07-tendermint-25",
+          "client_status": "Expired",
+          "hop_count": 1
+        },
+        {
+          "symbol": "OSMO",
+          "temporary": true,
+          "base": "uosmo",
+          "trace": "transfer/channel-11/uosmo",
+          "denom": "ibc/4646A60D9F2EC44B281852B38FE269E2D0870DA7A3BBD805DB5F9CD7AF0D6280",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13",
+          "terp_channel_id": "channel-11",
+          "counterparty_channel_id": "channel-110258",
+          "canonical_trace": "transfer/channel-1/uosmo",
+          "canonical_denom": "ibc/0471F1C4E7AFD3F07702BEF6DC365268D64570F7C1FDC98EA6098DD6DE59817B",
+          "canonical_client_id": "07-tendermint-3",
+          "client_status": "Expired",
+          "hop_count": 1
+        },
+        {
+          "symbol": "UM",
+          "temporary": true,
+          "base": "upenumbra",
+          "trace": "transfer/channel-11/transfer/channel-79703/upenumbra",
+          "denom": "ibc/6B32258CACFCBB5486A47CB1EAF4B6F5AD76C9E372E5F3CB08B3D1C606F9F39E",
+          "osmosis_trace": "transfer/channel-79703/upenumbra",
+          "osmosis_denom": "ibc/0FA9232B262B89E77D1335D54FB1E1F506A92A7E4B51524B400DC69C68D28372",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13",
+          "terp_channel_id": "channel-11",
+          "counterparty_channel_id": "channel-110258",
+          "penumbra_channel_id": "channel-4",
+          "canonical_trace": null,
+          "client_status": "Expired",
+          "hop_count": 2,
+          "note": "No Penumbra client on morocco-1. UM is identified on the existing Osmosis channel."
+        },
+        {
+          "symbol": "ETH",
+          "temporary": true,
+          "base": "factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH",
+          "trace": "transfer/channel-11/factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH",
+          "denom": "ibc/0F92AF0DAD1FA5CBC4D8FDF9F5BF9F7F5BE36DF268B1E115DB82E1A71BE9CB31",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13",
+          "terp_channel_id": "channel-11",
+          "counterparty_channel_id": "channel-110258",
+          "canonical_trace": "transfer/channel-1/factory/osmo1k6c8jln7ejuqwtqmay3yvzrg3kueaczl96pk067ldg8u835w0yhsw27twm/alloyed/allETH",
+          "canonical_denom": "ibc/D7B7D0835B5CAACA52109939CEB064D81EBC098B4E2C3FD71106FEFFC06CC308",
+          "canonical_client_id": "07-tendermint-3",
+          "client_status": "Expired",
+          "hop_count": 1
+        },
+        {
+          "symbol": "ZEC",
+          "temporary": true,
+          "base": "factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC",
+          "trace": "transfer/channel-11/factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC",
+          "denom": "ibc/BC072FE6C12FD02688EA5DE89857BB269584E6DD378170080C3E1463825B9F81",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13",
+          "terp_channel_id": "channel-11",
+          "counterparty_channel_id": "channel-110258",
+          "canonical_trace": "transfer/channel-1/factory/osmo1twk0c4kcwnhkyn6pzxe0qsk6a3nrye2w2sy309d60sljfysugagsd7e3mn/alloyed/allZEC",
+          "canonical_denom": "ibc/910DBA7D901A0A4985457CFF8C0C54BF7DE14D59B9A91D3FF1E926906C5B1DF1",
+          "canonical_client_id": "07-tendermint-3",
+          "client_status": "Expired",
+          "hop_count": 1
+        },
+        {
+          "symbol": "BTC",
+          "temporary": true,
+          "base": "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "trace": "transfer/channel-11/factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "denom": "ibc/9FC418778218616ADEC741B8E402C856EBF2AADAD93A8D7EA322F798480F641C",
+          "client_id": "07-tendermint-33",
+          "connection_id": "connection-13",
+          "terp_channel_id": "channel-11",
+          "counterparty_channel_id": "channel-110258",
+          "canonical_trace": "transfer/channel-1/factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC",
+          "canonical_denom": "ibc/2E13104D0924DDB574E98CF01E1FD2D8913779BCB5B514B6468C6EC6037A15DC",
+          "canonical_client_id": "07-tendermint-3",
+          "client_status": "Expired",
+          "hop_count": 1
+        }
+      ]
+    },
+    "installers": {
+      "get/terp-installer.py": "26ae711cdcc64ef86bfbbc19734de5ffab026f321d75ce6fd9cc10b39a2f4105",
+      "get/terp-installer.sh": "44ef030ea74c7902ec0dd2fc0cda9c22f8b724ca6ee44ac1df2eed3db14235de"
+    },
+    "noncircuit-auth": {
+      "terp-passkey": "terp19y2fwyjh3czura8fqyn88yrygea7nxxhytlqprpzyrrtlgqph8qqaad77z",
+      "terp-recovery": "terp1zqj9ypj9yjakfyvy58ck7maq04uz8mv4gluqv68dmakmmwutv3eq8kk27x",
+      "terp-ed25519": "terp1p08mw5wcmxpdhrqjhjpyt2fp29758qp3mgezsf7t8rr7m089qeaq2x5h2l",
+      "terp-eth": "terp1q6puz8yp59nj4s3psrq338fyy0gqzha2yltw9cqhe2l0d48jahpsecyl0n"
+    },
+    "ibc_registry": {
+      "source": "public/ibc-data via terp-ibc rebuild-from-public",
+      "generation": {
+        "chains": [
+          "akash",
+          "atomone",
+          "evmos",
+          "secret",
+          "terp",
+          "omniflix",
+          "stargaze",
+          "osmosis",
+          "juno",
+          "gitopia"
+        ],
+        "generated_at": "1788201296",
+        "generator": "terp-scripts/bin/terp-ibc rebuild-from-public",
+        "invariant_findings": 0,
+        "max_hops": 3,
+        "mode": "offline",
+        "source": "public/ibc-data",
+        "total_routes": 18
+      },
+      "lookup": {
+        "akash": {
+          "ibc/A59970786FD461637D5A6D33CCB6B89D3DE769A8656FFC95EF67868B0A9BC600": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-139/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/DDA5EFDDA729FA6C48CFA7F1C69D97E69C2F8C90DC86D89D2ED843D64E818320": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-139/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "atomone": {
+          "ibc/16F86E7E041C8D33FB0ABD6C94981B386877CDE7D945D6D5C742C34D089D1A53": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-13/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/B401AD86FA0A7658F9760E686A9F1CAD828EA33A7043407585BEEDF9F9AD9DCD": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-13/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "evmos": {
+          "ibc/12015172A61A3ED85A082C917F28D87023B6DEFE84C44B99914C051B62427F93": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-101/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/7F04948C1F3CDA862EEAE5364E194806686464854E1D3F023E89DEF945BC1551": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-101/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "gitopia": {
+          "ibc/ADD33E9703A911023E73181FCA39B022094A1832F0C2311152A927E580E28B5F": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-1/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/CF57A83CED6CEC7D706631B5DC53ABC21B7EDA7DF7490732B4361E6D5DD19C73": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-1/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "juno": {
+          "ibc/2F57C5B45E550C3FE93975D8683B7731EFA3A094931241A347548740F89C6422": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-393/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/9579E9609A560A57DB664E35665F293269CD3F625841A2EEE9478E1897AC00DF": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-393/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "omniflix": {
+          "ibc/6DE48C0AB3ED2A3AC54D87A2E73804B7DBA4033A40DEB732C37436E1F9286B8D": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-33/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/EE381F1B7AFA4C4688ECB68BC4EA6168DCB8D8E7754D030EED7FB0F99BD5E62E": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-33/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "osmosis": {
+          "ibc/02DB0C7201ECC8B9753FE51145F91163AC72ECF7DF21F045B6B1BC6063D37222": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-110258/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          },
+          "ibc/B6B6B4518F28E2389375FEA0B1CA04F24135EBCC95F24F808E2EBB157AC84BFF": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-110258/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          }
+        },
+        "secret": {
+          "ibc/98B4A0DF010C354724A8694CAB3C8F1BE47BD4DD40E31F2DF21157BBFE99D6EC": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-165/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/D55D1CDD0721C3F9978F1010B8CF34A171E54E1EA674BEAB4AD554AD3D67A9F1": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-165/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        },
+        "stargaze": {
+          "ibc/0C31604A03AFA348AE1021B6632E32B662733A4EA3EEB47643A22122E02006F4": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice",
+            "symbol": "SPICE",
+            "trace_path": "transfer/channel-235/factory/osmo1n6asrjy9754q8y9jsxqf557zmsv3s3xa5m9eg5/uspice"
+          },
+          "ibc/D6535E2CABA69C038A97142E48F4D0B9A569DEC246B2966DB996613ADF5302C5": {
+            "hop_count": 1,
+            "origin_chain": "terp",
+            "origin_denom": "factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc",
+            "symbol": "WBTC",
+            "trace_path": "transfer/channel-235/factory/osmo1z0qrq605sjgcqpylfl4aa6s90x738j7m58wyatt0tdzflg2ha26q67k743/wbtc"
+          }
+        }
+      }
+    },
+    "code_sources": {
+      "oracle-registry": {
+        "wasm": "cw_oracle_registry.wasm",
+        "crate": "contracts/hash-merchant/oracle-registry",
+        "checksum_sha256": "34c0eab85a32636a63072a6593794d8c9822ead3e4fba1eda97043a6c7352afb",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "oracle-aggregator": {
+        "wasm": "cw_oracle_aggregator.wasm",
+        "crate": "contracts/hash-merchant/oracle-aggregator",
+        "checksum_sha256": "0e15a509c8b86818e5266dc82cbbdf53c6020b38ca79780fe958870ce1636b4a",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "oracle-twap-probe": {
+        "wasm": "cw_oracle_twap_probe.wasm",
+        "crate": "contracts/hash-merchant/oracle-twap-probe",
+        "checksum_sha256": "04fa794e9fa40f50ffe68fa29130fa2f77de2d86202bfb09401e08efb247ecba",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "marketplace": {
+        "wasm": "revenue_marketplace.wasm",
+        "crate": "contracts/revenue/marketplace",
+        "checksum_sha256": "18a83231b909b612cc789e1e8cff9bdca37d11133ca9daafec4bd5507864bb3f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "reserve-auction": {
+        "wasm": "revenue_reserve_auction.wasm",
+        "crate": "contracts/revenue/reserve-auction",
+        "checksum_sha256": "b55b4e025575fc6a5982ead25e6a4ca7c774c3ef2c6633adb854463e8e3ea42f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "svg-auction": {
+        "wasm": "svg_auction.wasm",
+        "crate": "contracts/infuser/svg-auction",
+        "checksum_sha256": "575057ddff1d02dadb8c58e583d57c6fee12ad135474ca9fb1ed3205e101a4b6",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "raffle": {
+        "wasm": "nftfi_raffle.wasm",
+        "crate": "contracts/nfts/raffle",
+        "checksum_sha256": "28a9ac5283f4ade77e82ac41ddbbd2790fd7cdac46b7bcce3c241602d0f588c1",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "nft-loan": {
+        "wasm": "nftfi_loan.wasm",
+        "crate": "contracts/nfts/nft-loan",
+        "checksum_sha256": "f25aa65314f89febd587ef0553837ec967606ec1f55c32a54a54a5beb447265c",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "bounty-escrow": {
+        "wasm": "terp_bounty_escrow.wasm",
+        "crate": "contracts/revenue/bounty-escrow",
+        "checksum_sha256": "fec2c96f75cc1b3c003fb3331798077b184038ae89e71baeebb293f90fc52fac",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "passkey": {
+        "wasm": "terp_passkey.wasm",
+        "crate": "contracts/smart-accounts/terp-passkey",
+        "checksum_sha256": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-passkey": {
+        "wasm": "terp_passkey.wasm",
+        "crate": "contracts/smart-accounts/terp-passkey",
+        "checksum_sha256": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "recovery": {
+        "wasm": "terp_recovery.wasm",
+        "crate": "contracts/smart-accounts/terp-recovery",
+        "checksum_sha256": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-recovery": {
+        "wasm": "terp_recovery.wasm",
+        "crate": "contracts/smart-accounts/terp-recovery",
+        "checksum_sha256": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-ed25519": {
+        "wasm": "terp_ed25519.wasm",
+        "crate": "contracts/smart-accounts/terp-ed25519",
+        "checksum_sha256": "6aa970e4c84ab6f7f41cb1235eac7924e5b6a716bc40b37c0ebdb31f89d9f3d5",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "terp-eth": {
+        "wasm": "terp_eth.wasm",
+        "crate": "contracts/smart-accounts/terp-eth",
+        "checksum_sha256": "779dc5fe0097f72d1bac07f44486f54025b0ef12f703a3d8a45bae1995e2773d",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw721-svg": {
+        "wasm": "cw721_svg.wasm",
+        "crate": "contracts/infuser/cw721-svg",
+        "checksum_sha256": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw721_svg": {
+        "wasm": "cw721_svg.wasm",
+        "crate": "contracts/infuser/cw721-svg",
+        "checksum_sha256": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "svg-minter": {
+        "wasm": "cw_svg_minter.wasm",
+        "crate": "contracts/infuser/cw721-svg-minter",
+        "checksum_sha256": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw-svg-minter": {
+        "wasm": "cw_svg_minter.wasm",
+        "crate": "contracts/infuser/cw721-svg-minter",
+        "checksum_sha256": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "cw-infuser": {
+        "wasm": "cw_infuser.wasm",
+        "crate": "contracts/infuser/cw-infuser",
+        "checksum_sha256": "07465e5a98d2f34e6125975dbd63a068bf7aa48a9bd42e3b19fc65932befde1f",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
+      },
+      "whitelist-mtree": {
+        "wasm": "whitelist_mtree.wasm",
+        "crate": "contracts/infuser/whitelist-merkletree",
+        "checksum_sha256": "8bb7f71277128a6a29ffc0713fc45715ff40218c2b9f30bce178ce9b123d52dd",
+        "git": {
+          "commit": "3c97307a06523d59121fc55640890579c1569dfc",
+          "describe": "3c97307-dirty",
+          "dirty": true
+        }
       }
     }
   },
@@ -1391,5 +2787,7 @@
   "xion-testnet-1": {
     "code_ids": {},
     "default": {}
-  }
+  },
+  "source": "usb2/snapshots/mainnet/morocco-1/state.json \u2014 unified cw-orch + site morocco-1",
+  "note": "Single state.json for cw-orch, terp.network, and permissionless.money. morocco-1.code_ids terp-passkey=84 terp-recovery=85 terp-ed25519=86 terp-eth=87. Do not use dist copies; 120u-1 ids stay on 120u-1 only. 2026-10-27 terp-rs deploy: oracle-registry=88 .. svg-minter=99 (see morocco-1.code_ids); terp-passkey=84/terp-recovery=85 and legacy cw721_svg=83/cw-svg-minter=72 unchanged. default svg-minter, drop:marain-orbs, drop:kara-gippy, drop:yijing-harmony. 2026-10-30: whitelist-mtree:permissionless-fractal (code 73), drop:permissionless-fractal, drop:interchain-logos-* (13, series interchain-logos) via svg factory 99."
 }

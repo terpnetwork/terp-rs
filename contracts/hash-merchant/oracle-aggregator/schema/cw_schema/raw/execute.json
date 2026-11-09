@@ -1,0 +1,24 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_oracle_aggregator_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "set_registry": {
+          "type": "named",
+          "properties": {
+            "registry": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

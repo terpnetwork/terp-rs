@@ -32,7 +32,12 @@ impl DiffReport {
         Self::default()
     }
 
-    pub fn push(&mut self, severity: DiffSeverity, code: impl Into<String>, message: impl Into<String>) {
+    pub fn push(
+        &mut self,
+        severity: DiffSeverity,
+        code: impl Into<String>,
+        message: impl Into<String>,
+    ) {
         self.items.push(DiffItem {
             severity,
             code: code.into(),
@@ -61,9 +66,7 @@ impl DiffReport {
     }
 
     pub fn has_errors(&self) -> bool {
-        self.items
-            .iter()
-            .any(|i| i.severity == DiffSeverity::Error)
+        self.items.iter().any(|i| i.severity == DiffSeverity::Error)
     }
 
     /// Process exit code: 1 if any Error, else 0.

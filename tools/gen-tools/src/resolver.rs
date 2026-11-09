@@ -63,6 +63,9 @@ impl TypeSource {
 // ---------------------------------------------------------------------------
 
 /// Discovers available type definitions and resolves them into a unified format.
+/// One contract's name and its resolved type map.
+pub type ContractTypes = (String, BTreeMap<String, serde_json::Value>);
+
 pub struct SourceResolver;
 
 impl SourceResolver {
@@ -87,13 +90,13 @@ impl SourceResolver {
         if !schema_dirs.is_empty() {
             let entries: Vec<_> = schema_dirs
                 .iter()
-                .filter_map(|d| {
+                .map(|d| {
                     let name = d
                         .parent()
                         .and_then(|p| p.file_name())
                         .map(|n| n.to_string_lossy().to_string())
                         .unwrap_or_else(|| "contract".to_string());
-                    Some((name, d.clone()))
+                    (name, d.clone())
                 })
                 .collect();
             sources.push(TypeSource::Schemas(entries));
@@ -104,13 +107,13 @@ impl SourceResolver {
         if !proto_dirs.is_empty() {
             let entries: Vec<_> = proto_dirs
                 .iter()
-                .filter_map(|d| {
+                .map(|d| {
                     let name = d
                         .parent()
                         .and_then(|p| p.file_name())
                         .map(|n| n.to_string_lossy().to_string())
                         .unwrap_or_else(|| "proto".to_string());
-                    Some((name, d.clone()))
+                    (name, d.clone())
                 })
                 .collect();
             sources.push(TypeSource::Protos(entries));
@@ -121,13 +124,13 @@ impl SourceResolver {
         if !generated_dirs.is_empty() {
             let entries: Vec<_> = generated_dirs
                 .iter()
-                .filter_map(|d| {
+                .map(|d| {
                     let name = d
                         .parent()
                         .and_then(|p| p.file_name())
                         .map(|n| n.to_string_lossy().to_string())
                         .unwrap_or_else(|| "generated".to_string());
-                    Some((name, d.clone()))
+                    (name, d.clone())
                 })
                 .collect();
             sources.push(TypeSource::Generated(entries));
@@ -143,9 +146,7 @@ impl SourceResolver {
     ///
     /// Returns `(source_label, schemas)` where `source_label` is a human-readable
     /// description of which source was used (for diagnostics).
-    pub fn resolve(
-        ctx: &GenerationContext,
-    ) -> (String, BTreeMap<String, serde_json::Value>) {
+    pub fn resolve(ctx: &GenerationContext) -> (String, BTreeMap<String, serde_json::Value>) {
         let (label, grouped) = Self::resolve_grouped(ctx);
         // Merge all grouped maps into one flat map
         let mut merged = BTreeMap::new();
@@ -161,9 +162,7 @@ impl SourceResolver {
     /// discovered source directory. Generators that emit per-contract files
     /// (TS codegen, OpenAPI) should use this. Generators that process all types
     /// together (Go, Python, Zod) can use `resolve()` and get a flat map.
-    pub fn resolve_grouped(
-        ctx: &GenerationContext,
-    ) -> (String, Vec<(String, BTreeMap<String, serde_json::Value>)>) {
+    pub fn resolve_grouped(ctx: &GenerationContext) -> (String, Vec<ContractTypes>) {
         let sources = Self::discover(ctx);
 
         // Try each source in priority order — use the first one with data
@@ -184,7 +183,10 @@ impl SourceResolver {
             };
         }
 
-        log::warn!("[resolver] No type sources found for {:?}", ctx.workspace_root);
+        log::warn!(
+            "[resolver] No type sources found for {:?}",
+            ctx.workspace_root
+        );
         (String::new(), Vec::new())
     }
 
@@ -250,7 +252,7 @@ fn proto_dir_to_schemas(proto_dir: &Path) -> BTreeMap<String, serde_json::Value>
     let proto_files = match std::fs::read_dir(proto_dir) {
         Ok(entries) => entries
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "proto"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "proto"))
             .collect::<Vec<_>>(),
         Err(_) => return schemas,
     };
@@ -357,7 +359,10 @@ fn parse_proto_content(content: &str, _path: &Path) -> BTreeMap<String, serde_js
                 msg_schema.as_object_mut().unwrap().insert(
                     "required".into(),
                     serde_json::Value::Array(
-                        required.into_iter().map(|s| serde_json::Value::String(s)).collect(),
+                        required
+                            .into_iter()
+                            .map(serde_json::Value::String)
+                            .collect(),
                     ),
                 );
             }
@@ -418,10 +423,7 @@ fn parse_proto_content(content: &str, _path: &Path) -> BTreeMap<String, serde_js
 
 /// Parse a single proto field line into a JSON Schema property.
 /// Returns (field_name, schema_value, is_required).
-fn parse_proto_field(
-    line: &str,
-    field_num: &mut u32,
-) -> Option<(String, serde_json::Value, bool)> {
+fn parse_proto_field(line: &str, field_num: &mut u32) -> Option<(String, serde_json::Value, bool)> {
     let line = line.trim().trim_end_matches(';');
 
     // Skip empty lines, comments, and control statements
@@ -440,9 +442,7 @@ fn parse_proto_field(
 
     // Extract field number at end: "type name = N;"
     let eq_pos = line.rfind('=');
-    if eq_pos.is_none() {
-        return None;
-    }
+    eq_pos?;
     let eq_pos = eq_pos.unwrap();
 
     // Field spec is everything before the = sign
@@ -470,7 +470,11 @@ fn parse_proto_field(
         if after_map.is_empty() {
             return None;
         }
-        return Some((after_map.to_string(), proto_map_to_json_schema(map_type), true));
+        return Some((
+            after_map.to_string(),
+            proto_map_to_json_schema(map_type),
+            true,
+        ));
     } else {
         // type field_name
         (parts[0], parts[1])
@@ -488,19 +492,23 @@ fn parse_proto_field(
     };
 
     // Update field number based on the parsed position
-    if let Some(num_str) = line[eq_pos + 1..].trim().split_whitespace().next() {
-        if let Ok(n) = num_str.parse::<u32>() {
-            *field_num = n;
-        }
+    if let Some(num_str) = line[eq_pos + 1..].split_whitespace().next()
+        && let Ok(n) = num_str.parse::<u32>()
+    {
+        *field_num = n;
     }
 
-    Some((field_name.to_string(), field_schema, !is_optional && !is_repeated))
+    Some((
+        field_name.to_string(),
+        field_schema,
+        !is_optional && !is_repeated,
+    ))
 }
 
 /// Convert a proto type name to a JSON Schema representation.
 fn proto_type_to_json_schema(proto_type: &str) -> serde_json::Value {
     // Strip leading package qualifiers
-    let base = proto_type.split('.').last().unwrap_or(proto_type);
+    let base = proto_type.split('.').next_back().unwrap_or(proto_type);
 
     match base {
         // Scalar types
@@ -669,7 +677,7 @@ fn find_proto_dirs(root: &Path) -> Vec<PathBuf> {
     if let Ok(entries) = std::fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() && path.file_name().map_or(false, |n| n == "proto") {
+            if path.is_dir() && path.file_name().is_some_and(|n| n == "proto") {
                 // Only include if it has .proto files
                 if has_proto_files(&path) {
                     dirs.push(path);
@@ -696,9 +704,9 @@ fn find_proto_dirs(root: &Path) -> Vec<PathBuf> {
 fn has_proto_files(dir: &Path) -> bool {
     std::fs::read_dir(dir)
         .map(|entries| {
-            entries.flatten().any(|e| {
-                e.path().extension().map_or(false, |ext| ext == "proto")
-            })
+            entries
+                .flatten()
+                .any(|e| e.path().extension().is_some_and(|ext| ext == "proto"))
         })
         .unwrap_or(false)
 }
@@ -707,7 +715,13 @@ fn has_proto_files(dir: &Path) -> bool {
 fn find_generated_dirs(root: &Path) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     // Check common output dirs
-    for candidate in &["generated", "scripts/ts/src", "scripts/python", "ts/zod", "docs/openapi"] {
+    for candidate in &[
+        "generated",
+        "scripts/ts/src",
+        "scripts/python",
+        "ts/zod",
+        "docs/openapi",
+    ] {
         let path = root.join(candidate);
         if path.exists() && path.is_dir() {
             // Only include if it has JSON or TS files
@@ -724,9 +738,10 @@ fn has_type_files(dir: &Path) -> bool {
     std::fs::read_dir(dir)
         .map(|entries| {
             entries.flatten().any(|e| {
-                e.path().extension().and_then(|ext| ext.to_str()).map_or(false, |ext| {
-                    matches!(ext, "json" | "ts" | "py" | "go")
-                })
+                e.path()
+                    .extension()
+                    .and_then(|ext| ext.to_str())
+                    .is_some_and(|ext| matches!(ext, "json" | "ts" | "py" | "go"))
             })
         })
         .unwrap_or(false)
@@ -741,16 +756,15 @@ pub fn load_schema_jsons(schema_dir: &Path) -> BTreeMap<String, serde_json::Valu
     if let Ok(entries) = std::fs::read_dir(schema_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let name = path
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        schemas.insert(name, value);
-                    }
-                }
+            if path.extension().is_some_and(|ext| ext == "json")
+                && let Ok(content) = std::fs::read_to_string(&path)
+                && let Ok(value) = serde_json::from_str::<serde_json::Value>(&content)
+            {
+                let name = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                schemas.insert(name, value);
             }
         }
     }
@@ -773,22 +787,21 @@ fn load_schema_files_per_file(
     if let Ok(entries) = std::fs::read_dir(schema_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "json") {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
-                        let name = path
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().to_string())
-                            .unwrap_or_default();
-                        // Skip non-contract files (e.g. raw, example, test)
-                        if name.is_empty() || name.starts_with('_') || name == "example" {
-                            continue;
-                        }
-                        let mut schemas = BTreeMap::new();
-                        schemas.insert(name.clone(), value);
-                        result.push((name, schemas));
-                    }
+            if path.extension().is_some_and(|ext| ext == "json")
+                && let Ok(content) = std::fs::read_to_string(&path)
+                && let Ok(value) = serde_json::from_str::<serde_json::Value>(&content)
+            {
+                let name = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                // Skip non-contract files (e.g. raw, example, test)
+                if name.is_empty() || name.starts_with('_') || name == "example" {
+                    continue;
                 }
+                let mut schemas = BTreeMap::new();
+                schemas.insert(name.clone(), value);
+                result.push((name, schemas));
             }
         }
     }

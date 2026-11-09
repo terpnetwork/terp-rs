@@ -1,0 +1,106 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_infuser_state_Config",
+      "description": "map of infusion",
+      "type": "struct",
+      "properties": {
+        "code_hash": {
+          "description": "code hash of cw721. used for instantitate2 during infusion creation.",
+          "value": 8
+        },
+        "code_id": {
+          "description": "cw721-base code_id",
+          "value": 1
+        },
+        "contract_owner": {
+          "value": 2
+        },
+        "latest_infusion_id": {
+          "value": 1
+        },
+        "max_bundles": {
+          "description": "maximum bundles allowed per infusion",
+          "value": 1
+        },
+        "max_infusions": {
+          "description": "Maximum unique infusion that can be created at once. Defaults to 2",
+          "value": 1
+        },
+        "max_per_bundle": {
+          "description": "Contract global param enforcing maximum nfts bundles can require.",
+          "value": 1
+        },
+        "min_creation_fee": {
+          "description": "Minimum fee that is required for creating an infusion.",
+          "value": 7
+        },
+        "min_infusion_fee": {
+          "description": "Minimum fee that is required to be set when new infusions are being created",
+          "value": 7
+        },
+        "min_per_bundle": {
+          "description": "Contract global param enforcing minimum nfts each collection in an infusion must require to burn. hard coded to 1.",
+          "value": 1
+        },
+        "owner_fee": {
+          "description": "Fee required to contribute to randomness\n% Fee from any infusion fee set to go to contract owner. 10 == 10% , 71 == 71%",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "cosmwasm_std_math_decimal_Decimal",
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "decimal",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 6
+        },
+        "denom": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::coin::Coin>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    }
+  ]
+}

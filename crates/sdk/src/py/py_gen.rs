@@ -460,11 +460,13 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/cosmos.auth.v1beta1.ModuleAccount" => {
-            let msg: crate::cosmos::auth::v1beta1::ModuleAccount = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::auth::v1beta1::ModuleAccount =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.auth.v1beta1.ModuleCredential" => {
-            let msg: crate::cosmos::auth::v1beta1::ModuleCredential = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::auth::v1beta1::ModuleCredential =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.auth.v1beta1.Params" => {
@@ -500,11 +502,13 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/cosmos.base.query.v1beta1.PageRequest" => {
-            let msg: crate::cosmos::base::query::v1beta1::PageRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::base::query::v1beta1::PageRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.base.query.v1beta1.PageResponse" => {
-            let msg: crate::cosmos::base::query::v1beta1::PageResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::base::query::v1beta1::PageResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.base.v1beta1.Coin" => {
@@ -528,7 +532,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.NonExistenceProof" => {
-            let msg: crate::cosmos::ics23::v1::NonExistenceProof = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::ics23::v1::NonExistenceProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.CommitmentProof" => {
@@ -560,19 +565,23 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.CompressedBatchProof" => {
-            let msg: crate::cosmos::ics23::v1::CompressedBatchProof = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::ics23::v1::CompressedBatchProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.CompressedBatchEntry" => {
-            let msg: crate::cosmos::ics23::v1::CompressedBatchEntry = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::ics23::v1::CompressedBatchEntry =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.CompressedExistenceProof" => {
-            let msg: crate::cosmos::ics23::v1::CompressedExistenceProof = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::ics23::v1::CompressedExistenceProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.ics23.v1.CompressedNonExistenceProof" => {
-            let msg: crate::cosmos::ics23::v1::CompressedNonExistenceProof = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::ics23::v1::CompressedNonExistenceProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.upgrade.v1beta1.Plan" => {
@@ -580,83 +589,102 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal" => {
-            let msg: crate::cosmos::upgrade::v1beta1::SoftwareUpgradeProposal = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::upgrade::v1beta1::SoftwareUpgradeProposal =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal" => {
-            let msg: crate::cosmos::upgrade::v1beta1::CancelSoftwareUpgradeProposal = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::upgrade::v1beta1::CancelSoftwareUpgradeProposal =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/cosmos.upgrade.v1beta1.ModuleVersion" => {
-            let msg: crate::cosmos::upgrade::v1beta1::ModuleVersion = serde_json::from_slice(json_data)?;
+            let msg: crate::cosmos::upgrade::v1beta1::ModuleVersion =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.MsgSendCall" => {
-            let msg: crate::ibc::applications::gmp::v1::MsgSendCall = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::MsgSendCall =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.MsgSendCallResponse" => {
-            let msg: crate::ibc::applications::gmp::v1::MsgSendCallResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::MsgSendCallResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.AccountIdentifier" => {
-            let msg: crate::ibc::applications::gmp::v1::AccountIdentifier = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::AccountIdentifier =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.ICS27Account" => {
-            let msg: crate::ibc::applications::gmp::v1::Ics27Account = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::Ics27Account =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.CosmosTx" => {
-            let msg: crate::ibc::applications::gmp::v1::CosmosTx = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::CosmosTx =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.GMPPacketData" => {
-            let msg: crate::ibc::applications::gmp::v1::GmpPacketData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::GmpPacketData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.Acknowledgement" => {
-            let msg: crate::ibc::applications::gmp::v1::Acknowledgement = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::Acknowledgement =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.QueryAccountAddressRequest" => {
-            let msg: crate::ibc::applications::gmp::v1::QueryAccountAddressRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::QueryAccountAddressRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.QueryAccountAddressResponse" => {
-            let msg: crate::ibc::applications::gmp::v1::QueryAccountAddressResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::QueryAccountAddressResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.QueryAccountIdentifierRequest" => {
-            let msg: crate::ibc::applications::gmp::v1::QueryAccountIdentifierRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::QueryAccountIdentifierRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.QueryAccountIdentifierResponse" => {
-            let msg: crate::ibc::applications::gmp::v1::QueryAccountIdentifierResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::QueryAccountIdentifierResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.GenesisState" => {
-            let msg: crate::ibc::applications::gmp::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.gmp.v1.RegisteredICS27Account" => {
-            let msg: crate::ibc::applications::gmp::v1::RegisteredIcs27Account = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::gmp::v1::RegisteredIcs27Account =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.controller.v1.Params" => {
-            let msg: crate::ibc::applications::interchain_accounts::controller::v1::Params = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::controller::v1::Params =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccount" => {
             let msg: crate::ibc::applications::interchain_accounts::controller::v1::MsgRegisterInterchainAccount = serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
-        "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccountResponse" => {
+        "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccountResponse" =>
+        {
             let msg: crate::ibc::applications::interchain_accounts::controller::v1::MsgRegisterInterchainAccountResponse = serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgSendTx" => {
-            let msg: crate::ibc::applications::interchain_accounts::controller::v1::MsgSendTx = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::controller::v1::MsgSendTx =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgSendTxResponse" => {
@@ -688,7 +716,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.genesis.v1.GenesisState" => {
-            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.genesis.v1.ControllerGenesisState" => {
@@ -696,11 +725,13 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.genesis.v1.HostGenesisState" => {
-            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::HostGenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::HostGenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.genesis.v1.ActiveChannel" => {
-            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::ActiveChannel = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::genesis::v1::ActiveChannel =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.genesis.v1.RegisteredInterchainAccount" => {
@@ -708,15 +739,18 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.Params" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::Params = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::Params =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.QueryRequest" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgUpdateParams" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgUpdateParamsResponse" => {
@@ -724,7 +758,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgModuleQuerySafe" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::MsgModuleQuerySafe = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::MsgModuleQuerySafe =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgModuleQuerySafeResponse" => {
@@ -732,15 +767,18 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.QueryParamsRequest" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.host.v1.QueryParamsResponse" => {
-            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::host::v1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.v1.InterchainAccount" => {
-            let msg: crate::ibc::applications::interchain_accounts::v1::InterchainAccount = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::v1::InterchainAccount =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.v1.InterchainAccountPacketData" => {
@@ -748,99 +786,123 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.v1.CosmosTx" => {
-            let msg: crate::ibc::applications::interchain_accounts::v1::CosmosTx = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::v1::CosmosTx =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.interchain_accounts.v1.Metadata" => {
-            let msg: crate::ibc::applications::interchain_accounts::v1::Metadata = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::interchain_accounts::v1::Metadata =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.packet_forward_middleware.v1.GenesisState" => {
-            let msg: crate::ibc::applications::packet_forward_middleware::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::packet_forward_middleware::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.packet_forward_middleware.v1.InFlightPacket" => {
-            let msg: crate::ibc::applications::packet_forward_middleware::v1::InFlightPacket = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::packet_forward_middleware::v1::InFlightPacket =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgAddRateLimit" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgAddRateLimit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgAddRateLimit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgAddRateLimitResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgAddRateLimitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgAddRateLimitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgUpdateRateLimit" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgUpdateRateLimitResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgRemoveRateLimit" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgRemoveRateLimitResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgResetRateLimit" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgResetRateLimit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgResetRateLimit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.MsgResetRateLimitResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::MsgResetRateLimitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::MsgResetRateLimitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.Path" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::Path = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::Path =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.Quota" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::Quota = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::Quota =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.Flow" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::Flow = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::Flow =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.RateLimit" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::RateLimit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::RateLimit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.WhitelistedAddressPair" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::WhitelistedAddressPair = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::WhitelistedAddressPair =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.HourEpoch" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::HourEpoch = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::HourEpoch =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryAllRateLimitsRequest" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryAllRateLimitsResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitRequest" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitsByChainIDRequest" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitsByChainIdRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitsByChainIdRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitsByChainIDResponse" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitsByChainIdResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryRateLimitsByChainIdResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitsByChannelOrClientIDRequest" => {
@@ -852,7 +914,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryAllBlacklistedDenomsRequest" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllBlacklistedDenomsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::QueryAllBlacklistedDenomsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.QueryAllBlacklistedDenomsResponse" => {
@@ -868,107 +931,133 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.rate_limiting.v1.GenesisState" => {
-            let msg: crate::ibc::applications::rate_limiting::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::rate_limiting::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.Params" => {
-            let msg: crate::ibc::applications::transfer::v1::Params = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::Params =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.MsgTransfer" => {
-            let msg: crate::ibc::applications::transfer::v1::MsgTransfer = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::MsgTransfer =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.MsgTransferResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::MsgTransferResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::MsgTransferResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.MsgUpdateParams" => {
-            let msg: crate::ibc::applications::transfer::v1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.DenomTrace" => {
-            let msg: crate::ibc::applications::transfer::v1::DenomTrace = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::DenomTrace =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.Token" => {
-            let msg: crate::ibc::applications::transfer::v1::Token = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::Token =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.Denom" => {
-            let msg: crate::ibc::applications::transfer::v1::Denom = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::Denom =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.Hop" => {
-            let msg: crate::ibc::applications::transfer::v1::Hop = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::Hop =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.FungibleTokenPacketData" => {
-            let msg: crate::ibc::applications::transfer::v1::FungibleTokenPacketData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::FungibleTokenPacketData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryParamsRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryParamsResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomsRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomsResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomHashRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomHashRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomHashRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryDenomHashResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryDenomHashResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryDenomHashResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryEscrowAddressRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryEscrowAddressRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryEscrowAddressRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryEscrowAddressResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryEscrowAddressResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryEscrowAddressResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryTotalEscrowForDenomRequest" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.QueryTotalEscrowForDenomResponse" => {
-            let msg: crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.Allocation" => {
-            let msg: crate::ibc::applications::transfer::v1::Allocation = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::Allocation =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.TransferAuthorization" => {
-            let msg: crate::ibc::applications::transfer::v1::TransferAuthorization = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::TransferAuthorization =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.applications.transfer.v1.GenesisState" => {
-            let msg: crate::ibc::applications::transfer::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::applications::transfer::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.Channel" => {
@@ -976,11 +1065,13 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.IdentifiedChannel" => {
-            let msg: crate::ibc::core::channel::v1::IdentifiedChannel = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::IdentifiedChannel =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.Counterparty" => {
-            let msg: crate::ibc::core::channel::v1::Counterparty = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::Counterparty =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.Packet" => {
@@ -988,7 +1079,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.PacketState" => {
-            let msg: crate::ibc::core::channel::v1::PacketState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::PacketState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.PacketId" => {
@@ -996,7 +1088,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.Acknowledgement" => {
-            let msg: crate::ibc::core::channel::v1::Acknowledgement = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::Acknowledgement =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.Timeout" => {
@@ -1004,67 +1097,83 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.GenesisState" => {
-            let msg: crate::ibc::core::channel::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.PacketSequence" => {
-            let msg: crate::ibc::core::channel::v1::PacketSequence = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::PacketSequence =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenInit" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenInit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenInit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenInitResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenInitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenInitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenTry" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenTry = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenTry =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenTryResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenTryResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenTryResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenAck" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenAck = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenAck =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenAckResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenAckResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenAckResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenConfirm" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenConfirm = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenConfirm =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelOpenConfirmResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelOpenConfirmResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelOpenConfirmResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelCloseInit" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelCloseInit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelCloseInit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelCloseInitResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelCloseInitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelCloseInitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelCloseConfirm" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelCloseConfirm = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelCloseConfirm =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgChannelCloseConfirmResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgChannelCloseConfirmResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgChannelCloseConfirmResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgRecvPacket" => {
-            let msg: crate::ibc::core::channel::v1::MsgRecvPacket = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgRecvPacket =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgRecvPacketResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgRecvPacketResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgRecvPacketResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgTimeout" => {
@@ -1072,147 +1181,183 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgTimeoutResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgTimeoutResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgTimeoutResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgTimeoutOnClose" => {
-            let msg: crate::ibc::core::channel::v1::MsgTimeoutOnClose = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgTimeoutOnClose =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgTimeoutOnCloseResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgTimeoutOnCloseResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgTimeoutOnCloseResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgAcknowledgement" => {
-            let msg: crate::ibc::core::channel::v1::MsgAcknowledgement = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgAcknowledgement =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.MsgAcknowledgementResponse" => {
-            let msg: crate::ibc::core::channel::v1::MsgAcknowledgementResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::MsgAcknowledgementResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelsRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelsResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryConnectionChannelsRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryConnectionChannelsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryConnectionChannelsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryConnectionChannelsResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryConnectionChannelsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryConnectionChannelsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelClientStateRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelClientStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelClientStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelClientStateResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelClientStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelClientStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelConsensusStateRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelConsensusStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelConsensusStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryChannelConsensusStateResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryChannelConsensusStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryChannelConsensusStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentsRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentsResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketCommitmentsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketReceiptRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketReceiptRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketReceiptRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketReceiptResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketReceiptResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketReceiptResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementsRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementsResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryPacketAcknowledgementsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryUnreceivedPacketsRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryUnreceivedPacketsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryUnreceivedPacketsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryUnreceivedPacketsResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryUnreceivedPacketsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryUnreceivedPacketsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryUnreceivedAcksRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryUnreceivedAcksRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryUnreceivedAcksRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryUnreceivedAcksResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryUnreceivedAcksResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryUnreceivedAcksResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryNextSequenceReceiveRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryNextSequenceReceiveRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryNextSequenceReceiveRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryNextSequenceReceiveResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryNextSequenceReceiveResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryNextSequenceReceiveResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryNextSequenceSendRequest" => {
-            let msg: crate::ibc::core::channel::v1::QueryNextSequenceSendRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryNextSequenceSendRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v1.QueryNextSequenceSendResponse" => {
-            let msg: crate::ibc::core::channel::v1::QueryNextSequenceSendResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v1::QueryNextSequenceSendResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.GenesisState" => {
-            let msg: crate::ibc::core::channel::v2::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.PacketState" => {
-            let msg: crate::ibc::core::channel::v2::PacketState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::PacketState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.PacketSequence" => {
-            let msg: crate::ibc::core::channel::v2::PacketSequence = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::PacketSequence =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.Packet" => {
@@ -1224,27 +1369,33 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.Acknowledgement" => {
-            let msg: crate::ibc::core::channel::v2::Acknowledgement = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::Acknowledgement =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.RecvPacketResult" => {
-            let msg: crate::ibc::core::channel::v2::RecvPacketResult = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::RecvPacketResult =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgSendPacket" => {
-            let msg: crate::ibc::core::channel::v2::MsgSendPacket = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgSendPacket =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgSendPacketResponse" => {
-            let msg: crate::ibc::core::channel::v2::MsgSendPacketResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgSendPacketResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgRecvPacket" => {
-            let msg: crate::ibc::core::channel::v2::MsgRecvPacket = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgRecvPacket =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgRecvPacketResponse" => {
-            let msg: crate::ibc::core::channel::v2::MsgRecvPacketResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgRecvPacketResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgTimeout" => {
@@ -1252,91 +1403,113 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgTimeoutResponse" => {
-            let msg: crate::ibc::core::channel::v2::MsgTimeoutResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgTimeoutResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgAcknowledgement" => {
-            let msg: crate::ibc::core::channel::v2::MsgAcknowledgement = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgAcknowledgement =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.MsgAcknowledgementResponse" => {
-            let msg: crate::ibc::core::channel::v2::MsgAcknowledgementResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::MsgAcknowledgementResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryNextSequenceSendRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryNextSequenceSendRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryNextSequenceSendRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryNextSequenceSendResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryNextSequenceSendResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryNextSequenceSendResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentsRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentsResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketCommitmentsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementsRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementsResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketAcknowledgementsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketReceiptRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketReceiptRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketReceiptRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryPacketReceiptResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryPacketReceiptResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryPacketReceiptResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryUnreceivedPacketsRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryUnreceivedPacketsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryUnreceivedPacketsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryUnreceivedPacketsResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryUnreceivedPacketsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryUnreceivedPacketsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryUnreceivedAcksRequest" => {
-            let msg: crate::ibc::core::channel::v2::QueryUnreceivedAcksRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryUnreceivedAcksRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.channel.v2.QueryUnreceivedAcksResponse" => {
-            let msg: crate::ibc::core::channel::v2::QueryUnreceivedAcksResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::channel::v2::QueryUnreceivedAcksResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.IdentifiedClientState" => {
-            let msg: crate::ibc::core::client::v1::IdentifiedClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::IdentifiedClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.ConsensusStateWithHeight" => {
-            let msg: crate::ibc::core::client::v1::ConsensusStateWithHeight = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::ConsensusStateWithHeight =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.ClientConsensusStates" => {
-            let msg: crate::ibc::core::client::v1::ClientConsensusStates = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::ClientConsensusStates =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.Height" => {
@@ -1348,171 +1521,213 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.GenesisState" => {
-            let msg: crate::ibc::core::client::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.GenesisMetadata" => {
-            let msg: crate::ibc::core::client::v1::GenesisMetadata = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::GenesisMetadata =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.IdentifiedGenesisMetadata" => {
-            let msg: crate::ibc::core::client::v1::IdentifiedGenesisMetadata = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::IdentifiedGenesisMetadata =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgCreateClient" => {
-            let msg: crate::ibc::core::client::v1::MsgCreateClient = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgCreateClient =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgCreateClientResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgCreateClientResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgCreateClientResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpdateClient" => {
-            let msg: crate::ibc::core::client::v1::MsgUpdateClient = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpdateClient =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpdateClientResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgUpdateClientResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpdateClientResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpgradeClient" => {
-            let msg: crate::ibc::core::client::v1::MsgUpgradeClient = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpgradeClient =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpgradeClientResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgUpgradeClientResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpgradeClientResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgRecoverClient" => {
-            let msg: crate::ibc::core::client::v1::MsgRecoverClient = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgRecoverClient =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgRecoverClientResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgRecoverClientResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgRecoverClientResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgIBCSoftwareUpgrade" => {
-            let msg: crate::ibc::core::client::v1::MsgIbcSoftwareUpgrade = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgIbcSoftwareUpgrade =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgIBCSoftwareUpgradeResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgIbcSoftwareUpgradeResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgIbcSoftwareUpgradeResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpdateParams" => {
-            let msg: crate::ibc::core::client::v1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgDeleteClientCreator" => {
-            let msg: crate::ibc::core::client::v1::MsgDeleteClientCreator = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgDeleteClientCreator =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.MsgDeleteClientCreatorResponse" => {
-            let msg: crate::ibc::core::client::v1::MsgDeleteClientCreatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::MsgDeleteClientCreatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStateRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStateResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStatesRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStatesRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStatesRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStatesResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStatesResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStatesResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStateRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStateResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStatesRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStatesRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStatesRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStatesResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStatesResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStatesResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStateHeightsRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStateHeightsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStateHeightsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryConsensusStateHeightsResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryConsensusStateHeightsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryConsensusStateHeightsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStatusRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStatusRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStatusRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientStatusResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryClientStatusResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientStatusResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientParamsRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryClientParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientParamsResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryClientParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientCreatorRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryClientCreatorRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientCreatorRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryClientCreatorResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryClientCreatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryClientCreatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryUpgradedClientStateRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryUpgradedClientStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryUpgradedClientStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryUpgradedClientStateResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryUpgradedClientStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryUpgradedClientStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryUpgradedConsensusStateRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryUpgradedConsensusStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryUpgradedConsensusStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryUpgradedConsensusStateResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryUpgradedConsensusStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryUpgradedConsensusStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryVerifyMembershipRequest" => {
-            let msg: crate::ibc::core::client::v1::QueryVerifyMembershipRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryVerifyMembershipRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v1.QueryVerifyMembershipResponse" => {
-            let msg: crate::ibc::core::client::v1::QueryVerifyMembershipResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v1::QueryVerifyMembershipResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.CounterpartyInfo" => {
-            let msg: crate::ibc::core::client::v2::CounterpartyInfo = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::CounterpartyInfo =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.GenesisCounterpartyInfo" => {
-            let msg: crate::ibc::core::client::v2::GenesisCounterpartyInfo = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::GenesisCounterpartyInfo =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.GenesisState" => {
-            let msg: crate::ibc::core::client::v2::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.Config" => {
@@ -1520,71 +1735,88 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.MsgRegisterCounterparty" => {
-            let msg: crate::ibc::core::client::v2::MsgRegisterCounterparty = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::MsgRegisterCounterparty =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.MsgRegisterCounterpartyResponse" => {
-            let msg: crate::ibc::core::client::v2::MsgRegisterCounterpartyResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::MsgRegisterCounterpartyResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.MsgUpdateClientConfig" => {
-            let msg: crate::ibc::core::client::v2::MsgUpdateClientConfig = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::MsgUpdateClientConfig =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.MsgUpdateClientConfigResponse" => {
-            let msg: crate::ibc::core::client::v2::MsgUpdateClientConfigResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::MsgUpdateClientConfigResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.QueryCounterpartyInfoRequest" => {
-            let msg: crate::ibc::core::client::v2::QueryCounterpartyInfoRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::QueryCounterpartyInfoRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.QueryCounterpartyInfoResponse" => {
-            let msg: crate::ibc::core::client::v2::QueryCounterpartyInfoResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::QueryCounterpartyInfoResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.QueryConfigRequest" => {
-            let msg: crate::ibc::core::client::v2::QueryConfigRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::QueryConfigRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.client.v2.QueryConfigResponse" => {
-            let msg: crate::ibc::core::client::v2::QueryConfigResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::client::v2::QueryConfigResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.commitment.v1.MerkleRoot" => {
-            let msg: crate::ibc::core::commitment::v1::MerkleRoot = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::commitment::v1::MerkleRoot =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.commitment.v1.MerklePrefix" => {
-            let msg: crate::ibc::core::commitment::v1::MerklePrefix = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::commitment::v1::MerklePrefix =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.commitment.v1.MerkleProof" => {
-            let msg: crate::ibc::core::commitment::v1::MerkleProof = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::commitment::v1::MerkleProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.commitment.v2.MerklePath" => {
-            let msg: crate::ibc::core::commitment::v2::MerklePath = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::commitment::v2::MerklePath =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.ConnectionEnd" => {
-            let msg: crate::ibc::core::connection::v1::ConnectionEnd = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::ConnectionEnd =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.IdentifiedConnection" => {
-            let msg: crate::ibc::core::connection::v1::IdentifiedConnection = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::IdentifiedConnection =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.Counterparty" => {
-            let msg: crate::ibc::core::connection::v1::Counterparty = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::Counterparty =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.ClientPaths" => {
-            let msg: crate::ibc::core::connection::v1::ClientPaths = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::ClientPaths =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.ConnectionPaths" => {
-            let msg: crate::ibc::core::connection::v1::ConnectionPaths = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::ConnectionPaths =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.Version" => {
@@ -1596,95 +1828,118 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.GenesisState" => {
-            let msg: crate::ibc::core::connection::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenInit" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenInit = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenInit =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenInitResponse" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenInitResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenInitResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenTry" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenTry = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenTry =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenTryResponse" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenTryResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenTryResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenAck" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenAck = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenAck =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenAckResponse" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenAckResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenAckResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenConfirm" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenConfirm = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenConfirm =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgConnectionOpenConfirmResponse" => {
-            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenConfirmResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgConnectionOpenConfirmResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgUpdateParams" => {
-            let msg: crate::ibc::core::connection::v1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::ibc::core::connection::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionsRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionsResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryClientConnectionsRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryClientConnectionsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryClientConnectionsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryClientConnectionsResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryClientConnectionsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryClientConnectionsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionClientStateRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionClientStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionClientStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionClientStateResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionClientStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionClientStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionConsensusStateRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionConsensusStateRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionConsensusStateRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionConsensusStateResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionConsensusStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionConsensusStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionParamsRequest" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.connection.v1.QueryConnectionParamsResponse" => {
-            let msg: crate::ibc::core::connection::v1::QueryConnectionParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::core::connection::v1::QueryConnectionParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.core.types.v1.GenesisState" => {
@@ -1692,287 +1947,358 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.attestations.v1.ClientState" => {
-            let msg: crate::ibc::lightclients::attestations::v1::ClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::attestations::v1::ClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.attestations.v1.ConsensusState" => {
-            let msg: crate::ibc::lightclients::attestations::v1::ConsensusState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::attestations::v1::ConsensusState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.attestations.v1.AttestationProof" => {
-            let msg: crate::ibc::lightclients::attestations::v1::AttestationProof = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::attestations::v1::AttestationProof =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ClientState" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ConsensusState" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ConsensusState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ConsensusState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.Header" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::Header = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::Header =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.Misbehaviour" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::Misbehaviour = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::Misbehaviour =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.SignatureAndData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::SignatureAndData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::SignatureAndData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.TimestampedSignatureData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::TimestampedSignatureData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::TimestampedSignatureData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.SignBytes" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::SignBytes = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::SignBytes =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.HeaderData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::HeaderData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::HeaderData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ClientStateData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ClientStateData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ClientStateData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ConsensusStateData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ConsensusStateData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ConsensusStateData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ConnectionStateData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ConnectionStateData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ConnectionStateData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.ChannelStateData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::ChannelStateData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::ChannelStateData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.PacketCommitmentData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::PacketCommitmentData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::PacketCommitmentData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.PacketAcknowledgementData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::PacketAcknowledgementData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::PacketAcknowledgementData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.PacketReceiptAbsenceData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::PacketReceiptAbsenceData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::PacketReceiptAbsenceData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v2.NextSequenceRecvData" => {
-            let msg: crate::ibc::lightclients::solomachine::v2::NextSequenceRecvData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v2::NextSequenceRecvData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.ClientState" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::ClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::ClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.ConsensusState" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::ConsensusState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::ConsensusState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.Header" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::Header = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::Header =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.Misbehaviour" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::Misbehaviour = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::Misbehaviour =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.SignatureAndData" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::SignatureAndData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::SignatureAndData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.TimestampedSignatureData" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::TimestampedSignatureData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::TimestampedSignatureData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.SignBytes" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::SignBytes = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::SignBytes =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.solomachine.v3.HeaderData" => {
-            let msg: crate::ibc::lightclients::solomachine::v3::HeaderData = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::solomachine::v3::HeaderData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.tendermint.v1.ClientState" => {
-            let msg: crate::ibc::lightclients::tendermint::v1::ClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::tendermint::v1::ClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.tendermint.v1.ConsensusState" => {
-            let msg: crate::ibc::lightclients::tendermint::v1::ConsensusState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::tendermint::v1::ConsensusState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.tendermint.v1.Misbehaviour" => {
-            let msg: crate::ibc::lightclients::tendermint::v1::Misbehaviour = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::tendermint::v1::Misbehaviour =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.tendermint.v1.Header" => {
-            let msg: crate::ibc::lightclients::tendermint::v1::Header = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::tendermint::v1::Header =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.tendermint.v1.Fraction" => {
-            let msg: crate::ibc::lightclients::tendermint::v1::Fraction = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::tendermint::v1::Fraction =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgStoreCode" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgStoreCode = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgStoreCode =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgStoreCodeResponse" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgStoreCodeResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgStoreCodeResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgRemoveChecksum" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgRemoveChecksum = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgRemoveChecksum =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgRemoveChecksumResponse" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgRemoveChecksumResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgRemoveChecksumResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgMigrateContract" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgMigrateContract = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgMigrateContract =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.MsgMigrateContractResponse" => {
-            let msg: crate::ibc::lightclients::wasm::v1::MsgMigrateContractResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::MsgMigrateContractResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.QueryChecksumsRequest" => {
-            let msg: crate::ibc::lightclients::wasm::v1::QueryChecksumsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::QueryChecksumsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.QueryChecksumsResponse" => {
-            let msg: crate::ibc::lightclients::wasm::v1::QueryChecksumsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::QueryChecksumsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.QueryCodeRequest" => {
-            let msg: crate::ibc::lightclients::wasm::v1::QueryCodeRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::QueryCodeRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.QueryCodeResponse" => {
-            let msg: crate::ibc::lightclients::wasm::v1::QueryCodeResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::QueryCodeResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.GenesisState" => {
-            let msg: crate::ibc::lightclients::wasm::v1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.Contract" => {
-            let msg: crate::ibc::lightclients::wasm::v1::Contract = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::Contract =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.ClientState" => {
-            let msg: crate::ibc::lightclients::wasm::v1::ClientState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::ClientState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.ConsensusState" => {
-            let msg: crate::ibc::lightclients::wasm::v1::ConsensusState = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::ConsensusState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/ibc.lightclients.wasm.v1.ClientMessage" => {
-            let msg: crate::ibc::lightclients::wasm::v1::ClientMessage = serde_json::from_slice(json_data)?;
+            let msg: crate::ibc::lightclients::wasm::v1::ClientMessage =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.DenomAuthorityMetadata" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::DenomAuthorityMetadata = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::DenomAuthorityMetadata =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.Params" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::Params = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::Params =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgCreateDenom" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgCreateDenom = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgCreateDenom =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgCreateDenomResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgCreateDenomResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgCreateDenomResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgMint" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgMint = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgMint =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgMintResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgMintResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgMintResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgBurn" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgBurn = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgBurn =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgBurnResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgBurnResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgBurnResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgChangeAdmin" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgChangeAdmin = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgChangeAdmin =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgChangeAdminResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgChangeAdminResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgChangeAdminResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadata = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadata =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadataResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadataResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadataResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgForceTransfer" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgForceTransfer = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgForceTransfer =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgForceTransferResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgForceTransferResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgForceTransferResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgUpdateParams" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.MsgUpdateParamsResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryParamsRequest" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryParamsResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomAuthorityMetadataRequest" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomAuthorityMetadataResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomsFromCreatorRequest" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomsFromCreatorResponse" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.GenesisState" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/osmosis.tokenfactory.v1beta1.GenesisDenom" => {
-            let msg: crate::osmosis::tokenfactory::v1beta1::GenesisDenom = serde_json::from_slice(json_data)?;
+            let msg: crate::osmosis::tokenfactory::v1beta1::GenesisDenom =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.GenesisState" => {
@@ -1988,23 +2314,28 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::terp::clock::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::clock::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.QueryClockContracts" => {
-            let msg: crate::terp::clock::v1::QueryClockContracts = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::clock::v1::QueryClockContracts =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.QueryClockContractsResponse" => {
-            let msg: crate::terp::clock::v1::QueryClockContractsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::clock::v1::QueryClockContractsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.QueryParamsRequest" => {
-            let msg: crate::terp::clock::v1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::clock::v1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.clock.v1.QueryParamsResponse" => {
-            let msg: crate::terp::clock::v1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::clock::v1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.GenesisState" => {
@@ -2016,11 +2347,13 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.MsgDistributeTokens" => {
-            let msg: crate::terp::drip::v1::MsgDistributeTokens = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::drip::v1::MsgDistributeTokens =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.MsgDistributeTokensResponse" => {
-            let msg: crate::terp::drip::v1::MsgDistributeTokensResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::drip::v1::MsgDistributeTokensResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.MsgUpdateParams" => {
@@ -2028,7 +2361,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::terp::drip::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::drip::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.QueryParamsRequest" => {
@@ -2036,7 +2370,8 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/terp.drip.v1.QueryParamsResponse" => {
-            let msg: crate::terp::drip::v1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::drip::v1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.FeeShare" => {
@@ -2052,151 +2387,188 @@ pub fn encode(type_url: &str, json_data: &[u8]) -> Result<Vec<u8>> {
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgRegisterFeeShare" => {
-            let msg: crate::terp::feeshare::v1::MsgRegisterFeeShare = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgRegisterFeeShare =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgRegisterFeeShareResponse" => {
-            let msg: crate::terp::feeshare::v1::MsgRegisterFeeShareResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgRegisterFeeShareResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgUpdateFeeShare" => {
-            let msg: crate::terp::feeshare::v1::MsgUpdateFeeShare = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgUpdateFeeShare =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgUpdateFeeShareResponse" => {
-            let msg: crate::terp::feeshare::v1::MsgUpdateFeeShareResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgUpdateFeeShareResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgCancelFeeShare" => {
-            let msg: crate::terp::feeshare::v1::MsgCancelFeeShare = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgCancelFeeShare =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgCancelFeeShareResponse" => {
-            let msg: crate::terp::feeshare::v1::MsgCancelFeeShareResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgCancelFeeShareResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgUpdateParams" => {
-            let msg: crate::terp::feeshare::v1::MsgUpdateParams = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgUpdateParams =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.MsgUpdateParamsResponse" => {
-            let msg: crate::terp::feeshare::v1::MsgUpdateParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::MsgUpdateParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryFeeSharesRequest" => {
-            let msg: crate::terp::feeshare::v1::QueryFeeSharesRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryFeeSharesRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryFeeSharesResponse" => {
-            let msg: crate::terp::feeshare::v1::QueryFeeSharesResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryFeeSharesResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryFeeShareRequest" => {
-            let msg: crate::terp::feeshare::v1::QueryFeeShareRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryFeeShareRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryFeeShareResponse" => {
-            let msg: crate::terp::feeshare::v1::QueryFeeShareResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryFeeShareResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryParamsRequest" => {
-            let msg: crate::terp::feeshare::v1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryParamsResponse" => {
-            let msg: crate::terp::feeshare::v1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryDeployerFeeSharesRequest" => {
-            let msg: crate::terp::feeshare::v1::QueryDeployerFeeSharesRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryDeployerFeeSharesRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryDeployerFeeSharesResponse" => {
-            let msg: crate::terp::feeshare::v1::QueryDeployerFeeSharesResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryDeployerFeeSharesResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryWithdrawerFeeSharesRequest" => {
-            let msg: crate::terp::feeshare::v1::QueryWithdrawerFeeSharesRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryWithdrawerFeeSharesRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.feeshare.v1.QueryWithdrawerFeeSharesResponse" => {
-            let msg: crate::terp::feeshare::v1::QueryWithdrawerFeeSharesResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::feeshare::v1::QueryWithdrawerFeeSharesResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgAddAuthenticator" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgAddAuthenticator = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgAddAuthenticator =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgAddAuthenticatorResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgAddAuthenticatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgAddAuthenticatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgRemoveAuthenticator" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticator = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticator =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgRemoveAuthenticatorResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgSetActiveState" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgSetActiveState = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgSetActiveState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.MsgSetActiveStateResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::MsgSetActiveStateResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::MsgSetActiveStateResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.AgAuthData" => {
-            let msg: crate::terp::smartaccount::v1beta1::AgAuthData = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::AgAuthData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.TxExtension" => {
-            let msg: crate::terp::smartaccount::v1beta1::TxExtension = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::TxExtension =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.BlsConfig" => {
-            let msg: crate::terp::smartaccount::v1beta1::BlsConfig = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::BlsConfig =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.AccountAuthenticator" => {
-            let msg: crate::terp::smartaccount::v1beta1::AccountAuthenticator = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::AccountAuthenticator =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.Params" => {
-            let msg: crate::terp::smartaccount::v1beta1::Params = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::Params =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.QueryParamsRequest" => {
-            let msg: crate::terp::smartaccount::v1beta1::QueryParamsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::QueryParamsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.QueryParamsResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::QueryParamsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::QueryParamsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorsRequest" => {
-            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorsRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorsRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorsResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorsResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorsResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorRequest" => {
-            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorRequest = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorRequest =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorResponse" => {
-            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorResponse = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::GetAuthenticatorResponse =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.AuthenticatorData" => {
-            let msg: crate::terp::smartaccount::v1beta1::AuthenticatorData = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::AuthenticatorData =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         "/terp.smartaccount.v1beta1.GenesisState" => {
-            let msg: crate::terp::smartaccount::v1beta1::GenesisState = serde_json::from_slice(json_data)?;
+            let msg: crate::terp::smartaccount::v1beta1::GenesisState =
+                serde_json::from_slice(json_data)?;
             Ok(msg.encode_to_vec())
         }
         _ => anyhow::bail!("Unknown type URL: {}", type_url),
@@ -2342,7 +2714,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/cosmos.upgrade.v1beta1.CancelSoftwareUpgradeProposal" => {
-            let msg = crate::cosmos::upgrade::v1beta1::CancelSoftwareUpgradeProposal::decode(proto_data)?;
+            let msg =
+                crate::cosmos::upgrade::v1beta1::CancelSoftwareUpgradeProposal::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/cosmos.upgrade.v1beta1.ModuleVersion" => {
@@ -2378,19 +2751,25 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.QueryAccountAddressRequest" => {
-            let msg = crate::ibc::applications::gmp::v1::QueryAccountAddressRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::gmp::v1::QueryAccountAddressRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.QueryAccountAddressResponse" => {
-            let msg = crate::ibc::applications::gmp::v1::QueryAccountAddressResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::gmp::v1::QueryAccountAddressResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.QueryAccountIdentifierRequest" => {
-            let msg = crate::ibc::applications::gmp::v1::QueryAccountIdentifierRequest::decode(proto_data)?;
+            let msg = crate::ibc::applications::gmp::v1::QueryAccountIdentifierRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.QueryAccountIdentifierResponse" => {
-            let msg = crate::ibc::applications::gmp::v1::QueryAccountIdentifierResponse::decode(proto_data)?;
+            let msg = crate::ibc::applications::gmp::v1::QueryAccountIdentifierResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.GenesisState" => {
@@ -2398,23 +2777,31 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.gmp.v1.RegisteredICS27Account" => {
-            let msg = crate::ibc::applications::gmp::v1::RegisteredIcs27Account::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::gmp::v1::RegisteredIcs27Account::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.controller.v1.Params" => {
-            let msg = crate::ibc::applications::interchain_accounts::controller::v1::Params::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::controller::v1::Params::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccount" => {
             let msg = crate::ibc::applications::interchain_accounts::controller::v1::MsgRegisterInterchainAccount::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
-        "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccountResponse" => {
+        "/ibc.applications.interchain_accounts.controller.v1.MsgRegisterInterchainAccountResponse" =>
+        {
             let msg = crate::ibc::applications::interchain_accounts::controller::v1::MsgRegisterInterchainAccountResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgSendTx" => {
-            let msg = crate::ibc::applications::interchain_accounts::controller::v1::MsgSendTx::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::controller::v1::MsgSendTx::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.controller.v1.MsgSendTxResponse" => {
@@ -2446,7 +2833,10 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.genesis.v1.GenesisState" => {
-            let msg = crate::ibc::applications::interchain_accounts::genesis::v1::GenesisState::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::genesis::v1::GenesisState::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.genesis.v1.ControllerGenesisState" => {
@@ -2458,7 +2848,10 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.genesis.v1.ActiveChannel" => {
-            let msg = crate::ibc::applications::interchain_accounts::genesis::v1::ActiveChannel::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::genesis::v1::ActiveChannel::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.genesis.v1.RegisteredInterchainAccount" => {
@@ -2466,15 +2859,23 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.host.v1.Params" => {
-            let msg = crate::ibc::applications::interchain_accounts::host::v1::Params::decode(proto_data)?;
+            let msg = crate::ibc::applications::interchain_accounts::host::v1::Params::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.host.v1.QueryRequest" => {
-            let msg = crate::ibc::applications::interchain_accounts::host::v1::QueryRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::host::v1::QueryRequest::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgUpdateParams" => {
-            let msg = crate::ibc::applications::interchain_accounts::host::v1::MsgUpdateParams::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::host::v1::MsgUpdateParams::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.host.v1.MsgUpdateParamsResponse" => {
@@ -2498,7 +2899,9 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.v1.InterchainAccount" => {
-            let msg = crate::ibc::applications::interchain_accounts::v1::InterchainAccount::decode(proto_data)?;
+            let msg = crate::ibc::applications::interchain_accounts::v1::InterchainAccount::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.v1.InterchainAccountPacketData" => {
@@ -2506,51 +2909,76 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.v1.CosmosTx" => {
-            let msg = crate::ibc::applications::interchain_accounts::v1::CosmosTx::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::v1::CosmosTx::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.interchain_accounts.v1.Metadata" => {
-            let msg = crate::ibc::applications::interchain_accounts::v1::Metadata::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::interchain_accounts::v1::Metadata::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.packet_forward_middleware.v1.GenesisState" => {
-            let msg = crate::ibc::applications::packet_forward_middleware::v1::GenesisState::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::packet_forward_middleware::v1::GenesisState::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.packet_forward_middleware.v1.InFlightPacket" => {
-            let msg = crate::ibc::applications::packet_forward_middleware::v1::InFlightPacket::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::packet_forward_middleware::v1::InFlightPacket::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgAddRateLimit" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgAddRateLimit::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::MsgAddRateLimit::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgAddRateLimitResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgAddRateLimitResponse::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::MsgAddRateLimitResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgUpdateRateLimit" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimit::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimit::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgUpdateRateLimitResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimitResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::MsgUpdateRateLimitResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgRemoveRateLimit" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimit::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimit::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgRemoveRateLimitResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimitResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::MsgRemoveRateLimitResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgResetRateLimit" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgResetRateLimit::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::MsgResetRateLimit::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.MsgResetRateLimitResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::MsgResetRateLimitResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::MsgResetRateLimitResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.Path" => {
@@ -2570,7 +2998,9 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.WhitelistedAddressPair" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::WhitelistedAddressPair::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::WhitelistedAddressPair::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.HourEpoch" => {
@@ -2578,19 +3008,29 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.QueryAllRateLimitsRequest" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsRequest::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.QueryAllRateLimitsResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::QueryAllRateLimitsResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitRequest" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::QueryRateLimitRequest::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::QueryRateLimitRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitResponse" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::QueryRateLimitResponse::decode(proto_data)?;
+            let msg = crate::ibc::applications::rate_limiting::v1::QueryRateLimitResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.QueryRateLimitsByChainIDRequest" => {
@@ -2626,7 +3066,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.rate_limiting.v1.GenesisState" => {
-            let msg = crate::ibc::applications::rate_limiting::v1::GenesisState::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::rate_limiting::v1::GenesisState::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.Params" => {
@@ -2638,7 +3079,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.MsgTransferResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::MsgTransferResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::MsgTransferResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.MsgUpdateParams" => {
@@ -2646,7 +3088,9 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.MsgUpdateParamsResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::MsgUpdateParamsResponse::decode(proto_data)?;
+            let msg = crate::ibc::applications::transfer::v1::MsgUpdateParamsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.DenomTrace" => {
@@ -2666,55 +3110,75 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.FungibleTokenPacketData" => {
-            let msg = crate::ibc::applications::transfer::v1::FungibleTokenPacketData::decode(proto_data)?;
+            let msg = crate::ibc::applications::transfer::v1::FungibleTokenPacketData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryParamsRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryParamsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryParamsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryParamsResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryParamsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryParamsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomsRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomsResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomHashRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomHashRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomHashRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryDenomHashResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryDenomHashResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryDenomHashResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryEscrowAddressRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryEscrowAddressRequest::decode(proto_data)?;
+            let msg = crate::ibc::applications::transfer::v1::QueryEscrowAddressRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryEscrowAddressResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryEscrowAddressResponse::decode(proto_data)?;
+            let msg = crate::ibc::applications::transfer::v1::QueryEscrowAddressResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryTotalEscrowForDenomRequest" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomRequest::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.QueryTotalEscrowForDenomResponse" => {
-            let msg = crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::QueryTotalEscrowForDenomResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.Allocation" => {
@@ -2722,7 +3186,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.TransferAuthorization" => {
-            let msg = crate::ibc::applications::transfer::v1::TransferAuthorization::decode(proto_data)?;
+            let msg =
+                crate::ibc::applications::transfer::v1::TransferAuthorization::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.applications.transfer.v1.GenesisState" => {
@@ -2774,7 +3239,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelOpenInitResponse" => {
-            let msg = crate::ibc::core::channel::v1::MsgChannelOpenInitResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::MsgChannelOpenInitResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelOpenTry" => {
@@ -2798,7 +3264,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelOpenConfirmResponse" => {
-            let msg = crate::ibc::core::channel::v1::MsgChannelOpenConfirmResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::MsgChannelOpenConfirmResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelCloseInit" => {
@@ -2806,7 +3273,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelCloseInitResponse" => {
-            let msg = crate::ibc::core::channel::v1::MsgChannelCloseInitResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::MsgChannelCloseInitResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelCloseConfirm" => {
@@ -2814,7 +3282,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgChannelCloseConfirmResponse" => {
-            let msg = crate::ibc::core::channel::v1::MsgChannelCloseConfirmResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::MsgChannelCloseConfirmResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgRecvPacket" => {
@@ -2846,7 +3315,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.MsgAcknowledgementResponse" => {
-            let msg = crate::ibc::core::channel::v1::MsgAcknowledgementResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::MsgAcknowledgementResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryChannelRequest" => {
@@ -2866,43 +3336,55 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryConnectionChannelsRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryConnectionChannelsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryConnectionChannelsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryConnectionChannelsResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryConnectionChannelsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryConnectionChannelsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryChannelClientStateRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryChannelClientStateRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryChannelClientStateRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryChannelClientStateResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryChannelClientStateResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryChannelClientStateResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryChannelConsensusStateRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryChannelConsensusStateRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryChannelConsensusStateRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryChannelConsensusStateResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryChannelConsensusStateResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryChannelConsensusStateResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketCommitmentRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryPacketCommitmentRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketCommitmentResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryPacketCommitmentResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentsRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketCommitmentsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryPacketCommitmentsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketCommitmentsResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketCommitmentsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryPacketCommitmentsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketReceiptRequest" => {
@@ -2910,55 +3392,73 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketReceiptResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketReceiptResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryPacketReceiptResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementsRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementsRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementsRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryPacketAcknowledgementsResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementsResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryPacketAcknowledgementsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryUnreceivedPacketsRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryUnreceivedPacketsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryUnreceivedPacketsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryUnreceivedPacketsResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryUnreceivedPacketsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryUnreceivedPacketsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryUnreceivedAcksRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryUnreceivedAcksRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryUnreceivedAcksRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryUnreceivedAcksResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryUnreceivedAcksResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryUnreceivedAcksResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryNextSequenceReceiveRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryNextSequenceReceiveRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryNextSequenceReceiveRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryNextSequenceReceiveResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryNextSequenceReceiveResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v1::QueryNextSequenceReceiveResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryNextSequenceSendRequest" => {
-            let msg = crate::ibc::core::channel::v1::QueryNextSequenceSendRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryNextSequenceSendRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v1.QueryNextSequenceSendResponse" => {
-            let msg = crate::ibc::core::channel::v1::QueryNextSequenceSendResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v1::QueryNextSequenceSendResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.GenesisState" => {
@@ -3018,47 +3518,62 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.MsgAcknowledgementResponse" => {
-            let msg = crate::ibc::core::channel::v2::MsgAcknowledgementResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::MsgAcknowledgementResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryNextSequenceSendRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryNextSequenceSendRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryNextSequenceSendRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryNextSequenceSendResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryNextSequenceSendResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryNextSequenceSendResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketCommitmentRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryPacketCommitmentRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketCommitmentResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryPacketCommitmentResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentsRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketCommitmentsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryPacketCommitmentsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketCommitmentsResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketCommitmentsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryPacketCommitmentsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementsRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementsRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementsRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketAcknowledgementsResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementsResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::channel::v2::QueryPacketAcknowledgementsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketReceiptRequest" => {
@@ -3066,23 +3581,28 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryPacketReceiptResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryPacketReceiptResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryPacketReceiptResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryUnreceivedPacketsRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryUnreceivedPacketsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryUnreceivedPacketsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryUnreceivedPacketsResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryUnreceivedPacketsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryUnreceivedPacketsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryUnreceivedAcksRequest" => {
-            let msg = crate::ibc::core::channel::v2::QueryUnreceivedAcksRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryUnreceivedAcksRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.channel.v2.QueryUnreceivedAcksResponse" => {
-            let msg = crate::ibc::core::channel::v2::QueryUnreceivedAcksResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::channel::v2::QueryUnreceivedAcksResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.IdentifiedClientState" => {
@@ -3154,7 +3674,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.MsgIBCSoftwareUpgradeResponse" => {
-            let msg = crate::ibc::core::client::v1::MsgIbcSoftwareUpgradeResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::MsgIbcSoftwareUpgradeResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.MsgUpdateParams" => {
@@ -3170,7 +3691,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.MsgDeleteClientCreatorResponse" => {
-            let msg = crate::ibc::core::client::v1::MsgDeleteClientCreatorResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::MsgDeleteClientCreatorResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryClientStateRequest" => {
@@ -3194,23 +3716,30 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryConsensusStateResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryConsensusStateResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryConsensusStateResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryConsensusStatesRequest" => {
-            let msg = crate::ibc::core::client::v1::QueryConsensusStatesRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryConsensusStatesRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryConsensusStatesResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryConsensusStatesResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryConsensusStatesResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryConsensusStateHeightsRequest" => {
-            let msg = crate::ibc::core::client::v1::QueryConsensusStateHeightsRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::client::v1::QueryConsensusStateHeightsRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryConsensusStateHeightsResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryConsensusStateHeightsResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::client::v1::QueryConsensusStateHeightsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryClientStatusRequest" => {
@@ -3238,27 +3767,35 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryUpgradedClientStateRequest" => {
-            let msg = crate::ibc::core::client::v1::QueryUpgradedClientStateRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryUpgradedClientStateRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryUpgradedClientStateResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryUpgradedClientStateResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryUpgradedClientStateResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryUpgradedConsensusStateRequest" => {
-            let msg = crate::ibc::core::client::v1::QueryUpgradedConsensusStateRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::client::v1::QueryUpgradedConsensusStateRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryUpgradedConsensusStateResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryUpgradedConsensusStateResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::client::v1::QueryUpgradedConsensusStateResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryVerifyMembershipRequest" => {
-            let msg = crate::ibc::core::client::v1::QueryVerifyMembershipRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryVerifyMembershipRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v1.QueryVerifyMembershipResponse" => {
-            let msg = crate::ibc::core::client::v1::QueryVerifyMembershipResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v1::QueryVerifyMembershipResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.CounterpartyInfo" => {
@@ -3282,7 +3819,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.MsgRegisterCounterpartyResponse" => {
-            let msg = crate::ibc::core::client::v2::MsgRegisterCounterpartyResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v2::MsgRegisterCounterpartyResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.MsgUpdateClientConfig" => {
@@ -3290,15 +3828,18 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.MsgUpdateClientConfigResponse" => {
-            let msg = crate::ibc::core::client::v2::MsgUpdateClientConfigResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v2::MsgUpdateClientConfigResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.QueryCounterpartyInfoRequest" => {
-            let msg = crate::ibc::core::client::v2::QueryCounterpartyInfoRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v2::QueryCounterpartyInfoRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.QueryCounterpartyInfoResponse" => {
-            let msg = crate::ibc::core::client::v2::QueryCounterpartyInfoResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::client::v2::QueryCounterpartyInfoResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.client.v2.QueryConfigRequest" => {
@@ -3362,7 +3903,9 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenInitResponse" => {
-            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenInitResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenInitResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenTry" => {
@@ -3370,7 +3913,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenTryResponse" => {
-            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenTryResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::MsgConnectionOpenTryResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenAck" => {
@@ -3378,15 +3922,19 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenAckResponse" => {
-            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenAckResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::MsgConnectionOpenAckResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenConfirm" => {
-            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenConfirm::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::MsgConnectionOpenConfirm::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgConnectionOpenConfirmResponse" => {
-            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenConfirmResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::MsgConnectionOpenConfirmResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgUpdateParams" => {
@@ -3394,7 +3942,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.MsgUpdateParamsResponse" => {
-            let msg = crate::ibc::core::connection::v1::MsgUpdateParamsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::MsgUpdateParamsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionRequest" => {
@@ -3402,47 +3951,67 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionsRequest" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionsResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryClientConnectionsRequest" => {
-            let msg = crate::ibc::core::connection::v1::QueryClientConnectionsRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::QueryClientConnectionsRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryClientConnectionsResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryClientConnectionsResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::QueryClientConnectionsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionClientStateRequest" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionClientStateRequest::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::QueryConnectionClientStateRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionClientStateResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionClientStateResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::QueryConnectionClientStateResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionConsensusStateRequest" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionConsensusStateRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionConsensusStateRequest::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionConsensusStateResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionConsensusStateResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionConsensusStateResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionParamsRequest" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionParamsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::core::connection::v1::QueryConnectionParamsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.connection.v1.QueryConnectionParamsResponse" => {
-            let msg = crate::ibc::core::connection::v1::QueryConnectionParamsResponse::decode(proto_data)?;
+            let msg = crate::ibc::core::connection::v1::QueryConnectionParamsResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.core.types.v1.GenesisState" => {
@@ -3454,11 +4023,13 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.attestations.v1.ConsensusState" => {
-            let msg = crate::ibc::lightclients::attestations::v1::ConsensusState::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::attestations::v1::ConsensusState::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.attestations.v1.AttestationProof" => {
-            let msg = crate::ibc::lightclients::attestations::v1::AttestationProof::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::attestations::v1::AttestationProof::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ClientState" => {
@@ -3466,7 +4037,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ConsensusState" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::ConsensusState::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::ConsensusState::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.Header" => {
@@ -3478,11 +4050,14 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.SignatureAndData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::SignatureAndData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::SignatureAndData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.TimestampedSignatureData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::TimestampedSignatureData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v2::TimestampedSignatureData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.SignBytes" => {
@@ -3494,35 +4069,47 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ClientStateData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::ClientStateData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::ClientStateData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ConsensusStateData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::ConsensusStateData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::ConsensusStateData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ConnectionStateData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::ConnectionStateData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::ConnectionStateData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.ChannelStateData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::ChannelStateData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v2::ChannelStateData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.PacketCommitmentData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::PacketCommitmentData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v2::PacketCommitmentData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.PacketAcknowledgementData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::PacketAcknowledgementData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v2::PacketAcknowledgementData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.PacketReceiptAbsenceData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::PacketReceiptAbsenceData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v2::PacketReceiptAbsenceData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v2.NextSequenceRecvData" => {
-            let msg = crate::ibc::lightclients::solomachine::v2::NextSequenceRecvData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v2::NextSequenceRecvData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.ClientState" => {
@@ -3530,7 +4117,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.ConsensusState" => {
-            let msg = crate::ibc::lightclients::solomachine::v3::ConsensusState::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v3::ConsensusState::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.Header" => {
@@ -3542,11 +4130,14 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.SignatureAndData" => {
-            let msg = crate::ibc::lightclients::solomachine::v3::SignatureAndData::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::solomachine::v3::SignatureAndData::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.TimestampedSignatureData" => {
-            let msg = crate::ibc::lightclients::solomachine::v3::TimestampedSignatureData::decode(proto_data)?;
+            let msg = crate::ibc::lightclients::solomachine::v3::TimestampedSignatureData::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.solomachine.v3.SignBytes" => {
@@ -3590,7 +4181,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.MsgRemoveChecksumResponse" => {
-            let msg = crate::ibc::lightclients::wasm::v1::MsgRemoveChecksumResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::wasm::v1::MsgRemoveChecksumResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.MsgMigrateContract" => {
@@ -3598,15 +4190,18 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.MsgMigrateContractResponse" => {
-            let msg = crate::ibc::lightclients::wasm::v1::MsgMigrateContractResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::wasm::v1::MsgMigrateContractResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.QueryChecksumsRequest" => {
-            let msg = crate::ibc::lightclients::wasm::v1::QueryChecksumsRequest::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::wasm::v1::QueryChecksumsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.QueryChecksumsResponse" => {
-            let msg = crate::ibc::lightclients::wasm::v1::QueryChecksumsResponse::decode(proto_data)?;
+            let msg =
+                crate::ibc::lightclients::wasm::v1::QueryChecksumsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/ibc.lightclients.wasm.v1.QueryCodeRequest" => {
@@ -3638,7 +4233,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.DenomAuthorityMetadata" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::DenomAuthorityMetadata::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::DenomAuthorityMetadata::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.Params" => {
@@ -3650,7 +4246,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgCreateDenomResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgCreateDenomResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::MsgCreateDenomResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgMint" => {
@@ -3674,15 +4271,19 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgChangeAdminResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgChangeAdminResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::MsgChangeAdminResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadata" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadata::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadata::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgSetDenomMetadataResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadataResponse::decode(proto_data)?;
+            let msg = crate::osmosis::tokenfactory::v1beta1::MsgSetDenomMetadataResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgForceTransfer" => {
@@ -3690,7 +4291,9 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgForceTransferResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgForceTransferResponse::decode(proto_data)?;
+            let msg = crate::osmosis::tokenfactory::v1beta1::MsgForceTransferResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgUpdateParams" => {
@@ -3698,31 +4301,45 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.MsgUpdateParamsResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::MsgUpdateParamsResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::MsgUpdateParamsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryParamsRequest" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryParamsRequest::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::QueryParamsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryParamsResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryParamsResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::QueryParamsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomAuthorityMetadataRequest" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomAuthorityMetadataResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomsFromCreatorRequest" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorRequest::decode(proto_data)?;
+            let msg = crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorRequest::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.QueryDenomsFromCreatorResponse" => {
-            let msg = crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse::decode(proto_data)?;
+            let msg =
+                crate::osmosis::tokenfactory::v1beta1::QueryDenomsFromCreatorResponse::decode(
+                    proto_data,
+                )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/osmosis.tokenfactory.v1beta1.GenesisState" => {
@@ -3870,15 +4487,18 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.feeshare.v1.QueryDeployerFeeSharesResponse" => {
-            let msg = crate::terp::feeshare::v1::QueryDeployerFeeSharesResponse::decode(proto_data)?;
+            let msg =
+                crate::terp::feeshare::v1::QueryDeployerFeeSharesResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.feeshare.v1.QueryWithdrawerFeeSharesRequest" => {
-            let msg = crate::terp::feeshare::v1::QueryWithdrawerFeeSharesRequest::decode(proto_data)?;
+            let msg =
+                crate::terp::feeshare::v1::QueryWithdrawerFeeSharesRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.feeshare.v1.QueryWithdrawerFeeSharesResponse" => {
-            let msg = crate::terp::feeshare::v1::QueryWithdrawerFeeSharesResponse::decode(proto_data)?;
+            let msg =
+                crate::terp::feeshare::v1::QueryWithdrawerFeeSharesResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgAddAuthenticator" => {
@@ -3886,15 +4506,20 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgAddAuthenticatorResponse" => {
-            let msg = crate::terp::smartaccount::v1beta1::MsgAddAuthenticatorResponse::decode(proto_data)?;
+            let msg = crate::terp::smartaccount::v1beta1::MsgAddAuthenticatorResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgRemoveAuthenticator" => {
-            let msg = crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticator::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticator::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgRemoveAuthenticatorResponse" => {
-            let msg = crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticatorResponse::decode(proto_data)?;
+            let msg = crate::terp::smartaccount::v1beta1::MsgRemoveAuthenticatorResponse::decode(
+                proto_data,
+            )?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgSetActiveState" => {
@@ -3902,7 +4527,8 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.MsgSetActiveStateResponse" => {
-            let msg = crate::terp::smartaccount::v1beta1::MsgSetActiveStateResponse::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::MsgSetActiveStateResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.AgAuthData" => {
@@ -3934,19 +4560,23 @@ pub fn decode(type_url: &str, proto_data: &[u8]) -> Result<Vec<u8>> {
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorsRequest" => {
-            let msg = crate::terp::smartaccount::v1beta1::GetAuthenticatorsRequest::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::GetAuthenticatorsRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorsResponse" => {
-            let msg = crate::terp::smartaccount::v1beta1::GetAuthenticatorsResponse::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::GetAuthenticatorsResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorRequest" => {
-            let msg = crate::terp::smartaccount::v1beta1::GetAuthenticatorRequest::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::GetAuthenticatorRequest::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.GetAuthenticatorResponse" => {
-            let msg = crate::terp::smartaccount::v1beta1::GetAuthenticatorResponse::decode(proto_data)?;
+            let msg =
+                crate::terp::smartaccount::v1beta1::GetAuthenticatorResponse::decode(proto_data)?;
             Ok(serde_json::to_vec(&msg)?)
         }
         "/terp.smartaccount.v1beta1.AuthenticatorData" => {

@@ -2,7 +2,7 @@
 //!
 //! Mirrors `cw-headstash` interface shape. Artifact label: `cw_private_dex`.
 
-use crate::{execute, instantiate, query, msg::*};
+use crate::{execute, instantiate, msg::*, query};
 use cosmwasm_std::Empty;
 use cw_orch::prelude::*;
 

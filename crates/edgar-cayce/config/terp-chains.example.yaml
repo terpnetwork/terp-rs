@@ -1,0 +1,40 @@
+# Terp Network chains (validator + gov monitoring)
+# Port of astrostake/discord-cosmos-validator-monitor config.yaml, tuned for Terp.
+#
+# The bot does not load this file. It reads env vars (.env.example):
+#   TERP_NODE_REST, GOV_ALERT_CHANNEL_ID, CHAIN_ALERT_CHANNEL_ID,
+#   ACTIVITY_CHANNEL_ID, GOV_EXPLORER_BASE.
+# Public REST is https://api.terp.network (443). The :1317 port on that host
+# does not accept connections. A local terpd LCD is http://127.0.0.1:1317.
+chains:
+  - name: terp-mainnet
+    rest: https://api.terp.network
+    prefix: terp
+    missed_threshold: 50
+    validators: []
+  - name: terp-testnet
+    rest: https://testnet-api.terp.network
+    prefix: terp
+    missed_threshold: 50
+    validators: []
+
+# Polling (the running bot uses a 45s LCD poll in src/main.rs, not these keys)
+validator_poll_secs: 60
+gov_poll_secs: 45
+
+# Discord channel IDs. Set GOV_ALERT_CHANNEL_ID to #gov-updates.
+# gov_alert_channel here is documentation only.
+validator_alert_channel: 0
+gov_alert_channel: 0
+digest_channel: 0
+digest_hour_utc: 16
+
+# Block-explorer prefix. Alerts link to {base}/{proposal_id}.
+# Default in code: https://ping.pub/terp/gov
+explorer_proposal_base: https://ping.pub/terp/gov
+
+# DAO notifier is env-configured (this file is not loaded by the bot):
+#   DAO_CONTRACT, DAO_ALLOWLIST, DAO_NOTIFY_CHANNEL_ID, DAO_POLL_SECS,
+#   DAO_CHAIN_ID, DAO_UI_BASE, DAO_INCLUDE_SUBDAOS
+# The contract address is never hard-coded. SubDAOs of DAO_CONTRACT are
+# included unless DAO_INCLUDE_SUBDAOS=false.

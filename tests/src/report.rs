@@ -251,7 +251,11 @@ pub fn preflight_missing(mode: &CapabilityMode, require_env_file: bool) -> Vec<S
         }
     }
     for v in required_env_for_mode(mode) {
-        if std::env::var(v).ok().filter(|s| !s.trim().is_empty()).is_none() {
+        if std::env::var(v)
+            .ok()
+            .filter(|s| !s.trim().is_empty())
+            .is_none()
+        {
             missing.push(v.to_string());
         }
     }

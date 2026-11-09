@@ -3,7 +3,7 @@
 //! Runs the gen-tools pipeline on all CosmWasm workspaces defined in
 //! `tools/gen-tools/gen-tools.yaml`, generating typed API client libraries
 //! (proto, TypeScript, Python, Go, Zod, OpenAPI, README docs, etc.) into the
-//! `terp-api/` directory at the terp-rs workspace root.
+//! `api/<lang>/<contract>/` directory at the terp-rs workspace root.
 //!
 //! Usage:
 //!   gen-api                         # Generate for all projects (default steps)
@@ -12,7 +12,7 @@
 //!   gen-api --help
 
 use clap::Parser;
-use gen_tools::config::{build_context, ProjectConfigFile, ProjectOverrides};
+use gen_tools::config::{ProjectConfigFile, ProjectOverrides, build_context};
 use gen_tools::pipeline::Pipeline;
 use std::path::{Path, PathBuf};
 
@@ -179,17 +179,24 @@ fn main() -> anyhow::Result<()> {
                 // Check for failures
                 let failures: Vec<_> = results.iter().filter(|r| r.is_err()).collect();
                 if !failures.is_empty() {
-                    eprintln!("  warning: {} step(s) failed for '{}'", failures.len(), entry.name);
+                    eprintln!(
+                        "  warning: {} step(s) failed for '{}'",
+                        failures.len(),
+                        entry.name
+                    );
                 }
             }
             Err(e) => {
-                eprintln!("  error: failed to build context for '{}': {}", entry.name, e);
+                eprintln!(
+                    "  error: failed to build context for '{}': {}",
+                    entry.name, e
+                );
             }
         }
     }
 
     log::info!(
-        "Done. Generated API libraries are in {}/terp-api/",
+        "Done. Generated API libraries are in {}/api/",
         ws_root.display()
     );
 

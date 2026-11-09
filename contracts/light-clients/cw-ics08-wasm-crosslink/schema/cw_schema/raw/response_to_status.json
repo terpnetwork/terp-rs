@@ -1,0 +1,21 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_crosslink_msg_StatusResult",
+      "description": "Result of a status query.",
+      "type": "struct",
+      "properties": {
+        "status": {
+          "description": "The client status string.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

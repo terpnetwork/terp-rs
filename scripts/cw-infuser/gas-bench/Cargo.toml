@@ -1,0 +1,133 @@
+[package]
+name = "svg-gas-bench"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+# Standalone (not a workspace member): runs the real wasm in cosmwasm-vm.
+[workspace]
+
+[dependencies]
+cosmwasm-vm = { path = "../../../../cosmwasm/packages/vm" }
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std" }
+serde_json = "1"
+
+[patch.crates-io]
+cosmwasm-core = { path = "../../../../cosmwasm/packages/core" }
+cosmwasm-crypto = { path = "../../../../cosmwasm/packages/crypto" }
+cosmwasm-derive = { path = "../../../../cosmwasm/packages/derive" }
+cosmwasm-schema = { path = "../../../../cosmwasm/packages/schema" }
+cosmwasm-schema-derive = { path = "../../../../cosmwasm/packages/schema-derive" }
+cosmwasm-std = { path = "../../../../cosmwasm/packages/std" }
+cw-schema = { path = "../../../../cosmwasm/packages/cw-schema" }
+cw-schema-derive = { path = "../../../../cosmwasm/packages/cw-schema-derive" }
+cw-storage-plus = { path = "../../../../cw-storage-plus" }
+cw-utils = { path = "../../../../cw-minus/packages/cw-utils" }
+cw2 = { path = "../../../../cw-minus/packages/cw2" }
+cw-controllers = { path = "../../../../cw-minus/packages/controllers" }
+cw-ownable = { path = "../../../../cw-plus-plus/packages/ownable" }
+cw-address-like = { path = "../../../../cw-plus-plus/packages/address-like" }
+cw-clearable = { path = "../../../../cw-packages/cw-clearable" }
+cw-orch = { path = "../../../../cw-orchestrator/cw-orch" }
+cw-orch-daemon = { path = "../../../../cw-orchestrator/cw-orch-daemon" }
+cw-orch-networks = { path = "../../../../cw-orchestrator/packages/cw-orch-networks" }
+cw1 = { path = "../../../../cw-plus/packages/cw1" }
+cw1-subkeys = { path = "../../../../cw-plus/contracts/cw1-subkeys" }
+cw1-whitelist = { path = "../../../../cw-plus/contracts/cw1-whitelist" }
+cw20-ics20 = { path = "../../../../cw-plus/contracts/cw20-ics20" }
+cw3 = { path = "../../../../cw-plus/packages/cw3" }
+cw3-fixed-multisig = { path = "../../../../cw-plus/contracts/cw3-fixed-multisig" }
+cw3-flex-multisig = { path = "../../../../cw-plus/contracts/cw3-flex-multisig" }
+cw4-stake = { path = "../../../../cw-plus/contracts/cw4-stake" }
+cw-paginate = { path = "../../../../cw-plus-plus/packages/paginate" }
+cw-asset = { path = "../../../../cw-asset" }
+ibc-proto = { path = "../../../../ibc-proto-rs" }
+ibc-chain-registry = { path = "../../../../hermes/crates/chain-registry" }
+ibc-relayer = { path = "../../../../hermes/crates/relayer" }
+ibc-relayer-types = { path = "../../../../hermes/crates/relayer-types" }
+tendermint = { path = "../../../../tendermint-rs/tendermint" }
+tendermint-config = { path = "../../../../tendermint-rs/config" }
+tendermint-light-client = { path = "../../../../tendermint-rs/light-client" }
+tendermint-light-client-detector = { path = "../../../../tendermint-rs/light-client-detector" }
+tendermint-light-client-verifier = { path = "../../../../tendermint-rs/light-client-verifier" }
+tendermint-proto = { path = "../../../../tendermint-rs/proto" }
+tendermint-rpc = { path = "../../../../tendermint-rs/rpc" }
+cosmos-sdk-proto = { path = "../../../../cosmos-rust/cosmos-sdk-proto" }
+abstract-cw-multi-test = { path = "../../../../cw-multi-test-fork" }
+abstract-std = { path = "../../../../abstract/framework/packages/abstract-std" }
+abstract-interface = { path = "../../../../abstract/framework/packages/abstract-interface" }
+cw721 = { path = "../../../../cw-nfts/packages/cw721" }
+cw721-nips = { path = "../../../crates/nips" }
+cw-blob = { path = "../../../../cw-packages/contracts/cw-blob" }
+cw4 = { path = "../../../../cw-plus/packages/cw4" }
+cw20 = { path = "../../../../cw-plus/packages/cw20" }
+cw20-base = { path = "../../../../cw-plus/contracts/cw20-base" }
+cw-denom = { path = "../../../../dao-contracts/packages/cw-denom" }
+dao-interface = { path = "../../../../dao-contracts/packages/dao-interface" }
+dao-voting = { path = "../../../../dao-contracts/packages/dao-voting" }
+dao-hooks = { path = "../../../../dao-contracts/packages/dao-hooks" }
+cw-hooks = { path = "../../../../dao-contracts/packages/cw-hooks" }
+cw-reply-helper = { path = "../../../../dao-contracts/packages/cw-reply-helper" }
+ics23 = { path = "../../../../ics23/rust" }
+zakura-halo2-proofs = { path = "../../../../zakura-common/crates/halo2_proofs" }
+zakura-halo2-gadgets = { path = "../../../../zakura-common/crates/halo2_gadgets" }
+zakura-pasta-curves = { path = "../../../../zakura-common/crates/pasta_curves" }
+zakura-reddsa = { path = "../../../../zakura-common/crates/reddsa" }
+zakura-sinsemilla = { path = "../../../../zakura-common/crates/sinsemilla" }
+halo2-base = { path = "../../../../zcash/halo2-lib/halo2-base" }
+headstash-randomness = { path = "../../../crates/randomness" }
+osst = { path = "../../../../zeratul/crates/osst" }
+zebra-chain = { path = "../../../../zebra-crosslink/zebra-chain" }
+zebra-crosslink = { path = "../../../../zebra-crosslink/zebra-crosslink" }
+cosmrs = { path = "../../../../cosmos-rust/cosmrs" }
+cosmwasm-vm = { path = "../../../../cosmwasm/packages/vm" }
+cw-admin-factory = { path = "../../../../dao-contracts/contracts/external/cw-admin-factory" }
+cw-fund-distributor = { path = "../../../../dao-contracts/contracts/distribution/cw-fund-distributor" }
+abstract-cw-orch-polytone = { path = "../../../../polytone/packages/cw-orch-polytone" }
+cw-payroll-factory = { path = "../../../../dao-contracts/contracts/external/cw-payroll-factory" }
+cw-token-swap = { path = "../../../../dao-contracts/contracts/external/cw-token-swap" }
+cw-vesting = { path = "../../../../dao-contracts/contracts/external/cw-vesting" }
+cw20-stake = { path = "../../../../dao-contracts/contracts/staking/cw20-stake" }
+cw20-stake-external-rewards = { path = "../../../../dao-contracts/contracts/staking/cw20-stake-external-rewards" }
+cw20-stake-reward-distributor = { path = "../../../../dao-contracts/contracts/staking/cw20-stake-reward-distributor" }
+cw4-group = { path = "../../../../cw-plus/contracts/cw4-group" }
+cw721-base = { path = "../../../../cw-nfts/contracts/cw721-base" }
+dao-cw721-extensions = { path = "../../../../dao-contracts/packages/dao-cw721-extensions" }
+dao-cw-orch = { path = "../../../../dao-contracts/packages/cw-orch" }
+dao-dao-core = { path = "../../../../dao-contracts/contracts/dao-dao-core" }
+dao-pre-propose-single = { path = "../../../../dao-contracts/contracts/pre-propose/dao-pre-propose-single" }
+dao-proposal-multiple = { path = "../../../../dao-contracts/contracts/proposal/dao-proposal-multiple" }
+dao-proposal-single = { path = "../../../../dao-contracts/contracts/proposal/dao-proposal-single" }
+dao-rewards-distributor = { path = "../../../../dao-contracts/contracts/distribution/dao-rewards-distributor" }
+dao-testing = { path = "../../../../dao-contracts/packages/dao-testing" }
+dao-vote-delegation = { path = "../../../../dao-contracts/contracts/delegation/dao-vote-delegation" }
+dao-voting-cw20-balance = { path = "../../../../dao-contracts/contracts/test/dao-voting-cw20-balance" }
+dao-voting-cw20-staked = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw20-staked" }
+dao-voting-cw4 = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw4" }
+dao-voting-cw721-roles = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw721-roles" }
+dao-voting-cw721-staked = { path = "../../../../dao-contracts/contracts/voting/dao-voting-cw721-staked" }
+gauge-adapter = { path = "../../../../dao-contracts/contracts/gauges/gauge-adapter" }
+gauge-orchestrator = { path = "../../../../dao-contracts/contracts/gauges/gauge" }
+zk-cosmwasm = { path = "../../../../cosmwasm/packages/zk" }
+cw-orch-core = { path = "../../../../cw-orchestrator/packages/cw-orch-core" }
+cw-orch-interchain = { path = "../../../../cw-orchestrator/cw-orch-interchain" }
+cw-orch-interchain-core = { path = "../../../../cw-orchestrator/packages/interchain/interchain-core" }
+cw-orch-interchain-daemon = { path = "../../../../cw-orchestrator/packages/interchain/interchain-daemon" }
+cw-orch-interchain-mock = { path = "../../../../cw-orchestrator/packages/interchain/interchain-mock" }
+cw-orch-mock = { path = "../../../../cw-orchestrator/packages/cw-orch-mock" }
+cw-orch-starship = { path = "../../../../cw-orchestrator/packages/interchain/starship" }
+cw-orch-traits = { path = "../../../../cw-orchestrator/packages/cw-orch-traits" }
+cw-headstash = { path = "../../../contracts/headstash/cw-headstash" }
+cw-headstash-manifold = { path = "../../../contracts/headstash/manifold" }
+cw-private-dex = { path = "../../../contracts/revenue/private-dex" }
+cw-norick = { path = "../../../contracts/headstash/no-rick" }
+osmosis-std = { path = "../../../../osmosis-rust/packages/osmosis-std" }
+osmosis-std-derive = { path = "../../../../osmosis-rust/packages/osmosis-std-derive" }
+ict-rs = { path = "../../../../ict-rs/ict-rs" }
+ict-rs-cw-orch = { path = "../../../../ict-rs/ict-rs-cw-orch" }
+terp-seams = { path = "../../../crates/terp-seams" }
+threshold_committee = { path = "../../../crates/threshold_committee" }
+frost_escrow = { path = "../../../crates/frost_escrow" }
+
+zakura-orchard = { path = "../../../../zakura-common/crates/orchard" }
+zakura-halo2-poseidon = { path = "../../../../zakura-common/crates/halo2_poseidon" }

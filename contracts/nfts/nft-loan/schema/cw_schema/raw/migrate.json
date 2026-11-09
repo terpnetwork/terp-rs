@@ -1,0 +1,12 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "nftfi_loan_msg_MigrateMsg",
+      "description": "Migrate message. Intentionally empty: migrate is a plain capability entrypoint.",
+      "type": "struct",
+      "properties": {}
+    }
+  ]
+}

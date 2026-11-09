@@ -1,0 +1,252 @@
+{
+  "name": "Eth SVG",
+  "symbol": "ETH",
+  "collection_info_extension": {
+    "seed": "jkqqg6gIjf4v3o6rs/RigW5FpYbxbXimK385JCS/mpA=",
+    "svg_template": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"319.6\" height=\"533.3\" viewBox=\"0 0 319.6 533.3\" fill=\"none\">\n  <defs>\n    <style>\n      .facet {\n        animation: prism-breath ease-in-out infinite alternate;\n      }\n      .facet-a  { animation-duration: ${breath-a}s; }   /* cool blue */\n      .facet-b  { animation-duration: ${breath-b}s; }   /* soft magenta */\n      .facet-c  { animation-duration: ${breath-c}s; }   /* warm coral */\n      .facet-d  { animation-duration: ${breath-d}s; }   /* electric cyan */\n      .facet-e  { animation-duration: ${breath-e}s; }   /* fresh lime */\n      .facet-f  { animation-duration: ${breath-f}s; }   /* golden yellow */\n\n      @keyframes prism-breath {\n        from { opacity: 0.93; }\n        to   { opacity: 1.00; }\n      }\n    </style>\n  </defs>\n\n  \n  <path class=\"facet facet-a\" fill=\"${color-blue}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M159.6,402.5L319.6,302L159.6,533.3V402.5z M183.4,415.6v41.8l51.3-74L183.4,415.6z\"/>\n\n  \n  <path class=\"facet facet-b\" fill=\"${color-purple}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M175.9,193.8l118.2,66.9l-11.7,20.6l-118.2-66.9L175.9,193.8z\"/>\n\n  \n  <path class=\"facet facet-c\" fill=\"${color-coral}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M159.6,0l159.6,274.6L159.6,375.3V0z M183.1,87.9v244.7l104.2-65.7L183.1,87.9z\"/>\n\n  \n  <path class=\"facet facet-d\" fill=\"${color-cyan}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M160.1,402.5L0,302l160.1,231.3V402.5z M136.3,415.6v41.8l-51.3-74L136.3,415.6z\"/>\n\n  \n  <path class=\"facet facet-e\" fill=\"${color-lime}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M138.7,196L20.5,262.9l11.7,20.6l118.2-66.9L138.7,196z\"/>\n\n  \n  <path class=\"facet facet-f\" fill=\"${color-yellow}\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M159.6,0L0,274.6l159.6,100.6V0z M136,87.9v244.7L31.8,266.9L136,87.9z\"/>\n</svg>",
+    "variables": [
+      {
+        "name": "color-blue",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 65,
+              "r_max": 105,
+              "g_min": 135,
+              "g_max": 175,
+              "b_min": 215,
+              "b_max": 255
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-purple",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 200,
+              "r_max": 235,
+              "g_min": 125,
+              "g_max": 165,
+              "b_min": 195,
+              "b_max": 235
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-coral",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 235,
+              "r_max": 255,
+              "g_min": 135,
+              "g_max": 170,
+              "b_min": 130,
+              "b_max": 165
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-cyan",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 45,
+              "r_max": 95,
+              "g_min": 195,
+              "g_max": 235,
+              "b_min": 210,
+              "b_max": 255
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-lime",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 135,
+              "r_max": 185,
+              "g_min": 210,
+              "g_max": 245,
+              "b_min": 95,
+              "b_max": 135
+            }
+          ]
+        }
+      },
+      {
+        "name": "color-yellow",
+        "kind": {
+          "rgb_styled": [
+            {
+              "r_min": 235,
+              "r_max": 255,
+              "g_min": 225,
+              "g_max": 255,
+              "b_min": 65,
+              "b_max": 115
+            }
+          ]
+        }
+      },
+      {
+        "name": "breath-a",
+        "kind": {
+          "range": {
+            "min": "4.2",
+            "max": "9.8",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "breath-b",
+        "kind": {
+          "range": {
+            "min": "5.5",
+            "max": "11.2",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "breath-c",
+        "kind": {
+          "range": {
+            "min": "3.8",
+            "max": "8.4",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "breath-d",
+        "kind": {
+          "range": {
+            "min": "6.8",
+            "max": "12.5",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "breath-e",
+        "kind": {
+          "range": {
+            "min": "4.9",
+            "max": "10.6",
+            "precision": 1
+          }
+        }
+      },
+      {
+        "name": "breath-f",
+        "kind": {
+          "range": {
+            "min": "5.1",
+            "max": "9.5",
+            "precision": 1
+          }
+        }
+      }
+    ],
+    "template_slots": [
+      {
+        "start": 254,
+        "end": 265,
+        "var_idx": 6
+      },
+      {
+        "start": 326,
+        "end": 337,
+        "var_idx": 7
+      },
+      {
+        "start": 401,
+        "end": 412,
+        "var_idx": 8
+      },
+      {
+        "start": 474,
+        "end": 485,
+        "var_idx": 9
+      },
+      {
+        "start": 550,
+        "end": 561,
+        "var_idx": 10
+      },
+      {
+        "start": 623,
+        "end": 634,
+        "var_idx": 11
+      },
+      {
+        "start": 829,
+        "end": 842,
+        "var_idx": 0
+      },
+      {
+        "start": 1011,
+        "end": 1026,
+        "var_idx": 1
+      },
+      {
+        "start": 1174,
+        "end": 1188,
+        "var_idx": 2
+      },
+      {
+        "start": 1353,
+        "end": 1366,
+        "var_idx": 3
+      },
+      {
+        "start": 1532,
+        "end": 1545,
+        "var_idx": 4
+      },
+      {
+        "start": 1687,
+        "end": 1702,
+        "var_idx": 5
+      }
+    ],
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null
+  },
+  "minter": null,
+  "creator": null,
+  "withdraw_address": null
+}

@@ -1,0 +1,41 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_reserve_auction_state_HaltManager",
+      "type": "struct",
+      "properties": {
+        "halt_windows": {
+          "value": 3
+        },
+        "prev_block_time": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "revenue_reserve_auction_state_HaltWindow",
+      "type": "struct",
+      "properties": {
+        "end_time": {
+          "value": 1
+        },
+        "start_time": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<revenue_reserve_auction::state::HaltWindow>",
+      "type": "array",
+      "items": 2
+    }
+  ]
+}

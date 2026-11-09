@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "latest"
+      ],
+      "properties": {
+        "latest": {
+          "type": "object",
+          "required": [
+            "market_id"
+          ],
+          "properties": {
+            "market_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "history"
+      ],
+      "properties": {
+        "history": {
+          "type": "object",
+          "required": [
+            "market_id"
+          ],
+          "properties": {
+            "limit": {
+              "description": "Max rows, newest first. Default 32.",
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "market_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Height-weighted mean of mids in `[from_height, to_height]`.",
+      "type": "object",
+      "required": [
+        "twap"
+      ],
+      "properties": {
+        "twap": {
+          "type": "object",
+          "required": [
+            "from_height",
+            "market_id",
+            "to_height"
+          ],
+          "properties": {
+            "from_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "market_id": {
+              "type": "string"
+            },
+            "to_height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

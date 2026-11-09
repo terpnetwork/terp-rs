@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Invoke a rotation. Always Ok+write (pending or fail).",
+      "type": "object",
+      "required": [
+        "rotate_frost_pubkey"
+      ],
+      "properties": {
+        "rotate_frost_pubkey": {
+          "type": "object",
+          "required": [
+            "new_vk_commit"
+          ],
+          "properties": {
+            "hkdf_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "new_vk_commit": {
+              "type": "string"
+            },
+            "next_n": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "minimum": 0.0
+            },
+            "next_seats": {
+              "description": "Players for the next epoch. Omitted = keep current seats/t/n.",
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "next_t": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint16",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Seat share bound to the pending commit. Always Ok+write.",
+      "type": "object",
+      "required": [
+        "add_rotate_share"
+      ],
+      "properties": {
+        "add_rotate_share": {
+          "type": "object",
+          "required": [
+            "blob",
+            "new_vk"
+          ],
+          "properties": {
+            "admin_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "blob": {
+              "type": "string"
+            },
+            "hkdf_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "new_vk": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

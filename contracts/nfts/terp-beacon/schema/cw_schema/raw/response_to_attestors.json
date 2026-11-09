@@ -1,0 +1,47 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_beacon_msg_AttestorsResponse",
+      "type": "struct",
+      "properties": {
+        "attestors": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "terp_beacon_msg_AttestorInfo",
+      "type": "struct",
+      "properties": {
+        "key_type": {
+          "value": 3
+        },
+        "pubkey": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "terp_beacon_msg_AttestorKeyType",
+      "description": "Only secp256k1 compressed keys are accepted. The enum is the storage tag\na later ed25519 variant would extend.",
+      "type": "enum",
+      "cases": {
+        "secp256k1": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<terp_beacon::msg::AttestorInfo>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

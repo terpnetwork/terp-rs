@@ -1,0 +1,266 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "nftfi_loan_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "accept_loan": {
+          "type": "named",
+          "properties": {
+            "borrower": {
+              "value": 3
+            },
+            "comment": {
+              "value": 10
+            },
+            "loan_id": {
+              "value": 8
+            }
+          }
+        },
+        "accept_offer": {
+          "type": "named",
+          "properties": {
+            "global_offer_id": {
+              "value": 3
+            }
+          }
+        },
+        "cancel_offer": {
+          "type": "named",
+          "properties": {
+            "global_offer_id": {
+              "value": 3
+            }
+          }
+        },
+        "list_collaterals": {
+          "type": "named",
+          "properties": {
+            "comment": {
+              "value": 10
+            },
+            "terms": {
+              "value": 9
+            },
+            "tokens": {
+              "value": 6
+            }
+          }
+        },
+        "make_offer": {
+          "type": "named",
+          "properties": {
+            "borrower": {
+              "value": 3
+            },
+            "comment": {
+              "value": 10
+            },
+            "loan_id": {
+              "value": 8
+            },
+            "on_behalf_of": {
+              "value": 10
+            },
+            "terms": {
+              "value": 7
+            }
+          }
+        },
+        "refuse_offer": {
+          "type": "named",
+          "properties": {
+            "global_offer_id": {
+              "value": 3
+            }
+          }
+        },
+        "repay": {
+          "type": "named",
+          "properties": {
+            "loan_id": {
+              "value": 8
+            }
+          }
+        },
+        "set_fee_rate": {
+          "type": "named",
+          "properties": {
+            "fee_rate": {
+              "value": 12
+            }
+          }
+        },
+        "set_listing_fee": {
+          "type": "named",
+          "properties": {
+            "listing_fee_coins": {
+              "value": 13
+            }
+          }
+        },
+        "set_owner": {
+          "type": "named",
+          "properties": {
+            "owner": {
+              "value": 3
+            }
+          }
+        },
+        "set_treasury": {
+          "type": "named",
+          "properties": {
+            "treasury_addr": {
+              "value": 3
+            }
+          }
+        },
+        "toggle_lock": {
+          "type": "named",
+          "properties": {
+            "lock": {
+              "value": 11
+            }
+          }
+        },
+        "withdraw_collaterals": {
+          "type": "named",
+          "properties": {
+            "loan_id": {
+              "value": 8
+            }
+          }
+        },
+        "withdraw_defaulted": {
+          "type": "named",
+          "properties": {
+            "borrower": {
+              "value": 3
+            },
+            "loan_id": {
+              "value": 8
+            }
+          }
+        },
+        "withdraw_refused_offer": {
+          "type": "named",
+          "properties": {
+            "global_offer_id": {
+              "value": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "nftfi_utils_asset_AssetInfo",
+      "description": "Prize, collateral, or ticket price.\n\nUpstream also had an `Sg721Token` arm. This port keeps cw721 only, which is\nthe trait `cw721-svg` implements.",
+      "type": "enum",
+      "cases": {
+        "coin": {
+          "type": "tuple",
+          "items": [
+            2
+          ]
+        },
+        "cw721": {
+          "type": "tuple",
+          "items": [
+            5
+          ]
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 4
+        },
+        "denom": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "nftfi_utils_asset_Cw721Token",
+      "description": "One cw721 token. `address` is stored in the form `Api::addr_validate` returns.",
+      "type": "struct",
+      "properties": {
+        "address": {
+          "value": 3
+        },
+        "token_id": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<nftfi_utils::asset::AssetInfo>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "nftfi_loan_state_LoanTerms",
+      "type": "struct",
+      "properties": {
+        "duration_in_blocks": {
+          "value": 8
+        },
+        "interest": {
+          "value": 4
+        },
+        "principle": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<nftfi_loan::state::LoanTerms>",
+      "type": "optional",
+      "inner": 7
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "cosmwasm_std_math_decimal_Decimal",
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 = (2^128 - 1) / 10^18",
+      "type": "decimal",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::coin::Coin>",
+      "type": "array",
+      "items": 2
+    }
+  ]
+}

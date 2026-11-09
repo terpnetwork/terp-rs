@@ -1,0 +1,60 @@
+{
+  "type": "v1",
+  "root": 6,
+  "definitions": [
+    {
+      "name": "cw721_msg_NftInfoResponse_cw721_svg_state_SvgMetadata_",
+      "type": "struct",
+      "properties": {
+        "extension": {
+          "description": "You can add any custom metadata here when you extend cw721-base",
+          "value": 3
+        },
+        "token_uri": {
+          "description": "Universal resource identifier for this NFT\nShould point to a JSON file that conforms to the ERC721\nMetadata JSON Schema",
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "cw721_svg_state_SvgMetadata",
+      "type": "struct",
+      "properties": {
+        "params": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "cw_svg_TokenParam",
+      "type": "struct",
+      "properties": {
+        "name": {
+          "value": 1
+        },
+        "value": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_svg::TokenParam>",
+      "type": "array",
+      "items": 4
+    },
+    {
+      "name": "core::option::Option<cw721::msg::NftInfoResponse<cw721_svg::state::SvgMetadata>>",
+      "type": "optional",
+      "inner": 0
+    }
+  ]
+}

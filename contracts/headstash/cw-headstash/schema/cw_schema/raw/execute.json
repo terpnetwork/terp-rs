@@ -1,0 +1,618 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_headstash_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "apply_accepted_batch": {
+          "description": "Pay a Halo2 epoch batch whose aggregate is the stored `headstash-accepted` root.\nDoes not verify the proof.",
+          "type": "named",
+          "properties": {
+            "allocation_root": {
+              "value": 3
+            },
+            "root_id": {
+              "value": 4
+            },
+            "rows": {
+              "value": 24
+            }
+          }
+        },
+        "apply_public_batch": {
+          "description": "Pay opened Pedersen destinations for Ethereum logs of fixed denomination indexes.",
+          "type": "named",
+          "properties": {
+            "rows": {
+              "value": 27
+            }
+          }
+        },
+        "assign_public_notes": {
+          "description": "Owner: these nullifiers are paid only by the public batch, not the Halo2 batch.",
+          "type": "named",
+          "properties": {
+            "nullifiers": {
+              "value": 22
+            }
+          }
+        },
+        "bridge_egress_burn": {
+          "description": "Option D private-bridge **egress burn** (ZEC SEAM → preauth dest).\nDual-path: `BridgeCfg.mock_verify` / cfg(test) lab, or `zk-api` + `egress_zkid`.\nSpent under egress-nf-v0 domain (≠ pool-nf, ≠ bridge mint ν).",
+          "type": "named",
+          "properties": {
+            "proof": {
+              "description": "Opaque membership / spend proof (mock or Halo2 later).",
+              "value": 3
+            },
+            "statement": {
+              "value": 19
+            }
+          }
+        },
+        "bridge_mint_note": {
+          "description": "One-shot bridge mint → SEAM-NOTE-OUT note result.\nProof verify is **mock/stub** in Round 2 (`mock_verify` or cfg(test)).",
+          "type": "named",
+          "properties": {
+            "claim": {
+              "value": 17
+            },
+            "proof": {
+              "description": "Opaque membership / reflection receipt (mock or SP1 later).",
+              "value": 3
+            }
+          }
+        },
+        "burn": {
+          "type": "named",
+          "properties": {
+            "amount": {
+              "value": 10
+            },
+            "from_address": {
+              "value": 8
+            }
+          }
+        },
+        "mint": {
+          "type": "named",
+          "properties": {
+            "amount": {
+              "value": 10
+            },
+            "to_address": {
+              "value": 8
+            }
+          }
+        },
+        "process_headstash": {
+          "description": "Verify claims and distribute. Each claim binds to a registered `root_id`.",
+          "type": "named",
+          "properties": {
+            "claims": {
+              "value": 5
+            }
+          }
+        },
+        "register_asset": {
+          "description": "Register asset in **internal** registry (never mints balances).",
+          "type": "named",
+          "properties": {
+            "asset_id": {
+              "description": "32-byte Terp asset id (or mapped tacit id used as key).",
+              "value": 3
+            },
+            "local_denom": {
+              "description": "Local denom / proof representation.",
+              "value": 8
+            },
+            "origin": {
+              "defaulting": true,
+              "description": "Optional origin tag (`native`, `tacit:…`, IBC trace).",
+              "value": 9
+            },
+            "status": {
+              "defaulting": true,
+              "value": 14
+            }
+          }
+        },
+        "register_eligibility_root": {
+          "description": "Register an **additive** eligibility root (Poseidon-v1 only for new drops).\nOwner-only. Assigns the next `root_id` and stores root + domain.",
+          "type": "named",
+          "properties": {
+            "domain": {
+              "defaulting": true,
+              "description": "If omitted, uses the contract's default `distro_hash_domain` (must still\npass additive policy — Poseidon-v1 for new roots).",
+              "value": 7
+            },
+            "label": {
+              "defaulting": true,
+              "value": 9
+            },
+            "root": {
+              "description": "32-byte distro tree root.",
+              "value": 3
+            }
+          }
+        },
+        "set_bridge_cfg": {
+          "description": "Owner-set bridge corridor config (dest domain, K, lag, mock_verify).",
+          "type": "named",
+          "properties": {
+            "cfg": {
+              "value": 15
+            }
+          }
+        },
+        "set_circuit_id": {
+          "description": "Owner: bind wasmvm store-circuit id used by `proof_instance_verify`.",
+          "type": "named",
+          "properties": {
+            "circuit_id": {
+              "value": 4
+            }
+          }
+        },
+        "set_denom_table": {
+          "description": "Owner: fixed CHT amounts for the public Ethereum path. Index `i` pays `amounts[i]`.",
+          "type": "named",
+          "properties": {
+            "amounts": {
+              "value": 21
+            }
+          }
+        },
+        "set_external_asset_registry": {
+          "description": "Optional external asset registry contract address (hook; not required for demos).",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 9
+            }
+          }
+        },
+        "set_reflection_snapshot": {
+          "description": "Replace full reflection snapshot (includes K, lag, frozen).",
+          "type": "named",
+          "properties": {
+            "snapshot": {
+              "value": 11
+            }
+          }
+        },
+        "update_reflection": {
+          "description": "Advance reflection / LC attested roots (owner/operator).",
+          "type": "named",
+          "properties": {
+            "burn_root": {
+              "value": 3
+            },
+            "pool_root": {
+              "value": 3
+            },
+            "source_height": {
+              "value": 4
+            },
+            "spent_root": {
+              "value": 3
+            },
+            "tip_height": {
+              "value": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "cw_headstash_headstash_HeadstashNote",
+      "type": "struct",
+      "properties": {
+        "i": {
+          "value": 2
+        },
+        "p": {
+          "value": 3
+        },
+        "root_id": {
+          "defaulting": true,
+          "description": "Eligibility root this claim proves under. Default `0` = genesis set.\nCircuit public input `anchor` must match the registered root for this id\nonce Poseidon-v1 inclusion proofs are live.",
+          "value": 4
+        },
+        "rr": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "cw_headstash_headstash_HeadstashInstances",
+      "type": "struct",
+      "properties": {
+        "anchor": {
+          "value": 3
+        },
+        "cmx": {
+          "value": 3
+        },
+        "e": {
+          "description": "Reduced EIP-191 challenge, 32 bytes. Not part of the signed prefix.",
+          "value": 3
+        },
+        "nd": {
+          "value": 3
+        },
+        "nf": {
+          "value": 3
+        },
+        "recp": {
+          "value": 3
+        },
+        "v": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw_headstash::headstash::HeadstashNote>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "cw_headstash_distro_DistroHashDomain",
+      "description": "Wire / JSON unit names are `poseidon_v1` / `sinsemilla_legacy` (cw_serde identifiers).\nHuman/ADR tags from [`DistroHashDomain::as_str`] are `poseidon-v1` / `sinsemilla-legacy`.\n\nNew Headstashes default to [`DistroHashDomain::PoseidonV1`].\n[`DistroHashDomain::SinsemillaLegacy`] is recovery-only for pre-Poseidon trees.",
+      "type": "enum",
+      "cases": {
+        "poseidon_v1": {
+          "description": "Poseidon over `pallas::Base` — ADR default for public inclusion.",
+          "type": "unit"
+        },
+        "sinsemilla_legacy": {
+          "description": "Orchard-family Sinsemilla — legacy recovery only; not for new drops.",
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cw_headstash::distro::DistroHashDomain>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 8
+    },
+    {
+      "name": "cosmwasm_std_math_uint128_Uint128",
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+      "type": "integer",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "cw_headstash_bridge_ReflectionSnapshot",
+      "type": "struct",
+      "properties": {
+        "burn_root": {
+          "value": 3
+        },
+        "confirmations_k": {
+          "value": 4
+        },
+        "frozen": {
+          "value": 12
+        },
+        "max_lc_lag": {
+          "value": 4
+        },
+        "pool_root": {
+          "value": 3
+        },
+        "source_height": {
+          "value": 4
+        },
+        "spent_root": {
+          "value": 3
+        },
+        "tip_height": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "cw_headstash_bridge_AssetStatus",
+      "type": "enum",
+      "cases": {
+        "active": {
+          "type": "unit"
+        },
+        "frozen": {
+          "type": "unit"
+        },
+        "paused": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cw_headstash::bridge::AssetStatus>",
+      "type": "optional",
+      "inner": 13
+    },
+    {
+      "name": "cw_headstash_bridge_BridgeCfg",
+      "type": "struct",
+      "properties": {
+        "confirmations_k": {
+          "value": 4
+        },
+        "dest_domain": {
+          "description": "Terp destination domain / chain bind (32 bytes).",
+          "value": 3
+        },
+        "egress_zkid": {
+          "defaulting": true,
+          "description": "Circuit id for Option D egress `proof_instance_verify` (production path).\nLab / mock_verify ignores this. Default `None` keeps existing BridgeCfg JSON valid.",
+          "value": 16
+        },
+        "lc_client_id": {
+          "description": "LC client id string (reflection corridor).",
+          "value": 8
+        },
+        "max_lc_lag": {
+          "value": 4
+        },
+        "mock_verify": {
+          "description": "When true, proof verify is mocked (always-ok membership under claim flags).\nProduction must set false and wire real verify.",
+          "value": 12
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 4
+    },
+    {
+      "name": "cw_headstash_bridge_BridgeMintClaimPublic",
+      "description": "Mint-critical public claim fields (Domain B §9 + C §3.1).",
+      "type": "struct",
+      "properties": {
+        "burn_dest_commitment": {
+          "description": "Burn-bound destCommitment recorded in burn set (A6).",
+          "value": 3
+        },
+        "claim_id": {
+          "value": 3
+        },
+        "cm_public": {
+          "value": 3
+        },
+        "dest_commitment": {
+          "value": 3
+        },
+        "dest_domain": {
+          "value": 3
+        },
+        "domain_binding": {
+          "value": 3
+        },
+        "dst_chain_id": {
+          "value": 3
+        },
+        "in_burn_set": {
+          "description": "ν present in bridge-burn set under snapshot.burn_root.",
+          "value": 12
+        },
+        "in_pool_root": {
+          "description": "Burned note membership under pool root.",
+          "value": 12
+        },
+        "lc_client_id": {
+          "value": 3
+        },
+        "nullifier": {
+          "value": 3
+        },
+        "pool_domain": {
+          "value": 3
+        },
+        "rcm": {
+          "defaulting": true,
+          "description": "Optional opening trapdoor; non-zero → note rcm_flag=1.",
+          "value": 18
+        },
+        "source_burn_root": {
+          "value": 3
+        },
+        "source_chain_tag": {
+          "value": 8
+        },
+        "source_height": {
+          "value": 4
+        },
+        "source_pool_root": {
+          "value": 3
+        },
+        "spent_only": {
+          "defaulting": true,
+          "description": "True if ν is only in spent set (H-1 reject when !in_burn_set).",
+          "value": 12
+        },
+        "src_chain_id": {
+          "description": "Expected domain_binding re-derive inputs.",
+          "value": 3
+        },
+        "tacit_asset_id": {
+          "value": 3
+        },
+        "unit_scale": {
+          "value": 4
+        },
+        "value_u64": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "cw_headstash_egress_EgressBurnStatement",
+      "description": "Public statement for Option D burn on Terp (+ lab openings for structural ν / dest).\n\nLayout mirrors pure `EgressBurnPublic` + witness openings (`rcm`, `owner_binding`)\nso the contract can fail-closed on dest equality and nullifier re-derive without\na full ZK circuit this wave.",
+      "type": "struct",
+      "properties": {
+        "asset_id": {
+          "value": 3
+        },
+        "cm_spent": {
+          "description": "SEAM cm being burned.",
+          "value": 3
+        },
+        "dest_commitment": {
+          "description": "MUST equal G4 seal / owner_binding.",
+          "value": 3
+        },
+        "dest_kind": {
+          "value": 20
+        },
+        "nullifier": {
+          "description": "Egress-domain ν: `H(\"egress-nf-v0\" ‖ cm_spent ‖ rcm)`.",
+          "value": 3
+        },
+        "owner_binding": {
+          "description": "Must equal `dest_commitment` on corridor product.",
+          "value": 3
+        },
+        "rcm": {
+          "description": "Opening for ν re-derive (lab / structural).",
+          "value": 3
+        },
+        "root": {
+          "description": "Membership root (lab stub OK).",
+          "value": 3
+        },
+        "source_pool_id": {
+          "defaulting": true,
+          "description": "If from swap settle.",
+          "value": 16
+        },
+        "value": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_headstash_egress_DestKind",
+      "description": "Zcash receiver class — metadata for wallet API selection; binding stays 32B seal.",
+      "type": "enum",
+      "cases": {
+        "shielded": {
+          "type": "unit"
+        },
+        "transparent": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<u64>",
+      "type": "array",
+      "items": 4
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
+      "type": "array",
+      "items": 3
+    },
+    {
+      "name": "cw_headstash_epoch_EpochPayout",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 4
+        },
+        "denom": {
+          "description": "32-byte circuit denomination.",
+          "value": 3
+        },
+        "destination": {
+          "value": 8
+        },
+        "nullifier": {
+          "description": "32-byte nullifier.",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_headstash::epoch::EpochPayout>",
+      "type": "array",
+      "items": 23
+    },
+    {
+      "name": "cw_headstash_epoch_PublicOpen",
+      "type": "struct",
+      "properties": {
+        "blind": {
+          "description": "Canonical Pallas scalar, 32 bytes. Not zero.",
+          "value": 3
+        },
+        "commitment": {
+          "description": "Compressed Pedersen commitment, 32 bytes.",
+          "value": 3
+        },
+        "destination": {
+          "value": 8
+        },
+        "index": {
+          "value": 26
+        },
+        "log_index": {
+          "value": 4
+        },
+        "nullifier": {
+          "description": "32-byte nullifier reserved for the public path.",
+          "value": 3
+        },
+        "tx_hash": {
+          "value": 8
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw_headstash::epoch::PublicOpen>",
+      "type": "array",
+      "items": 25
+    }
+  ]
+}

@@ -18,8 +18,10 @@ This contract is the **CosmWasm smart-account / voting-module gate** that:
 2. Verifies role-appropriate proofs via [`verify::VsckVerifier`](src/verify.rs)
 3. Tracks nullifiers so ballots cannot be double-spent on the host chain
 
-Cryptographic verify is stubbed with envelope + VK + role/circuit checks until
-feature `vote-circuits` links `shielded-vote-circuits`.
+Cryptographic verify is **fail-closed**. Envelope + VK + role/circuit +
+session-root prefix binding always run; `vote-sdk` Halo2 is not linked, so
+authenticate returns `CircuitNotLinked`. Feature `vote-circuits` is the hook
+for `shielded-vote-circuits` — it does not accept stub proofs.
 
 ## DAO integration
 

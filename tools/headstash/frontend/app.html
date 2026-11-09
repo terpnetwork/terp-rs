@@ -1,0 +1,183 @@
+<style>
+:root{--hs-sans:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI Variable","Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;--hs-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--hs-r:calc(var(--hs-radius) * .45);font:15px/1.55 var(--hs-sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;color:var(--hs-text);background:var(--hs-bg);color-scheme:light dark}body{max-width:860px;margin:2rem auto;padding:0 1.25rem;color:var(--hs-text);background:var(--hs-bg)}
+code,pre,#key,#recv,.mono{font-family:var(--hs-mono);font-size:.86em;font-variant-numeric:tabular-nums}
+#theme-toggle{float:right}h1{font-size:1.6rem;line-height:1.2;font-weight:600;letter-spacing:-.01em;margin:0 0 .6rem}h2{font-size:1.15rem;line-height:1.3;font-weight:600;margin:0 0 .5rem;display:flex;gap:.5rem;align-items:center}h3{font-size:.95rem;line-height:1.35;font-weight:600;margin:1.1rem 0 .4rem;display:flex;gap:.5rem;align-items:center}p{margin:.45rem 0}
+a{color:var(--hs-text);text-decoration-color:var(--hs-accent);text-decoration-thickness:2px}
+section{border:1px solid var(--hs-border);border-radius:var(--hs-r);padding:1.1rem 1.25rem;margin:1rem 0;background:var(--hs-surface);transition:border-color .15s}
+label{display:block;margin:.75rem 0 .3rem;font-weight:600;font-size:13.5px;letter-spacing:.01em}input,select{width:100%;box-sizing:border-box;font:inherit;font-size:14px;min-height:44px;padding:.5rem .7rem;color:var(--hs-text);background:var(--hs-bg);border:1px solid var(--hs-border);border-radius:var(--hs-r);transition:border-color .15s,box-shadow .15s}input:hover,select:hover{border-color:var(--hs-borderStrong)}input:focus-visible,select:focus-visible{border-color:var(--hs-accent);outline:2px solid var(--hs-focus);outline-offset:1px}input[type=file]{padding:.55rem .7rem}
+input[type=radio],input[type=checkbox]{width:auto;margin-right:.4rem;accent-color:var(--hs-accent)}label.inl{display:inline-flex;align-items:center;font-weight:400;margin-right:1.2rem}
+button{font:inherit;font-size:14px;font-weight:600;line-height:1.2;letter-spacing:.01em;min-height:44px;padding:.6rem 1.05rem;margin:.5rem .5rem 0 0;cursor:pointer;color:var(--hs-text);background:color-mix(in srgb,var(--hs-accent) 14%,var(--hs-surface));border:1px solid color-mix(in srgb,var(--hs-accent) 55%,transparent);border-radius:var(--hs-r);transition:border-color .15s,background-color .15s,transform .06s}button:hover:not(:disabled){border-color:var(--hs-accent);background:color-mix(in srgb,var(--hs-accent) 24%,var(--hs-surface))}button:active:not(:disabled){transform:translateY(1px);background:color-mix(in srgb,var(--hs-accent) 32%,var(--hs-surface))}button:disabled{opacity:.45;cursor:not-allowed}
+button.info,button#theme-toggle,button.ghost{margin:0;padding:.35rem .8rem;font-weight:600;color:var(--hs-text);border:1px solid var(--hs-border);background:var(--hs-surface)}button.ghost:hover:not(:disabled),#theme-toggle:hover{border-color:var(--hs-borderStrong);background:var(--hs-surfaceAlt)}
+button.info{display:inline-grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;margin:0 .1rem;border-radius:999px;font:600 13px/1 var(--hs-mono);color:var(--hs-textMuted);vertical-align:middle;position:relative;flex:none}button.info::after{content:"";position:absolute;inset:-8px}button.info:hover{color:var(--hs-text);border-color:var(--hs-accent)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem}.row>button:not(.info){margin-right:.25rem}p.row{display:flex}legend{display:flex;gap:.4rem;align-items:center;font-weight:600;font-size:13.5px;padding:0 .3rem}fieldset{border:1px solid var(--hs-border);border-radius:var(--hs-r);margin:.6rem 0;padding:.4rem .8rem .7rem}label .info,legend .info{margin-left:.15rem}
+details.adv{margin-top:.9rem;border:1px dashed var(--hs-borderStrong);border-radius:var(--hs-r);padding:.2rem .8rem}details.adv[open]{padding-bottom:.8rem}details.adv summary{min-height:44px;display:flex;align-items:center;font-weight:600;font-size:13.5px}
+.danger{border:1px solid var(--hs-borderStrong);border-left:6px solid var(--hs-text);border-radius:var(--hs-r);background:var(--hs-surfaceAlt);padding:.6rem .8rem;font-size:13.5px;line-height:1.5}.danger .row{display:inline-flex;margin-left:.3rem}button.danger-btn{background:var(--hs-surfaceAlt);border-color:var(--hs-borderStrong)}
+:focus-visible{outline:2px solid var(--hs-focus);outline-offset:2px}summary{border-radius:var(--hs-r)}
+pre{font-family:var(--hs-mono);white-space:pre-wrap;word-break:break-all;color:var(--hs-text);background:var(--hs-surfaceAlt);padding:.5rem;max-height:14rem;overflow:auto;font-size:12px;border-radius:var(--hs-r)}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--hs-border);padding:.45rem .5rem;text-align:left;vertical-align:top}
+code{word-break:break-all}small,.muted{color:var(--hs-textMuted)}
+.warn,.ok,.err{color:var(--hs-text);border-left:3px solid var(--hs-accent);padding-left:.5rem}.warn{border-left-style:dashed}.err{font-weight:600;border-left-width:6px}.err:empty,.ok:empty{display:none}
+[data-state=ok]{color:var(--hs-text);font-weight:600}[data-state=ok]::before{content:"\2713  "}[data-state=error]{color:var(--hs-text);font-weight:600}[data-state=error]::before{content:"\2716  "}
+#info-dlg{max-width:620px;line-height:1.55;padding:1.1rem 1.3rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r)}dialog.modal{max-width:680px;width:calc(100% - 2rem);max-height:86vh;overflow:auto;line-height:1.5;padding:1.1rem 1.3rem;color:var(--hs-text);background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r)}.flist{max-height:50vh;overflow:auto;margin:.6rem 0;border:1px solid var(--hs-border);border-radius:var(--hs-r);padding:.3rem}.fopt{display:flex;gap:.5rem;align-items:center;padding:.3rem .4rem}.fopt small{margin-left:auto}ul.pins{font-size:12px;max-height:30vh;overflow:auto;word-break:break-all}.foot{margin-top:1.5rem;padding-top:.6rem;border-top:1px solid var(--hs-border)}.sheet-head .ttl{flex:1;min-width:0}.sub{font-size:13px}details.params>summary,details.inline>summary{cursor:pointer;color:var(--hs-accent)}details.inline{display:inline-block}#claim-gate[data-ok=true]{color:var(--hs-ok,inherit)}dialog::backdrop{background:var(--hs-text);opacity:.4}dt{font-weight:700;margin-top:.6rem}
+details{margin-top:.6rem}summary{cursor:pointer}
+/* R13: bottom sheet (slides up from the bottom; native modal dialog = aria-modal + focus containment + Esc) */
+dialog.sheet{position:fixed;inset:auto 0 0 0;margin:0 auto;width:100%;max-width:860px;max-height:92vh;max-height:92dvh;overflow:auto;box-sizing:border-box;padding:0 1rem 1rem;color:var(--hs-text);background:var(--hs-bg);border:1px solid var(--hs-borderStrong);border-bottom:0;border-radius:calc(var(--hs-radius) * 2) calc(var(--hs-radius) * 2) 0 0}
+dialog.sheet[open]{animation:hs-up .28s ease-out}@keyframes hs-up{from{transform:translateY(100%)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){dialog.sheet[open]{animation:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}button:active:not(:disabled){transform:none}}
+.sheet-head{position:sticky;top:0;z-index:1;display:flex;gap:.6rem;align-items:center;padding:.4rem 0 .6rem;background:var(--hs-bg);border-bottom:1px solid var(--hs-border)}.sheet-head h2{flex:1;margin:0;min-width:0}
+.grip{width:44px;height:4px;border-radius:2px;background:var(--hs-borderStrong);margin:.5rem auto .2rem}
+section.comp{padding:0;margin:.7rem 0;overflow:hidden}.comp-head{display:flex;align-items:center;gap:.4rem;padding:.3rem .6rem;background:var(--hs-surface)}
+.comp-head button.toggle{flex:1;margin:0;min-height:44px;font-size:15px;text-align:left;color:var(--hs-text);background:none;border:0;padding:.45rem .2rem;font-weight:700}.comp-head button.toggle:disabled{opacity:1}
+.comp-body{padding:.2rem 1rem 1rem;border-top:1px solid var(--hs-border)}.badge{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--hs-border);border-radius:999px;padding:.1rem .55rem;margin-left:.5rem;color:var(--hs-textMuted)}
+section.comp[data-status=current]{border-color:var(--hs-accent);border-width:2px}section.comp[data-status=locked] .comp-head{color:var(--hs-textMuted)}section.comp[data-status=locked] .toggle{color:var(--hs-textMuted)}
+.hint{display:block;font-weight:400;font-size:13px;color:var(--hs-textMuted)}
+.privacy{border:1px solid var(--hs-borderStrong);border-radius:var(--hs-radius);padding:.6rem .8rem;background:var(--hs-surfaceAlt)}.privacy[data-small=true]{border-left:6px solid var(--hs-accent)}
+.nums{display:flex;flex-wrap:wrap;gap:1.2rem;margin:.3rem 0}.nums b{display:block;font-size:1.3rem}meter{width:100%;height:10px}
+@media (max-width:600px){body{margin:1rem auto}dialog.sheet{max-height:96dvh;padding:0 .6rem .8rem}.comp-body{padding:.2rem .6rem .8rem}}
+.chip{display:inline-flex;align-items:center;gap:.3rem;margin:.12rem .25rem .12rem 0;padding:.08rem .55rem;min-height:24px;border:1px solid var(--hs-border);border-radius:999px;background:var(--hs-surfaceAlt);color:var(--hs-text);font:500 12.5px/1.3 var(--hs-mono);white-space:nowrap;vertical-align:middle}.chip>i{font-style:normal;color:var(--hs-textMuted);font-family:var(--hs-sans)}.chips{display:flex;flex-wrap:wrap;align-items:center;gap:.1rem;margin:.3rem 0}button.chip{margin:.12rem .25rem .12rem 0;padding:.08rem .6rem;min-height:28px;font-weight:500;cursor:copy;border-color:var(--hs-borderStrong);background:var(--hs-surfaceAlt)}button.chip:hover:not(:disabled){border-color:var(--hs-accent);background:var(--hs-surfaceAlt)}button.chip::after{content:"\29C9";font-family:var(--hs-sans);color:var(--hs-textMuted)}.steps{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem;margin:.4rem 0;padding:0;list-style:none}.steps li{display:inline-flex;align-items:center}.steps li+li::before{content:"\2192";margin:0 .35rem;color:var(--hs-textMuted)}.steps .chip[data-state=done]{border-color:var(--hs-accent)}.steps .chip[data-state=done]::before{content:"\2713"}.steps .chip[data-state=current]{border:2px solid var(--hs-accent);font-weight:700}.steps .chip[data-state=todo]{color:var(--hs-textMuted)}.reason{border:1px solid var(--hs-borderStrong);border-left:6px solid var(--hs-accent);border-radius:var(--hs-r);background:var(--hs-surfaceAlt);padding:.5rem .7rem;font-size:13.5px}.reason:empty{display:none}.reason[data-state=accepted]{border-left-width:3px}.lock{font-size:13px;color:var(--hs-textMuted);border-left:3px solid var(--hs-borderStrong);padding-left:.5rem}.lock::before{content:"\1F512  "}#toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);z-index:10;padding:.45rem .9rem;border-radius:999px;background:var(--hs-text);color:var(--hs-bg);font-size:13.5px;font-weight:600}#toast:empty{display:none}#claim-pick label.inl{margin:.15rem .8rem .15rem 0}
+.lede{font-size:15.5px;max-width:62ch}.how{margin:.5rem 0 .2rem}
+.toolbar{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto auto;gap:.5rem;align-items:center;margin:.7rem 0 .3rem}.toolbar>button,.toolbar>input{margin:0;height:40px;min-height:40px}.toolbar>button{white-space:nowrap;max-width:13rem;overflow:hidden;text-overflow:ellipsis;padding:0 .8rem}
+.toolbar-meta{display:flex;align-items:center;gap:.5rem;min-height:34px;font-size:13px}.toolbar-meta button{margin:0;min-height:30px;padding:.2rem .7rem}
+.pop{position:absolute;right:0;top:calc(100% + .35rem);z-index:5;width:min(23rem,100%);box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem;align-items:end;padding:.7rem;background:var(--hs-surface);border:1px solid var(--hs-borderStrong);border-radius:var(--hs-r);box-shadow:0 8px 24px rgb(0 0 0 / .18)}.pop[hidden]{display:none}.pop label{grid-column:1/-1;margin:0}.pop button{margin:0;height:44px}
+#inst-list{table-layout:fixed}#inst-list th:nth-child(2){width:7.5rem}#inst-list th:nth-child(3){width:12.5rem}.inst-act{display:flex;gap:.4rem;justify-content:flex-end}.inst-act button{margin:0;min-height:36px;padding:.3rem .8rem}
+table.kv{table-layout:fixed;font-size:13px;border:1px solid var(--hs-border);border-radius:var(--hs-r);border-collapse:separate;border-spacing:0;overflow:hidden;margin:.4rem 0}table.kv th{width:34%;font-weight:600;color:var(--hs-textMuted);background:var(--hs-surfaceAlt);vertical-align:middle}table.kv td{vertical-align:middle;min-width:0;overflow:hidden}table.kv tr:last-child>*{border-bottom:0}
+button.kvv{display:flex;align-items:center;width:100%;max-width:100%;box-sizing:border-box;margin:0;padding:.2rem .5rem;min-height:30px;font:500 12.5px/1.3 var(--hs-mono);text-align:left;cursor:copy;color:var(--hs-text);border:1px solid var(--hs-border);border-radius:var(--hs-r);background:var(--hs-bg)}button.kvv:hover:not(:disabled){background:var(--hs-bg)}button.kvv>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button.kvv::after{content:"\29C9";margin-left:.4rem;font-family:var(--hs-sans);color:var(--hs-textMuted)}.kvt{font-size:13px;overflow-wrap:anywhere}
+.subh{margin:-.15rem 0 .5rem;font-size:13px;font-weight:500;color:var(--hs-textMuted)}
+.acct{display:grid;grid-template-columns:minmax(0,1fr) 8.5rem 9.5rem;gap:.7rem;align-items:center;box-sizing:border-box;min-height:92px;margin:.4rem 0;padding:.6rem .75rem;border:1px solid var(--hs-border);border-radius:var(--hs-r);background:var(--hs-surfaceAlt)}.acct-k{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--hs-textMuted)}.acct-id,.acct-net{min-width:0}.acct-addr{display:flex;align-items:center;gap:.35rem;height:32px;min-width:0}.acct-addr .mono{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.acct-addr button{margin:0;min-height:28px;height:28px;padding:0 .55rem;font-size:12px}#mm-net{font-size:13px;height:32px;line-height:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mm-account{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.acct-btns{display:grid;gap:.35rem}.acct-btns button{margin:0;width:100%;min-height:36px;height:36px;padding:0 .4rem;white-space:nowrap}.acct[data-state=off] #mm-addr{color:var(--hs-textMuted)}
+.bridge{margin-top:1rem;border:1px solid var(--hs-borderStrong);border-left:6px solid var(--hs-accent);border-radius:var(--hs-r);padding:.7rem .9rem;background:var(--hs-surfaceAlt)}.bridge[hidden]{display:none}.bridge h3{margin-top:.1rem}
+a.btn{display:inline-flex;align-items:center;box-sizing:border-box;min-height:44px;padding:0 1.05rem;margin:.5rem .5rem 0 0;font-size:14px;font-weight:600;text-decoration:none;color:var(--hs-text);background:color-mix(in srgb,var(--hs-accent) 14%,var(--hs-surface));border:1px solid color-mix(in srgb,var(--hs-accent) 55%,transparent);border-radius:var(--hs-r)}a.btn:hover{border-color:var(--hs-accent)}a.btn[hidden]{display:none}
+#info-dlg{width:calc(100% - 2rem);box-sizing:border-box}#info-dlg h2{margin-bottom:.2rem}#info-dlg dl{margin:.3rem 0 .9rem}#info-dlg dt{margin-top:.85rem;font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--hs-textMuted)}#info-dlg dd{margin:.25rem 0 0;padding-left:.7rem;border-left:3px solid var(--hs-border)}
+.verify h2{font-size:1rem}.verify{padding-bottom:1rem}
+@media (max-width:600px){.toolbar{grid-template-columns:1fr 1fr}.toolbar>#inst-q{grid-column:1/-1}.toolbar>button{max-width:none}.pop{width:100%}#inst-list thead{display:none}#inst-list,#inst-list tbody,#inst-list tr,#inst-list td{display:block;width:auto}#inst-list tr{border-bottom:1px solid var(--hs-border);padding:.4rem 0}#inst-list td{border:0;padding:.2rem 0}.inst-act{justify-content:flex-start}.acct{grid-template-columns:minmax(0,1fr) 8.5rem;grid-template-rows:auto auto}.acct-net{grid-column:1;grid-row:2}.acct-btns{grid-column:2;grid-row:1/3}table.kv th{width:38%}}
+</style>
+<header><h1>Terp Headstash claim</h1><button id="theme-toggle" type="button" aria-label="Switch light/dark theme" aria-pressed="false">dark</button>
+<p class="lede" id="about">A <b>Headstash</b> is a private airdrop on Terp Network. Its creator funds a contract and commits on chain to an allocation list of eligible addresses. You prove once that your address is on the list to register notes, then claim each note with a zero-knowledge proof to a fresh account, so the claim cannot be linked back to the address that was eligible.</p>
+<ol class="steps how" aria-label="How a Headstash works"><li><span class="chip">Find a Headstash</span></li><li><span class="chip">Check eligibility</span></li><li><span class="chip">Register notes</span></li><li><span class="chip">Claim privately</span></li><li><span class="chip">Shield on Penumbra</span></li></ol>
+<p class="muted sub">Every field has an <b>i</b> button that explains what it does, what it reveals and the risks. How to verify this page is in the footer.</p></header>
+<main id="landing">
+<section data-step="instance" aria-labelledby="h-inst"><h2 id="h-inst">Find a Headstash <button class="info" data-step="instance" data-info="instance" aria-label="About choosing a Headstash">i</button></h2>
+<p class="muted">Selected: <span id="hs-cur"></span></p>
+<div class="toolbar" id="filters" role="search"><input id="inst-q" type="search" placeholder="Search label, address or creator" aria-label="Search Headstash instances" autocomplete="off"><button id="f-token" class="ghost" type="button" aria-haspopup="dialog">Token: all</button><button id="f-creator" class="ghost" type="button" aria-haspopup="dialog">Creator: all</button><button id="code-toggle" class="ghost" type="button" aria-expanded="false" aria-controls="code-form">Code id</button><button id="browse" type="button">Refresh</button>
+<div id="code-form" class="pop" role="group" aria-label="Browse by code id" hidden><label for="code-ids">Code id(s)</label><input id="code-ids" inputmode="numeric" placeholder="e.g. 12, 14"><button id="browse-codes" type="button">Browse these</button></div></div>
+<div class="toolbar-meta"><span id="f-count" class="muted"></span><button id="f-clear" class="ghost" type="button" hidden>Clear filters</button><button id="sheet-resume" class="ghost" type="button" hidden>Resume open Headstash</button></div>
+<p class="err" id="inst-err" role="alert"></p>
+<table id="inst-list" aria-label="Headstash instances"><thead><tr><th>Headstash</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+</section>
+<footer class="foot verify" id="verify" aria-labelledby="h-verify"><h2 id="h-verify">Verify this page</h2>
+<p class="muted sub">This page was loaded from chunks stored in a frontend contract on chain. Before anything ran, the loader checked every chunk against the sha256 pins in the contract's manifest. Each Headstash's eligibility list is pinned on chain by sha256 and IPFS CID, and checked against the contract's eligibility root before it is used.</p>
+<table class="kv" id="verify-kv" aria-label="Page verification"></table>
+<button id="details-btn" class="ghost" type="button" aria-haspopup="dialog">All chunk pins and contract details</button></footer>
+</main>
+
+<dialog id="hs-sheet" class="sheet" aria-modal="true" aria-labelledby="sheet-title">
+<div class="grip" aria-hidden="true"></div>
+<div class="sheet-head"><div class="ttl"><h2 id="sheet-title"><span id="sheet-label">Headstash</span> <span id="sheet-hs"></span></h2><div id="sheet-creator" class="muted sub"></div><div id="sheet-crit" class="row"></div></div><button id="sheet-close" class="ghost" type="button" aria-label="Close Headstash tools">Close</button></div>
+
+<section class="comp" id="sec-eligibility" data-sec="eligibility" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-eligibility-toggle" aria-controls="sec-eligibility-body" aria-expanded="false">1. Eligibility<span class="badge" id="sec-eligibility-badge"></span><span class="hint" id="sec-eligibility-hint"></span></button></div>
+<div class="comp-body" id="sec-eligibility-body" hidden>
+<h3>Eligibility list <button class="info" type="button" data-step="hal" data-info="hal" aria-label="About the eligibility list">i</button></h3>
+<p class="subh">Headstash Allocation List (eligibility set)</p>
+<table class="kv" id="hal-kv" aria-label="Eligibility list source on chain"></table>
+<p id="hal-status" role="status" data-state="idle">Not fetched.</p>
+<button id="hal-fetch">Fetch and verify list</button>
+<details><summary>Advanced: use a local HAL file (verified against the on-chain hash)</summary>
+<label for="hal-file">HAL file</label><input id="hal-file" type="file" accept=".json"></details>
+<p class="err" id="hal-err" role="alert"></p>
+<h3>Check your address <button class="info" type="button" data-step="eligibility" data-info="eligibility" aria-label="About the eligibility check">i</button></h3>
+<div class="acct" id="acct" data-state="off"><div class="acct-id"><div class="acct-k">MetaMask account</div><div class="acct-addr"><span id="mm-addr" class="mono">Not connected</span><button id="mm-copy" class="ghost" type="button" aria-label="Copy account address" disabled>Copy</button></div><div id="mm-account" class="muted">Looked up locally in the fetched list</div></div>
+<div class="acct-net"><div class="acct-k">Network</div><div id="mm-net">–</div></div>
+<div class="acct-btns"><button id="mm-connect" type="button">Connect</button><button id="mm-disconnect" class="ghost" type="button" disabled>Disconnect</button></div></div>
+<p id="elig-out" role="status"></p>
+<details id="adv-rawkey" class="adv"><summary>Advanced</summary>
+<div class="danger" role="note"><b>Warning: do not paste a private key unless you have no other choice.</b> MetaMask is enough to check, register and claim. This fallback is only for wallets whose signatures are not deterministic. A key pasted into any web page can be stolen by a malicious build, extension or screen recorder; if you use it, move funds off that key afterwards. <span class="row">Details <button class="info" type="button" data-step="rawkey" data-info="rawkey" aria-label="About the raw private key option">i</button></span></div>
+<label for="key">Raw EVM private key (hex), kept in memory and wiped after use</label><input id="key" type="password" autocomplete="off" spellcheck="false">
+<button id="key-use" class="danger-btn">Use this key</button></details>
+<p class="err" id="elig-err" role="alert"></p>
+<h3>Returning? Load your notes file <button class="info" type="button" data-step="notesfile" data-info="notesfile" aria-label="About loading a notes file">i</button></h3>
+<label for="nf">Notes file</label><input id="nf" type="file" accept=".json">
+<label for="pass-load">Passphrase (if the file is encrypted)</label><input id="pass-load" type="password" autocomplete="current-password">
+<button id="load">Load notes file</button>
+</div></section>
+
+<section class="comp" id="sec-register" data-sec="register" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-register-toggle" aria-controls="sec-register-body" aria-expanded="false">2. Register<span class="badge" id="sec-register-badge"></span><span class="hint" id="sec-register-hint"></span></button></div>
+<div class="comp-body" id="sec-register-body" hidden>
+<fieldset><legend>Reward address <button class="info" type="button" data-step="reward" data-info="reward" aria-label="About the reward address">i</button></legend>
+<label class="inl"><input type="radio" name="reward-mode" value="ephemeral" checked>New in-browser key (default)</label>
+<label class="inl"><input type="radio" name="reward-mode" value="keplr">Keplr</label>
+<p id="reward-lock" class="lock" hidden>Locked: this reward address is part of the signed registration for the notes already derived. To use a different one, reload the page and derive again before registering.</p></fieldset>
+<p>Reward address: <code id="reward-addr">–</code></p>
+<p class="err" id="reward-err" role="alert"></p>
+<label for="pass">Notes file passphrase (optional, recommended) <button class="info" type="button" data-step="passphrase" data-info="passphrase" aria-label="About the passphrase">i</button></label><input id="pass" type="password" autocomplete="new-password">
+<div class="row"><button id="derive" disabled>Derive notes (sign seed) and save</button><button id="register" disabled>Register notes</button><button class="info" type="button" data-step="register" data-info="register" aria-label="About registering notes">i</button></div>
+<p id="summary" role="status"></p>
+<div id="reg-privacy" class="chips" role="status"></div>
+<p class="err" id="reg-err" role="alert"></p>
+</div></section>
+
+<section class="comp" id="sec-save" data-sec="save" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-save-toggle" aria-controls="sec-save-body" aria-expanded="false">3. Save notes<span class="badge" id="sec-save-badge"></span><span class="hint" id="sec-save-hint"></span></button></div>
+<div class="comp-body" id="sec-save-body" hidden>
+<p class="muted row"><button class="info" type="button" data-step="export" data-info="export" aria-label="About saving and exporting">i</button> The notes file is the only way to claim later. Keep it offline. It is downloaded once, when the notes are derived.</p>
+<p id="save-note" class="ok" role="status"></p>
+<button id="save" disabled>Save notes file</button><button id="export" disabled>Export claim account keys</button><button id="reward-export" disabled>Export reward key</button>
+<table id="tbl" aria-label="Notes"></table>
+</div></section>
+
+<section class="comp" id="sec-wallet" data-sec="wallet" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-wallet-toggle" aria-controls="sec-wallet-body" aria-expanded="false">4. Connect wallet / destination<span class="badge" id="sec-wallet-badge"></span><span class="hint" id="sec-wallet-hint"></span></button></div>
+<div class="comp-body" id="sec-wallet-body" hidden>
+<fieldset><legend>Claim to <button class="info" type="button" data-step="destination" data-info="destination" aria-label="About the claim destination">i</button></legend>
+<label class="inl"><input type="radio" name="dest-mode" value="ephemeral" checked>Fresh ephemeral account per note (default)</label>
+<label class="inl"><input type="radio" name="dest-mode" value="forward" disabled>Forward to Penumbra (Zafu)</label>
+<p id="fwd-reason" class="lock" role="status">Checking this Headstash for allowlisted forward channels…</p></fieldset>
+<div id="fwd-box" hidden>
+<label for="fwd-channel">IBC channel (allowlisted by the contract)</label><select id="fwd-channel"></select>
+<label for="recv">One-time Penumbra address (new for every note)</label><input id="recv" autocomplete="off" spellcheck="false" placeholder="penumbra1…">
+<div id="zafu-box"><label for="zafu-wallet" id="zafu-wallet-l" hidden>Penumbra wallet (announced by the browser; any build, no ID allowlist)</label><select id="zafu-wallet" hidden></select><button id="zafu-connect">Connect Zafu</button> <button id="zafu-disconnect" hidden>Disconnect Zafu</button>
+<label class="inl" for="zafu-account">Zafu account #</label> <input id="zafu-account" value="0" inputmode="numeric" size="6">
+<button id="zafu">Preview a fresh address</button> <span id="zafu-detect" data-state="none" role="status"></span></div>
+<label class="inl"><input type="checkbox" id="recv-any">Advanced: allow a non-Penumbra receiver (testnets)</label>
+<p id="fwd-preview" role="status"></p></div>
+<button id="dest-ok">Use this destination</button>
+<p class="err" id="dst-err" role="alert"></p>
+</div></section>
+
+<section class="comp" id="sec-claim" data-sec="claim" data-status="locked">
+<div class="comp-head"><button class="toggle" id="sec-claim-toggle" aria-controls="sec-claim-body" aria-expanded="false">5. Claim<span class="badge" id="sec-claim-badge"></span><span class="hint" id="sec-claim-hint"></span></button></div>
+<div class="comp-body" id="sec-claim-body" hidden>
+<div class="row"><button id="anchor-check">Check latest anchor</button><button class="info" type="button" data-step="anchor" data-info="anchor" aria-label="About anchors">i</button></div><p id="anchor-out" role="status"></p>
+<ol id="claim-chain" class="steps" aria-label="Claim steps"></ol>
+<div id="anchor-reason" class="reason" role="status" aria-live="polite"></div>
+<div id="privacy" class="privacy" role="group" aria-labelledby="privacy-h" data-small="unknown">
+<h3 id="privacy-h">Privacy set <button class="info" type="button" data-step="privacy" data-info="privacy" aria-label="About the privacy set">i</button></h3>
+<div class="nums"><span>Registered<b id="privacy-reg">–</b></span><span>Claimed<b id="privacy-claimed">–</b></span><span>Privacy set (registered − claimed)<b id="privacy-set">–</b></span><span>Suggested minimum<b id="privacy-min">–</b></span></div>
+<meter id="privacy-meter" min="0" max="1" value="0" aria-label="Privacy set relative to the suggested minimum"></meter>
+<p id="privacy-advice" role="status"></p>
+<label class="inl" id="privacy-ack-l" hidden><input type="checkbox" id="privacy-ack">I understand the privacy set is small and want to claim now anyway.</label>
+<button id="privacy-refresh" class="ghost">Refresh</button>
+<!-- R13 extension point: a future delayed-claim relay renders its option here (V.delayedRelays(); empty in this build). -->
+<div id="delay-relay" data-extension="delayed-claim-relay" data-count="0" hidden></div>
+</div>
+<fieldset id="claim-pick"><legend>Notes to claim in this run</legend><div id="claim-pick-list" class="chips"></div><p id="claim-pick-sum" class="muted"></p></fieldset>
+<p id="claim-gate" class="lock" role="status"></p>
+<div class="row"><button id="claim" disabled>Claim</button><button class="info" type="button" data-step="claim" data-info="claim" aria-label="About proving and submitting">i</button></div><p id="claim-out" role="status"></p>
+<p class="err" id="claim-err" role="alert"></p>
+<div id="bridge" class="bridge" role="region" aria-labelledby="bridge-h" hidden><h3 id="bridge-h">Next: shield it on Penumbra</h3>
+<p id="bridge-why"></p>
+<table class="kv" id="bridge-kv" aria-label="Penumbra bridge"></table>
+<p id="bridge-reason" class="lock" role="status"></p>
+<div class="row"><a id="zafu-install" class="btn" href="https://zafu.pro" target="_blank" rel="noopener noreferrer" hidden>Install Zafu (Penumbra wallet)</a><button id="bridge-recheck" class="ghost" type="button" hidden>Check for a wallet again</button><button id="bridge-addr" type="button" hidden>Generate a fresh deposit address</button></div>
+<p class="err" id="bridge-err" role="alert"></p></div>
+</div></section>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<details id="log-box"><summary>Activity log</summary><pre id="log" aria-live="polite"></pre></details>
+<footer class="foot"><button id="sheet-details-btn" class="ghost" type="button" aria-haspopup="dialog">Details</button></footer>
+</dialog>
+<dialog id="details-dlg" class="modal" aria-labelledby="details-title"><h2 id="details-title">On-chain details</h2><p class="muted">Frontend contract <code id="fe-addr"></code>, manifest v<span id="fe-ver"></span></p><div id="details-body"></div><form method="dialog"><button>Close</button></form></dialog>
+<dialog id="params-dlg" class="modal" aria-labelledby="params-title"><h2 id="params-title">Parameters</h2><p id="params-sub" class="muted sub"></p><table class="kv" id="params-kv" aria-label="Headstash parameters"></table><form method="dialog"><button id="params-close">Close</button></form></dialog>
+<dialog id="filter-dlg" class="modal" aria-labelledby="filter-title"><h2 id="filter-title">Filter</h2><input id="filter-q" type="search" placeholder="Search" aria-label="Search options"><div id="filter-list" class="flist" role="group" aria-label="Options"></div><form method="dialog"><button id="filter-done">Done</button></form></dialog>
+<dialog id="info-dlg" aria-labelledby="info-title"><h2 id="info-title"></h2><dl><dt>What it does</dt><dd id="info-what"></dd><dt>What it reveals</dt><dd id="info-reveals"></dd><dt>Risks</dt><dd id="info-risks"></dd></dl><form method="dialog"><button id="info-close" autofocus>Close</button></form></dialog>

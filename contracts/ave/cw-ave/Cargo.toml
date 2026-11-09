@@ -1,0 +1,46 @@
+[package]
+name = "cw-ave"
+version  = { workspace = true }
+authors  = ["hard-nett <hardnettt@proton.me>"]
+edition  = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+# zk-wasmvm: `deps.api.verify_halo2_proof` (Pasta, prover_id=0).
+zk = []
+
+[dependencies]
+av-event-helpers = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+cw-denom  = { workspace = true }
+cw-orch = { workspace = true }
+cw-storage-plus  = { workspace = true }
+cw2  = { workspace = true }
+cw20 = { workspace = true }
+cw20-base  = { workspace = true }
+cw4  = { workspace = true }
+cw420 = { workspace = true, features = ["library"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+sha2  = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true

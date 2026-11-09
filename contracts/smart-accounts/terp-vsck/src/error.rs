@@ -23,4 +23,9 @@ pub enum ContractError {
 
     #[error("missing authenticator params")]
     MissingParams {},
+
+    /// Envelope / role-circuit policy passed, but vote-sdk Halo2 verify is not
+    /// linked. Default build is fail-closed — stub proofs must not authenticate.
+    #[error("vote-sdk circuit verify not linked: {circuit}")]
+    CircuitNotLinked { circuit: String },
 }

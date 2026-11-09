@@ -1,0 +1,47 @@
+{
+  "type": "v1",
+  "root": 3,
+  "definitions": [
+    {
+      "name": "cw_svg_minter_state_SvgCollection",
+      "type": "struct",
+      "properties": {
+        "contract": {
+          "description": "The instantiated collection contract address (primary key).",
+          "value": 1
+        },
+        "creator": {
+          "description": "Address that created this collection.",
+          "value": 1
+        },
+        "name": {
+          "description": "Collection name from InstantiateMsg.",
+          "value": 1
+        },
+        "series": {
+          "defaulting": true,
+          "description": "Series this collection was created under (CreateSeriesCollection), if any.",
+          "value": 2
+        },
+        "symbol": {
+          "description": "Collection symbol from InstantiateMsg.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "alloc::vec::Vec<cw_svg_minter::state::SvgCollection>",
+      "type": "array",
+      "items": 0
+    }
+  ]
+}

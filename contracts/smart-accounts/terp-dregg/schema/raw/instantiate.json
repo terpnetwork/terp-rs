@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "mode"
+  ],
+  "properties": {
+    "lc_contract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "min_proven_height": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "mode": {
+      "$ref": "#/definitions/AuthMode"
+    },
+    "owner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "require_root_in_history": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AuthMode": {
+      "type": "string",
+      "enum": [
+        "query_lc",
+        "embedded_head"
+      ]
+    }
+  }
+}

@@ -28,14 +28,14 @@ CORE_LIB_PACKS=(
 
 CONTRACT_CORE_PACKS=(
   "contracts-a|terp-ed25519 terp-passkey terp-vsck"
-  "contracts-b|terp-eth terp-irl terp-recovery"
+  "contracts-b|terp-eth terp-bls terp-recovery"
   "contracts-c|terp-authenticator-suite cw-ics08-wasm-crosslink"
 )
 
 CONTRACT_WASM_PKGS="terp-ed25519 terp-passkey terp-vsck cw-ics08-wasm-crosslink"
-CONTRACT_HEAVY_PKGS="terp-zkjwt terp-zkposiedon terp-recovery-poseidon-demo"
+CONTRACT_HEAVY_PKGS="terp-zkjwt"
 CORE_LIB_ALL="terp-auth terp-account crosslink-light-client cw721-nips terp-rs"
-CONTRACT_CORE_ALL="terp-ed25519 terp-passkey terp-vsck terp-eth terp-irl terp-recovery terp-authenticator-suite cw-ics08-wasm-crosslink"
+CONTRACT_CORE_ALL="terp-ed25519 terp-passkey terp-vsck terp-eth terp-bls terp-recovery terp-authenticator-suite cw-ics08-wasm-crosslink"
 
 usage() {
   cat <<'U'

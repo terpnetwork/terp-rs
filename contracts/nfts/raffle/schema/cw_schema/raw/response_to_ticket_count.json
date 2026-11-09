@@ -1,0 +1,21 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "nftfi_raffle_msg_TicketCountResponse",
+      "type": "struct",
+      "properties": {
+        "count": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    }
+  ]
+}

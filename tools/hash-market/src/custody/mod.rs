@@ -3,7 +3,15 @@
 //! The `Custody` trait abstracts over key management so the server can use
 //! a local key file during development or delegate to TKMS in production.
 
+pub mod consensus;
+#[cfg(feature = "frost")]
+pub mod frost;
+pub mod hrs;
 pub mod local;
+#[cfg(feature = "frost")]
+pub mod presig;
+#[cfg(feature = "frost")]
+pub mod shard_peer;
 pub mod tkms;
 
 use async_trait::async_trait;

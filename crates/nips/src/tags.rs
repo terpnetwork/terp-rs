@@ -7,7 +7,7 @@ pub struct TagBuilder {
 }
 
 impl TagBuilder {
-    pub fn add(mut self, tag: Tag) -> Self {
+    pub fn tag(mut self, tag: Tag) -> Self {
         self.tags.push(tag);
         self
     }

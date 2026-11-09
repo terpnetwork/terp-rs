@@ -6,7 +6,7 @@ title = "Private Bridge — Spectrum Library Book"
 description = "Unified mdBook for Cash App → Private Bridge → ZEC: product SPECs, pure seams, contracts, harness, observe, UI, Zakura — libraries by category with live README includes (no copy-paste redundancy)."
 
 [rust]
-edition = "2021"
+edition = "2024"
 
 [build]
 create-missing = false

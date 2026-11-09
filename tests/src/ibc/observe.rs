@@ -114,13 +114,7 @@ impl FixtureBackend {
         let mut chain_map = HashMap::new();
         for (path, denom) in path_to_denom {
             let base = path.rsplit('/').next().unwrap_or("").to_string();
-            chain_map.insert(
-                denom,
-                ObservedDenomTrace {
-                    path,
-                    base,
-                },
-            );
+            chain_map.insert(denom, ObservedDenomTrace { path, base });
         }
         denom_traces.insert(chain.to_string(), chain_map);
         Self {
@@ -135,8 +129,8 @@ impl FixtureBackend {
     pub fn load_from_golden_dir(root: impl AsRef<Path>) -> Result<Self, String> {
         let root = root.as_ref().to_path_buf();
         let path = root.join("known_hashes.json");
-        let text = std::fs::read_to_string(&path)
-            .map_err(|e| format!("read {}: {e}", path.display()))?;
+        let text =
+            std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
         let value: serde_json::Value =
             serde_json::from_str(&text).map_err(|e| format!("parse known_hashes: {e}"))?;
         let known_hashes = crate::ibc::fixtures::parse_known_hashes_value(&value)?;
@@ -187,10 +181,10 @@ impl ObserveBackend for FixtureBackend {
         chain: &str,
         ibc_denom: &str,
     ) -> Result<Option<ObservedDenomTrace>, String> {
-        if let Some(by_chain) = self.denom_traces.get(chain) {
-            if let Some(t) = by_chain.get(ibc_denom) {
-                return Ok(Some(t.clone()));
-            }
+        if let Some(by_chain) = self.denom_traces.get(chain)
+            && let Some(t) = by_chain.get(ibc_denom)
+        {
+            return Ok(Some(t.clone()));
         }
         if self.invert_known_hashes {
             for (path, hash) in &self.known_hashes {
@@ -246,8 +240,8 @@ pub struct SnapshotBackend {
 impl SnapshotBackend {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, String> {
         let path = path.as_ref();
-        let text = std::fs::read_to_string(path)
-            .map_err(|e| format!("read {}: {e}", path.display()))?;
+        let text =
+            std::fs::read_to_string(path).map_err(|e| format!("read {}: {e}", path.display()))?;
         let v: serde_json::Value =
             serde_json::from_str(&text).map_err(|e| format!("parse snapshot: {e}"))?;
         let mut denom_traces = HashMap::new();
@@ -341,10 +335,7 @@ impl ObserveBackend for SnapshotBackend {
 }
 
 /// Compare predicted routes against an observe backend (hash + path binding).
-pub fn compare_predict_observe(
-    world: &PredictedWorld,
-    observe: &dyn ObserveBackend,
-) -> DiffReport {
+pub fn compare_predict_observe(world: &PredictedWorld, observe: &dyn ObserveBackend) -> DiffReport {
     compare_predict_observe_with(world, observe, &CompareOptions::default())
 }
 
@@ -366,10 +357,7 @@ pub fn compare_predict_observe_with(
                         report.push_at(
                             DiffSeverity::Error,
                             "path_mismatch",
-                            format!(
-                                "predicted path {} != observed {}",
-                                r.trace_path, obs.path
-                            ),
+                            format!("predicted path {} != observed {}", r.trace_path, obs.path),
                             format!("{}/{}", dest, r.dest_denom),
                         );
                     }
@@ -468,7 +456,10 @@ mod tests {
                 "ibc/1480B8FD20AD5FCAE81EA87584D269547DD4D436843C1D20F15E00EB64743EF4",
             )
             .unwrap();
-        assert!(obs.is_none(), "must not invent observations from known_hashes");
+        assert!(
+            obs.is_none(),
+            "must not invent observations from known_hashes"
+        );
     }
 
     #[test]
@@ -477,10 +468,7 @@ mod tests {
         let backend = FixtureBackend::with_explicit_traces(
             HashMap::new(),
             "osmosis",
-            [(
-                "transfer/channel-1/uakt".into(),
-                denom.to_string(),
-            )],
+            [("transfer/channel-1/uakt".into(), denom.to_string())],
         );
         let obs = backend
             .observe_denom_trace("osmosis", denom)

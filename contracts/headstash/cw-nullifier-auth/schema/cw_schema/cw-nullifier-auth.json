@@ -1,0 +1,127 @@
+{
+  "contract_name": "cw-nullifier-auth",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_auth_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {
+          "admin": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "core::option::Option<alloc::string::String>",
+        "type": "optional",
+        "inner": 1
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_auth_msg_ExecuteMsg",
+        "description": "No user execute path required for authenticator lifecycle (sudo-only spends).",
+        "type": "enum",
+        "cases": {}
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_auth_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "config": {
+            "type": "named",
+            "properties": {}
+          },
+          "is_spent": {
+            "type": "named",
+            "properties": {
+              "domain": {
+                "value": 1
+              },
+              "nullifier": {
+                "value": 2
+              },
+              "session_id": {
+                "value": 1
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "String",
+        "type": "string"
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "config": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_nullifier_auth_msg_ConfigResponse",
+          "type": "struct",
+          "properties": {
+            "admin": {
+              "value": 2
+            }
+          }
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "core::option::Option<alloc::string::String>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    },
+    "is_spent": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_nullifier_auth_msg_IsSpentResponse",
+          "type": "struct",
+          "properties": {
+            "spent": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        }
+      ]
+    }
+  }
+}

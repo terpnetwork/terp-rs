@@ -154,9 +154,7 @@ pub fn parse_auth_signature(raw: &Binary) -> Result<ParsedAuth, ContractError> {
             reason: "batch payload has empty signatures".into(),
         }),
         Err(e) => Err(ContractError::BadSignature {
-            reason: format!(
-                "signature must be 64 raw bytes or Ed25519AuthPayload JSON: {e}"
-            ),
+            reason: format!("signature must be 64 raw bytes or Ed25519AuthPayload JSON: {e}"),
         }),
     }
 }

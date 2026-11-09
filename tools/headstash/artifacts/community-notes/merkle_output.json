@@ -1,0 +1,20 @@
+{
+  "count": 51807,
+  "distro_hash_domain": "poseidon-v1",
+  "holders_keyed": 14653,
+  "leaf_arity": 7,
+  "leaf_fields": [
+    "tag",
+    "epk_x",
+    "epk_y",
+    "nd",
+    "v",
+    "fdi",
+    "rseed_com"
+  ],
+  "leaf_personalization": "terp-hs-distro-leaf-v1",
+  "root": "0xcba56c00f0e271a22341aa803d29cc9ebc5b148faa9c3c4cfd30696c716f3919",
+  "rseed_com": "Poseidon(terp-hs-rseed-v1, lo, hi). The 32-byte rseed is stored on the note only.",
+  "supersedes_root": "0x6bb155b7a04eb34410bb32f5790e6c6735940dcb08964397bfb91caff8b3272b",
+  "threads": 10
+}

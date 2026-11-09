@@ -13,23 +13,26 @@
 //!      guardian || 0x00 || digest)` so clients prove knowledge of the same break-glass
 //!      hashing path without storing guardian keys on-chain.
 //! 4. Distinct valid guardian approvals ≥ threshold → allow.
+//! 5. An optional preimage proof must bind the same challenge. Without `zk-host`
+//!    that arm fails closed. It does not replace guardian approvals.
 //!
-//! See [`hash`] for algorithm catalog and domain separation.
+//! See [`hash`] for the digest catalog and [`proof`] for the proof arm.
 
 mod error;
 pub mod hash;
+pub mod proof;
 
 pub use error::ContractError;
 pub use hash::{
-    break_glass_challenge, challenge_preimage, poseidon_pallas_hash_once, rehash, RecoveryHashAlg,
-    DEFAULT_DOMAIN,
+    DEFAULT_DOMAIN, RecoveryHashAlg, break_glass_challenge, challenge_preimage, rehash,
 };
+pub use proof::{CIRCUIT_ID_RECOVERY_PREIMAGE, PreimageProof, verify_preimage_proof};
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
 use cw_storage_plus::Item;
-use terp_account::traits::default::BtsgAccountTrait;
+use cw2::set_contract_version;
+use terp_account::traits::default::TerpAccountTrait;
 use terp_auth::AuthSudoMsg;
 
 const CONTRACT_NAME: &str = "crates.io:terp-recovery";
@@ -88,18 +91,14 @@ impl RecoveryConfig {
             });
         }
         for g in &self.guardians {
-            api.addr_validate(&g.address).map_err(|e| {
-                ContractError::InvalidGuardian {
+            api.addr_validate(&g.address)
+                .map_err(|e| ContractError::InvalidGuardian {
                     reason: format!("{}: {e}", g.address),
-                }
-            })?;
+                })?;
             if let Some(pk) = &g.pubkey {
                 if pk.len() != ED25519_PK_LEN {
                     return Err(ContractError::InvalidGuardian {
-                        reason: format!(
-                            "{}: pubkey must be {ED25519_PK_LEN} bytes",
-                            g.address
-                        ),
+                        reason: format!("{}: pubkey must be {ED25519_PK_LEN} bytes", g.address),
                     });
                 }
             }
@@ -159,6 +158,9 @@ pub struct RecoveryAuthPayload {
     /// Must match on-chain `config.rehash_rounds`.
     pub rehash_rounds: u32,
     pub approvals: Vec<GuardianApproval>,
+    /// Optional circuit proof of the same challenge. Omitted for guardian-only auth.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preimage_proof: Option<PreimageProof>,
 }
 
 pub type SudoMsg = AuthSudoMsg;
@@ -305,7 +307,7 @@ fn verify_approval(
     }
 }
 
-impl BtsgAccountTrait for RecoveryAuthenticator {
+impl TerpAccountTrait for RecoveryAuthenticator {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -353,14 +355,13 @@ impl BtsgAccountTrait for RecoveryAuthenticator {
     fn on_auth_request(
         deps: DepsMut,
         _env: Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let cfg = CONFIG.load(deps.storage)?;
-        let payload: RecoveryAuthPayload = cosmwasm_std::from_json(&req.signature).map_err(|e| {
-            ContractError::HashAlg {
+        let payload: RecoveryAuthPayload =
+            cosmwasm_std::from_json(&req.signature).map_err(|e| ContractError::HashAlg {
                 reason: format!("payload decode: {e}"),
-            }
-        })?;
+            })?;
 
         // Client must echo the configured algorithm (prevents silent alg confusion).
         if payload.hash_alg != cfg.hash_alg {
@@ -407,6 +408,10 @@ impl BtsgAccountTrait for RecoveryAuthenticator {
                 got: valid,
                 need: cfg.threshold,
             });
+        }
+
+        if let Some(proof) = &payload.preimage_proof {
+            verify_preimage_proof(deps.api, &cfg, &challenge, proof)?;
         }
 
         Ok(Response::new()

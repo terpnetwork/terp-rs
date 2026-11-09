@@ -2,8 +2,7 @@
 /// App includes the protocol and software version for the application.
 /// This information is included in ResponseInfo. The App.Protocol can be
 /// updated in ResponseEndBlock.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct App {
     #[prost(uint64, tag = "1")]
     pub protocol: u64,
@@ -23,8 +22,9 @@ impl ::prost::Name for App {
 /// Consensus captures the consensus rules for processing a block in the blockchain,
 /// including all blockchain data structures and the rules of the application's
 /// state transition machine.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(
+    serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash, ::prost::Message,
+)]
 pub struct Consensus {
     #[prost(uint64, tag = "1")]
     pub block: u64,

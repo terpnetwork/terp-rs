@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SeriesInfo",
+  "type": "object",
+  "required": [
+    "recent"
+  ],
+  "properties": {
+    "config": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SeriesConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "next_allowed_at": {
+      "description": "Earliest unix second at which the next creation passes the cadence rules.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "recent": {
+      "description": "Unix seconds of recent creations (oldest first).",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "SeriesConfig": {
+      "description": "Contract-enforced creation cadence for a named series (e.g. \"latent-benders\", \"marain-orbs\"). Every field is optional; an unset field is not enforced.",
+      "type": "object",
+      "properties": {
+        "max_mint_window_secs": {
+          "description": "If set, each collection must set mint_end_time (seconds after creation) and it must be at most this value.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_per_window": {
+          "description": "At most this many collections per rolling `window_secs`.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "min_interval_secs": {
+          "description": "Minimum seconds between two collections of this series.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "operators": {
+          "description": "Who may create in this series besides the factory owner. Empty = anyone.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "window_secs": {
+          "description": "Rolling window for `max_per_window`; default 86400 (one day).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

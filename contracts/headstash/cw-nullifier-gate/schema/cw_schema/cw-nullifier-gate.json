@@ -1,0 +1,74 @@
+{
+  "contract_name": "cw-nullifier-gate",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_gate_msg_InstantiateMsg",
+        "type": "struct",
+        "properties": {}
+      }
+    ]
+  },
+  "execute": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_gate_msg_ExecuteMsg",
+        "type": "enum",
+        "cases": {}
+      }
+    ]
+  },
+  "query": {
+    "type": "v1",
+    "root": 0,
+    "definitions": [
+      {
+        "name": "cw_nullifier_gate_msg_QueryMsg",
+        "type": "enum",
+        "cases": {
+          "gate_info": {
+            "description": "Gate holds no spent SSOT — this always documents policy.",
+            "type": "named",
+            "properties": {}
+          }
+        }
+      }
+    ]
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "gate_info": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cw_nullifier_gate_msg_GateInfoResponse",
+          "type": "struct",
+          "properties": {
+            "note": {
+              "value": 2
+            },
+            "owns_spent_map": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "bool",
+          "type": "boolean"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

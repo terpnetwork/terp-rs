@@ -12,8 +12,8 @@
 //! The [`NostrExt`] trait is what CosmWasm contracts bind against in their
 //! generic type parameters, instead of depending directly on cosmwasm_std.
 
-use crate::error::NipResult;
 use crate::RawNostrEvent;
+use crate::error::NipResult;
 
 /// Interface for Nostr metadata in NFT/collection extensions.
 ///
@@ -181,7 +181,7 @@ mod tests {
             content: "hello".into(),
             sig: String::new(),
         };
-        assert_eq!(event.location(), true);
+        assert!(event.location());
         assert_eq!(event.kind(), 1);
         assert!(event.d_tag().is_none());
     }
@@ -198,7 +198,7 @@ mod tests {
             sig: "c".repeat(128),
         };
         let ext = NostrExtension::OnChain(event.clone());
-        assert_eq!(ext.location(), true);
+        assert!(ext.location());
         assert_eq!(ext.kind(), 31922);
         assert_eq!(ext.d_tag(), Some("my-event"));
     }
@@ -210,7 +210,7 @@ mod tests {
             kind: 31923,
             gateway: Some("https://ipfs.io/ipfs/".into()),
         };
-        assert_eq!(ext.location(), false);
+        assert!(!ext.location());
         assert_eq!(ext.kind(), 31923);
         assert!(ext.d_tag().is_none());
     }
@@ -290,16 +290,18 @@ mod tests {
             .unwrap();
         assert_eq!(event.content, "QmCID");
         assert_eq!(event.kind, 1);
-        assert!(event
-            .tags
-            .iter()
-            .any(|t| t.first() == Some(&"gateway".to_string())));
+        assert!(
+            event
+                .tags
+                .iter()
+                .any(|t| t.first() == Some(&"gateway".to_string()))
+        );
     }
 
     #[test]
     fn test_empty_extension_full_coverage() {
         let empty = EmptyNostrExtension;
-        assert_eq!(empty.location(), true);
+        assert!(empty.location());
         assert_eq!(empty.kind(), 0);
         assert!(empty.d_tag().is_none());
     }

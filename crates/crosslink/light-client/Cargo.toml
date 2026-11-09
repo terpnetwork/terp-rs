@@ -6,17 +6,17 @@ repository = { workspace = true }
 description = "Core light client verification primitives for Zcash Crosslink TFL"
 
 [features]
+# Optional invariance tests against a local zebra-crosslink checkout.
+zebra-crosslink-compare = ["dep:zebra-crosslink", "dep:zebra-chain"]
 
 [dependencies]
-cosmwasm-std = { workspace = true }
+byteorder = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+hex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
-hex = { workspace = true }
 thiserror = { workspace = true }
-blake3 = "1.5"
-byteorder = "1.5.0"
-
-[dev-dependencies]
-# Full zebra-crosslink crate imported ONLY for type invariance tests
-zebra-crosslink = { path = "../../../../zebra-crosslink/zebra-crosslink" }
-zebra-chain = { path = "../../../../zebra-crosslink/zebra-chain" }
+zebra-chain = { workspace = true, optional = true }
+# Compare tests only. Cargo rejects optional dev-dependencies, and these
+# crates do not build in this workspace (zcash_transparent secp256k1 split).
+zebra-crosslink = { workspace = true, optional = true }

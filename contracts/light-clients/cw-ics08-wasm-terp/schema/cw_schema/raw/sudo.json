@@ -1,0 +1,173 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_terp_msg_SudoMsg",
+      "type": "enum",
+      "cases": {
+        "migrate_client_store": {
+          "type": "tuple",
+          "items": [
+            11
+          ]
+        },
+        "update_state": {
+          "type": "tuple",
+          "items": [
+            8
+          ]
+        },
+        "update_state_on_misbehaviour": {
+          "type": "tuple",
+          "items": [
+            9
+          ]
+        },
+        "verify_membership": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "verify_non_membership": {
+          "type": "tuple",
+          "items": [
+            7
+          ]
+        },
+        "verify_upgrade_and_update_state": {
+          "type": "tuple",
+          "items": [
+            10
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_VerifyMembershipMsg",
+      "type": "struct",
+      "properties": {
+        "delay_block_period": {
+          "value": 3
+        },
+        "delay_time_period": {
+          "value": 3
+        },
+        "height": {
+          "value": 2
+        },
+        "merkle_path": {
+          "value": 5
+        },
+        "proof": {
+          "value": 4
+        },
+        "value": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_Height",
+      "type": "struct",
+      "properties": {
+        "revision_height": {
+          "defaulting": true,
+          "value": 3
+        },
+        "revision_number": {
+          "defaulting": true,
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_MerklePath",
+      "type": "struct",
+      "properties": {
+        "key_path": {
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cosmwasm_std::binary::Binary>",
+      "type": "array",
+      "items": 4
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_VerifyNonMembershipMsg",
+      "type": "struct",
+      "properties": {
+        "delay_block_period": {
+          "value": 3
+        },
+        "delay_time_period": {
+          "value": 3
+        },
+        "height": {
+          "value": 2
+        },
+        "merkle_path": {
+          "value": 5
+        },
+        "proof": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_UpdateStateMsg",
+      "type": "struct",
+      "properties": {
+        "client_message": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_MisbehaviourMsg",
+      "type": "struct",
+      "properties": {
+        "client_message": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_VerifyUpgradeAndUpdateStateMsg",
+      "type": "struct",
+      "properties": {
+        "proof_upgrade_client": {
+          "value": 4
+        },
+        "proof_upgrade_consensus_state": {
+          "value": 4
+        },
+        "upgrade_client_state": {
+          "value": 4
+        },
+        "upgrade_consensus_state": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw_ics08_wasm_terp_msg_MigrateClientStoreMsg",
+      "type": "struct",
+      "properties": {}
+    }
+  ]
+}

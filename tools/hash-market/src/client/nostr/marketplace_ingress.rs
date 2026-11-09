@@ -29,6 +29,28 @@ pub struct PurchaseIntent {
     pub nostr_event_id: String,
 }
 
+/// Relayer policy for turning a [`PurchaseIntent`] into an on-chain `Purchase`.
+///
+/// Default is [`IngressExecutePolicy::Off`]. `On` still does **not** submit
+/// a tx from this crate — it only authorizes a caller to proceed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum IngressExecutePolicy {
+    #[default]
+    Off,
+    On,
+}
+
+impl IngressExecutePolicy {
+    /// From marketplace-mirror `Config.auto_execute_ingress`.
+    pub fn from_contract_flag(auto_execute_ingress: bool) -> Self {
+        if auto_execute_ingress {
+            Self::On
+        } else {
+            Self::Off
+        }
+    }
+}
+
 /// Errors from order-shaped parse.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum IngressError {
@@ -46,6 +68,8 @@ pub enum IngressError {
     ZeroQty,
     #[error("garbage or unsupported order shape: {0}")]
     Reject(String),
+    #[error("auto-execute ingress is off (governance / relayer policy)")]
+    AutoExecuteOff,
 }
 
 /// Minimal NIP-01 event fields we care about for ingress.
@@ -61,6 +85,21 @@ struct RawNostrEvent {
     content: Option<Value>,
     #[serde(default)]
     tags: Option<Vec<Vec<String>>>,
+}
+
+/// Gate auto-execute: parse the event, then require [`IngressExecutePolicy::On`].
+///
+/// Returns [`IngressError::AutoExecuteOff`] when policy is off (the default).
+/// Does not talk to wasmd.
+pub fn authorize_auto_execute(
+    event_json: &str,
+    policy: IngressExecutePolicy,
+) -> Result<PurchaseIntent, IngressError> {
+    let intent = parse_purchase_intent(event_json)?;
+    match policy {
+        IngressExecutePolicy::On => Ok(intent),
+        IngressExecutePolicy::Off => Err(IngressError::AutoExecuteOff),
+    }
 }
 
 /// Parse Nostr event JSON (string or object) into a [`PurchaseIntent`].
@@ -324,5 +363,25 @@ mod tests {
         let intent = parse_purchase_intent(json).unwrap();
         assert_eq!(intent.sku, "sku-z");
         assert_eq!(intent.qty, 5);
+    }
+
+    #[test]
+    fn auto_execute_defaults_off() {
+        let json = r#"{
+            "id": "e1",
+            "pubkey": "buyer",
+            "tags": [["sku", "tee"], ["qty", "1"]],
+            "content": ""
+        }"#;
+        assert!(matches!(
+            authorize_auto_execute(json, IngressExecutePolicy::Off),
+            Err(IngressError::AutoExecuteOff)
+        ));
+        assert!(matches!(
+            authorize_auto_execute(json, IngressExecutePolicy::from_contract_flag(false)),
+            Err(IngressError::AutoExecuteOff)
+        ));
+        let intent = authorize_auto_execute(json, IngressExecutePolicy::On).unwrap();
+        assert_eq!(intent.sku, "tee");
     }
 }

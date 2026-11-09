@@ -65,9 +65,7 @@ impl ZcashSerialize for ConsensusState {
 }
 
 impl ZcashDeserialize for ConsensusState {
-    fn zcash_deserialize<R: std::io::Read>(
-        mut reader: R,
-    ) -> Result<Self, SerializationError> {
+    fn zcash_deserialize<R: std::io::Read>(mut reader: R) -> Result<Self, SerializationError> {
         let mut bft = [0u8; 4];
         let mut pow_h = [0u8; 4];
         let mut pow_hash = [0u8; 32];

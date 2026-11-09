@@ -1,4 +1,3 @@
-
 #[cfg(feature = "nostr")]
 pub mod nostr;
 

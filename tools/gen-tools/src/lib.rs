@@ -7,23 +7,24 @@
 //! Steps can be run individually or as a composable pipeline.
 
 pub mod config;
+pub mod deps;
+pub mod go_gen;
+pub mod llm;
+pub mod openapi;
 pub mod pipeline;
-pub mod schema;
-pub mod ts_codegen;
+pub mod placeholders;
 pub mod proto_gen;
 pub mod python_gen;
-pub mod zod_gen;
-pub mod go_gen;
-pub mod rust_gen;
-pub mod trailmark;
 pub mod readme_api;
-pub mod openapi;
-pub mod placeholders;
 pub mod resolver;
-pub mod llm;
-pub mod deps;
+pub mod rust_gen;
+pub mod schema;
 pub mod tensorzero;
+pub mod trailmark;
 pub mod ts_bundles;
+pub mod ts_codegen;
+pub mod vocs_docs;
+pub mod zod_gen;
 
 // ---------------------------------------------------------------------------
 // Generator trait: each pipeline step implements this.
@@ -69,11 +70,7 @@ pub fn run_pipeline(
             log::info!("[pipeline] Running generator: {}", g.name());
             let result = g.generate(ctx);
             match &result {
-                Ok(r) => log::info!(
-                    "  ✓ {} — {} files generated",
-                    r.name,
-                    r.files_generated
-                ),
+                Ok(r) => log::info!("  ✓ {} — {} files generated", r.name, r.files_generated),
                 Err(e) => log::error!("  ✗ {} — {}", g.name(), e),
             }
             result

@@ -1,0 +1,43 @@
+[package]
+name = "terp-bounty-escrow"
+version = "0.1.0"
+authors = ["Terp Network"]
+edition = "2024"
+description = "DEV/TEST ONLY. Custodial bounty escrow for the Terp bounty board (Pending -> Open -> Assigned -> Submitted -> Accepted -> Paid). Not audited. Not deployed."
+license = { workspace = true }
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["dev-chain-guard"]
+# Refuses to instantiate on the Terp mainnet chain id (morocco-1). A production build
+# must be cut deliberately with --no-default-features after governance signs off.
+dev-chain-guard = []
+
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking", "cosmwasm_2_1"] }
+cw-hooks = { workspace = true }
+cw-orch = { workspace = true, optional = true }
+cw-reply-helper = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw4 = { workspace = true }
+dao-hooks = { workspace = true }
+# vendored dao-dao packages (../dao-contracts), reused rather than copied
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+cw-multi-test = { workspace = true }
+cw4-group = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }

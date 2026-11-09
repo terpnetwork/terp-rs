@@ -1,0 +1,175 @@
+use cosmwasm_std::coin;
+
+/// Terp Foundation DAO core. Default wasm admin, owner, minter and creator for new
+/// deploy scripts. Admin rotation is planned: the Foundation DAO holds these roles only while we deploy and bootstrap.
+pub const FOUNDATION_DAO: &str = "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w";
+
+pub mod benders;
+pub mod collection;
+pub mod drops;
+pub mod fresh_plan;
+pub mod paymint;
+#[cfg(feature = "shitstrap")]
+pub mod suite;
+pub mod yijing;
+
+pub mod prelude {
+    pub use crate::collection::{
+        SeriesConfig, SvgCollectionConfig, SvgCollectionSuite, SvgFactory,
+    };
+    #[cfg(feature = "shitstrap")]
+    pub use crate::suite::{CwSvgSuite, CwSvgSuiteDeployData};
+}
+
+pub mod fractal {
+    use super::*;
+    use cw_svg::{VariableDef, VariableKind};
+    use rand::{SeedableRng, rngs::StdRng};
+
+    /// Animated, SVP1-checked on-chain art for the attractor params: 8 self-similar rotated
+    /// copies of the a..h polygon (stroke-color SMIL over static strokes), spin period
+    /// `${base_range}`s, flowing a->s / c->g links, pulsing nodes. Zooms stay in `<desc>`
+    /// for the off-chain permissionless.money visualizer. Built from fractal.svg.
+    pub const FRACTAL_SVG_TEMPLATE: &str = include_str!("../svgs/research/fractals/fractal-v2.svg");
+    pub const FRACTAL_SUPPLY: u64 = 10_000;
+
+    /// Mainnet roles for the fractal collection; `*_TBD` placeholders refuse to broadcast.
+    #[derive(Debug, Clone)]
+    pub struct FractalRoles {
+        pub curator: String,
+        pub withdraw: String,
+        /// whitelist-mtree (code 73) instance holding the paymint tree; None = no bypass.
+        pub paymint_whitelist: Option<String>,
+    }
+
+    /// Codec-checked (check_template) init for the factory's CreateSvgCollection.
+    pub fn permissionless_fractal_init_v2(
+        seed: &u64,
+        roles: &FractalRoles,
+    ) -> anyhow::Result<cw721_svg::InstantiateMsg> {
+        let mut m = default_permissionless_fractal_init(seed, &roles.curator);
+        let mut rng = StdRng::seed_from_u64(*seed);
+        let v = build_variable_defs(&(0..64).map(|_| gen_zoom_set(&mut rng)).collect::<Vec<_>>());
+        m.collection_info_extension.packed =
+            crate::yijing::check_template(FRACTAL_SVG_TEMPLATE, &v)?;
+        m.collection_info_extension.whitelist = roles.paymint_whitelist.clone();
+        m.minter = None;
+        m.withdraw_address = Some(roles.withdraw.clone());
+        Ok(m)
+    }
+
+    pub fn default_permissionless_fractal_init(
+        seed: &u64,
+        admin: &str,
+    ) -> cw721_svg::InstantiateMsg {
+        let mut rng = StdRng::seed_from_u64(*seed);
+        let v = build_variable_defs(
+            &(0..64)
+                .map(|_| gen_zoom_set(&mut rng))
+                .collect::<Vec<Vec<Zoom>>>(),
+        );
+        cw721_svg::InstantiateMsg {
+            name: "Permissionless Fractals".into(),
+            symbol: "FRACTAL".into(),
+            collection_info_extension: cw721_svg::SvgCollectionMetadata {
+                seed: blake3::hash(&seed.to_le_bytes()).as_bytes().into(),
+                price_tiers: vec![
+                    cw721_svg::PriceTier {
+                        until_count: 1000,
+                        price: coin(100_000_000, "uthiol"),
+                    },
+                    cw721_svg::PriceTier {
+                        until_count: 5000,
+                        price: coin(500_000_000, "uthiol"),
+                    },
+                    cw721_svg::PriceTier {
+                        until_count: 10000,
+                        price: coin(1_000_000_000, "uthiol"),
+                    },
+                ],
+                total: 10000,
+                mint_start_time: None,
+                mint_end_time: None,
+                whitelist: None,
+                require_auth: false,
+                packed: cw721_svg::pack_svg(FRACTAL_SVG_TEMPLATE, &(v.clone())),
+            },
+            minter: Some(admin.to_string()),
+            creator: Some(admin.to_string()),
+            withdraw_address: Some(admin.to_string()),
+        }
+    }
+
+    #[derive(Debug, Clone, serde::Serialize)]
+    pub struct Zoom {
+        cx: f64,
+        cy: f64,
+        scale: f64,
+    }
+
+    pub fn gen_float(rng: &mut impl rand::Rng, min: f64, max: f64, precision: u32) -> f64 {
+        let raw: f64 = rng.gen_range(min..=max);
+        let factor = 10f64.powi(precision as i32);
+        (raw * factor).round() / factor
+    }
+
+    pub fn gen_zoom_set(rng: &mut impl rand::Rng) -> Vec<Zoom> {
+        let num_zooms = rng.gen_range(3u32..=5);
+        let mut zooms = vec![Zoom {
+            cx: 0.0,
+            cy: 0.0,
+            scale: 1.0,
+        }];
+
+        for i in 1..num_zooms {
+            let progress = i as f64 / (num_zooms - 1) as f64;
+            zooms.push(Zoom {
+                cx: gen_float(rng, -4.0, 4.0, 1),
+                cy: gen_float(rng, -4.0, 4.0, 1),
+                scale: gen_float(rng, 1.0 + progress, 1.0 + progress * 5.0, 1),
+            });
+        }
+
+        zooms
+    }
+
+    /// Build variable definitions using Range for numeric params and Options for zooms.
+    pub fn build_variable_defs(zoom_variants: &[Vec<Zoom>]) -> Vec<VariableDef> {
+        let range_vars = vec![
+            ("a", "-2.5", "2.5", 2u32),
+            ("b", "-2.5", "2.5", 2),
+            ("c", "-2.5", "2.5", 2),
+            ("d", "-2.5", "2.5", 2),
+            ("s", "-2.0", "2.0", 1),
+            ("f", "-2.0", "2.0", 1),
+            ("g", "-2.0", "2.0", 1),
+            ("h", "-2.0", "2.0", 1),
+            ("base_range", "10", "80", 0),
+        ];
+
+        let mut defs: Vec<VariableDef> = range_vars
+            .into_iter()
+            .map(|(name, min, max, precision)| VariableDef {
+                name: name.to_string(),
+                kind: VariableKind::Range {
+                    min: min.to_string(),
+                    max: max.to_string(),
+                    precision,
+                },
+            })
+            .collect();
+
+        // Zooms remain as Options since they're complex JSON
+        let zoom_options: Vec<String> = zoom_variants
+            .iter()
+            .map(|z| serde_json::to_string(z).unwrap())
+            .collect();
+
+        defs.push(VariableDef {
+            name: "zooms".to_string(),
+            kind: VariableKind::Options(zoom_options),
+        });
+
+        defs
+    }
+}

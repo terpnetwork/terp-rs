@@ -1,0 +1,237 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SudoMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "verify_membership"
+      ],
+      "properties": {
+        "verify_membership": {
+          "$ref": "#/definitions/VerifyMembershipMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "verify_non_membership"
+      ],
+      "properties": {
+        "verify_non_membership": {
+          "$ref": "#/definitions/VerifyNonMembershipMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_state"
+      ],
+      "properties": {
+        "update_state": {
+          "$ref": "#/definitions/UpdateStateMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_state_on_misbehaviour"
+      ],
+      "properties": {
+        "update_state_on_misbehaviour": {
+          "$ref": "#/definitions/MisbehaviourMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "verify_upgrade_and_update_state"
+      ],
+      "properties": {
+        "verify_upgrade_and_update_state": {
+          "$ref": "#/definitions/VerifyUpgradeAndUpdateStateMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "migrate_client_store"
+      ],
+      "properties": {
+        "migrate_client_store": {
+          "$ref": "#/definitions/MigrateClientStoreMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Height": {
+      "type": "object",
+      "properties": {
+        "revision_height": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "revision_number": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "MerklePath": {
+      "type": "object",
+      "required": [
+        "key_path"
+      ],
+      "properties": {
+        "key_path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Binary"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "MigrateClientStoreMsg": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "MisbehaviourMsg": {
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateStateMsg": {
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyMembershipMsg": {
+      "type": "object",
+      "required": [
+        "delay_block_period",
+        "delay_time_period",
+        "height",
+        "merkle_path",
+        "proof",
+        "value"
+      ],
+      "properties": {
+        "delay_block_period": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "delay_time_period": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "height": {
+          "$ref": "#/definitions/Height"
+        },
+        "merkle_path": {
+          "$ref": "#/definitions/MerklePath"
+        },
+        "proof": {
+          "$ref": "#/definitions/Binary"
+        },
+        "value": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyNonMembershipMsg": {
+      "type": "object",
+      "required": [
+        "delay_block_period",
+        "delay_time_period",
+        "height",
+        "merkle_path",
+        "proof"
+      ],
+      "properties": {
+        "delay_block_period": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "delay_time_period": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "height": {
+          "$ref": "#/definitions/Height"
+        },
+        "merkle_path": {
+          "$ref": "#/definitions/MerklePath"
+        },
+        "proof": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyUpgradeAndUpdateStateMsg": {
+      "type": "object",
+      "required": [
+        "proof_upgrade_client",
+        "proof_upgrade_consensus_state",
+        "upgrade_client_state",
+        "upgrade_consensus_state"
+      ],
+      "properties": {
+        "proof_upgrade_client": {
+          "$ref": "#/definitions/Binary"
+        },
+        "proof_upgrade_consensus_state": {
+          "$ref": "#/definitions/Binary"
+        },
+        "upgrade_client_state": {
+          "$ref": "#/definitions/Binary"
+        },
+        "upgrade_consensus_state": {
+          "$ref": "#/definitions/Binary"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

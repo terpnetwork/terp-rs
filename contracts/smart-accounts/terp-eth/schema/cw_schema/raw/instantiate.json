@@ -1,0 +1,28 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_eth_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "owner": {
+          "value": 2
+        },
+        "signer": {
+          "description": "Ethereum address (0x…) that may authorize.",
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

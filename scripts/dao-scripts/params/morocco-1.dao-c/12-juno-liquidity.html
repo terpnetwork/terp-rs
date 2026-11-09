@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JUNO, TERP, and THIOL liquidity deployment</title>
+</head>
+<body>
+<h1>JUNO, TERP, and THIOL liquidity deployment</h1>
+<p>Spend funds from the Juno community pool to the custody-juno DAO so that DAO can deploy liquidity on Juno.</p>
+<h2>Spend</h2>
+<ul>
+<li>1,590,000 JUNO = <code>1590000000000</code> <code>ujuno</code></li>
+<li>2,100,000 TERP = <code>2100000000000</code> <code>uterp</code> = <code>2100000000000</code> of <code>ibc/2578547913C40B0DEBAB7E458F191491DE6288A01E1000E9BAE34103DEB189D3</code>, trace <code>transfer/channel-393/uterp</code></li>
+<li>2,846,700 THIOL = <code>2846700000000</code> <code>uthiol</code> = <code>2846700000000</code> of <code>ibc/055F223602B754BF34FE269B729837A02BDF79E069F2387AEEA9CD28DE961BE7</code>, trace <code>transfer/channel-393/uthiol</code></li>
+</ul>
+<h2>Recipient</h2>
+<p>The recipient is <code>juno1ggftsf77h6qsg5kz4nf3r08j9qxn56esaynaqan4j4pe5h6eevxqf6hthf</code>, the custody-juno contract (code 4862) instantiated by juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5.</p>
+<h2>Size</h2>
+<p>1,590,000 JUNO, 2,100,000 TERP, and 2,846,700 THIOL. The THIOL request is 2.85M. The community pool holds 2,846,700 THIOL, so the spend is that balance. At $0.00684943 per JUNO (CoinGecko juno-network, 2026-11-01), the baseline floor $0.05012 per TERP, and the baseline floor $0.02360 per THIOL, this is about $183,324.71. The baseline is the floor from the Terp baseline valuation. It is not a market quote.</p>
+<h2>Deposit</h2>
+<p>The proposer pays an initial deposit of 1,000 JUNO. Voting starts after the deposit reaches 5,000 JUNO. The deposit period is 10 days and the voting period is 5 days. The deposit is not part of the spend.</p>
+<h2>Accounts</h2>
+<p>The spend authority is the Juno x/gov module account <code>juno10d07y265gmmuvt4z0w9aw880jnsr700jvss730</code>. The proposer is steward-juno's Polytone account <code>juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5</code>. custody-juno is a DAO-DAO core, code 4862, instantiated by that account. The Juno x/gov module account is its wasm admin, its dao admin, and its 48-hour vetoer.</p>
+</body>
+</html>

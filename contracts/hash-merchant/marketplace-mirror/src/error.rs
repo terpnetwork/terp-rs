@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
-    Std(#[from] StdError),
+    Std(String),
 
     #[error("{0}")]
     Overflow(#[from] OverflowError),
@@ -13,11 +13,7 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("invalid min_buffer_blocks {got}: must be in range [{min}, {max}]")]
-    InvalidBuffer {
-        got: u64,
-        min: u64,
-        max: u64,
-    },
+    InvalidBuffer { got: u64, min: u64, max: u64 },
 
     #[error("accepted_denom cannot be empty")]
     EmptyDenom {},
@@ -73,4 +69,10 @@ pub enum ContractError {
 
     #[error("protocol_fee_bps {bps} exceeds 10000")]
     InvalidFeeBps { bps: u64 },
+}
+
+impl From<StdError> for ContractError {
+    fn from(err: StdError) -> Self {
+        ContractError::Std(err.to_string())
+    }
 }

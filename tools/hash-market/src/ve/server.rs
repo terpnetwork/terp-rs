@@ -11,11 +11,11 @@ use crate::msg::VoteExtensionHashData;
 use crate::server::AppState;
 use crate::transport::TransportMode;
 use axum::{
+    Json, Router,
     extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
 
 use std::sync::Arc;
@@ -138,10 +138,7 @@ async fn vote_extension_get(
     // sort so every validator hitting the same store gets the same pick
     // (newest received_at, then chain_uid, then algo).
     let mut entries: Vec<(&ProviderKey, &ProviderData)> = if let Some(cuid) = &query.chain_uid {
-        store
-            .iter()
-            .filter(|(k, _)| k.chain_uid == *cuid)
-            .collect()
+        store.iter().filter(|(k, _)| k.chain_uid == *cuid).collect()
     } else {
         store.iter().collect()
     };

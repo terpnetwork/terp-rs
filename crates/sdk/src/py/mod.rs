@@ -24,8 +24,7 @@ mod registry {
 ///   Protobuf-encoded bytes
 #[pyfunction]
 pub fn encode_message(type_url: &str, json_data: &[u8]) -> PyResult<Vec<u8>> {
-    registry::encode(type_url, json_data)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
+    registry::encode(type_url, json_data).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
 /// Decode protobuf binary to JSON bytes.
@@ -38,8 +37,7 @@ pub fn encode_message(type_url: &str, json_data: &[u8]) -> PyResult<Vec<u8>> {
 ///   UTF-8 encoded JSON bytes
 #[pyfunction]
 pub fn decode_message(type_url: &str, proto_data: &[u8]) -> PyResult<Vec<u8>> {
-    registry::decode(type_url, proto_data)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
+    registry::decode(type_url, proto_data).map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
 /// Return all registered proto type URLs.

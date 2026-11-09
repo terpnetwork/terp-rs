@@ -1,0 +1,33 @@
+[package]
+name = "cw420"
+version.workspace = true
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2024"
+description = "Simple cw4 implementation of group membership controlled by admin "
+license = "Apache-2.0"
+repository.workspace = true
+homepage = "https://cosmwasm.com"
+documentation = "https://docs.cosmwasm.com"
+
+exclude = ["artifacts/*"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["cosmwasm_1_2"] }
+cw-controllers = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw4 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+easy-addr = { workspace = true }

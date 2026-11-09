@@ -1,4 +1,4 @@
-//! Core sidecar traits for the TerpNetworkSuite.
+//! Core sidecar traits for the TerpArtifactStack.
 //!
 //! Three runtime modes unified under one abstraction:
 //! - `DockerSidecar` — full process isolation (relayer, minio-ipfs, Postgres)
@@ -44,7 +44,7 @@ pub type SidecarId = String;
 
 /// A sidecar that can be started, stopped, and queried.
 ///
-/// Every sidecar in a `TerpNetworkSuite` implements this. The `start()` method
+/// Every sidecar in a `TerpArtifactStack` implements this. The `start()` method
 /// receives a reference to any already-running sidecars for dependency resolution.
 #[async_trait]
 pub trait TerpSidecar: Send + Sync {
@@ -170,13 +170,17 @@ impl<C: SubprocessConfig> SubprocessSidecar<C> {
         }
     }
 
+    pub fn config(&self) -> &C {
+        &self.config
+    }
+
     /// Tail the subprocess stderr until we see a "listening" pattern or timeout.
     /// Returns the collected stderr text (for troubleshooting).
     async fn wait_for_listening(
         child: &mut tokio::process::Child,
         timeout: std::time::Duration,
     ) -> Result<String> {
-        use tokio::io::{AsyncBufReadExt, AsyncReadExt};
+        use tokio::io::AsyncBufReadExt;
 
         let stderr = child.stderr.take().context("no stderr captured")?;
         let mut reader = tokio::io::BufReader::new(stderr);
@@ -304,9 +308,8 @@ impl<C: SubprocessConfig + 'static> TerpSidecar for SubprocessSidecar<C> {
                 std::time::Duration::from_secs(self.config.startup_timeout_secs()),
             )
             .await
-            .map_err(|e| {
-                let _ = child.kill();
-                e
+            .inspect_err(|_e| {
+                let _ = child.start_kill();
             })?;
         }
 
@@ -414,6 +417,7 @@ pub struct DockerSidecar {
     runtime: Arc<dyn RuntimeBackend>,
     endpoints: EndpointMap,
     started: bool,
+    #[allow(dead_code)] // owned so the ICT network outlives the sidecar
     network_id: Option<ict_rs::runtime::NetworkId>,
 }
 
@@ -440,7 +444,7 @@ impl DockerSidecar {
     /// `host_ports` maps container_port -> host_port for endpoint registration.
     pub fn from_container(
         id: impl Into<String>,
-        container_id: ContainerId,
+        _container_id: ContainerId,
         host_ports: &[(u16, u16)],
         runtime: Arc<dyn RuntimeBackend>,
     ) -> Self {
@@ -484,16 +488,15 @@ impl TerpSidecar for DockerSidecar {
 
         // Register endpoints from container ports
         let mut endpoints = EndpointMap::new();
-        if let Some(ref cid) = sp.container_id() {
+        if let Some(cid) = sp.container_id() {
             for port_str in &sp.config.ports {
-                if let Ok(port) = port_str.parse::<u16>() {
-                    if let Ok(Some(host_port)) = self.runtime.get_host_port(cid, port, "tcp").await
-                    {
-                        endpoints.insert(
-                            format!("port{}", port),
-                            format!("http://127.0.0.1:{}", host_port),
-                        );
-                    }
+                if let Ok(port) = port_str.parse::<u16>()
+                    && let Ok(Some(host_port)) = self.runtime.get_host_port(cid, port, "tcp").await
+                {
+                    endpoints.insert(
+                        format!("port{}", port),
+                        format!("http://127.0.0.1:{}", host_port),
+                    );
                 }
             }
         }
@@ -517,7 +520,7 @@ impl TerpSidecar for DockerSidecar {
         match &self.sidecar_process {
             None => Ok(HealthStatus::Unknown),
             Some(sp) => {
-                if let Some(ref cid) = sp.container_id() {
+                if let Some(cid) = sp.container_id() {
                     match self.runtime.exec_in_container(cid, &["true"], &[]).await {
                         Ok(_) => Ok(HealthStatus::Healthy),
                         Err(e) => Ok(HealthStatus::Unhealthy(e.to_string())),
@@ -608,10 +611,10 @@ impl TerpSidecar for InProcessSidecar {
 
 impl Drop for InProcessSidecar {
     fn drop(&mut self) {
-        if let Some(handle) = self.handle.as_ref() {
-            if !handle.is_finished() {
-                handle.abort();
-            }
+        if let Some(handle) = self.handle.as_ref()
+            && !handle.is_finished()
+        {
+            handle.abort();
         }
     }
 }
@@ -672,10 +675,10 @@ impl SidecarBinaryResolver {
         }
 
         // Fall back to PATH
-        if let Some(ref name) = self.fallback_name {
-            if let Ok(path) = which::which(name) {
-                return Ok(path);
-            }
+        if let Some(ref name) = self.fallback_name
+            && let Ok(path) = which::which(name)
+        {
+            return Ok(path);
         }
 
         Err(anyhow::anyhow!(
@@ -684,9 +687,4 @@ impl SidecarBinaryResolver {
             self.fallback_name,
         ))
     }
-}
-
-/// Internal helper used by stderr line reading.
-pub(super) mod sidecar_internal {
-    pub struct Spinner;
 }

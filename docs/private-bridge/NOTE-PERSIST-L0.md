@@ -49,8 +49,7 @@ cargo test --lib harness::note_persist_l0 --features l0-seams
 ## Client writer (fixture crate)
 
 ```bash
-cd docs/plans/spectrum/fixtures/seam_note_out && cargo test
-cd docs/plans/spectrum/fixtures/compose_seams && cargo test  # bridge_mint_persist_plan_roundtrip
+cd crates/terp-rs && cargo test -p terp-seams --lib
 ```
 
 | Surface | Role |
@@ -58,7 +57,7 @@ cd docs/plans/spectrum/fixtures/compose_seams && cargo test  # bridge_mint_persi
 | `encrypt_note_out` / `decrypt_note_out` | XChaCha20-Poly1305 over full SEAM 382B |
 | `persist_plan_from_seam_note` | envelope + `notes/{hs_id}/{addr}` path |
 | `put_note_envelope` (feature `http`) | blocking `PUT /notes/...` |
-| `compose_seams::persist_plan_after_bridge_mint` | default addr = `cm.`+hex(cm_public) |
+| `terp_seams::compose::persist_plan_after_bridge_mint` | default addr = `cm.`+hex(cm_public) |
 
 ## Product call site + L2 smoke (landed)
 
@@ -75,15 +74,15 @@ cargo test --lib l2_e2e_bridge_mint_note_persist --features 'interface,l0-seams'
 | `put_note_after_mint` | **Call site after BridgeMintNote/claim** — encrypt → put |
 | `get_and_decrypt_note` | Owner recover (local or HTTP GET) |
 | `PrivateBridgeSuite::e2e_l2_bridge_mint_note_persist` | Mock mint → put → get → decrypt |
-| `seam_note_out::get_note_envelope` (feature `http`) | Live GET |
+| `terp_seams::dex::note::get_note_envelope` (feature `http`) | Live GET |
 
 ## Ops product (stable basis — 2026-07-20)
 
 | Surface | How |
 |---------|-----|
 | Live `notes_base` + auth | `NotesPersistConfig::http` + `auth_headers`; server `[notes_auth]` |
-| Bearer / snap auth | `seam_note_out::bearer_auth_headers` / `snap_secp_auth_headers` (feature `auth`); env `NOTES_BEARER_TOKEN` / `NOTES_SECP_SK` |
-| CLI | `cargo run -p seam_note_out --features cli --bin headstash-notes -- put|get|list|recover|pir-recover` |
+| Bearer / snap auth | `terp_seams::dex::note::bearer_auth_headers` / `snap_secp_auth_headers` (feature `auth`); env `NOTES_BEARER_TOKEN` / `NOTES_SECP_SK` |
+| CLI | `cargo run -p terp-seams --features cli --bin headstash-notes -- put|get|list|recover|pir-recover` |
 | Snap recover | `recover` (GET+decrypt), `pir-recover` (list+PIR+decrypt); harness `recover_note` / `recover_note_via_pir` |
 | Ciphertext `sha256` | `EncryptNoteOpts.include_ciphertext_sha256` / CLI `--with-sha256` / `with_ciphertext_sha256(true)`; server pins BUD blob when `[distribution]` on |
 

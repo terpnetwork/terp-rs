@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
-/// Contract errors — names align with pure `private_dex_seams` where useful.
+/// Contract errors — names align with pure `terp_seams::dex` where useful.
 #[derive(Error, Debug)]
 pub enum ContractError {
     #[error("{0}")]

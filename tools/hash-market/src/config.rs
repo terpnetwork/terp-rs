@@ -15,14 +15,24 @@ use serde::{Deserialize, Serialize};
 /// TOML config for `hash-market-server`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-    /// HTTP bind address (e.g. "0.0.0.0:9090")
+    /// HTTP bind address. Default `127.0.0.1:9090`.
+    /// A non-loopback host (including `0.0.0.0`) refuses to start unless
+    /// `allow_public_bind` or `HASH_MARKET_ALLOW_PUBLIC_BIND=1`.
+    #[serde(default = "default_bind")]
     pub bind: String,
+    /// Explicit override for a non-loopback `bind`. Logged at startup.
+    #[serde(default)]
+    pub allow_public_bind: bool,
+    /// Sole `terp1` allowed to POST/PUT/DELETE `/trees`.
+    /// `HASH_MARKET_TREE_OPERATOR` overrides this.
+    #[serde(default = "default_tree_operator")]
+    pub tree_operator: String,
     /// CometBFT / app chain ID (metadata; used by VE when enabled)
     #[serde(default = "default_chain_id")]
     pub chain_id: String,
     /// Hex-encoded secp256k1 signing key.
-    /// Required only when `ve_enabled = true`. Optional for merkle/BUD-only host
-    /// (may still be used later for authenticated tree admin if desired).
+    /// Required only when `ve_enabled = true`. `/trees` writes use `tree_operator`
+    /// plus an ADR-36 request signature, not this key.
     #[serde(default)]
     pub signing_key: Option<String>,
     /// Optional data directory for tree/blob/headstash storage (default: "data")
@@ -52,6 +62,115 @@ pub struct Config {
     /// See `docs/plans/cashu/CANONICAL-MINT-REGISTRY.md` (canonical registry, not “official”).
     #[serde(default)]
     pub cashu_mesh: Option<CashuMeshConfig>,
+    /// Embed onboard-authz under `/onboard/*` (no second process).
+    #[serde(default)]
+    pub onboard: Option<OnboardConfig>,
+    /// FROST + Noise privval sidecar (same process as hash-market).
+    #[serde(default)]
+    pub privval: Option<PrivvalSidecarConfig>,
+    /// Opt-in public-leaf PIR ingest. Honored only with `--features pir`.
+    /// Does not replace blossom/NIP-BUD or Nostr and does not broadcast.
+    #[serde(default)]
+    pub pir: Option<PirIngestConfig>,
+}
+
+/// `[pir]` — genesis `notes.json` → public leaf blobs + merkle paths.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PirIngestConfig {
+    /// When the section is present, ingest on startup (default true).
+    #[serde(default = "default_pir_enabled")]
+    pub enabled: bool,
+    /// Headstash id used in `/notes/{hs_id}/pir` (default `community-notes`).
+    #[serde(default = "default_pir_hs_id")]
+    pub hs_id: String,
+    /// Path to `crates/headstash/artifacts/community-notes/notes.json`.
+    #[serde(default)]
+    pub notes_json: String,
+    /// Path to `merkle_output.json` (poseidon-v1 root).
+    #[serde(default)]
+    pub merkle_json: String,
+}
+
+fn default_pir_enabled() -> bool {
+    true
+}
+
+fn default_pir_hs_id() -> String {
+    "community-notes".into()
+}
+
+/// `[privval]` — coordinator + session crypto in this runtime, not a second kms ELF.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PrivvalSidecarConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    pub addr: String,
+    /// `noise` (default) or `cleartext` (lab)
+    #[serde(default = "default_privval_crypto")]
+    pub crypto: String,
+    #[serde(default)]
+    pub frost_t: u16,
+    #[serde(default)]
+    pub frost_n: u16,
+    #[serde(default)]
+    pub group: Option<String>,
+    #[serde(default)]
+    pub shares: Vec<String>,
+    /// `json` (e2e) or `proto` (sign-bytes protobuf)
+    #[serde(default = "default_privval_codec")]
+    pub codec: String,
+    #[serde(default)]
+    pub state_file: Option<String>,
+}
+
+fn default_privval_codec() -> String {
+    "json".into()
+}
+
+fn default_privval_crypto() -> String {
+    "noise".into()
+}
+
+/// `[onboard]` — DAO → runtime key → scoped feegrant. Served at `/onboard/*`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OnboardConfig {
+    /// Mount grant routes (default **true** when the section is present).
+    #[serde(default = "default_onboard_enabled")]
+    pub enabled: bool,
+    /// DAO granter (`terp1…`). Env `ONBOARD_DAO` overrides.
+    #[serde(default)]
+    pub dao: Option<String>,
+    /// Runtime key that holds authz (`terp1…`). Env `ONBOARD_RUNTIME` overrides.
+    #[serde(default)]
+    pub runtime_key: Option<String>,
+    /// Override chain (else `Config.chain_id`). Env `ONBOARD_CHAIN` overrides.
+    #[serde(default)]
+    pub chain_id: Option<String>,
+    #[serde(default)]
+    pub register_limit: Option<String>,
+    #[serde(default)]
+    pub mint_limit: Option<String>,
+    /// Never enable in the merchant image without `terpd` + TEST keyring.
+    #[serde(default)]
+    pub broadcast: bool,
+}
+
+fn default_onboard_enabled() -> bool {
+    true
+}
+
+impl Default for OnboardConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            dao: None,
+            runtime_key: None,
+            chain_id: None,
+            register_limit: None,
+            mint_limit: None,
+            broadcast: false,
+        }
+    }
 }
 
 /// Cashu mesh host settings (`[cashu_mesh]` in TOML).
@@ -180,6 +299,17 @@ fn default_chain_id() -> String {
     "morocco-1".into()
 }
 
+fn default_bind() -> String {
+    "127.0.0.1:9090".into()
+}
+
+/// Deployed whitelist creator. Public address, not a key.
+pub const DEFAULT_TREE_OPERATOR: &str = "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052";
+
+fn default_tree_operator() -> String {
+    DEFAULT_TREE_OPERATOR.into()
+}
+
 impl Config {
     /// True when vote extensions should run (runtime flag; also needs `ve` feature at compile).
     pub fn wants_ve(&self) -> bool {
@@ -188,10 +318,7 @@ impl Config {
 
     /// Cashu mesh routes enabled (default true when unset — lab-friendly; set false to hide).
     pub fn wants_cashu_mesh(&self) -> bool {
-        self.cashu_mesh
-            .as_ref()
-            .map(|c| c.enabled)
-            .unwrap_or(true)
+        self.cashu_mesh.as_ref().map(|c| c.enabled).unwrap_or(true)
     }
 
     /// Public unauthenticated mint discovery GETs (`GET /cashu/mints*`).
@@ -243,6 +370,15 @@ impl Config {
     }
 
     /// Validate config for the selected mode.
+    pub fn wants_onboard(&self) -> bool {
+        self.onboard.as_ref().map(|o| o.enabled).unwrap_or(false)
+    }
+
+    /// Config asks to ingest public-leaf PIR. The route still needs `--features pir`.
+    pub fn wants_pir_ingest(&self) -> bool {
+        self.pir.as_ref().map(|p| p.enabled).unwrap_or(false)
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         if self.ve_enabled {
             if self
@@ -262,6 +398,18 @@ impl Config {
                 );
             }
         }
+        if self.wants_pir_ingest() {
+            let p = self.pir.as_ref().expect("wants_pir_ingest");
+            if p.hs_id.trim().is_empty() {
+                return Err("[pir] hs_id must not be empty when enabled".into());
+            }
+            if p.notes_json.trim().is_empty() || p.merkle_json.trim().is_empty() {
+                return Err(
+                    "[pir] notes_json and merkle_json are required when enabled (no broadcast)"
+                        .into(),
+                );
+            }
+        }
         if self.wants_oracle_bounds() {
             let n = self.price_bound_providers().count();
             if n == 0 {
@@ -271,7 +419,11 @@ impl Config {
                 );
             }
             for p in self.price_bound_providers() {
-                if p.market_id.as_ref().map(|m| m.trim().is_empty()).unwrap_or(true) {
+                if p.market_id
+                    .as_ref()
+                    .map(|m| m.trim().is_empty())
+                    .unwrap_or(true)
+                {
                     return Err(format!(
                         "price_bound provider '{}' requires market_id (e.g. \"ETH/USD\")",
                         p.name

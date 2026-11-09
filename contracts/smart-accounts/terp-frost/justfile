@@ -1,0 +1,57 @@
+# terp-frost rotate wasm
+#   just wasm-dev  — host rustc + wasm-opt lower (wasmd-safe)
+#   just test
+
+set dotenv-load := false
+
+contract_dir := justfile_directory()
+artifacts_dir := contract_dir / "artifacts"
+
+wasm-dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export PATH="/opt/homebrew/bin:/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:$HOME/.cargo/bin:$PATH"
+    export RUSTFLAGS="-C link-arg=--allow-undefined -C target-feature=-bulk-memory,-sign-ext,-mutable-globals,-nontrapping-fptoint,-multivalue,-reference-types"
+    cargo build --target wasm32-unknown-unknown --release --lib --manifest-path "{{contract_dir}}/Cargo.toml"
+    mkdir -p "{{artifacts_dir}}"
+    SRC="{{contract_dir}}/../../../target/wasm32-unknown-unknown/release/terp_frost.wasm"
+    if [[ ! -f "$SRC" ]]; then
+      SRC="{{contract_dir}}/target/wasm32-unknown-unknown/release/terp_frost.wasm"
+    fi
+    cp -f "$SRC" "{{artifacts_dir}}/terp_frost.wasm"
+    just _post_process_wasm
+    just _verify_no_bulk_memory
+    ls -la "{{artifacts_dir}}/terp_frost.wasm"
+
+_post_process_wasm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+    ART="{{artifacts_dir}}/terp_frost.wasm"
+    WASM_OPT="$(command -v wasm-opt)"
+    TMP="$(mktemp "${TMPDIR:-/tmp}/tf-opt.XXXXXX")"
+    "${WASM_OPT}" -Os \
+      --enable-bulk-memory \
+      --enable-sign-ext \
+      --llvm-memory-copy-fill-lowering \
+      --signext-lowering \
+      "${ART}" -o "${TMP}"
+    mv "${TMP}" "${ART}"
+
+_verify_no_bulk_memory:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+    ART="{{artifacts_dir}}/terp_frost.wasm"
+    FEATS="$(wasm-opt --print-features "${ART}" 2>&1 || true)"
+    echo "${FEATS}" | sed 's/^/  feature: /'
+    if echo "${FEATS}" | grep -qi 'enable-bulk-memory'; then
+      echo "error: bulk-memory still enabled — wasmd will reject store" >&2
+      exit 1
+    fi
+    grep -a -q rotate_frost_pubkey "$ART"
+    grep -a -q group_vk "$ART"
+    echo "verify OK: no bulk-memory feature size=$(wc -c < "$ART")"
+
+test:
+    cargo test --manifest-path "{{contract_dir}}/Cargo.toml"

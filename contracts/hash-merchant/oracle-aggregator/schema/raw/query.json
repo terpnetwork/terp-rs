@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "registry"
+      ],
+      "properties": {
+        "registry": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Median of the newest `window` observations for `market_id`.",
+      "type": "object",
+      "required": [
+        "median"
+      ],
+      "properties": {
+        "median": {
+          "type": "object",
+          "required": [
+            "market_id",
+            "window"
+          ],
+          "properties": {
+            "market_id": {
+              "type": "string"
+            },
+            "window": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

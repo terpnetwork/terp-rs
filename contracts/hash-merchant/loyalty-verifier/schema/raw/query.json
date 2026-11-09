@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "get_root"
+      ],
+      "properties": {
+        "get_root": {
+          "type": "object",
+          "required": [
+            "algo",
+            "chain_uid"
+          ],
+          "properties": {
+            "algo": {
+              "type": "string"
+            },
+            "chain_uid": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_root_count"
+      ],
+      "properties": {
+        "get_root_count": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_root_by_index"
+      ],
+      "properties": {
+        "get_root_by_index": {
+          "type": "object",
+          "required": [
+            "index"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_claim"
+      ],
+      "properties": {
+        "get_claim": {
+          "type": "object",
+          "required": [
+            "address",
+            "root_index"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "root_index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Private path: was this zk-jwt nullifier already used for root_index?",
+      "type": "object",
+      "required": [
+        "get_nullifier_claim"
+      ],
+      "properties": {
+        "get_nullifier_claim": {
+          "type": "object",
+          "required": [
+            "nullifier",
+            "root_index"
+          ],
+          "properties": {
+            "nullifier": {
+              "type": "string"
+            },
+            "root_index": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_mint_config"
+      ],
+      "properties": {
+        "get_mint_config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

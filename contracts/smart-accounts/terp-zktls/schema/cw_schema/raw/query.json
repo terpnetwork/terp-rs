@@ -1,0 +1,30 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_zktls_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "get_all_epoch": {
+          "type": "named",
+          "properties": {}
+        },
+        "get_epoch": {
+          "type": "named",
+          "properties": {
+            "id": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u128",
+      "type": "integer",
+      "precision": 128,
+      "signed": false
+    }
+  ]
+}

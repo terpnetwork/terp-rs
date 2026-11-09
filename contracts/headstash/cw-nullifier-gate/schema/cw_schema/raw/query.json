@@ -1,0 +1,17 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_nullifier_gate_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "gate_info": {
+          "description": "Gate holds no spent SSOT — this always documents policy.",
+          "type": "named",
+          "properties": {}
+        }
+      }
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 //! Golden fixture tests for IBC authenticity (offline, no Docker).
 
 use terp_scripts::ibc::{
-    check_invariants, compare_predict_observe, compute_ibc_denom_hash, golden_chain_assets,
-    golden_root, hop_count_from_trace_path, load_audited_known_hashes, load_expected_lookup,
-    load_golden_ibc_data, load_known_hashes, load_synthetic_known_hashes, FixtureBackend,
-    ObserveBackend, PredictedWorld,
+    FixtureBackend, ObserveBackend, PredictedWorld, check_invariants, compare_predict_observe,
+    compute_ibc_denom_hash, golden_chain_assets, golden_root, hop_count_from_trace_path,
+    load_audited_known_hashes, load_expected_lookup, load_golden_ibc_data, load_known_hashes,
+    load_synthetic_known_hashes,
 };
 
 #[test]
@@ -69,10 +69,12 @@ fn golden_ibc_data_predict_invariants_clean() {
         .filter(|r| r.symbol == "AKT")
         .collect();
     assert!(all_akt.iter().any(|r| r.hop_count > 1));
-    assert!(all_akt
-        .iter()
-        .filter(|r| r.hop_count > 1)
-        .all(|r| !r.preferred));
+    assert!(
+        all_akt
+            .iter()
+            .filter(|r| r.hop_count > 1)
+            .all(|r| !r.preferred)
+    );
 }
 
 #[test]
@@ -90,7 +92,10 @@ fn golden_expected_lookup_pins_preferred_routes() {
         .expect("AKT on osmosis");
     assert_eq!(route.trace_path, path);
     assert_eq!(route.dest_denom, denom);
-    assert_eq!(route.hop_count, osmo_akt["hop_count"].as_u64().unwrap() as usize);
+    assert_eq!(
+        route.hop_count,
+        osmo_akt["hop_count"].as_u64().unwrap() as usize
+    );
 
     let terp_akt = &expected["terp"]["AKT"];
     let tpath = terp_akt["trace_path"].as_str().unwrap();

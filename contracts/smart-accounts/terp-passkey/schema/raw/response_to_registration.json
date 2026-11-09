@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PasskeyRegistration",
+  "description": "Registered passkey binding (origin + credential id). Full WebAuthn verify is layered later; trait workflow stores registration data for origin checks.",
+  "type": "object",
+  "required": [
+    "credential_id"
+  ],
+  "properties": {
+    "credential_id": {
+      "description": "Credential id bytes (opaque).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        }
+      ]
+    },
+    "origin": {
+      "description": "Expected clientData.origin (optional).",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

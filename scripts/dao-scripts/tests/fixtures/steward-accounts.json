@@ -1,0 +1,34 @@
+[
+  {
+    "name": "custody-akash",
+    "address": "terp17rpheqf3sdelzx48taqwe2v98yvl9ra9g5rsds"
+  },
+  {
+    "name": "custody-juno",
+    "address": "terp1y9r0ya7dyjgvu92sf4vmwmlnn8h7dvgt8l6z3v"
+  },
+  {
+    "name": "steward-akash",
+    "address": "terp1vsaazrj7evn40x6kk6zlpak2uj6t6r5glndwta"
+  },
+  {
+    "name": "steward-juno",
+    "address": "terp1gv3vn89skx46rxm08qcc7d2gpjudx5hs7d0297"
+  },
+  {
+    "name": "sub-custody-akash-osmosis",
+    "address": "terp1wk25msf90xenxsrql2hevmqam6ugxuw5f2m5xm"
+  },
+  {
+    "name": "sub-custody-akash-terp",
+    "address": "terp1734m9k8fyah85zg7snq2nwjhx2p03h2pqxdd9p"
+  },
+  {
+    "name": "sub-custody-juno-osmosis",
+    "address": "terp1pk8y8dw9520c27rwahkzsq8pqx7efhzn8gsetl"
+  },
+  {
+    "name": "sub-custody-juno-terp",
+    "address": "terp1399l25m8cjaucuw7hz6rw9ff5h8lqw2ds9qmgw"
+  }
+]

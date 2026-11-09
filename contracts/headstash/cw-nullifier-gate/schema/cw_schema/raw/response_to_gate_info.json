@@ -1,0 +1,26 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_nullifier_gate_msg_GateInfoResponse",
+      "type": "struct",
+      "properties": {
+        "note": {
+          "value": 2
+        },
+        "owns_spent_map": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

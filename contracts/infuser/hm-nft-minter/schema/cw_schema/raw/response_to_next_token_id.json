@@ -1,0 +1,24 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "hm_nft_minter_msg_NextTokenIdResponse",
+      "type": "struct",
+      "properties": {
+        "max_tokens": {
+          "value": 1
+        },
+        "next_token_id": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    }
+  ]
+}

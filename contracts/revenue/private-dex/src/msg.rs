@@ -4,7 +4,7 @@
 //! pair msgs (`Swap`, `Simulation`, `Pool`, pause). The product path is
 //! **private settle**: public statement + proof, not bank/CW20 offer transfer.
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{QueryResponses, cw_serde};
 use cosmwasm_std::{Binary, Uint128};
 
 /// 32-byte Terp asset id (SEAM-NOTE-OUT width).
@@ -88,7 +88,6 @@ pub struct SwapStatementPublic {
 #[cw_serde]
 pub enum ExecuteMsg {
     // --- Owner admin (astroport-style config / pause surface) ---
-
     /// Create a virtual pool (factory-lite; multi-pool map like pair registry).
     CreatePool {
         asset_a: Binary,
@@ -99,28 +98,22 @@ pub enum ExecuteMsg {
         gamma_den: u64,
     },
     /// Pause / unpause — mirrors `crates/dex` pair `PoolPaused` window spirit.
-    SetPoolStatus {
-        pool_id: u64,
-        status: PoolStatus,
-    },
+    SetPoolStatus { pool_id: u64, status: PoolStatus },
     /// Dual-path verify config.
     SetZkCfg {
         mock_verify: bool,
         zkid: Option<u64>,
     },
     /// Stub root window for membership narrative.
-    SetAllowedRoot {
-        root: Option<Binary>,
-    },
+    SetAllowedRoot { root: Option<Binary> },
 
     // --- Product path ---
-
     /// Settle a private swap: verify proof → host recompute → nullifiers + reserves.
     ///
     /// Transparent analog: `crates/dex` `ExecuteMsg::Swap { offer_asset, max_spread, ... }`
     /// but offer is a **proven note spend**, not a bank push.
     SettleSwap {
-        statement: SwapStatementPublic,
+        statement: Box<SwapStatementPublic>,
         proof: Binary,
     },
 }

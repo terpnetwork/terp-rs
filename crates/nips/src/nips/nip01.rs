@@ -1,6 +1,6 @@
 use crate::{
-    error::{NipError, NipResult},
     NipKind, NipMetadata, RawNostrEvent, Tag,
+    error::{NipError, NipResult},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -230,7 +230,7 @@ impl NipMetadata for Deletion {
     }
 
     fn to_tags(&self) -> Vec<Tag> {
-        self.event_ids.iter().map(|id| Tag::e(id)).collect()
+        self.event_ids.iter().map(Tag::e).collect()
     }
 
     fn content(&self) -> String {
@@ -289,7 +289,7 @@ pub fn compute_event_id(
 
 #[cfg(test)]
 mod tests {
-    use crate::{RawNostrEvent, NipMetadata, NipKind};
+    use crate::{NipKind, NipMetadata, RawNostrEvent};
 
     use super::*;
 
@@ -340,8 +340,14 @@ mod tests {
     #[test]
     fn test_user_metadata_create_with_all_fields() {
         let mut extra = serde_json::Map::new();
-        extra.insert("display_name".into(), serde_json::Value::String("Alice".into()));
-        extra.insert("nip05".into(), serde_json::Value::String("alice@example.com".into()));
+        extra.insert(
+            "display_name".into(),
+            serde_json::Value::String("Alice".into()),
+        );
+        extra.insert(
+            "nip05".into(),
+            serde_json::Value::String("alice@example.com".into()),
+        );
 
         let meta = UserMetadata {
             name: Some("Alice".into()),
@@ -351,7 +357,10 @@ mod tests {
         };
         assert_eq!(meta.name.as_deref(), Some("Alice"));
         assert_eq!(meta.about.as_deref(), Some("A test user"));
-        assert_eq!(meta.picture.as_deref(), Some("https://example.com/avatar.png"));
+        assert_eq!(
+            meta.picture.as_deref(),
+            Some("https://example.com/avatar.png")
+        );
         assert!(meta.extra.contains_key("display_name"));
     }
 
@@ -413,7 +422,10 @@ mod tests {
     #[test]
     fn test_user_metadata_from_raw_event_correct_kind() {
         let mut extra = serde_json::Map::new();
-        extra.insert("display_name".into(), serde_json::Value::String("Alice".into()));
+        extra.insert(
+            "display_name".into(),
+            serde_json::Value::String("Alice".into()),
+        );
         let meta = UserMetadata {
             name: Some("Alice".into()),
             about: None,
@@ -434,7 +446,10 @@ mod tests {
 
         let parsed = UserMetadata::from_raw_event(&event).expect("should parse successfully");
         assert_eq!(parsed.name.as_deref(), Some("Alice"));
-        assert_eq!(parsed.extra.get("display_name").and_then(|v| v.as_str()), Some("Alice"));
+        assert_eq!(
+            parsed.extra.get("display_name").and_then(|v| v.as_str()),
+            Some("Alice")
+        );
     }
 
     #[test]
@@ -592,7 +607,12 @@ mod tests {
     fn test_text_note_from_raw_event_proper_tag_extraction() {
         let tags: Vec<Vec<String>> = vec![
             vec!["e".into(), "evt1".into()],
-            vec!["e".into(), "evt2".into(), "wss://relay.example.com".into(), "reply".into()],
+            vec![
+                "e".into(),
+                "evt2".into(),
+                "wss://relay.example.com".into(),
+                "reply".into(),
+            ],
             vec!["p".into(), "pk1".into()],
             vec!["p".into(), "pk2".into(), "wss://relay2.example.com".into()],
             vec!["t".into(), "nostr".into()],
@@ -616,13 +636,19 @@ mod tests {
         assert_eq!(note.event_references[0].relay_url, None);
         assert_eq!(note.event_references[0].marker, None);
         assert_eq!(note.event_references[1].event_id, "evt2");
-        assert_eq!(note.event_references[1].relay_url.as_deref(), Some("wss://relay.example.com"));
+        assert_eq!(
+            note.event_references[1].relay_url.as_deref(),
+            Some("wss://relay.example.com")
+        );
         assert_eq!(note.event_references[1].marker.as_deref(), Some("reply"));
         assert_eq!(note.pubkey_references.len(), 2);
         assert_eq!(note.pubkey_references[0].pubkey, "pk1");
         assert_eq!(note.pubkey_references[0].relay_url, None);
         assert_eq!(note.pubkey_references[1].pubkey, "pk2");
-        assert_eq!(note.pubkey_references[1].relay_url.as_deref(), Some("wss://relay2.example.com"));
+        assert_eq!(
+            note.pubkey_references[1].relay_url.as_deref(),
+            Some("wss://relay2.example.com")
+        );
         assert_eq!(note.hashtags, vec!["nostr"]);
     }
 
@@ -714,9 +740,7 @@ mod tests {
 
     #[test]
     fn test_deletion_from_raw_event_empty_reason() {
-        let tags: Vec<Vec<String>> = vec![
-            vec!["e".into(), "evt1".into()],
-        ];
+        let tags: Vec<Vec<String>> = vec![vec!["e".into(), "evt1".into()]];
         let event = RawNostrEvent {
             id: "abc".into(),
             pubkey: "pubkey".into(),
@@ -803,10 +827,10 @@ mod tests {
         let tags: &[Vec<String>] = &[vec!["p".into(), "abc123".into()]];
         let content = "hello";
 
-        let id1 = compute_event_id(pubkey, created_at, kind, tags, content)
-            .expect("should succeed");
-        let id2 = compute_event_id(pubkey, created_at, kind, tags, content)
-            .expect("should succeed");
+        let id1 =
+            compute_event_id(pubkey, created_at, kind, tags, content).expect("should succeed");
+        let id2 =
+            compute_event_id(pubkey, created_at, kind, tags, content).expect("should succeed");
 
         assert_eq!(id1, id2, "event ID should be deterministic");
         assert_eq!(id1.len(), 64, "SHA-256 hex should be 64 chars");
@@ -822,10 +846,10 @@ mod tests {
         let content_a = "hello";
         let content_b = "world";
 
-        let id_a = compute_event_id(pubkey, created_at, kind, tags, content_a)
-            .expect("should succeed");
-        let id_b = compute_event_id(pubkey, created_at, kind, tags, content_b)
-            .expect("should succeed");
+        let id_a =
+            compute_event_id(pubkey, created_at, kind, tags, content_a).expect("should succeed");
+        let id_b =
+            compute_event_id(pubkey, created_at, kind, tags, content_b).expect("should succeed");
 
         assert_ne!(id_a, id_b, "different content should produce different IDs");
     }

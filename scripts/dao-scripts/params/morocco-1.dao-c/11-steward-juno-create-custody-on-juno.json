@@ -1,0 +1,37 @@
+{
+  "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+  "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+  "signer": "terp1drrqa2mmk4syy85hrflta73408p0t5n4fkpc8x",
+  "flow": "one session: propose+vote+execute (no veto). Hermes must relay the note packet after execute. Not broadcast.",
+  "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+  "steward_juno_proxy": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+  "juno": {
+    "chain_id": "juno-1",
+    "code_ids": {
+      "core": 4862,
+      "cw4_group": 1992,
+      "proposal_single": 4869,
+      "voting_cw4": 4872
+    },
+    "code_source": "DAO-DAO v2.7.0",
+    "gov_module": "juno10d07y265gmmuvt4z0w9aw880jnsr700jvss730"
+  },
+  "submit_to": "steward-juno proposal module (AnyoneMayPropose); vote and execute as its cw4 member",
+  "propose": {
+    "propose": {
+      "description": "Through Polytone, steward-juno's Juno account instantiates custody-juno (DAO-DAO v2.7.0 code 4862). The Juno x/gov module account juno10d07y265gmmuvt4z0w9aw880jnsr700jvss730 is wasm admin, dao admin and 48-hour vetoer. Sole cw4 member: the steward-juno Polytone account juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5, weight 1.",
+      "msgs": [
+        {
+          "wasm": {
+            "execute": {
+              "contract_addr": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+              "funds": [],
+              "msg": "eyJleGVjdXRlIjp7ImNhbGxiYWNrIjpudWxsLCJtc2dzIjpbeyJ3YXNtIjp7Imluc3RhbnRpYXRlIjp7ImFkbWluIjoianVubzEwZDA3eTI2NWdtbXV2dDR6MHc5YXc4ODBqbnNyNzAwanZzczczMCIsImNvZGVfaWQiOjQ4NjIsImZ1bmRzIjpbXSwibGFiZWwiOiJjdXN0b2R5LWp1bm8iLCJtc2ciOiJleUpoWkcxcGJpSTZJbXAxYm04eE1HUXdOM2t5TmpWbmJXMTFkblEwZWpCM09XRjNPRGd3YW01emNqY3dNR3AyYzNNM016QWlMQ0p1WVcxbElqb2lZM1Z6ZEc5a2VTMXFkVzV2SWl3aVpHVnpZM0pwY0hScGIyNGlPaUpEZFhOMGIyUjVJRVJCVHlCbWIzSWdTblZ1YnlCc2FYRjFhV1JwZEhrc0lHTnlaV0YwWldRZ2IyNGdTblZ1YnlCaWVTQjBhR1VnVkdWeWNDQnpkR1YzWVhKa0xXcDFibThnUkVGUElIUm9jbTkxWjJnZ1VHOXNlWFJ2Ym1VdUlGUm9aU0JLZFc1dklIZ3ZaMjkySUcxdlpIVnNaU0JoWTJOdmRXNTBJR3AxYm04eE1HUXdOM2t5TmpWbmJXMTFkblEwZWpCM09XRjNPRGd3YW01emNqY3dNR3AyYzNNM016QWdhWE1nZEdobElHUmhieUJoWkcxcGJpd2dkR2hsSUhkaGMyMGdZV1J0YVc0Z1lXNWtJSFJvWlNBME9DMW9iM1Z5SUhabGRHOWxjaUFvZG1WMGJ5QmlaV1p2Y21VZ2NHRnpjMkZuWlNCdmJpd2daV0Z5YkhrZ1pYaGxZM1YwWlNCdlptWXBMaUJUYjJ4bElHTjNOQ0J0WlcxaVpYSTZJSFJvWlNCemRHVjNZWEprTFdwMWJtOGdVRzlzZVhSdmJtVWdZV05qYjNWdWRDQnFkVzV2TVdkMVlXaGpNblJrWjNaa2NHaG5lV1ZxY0c1d2N6VnVjemx1TkRaa1ozRnpkbVptWmpaeWJqVnVhMlJ0WVdWaGVqWXpjbkY0Tlhwa2N6VXVJaXdpYVcxaFoyVmZkWEpzSWpwdWRXeHNMQ0poZFhSdmJXRjBhV05oYkd4NVgyRmtaRjlqZHpJd2N5STZkSEoxWlN3aVlYVjBiMjFoZEdsallXeHNlVjloWkdSZlkzYzNNakZ6SWpwMGNuVmxMQ0oyYjNScGJtZGZiVzlrZFd4bFgybHVjM1JoYm5ScFlYUmxYMmx1Wm04aU9uc2lZMjlrWlY5cFpDSTZORGczTWl3aWJYTm5Jam9pWlhsS2JtTnRPVEZqUmpscVlqSTFNR050Um1wa1EwazJaWGxLZFZwWVkybFBibk5wV1ROak1GZ3laSGxpTTFaM1dESk9kbHBIVm1aaFYxRnBUMnBGTlU5VVNYTkpiVTR6VGtZNWJtTnRPVEZqUmpsNldWZDRNRWxxY0hWa1YzaHpURU5LY0dKdGJEQmhWMFp6V0RJeGJHSlhTbXhqYmsxcFQyeDBOMGx0Um10YVNFbHBUMmxLY1dSWE5YWk5WMlF4V1Zkb2FrMXVVbXRhTTFwclkwZG9ibVZYVm5GalJ6VjNZM3BXZFdONmJIVk9SRnByV2pOR2VtUnRXbTFhYWxwNVltcFdkV0V5VW5SWlYxWm9aV3BaZW1OdVJqUk9XSEJyWTNwVmFVeERTak5hVjJ4dVlVaFJhVTlxUmpsWVdERTVabEU5UFNJc0ltRmtiV2x1SWpwN0ltTnZjbVZmYlc5a2RXeGxJanA3Zlgwc0ltWjFibVJ6SWpwdWRXeHNMQ0pzWVdKbGJDSTZJbU4xYzNSdlpIa3RhblZ1YnkxMmIzUnBibWNpTENKellXeDBJanB1ZFd4c2ZTd2ljSEp2Y0c5ellXeGZiVzlrZFd4bGMxOXBibk4wWVc1MGFXRjBaVjlwYm1adklqcGJleUpqYjJSbFgybGtJam8wT0RZNUxDSnRjMmNpT2lKbGVVb3dZVWhLYkdNeWFIWmlSMUZwVDI1emFWbFhTbnBpTW5neFpFZFdabGt5T1RGaWJsRnBUMjV6YVdSSGFIbGFXRTV2WWpKNGEwbHFiMmxOVTBvNVpsTjNhV0pYUmpSWU0xcDJaRWRzZFZveE9YZGFXRXB3WWpKUmFVOXVjMmxrUjJ4MFdsTkpOazFVWTNsUFJFRjNabE4zYVdKWGJIVllNMXAyWkVkc2RWb3hPWGRhV0Vwd1lqSlJhVTl0TlRGaVIzZHpTVzA1ZFdKSWJHWmlWMVowV1cxV2VXTXhPV3hsUjFacVpGaFNiRWxxY0RCamJsWnNURU5LYUdKSGVIWmtNVGw1V2xoYWRtUkhiSFZhZVVrMldtMUdjMk15VlhOSmJrSjVXbFk1ZDJOdE9YZGlNMDVzV0RKc2RWcHRPR2xQYm5OcFdWYzFOV0l5Tld4WU1qRm9aVlk1ZDJOdE9YZGlNMDVzU1dwd04yWllNSE5KYlU1ellqTk9iRmd6UW5saU0wSjJZekpHYzFneU9YVllNbFkwV2xkT01XUkhiSFppYkRsdFdWZHNjMlJZU214SmFuQXdZMjVXYkV4RFNqSmFXRkoyU1dwd04wbHVVbkJpVjFaellqSk9jbGd5VWpGamJVWXdZVmM1ZFVscWNEZEpibEp3WWxkVmFVOXFSVE5OYW1kM1RVZ3djMGx1V214a1J6bHNZMmxKTmtsdGNERmliVGg0VFVkUmQwNHphM2xPYWxadVlsY3hNV1J1VVRCbGFrSXpUMWRHTTA5RVozZGhiVFY2WTJwamQwMUhjREpqTTAwelRYcEJhVXhEU214WldFcHpaVlk1YkdWSFZtcGtXRkpzU1dwd2JWbFhlSHBhVTNkcFpHMVdNR0l4T1dsYVYxcDJZMjFXWm1OSFJucGpNbFpyU1dwd01HTnVWbXhtVTNkcFdrZFdjMXBYWkdoa1IyeDJZbXc1ZEdJeVVqRmlSMVZwVDIwMU1XSkhlRGtpTENKaFpHMXBiaUk2ZXlKamIzSmxYMjF2WkhWc1pTSTZlMzE5TENKbWRXNWtjeUk2Ym5Wc2JDd2liR0ZpWld3aU9pSmpkWE4wYjJSNUxXcDFibTh0Y0hKdmNHOXpZV3dpTENKellXeDBJanB1ZFd4c2ZWMHNJbWx1YVhScFlXeGZhWFJsYlhNaU9tNTFiR3dzSW1sdWFYUnBZV3hmWVdOMGFXOXVjeUk2Ym5Wc2JDd2laR0Z2WDNWeWFTSTZiblZzYkgwPSJ9fX1dLCJ0aW1lb3V0X3NlY29uZHMiOiIzNjAwIn19"
+            }
+          }
+        }
+      ],
+      "title": "Create custody-juno on Juno"
+    }
+  }
+}

@@ -68,10 +68,7 @@ impl NostrUri {
     /// <link rel="alternate" href="nostr:naddr1..." />
     /// ```
     pub fn to_alternate_link_tag(&self) -> String {
-        format!(
-            r#"  <link rel="alternate" href="{}" />"#,
-            self.as_uri()
-        )
+        format!(r#"  <link rel="alternate" href="{}" />"#, self.as_uri())
     }
 
     /// Generate an HTML `<link rel="me">` or `<link rel="author">` tag
@@ -82,14 +79,14 @@ impl NostrUri {
     /// Returns an error if the entity is not a profile type (nprofile or npub).
     pub fn to_profile_link_tag(&self, rel: &str) -> Result<String, &'static str> {
         match &self.0 {
-            Nip19Entity::Npub(_) | Nip19Entity::Nprofile { .. } => {
-                Ok(format!(
-                    r#"  <link rel="{}" href="{}" />"#,
-                    rel,
-                    self.as_uri()
-                ))
-            }
-            _ => Err("can only link profile entities (npub/nprofile) with rel=\"me\" or rel=\"author\""),
+            Nip19Entity::Npub(_) | Nip19Entity::Nprofile { .. } => Ok(format!(
+                r#"  <link rel="{}" href="{}" />"#,
+                rel,
+                self.as_uri()
+            )),
+            _ => Err(
+                "can only link profile entities (npub/nprofile) with rel=\"me\" or rel=\"author\"",
+            ),
         }
     }
 

@@ -1,0 +1,13 @@
+node_modules
+.DS_Store
+
+# data from scripts to not nuke repo size
+data
+genesis/scripts-data/*.csv
+genesis/scripts-data/*.json
+headstash/scripts-data/*.csv
+headstash/scripts-data/*.json
+
+target
+vendor
+zk-crates/submodules/*

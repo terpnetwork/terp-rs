@@ -1,0 +1,49 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_private_dex_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "allowed_root": {
+          "description": "Optional single allowed commitment-tree root (stub window).",
+          "value": 5
+        },
+        "mock_verify": {
+          "description": "When true, proof verify is mocked (lab / ict film). Production: false + zk-api.",
+          "value": 1
+        },
+        "zkid": {
+          "description": "Circuit id registered in x/wasm for `proof_instance_verify`. Optional until circuit lands.",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::binary::Binary>",
+      "type": "optional",
+      "inner": 4
+    }
+  ]
+}

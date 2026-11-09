@@ -1,7 +1,11 @@
+# Nested under terp-rs but not a member (rand 0.8). Own workspace so cargo
+# commands that follow the path dependency can load this manifest.
+[workspace]
+
 [package]
 name = "headstash-randomness"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 path = "src/lib.rs"

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terp contracts</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1c1915;
+      --muted: #5c564c;
+      --line: #d9d2c5;
+      --paper: #f6f3ec;
+      --card: #fffdf8;
+      --green: #1d6b45;
+      --green-ink: #f3fff7;
+      --warn: #8a3b12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.45 ui-sans-serif, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    header, main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    header { padding-bottom: 0; }
+    h1 { font-size: 1.45rem; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+    p.lead { margin: 0; color: var(--muted); max-width: 68ch; }
+    code, .mono, input, select, textarea, pre, button { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 7px 8px;
+      font-size: 13px;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    button {
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.ghost { background: transparent; color: var(--ink); }
+    button.good { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    ul.contracts { list-style: none; margin: 8px 0 0; padding: 0; max-height: 70vh; overflow: auto; }
+    ul.contracts button {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      color: var(--ink);
+      border-color: transparent;
+      border-radius: 6px;
+      padding: 7px 8px;
+    }
+    ul.contracts button small { display: block; color: var(--muted); font-size: 11px; }
+    ul.contracts button[aria-current="true"] { background: #e7f3ec; border-color: #b7d8c6; }
+    pre {
+      margin: 10px 0 0;
+      padding: 10px;
+      background: #1c1915;
+      color: #f6f3ec;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 360px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+    }
+    .status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+    .status.warn { color: var(--warn); }
+    h2 { font-size: 1rem; margin: 0 0 4px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 800px) { .split { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Terp contracts</h1>
+    <p class="lead">
+      Local page over the terp-rs ESM bundles and a cw-orch <code>state.json</code>.
+      Queries use the REST endpoint you set. Keplr is loaded only when you connect, and only if the extension is installed.
+      Serve this from the terp-rs root: <code>python3 -m http.server 4173</code> then open <code>/web/</code>.
+    </p>
+  </header>
+  <main>
+    <section style="margin-bottom: 16px">
+      <div class="row">
+        <div style="flex: 1; min-width: 160px">
+          <label for="chain">Chain in state.json</label>
+          <select id="chain"></select>
+        </div>
+        <div style="flex: 2; min-width: 220px">
+          <label for="rpc">RPC</label>
+          <input id="rpc" spellcheck="false" value="http://127.0.0.1:26657">
+        </div>
+        <div style="flex: 2; min-width: 220px">
+          <label for="lcd">REST</label>
+          <input id="lcd" spellcheck="false" value="http://127.0.0.1:1317">
+        </div>
+        <div style="flex: 1; min-width: 120px">
+          <label for="gas">Gas price</label>
+          <input id="gas" spellcheck="false" value="0.025uterp">
+        </div>
+      </div>
+      <div class="row" style="margin-top: 10px">
+        <button type="button" class="ghost" id="preset-local">This machine</button>
+        <button type="button" class="ghost" id="preset-morocco">morocco-1 public</button>
+        <button type="button" class="good" id="connect">Connect Keplr</button>
+        <button type="button" class="ghost" id="disconnect" hidden>Disconnect</button>
+        <label style="margin: 0">Replace state.json <input id="state-file" type="file" accept="application/json,.json"></label>
+      </div>
+      <p class="status" id="status">Loading state.json…</p>
+    </section>
+    <div class="grid">
+      <section>
+        <label for="filter">Contracts</label>
+        <input id="filter" placeholder="filter" spellcheck="false">
+        <ul class="contracts" id="list"></ul>
+      </section>
+      <section id="desk">
+        <h2 id="title">Pick a contract</h2>
+        <p class="status" id="meta"></p>
+        <label for="address">Contract address</label>
+        <input id="address" spellcheck="false" placeholder="terp1…" disabled>
+        <div class="row" style="margin-top: 8px">
+          <button type="button" id="read-info" class="ghost" disabled>Contract info</button>
+        </div>
+        <div class="split">
+          <div>
+            <h2 style="margin-top: 14px">Query</h2>
+            <label for="query-variant">Variant</label>
+            <select id="query-variant" disabled></select>
+            <label for="query-body">JSON payload</label>
+            <textarea id="query-body" disabled>{}</textarea>
+            <button type="button" id="run-query" style="margin-top: 8px" disabled>Query</button>
+          </div>
+          <div>
+            <h2 style="margin-top: 14px">Execute</h2>
+            <label for="exec-variant">Variant</label>
+            <select id="exec-variant" disabled></select>
+            <label for="exec-body">JSON payload</label>
+            <textarea id="exec-body" disabled>{}</textarea>
+            <label for="funds">Funds JSON</label>
+            <textarea id="funds" disabled>[]</textarea>
+            <button type="button" class="good" id="run-exec" style="margin-top: 8px" disabled>Sign and broadcast</button>
+          </div>
+        </div>
+        <pre id="out">Results land here.</pre>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

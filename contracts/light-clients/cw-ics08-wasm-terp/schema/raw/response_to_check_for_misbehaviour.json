@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckForMisbehaviourResult",
+  "type": "object",
+  "required": [
+    "found_misbehaviour"
+  ],
+  "properties": {
+    "found_misbehaviour": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,43 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw4_query_MemberListResponse",
+      "type": "struct",
+      "properties": {
+        "members": {
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cw4_query_Member",
+      "description": "A group member has a weight associated with them.\nThis may all be equal, or may have meaning in the app that\nmakes use of the group (eg. voting power)",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "value": 2
+        },
+        "weight": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw4::query::Member>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

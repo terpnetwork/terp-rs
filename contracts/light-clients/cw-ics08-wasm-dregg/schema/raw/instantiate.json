@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "client_state",
+    "consensus_state"
+  ],
+  "properties": {
+    "checksum": {
+      "description": "Optional 08-wasm bytecode checksum (stored for operators).",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Binary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "client_state": {
+      "$ref": "#/definitions/ClientState"
+    },
+    "consensus_state": {
+      "description": "Initial consensus (usually genesis lanes, height 0).",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ConsensusState"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "ClaimCeiling": {
+      "type": "string",
+      "enum": [
+        "settlement_only"
+      ]
+    },
+    "ClientState": {
+      "type": "object",
+      "required": [
+        "allow_gate_off_finality",
+        "auth_require_root_in_history",
+        "chain_id",
+        "claim_ceiling",
+        "client_schema_version",
+        "genesis_lanes",
+        "latest_height",
+        "settlement_vk_hash",
+        "trust_level"
+      ],
+      "properties": {
+        "allow_gate_off_finality": {
+          "type": "boolean"
+        },
+        "auth_min_proven_height": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "auth_require_root_in_history": {
+          "type": "boolean"
+        },
+        "chain_id": {
+          "type": "string"
+        },
+        "claim_ceiling": {
+          "$ref": "#/definitions/ClaimCeiling"
+        },
+        "client_schema_version": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "federation_id": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frozen_height": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "genesis_lanes": {
+          "description": "Length 8 BabyBear lanes.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "latest_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "settlement_vk_hash": {
+          "description": "Hex, 32 bytes, non-zero.",
+          "type": "string"
+        },
+        "trust_level": {
+          "$ref": "#/definitions/TrustLevel"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConsensusKind": {
+      "type": "string",
+      "enum": [
+        "b"
+      ]
+    },
+    "ConsensusState": {
+      "type": "object",
+      "required": [
+        "kind",
+        "proven_height",
+        "proven_lanes",
+        "proven_root_key",
+        "version"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/ConsensusKind"
+        },
+        "proven_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "proven_lanes": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        },
+        "proven_root_key": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "TrustLevel": {
+      "type": "string",
+      "enum": [
+        "settlement_wrap_only"
+      ]
+    }
+  }
+}

@@ -1,5 +1,8 @@
 //! Dependency switching — rewrite Cargo.toml files between stable/local/git modes.
 //!
+//! `patch-local` and `patch-git` (version lines, one `[patch.crates-io]`
+//! replacement) live in `dep.py` only. This Rust switch does not emit them.
+//!
 //! Mirrors `dep-switch.py`. Edits three target levels:
 //!   - `patches`:  [patch.crates-io] in workspace root
 //!   - `ws-deps`:  [workspace.dependencies] entries
@@ -113,15 +116,13 @@ fn edit_patches(
         Err(_) => return Ok(vec![]),
     };
     let mut edits = Vec::new();
-let mut changed = false;
+    let mut changed = false;
 
     let mut lines: Vec<String> = content.lines().map(String::from).collect();
     let mut i = 0;
     while i < lines.len() {
         let line = &lines[i];
-        if line.trim().starts_with("[patch.")
-            && line.contains("crates-io")
-        {
+        if line.trim().starts_with("[patch.") && line.contains("crates-io") {
             i += 1;
             let mut patch_lines: Vec<(usize, String)> = Vec::new();
             while i < lines.len() && !lines[i].trim().starts_with('[') {
@@ -134,7 +135,10 @@ let mut changed = false;
                             let features = extract_features_from_line(&trimmed).unwrap_or_default();
                             let replacement = append_features_to_line(&base, &features);
                             if replacement != trimmed {
-                                patch_lines.push((i, format!("{}{}", leading_whitespace(&lines[i]), replacement)));
+                                patch_lines.push((
+                                    i,
+                                    format!("{}{}", leading_whitespace(&lines[i]), replacement),
+                                ));
                                 changed = true;
                             }
                         }
@@ -203,26 +207,28 @@ fn edit_ws_deps(
                 continue;
             }
             // Parse dep name from inline or table entry
-            if let Some(dep_name) = parse_dep_name_from_line(&trimmed) {
-                if let Some((_key, entry)) = pkg_map.get(&dep_name) {
-                    if let Some(tc) = target_crate {
-                        if &dep_name != tc && pkg_map.get(tc).map(|(k, _)| k.as_str()) != Some(&dep_name) {
-                            i += 1;
-                            continue;
+            if let Some(dep_name) = parse_dep_name_from_line(&trimmed)
+                && let Some((_key, entry)) = pkg_map.get(&dep_name)
+            {
+                if let Some(tc) = target_crate
+                    && dep_name != tc
+                    && pkg_map.get(tc).map(|(k, _)| k.as_str()) != Some(&dep_name)
+                {
+                    i += 1;
+                    continue;
+                }
+                let (new_lines, modified) =
+                    rewrite_ws_dep_entry(&lines, i, &dep_name, entry, mode, matrix);
+                if modified {
+                    // Replace the entry lines
+                    for (offset, nl) in new_lines.iter().enumerate() {
+                        if i + offset < lines.len() {
+                            lines[i + offset] = nl.clone();
                         }
                     }
-                    let (new_lines, modified) = rewrite_ws_dep_entry(&lines, i, &dep_name, entry, mode, matrix);
-                    if modified {
-                        // Replace the entry lines
-                        for (offset, nl) in new_lines.iter().enumerate() {
-                            if i + offset < lines.len() {
-                                lines[i + offset] = nl.clone();
-                            }
-                        }
-                        changed = true;
-                        i += new_lines.len();
-                        continue;
-                    }
+                    changed = true;
+                    i += new_lines.len();
+                    continue;
                 }
             }
         }
@@ -236,11 +242,18 @@ fn edit_ws_deps(
         }
     }
     let action = if changed {
-        if dry_run { "[dry-run] would update ws-deps".into() } else { "updated ws-deps".into() }
+        if dry_run {
+            "[dry-run] would update ws-deps".into()
+        } else {
+            "updated ws-deps".into()
+        }
     } else {
         "no changes to ws-deps".into()
     };
-    Ok(vec![FileEdit { path: cargo_toml.to_path_buf(), action }])
+    Ok(vec![FileEdit {
+        path: cargo_toml.to_path_buf(),
+        action,
+    }])
 }
 
 // ── Member deps editing ────────────────────────────────────────────────
@@ -293,11 +306,11 @@ fn edit_member_deps(
                     continue;
                 }
                 if let Some((_key, entry)) = pkg_map.get(&dep_name) {
-                    if let Some(tc) = target_crate {
-                        if &dep_name != tc {
-                            i += 1;
-                            continue;
-                        }
+                    if let Some(tc) = target_crate
+                        && dep_name != tc
+                    {
+                        i += 1;
+                        continue;
                     }
                     let base = build_dep_entry(&dep_name, entry, mode, matrix, 0);
                     let features = extract_features_from_line(&trimmed).unwrap_or_default();
@@ -319,11 +332,18 @@ fn edit_member_deps(
         }
     }
     let action = if changed {
-        if dry_run { "[dry-run] would update member deps".into() } else { "updated member deps".into() }
+        if dry_run {
+            "[dry-run] would update member deps".into()
+        } else {
+            "updated member deps".into()
+        }
     } else {
         "no changes".into()
     };
-    Ok(vec![FileEdit { path: member_cargo.to_path_buf(), action }])
+    Ok(vec![FileEdit {
+        path: member_cargo.to_path_buf(),
+        action,
+    }])
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -354,17 +374,17 @@ fn extract_features_from_line(line: &str) -> Option<Vec<String>> {
     let trimmed = line.trim();
     if let Some(start) = trimmed.find("features") {
         let after = &trimmed[start..];
-        if let Some(bracket_start) = after.find('[') {
-            if let Some(bracket_end) = after[bracket_start..].find(']') {
-                let content = &after[bracket_start + 1..bracket_start + bracket_end];
-                let features: Vec<String> = content
-                    .split(',')
-                    .map(|s| s.trim().trim_matches('"').to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
-                if !features.is_empty() {
-                    return Some(features);
-                }
+        if let Some(bracket_start) = after.find('[')
+            && let Some(bracket_end) = after[bracket_start..].find(']')
+        {
+            let content = &after[bracket_start + 1..bracket_start + bracket_end];
+            let features: Vec<String> = content
+                .split(',')
+                .map(|s| s.trim().trim_matches('"').to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            if !features.is_empty() {
+                return Some(features);
             }
         }
     }
@@ -532,7 +552,7 @@ fn build_dep_entry(
         ),
     }
 }
-    fn rewrite_ws_dep_entry(
+fn rewrite_ws_dep_entry(
     lines: &[String],
     idx: usize,
     dep_name: &str,
@@ -547,7 +567,7 @@ fn build_dep_entry(
     if trimmed.contains('=') {
         // Inline entry
         let base = build_dep_entry(dep_name, entry, mode, matrix, 0);
-        let features = extract_features_from_line(&trimmed).unwrap_or_default();
+        let features = extract_features_from_line(trimmed).unwrap_or_default();
         let new_line = append_features_to_line(&base, &features);
         (vec![new_line.clone()], new_line != trimmed)
     } else {

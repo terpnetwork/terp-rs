@@ -156,9 +156,7 @@ impl MatrixFile {
         }
         match mode {
             "local" | "dev" => entry.local.clone(),
-            "zk_local" | "zk_dev" => {
-                entry.zk_local.clone().or_else(|| entry.local.clone())
-            }
+            "zk_local" | "zk_dev" => entry.zk_local.clone().or_else(|| entry.local.clone()),
             _ => None,
         }
     }

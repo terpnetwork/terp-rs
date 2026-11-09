@@ -1,0 +1,10 @@
+{
+  "$comment": "Roots for gen-deps.mjs. Paths: ${VAR} or ${VAR:-default} are expanded from the environment; relative paths resolve against this file's directory. A root whose path is missing is cloned from `git` into --cache-dir (default $XDG_CACHE_HOME/terp-gen-deps) unless --no-clone. `sub` is the crate dir inside the checkout.",
+  "roots": [
+    { "id": "terp-rs", "label": "terp-rs", "path": "${TERP_RS_DIR:-../../..}", "upstream": "https://github.com/permissionlessweb/terp-rs" },
+    { "id": "cosmwasm", "label": "CosmWasm", "path": "${COSMWASM_DIR:-../../../../cosmwasm}", "git": "https://github.com/CosmWasm/cosmwasm", "upstream": "https://github.com/CosmWasm/cosmwasm" },
+    { "id": "wasmvm", "label": "wasmvm (libwasmvm)", "path": "${WASMVM_DIR:-}", "sub": "libwasmvm", "git": "https://github.com/CosmWasm/wasmvm", "upstream": "https://github.com/CosmWasm/wasmvm" },
+    { "id": "wasmer", "label": "Wasmer", "path": "${WASMER_DIR:-../../../../../../wasmer}", "git": "https://github.com/wasmerio/wasmer", "upstream": "https://github.com/wasmerio/wasmer" },
+    { "id": "parity-wasm", "label": "parity-wasm", "path": "${PARITY_WASM_DIR:-}", "git": "https://github.com/paritytech/parity-wasm", "upstream": "https://github.com/paritytech/parity-wasm" }
+  ]
+}

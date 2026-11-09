@@ -8,9 +8,9 @@
 //! ```
 
 use hash_market::oracle::{
-    aggregate_bounds, bound_to_vote_extension, decode_bound_root, encode_bound_root,
-    AggregationMethod, AggregationPolicy, AttributedPrice, OracleAttributeStore,
-    ALGO_PRICE_MEDIAN_V1,
+    ALGO_PRICE_MEDIAN_V1, AggregationMethod, AggregationPolicy, AttributedPrice,
+    OracleAttributeStore, aggregate_bounds, bound_to_vote_extension, decode_bound_root,
+    encode_bound_root,
 };
 
 fn tick(source: &str, market: &str, price: f64, at: u64) -> AttributedPrice {
@@ -41,8 +41,10 @@ fn main() {
     ];
     let bound = aggregate_bounds(market, &observations, &policy, now).expect("aggregate");
     assert_eq!(bound.role, "bound_only");
-    println!("pure median: market={} mantissa={} decimals={} sources={:?}",
-        bound.market_id, bound.mantissa, bound.decimals, bound.sources);
+    println!(
+        "pure median: market={} mantissa={} decimals={} sources={:?}",
+        bound.market_id, bound.mantissa, bound.decimals, bound.sources
+    );
 
     // ── Attribute store (Connect in-process map) ───────────────────────────
     let store = OracleAttributeStore::new();

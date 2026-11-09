@@ -4,31 +4,12 @@ version = "0.0.2"
 edition = "2024"
 description = "Terp Network orchestration, IBC data pipeline, and integration harness (path: tests/)"
 
-[[bin]]
-name = "delegations"
-path = "bin/dels.rs"
+# IBC, delegation, validator, and polytone CLIs live on `dao-scripts`.
+# `e2e` and `testnet` bins were removed with their sources.
 
 [[bin]]
-name = "e2e"
-path = "bin/e2e.rs"
-
-# Canonical IBC automation CLI (agent catalog / just recipes)
-[[bin]]
-name = "terp-ibc"
-path = "bin/ibc_info.rs"
-
-# Deprecated alias — prefer terp-ibc; remove after one release cycle
-[[bin]]
-name = "ibc"
-path = "bin/ibc_info.rs"
-
-[[bin]]
-name = "testnet"
-path = "bin/testnet.rs"
-
-[[bin]]
-name = "create_val"
-path = "bin/create_val.rs"
+name = "suite_coverage"
+path = "bin/suite_coverage.rs"
 
 [features]
 default = ["docker", "nostr", "hash-market"]
@@ -37,49 +18,126 @@ nostr = []
 zk = ["cosmwasm-std/zk", "dep:zk-test-press"]
 # Content plane + calendar NIP-52 egress (Phase B)
 hash-market = ["dep:hash-market"]
-# Pulls billboards suite (terp721-account). Off by default so pure lib/tests compile.
-account = ["dep:terp-account-scripts"]
+# Billboards/account composite stays off. Path dep omitted so default
+# cargo check is not forced to unify crates-io cosmwasm-crypto (=4.0.3)
+# against in-tree cosmwasm-crypto (=4.2.0).
+account = []
+# VSCK + suite::auth re-exports. Full TerpAuthenticatorSuite stays optional
+# (it pulls terp-zkjwt/halo2 and is parked for other authenticators).
+auth-suite = ["dep:terp-vsck", "dep:terp-auth"]
+auth-suite-full = ["auth-suite", "dep:terp-authenticator-suite"]
+circuit-demo-suite = ["orch-suite"]
+# One manifold: circuits, bridge, authenticators, accounts, light clients, products.
+orch-suite = [
+    "dep:terp-orch",
+    "terp-orch/stack",
+    "dep:cw-infuser",
+    "dep:cw-infusions",
+    "dep:cw-multi-test",
+    "dep:cw-svg",
+    "dep:cosmwasm-crypto",
+    "dep:cw-ownable",
+    "dep:cw721",
+    "dep:cw721-base",
+    "dep:cw721-svg",
+    "dep:ecdsa",
+    "dep:nftfi-loan",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
+    "dep:nftfi-utils",
+    "dep:terp-beacon",
+    "dep:rs_merkle",
+    "dep:terp-account",
+    "dep:terp-bounty-escrow",
+    "dep:terp721-account",
+    "dep:terp721-account-manifold",
+    "dep:whitelist-mtree",
+    "dep:cw-shitstrap",
+    "dep:cw-shit-denom",
+]
+# zebra-* need protoc; keep off default so --test no_rick does not require protobuf.
+crosslink-e2e = ["dep:zebra-crosslink", "dep:zebra-chain"]
+# Live zakurad TFL RPC → CrosslinkHeader (not synthetic ed25519).
+zakura-live = ["ict-rs/zakura"]
 
 [dependencies]
-anyhow = "1.0"
-async-trait = "0.1.89"
-axum = { version = "0.7" }
-clap = { version = "4", features = ["derive"] }
-cosmwasm-schema = { path = "../../cosmwasm/packages/schema" }
-cosmwasm-std = { path = "../../cosmwasm/packages/std" }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true, features = ["form", "http1", "json", "matched-path", "original-uri", "query", "tokio", "tower-log"] }
+clap = { workspace = true, features = ["derive"] }
+cosmos-sdk-proto = { workspace = true }
+cosmrs = { workspace = true }
+cosmwasm-crypto = { workspace = true, optional = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+crosslink-light-client = { workspace = true }
 csv = "1.4.0"
-cw-orch = { path = "../../cw-orchestrator/cw-orch", features = ["daemon"] }
-cw-orch-interchain = { path = "../../cw-orchestrator/cw-orch-interchain", features = ["daemon"] }
-dotenv = "0.15"
-env_logger = "0.11"
-hash-market = { path = "../tools/hash-market", features = ["server", "client", "ve", "blossom", "nostr"], optional = true }
-hex = "0.4"
-zk-test-press = { path = "../../headstash/test-press", features = ["interface"], optional = true }
-ict-rs = { path = "../../ict-rs/ict-rs", features = ["docker", "terp", "testing", "nostr"] }
-k256 = "0.13.4"
-log = "0.4.30"
-reqwest = "0.13.4"
-rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha2 = "0.11.0-pre.4"
-tempfile = "3.27.0"
-# Optional: suite module is currently commented out; enabling pulls terp721-account
-# which needs terp-account/full in this workspace layout.
-terp-account-scripts = { path = "../../terp-account-billboards/scripts", optional = true }
-terp-rs  = { path = "../crates/sdk" }
-tokio = { version = "1", features = ["full"] }
+cw-ics08-wasm-crosslink = { workspace = true, features = ["interface"] }
+cw-infuser = { workspace = true, optional = true, features = ["interface"] }
+cw-infusions = { workspace = true, optional = true }
+cw-multi-test = { workspace = true, optional = true }
+cw-orch = { workspace = true, features = ["daemon"] }
+cw-orch-interchain = { workspace = true, features = ["daemon"] }
+cw-orch-polytone = { workspace = true }
+cw-ownable = { workspace = true, optional = true }
+cw-shit-denom = { workspace = true, optional = true }
+cw-shitstrap = { workspace = true, optional = true, features = ["interface"] }
+cw-svg = { workspace = true, optional = true }
+cw721 = { workspace = true, optional = true }
+cw721-base = { workspace = true, optional = true }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
+dotenv = { workspace = true }
+ecdsa = { workspace = true, optional = true }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+ed25519-zebra = { workspace = true }
+env_logger = { workspace = true, features = ["default"] }
+frost-ed25519 = { workspace = true, features = ["std", "serialization"] }
+halo2_proofs = { workspace = true, features = ["multicore"] }
+hash-market = { workspace = true, optional = true, features = ["server", "client", "ve", "blossom", "nostr", "frost", "noise", "privval"] }
+hex = { workspace = true, features = ["std"] }
+ict-rs = { workspace = true, features = ["default", "docker", "terp", "testing", "nostr"] }
+k256 = { workspace = true, features = ["ecdsa", "std"] }
+kms-shard = { workspace = true }
+log = { workspace = true }
+nftfi-loan = { workspace = true, optional = true, features = ["interface"] }
+nftfi-raffle = { workspace = true, optional = true, features = ["interface"] }
+nftfi-randomness = { workspace = true, optional = true }
+nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
+terp-beacon = { workspace = true, optional = true, features = ["interface", "fixtures"] }
+prost = { workspace = true, features = ["std"] }
+prost-types = { workspace = true }
+rand = "0.8"
+reqwest = { version = "0.13.4", features = ["json"] }
+rs_merkle = { workspace = true, optional = true, features = ["std"] }
+rustls = { workspace = true, features = ["ring", "std"] }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+snow = { workspace = true }
+tempfile = { workspace = true }
+terp-account = { workspace = true, optional = true, features = ["full"] }
+terp-auth = { workspace = true, optional = true }
+terp-authenticator-suite = { workspace = true, optional = true }
+terp-bounty-escrow = { workspace = true, optional = true, features = ["interface"] }
+terp-orch = { workspace = true, optional = true }
+terp-rs = { workspace = true, features = ["default"] }
+terp-vsck = { workspace = true, features = ["library"], optional = true }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
+tokio = { workspace = true, features = ["full"] }
 toml = "1.1.2"
-tracing = "0.1"
-tracing-subscriber = "0.3.23"
+tower = { workspace = true, features = ["util"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 which = "8.0.2"
-cosmos-sdk-proto  = { path = "../../cosmos-rust/cosmos-sdk-proto", default-features = false }
-cosmrs  = { path = "../../cosmos-rust/cosmrs", default-features = false }
-crosslink-light-client = { path = "../crates/crosslink/light-client" }
-cw-ics08-wasm-crosslink = {path = "../contracts/light-clients/cw-ics08-wasm-crosslink", features = ["interface"]}
-ed25519-zebra = { version = "4.2", default-features = false }
+whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
+zebra-chain = { workspace = true, optional = true }
+zebra-crosslink = { workspace = true, optional = true }
+zk-test-press = { workspace = true, optional = true, features = ["interface"] }
 
 [dev-dependencies]
-zebra-crosslink = {path = "../../zebra-crosslink/zebra-crosslink"}
-zebra-chain = {path = "../../zebra-crosslink/zebra-chain"}
 rand_core = "0.6.4"
+
+[[test]]
+name = "shitstraps_e2e"
+required-features = ["orch-suite"]

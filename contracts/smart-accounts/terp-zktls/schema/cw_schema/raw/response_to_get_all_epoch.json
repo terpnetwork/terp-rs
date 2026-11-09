@@ -1,0 +1,26 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_zktls_GetAllEpochResponse",
+      "type": "struct",
+      "properties": {
+        "ids": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "u128",
+      "type": "integer",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<u128>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

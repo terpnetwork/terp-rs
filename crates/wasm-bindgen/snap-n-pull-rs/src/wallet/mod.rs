@@ -17,7 +17,9 @@ pub const PRUNING_DEPTH: usize = 100;
 
 #[cfg(feature = "wasm-parallel")]
 pub use wasm_bindgen_rayon::init_thread_pool;
-// dummy NO-OP init_thread pool to maintain the same API between features
+// Snap workers (`@metamask/snaps-execution-environments`) do not expose
+// SharedArrayBuffer. This stays a no-op so the JS API is stable; it does not
+// speed Halo2. Host `multicore` is what the native bench measures.
 #[cfg(not(feature = "wasm-parallel"))]
 #[wasm_bindgen(js_name = initThreadPool)]
 pub fn init_thread_pool(_threads: usize) {}

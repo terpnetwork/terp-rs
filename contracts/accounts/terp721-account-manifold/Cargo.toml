@@ -1,0 +1,31 @@
+[package]
+name = "terp721-account-manifold"
+version  = { workspace = true }
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+interface = ["cw-orch"]
+
+[dependencies]
+cosmwasm-schema            = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["staking", "cosmwasm_1_4", "cosmwasm_2_0", "zk"] }
+cw-controllers          = { workspace = true }
+cw-orch                 = { workspace = true, optional = true }
+cw-ownable              = { workspace = true }
+cw-storage-macro            = { workspace = true }
+cw-storage-plus         = { workspace = true }
+cw-utils                = { workspace = true }
+cw2                     = { workspace = true }
+cw721                     = { workspace = true }
+terp-account            = { workspace = true, features = ["full", "market-hooks"] }
+terp721-account           = { workspace = true, features = ["library"] }
+thiserror               = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true, features = ["cosmwasm_2_1", "stargate"] }

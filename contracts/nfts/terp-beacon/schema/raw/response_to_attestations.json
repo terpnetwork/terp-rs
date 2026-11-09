@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttestationsResponse",
+  "type": "object",
+  "required": [
+    "attestations",
+    "round"
+  ],
+  "properties": {
+    "attestations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AttestationInfo"
+      }
+    },
+    "round": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AttestationInfo": {
+      "type": "object",
+      "required": [
+        "pubkey",
+        "signature",
+        "source"
+      ],
+      "properties": {
+        "pubkey": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "signature": {
+          "$ref": "#/definitions/HexBinary"
+        },
+        "source": {
+          "$ref": "#/definitions/BeaconSource"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BeaconSource": {
+      "description": "Where a beacon value came from.\n\nVerified drand outputs are stored under [`BeaconSource::Drand`]. Attestor signatures over a drand output are stored under [`BeaconSource::Attestor`]. Both are keyed by source id plus round (attestations also include the attestor key).\n\n[`RESERVED_IBC_SOURCE_ID`] is the id a future IBC v2 client should use when a hash-market runtime starts aggregating beacons. That client should verify the packet, then write the same [`crate::state::StoredBeacon`] record the drand path writes. There is no IBC entry point in this contract.",
+      "type": "string",
+      "enum": [
+        "drand",
+        "attestor"
+      ]
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

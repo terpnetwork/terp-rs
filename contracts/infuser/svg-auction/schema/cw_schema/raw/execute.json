@@ -1,0 +1,72 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "svg_auction_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "cancel_auction": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            }
+          }
+        },
+        "place_bid": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            }
+          }
+        },
+        "receive_nft": {
+          "type": "tuple",
+          "items": [
+            1
+          ]
+        },
+        "settle": {
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "svg_auction_Cw721ReceiveMsg",
+      "type": "struct",
+      "properties": {
+        "msg": {
+          "value": 3
+        },
+        "sender": {
+          "value": 2
+        },
+        "token_id": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_binary_Binary",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "binary"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

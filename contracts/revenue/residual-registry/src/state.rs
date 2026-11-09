@@ -1,7 +1,7 @@
 use crate::ContractError;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Decimal, Storage, Timestamp};
+use cosmwasm_std::{Addr, Decimal, Storage, Timestamp, ensure};
 use cw_storage_plus::{Item, Map};
 use std::cmp::min;
 

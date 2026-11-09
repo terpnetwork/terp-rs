@@ -14,6 +14,9 @@ pub struct Config {
     pub accepted_denom: String,
     /// Optional bps fee taken from purchase amount on settle (paid to admin).
     pub protocol_fee_bps: Option<u64>,
+    /// Relayer may auto-submit `Purchase` from Nostr only when true (admin-gated).
+    #[serde(default)]
+    pub auto_execute_ingress: bool,
 }
 
 #[cw_serde]

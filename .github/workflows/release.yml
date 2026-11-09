@@ -9,13 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: extractions/setup-just@v1
+      - uses: extractions/setup-just@69d82fb0233557aec017ef13706851d0694e0f1d # v1
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
 
       - name: Build development contracts
-        run: just optimize
+        run: just core optimize
 
       - name: Show data
         run: |
@@ -23,7 +23,7 @@ jobs:
           cat artifacts/checksums.txt
 
       - name: Publish artifacts on GitHub
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           files: |
             artifacts/*

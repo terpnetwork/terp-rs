@@ -1,0 +1,176 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "nftfi_loan_msg_CollateralResponse",
+      "type": "struct",
+      "properties": {
+        "borrower": {
+          "value": 1
+        },
+        "collateral": {
+          "value": 4
+        },
+        "loan_id": {
+          "value": 2
+        },
+        "state": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "nftfi_loan_state_LoanState",
+      "type": "enum",
+      "cases": {
+        "defaulted": {
+          "type": "unit"
+        },
+        "ended": {
+          "type": "unit"
+        },
+        "inactive": {
+          "type": "unit"
+        },
+        "published": {
+          "type": "unit"
+        },
+        "started": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "nftfi_loan_state_CollateralInfo",
+      "type": "struct",
+      "properties": {
+        "active_offer": {
+          "value": 13
+        },
+        "associated_assets": {
+          "value": 11
+        },
+        "comment": {
+          "value": 14
+        },
+        "list_date": {
+          "value": 12
+        },
+        "offer_amount": {
+          "value": 2
+        },
+        "start_block": {
+          "value": 13
+        },
+        "state": {
+          "value": 3
+        },
+        "terms": {
+          "value": 8
+        }
+      }
+    },
+    {
+      "name": "nftfi_loan_state_LoanTerms",
+      "type": "struct",
+      "properties": {
+        "duration_in_blocks": {
+          "value": 2
+        },
+        "interest": {
+          "value": 7
+        },
+        "principle": {
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_coin_Coin",
+      "type": "struct",
+      "properties": {
+        "amount": {
+          "value": 7
+        },
+        "denom": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_math_uint256_Uint256",
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding,\nsuch that the full u256 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types\nor `from_be_bytes` to provide big endian bytes:\n\n```\n# use cosmwasm_std::Uint256;\nlet a = Uint256::new(258u128);\nlet b = Uint256::from(258u16);\nlet c = Uint256::from_be_bytes([\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,\n0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8,\n]);\nassert_eq!(a, b);\nassert_eq!(a, c);\n```",
+      "type": "integer",
+      "precision": 256,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<nftfi_loan::state::LoanTerms>",
+      "type": "optional",
+      "inner": 5
+    },
+    {
+      "name": "nftfi_utils_asset_AssetInfo",
+      "description": "Prize, collateral, or ticket price.\n\nUpstream also had an `Sg721Token` arm. This port keeps cw721 only, which is\nthe trait `cw721-svg` implements.",
+      "type": "enum",
+      "cases": {
+        "coin": {
+          "type": "tuple",
+          "items": [
+            6
+          ]
+        },
+        "cw721": {
+          "type": "tuple",
+          "items": [
+            10
+          ]
+        }
+      }
+    },
+    {
+      "name": "nftfi_utils_asset_Cw721Token",
+      "description": "One cw721 token. `address` is stored in the form `Api::addr_validate` returns.",
+      "type": "struct",
+      "properties": {
+        "address": {
+          "value": 1
+        },
+        "token_id": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<nftfi_utils::asset::AssetInfo>",
+      "type": "array",
+      "items": 9
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

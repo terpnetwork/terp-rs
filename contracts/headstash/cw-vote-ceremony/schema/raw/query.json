@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ceremony"
+      ],
+      "properties": {
+        "ceremony": {
+          "type": "object",
+          "required": [
+            "session_id"
+          ],
+          "properties": {
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_spent"
+      ],
+      "properties": {
+        "is_spent": {
+          "type": "object",
+          "required": [
+            "domain",
+            "nullifier",
+            "session_id"
+          ],
+          "properties": {
+            "domain": {
+              "type": "string"
+            },
+            "nullifier": {
+              "$ref": "#/definitions/Binary"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_registered"
+      ],
+      "properties": {
+        "is_registered": {
+          "type": "object",
+          "required": [
+            "addr",
+            "session_id"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Documented raw key bytes for ante raw-query consumers (V2).",
+      "type": "object",
+      "required": [
+        "raw_spent_key"
+      ],
+      "properties": {
+        "raw_spent_key": {
+          "type": "object",
+          "required": [
+            "domain",
+            "nullifier",
+            "session_id"
+          ],
+          "properties": {
+            "domain": {
+              "type": "string"
+            },
+            "nullifier": {
+              "$ref": "#/definitions/Binary"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    }
+  }
+}

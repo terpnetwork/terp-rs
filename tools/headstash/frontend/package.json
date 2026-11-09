@@ -1,0 +1,9 @@
+{
+  "name": "headstash-claim-page",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.mjs",
+    "bench:size": "node bench-size.mjs"
+  }
+}

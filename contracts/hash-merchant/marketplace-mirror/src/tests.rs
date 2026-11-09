@@ -1,13 +1,13 @@
-use cosmwasm_std::testing::{message_info, mock_dependencies, mock_env, MockApi};
-use cosmwasm_std::{Addr, Binary, Coin, SubMsg, Uint128};
+use cosmwasm_std::testing::{MockApi, message_info, mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, Binary, Coin, SubMsg, Uint128, Uint256};
 
 use crate::contract::{execute, instantiate, query, sudo};
 use crate::error::ContractError;
 use crate::msg::*;
-use crate::state::{OrderStatus, DEFAULT_MIN_BUFFER_BLOCKS};
+use crate::state::{DEFAULT_MIN_BUFFER_BLOCKS, OrderStatus};
 
 type TestDeps = cosmwasm_std::OwnedDeps<
-    cosmwasm_std::MemoryStorage,
+    cosmwasm_std::testing::MockStorage,
     cosmwasm_std::testing::MockApi,
     cosmwasm_std::testing::MockQuerier,
 >;
@@ -42,6 +42,7 @@ fn setup_with_buffer(deps: &mut TestDeps, min_buffer_blocks: u64) {
             min_buffer_blocks,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: None,
+            auto_execute_ingress: false,
         },
     )
     .unwrap();
@@ -56,7 +57,9 @@ fn list_sku(deps: &mut TestDeps, sku: &str, stock: u64, price: u128) {
             sku: sku.into(),
             stock,
             unit_price: Uint128::new(price),
-            content_cid: Some("aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899".into()),
+            content_cid: Some(
+                "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899".into(),
+            ),
             d_tag: Some(format!("product-{}", sku)),
         },
     )
@@ -78,6 +81,10 @@ fn instantiate_defaults_buffer_7() {
     assert_eq!(cfg.min_buffer_blocks, 7);
     assert_eq!(cfg.accepted_denom, DENOM);
     assert_eq!(cfg.next_order_id, 1);
+    assert!(
+        !cfg.auto_execute_ingress,
+        "ingress auto-execute defaults off"
+    );
 }
 
 #[test]
@@ -96,17 +103,16 @@ fn purchase_reserves_inventory() {
         },
     )
     .unwrap();
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "status" && a.value == "reserved"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "status" && a.value == "reserved")
+    );
 
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::ReservedQty {
-            sku: "tee".into(),
-        },
+        QueryMsg::ReservedQty { sku: "tee".into() },
     )
     .unwrap();
     let r: ReservedQtyResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -115,9 +121,7 @@ fn purchase_reserves_inventory() {
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::Product {
-            sku: "tee".into(),
-        },
+        QueryMsg::Product { sku: "tee".into() },
     )
     .unwrap();
     let p: ProductResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -193,21 +197,19 @@ fn settle_after_buffer_succeeds() {
     )
     .unwrap();
 
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "status" && a.value == "settled"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "status" && a.value == "settled")
+    );
     assert_eq!(res.messages.len(), 1);
     match &res.messages[0] {
         SubMsg {
-            msg: cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send {
-                to_address,
-                amount,
-            }),
+            msg: cosmwasm_std::CosmosMsg::Bank(cosmwasm_std::BankMsg::Send { to_address, amount }),
             ..
         } => {
             assert_eq!(to_address, seller_addr().as_str());
-            assert_eq!(amount[0].amount, Uint128::new(100));
+            assert_eq!(amount[0].amount, Uint256::new(100));
         }
         other => panic!("unexpected msg: {other:?}"),
     }
@@ -215,9 +217,7 @@ fn settle_after_buffer_succeeds() {
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::Product {
-            sku: "tee".into(),
-        },
+        QueryMsg::Product { sku: "tee".into() },
     )
     .unwrap();
     let p: ProductResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -328,9 +328,7 @@ fn double_purchase_oversell_fails() {
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::ReservedQty {
-            sku: "tee".into(),
-        },
+        QueryMsg::ReservedQty { sku: "tee".into() },
     )
     .unwrap();
     let r: ReservedQtyResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -357,10 +355,11 @@ fn sudo_stores_root() {
         },
     )
     .unwrap();
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "action" && a.value == "store_root"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "action" && a.value == "store_root")
+    );
 
     let bin = query(
         deps.as_ref(),
@@ -376,14 +375,16 @@ fn sudo_stores_root() {
     assert_eq!(root.attestation_count, 3);
     assert_eq!(root.root, "00".repeat(32));
     // Sudo must not invent stock
-    assert!(query(
-        deps.as_ref(),
-        mock_env(),
-        QueryMsg::Product {
-            sku: "ghost".into(),
-        },
-    )
-    .is_err());
+    assert!(
+        query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::Product {
+                sku: "ghost".into(),
+            },
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -410,18 +411,17 @@ fn cancel_refunds_and_releases_reservation() {
         ExecuteMsg::Cancel { order_id: 1 },
     )
     .unwrap();
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "status" && a.value == "cancelled"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "status" && a.value == "cancelled")
+    );
     assert_eq!(res.messages.len(), 1);
 
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::ReservedQty {
-            sku: "tee".into(),
-        },
+        QueryMsg::ReservedQty { sku: "tee".into() },
     )
     .unwrap();
     let r: ReservedQtyResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -430,9 +430,7 @@ fn cancel_refunds_and_releases_reservation() {
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::Product {
-            sku: "tee".into(),
-        },
+        QueryMsg::Product { sku: "tee".into() },
     )
     .unwrap();
     let p: ProductResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -472,9 +470,7 @@ fn seller_cannot_cancel_reserved_order() {
     let bin = query(
         deps.as_ref(),
         mock_env(),
-        QueryMsg::ReservedQty {
-            sku: "tee".into(),
-        },
+        QueryMsg::ReservedQty { sku: "tee".into() },
     )
     .unwrap();
     let r: ReservedQtyResponse = cosmwasm_std::from_json(bin).unwrap();
@@ -505,10 +501,11 @@ fn admin_can_cancel_reserved_order() {
         ExecuteMsg::Cancel { order_id: 1 },
     )
     .unwrap();
-    assert!(res
-        .attributes
-        .iter()
-        .any(|a| a.key == "status" && a.value == "cancelled"));
+    assert!(
+        res.attributes
+            .iter()
+            .any(|a| a.key == "status" && a.value == "cancelled")
+    );
 }
 
 #[test]
@@ -564,6 +561,7 @@ fn invalid_buffer_rejected() {
             min_buffer_blocks: 3,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: None,
+            auto_execute_ingress: false,
         },
     )
     .unwrap_err();
@@ -586,6 +584,7 @@ fn settle_with_protocol_fee() {
             min_buffer_blocks: 5,
             accepted_denom: DENOM.into(),
             protocol_fee_bps: Some(1000), // 10%
+            auto_execute_ingress: false,
         },
     )
     .unwrap();
@@ -663,4 +662,33 @@ fn list_orders_query() {
     .unwrap();
     let list: OrdersResponse = cosmwasm_std::from_json(bin).unwrap();
     assert_eq!(list.orders.len(), 3);
+}
+
+#[test]
+fn admin_sets_auto_execute_ingress_non_admin_denied() {
+    let mut deps = mock_dependencies();
+    setup(&mut deps);
+
+    let err = execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&buyer_addr(), &[]),
+        ExecuteMsg::SetAutoExecuteIngress { enabled: true },
+    )
+    .unwrap_err();
+    match err {
+        ContractError::Unauthorized {} => {}
+        other => panic!("expected Unauthorized, got {other:?}"),
+    }
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        message_info(&admin_addr(), &[]),
+        ExecuteMsg::SetAutoExecuteIngress { enabled: true },
+    )
+    .unwrap();
+    let bin = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
+    let cfg: ConfigResponse = cosmwasm_std::from_json(bin).unwrap();
+    assert!(cfg.auto_execute_ingress);
 }

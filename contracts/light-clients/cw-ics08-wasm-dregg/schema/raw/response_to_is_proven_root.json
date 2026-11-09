@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BoolResponse",
+  "type": "object",
+  "required": [
+    "yes"
+  ],
+  "properties": {
+    "yes": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

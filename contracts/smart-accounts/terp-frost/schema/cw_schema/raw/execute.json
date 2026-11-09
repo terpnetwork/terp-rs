@@ -1,0 +1,82 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_frost_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "add_rotate_share": {
+          "description": "Seat share bound to the pending commit. Always Ok+write.",
+          "type": "named",
+          "properties": {
+            "admin_id": {
+              "value": 2
+            },
+            "blob": {
+              "value": 1
+            },
+            "hkdf_commit": {
+              "value": 2
+            },
+            "new_vk": {
+              "value": 1
+            }
+          }
+        },
+        "rotate_frost_pubkey": {
+          "description": "Invoke a rotation. Always Ok+write (pending or fail).",
+          "type": "named",
+          "properties": {
+            "hkdf_commit": {
+              "value": 2
+            },
+            "new_vk_commit": {
+              "value": 1
+            },
+            "next_n": {
+              "value": 6
+            },
+            "next_seats": {
+              "description": "Players for the next epoch. Omitted = keep current seats/t/n.",
+              "value": 4
+            },
+            "next_t": {
+              "value": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "core::option::Option<alloc::vec::Vec<alloc::string::String>>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "u16",
+      "type": "integer",
+      "precision": 16,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u16>",
+      "type": "optional",
+      "inner": 5
+    }
+  ]
+}

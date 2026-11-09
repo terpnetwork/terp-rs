@@ -1,0 +1,195 @@
+{
+ "wasm_sha256": "fe096bf119e8e0b150fa32fff405f46b53917fe9a219ecfeda112cb3fe66c2a1",
+ "wasm_bytes": 357352,
+ "gas_price_uterp": 0.025,
+ "runs": [
+  {
+   "chunk_kib": 16,
+   "contract": "terp18egdakntewpnhr9u4wml6rygyszzanapquefkn4fmywt9uevvwzsl57ulc",
+   "upload_txs": 43,
+   "publish_gas": 283066,
+   "upload_gas_total": 35181881,
+   "upload_gas_max": 854651,
+   "upload_gas_min": 200548,
+   "total_gas": 35464947,
+   "fee_uterp_at_0.025": 886623,
+   "upload_wall_s": 58.8,
+   "upload_blocks": 57,
+   "download_verify_s": 0.21,
+   "status": {
+    "version": 1,
+    "uploaded": 43,
+    "total": 43,
+    "complete": true
+   },
+   "current": 1,
+   "verified": true,
+   "neg_stranger_publish_rejected": true,
+   "neg_tampered_chunk_rejected": true
+  },
+  {
+   "chunk_kib": 32,
+   "contract": "terp1k8re7jwz6rnnwrktnejdwkwnncte7ek7gt29gvnl3sdrg9mtnqks0s8ut2",
+   "upload_txs": 23,
+   "publish_gas": 226613,
+   "upload_gas_total": 32229331,
+   "upload_gas_max": 1562414,
+   "upload_gas_min": 195052,
+   "total_gas": 32455944,
+   "fee_uterp_at_0.025": 811398,
+   "upload_wall_s": 32.1,
+   "upload_blocks": 31,
+   "download_verify_s": 0.12,
+   "status": {
+    "version": 1,
+    "uploaded": 23,
+    "total": 23,
+    "complete": true
+   },
+   "current": 1,
+   "verified": true,
+   "neg_stranger_publish_rejected": true,
+   "neg_tampered_chunk_rejected": true
+  },
+  {
+   "chunk_kib": 64,
+   "contract": "terp1udfs22xpxle475m2nz7u47jfa3vngncdegmczwwdx00cmetypa3s6clkj0",
+   "upload_txs": 13,
+   "publish_gas": 198328,
+   "upload_gas_total": 30819403,
+   "upload_gas_max": 2984471,
+   "upload_gas_min": 192985,
+   "total_gas": 31017731,
+   "fee_uterp_at_0.025": 775443,
+   "upload_wall_s": 18.4,
+   "upload_blocks": 17,
+   "download_verify_s": 0.1,
+   "status": {
+    "version": 1,
+    "uploaded": 13,
+    "total": 13,
+    "complete": true
+   },
+   "current": 1,
+   "verified": true,
+   "neg_stranger_publish_rejected": true,
+   "neg_tampered_chunk_rejected": true
+  },
+  {
+   "chunk_kib": 96,
+   "contract": "terp1qjxu65ucccpg8c5kac8ng6yxfqq85fluwd0p9nt74g2304qw8eyqvypp8y",
+   "upload_txs": 9,
+   "publish_gas": 187015,
+   "upload_gas_total": 30267123,
+   "upload_gas_max": 4407720,
+   "upload_gas_min": 192121,
+   "total_gas": 30454138,
+   "fee_uterp_at_0.025": 761353,
+   "upload_wall_s": 12.8,
+   "upload_blocks": 12,
+   "download_verify_s": 0.07,
+   "status": {
+    "version": 1,
+    "uploaded": 9,
+    "total": 9,
+    "complete": true
+   },
+   "current": 1,
+   "verified": true,
+   "neg_stranger_publish_rejected": true,
+   "neg_tampered_chunk_rejected": true
+  },
+  {
+   "chunk_kib": 128,
+   "contract": "terp1jkte0pytr85qg0whmgux3vmz9ehmh82w40h8gaqeg435fnkyfxqqawl0ew",
+   "upload_txs": 8,
+   "publish_gas": 184203,
+   "upload_gas_total": 30130171,
+   "upload_gas_max": 5831748,
+   "upload_gas_min": 191715,
+   "total_gas": 30314374,
+   "fee_uterp_at_0.025": 757859,
+   "upload_wall_s": 11.4,
+   "upload_blocks": 11,
+   "download_verify_s": 0.07,
+   "status": {
+    "version": 1,
+    "uploaded": 8,
+    "total": 8,
+    "complete": true
+   },
+   "current": 1,
+   "verified": true,
+   "neg_stranger_publish_rejected": true,
+   "neg_tampered_chunk_rejected": true
+  }
+ ],
+ "code_id": "3",
+ "store_gas": 2556201,
+ "files": [
+  {
+   "path": "zk_headstash.js",
+   "raw": 10923,
+   "gzip": 2754,
+   "sha256": "37a98d349275cb4a2c6e93f7278c4fc0c26c4120766d8f49add45448b0f8a964"
+  },
+  {
+   "path": "zk_headstash_bg.wasm",
+   "raw": 2006266,
+   "gzip": 664342,
+   "sha256": "51681559143fcdb411e00515a745bf880e13c23a77ed28f13a7640b71acbe1c8"
+  },
+  {
+   "path": "worker.js",
+   "raw": 3043,
+   "gzip": 1228,
+   "sha256": "30a6afdf1d533705f24dae8995bc6d0e18bbba0ecab9775d41b8e48d5256d3ff"
+  }
+ ],
+ "neg_instantiate_256k_rejected": true,
+ "measured_wasmvm_value_limit": "pre-fix build (cap 512 KiB): a 262144-byte chunk failed with Value too big. Tried to write 262144 bytes to storage, limit is 131072",
+ "ok": true,
+ "prover_wasm_opt": {
+  "tool": "binaryen npm wasm-opt version 132",
+  "unoptimized": {
+   "raw": 3618817,
+   "gz9": 700207,
+   "e2e": {
+    "steps_pass": 29,
+    "steps_fail": 0,
+    "prove_ms": {
+     "n": 43,
+     "min": 3211,
+     "median": 3224,
+     "mean": 3230,
+     "max": 3305
+    },
+    "claim_phase_ms": 262271,
+    "load_ms": 216
+   }
+  },
+  "Oz": {
+   "raw": 1807402,
+   "gz9": 647049,
+   "sha256_prefix": "3d371778287164cf",
+   "fe_chunks_128k": 9,
+   "e2e": {
+    "steps_pass": 29,
+    "steps_fail": 0,
+    "prove_ms": {
+     "n": 43,
+     "min": 3200,
+     "median": 3215,
+     "mean": 3234,
+     "max": 3340
+    },
+    "claim_phase_ms": 264972,
+    "load_ms": 212
+   }
+  },
+  "Os": {
+   "raw": 1841545,
+   "gz9": 648373
+  }
+ }
+}

@@ -1,9 +1,14 @@
 //! Terp account library for smart-account authenticators.
 //!
 //! Provides the trait path expected by authenticator contracts:
-//! `terp_account::traits::default::BtsgAccountTrait` → [`terp_auth::TerpAccountTrait`].
+//! `terp_account::traits::default::TerpAccountTrait` → [`terp_auth::TerpAccountTrait`].
 
 pub mod traits;
+
+#[cfg(feature = "full")]
+mod market;
+#[cfg(feature = "full")]
+pub use market::*;
 
 #[cfg(feature = "full")]
 pub mod account;

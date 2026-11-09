@@ -1,0 +1,39 @@
+{
+  "name": "Zec SVG",
+  "symbol": "ZEC",
+  "collection_info_extension": {
+    "seed": "zDwmUkeUBpfcYJeClDpyWmj5K14SMIidvQiYpglcoeE=",
+    "packed": "U1ZQAQcPY29sb3ItZ29sZC1kZWVwAwG512mHHDQPY29sb3ItZ29sZC1yaWNoAwHI5n2gLUsRY29sb3ItZ29sZC1icmlnaHQDAev/r81BXxRjb2xvci1nb2xkLWhpZ2hsaWdodAMB9f/D4UtpCmNvbG9yLXJpbmcDARImEiYWKgdjb2xvci16AwH4//j/+P8IYnJlYXRoLXoBAQIqAmICAAIBAQEgAgMBBjI1MDAiIAIEAw4CAgIBAzI1MAMFAgECIiACIAEEPgogIAIGBgQCCAYGAQsjei1zeW1ib2wgewYIAlgBCiB6LWJyZWF0aCAEBgECcyACXAEBIAJbAQEgAl4BATsGBgEBfQYGAlcDTwUDbQYBB2Zyb20geyACWQEGIDAuOTY7AzwFAQYgIHRvICADIAgBBDEuMDADIAYDCAICCQEBCgYEBgQCNwJUAQN6LWcDDwMBAiIgAhcBCDc4Mi44NCIgAhgBCDE2NS45MSIgAhkBCDc5OS4zNCIgAhoDGAMGFANOBAELVHJhbnNmb3JtPSICKQUDwuQxAQEgBQS1+9ECAQIpIAIqAQUtNDUpIAIrBQTRXwEBKQNfGgEUVW5pdHM9InVzZXJTcGFjZU9uVXMD1gMCA88DAwEDb3AgAjwBBjAlIiAgIAI9BAABAiIvAzwSAQQzOCUiAzwXAQRyaWNoAzwVAQI2NwM8GQEGYnJpZ2h0Az4VAnEBASIDPhYBBWhpZ2hsA0EJAjgBAwogIAIHAQcKCiAgCiAgAgwGBAJOA4IEBgECKSIDHQIBBGQ9Ik0FBOHaBwEBLAUEgYMOAQFjBQPALAECLDAFBaGoBgUFz+sCAw8FAwgCAQM2LDADKQMDHwEBATQDHwQBASwDJwoBAjcsA04DAxgDAy8EAw8FAycDAQFDA34DAQEsBQThlwsDCAUDGAUDpgEKAQNaIi8D7AEVBAQD6QEJAQ01MCwyNTAwQzU2Mi41AwsBAREsMCwxOTM3LjUsMCwxMjUwUwMbAgMNAgEBLAMvAgEBLAMvBwMXAQMyAwMRBgEHMjUwMFptMAUF/scNAQFjBQXQoQMBAiwwBQW29wUBBiw0MzcuNQMNBAMHAgEBcwMUAQMNAwMHEQUDlyIDDQQDBwIBAVMFBJjyCgEHLDI3Ny45NAN/AwMMAQOTAhICVAPlCQQD6QYCA6UCCgEBegOiAgoBBjIxLjA1LAUEi9kJAQ9oNTQxLjY3djI3MC44NGgFA/wYAQh2MjI5LjE2SAUEpo4HAQFWBQSdsgsBCUg4MzEuODVjMAUF1EYFBd0KBQOMDgEELDcuMQUFhc4BAwsBA1UBAQUsNTUuNAUFjkEBCyw5MC40My0xMjUsBQSxUQMLAQELMjA4LjM0LTI1MCwDeAEBCzEtMzc1LDQxLjY2BQWNJgEGLDgzLjMzA28CAQYsMTMyLjEFBfdxARpIODYwLjI2VjY4Ni4xM2gzMDUuMzlWNDU3aAPJAQIBDVY2NzloMzMzLjMzYzADfQIBESwxMy43MywxODAuNC03LjEsA68BAgMLAQEKNDEuNjctNTUuNANyCgECMjUFBbBRAwsBAQoyMDguMzMsMjUwBQP8GAEKLDM3NUMxMzExLAUEoY0JAQEsBQTX3wcBASwFBP6yCQEBLAPtAgsBBVoiLz4KAgUA",
+    "price_tiers": [
+      {
+        "until_count": 100,
+        "price": {
+          "denom": "uthiol",
+          "amount": "71000000"
+        }
+      },
+      {
+        "until_count": 1000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "710000000"
+        }
+      },
+      {
+        "until_count": 10000,
+        "price": {
+          "denom": "uthiol",
+          "amount": "1420000000"
+        }
+      }
+    ],
+    "total": 10000,
+    "mint_start_time": null,
+    "mint_end_time": null,
+    "whitelist": null,
+    "require_auth": false
+  },
+  "minter": null,
+  "creator": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+  "withdraw_address": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w"
+}

@@ -1,0 +1,38 @@
+[package]
+name = "cw-shitstrap"
+version = "0.1.0"
+authors = ["hard-nett <hardnettt@proton.me>"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+library = []
+interface = ["dep:cw-orch"]
+dao = ["dao-interface"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-orch = { workspace = true, optional = true }
+cw-shit-denom  = { workspace = true }
+cw-storage-plus  = { workspace = true }
+cw-svg  = { workspace = true }
+cw2  = { workspace = true }
+cw20 = { workspace = true }
+cw20-base  = { workspace = true }
+dao-interface = { workspace = true, optional = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+terp-account = { workspace = true }
+terp-rs = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+hex  = { workspace = true }
+serde_json  = { workspace = true }

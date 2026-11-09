@@ -3,7 +3,6 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 use terp_marketplace_utils::auction::{AuctionType, Bid, Royalty};
 
-
 pub const STATE_KEY: &[u8] = b"state";
 pub const AUCTION_PREFIX: &[u8] = b"auctions";
 pub const ROYALTY_FEE_PREFIX: &[u8] = b"royalty_fee_prefix";

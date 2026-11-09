@@ -1,0 +1,326 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SudoMsg",
+  "description": "The sudo message.",
+  "oneOf": [
+    {
+      "description": "Verify membership.",
+      "type": "object",
+      "required": [
+        "verify_membership"
+      ],
+      "properties": {
+        "verify_membership": {
+          "$ref": "#/definitions/VerifyMembershipMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Verify non-membership.",
+      "type": "object",
+      "required": [
+        "verify_non_membership"
+      ],
+      "properties": {
+        "verify_non_membership": {
+          "$ref": "#/definitions/VerifyNonMembershipMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update the client state.",
+      "type": "object",
+      "required": [
+        "update_state"
+      ],
+      "properties": {
+        "update_state": {
+          "$ref": "#/definitions/UpdateStateMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update state on misbehaviour.",
+      "type": "object",
+      "required": [
+        "update_state_on_misbehaviour"
+      ],
+      "properties": {
+        "update_state_on_misbehaviour": {
+          "$ref": "#/definitions/MisbehaviourMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Verify upgrade and update state.",
+      "type": "object",
+      "required": [
+        "verify_upgrade_and_update_state"
+      ],
+      "properties": {
+        "verify_upgrade_and_update_state": {
+          "$ref": "#/definitions/VerifyUpgradeAndUpdateStateMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Migrate the client store.",
+      "type": "object",
+      "required": [
+        "migrate_client_store"
+      ],
+      "properties": {
+        "migrate_client_store": {
+          "$ref": "#/definitions/MigrateClientStoreMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "Height": {
+      "description": "A height.",
+      "type": "object",
+      "required": [
+        "revision_height",
+        "revision_number"
+      ],
+      "properties": {
+        "revision_height": {
+          "description": "The revision height.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "revision_number": {
+          "description": "The revision number.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "MerklePath": {
+      "description": "A merkle path.",
+      "type": "object",
+      "required": [
+        "key_path"
+      ],
+      "properties": {
+        "key_path": {
+          "description": "The key path.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Binary"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "MigrateClientStoreMsg": {
+      "description": "Migrate client store request.",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "MisbehaviourMsg": {
+      "description": "Misbehaviour request.",
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "description": "The serialized client message.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateStateMsg": {
+      "description": "Update state request.",
+      "type": "object",
+      "required": [
+        "client_message"
+      ],
+      "properties": {
+        "client_message": {
+          "description": "The serialized client message.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyMembershipMsg": {
+      "description": "Verify membership request.",
+      "type": "object",
+      "required": [
+        "delay_block_period",
+        "delay_time_period",
+        "height",
+        "merkle_path",
+        "proof",
+        "value"
+      ],
+      "properties": {
+        "delay_block_period": {
+          "description": "The delay block period.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "delay_time_period": {
+          "description": "The delay time period.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "height": {
+          "description": "The height.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Height"
+            }
+          ]
+        },
+        "merkle_path": {
+          "description": "The merkle path.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MerklePath"
+            }
+          ]
+        },
+        "proof": {
+          "description": "The proof.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "value": {
+          "description": "The value.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyNonMembershipMsg": {
+      "description": "Verify non-membership request.",
+      "type": "object",
+      "required": [
+        "delay_block_period",
+        "delay_time_period",
+        "height",
+        "merkle_path",
+        "proof"
+      ],
+      "properties": {
+        "delay_block_period": {
+          "description": "The delay block period.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "delay_time_period": {
+          "description": "The delay time period.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "height": {
+          "description": "The height.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Height"
+            }
+          ]
+        },
+        "merkle_path": {
+          "description": "The merkle path.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MerklePath"
+            }
+          ]
+        },
+        "proof": {
+          "description": "The proof.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "VerifyUpgradeAndUpdateStateMsg": {
+      "description": "Verify upgrade and update state request.",
+      "type": "object",
+      "required": [
+        "proof_upgrade_client",
+        "proof_upgrade_consensus_state",
+        "upgrade_client_state",
+        "upgrade_consensus_state"
+      ],
+      "properties": {
+        "proof_upgrade_client": {
+          "description": "The proof upgrade client.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "proof_upgrade_consensus_state": {
+          "description": "The proof upgrade consensus state.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "upgrade_client_state": {
+          "description": "The upgrade client state.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "upgrade_consensus_state": {
+          "description": "The upgrade consensus state.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

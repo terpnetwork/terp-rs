@@ -1,0 +1,34 @@
+[package]
+name = "headstash-eth-pubkeys"
+description = "Parallel/batched Ethereum pubkey scrape for Headstash eligible holders"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+
+[[bin]]
+name = "headstash-eth-pubkeys"
+path = "src/main.rs"
+
+[[bin]]
+name = "gen_community_notes"
+path = "src/gen_community_notes.rs"
+
+[dependencies]
+alloy-consensus = { workspace = true, features = ["std"] }
+alloy-primitives = { workspace = true, features = ["std", "serde"] }
+alloy-rpc-types-eth = { workspace = true, features = ["serde"] }
+anyhow = { workspace = true }
+csv = "1.3"
+ff = { workspace = true }
+hex = { workspace = true }
+k256 = { workspace = true, features = ["ecdsa", "std"] }
+pasta_curves = { workspace = true }
+rand = { version = "0.10", features = ["std", "sys_rng", "thread_rng"] }
+rayon = "1.10"
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = "0.9.34"
+sha3 = { workspace = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+zk-headstash = { workspace = true, features = ["circuit", "std", "host-crypto", "multicore"] }

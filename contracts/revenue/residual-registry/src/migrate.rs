@@ -3,12 +3,12 @@ use crate::{
     instantiate::{CONTRACT_NAME, CONTRACT_VERSION},
 };
 
-use cosmwasm_std::{ensure, DepsMut, Empty, Env, Event, Response, StdError};
+use cosmwasm_std::{DepsMut, Empty, Env, Event, Response, StdError, ensure};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 #[allow(clippy::cmp_owned)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, ContractError> {
     let prev_contract_version = cw2::get_contract_version(deps.storage)?;

@@ -1,0 +1,34 @@
+[package]
+name = "cw-svg-minter"
+version.workspace = true
+authors.workspace = true
+edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["stargate", "zk"] }
+cw-orch = { workspace = true, optional = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-svg = { workspace = true }
+cw-svg-pack = { workspace = true }
+cw2 = { workspace = true }
+cw721-svg = { workspace = true, features = ["library"] }
+schemars = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+terp-oracle = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

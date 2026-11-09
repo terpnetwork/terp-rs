@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChallengeResponse",
+  "type": "object",
+  "required": [
+    "digest",
+    "domain",
+    "hash_alg",
+    "rehash_rounds"
+  ],
+  "properties": {
+    "digest": {
+      "$ref": "#/definitions/Binary"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "hash_alg": {
+      "$ref": "#/definitions/RecoveryHashAlg"
+    },
+    "rehash_rounds": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "RecoveryHashAlg": {
+      "description": "Supported break-glass digest algorithms.\n\nExtend this enum when adding host/circuit-backed hashes; keep serde names stable.",
+      "oneOf": [
+        {
+          "description": "SHA-256 (default CosmWasm / Bitcoin single-round).",
+          "type": "string",
+          "enum": [
+            "sha256"
+          ]
+        },
+        {
+          "description": "SHA-512.",
+          "type": "string",
+          "enum": [
+            "sha512"
+          ]
+        },
+        {
+          "description": "Keccak-256 (Ethereum-family).",
+          "type": "string",
+          "enum": [
+            "keccak256"
+          ]
+        },
+        {
+          "description": "SHA3-256 (FIPS 202, not Keccak).",
+          "type": "string",
+          "enum": [
+            "sha3_256"
+          ]
+        },
+        {
+          "description": "BLAKE2s-256.",
+          "type": "string",
+          "enum": [
+            "blake2s256"
+          ]
+        },
+        {
+          "description": "BLAKE2b-512 truncated to 32 bytes (first 32 of 64-byte output).",
+          "type": "string",
+          "enum": [
+            "blake2b256"
+          ]
+        },
+        {
+          "description": "Double SHA-256: `SHA256(SHA256(x))` — each \"round\" is one double-hash.",
+          "type": "string",
+          "enum": [
+            "sha256d"
+          ]
+        },
+        {
+          "description": "Poseidon over Pallas base field (`P128Pow5T3`). See module docs for the fixed instance (byte mapping, fold, 32-byte LE field encoding).",
+          "type": "string",
+          "enum": [
+            "poseidon_pallas"
+          ]
+        }
+      ]
+    }
+  }
+}

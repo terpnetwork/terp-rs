@@ -12,7 +12,7 @@
 //!
 //! TreeStore remains the sole `BlobStore` for bytes.
 
-use super::cid::{content_path, encode_for_chain, parse_cid, CidKind, ParsedCid};
+use super::cid::{CidKind, ParsedCid, content_path, encode_for_chain, parse_cid};
 use crate::store::TreeStore;
 use cw721_nips::buds::BlobStore;
 use serde::{Deserialize, Serialize};
@@ -163,11 +163,7 @@ pub fn resolve_url(base: &str, cid: &str) -> Result<String, String> {
 
 /// Same as [`resolve_url`] but from a pre-parsed cid.
 pub fn resolve_url_parsed(base: &str, parsed: &ParsedCid) -> String {
-    format!(
-        "{}{}",
-        base.trim_end_matches('/'),
-        content_path(parsed)
-    )
+    format!("{}{}", base.trim_end_matches('/'), content_path(parsed))
 }
 
 pub fn is_nip52_event_kind(kind: u16) -> bool {
@@ -203,8 +199,8 @@ pub async fn resolve_http(base: &str, cid: &str) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
     use crate::content::{
-        encode_for_chain, parse_cid, CidKind, ContentOrigin, DistributionConfig,
-        DistributionRuntime,
+        CidKind, ContentOrigin, DistributionConfig, DistributionRuntime, encode_for_chain,
+        parse_cid,
     };
 
     #[test]
@@ -226,7 +222,10 @@ mod tests {
         assert_eq!(got, body);
 
         let url = resolve_url("http://127.0.0.1:9090", &meta.cid).unwrap();
-        assert_eq!(url, format!("http://127.0.0.1:9090/content/{}", bind.sha256));
+        assert_eq!(
+            url,
+            format!("http://127.0.0.1:9090/content/{}", bind.sha256)
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -279,8 +278,7 @@ mod tests {
             ..Default::default()
         };
         dcfg.default_labels = vec!["public".into(), "calendar".into()];
-        let dist =
-            DistributionRuntime::open(&dir, dcfg, "http://bud.example".into()).unwrap();
+        let dist = DistributionRuntime::open(&dir, dcfg, "http://bud.example".into()).unwrap();
 
         let mut sha = [0u8; 32];
         hex::decode_to_slice(&bind.sha256, &mut sha).unwrap();

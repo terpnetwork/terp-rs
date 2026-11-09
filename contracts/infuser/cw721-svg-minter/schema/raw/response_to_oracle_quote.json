@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QuoteResponse",
+  "description": "Quote for paying `base` with `asset`.",
+  "type": "object",
+  "required": [
+    "asset",
+    "base",
+    "enforced",
+    "minimum",
+    "price",
+    "required"
+  ],
+  "properties": {
+    "asset": {
+      "$ref": "#/definitions/PriceAsset"
+    },
+    "base": {
+      "$ref": "#/definitions/Coin"
+    },
+    "enforced": {
+      "type": "boolean"
+    },
+    "minimum": {
+      "description": "Smallest alt amount accepted after `policy.slippage`.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "price": {
+      "$ref": "#/definitions/PriceResponse"
+    },
+    "required": {
+      "description": "Alt amount (raw units) that settles `base`, rounded up.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AggregateMethod": {
+      "description": "How several values are combined into one.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "median",
+            "min",
+            "max"
+          ]
+        },
+        {
+          "description": "Weighted by `Feed::weight` (default 1) when combining feeds, and by nothing when combining a history window.",
+          "type": "string",
+          "enum": [
+            "mean"
+          ]
+        },
+        {
+          "description": "Weighted by observation count (`PricePoint::observations`) when combining feeds, and by block gap (piecewise constant, like the registry TWAP) on a history window.",
+          "type": "string",
+          "enum": [
+            "weighted"
+          ]
+        }
+      ]
+    },
+    "Coin": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint256"
+        },
+        "denom": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Decimal256": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal256(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 115792089237316195423570985008687907853269984665640564039457.584007913129639935 = (2^256 - 1) / 10^18",
+      "type": "string"
+    },
+    "PriceAsset": {
+      "description": "An asset priced by the oracle: a native/IBC/factory denom or a cw20 address.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PricePoint": {
+      "description": "One feed's answer.",
+      "type": "object",
+      "required": [
+        "feed",
+        "observations",
+        "oracle",
+        "value",
+        "weight"
+      ],
+      "properties": {
+        "feed": {
+          "type": "string"
+        },
+        "height": {
+          "description": "Height of the newest observation, when the oracle exposes one.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "observations": {
+          "description": "Observations behind this value (1 for spot).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "oracle": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/definitions/Decimal256"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "PriceResponse": {
+      "description": "Combined price for one pair.",
+      "type": "object",
+      "required": [
+        "alt_in_base",
+        "asset",
+        "base_denom",
+        "max_deviation",
+        "method",
+        "observations",
+        "points",
+        "price",
+        "quote",
+        "sources"
+      ],
+      "properties": {
+        "alt_in_base": {
+          "description": "Base units (display) per 1 alt, whatever the feed direction.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal256"
+            }
+          ]
+        },
+        "asset": {
+          "$ref": "#/definitions/PriceAsset"
+        },
+        "base_denom": {
+          "type": "string"
+        },
+        "max_deviation": {
+          "description": "Largest relative spread of a feed from `price`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal256"
+            }
+          ]
+        },
+        "method": {
+          "$ref": "#/definitions/AggregateMethod"
+        },
+        "newest_height": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "observations": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "oldest_height": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PricePoint"
+          }
+        },
+        "price": {
+          "description": "Combined value in the feed direction (`quote`).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal256"
+            }
+          ]
+        },
+        "quote": {
+          "$ref": "#/definitions/Quote"
+        },
+        "sources": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "Quote": {
+      "description": "Direction of the feed price.",
+      "oneOf": [
+        {
+          "description": "Feed value = base units per 1 alt (in display units). E.g. feed `ATOM/TERP = 12.5`, base TERP, alt ATOM: 1 ATOM costs 12.5 TERP.",
+          "type": "string",
+          "enum": [
+            "alt_in_base"
+          ]
+        },
+        {
+          "description": "Feed value = alt units per 1 base (in display units).",
+          "type": "string",
+          "enum": [
+            "base_in_alt"
+          ]
+        }
+      ]
+    },
+    "Uint256": {
+      "description": "An implementation of u256 that is using strings for JSON encoding/decoding, such that the full u256 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `new` to create instances out of u128, `from` for other primitive uint types or `from_be_bytes` to provide big endian bytes:\n\n``` # use cosmwasm_std::Uint256; let a = Uint256::new(258u128); let b = Uint256::from(258u16); let c = Uint256::from_be_bytes([ 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, ]); assert_eq!(a, b); assert_eq!(a, c); ```",
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+---
+title: Engines
+description: Runtimes behind the permissionless SVG mint desk
+---
+
+import { Card, Cards } from 'vocs'
+
+# Engines
+
+The mint desk is static HTML. The browser talks HTTPS to DREGG and, when it is up, to HashMerchant. It never talks to Zakura or to the compact server.
+
+The lean ZEC path is two calls inside DREGG: `svg-mint-zrt notes`, and Zakura's shielded mempool. zcashd and zcli are not observers. Scan and the spend prover are still unlinked. A paid mint is signed by `~/.terp/dregg-svg-runtime.sk` (`terp1z4zc83jvff6w5d6dap23nl75ah9f5s828na3z8` on `/health` as `runtime_minter`) and broadcast only to a collection that simulate has admitted. The desk collection is the code-98 fractal. Logos stay off the list. The house list is still empty, so Pay is closed (`collections_unset`) and the signer is idle. ZEC for that fractal is a fixed zat amount per tier (`DREGG_FRACTAL_ZEC_ZAT`), chosen from on-chain `num_tokens`.
+
+<Cards>
+  <Card title="Architecture" description="Lean tick, keys that must survive restart." to="/engines/architecture" />
+  <Card title="DREGG" description="Runtime signer, gas cover, how to name a collection." to="/engines/dregg" />
+  <Card title="Wallet runtime" description="One seed. Scan and prover are not linked." to="/engines/zrt" />
+  <Card title="Zakura" description="1.7.0 archive. Cookie mempool RPC." to="/engines/zakura" />
+  <Card title="ztreamer" description="Intended compact server. Live listener is still lightwalletd." to="/engines/ztreamer" />
+  <Card title="Ops collect" description="ADR-036 recover. Send fail-closes." to="/engines/ops" />
+  <Card title="Trailmark" description="Product contract and mint walk." to="/engines/trailmark" />
+  <Card title="Wallet gaps" description="Operator key file, and ZEC notes a new seed cannot see." to="/engines/wallet-gaps" />
+</Cards>
+
+Source of truth is `docs/vocs/pages` in the svg-mint tree. Permissionless-docs copies these pages at compile time. Do not edit the generated copies, and do not publish the site from this change.

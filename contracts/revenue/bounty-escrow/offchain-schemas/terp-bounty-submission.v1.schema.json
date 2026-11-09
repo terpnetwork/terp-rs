@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terp.network/schemas/terp-bounty-submission/v1.json",
+  "title": "terp-bounty-submission/v1",
+  "description": "A work submission for an escrowed Terp bounty. Pinned to IPFS; the assignee signs submit{submission_hash = sha256(exact bytes), cid}. The backend fetches the bytes by CID, re-hashes, validates this schema and cross-checks bounty_ref / escrow / submitter against the chain event.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "bounty_ref",
+    "escrow",
+    "submitter",
+    "summary",
+    "evidence",
+    "acceptance",
+    "submitted_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "terp-bounty-submission/v1"
+    },
+    "bounty_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "escrow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chain_id",
+        "contract",
+        "bounty_id"
+      ],
+      "properties": {
+        "chain_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,48}$"
+        },
+        "contract": {
+          "type": "string",
+          "pattern": "^terp1[02-9ac-hj-np-z]{38,58}$"
+        },
+        "bounty_id": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "submitter": {
+      "type": "string",
+      "pattern": "^terp1[02-9ac-hj-np-z]{38,58}$",
+      "description": "Must equal the signer of the submit tx (the assignee)."
+    },
+    "payout_wallet": {
+      "type": "string",
+      "pattern": "^terp1[02-9ac-hj-np-z]{38,58}$",
+      "description": "Informational; the escrow always pays the assignee."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$",
+      "description": "At most 280 BYTES of UTF-8 (the escrow's SUMMARY_MAX_BYTES), no control characters. JSON Schema counts characters, so validators add a byte check (lib.mjs utf8Bytes)."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "uri"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "pr",
+              "commit",
+              "tx",
+              "url",
+              "ipfs",
+              "file",
+              "report",
+              "video"
+            ]
+          },
+          "uri": {
+            "type": "string",
+            "pattern": "^(https://|ipfs://)[^\\s]{1,2040}$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "cid": {
+            "type": "string",
+            "pattern": "^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{7,127})$"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "criterion",
+          "met"
+        ],
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "met": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "details_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "The bounty's details_hash this submission answers."
+    },
+    "submitted_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,9})?(Z|[+-]\\d{2}:\\d{2})$"
+    }
+  }
+}

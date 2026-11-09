@@ -151,6 +151,28 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Admin only: flip ingress auto-execute policy. Default remains off. Does not cause the contract to pull Nostr events.",
+      "type": "object",
+      "required": [
+        "set_auto_execute_ingress"
+      ],
+      "properties": {
+        "set_auto_execute_ingress": {
+          "type": "object",
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

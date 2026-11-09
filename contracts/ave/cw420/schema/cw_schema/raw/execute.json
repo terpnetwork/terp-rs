@@ -1,0 +1,89 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw420_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "add_hook": {
+          "description": "Add a new hook to be informed of all membership changes. Must be called by Admin",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 1
+            }
+          }
+        },
+        "remove_hook": {
+          "description": "Remove a hook. Must be called by Admin",
+          "type": "named",
+          "properties": {
+            "addr": {
+              "value": 1
+            }
+          }
+        },
+        "update_admin": {
+          "description": "Change the admin",
+          "type": "named",
+          "properties": {
+            "admin": {
+              "value": 2
+            }
+          }
+        },
+        "update_members": {
+          "description": "apply a diff to the existing members.\nremove is applied after add, so if an address is in both, it is removed",
+          "type": "named",
+          "properties": {
+            "add": {
+              "value": 6
+            },
+            "remove": {
+              "value": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    },
+    {
+      "name": "cw4_query_Member",
+      "description": "A group member has a weight associated with them.\nThis may all be equal, or may have meaning in the app that\nmakes use of the group (eg. voting power)",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "value": 1
+        },
+        "weight": {
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw4::query::Member>",
+      "type": "array",
+      "items": 4
+    }
+  ]
+}

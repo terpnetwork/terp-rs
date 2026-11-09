@@ -1,0 +1,27 @@
+{
+  "type": "v1",
+  "root": 2,
+  "definitions": [
+    {
+      "name": "cw_infusions_CompatibleTraits",
+      "type": "struct",
+      "properties": {
+        "a": {
+          "value": 1
+        },
+        "b": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "alloc::vec::Vec<cw_infusions::CompatibleTraits>",
+      "type": "array",
+      "items": 0
+    }
+  ]
+}

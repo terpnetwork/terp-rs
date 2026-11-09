@@ -12,15 +12,15 @@ gen-tools:
     @echo "🔧 Generating LLM tool schemas..."
     @echo "→ Creating basic zk-wasm tools.json"
     @mkdir -p .team/tools
-    @cat > .team/tools/zk_wasm_tools.json << 'JSON'
-{
-  "tools": [
-    {"name": "zk_prove", "description": "Generate zero-knowledge proof using halo2 or arkworks", "parameters": {"type": "object", "properties": {"module": {"type": "string"}, "circuit": {"type": "string"}}}},
-    {"name": "gen_sft", "description": "Generate SFT training data from zk workflows", "parameters": {"type": "object", "properties": {"module": {"type": "string"}}}},
-    {"name": "test_zk", "description": "Run zk-specific tests for terp-core modules", "parameters": {"type": "object", "properties": {"module": {"type": "string"}}}}
-  ]
-}
-JSON
+    @printf '%s\n' \
+      '{' \
+      '  "tools": [' \
+      '    {"name": "zk_prove", "description": "Generate zero-knowledge proof using halo2 or arkworks", "parameters": {"type": "object", "properties": {"module": {"type": "string"}, "circuit": {"type": "string"}}}},' \
+      '    {"name": "gen_sft", "description": "Generate SFT training data from zk workflows", "parameters": {"type": "object", "properties": {"module": {"type": "string"}}}},' \
+      '    {"name": "test_zk", "description": "Run zk-specific tests for terp-core modules", "parameters": {"type": "object", "properties": {"module": {"type": "string"}}}}' \
+      '  ]' \
+      '}' \
+      > .team/tools/zk_wasm_tools.json
     @echo "✅ LLM tools generated in .team/tools/"
 
 # Generate Justfile reference documentation

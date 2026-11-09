@@ -1,0 +1,25 @@
+services:
+  node:
+    build:
+      context: ./
+      args:
+        # ---- Geth configuration -------------------------------------------------
+        NETWORK: mainnet
+        DATA_DIR: /root/.ethereum
+        SNAPSHOT_ENDPOINT: https://snapshots.ethpandaops.io/mainnet/geth/23700000/snapshot.tar.zst
+        SNAPSHOT_FILE: /tmp/snapshot.tar.zst
+        GETH_HTTP: true
+        GETH_HTTP_ADDR: 0.0.0.0
+        GETH_HTTP_PORT: 8545
+        GETH_WS_ADDR: 0.0.0.0
+        GETH_WS_API: eth,net,web3
+        RPC_ENABLE: true
+        GETH_AUTHRPC_ADDR: 0.0.0.0
+        GETH_AUTHRPC_PORT: 8551
+        RPC_JWT: add-yours-here
+        GETH_AUTHRPC_JWTSECRET: /etc/geth/jwtsecret
+    ports:
+      - '8551:8551'
+      - '8545:8545'
+    volumes:
+      - ./node-data:/root/.ethereum

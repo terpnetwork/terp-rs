@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Array_of_SvgCollection",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/SvgCollection"
+  },
+  "definitions": {
+    "SvgCollection": {
+      "type": "object",
+      "required": [
+        "contract",
+        "creator",
+        "name",
+        "symbol"
+      ],
+      "properties": {
+        "contract": {
+          "description": "The instantiated collection contract address (primary key).",
+          "type": "string"
+        },
+        "creator": {
+          "description": "Address that created this collection.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Collection name from InstantiateMsg.",
+          "type": "string"
+        },
+        "series": {
+          "description": "Series this collection was created under (CreateSeriesCollection), if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "symbol": {
+          "description": "Collection symbol from InstantiateMsg.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

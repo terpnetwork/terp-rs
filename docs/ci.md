@@ -4,9 +4,13 @@ Automation is tiered so PRs always get an honest offline gate without burning Do
 
 | Tier | Workflow | When | What |
 |------|----------|------|------|
-| **0 Core** | `ci-core.yml` | every PR / push to main & feat/* / manual | `terp-scripts` offline IBC (unit+golden+rebuild+validate+preflight) + internal lib crates |
-| **1 Extended** | `ci-extended.yml` | path changes under contracts/crates/tests **or** label `ci-extended` **or** manual | authenticator contracts lib tests, optional wasm check, all non-ignored `terp-scripts` tests; draft PRs skipped unless labeled |
-| **2 Heavy** | `ci-heavy.yml` | **manual** `workflow_dispatch`, **weekly** schedule, or label **`ci-heavy`** (same-repo only) | `cargo check --workspace`, Docker multihop harness |
+| **0 Core** | `ci.yml` jobs `terp-scripts-offline`, `internal-libs`, `core-gate` | every PR / push to main & feat/* / manual tier `core` or `all` | `terp-scripts` offline IBC (unit+golden+rebuild+validate+preflight) + internal lib crates |
+| **1 Extended** | `ci.yml` jobs `contracts-core`, `scripts-integration`, optional `contracts-heavy` | path changes under contracts/crates/tests **or** label `ci-extended` **or** manual tier `extended` or `all` | authenticator contracts lib tests, optional wasm check, all non-ignored `terp-scripts` tests; draft PRs skipped unless labeled |
+| **2 Heavy** | `ci.yml` jobs `workspace-check`, `docker-harness` | manual tier `heavy` or `all`, **weekly** schedule, or label **`ci-heavy`** (same-repo only) | `cargo check --workspace`, Docker multihop harness |
+
+`ci.yml` also checks the pull request title and keeps a dispatch-only publish guard. A manual run chooses `tier`: `all`, `core`, `extended`, `heavy`, or `publish`. `all` does not publish.
+
+rustfmt, clippy, rustdoc, cargo-deny, and zizmor each have their own workflow: `rust-fmt.yml`, `rust-clippy.yml`, `docs.yml`, `rust-cargo-deny.yml`, and `zizmor.yml`. They run on pull requests and on pushes to `main`, `master`, and `feat/**`. fmt, clippy, and rustdoc exit 0 when `../cosmwasm/Cargo.toml` is missing, because a GitHub checkout of this repo cannot compile the path patches. cargo-deny advisories pass `--hide-inclusion-graph`.
 
 ## Labels (maintainer / admin)
 
@@ -15,7 +19,7 @@ Automation is tiered so PRs always get an honest offline gate without burning Do
 | `ci-extended` | Force extended jobs on draft PRs; enable optional zk contract job |
 | `ci-heavy` | Run Docker harness + workspace check (not for forks) |
 
-`workflow_dispatch` on **CI Heavy** is the admin path: choose Docker and/or workspace check in the UI without labeling a PR.
+`workflow_dispatch` on **CI** is the admin path: pick a tier, and for heavy choose Docker and/or the workspace check, without labeling a PR.
 
 ## Local parity (agents)
 
@@ -54,7 +58,7 @@ just act-teardown
 | `act-teardown` | Containers + volumes + prune run logs |
 | `act-exercise` | Daily optimized loop |
 
-Details: `scripts/act/README.md`. Hermes profile: `ci-act-tester`.
+Details: `scripts/ci/README.md`. Hermes profile: `ci-act-tester`.
 
 ## Dense parallel packing
 

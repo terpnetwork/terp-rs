@@ -6,19 +6,19 @@ It manages IBC client and consensus states, delegating all light client-specific
 
 ## Overview
 
-**Zcash Crosslink** is a Trailing Finality Layer (TFL) that provides economic finality to Zcash PoW blocks through a BFT consensus protocol (Malachite + Tenderlink). This light client allows Cosmos SDK chains to verify Crosslink-finalized PoW anchors and route IBC packets based on Zcash's hybrid finality.
+**Zcash Crosslink** is a Trailing Finality Layer (TFL) that provides economic finality to Zcash `PoW` blocks through a BFT consensus protocol (Malachite + Tenderlink). This light client allows Cosmos SDK chains to verify Crosslink-finalized `PoW` anchors and route IBC packets based on Zcash's hybrid finality.
 
 The architecture consists of:
 - `crosslink-light-client` — reusable, IBC-agnostic verification primitives
-- `cw-ics08-wasm-crosslink` — the CosmWasm 08-wasm contract
+- `cw-ics08-wasm-crosslink` — the `CosmWasm` 08-wasm contract
 - `crosslink-relayer` — standalone Rust binary that polls `zebrad` and submits updates
 
 ## Light Client Functions
 
 ### Update Client Logic
 
-Client updates are driven by **CrosslinkHeaders**, which bundle:
-- A BFT block containing the PoW anchor header
+Client updates are driven by **`CrosslinkHeaders`**, which bundle:
+- A BFT block containing the `PoW` anchor header
 - A `FatPointerToBftBlock2` with aggregated ed25519 signatures from the current finalizer roster
 
 Verification steps (implemented in `crosslink-light-client`):
@@ -27,10 +27,10 @@ Verification steps (implemented in `crosslink-light-client`):
 3. BFT block has the expected confirmation depth (`sigma`)
 4. Fat pointer correctly points to the BFT block hash
 5. Batch ed25519 signature verification succeeds
-6. New PoW anchor height is strictly greater than the previous one
+6. New `PoW` anchor height is strictly greater than the previous one
 7. Header chain continuity (via `zebra-crosslink` types)
 
-After successful verification, the contract updates the `ClientState` (latest heights, roster, etc.) and stores a new `ConsensusState` for the finalized PoW anchor.
+After successful verification, the contract updates the `ClientState` (latest heights, roster, etc.) and stores a new `ConsensusState` for the finalized `PoW` anchor.
 
 ### Membership Proofs
 
@@ -47,7 +47,7 @@ See `crates/crosslink/light-client/src/membership.rs`.
 
 ### Misbehavior Handling
 
-Misbehavior is currently stubbed and always returns `false` (no misbehaviour detected).
+Misbehaviour is same-BFT-height disagreement on the BFT hash or `PoW` finalization candidate. Incomplete evidence fails closed.
 
 Future detection will cover **equivocation**: two valid but conflicting fat pointers (different finalization candidates) at the same BFT height signed by a sufficient quorum of the finalizer set. Upon detection, the client is frozen. Recovery requires a governance proposal.
 
@@ -57,7 +57,7 @@ Future detection will cover **equivocation**: two valid but conflicting fat poin
 
 - Rust (2021 edition or later)
 - `cargo` + `wasm32-unknown-unknown` target
-- Docker (for optimized builds via `cosmwasm/optimizer`)
+- Docker (for optimized builds via `terpnetwork/optimizer`)
 
 ```bash
 # MSRV for published CosmWasm artifacts: Rust **1.86 only** (Docker optimizer).

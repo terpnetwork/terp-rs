@@ -1,0 +1,29 @@
+[package]
+name = "nftfi-utils"
+version = { workspace = true }
+edition = { workspace = true }
+license = "Apache-2.0"
+publish = false
+description = "Shared asset, lock, and cw721 helpers for the nftfi raffle and loan ports"
+
+[features]
+default = []
+# Collection definitions for cw721-svg. Host only.
+svg = ["dep:cw721-svg", "dep:cw-svg"]
+# Host-only cw721 double plus the svg collection helper.
+testing = ["dep:cw-multi-test", "svg"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cw-multi-test = { workspace = true, optional = true }
+cw-storage-plus = { workspace = true }
+cw-svg = { workspace = true, optional = true }
+cw721 = { workspace = true }
+cw721-svg = { workspace = true, optional = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

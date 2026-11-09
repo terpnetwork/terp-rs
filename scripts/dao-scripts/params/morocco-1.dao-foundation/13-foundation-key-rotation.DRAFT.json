@@ -1,0 +1,68 @@
+{
+  "status": "DRAFT - DO NOT SUBMIT. Single-step rotation: add 3 new keys (1000 each), remove 3 old keys. Submit only after the key soundness sends (A->B, B->C, C->A) are confirmed.",
+  "dao": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+  "proposal_module": "terp1p5582k3sw008jkmw0f48ucszn660nazqr9x3ut6h5aqj4frq8f0shaey4g (A, dao-proposal-single)",
+  "submit_to": "terp1armcr7lme0ac3l59dx6ne3et3pe9mfyv57d8pc9m5tyxtzm64dpq9nnwpp (pre-propose-single; deposit none; submission: dao_members only)",
+  "voting": "majority threshold, 20% quorum, 32h max voting period, no revoting, no veto on module A. Current total weight 2999: two 1000-weight yes votes pass it.",
+  "cw4_group": "terp1axqxut3zy6n4cpekk9yrwk4u4rny5c4repn7u696g43cufmcszfqq8n2vm",
+  "group_admin_check": "cw4 group admin == Foundation DAO core (verified on chain 2026-10-31); DAO core is its own wasm admin",
+  "signer_flow": "cw-orch-kms session (Zigner granter terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052): MsgExec propose via pre-propose, vote yes; second member (terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj) votes yes; then execute",
+  "inner_msg_decoded": {
+    "update_members": {
+      "add": [
+        {
+          "addr": "terp1rtyf4ulzhsc9septhfchlxyveuwytx7l7v8vln",
+          "weight": 1000
+        },
+        {
+          "addr": "terp1k52j0jk2t03e6cdnkpzwu7pacvufl640ekfjdh",
+          "weight": 1000
+        },
+        {
+          "addr": "terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r",
+          "weight": 1000
+        }
+      ],
+      "remove": [
+        "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+        "terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj",
+        "terp14eygcfdmwpl00nw2amqpujg73nyy59azqu55em"
+      ]
+    }
+  },
+  "propose": {
+    "propose": {
+      "msg": {
+        "propose": {
+          "title": "Rotate Foundation DAO keys: add three new members, remove three old members",
+          "description": "Rotates Foundation DAO membership in one UpdateMembers on the Foundation cw4 group terp1axqxut3zy6n4cpekk9yrwk4u4rny5c4repn7u696g43cufmcszfqq8n2vm.\n\nAdd (weight 1000 each):\n- terp1rtyf4ulzhsc9septhfchlxyveuwytx7l7v8vln\n- terp1k52j0jk2t03e6cdnkpzwu7pacvufl640ekfjdh\n- terp16xmf57fr64n9ajux0up3n6ypytct5zggj5d05r\n\nRemove:\n- terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052\n- terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj\n- terp14eygcfdmwpl00nw2amqpujg73nyy59azqu55em\n\nTotal weight after execution: 3000.",
+          "msgs": [
+            {
+              "wasm": {
+                "execute": {
+                  "contract_addr": "terp1axqxut3zy6n4cpekk9yrwk4u4rny5c4repn7u696g43cufmcszfqq8n2vm",
+                  "msg": "eyJ1cGRhdGVfbWVtYmVycyI6eyJhZGQiOlt7ImFkZHIiOiJ0ZXJwMXJ0eWY0dWx6aHNjOXNlcHRoZmNobHh5dmV1d3l0eDdsN3Y4dmxuIiwid2VpZ2h0IjoxMDAwfSx7ImFkZHIiOiJ0ZXJwMWs1MmowamsydDAzZTZjZG5rcHp3dTdwYWN2dWZsNjQwZWtmamRoIiwid2VpZ2h0IjoxMDAwfSx7ImFkZHIiOiJ0ZXJwMTZ4bWY1N2ZyNjRuOWFqdXgwdXAzbjZ5cHl0Y3Q1emdnajVkMDVyIiwid2VpZ2h0IjoxMDAwfV0sInJlbW92ZSI6WyJ0ZXJwMWZ4Y2N2dmhoeTQzdHZldDJhaDdqcXdxNGN3bDlrM2R4bXd3MDUyIiwidGVycDFmcGR6ODIwbGNmemUzYWx4Mmd1a2hwN3lybmhzaGU0ZHY5NndnaiIsInRlcnAxNGV5Z2NmZG13cGwwMG53MmFtcXB1amc3M255eTU5YXpxdTU1ZW0iXX19",
+                  "funds": []
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "vote": {
+    "vote": {
+      "proposal_id": 13,
+      "vote": "yes"
+    }
+  },
+  "execute": {
+    "execute": {
+      "proposal_id": 13
+    }
+  },
+  "next_proposal_id_note": "module A proposal_count = 12 at draft time; confirm 13 before use",
+  "weight_math": "cw4-group update_members applies all adds then all removes in one execution at one height: 2999 + 3000 - (1000+1000+999) = 3000. Group hooks list is empty (queried 2026-10-31); dao-voting-cw4 has no execute path and reads TotalWeight/Member at_height from the group, so the DAO keeps working with 3x1000; majority >1500 means 2 of the 3 new keys per future proposal. Old keys lose power at execution; proposals opened before execution keep their creation-height snapshot.",
+  "lockout_risk": "Removes all current members. Only safe once A, B and C have each signed on chain (soundness test)."
+}

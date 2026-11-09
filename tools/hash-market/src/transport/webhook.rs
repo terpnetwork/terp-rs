@@ -48,16 +48,10 @@ impl HttpWebhookClient {
 #[async_trait::async_trait]
 impl HashMerchantClient for HttpWebhookClient {
     async fn on_root_confirmed(&self, confirmation: RootConfirmation) -> ClientResult<()> {
-        let body = serde_json::to_value(&confirmation)
-            .map_err(|e| ClientError::Serde(e))?;
+        let body = serde_json::to_value(&confirmation).map_err(|e| ClientError::Serde(e))?;
 
         for url in &self.webhook_urls {
-            let resp = self
-                .http_client
-                .post(url)
-                .json(&body)
-                .send()
-                .await;
+            let resp = self.http_client.post(url).json(&body).send().await;
 
             match resp {
                 Ok(r) if r.status().is_success() => {
@@ -103,12 +97,7 @@ impl HashMerchantClient for HttpWebhookClient {
         // Forward pin request to webhook as a control message
         let pin_msg = serde_json::json!({"action": "pin", "cid": cid});
         for url in &self.webhook_urls {
-            self.http_client
-                .post(url)
-                .json(&pin_msg)
-                .send()
-                .await
-                .ok();
+            self.http_client.post(url).json(&pin_msg).send().await.ok();
         }
         Ok(())
     }

@@ -8,7 +8,7 @@
 //!   *.filters.ts        — Websocket subscription filter formula tables
 //!   *.argus.ts          — Argus indexer formula definitions
 
-use crate::config::GenerationContext;
+use crate::config::{GenerationContext, ts_variant_dir};
 use crate::resolver::SourceResolver;
 use crate::ts_codegen;
 use crate::{GenerationResult, Generator};
@@ -26,8 +26,7 @@ impl Generator for TsBundlesGenerator {
     }
 
     fn generate(&self, ctx: &GenerationContext) -> anyhow::Result<GenerationResult> {
-        let ts_out = ctx.ts_out.join(&ctx.project_name);
-        std::fs::create_dir_all(&ts_out)?;
+        std::fs::create_dir_all(&ctx.ts_out)?;
         let mut total_files = 0;
 
         let (_source_label, grouped) = SourceResolver::resolve_grouped(ctx);
@@ -36,7 +35,7 @@ impl Generator for TsBundlesGenerator {
                 name: "ts-bundles",
                 success: true,
                 files_generated: 0,
-                output_dir: Some(ts_out.to_string_lossy().to_string()),
+                output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
                 message: Some("No contracts found".to_string()),
             });
         }
@@ -46,7 +45,7 @@ impl Generator for TsBundlesGenerator {
             let mut message_types: Vec<(String, Value)> = Vec::new();
             let mut response_types: Vec<(String, Value)> = Vec::new();
 
-            for (_type_key, schema_value) in schemas {
+            for schema_value in schemas.values() {
                 ts_codegen::collect_types_and_defs(
                     schema_value,
                     &mut message_types,
@@ -56,36 +55,47 @@ impl Generator for TsBundlesGenerator {
             }
 
             let cname = pascal_case(contract_name);
+            let zod_dir = ts_variant_dir(&ctx.ts_out, contract_name, "zod");
+            let bundle_dir = ts_variant_dir(&ctx.ts_out, contract_name, "esbundles");
+            let client_dir = ts_variant_dir(&ctx.ts_out, contract_name, "client");
+            let filters_dir = ts_variant_dir(&ctx.ts_out, contract_name, "filters");
+            let argus_dir = ts_variant_dir(&ctx.ts_out, contract_name, "argus");
 
             // Skip non-contract entries (e.g. raw response types that don't have Execute/Query)
             let has_exec = message_types.iter().any(|(t, _)| t == "ExecuteMsg");
             let has_query = message_types.iter().any(|(t, _)| t == "QueryMsg");
             if !has_exec && !has_query {
-                // Still generate Zod for definition types
+                std::fs::create_dir_all(&zod_dir)?;
                 let zod = generate_co_located_zod(&cname, &all_defs);
-                std::fs::write(ts_out.join(format!("{}.zod.ts", cname)), &zod)?;
+                std::fs::write(zod_dir.join(format!("{}.zod.ts", cname)), &zod)?;
                 total_files += 1;
                 continue;
             }
 
+            std::fs::create_dir_all(&zod_dir)?;
+            std::fs::create_dir_all(&bundle_dir)?;
+            std::fs::create_dir_all(&client_dir)?;
+            std::fs::create_dir_all(&filters_dir)?;
+            std::fs::create_dir_all(&argus_dir)?;
+
             let zod = generate_co_located_zod(&cname, &all_defs);
-            std::fs::write(ts_out.join(format!("{}.zod.ts", cname)), &zod)?;
+            std::fs::write(zod_dir.join(format!("{}.zod.ts", cname)), &zod)?;
             total_files += 1;
 
             let bundle = generate_js_bundle(&cname, &message_types);
-            std::fs::write(ts_out.join(format!("{}.bundle.mjs", cname)), &bundle)?;
+            std::fs::write(bundle_dir.join(format!("{}.bundle.mjs", cname)), &bundle)?;
             total_files += 1;
 
             let client = generate_transact_client(&cname, &message_types, &response_types);
-            std::fs::write(ts_out.join(format!("{}.client.ts", cname)), &client)?;
+            std::fs::write(client_dir.join(format!("{}.client.ts", cname)), &client)?;
             total_files += 1;
 
             let filters = generate_filter_table(&cname, &message_types);
-            std::fs::write(ts_out.join(format!("{}.filters.ts", cname)), &filters)?;
+            std::fs::write(filters_dir.join(format!("{}.filters.ts", cname)), &filters)?;
             total_files += 1;
 
             let argus = generate_argus_indexer(&cname);
-            std::fs::write(ts_out.join(format!("{}.argus.ts", cname)), &argus)?;
+            std::fs::write(argus_dir.join(format!("{}.argus.ts", cname)), &argus)?;
             total_files += 1;
         }
 
@@ -93,7 +103,7 @@ impl Generator for TsBundlesGenerator {
             name: "ts-bundles",
             success: true,
             files_generated: total_files,
-            output_dir: Some(ts_out.to_string_lossy().to_string()),
+            output_dir: Some(ctx.ts_out.to_string_lossy().to_string()),
             message: Some(format!("{} bundle files generated", total_files)),
         })
     }
@@ -114,7 +124,7 @@ fn generate_co_located_zod(cname: &str, all_defs: &HashMap<String, Value>) -> St
         let val = &all_defs[*name];
         let schema_name = format!("{}Schema", pascal_case(name));
         out.push_str(&format!("export const {} = ", schema_name));
-        out.push_str(&schema_to_zod(val, all_defs, 0));
+        out.push_str(&schema_to_zod(val, 0));
         out.push_str(";\n");
     }
 
@@ -127,7 +137,7 @@ fn generate_co_located_zod(cname: &str, all_defs: &HashMap<String, Value>) -> St
     out
 }
 
-fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> String {
+fn schema_to_zod(val: &Value, depth: usize) -> String {
     if let Some(r) = val.get("$ref").and_then(|v| v.as_str()) {
         let n = r.rsplit('/').next().unwrap_or(r);
         return format!("{}Schema", pascal_case(n));
@@ -140,14 +150,14 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
         if arr.is_empty() {
             return "z.never()".to_string();
         }
-        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, defs, depth)).collect();
+        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, depth)).collect();
         return items.join(".or(");
     }
     if let Some(arr) = val.get("allOf").and_then(|v| v.as_array()) {
         if arr.is_empty() {
             return "z.unknown()".to_string();
         }
-        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, defs, depth)).collect();
+        let items: Vec<String> = arr.iter().map(|v| schema_to_zod(v, depth)).collect();
         return items.join(".and(");
     }
     match val.get("type").and_then(|v| v.as_str()) {
@@ -159,7 +169,7 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
         Some("array") => {
             let inner = val
                 .get("items")
-                .map(|i| schema_to_zod(i, defs, depth))
+                .map(|i| schema_to_zod(i, depth))
                 .unwrap_or_else(|| "z.unknown()".into());
             format!("z.array({})", inner)
         }
@@ -169,9 +179,7 @@ fn schema_to_zod(val: &Value, defs: &HashMap<String, Value>, depth: usize) -> St
                 let indent_inner = "  ".repeat(depth);
                 let fields: Vec<String> = props
                     .iter()
-                    .map(|(k, v)| {
-                        format!("{}  {}: {},", indent, k, schema_to_zod(v, defs, depth + 1))
-                    })
+                    .map(|(k, v)| format!("{}  {}: {},", indent, k, schema_to_zod(v, depth + 1)))
                     .collect();
                 format!("z.object({{\n{}\n{}}})", fields.join("\n"), indent_inner)
             } else {
@@ -338,7 +346,7 @@ fn generate_transact_client(
 // 4) Websocket subscription filter tables
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn generate_filter_table(cname: &str, message_types: &[(String, Value)]) -> String {
+fn generate_filter_table(_cname: &str, message_types: &[(String, Value)]) -> String {
     let mut out = String::new();
     out.push_str("// Websocket subscription filter tables\n");
     out.push_str("// Use with CosmJS WebsocketClient or StargateClient\n\n");
@@ -443,11 +451,7 @@ fn extract_variant_names(schema: &Value) -> Option<Vec<String>> {
                 .map(|s| s.to_string())
         })
         .collect();
-    if names.is_empty() {
-        None
-    } else {
-        Some(names)
-    }
+    if names.is_empty() { None } else { Some(names) }
 }
 
 fn pascal_case(s: &str) -> String {

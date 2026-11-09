@@ -1,0 +1,177 @@
+{
+  "version": "1",
+  "collection": "radial-tentacle",
+  "description": "Radial dot pattern resembling a dandelion or atom. 5 concentric rings of circles, each independently colored. Animated with tentacle-whip oscillation: inner rings sway gently, outer rings swing wide with propagation delay, creating a bird's-eye octopus swirl effect. Dots decrease in size from center outward.",
+
+  "palette_groups": [
+    {
+      "id": "core",
+      "note": "Inner rings (1-2): the body/mantle of the octopus. Deep saturated tones.",
+      "anchor": "color-ring1",
+      "members": ["color-ring1", "color-ring2"],
+      "entropy": "low",
+      "ranges": [
+        { "r_min": 0,   "r_max": 40,  "g_min": 20,  "g_max": 80,  "b_min": 130, "b_max": 200 },
+        { "r_min": 120, "r_max": 200, "g_min": 0,   "g_max": 60,  "b_min": 80,  "b_max": 160 },
+        { "r_min": 0,   "r_max": 50,  "g_min": 100, "g_max": 180, "b_min": 100, "b_max": 180 }
+      ]
+    },
+    {
+      "id": "mid",
+      "note": "Middle ring (3): tentacle mid-section, transitional hue between core and tips.",
+      "anchor": "color-ring3",
+      "members": ["color-ring3"],
+      "entropy": "medium",
+      "ranges": [
+        { "r_min": 20,  "r_max": 100, "g_min": 40,  "g_max": 120, "b_min": 120, "b_max": 210 },
+        { "r_min": 100, "r_max": 180, "g_min": 20,  "g_max": 100, "b_min": 100, "b_max": 200 },
+        { "r_min": 20,  "r_max": 80,  "g_min": 120, "g_max": 200, "b_min": 120, "b_max": 200 }
+      ]
+    },
+    {
+      "id": "tips",
+      "note": "Outer rings (4-5): tentacle tips, can shift toward contrasting or complementary hue.",
+      "anchor": "color-ring4",
+      "members": ["color-ring4", "color-ring5"],
+      "entropy": "high",
+      "ranges": [
+        { "r_min": 0,   "r_max": 80,  "g_min": 60,  "g_max": 160, "b_min": 150, "b_max": 255 },
+        { "r_min": 150, "r_max": 240, "g_min": 30,  "g_max": 120, "b_min": 60,  "b_max": 180 },
+        { "r_min": 40,  "r_max": 140, "g_min": 140, "g_max": 240, "b_min": 100, "b_max": 200 },
+        { "r_min": 180, "r_max": 255, "g_min": 80,  "g_max": 180, "b_min": 0,   "b_max": 80  }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "inner-drift",
+      "note": "Slow oscillation for inner rings 1-2. Gentle sway like the octopus body rocking.",
+      "members": ["drift-ring1", "drift-ring2"],
+      "min": "4.0",
+      "max": "8.0",
+      "precision": 1
+    },
+    {
+      "id": "mid-drift",
+      "note": "Medium oscillation for ring 3. Tentacle midsection, moderate swing period.",
+      "members": ["drift-ring3"],
+      "min": "3.0",
+      "max": "6.0",
+      "precision": 1
+    },
+    {
+      "id": "outer-drift",
+      "note": "Faster oscillation for outer rings 4-5. Tentacle whip tips swing at a quicker rate.",
+      "members": ["drift-ring4", "drift-ring5"],
+      "min": "2.0",
+      "max": "5.0",
+      "precision": 1
+    },
+    {
+      "id": "whip-delay",
+      "note": "Propagation delay per ring — creates the cascading whip effect from core to tips.",
+      "members": ["val-delay2", "val-delay3", "val-delay4", "val-delay5"],
+      "min": "0.05",
+      "max": "0.80",
+      "precision": 2
+    },
+    {
+      "id": "tip-breathe",
+      "note": "Opacity pulse on outer rings for organic tentacle-tip flutter.",
+      "members": ["pulse-outer"],
+      "min": "1.5",
+      "max": "4.0",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-ring1",
+      "kind": { "rgb_styled": [
+        { "r_min": 0,   "r_max": 40,  "g_min": 20,  "g_max": 80,  "b_min": 130, "b_max": 200 },
+        { "r_min": 120, "r_max": 200, "g_min": 0,   "g_max": 60,  "b_min": 80,  "b_max": 160 },
+        { "r_min": 0,   "r_max": 50,  "g_min": 100, "g_max": 180, "b_min": 100, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-ring2",
+      "kind": { "rgb_styled": [
+        { "r_min": 0,   "r_max": 40,  "g_min": 20,  "g_max": 80,  "b_min": 130, "b_max": 200 },
+        { "r_min": 120, "r_max": 200, "g_min": 0,   "g_max": 60,  "b_min": 80,  "b_max": 160 },
+        { "r_min": 0,   "r_max": 50,  "g_min": 100, "g_max": 180, "b_min": 100, "b_max": 180 }
+      ]}
+    },
+    {
+      "name": "color-ring3",
+      "kind": { "rgb_styled": [
+        { "r_min": 20,  "r_max": 100, "g_min": 40,  "g_max": 120, "b_min": 120, "b_max": 210 },
+        { "r_min": 100, "r_max": 180, "g_min": 20,  "g_max": 100, "b_min": 100, "b_max": 200 },
+        { "r_min": 20,  "r_max": 80,  "g_min": 120, "g_max": 200, "b_min": 120, "b_max": 200 }
+      ]}
+    },
+    {
+      "name": "color-ring4",
+      "kind": { "rgb_styled": [
+        { "r_min": 0,   "r_max": 80,  "g_min": 60,  "g_max": 160, "b_min": 150, "b_max": 255 },
+        { "r_min": 150, "r_max": 240, "g_min": 30,  "g_max": 120, "b_min": 60,  "b_max": 180 },
+        { "r_min": 40,  "r_max": 140, "g_min": 140, "g_max": 240, "b_min": 100, "b_max": 200 },
+        { "r_min": 180, "r_max": 255, "g_min": 80,  "g_max": 180, "b_min": 0,   "b_max": 80  }
+      ]}
+    },
+    {
+      "name": "color-ring5",
+      "kind": { "rgb_styled": [
+        { "r_min": 0,   "r_max": 80,  "g_min": 60,  "g_max": 160, "b_min": 150, "b_max": 255 },
+        { "r_min": 150, "r_max": 240, "g_min": 30,  "g_max": 120, "b_min": 60,  "b_max": 180 },
+        { "r_min": 40,  "r_max": 140, "g_min": 140, "g_max": 240, "b_min": 100, "b_max": 200 },
+        { "r_min": 180, "r_max": 255, "g_min": 80,  "g_max": 180, "b_min": 0,   "b_max": 80  }
+      ]}
+    },
+    {
+      "name": "drift-ring1",
+      "kind": { "range": { "min": "4.0", "max": "8.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-ring2",
+      "kind": { "range": { "min": "4.0", "max": "8.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-ring3",
+      "kind": { "range": { "min": "3.0", "max": "6.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-ring4",
+      "kind": { "range": { "min": "2.0", "max": "5.0", "precision": 1 } }
+    },
+    {
+      "name": "drift-ring5",
+      "kind": { "range": { "min": "2.0", "max": "5.0", "precision": 1 } }
+    },
+    {
+      "name": "val-delay2",
+      "kind": { "range": { "min": "0.05", "max": "0.20", "precision": 2 } }
+    },
+    {
+      "name": "val-delay3",
+      "kind": { "range": { "min": "0.15", "max": "0.40", "precision": 2 } }
+    },
+    {
+      "name": "val-delay4",
+      "kind": { "range": { "min": "0.30", "max": "0.60", "precision": 2 } }
+    },
+    {
+      "name": "val-delay5",
+      "kind": { "range": { "min": "0.50", "max": "0.80", "precision": 2 } }
+    },
+    {
+      "name": "pulse-outer",
+      "kind": { "range": { "min": "1.5", "max": "4.0", "precision": 2 } }
+    },
+    {
+      "name": "opacity-breathe-lo",
+      "kind": { "range": { "min": "0.60", "max": "0.90", "precision": 2 } }
+    }
+  ]
+}

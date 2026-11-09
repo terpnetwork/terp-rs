@@ -16,7 +16,13 @@ All nip metadata objects are expected to implement two traits:
 
 ## How Do We Test The Logic In This Library?
 
-With `ict-rs`, we manage local nostr relayer and client containers alongside any chain scripting. OUr scripts are optimized for compatibility with `cw-orchestrator`.
+**Host unit tests (always):** `cargo test -p cw721-nips` covers the prelude `NipKind` surface (regular / replaceable / ephemeral / addressable) plus NIP-01/15/52 kind values. That is the Kind SSOT.
+
+**Sidecar (ict-rs / terp-scripts):** use `SuiteProfile::NostrCalendar` or `NostrVe` from `terp-scripts` (`tests/src/suite`). That starts the local Nostr relay Docker sidecar (`SidecarFleet::with_nostr_relay`). There is no second one-off harness in this crate.
+
+**Local relay without Docker:** run any NIP-01 relay on `ws://127.0.0.1:7777` and point hash-market / ict-rs `environments/nostr` at it. Library tests do **not** require a live relay.
+
+**Cashu NUTs:** not on the default feature set. `--features nuts` compiles `src/nuts/*`. `nut02` is a **stub** (no keyset crypto) until CDK re-exports land.
 
 ## How Do We Add New Support For This Library?
 

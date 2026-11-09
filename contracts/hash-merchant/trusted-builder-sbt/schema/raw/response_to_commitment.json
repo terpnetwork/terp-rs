@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Commitment",
+  "type": "object",
+  "required": [
+    "commitment_hex",
+    "committer",
+    "eth_address",
+    "height",
+    "status"
+  ],
+  "properties": {
+    "commitment_hex": {
+      "type": "string"
+    },
+    "committer": {
+      "type": "string"
+    },
+    "eth_address": {
+      "type": "string"
+    },
+    "height": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "status": {
+      "$ref": "#/definitions/CommitmentStatus"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "CommitmentStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "timed_out"
+      ]
+    }
+  }
+}

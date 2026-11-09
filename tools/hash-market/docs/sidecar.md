@@ -36,8 +36,8 @@ openssl rand -hex 32
 The server uses a `[[providers]]` array — each entry is a named data source for a specific foreign chain. Multiple providers run concurrently, similar to how [Skip Connect](https://github.com/skip-mev/connect) registers multiple oracle providers.
 
 ```toml
-# config.toml
-bind = "0.0.0.0:9090"
+# config.toml — non-loopback bind refuses to start unless allow_public_bind
+bind = "127.0.0.1:9090"
 chain_id = "terp-mainnet-1"
 signing_key = "abcdef..."
 

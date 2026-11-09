@@ -1,0 +1,39 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "terp_frost_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "group_vk": {
+          "value": 1
+        },
+        "n": {
+          "value": 2
+        },
+        "seats": {
+          "value": 3
+        },
+        "t": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u16",
+      "type": "integer",
+      "precision": 16,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<alloc::string::String>",
+      "type": "array",
+      "items": 1
+    }
+  ]
+}

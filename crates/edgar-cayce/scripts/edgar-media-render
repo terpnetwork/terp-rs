@@ -1,0 +1,27 @@
+#!/bin/sh
+# Forced command for the groot2 morning clip.
+# authorized_keys must pin this path. The client command is ignored.
+# Stdin is the spoken script. Stdout is one MP4. No shell is offered.
+set -eu
+unset SSH_ORIGINAL_COMMAND || true
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TEXT="$(dd bs=1 count=2000 2>/dev/null || true)"
+if [ -z "$TEXT" ]; then
+  echo "edgar-media: empty script" >&2
+  exit 2
+fi
+case "$TEXT" in
+  *'$('*|*'`'*)
+    echo "edgar-media: script rejected" >&2
+    exit 2
+    ;;
+esac
+OUT="${TMPDIR:-/tmp}/edgar-media-$$.mp4"
+trap 'rm -f "$OUT"' EXIT
+printf '%s' "$TEXT" | python3 "$ROOT/scripts/morning_orb.py" --out "$OUT"
+SIZE=$(wc -c < "$OUT" | tr -d ' ')
+if [ "$SIZE" -eq 0 ] || [ "$SIZE" -gt 8388608 ]; then
+  echo "edgar-media: bad size $SIZE" >&2
+  exit 3
+fi
+cat "$OUT"

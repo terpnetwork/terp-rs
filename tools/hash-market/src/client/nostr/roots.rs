@@ -94,8 +94,9 @@ mod tests {
         };
 
         let tags = build_root_tags(&payload, None, None, None);
-        assert!(tags
-            .iter()
-            .any(|t| t.len() >= 2 && t[0] == "d" && t[1].contains("ethereum")));
+        assert!(
+            tags.iter()
+                .any(|t| t.len() >= 2 && t[0] == "d" && t[1].contains("ethereum"))
+        );
     }
 }

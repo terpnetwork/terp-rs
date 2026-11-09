@@ -1,0 +1,35 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "revenue_reserve_auction_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "auction": {
+          "type": "named",
+          "properties": {
+            "collection": {
+              "value": 1
+            },
+            "token_id": {
+              "value": 1
+            }
+          }
+        },
+        "config": {
+          "type": "named",
+          "properties": {}
+        },
+        "halt_manager": {
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    }
+  ]
+}

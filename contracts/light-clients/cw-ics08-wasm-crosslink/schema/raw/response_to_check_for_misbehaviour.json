@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckForMisbehaviourResult",
+  "description": "Result of a check-for-misbehaviour query.",
+  "type": "object",
+  "required": [
+    "found_misbehaviour"
+  ],
+  "properties": {
+    "found_misbehaviour": {
+      "description": "Whether misbehaviour was found.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

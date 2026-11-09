@@ -1,30 +1,27 @@
 use crate::{
-    claims::{fetch_witness_for_claim, Proof},
-    state::{Config, Epoch, Witness, CONFIG, EPOCHS},
+    claims::{Proof, fetch_witness_for_claim},
+    state::{CONFIG, Config, EPOCHS, Epoch, Witness},
 };
-use terp_account::traits::default::BtsgAccountTrait;
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{from_json, Addr, Event, Response, Uint128};
+use cosmwasm_schema::{QueryResponses, cw_serde};
+use cosmwasm_std::{Addr, Event, Response, Uint128, from_json};
 use serde::{Deserialize, Serialize};
+use terp_account::traits::default::TerpAccountTrait;
 
 pub use crate::error::ContractError;
 pub mod claims;
-pub mod digest;
 mod error;
 mod state;
 
-use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult, to_json_binary};
 
 // version info for migration info
 use cw2::set_contract_version;
 const CONTRACT_NAME: &str = "crates.io:terp-zktls";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BtsgAccountZkTls {}
-pub type BtsgAccountZkTslAuthStuct = Proof;
-pub type SudoMsg = <BtsgAccountZkTls as BtsgAccountTrait>::SudoMsg;
+pub struct TerpAccountZkTls {}
+pub type TerpAccountZkTslAuthStuct = Proof;
+pub type SudoMsg = <TerpAccountZkTls as TerpAccountTrait>::SudoMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -58,7 +55,7 @@ pub struct GetEpochResponse {
     pub epoch: Epoch,
 }
 
-#[entry_point]
+#[cosmwasm_std::entry_point]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -77,7 +74,7 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetEpoch { id } => to_json_binary(&query_epoch_id(deps, id)?),
@@ -85,7 +82,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -100,12 +97,12 @@ pub fn execute(
     }
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    BtsgAccountZkTls::process_sudo_auth(deps, env, &msg)
+    TerpAccountZkTls::process_sudo_auth(deps, env, &msg)
 }
 
-impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
+impl terp_account::traits::default::TerpAccountTrait for TerpAccountZkTls {
     type InstantiateMsg = InstantiateMsg;
     type ExecuteMsg = ExecuteMsg;
     type QueryMsg = QueryMsg;
@@ -113,27 +110,27 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
 
     type ContractError = ContractError;
 
-    type AuthMethodStructs = BtsgAccountZkTslAuthStuct;
+    type AuthMethodStructs = TerpAccountZkTslAuthStuct;
     type AuthProcessResult = Result<Response, ContractError>;
 
     fn extended_authenticate(
-        deps: cosmwasm_std::DepsMut,
-        auth: Self::AuthMethodStructs,
+        _deps: cosmwasm_std::DepsMut,
+        _auth: Self::AuthMethodStructs,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn process_sudo_auth(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &Self::SudoMsg,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &Self::SudoMsg,
     ) -> Self::AuthProcessResult {
         todo!()
     }
 
     fn on_auth_added(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
         req: &terp_auth::OnAuthenticatorAddedRequest,
     ) -> Self::AuthProcessResult {
         // small storage writes, for example global contract entropy or count of registered accounts
@@ -144,9 +141,9 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
     }
 
     fn on_auth_removed(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::OnAuthenticatorRemovedRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::OnAuthenticatorRemovedRequest,
     ) -> Self::AuthProcessResult {
         Ok(Response::new().add_attribute("action", "auth_removed_req"))
     }
@@ -154,7 +151,7 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
     fn on_auth_request(
         deps: cosmwasm_std::DepsMut,
         env: cosmwasm_std::Env,
-        req: &Box<terp_auth::AuthenticationRequest>,
+        req: &terp_auth::AuthenticationRequest,
     ) -> Self::AuthProcessResult {
         let mut resp = Response::new().add_attribute("action", "auth_req");
         let Proof {
@@ -195,29 +192,29 @@ impl terp_account::traits::default::BtsgAccountTrait for BtsgAccountZkTls {
                 }
                 Ok(resp)
             }
-            None => return Err(ContractError::NotFoundErr {}),
+            None => Err(ContractError::NotFoundErr {}),
         }
     }
 
     fn on_auth_track(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::TrackRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::TrackRequest,
     ) -> Self::AuthProcessResult {
         // this is where we handle any processes after authentication, regarding message contents, prep to track balances prior to msg execution, etc..
         Ok(Response::new().add_attribute("action", "track_req"))
     }
 
     fn on_auth_confirm(
-        deps: cosmwasm_std::DepsMut,
-        env: cosmwasm_std::Env,
-        req: &terp_auth::ConfirmExecutionRequest,
+        _deps: cosmwasm_std::DepsMut,
+        _env: cosmwasm_std::Env,
+        _req: &terp_auth::ConfirmExecutionRequest,
     ) -> Self::AuthProcessResult {
         // here is were we compare balances post event execution, based on data saved from sudo_track_request,etc..
         Ok(Response::new().add_attribute("action", "conf_exec_req"))
     }
 
-    fn on_hooks(deps: cosmwasm_std::DepsMut, env: cosmwasm_std::Env) -> Self::AuthProcessResult {
+    fn on_hooks(_deps: cosmwasm_std::DepsMut, _env: cosmwasm_std::Env) -> Self::AuthProcessResult {
         todo!()
     }
 }

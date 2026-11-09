@@ -1,0 +1,16 @@
+[Unit]
+Description=DREGG svg-mint-fed (permissionless SVG checkout)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/returniflost/abstract/terp-core/crates/dregg/svg-mint
+EnvironmentFile=-/home/returniflost/.terp/dregg-fed.systemd.env
+ExecStart=/home/returniflost/abstract/terp-core/crates/dregg/svg-mint/target/release/svg-mint-fed
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+
+[Install]
+WantedBy=default.target

@@ -14,7 +14,6 @@
 
 use crate::custody::Custody;
 use crate::msg::VoteExtensionHashData;
-use k256::ecdsa::signature::hazmat::PrehashVerifier as _;
 use sha2::{Digest, Sha256};
 const DOMAIN_SEP: &[u8] = b"terp/hashmerchant/ve/v1";
 
@@ -56,7 +55,7 @@ impl VoteExtensionHandler {
         let digest = Self::domain_hash(chain_id, height, &signed.extension);
 
         // Verify using k256 (secp256k1)
-        use k256::ecdsa::{signature::hazmat::PrehashVerifier, Signature, VerifyingKey};
+        use k256::ecdsa::{Signature, VerifyingKey, signature::hazmat::PrehashVerifier};
         let vk = VerifyingKey::from_sec1_bytes(&signed.public_key)?;
         let sig = Signature::try_from(signed.signature.as_slice())?;
         vk.verify_prehash(&digest, &sig)?;

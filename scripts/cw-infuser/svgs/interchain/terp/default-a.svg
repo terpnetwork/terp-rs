@@ -1,0 +1,37 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="neonglow" x="-90%" y="-90%" width="280%" height="280%">
+      <!-- Lighter, cleaner neon bloom — fewer heavy outer layers so the dots stay bright & pure -->
+      <feDropShadow dx="0" dy="0" stdDeviation="2.0" flood-color="#cfffcf" flood-opacity="0.96"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4.6" flood-color="#cfffcf" flood-opacity="0.68"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="9.2" flood-color="#cfffcf" flood-opacity="0.36"/>
+    </filter>
+  </defs>
+
+  <!-- Solid black background -->
+  <rect width="200" height="200" fill="#0000003a"/>
+
+  <!-- All 13 dots — single consistent bright lime-green (center to edge) -->
+  <g filter="url(#neonglow)">
+    <!-- Center -->
+    <circle cx="100" cy="100" r="8.7" fill="#cfffcf"/>
+
+    <!-- Far cardinal arms (outer cross) -->
+    <circle cx="52" cy="100" r="8.7" fill="#cfffcf"/>
+    <circle cx="148" cy="100" r="8.7" fill="#cfffcf"/>
+    <circle cx="100" cy="52" r="8.7" fill="#cfffcf"/>
+    <circle cx="100" cy="148" r="8.7" fill="#cfffcf"/>
+
+    <!-- Mid cardinal positions -->
+    <circle cx="75" cy="100" r="8.7" fill="#cfffcf"/>
+    <circle cx="125" cy="100" r="8.7" fill="#cfffcf"/>
+    <circle cx="100" cy="75" r="8.7" fill="#cfffcf"/>
+    <circle cx="100" cy="125" r="8.7" fill="#cfffcf"/>
+
+    <!-- Diagonal positions -->
+    <circle cx="75" cy="75" r="8.7" fill="#cfffcf"/>
+    <circle cx="75" cy="125" r="8.7" fill="#cfffcf"/>
+    <circle cx="125" cy="75" r="8.7" fill="#cfffcf"/>
+    <circle cx="125" cy="125" r="8.7" fill="#cfffcf"/>
+  </g>
+</svg>

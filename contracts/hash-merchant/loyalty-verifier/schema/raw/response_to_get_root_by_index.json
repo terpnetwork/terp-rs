@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RootResponse",
+  "type": "object",
+  "required": [
+    "algo",
+    "chain_uid",
+    "height",
+    "index",
+    "root"
+  ],
+  "properties": {
+    "algo": {
+      "type": "string"
+    },
+    "chain_uid": {
+      "type": "string"
+    },
+    "height": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "index": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "root": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

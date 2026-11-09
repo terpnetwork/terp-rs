@@ -1,0 +1,281 @@
+[package]
+name = "terp-orch"
+description = "Unified cw-orch / ict-rs test suite: Path A circuits, private-bridge, optional auth"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+autobins = false
+
+# The gov bin is cfg-gated. Without required-features, `cargo test --features headstash`
+# still tries to compile it and fails with `cannot find gov`.
+[[bin]]
+name = "terp_gov_proposal"
+path = "src/bin/terp_gov_proposal.rs"
+required-features = ["gov"]
+
+# FIAB bounty-escrow rollout. Preview by default; signs only via cw-orch-kms with --execute.
+[[bin]]
+name = "fiab_bounty_escrow"
+path = "src/bin/fiab_bounty_escrow.rs"
+required-features = ["gov"]
+
+# AAA DAO Touch Vinyl reserve auctions. Dry run by default; signs only via cw-orch-kms with --broadcast.
+[[bin]]
+name = "aaa_tvl_auction"
+path = "src/bin/aaa_tvl_auction.rs"
+required-features = ["gov"]
+
+# Touch Vinyls token_uri -> s3.terp.network blossom. Dry run by default.
+[[bin]]
+name = "aaa_tvl_metadata"
+path = "src/bin/aaa_tvl_metadata.rs"
+required-features = ["gov"]
+
+[[bin]]
+name = "aaa_dao_prop3"
+path = "src/bin/aaa_dao_prop3.rs"
+required-features = ["gov"]
+
+# ZecHub DAO voter gift (ZEC + Penumbra SVG). Dry run by default; signs only via cw-orch-kms with --broadcast.
+[[bin]]
+name = "zechub_voter_gift"
+path = "src/bin/zechub_voter_gift.rs"
+required-features = ["gov"]
+
+# terp-beacon deploy: store / instantiate-beacon / configure-beacon / wire-raffle.
+# Dry run by default (offline preview JSON). Broadcast needs --broadcast and TERP_BEACON_BROADCAST=1.
+[[bin]]
+name = "terp_beacon_deploy"
+path = "src/bin/terp_beacon_deploy.rs"
+required-features = ["gov"]
+# silo-cap-root self-deploy from our own wallet (no DAO / gov). Preview by default;
+# signs only via cw-orch-kms with --execute and SILO_CAP_ROOT_EXECUTE=1.
+[[bin]]
+name = "silo_cap_root"
+path = "src/bin/silo_cap_root.rs"
+required-features = ["self-deploy"]
+
+[[bin]]
+name = "cw-ave-deploy"
+path = "src/bin/cw_ave_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "nftfi-deploy"
+path = "src/bin/nftfi_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "shitstrap-deploy"
+path = "src/bin/shitstrap_deploy.rs"
+required-features = ["deploy-bins"]
+
+[[bin]]
+name = "shitstrap-upload"
+path = "src/bin/shitstrap_upload.rs"
+required-features = ["deploy-bins"]
+
+[features]
+default = ["zk-host", "bridge"]
+zk-host = [
+    "cw-zk-verify-demo/zk-host",
+    "cw-zk-verify-demo/library",
+    "cosmwasm-std/zk",
+    "cw-orch/zk",
+    "dep:zk-cosmwasm",
+]
+bridge = [
+    "zk-host",
+    "dep:cw-private-dex",
+    "cw-private-dex/interface",
+    "cw-private-dex/library",
+    "cw-private-dex/zk-api",
+]
+auth = ["dep:terp-authenticator-suite"]
+ict = ["dep:ict-rs-cw-orch", "dep:ict-rs"]
+# Product A clearnet claim (fresh Halo2 + proof_instance_verify). Slow K=18.
+headstash = ["dep:cw-headstash", "dep:zk-headstash", "dep:rand", "zk-host"]
+# morocco-1 gov drafts. The deposit signer is a cw-orch-kms session.
+gov = [
+    "cw-orch/daemon",
+    "dep:cw-orch-kms",
+    "dep:clap",
+    "dep:cosmos-sdk-proto",
+    "dep:ibc-proto",
+    "dep:dotenvy",
+    "dep:env_logger",
+    "dep:revenue-reserve-auction",
+    "revenue-reserve-auction/interface",
+    "dep:terp-beacon",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
+]
+# silo_cap_root: cw-orch-kms self-deploy only (no gov/ibc deps).
+self-deploy = [
+    "cw-orch/daemon",
+    "dep:cw-orch-kms",
+    "dep:clap",
+    "dep:cosmos-sdk-proto",
+]
+# Live deploy commands (Daemon). Off for library tests.
+deploy-bins = [
+    "stack",
+    "cw-orch/daemon",
+    "dep:dotenv",
+    "dep:env_logger",
+    "dep:av-event-helpers",
+]
+# Every published artifact: accounts, light clients, and the product contracts.
+stack = [
+    "dep:abstract-interface",
+    "dep:abstract-std",
+    "dep:terp-authenticator-suite",
+    "dep:terp-dao",
+    "dep:terp-dregg",
+    "dep:terp-frost",
+    "dep:terp-bls",
+    "dep:terp-zktls",
+    "dep:polytone-any-proxy",
+    "dep:cw-ics08-wasm-crosslink",
+    "dep:cw-ics08-wasm-dregg",
+    "dep:cw-ics08-wasm-terp",
+    "dep:cw-ics08-wasm-zap1",
+    "dep:crosslink-light-client",
+    "dep:cw-shitstrap",
+    "dep:cw-shitstrap-factory",
+    "dep:cw-shit-denom",
+    "dep:nftfi-raffle",
+    "dep:nftfi-randomness",
+    "dep:nftfi-loan",
+    "dep:terp-beacon",
+    "dep:revenue-marketplace",
+    "dep:revenue-reserve-auction",
+    "dep:terp-bounty-escrow",
+    "dep:cw420",
+    "dep:cw-ave",
+    "dep:cw-ave-factory",
+    "dep:cw-headstash",
+    "dep:cw-headstash-manifold",
+    "dep:cw-norick",
+    "dep:cw-nullifier-auth",
+    "dep:cw-nullifier-gate",
+    "dep:cw-vote-anchor",
+    "dep:cw-vote-ceremony",
+    "dep:cw-reg-eligibility",
+    "dep:svg-auction",
+    "dep:cw-oracle-aggregator",
+    "dep:cw-oracle-registry",
+    "dep:cw-oracle-twap-probe",
+    "dep:cw-infuser",
+    "dep:cw721-svg",
+    "dep:cw-svg-minter",
+    "dep:whitelist-mtree",
+    "dep:terp-account",
+    "dep:terp721-account",
+    "dep:terp721-account-manifold",
+    "dep:ownership-verifier",
+    "dep:marketplace-mirror",
+    "dep:loyalty-verifier",
+    "dep:trusted-builder-sbt",
+    "dep:cw-cashu-registry",
+    "dep:hm-nft-minter",
+    "dep:hm-loyalty-whitelist",
+    "dep:hm-nft-oracle",
+    "dep:cosmwasm-vm",
+    "dep:dao-testing",
+    "dep:nftfi-utils",
+    "dep:sha2",
+]
+
+[dependencies]
+abstract-interface = { workspace = true, optional = true }
+abstract-std = { workspace = true, optional = true }
+anyhow = { workspace = true }
+av-event-helpers = { workspace = true, optional = true }
+clap = { workspace = true, optional = true, features = ["derive", "env"] }
+cosmos-sdk-proto = { workspace = true, optional = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true, features = ["zk"] }
+cosmwasm-vm = { workspace = true, optional = true, features = ["iterator", "staking", "stargate", "zk", "bn254", "hash-blake", "hash-poseidon", "redpallas"] }
+crosslink-light-client = { workspace = true, optional = true }
+cw-ave = { workspace = true, optional = true, features = ["library"] }
+cw-ave-factory = { workspace = true, optional = true, features = ["library"] }
+cw-cashu-registry = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-headstash = { workspace = true, optional = true, features = ["interface", "library", "zk-api"] }
+cw-headstash-manifold = { workspace = true, optional = true, features = ["library"] }
+cw-ics08-wasm-crosslink = { workspace = true, optional = true, features = ["library"] }
+cw-ics08-wasm-dregg = { workspace = true, optional = true, features = ["library"] }
+cw-ics08-wasm-terp = { workspace = true, optional = true, features = ["library"] }
+cw-ics08-wasm-zap1 = { workspace = true, optional = true, features = ["library"] }
+cw-infuser = { workspace = true, optional = true, features = ["interface"] }
+cw-norick = { workspace = true, optional = true, features = ["library"] }
+cw-nullifier-auth = { workspace = true, optional = true, features = ["library"] }
+cw-nullifier-gate = { workspace = true, optional = true, features = ["library"] }
+cw-oracle-aggregator = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-oracle-registry = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-oracle-twap-probe = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-orch = { workspace = true }
+cw-orch-kms = { path = "../../../../cw-orchestrator/packages/cw-orch-kms", optional = true, features = ["ict"] }
+cw-private-dex = { workspace = true, optional = true }
+cw-reg-eligibility = { workspace = true, optional = true, features = ["library"] }
+cw-shit-denom = { workspace = true, optional = true }
+cw-shitstrap = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-shitstrap-factory = { workspace = true, optional = true, features = ["library", "interface"] }
+cw-svg-minter = { workspace = true, optional = true, features = ["interface"] }
+cw-vote-anchor = { workspace = true, optional = true, features = ["library"] }
+cw-vote-ceremony = { workspace = true, optional = true, features = ["library"] }
+cw-zk-verify-demo = { workspace = true, features = ["library"] }
+cw420 = { workspace = true, optional = true, features = ["library"] }
+cw721-svg = { workspace = true, optional = true, features = ["interface"] }
+dao-testing = { workspace = true, optional = true }
+dotenv = { workspace = true, optional = true }
+dotenvy = { version = "0.15", optional = true }
+env_logger = { workspace = true, optional = true }
+hm-loyalty-whitelist = { workspace = true, optional = true }
+hm-nft-minter = { workspace = true, optional = true, features = ["library", "interface"] }
+hm-nft-oracle = { workspace = true, optional = true }
+ibc-proto = { workspace = true, optional = true }
+ict-rs = { workspace = true, optional = true, features = ["docker", "terp", "testing"] }
+ict-rs-cw-orch = { workspace = true, optional = true }
+loyalty-verifier = { workspace = true, optional = true, features = ["library", "interface"] }
+marketplace-mirror = { workspace = true, optional = true, features = ["library", "interface"] }
+nftfi-loan = { workspace = true, optional = true, features = ["library", "interface"] }
+nftfi-raffle = { workspace = true, optional = true, features = ["library", "interface"] }
+nftfi-randomness = { workspace = true, optional = true }
+nftfi-utils = { workspace = true, optional = true, features = ["svg"] }
+terp-beacon = { workspace = true, optional = true, features = ["library", "interface"] }
+ownership-verifier = { workspace = true, optional = true }
+polytone-any-proxy = { workspace = true, optional = true, features = ["library"] }
+rand = { version = "0.10", optional = true, features = ["std", "sys_rng"] }
+revenue-marketplace = { workspace = true, optional = true, features = ["library"] }
+revenue-reserve-auction = { workspace = true, optional = true, features = ["library"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true, optional = true, features = ["std"] }
+svg-auction = { workspace = true, optional = true, features = ["library", "interface"] }
+terp-account = { workspace = true, optional = true, features = ["full", "interface"] }
+terp-authenticator-suite = { workspace = true, optional = true }
+terp-bls = { workspace = true, optional = true, features = ["library"] }
+terp-bounty-escrow = { workspace = true, optional = true, features = ["library", "interface", "dev-chain-guard"] }
+terp-dao = { workspace = true, optional = true, features = ["library"] }
+terp-dregg = { workspace = true, optional = true, features = ["library"] }
+terp-frost = { workspace = true, optional = true, features = ["library"] }
+terp-zktls = { workspace = true, optional = true, features = ["library"] }
+terp721-account = { workspace = true, optional = true }
+terp721-account-manifold = { workspace = true, optional = true, features = ["interface"] }
+trusted-builder-sbt = { workspace = true, optional = true, features = ["library", "interface"] }
+whitelist-mtree = { workspace = true, optional = true, features = ["interface"] }
+zk-cosmwasm = { workspace = true, optional = true }
+zk-headstash = { workspace = true, optional = true, features = ["interface", "host-crypto", "multicore"] }
+
+[dev-dependencies]
+hex = { workspace = true, features = ["std"] }
+
+[[example]]
+name = "fiab_grpc_repro"
+required-features = ["gov"]

@@ -1,0 +1,31 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_dregg_msg_VerifyClientMessageResult",
+      "type": "struct",
+      "properties": {
+        "ok": {
+          "value": 1
+        },
+        "reason": {
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# PARKED — product payments are ZEC only.
+# Do not `docker compose up` BTC/ETH/Base. DREGG does not watch these rails live.
+# Profile parked-btc exists only so this file stays valid; it must not be started
+# without an explicit operator decision to reopen BTC (porch first, -connect only).
+name: dregg-house
+
+services:
+  bitcoind:
+    profiles: ["parked-btc"]
+    image: bitcoin/bitcoin:29.0@sha256:a6aa8a9e349b4108d13c558dbe43064057bd7b6474b858966884f9cb95b7ed78
+    restart: "no"
+    command:
+      - bitcoind
+      - -server=1
+      - -listen=0
+      - -dnsseed=0
+      - -fixedseeds=0
+      - -connect=${PORCH_BTC_P2P:?porch required}
+      - -prune=550
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=127.0.0.1
+      - -rpcuser=${BTC_RPCUSER:-dregg}
+      - -rpcpassword=${BTC_RPCPASS:?set BTC_RPCPASS}
+    ports:
+      - "127.0.0.1:8332:8332"
+    volumes:
+      - ${DREGG_HOUSE_BTC_DATA:-/lab/dregg-house/btc}:/home/bitcoin/.bitcoin

@@ -1,0 +1,227 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_shitstrap_factory_msg_ExecuteMsg",
+      "type": "enum",
+      "cases": {
+        "create_native_shit_strap_contract": {
+          "description": "Instantiates a new vesting contract that is funded by a native token.",
+          "type": "named",
+          "properties": {
+            "instantiate_msg": {
+              "value": 1
+            },
+            "label": {
+              "value": 6
+            }
+          }
+        },
+        "update_code_id": {
+          "description": "Callable only by the current owner. Updates the code ID used\nwhile instantiating vesting contracts.",
+          "type": "named",
+          "properties": {
+            "shitstrap_code_id": {
+              "value": 11
+            }
+          }
+        },
+        "update_ownership": {
+          "description": "Update the contract's ownership. The `action` to be provided\ncan be either to propose transferring ownership to an account,\naccept a pending ownership transfer, or renounce the ownership\npermanently.",
+          "type": "tuple",
+          "items": [
+            12
+          ]
+        }
+      }
+    },
+    {
+      "name": "cw_shitstrap_msg_InstantiateMsg",
+      "type": "struct",
+      "properties": {
+        "accepted": {
+          "description": "a list of possible accepted assets, and the shit_rate you would like to set for.",
+          "value": 10
+        },
+        "cutoff": {
+          "description": "Desired cutoff points for shitstrap. 1000000 == 1 token.",
+          "value": 4
+        },
+        "daos": {
+          "description": "Dao one must be a member of to make use of shitstraps",
+          "value": 5
+        },
+        "description": {
+          "description": "description of shitstrap for recordkeeping",
+          "value": 6
+        },
+        "owner": {
+          "description": "owner of the shit strap. This address will recieve all shit sent for this shitstrap.",
+          "value": 7
+        },
+        "shitmos": {
+          "description": "SHITMOS token address",
+          "value": 9
+        },
+        "title": {
+          "description": "label for contract & front end",
+          "value": 6
+        }
+      }
+    },
+    {
+      "name": "cw_shitstrap_msg_DaoParams",
+      "type": "struct",
+      "properties": {
+        "addr": {
+          "description": "Dao addr",
+          "value": 3
+        },
+        "ceiling": {
+          "description": "Set to 0 to disable",
+          "value": 4
+        },
+        "floor": {
+          "description": "Set to 0 to disable",
+          "value": 4
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "cosmwasm_std_math_uint128_Uint128",
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding,\nsuch that the full u128 range can be used for clients that convert JSON numbers to floats,\nlike JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n```\n# use cosmwasm_std::Uint128;\nlet a = Uint128::from(123u128);\nassert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64);\nassert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32);\nassert_eq!(c.u128(), 70);\n```",
+      "type": "integer",
+      "precision": 128,
+      "signed": false
+    },
+    {
+      "name": "alloc::vec::Vec<cw_shitstrap::contract::msg::DaoParams>",
+      "type": "array",
+      "items": 2
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "cw_shitstrap_msg_PossibleShit",
+      "type": "struct",
+      "properties": {
+        "shit_rate": {
+          "description": "Atomic unit value for conversion ratio with shitmos.\\\n* 1000000000000000000 == 1:1 coversion ratio\\\n*  500000000000000000 ==  0.5\n",
+          "value": 4
+        },
+        "token": {
+          "description": "Generic type for contract address or token included in shitstrap.",
+          "value": 9
+        }
+      }
+    },
+    {
+      "name": "cw_shit_denom_UncheckedDenom",
+      "description": "A denom that has not been checked to confirm it points to a valid\nasset.",
+      "type": "enum",
+      "cases": {
+        "cw20": {
+          "description": "A cw20 asset.",
+          "type": "tuple",
+          "items": [
+            6
+          ]
+        },
+        "native": {
+          "description": "A native (bank module) asset.",
+          "type": "tuple",
+          "items": [
+            6
+          ]
+        }
+      }
+    },
+    {
+      "name": "alloc::vec::Vec<cw_shitstrap::contract::msg::PossibleShit>",
+      "type": "array",
+      "items": 8
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cw_ownable_Action",
+      "description": "Actions that can be taken to alter the contract's ownership",
+      "type": "enum",
+      "cases": {
+        "accept_ownership": {
+          "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
+          "type": "unit"
+        },
+        "renounce_ownership": {
+          "description": "Give up the contract's ownership and the possibility of appointing\na new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
+          "type": "unit"
+        },
+        "transfer_ownership": {
+          "description": "Propose to transfer the contract's ownership to another account,\noptionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
+          "type": "named",
+          "properties": {
+            "expiry": {
+              "value": 15
+            },
+            "new_owner": {
+              "value": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "cw_utils_expiration_Expiration",
+      "description": "Expiration represents a point in time when some event happens.\nIt can compare with a BlockInfo and will return is_expired() == true\nonce the condition is hit (and for every block in the future)",
+      "type": "enum",
+      "cases": {
+        "at_height": {
+          "description": "AtHeight will expire when `env.block.height` >= height",
+          "type": "tuple",
+          "items": [
+            11
+          ]
+        },
+        "at_time": {
+          "description": "AtTime will expire when `env.block.time` >= time",
+          "type": "tuple",
+          "items": [
+            14
+          ]
+        },
+        "never": {
+          "description": "Never will never expire. Used to express the empty variant",
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "core::option::Option<cw_utils::expiration::Expiration>",
+      "type": "optional",
+      "inner": 13
+    }
+  ]
+}

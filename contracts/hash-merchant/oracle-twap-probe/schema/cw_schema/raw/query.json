@@ -1,0 +1,26 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_oracle_twap_probe_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "arithmetic_twap": {
+          "type": "named",
+          "properties": {
+            "pool_id": {
+              "value": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    }
+  ]
+}

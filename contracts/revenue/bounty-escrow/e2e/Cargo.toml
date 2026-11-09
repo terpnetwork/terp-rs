@@ -1,0 +1,11 @@
+[package]
+name = "terp-bounty-escrow-e2e"
+version = { workspace = true }
+edition = { workspace = true }
+publish = false
+description = "TerpArtifactStack field check for this contract."
+
+[dependencies]
+cw-orch = { workspace = true }
+cw-orch-kms = { path = "../../../../../cw-orchestrator/packages/cw-orch-kms" }
+terp-orch = { workspace = true, features = ["stack"] }

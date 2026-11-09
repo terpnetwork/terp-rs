@@ -12,9 +12,9 @@
 
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
+use zk_headstash::r#gen::snp::v1::*;
 use zk_headstash::keys::{EligiblePk, EligibleSk};
 use zk_headstash::note::ExtractedNoteCommitment;
-use zk_headstash::r#gen::snp::v1::*;
 
 use crate::Error;
 
@@ -99,7 +99,7 @@ fn sign_message(message: &[u8], sk: &EligibleSk) -> Result<Vec<u8>, Error> {
 
 /// Verify a signature
 fn verify_signature(message: &[u8], signature: &[u8], pk: &EligiblePk) -> Result<(), Error> {
-    use secp256k1::{ecdsa::Signature, Message, Secp256k1};
+    use secp256k1::{Message, Secp256k1, ecdsa::Signature};
 
     let secp = Secp256k1::new();
 

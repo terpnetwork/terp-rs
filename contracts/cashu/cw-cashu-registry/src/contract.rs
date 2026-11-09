@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    entry_point, to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult,
+    Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult, to_json_binary,
 };
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -24,9 +23,7 @@ pub fn normalize_url(url: &str) -> String {
         let scheme = s[..scheme_end].to_ascii_lowercase();
         let rest = &s[scheme_end + 3..];
         // Split host (incl. port / userinfo) from path/query/fragment.
-        let split_at = rest
-            .find(['/', '?', '#'])
-            .unwrap_or(rest.len());
+        let split_at = rest.find(['/', '?', '#']).unwrap_or(rest.len());
         let host = rest[..split_at].to_ascii_lowercase();
         let path = &rest[split_at..];
         format!("{scheme}://{host}{path}")
@@ -69,13 +66,13 @@ fn validate_url(url: &str) -> Result<String, ContractError> {
 }
 
 fn validate_content_sha256(v: &Option<String>) -> Result<(), ContractError> {
-    if let Some(h) = v {
-        if h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(ContractError::InvalidContentSha256 {});
-        }
-        // Prefer lowercase storage consistency: reject mixed if not all hex is fine,
-        // but we accept any case hex digits.
+    if let Some(h) = v
+        && (h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()))
+    {
+        return Err(ContractError::InvalidContentSha256 {});
     }
+    // Prefer lowercase storage consistency: reject mixed if not all hex is fine,
+    // but we accept any case hex digits.
     Ok(())
 }
 
@@ -83,10 +80,7 @@ fn metadata_size(meta: &BTreeMap<String, String>) -> usize {
     meta.iter().map(|(k, v)| k.len() + v.len()).sum()
 }
 
-fn check_metadata(
-    meta: &BTreeMap<String, String>,
-    max: u32,
-) -> Result<(), ContractError> {
+fn check_metadata(meta: &BTreeMap<String, String>, max: u32) -> Result<(), ContractError> {
     let got = metadata_size(meta);
     if got > max as usize {
         return Err(ContractError::MetadataTooLarge { got, max });
@@ -105,7 +99,7 @@ fn assert_admin(info: &MessageInfo, cfg: &Config) -> Result<(), ContractError> {
 // Instantiate
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
@@ -116,9 +110,7 @@ pub fn instantiate(
         Some(a) => deps.api.addr_validate(&a)?,
         None => info.sender.clone(),
     };
-    let max_metadata_bytes = msg
-        .max_metadata_bytes
-        .unwrap_or(DEFAULT_MAX_METADATA_BYTES);
+    let max_metadata_bytes = msg.max_metadata_bytes.unwrap_or(DEFAULT_MAX_METADATA_BYTES);
 
     CONFIG.save(
         deps.storage,
@@ -143,7 +135,7 @@ pub fn instantiate(
 // Execute
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -300,11 +292,12 @@ fn execute_update(
     metadata: Option<BTreeMap<String, String>>,
 ) -> Result<Response, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     if info.sender != cfg.admin && info.sender != desc.registrar {
         return Err(ContractError::Unauthorized {});
@@ -313,10 +306,10 @@ fn execute_update(
     if let Some(new_url) = url {
         let normalized = validate_url(&new_url)?;
         if normalized != desc.url {
-            if let Some(existing) = URL_INDEX.may_load(deps.storage, &normalized)? {
-                if existing != mint_id {
-                    return Err(ContractError::UrlExists { mint_id: existing });
-                }
+            if let Some(existing) = URL_INDEX.may_load(deps.storage, &normalized)?
+                && existing != mint_id
+            {
+                return Err(ContractError::UrlExists { mint_id: existing });
             }
             URL_INDEX.remove(deps.storage, &desc.url);
             URL_INDEX.save(deps.storage, &normalized, &mint_id)?;
@@ -369,11 +362,12 @@ fn execute_set_status(
     let cfg = CONFIG.load(deps.storage)?;
     assert_admin(&info, &cfg)?;
 
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     desc.status = status.clone();
     desc.updated_at = env.block.time.seconds();
@@ -397,11 +391,12 @@ fn execute_remove(
     let cfg = CONFIG.load(deps.storage)?;
     assert_admin(&info, &cfg)?;
 
-    let mut desc = MINTS
-        .may_load(deps.storage, &mint_id)?
-        .ok_or_else(|| ContractError::MintNotFound {
-            mint_id: mint_id.clone(),
-        })?;
+    let mut desc =
+        MINTS
+            .may_load(deps.storage, &mint_id)?
+            .ok_or_else(|| ContractError::MintNotFound {
+                mint_id: mint_id.clone(),
+            })?;
 
     desc.status = MintStatus::Revoked;
     desc.updated_at = env.block.time.seconds();
@@ -450,7 +445,7 @@ fn execute_update_config(
 // Query
 // ---------------------------------------------------------------------------
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), cosmwasm_std::entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => {
@@ -491,16 +486,14 @@ fn query_list_mints(
     // Default filter: active only.
     let want = status_filter.unwrap_or(MintStatus::Active);
 
-    let start = start_after.as_deref().map(cw_storage_plus::Bound::exclusive);
+    let start = start_after
+        .as_deref()
+        .map(cw_storage_plus::Bound::exclusive);
     let mints: Vec<MintDescriptor> = MINTS
         .range(deps.storage, start, None, Order::Ascending)
         .filter_map(|item| {
             let (_k, v) = item.ok()?;
-            if v.status == want {
-                Some(v)
-            } else {
-                None
-            }
+            if v.status == want { Some(v) } else { None }
         })
         .take(limit)
         .collect();
@@ -534,7 +527,7 @@ fn query_is_registered(
                 }),
             }
         }
-        _ => Err(cosmwasm_std::StdError::generic_err(
+        _ => Err(cosmwasm_std::StdError::msg(
             "IsRegistered requires exactly one of mint_id or url",
         )),
     }

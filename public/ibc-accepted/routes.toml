@@ -1,0 +1,81 @@
+# Channel facts verified 2026-10-31 ~22:30 UTC via api.terp.network + rest.cosmos.directory (channel state + client_status).
+# hops: receiving-side channel first. status: live | terp-live (Penumbra side not queryable) | dead (a hop client Expired) | legacy
+dest_chain = "morocco-1"
+
+[assets.usdc_inj]
+canonical = "USDC (Ethereum, Peggy-bridged on Injective)"
+origin = "injective-1"
+base = "peggy0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+routes = [
+ { via = "penumbra(inj ch-494>pen ch-18)", hops = ["channel-16","channel-18"], status = "terp-live" },
+ { via = "osmosis(inj ch-8>osmo ch-122)", hops = ["channel-13","channel-122"], status = "live" },
+ { via = "juno(inj>osmo>juno ch-0)", hops = ["channel-12","channel-0","channel-122"], status = "live" },
+]
+
+[assets.usdc_noble]
+canonical = "USDC (Circle native, Noble)"
+origin = "noble-1"
+base = "uusdc"
+routes = [
+ { via = "penumbra direct(noble ch-89>pen ch-2)", hops = ["channel-16","channel-2"], status = "terp-live" },
+ { via = "penumbra via osmosis", hops = ["channel-16","channel-4","channel-750"], status = "dead", note = "osmosis ch-79703 client to penumbra Expired" },
+ { via = "penumbra via injective(noble ch-31>inj ch-148)", hops = ["channel-16","channel-18","channel-148"], status = "terp-live" },
+ { via = "osmosis(noble ch-1>osmo ch-750)", hops = ["channel-13","channel-750"], status = "live" },
+ { via = "juno via osmosis", hops = ["channel-12","channel-0","channel-750"], status = "live" },
+]
+
+[assets.usdt_kava]
+canonical = "USDT (Tether native on Kava)"
+origin = "kava_2222-10"
+base = "erc20/tether/usdt"
+routes = [
+ { via = "penumbra via osmosis(kava ch-1>osmo ch-143)", hops = ["channel-16","channel-4","channel-143"], status = "dead", note = "no direct kava<->penumbra channel known; osmo->penumbra client Expired" },
+ { via = "osmosis", hops = ["channel-13","channel-143"], status = "live" },
+]
+
+[assets.um]
+canonical = "UM (Penumbra native)"
+origin = "penumbra-1"
+base = "upenumbra"
+routes = [
+ { via = "penumbra direct", hops = ["channel-16"], status = "terp-live" },
+ { via = "osmosis(pen ch-4>osmo ch-79703)", hops = ["channel-13","channel-79703"], status = "dead", note = "osmo ch-79703 client Expired" },
+]
+
+[assets.allbtc]
+canonical = "allBTC (Osmosis alloyed BTC)"
+origin = "osmosis-1"
+base = "factory/osmo1z6r6qdknhgsc0zeracktgpcxf43j6sekq07nw8sxduc9lg0qjjlqfu25e3/alloyed/allBTC"
+routes = [
+ { via = "osmosis(ch-13<>111101)", hops = ["channel-13"], status = "live" },
+ { via = "osmosis legacy(ch-11<>110258)", hops = ["channel-11"], status = "legacy", note = "exists on Terp today; osmo-side client Expired" },
+ { via = "penumbra(osmo ch-79703>pen ch-4)", hops = ["channel-16","channel-4"], status = "dead" },
+]
+
+[assets.tia]
+canonical = "TIA (Celestia native)"
+origin = "celestia"
+base = "utia"
+routes = [
+ { via = "penumbra native(cel ch-35>pen ch-3)", hops = ["channel-16","channel-3"], status = "dead", note = "celestia ch-35 client to penumbra Expired" },
+ { via = "penumbra via osmosis", hops = ["channel-16","channel-4","channel-6994"], status = "dead" },
+ { via = "osmosis(cel ch-2>osmo ch-6994)", hops = ["channel-13","channel-6994"], status = "live" },
+]
+
+[assets.juno]
+canonical = "JUNO"
+origin = "juno-1"
+base = "ujuno"
+routes = [
+ { via = "juno(ch-12<>674)", hops = ["channel-12"], status = "live" },
+ { via = "juno legacy(ch-0<>393)", hops = ["channel-0"], status = "legacy", note = "juno-side client Expired" },
+]
+
+[assets.osmo]
+canonical = "OSMO"
+origin = "osmosis-1"
+base = "uosmo"
+routes = [
+ { via = "juno(osmo ch-42>juno ch-0)", hops = ["channel-12","channel-0"], status = "live" },
+ { via = "osmosis direct", hops = ["channel-13"], status = "live" },
+]

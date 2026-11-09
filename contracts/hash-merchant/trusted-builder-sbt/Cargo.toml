@@ -1,0 +1,23 @@
+[package]
+name = "trusted-builder-sbt"
+version = "0.1.0"
+edition = "2024"
+description = "Soul-bound trusted-builder NFT: manifesto signature attested via hashmerchant VE"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+library = []
+interface = ["dep:cw-orch"]
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+# ibc2 is an empty feature flag on this cosmwasm-std; Ibc2Msg is gated on it.
+cosmwasm-std = { workspace = true, features = ["ibc2", "zk"] }
+cw-orch = { workspace = true, optional = true }
+cw-storage-plus = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

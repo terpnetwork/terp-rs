@@ -1,4 +1,4 @@
-mod authenticator;
+pub mod authenticator;
 mod helpers;
 mod macros;
 mod types;
@@ -12,7 +12,7 @@ use cosmwasm_std::{DepsMut, Env};
 
 pub trait AuthMethodStructTrait {}
 
-/// # TerpAccountTrait (historically BtsgAccountTrait)
+/// # TerpAccountTrait (historically TerpAccountTrait)
 ///
 /// Core trait for CosmWasm-based authenticators in the x/smart-account module.
 /// Enables custom on-chain verification of transactions while integrating with
@@ -62,7 +62,7 @@ pub trait TerpAccountTrait {
     fn on_auth_request(
         deps: DepsMut,
         env: Env,
-        req: &Box<AuthenticationRequest>,
+        req: &AuthenticationRequest,
     ) -> Self::AuthProcessResult;
     /// Logic to process stateful events. We expect an authentication request to have been valid, so we can update stateful data based on the message and params.\
     /// Notes: Changes committed always if auth succeeds (not reverted on exec failure). For composites: Called on all subs (AnyOf) or used subs (AllOf).
@@ -82,6 +82,3 @@ pub trait TerpAccountTrait {
     /// Generic hook for chain-specific events (e.g., epoch triggers). Optional; return Ok(()) if unused.
     fn on_hooks(deps: DepsMut, env: Env) -> Self::AuthProcessResult;
 }
-
-/// Legacy alias — many contracts still name this `BtsgAccountTrait`.
-pub use TerpAccountTrait as BtsgAccountTrait;

@@ -1,15 +1,20 @@
 # Smart-account authenticators
 
+## TODO:
+- noise for proximity authenitcated: (in store /delegate proximity attestation)
+
 CosmWasm authenticators for Terp `x/smart-account`, with shared types in-tree:
 
 | Crate | Role |
 |-------|------|
 | `crates/terp-auth` | `AuthSudoMsg`, request types, `TerpAccountTrait` |
-| `crates/terp-account` | `traits::default::BtsgAccountTrait` → `TerpAccountTrait` |
-| `terp-authenticator-suite` | cw-orch `Deploy` + Mock sudo helpers |
+| `crates/terp-account` | `traits::default::TerpAccountTrait` → `TerpAccountTrait` |
+| `terp-authenticator-suite` | **moved** → `tests/suite/terp-authenticator-suite` (cw-orch Deploy + Mock) |
 | `terp-zkjwt` | ZK proof of JWT / OIDC identity |
 | `terp-vsck` | VSCK / vote-sdk private voting module auth |
-| `terp-zkposiedon` | Poseidon membership scaffold |
+| `terp-bls` | BLS12-381 min-pk and min-sig |
+| `terp-passkey` | WebAuthn ES256 |
+| `terp-recovery` | Break-glass guardians plus optional preimage-proof arm |
 
 ## zk-jwt (web2-fluent identity)
 

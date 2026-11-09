@@ -22,13 +22,13 @@ pub use consensus_state::ConsensusState;
 pub use error::CrosslinkIBCError;
 pub use header::CrosslinkHeader;
 pub use membership::{
-    encode_merkle_proof, leaf_commitment_root, leaf_existence_proof, pool_root_proof_spec,
-    pool_root_proof_specs, verify_membership, verify_non_membership, PoolRootExistenceProof,
-    PoolRootProofSpec, SiblingStep, POOL_ROOT_HASH_ALG, POOL_ROOT_INNER_LEFT,
-    POOL_ROOT_INNER_RIGHT, POOL_ROOT_LEAF_PREFIX,
+    POOL_ROOT_HASH_ALG, POOL_ROOT_INNER_LEFT, POOL_ROOT_INNER_RIGHT, POOL_ROOT_LEAF_PREFIX,
+    PoolRootExistenceProof, PoolRootProofSpec, SiblingStep, encode_merkle_proof,
+    leaf_commitment_root, leaf_existence_proof, pool_root_proof_spec, pool_root_proof_specs,
+    verify_membership, verify_non_membership,
 };
 pub use types::{
-    BftBlock, Blake3Hash, FatPointerSignature2, FatPointerToBftBlock2, PowHeader,
-    SerializationError, ToIbcAny, ZcashCrosslinkParameters, ZcashDeserialize, ZcashSerialize,
-    PROTOTYPE_PARAMETERS, type_urls,
+    BftBlock, Blake3Hash, FatPointerSignature2, FatPointerToBftBlock2, PROTOTYPE_PARAMETERS,
+    PowHeader, SerializationError, ToIbcAny, ZcashCrosslinkParameters, ZcashDeserialize,
+    ZcashSerialize, type_urls,
 };

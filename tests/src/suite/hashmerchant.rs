@@ -12,18 +12,18 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use k256::elliptic_curve::rand_core::OsRng;
+// k256 0.14 moved to a newer rand_core; draw key bytes from rand 0.8 instead.
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use hash_market::config::{ClientConfig, Config, ProviderConfig};
 use hash_market::ve::ProviderStatus;
 
+use crate::suite::SidecarBinaryResolver;
 use crate::suite::sidecar::{
     EndpointMap, HealthStatus, SidecarId, SidecarRegistry, SubprocessConfig, SubprocessSidecar,
     TerpSidecar,
 };
-use crate::suite::SidecarBinaryResolver;
 
 // ---------------------------------------------------------------------------
 // MerchantSuiteConfig — thin wrapper around canonical Config
@@ -56,10 +56,10 @@ impl MerchantSuiteConfig {
 
 impl SubprocessConfig for MerchantSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
 
         // Check well-known locations relative to CARGO_MANIFEST_DIR
@@ -134,10 +134,10 @@ pub struct MerchantClientSuiteConfig {
 
 impl SubprocessConfig for MerchantClientSuiteConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -214,6 +214,44 @@ impl HashMerchantSuite {
         }
     }
 
+    /// Merkle/BUD host + embedded  (no VE). Local production sidecar.
+    pub fn mint_host_onboard(
+        chain_id: &str,
+        bind: &str,
+        dao: impl Into<String>,
+        runtime_key: impl Into<String>,
+    ) -> Self {
+        let dao = dao.into();
+        let runtime_key = runtime_key.into();
+        let config = Config {
+            bind: bind.into(),
+            allow_public_bind: false,
+            tree_operator: hash_market::config::DEFAULT_TREE_OPERATOR.into(),
+            chain_id: chain_id.to_string(),
+            signing_key: None,
+            data_dir: None,
+            ve_enabled: false,
+            providers: vec![],
+            oracle: None,
+            cors_allow_origin: None,
+            distribution: None,
+            notes_auth: None,
+            cashu_mesh: None,
+            pir: None,
+            onboard: Some(hash_market::config::OnboardConfig {
+                enabled: true,
+                dao: Some(dao),
+                runtime_key: Some(runtime_key),
+                chain_id: Some(chain_id.to_string()),
+                register_limit: None,
+                mint_limit: None,
+                broadcast: false,
+            }),
+            privval: None,
+        };
+        Self::new("hashmerchant-mint", config)
+    }
+
     /// Add a hash-market-client that polls an Ethereum node.
     pub fn with_client(mut self, client_config: ClientConfig) -> Self {
         self.client = Some(SubprocessSidecar::new(
@@ -232,14 +270,17 @@ impl HashMerchantSuite {
     /// - chain_id supplied by caller
     pub fn with_defaults(chain_id: &str) -> Self {
         // Generate ephemeral secp256k1 signing key
-        let secret = k256::SecretKey::random(&mut OsRng);
+        let secret = random_secret();
         let signing_key = hex::encode(secret.to_bytes());
 
         let config = Config {
             bind: "127.0.0.1:9090".into(),
+            allow_public_bind: false,
+            tree_operator: hash_market::config::DEFAULT_TREE_OPERATOR.into(),
             chain_id: chain_id.to_string(),
-            signing_key,
+            signing_key: Some(signing_key),
             data_dir: None,
+            ve_enabled: true,
             providers: vec![ProviderConfig {
                 name: "local-test".into(),
                 chain_uid: "terp-test".into(),
@@ -247,9 +288,31 @@ impl HashMerchantSuite {
                 mode: "http_poll".into(),
                 address: "http://127.0.0.1:8545".into(),
                 interval_secs: 12,
+                kind: None,
+                market_id: None,
+                weight: None,
+                static_root: None,
+                static_height: None,
+                static_block_time: None,
             }],
+            oracle: None,
+            cors_allow_origin: None,
+            distribution: None,
+            notes_auth: None,
+            cashu_mesh: None,
+            pir: None,
+            onboard: None,
+            privval: None,
         };
         Self::new("hashmerchant", config)
+    }
+
+    /// Same plane methods as in-process tests (`HashMerchantClient`).
+    pub fn http_client(&self) -> Result<crate::suite::HashMerchantClient> {
+        let url = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        Ok(crate::suite::HashMerchantClient::from_url(url))
     }
 
     /// The server's HTTP URL (e.g. "http://127.0.0.1:9090")
@@ -286,7 +349,65 @@ impl HashMerchantSuite {
         Ok(statuses)
     }
 
-    /// Feed a provider's data directly by calling the internal gRPC endpoint.
+    /// Enable embedded `/onboard/*` on the sidecar (no second onboard-runtime).
+    /// Rebuild `MerchantSuiteConfig` so TOML includes `[onboard]`.
+    pub fn with_onboard_roles(
+        self,
+        dao: impl Into<String>,
+        runtime_key: impl Into<String>,
+    ) -> Self {
+        let mut cfg = self.server_config_clone();
+        cfg.inner.onboard = Some(hash_market::config::OnboardConfig {
+            enabled: true,
+            dao: Some(dao.into()),
+            runtime_key: Some(runtime_key.into()),
+            chain_id: Some(cfg.inner.chain_id.clone()),
+            register_limit: None,
+            mint_limit: None,
+            broadcast: false,
+        });
+        let mut s = Self::with_config(self.id.clone(), cfg);
+        s.client = self.client;
+        s
+    }
+
+    fn server_config_clone(&self) -> MerchantSuiteConfig {
+        self.server.config().clone()
+    }
+
+    /// `GET /onboard/status` — grant plane, not merchant `/health`.
+    pub async fn onboard_status(&self) -> Result<serde_json::Value> {
+        let base = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        let url = format!("{}/onboard/status", base.trim_end_matches('/'));
+        let resp = reqwest::get(&url).await?;
+        let v = resp.json().await.context("onboard status json")?;
+        Ok(v)
+    }
+
+    pub async fn request_register_grant(&self, address: &str) -> Result<serde_json::Value> {
+        self.onboard_grant("register-grant", address).await
+    }
+
+    pub async fn request_mint_grant(&self, address: &str) -> Result<serde_json::Value> {
+        self.onboard_grant("mint-grant", address).await
+    }
+
+    async fn onboard_grant(&self, which: &str, address: &str) -> Result<serde_json::Value> {
+        let base = self
+            .server_http_url()
+            .context("hashmerchant server not started")?;
+        let url = format!("{}/onboard/v1/{}", base.trim_end_matches('/'), which);
+        let resp = reqwest::Client::new()
+            .post(&url)
+            .json(&serde_json::json!({ "address": address }))
+            .send()
+            .await?;
+        let v = resp.json().await.context("onboard grant json")?;
+        Ok(v)
+    }
+
     pub async fn feed_provider(&self, _provider: &str, _root: &[u8], _height: u64) -> Result<()> {
         // In practice this calls the hashmarket internal gRPC endpoint.
         // For now, a no-op — the actual gRPC client lives in terp_rs proto.
@@ -388,7 +509,7 @@ impl Default for MerkleServerConfig {
 impl MerkleServerConfig {
     /// Generate a fresh keypair and return the config + hex private key.
     pub fn with_new_keypair() -> Result<(Self, String)> {
-        let secret = k256::SecretKey::random(&mut OsRng);
+        let secret = random_secret();
         let sk_hex = hex::encode(secret.to_bytes());
         let pk = secret.public_key();
         let pk_hex = hex::encode(pk.to_sec1_bytes());
@@ -409,10 +530,10 @@ impl MerkleServerConfig {
 
 impl SubprocessConfig for MerkleServerConfig {
     fn binary_path(&self) -> Result<PathBuf> {
-        if let Some(ref p) = self.binary_path {
-            if p.exists() {
-                return Ok(p.canonicalize()?);
-            }
+        if let Some(ref p) = self.binary_path
+            && p.exists()
+        {
+            return Ok(p.canonicalize()?);
         }
         let resolver = SidecarBinaryResolver::cargo_binary(
             vec![
@@ -528,7 +649,7 @@ impl MerkleServerSuite {
             .context("no private key available — use with_new_keypair()")?;
         let sk_bytes = hex::decode(sk_hex)?;
         let sk = k256::SecretKey::from_slice(&sk_bytes)?;
-        use k256::ecdsa::{signature::Signer, SigningKey};
+        use k256::ecdsa::{SigningKey, signature::Signer};
         let signing_key = SigningKey::from(sk);
         let signature: k256::ecdsa::Signature = signing_key.sign(message);
         Ok(hex::encode(signature.to_bytes()))
@@ -623,6 +744,15 @@ impl TerpSidecar for MerkleServerSuite {
     }
 }
 
+/// Random secp256k1 key from 32 OS-random bytes (retry on the ~2^-128 invalid scalar).
+fn random_secret() -> k256::SecretKey {
+    loop {
+        if let Ok(k) = k256::SecretKey::from_slice(&rand::random::<[u8; 32]>()) {
+            return k;
+        }
+    }
+}
+
 // ── Integration Tests ─────────────────────────────────────────────────────────
 //
 // In-process tests that build the full server router, bind to a random port,
@@ -654,29 +784,36 @@ mod test {
     use hash_market::{
         client::ve::VoteExtensionHandler,
         custody::local::LocalSecp256k1,
-        server::{router as build_router, AppState},
+        server::{AppState, router as build_router},
     };
     use sha2::{Digest, Sha256};
 
     /// Start the hash-market server in-process on a random port.
-    /// Returns (base_url, data_dir, shutdown_guard).
+    /// Returns (base_url, data_dir, shutdown_guard, tree operator key).
     /// The shutdown_guard triggers graceful shutdown when dropped.
-    async fn start_test_server(
-    ) -> anyhow::Result<(String, tempfile::TempDir, tokio::sync::oneshot::Sender<()>)> {
+    async fn start_test_server() -> anyhow::Result<(
+        String,
+        tempfile::TempDir,
+        tokio::sync::oneshot::Sender<()>,
+        k256::ecdsa::SigningKey,
+    )> {
         // Initialize tracing for diagnostics
-        tracing_subscriber::fmt()
+        let _ = tracing_subscriber::fmt()
             .with_env_filter("axum=trace,hash_market=debug")
             .with_test_writer()
-            .try_init()
-            .expect("tracing ");
+            .try_init();
         let data_dir = tempfile::TempDir::new()?;
         let custody = LocalSecp256k1::generate();
         let ve_handler = VoteExtensionHandler::new(Box::new(custody));
-        let state = Arc::new(AppState::new(
-            ve_handler,
+        let mut state = AppState::new(
+            Some(ve_handler),
             "test-chain".into(),
             data_dir.path().to_path_buf(),
-        )?);
+            true,
+        )?;
+        let (tree_key, operator) = hash_market::tree_operator::ephemeral_operator();
+        state.set_tree_operator(operator);
+        let state = Arc::new(state);
         let app = build_router(state);
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
@@ -695,14 +832,52 @@ mod test {
 
         // Brief wait for server readiness
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        Ok((base_url, data_dir, tx))
+        Ok((base_url, data_dir, tx, tree_key))
+    }
+
+    fn sign_tree(
+        sk: &k256::ecdsa::SigningKey,
+        method: &str,
+        id: &str,
+        body: &[u8],
+    ) -> (String, String) {
+        let path = format!("/trees/{id}");
+        hash_market::tree_operator::sign_tree_write(sk, method, &path, body)
+    }
+
+    async fn signed_tree(
+        base: &str,
+        sk: &k256::ecdsa::SigningKey,
+        method: &str,
+        id: &str,
+        body: Option<&serde_json::Value>,
+    ) -> reqwest::Response {
+        let bytes = body
+            .map(|v| serde_json::to_vec(v).unwrap())
+            .unwrap_or_default();
+        let (pk, sig) = sign_tree(sk, method, id, &bytes);
+        let client = reqwest::Client::new();
+        let url = format!("{base}/trees/{id}");
+        let mut req = match method {
+            "POST" => client.post(url),
+            "PUT" => client.put(url),
+            "DELETE" => client.delete(url),
+            other => panic!("tree write method {other}"),
+        };
+        req = req
+            .header("x-hash-market-pubkey", pk)
+            .header("x-hash-market-signature", sig);
+        if !bytes.is_empty() {
+            req = req.header("content-type", "application/json").body(bytes);
+        }
+        req.send().await.unwrap()
     }
 
     // ── Health ─────────────────────────────────────────────────────────────────
 
     #[tokio::test]
     async fn test_health_endpoint() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let resp = reqwest::get(format!("{base}/health")).await.unwrap();
         assert_eq!(resp.status(), 200);
         let body: serde_json::Value = resp.json().await.unwrap();
@@ -717,7 +892,7 @@ mod test {
     /// and confirm exact byte matching.
     #[tokio::test]
     async fn test_blob_upload_and_retrieve() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let content = b"hello blossom world from hash-market!";
 
@@ -775,7 +950,7 @@ mod test {
     /// This exercises the headstash CID prefix storage specification.
     #[tokio::test]
     async fn test_blob_disk_layout_f_prefix() {
-        let (base, data_dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, data_dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let content = b"cid-prefix-storage-test";
         let hash = hex::encode(Sha256::digest(content));
@@ -802,7 +977,7 @@ mod test {
     /// Upload via /upload alias — same handler as /blobs.
     #[tokio::test]
     async fn test_blob_upload_via_alias() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let content = b"upload-alias-test";
 
@@ -820,7 +995,7 @@ mod test {
     /// Upload multiple blobs, list them, verify all hashes appear.
     #[tokio::test]
     async fn test_blob_list() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let contents = vec![b"blob-a", b"blob-b", b"blob-c"];
         let mut expected_hashes = Vec::new();
@@ -864,7 +1039,7 @@ mod test {
     /// Upload a blob, delete it, confirm 404 on subsequent GET.
     #[tokio::test]
     async fn test_blob_delete() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let content = b"delete-me";
         let hash = hex::encode(Sha256::digest(content));
@@ -901,7 +1076,7 @@ mod test {
     /// Delete a non-existent blob returns 404.
     #[tokio::test]
     async fn test_blob_delete_not_found() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let fake_hash = "0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -924,7 +1099,7 @@ mod test {
     // equivalence — not nostr event serialization rules.
     #[tokio::test]
     async fn test_nostr_content_id_compatibility() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         // Realistic nostr-like content: a minimal JSON event serialization
         let nostr_like_content = br#"{"content":"hello nostr","created_at":1717000000,"kind":1,"tags":[],"pubkey":"abc"}"#;
@@ -960,7 +1135,7 @@ mod test {
     /// (exercises the BUD-02 parse_hash validation path).
     #[tokio::test]
     async fn test_blob_get_invalid_hash() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
 
         // Too short
@@ -999,18 +1174,13 @@ mod test {
 
     #[tokio::test]
     async fn test_tree_save_and_load() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let tree_id = "test-tree-001";
 
         // Save
         let input = valid_tree_input();
-        let resp = client
-            .post(format!("{base}/trees/{tree_id}"))
-            .json(&input)
-            .send()
-            .await
-            .unwrap();
+        let resp = signed_tree(&base, &tree_key, "POST", tree_id, Some(&input)).await;
         assert_eq!(resp.status(), 201, "tree creation should return 201");
 
         // Load
@@ -1022,17 +1192,19 @@ mod test {
         assert_eq!(get_resp.status(), 200);
         let tree: serde_json::Value = get_resp.json().await.unwrap();
         assert_eq!(tree["root"], input["merkle_root"]);
-        assert!(tree["members"]
-            .as_object()
-            .unwrap()
-            .contains_key(&"terp1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string()));
+        assert!(
+            tree["members"]
+                .as_object()
+                .unwrap()
+                .contains_key(&"terp1testaddressxxxxxxxxxxxxxxxxxxxxxxxxxxxxx".to_string())
+        );
         assert!(tree["created_at"].as_u64().unwrap() > 0);
         assert!(tree["updated_at"].as_u64().unwrap() > 0);
     }
 
     #[tokio::test]
     async fn test_tree_get_not_found() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let resp = reqwest::get(format!("{base}/trees/nonexistent"))
             .await
             .unwrap();
@@ -1041,17 +1213,13 @@ mod test {
 
     #[tokio::test]
     async fn test_tree_list() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let ids = vec!["tree-list-a", "tree-list-b"];
+        let input = valid_tree_input();
 
         for id in &ids {
-            let resp = client
-                .post(format!("{base}/trees/{id}"))
-                .json(&valid_tree_input())
-                .send()
-                .await
-                .unwrap();
+            let resp = signed_tree(&base, &tree_key, "POST", id, Some(&input)).await;
             assert_eq!(resp.status(), 201);
         }
 
@@ -1068,24 +1236,14 @@ mod test {
 
     #[tokio::test]
     async fn test_tree_delete() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let tree_id = "tree-to-delete";
+        let input = valid_tree_input();
 
-        // Save
-        client
-            .post(format!("{base}/trees/{tree_id}"))
-            .json(&valid_tree_input())
-            .send()
-            .await
-            .unwrap();
+        signed_tree(&base, &tree_key, "POST", tree_id, Some(&input)).await;
 
-        // Delete
-        let del_resp = client
-            .delete(format!("{base}/trees/{tree_id}"))
-            .send()
-            .await
-            .unwrap();
+        let del_resp = signed_tree(&base, &tree_key, "DELETE", tree_id, None).await;
         assert_eq!(del_resp.status(), 204);
 
         // Confirm gone
@@ -1099,26 +1257,19 @@ mod test {
 
     #[tokio::test]
     async fn test_tree_validate_invalid_root() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
-        let client = reqwest::Client::new();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let invalid = serde_json::json!({
             "merkle_root": "bad",
             "accounts": {}
         });
 
-        let resp = client
-            .post(format!("{base}/trees/bad-root"))
-            .json(&invalid)
-            .send()
-            .await
-            .unwrap();
+        let resp = signed_tree(&base, &tree_key, "POST", "bad-root", Some(&invalid)).await;
         assert_eq!(resp.status(), 400, "invalid merkle_root should be rejected");
     }
 
     #[tokio::test]
     async fn test_tree_validate_bad_proof_hash() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
-        let client = reqwest::Client::new();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let invalid = serde_json::json!({
             "merkle_root": "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234",
             "accounts": {
@@ -1130,12 +1281,7 @@ mod test {
             }
         });
 
-        let resp = client
-            .post(format!("{base}/trees/bad-proof"))
-            .json(&invalid)
-            .send()
-            .await
-            .unwrap();
+        let resp = signed_tree(&base, &tree_key, "POST", "bad-proof", Some(&invalid)).await;
         assert_eq!(resp.status(), 400, "invalid proof hash should be rejected");
     }
 
@@ -1143,7 +1289,7 @@ mod test {
 
     #[tokio::test]
     async fn test_headstash_save_and_get() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let hs_id = "test-headstash-001";
         let data = serde_json::json!({
@@ -1173,7 +1319,7 @@ mod test {
 
     #[tokio::test]
     async fn test_headstash_get_not_found() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let resp = reqwest::get(format!("{base}/headstash/nonexistent"))
             .await
             .unwrap();
@@ -1182,7 +1328,7 @@ mod test {
 
     #[tokio::test]
     async fn test_headstash_overwrite() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let hs_id = "hs-overwrite";
 
@@ -1223,7 +1369,7 @@ mod test {
 
     #[tokio::test]
     async fn test_auth_blob_upload_path_ok() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         // The NoopAuthVerifier accepts any request — confirm the code path runs
         let resp = client
@@ -1237,20 +1383,33 @@ mod test {
 
     #[tokio::test]
     async fn test_auth_tree_save_path_ok() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
-        let resp = client
+        let unsigned = client
             .post(format!("{base}/trees/auth-test"))
             .json(&valid_tree_input())
             .send()
             .await
             .unwrap();
-        assert_eq!(resp.status(), 201, "auth should pass for tree_save");
+        assert_eq!(unsigned.status(), 401, "tree writes require the operator");
+        let resp = signed_tree(
+            &base,
+            &tree_key,
+            "POST",
+            "auth-test",
+            Some(&valid_tree_input()),
+        )
+        .await;
+        assert_eq!(
+            resp.status(),
+            201,
+            "operator signature should store the tree"
+        );
     }
 
     #[tokio::test]
     async fn test_auth_headstash_save_path_ok() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, _tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let resp = client
             .post(format!("{base}/headstash/auth-hs"))
@@ -1271,19 +1430,14 @@ mod test {
 
     #[tokio::test]
     async fn test_full_round_trip_headstash_with_tree() {
-        let (base, _dir, _shutdown) = start_test_server().await.unwrap();
+        let (base, _dir, _shutdown, tree_key) = start_test_server().await.unwrap();
         let client = reqwest::Client::new();
         let hs_id = "integration-roundtrip";
         let tree_id = "integration-tree";
 
         // 1. Upload merkle tree
         let tree_input = valid_tree_input();
-        let tree_resp = client
-            .post(format!("{base}/trees/{tree_id}"))
-            .json(&tree_input)
-            .send()
-            .await
-            .unwrap();
+        let tree_resp = signed_tree(&base, &tree_key, "POST", tree_id, Some(&tree_input)).await;
         assert_eq!(tree_resp.status(), 201);
 
         // 2. Register headstash referencing the tree root

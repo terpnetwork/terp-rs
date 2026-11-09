@@ -1,0 +1,8 @@
+{
+ "name": "Azure Calcium",
+ "source": "Terp Network (user-supplied tokens, 2026-11-04)",
+ "theme": {
+  "light": {"bg": "#EFF7FF", "surface": "#F9FCFF", "surfaceAlt": "#DEEFFF", "text": "#233E58", "textMuted": "#325A80", "border": "#C8DBEF", "borderStrong": "#A0D0FF", "accent": "#4078AC", "onAccent": "#FFFFFF", "focus": "#4078AC"},
+  "dark": {"bg": "#05101B", "surface": "#0B1B2B", "surfaceAlt": "#192A3A", "text": "#E2EDF9", "textMuted": "#A6B8CA", "border": "#253748", "borderStrong": "#4078AC", "accent": "#76BBFC", "onAccent": "#132230", "focus": "#76BBFC"}
+ }
+}

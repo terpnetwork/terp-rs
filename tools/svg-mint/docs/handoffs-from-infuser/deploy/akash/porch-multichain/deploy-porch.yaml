@@ -1,0 +1,68 @@
+---
+# ONE container, three ultra-light P2P daemons (BTC+ETH+Base).
+# No 8332 / 8545 / 8546 / 9067. DREGG never JSON-RPC here.
+#
+# After lease: ~/.oline/dregg-porch-multichain-<dseq>.env
+#   BTC_P2P=host:port   ETH_P2P=host:port   BASE_P2P=host:port
+version: "2.0"
+
+services:
+  porch:
+    image: registry.terp.network/dregg-porch:ultralight
+    expose:
+      - port: 8333
+        as: 8333
+        to:
+          - global: true
+        proto: tcp
+      - port: 30303
+        as: 30303
+        to:
+          - global: true
+        proto: tcp
+      - port: 30303
+        as: 30303
+        to:
+          - global: true
+        proto: udp
+      - port: 30304
+        as: 30304
+        to:
+          - global: true
+        proto: tcp
+      - port: 30304
+        as: 30304
+        to:
+          - global: true
+        proto: udp
+    params:
+      storage:
+        data:
+          mount: /data
+          readOnly: false
+
+profiles:
+  compute:
+    porch:
+      resources:
+        cpu: { units: 6.0 }
+        memory: { size: 24Gi }
+        storage:
+          - size: 8Gi
+          - name: data
+            size: 400Gi
+            attributes:
+              persistent: true
+              class: beta3
+  placement:
+    dregg-porch:
+      attributes:
+        host: akash
+      pricing:
+        porch: { denom: uact, amount: 2500000 }
+
+deployment:
+  porch:
+    dregg-porch:
+      profile: porch
+      count: 1

@@ -1,0 +1,42 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "trusted_builder_sbt_Config",
+      "type": "struct",
+      "properties": {
+        "admin": {
+          "value": 1
+        },
+        "ibc2_dest_port": {
+          "value": 3
+        },
+        "ibc2_source_client": {
+          "value": 3
+        },
+        "manifesto_contract": {
+          "value": 1
+        },
+        "next_id": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    }
+  ]
+}

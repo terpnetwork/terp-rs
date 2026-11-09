@@ -1,0 +1,132 @@
+{
+ "dao": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+ "code_id": 107,
+ "checksum": "8798FAD4230474154D1E5DB6F844994386C4B8EB8A19AE5468A9C72935C82B36",
+ "salt": "headstash-frontend:v1",
+ "salt_b64": "aGVhZHN0YXNoLWZyb250ZW5kOnYx",
+ "label": "headstash-frontend-v1",
+ "predicted_frontend": "terp1gnyl92dycyhwmw7sgmx0d6vt943vf6jtlulrmcs2j97s868wh2tqk7j7cu",
+ "mode": "migrate",
+ "manifest_version": 2,
+ "keep_last": 2,
+ "new_label": "headstash-frontend-v2",
+ "targets": {
+  "terpy": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q",
+  "thioly": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+ },
+ "manifest_pin_sha256": "f1ddc1ab81102c661f971d5d286232cf2b6f9528742e01848ebb1c1aee1894f3",
+ "theme": {
+  "light": {
+   "accent": "#4078AC",
+   "bg": "#EFF7FF",
+   "border": "#C8DBEF",
+   "borderStrong": "#A0D0FF",
+   "focus": "#4078AC",
+   "onAccent": "#FFFFFF",
+   "surface": "#F9FCFF",
+   "surfaceAlt": "#DEEFFF",
+   "text": "#233E58",
+   "textMuted": "#325A80"
+  },
+  "dark": {
+   "accent": "#76BBFC",
+   "bg": "#05101B",
+   "border": "#253748",
+   "borderStrong": "#4078AC",
+   "focus": "#76BBFC",
+   "onAccent": "#132230",
+   "surface": "#0B1B2B",
+   "surfaceAlt": "#192A3A",
+   "text": "#E2EDF9",
+   "textMuted": "#A6B8CA"
+  }
+ },
+ "theme_file": "../../../../../../tmp/thm/azure-calcium.json",
+ "bundle_sha256": "57cc657d1848e772d0092a08b282687eb1a9441844843ed494ffbdc3b29d3913",
+ "files": [
+  {
+   "path": "app.html",
+   "raw_size": 32267,
+   "gzip_size": 8483,
+   "sha256": "0039e5e7eca8095ce5fe04f2155a432c2fb5b94982638b62c086d8f2707087d6",
+   "chunks": 1
+  },
+  {
+   "path": "app.js",
+   "raw_size": 68989,
+   "gzip_size": 22565,
+   "sha256": "081432a7c7d5eba05fe0c9fa23508f47d34b6e648ff976aeca51fb692735a781",
+   "chunks": 1
+  },
+  {
+   "path": "crypto.js",
+   "raw_size": 10640,
+   "gzip_size": 4316,
+   "sha256": "dd2b118ce02704b527eed4281eed5f217996f4a5232f325e2a886fd5bda75e4c",
+   "chunks": 1
+  },
+  {
+   "path": "v2lib.js",
+   "raw_size": 31568,
+   "gzip_size": 11754,
+   "sha256": "f3ecf22a2145052c911cffb41cde02de19b0444381ad081ab0b60a8bca336a09",
+   "chunks": 1
+  },
+  {
+   "path": "steps.json",
+   "raw_size": 6484,
+   "gzip_size": 2576,
+   "sha256": "68ea936ad3453fbd61e2ed2d1fb93efdce49dcf4bc34b4a0befaa6b0017b209b",
+   "chunks": 1
+  },
+  {
+   "path": "zafu-client.js",
+   "raw_size": 366294,
+   "gzip_size": 41371,
+   "sha256": "e158dba470c989046cb12be3c6dee026bb2ef2c37eb410a518811275748c0704",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash.js",
+   "raw_size": 12918,
+   "gzip_size": 3048,
+   "sha256": "58764660b3a2dd660fa927ac118637ecbaa00dbd95d036e9208b6fcd5d34e0a5",
+   "chunks": 1
+  },
+  {
+   "path": "zk_headstash_bg.wasm",
+   "raw_size": 1807932,
+   "gzip_size": 647573,
+   "sha256": "f85689997b68bf32800c98fb791688979169109ed39042e23472c2d45fa49926",
+   "chunks": 5
+  }
+ ],
+ "chunks_total": 12,
+ "stored_bytes": 741686,
+ "propose_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.propose.json",
+ "propose_sha256": "ee73a176559dfddc3acd26a64d9910a328ca45ad9ae9e15493bd84a7d8223297",
+ "chunks_file": "tools/headstash/deploy/rendered-mainnet/dao-flow/50-dao-prop-frontend-v2.chunks.json",
+ "chunks_sha256": "3792c8dd26fa899926c00f783fb4bd53603fc60f91b3f78c5e7625c40f30195c",
+ "loaders": {
+  "terpy": {
+   "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-terpy.html",
+   "sha256": "9b9f87f43cb33ccbb7fd12b252f29f23abb0bf4014d3f6b4d3a6faad013acafe",
+   "headstash": "terp16ww6y3e7y63v98d9jzg0cft2u0ztx5kda0zvr0e90kwawh4hxweqhtvv7q"
+  },
+  "thioly": {
+   "file": "tools/headstash/deploy/rendered-mainnet/dao-flow/loader-thioly.html",
+   "sha256": "5501e248937c88f7ba7482ffed83bd2b80280b679d02486662067c8a4dbd1104",
+   "headstash": "terp1yc4qtcwzv6g55vqrj95xq8anruwyy2ly4narcqs4a2hzgnu6rlrsa4s9r7"
+  }
+ },
+ "loader_cfg": {
+  "rest": "https://api.terp.network",
+  "relay": "https://terp.network",
+  "chain_id": "morocco-1",
+  "denom": "uthiol",
+  "gas_price": "0.05",
+  "claim_gas": 400000,
+  "register_gas": 12000000
+ },
+ "checks": {}
+}

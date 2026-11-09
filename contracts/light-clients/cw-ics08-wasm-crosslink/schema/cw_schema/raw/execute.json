@@ -1,0 +1,12 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_ics08_wasm_crosslink_msg_ExecuteMsg",
+      "description": "The execute message (not used).",
+      "type": "enum",
+      "cases": {}
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_ceremony_msg_CeremonyResponse",
+      "type": "struct",
+      "properties": {
+        "ceremony": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "name": "cw_vote_ceremony_msg_CeremonyInfo",
+      "type": "struct",
+      "properties": {
+        "anchor_policy": {
+          "value": 5
+        },
+        "clerk": {
+          "defaulting": true,
+          "value": 5
+        },
+        "domain": {
+          "value": 2
+        },
+        "membership_module": {
+          "defaulting": true,
+          "value": 5
+        },
+        "registration_gate": {
+          "defaulting": true,
+          "value": 6
+        },
+        "registration_open": {
+          "value": 4
+        },
+        "session_id": {
+          "value": 2
+        },
+        "status": {
+          "value": 3
+        },
+        "vm_verifier": {
+          "defaulting": true,
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cw_vote_ceremony_msg_CeremonyStatus",
+      "description": "Ceremony lifecycle status (string-stable for raw-query consumers).",
+      "type": "enum",
+      "cases": {
+        "active": {
+          "type": "unit"
+        },
+        "closed": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 2
+    },
+    {
+      "name": "cw_vote_ceremony_msg_RegistrationGate",
+      "description": "How Register is gated for this session (configurable product policy).",
+      "type": "enum",
+      "cases": {
+        "clerk_attested": {
+          "description": "Register requires a clerk-attested leaf_commit (dregg / event-reg clerk).",
+          "type": "unit"
+        },
+        "dao_member": {
+          "description": "Register requires non-zero voting power on membership_module.",
+          "type": "unit"
+        },
+        "open": {
+          "description": "Anyone with gas while registration_open (legacy).",
+          "type": "unit"
+        },
+        "pre_propose": {
+          "description": "Hook site for pre-propose; not fully wired (rejects until implemented).",
+          "type": "unit"
+        },
+        "vm_proof": {
+          "description": "Dummy SA / wasmvm Authenticate stand-in (`vm_verifier` query VerifyMinHolders).",
+          "type": "unit"
+        }
+      }
+    }
+  ]
+}

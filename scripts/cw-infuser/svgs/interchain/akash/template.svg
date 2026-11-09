@@ -1,0 +1,84 @@
+<svg width="481" height="420" viewBox="0 0 481 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+
+ 
+    <linearGradient id="grad-shared"
+      x1="160" y1="420" x2="400" y2="0"
+      gradientUnits="userSpaceOnUse">
+
+      <!-- Permanent dark anchor -->
+      <stop offset="0%" stop-color="${color-main}" stop-opacity="1"/>
+
+      <!-- Beating red tip — transfuses then recedes -->
+      <stop offset="100%" stop-color="${color-main}" stop-opacity="1">
+        <animate
+          attributeName="stop-color"
+          values="${color-main};${color-accent};${color-main}"
+          dur="${pulse-a}s"
+          keyTimes="0;0.5;1"
+          keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+          calcMode="spline"
+          repeatCount="indefinite"/>
+        <animate
+          attributeName="stop-opacity"
+          values="${alpha-lo};${alpha-hi};${alpha-lo}"
+          dur="${pulse-a}s"
+          keyTimes="0;0.5;1"
+          keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+          calcMode="spline"
+          repeatCount="indefinite"/>
+      </stop>
+
+    </linearGradient>
+
+  </defs>
+ 
+  <path
+    d="M321.355 279.4L400.615 419.038H240.511L160.415 279.4H321.355Z"
+    fill="url(#grad-shared)">
+    <animate
+      attributeName="opacity"
+      values="${opacity-lo};${opacity-hi};${opacity-lo}"
+      dur="${pulse-fast}s"
+      keyTimes="0;0.5;1"
+      keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+      calcMode="spline"
+      repeatCount="indefinite"/>
+  </path>
+ 
+  <path
+    d="M400.572 419.061L480.536 279.423L320.476 0.0800781H160.415L400.572 419.061Z"
+    fill="${color-main}"/>
+  <path
+    d="M400.572 419.061L480.536 279.423L320.476 0.0800781H160.415L400.572 419.061Z"
+    fill="url(#grad-shared)">
+    <animate
+      attributeName="opacity"
+      values="${alpha-bleed-lo};${alpha-bleed-hi};${alpha-bleed-lo}"
+      dur="${pulse-mid}s"
+      keyTimes="0;0.5;1"
+      keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+      calcMode="spline"
+      begin="${offset-mid}s"
+      repeatCount="indefinite"/>
+  </path>
+
+ 
+  <path
+    d="M80.3874 139.682H240.449L80.454 419.025L0.357422 279.387L80.3874 139.682Z"
+    fill="${color-main}"/>
+  <path
+    d="M80.3874 139.682H240.449L80.454 419.025L0.357422 279.387L80.3874 139.682Z"
+    fill="url(#grad-shared)">
+    <animate
+      attributeName="opacity"
+      values="${alpha-bleed-lo};${alpha-bleed-hi};${alpha-bleed-lo}"
+      dur="${pulse-slow}s"
+      keyTimes="0;0.5;1"
+      keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+      calcMode="spline"
+      begin="${offset-slow}s"
+      repeatCount="indefinite"/>
+  </path>
+
+</svg>

@@ -1,0 +1,126 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_shitstrap_factory_msg_QueryMsg",
+      "type": "enum",
+      "cases": {
+        "code_id": {
+          "description": "Returns the code ID currently being used to instantiate vesting contracts.",
+          "type": "named",
+          "properties": {}
+        },
+        "list_shitstrap_contracts": {
+          "description": "Returns list of all vesting payment contracts",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "start_after": {
+              "value": 2
+            }
+          }
+        },
+        "list_shitstrap_contracts_by_instantiator": {
+          "description": "Returns list of all vesting payment contracts by who instantiated them",
+          "type": "named",
+          "properties": {
+            "instantiator": {
+              "value": 1
+            },
+            "limit": {
+              "value": 4
+            },
+            "start_after": {
+              "value": 2
+            }
+          }
+        },
+        "list_shitstrap_contracts_by_instantiator_reverse": {
+          "description": "Returns list of all vesting payment contracts by who instantiated them in reverse",
+          "type": "named",
+          "properties": {
+            "instantiator": {
+              "value": 1
+            },
+            "limit": {
+              "value": 4
+            },
+            "start_before": {
+              "value": 2
+            }
+          }
+        },
+        "list_shitstrap_contracts_by_token": {
+          "description": "Returns list of all vesting payment contracts by recipient",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 1
+            },
+            "start_after": {
+              "value": 2
+            }
+          }
+        },
+        "list_shitstrap_contracts_by_token_reverse": {
+          "description": "Returns list of all vesting payment contracts by recipient in reverse",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "recipient": {
+              "value": 1
+            },
+            "start_before": {
+              "value": 2
+            }
+          }
+        },
+        "list_shitstrap_contracts_reverse": {
+          "description": "Returns list of all vesting payment contracts in reverse",
+          "type": "named",
+          "properties": {
+            "limit": {
+              "value": 4
+            },
+            "start_before": {
+              "value": 2
+            }
+          }
+        },
+        "ownership": {
+          "description": "Returns info about the contract ownership, if set",
+          "type": "named",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "core::option::Option<alloc::string::String>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "u32",
+      "type": "integer",
+      "precision": 32,
+      "signed": false
+    },
+    {
+      "name": "core::option::Option<u32>",
+      "type": "optional",
+      "inner": 3
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+---
+title: Glossary
+description: "Short definitions for Private DEX product nouns: notes, reserves, nullifiers, hub, oracle mid, min out, settle."
+---
+
+# Glossary
+
+**Terp** — Cosmos-SDK chain that hosts private notes and the Private DEX settle contract.
+
+**Private DEX** — Research product for shielded swaps on Terp: spend private notes, update public AMM reserves, mint private notes out.
+
+**Shielded swap** — One settle action that consumes private input notes and creates private output notes while applying a public reserve update.
+
+**Private note** — Committed balance whose amount and owner stay private; the commitment (and nullifier on spend) is what observers see.
+
+**Commitment** — Public leaf that binds a note without revealing its opening.
+
+**Nullifier** — Public spent marker derived on spend so the same note cannot spend twice.
+
+**Virtual AMM** — Automated market maker whose liquidity is public reserve counters, not custody of note openings inside the pool.
+
+**Public reserves** — Transparent \(R_A\), \(R_B\) (or oriented in/out) balances on a pool, updated only by valid proven actions.
+
+**Pool** — Public pair record: assets, reserves, fee factor, status (Active or Paused).
+
+**Constant-product quote** — Exact-in formula that prices `delta_out` from reserves and `gamma / gamma_den`.
+
+**`min_out`** — Trader slippage floor; settle rejects when the quote is lower.
+
+**Oracle mid** — Attested reference price used only as an acceptance band (freshness + slippage). Never a mint authority.
+
+**Hub** — Center asset in the v1 star topology; demo edges are two demo tokens each trading against one hub token.
+
+**cBTC-class unit** — Demo or fixture denomination shaped like wrapped Bitcoin; not a frozen mainnet asset listing on this research surface.
+
+**Verifying key** — Public parameters for proof verification, registered under a circuit id (`zkid`) when real verify is on.
+
+**Change note** — Optional private output that returns unused input asset when input notes exceed `delta_in`.
+
+**Settle** — On-chain accept of a public swap statement (and proof path): nullifiers inserted, commitments appended, reserves updated.
+
+**CosmWasm** — WebAssembly smart-contract runtime used on Cosmos chains, including Terp.
+
+**Claim** — Separate private-note mint path (often airdrop-style) that shares the note set with bridge mint and swaps.
+
+**Halo2** — Zero-knowledge proving system referenced for production swap circuits when mock verify is off.
+
+**zk host import** — Chain-host API that verifies proof bytes against a registered verifying key (`zkid`).
+
+**`mock_verify`** — Lab verify mode that accepts a non-empty proof after host seam checks; not a production proving system.
+
+**Fail closed** — Reject settle when required verification or seam checks cannot run; no silent success.
+
+**Private Bridge** — Separate research product that admits value into private notes; not the swap venue documented here.

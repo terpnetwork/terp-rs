@@ -4,8 +4,7 @@
 /// if the y-coordinate is the lexicographically largest of the two associated with
 /// the x-coordinate. Otherwise the first byte is a 0x03.
 /// This prefix is followed with the x-coordinate.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PubKey {
     #[prost(bytes = "vec", tag = "1")]
     pub key: ::prost::alloc::vec::Vec<u8>,
@@ -21,8 +20,7 @@ impl ::prost::Name for PubKey {
     }
 }
 /// PrivKey defines a secp256k1 private key.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PrivKey {
     #[prost(bytes = "vec", tag = "1")]
     pub key: ::prost::alloc::vec::Vec<u8>,

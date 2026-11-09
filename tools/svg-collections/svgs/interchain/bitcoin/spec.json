@@ -1,0 +1,86 @@
+{
+  "version": "1",
+  "collection": "bitcoin-logo",
+  "description": "Iconic Bitcoin logo with elegant 3-stop radial gradient on the orb for premium metallic depth and subtle breathing animation on the ₿ symbol. 100% faithful to the original geometry and proportions. Pure timeless elegance with sophisticated color variation.",
+
+  "palette_groups": [
+    {
+      "id": "orange-highlight",
+      "note": "Brightest Bitcoin orange highlight for the gradient center",
+      "anchor": "color-orange-highlight",
+      "members": ["color-orange-highlight"],
+      "ranges": [
+        { "r_min": 245, "r_max": 255, "g_min": 165, "g_max": 200, "b_min": 30, "b_max": 65 }
+      ]
+    },
+    {
+      "id": "orange-main",
+      "note": "Signature Bitcoin orange core",
+      "anchor": "color-orange-main",
+      "members": ["color-orange-main"],
+      "ranges": [
+        { "r_min": 235, "r_max": 252, "g_min": 135, "g_max": 158, "b_min": 18, "b_max": 42 }
+      ]
+    },
+    {
+      "id": "orange-deep",
+      "note": "Deep amber shadow for gradient depth",
+      "anchor": "color-orange-deep",
+      "members": ["color-orange-deep"],
+      "ranges": [
+        { "r_min": 195, "r_max": 230, "g_min": 95, "g_max": 135, "b_min": 8, "b_max": 35 }
+      ]
+    },
+    {
+      "id": "symbol",
+      "note": "Clean warm-white to soft metallic for the Bitcoin symbol",
+      "anchor": "color-symbol",
+      "members": ["color-symbol"],
+      "ranges": [
+        { "r_min": 248, "r_max": 255, "g_min": 248, "g_max": 255, "b_min": 248, "b_max": 255 }
+      ]
+    }
+  ],
+
+  "motion_groups": [
+    {
+      "id": "symbol-breath",
+      "note": "Extremely subtle elegant breathing pulse on the ₿ symbol only — adds gentle life without any distraction",
+      "members": ["breath-symbol"],
+      "min": "3.5",
+      "max": "7.2",
+      "precision": 2
+    }
+  ],
+
+  "vars": [
+    {
+      "name": "color-orange-highlight",
+      "kind": { "rgb_styled": [
+        { "r_min": 245, "r_max": 255, "g_min": 165, "g_max": 200, "b_min": 30, "b_max": 65 }
+      ]}
+    },
+    {
+      "name": "color-orange-main",
+      "kind": { "rgb_styled": [
+        { "r_min": 235, "r_max": 252, "g_min": 135, "g_max": 158, "b_min": 18, "b_max": 42 }
+      ]}
+    },
+    {
+      "name": "color-orange-deep",
+      "kind": { "rgb_styled": [
+        { "r_min": 195, "r_max": 230, "g_min": 95, "g_max": 135, "b_min": 8, "b_max": 35 }
+      ]}
+    },
+    {
+      "name": "color-symbol",
+      "kind": { "rgb_styled": [
+        { "r_min": 248, "r_max": 255, "g_min": 248, "g_max": 255, "b_min": 248, "b_max": 255 }
+      ]}
+    },
+    {
+      "name": "breath-symbol",
+      "kind": { "range": { "min": "3.5", "max": "7.2", "precision": 2 } }
+    }
+  ]
+}

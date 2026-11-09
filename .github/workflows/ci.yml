@@ -1,0 +1,687 @@
+# One workflow, the old tiers kept as jobs. `plan` chooses which ones run.
+#
+# core     — every pull request, and push to main, master, feat/**
+# extended — those events when contracts/crates/tests (and, on a PR, tools,
+#            the justfile, or this file) change; also label `ci-extended`.
+#            Drafts skip it unless labeled `ci-extended` or `ci-heavy`.
+# heavy    — workflow_dispatch tier all|heavy, Monday 06:00 UTC, or a
+#            same-repo `ci-heavy` label. A schedule runs heavy only.
+# semantic — pull requests only.
+# publish  — workflow_dispatch tier publish. Not part of tier all.
+#
+# rustfmt, clippy, rustdoc, cargo-deny, and zizmor are their own workflows.
+# The title check and the publish guard stay here. A GitHub checkout of this
+# repo cannot compile the path patches.
+name: CI
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, ready_for_review]
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Which variant to run. all does not publish."
+        type: choice
+        default: all
+        options:
+          - all
+          - core
+          - extended
+          - heavy
+          - publish
+      run_docker_harness:
+        description: "Heavy tier: Docker multihop IBC harness"
+        type: boolean
+        default: true
+      run_workspace_check:
+        description: "Heavy tier: cargo check --workspace --tests"
+        type: boolean
+        default: true
+      full_contracts:
+        description: "Extended tier: also run the zk contract pack"
+        type: boolean
+        default: false
+      publish_mode:
+        description: "Publish tier. publish is refused; skip and verify run the guard in verify."
+        type: choice
+        default: verify
+        options:
+          - skip
+          - verify
+          - publish
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      core: ${{ steps.p.outputs.core }}
+      extended: ${{ steps.p.outputs.extended }}
+      heavy: ${{ steps.p.outputs.heavy }}
+      docker: ${{ steps.p.outputs.docker }}
+      workspace: ${{ steps.p.outputs.workspace }}
+      semantic: ${{ steps.p.outputs.semantic }}
+      publish: ${{ steps.p.outputs.publish }}
+      heavy_contracts: ${{ steps.p.outputs.heavy_contracts }}
+      publish_mode: ${{ steps.p.outputs.publish_mode }}
+    steps:
+      - id: p
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          REF: ${{ github.ref }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          LABEL: ${{ github.event.label.name }}
+          LABELS: ${{ github.event_name == 'pull_request' && join(github.event.pull_request.labels.*.name, ',') || '' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TIER: ${{ inputs.tier }}
+          IN_DOCKER: ${{ inputs.run_docker_harness }}
+          IN_WS: ${{ inputs.run_workspace_check }}
+          FULL: ${{ inputs.full_contracts }}
+          PUBMODE: ${{ inputs.publish_mode }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          THIS_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          core=false
+          extended=false
+          heavy=false
+          docker=false
+          workspace=false
+          semantic=false
+          publish=false
+          heavy_contracts=false
+          publish_mode=verify
+          computed=false
+          : > /tmp/changed.txt
+
+          as_bool() {
+            case "${1:-}" in
+              true|True|TRUE) echo true ;;
+              false|False|FALSE) echo false ;;
+              *) echo "$2" ;;
+            esac
+          }
+
+          has_label() {
+            [[ "${LABEL:-}" == "$1" ]] && return 0
+            [[ ",${LABELS:-}," == *",$1,"* ]]
+          }
+
+          files_match() {
+            local mode="$1" f hit=false
+            [[ -s /tmp/changed.txt ]] || return 1
+            while IFS= read -r f || [[ -n "${f:-}" ]]; do
+              [[ -z "$f" ]] && continue
+              case "$f" in
+                contracts/*|crates/*|tests/*|Cargo.toml|Cargo.lock|scripts/ci/*)
+                  hit=true
+                  ;;
+                tools/*|justfile|.github/workflows/ci.yml)
+                  [[ "$mode" == pr ]] && hit=true
+                  ;;
+              esac
+            done < /tmp/changed.txt
+            [[ "$hit" == true ]]
+          }
+
+          if [[ "${EVENT}" == pull_request || "${EVENT}" == push ]] \
+            && [[ "${THIS_REPO:-}" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ && -n "${GH_TOKEN:-}" ]]; then
+            if python3 - <<'PY'
+          import json, os, urllib.request
+
+          repo = os.environ["THIS_REPO"]
+          token = os.environ["GH_TOKEN"]
+          event = os.environ["EVENT"]
+
+          def get(url):
+              req = urllib.request.Request(url, headers={
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "User-Agent": "terp-rs-ci",
+              })
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  return json.load(resp)
+
+          names = []
+          if event == "pull_request":
+              num = os.environ.get("PR_NUMBER", "")
+              if not num.isdigit():
+                  raise SystemExit(2)
+              for page in range(1, 6):
+                  data = get(
+                      f"https://api.github.com/repos/{repo}/pulls/{num}/files?per_page=100&page={page}"
+                  )
+                  if not isinstance(data, list):
+                      raise SystemExit(2)
+                  for item in data:
+                      name = item.get("filename") if isinstance(item, dict) else None
+                      if isinstance(name, str):
+                          names.append(name)
+                  if len(data) < 100:
+                      break
+          elif event == "push":
+              before = os.environ.get("BEFORE", "")
+              head = os.environ.get("HEAD_SHA", "")
+              hex40 = set("0123456789abcdefABCDEF")
+              if (
+                  len(before) != 40
+                  or set(before) - hex40
+                  or set(before) == {"0"}
+                  or len(head) != 40
+                  or set(head) - hex40
+              ):
+                  raise SystemExit(2)
+              data = get(f"https://api.github.com/repos/{repo}/compare/{before}...{head}")
+              files = data.get("files") if isinstance(data, dict) else None
+              if not isinstance(files, list):
+                  raise SystemExit(2)
+              for item in files:
+                  name = item.get("filename") if isinstance(item, dict) else None
+                  if isinstance(name, str):
+                      names.append(name)
+          else:
+              raise SystemExit(2)
+
+          with open("/tmp/changed.txt", "w", encoding="utf-8") as out:
+              for name in names:
+                  out.write(name + "\n")
+          PY
+            then
+              computed=true
+            else
+              echo "plan: file list unavailable; path gate uses the fallback"
+            fi
+          fi
+
+          fork=false
+          if [[ -n "${PR_HEAD_REPO:-}" && "${PR_HEAD_REPO}" != "${THIS_REPO}" ]]; then
+            fork=true
+          fi
+
+          on_default=false
+          on_feat=false
+          case "${REF:-}" in
+            refs/heads/main|refs/heads/master) on_default=true ;;
+            refs/heads/feat/*) on_feat=true ;;
+          esac
+
+          case "${PUBMODE:-}" in
+            publish) publish_mode=publish ;;
+            *) publish_mode=verify ;;
+          esac
+
+          case "${EVENT}" in
+            schedule)
+              heavy=true
+              docker=true
+              workspace=true
+              ;;
+            workflow_dispatch)
+              tier="${TIER:-all}"
+              case "$tier" in
+                all)
+                  core=true
+                  extended=true
+                  heavy=true
+                  docker="$(as_bool "${IN_DOCKER:-}" true)"
+                  workspace="$(as_bool "${IN_WS:-}" true)"
+                  ;;
+                core) core=true ;;
+                extended) extended=true ;;
+                heavy)
+                  heavy=true
+                  docker="$(as_bool "${IN_DOCKER:-}" true)"
+                  workspace="$(as_bool "${IN_WS:-}" true)"
+                  ;;
+                publish) publish=true ;;
+                *)
+                  echo "unknown tier: $tier" >&2
+                  exit 1
+                  ;;
+              esac
+              if [[ "$(as_bool "${FULL:-}" false)" == true ]]; then
+                heavy_contracts=true
+              fi
+              ;;
+            pull_request)
+              core=true
+              semantic=true
+              if [[ "$computed" == true ]]; then
+                files_match pr && extended=true || true
+              elif [[ "${DRAFT:-}" != true ]]; then
+                extended=true
+              fi
+              if has_label ci-extended || has_label ci-heavy; then
+                extended=true
+              fi
+              if [[ "${DRAFT:-}" == true ]] && ! has_label ci-extended && ! has_label ci-heavy; then
+                extended=false
+                heavy_contracts=false
+              fi
+              if [[ "$extended" == true ]] && { has_label ci-extended || has_label ci-heavy; }; then
+                heavy_contracts=true
+              fi
+              if [[ "${ACTION:-}" == labeled && "${LABEL:-}" == ci-heavy ]]; then
+                if [[ "$fork" == true ]]; then
+                  echo "refusing ci-heavy on fork PR from ${PR_HEAD_REPO}"
+                else
+                  heavy=true
+                  docker=true
+                  workspace=true
+                fi
+              fi
+              ;;
+            push)
+              if [[ "$on_default" == true || "$on_feat" == true ]]; then
+                core=true
+              fi
+              if [[ "$on_default" == true ]]; then
+                if [[ "$computed" == false ]] || files_match push; then
+                  extended=true
+                fi
+              fi
+              ;;
+          esac
+
+          # act's default event is push, often on a non-release branch. Force the
+          # jobs the local scripts select; do not start Docker from that default.
+          if [[ "${ACT:-}" == true && "${EVENT}" == push ]]; then
+            core=true
+            extended=true
+          fi
+
+          {
+            echo "core=${core}"
+            echo "extended=${extended}"
+            echo "heavy=${heavy}"
+            echo "docker=${docker}"
+            echo "workspace=${workspace}"
+            echo "semantic=${semantic}"
+            echo "publish=${publish}"
+            echo "heavy_contracts=${heavy_contracts}"
+            echo "publish_mode=${publish_mode}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "plan: core=${core} extended=${extended} heavy=${heavy} docker=${docker} workspace=${workspace} semantic=${semantic} publish=${publish} heavy_contracts=${heavy_contracts} mode=${publish_mode} computed=${computed}"
+
+  terp-scripts-offline:
+    name: terp-scripts offline (ibc unit/golden + validate)
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.core == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: terp-scripts-offline
+
+      - name: Install just
+        uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+
+      - name: Prefetch crates (offline steps below)
+        run: cargo fetch --locked
+
+      - name: Preflight offline
+        run: just ibc scripts-ibc-preflight offline
+
+      - name: Offline IBC tests + rebuild-from-public
+        run: just ibc scripts-ibc-offline
+
+      - name: Validate public/ (RunReport JSON)
+        run: just ibc scripts-ibc-validate
+
+      - name: Assert validate ok via jq
+        run: |
+          set -euo pipefail
+          cargo run -p dao-scripts --features ibc-info --bin terp-ibc --quiet -- validate --format json \
+            | tee /tmp/run_report.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("/tmp/run_report.json"))
+          assert r.get("ok") is True, r
+          assert r.get("exit_code") == 0, r
+          assert r.get("tool") == "terp-ibc", r
+          print("RunReport OK:", r.get("verb"), r.get("duration_ms"), "ms")
+          PY
+
+  internal-libs:
+    name: internal libs (${{ matrix.pack }})
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.core == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pack: core-libs-a
+          - pack: core-libs-b
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: internal-libs-${{ matrix.pack }}
+
+      - name: Dense pack lib tests
+        env:
+          CI_DENSE_PACK: ${{ matrix.pack }}
+          CI_DENSE_MODE: matrix
+        run: ./scripts/ci/dense-packs.sh pack "${CI_DENSE_PACK}"
+
+  core-gate:
+    name: core gate
+    needs: [plan, terp-scripts-offline, internal-libs]
+    if: >-
+      needs.plan.result == 'success' &&
+      needs.plan.outputs.core == 'true' &&
+      needs.terp-scripts-offline.result == 'success' &&
+      needs.internal-libs.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Core CI green
+        run: echo "CI Core passed (terp-scripts offline + dense internal lib packs)"
+
+  contracts-core:
+    name: contracts (${{ matrix.pack }})
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.extended == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pack: contracts-a
+          - pack: contracts-b
+          - pack: contracts-c
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: contracts-${{ matrix.pack }}
+
+      - name: Dense pack lib tests
+        env:
+          CI_DENSE_PACK: ${{ matrix.pack }}
+          CI_DENSE_MODE: matrix
+        run: ./scripts/ci/dense-packs.sh pack "${CI_DENSE_PACK}"
+
+      - name: Wasm check (pack-local subset)
+        env:
+          PACK: ${{ matrix.pack }}
+        run: |
+          set -euo pipefail
+          case "${PACK}" in
+            contracts-a)
+              for p in terp-ed25519 terp-passkey terp-vsck; do
+                echo "::group::wasm check $p"
+                cargo check -p "$p" --target wasm32-unknown-unknown --lib || cargo check -p "$p" --lib
+                echo "::endgroup::"
+              done
+              ;;
+            contracts-c)
+              for p in cw-ics08-wasm-crosslink; do
+                echo "::group::wasm check $p"
+                cargo check -p "$p" --target wasm32-unknown-unknown --lib || cargo check -p "$p" --lib
+                echo "::endgroup::"
+              done
+              ;;
+            *)
+              echo "no wasm subset for ${PACK}"
+              ;;
+          esac
+
+  contracts-heavy:
+    name: contracts (zk / optional)
+    needs: plan
+    if: >-
+      needs.plan.result == 'success' &&
+      needs.plan.outputs.extended == 'true' &&
+      needs.plan.outputs.heavy_contracts == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: contracts-heavy
+
+      - name: Optional zk-related packages (multi-package dense)
+        run: ./scripts/ci/dense-packs.sh contracts-heavy
+
+  scripts-integration:
+    name: terp-scripts non-ignored integration
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.extended == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: scripts-integration
+
+      - name: Install just
+        uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+
+      - name: Prefetch crates (offline steps below)
+        run: cargo fetch --locked && cargo fetch --locked --manifest-path crates/wasm-bindgen/norick-wasm/Cargo.toml
+
+      - name: All non-ignored tests in terp-scripts
+        run: |
+          set -euo pipefail
+          cargo test -p terp-scripts --lib --tests
+
+  workspace-check:
+    name: cargo check workspace
+    needs: plan
+    if: >-
+      needs.plan.result == 'success' &&
+      needs.plan.outputs.heavy == 'true' &&
+      needs.plan.outputs.workspace == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: workspace-check
+
+      - name: Workspace compile check
+        run: cargo check --workspace --tests
+
+  docker-harness:
+    name: IBC multihop Docker harness
+    needs: plan
+    if: >-
+      needs.plan.result == 'success' &&
+      needs.plan.outputs.heavy == 'true' &&
+      needs.plan.outputs.docker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ICT_MOCK: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: "1.86"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844 # v2.7.7
+        with:
+          workspaces: ". -> target"
+          shared-key: docker-harness
+
+      - name: Install just
+        uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+
+      - name: Docker available
+        run: docker info
+
+      - name: Multihop harness (ignored tests)
+        run: just core scripts-ibc-harness
+        env:
+          RUST_LOG: info
+
+  title:
+    name: Validate PR title
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.semantic == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write # wip: true posts a commit status
+    steps:
+      - name: Semantic pull request
+        uses: amannn/action-semantic-pull-request@e9fabac35e210fea40ca5b14c0da95a099eff26f # v5.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            deps
+            chore
+            docs
+            style
+            refactor
+            test
+            build
+            ci
+            revert
+          requireScope: false
+          wip: true
+
+  guard:
+    name: Publish guard
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Fetch pinned sibling deps (ci/siblings.tsv)
+        run: bash ci/fetch-siblings.sh
+
+      - name: Refuse a publish from this tree
+        env:
+          MODE: ${{ needs.plan.outputs.publish_mode }}
+        run: python3 .github/scripts/publish_guard.py

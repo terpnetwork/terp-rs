@@ -1,0 +1,793 @@
+{
+  "codes": {
+    "bounty-escrow": {
+      "checksum": "26041c3c0de61cebed54c7e18aa23d7118108a7a019e25050d6b8a4de2e92c1a",
+      "code_id": 104,
+      "tx": "1A2CCA3F5C16E36FD302722EB2DA127F2BDDC3C7E51CCCE61B14D661CD9EF151"
+    },
+    "cw721-svg": {
+      "checksum": "04e2c6025376754baf631773c1c75471765daa4dc2e7a5e4c3200ccee2c1f3fa",
+      "code_id": 98,
+      "tx": "6704D67FF6534A0B0AF58DB759F31EBD2E16D1C1FA0F32C79BB665D9D8135664"
+    },
+    "dao-calendar": {
+      "checksum": "e2baaf3a797a27ed0062519bb09f45772003c981a0a1b210856ea0ee85626fe4",
+      "code_id": 102,
+      "tx": "D04ABC8FEE8B6458562ACC0EAEB5DF58844A743F329870A262461D6EE07EAF41"
+    },
+    "dao-rewards-distributor": {
+      "checksum": "d4f0cac1884e1eb158921d53a5a2066508cb42efd6366fdda724e423749b5854",
+      "code_id": 100,
+      "tx": "407D85051B05E57A57DE4E6C62B3525892C8946658AF11B0276FE60B223EADB6"
+    },
+    "dao-vote-delegation": {
+      "checksum": "7c090aac36bba846b4bb272c48436eaa4b3815753acf34ba2a10446aa4ac600a",
+      "code_id": 101,
+      "tx": "46FD47C85F2C577A7F4D34EA0011751C9A7AA2FA2E2D43C512DFFA5FB560D7D1"
+    },
+    "gauge-adapter": {
+      "checksum": "fa51a045084231b6dfabab13af21e09e99af7661ad214db57a023c06a364b052",
+      "code_id": 103,
+      "tx": "FA9C40EE61345CEF6189CACE3121E355450100125E6FE64F1DACEEC5784C55DE"
+    },
+    "marketplace": {
+      "checksum": "18a83231b909b612cc789e1e8cff9bdca37d11133ca9daafec4bd5507864bb3f",
+      "code_id": 91,
+      "tx": "EBD925681F27ECFF22F91AF9491F00C0D5F909CC83B7502196EADE0307EB86D7"
+    },
+    "nft-loan": {
+      "checksum": "f25aa65314f89febd587ef0553837ec967606ec1f55c32a54a54a5beb447265c",
+      "code_id": 95,
+      "tx": "359265FDD41C86C935743A11533BA8B4FE708AC294D5392A5B1656B6E5A4084A"
+    },
+    "oracle-aggregator": {
+      "checksum": "0e15a509c8b86818e5266dc82cbbdf53c6020b38ca79780fe958870ce1636b4a",
+      "code_id": 89,
+      "tx": "24FEE626A7BB631B00C13C68467DB749DE21917F9F61C496DBE548C158C4C9AB"
+    },
+    "oracle-registry": {
+      "checksum": "34c0eab85a32636a63072a6593794d8c9822ead3e4fba1eda97043a6c7352afb",
+      "code_id": 88,
+      "tx": "DDE145B0C0B4D975477357BF9FE13C82FFC69BCB609E811175B95C37C247F754"
+    },
+    "oracle-twap-probe": {
+      "checksum": "04fa794e9fa40f50ffe68fa29130fa2f77de2d86202bfb09401e08efb247ecba",
+      "code_id": 90,
+      "tx": "E8B17216A8AECD43E7FB8A5850573671CBFB0F1B6937AD0184529B29A978DE3E"
+    },
+    "passkey": {
+      "checksum": "98b5152bc9fb30fb23aff9f22308563ea1d166238584ec6d416b217813ce67d2",
+      "code_id": 96,
+      "tx": "E3275E4179565360A8F5F76F44295F1FD7E442865C29A9F2B87635AB68786493"
+    },
+    "raffle": {
+      "checksum": "28a9ac5283f4ade77e82ac41ddbbd2790fd7cdac46b7bcce3c241602d0f588c1",
+      "code_id": 94,
+      "tx": "C986681E66E4E31DEB722495B59808791EB76DAD177646FBC863A66F7C5559FA"
+    },
+    "recovery": {
+      "checksum": "114a8ded4ddb1b7e361ea39006a35974fce9c1a835ec9e22eebd16b9371c24a4",
+      "code_id": 97,
+      "tx": "342F9414BCE243B42E01D86C732D3EE366683F6BD6CF0A189722F9A8CD5197E5"
+    },
+    "reserve-auction": {
+      "checksum": "b55b4e025575fc6a5982ead25e6a4ca7c774c3ef2c6633adb854463e8e3ea42f",
+      "code_id": 92,
+      "tx": "41757B97E59D1EA0664D4DB0125DD0BB6616BDA394E845470179AB42AAAA51DD"
+    },
+    "svg-auction": {
+      "checksum": "575057ddff1d02dadb8c58e583d57c6fee12ad135474ca9fb1ed3205e101a4b6",
+      "code_id": 93,
+      "tx": "20D3A19D147DC761CC929492FD7C8DDC1ACE1F42A493F0E0E9C38BC82257C45E"
+    },
+    "svg-minter": {
+      "checksum": "97f790c4d45a1d60078b5339ceec3eef8aa0d84caddbb3baefb1ffb907a516bd",
+      "code_id": 99,
+      "tx": "543851F01F5B4395D094ABC817897AE043A009F90543A203AD3635DC2EE1A556"
+    }
+  },
+  "contracts": {
+    "custody-akash": {
+      "address": "terp10g9vk5kqxv50ezc0sj4n5ves9zxxtu97nfpyctw5zutqdhe2cz5qfgxk3j",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "drop:kara-gippy": {
+      "address": "terp14h3nj95tatr4f6fc4hqtc7xdhhmkl938smx7cm4d08tsxj82wt2qelc8kv",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "6E326444521D9BBDCAB6503C2474078AD4251B200A30501AF35FDB3CD12832A1"
+    },
+    "drop:marain-orbs": {
+      "address": "terp163t2m8aa64d430stzddftqhpk464vzm88j8le9c8dn4gc6jk2m7sppfga0",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "F7B4B1935250F852AADBE31028240F88B9B19C7B2D894B30E2E374436119FA92"
+    },
+    "drop:yijing-harmony": {
+      "address": "terp12zz8jsjkx0l26334k0kmuk8tywgqy9ndswgkr6kl2f294mqxa65qpntqzu",
+      "admin": null,
+      "code": "cw721-svg",
+      "tx": "201FD1E347A366B0EBD28FDBFF746DDB65A899F27E5774BDE86BCB2FEE6FCDAA"
+    },
+    "fiab-subdao": {
+      "address": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "dao-dao-core",
+      "tx": "19025242FD17BC6F6506C9E4C800C3180941905398773EDBF89DF69CBE5EAB94"
+    },
+    "steward-akash": {
+      "address": "terp1lwy7emky9lcnmt7j9jhtrnewh9yvlsglyuu9ahlpsgnghwv06r5qdsy454",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "steward-juno": {
+      "address": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "admin": "terp10d07y265gmmuvt4z0w9aw880jnsr700jag6fuq",
+      "code": "dao-dao-core",
+      "tx": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379"
+    },
+    "svg-minter": {
+      "address": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "svg-minter",
+      "tx": "DB9BDD0467A9B12C6954F6CBC43E4AE65E87226B8661706CB28E3936DBB5D59E"
+    },
+    "bounty-subdao": {
+      "address": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "code": "dao-dao-core",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-voting-cw4": {
+      "address": "terp1k20dhp46g7y784c0dntq7ugrx8qk9dujaeejgu8svuw58zzhfncqalc4k8",
+      "code": "dao-voting-cw4",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-cw4-group": {
+      "address": "terp126d92tmu5mww9x8ltu6rc9hy5cx4k4f302utslf4964drftm47js96wvkm",
+      "code": "cw4-group",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-proposal-single": {
+      "address": "terp14mah9w6muzphujdlfhywceu6expgfa4xwx49nsxc6vzrr577q65q7lj5uh",
+      "code": "dao-proposal-single",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "bounty-bounties": {
+      "address": "terp1hpv9m7qwxde58pefcc0d42arrkdljlnzz3dskh8xna6z8z8vhkwq5hnchv",
+      "code": "bounty-escrow",
+      "admin": "terp1g0zxsv5l972eudygajnm2p67au0u94r2k5kgw443kaq6dzpv444sxucw25",
+      "tx": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6"
+    },
+    "polytone-note-juno": {
+      "address": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "code": "polytone-note",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60"
+    },
+    "polytone-note-osmosis": {
+      "address": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+      "code": "polytone-note",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "tx": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60"
+    },
+    "whitelist-mtree:permissionless-fractal": {
+      "address": "terp1k5vz89g9z2w0yhg4yfgwwza5d2gg0l9396sjqh27wfck4957pkvq2at0z7",
+      "admin": "terp14w2qva6dx6wcsmq5fvplh7cr7nvptejznyvpe5hp5mtyqhxxjamsz3kw2w",
+      "code": "whitelist-mtree",
+      "tx": "CCABD46142711FB13C8EC6E61CD7F816C868421BB3BD047F1DE98BD4C1D42E07"
+    },
+    "drop:permissionless-fractal": {
+      "address": "terp15anc99l7lvk2v2pzjusnmylr3lw3xnpxg89xv8uh0fj6pwrumrksqwzs6x",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "permissionless-fractal"
+    },
+    "drop:interchain-logos-penumbra": {
+      "address": "terp1yldtf5nsychkasyz3gddemqy45fvl2fxpmc8jrsqvt5fv7ggghysektnqk",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-penumbra"
+    },
+    "drop:interchain-logos-osmosis": {
+      "address": "terp12ye4vqzm6fmtatc3q87l2mde3ymajh4mlq0ut2ll8lkf8c9r6qzqmsvx8t",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-osmosis"
+    },
+    "drop:interchain-logos-cardano": {
+      "address": "terp1jdjrrf00grgvcgusf36juf7y9gsr962he7wp9c3pfpk27g0ulfmqs4jpvm",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-cardano"
+    },
+    "drop:interchain-logos-bcna": {
+      "address": "terp1fmkfazecjn2pmdxxywksaqsxp69jprsframqeg5da4l3emrx004surkf44",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bcna"
+    },
+    "drop:interchain-logos-cosmos": {
+      "address": "terp1q3algj0h80vpyx3xelwql9umwmyvl7gzm4nuly3lseqlqg89tresc364de",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-cosmos"
+    },
+    "drop:interchain-logos-terp": {
+      "address": "terp12v7q75xl7zm8vjzvxenyyyx4ktfye9a92u93kjrk4rppdyvj0wjspzpa6z",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-terp"
+    },
+    "drop:interchain-logos-bitcoin": {
+      "address": "terp1sdu5qxlpydhpn0a8g4v3jehzn9lhf96rqalc5mj6d6u4ss3jq47susr279",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bitcoin"
+    },
+    "drop:interchain-logos-akash": {
+      "address": "terp18xca496njd5v7vw0vcl0ddqvsw2s554npxhztrtz7t0x6djd7eyq6qdlez",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-akash"
+    },
+    "drop:interchain-logos-bitsong": {
+      "address": "terp1l6wlwe5kysukwcln9c9rf9en5x6xzx8lzj5hfa5py8svzt78s8tswkutuz",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-bitsong"
+    },
+    "drop:interchain-logos-dao": {
+      "address": "terp1tf2jp6qll2x936s2g9f0h7m63dyua7827wcezsc6gsfwgq550n6ss9dtcu",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-dao"
+    },
+    "drop:interchain-logos-eth": {
+      "address": "terp1a9rkeulfskj7arn8qagvu2ykkp4l664n5zj2jxwm6vfqwudnk7kqht5lnx",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-eth"
+    },
+    "drop:interchain-logos-monero": {
+      "address": "terp1nphx5lmx4az8ptra2c6n04csa5u3ugcp3stcvq0n5ayw8xupyg7svlgc4t",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-monero"
+    },
+    "drop:interchain-logos-zec": {
+      "address": "terp1q3kgl2rnx30f88t5hdfym7s7ugkll9rtvtx2slaq6rd2p5gc50jq0rh3er",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "tx": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "interchain-logos-zec"
+    },
+    "drop:latent-benders-2026-10-28": {
+      "address": "terp13acw7eezjqnv2zru428lgg3dfx5l88lw6st5aemljvnu85c3xqqswlqpud",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-28",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-29": {
+      "address": "terp16prlc0v4vtu58djdypvmjsfnx4y2e3g2gjnw2m65qrun4sayufxqrn9j93",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-29",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-30": {
+      "address": "terp1y2nfyahzl55tf8jkzz5refqlkhmnflvr8adhk6pch77jrkr6accshgr0wp",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-30",
+      "tx": null
+    },
+    "drop:latent-benders-2026-10-31": {
+      "address": "terp1cy8jtf0uyz899q5hlh3g2tne4uwctqzhahk7qpyrehw8gtlna0ms4aewjg",
+      "admin": "terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052",
+      "code": "cw721-svg",
+      "creator": "terp1wg5z9rcwpw5kvrl4g78ees2l9ejptrhrx4t2k56nq6t27uly87zssujm80",
+      "label": "latent-benders-latent-benders-2026-10-31",
+      "tx": null
+    },
+    "fiab-bounty-escrow": {
+      "address": "terp19hrlad50vp2dc07cmnd67wtvphcggj3fjaakp2aqg5m7nrj04xpqq2fnxa",
+      "code": "bounty-escrow",
+      "code_id": 104,
+      "admin": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "proposal_module_of": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "module_prefix": "B",
+      "instantiate2": {
+        "creator": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+        "salt": "fiab-bounty-escrow-v1"
+      },
+      "tx": "99A7464D5DCC350FF1BB396D19D9AE4241ED09B53D368413747D5B79DE1B6815"
+    }
+  },
+  "proposals": {
+    "daos:propose:fiab": 9,
+    "daos:propose:steward": 10,
+    "bounty:propose:bounty": 11,
+    "bounty:propose:notes": 12,
+    "custody-akash:osmosis-account": {
+      "proposal_id": 1,
+      "tx": "0B484488D144452A21E390C2A78F4FDFD8BD8262634B92AB93AC2804ECF95E9F",
+      "status": "veto_timelock",
+      "earliest_execute": "2026-11-01T12:17:38Z"
+    },
+    "fiab:bounty-escrow-and-authz": {
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 4,
+      "draft": "morocco-1.dao-c/9-fiab-bounty-escrow-and-authz.json",
+      "tx": "99A7464D5DCC350FF1BB396D19D9AE4241ED09B53D368413747D5B79DE1B6815",
+      "height": 24178071,
+      "status": "executed",
+      "authz": {
+        "granter": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+        "grantee": "terp1fazvzt6pdpm4lg6t73h0j4dsyuc8tdxwrlwq9j",
+        "contract": "terp19hrlad50vp2dc07cmnd67wtvphcggj3fjaakp2aqg5m7nrj04xpqq2fnxa",
+        "keys": [
+          "create_bounty",
+          "approve",
+          "reject",
+          "assign",
+          "unassign",
+          "request_changes",
+          "cancel"
+        ],
+        "limit": "200 calls; 50000000000uterp + 100000000000uthiol",
+        "expiration": "2027-10-30T00:00:00Z"
+      }
+    },
+    "fiab:penumbra-liquidity-resend": {
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 5,
+      "draft": "morocco-1.dao-c/10-fiab-penumbra-liquidity-resend.json",
+      "tx": "07AF4EFD3C92D1FA35731A85A4B4634CFD09D3C0796C00A91CD4B4EBAB6031CA",
+      "height": 24180260,
+      "status": "executed",
+      "ibc": {
+        "channel": "channel-16",
+        "dst_channel": "channel-25",
+        "receiver": "penumbra1dxyf96uwp9j5sjg687gt44qt2yva5xgkhuwljsmgk5fse3whknlkscve7d02akl8g29w4v4ay50xya9f2gxdgv9mkflu56pvdspcsdqnspfry2dv2s3fgrdnueu6tnkpljkwdq",
+        "amounts": {
+          "uterp": "50000000000",
+          "uthiol": "100000000000"
+        },
+        "sequences": [
+          5,
+          6
+        ],
+        "recv_tx_penumbra": "ADA30CC6B05D40335484B9DF6B5CC5038502AFC38531FEDFB531408BC457B21D",
+        "recv_height_penumbra": 13427644,
+        "ack_tx": "C827366BDF23B1D88FBFB1297AA26EDEAB8584CD7BE2D3E71E7A8773EAD7263E",
+        "ack_height": 24180264,
+        "ack": "success"
+      }
+    }
+  },
+  "txs": [
+    {
+      "gas_used": 5111553,
+      "hash": "DDE145B0C0B4D975477357BF9FE13C82FFC69BCB609E811175B95C37C247F754",
+      "phase": "upload",
+      "step": "store oracle-registry"
+    },
+    {
+      "gas_used": 4101145,
+      "hash": "24FEE626A7BB631B00C13C68467DB749DE21917F9F61C496DBE548C158C4C9AB",
+      "phase": "upload",
+      "step": "store oracle-aggregator"
+    },
+    {
+      "gas_used": 3422181,
+      "hash": "E8B17216A8AECD43E7FB8A5850573671CBFB0F1B6937AD0184529B29A978DE3E",
+      "phase": "upload",
+      "step": "store oracle-twap-probe"
+    },
+    {
+      "gas_used": 8250251,
+      "hash": "EBD925681F27ECFF22F91AF9491F00C0D5F909CC83B7502196EADE0307EB86D7",
+      "phase": "upload",
+      "step": "store marketplace"
+    },
+    {
+      "gas_used": 5662939,
+      "hash": "41757B97E59D1EA0664D4DB0125DD0BB6616BDA394E845470179AB42AAAA51DD",
+      "phase": "upload",
+      "step": "store reserve-auction"
+    },
+    {
+      "gas_used": 4709883,
+      "hash": "20D3A19D147DC761CC929492FD7C8DDC1ACE1F42A493F0E0E9C38BC82257C45E",
+      "phase": "upload",
+      "step": "store svg-auction"
+    },
+    {
+      "gas_used": 10043926,
+      "hash": "C986681E66E4E31DEB722495B59808791EB76DAD177646FBC863A66F7C5559FA",
+      "phase": "upload",
+      "step": "store raffle"
+    },
+    {
+      "gas_used": 6389275,
+      "hash": "359265FDD41C86C935743A11533BA8B4FE708AC294D5392A5B1656B6E5A4084A",
+      "phase": "upload",
+      "step": "store nft-loan"
+    },
+    {
+      "gas_used": 4784204,
+      "hash": "E3275E4179565360A8F5F76F44295F1FD7E442865C29A9F2B87635AB68786493",
+      "phase": "upload",
+      "step": "store passkey"
+    },
+    {
+      "gas_used": 5090094,
+      "hash": "342F9414BCE243B42E01D86C732D3EE366683F6BD6CF0A189722F9A8CD5197E5",
+      "phase": "upload",
+      "step": "store recovery"
+    },
+    {
+      "gas_used": 17122189,
+      "hash": "6704D67FF6534A0B0AF58DB759F31EBD2E16D1C1FA0F32C79BB665D9D8135664",
+      "phase": "upload",
+      "step": "store cw721-svg"
+    },
+    {
+      "gas_used": 10481311,
+      "hash": "543851F01F5B4395D094ABC817897AE043A009F90543A203AD3635DC2EE1A556",
+      "phase": "upload",
+      "step": "store svg-minter"
+    },
+    {
+      "gas_used": 220131,
+      "hash": "DB9BDD0467A9B12C6954F6CBC43E4AE65E87226B8661706CB28E3936DBB5D59E",
+      "phase": "svg",
+      "step": "instantiate2 svg-minter"
+    },
+    {
+      "gas_used": 164544,
+      "hash": "88ABAA8C58710C395C25871477A455C1D30F9AA50C8B6E4B81FB424781DADC47",
+      "phase": "svg",
+      "step": "svg:series:marain-orbs"
+    },
+    {
+      "gas_used": 164904,
+      "hash": "441BBDA0CA8EA625EB8517B8D0BD76EDD79A1662804027692AA671D65155BD23",
+      "phase": "svg",
+      "step": "svg:series:latent-benders"
+    },
+    {
+      "gas_used": 633839,
+      "hash": "F7B4B1935250F852AADBE31028240F88B9B19C7B2D894B30E2E374436119FA92",
+      "phase": "svg",
+      "step": "svg:create:marain-orbs"
+    },
+    {
+      "gas_used": 561756,
+      "hash": "6E326444521D9BBDCAB6503C2474078AD4251B200A30501AF35FDB3CD12832A1",
+      "phase": "svg",
+      "step": "svg:create:kara-gippy"
+    },
+    {
+      "gas_used": 1692035,
+      "hash": "201FD1E347A366B0EBD28FDBFF746DDB65A899F27E5774BDE86BCB2FEE6FCDAA",
+      "phase": "svg",
+      "step": "svg:create:yijing-harmony"
+    },
+    {
+      "gas_used": 7342899,
+      "hash": "407D85051B05E57A57DE4E6C62B3525892C8946658AF11B0276FE60B223EADB6",
+      "phase": "dao-upload",
+      "step": "store dao-rewards-distributor"
+    },
+    {
+      "gas_used": 6964096,
+      "hash": "46FD47C85F2C577A7F4D34EA0011751C9A7AA2FA2E2D43C512DFFA5FB560D7D1",
+      "phase": "dao-upload",
+      "step": "store dao-vote-delegation"
+    },
+    {
+      "gas_used": 12979378,
+      "hash": "D04ABC8FEE8B6458562ACC0EAEB5DF58844A743F329870A262461D6EE07EAF41",
+      "phase": "dao-upload",
+      "step": "store dao-calendar"
+    },
+    {
+      "gas_used": 6531664,
+      "hash": "FA9C40EE61345CEF6189CACE3121E355450100125E6FE64F1DACEEC5784C55DE",
+      "phase": "dao-upload",
+      "step": "store gauge-adapter"
+    },
+    {
+      "gas_used": 8842081,
+      "hash": "1A2CCA3F5C16E36FD302722EB2DA127F2BDDC3C7E51CCCE61B14D661CD9EF151",
+      "phase": "bounty-upload",
+      "step": "store bounty-escrow"
+    },
+    {
+      "gas_used": 963781,
+      "hash": "F89DE573C11740A1408CA4FB01AAC10BDAC66DF7AC21032850E99C4AF5AF9C7D",
+      "phase": "daos",
+      "step": "daos:propose:fiab"
+    },
+    {
+      "gas_used": 1152163,
+      "hash": "47C9BF57605F72CF0E206930E48299ACC44A78C1609DC7358C62941814727D4E",
+      "phase": "daos",
+      "step": "daos:propose:steward"
+    },
+    {
+      "gas_used": 474909,
+      "hash": "049717A2B97FC330486677A57B30FEC762D63015EE8736BAD06170F0328A7462",
+      "phase": "vote",
+      "step": "vote:9:terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
+    },
+    {
+      "gas_used": 617709,
+      "hash": "4184E8897A63AB3BABAAD938FAA313B627080C2DD7C4750B8994222C4C6C0F69",
+      "phase": "vote",
+      "step": "vote:10:terp1fxccvvhhy43tvet2ah7jqwq4cwl9k3dxmww052"
+    },
+    {
+      "gas_used": 475830,
+      "hash": "C9B28117943A15F3DE57EC208D81C98271D103E373D344AEF1E6D149FADF6AF0",
+      "phase": "vote",
+      "step": "vote:9:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj"
+    },
+    {
+      "gas_used": 618630,
+      "hash": "ECACA7A6FA2E4E2BFAB4F9CC88A1CCD3B0A36456EEDA527FACB58A9ADD43B561",
+      "phase": "vote",
+      "step": "vote:10:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj"
+    },
+    {
+      "gas_used": 1056055,
+      "hash": "19025242FD17BC6F6506C9E4C800C3180941905398773EDBF89DF69CBE5EAB94",
+      "phase": "vote",
+      "step": "execute:9"
+    },
+    {
+      "gas_used": 2442608,
+      "hash": "37C4C0260AA237D014EEAFCD26CF27E3C0C0E390C16D4027534F5E75D1CA3379",
+      "phase": "vote",
+      "step": "execute:10"
+    },
+    {
+      "phase": "vote",
+      "step": "vote:11:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj",
+      "hash": "CC232FA696BEE79F895D858DF4C11AF05B1B69E48CBF16650E231DF1E50CFA3E",
+      "gas_used": 521295
+    },
+    {
+      "phase": "vote",
+      "step": "vote:12:terp1fpdz820lcfze3alx2gukhp7yrnhshe4dv96wgj",
+      "hash": "BA51BFEE08E85729743BB552B5A18C2564ECB8C2905799B75BAD50FC36303DFE",
+      "gas_used": 424700
+    },
+    {
+      "phase": "vote",
+      "step": "execute:11",
+      "hash": "754CC17E057FC74490D68F98C71978420D465A5263307808AE63DDDB3BFF25C6",
+      "gas_used": 1311649
+    },
+    {
+      "phase": "vote",
+      "step": "execute:12",
+      "hash": "68FF87635D938FC1A88857596236BD1986B786462E47BEB2C16C5E7B356EAB60",
+      "gas_used": 595509
+    },
+    {
+      "hash": "0587B3EA684C4DACDAB7DD284DD4C65B68A9331FF60EEED4F4C234942FDC5084",
+      "phase": "svg",
+      "step": "factory set_series interchain-logos"
+    },
+    {
+      "hash": "CCABD46142711FB13C8EC6E61CD7F816C868421BB3BD047F1DE98BD4C1D42E07",
+      "phase": "svg",
+      "step": "instantiate whitelist-mtree:permissionless-fractal"
+    },
+    {
+      "hash": "C4361DCC38204DD06335B407E438790CAFC3ECB4387FA2AE2A195F145E1E8F44",
+      "phase": "svg",
+      "step": "instantiate drop:permissionless-fractal"
+    },
+    {
+      "hash": "758E6505E68BE1CF9301ECEFD92533054BB9A493929CA18DF3358EABA20A5A97",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-penumbra"
+    },
+    {
+      "hash": "4FFE7403954CAF5BDE7E059E80FEDF88F9023BBF8188078EE103AA59F4133334",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-osmosis"
+    },
+    {
+      "hash": "D110E5214F83D4A024F79D7AB55657B49B38B3A898F873B95E5824E2D17EBAC3",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-cardano"
+    },
+    {
+      "hash": "53A15331F3FE33FCE8A4F64BC10828C1E3AD1A14D36E2E4A3A30ECD7B5807C80",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bcna"
+    },
+    {
+      "hash": "0D3DA69769A1DB58EC8D4596B5BC1068B0DE09CE814E76E259B61BA4E54DC6C0",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-cosmos"
+    },
+    {
+      "hash": "EE7169257BC03C2BAF2B3587D24231ED577EAF9094A375B1292E0A4EBBF5F813",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-terp"
+    },
+    {
+      "hash": "732714AD73AD06F6364CE594FCBE98C3480B5F2133B8BE9E4B0A86C4D3CA8BCA",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bitcoin"
+    },
+    {
+      "hash": "71E33B4B8663FABC8FAA87FD894CA331E63F5F39C7971F508C6C792E6CB8992B",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-akash"
+    },
+    {
+      "hash": "79772710B2D436002D13D4682182791F5E349EE7495B1745F03B1915910E78C0",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-bitsong"
+    },
+    {
+      "hash": "7699AB5C264DFFB20D746865A662895B08BD9395B0CC964363134B035CA4DF95",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-dao"
+    },
+    {
+      "hash": "F8B49579D2512A5314B2CD0BFF04B58176722FDE08D6267C8AF3F52B2C9B439B",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-eth"
+    },
+    {
+      "hash": "3927EEA4A09BD8D35B6209A093E61B9B3E6F89CABE2F461392F79418CC40F18A",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-monero"
+    },
+    {
+      "hash": "598DA8B13B144CC4D359D3FD2FDDD432894CB1B6E1EDD3A9998ECF1A330CD6C5",
+      "phase": "svg",
+      "step": "instantiate drop:interchain-logos-zec"
+    }
+  ],
+  "ibc_channels": {
+    "polytone-note-juno": {
+      "channel": "channel-14",
+      "connection": "connection-14",
+      "counterparty_chain": "juno-1",
+      "counterparty_channel": "channel-675",
+      "counterparty_connection": "connection-557",
+      "counterparty_port": "wasm.juno1mkq8ggvmr7kzu85c9muud30nmdcv98050uxyqrqmmftlmag044gs3e0d0u",
+      "version": "polytone-1",
+      "order": "unordered"
+    },
+    "polytone-note-osmosis": {
+      "channel": "channel-15",
+      "connection": "connection-15",
+      "counterparty_chain": "osmosis-1",
+      "counterparty_channel": "channel-111102",
+      "counterparty_connection": "connection-11101",
+      "counterparty_port": "wasm.osmo1af93h8xcszszes2a0kjms5zpm5ns3fys4aez2f40fgz428hc8aws28klzs",
+      "version": "polytone-1",
+      "order": "unordered"
+    }
+  },
+  "polytone_accounts": {
+    "fiab-subdao:juno-1": {
+      "dao": "terp1nywjc2mfzl2fud8epzrllj2f2xlpnk2tfpnf49qh02z7c97gv2dq0sucwc",
+      "proxy": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+      "proxy_code_id": 3321,
+      "juno_height": 43163832,
+      "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "channel": "channel-14->channel-675",
+      "packet_sequence": 1,
+      "proposal_module": "terp16aj9tt0lgz7pprcjxd3mre4gt7anwnrk55qehmm49wt8esaq4lwstkwl8z",
+      "proposal_id": 1,
+      "tx": "D8B7D1A116A9FFE736588ACB34C59A33FE0588652BBA4DDA4A4AD17902C3C13E",
+      "height": 24145592
+    },
+    "steward-juno:juno-1": {
+      "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+      "proposal_id": 1,
+      "tx": "C2B8D84FDFAC80697538662669210FDFEEF9E16C710235832E24B9B416C35916",
+      "height": 24146552,
+      "proxy": "juno1guahc2tdgvdphgyejpnps5ns9n46dgqsvfff6rn5nkdmaeaz63rqx5zds5",
+      "proxy_code_id": 3321,
+      "note": "terp180xdkmamk6dp30jvuve82qr5l5mesenj5d684l8ag50j8fdlk2xqpftrxe",
+      "channel": "channel-14->channel-675",
+      "packet_sequence": 3
+    },
+    "steward-juno:osmosis-1": {
+      "dao": "terp1a35tgcr4nvqttet76uesqw5fwg55jdpkacp3htm62jxk8xkjvl5qsd4a6z",
+      "proposal_module": "terp1eks9dxycthld5vd6v0ardfhuphjjtmu4cgzrckx7aa4alp7ffp3qez2zdy",
+      "proposal_id": 1,
+      "tx": "C2B8D84FDFAC80697538662669210FDFEEF9E16C710235832E24B9B416C35916",
+      "height": 24146552,
+      "proxy": "osmo15aqqcae2wtklrxt3hew0elsm5uhrh0j7uqtnvzvqjklcflwdnggqkv655x",
+      "proxy_code_id": 127,
+      "note": "terp1qxww83x84y8th3gsldqjq2j4haal3awgkr3ce7mut69s39cgaj0s5j4usj",
+      "channel": "channel-15->channel-111102",
+      "packet_sequence": 1
+    }
+  },
+  "proposals_remote": {
+    "zechub:add-fiab": {
+      "chain": "juno-1",
+      "proposal_module": "juno14futcfehnc8fn4nz6gtm25svn05mzz09ju8rtj0jvven2hpxj85s0q8a55",
+      "proposal_id": 189,
+      "dao_dao_id": "A189",
+      "proposer": "juno1hafmtgxpruf5kzrrwftnxccuer46534e7z5t0jl4g4le66x8kkysrcgj9y",
+      "juno_height": 43164575,
+      "via": {
+        "fiab_proposal": 2,
+        "tx": "CE87510A68E7997B3BBFAB4395B53BA9DF15294021AF0825AB535689A19F0D40",
+        "packet_sequence": 2
+      }
+    }
+  },
+  "ibc": {
+    "penumbra-1": {
+      "terp_client": "07-tendermint-48",
+      "penumbra_client": "07-tendermint-32",
+      "terp_connection": "connection-16",
+      "penumbra_connection": "connection-25",
+      "terp_transfer_channel": "channel-16",
+      "penumbra_transfer_channel": "channel-25",
+      "version": "ics20-1",
+      "relayer": "groot2 /storage/penumbra/hermes.toml",
+      "txs": {
+        "conn_init": "04FE997129CB93AB983A74828DBA8599C9B81C8F3F31BC95D2532508C92C27DE",
+        "conn_ack": "A1907161F0BB8DEE3480D900AA433AC1198AB4671E843BD055AEE9B736FDF0FF",
+        "chan_init": "36468B7203A1A85127390FD8EFF72E6B1982A416ADD6B6BDE5063D28D8E11F23",
+        "chan_ack": "B95C1501BD97E9A178E45342CF3682EFE116BBA4164486289FFDAB25D85789BF"
+      }
+    }
+  }
+}
