@@ -1,0 +1,39 @@
+---
+title: Wallet runtime
+description: One ZEC seed on disk. Addresses and Ironwood scan are linked. The prover is not.
+---
+
+# Wallet runtime
+
+`svg-mint-zrt` is the ZEC CLI the fed execs for `addresses`, `notes`, and withdraw. It derives unified addresses from `zync-core`'s Orchard viewing key. It does not exec `zcash-devtool`. zec.rocks and rotko are not this desk.
+
+On groot2 the binary is installed and the wallet directory `~/.terp/svg-mint-zrt` already exists. `addresses` created that seed once. Do not delete it and do not replace it. A new seed cannot recover notes from older wallet-devtools wallets. Read [Wallet gaps](/engines/wallet-gaps).
+
+`scripts/e2e-zrt-wallet.sh` is the persistence gate. It passed on groot-wan against a temporary `SVG_MINT_ZRT_DIR`. It does not prove scan, trial decryption, or a spend.
+
+## Commands
+
+```bash
+svg-mint-zrt init
+svg-mint-zrt addresses
+svg-mint-zrt balance --json
+svg-mint-zrt notes
+svg-mint-zrt sync
+svg-mint-zrt send --zat <n> --address <u1…>
+```
+
+`addresses <index>` prints one mainnet unified address for that diversifier and does not scan. The first call creates `spend.seed` and `orchard-fvk` if they are absent, mode `0600`, and refuses to replace an existing seed. The address is an Orchard receiver from that same viewing key. Ironwood reuses Orchard receivers, and the note scanner trial-decrypts with this key. This is the pay target the desk puts in the ZIP-321 URI.
+
+`notes` syncs Ironwood compact blocks from the loopback server, then prints the note JSON the fed matches. `mined: false` is a receipt. `mined: true` may mint. `send` refuses any destination except the donation UA, then stops because the spend prover is not linked. Notes stay unspent.
+
+`lab-credit` and `lab-commit-spend` exist only with `--features lab`.
+
+## Env
+
+| Name | Purpose |
+|---|---|
+| `SVG_MINT_ZRT_BIN` | Path the fed execs. The house unit sets `target/release/svg-mint-zrt`. |
+| `ZCASH_DEVTOOL_WALLET` | Wallet directory. The house unit sets `~/.terp/svg-mint-zrt`. |
+| `ZTREAMER_GRPC` | Loopback compact server. The house unit sets `127.0.0.1:9067` (`lwd-lab`). |
+
+`addresses` does not dial the compact server. `notes` does.
