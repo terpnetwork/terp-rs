@@ -1095,9 +1095,16 @@ fn execute_steps(ctx: &mut Ctx, phase: &str, steps: Vec<Step>) -> Result<()> {
         steps.retain(|s| match s {
             Step::Store { name, .. } => ctx.cli.steps_filter.iter().any(|f| f == name),
             Step::Inst { name, .. } => ctx.cli.steps_filter.contains(name),
-            Step::ExecAs { id, .. } | Step::Vote { id, .. } | Step::Custom { id, .. } => {
-                ctx.cli.steps_filter.contains(id)
-            }
+            Step::Exec { id, .. }
+            | Step::ExecAs { id, .. }
+            | Step::Vote { id, .. }
+            | Step::DaoVote { id, .. }
+            | Step::DaoExec { id, .. }
+            | Step::GovSubmit { id, .. }
+            | Step::GovDeposit { id, .. }
+            | Step::GovVote { id, .. }
+            | Step::GovWait { id, .. }
+            | Step::Custom { id, .. } => ctx.cli.steps_filter.contains(id),
         });
     }
     let creator_basis = match (&ctx.creator, ctx.cli.granter.is_empty()) {
