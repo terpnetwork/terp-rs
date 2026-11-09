@@ -2,9 +2,6 @@
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "std")]
-extern crate std;
-
 pub mod circuits;
 /// L0 pure harness: claim fixture + bridge_auth_seams re-exports (no Docker).
 pub mod harness;

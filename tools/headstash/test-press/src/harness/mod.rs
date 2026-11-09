@@ -23,8 +23,10 @@ pub mod claim_fixture;
 pub mod claim_from_deposit;
 pub mod compose_l0;
 /// Option D continuous corridor: settle → egress burn → lab ZEC pay (HARNESS-D).
+#[cfg(feature = "seams-escrow")]
 pub mod egress_d;
 /// Option D lab Zcash inventory pay gated on Terp burn evidence.
+#[cfg(feature = "seams-escrow")]
 pub mod lab_pay_zec;
 /// Mint evidence + settle receipt artifacts (G3).
 pub mod mint_evidence;
@@ -33,12 +35,15 @@ pub mod note_persist_client;
 /// Headstash note envelope persist L0 (opaque ciphertext; hash-market path SSOT).
 pub mod note_persist_l0;
 /// Multi-net dual-home prep (WAVE-2 MN-DUAL-HOME): bitcoind LP+user + Zakura escrow.
+#[cfg(feature = "seams-escrow")]
 pub mod omni_dual_home;
 /// OmniBridge-shaped LP bootstrap (GUIDE Phases 1–3): dual-home → mint LP → seed pool.
+#[cfg(feature = "seams-escrow")]
 pub mod omni_lp_seed;
 /// Multi-cycle private-DEX + bridge seam routes under curated accounts.
 pub mod seam_multi_cycle;
 /// Negative-contrast (adversarial / fail-closed) catalog + tests.
+#[cfg(feature = "seams-escrow")]
 pub mod seam_negative_contrast;
 /// Pure → CW swap statement map + lab settle handoff (G3).
 pub mod swap_statement_cw;
@@ -87,6 +92,7 @@ pub use compose_l0::{
     mint_evidence_to_swap_action, seam_note_out_to_swap_action, seam_note_out_to_swap_openings,
     swap_action_public_to_statement,
 };
+#[cfg(feature = "seams-escrow")]
 pub use egress_d::{
     BURN_SURFACE_CW_BRIDGE_EGRESS, BURN_SURFACE_PURE_RECORD_LAB, ENV_CORRIDOR_ZEC_EGRESS_D,
     EgressBurnEvidenceJson, EgressBurnPublicJson, EgressDError, EgressDStageInputs,
@@ -95,8 +101,9 @@ pub use egress_d::{
     run_option_d_after_settle, sealed_dest_for_option_d, settle_opening_from_handoff,
     zec_egress_d_enabled,
 };
-#[cfg(feature = "interface")]
+#[cfg(all(feature = "interface", feature = "seams-escrow"))]
 pub use egress_d::{cw_egress_statement_from_opening, lab_mock_egress_proof};
+#[cfg(feature = "seams-escrow")]
 pub use lab_pay_zec::{
     AUTH_SOURCE_HASHMERCHANT_LIVE, AUTH_SOURCE_IN_PROCESS_LAB, COMMITTEE_CRYPTO_LAB_T_OF_N,
     ENV_CORRIDOR_ALLOW_LAB_INVENTORY_RESIDUAL, ENV_CORRIDOR_HASH_MARKET_URL, ENV_CORRIDOR_PROFILE,
@@ -117,8 +124,9 @@ pub use lab_pay_zec::{
     write_zec_egress_receipt_json, zec_egress_receipt_path, zec_release_policy,
 };
 pub use mint_evidence::{
-    MintEvidenceError, MintEvidenceV0, PROOF_MODE_MOCK_VERIFY_LAB, PROOF_MODE_ZK_API,
-    SettleReceiptV0, mint_evidence_from_claim_fields, mint_evidence_path, settle_receipt_path,
+    ClaimMintFields, MintEvidenceError, MintEvidenceV0, PROOF_MODE_MOCK_VERIFY_LAB,
+    PROOF_MODE_ZK_API, SettleReceiptV0, mint_evidence_from_claim_fields, mint_evidence_path,
+    settle_receipt_path,
 };
 pub use note_persist_client::{NotePersistReceipt, NotesPersistConfig};
 #[cfg(feature = "l0-seams")]
@@ -132,6 +140,7 @@ pub use note_persist_l0::{
     MiniNoteStore, NoteEnvelope, SEAM_NOTE_OUT_LEN, assert_bridge_note_persist_l0,
     assert_compose_seam_envelope_meta, bridge_note_addr_from_cm_public,
 };
+#[cfg(feature = "seams-escrow")]
 pub use omni_dual_home::{
     DualHomeMultiNetPrepV0, ENV_CORRIDOR_DUAL_HOME_PREP_PATH, ENV_CORRIDOR_ESCROW_ADDR,
     ENV_CORRIDOR_OMNI_REQUIRE_PRODUCT_GREEN, EscrowObserveV0, OmniDualHomeError,
@@ -140,6 +149,7 @@ pub use omni_dual_home::{
     require_omni_product_green, resolve_dual_home_for_bootstrap, try_prefund_escrow_wallet,
     write_dual_home_run_pack,
 };
+#[cfg(feature = "seams-escrow")]
 pub use omni_lp_seed::{
     DualHomePrepJson, ENV_CORRIDOR_POOL_SEED, LpSeedInnerJson, LpSeedReceiptJson,
     OmniLiquidityBootstrap, OmniLpError, POOL_SEED_BRIDGED_LP, POOL_SEED_MAGIC_LAB,
@@ -152,6 +162,7 @@ pub use seam_multi_cycle::{
     CYCLE_GAMMA, CYCLE_GAMMA_DEN, MultiCycleWorld, SeamAsset, assert_oracle_cannot_mint,
     route_corridor_btc_to_zec, route_multi_cycle_rebalance, route_tokenfactory_into_corridor,
 };
+#[cfg(feature = "seams-escrow")]
 pub use seam_negative_contrast::{CONTRAST_CATALOG, ContrastCase, catalog_ids};
 pub use swap_statement_cw::{
     LAB_MOCK_SWAP_PROOF, ProofModeLabel, SwapHandoffError, SwapSpendHandoffV0,
@@ -172,6 +183,7 @@ pub use zakura_local::{
 };
 
 // Pure Option D types (SSOT private_dex_seams) used by lab pay surface.
-pub use terp_seams::dex::{
-    DestKind, EgressBurnEvidenceV0, EgressBurnPublic, ThresholdEscrowAuth, ZecEgressReceiptV0,
-};
+pub use terp_seams::dex::{DestKind, EgressBurnEvidenceV0, EgressBurnPublic, ZecEgressReceiptV0};
+// Not yet in terp_seams::dex; see the `seams-escrow` feature.
+#[cfg(feature = "seams-escrow")]
+pub use terp_seams::dex::ThresholdEscrowAuth;

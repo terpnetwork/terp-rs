@@ -17,6 +17,7 @@
       --warn: #8a3b12;
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       font: 15px/1.45 ui-sans-serif, system-ui, sans-serif;
@@ -46,6 +47,19 @@
       padding: 7px 8px;
       font-size: 13px;
     }
+    select {
+      appearance: none;
+      padding-right: 28px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%231c1915' stroke-width='1.5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 12px 8px;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--green);
+      outline-offset: 1px;
+    }
+    ul.contracts li.empty { color: var(--muted); font-size: 13px; padding: 8px; }
     textarea { min-height: 88px; resize: vertical; }
     .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     button {
@@ -72,6 +86,20 @@
     }
     ul.contracts button small { display: block; color: var(--muted); font-size: 11px; }
     ul.contracts button[aria-current="true"] { background: #e7f3ec; border-color: #b7d8c6; }
+    nav.tabs { margin: 0 0 16px; }
+    nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+    .route { border-top: 1px solid var(--line); padding: 10px 0; }
+    .route h3 { margin: 0 0 4px; font-size: 14px; }
+    .hop {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 1px 8px;
+      margin: 0 4px 4px 0;
+      font-size: 12px;
+    }
+    .hop.open { border-color: var(--green); color: var(--green); }
+    .hop.shut { border-color: var(--warn); color: var(--warn); }
     pre {
       margin: 10px 0 0;
       padding: 10px;
@@ -97,14 +125,19 @@
     <p class="lead">
       Local page over the terp-rs ESM bundles and a cw-orch <code>state.json</code>.
       Queries use the REST endpoint you set. Keplr is loaded only when you connect, and only if the extension is installed.
-      Serve this from the terp-rs root: <code>python3 -m http.server 4173</code> then open <code>/web/</code>.
+      From the terp-rs root run <code>just web serve</code>, then open <code>http://127.0.0.1:4173/web/</code>.
+      The default state file is <code>~/.cw-orchestrator/state.json</code>.
     </p>
   </header>
   <main>
     <section style="margin-bottom: 16px">
       <div class="row">
+        <div style="flex: 2; min-width: 240px">
+          <label for="state-source">State file</label>
+          <select id="state-source"></select>
+        </div>
         <div style="flex: 1; min-width: 160px">
-          <label for="chain">Chain in state.json</label>
+          <label for="chain">Chain in that file</label>
           <select id="chain"></select>
         </div>
         <div style="flex: 2; min-width: 220px">
@@ -129,9 +162,13 @@
       </div>
       <p class="status" id="status">Loading state.json…</p>
     </section>
-    <div class="grid">
+    <nav class="row tabs" id="tabs">
+      <button type="button" data-tab="contracts" aria-selected="true">Contracts</button>
+      <button type="button" class="ghost" data-tab="paths" aria-selected="false">Paths</button>
+    </nav>
+    <div class="grid" id="panel-contracts">
       <section>
-        <label for="filter">Contracts</label>
+        <label for="filter">Code ids</label>
         <input id="filter" placeholder="filter" spellcheck="false">
         <ul class="contracts" id="list"></ul>
       </section>
@@ -140,6 +177,13 @@
         <p class="status" id="meta"></p>
         <label for="address">Contract address</label>
         <input id="address" spellcheck="false" placeholder="terp1…" disabled>
+        <label for="instances">Contracts on this code</label>
+        <div class="row">
+          <button type="button" id="load-instances" class="ghost" disabled>Reload</button>
+          <button type="button" id="more-instances" class="ghost" disabled>Next page</button>
+        </div>
+        <p class="status" id="instances-status"></p>
+        <ul class="contracts" id="instances"></ul>
         <div class="row" style="margin-top: 8px">
           <button type="button" id="read-info" class="ghost" disabled>Contract info</button>
         </div>
@@ -166,6 +210,26 @@
         <pre id="out">Results land here.</pre>
       </section>
     </div>
+    <section id="panel-paths" hidden>
+      <p class="lead">
+        Token routes are the predetermined hops in <code>public/ibc-accepted/accepted-denoms.json</code>.
+        The first hop is the Terp receive channel. Counterparties are the curated files in <code>public/ibc-data</code>.
+        Read channels asks the REST node for every transfer channel and marks those hops.
+      </p>
+      <div class="row">
+        <div style="flex: 2; min-width: 240px">
+          <label for="token">Token</label>
+          <select id="token"></select>
+        </div>
+        <div style="align-self: end">
+          <button type="button" class="ghost" id="read-channels">Read channels</button>
+        </div>
+      </div>
+      <p class="status" id="paths-status">Loading routes…</p>
+      <div id="routes"></div>
+      <h2 style="margin-top: 16px">Channels</h2>
+      <ul class="contracts" id="channels"></ul>
+    </section>
   </main>
   <script type="module" src="./app.js"></script>
 </body>

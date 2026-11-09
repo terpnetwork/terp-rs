@@ -5,7 +5,7 @@ The page reads data/latent-benders.json. A new on-chain day does not show its
 Kara and Gippy session until that file, config/mainnet.json, and the frame
 HTML are on the host that serves the site. This is the only writer.
 """
-import json, os, shutil, subprocess, sys
+import json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 STATE = Path(os.environ.get("SVGC_STATE", Path.home() / "Library/Application Support/terp-svg-collections"))
@@ -79,12 +79,10 @@ def rebuild():
 
 
 def upload(paths):
-    if not ALIAS:
-        print("study files updated locally; SVGC_MC_ALIAS is unset so the live bucket was not changed")
-        return False
     import hashlib
     import urllib.request
     ok = True
+    pending = []
     for local, key in paths:
         body = local.read_bytes()
         digest = hashlib.sha256(body).hexdigest()
@@ -108,15 +106,75 @@ def upload(paths):
             print(f"refusing to replace {key}", file=sys.stderr)
             ok = False
             continue
-        dest = f"{ALIAS}/{key}"
-        proc = subprocess.run(["mc", "cp", str(local), dest], capture_output=True, text=True)
-        if proc.returncode != 0:
-            ok = False
-            err = (proc.stderr or proc.stdout).strip().splitlines()
-            print(f"upload failed {key}: {err[-1] if err else proc.returncode}", file=sys.stderr)
-        else:
-            print(f"uploaded {key}")
+        pending.append((local, key))
+    if not pending:
+        return ok
+    if not upload_on_groot2(pending):
+        return False
+    for _, key in pending:
+        print(f"uploaded {key}")
     return ok
+
+
+def upload_on_groot2(pending):
+    """Put objects with the silo root on groot2. The SVG mc aliases are not valid there."""
+    stage = Path("/tmp/svgc-publish-stage")
+    if stage.exists():
+        shutil.rmtree(stage)
+    lines = []
+    for local, key in pending:
+        dest = stage / key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(local, dest)
+        if key.endswith(".html"):
+            attr = "Content-Type=text/html; charset=utf-8"
+        elif key.endswith(".json"):
+            attr = "Content-Type=application/json"
+        elif key.endswith(".js"):
+            attr = "Content-Type=text/javascript; charset=utf-8"
+        else:
+            attr = "Content-Type=application/octet-stream"
+        lines.append(f"{key}\t{attr}")
+    (stage / "MANIFEST").write_text("\n".join(lines) + "\n")
+    scp = None
+    for attempt in range(1, 4):
+        scp = subprocess.run(
+            ["scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=20", "-r", str(stage), "groot2:/tmp/svgc-publish-stage"],
+            capture_output=True, text=True)
+        if scp.returncode == 0:
+            break
+        err = (scp.stderr or scp.stdout).strip().splitlines()
+        print(f"upload attempt {attempt} failed: {err[-1] if err else scp.returncode}", file=sys.stderr)
+        time.sleep(5)
+    if scp is None or scp.returncode != 0:
+        return False
+    remote = r"""
+set -u
+export PATH="$PATH:/usr/local/bin:$HOME/bin:/usr/bin"
+read_cred() { if [ -r "$1" ]; then cat "$1"; elif sudo -n test -r "$1" 2>/dev/null; then sudo -n cat "$1"; else return 1; fi; }
+user=$(read_cred /etc/silo/root-user) || { echo "root-user unreadable" >&2; exit 1; }
+pass=$(read_cred /etc/silo/root-password) || { echo "root-password unreadable" >&2; exit 1; }
+user=${user%$'\n'}; pass=${pass%$'\n'}
+mc alias set silo-root http://127.0.0.1:9000 "$user" "$pass" >/dev/null
+unset user pass
+fail=0
+while IFS=$(printf '\t') read -r key attr; do
+  [ -n "$key" ] || continue
+  mc cp --attr "$attr" "/tmp/svgc-publish-stage/$key" "silo-root/$key" >/dev/null || fail=1
+done < /tmp/svgc-publish-stage/MANIFEST
+mc alias rm silo-root >/dev/null 2>&1 || true
+rm -rf /tmp/svgc-publish-stage
+exit $fail
+"""
+    ssh = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=40", "groot2", "bash", "-s"],
+        input=remote, capture_output=True, text=True)
+    shutil.rmtree(stage, ignore_errors=True)
+    if ssh.returncode != 0:
+        err = (ssh.stderr or ssh.stdout).strip().splitlines()
+        print(f"upload failed: {err[-1] if err else ssh.returncode}", file=sys.stderr)
+        return False
+    return True
 
 
 def main():
@@ -124,18 +182,29 @@ def main():
     for day, addr in written:
         print(f"study {day} {addr}")
     site = SITE
-    paths = [
-        (site / "data" / "latent-benders.json", f"{LIVE}/data/latent-benders.json"),
-        (site / "config" / "mainnet.json", f"{LIVE}/config/mainnet.json"),
-        (site / "studies" / "latent-benders.json", f"{LIVE}/studies/latent-benders.json"),
-    ]
-    # The pm page build is not this repo file. Do not overwrite it from here.
-    for html in (site / "cas").glob("baf*.html"):
-        paths.append((html, f"{CAS}/{html.name}"))
-        paths.append((html, f"{LIVE}/cas/{html.name}"))
-    # The static bucket key that permissionless.money/svg/ actually serves.
-    if os.environ.get("SVGC_PUBLISH") == "1":
-        upload(paths)
+    # Only the study index, the config map, and frames named by those days.
+    # Shipping every historical cas file made scp drop the connection, so the
+    # new day's study never followed the collection.
+    paths = []
+    for prefix in (LIVE, "static/svg-collections"):
+        paths.append((site / "data" / "latent-benders.json", f"{prefix}/data/latent-benders.json"))
+        paths.append((site / "config" / "mainnet.json", f"{prefix}/config/mainnet.json"))
+        paths.append((site / "studies" / "latent-benders.json", f"{prefix}/studies/latent-benders.json"))
+    data = json.loads((site / "data" / "latent-benders.json").read_text())
+    wanted = {day for day, _ in written}
+    for row in data.get("days") or []:
+        if row.get("day") not in wanted:
+            continue
+        for cid in row.get("frames") or []:
+            html = site / "cas" / f"{cid}.html"
+            if not html.exists():
+                print(f"missing frame {cid}", file=sys.stderr)
+                continue
+            paths.append((html, f"{CAS}/{cid}.html"))
+            paths.append((html, f"{LIVE}/cas/{cid}.html"))
+    # A zero exit with the study still local is what left Day 7 off the site.
+    if os.environ.get("SVGC_PUBLISH") == "1" and not upload(paths):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

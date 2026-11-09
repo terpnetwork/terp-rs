@@ -1077,8 +1077,8 @@ fn test_allof_infusion_fee() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: env.nfts[1].to_string(),
-                    have: coin(0, "uterp").into(),
-                    want: coin(200u128, "uterp")
+                    have: Box::new(coin(0, "uterp").into()),
+                    want: Box::new(coin(200u128, "uterp"))
                 }
                 .to_string()
             ),
@@ -1814,15 +1814,17 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft2.to_string(),
-                    have: coin(
-                        100u128,
-                        "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
-                    .into(),
-                    want: coin(
+                    have: Box::new(
+                        coin(
+                            100u128,
+                            "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
+                        )
+                        .into()
+                    ),
+                    want: Box::new(coin(
                         200u128,
                         "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
+                    ))
                 }
                 .to_string()
             ),
@@ -1844,15 +1846,17 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
         infuse.to_string().contains(
             &ContractError::PaymentSubstituteNotProvided {
                 col: nft2.to_string(),
-                have: coin(
-                    0,
-                    "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                )
-                .into(),
-                want: coin(
+                have: Box::new(
+                    coin(
+                        0,
+                        "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
+                    )
+                    .into()
+                ),
+                want: Box::new(coin(
                     200u128,
                     "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                )
+                ))
             }
             .to_string()
         ),
@@ -1930,15 +1934,17 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft2.to_string(),
-                    have: coin(
-                        0,
-                        "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
-                    .into(),
-                    want: coin(
+                    have: Box::new(
+                        coin(
+                            0,
+                            "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
+                        )
+                        .into()
+                    ),
+                    want: Box::new(coin(
                         200u128,
                         "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
+                    ))
                 }
                 .to_string()
             ),
@@ -2006,8 +2012,8 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft1.to_string(),
-                    have: coin(0, "uterp").into(),
-                    want: coin(200u128, "uterp")
+                    have: Box::new(coin(0, "uterp").into()),
+                    want: Box::new(coin(200u128, "uterp"))
                 }
                 .to_string()
             )
@@ -2027,8 +2033,8 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft1.to_string(),
-                    have: coin(0, "uterp").into(),
-                    want: coin(200u128, "uterp")
+                    have: Box::new(coin(0, "uterp").into()),
+                    want: Box::new(coin(200u128, "uterp"))
                 }
                 .to_string()
             )
@@ -2048,15 +2054,17 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft2.to_string(),
-                    have: coin(
-                        0,
-                        "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
-                    .into(),
-                    want: coin(
+                    have: Box::new(
+                        coin(
+                            0,
+                            "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
+                        )
+                        .into()
+                    ),
+                    want: Box::new(coin(
                         200u128,
                         "ibc/4A1C18CA7F50544760CF306189B810CE4C1CB156C7FC870143D401FE7280E591"
-                    )
+                    ))
                 }
                 .to_string()
             ),
@@ -2083,8 +2091,8 @@ fn test_allof_payment_substitute() -> anyhow::Result<()> {
             .contains(
                 &ContractError::PaymentSubstituteNotProvided {
                     col: nft3.to_string(),
-                    have: coin(0, "ubtsg").into(),
-                    want: coin(200u128, "ubtsg")
+                    have: Box::new(coin(0, "ubtsg").into()),
+                    want: Box::new(coin(200u128, "ubtsg"))
                 }
                 .to_string()
             )

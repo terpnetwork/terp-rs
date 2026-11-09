@@ -4,11 +4,14 @@ pub mod sinsemilla;
 pub mod util;
 
 #[cfg(feature = "circuit")]
-pub use self::sinsemilla::{OrchardCommitDomains, OrchardHashDomains};
+pub use self::sinsemilla::OrchardHashDomains;
+// Only the host Action circuit (circuit.rs) uses these; the guest build omits it.
+#[cfg(all(feature = "circuit", feature = "host-crypto"))]
+pub use self::sinsemilla::OrchardCommitDomains;
 #[cfg(feature = "circuit")]
-pub use fixed_bases::{
-    OrchardFixedBases, OrchardFixedBasesBase, OrchardFixedBasesFull, ValueCommitV,
-};
+pub use fixed_bases::{OrchardFixedBases, OrchardFixedBasesFull};
+#[cfg(all(feature = "circuit", feature = "host-crypto"))]
+pub use fixed_bases::{OrchardFixedBasesBase, ValueCommitV};
 
 /// $\mathsf{MerkleDepth^{Orchard}}$
 pub const MERKLE_DEPTH_ORCHARD: usize = 32;

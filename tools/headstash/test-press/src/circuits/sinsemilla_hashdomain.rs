@@ -24,7 +24,7 @@ use zk_headstash::{
     OrchardCommitDomains, OrchardFixedBases, OrchardHashDomains,
     circuit::{
         Secp256k1Chip, Secp256k1Config, Secp256k1Fp, assign_free_advice,
-        headstash_merkle_tree::{LeafHashChip, LeafHashConfig, gadgets},
+        headstash_merkle_tree::{LeafHashChip, LeafHashConfig, LeafInputs, gadgets},
     },
     value::NoteValue,
 };
@@ -164,7 +164,7 @@ impl Circuit<pallas::Base> for LeafHashTestCircuit {
             advices[6],
             lagrange_coeffs[0],
             lookup,
-            range_check.clone(),
+            range_check,
             false,
         );
 
@@ -177,7 +177,7 @@ impl Circuit<pallas::Base> for LeafHashTestCircuit {
             advices[0], advices[1], advices[2], advices[3], advices[4], advices[5], advices[6],
             advices[7], advices[8],
         ];
-        let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check.clone());
+        let secp256k1 = Secp256k1Config::configure(meta, secp_advices, range_check);
 
         (leaf_hash_config, sinsemilla_config, ecc_config, secp256k1)
     }
@@ -229,10 +229,12 @@ impl Circuit<pallas::Base> for LeafHashTestCircuit {
             ecc_chip,
             lhc.clone(),
             lo,
-            (epkx, epky),
-            fdi,
-            v,
-            nd,
+            LeafInputs {
+                epk: (epkx, epky),
+                fdi,
+                v,
+                nd,
+            },
         )?;
 
         Ok(())

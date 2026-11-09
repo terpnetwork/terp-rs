@@ -484,7 +484,7 @@ fn normalize_hex(s: &str) -> String {
 
 fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     let t = normalize_hex(s);
-    if t.len() % 2 != 0 {
+    if !t.len().is_multiple_of(2) {
         return Err(format!("odd hex length: {}", t.len()));
     }
     (0..t.len())

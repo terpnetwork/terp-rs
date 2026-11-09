@@ -381,7 +381,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
         addr: &str,
         token_name: &str,
         v: u64,
-    ) -> Result<(Vec<(u64, usize, String)>, Vec<Fp>), BoxError> {
+    ) -> Result<LeafDerivation, BoxError> {
         self.derive_leaf_poseidon_v1(addr, token_name, v)
     }
 
@@ -391,7 +391,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
         addr: &str,
         token_name: &str,
         v: u64,
-    ) -> Result<(Vec<(u64, usize, String)>, Vec<Fp>), BoxError> {
+    ) -> Result<LeafDerivation, BoxError> {
         // ---------- build work list ------------------------------------------------
         let mut work_items: Vec<u64> = Vec::new();
         let mut remainder = v;
@@ -650,7 +650,7 @@ pub trait HeadstashSinsemillaTree: HeadstashBitwiseInstance {
         addr: &str,
         token_name: &str,
         v: u64,
-    ) -> Result<(Vec<(u64, usize, String)>, Vec<Fp>), BoxError> {
+    ) -> Result<LeafDerivation, BoxError> {
         let mut work_items: Vec<u64> = Vec::new();
         let mut remainder = v;
         for &fixed_amount in FIXED_AMOUNTS.iter() {
@@ -2140,6 +2140,8 @@ pub trait HeadstashTestDataGenerator:
 // nullifier should not be impacted by randomness inputs
 // nullifier should change with different esk/epk
 //
+
+type LeafDerivation = (Vec<(u64, usize, String)>, Vec<Fp>);
 
 #[cfg(test)]
 mod test {

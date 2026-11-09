@@ -303,12 +303,11 @@ pub fn claim_from_deposit_watch(
     if obs.btc_deposit_addr != watch.btc_deposit_addr {
         return Err(ClaimFromDepositError::AddrMismatch);
     }
-    if policy.check_domain_bind_echo {
-        if let Some(ref db) = obs.domain_bind {
-            if db != &watch.domain_bind {
-                return Err(ClaimFromDepositError::DomainBindEchoMismatch);
-            }
-        }
+    if policy.check_domain_bind_echo
+        && let Some(ref db) = obs.domain_bind
+        && db != &watch.domain_bind
+    {
+        return Err(ClaimFromDepositError::DomainBindEchoMismatch);
     }
 
     // Txid
@@ -519,6 +518,7 @@ pub fn try_claim_from_env(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use terp_seams::bridge::{AssetRegistry, MintedSet, authorize_bridge_mint};
 
     fn sample_txid_hex() -> String {
         // 32 raw bytes as hex (not reversed)

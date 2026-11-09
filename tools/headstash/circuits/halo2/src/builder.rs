@@ -19,9 +19,6 @@ use crate::{
 #[cfg(feature = "host-crypto")]
 use crate::{action::Action, circuit::Circuit};
 
-#[cfg(all(feature = "circuit", not(feature = "host-crypto")))]
-use crate::{action::Action, circuit::Instance};
-
 const MIN_ACTIONS: usize = 2;
 
 // /// An enumeration of rules for Orchard bundle construction.

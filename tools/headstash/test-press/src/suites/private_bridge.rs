@@ -343,7 +343,7 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             load_or_build_happy_bridge_mint_fixture()
                 .map_err(|e| CwOrchError::StdErr(e.to_string()))?
         };
-        let world = BridgeL1World::from_fixture_doc(&doc).map_err(|e| CwOrchError::StdErr(e))?;
+        let world = BridgeL1World::from_fixture_doc(&doc).map_err(CwOrchError::StdErr)?;
         self.configure_bridge(&world, true)?;
         self.execute_bridge_mint(world.claim.clone(), world.proof.clone())?;
         let minted = self.query_is_bridge_minted(world.nullifier_bin())?;
@@ -396,9 +396,13 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
         claim: BridgeMintClaimPublic,
         proof: Binary,
     ) -> Result<<Chain as TxHandler>::Response, CwOrchError> {
-        self.headstash
-            .headstash
-            .execute(&ExecuteMsg::BridgeMintNote { claim, proof }, &[])
+        self.headstash.headstash.execute(
+            &ExecuteMsg::BridgeMintNote {
+                claim: Box::new(claim),
+                proof,
+            },
+            &[],
+        )
     }
 
     /// Query whether bridge burn ν has minted.
@@ -426,9 +430,13 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
             },
             &[],
         );
-        self.headstash
-            .headstash
-            .execute(&ExecuteMsg::BridgeEgressBurn { statement, proof }, &[])
+        self.headstash.headstash.execute(
+            &ExecuteMsg::BridgeEgressBurn {
+                statement: Box::new(statement),
+                proof,
+            },
+            &[],
+        )
     }
 
     /// Query whether egress ν is spent (`IsEgressSpent`).
@@ -492,10 +500,10 @@ impl<Chain: ZkCwEnv> PrivateBridgeSuite<Chain> {
 
         // Prefer contract address as hs_id when config still has a season placeholder.
         let mut cfg = cfg.clone();
-        if cfg.hs_id == "season-1" || cfg.hs_id.is_empty() {
-            if let Ok(addr) = self.headstash.headstash.address() {
-                cfg.hs_id = addr.to_string();
-            }
+        if (cfg.hs_id == "season-1" || cfg.hs_id.is_empty())
+            && let Ok(addr) = self.headstash.headstash.address()
+        {
+            cfg.hs_id = addr.to_string();
         }
 
         // 3–4) put_note_after_mint + get/decrypt (product call site)
@@ -585,7 +593,9 @@ impl<Chain: ZkCwEnv + CircuitUploadable> Deploy<Chain> for PrivateBridgeSuite<Ch
     }
 }
 
-#[cfg(test)]
+// Off by default: `PrivateBridgeSuite` needs `ZkTxHandler`, which cw-orch's
+// `Mock` does not implement. See the `mock-zk-tx` feature.
+#[cfg(all(test, feature = "mock-zk-tx"))]
 mod tests {
     use super::*;
     use cosmwasm_std::coins;
