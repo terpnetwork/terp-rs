@@ -373,7 +373,7 @@ jobs:
       - name: Assert validate ok via jq
         run: |
           set -euo pipefail
-          cargo run -p terp-scripts --bin terp-ibc --quiet -- validate --format json \
+          cargo run -p dao-scripts --features ibc-info --bin terp-ibc --quiet -- validate --format json \
             | tee /tmp/run_report.json
           python3 - <<'PY'
           import json
