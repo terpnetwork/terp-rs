@@ -47,4 +47,5 @@ jobs:
             echo "::notice::Path patches need the monorepo checkout. rustdoc runs under act from crates/terp-rs."
             exit 0
           fi
+          cargo fetch --locked
           cargo doc -p terp-scripts --no-deps --lib --offline

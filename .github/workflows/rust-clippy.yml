@@ -48,4 +48,5 @@ jobs:
             echo "::notice::Path patches need the monorepo checkout. clippy runs under act from crates/terp-rs."
             exit 0
           fi
+          cargo fetch --locked
           cargo clippy -p terp-scripts --tests --offline
