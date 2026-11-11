@@ -83,6 +83,51 @@
               }
             }
           },
+          "cancel_private_auction": {
+            "description": "Seller while no bid is active, or anyone after `end_time + reclaim_grace`: NFT back\nto the seller.",
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 4
+              }
+            }
+          },
+          "disclose_private_release": {
+            "description": "Optional public disclosure: publish the release OVK (checked against `ovk_tag`)\nso anyone can decrypt the payment notes and check them against `notes_cm`.",
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 4
+              },
+              "bid_id": {
+                "value": 4
+              },
+              "ovk": {
+                "value": 6
+              }
+            }
+          },
+          "finalize_private_auction": {
+            "description": "Settle to `bid_id`: `signature` by `finalize_vk` (all three parties) over the\nshielded payment record, and `payment_ref` (zap-1 `app_data_hash`) naming a\nConfirmed Zcash inclusion of the seller payment at the auction's payment client.\nMoves the NFT to the bidder.",
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 4
+              },
+              "bid_id": {
+                "value": 4
+              },
+              "payment_ref": {
+                "value": 6
+              },
+              "release": {
+                "value": 8
+              },
+              "signature": {
+                "value": 6
+              }
+            }
+          },
           "place_bid": {
             "type": "named",
             "properties": {
@@ -91,11 +136,36 @@
               }
             }
           },
+          "place_private_bid": {
+            "description": "Escrow note commitment + amount commitment (both hidden) + two FROST group keys.",
+            "type": "tuple",
+            "items": [
+              5
+            ]
+          },
           "receive_nft": {
             "type": "tuple",
             "items": [
               1
             ]
+          },
+          "reclaim_private_bid": {
+            "description": "Close the bid and record its shielded refund. `signature` by `reclaim_vk` (bidder +\nplatform), or none from the bidder once the auction closed or the grace period passed.",
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 4
+              },
+              "bid_id": {
+                "value": 4
+              },
+              "release": {
+                "value": 8
+              },
+              "signature": {
+                "value": 7
+              }
+            }
           },
           "settle": {
             "type": "named",
@@ -136,6 +206,88 @@
         "type": "integer",
         "precision": 64,
         "signed": false
+      },
+      {
+        "name": "svg_auction_private_PlacePrivateBid",
+        "type": "struct",
+        "properties": {
+          "auction_id": {
+            "value": 4
+          },
+          "commitment": {
+            "description": "blake2b(COMMIT_DOMAIN || auction_id || bidder || escrow_cm || amount_zat || salt).",
+            "value": 6
+          },
+          "dkg_transcript": {
+            "description": "Optional hash of the DKG transcript (identifier -> party map), bound in both\nbind digests so all three parties attest the same share allocation.",
+            "value": 7
+          },
+          "escrow_cm": {
+            "description": "Note commitment of the shielded ZEC escrow note, spendable by `reclaim_vk`.",
+            "value": 6
+          },
+          "finalize_bind_sig": {
+            "description": "Signature by `finalize_vk` over the `BindFinalize` digest.",
+            "value": 6
+          },
+          "finalize_vk": {
+            "description": "32-byte FROST-Ed25519 group key, 6-of-6.",
+            "value": 6
+          },
+          "memo_cm": {
+            "description": "`blake2b(memo_preimage(chain, contract, auction_id, bid_index))`, bid_index = the\nbid id this bid will get. The contract recomputes it.",
+            "value": 6
+          },
+          "ovk_tag": {
+            "description": "`blake2b(OVK_DOMAIN || ovk)` of the bid's OVK; every release must use it.",
+            "value": 6
+          },
+          "reclaim_bind_sig": {
+            "description": "Signature by `reclaim_vk` over the `BindReclaim` digest.",
+            "value": 6
+          },
+          "reclaim_vk": {
+            "description": "32-byte FROST-Ed25519 group key, 5-of-6.",
+            "value": 6
+          },
+          "sealed_bid": {
+            "description": "Seller view envelope: `eph_pk || nonce || XChaCha20-Poly1305(ovk, amount, salt)`\nto `seller_view_pk`, AAD `memo_cm` (see SPEC \"seller view\").",
+            "value": 3
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_hex_binary_HexBinary",
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "hexBinary"
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+        "type": "optional",
+        "inner": 6
+      },
+      {
+        "name": "svg_auction_private_ShieldedRelease",
+        "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+        "type": "struct",
+        "properties": {
+          "notes_cm": {
+            "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte\nSEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note\ncarries a random `rcm`, so the commitment hides values and destinations.",
+            "value": 6
+          },
+          "ovk_ciphertext": {
+            "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+            "value": 3
+          },
+          "ovk_tag": {
+            "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+            "value": 6
+          },
+          "payment_cm": {
+            "description": "Finalize only: note commitment of the seller's payment output, which the payment\nclient must attest as included on Zcash.",
+            "value": 7
+          }
+        }
       }
     ]
   },
@@ -195,6 +347,87 @@
                 "value": 2
               }
             }
+          },
+          "private_auction": {
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 1
+              }
+            }
+          },
+          "private_bids": {
+            "type": "named",
+            "properties": {
+              "auction_id": {
+                "value": 1
+              },
+              "limit": {
+                "value": 5
+              },
+              "start_after": {
+                "value": 3
+              }
+            }
+          },
+          "private_nft_auction": {
+            "description": "Open private auction for a token, if any.",
+            "type": "named",
+            "properties": {
+              "nft_contract": {
+                "value": 2
+              },
+              "token_id": {
+                "value": 2
+              }
+            }
+          },
+          "private_policy": {
+            "description": "Share allocation and thresholds used by private bids.",
+            "type": "named",
+            "properties": {}
+          },
+          "private_signing_digest": {
+            "description": "The 32-byte digest a FROST group signs for `action`.",
+            "type": "named",
+            "properties": {
+              "action": {
+                "value": 6
+              },
+              "auction_id": {
+                "value": 1
+              },
+              "bid_id": {
+                "value": 3
+              },
+              "bidder": {
+                "value": 2
+              },
+              "commitment": {
+                "value": 7
+              },
+              "dkg_transcript": {
+                "value": 8
+              },
+              "escrow_cm": {
+                "value": 7
+              },
+              "finalize_vk": {
+                "value": 7
+              },
+              "memo_cm": {
+                "value": 7
+              },
+              "ovk_tag": {
+                "value": 7
+              },
+              "reclaim_vk": {
+                "value": 7
+              },
+              "release": {
+                "value": 11
+              }
+            }
           }
         }
       },
@@ -223,6 +456,71 @@
         "name": "core::option::Option<u32>",
         "type": "optional",
         "inner": 4
+      },
+      {
+        "name": "svg_auction_private_PrivateAction",
+        "type": "enum",
+        "cases": {
+          "bind_finalize": {
+            "description": "Proof-of-possession of `finalize_vk` at bid time (6-of-6 => B, P and S present).",
+            "type": "unit"
+          },
+          "bind_reclaim": {
+            "description": "Proof-of-possession of `reclaim_vk` at bid time (5-of-6 => B and P present).",
+            "type": "unit"
+          },
+          "finalize": {
+            "description": "Settle the auction to this bid and record the shielded payment (`finalize_vk`).",
+            "type": "unit"
+          },
+          "reclaim": {
+            "description": "Close the bid and record the shielded refund (signed by `reclaim_vk`).",
+            "type": "unit"
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_hex_binary_HexBinary",
+        "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "hexBinary"
+      },
+      {
+        "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+        "type": "optional",
+        "inner": 7
+      },
+      {
+        "name": "svg_auction_private_ShieldedRelease",
+        "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+        "type": "struct",
+        "properties": {
+          "notes_cm": {
+            "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte\nSEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note\ncarries a random `rcm`, so the commitment hides values and destinations.",
+            "value": 7
+          },
+          "ovk_ciphertext": {
+            "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+            "value": 10
+          },
+          "ovk_tag": {
+            "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+            "value": 7
+          },
+          "payment_cm": {
+            "description": "Finalize only: note commitment of the seller's payment output, which the payment\nclient must attest as included on Zcash.",
+            "value": 8
+          }
+        }
+      },
+      {
+        "name": "cosmwasm_std_binary_Binary",
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "binary"
+      },
+      {
+        "name": "core::option::Option<svg_auction::private::ShieldedRelease>",
+        "type": "optional",
+        "inner": 9
       }
     ]
   },
@@ -669,6 +967,409 @@
           "name": "core::option::Option<svg_auction::AuctionResponse>",
           "type": "optional",
           "inner": 0
+        }
+      ]
+    },
+    "private_auction": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "svg_auction_private_PrivateAuction",
+          "type": "struct",
+          "properties": {
+            "active_bids": {
+              "description": "Bids neither reclaimed nor won. The seller may only cancel at zero.",
+              "value": 1
+            },
+            "auction_id": {
+              "value": 1
+            },
+            "bid_count": {
+              "value": 1
+            },
+            "end_time": {
+              "value": 5
+            },
+            "nft_contract": {
+              "value": 2
+            },
+            "payment_client": {
+              "value": 2
+            },
+            "reclaim_grace": {
+              "value": 1
+            },
+            "seller": {
+              "value": 2
+            },
+            "seller_view_pk": {
+              "value": 4
+            },
+            "start_time": {
+              "value": 5
+            },
+            "status": {
+              "value": 6
+            },
+            "token_id": {
+              "value": 3
+            },
+            "winning_bid": {
+              "value": 7
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "svg_auction_private_PrivateStatus",
+          "type": "enum",
+          "cases": {
+            "cancelled": {
+              "type": "unit"
+            },
+            "finalized": {
+              "type": "unit"
+            },
+            "open": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<u64>",
+          "type": "optional",
+          "inner": 1
+        }
+      ]
+    },
+    "private_bids": {
+      "type": "v1",
+      "root": 10,
+      "definitions": [
+        {
+          "name": "svg_auction_private_PrivateBid",
+          "type": "struct",
+          "properties": {
+            "bid_id": {
+              "value": 1
+            },
+            "bidder": {
+              "value": 2
+            },
+            "commitment": {
+              "value": 3
+            },
+            "disclosed_ovk": {
+              "description": "Set once someone publishes the release OVK.",
+              "value": 5
+            },
+            "dkg_transcript": {
+              "value": 5
+            },
+            "escrow_cm": {
+              "value": 3
+            },
+            "finalize_vk": {
+              "value": 3
+            },
+            "memo_cm": {
+              "value": 3
+            },
+            "ovk_tag": {
+              "value": 3
+            },
+            "placed_at": {
+              "value": 6
+            },
+            "reclaim_vk": {
+              "value": 3
+            },
+            "release": {
+              "description": "Refund (reclaimed) or payment (won) record.",
+              "value": 9
+            },
+            "sealed_bid": {
+              "value": 4
+            },
+            "status": {
+              "value": 7
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cosmwasm_std_binary_Binary",
+          "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "binary"
+        },
+        {
+          "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+          "type": "optional",
+          "inner": 3
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "svg_auction_private_BidStatus",
+          "type": "enum",
+          "cases": {
+            "active": {
+              "type": "unit"
+            },
+            "reclaimed": {
+              "type": "unit"
+            },
+            "won": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "svg_auction_private_ShieldedRelease",
+          "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+          "type": "struct",
+          "properties": {
+            "notes_cm": {
+              "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte\nSEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note\ncarries a random `rcm`, so the commitment hides values and destinations.",
+              "value": 3
+            },
+            "ovk_ciphertext": {
+              "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+              "value": 4
+            },
+            "ovk_tag": {
+              "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+              "value": 3
+            },
+            "payment_cm": {
+              "description": "Finalize only: note commitment of the seller's payment output, which the payment\nclient must attest as included on Zcash.",
+              "value": 5
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<svg_auction::private::ShieldedRelease>",
+          "type": "optional",
+          "inner": 8
+        },
+        {
+          "name": "alloc::vec::Vec<svg_auction::private::PrivateBid>",
+          "type": "array",
+          "items": 0
+        }
+      ]
+    },
+    "private_nft_auction": {
+      "type": "v1",
+      "root": 8,
+      "definitions": [
+        {
+          "name": "svg_auction_private_PrivateAuction",
+          "type": "struct",
+          "properties": {
+            "active_bids": {
+              "description": "Bids neither reclaimed nor won. The seller may only cancel at zero.",
+              "value": 1
+            },
+            "auction_id": {
+              "value": 1
+            },
+            "bid_count": {
+              "value": 1
+            },
+            "end_time": {
+              "value": 5
+            },
+            "nft_contract": {
+              "value": 2
+            },
+            "payment_client": {
+              "value": 2
+            },
+            "reclaim_grace": {
+              "value": 1
+            },
+            "seller": {
+              "value": 2
+            },
+            "seller_view_pk": {
+              "value": 4
+            },
+            "start_time": {
+              "value": 5
+            },
+            "status": {
+              "value": 6
+            },
+            "token_id": {
+              "value": 3
+            },
+            "winning_bid": {
+              "value": 7
+            }
+          }
+        },
+        {
+          "name": "u64",
+          "type": "integer",
+          "precision": 64,
+          "signed": false
+        },
+        {
+          "name": "cosmwasm_std_addresses_Addr",
+          "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+          "type": "address"
+        },
+        {
+          "name": "String",
+          "type": "string"
+        },
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
+        },
+        {
+          "name": "cosmwasm_std_timestamp_Timestamp",
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+          "type": "timestamp"
+        },
+        {
+          "name": "svg_auction_private_PrivateStatus",
+          "type": "enum",
+          "cases": {
+            "cancelled": {
+              "type": "unit"
+            },
+            "finalized": {
+              "type": "unit"
+            },
+            "open": {
+              "type": "unit"
+            }
+          }
+        },
+        {
+          "name": "core::option::Option<u64>",
+          "type": "optional",
+          "inner": 1
+        },
+        {
+          "name": "core::option::Option<svg_auction::private::PrivateAuction>",
+          "type": "optional",
+          "inner": 0
+        }
+      ]
+    },
+    "private_policy": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "svg_auction_private_PrivatePolicyResponse",
+          "type": "struct",
+          "properties": {
+            "bidder_shares": {
+              "value": 1
+            },
+            "commit_domain": {
+              "value": 2
+            },
+            "finalize_threshold": {
+              "value": 1
+            },
+            "memo_domain": {
+              "value": 2
+            },
+            "notes_domain": {
+              "value": 2
+            },
+            "ovk_domain": {
+              "value": 2
+            },
+            "payment_memo_prefix": {
+              "value": 2
+            },
+            "platform_shares": {
+              "value": 1
+            },
+            "reclaim_threshold": {
+              "value": 1
+            },
+            "seller_shares": {
+              "value": 1
+            },
+            "sign_domain": {
+              "value": 2
+            },
+            "total_shares": {
+              "value": 1
+            }
+          }
+        },
+        {
+          "name": "u16",
+          "type": "integer",
+          "precision": 16,
+          "signed": false
+        },
+        {
+          "name": "String",
+          "type": "string"
+        }
+      ]
+    },
+    "private_signing_digest": {
+      "type": "v1",
+      "root": 0,
+      "definitions": [
+        {
+          "name": "cosmwasm_std_hex_binary_HexBinary",
+          "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+          "type": "hexBinary"
         }
       ]
     }

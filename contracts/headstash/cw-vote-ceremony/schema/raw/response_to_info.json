@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InfoResponse",
+  "type": "object",
+  "required": [
+    "info"
+  ],
+  "properties": {
+    "info": {
+      "$ref": "#/definitions/ContractVersion"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ContractVersion": {
+      "type": "object",
+      "required": [
+        "contract",
+        "version"
+      ],
+      "properties": {
+        "contract": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

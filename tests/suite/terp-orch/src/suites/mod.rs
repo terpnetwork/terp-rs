@@ -20,3 +20,7 @@ pub mod nftfi;
 pub mod shitstrap;
 #[cfg(feature = "stack")]
 pub mod svg;
+
+/// Privacy products: LC registry, seams, bridge, auctions, zk-voting slots.
+#[cfg(feature = "privacy")]
+pub mod privacy;

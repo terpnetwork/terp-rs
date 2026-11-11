@@ -9,6 +9,7 @@
 //! - ROUND2: SEAM sketch → SwapAction compose + AssetMap registry view
 //! - Option D pure egress: `egress` module (`EGRESS_NF_LABEL`, validate/apply burn)
 //! - SEAM-NOTE-OUT + persist: [`note`] (was crate `seam_note_out`)
+//! - Escrow release auth (TC01 / FE01) in `egress`; Omni LP seed in [`lp_seed`]
 
 #![deny(unsafe_code)]
 
@@ -17,15 +18,30 @@ pub use crate::domain::{
     POOL_NF_LABEL, PRICE_SCALE,
 };
 
-mod egress;
+pub mod egress;
+pub mod lp_seed;
 pub mod note;
 
 pub use egress::{
     DEPOSIT_NU_LABEL, DestKind, EGRESS_NF_LABEL, EgressBurnEvidenceV0, EgressBurnPublic,
-    EgressBurnV0, EgressBurnWitness, EgressError, EgressResult, EgressSeamState, SettleLikeOpening,
-    SettleNoteFields, ZecEgressReceiptV0, apply_egress_burn, build_egress_burn_from_settle,
-    egress_nullifier, hex32, lab_receipt_after_burn, settle_opening_from_note_fields,
-    synthetic_deposit_nu, validate_egress_burn,
+    EgressBurnV0, EgressBurnWitness, EgressError, EgressResult, EgressSeamState,
+    EscrowReleaseError, MODE_FROST_ESCROW_RELEASE, MODE_FROST_ESCROW_RELEASE_SIMULATED,
+    MODE_THRESHOLD_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED, SettleLikeOpening,
+    SettleNoteFields, ThresholdEscrowAuth, ZecEgressReceiptV0, apply_egress_burn,
+    authorize_escrow_release, build_egress_burn_from_settle, egress_nullifier, hex32,
+    is_committee_escrow_release_mode, lab_receipt_after_burn, reject_funder_only_as_product,
+    settle_opening_from_note_fields, synthetic_deposit_nu, validate_egress_burn,
+};
+
+// Omni LP seed (recovered from 491ae651; see lp_seed.rs header).
+pub use lp_seed::{
+    CONSERVATION_CLASS_BTC_DEPOSIT, CONSERVATION_CLASS_ESCROW_LOCK, DualHomePrepV0,
+    EscrowLiabilityV0, LP_NF_LABEL, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
+    LpBridgeMintV0, LpSeedError, LpSeedPublic, LpSeedReceiptV0, LpSeedResult, LpSeedState,
+    OMNI_LP_BTC, OMNI_LP_ZEC, OMNI_USER_BTC, PoolSeedPolicy, apply_lp_seed,
+    assert_mint_does_not_bump_reserves, authorize_create_pool_reserves,
+    bootstrap_omni_liquidity_pure, mint_lp_btc_note, mint_lp_zec_note,
+    reject_magic_pool_under_bridged_policy, synthetic_bridge_ingress_nf, synthetic_lp_seed_nf,
 };
 
 use std::collections::{HashMap, HashSet};

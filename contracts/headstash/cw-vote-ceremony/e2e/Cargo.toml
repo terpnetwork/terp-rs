@@ -8,3 +8,9 @@ description = "TerpArtifactStack field check for this contract."
 [dependencies]
 cw-orch = { workspace = true }
 terp-orch = { workspace = true, features = ["stack"] }
+
+
+[dev-dependencies]
+# Flows live in terp-orch `suites::privacy` (shared with the unified ict-rs suite).
+terp-orch = { workspace = true, features = ["privacy"] }
+anyhow = { workspace = true }

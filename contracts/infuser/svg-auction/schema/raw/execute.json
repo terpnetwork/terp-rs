@@ -82,6 +82,163 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Escrow note commitment + amount commitment (both hidden) + two FROST group keys.",
+      "type": "object",
+      "required": [
+        "place_private_bid"
+      ],
+      "properties": {
+        "place_private_bid": {
+          "$ref": "#/definitions/PlacePrivateBid"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Close the bid and record its shielded refund. `signature` by `reclaim_vk` (bidder + platform), or none from the bidder once the auction closed or the grace period passed.",
+      "type": "object",
+      "required": [
+        "reclaim_private_bid"
+      ],
+      "properties": {
+        "reclaim_private_bid": {
+          "type": "object",
+          "required": [
+            "auction_id",
+            "bid_id",
+            "release"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "bid_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "release": {
+              "$ref": "#/definitions/ShieldedRelease"
+            },
+            "signature": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/HexBinary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Settle to `bid_id`: `signature` by `finalize_vk` (all three parties) over the shielded payment record, and `payment_ref` (zap-1 `app_data_hash`) naming a Confirmed Zcash inclusion of the seller payment at the auction's payment client. Moves the NFT to the bidder.",
+      "type": "object",
+      "required": [
+        "finalize_private_auction"
+      ],
+      "properties": {
+        "finalize_private_auction": {
+          "type": "object",
+          "required": [
+            "auction_id",
+            "bid_id",
+            "payment_ref",
+            "release",
+            "signature"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "bid_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "payment_ref": {
+              "$ref": "#/definitions/HexBinary"
+            },
+            "release": {
+              "$ref": "#/definitions/ShieldedRelease"
+            },
+            "signature": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Optional public disclosure: publish the release OVK (checked against `ovk_tag`) so anyone can decrypt the payment notes and check them against `notes_cm`.",
+      "type": "object",
+      "required": [
+        "disclose_private_release"
+      ],
+      "properties": {
+        "disclose_private_release": {
+          "type": "object",
+          "required": [
+            "auction_id",
+            "bid_id",
+            "ovk"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "bid_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "ovk": {
+              "$ref": "#/definitions/HexBinary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Seller while no bid is active, or anyone after `end_time + reclaim_grace`: NFT back to the seller.",
+      "type": "object",
+      "required": [
+        "cancel_private_auction"
+      ],
+      "properties": {
+        "cancel_private_auction": {
+          "type": "object",
+          "required": [
+            "auction_id"
+          ],
+          "properties": {
+            "auction_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -105,6 +262,163 @@
         },
         "token_id": {
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "HexBinary": {
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "string"
+    },
+    "PlacePrivateBid": {
+      "type": "object",
+      "required": [
+        "auction_id",
+        "commitment",
+        "escrow_cm",
+        "finalize_bind_sig",
+        "finalize_vk",
+        "memo_cm",
+        "ovk_tag",
+        "reclaim_bind_sig",
+        "reclaim_vk",
+        "sealed_bid"
+      ],
+      "properties": {
+        "auction_id": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "commitment": {
+          "description": "blake2b(COMMIT_DOMAIN || auction_id || bidder || escrow_cm || amount_zat || salt).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "dkg_transcript": {
+          "description": "Optional hash of the DKG transcript (identifier -> party map), bound in both bind digests so all three parties attest the same share allocation.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "escrow_cm": {
+          "description": "Note commitment of the shielded ZEC escrow note, spendable by `reclaim_vk`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "finalize_bind_sig": {
+          "description": "Signature by `finalize_vk` over the `BindFinalize` digest.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "finalize_vk": {
+          "description": "32-byte FROST-Ed25519 group key, 6-of-6.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "memo_cm": {
+          "description": "`blake2b(memo_preimage(chain, contract, auction_id, bid_index))`, bid_index = the bid id this bid will get. The contract recomputes it.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)` of the bid's OVK; every release must use it.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "reclaim_bind_sig": {
+          "description": "Signature by `reclaim_vk` over the `BindReclaim` digest.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "reclaim_vk": {
+          "description": "32-byte FROST-Ed25519 group key, 5-of-6.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "sealed_bid": {
+          "description": "Seller view envelope: `eph_pk || nonce || XChaCha20-Poly1305(ovk, amount, salt)` to `seller_view_pk`, AAD `memo_cm` (see SPEC \"seller view\").",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ShieldedRelease": {
+      "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+      "type": "object",
+      "required": [
+        "notes_cm",
+        "ovk_ciphertext",
+        "ovk_tag"
+      ],
+      "properties": {
+        "notes_cm": {
+          "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte SEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note carries a random `rcm`, so the commitment hides values and destinations.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "ovk_ciphertext": {
+          "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            }
+          ]
+        },
+        "payment_cm": {
+          "description": "Finalize only: note commitment of the seller's payment output, which the payment client must attest as included on Zcash.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/HexBinary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

@@ -2451,6 +2451,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
 dependencies = [
  "hybrid-array",
+ "zeroize",
 ]
 
 [[package]]
@@ -2791,6 +2792,7 @@ dependencies = [
  "cipher 0.5.2",
  "cpufeatures 0.3.1",
  "rand_core 0.10.1",
+ "zeroize",
 ]
 
 [[package]]
@@ -2816,6 +2818,7 @@ dependencies = [
  "chacha20 0.10.2",
  "cipher 0.5.2",
  "poly1305 0.9.1",
+ "zeroize",
 ]
 
 [[package]]
@@ -2901,6 +2904,7 @@ dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
  "inout 0.2.5",
+ "zeroize",
 ]
 
 [[package]]
@@ -4175,6 +4179,87 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-lc-aggregator"
+version = "0.0.1"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-lc-registry",
+ "cw-lc-rotation",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "ed25519-dalek",
+ "frost_escrow",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.21",
+ "threshold_committee",
+]
+
+[[package]]
+name = "cw-lc-registry"
+version = "0.0.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "ed25519-dalek",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "cw-lc-rotation"
+version = "0.0.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-lc-registry",
+ "cw-orch",
+ "cw-storage-plus",
+ "cw2",
+ "frost_escrow",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.21",
+ "threshold_committee",
+]
+
+[[package]]
+name = "cw-lc-zcash"
+version = "0.0.1"
+dependencies = [
+ "abstract-cw-multi-test",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-vm",
+ "cw-ics08-wasm-zap1",
+ "cw-lc-aggregator",
+ "cw-lc-registry",
+ "cw-lc-rotation",
+ "cw-orch",
+ "cw-private-dex",
+ "cw-storage-plus",
+ "cw2",
+ "ed25519-dalek",
+ "frost_escrow",
+ "hex",
+ "schemars 0.8.22",
+ "serde",
+ "thiserror 2.0.21",
+ "threshold_committee",
+ "zap1-verify",
+]
+
+[[package]]
 name = "cw-norick"
 version = "0.2.0"
 dependencies = [
@@ -5012,16 +5097,21 @@ dependencies = [
  "cosmwasm-std",
  "cw-orch",
  "cw-storage-plus",
+ "frost-ed25519",
+ "rand 0.10.3",
+ "rand 0.8.8",
  "schemars 0.8.22",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "zakura-reddsa",
 ]
 
 [[package]]
 name = "cw-vote-ceremony-e2e"
 version = "0.0.2"
 dependencies = [
+ "anyhow",
  "cw-orch",
  "terp-orch",
 ]
@@ -5286,6 +5376,7 @@ dependencies = [
  "hmac 0.12.1",
  "rand_core 0.6.4",
  "schemars 0.8.22",
+ "secp256k1 0.31.1",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -7749,6 +7840,7 @@ version = "0.1.0"
 dependencies = [
  "frost-ed25519",
  "hex",
+ "rand_core 0.6.4",
  "sha2 0.10.9",
  "thiserror 2.0.21",
  "threshold_committee",
@@ -14898,16 +14990,21 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cosmwasm-vm",
  "cw-orch",
  "cw-storage-plus",
+ "frost-ed25519",
+ "rand 0.8.8",
  "serde",
  "thiserror 2.0.21",
+ "zap1-verify",
 ]
 
 [[package]]
 name = "svg-auction-e2e"
 version = "0.0.2"
 dependencies = [
+ "anyhow",
  "cw-orch",
  "cw-orch-kms",
  "terp-orch",
@@ -15732,16 +15829,19 @@ dependencies = [
 name = "terp-orch"
 version = "0.0.2"
 dependencies = [
+ "abstract-cw-multi-test",
  "abstract-interface",
  "abstract-std",
  "anyhow",
  "av-event-helpers",
+ "chacha20poly1305 0.10.1",
  "clap",
  "cosmos-sdk-proto",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-vm",
  "crosslink-light-client",
+ "curve25519-dalek",
  "cw-ave",
  "cw-ave-factory",
  "cw-cashu-registry",
@@ -15752,6 +15852,8 @@ dependencies = [
  "cw-ics08-wasm-terp",
  "cw-ics08-wasm-zap1",
  "cw-infuser",
+ "cw-lc-registry",
+ "cw-lc-zcash",
  "cw-norick",
  "cw-nullifier-auth",
  "cw-nullifier-gate",
@@ -15765,15 +15867,29 @@ dependencies = [
  "cw-shit-denom",
  "cw-shitstrap",
  "cw-shitstrap-factory",
+ "cw-svg",
  "cw-svg-minter",
+ "cw-utils",
  "cw-vote-anchor",
  "cw-vote-ceremony",
  "cw-zk-verify-demo",
+ "cw4",
+ "cw4-group",
  "cw420",
+ "cw721",
  "cw721-svg",
+ "dao-dao-core",
+ "dao-interface",
+ "dao-pre-propose-single",
+ "dao-proposal-single",
  "dao-testing",
+ "dao-voting",
+ "dao-voting-cw4",
  "dotenvy",
+ "ed25519-dalek",
  "env_logger 0.11.11",
+ "frost-ed25519",
+ "frost_escrow",
  "hex",
  "hm-loyalty-whitelist",
  "hm-nft-minter",
@@ -15790,6 +15906,7 @@ dependencies = [
  "ownership-verifier",
  "polytone-any-proxy",
  "rand 0.10.3",
+ "rand 0.8.8",
  "revenue-marketplace",
  "revenue-reserve-auction",
  "serde",
@@ -15804,11 +15921,17 @@ dependencies = [
  "terp-dao",
  "terp-dregg",
  "terp-frost",
+ "terp-seams",
  "terp-zktls",
  "terp721-account",
  "terp721-account-manifold",
+ "threshold_committee",
+ "tokio",
  "trusted-builder-sbt",
+ "voting-circuits-zakura",
  "whitelist-mtree",
+ "zakura-halo2-proofs",
+ "zakura-reddsa",
  "zk-cosmwasm",
  "zk-headstash",
 ]
@@ -15978,6 +16101,7 @@ version = "0.1.0"
 dependencies = [
  "chacha20poly1305 0.10.1",
  "clap",
+ "frost_escrow",
  "hex",
  "k256 0.14.0",
  "rand_core 0.6.4",
@@ -15985,6 +16109,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "threshold_committee",
 ]
 
 [[package]]
@@ -16193,6 +16318,8 @@ name = "threshold_committee"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "k256",
+ "rand_core 0.6.4",
  "sha2 0.10.9",
  "thiserror 2.0.21",
 ]
@@ -16567,6 +16694,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "voting-circuits-zakura"
+version = "0.10.0"
+dependencies = [
+ "blake2b_simd",
+ "ff 0.14.0",
+ "group 0.14.0",
+ "incrementalmerkletree 0.8.2",
+ "itertools 0.14.0",
+ "lazy_static",
+ "rand 0.10.3",
+ "zakura-halo2-gadgets",
+ "zakura-halo2-poseidon",
+ "zakura-halo2-proofs",
+ "zakura-orchard",
+ "zakura-pasta-curves",
+ "zakura-sinsemilla",
 ]
 
 [[package]]
@@ -18038,6 +18184,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "zakura-bento"
+version = "0.1.0"
+dependencies = [
+ "zakura-bento-core",
+ "zakura-bento-macros",
+]
+
+[[package]]
+name = "zakura-bento-core"
+version = "0.1.0"
+
+[[package]]
+name = "zakura-bento-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+ "zakura-bento-core",
+]
+
+[[package]]
 name = "zakura-bls12-381"
 version = "5.0.0-rc.3"
 dependencies = [
@@ -18095,6 +18264,56 @@ dependencies = [
 ]
 
 [[package]]
+name = "zakura-note-encryption"
+version = "5.0.0-rc.3"
+dependencies = [
+ "chacha20 0.10.2",
+ "chacha20poly1305 0.11.0",
+ "cipher 0.5.2",
+ "rand_core 0.10.1",
+ "subtle",
+]
+
+[[package]]
+name = "zakura-orchard"
+version = "5.0.0-rc.3"
+dependencies = [
+ "aes 0.9.3",
+ "blake2b_simd",
+ "corez",
+ "fpe 0.7.0",
+ "getset",
+ "hex",
+ "incrementalmerkletree 0.8.2",
+ "nonempty 0.11.0",
+ "once_cell",
+ "rand 0.10.3",
+ "serde",
+ "subtle",
+ "tracing",
+ "zakura-note-encryption",
+ "zakura-orchard-legacy",
+ "zakura-sensei",
+ "zcash_spec",
+ "zeroize",
+ "zip32 0.2.1",
+]
+
+[[package]]
+name = "zakura-orchard-legacy"
+version = "5.0.0-rc.3"
+dependencies = [
+ "ff 0.14.0",
+ "group 0.14.0",
+ "zakura-halo2-gadgets",
+ "zakura-halo2-poseidon",
+ "zakura-halo2-proofs",
+ "zakura-pasta-curves",
+ "zakura-reddsa",
+ "zakura-sinsemilla",
+]
+
+[[package]]
 name = "zakura-pasta-curves"
 version = "5.0.0-rc.3"
 dependencies = [
@@ -18123,6 +18342,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "zakura-sensei"
+version = "0.1.0"
+dependencies = [
+ "blake2b_simd",
+ "once_cell",
+ "rand 0.10.3",
+ "subtle",
+ "zakura-bento",
+ "zakura-sensei-artifacts",
+ "zakura-sensei-macros",
+ "zakura-sensei-shared",
+ "zakura-udon",
+]
+
+[[package]]
+name = "zakura-sensei-artifacts"
+version = "0.1.0"
+dependencies = [
+ "zakura-bento",
+ "zakura-sensei-shared",
+ "zakura-udon",
+]
+
+[[package]]
+name = "zakura-sensei-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
+ "zakura-sensei-shared",
+]
+
+[[package]]
+name = "zakura-sensei-shared"
+version = "0.1.0"
+dependencies = [
+ "zakura-bento",
+ "zakura-udon",
+]
+
+[[package]]
 name = "zakura-sinsemilla"
 version = "5.0.0-rc.3"
 dependencies = [
@@ -18130,6 +18391,14 @@ dependencies = [
  "once_cell",
  "subtle",
  "zakura-pasta-curves",
+]
+
+[[package]]
+name = "zakura-udon"
+version = "0.2.0"
+dependencies = [
+ "cc",
+ "zakura-bento",
 ]
 
 [[package]]
@@ -18853,7 +19122,3 @@ version = "3.0.0"
 [[patch.unused]]
 name = "halo2-base"
 version = "0.4.1"
-
-[[patch.unused]]
-name = "zakura-orchard"
-version = "5.0.0-rc.3"

@@ -1,0 +1,105 @@
+{
+  "type": "v1",
+  "root": 0,
+  "definitions": [
+    {
+      "name": "cw_vote_ceremony_zk_ZkConfig",
+      "type": "struct",
+      "properties": {
+        "anchor_registry": {
+          "value": 5
+        },
+        "cast_circuit_key": {
+          "value": 4
+        },
+        "cast_zkid": {
+          "value": 2
+        },
+        "dao": {
+          "value": 1
+        },
+        "quorum_bps": {
+          "value": 7
+        },
+        "require_rvpk_sig": {
+          "value": 8
+        },
+        "tally": {
+          "value": 6
+        },
+        "threshold_bps": {
+          "value": 7
+        },
+        "voting_module": {
+          "value": 1
+        },
+        "voting_period": {
+          "value": 2
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+      "type": "optional",
+      "inner": 3
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::addresses::Addr>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "cw_vote_ceremony_zk_TallyAuth",
+      "type": "enum",
+      "cases": {
+        "circuit": {
+          "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+          "type": "named",
+          "properties": {
+            "circuit_key": {
+              "value": 4
+            },
+            "zkid": {
+              "value": 2
+            }
+          }
+        },
+        "committee": {
+          "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+          "type": "named",
+          "properties": {
+            "group_vk": {
+              "value": 3
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u16",
+      "type": "integer",
+      "precision": 16,
+      "signed": false
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    }
+  ]
+}

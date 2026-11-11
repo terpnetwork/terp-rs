@@ -521,13 +521,21 @@ pub fn lp_mint_log_line(kind: &str, mint: &LpBridgeMintV0) -> String {
 // Re-export fixture constants for suite/binary.
 pub use terp_seams::dex::{OMNI_LP_BTC as FIXTURE_LP_BTC, OMNI_LP_ZEC as FIXTURE_LP_ZEC};
 
+/// Process-wide lock for every harness test that mutates `CORRIDOR_*` env
+/// (omni_lp_seed, omni_dual_home, lab_pay_zec, egress_d). Per-module locks do
+/// not serialize across modules, and `cargo test` runs modules in parallel, so
+/// an omni-profile pin in one module could flip the release mode another
+/// module's test resolves (seen as `frost_escrow_spend_simulated` in
+/// `egress_d::option_d_after_settle_happy_pure_labeled`).
+#[cfg(test)]
+pub(crate) static CORRIDOR_TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
 
     /// Serialize env-mutating tests (process env is global).
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    use super::CORRIDOR_TEST_ENV_LOCK as ENV_LOCK;
 
     struct EnvGuard {
         keys: Vec<(&'static str, Option<String>)>,

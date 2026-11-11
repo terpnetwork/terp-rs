@@ -14,6 +14,11 @@
           "defaulting": true,
           "description": "Default max nullifiers per MarkSpent call.",
           "value": 3
+        },
+        "zk_proposals": {
+          "defaulting": true,
+          "description": "Enable the zk proposal module (DAO DAO proposal-module mode).",
+          "value": 11
         }
       }
     },
@@ -31,6 +36,109 @@
       "type": "integer",
       "precision": 32,
       "signed": false
+    },
+    {
+      "name": "cw_vote_ceremony_zk_ZkModuleInit",
+      "type": "struct",
+      "properties": {
+        "anchor_registry": {
+          "description": "cw-vote-anchor registry; when set, proposals must take their root from it.",
+          "value": 2
+        },
+        "cast_circuit_key": {
+          "description": "Expected 72-byte wasmvm circuit key. When set, its footer prefix is checked\n(prover 0, curve 2, k 14) and it must equal `CircuitInfo { zk_id }` on chain.",
+          "value": 7
+        },
+        "cast_zkid": {
+          "description": "zkid of the stored vote-sdk `vote_proof` circuit.",
+          "value": 5
+        },
+        "dao": {
+          "description": "Defaults to the instantiator (dao-core when added via UpdateProposalModules).",
+          "value": 2
+        },
+        "quorum_bps": {
+          "description": "Turnout (yes + no + abstain) of total power in basis points.",
+          "value": 9
+        },
+        "require_rvpk_sig": {
+          "defaulting": true,
+          "value": 10
+        },
+        "tally": {
+          "value": 8
+        },
+        "threshold_bps": {
+          "description": "Yes share of (yes + no) in basis points that must be exceeded.",
+          "value": 9
+        },
+        "voting_module": {
+          "description": "Defaults to dao-core's `voting_module {}`.",
+          "value": 2
+        },
+        "voting_period": {
+          "description": "Seconds.",
+          "value": 5
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "cw_vote_ceremony_zk_TallyAuth",
+      "type": "enum",
+      "cases": {
+        "circuit": {
+          "description": "A tally / decryption circuit with TALLY_INSTANCES public inputs.",
+          "type": "named",
+          "properties": {
+            "circuit_key": {
+              "value": 7
+            },
+            "zkid": {
+              "value": 5
+            }
+          }
+        },
+        "committee": {
+          "description": "32-byte FROST-Ed25519 group key of the election authority (t-of-n off chain).",
+          "type": "named",
+          "properties": {
+            "group_vk": {
+              "value": 6
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "u16",
+      "type": "integer",
+      "precision": 16,
+      "signed": false
+    },
+    {
+      "name": "bool",
+      "type": "boolean"
+    },
+    {
+      "name": "core::option::Option<cw_vote_ceremony::zk::ZkModuleInit>",
+      "type": "optional",
+      "inner": 4
     }
   ]
 }

@@ -11,12 +11,24 @@ use terp_seams::dex::{
     AssetId, MODE_FROST_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE, Pool, PoolStatus,
     ThresholdEscrowAuth, authorize_escrow_release,
 };
+// Test-only names from the original 94fdce7 import set (headstash repo).
+#[cfg(test)]
+use terp_seams::dex::{
+    DestKind, EgressBurnEvidenceV0, NoteIn, OracleBoundParams, OracleMid, SeamError, SeamState,
+    SettleNoteFields, SwapPublic, apply_egress_burn, apply_swap, build_egress_burn_from_settle,
+    check_oracle_bound, oracle_mint_note, oracle_update_reserves, quote_exact_in,
+    settle_opening_from_note_fields,
+};
 use terp_seams::dex::{
     DualHomePrepV0, EscrowLiabilityV0, LP_SEED_SOURCE_BRIDGED_NOTES, LP_SEED_SOURCE_MAGIC_LAB,
     LpSeedReceiptV0, PoolSeedPolicy, authorize_create_pool_reserves, mint_lp_zec_note,
 };
 
+#[cfg(test)]
+use super::account_curation::{AccountRole, ChainKind, curate_lab_accounts};
 use super::seam_multi_cycle::{CYCLE_GAMMA, CYCLE_GAMMA_DEN};
+#[cfg(test)]
+use super::seam_multi_cycle::{MultiCycleWorld, SeamAsset};
 
 // ---------------------------------------------------------------------------
 // Catalog: contrast id → product goal contrasted

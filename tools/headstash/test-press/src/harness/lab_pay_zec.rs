@@ -50,8 +50,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 use terp_seams::dex::{
-    DestKind, EgressBurnEvidenceV0, EgressBurnPublic, ZecEgressReceiptV0, hex32,
-    lab_receipt_after_burn,
+    DestKind, EgressBurnEvidenceV0, EgressBurnPublic, EscrowReleaseError,
+    MODE_FROST_ESCROW_RELEASE, MODE_THRESHOLD_ESCROW_RELEASE,
+    MODE_THRESHOLD_ESCROW_RELEASE_SIMULATED, ThresholdEscrowAuth, ZecEgressReceiptV0,
+    authorize_escrow_release, hex32, lab_receipt_after_burn, reject_funder_only_as_product,
 };
 use threshold_committee::{LabCommittee, lab_sign_with_threshold};
 
@@ -733,7 +735,7 @@ pub fn in_process_threshold_escrow_auth(
     Ok((
         ThresholdEscrowAuth {
             committee_pk,
-            combined_sig: combined,
+            combined_sig: combined.encode(),
         },
         label,
         meta,
@@ -1620,8 +1622,9 @@ mod tests {
         }
     }
 
-    /// Serialize env-mutating tests (process env is global).
-    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    /// Serialize env-mutating tests (process env is global). Shared across
+    /// harness modules: see `omni_lp_seed::CORRIDOR_TEST_ENV_LOCK`.
+    use crate::harness::omni_lp_seed::CORRIDOR_TEST_ENV_LOCK as ENV_LOCK;
 
     /// Isolate env for product/threshold tests (restore previous values on drop).
     ///

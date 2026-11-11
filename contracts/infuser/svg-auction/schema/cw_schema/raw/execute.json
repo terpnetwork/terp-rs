@@ -14,6 +14,51 @@
             }
           }
         },
+        "cancel_private_auction": {
+          "description": "Seller while no bid is active, or anyone after `end_time + reclaim_grace`: NFT back\nto the seller.",
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            }
+          }
+        },
+        "disclose_private_release": {
+          "description": "Optional public disclosure: publish the release OVK (checked against `ovk_tag`)\nso anyone can decrypt the payment notes and check them against `notes_cm`.",
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            },
+            "bid_id": {
+              "value": 4
+            },
+            "ovk": {
+              "value": 6
+            }
+          }
+        },
+        "finalize_private_auction": {
+          "description": "Settle to `bid_id`: `signature` by `finalize_vk` (all three parties) over the\nshielded payment record, and `payment_ref` (zap-1 `app_data_hash`) naming a\nConfirmed Zcash inclusion of the seller payment at the auction's payment client.\nMoves the NFT to the bidder.",
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            },
+            "bid_id": {
+              "value": 4
+            },
+            "payment_ref": {
+              "value": 6
+            },
+            "release": {
+              "value": 8
+            },
+            "signature": {
+              "value": 6
+            }
+          }
+        },
         "place_bid": {
           "type": "named",
           "properties": {
@@ -22,11 +67,36 @@
             }
           }
         },
+        "place_private_bid": {
+          "description": "Escrow note commitment + amount commitment (both hidden) + two FROST group keys.",
+          "type": "tuple",
+          "items": [
+            5
+          ]
+        },
         "receive_nft": {
           "type": "tuple",
           "items": [
             1
           ]
+        },
+        "reclaim_private_bid": {
+          "description": "Close the bid and record its shielded refund. `signature` by `reclaim_vk` (bidder +\nplatform), or none from the bidder once the auction closed or the grace period passed.",
+          "type": "named",
+          "properties": {
+            "auction_id": {
+              "value": 4
+            },
+            "bid_id": {
+              "value": 4
+            },
+            "release": {
+              "value": 8
+            },
+            "signature": {
+              "value": 7
+            }
+          }
         },
         "settle": {
           "type": "named",
@@ -67,6 +137,88 @@
       "type": "integer",
       "precision": 64,
       "signed": false
+    },
+    {
+      "name": "svg_auction_private_PlacePrivateBid",
+      "type": "struct",
+      "properties": {
+        "auction_id": {
+          "value": 4
+        },
+        "commitment": {
+          "description": "blake2b(COMMIT_DOMAIN || auction_id || bidder || escrow_cm || amount_zat || salt).",
+          "value": 6
+        },
+        "dkg_transcript": {
+          "description": "Optional hash of the DKG transcript (identifier -> party map), bound in both\nbind digests so all three parties attest the same share allocation.",
+          "value": 7
+        },
+        "escrow_cm": {
+          "description": "Note commitment of the shielded ZEC escrow note, spendable by `reclaim_vk`.",
+          "value": 6
+        },
+        "finalize_bind_sig": {
+          "description": "Signature by `finalize_vk` over the `BindFinalize` digest.",
+          "value": 6
+        },
+        "finalize_vk": {
+          "description": "32-byte FROST-Ed25519 group key, 6-of-6.",
+          "value": 6
+        },
+        "memo_cm": {
+          "description": "`blake2b(memo_preimage(chain, contract, auction_id, bid_index))`, bid_index = the\nbid id this bid will get. The contract recomputes it.",
+          "value": 6
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)` of the bid's OVK; every release must use it.",
+          "value": 6
+        },
+        "reclaim_bind_sig": {
+          "description": "Signature by `reclaim_vk` over the `BindReclaim` digest.",
+          "value": 6
+        },
+        "reclaim_vk": {
+          "description": "32-byte FROST-Ed25519 group key, 5-of-6.",
+          "value": 6
+        },
+        "sealed_bid": {
+          "description": "Seller view envelope: `eph_pk || nonce || XChaCha20-Poly1305(ovk, amount, salt)`\nto `seller_view_pk`, AAD `memo_cm` (see SPEC \"seller view\").",
+          "value": 3
+        }
+      }
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "core::option::Option<cosmwasm_std::hex_binary::HexBinary>",
+      "type": "optional",
+      "inner": 6
+    },
+    {
+      "name": "svg_auction_private_ShieldedRelease",
+      "description": "A Zcash payment authorised by a bid group, as recorded on Terp.",
+      "type": "struct",
+      "properties": {
+        "notes_cm": {
+          "description": "`blake2b(NOTES_DOMAIN || n || note_1 || .. || note_n)` over the 382-byte\nSEAM-NOTE-OUT encodings of the payment outputs (see [`notes_preimage`]). Each note\ncarries a random `rcm`, so the commitment hides values and destinations.",
+          "value": 6
+        },
+        "ovk_ciphertext": {
+          "description": "The same notes encrypted under the bid's OVK. Opaque on chain.",
+          "value": 3
+        },
+        "ovk_tag": {
+          "description": "`blake2b(OVK_DOMAIN || ovk)`; must equal the bid's `ovk_tag`.",
+          "value": 6
+        },
+        "payment_cm": {
+          "description": "Finalize only: note commitment of the seller's payment output, which the payment\nclient must attest as included on Zcash.",
+          "value": 7
+        }
+      }
     }
   ]
 }

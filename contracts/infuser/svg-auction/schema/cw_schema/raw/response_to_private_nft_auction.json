@@ -1,0 +1,102 @@
+{
+  "type": "v1",
+  "root": 8,
+  "definitions": [
+    {
+      "name": "svg_auction_private_PrivateAuction",
+      "type": "struct",
+      "properties": {
+        "active_bids": {
+          "description": "Bids neither reclaimed nor won. The seller may only cancel at zero.",
+          "value": 1
+        },
+        "auction_id": {
+          "value": 1
+        },
+        "bid_count": {
+          "value": 1
+        },
+        "end_time": {
+          "value": 5
+        },
+        "nft_contract": {
+          "value": 2
+        },
+        "payment_client": {
+          "value": 2
+        },
+        "reclaim_grace": {
+          "value": 1
+        },
+        "seller": {
+          "value": 2
+        },
+        "seller_view_pk": {
+          "value": 4
+        },
+        "start_time": {
+          "value": 5
+        },
+        "status": {
+          "value": 6
+        },
+        "token_id": {
+          "value": 3
+        },
+        "winning_bid": {
+          "value": 7
+        }
+      }
+    },
+    {
+      "name": "u64",
+      "type": "integer",
+      "precision": 64,
+      "signed": false
+    },
+    {
+      "name": "cosmwasm_std_addresses_Addr",
+      "description": "A human-readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multichain smart contracts no\nassumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways\n1. Use `Addr::unchecked(input)`\n2. Use `let checked: Addr = deps.api.addr_validate(input)?`\n3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?`\n4. Deserialize from JSON. This must only be done from JSON that was validated before\nsuch as a contract's state. `Addr` must not be used in messages sent by the user\nbecause this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create\na mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String`\ninstance.",
+      "type": "address"
+    },
+    {
+      "name": "String",
+      "type": "string"
+    },
+    {
+      "name": "cosmwasm_std_hex_binary_HexBinary",
+      "description": "This is a wrapper around Vec<u8> to add hex de/serialization\nwith serde. It also adds some helper methods to help encode inline.\n\nThis is similar to `cosmwasm_std::Binary` but uses hex.\nSee also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+      "type": "hexBinary"
+    },
+    {
+      "name": "cosmwasm_std_timestamp_Timestamp",
+      "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n```\n# use cosmwasm_std::Timestamp;\nlet ts = Timestamp::from_nanos(1_000_000_202);\nassert_eq!(ts.nanos(), 1_000_000_202);\nassert_eq!(ts.seconds(), 1);\nassert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2);\nassert_eq!(ts.nanos(), 3_000_000_202);\nassert_eq!(ts.seconds(), 3);\nassert_eq!(ts.subsec_nanos(), 202);\n```",
+      "type": "timestamp"
+    },
+    {
+      "name": "svg_auction_private_PrivateStatus",
+      "type": "enum",
+      "cases": {
+        "cancelled": {
+          "type": "unit"
+        },
+        "finalized": {
+          "type": "unit"
+        },
+        "open": {
+          "type": "unit"
+        }
+      }
+    },
+    {
+      "name": "core::option::Option<u64>",
+      "type": "optional",
+      "inner": 1
+    },
+    {
+      "name": "core::option::Option<svg_auction::private::PrivateAuction>",
+      "type": "optional",
+      "inner": 0
+    }
+  ]
+}

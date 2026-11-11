@@ -21,8 +21,10 @@ impl<Chain: CwEnv> Uploadable for CwVoteCeremonyContract<Chain> {
     }
 
     fn wrapper() -> Box<dyn MockContract<Empty>> {
-        unimplemented!(
-            "cw_vote_ceremony is cosmwasm-std 1.5; Daemon uses wasm(). Local mock: orch/scripts/exercise-reg-vm-proof.sh"
-        )
+        Box::new(ContractWrapper::new_with_empty(
+            crate::contract::execute,
+            crate::contract::instantiate,
+            crate::contract::query,
+        ))
     }
 }
